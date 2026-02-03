@@ -1,33 +1,19 @@
-import { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { dashboardService } from "../services/api";
-import type { DashboardStats } from "../types";
 import { Package, ShoppingCart, TrendingUp, Grid3x3 } from "lucide-react";
 
 export function Dashboard() {
-  const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { 
+    data: stats, 
+    isLoading, 
+    isError, 
+    error 
+  } = useQuery({
+    queryKey: ['dashboard-stats'],
+    queryFn: dashboardService.getStats
+  });
 
-  useEffect(() => {
-    loadStats();
-  }, []);
-
-  const loadStats = async () => {
-    try {
-      setLoading(true);
-      const data = await dashboardService.getStats();
-      setStats(data);
-      setError(null);
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Error al cargar estadísticas",
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-gray-500">Cargando estadísticas...</div>
@@ -35,10 +21,10 @@ export function Dashboard() {
     );
   }
 
-  if (error) {
+  if (isError) {
     return (
       <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
-        Error: {error}
+        Error: {error instanceof Error ? error.message : "Error al cargar estadísticas"}
       </div>
     );
   }

@@ -49,7 +49,7 @@ class VentasRepository(CRUDBase[Ventas, VentasCreate, VentasUpdate]):
         return db.exec(statement).all()
 
     def get_ventas_confirmadas(self, db: Session) -> List[Ventas]:
-        statement = select(Ventas).where(Ventas.confirmacion == True)
+        statement = select(Ventas).where(Ventas.confirmacion)
         return db.exec(statement).all()
 
 
@@ -61,7 +61,7 @@ class MovimientoRepository(CRUDBase[Movimiento, MovimientoCreate, MovimientoUpda
         return db.exec(statement).all()
 
     def get_pendientes(self, db: Session) -> List[Movimiento]:
-        statement = select(Movimiento).where(Movimiento.confirmacion == False)
+        statement = select(Movimiento).where(not Movimiento.confirmacion)
         return db.exec(statement).all()
 
 

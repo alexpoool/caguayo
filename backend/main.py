@@ -1,16 +1,48 @@
+import os
+import uvicorn
+from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from src.database.connection import engine
 from sqlmodel import SQLModel
-import uvicorn
-import os
-from dotenv import load_dotenv
 
 load_dotenv()
 
+from src.database.connection import engine  # noqa: E402
+from src.routes import api_router  # noqa: E402
+
 # Import all models to ensure they are registered with SQLModel
-from src.models import *
-from src.routes import api_router
+from src.models import (  # noqa: E402
+    Anexo,
+    Categorias,
+    DatosGeneralesDependencia,
+    Dependencia,
+    Liquidacion,
+    Moneda,
+    Movimiento,
+    Productos,
+    Subcategorias,
+    TipoDependencia,
+    TipoMovimiento,
+    Transaccion,
+    Ventas,
+)
+
+# Avoid F401 (unused imports) by listing them or using noqa, but listing is better for runtime debugging if needed
+__all_models__ = [
+    Anexo,
+    Categorias,
+    DatosGeneralesDependencia,
+    Dependencia,
+    Liquidacion,
+    Moneda,
+    Movimiento,
+    Productos,
+    Subcategorias,
+    TipoDependencia,
+    TipoMovimiento,
+    Transaccion,
+    Ventas,
+]
 
 # Create database tables
 SQLModel.metadata.create_all(engine)
@@ -33,6 +65,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 # Include API routes
 app.include_router(api_router)
 

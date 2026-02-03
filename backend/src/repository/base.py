@@ -1,6 +1,5 @@
 from sqlmodel import Session, select
 from typing import List, Optional, Type, TypeVar, Generic
-from src.database.connection import get_session
 
 ModelType = TypeVar("ModelType")
 CreateSchemaType = TypeVar("CreateSchemaType")

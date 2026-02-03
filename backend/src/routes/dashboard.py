@@ -1,6 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session
-from typing import List
 from src.database.connection import get_session
 from src.services import DashboardService
 from src.dto import DashboardStats

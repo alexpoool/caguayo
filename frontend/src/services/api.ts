@@ -11,7 +11,7 @@ import type {
 
 export const productosService = {
   async getProductos(skip = 0, limit = 100): Promise<Productos[]> {
-    return apiClient.get<Productos[]>(`/productos/?skip=${skip}&limit=${limit}`);
+    return apiClient.get<Productos[]>(`/productos?skip=${skip}&limit=${limit}`);
   },
 
   async getProducto(id: number): Promise<Productos> {

@@ -1,4 +1,6 @@
 import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
+import { Toaster } from 'react-hot-toast';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Layout, Sidebar, Header, MainContent } from './components/Layout';
 import { Dashboard } from './pages/Dashboard';
 import { ProductosPage } from './pages/Productos';
@@ -100,27 +102,40 @@ function AppHeader() {
   );
 }
 
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      refetchOnWindowFocus: false,
+      retry: 1,
+      staleTime: 5 * 60 * 1000, // 5 minutos
+    },
+  },
+});
+
 function App() {
   return (
-    <Router>
-      <Layout>
-        <div className="flex h-screen">
-          <Navigation />
-          <div className="flex-1 flex flex-col">
-            <AppHeader />
-            <MainContent>
-              <Routes>
-                <Route path="/" element={<Dashboard />} />
-                <Route path="/productos" element={<ProductosPage />} />
-                <Route path="/ventas" element={<div className="text-gray-500">Página de Ventas en construcción</div>} />
-                <Route path="/movimientos" element={<div className="text-gray-500">Página de Movimientos en construcción</div>} />
-                <Route path="/configuracion" element={<div className="text-gray-500">Página de Configuración en construcción</div>} />
-              </Routes>
-            </MainContent>
+    <QueryClientProvider client={queryClient}>
+      <Router>
+        <Toaster position="top-right" />
+        <Layout>
+          <div className="flex h-screen">
+            <Navigation />
+            <div className="flex-1 flex flex-col">
+              <AppHeader />
+              <MainContent>
+                <Routes>
+                  <Route path="/" element={<Dashboard />} />
+                  <Route path="/productos" element={<ProductosPage />} />
+                  <Route path="/ventas" element={<div className="text-gray-500">Página de Ventas en construcción</div>} />
+                  <Route path="/movimientos" element={<div className="text-gray-500">Página de Movimientos en construcción</div>} />
+                  <Route path="/configuracion" element={<div className="text-gray-500">Página de Configuración en construcción</div>} />
+                </Routes>
+              </MainContent>
+            </div>
           </div>
-        </div>
-      </Layout>
-    </Router>
+        </Layout>
+      </Router>
+    </QueryClientProvider>
   );
 }
 

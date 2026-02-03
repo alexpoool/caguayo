@@ -1,5 +1,6 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session
+from sqlalchemy.exc import IntegrityError
 from typing import List
 from src.database.connection import get_session
 from src.services import ProductosService
@@ -8,21 +9,33 @@ from src.dto import ProductosCreate, ProductosRead, ProductosUpdate
 router = APIRouter(prefix="/productos", tags=["productos"])
 
 
-@router.post("/", response_model=ProductosRead)
+@router.post("", response_model=ProductosRead)
 async def create_producto(
     producto: ProductosCreate, db: Session = Depends(get_session)
 ):
     try:
         return ProductosService.create_producto(db, producto)
+    except IntegrityError as e:
+        print(f"Integrity Error creating product: {e}")
+        raise HTTPException(
+            status_code=400,
+            detail="Error de datos: Verifique que la subcategoría y monedas seleccionadas existan.",
+        )
     except Exception as e:
+        print(f"Error creating product: {e}")
         raise HTTPException(status_code=400, detail=str(e))
 
 
-@router.get("/", response_model=List[ProductosRead])
+@router.get("", response_model=List[ProductosRead])
 async def read_productos(
     skip: int = 0, limit: int = 100, db: Session = Depends(get_session)
 ):
     return ProductosService.get_productos(db, skip=skip, limit=limit)
+
+
+@router.get("/search/{nombre}", response_model=List[ProductosRead])
+async def search_productos(nombre: str, db: Session = Depends(get_session)):
+    return ProductosService.search_productos(db, nombre=nombre)
 
 
 @router.get("/{producto_id}", response_model=ProductosRead)
@@ -48,8 +61,3 @@ async def delete_producto(producto_id: int, db: Session = Depends(get_session)):
     if not ProductosService.delete_producto(db, producto_id):
         raise HTTPException(status_code=404, detail="Producto no encontrado")
     return {"message": "Producto eliminado correctamente"}
-
-
-@router.get("/search/{nombre}", response_model=List[ProductosRead])
-async def search_productos(nombre: str, db: Session = Depends(get_session)):
-    return ProductosService.search_productos(db, nombre)
