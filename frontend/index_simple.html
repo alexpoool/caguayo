@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Inventario - Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: #f3f4f6;
+            color: #1f2937;
+        }
+        
+        .container {
+            display: flex;
+            height: 100vh;
+        }
+        
+        .sidebar {
+            width: 256px;
+            background-color: #1f2937;
+            color: white;
+            padding: 1.5rem;
+        }
+        
+        .sidebar h1 {
+            font-size: 1.25rem;
+            font-weight: bold;
+            margin-bottom: 2rem;
+        }
+        
+        .nav-item {
+            display: block;
+            padding: 0.75rem 1rem;
+            margin-bottom: 0.5rem;
+            color: #d1d5db;
+            text-decoration: none;
+            border-radius: 0.5rem;
+            transition: all 0.2s;
+        }
+        
+        .nav-item:hover, .nav-item.active {
+            background-color: #374151;
+            color: white;
+        }
+        
+        .main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .header {
+            background-color: white;
+            padding: 1rem 2rem;
+            border-bottom: 1px solid #e5e7eb;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        
+        .header h1 {
+            font-size: 1.875rem;
+            font-weight: bold;
+            color: #1f2937;
+        }
+        
+        .header p {
+            color: #6b7280;
+            margin-top: 0.25rem;
+        }
+        
+        .content {
+            flex: 1;
+            padding: 2rem;
+            overflow-y: auto;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        
+        .stat-card {
+            background-color: white;
+            padding: 1.5rem;
+            border-radius: 0.75rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            border-left: 4px solid #3b82f6;
+        }
+        
+        .stat-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #1f2937;
+        }
+        
+        .stat-label {
+            color: #6b7280;
+            margin-top: 0.25rem;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 2rem;
+            color: #6b7280;
+        }
+        
+        .error {
+            background-color: #fef2f2;
+            border: 1px solid #fecaca;
+            color: #dc2626;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            margin-bottom: 1rem;
+        }
+        
+        .success {
+            background-color: #f0fdf4;
+            border: 1px solid #bbf7d0;
+            color: #16a34a;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            margin-bottom: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <nav class="sidebar">
+            <h1>Sistema de Inventario</h1>
+            <a href="#dashboard" class="nav-item active" onclick="showPage('dashboard')">📊 Dashboard</a>
+            <a href="#productos" class="nav-item" onclick="showPage('productos')">📦 Productos</a>
+            <a href="#ventas" class="nav-item" onclick="showPage('ventas')">💰 Ventas</a>
+            <a href="#movimientos" class="nav-item" onclick="showPage('movimientos')">📋 Movimientos</a>
+            <a href="#configuracion" class="nav-item" onclick="showPage('configuracion')">⚙️ Configuración</a>
+        </nav>
+        
+        <div class="main">
+            <header class="header">
+                <h1 id="pageTitle">Dashboard</h1>
+                <p>Sistema de Gestión de Inventario</p>
+            </header>
+            
+            <div class="content" id="content">
+                <div class="loading">Cargando...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE_URL = 'http://localhost:8002/api/v1';
+        
+        async function fetchData(endpoint) {
+            try {
+                const response = await fetch(`${API_BASE_URL}${endpoint}`);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return await response.json();
+            } catch (error) {
+                console.error('Error fetching data:', error);
+                throw error;
+            }
+        }
+        
+        async function loadDashboard() {
+            try {
+                const stats = await fetchData('/dashboard/stats');
+                renderDashboard(stats);
+            } catch (error) {
+                document.getElementById('content').innerHTML = 
+                    `<div class="error">Error al cargar estadísticas: ${error.message}</div>`;
+            }
+        }
+        
+        function renderDashboard(stats) {
+            const content = `
+                <div class="success">✅ Conectado al backend exitosamente</div>
+                
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-value">${stats.total_productos}</div>
+                        <div class="stat-label">Total Productos</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">${stats.total_ventas}</div>
+                        <div class="stat-label">Total Ventas</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">${stats.total_movimientos}</div>
+                        <div class="stat-label">Total Movimientos</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">${stats.total_categorias}</div>
+                        <div class="stat-label">Total Categorías</div>
+                    </div>
+                </div>
+                
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-value">$${stats.ventas_mes_actual.toLocaleString()}</div>
+                        <div class="stat-label">Ventas del Mes</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">${stats.productos_stock_bajo.length}</div>
+                        <div class="stat-label">Productos con Stock Bajo</div>
+                    </div>
+                </div>
+                
+                <h3 style="margin: 2rem 0 1rem 0; color: #1f2937;">Productos con Stock Bajo</h3>
+                <div style="background: white; border-radius: 0.75rem; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+                    <table style="width: 100%; border-collapse: collapse;">
+                        <thead style="background: #f9fafb; border-bottom: 1px solid #e5e7eb;">
+                            <tr>
+                                <th style="padding: 1rem; text-align: left; font-weight: 600;">Producto</th>
+                                <th style="padding: 1rem; text-align: left; font-weight: 600;">Precio Venta</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${stats.productos_stock_bajo.map(product => `
+                                <tr style="border-bottom: 1px solid #f3f4f6;">
+                                    <td style="padding: 1rem;">${product.nombre}</td>
+                                    <td style="padding: 1rem;">$${product.precio_venta.toLocaleString()}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+            
+            document.getElementById('content').innerHTML = content;
+        }
+        
+        async function loadProductos() {
+            try {
+                const productos = await fetchData('/productos');
+                renderProductos(productos);
+            } catch (error) {
+                document.getElementById('content').innerHTML = 
+                    `<div class="error">Error al cargar productos: ${error.message}</div>`;
+            }
+        }
+        
+        function renderProductos(productos) {
+            const content = `
+                <div class="success">✅ ${productos.length} productos cargados</div>
+                
+                <div style="background: white; border-radius: 0.75rem; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+                    <table style="width: 100%; border-collapse: collapse;">
+                        <thead style="background: #f9fafb; border-bottom: 1px solid #e5e7eb;">
+                            <tr>
+                                <th style="padding: 1rem; text-align: left; font-weight: 600;">ID</th>
+                                <th style="padding: 1rem; text-align: left; font-weight: 600;">Producto</th>
+                                <th style="padding: 1rem; text-align: left; font-weight: 600;">Descripción</th>
+                                <th style="padding: 1rem; text-align: left; font-weight: 600;">Precio Venta</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${productos.map(product => `
+                                <tr style="border-bottom: 1px solid #f3f4f6;">
+                                    <td style="padding: 1rem;">${product.id_producto}</td>
+                                    <td style="padding: 1rem; font-weight: 600;">${product.nombre}</td>
+                                    <td style="padding: 1rem; color: #6b7280;">${product.descripcion || 'N/A'}</td>
+                                    <td style="padding: 1rem;">$${product.precio_venta.toLocaleString()}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+            
+            document.getElementById('content').innerHTML = content;
+        }
+        
+        function showPage(page) {
+            // Update navigation
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            // Update header
+            const titles = {
+                'dashboard': 'Dashboard',
+                'productos': 'Productos',
+                'ventas': 'Ventas',
+                'movimientos': 'Movimientos',
+                'configuracion': 'Configuración'
+            };
+            document.getElementById('pageTitle').textContent = titles[page];
+            
+            // Load content
+            const content = document.getElementById('content');
+            content.innerHTML = '<div class="loading">Cargando...</div>';
+            
+            switch(page) {
+                case 'dashboard':
+                    loadDashboard();
+                    break;
+                case 'productos':
+                    loadProductos();
+                    break;
+                default:
+                    content.innerHTML = '<div style="text-align: center; padding: 2rem; color: #6b7280;">Página en construcción</div>';
+            }
+        }
+        
+        // Load dashboard on page load
+        document.addEventListener('DOMContentLoaded', loadDashboard);
+    </script>
+</body>
+</html>

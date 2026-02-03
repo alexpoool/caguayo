@@ -1,0 +1,55 @@
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlmodel import Session
+from typing import List
+from src.database.connection import get_session
+from src.services import ProductosService
+from src.dto import ProductosCreate, ProductosRead, ProductosUpdate
+
+router = APIRouter(prefix="/productos", tags=["productos"])
+
+
+@router.post("/", response_model=ProductosRead)
+async def create_producto(
+    producto: ProductosCreate, db: Session = Depends(get_session)
+):
+    try:
+        return ProductosService.create_producto(db, producto)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.get("/", response_model=List[ProductosRead])
+async def read_productos(
+    skip: int = 0, limit: int = 100, db: Session = Depends(get_session)
+):
+    return ProductosService.get_productos(db, skip=skip, limit=limit)
+
+
+@router.get("/{producto_id}", response_model=ProductosRead)
+async def read_producto(producto_id: int, db: Session = Depends(get_session)):
+    producto = ProductosService.get_producto(db, producto_id)
+    if not producto:
+        raise HTTPException(status_code=404, detail="Producto no encontrado")
+    return producto
+
+
+@router.put("/{producto_id}", response_model=ProductosRead)
+async def update_producto(
+    producto_id: int, producto: ProductosUpdate, db: Session = Depends(get_session)
+):
+    updated_producto = ProductosService.update_producto(db, producto_id, producto)
+    if not updated_producto:
+        raise HTTPException(status_code=404, detail="Producto no encontrado")
+    return updated_producto
+
+
+@router.delete("/{producto_id}")
+async def delete_producto(producto_id: int, db: Session = Depends(get_session)):
+    if not ProductosService.delete_producto(db, producto_id):
+        raise HTTPException(status_code=404, detail="Producto no encontrado")
+    return {"message": "Producto eliminado correctamente"}
+
+
+@router.get("/search/{nombre}", response_model=List[ProductosRead])
+async def search_productos(nombre: str, db: Session = Depends(get_session)):
+    return ProductosService.search_productos(db, nombre)
