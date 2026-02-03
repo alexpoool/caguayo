@@ -15,8 +15,14 @@ from src.dto import (
 
 
 class ProductosRepository(CRUDBase[Productos, ProductosCreate, ProductosUpdate]):
+    def get_multi(
+        self, db: Session, *, skip: int = 0, limit: int = 100
+    ) -> List[Productos]:
+        statement = select(self.model).order_by(self.model.id_producto.desc()).offset(skip).limit(limit)
+        return db.exec(statement).all()
+
     def get_by_nombre(self, db: Session, nombre: str) -> List[Productos]:
-        statement = select(Productos).where(Productos.nombre.contains(nombre))
+        statement = select(Productos).where(Productos.nombre.contains(nombre)).order_by(Productos.id_producto.desc())
         return db.exec(statement).all()
 
     def get_by_categoria(self, db: Session, id_categoria: int) -> List[Productos]:

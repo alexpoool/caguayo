@@ -58,6 +58,16 @@ async def update_producto(
 
 @router.delete("/{producto_id}")
 async def delete_producto(producto_id: int, db: Session = Depends(get_session)):
-    if not ProductosService.delete_producto(db, producto_id):
-        raise HTTPException(status_code=404, detail="Producto no encontrado")
-    return {"message": "Producto eliminado correctamente"}
+    try:
+        if not ProductosService.delete_producto(db, producto_id):
+            raise HTTPException(status_code=404, detail="Producto no encontrado")
+        return {"message": "Producto eliminado correctamente"}
+    except IntegrityError as e:
+        print(f"Integrity Error deleting product: {e}")
+        raise HTTPException(
+            status_code=400,
+            detail="No se puede eliminar el producto porque tiene ventas o movimientos asociados.",
+        )
+    except Exception as e:
+        print(f"Error deleting product: {e}")
+        raise HTTPException(status_code=500, detail=str(e))

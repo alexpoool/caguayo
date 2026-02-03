@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 DATABASE_URL = os.getenv(
-    "DATABASE_URL", "postgresql://postgres:1234@localhost:5432/inventario_db"
+    "DATABASE_URL", "postgresql+psycopg://postgres:solji@localhost:5432/caguayo_inventario"
 )
 print("+++++++++ " + DATABASE_URL + " ++++++++")
 engine = create_engine(DATABASE_URL)
