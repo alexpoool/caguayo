@@ -3,11 +3,9 @@ import uvicorn
 from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from sqlmodel import SQLModel
 
 load_dotenv()
 
-from src.database.connection import engine  # noqa: E402
 from src.routes import api_router  # noqa: E402
 
 # Import all models to ensure they are registered with SQLModel
@@ -44,8 +42,8 @@ __all_models__ = [
     Ventas,
 ]
 
-# Create database tables
-SQLModel.metadata.create_all(engine)
+# Create database tables - Removed in favor of Alembic migrations
+# SQLModel.metadata.create_all(engine)
 
 app = FastAPI(
     title="API de Inventario",
@@ -54,15 +52,34 @@ app = FastAPI(
 )
 
 # Configure CORS
-cors_origins = os.getenv(
-    "CORS_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000"
-).split(",")
+# Define defaults for development; in production, strict environment variables should be used.
+default_origins = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://localhost:5173",  # Vite default
+    "http://127.0.0.1:5173",
+]
+
+cors_origins_str = os.getenv("CORS_ORIGINS", "")
+if cors_origins_str:
+    cors_origins = [
+        origin.strip() for origin in cors_origins_str.split(",") if origin.strip()
+    ]
+else:
+    cors_origins = default_origins
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=cors_origins,
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=[
+        "GET",
+        "POST",
+        "PUT",
+        "DELETE",
+        "OPTIONS",
+        "PATCH",
+    ],  # Specific methods instead of "*"
     allow_headers=["*"],
 )
 

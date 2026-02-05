@@ -1,40 +1,43 @@
 from typing import List
 from datetime import datetime
-from sqlmodel import Session
+from sqlmodel.ext.asyncio.session import AsyncSession
 from src.repository import ventas_repo
 from src.dto import (
     VentasCreate,
     VentasRead,
 )
 
+
 class VentasService:
     @staticmethod
-    def create_venta(db: Session, venta: VentasCreate) -> VentasRead:
-        db_venta = ventas_repo.create(db, obj_in=venta)
+    async def create_venta(db: AsyncSession, venta: VentasCreate) -> VentasRead:
+        db_venta = await ventas_repo.create(db, obj_in=venta)
         return VentasRead.from_orm(db_venta)
 
     @staticmethod
-    def get_venta(db: Session, venta_id: int) -> VentasRead:
-        db_venta = ventas_repo.get(db, id=venta_id)
+    async def get_venta(db: AsyncSession, venta_id: int) -> VentasRead:
+        db_venta = await ventas_repo.get(db, id=venta_id)
         return VentasRead.from_orm(db_venta) if db_venta else None
 
     @staticmethod
-    def get_ventas(db: Session, skip: int = 0, limit: int = 100) -> List[VentasRead]:
-        db_ventas = ventas_repo.get_multi(db, skip=skip, limit=limit)
+    async def get_ventas(
+        db: AsyncSession, skip: int = 0, limit: int = 100
+    ) -> List[VentasRead]:
+        db_ventas = await ventas_repo.get_multi(db, skip=skip, limit=limit)
         return [VentasRead.from_orm(v) for v in db_ventas]
 
     @staticmethod
-    def get_ventas_mes_actual(db: Session) -> List[VentasRead]:
+    async def get_ventas_mes_actual(db: AsyncSession) -> List[VentasRead]:
         now = datetime.now()
-        db_ventas = ventas_repo.get_by_mes(db, year=now.year, month=now.month)
+        db_ventas = await ventas_repo.get_by_mes(db, year=now.year, month=now.month)
         return [VentasRead.from_orm(v) for v in db_ventas]
 
     @staticmethod
-    def confirmar_venta(db: Session, venta_id: int) -> VentasRead:
-        db_venta = ventas_repo.get(db, id=venta_id)
+    async def confirmar_venta(db: AsyncSession, venta_id: int) -> VentasRead:
+        db_venta = await ventas_repo.get(db, id=venta_id)
         if db_venta:
             db_venta.confirmacion = True
-            db.commit()
-            db.refresh(db_venta)
+            await db.commit()
+            await db.refresh(db_venta)
             return VentasRead.from_orm(db_venta)
         return None

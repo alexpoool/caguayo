@@ -13,7 +13,7 @@ async def create_categoria(
     categoria: CategoriasCreate, db: Session = Depends(get_session)
 ):
     try:
-        return CategoriasService.create_categoria(db, categoria)
+        return await CategoriasService.create_categoria(db, categoria)
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -22,12 +22,12 @@ async def create_categoria(
 async def read_categorias(
     skip: int = 0, limit: int = 100, db: Session = Depends(get_session)
 ):
-    return CategoriasService.get_categorias(db, skip=skip, limit=limit)
+    return await CategoriasService.get_categorias(db, skip=skip, limit=limit)
 
 
 @router.get("/{categoria_id}", response_model=CategoriasRead)
 async def read_categoria(categoria_id: int, db: Session = Depends(get_session)):
-    categoria = CategoriasService.get_categoria(db, categoria_id)
+    categoria = await CategoriasService.get_categoria(db, categoria_id)
     if not categoria:
         raise HTTPException(status_code=404, detail="Categoría no encontrada")
     return categoria
@@ -37,7 +37,9 @@ async def read_categoria(categoria_id: int, db: Session = Depends(get_session)):
 async def update_categoria(
     categoria_id: int, categoria: CategoriasUpdate, db: Session = Depends(get_session)
 ):
-    updated_categoria = CategoriasService.update_categoria(db, categoria_id, categoria)
+    updated_categoria = await CategoriasService.update_categoria(
+        db, categoria_id, categoria
+    )
     if not updated_categoria:
         raise HTTPException(status_code=404, detail="Categoría no encontrada")
     return updated_categoria
@@ -45,6 +47,7 @@ async def update_categoria(
 
 @router.delete("/{categoria_id}")
 async def delete_categoria(categoria_id: int, db: Session = Depends(get_session)):
-    if not CategoriasService.delete_categoria(db, categoria_id):
+    deleted = await CategoriasService.delete_categoria(db, categoria_id)
+    if not deleted:
         raise HTTPException(status_code=404, detail="Categoría no encontrada")
     return {"message": "Categoría eliminada correctamente"}
