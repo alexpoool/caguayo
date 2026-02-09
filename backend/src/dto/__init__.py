@@ -100,42 +100,98 @@ class ProductosUpdate(SQLModel):
     precio_minimo: Optional[Decimal] = None
 
 
-# DTOs para Ventas
-class VentasBase(SQLModel):
-    id_anexo: int
+# DTOs simplificados para Productos en Ventas (sin relaciones lazy)
+class ProductoSimpleRead(SQLModel):
     id_producto: int
-    codigo: str
+    nombre: str
+    descripcion: Optional[str] = None
+    precio_venta: Decimal
+    precio_minimo: Decimal
+    stock: int = 0
+
+
+# DTOs para Detalle de Venta
+class DetalleVentaBase(SQLModel):
+    id_producto: int
     cantidad: int
-    moneda_venta: int
-    monto: Decimal
-    id_transaccion: int
+    precio_unitario: Decimal
+    subtotal: Decimal
+
+
+class DetalleVentaCreate(SQLModel):
+    id_producto: int
+    cantidad: int
+    precio_unitario: Decimal
+    subtotal: Optional[Decimal] = None
+
+
+class DetalleVentaRead(DetalleVentaBase):
+    id_detalle: int
+    id_venta: int
+    producto: Optional[ProductoSimpleRead] = None
+
+
+# DTOs para Ventas
+class VentaBase(SQLModel):
+    id_cliente: int
+    fecha: datetime
+    total: Decimal
+    estado: str = "PENDIENTE"  # PENDIENTE, COMPLETADA, ANULADA
     observacion: Optional[str] = None
 
 
-class VentasCreate(VentasBase):
+class VentaCreate(SQLModel):
+    id_cliente: int
+    fecha: Optional[datetime] = None
+    observacion: Optional[str] = None
+    detalles: List[DetalleVentaCreate]
+
+
+class VentaRead(VentaBase):
+    id_venta: int
+    fecha_registro: datetime
+    fecha_actualizacion: Optional[datetime] = None
+    cliente: Optional["ClienteRead"] = None
+    detalles: List[DetalleVentaRead] = []
+
+
+class VentaUpdate(SQLModel):
+    id_cliente: Optional[int] = None
+    fecha: Optional[datetime] = None
+    observacion: Optional[str] = None
+    estado: Optional[str] = None
+
+
+# DTOs para Clientes
+class ClienteBase(SQLModel):
+    nombre: str
+    telefono: Optional[str] = None
+    email: Optional[str] = None
+    cedula_rif: Optional[str] = None
+    direccion: Optional[str] = None
+    activo: bool = True
+
+
+class ClienteCreate(ClienteBase):
     pass
 
 
-class VentasRead(VentasBase):
-    id_venta: int
-    id_liquidacion: Optional[int] = None
-    confirmacion: bool = False
+class ClienteRead(ClienteBase):
+    id_cliente: int
     fecha_registro: datetime
-    producto: Optional[ProductosRead] = None
-    moneda_venta_rel: Optional[MonedaRead] = None
 
 
-class VentasUpdate(SQLModel):
-    id_anexo: Optional[int] = None
-    id_producto: Optional[int] = None
-    codigo: Optional[str] = None
-    cantidad: Optional[int] = None
-    moneda_venta: Optional[int] = None
-    monto: Optional[Decimal] = None
-    id_transaccion: Optional[int] = None
-    id_liquidacion: Optional[int] = None
-    observacion: Optional[str] = None
-    confirmacion: Optional[bool] = None
+class ClienteReadWithVentas(ClienteRead):
+    ventas: List[VentaRead] = []
+
+
+class ClienteUpdate(SQLModel):
+    nombre: Optional[str] = None
+    telefono: Optional[str] = None
+    email: Optional[str] = None
+    cedula_rif: Optional[str] = None
+    direccion: Optional[str] = None
+    activo: Optional[bool] = None
 
 
 # DTOs para Movimientos
@@ -228,10 +284,19 @@ __all__ = [
     "ProductosCreate",
     "ProductosRead",
     "ProductosUpdate",
-    "VentasBase",
-    "VentasCreate",
-    "VentasRead",
-    "VentasUpdate",
+    "ProductoSimpleRead",
+    "DetalleVentaBase",
+    "DetalleVentaCreate",
+    "DetalleVentaRead",
+    "VentaBase",
+    "VentaCreate",
+    "VentaRead",
+    "VentaUpdate",
+    "ClienteBase",
+    "ClienteCreate",
+    "ClienteRead",
+    "ClienteReadWithVentas",
+    "ClienteUpdate",
     "MovimientoBase",
     "MovimientoCreate",
     "MovimientoRead",

@@ -11,4 +11,4 @@ class Transaccion(SQLModel, table=True):
     id_transaccion: Optional[int] = Field(default=None, primary_key=True)
 
     # Relaciones
-    ventas: List["Ventas"] = Relationship(back_populates="transaccion")
+    pass

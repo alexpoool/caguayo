@@ -31,6 +31,7 @@ export interface Productos {
   moneda_venta: number;
   precio_venta: number;
   precio_minimo: number;
+  stock: number;
   subcategoria?: Subcategorias;
   moneda_compra_rel?: Moneda;
   moneda_venta_rel?: Moneda;
@@ -115,3 +116,6 @@ export interface CategoriasUpdate {
   nombre?: string;
   descripcion?: string;
 }
+
+// Re-exportar tipos de ventas.ts
+export * from './ventas';

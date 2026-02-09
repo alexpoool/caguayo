@@ -7,6 +7,7 @@ if TYPE_CHECKING:
     from .moneda import Moneda
     from .venta import Ventas
     from .movimiento import Movimiento
+    from .detalle_venta import DetalleVenta
 
 
 class Productos(SQLModel, table=True):
@@ -21,6 +22,7 @@ class Productos(SQLModel, table=True):
     moneda_venta: int = Field(foreign_key="moneda.id_moneda")
     precio_venta: Decimal
     precio_minimo: Decimal
+    stock: int = Field(default=0, ge=0)
 
     # Relaciones
     subcategoria: "Subcategorias" = Relationship(back_populates="productos")
@@ -32,5 +34,5 @@ class Productos(SQLModel, table=True):
         back_populates="productos_venta",
         sa_relationship_kwargs={"foreign_keys": "Productos.moneda_venta"},
     )
-    ventas: List["Ventas"] = Relationship(back_populates="producto")
     movimientos: List["Movimiento"] = Relationship(back_populates="producto")
+    detalles_venta: List["DetalleVenta"] = Relationship(back_populates="producto")

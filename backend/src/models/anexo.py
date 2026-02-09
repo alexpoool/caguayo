@@ -12,5 +12,4 @@ class Anexo(SQLModel, table=True):
     id_anexo: Optional[int] = Field(default=None, primary_key=True)
 
     # Relaciones
-    ventas: List["Ventas"] = Relationship(back_populates="anexo")
     movimientos: List["Movimiento"] = Relationship(back_populates="anexo")

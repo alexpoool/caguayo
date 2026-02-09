@@ -1,6 +1,8 @@
 from datetime import datetime
+from decimal import Decimal
 from sqlmodel.ext.asyncio.session import AsyncSession
-from src.repository import productos_repo, categorias_repo, ventas_repo, movimiento_repo
+from src.repository import productos_repo, categorias_repo, movimiento_repo
+from src.repository.ventas_clientes_repo import ventas_repo
 from src.dto import (
     ProductosRead,
     DashboardStats,
@@ -27,7 +29,7 @@ class DashboardService:
         ventas_mes = await ventas_repo.get_by_mes(
             db, datetime.now().year, datetime.now().month
         )
-        ventas_mes_actual = sum(v.monto for v in ventas_mes)
+        ventas_mes_actual = Decimal(str(sum(v.total for v in ventas_mes)))
 
         # Productos con stock bajo (simulado)
         productos_stock = await productos_repo.get_stock_bajo(db, limite=5)

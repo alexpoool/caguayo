@@ -49,6 +49,7 @@ app = FastAPI(
     title="API de Inventario",
     description="API para visualización y gestión de base de datos de inventario",
     version="1.0.0",
+    redirect_slashes=False,
 )
 
 # Configure CORS

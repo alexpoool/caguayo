@@ -23,4 +23,3 @@ class Moneda(SQLModel, table=True):
         back_populates="moneda_venta_rel",
         sa_relationship_kwargs={"foreign_keys": "Productos.moneda_venta"},
     )
-    ventas: List["Ventas"] = Relationship(back_populates="moneda_venta_rel")

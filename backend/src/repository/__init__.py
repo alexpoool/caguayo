@@ -2,15 +2,13 @@ from sqlmodel import select, func
 from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlalchemy.orm import selectinload
 from typing import List, Optional
-from src.models import Productos, Categorias, Subcategorias, Ventas, Movimiento
+from src.models import Productos, Categorias, Subcategorias, Movimiento
 from src.repository.base import CRUDBase
 from src.dto import (
     ProductosCreate,
     ProductosUpdate,
     CategoriasCreate,
     CategoriasUpdate,
-    VentasCreate,
-    VentasUpdate,
     MovimientoCreate,
     MovimientoUpdate,
 )
@@ -128,21 +126,6 @@ class CategoriasRepository(CRUDBase[Categorias, CategoriasCreate, CategoriasUpda
     pass
 
 
-class VentasRepository(CRUDBase[Ventas, VentasCreate, VentasUpdate]):
-    async def get_by_mes(self, db: AsyncSession, year: int, month: int) -> List[Ventas]:
-        statement = select(Ventas).where(
-            func.extract("year", Ventas.fecha_registro) == year,
-            func.extract("month", Ventas.fecha_registro) == month,
-        )
-        results = await db.exec(statement)
-        return results.all()
-
-    async def get_ventas_confirmadas(self, db: AsyncSession) -> List[Ventas]:
-        statement = select(Ventas).where(Ventas.confirmacion == True)  # noqa: E712
-        results = await db.exec(statement)
-        return results.all()
-
-
 class MovimientoRepository(CRUDBase[Movimiento, MovimientoCreate, MovimientoUpdate]):
     async def get_by_tipo(
         self, db: AsyncSession, id_tipo_movimiento: int
@@ -162,5 +145,4 @@ class MovimientoRepository(CRUDBase[Movimiento, MovimientoCreate, MovimientoUpda
 # Instancias de repositories
 productos_repo = ProductosRepository(Productos)
 categorias_repo = CategoriasRepository(Categorias)
-ventas_repo = VentasRepository(Ventas)
 movimiento_repo = MovimientoRepository(Movimiento)

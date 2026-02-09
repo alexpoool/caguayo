@@ -12,5 +12,4 @@ class Liquidacion(SQLModel, table=True):
     id_liquidacion: Optional[int] = Field(default=None, primary_key=True)
 
     # Relaciones
-    ventas: List["Ventas"] = Relationship(back_populates="liquidacion")
     movimientos: List["Movimiento"] = Relationship(back_populates="liquidacion")

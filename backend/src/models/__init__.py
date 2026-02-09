@@ -1,7 +1,9 @@
 from .moneda import Moneda
 from .categoria import Categorias, Subcategorias
 from .producto import Productos
-from .venta import Ventas
+from .cliente import Cliente
+from .venta import Ventas, EstadoVenta
+from .detalle_venta import DetalleVenta
 from .movimiento import TipoMovimiento, Movimiento
 from .dependencia import TipoDependencia, DatosGeneralesDependencia, Dependencia
 from .anexo import Anexo
@@ -13,7 +15,10 @@ __all__ = [
     "Categorias",
     "Subcategorias",
     "Productos",
+    "Cliente",
     "Ventas",
+    "EstadoVenta",
+    "DetalleVenta",
     "TipoMovimiento",
     "Movimiento",
     "TipoDependencia",
