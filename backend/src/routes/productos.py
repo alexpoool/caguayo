@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
-from sqlmodel import Session
+from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlalchemy.exc import IntegrityError
 from typing import List
 from src.database.connection import get_session
@@ -11,7 +11,7 @@ router = APIRouter(prefix="/productos", tags=["productos"])
 
 @router.post("", response_model=ProductosRead)
 async def create_producto(
-    producto: ProductosCreate, db: Session = Depends(get_session)
+    producto: ProductosCreate, db: AsyncSession = Depends(get_session)
 ):
     try:
         return await ProductosService.create_producto(db, producto)
@@ -28,18 +28,18 @@ async def create_producto(
 
 @router.get("", response_model=List[ProductosRead])
 async def read_productos(
-    skip: int = 0, limit: int = 100, db: Session = Depends(get_session)
+    skip: int = 0, limit: int = 100, db: AsyncSession = Depends(get_session)
 ):
     return await ProductosService.get_productos(db, skip=skip, limit=limit)
 
 
 @router.get("/search/{nombre}", response_model=List[ProductosRead])
-async def search_productos(nombre: str, db: Session = Depends(get_session)):
+async def search_productos(nombre: str, db: AsyncSession = Depends(get_session)):
     return await ProductosService.search_productos(db, nombre=nombre)
 
 
 @router.get("/{producto_id}", response_model=ProductosRead)
-async def read_producto(producto_id: int, db: Session = Depends(get_session)):
+async def read_producto(producto_id: int, db: AsyncSession = Depends(get_session)):
     producto = await ProductosService.get_producto(db, producto_id)
     if not producto:
         raise HTTPException(status_code=404, detail="Producto no encontrado")
@@ -48,7 +48,7 @@ async def read_producto(producto_id: int, db: Session = Depends(get_session)):
 
 @router.put("/{producto_id}", response_model=ProductosRead)
 async def update_producto(
-    producto_id: int, producto: ProductosUpdate, db: Session = Depends(get_session)
+    producto_id: int, producto: ProductosUpdate, db: AsyncSession = Depends(get_session)
 ):
     updated_producto = await ProductosService.update_producto(db, producto_id, producto)
     if not updated_producto:
@@ -57,7 +57,7 @@ async def update_producto(
 
 
 @router.delete("/{producto_id}")
-async def delete_producto(producto_id: int, db: Session = Depends(get_session)):
+async def delete_producto(producto_id: int, db: AsyncSession = Depends(get_session)):
     try:
         deleted = await ProductosService.delete_producto(db, producto_id)
         if not deleted:
