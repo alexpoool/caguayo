@@ -10,7 +10,7 @@ import random
 from datetime import datetime, timedelta
 from decimal import Decimal
 from sqlalchemy.ext.asyncio import create_async_engine
-from sqlalchemy import text
+from sqlmodel import text
 from dotenv import load_dotenv
 import os
 
@@ -132,11 +132,13 @@ async def insertar_clientes():
             apellido = random.choice(APELLIDOS)
             nombre_completo = f"{nombre} {apellido}"
 
-            query = text("""
+            query = text(
+                """
                 INSERT INTO clientes (nombre, telefono, email, cedula_rif, direccion, activo, fecha_registro)
                 VALUES (:nombre, :telefono, :email, :cedula_rif, :direccion, :activo, NOW())
                 RETURNING id_cliente
-            """)
+            """
+            )
 
             result = await conn.execute(
                 query,
@@ -197,11 +199,13 @@ async def insertar_ventas(cliente_ids, productos):
             estado = random.choices(estados, weights=pesos_estados)[0]
 
             # Crear venta inicial (total será actualizado después)
-            query_venta = text("""
+            query_venta = text(
+                """
                 INSERT INTO ventas (id_cliente, fecha, total, estado, observacion, fecha_registro, fecha_actualizacion)
                 VALUES (:cliente_id, :fecha, 0, :estado, :observacion, NOW(), :fecha_actualizacion)
                 RETURNING id_venta
-            """)
+            """
+            )
 
             observaciones = [
                 "Venta al contado",
@@ -253,10 +257,12 @@ async def insertar_ventas(cliente_ids, productos):
                 )
                 subtotal = precio_unitario * cantidad
 
-                query_detalle = text("""
+                query_detalle = text(
+                    """
                     INSERT INTO detalle_ventas (id_venta, id_producto, cantidad, precio_unitario, subtotal)
                     VALUES (:venta_id, :producto_id, :cantidad, :precio_unitario, :subtotal)
-                """)
+                """
+                )
 
                 await conn.execute(
                     query_detalle,
@@ -274,18 +280,22 @@ async def insertar_ventas(cliente_ids, productos):
 
                 # Actualizar stock del producto (simular venta completada)
                 if estado == "COMPLETADA":
-                    query_update_stock = text("""
+                    query_update_stock = text(
+                        """
                         UPDATE productos SET stock = stock - :cantidad WHERE id_producto = :producto_id
-                    """)
+                    """
+                    )
                     await conn.execute(
                         query_update_stock,
                         {"cantidad": cantidad, "producto_id": prod_id},
                     )
 
             # Actualizar el total de la venta
-            query_update_total = text("""
+            query_update_total = text(
+                """
                 UPDATE ventas SET total = :total WHERE id_venta = :venta_id
-            """)
+            """
+            )
             await conn.execute(
                 query_update_total, {"total": total_venta, "venta_id": venta_id}
             )
@@ -324,10 +334,10 @@ async def main():
     print("=" * 60)
     print("✓ DATOS DE PRUEBA GENERADOS EXITOSAMENTE")
     print("=" * 60)
-    print(f"Resumen:")
-    print(f"  - 30 clientes nuevos")
-    print(f"  - 100 ventas creadas")
-    print(f"  - ~400 detalles de venta")
+    print("Resumen:")
+    print("  - 30 clientes nuevos")
+    print("  - 100 ventas creadas")
+    print("  - ~400 detalles de venta")
 
 
 if __name__ == "__main__":

@@ -1,6 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel.ext.asyncio.session import AsyncSession
-from sqlalchemy.exc import IntegrityError
 from typing import List
 import logging
 from src.database.connection import get_session
@@ -17,15 +16,16 @@ async def create_producto(
 ):
     try:
         return await ProductosService.create_producto(db, producto)
-    except IntegrityError as e:
-        logger.error(f"Integrity Error creating product: {e}")
-        raise HTTPException(
-            status_code=400,
-            detail="Error de datos: Verifique que la subcategoría y monedas seleccionadas existan.",
-        )
     except Exception as e:
+        error_msg = str(e)
+        if "IntegrityError" in type(e).__name__ or "violates" in error_msg:
+            logger.error(f"Integrity Error creating product: {e}")
+            raise HTTPException(
+                status_code=400,
+                detail="Error de datos: Verifique que la subcategoría y monedas seleccionadas existan.",
+            )
         logger.error(f"Error creating product: {e}")
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=error_msg)
 
 
 @router.get("", response_model=List[ProductosRead])
@@ -65,12 +65,16 @@ async def delete_producto(producto_id: int, db: AsyncSession = Depends(get_sessi
         if not deleted:
             raise HTTPException(status_code=404, detail="Producto no encontrado")
         return {"message": "Producto eliminado correctamente"}
-    except IntegrityError as e:
-        print(f"Integrity Error deleting product: {e}")
-        raise HTTPException(
-            status_code=400,
-            detail="No se puede eliminar el producto porque tiene ventas o movimientos asociados.",
-        )
     except Exception as e:
-        print(f"Error deleting product: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        error_msg = str(e)
+        if (
+            "IntegrityError" in type(e).__name__
+            or "violates foreign key constraint" in error_msg
+        ):
+            logger.error(f"Integrity Error deleting product: {e}")
+            raise HTTPException(
+                status_code=400,
+                detail="No se puede eliminar el producto porque tiene ventas o movimientos asociados.",
+            )
+        logger.error(f"Error deleting product: {e}")
+        raise HTTPException(status_code=500, detail=error_msg)
