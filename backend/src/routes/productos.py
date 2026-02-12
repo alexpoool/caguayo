@@ -2,11 +2,13 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlalchemy.exc import IntegrityError
 from typing import List
+import logging
 from src.database.connection import get_session
 from src.services import ProductosService
 from src.dto import ProductosCreate, ProductosRead, ProductosUpdate
 
 router = APIRouter(prefix="/productos", tags=["productos"])
+logger = logging.getLogger(__name__)
 
 
 @router.post("", response_model=ProductosRead)
@@ -16,13 +18,13 @@ async def create_producto(
     try:
         return await ProductosService.create_producto(db, producto)
     except IntegrityError as e:
-        print(f"Integrity Error creating product: {e}")
+        logger.error(f"Integrity Error creating product: {e}")
         raise HTTPException(
             status_code=400,
             detail="Error de datos: Verifique que la subcategoría y monedas seleccionadas existan.",
         )
     except Exception as e:
-        print(f"Error creating product: {e}")
+        logger.error(f"Error creating product: {e}")
         raise HTTPException(status_code=400, detail=str(e))
 
 
