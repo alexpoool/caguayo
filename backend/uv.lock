@@ -66,6 +66,7 @@ dependencies = [
 
 [package.dev-dependencies]
 dev = [
+    { name = "alembic" },
     { name = "httpx" },
     { name = "pre-commit" },
     { name = "pytest" },
@@ -87,6 +88,7 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "alembic", specifier = ">=1.18.3" },
     { name = "httpx", specifier = ">=0.25.0" },
     { name = "pre-commit", specifier = ">=4.5.1" },
     { name = "pytest", specifier = ">=7.4.0" },

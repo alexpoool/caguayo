@@ -49,3 +49,41 @@ class ProductosService:
     async def search_productos(db: AsyncSession, nombre: str) -> List[ProductosRead]:
         db_productos = await productos_repo.get_by_nombre(db, nombre=nombre)
         return [ProductosRead.from_orm(p) for p in db_productos]
+
+    @staticmethod
+    async def get_productos_by_anexo(
+        db: AsyncSession, anexo_id: int
+    ) -> List[ProductosRead]:
+        """Obtener productos disponibles en un anexo específico."""
+        from src.services.movimiento_service import MovimientoService
+
+        productos_data = await MovimientoService.get_productos_by_anexo(db, anexo_id)
+
+        # Convertir a ProductosRead
+        result = []
+        for p_data in productos_data:
+            producto = await ProductosService.get_producto(db, p_data["id_producto"])
+            if producto:
+                # Agregar cantidad calculada
+                producto_dict = producto.dict()
+                producto_dict["cantidad"] = p_data["cantidad"]
+                result.append(ProductosRead(**producto_dict))
+        return result
+
+    @staticmethod
+    async def get_productos_con_stock(db: AsyncSession) -> List[ProductosRead]:
+        """Obtener productos con stock disponible."""
+        from src.services.movimiento_service import MovimientoService
+
+        productos_data = await MovimientoService.get_productos_con_stock(db)
+
+        # Convertir a ProductosRead
+        result = []
+        for p_data in productos_data:
+            producto = await ProductosService.get_producto(db, p_data["id_producto"])
+            if producto:
+                # Agregar cantidad calculada
+                producto_dict = producto.dict()
+                producto_dict["cantidad"] = p_data["cantidad"]
+                result.append(ProductosRead(**producto_dict))
+        return result

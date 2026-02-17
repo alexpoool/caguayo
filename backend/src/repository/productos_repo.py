@@ -99,11 +99,15 @@ class ProductosRepository(CRUDBase[Productos, ProductosCreate, ProductosUpdate])
         return results.all()
 
     async def get_stock_bajo(
-        self, db: AsyncSession, limite: int = 10
+        self, db: AsyncSession, limite: int = 5
     ) -> List[Productos]:
-        # Aquí podrías agregar lógica de stock si tienes un campo de stock
+        """Obtener productos con stock bajo basado en movimientos confirmados.
+
+        Por ahora retorna los primeros productos. En una implementación completa,
+        se calcularía la cantidad real sumando los movimientos confirmados.
+        """
         statement = (
-            select(Productos)
+            select(self.model)
             .options(
                 selectinload(Productos.subcategoria).selectinload(
                     Subcategorias.categoria
@@ -114,7 +118,7 @@ class ProductosRepository(CRUDBase[Productos, ProductosCreate, ProductosUpdate])
             .limit(limite)
         )
         results = await db.exec(statement)
-        return results.all()
+        return list(results.all())
 
 
 productos_repo = ProductosRepository(Productos)

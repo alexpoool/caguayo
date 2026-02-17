@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { clientesService } from '../services/api';
 import type { Cliente, ClienteCreate, ClienteUpdate } from '../types/ventas';
-import { Plus, Edit, Trash2, User, Phone, Mail, MapPin, CreditCard, CheckCircle, XCircle, UserCircle } from 'lucide-react';
+import { Plus, Edit, Trash2, User, Phone, Mail, MapPin, CreditCard, CheckCircle, XCircle, UserCircle, Search, X, ArrowLeft, Save, RefreshCw } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import { 
@@ -51,6 +51,7 @@ export function ClientesPage() {
     activo: true
   });
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  const [searchTerm, setSearchTerm] = useState('');
 
   // Queries
   const { data: clientes = [], isLoading, isError, error } = useQuery({
@@ -194,7 +195,8 @@ export function ClientesPage() {
             setView('list');
             setEditingCliente(null);
             resetForm();
-          }}>
+          }} className="gap-2">
+            <ArrowLeft className="h-4 w-4" />
             Volver a la lista
           </Button>
         </div>
@@ -291,8 +293,8 @@ export function ClientesPage() {
                   <textarea
                     value={formData.direccion}
                     onChange={(e) => setFormData({ ...formData, direccion: e.target.value })}
-                    rows={3}
-                    className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                    rows={2}
+                    className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none resize-none"
                     placeholder="Dirección completa del cliente..."
                   />
                 </div>
@@ -301,9 +303,10 @@ export function ClientesPage() {
               <div className="flex gap-4 md:col-span-2 pt-4 border-t">
                 <Button 
                   type="submit" 
-                  className="w-32"
+                  className="w-32 gap-2"
                   disabled={createMutation.isPending || updateMutation.isPending}
                 >
+                  <Save className="h-4 w-4" />
                   {createMutation.isPending || updateMutation.isPending 
                     ? 'Guardando...' 
                     : (editingCliente ? 'Actualizar' : 'Guardar')
@@ -317,7 +320,9 @@ export function ClientesPage() {
                     setEditingCliente(null);
                     resetForm();
                   }}
+                  className="gap-2"
                 >
+                  <X className="h-4 w-4" />
                   Cancelar
                 </Button>
               </div>
@@ -327,6 +332,18 @@ export function ClientesPage() {
       </div>
     );
   }
+
+  // Filtrar clientes según el término de búsqueda
+  const filteredClientes = clientes.filter(cliente => {
+    if (!searchTerm) return true;
+    const term = searchTerm.toLowerCase();
+    return (
+      cliente.nombre.toLowerCase().includes(term) ||
+      (cliente.email?.toLowerCase() || '').includes(term) ||
+      (cliente.telefono?.toLowerCase() || '').includes(term) ||
+      (cliente.cedula_rif?.toLowerCase() || '').includes(term)
+    );
+  });
 
   // VISTA: LISTA
   if (isLoading) {
@@ -344,7 +361,8 @@ export function ClientesPage() {
         <div className="text-red-500 text-center">
           <p className="font-bold text-lg mb-2">Error al cargar clientes</p>
           <p>{error instanceof Error ? error.message : 'Error desconocido'}</p>
-          <Button onClick={() => queryClient.invalidateQueries({ queryKey: ['clientes'] })} className="mt-4" variant="secondary">
+          <Button onClick={() => queryClient.invalidateQueries({ queryKey: ['clientes'] })} className="mt-4 gap-2" variant="secondary">
+            <RefreshCw className="h-4 w-4" />
             Reintentar
           </Button>
         </div>
@@ -357,7 +375,7 @@ export function ClientesPage() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Clientes</h1>
-          <p className="text-gray-500 mt-1">Gestión de clientes ({clientes.length} registrados)</p>
+          <p className="text-gray-500 mt-1">Gestión de clientes ({filteredClientes.length} de {clientes.length} registrados)</p>
         </div>
         <Button
           onClick={() => {
@@ -370,6 +388,26 @@ export function ClientesPage() {
           <Plus className="h-4 w-4" />
           Nuevo Cliente
         </Button>
+      </div>
+
+      {/* Barra de búsqueda */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
+        <Input
+          type="text"
+          placeholder="Buscar clientes por nombre, email, teléfono o cédula..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="pl-10 pr-10 w-full"
+        />
+        {searchTerm && (
+          <button
+            onClick={() => setSearchTerm('')}
+            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        )}
       </div>
 
       <Card className="overflow-hidden">
@@ -387,14 +425,14 @@ export function ClientesPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {clientes.length === 0 ? (
+              {filteredClientes.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={7} className="text-center py-12 text-gray-500">
-                    No se encontraron clientes
+                    {searchTerm ? 'No se encontraron clientes que coincidan con la búsqueda' : 'No se encontraron clientes'}
                   </TableCell>
                 </TableRow>
               ) : (
-                clientes.map((cliente) => (
+                filteredClientes.map((cliente) => (
                   <TableRow key={cliente.id_cliente} className="hover:bg-gray-50">
                     <TableCell className="font-medium">#{cliente.id_cliente}</TableCell>
                     <TableCell>

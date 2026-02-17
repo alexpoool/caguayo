@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <title>Caguayo Webapp - Sistema de Inventario</title>
+            <style>
+/* From extension vscode.github */
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
+.vscode-dark img[src$=\#gh-light-mode-only],
+.vscode-light img[src$=\#gh-dark-mode-only],
+.vscode-high-contrast:not(.vscode-high-contrast-light) img[src$=\#gh-light-mode-only],
+.vscode-high-contrast-light img[src$=\#gh-dark-mode-only] {
+	display: none;
+}
+
+</style>
+            
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/Microsoft/vscode/extensions/markdown-language-features/media/markdown.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/Microsoft/vscode/extensions/markdown-language-features/media/highlight.css">
+<style>
+            body {
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe WPC', 'Segoe UI', system-ui, 'Ubuntu', 'Droid Sans', sans-serif;
+                font-size: 14px;
+                line-height: 1.6;
+            }
+        </style>
+        <style>
+.task-list-item {
+    list-style-type: none;
+}
+
+.task-list-item-checkbox {
+    margin-left: -20px;
+    vertical-align: middle;
+    pointer-events: none;
+}
+</style>
+<style>
+:root {
+  --color-note: #0969da;
+  --color-tip: #1a7f37;
+  --color-warning: #9a6700;
+  --color-severe: #bc4c00;
+  --color-caution: #d1242f;
+  --color-important: #8250df;
+}
+
+</style>
+<style>
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-note: #2f81f7;
+    --color-tip: #3fb950;
+    --color-warning: #d29922;
+    --color-severe: #db6d28;
+    --color-caution: #f85149;
+    --color-important: #a371f7;
+  }
+}
+
+</style>
+<style>
+.markdown-alert {
+  padding: 0.5rem 1rem;
+  margin-bottom: 16px;
+  color: inherit;
+  border-left: .25em solid #888;
+}
+
+.markdown-alert>:first-child {
+  margin-top: 0
+}
+
+.markdown-alert>:last-child {
+  margin-bottom: 0
+}
+
+.markdown-alert .markdown-alert-title {
+  display: flex;
+  font-weight: 500;
+  align-items: center;
+  line-height: 1
+}
+
+.markdown-alert .markdown-alert-title .octicon {
+  margin-right: 0.5rem;
+  display: inline-block;
+  overflow: visible !important;
+  vertical-align: text-bottom;
+  fill: currentColor;
+}
+
+.markdown-alert.markdown-alert-note {
+  border-left-color: var(--color-note);
+}
+
+.markdown-alert.markdown-alert-note .markdown-alert-title {
+  color: var(--color-note);
+}
+
+.markdown-alert.markdown-alert-important {
+  border-left-color: var(--color-important);
+}
+
+.markdown-alert.markdown-alert-important .markdown-alert-title {
+  color: var(--color-important);
+}
+
+.markdown-alert.markdown-alert-warning {
+  border-left-color: var(--color-warning);
+}
+
+.markdown-alert.markdown-alert-warning .markdown-alert-title {
+  color: var(--color-warning);
+}
+
+.markdown-alert.markdown-alert-tip {
+  border-left-color: var(--color-tip);
+}
+
+.markdown-alert.markdown-alert-tip .markdown-alert-title {
+  color: var(--color-tip);
+}
+
+.markdown-alert.markdown-alert-caution {
+  border-left-color: var(--color-caution);
+}
+
+.markdown-alert.markdown-alert-caution .markdown-alert-title {
+  color: var(--color-caution);
+}
+
+</style>
+        
+        </head>
+        <body class="vscode-body vscode-light">
+            <h1 id="caguayo-webapp---sistema-de-inventario">Caguayo Webapp - Sistema de Inventario</h1>
+<p>Aplicación web para la gestión y visualización de inventario, desarrollada con un stack moderno de Python y TypeScript.</p>
+<h2 id="-tecnologías">🚀 Tecnologías</h2>
+<h3 id="backend">Backend</h3>
+<ul>
+<li><strong>FastAPI</strong>: Framework web moderno y rápido para construir APIs con Python.</li>
+<li><strong>SQLModel</strong>: ORM híbrido que combina SQLAlchemy y Pydantic.</li>
+<li><strong>PostgreSQL</strong>: Base de datos relacional robusta.</li>
+<li><strong>Alembic</strong>: Herramienta de migración de base de datos.</li>
+<li><strong>AsyncPG</strong>: Driver asíncrono para PostgreSQL.</li>
+<li><strong>UV</strong>: Gestor de paquetes y proyectos de Python ultra rápido.</li>
+</ul>
+<h3 id="frontend">Frontend</h3>
+<ul>
+<li><strong>React</strong>: Biblioteca para construir interfaces de usuario.</li>
+<li><strong>TypeScript</strong>: Superset de JavaScript con tipado estático.</li>
+<li><strong>Vite</strong>: Herramienta de construcción frontend de próxima generación.</li>
+<li><strong>Tailwind CSS</strong>: Framework CSS de utilidad primero.</li>
+<li><strong>React Query</strong>: Gestión de estado del servidor en aplicaciones React.</li>
+<li><strong>pNPM</strong>: Gestor de paquetes eficiente.</li>
+</ul>
+<h2 id="️-requisitos-previos">🛠️ Requisitos Previos</h2>
+<ul>
+<li>Python 3.10+</li>
+<li>Node.js 18+</li>
+<li>PostgreSQL 13+</li>
+<li><code>uv</code>:
+<ul>
+<li>Windows: <code>powershell -c &quot;irm https://astral.sh/uv/install.ps1 | iex&quot;</code></li>
+<li>macOS/Linux: <code>curl -LsSf https://astral.sh/uv/install.sh | sh</code></li>
+</ul>
+</li>
+<li><code>pnpm</code> (instalar con <code>npm install -g pnpm</code>)</li>
+</ul>
+<h2 id="️-configuración-del-entorno">⚙️ Configuración del Entorno</h2>
+<h3 id="1-clonar-el-repositorio">1. Clonar el repositorio</h3>
+<pre><code class="language-bash">git <span class="hljs-built_in">clone</span> https://github.com/alexpoool/caguayo.git
+<span class="hljs-built_in">cd</span> caguayo
+</code></pre>
+<h3 id="2-configurar-backend">2. Configurar Backend</h3>
+<ol>
+<li>
+<p>Navegar al directorio backend:</p>
+<pre><code class="language-bash"><span class="hljs-built_in">cd</span> backend
+</code></pre>
+</li>
+<li>
+<p>Crear archivo <code>.env</code>:</p>
+<pre><code class="language-bash"><span class="hljs-built_in">cp</span> .env.example .<span class="hljs-built_in">env</span>
+</code></pre>
+</li>
+<li>
+<p>Editar <code>.env</code> con tus credenciales de PostgreSQL:</p>
+<pre><code class="language-env">DATABASE_URL=postgresql+psycopg://usuario:password@localhost:5432/caguayo_inventario
+DEBUG=True
+CORS_ORIGINS=http://localhost:3000,http://127.0.0.1:3000,http://localhost:5173,http://127.0.0.1:5173
+</code></pre>
+</li>
+<li>
+<p>Instalar dependencias:</p>
+<pre><code class="language-bash">uv <span class="hljs-built_in">sync</span>
+</code></pre>
+</li>
+<li>
+<p>Activar git hooks (Pre-commit):</p>
+<pre><code class="language-bash">uv run pre-commit install --config ../.pre-commit-config.yaml
+</code></pre>
+</li>
+<li>
+<p>Ejecutar migraciones de base de datos:</p>
+<pre><code class="language-bash">uv run alembic upgrade <span class="hljs-built_in">head</span>
+</code></pre>
+</li>
+<li>
+<p>Iniciar servidor de desarrollo:</p>
+<pre><code class="language-bash">uv run uvicorn main:app --reload
+</code></pre>
+</li>
+</ol>
+<h3 id="3-configurar-frontend">3. Configurar Frontend</h3>
+<ol>
+<li>
+<p>Navegar al directorio frontend:</p>
+<pre><code class="language-bash"><span class="hljs-built_in">cd</span> frontend
+</code></pre>
+</li>
+<li>
+<p>Instalar dependencias:</p>
+<pre><code class="language-bash">pnpm install
+</code></pre>
+</li>
+<li>
+<p>Iniciar servidor de desarrollo:</p>
+<pre><code class="language-bash">pnpm dev
+</code></pre>
+</li>
+</ol>
+<h2 id="️-estructura-del-proyecto">🏗️ Estructura del Proyecto</h2>
+<pre><code>caguayo-webapp/
+├── backend/
+│   ├── alembic/
+│   │   └── versions/          # Migraciones de base de datos
+│   ├── sql/
+│   │   └── db.sql            # Schema de base de datos (exportado de modelos)
+│   ├── src/
+│   │   ├── models/           # Modelos SQLModel
+│   │   │   ├── categoria.py      # Categorias, Subcategorias
+│   │   │   ├── producto.py       # Productos
+│   │   │   ├── moneda.py         # Monedas
+│   │   │   ├── cliente.py        # Clientes
+│   │   │   ├── venta.py          # Ventas
+│   │   │   ├── detalle_venta.py  # Detalle de ventas
+│   │   │   ├── movimiento.py     # Movimientos, Tipos de movimiento
+│   │   │   ├── provedor.py       # Proveedores
+│   │   │   ├── tipo_provedor.py  # Tipos de proveedor
+│   │   │   ├── convenio.py       # Convenios
+│   │   │   ├── tipo_convenio.py  # Tipos de convenio
+│   │   │   ├── anexo.py          # Anexos
+│   │   │   ├── dependencia.py    # Dependencias
+│   │   │   ├── liquidacion.py    # Liquidaciones
+│   │   │   └── transaccion.py    # Transacciones
+│   │   ├── routes/           # Endpoints de la API
+│   │   ├── services/         # Lógica de negocio
+│   │   ├── repository/       # Capa de acceso a datos
+│   │   └── database/         # Configuración de BD
+│   ├── main.py              # Punto de entrada FastAPI
+│   ├── .env.example         # Plantilla de variables de entorno
+│   └── pyproject.toml       # Dependencias Python
+└── frontend/
+    ├── src/
+    │   ├── components/       # Componentes React
+    │   │   ├── productos/
+    │   │   └── ui/          # Componentes UI reutilizables
+    │   ├── pages/           # Vistas principales
+    │   │   ├── Dashboard.tsx
+    │   │   ├── Productos.tsx
+    │   │   ├── Ventas.tsx
+    │   │   ├── Clientes.tsx
+    │   │   ├── Movimientos.tsx
+    │   │   └── Monedas.tsx
+    │   ├── services/        # Llamadas a la API
+    │   └── types/           # Tipos TypeScript
+    ├── package.json
+    └── vite.config.ts       # Configuración de Vite
+</code></pre>
+<h2 id="️-modelos-de-datos">🗄️ Modelos de Datos</h2>
+<h3 id="entidades-principales">Entidades Principales</h3>
+<table>
+<thead>
+<tr>
+<th>Entidad</th>
+<th>Descripción</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Moneda</strong></td>
+<td>Divisas soportadas (USD, EUR, etc.)</td>
+</tr>
+<tr>
+<td><strong>Categoria / Subcategoria</strong></td>
+<td>Clasificación jerárquica de productos</td>
+</tr>
+<tr>
+<td><strong>Producto</strong></td>
+<td>Inventario con código único, stock y precios</td>
+</tr>
+<tr>
+<td><strong>Cliente</strong></td>
+<td>Gestión de clientes para ventas</td>
+</tr>
+<tr>
+<td><strong>Venta / DetalleVenta</strong></td>
+<td>Transacciones de venta con estados</td>
+</tr>
+<tr>
+<td><strong>Movimiento</strong></td>
+<td>Control de entradas/salidas de inventario</td>
+</tr>
+<tr>
+<td><strong>TipoMovimiento</strong></td>
+<td>Tipos: AJUSTE, MERMA, DONACION, RECEPCION, DEVOLUCION</td>
+</tr>
+<tr>
+<td><strong>Proveedor / TipoProveedor</strong></td>
+<td>Gestión de proveedores</td>
+</tr>
+<tr>
+<td><strong>Convenio / TipoConvenio</strong></td>
+<td>Acuerdos comerciales con vigencia</td>
+</tr>
+<tr>
+<td><strong>Anexo</strong></td>
+<td>Documentos asociados a convenios</td>
+</tr>
+<tr>
+<td><strong>Dependencia</strong></td>
+<td>Ubicaciones físicas (almacenes, sucursales)</td>
+</tr>
+<tr>
+<td><strong>Liquidacion</strong></td>
+<td>Agrupación de movimientos</td>
+</tr>
+<tr>
+<td><strong>Transaccion</strong></td>
+<td>Entidad base para transacciones</td>
+</tr>
+</tbody>
+</table>
+<h3 id="estados-de-venta">Estados de Venta</h3>
+<ul>
+<li><code>PENDIENTE</code>: Venta en proceso</li>
+<li><code>COMPLETADA</code>: Venta finalizada</li>
+<li><code>ANULADA</code>: Venta cancelada</li>
+</ul>
+<h2 id="-notas-de-desarrollo">📝 Notas de Desarrollo</h2>
+<ul>
+<li>El backend corre en <code>http://localhost:8000</code></li>
+<li>El frontend corre en <code>http://localhost:5173</code></li>
+<li>La documentación interactiva de la API (Swagger UI) está en <code>http://localhost:8000/docs</code></li>
+<li>La documentación alternativa (ReDoc) está en <code>http://localhost:8000/redoc</code></li>
+<li>Endpoint de health check: <code>http://localhost:8000/health</code></li>
+</ul>
+<h2 id="-migraciones-de-base-de-datos">🔄 Migraciones de Base de Datos</h2>
+<p>Listado de migraciones disponibles:</p>
+<table>
+<thead>
+<tr>
+<th>Revisión</th>
+<th>Descripción</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>5eb4bad34494</code></td>
+<td>Migración inicial - Constraints base</td>
+</tr>
+<tr>
+<td><code>4afe28ed5947</code></td>
+<td>Agrega tablas clientes, ventas y detalle_ventas</td>
+</tr>
+<tr>
+<td><code>e3f8a9b2c1d0</code></td>
+<td>Agrega columna código único a productos</td>
+</tr>
+<tr>
+<td><code>f5a7b9c3d2e1</code></td>
+<td>Agrega convenios, proveedores y anexos</td>
+</tr>
+<tr>
+<td><code>g6h8i0j4k5l2</code></td>
+<td>Agrega campos de precios y convenios a movimientos</td>
+</tr>
+<tr>
+<td><code>h1i2j3k4l5m6</code></td>
+<td>Datos de prueba iniciales</td>
+</tr>
+<tr>
+<td><code>i7j8k9l0m1n2</code></td>
+<td>Constraint CHECK para stock &gt;= 0</td>
+</tr>
+<tr>
+<td><code>j8k9l0m1n2o3</code></td>
+<td>Hace id_anexo nullable en movimientos</td>
+</tr>
+</tbody>
+</table>
+<p>Para crear una nueva migración:</p>
+<pre><code class="language-bash">uv run alembic revision --autogenerate -m <span class="hljs-string">&quot;descripcion&quot;</span>
+</code></pre>
+<p>Para aplicar migraciones:</p>
+<pre><code class="language-bash">uv run alembic upgrade <span class="hljs-built_in">head</span>
+</code></pre>
+<p>Para revertir una migración:</p>
+<pre><code class="language-bash">uv run alembic downgrade -1
+</code></pre>
+<h2 id="-seguridad">🔒 Seguridad</h2>
+<ul>
+<li>Las credenciales de base de datos se gestionan mediante variables de entorno</li>
+<li>CORS está configurado para permitir peticiones solo desde orígenes autorizados</li>
+<li>Las contraseñas y datos sensibles nunca deben commitearse al repositorio</li>
+</ul>
+<h2 id="-testing">🧪 Testing</h2>
+<p>Ejecutar tests del backend:</p>
+<pre><code class="language-bash"><span class="hljs-built_in">cd</span> backend
+uv run pytest
+</code></pre>
+<h2 id="-construcción-para-producción">📦 Construcción para Producción</h2>
+<h3 id="backend-1">Backend</h3>
+<pre><code class="language-bash"><span class="hljs-built_in">cd</span> backend
+uv run uvicorn main:app --host 0.0.0.0 --port 8000
+</code></pre>
+<h3 id="frontend-1">Frontend</h3>
+<pre><code class="language-bash"><span class="hljs-built_in">cd</span> frontend
+pnpm build
+</code></pre>
+<h2 id="-contribución">🤝 Contribución</h2>
+<ol>
+<li>Crear una rama para tu feature: <code>git checkout -b feature/nueva-funcionalidad</code></li>
+<li>Commitear tus cambios: <code>git commit -m 'Agrega nueva funcionalidad'</code></li>
+<li>Push a la rama: <code>git push origin feature/nueva-funcionalidad</code></li>
+<li>Crear un Pull Request</li>
+</ol>
+<h2 id="-licencia">📄 Licencia</h2>
+<p>Este proyecto es propiedad de Caguayo. Todos los derechos reservados.</p>
+
+            
+            
+        </body>
+        </html>

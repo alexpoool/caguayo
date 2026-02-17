@@ -9,6 +9,10 @@ from .dependencia import TipoDependencia, DatosGeneralesDependencia, Dependencia
 from .anexo import Anexo
 from .liquidacion import Liquidacion
 from .transaccion import Transaccion
+from .tipo_provedor import TipoProvedor
+from .provedor import Provedor
+from .tipo_convenio import TipoConvenio
+from .convenio import Convenio
 
 __all__ = [
     "Moneda",
@@ -27,4 +31,8 @@ __all__ = [
     "Anexo",
     "Liquidacion",
     "Transaccion",
+    "TipoProvedor",
+    "Provedor",
+    "TipoConvenio",
+    "Convenio",
 ]

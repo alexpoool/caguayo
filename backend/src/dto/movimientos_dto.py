@@ -1,8 +1,12 @@
 from sqlmodel import SQLModel
 from typing import Optional
 from datetime import datetime
+from decimal import Decimal
+from pydantic import field_serializer, ConfigDict
 from .dependencias_dto import DependenciaRead
 from .productos_dto import ProductosRead
+from .convenios_dto import ConvenioRead, ProvedorRead, AnexoRead
+from .monedas_dto import MonedaRead
 
 
 # DTOs para Tipo Movimiento
@@ -28,10 +32,17 @@ class TipoMovimientoUpdate(SQLModel):
 class MovimientoBase(SQLModel):
     id_tipo_movimiento: int
     id_dependencia: int
-    id_anexo: int
+    id_anexo: Optional[int] = None
     id_producto: int
     cantidad: int
     observacion: Optional[str] = None
+    # Nuevos campos
+    id_convenio: Optional[int] = None
+    id_provedor: Optional[int] = None
+    precio_compra: Optional[Decimal] = None
+    id_moneda_compra: Optional[int] = None
+    precio_venta: Optional[Decimal] = None
+    id_moneda_venta: Optional[int] = None
 
 
 class MovimientoCreate(MovimientoBase):
@@ -39,13 +50,30 @@ class MovimientoCreate(MovimientoBase):
 
 
 class MovimientoRead(MovimientoBase):
+    model_config = ConfigDict(from_attributes=True)
+
     id_movimiento: int
     fecha: datetime
     id_liquidacion: Optional[int] = None
-    confirmacion: bool = False
+    estado: str = "pendiente"
+    codigo: Optional[str] = None
     tipo_movimiento: Optional[TipoMovimientoRead] = None
     dependencia: Optional[DependenciaRead] = None
     producto: Optional[ProductosRead] = None
+    anexo: Optional[AnexoRead] = None
+    # Nuevas relaciones
+    convenio: Optional[ConvenioRead] = None
+    provedor: Optional[ProvedorRead] = None
+    moneda_compra_rel: Optional[MonedaRead] = None
+    moneda_venta_rel: Optional[MonedaRead] = None
+
+    @field_serializer("precio_compra")
+    def serialize_precio_compra(self, value: Optional[Decimal]) -> Optional[float]:
+        return float(value) if value is not None else None
+
+    @field_serializer("precio_venta")
+    def serialize_precio_venta(self, value: Optional[Decimal]) -> Optional[float]:
+        return float(value) if value is not None else None
 
 
 class MovimientoUpdate(SQLModel):
@@ -56,4 +84,12 @@ class MovimientoUpdate(SQLModel):
     cantidad: Optional[int] = None
     observacion: Optional[str] = None
     id_liquidacion: Optional[int] = None
-    confirmacion: Optional[bool] = None
+    estado: Optional[str] = None
+    codigo: Optional[str] = None
+    # Nuevos campos
+    id_convenio: Optional[int] = None
+    id_provedor: Optional[int] = None
+    precio_compra: Optional[Decimal] = None
+    id_moneda_compra: Optional[int] = None
+    precio_venta: Optional[Decimal] = None
+    id_moneda_venta: Optional[int] = None

@@ -4,6 +4,7 @@ from typing import List
 import logging
 from src.database.connection import get_session
 from src.services import ProductosService
+from src.services.movimiento_service import MovimientoService
 from src.dto import ProductosCreate, ProductosRead, ProductosUpdate
 
 router = APIRouter(prefix="/productos", tags=["productos"])
@@ -78,3 +79,41 @@ async def delete_producto(producto_id: int, db: AsyncSession = Depends(get_sessi
             )
         logger.error(f"Error deleting product: {e}")
         raise HTTPException(status_code=500, detail=error_msg)
+
+
+@router.get("/anexo/{anexo_id}")
+async def get_productos_by_anexo(
+    anexo_id: int,
+    db: AsyncSession = Depends(get_session),
+):
+    """Obtener productos disponibles en un anexo específico.
+
+    Retorna productos únicos con su cantidad total disponible en ese anexo.
+    """
+    try:
+        productos = await MovimientoService.get_productos_by_anexo(db, anexo_id)
+        return productos
+    except Exception as e:
+        logger.error(f"Error al obtener productos por anexo: {e}")
+        raise HTTPException(
+            status_code=500, detail=f"Error al obtener productos: {str(e)}"
+        )
+
+
+@router.get("/con-stock")
+async def get_productos_con_stock(
+    db: AsyncSession = Depends(get_session),
+):
+    """Obtener productos que tienen stock disponible.
+
+    Retorna productos únicos con su cantidad total disponible
+    (suma de movimientos confirmados).
+    """
+    try:
+        productos = await MovimientoService.get_productos_con_stock(db)
+        return productos
+    except Exception as e:
+        logger.error(f"Error al obtener productos con stock: {e}")
+        raise HTTPException(
+            status_code=500, detail=f"Error al obtener productos: {str(e)}"
+        )

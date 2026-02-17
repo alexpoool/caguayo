@@ -1,3 +1,56 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Mejoras de rendimiento para animaciones */
+@layer utilities {
+  .animate-fade-in-up {
+    will-change: transform, opacity;
+  }
+  
+  .animate-slide-in-right {
+    will-change: transform, opacity;
+  }
+  
+  .animate-slide-in-left {
+    will-change: transform, opacity;
+  }
+  
+  .animate-scale-in {
+    will-change: transform, opacity;
+  }
+  
+  /* Optimización para GPU */
+  .gpu-accelerated {
+    transform: translateZ(0);
+    backface-visibility: hidden;
+  }
+}
+
+/* Scrollbar personalizada */
+@layer base {
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  
+  ::-webkit-scrollbar-track {
+    background: #f1f5f9;
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 4px;
+  }
+  
+  ::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+  }
+}
+
+/* Transiciones suaves globales */
+@layer base {
+  * {
+    @apply transition-colors duration-200;
+  }
+}

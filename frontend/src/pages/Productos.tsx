@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import type { Productos, ProductosCreate } from '../types';
+import { useState, useMemo } from 'react';
+import type { Productos, ProductosCreate } from '../types/index';
 import { useProductos } from '../hooks/useProductos';
 import { ProductForm } from '../components/productos/ProductForm';
 import { ProductListView } from '../components/productos/ProductListView';
@@ -17,7 +17,22 @@ export function ProductosPage() {
     updateProduct,
     deleteProduct,
     refresh
-  } = useProductos(searchTerm);
+  } = useProductos();
+
+  // Filtrar productos localmente
+  const filteredProductos = useMemo(() => {
+    console.log('Filtrando localmente:', searchTerm);
+    if (!searchTerm.trim()) return productos;
+    
+    const term = searchTerm.toLowerCase();
+    const filtered = productos.filter(producto => 
+      producto.nombre.toLowerCase().includes(term) ||
+      (producto.descripcion?.toLowerCase() || '').includes(term) ||
+      (producto.subcategoria?.nombre?.toLowerCase() || '').includes(term)
+    );
+    console.log('Productos filtrados:', filtered.length);
+    return filtered;
+  }, [productos, searchTerm]);
 
   const handleCreate = (data: ProductosCreate) => {
     createProduct(data, {
@@ -64,7 +79,8 @@ export function ProductosPage() {
 
   return (
     <ProductListView
-      productos={productos}
+      productos={filteredProductos}
+      totalProductos={productos.length}
       searchTerm={searchTerm}
       onSearchChange={setSearchTerm}
       onEdit={handleEdit}

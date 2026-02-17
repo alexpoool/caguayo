@@ -4,6 +4,7 @@ from typing import Optional, List, TYPE_CHECKING
 if TYPE_CHECKING:
     from .producto import Productos
     from .venta import Ventas
+    from .movimiento import Movimiento
 
 
 class Moneda(SQLModel, table=True):
@@ -22,4 +23,13 @@ class Moneda(SQLModel, table=True):
     productos_venta: List["Productos"] = Relationship(
         back_populates="moneda_venta_rel",
         sa_relationship_kwargs={"foreign_keys": "Productos.moneda_venta"},
+    )
+    # Nuevas relaciones con movimientos
+    movimientos_compra: List["Movimiento"] = Relationship(
+        back_populates="moneda_compra_rel",
+        sa_relationship_kwargs={"foreign_keys": "Movimiento.id_moneda_compra"},
+    )
+    movimientos_venta: List["Movimiento"] = Relationship(
+        back_populates="moneda_venta_rel",
+        sa_relationship_kwargs={"foreign_keys": "Movimiento.id_moneda_venta"},
     )

@@ -127,6 +127,22 @@ class VentasRepository(CRUDBase[Ventas, VentaCreate, VentaUpdate]):
         results = await db.exec(statement)
         return results.all()
 
+    async def get_by_fecha_range(
+        self, db: AsyncSession, fecha_inicio: datetime, fecha_fin: datetime
+    ) -> List[Ventas]:
+        """Obtener ventas en un rango de fechas."""
+        statement = (
+            select(self.model)
+            .options(
+                selectinload(Ventas.cliente),
+                selectinload(Ventas.detalles).selectinload(DetalleVenta.producto),
+            )
+            .where(self.model.fecha >= fecha_inicio, self.model.fecha <= fecha_fin)
+            .order_by(self.model.fecha.desc())
+        )
+        results = await db.exec(statement)
+        return results.all()
+
 
 class DetalleVentaRepository(
     CRUDBase[DetalleVenta, "DetalleVentaCreate", "DetalleVentaUpdate"]

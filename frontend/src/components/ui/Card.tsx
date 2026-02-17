@@ -1,15 +1,23 @@
 import React from 'react';
 import { cn } from '../../lib/utils';
 
-interface CardProps extends React.HTMLAttributes<HTMLDivElement> {}
+interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
+  hover?: boolean;
+  clickable?: boolean;
+  animate?: boolean;
+}
 
-export function Card({ className, ...props }: CardProps) {
+export function Card({ className, hover = true, clickable = false, animate = false, ...props }: CardProps) {
   return (
     <div
       className={cn(
-        'bg-white rounded-lg border border-gray-200 shadow-sm text-gray-900',
+        'bg-white rounded-lg border border-gray-200 shadow-sm text-gray-900 transition-all duration-300 ease-out',
+        hover && 'hover:shadow-lg hover:-translate-y-1 hover:border-gray-300',
+        clickable && 'cursor-pointer active:scale-[0.99]',
+        animate && 'animate-fade-in-up',
         className
       )}
+      style={animate ? { animationFillMode: 'both' } : undefined}
       {...props}
     />
   );
@@ -27,7 +35,7 @@ export function CardHeader({ className, ...props }: CardProps) {
 export function CardTitle({ className, ...props }: CardProps) {
   return (
     <h3
-      className={cn('font-semibold leading-none tracking-tight', className)}
+      className={cn('font-semibold leading-none tracking-tight flex items-center gap-2', className)}
       {...props}
     />
   );

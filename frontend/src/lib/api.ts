@@ -16,15 +16,26 @@ class ApiClient {
     };
 
     try {
+      console.log(`API Request: ${options.method || 'GET'} ${url}`, options.body ? JSON.parse(options.body as string) : null);
       const response = await fetch(url, config);
-      
+      console.log(`API Response: ${response.status} ${response.statusText}`);
+
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
+        console.error('API Error:', errorData);
         throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
       }
-      
-      return await response.json();
+
+      // Handle 204 No Content responses
+      if (response.status === 204 || response.headers.get('content-length') === '0') {
+        return undefined as T;
+      }
+
+      const data = await response.json();
+      console.log('API Response data:', data);
+      return data;
     } catch (error) {
+      console.error('API Request failed:', error);
       if (error instanceof Error) {
         throw error;
       }

@@ -8,12 +8,14 @@ if TYPE_CHECKING:
     from .venta import Ventas
     from .movimiento import Movimiento
     from .detalle_venta import DetalleVenta
+    from .anexo import Anexo
 
 
 class Productos(SQLModel, table=True):
     __tablename__ = "productos"
 
     id_producto: Optional[int] = Field(default=None, primary_key=True)
+    codigo: Optional[str] = Field(default=None, max_length=50, unique=True)
     id_subcategoria: int = Field(foreign_key="subcategorias.id_subcategoria")
     nombre: str = Field(max_length=150)
     descripcion: Optional[str] = None
@@ -22,7 +24,6 @@ class Productos(SQLModel, table=True):
     moneda_venta: int = Field(foreign_key="moneda.id_moneda")
     precio_venta: Decimal
     precio_minimo: Decimal
-    stock: int = Field(default=0, ge=0)
 
     # Relaciones
     subcategoria: "Subcategorias" = Relationship(back_populates="productos")
@@ -36,3 +37,4 @@ class Productos(SQLModel, table=True):
     )
     movimientos: List["Movimiento"] = Relationship(back_populates="producto")
     detalles_venta: List["DetalleVenta"] = Relationship(back_populates="producto")
+    anexos: List["Anexo"] = Relationship(back_populates="producto")

@@ -1,6 +1,6 @@
-import React from 'react';
-import { Package, Edit, Trash2, Search, Plus } from 'lucide-react';
-import type { Productos } from '../../types';
+
+import { Package, Edit, Trash2, Search, Plus, RefreshCw } from 'lucide-react';
+import type { Productos } from '../../types/index';
 import { 
   Button, 
   Input, 
@@ -15,6 +15,7 @@ import {
 
 interface ProductListViewProps {
   productos: Productos[];
+  totalProductos: number;
   searchTerm: string;
   onSearchChange: (term: string) => void;
   onEdit: (product: Productos) => void;
@@ -27,6 +28,7 @@ interface ProductListViewProps {
 
 export function ProductListView({
   productos,
+  totalProductos,
   searchTerm,
   onSearchChange,
   onEdit,
@@ -51,7 +53,10 @@ export function ProductListView({
       <div className="flex items-center justify-center h-64">
         <div className="text-red-500 text-center">
           <p className="font-bold text-lg mb-2">Error al cargar productos</p>
-          <Button onClick={onRetry} className="mt-4" variant="secondary">Reintentar</Button>
+          <Button onClick={onRetry} className="mt-4 gap-2" variant="secondary">
+            <RefreshCw className="h-4 w-4" />
+            Reintentar
+          </Button>
         </div>
       </div>
     );
@@ -62,7 +67,12 @@ export function ProductListView({
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Productos</h1>
-          <p className="text-gray-500 mt-1">Gestión de inventario ({productos.length} items)</p>
+          <p className="text-gray-500 mt-1">
+            {productos.length === totalProductos 
+              ? `Gestión de inventario (${totalProductos} items)`
+              : `Mostrando ${productos.length} de ${totalProductos} productos`
+            }
+          </p>
         </div>
         <Button
           onClick={onCreateNew}
@@ -102,7 +112,7 @@ export function ProductListView({
               {productos.length === 0 ? (
                 <TableRow>
                    <TableCell colSpan={5} className="text-center py-12 text-gray-500">
-                      No se encontraron productos.
+                      {searchTerm ? 'No se encontraron productos que coincidan con la búsqueda' : 'No se encontraron productos'}
                    </TableCell>
                 </TableRow>
               ) : (

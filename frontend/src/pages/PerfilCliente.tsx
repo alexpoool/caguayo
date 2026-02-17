@@ -5,7 +5,7 @@ import type { ClienteWithVentas, Venta } from '../types/ventas';
 import { 
   ArrowLeft, User, Phone, Mail, MapPin, CreditCard, 
   Calendar, ShoppingCart, DollarSign, Package, TrendingUp,
-  CheckCircle, XCircle
+  CheckCircle, XCircle, ExternalLink
 } from 'lucide-react';
 import { 
   Button, 
@@ -47,7 +47,8 @@ export function PerfilClientePage() {
         <div className="text-red-500 text-center">
           <p className="font-bold text-lg mb-2">Error al cargar el perfil</p>
           <p>{error instanceof Error ? error.message : 'Cliente no encontrado'}</p>
-          <Button onClick={() => navigate('/clientes')} className="mt-4" variant="secondary">
+          <Button onClick={() => navigate('/clientes')} className="mt-4 gap-2" variant="secondary">
+            <ArrowLeft className="h-4 w-4" />
             Volver a Clientes
           </Button>
         </div>
@@ -224,7 +225,8 @@ export function PerfilClientePage() {
                   </div>
                 </div>
                 {ventasPendientes > 0 && (
-                  <Button onClick={() => navigate('/ventas')} variant="secondary">
+                  <Button onClick={() => navigate('/ventas')} variant="secondary" className="gap-2">
+                    <ExternalLink className="h-4 w-4" />
                     Ver Ventas
                   </Button>
                 )}

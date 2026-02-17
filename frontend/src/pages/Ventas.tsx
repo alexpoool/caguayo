@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ventasService, clientesService, productosService } from '../services/api';
-import type { Venta, VentaCreate, DetalleVentaCreate, DetalleVenta, Producto } from '../types/ventas';
+import type { Venta, VentaCreate, VentaUpdate, DetalleVentaCreate, DetalleVenta } from '../types/ventas';
+import type { Productos } from '../types/index';
 import { 
   Plus, Edit, Trash2, Eye, Ban, CheckCircle, 
   User, Package, AlertCircle, PlusCircle,
-  MinusCircle, ShoppingCart
+  MinusCircle, ShoppingCart, Search, X,
+  ArrowLeft, Save, RefreshCw
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { 
@@ -58,6 +60,12 @@ export function VentasPage() {
     detalles: []
   });
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  
+  // Search states for dropdowns
+  const [clienteSearch, setClienteSearch] = useState('');
+  const [productoSearch, setProductoSearch] = useState<{[key: number]: string}>({});
+  const [showClienteDropdown, setShowClienteDropdown] = useState(false);
+  const [showProductoDropdown, setShowProductoDropdown] = useState<{[key: number]: boolean}>({});
 
   // Queries
   const { data: ventas = [], isLoading, isError, error } = useQuery({
@@ -70,7 +78,7 @@ export function VentasPage() {
     queryFn: () => clientesService.getClientes(),
   });
 
-  const { data: productos = [] } = useQuery<Producto[]>({
+  const { data: productos = [] } = useQuery<Productos[]>({
     queryKey: ['productos-ventas'],
     queryFn: () => productosService.getProductos(),
   });
@@ -90,7 +98,7 @@ export function VentasPage() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: number; data: Partial<Venta> }) => 
+    mutationFn: ({ id, data }: { id: number; data: VentaUpdate }) =>
       ventasService.updateVenta(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['ventas'] });
@@ -185,7 +193,12 @@ export function VentasPage() {
     };
 
     if (editingVenta) {
-      updateMutation.mutate({ id: editingVenta.id_venta, data: ventaData });
+      const updateData: VentaUpdate = {
+        id_cliente: formData.id_cliente,
+        fecha: formData.fecha,
+        observacion: formData.observacion || undefined,
+      };
+      updateMutation.mutate({ id: editingVenta.id_venta, data: updateData });
     } else {
       createMutation.mutate(ventaData);
     }
@@ -283,7 +296,8 @@ export function VentasPage() {
             </p>
           </div>
           <div className="flex gap-2">
-            <Button variant="secondary" onClick={() => setView('list')}>
+            <Button variant="secondary" onClick={() => setView('list')} className="gap-2">
+              <ArrowLeft className="h-4 w-4" />
               Volver
             </Button>
             {selectedVenta.estado === 'PENDIENTE' && (
@@ -403,35 +417,87 @@ export function VentasPage() {
             setView('list');
             setEditingVenta(null);
             resetForm();
-          }}>
+          }} className="gap-2">
+            <ArrowLeft className="h-4 w-4" />
             Volver a la lista
           </Button>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Información General</CardTitle>
+          <Card className="p-6">
+            <CardHeader className="pb-4">
+              <CardTitle className="text-lg">Información General</CardTitle>
             </CardHeader>
-            <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
+            <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-4">
+              <div className="md:col-span-2">
                 <Label>Cliente *</Label>
-                <select
-                  value={formData.id_cliente}
-                  onChange={(e) => setFormData({ ...formData, id_cliente: parseInt(e.target.value) || 0 })}
-                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none ${
-                    formErrors.id_cliente ? 'border-red-500' : 'border-gray-300'
-                  }`}
-                >
-                  <option value={0}>Seleccione un cliente...</option>
-                  {clientes.map((cliente) => (
-                    <option key={cliente.id_cliente} value={cliente.id_cliente}>
-                      {cliente.nombre} {cliente.cedula_rif ? `(${cliente.cedula_rif})` : ''}
-                    </option>
-                  ))}
-                </select>
+                <div className="relative mt-1">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                    <input
+                      type="text"
+                      value={clienteSearch || (formData.id_cliente ? clientes.find(c => c.id_cliente === formData.id_cliente)?.nombre : '')}
+                      onChange={(e) => {
+                        setClienteSearch(e.target.value);
+                        setShowClienteDropdown(true);
+                        if (formData.id_cliente) {
+                          setFormData({ ...formData, id_cliente: 0 });
+                        }
+                      }}
+                      onFocus={() => setShowClienteDropdown(true)}
+                      placeholder="Buscar cliente..."
+                      className={`w-full pl-9 pr-8 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none ${
+                        formErrors.id_cliente ? 'border-red-500' : 'border-gray-300'
+                      }`}
+                    />
+                    {clienteSearch && (
+                      <button
+                        onClick={() => {
+                          setClienteSearch('');
+                          setFormData({ ...formData, id_cliente: 0 });
+                        }}
+                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    )}
+                  </div>
+                  {showClienteDropdown && (
+                    <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                      {clientes
+                        .filter(c =>
+                          !clienteSearch ||
+                          c.nombre.toLowerCase().includes(clienteSearch.toLowerCase()) ||
+                          (c.cedula_rif && c.cedula_rif.toLowerCase().includes(clienteSearch.toLowerCase()))
+                        )
+                        .slice(0, 10)
+                        .map((cliente) => (
+                          <div
+                            key={cliente.id_cliente}
+                            onClick={() => {
+                              setFormData({ ...formData, id_cliente: cliente.id_cliente });
+                              setClienteSearch('');
+                              setShowClienteDropdown(false);
+                            }}
+                            className="px-3 py-2 hover:bg-gray-100 cursor-pointer border-b border-gray-100 last:border-0"
+                          >
+                            <div className="font-medium">{cliente.nombre}</div>
+                            {cliente.cedula_rif && (
+                              <div className="text-xs text-gray-500">{cliente.cedula_rif}</div>
+                            )}
+                          </div>
+                        ))}
+                      {clientes.filter(c =>
+                        !clienteSearch ||
+                        c.nombre.toLowerCase().includes(clienteSearch.toLowerCase())
+                      ).length === 0 && (
+                        <div className="px-3 py-2 text-gray-500 text-sm">No se encontraron clientes</div>
+                      )}
+                    </div>
+                  )}
+                </div>
                 {formErrors.id_cliente && (
-                  <p className="text-red-500 text-sm mt-1">{formErrors.id_cliente}</p>
+                  <p className="text-xs text-red-500 mt-1">{formErrors.id_cliente}</p>
                 )}
               </div>
 
@@ -441,106 +507,146 @@ export function VentasPage() {
                   type="date"
                   value={formData.fecha}
                   onChange={(e) => setFormData({ ...formData, fecha: e.target.value })}
-                  className={formErrors.fecha ? 'border-red-500' : ''}
+                  className={`mt-1 ${formErrors.fecha ? 'border-red-500' : ''}`}
                 />
                 {formErrors.fecha && (
-                  <p className="text-red-500 text-sm mt-1">{formErrors.fecha}</p>
+                  <p className="text-red-500 text-sm mt-2">{formErrors.fecha}</p>
                 )}
               </div>
 
-              <div className="md:col-span-2">
+              <div className="md:col-span-3">
                 <Label>Observaciones</Label>
                 <textarea
                   value={formData.observacion}
                   onChange={(e) => setFormData({ ...formData, observacion: e.target.value })}
-                  rows={3}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                  rows={2}
+                  className="w-full px-3 py-2 mt-1 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all resize-none"
                   placeholder="Notas adicionales sobre la venta..."
                 />
               </div>
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
+          <Card className="p-6">
+            <CardHeader className="flex flex-row items-center justify-between pb-4">
               <CardTitle className="flex items-center gap-2">
                 <ShoppingCart className="h-5 w-5" />
                 Productos
               </CardTitle>
               <Button type="button" onClick={handleAddDetalle} variant="secondary" className="gap-2">
                 <PlusCircle className="h-4 w-4" />
-                Agregar Producto
+                Agregar
               </Button>
             </CardHeader>
-            <CardContent>
+            <CardContent className="pt-4">
               {formData.detalles.length === 0 ? (
                 <div className="text-center py-8 text-gray-500">
                   <Package className="h-12 w-12 mx-auto mb-3 text-gray-300" />
-                  <p>No hay productos agregados</p>
-                  <Button type="button" onClick={handleAddDetalle} variant="secondary" className="mt-3">
+                  <p className="text-base mb-3">No hay productos agregados</p>
+                  <Button type="button" onClick={handleAddDetalle} variant="secondary">
                     Agregar Producto
                   </Button>
                 </div>
               ) : (
-                <div className="space-y-4">
+                <div className="space-y-3 max-h-[400px] overflow-y-auto">
                   {formData.detalles.map((detalle, index) => (
-                    <div key={index} className="grid grid-cols-12 gap-4 items-end p-4 bg-gray-50 rounded-lg">
-                      <div className="col-span-4">
-                        <Label className="text-sm">Producto</Label>
-                        <select
-                          value={detalle.id_producto}
-                          onChange={(e) => handleDetalleChange(index, 'id_producto', parseInt(e.target.value) || 0)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                        >
-                          <option value={0}>Seleccione...</option>
-                          {productos.map((p) => (
-                            <option key={p.id_producto} value={p.id_producto}>
-                              {p.nombre} (Stock: {p.stock})
-                            </option>
-                          ))}
-                        </select>
+                    <div key={index} className="grid grid-cols-12 gap-3 items-center p-3 bg-gray-50 rounded-lg">
+                      <div className="col-span-5">
+                        <Label className="text-xs">Producto</Label>
+                        <div className="relative mt-1">
+                          <div className="relative">
+                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                            <input
+                              type="text"
+                              value={productoSearch[index] || (detalle.id_producto ? productos.find(p => p.id_producto === detalle.id_producto)?.nombre : '')}
+                              onChange={(e) => {
+                                setProductoSearch({ ...productoSearch, [index]: e.target.value });
+                                setShowProductoDropdown({ ...showProductoDropdown, [index]: true });
+                                if (detalle.id_producto) {
+                                  handleDetalleChange(index, 'id_producto', 0);
+                                }
+                              }}
+                              onFocus={() => setShowProductoDropdown({ ...showProductoDropdown, [index]: true })}
+                              placeholder="Buscar..."
+                              className="w-full pl-9 pr-8 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                            />
+                            {productoSearch[index] && (
+                              <button
+                                onClick={() => {
+                                  setProductoSearch({ ...productoSearch, [index]: '' });
+                                  handleDetalleChange(index, 'id_producto', 0);
+                                }}
+                                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                              >
+                                <X className="h-4 w-4" />
+                              </button>
+                            )}
+                          </div>
+                          {showProductoDropdown[index] && (
+                            <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                              {productos
+                                .filter(p =>
+                                  !productoSearch[index] ||
+                                  p.nombre.toLowerCase().includes(productoSearch[index].toLowerCase())
+                                )
+                                .slice(0, 8)
+                                .map((p) => (
+                                  <div
+                                    key={p.id_producto}
+                                    onClick={() => {
+                                      handleDetalleChange(index, 'id_producto', p.id_producto);
+                                      setProductoSearch({ ...productoSearch, [index]: '' });
+                                      setShowProductoDropdown({ ...showProductoDropdown, [index]: false });
+                                    }}
+                                    className="px-3 py-2 hover:bg-gray-100 cursor-pointer border-b border-gray-100 last:border-0"
+                                  >
+                                    <div className="font-medium text-sm truncate">{p.nombre}</div>
+                                    <div className="text-xs text-gray-500">Stock: {p.stock} | ${p.precio_venta}</div>
+                                  </div>
+                                ))}
+                              {productos.filter(p =>
+                                !productoSearch[index] ||
+                                p.nombre.toLowerCase().includes(productoSearch[index].toLowerCase())
+                              ).length === 0 && (
+                                <div className="px-3 py-2 text-gray-500 text-sm">No se encontraron productos</div>
+                              )}
+                            </div>
+                          )}
+                        </div>
                         {formErrors[`detalle_${index}_producto`] && (
-                          <p className="text-red-500 text-xs mt-1">{formErrors[`detalle_${index}_producto`]}</p>
+                          <p className="text-xs text-red-500 mt-1">{formErrors[`detalle_${index}_producto`]}</p>
                         )}
                       </div>
 
                       <div className="col-span-2">
-                        <Label className="text-sm">Cantidad</Label>
+                        <Label className="text-xs">Cant.</Label>
                         <Input
                           type="number"
                           min={1}
                           value={detalle.cantidad}
                           onChange={(e) => handleDetalleChange(index, 'cantidad', parseInt(e.target.value) || 0)}
-                          className={formErrors[`detalle_${index}_cantidad`] ? 'border-red-500' : ''}
+                          className={`mt-1 ${formErrors[`detalle_${index}_cantidad`] ? 'border-red-500' : ''}`}
                         />
                         {formErrors[`detalle_${index}_cantidad`] && (
-                          <p className="text-red-500 text-xs mt-1">{formErrors[`detalle_${index}_cantidad`]}</p>
-                        )}
-                      </div>
-
-                      <div className="col-span-3">
-                        <Label className="text-sm">Precio Unit.</Label>
-                        <Input
-                          type="number"
-                          step="0.01"
-                          min={0}
-                          value={detalle.precio_unitario}
-                          onChange={(e) => handleDetalleChange(index, 'precio_unitario', parseFloat(e.target.value) || 0)}
-                          className={formErrors[`detalle_${index}_precio`] ? 'border-red-500' : ''}
-                        />
-                        {formErrors[`detalle_${index}_precio`] && (
-                          <p className="text-red-500 text-xs mt-1">{formErrors[`detalle_${index}_precio`]}</p>
+                          <p className="text-xs text-red-500 mt-1">{formErrors[`detalle_${index}_cantidad`]}</p>
                         )}
                       </div>
 
                       <div className="col-span-2">
-                        <Label className="text-sm">Subtotal</Label>
-                        <div className="px-3 py-2 bg-gray-100 rounded-lg font-medium">
+                        <Label className="text-xs">Precio</Label>
+                        <div className="px-3 py-2 mt-1 bg-gray-100 rounded text-sm font-medium text-gray-700">
+                          ${detalle.precio_unitario.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                        </div>
+                      </div>
+
+                      <div className="col-span-2">
+                        <Label className="text-xs">Subtotal</Label>
+                        <div className="px-3 py-2 mt-1 bg-blue-50 rounded text-sm font-semibold text-blue-700">
                           ${(detalle.cantidad * detalle.precio_unitario).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                         </div>
                       </div>
 
-                      <div className="col-span-1">
+                      <div className="col-span-1 flex justify-end items-end">
                         <Button
                           type="button"
                           variant="ghost"
@@ -554,24 +660,25 @@ export function VentasPage() {
                     </div>
                   ))}
 
-                  <div className="flex justify-between items-center pt-4 border-t">
-                    <div className="text-gray-500">
+                  <div className="flex justify-between items-center pt-4 border-t mt-4">
+                    <div className="text-gray-500 text-sm">
                       {formData.detalles.length} producto(s)
                     </div>
-                    <div className="text-xl font-bold">
+                    <div className="text-xl font-bold text-blue-600">
                       Total: ${calcularTotal().toLocaleString(undefined, { minimumFractionDigits: 2 })}
                     </div>
                   </div>
                 </div>
               )}
               {formErrors.detalles && (
-                <p className="text-red-500 text-sm mt-2">{formErrors.detalles}</p>
+                <p className="text-red-500 text-sm mt-4">{formErrors.detalles}</p>
               )}
             </CardContent>
           </Card>
 
-          <div className="flex gap-4">
-            <Button type="submit" className="w-32" disabled={createMutation.isPending || updateMutation.isPending}>
+          <div className="flex gap-4 pt-4 border-t">
+            <Button type="submit" className="w-32 gap-2" disabled={createMutation.isPending || updateMutation.isPending}>
+              <Save className="h-4 w-4" />
               {createMutation.isPending || updateMutation.isPending ? 'Guardando...' : (editingVenta ? 'Actualizar' : 'Guardar')}
             </Button>
             <Button
@@ -582,7 +689,9 @@ export function VentasPage() {
                 setEditingVenta(null);
                 resetForm();
               }}
+              className="gap-2"
             >
+              <X className="h-4 w-4" />
               Cancelar
             </Button>
           </div>
@@ -607,7 +716,8 @@ export function VentasPage() {
         <div className="text-red-500 text-center">
           <p className="font-bold text-lg mb-2">Error al cargar ventas</p>
           <p>{error instanceof Error ? error.message : 'Error desconocido'}</p>
-          <Button onClick={() => queryClient.invalidateQueries({ queryKey: ['ventas'] })} className="mt-4" variant="secondary">
+          <Button onClick={() => queryClient.invalidateQueries({ queryKey: ['ventas'] })} className="mt-4 gap-2" variant="secondary">
+            <RefreshCw className="h-4 w-4" />
             Reintentar
           </Button>
         </div>

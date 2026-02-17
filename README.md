@@ -24,7 +24,7 @@ Aplicación web para la gestión y visualización de inventario, desarrollada co
 
 - Python 3.10+
 - Node.js 18+
-- PostgreSQL
+- PostgreSQL 13+
 - `uv`:
   - Windows: `powershell -c "irm https://astral.sh/uv/install.ps1 | iex"`
   - macOS/Linux: `curl -LsSf https://astral.sh/uv/install.sh | sh`
@@ -34,85 +34,215 @@ Aplicación web para la gestión y visualización de inventario, desarrollada co
 
 ### 1. Clonar el repositorio
 ```bash
-git clone https://github.com/alexpoool/caguayo-webapp.git
-cd caguayo-webapp
+git clone https://github.com/alexpoool/caguayo.git
+cd caguayo
 ```
 
 ### 2. Configurar Backend
 
-1.  Navegar al directorio backend:
-    ```bash
-    cd backend
-    ```
-2.  Crear archivo `.env`:
-    ```bash
-    # Windows (PowerShell)
-    cp .env.example .env
-    # Linux/Mac
-    cp .env.example .env
-    ```
-    (Ajusta `DATABASE_URL` en `.env` con tus credenciales de PostgreSQL).
-3.  Instalar dependencias:
-    ```bash
-    uv sync
-    ```
-4.  Activar git hooks (Pre-commit):
-    ```bash
-    uv run pre-commit install --config ../.pre-commit-config.yaml
-    ```
-5.  Ejecutar migraciones de base de datos:
-    ```bash
-    uv run alembic upgrade head
-    ```
-6.  Iniciar servidor de desarrollo:
-    ```bash
-    uv run uvicorn main:app --reload
-    ```
+1. Navegar al directorio backend:
+   ```bash
+   cd backend
+   ```
+
+2. Crear archivo `.env`:
+   ```bash
+   cp .env.example .env
+   ```
+   
+3. Editar `.env` con tus credenciales de PostgreSQL:
+   ```env
+   DATABASE_URL=postgresql+psycopg://usuario:password@localhost:5432/caguayo_inventario
+   DEBUG=True
+   CORS_ORIGINS=http://localhost:3000,http://127.0.0.1:3000,http://localhost:5173,http://127.0.0.1:5173
+   ```
+
+4. Instalar dependencias:
+   ```bash
+   uv sync
+   ```
+
+5. Activar git hooks (Pre-commit):
+   ```bash
+   uv run pre-commit install --config ../.pre-commit-config.yaml
+   ```
+
+6. Ejecutar migraciones de base de datos:
+   ```bash
+   uv run alembic upgrade head
+   ```
+
+7. Iniciar servidor de desarrollo:
+   ```bash
+   uv run uvicorn main:app --reload
+   ```
 
 ### 3. Configurar Frontend
 
-1.  Navegar al directorio frontend:
-    ```bash
-    cd frontend
-    ```
-2.  Instalar dependencias:
-    ```bash
-    pnpm install
-    ```
-3.  Iniciar servidor de desarrollo:
-    ```bash
-    pnpm dev
-    ```
+1. Navegar al directorio frontend:
+   ```bash
+   cd frontend
+   ```
+
+2. Instalar dependencias:
+   ```bash
+   pnpm install
+   ```
+
+3. Iniciar servidor de desarrollo:
+   ```bash
+   pnpm dev
+   ```
 
 ## 🏗️ Estructura del Proyecto
 
 ```
 caguayo-webapp/
 ├── backend/
-│   ├── alembic/        # Migraciones de base de datos
+│   ├── alembic/
+│   │   └── versions/          # Migraciones de base de datos
+│   ├── sql/
+│   │   └── db.sql            # Schema de base de datos (exportado de modelos)
 │   ├── src/
-│   │   ├── models/     # Modelos SQLModel
-│   │   ├── routes/     # Endpoints de la API
-│   │   ├── services/   # Lógica de negocio
-│   │   ├── repository/ # Capa de acceso a datos
-│   │   └── database/   # Configuración de BD
-│   └── main.py         # Punto de entrada
+│   │   ├── models/           # Modelos SQLModel
+│   │   │   ├── categoria.py      # Categorias, Subcategorias
+│   │   │   ├── producto.py       # Productos
+│   │   │   ├── moneda.py         # Monedas
+│   │   │   ├── cliente.py        # Clientes
+│   │   │   ├── venta.py          # Ventas
+│   │   │   ├── detalle_venta.py  # Detalle de ventas
+│   │   │   ├── movimiento.py     # Movimientos, Tipos de movimiento
+│   │   │   ├── provedor.py       # Proveedores
+│   │   │   ├── tipo_provedor.py  # Tipos de proveedor
+│   │   │   ├── convenio.py       # Convenios
+│   │   │   ├── tipo_convenio.py  # Tipos de convenio
+│   │   │   ├── anexo.py          # Anexos
+│   │   │   ├── dependencia.py    # Dependencias
+│   │   │   ├── liquidacion.py    # Liquidaciones
+│   │   │   └── transaccion.py    # Transacciones
+│   │   ├── routes/           # Endpoints de la API
+│   │   ├── services/         # Lógica de negocio
+│   │   ├── repository/       # Capa de acceso a datos
+│   │   └── database/         # Configuración de BD
+│   ├── main.py              # Punto de entrada FastAPI
+│   ├── .env.example         # Plantilla de variables de entorno
+│   └── pyproject.toml       # Dependencias Python
 └── frontend/
     ├── src/
-    │   ├── components/ # Componentes React
-    │   ├── pages/      # Vistas principales
-    │   ├── services/   # Llamadas a la API
-    │   └── types/      # Tipos TypeScript
-    └── vite.config.ts  # Configuración de Vite
+    │   ├── components/       # Componentes React
+    │   │   ├── productos/
+    │   │   └── ui/          # Componentes UI reutilizables
+    │   ├── pages/           # Vistas principales
+    │   │   ├── Dashboard.tsx
+    │   │   ├── Productos.tsx
+    │   │   ├── Ventas.tsx
+    │   │   ├── Clientes.tsx
+    │   │   ├── Movimientos.tsx
+    │   │   └── Monedas.tsx
+    │   ├── services/        # Llamadas a la API
+    │   └── types/           # Tipos TypeScript
+    ├── package.json
+    └── vite.config.ts       # Configuración de Vite
 ```
+
+## 🗄️ Modelos de Datos
+
+### Entidades Principales
+
+| Entidad | Descripción |
+|---------|-------------|
+| **Moneda** | Divisas soportadas (USD, EUR, etc.) |
+| **Categoria / Subcategoria** | Clasificación jerárquica de productos |
+| **Producto** | Inventario con código único, stock y precios |
+| **Cliente** | Gestión de clientes para ventas |
+| **Venta / DetalleVenta** | Transacciones de venta con estados |
+| **Movimiento** | Control de entradas/salidas de inventario |
+| **TipoMovimiento** | Tipos: AJUSTE, MERMA, DONACION, RECEPCION, DEVOLUCION |
+| **Proveedor / TipoProveedor** | Gestión de proveedores |
+| **Convenio / TipoConvenio** | Acuerdos comerciales con vigencia |
+| **Anexo** | Documentos asociados a convenios |
+| **Dependencia** | Ubicaciones físicas (almacenes, sucursales) |
+| **Liquidacion** | Agrupación de movimientos |
+| **Transaccion** | Entidad base para transacciones |
+
+### Estados de Venta
+- `PENDIENTE`: Venta en proceso
+- `COMPLETADA`: Venta finalizada
+- `ANULADA`: Venta cancelada
 
 ## 📝 Notas de Desarrollo
 
-- El backend corre en `http://localhost:8000`.
-- El frontend corre en `http://localhost:5173`.
-- La documentación interactiva de la API está en `http://localhost:8000/docs`.
+- El backend corre en `http://localhost:8000`
+- El frontend corre en `http://localhost:5173`
+- La documentación interactiva de la API (Swagger UI) está en `http://localhost:8000/docs`
+- La documentación alternativa (ReDoc) está en `http://localhost:8000/redoc`
+- Endpoint de health check: `http://localhost:8000/health`
+
+## 🔄 Migraciones de Base de Datos
+
+Listado de migraciones disponibles:
+
+| Revisión | Descripción |
+|----------|-------------|
+| `5eb4bad34494` | Migración inicial - Constraints base |
+| `4afe28ed5947` | Agrega tablas clientes, ventas y detalle_ventas |
+| `e3f8a9b2c1d0` | Agrega columna código único a productos |
+| `f5a7b9c3d2e1` | Agrega convenios, proveedores y anexos |
+| `g6h8i0j4k5l2` | Agrega campos de precios y convenios a movimientos |
+| `h1i2j3k4l5m6` | Datos de prueba iniciales |
+| `i7j8k9l0m1n2` | Constraint CHECK para stock >= 0 |
+| `j8k9l0m1n2o3` | Hace id_anexo nullable en movimientos |
+
+Para crear una nueva migración:
+```bash
+uv run alembic revision --autogenerate -m "descripcion"
+```
+
+Para aplicar migraciones:
+```bash
+uv run alembic upgrade head
+```
+
+Para revertir una migración:
+```bash
+uv run alembic downgrade -1
+```
 
 ## 🔒 Seguridad
 
-- Las credenciales de base de datos se gestionan mediante variables de entorno.
-- CORS está configurado para permitir peticiones solo desde el frontend autorizado.
+- Las credenciales de base de datos se gestionan mediante variables de entorno
+- CORS está configurado para permitir peticiones solo desde orígenes autorizados
+- Las contraseñas y datos sensibles nunca deben commitearse al repositorio
+
+## 🧪 Testing
+
+Ejecutar tests del backend:
+```bash
+cd backend
+uv run pytest
+```
+
+## 📦 Construcción para Producción
+
+### Backend
+```bash
+cd backend
+uv run uvicorn main:app --host 0.0.0.0 --port 8000
+```
+
+### Frontend
+```bash
+cd frontend
+pnpm build
+```
+
+## 🤝 Contribución
+
+1. Crear una rama para tu feature: `git checkout -b feature/nueva-funcionalidad`
+2. Commitear tus cambios: `git commit -m 'Agrega nueva funcionalidad'`
+3. Push a la rama: `git push origin feature/nueva-funcionalidad`
+4. Crear un Pull Request
+
+## 📄 Licencia
+
+Este proyecto es propiedad de Caguayo. Todos los derechos reservados.

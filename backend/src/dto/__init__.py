@@ -48,7 +48,41 @@ from .movimientos_dto import (
     MovimientoUpdate,
 )
 from .dependencias_dto import DependenciaRead
-from .dashboard_dto import DashboardStats
+from .dashboard_dto import (
+    DashboardStats,
+    ProductoStats,
+    VentasTrends,
+    MovimientosTrends,
+)
+from .convenios_dto import (
+    TipoProvedorBase,
+    TipoProvedorCreate,
+    TipoProvedorRead,
+    TipoProvedorUpdate,
+    ProvedorBase,
+    ProvedorCreate,
+    ProvedorRead,
+    ProvedorUpdate,
+    ProvedorSimpleRead,
+    TipoConvenioBase,
+    TipoConvenioCreate,
+    TipoConvenioRead,
+    TipoConvenioUpdate,
+    ConvenioBase,
+    ConvenioCreate,
+    ConvenioRead,
+    ConvenioUpdate,
+    ConvenioSimpleRead,
+    AnexoBase,
+    AnexoCreate,
+    AnexoRead,
+    AnexoUpdate,
+)
+
+# Rebuild models to resolve forward references
+VentaRead.model_rebuild()
+ClienteRead.model_rebuild()
+ClienteReadWithVentas.model_rebuild()
 
 __all__ = [
     "MonedaBase",
@@ -90,4 +124,29 @@ __all__ = [
     "MovimientoUpdate",
     "DependenciaRead",
     "DashboardStats",
+    "ProductoStats",
+    "VentasTrends",
+    "MovimientosTrends",
+    "TipoProvedorBase",
+    "TipoProvedorCreate",
+    "TipoProvedorRead",
+    "TipoProvedorUpdate",
+    "ProvedorBase",
+    "ProvedorCreate",
+    "ProvedorRead",
+    "ProvedorUpdate",
+    "ProvedorSimpleRead",
+    "TipoConvenioBase",
+    "TipoConvenioCreate",
+    "TipoConvenioRead",
+    "TipoConvenioUpdate",
+    "ConvenioBase",
+    "ConvenioCreate",
+    "ConvenioRead",
+    "ConvenioUpdate",
+    "ConvenioSimpleRead",
+    "AnexoBase",
+    "AnexoCreate",
+    "AnexoRead",
+    "AnexoUpdate",
 ]
