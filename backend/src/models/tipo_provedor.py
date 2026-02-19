@@ -10,6 +10,6 @@ class TipoProvedor(SQLModel, table=True):
 
     id_tipo_provedores: Optional[int] = Field(default=None, primary_key=True)
     nombre: str = Field(max_length=100)
+    descripcion: Optional[str] = None
 
-    # Relaciones
     provedores: List["Provedor"] = Relationship(back_populates="tipo_provedor")

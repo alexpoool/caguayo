@@ -10,6 +10,6 @@ class TipoConvenio(SQLModel, table=True):
 
     id_tipo_convenio: Optional[int] = Field(default=None, primary_key=True)
     nombre: str = Field(max_length=100)
+    descripcion: Optional[str] = None
 
-    # Relaciones
     convenios: List["Convenio"] = Relationship(back_populates="tipo_convenio")

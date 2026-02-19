@@ -1,20 +1,18 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { movimientosService } from '../services/api';
-import type { TipoMovimiento, MovimientoCreate } from '../types/index';
-import { Button } from '../components/ui';
+import type { TipoMovimiento } from '../types/index';
 import {
   Truck,
   AlertCircle,
   Gift,
   RotateCcw,
   Package,
-  Info,
   CheckCircle2,
   TrendingUp,
   TrendingDown,
+  Info,
 } from 'lucide-react';
-import toast from 'react-hot-toast';
 import { MovimientoRecepcionForm } from './movimientos/MovimientoForm';
 
 export function MovimientosPage() {
@@ -38,7 +36,7 @@ export function MovimientosPage() {
     setSelectedTipo(tipo);
   };
 
-  const handleFormSubmit = (data: MovimientoCreate) => {
+  const handleFormSubmit = () => {
     // El formulario ya maneja la creación y los toast
     setSelectedTipo(null);
   };

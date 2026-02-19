@@ -6,7 +6,6 @@ from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-# Configurar logging
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
@@ -15,13 +14,11 @@ logging.basicConfig(
 
 load_dotenv()
 
-from src.routes import api_router  # noqa: E402
+from src.routes import api_router
 
-# Import all models to ensure they are registered with SQLModel
-from src.models import (  # noqa: E402
+from src.models import (
     Anexo,
     Categorias,
-    DatosGeneralesDependencia,
     Dependencia,
     Liquidacion,
     Moneda,
@@ -32,13 +29,18 @@ from src.models import (  # noqa: E402
     TipoMovimiento,
     Transaccion,
     Ventas,
+    Provincia,
+    Municipio,
+    Cuenta,
+    Grupo,
+    Usuario,
+    TipoContrato,
+    EstadoContrato,
 )
 
-# Avoid F401 (unused imports) by listing them or using noqa, but listing is better for runtime debugging if needed
 __all_models__ = [
     Anexo,
     Categorias,
-    DatosGeneralesDependencia,
     Dependencia,
     Liquidacion,
     Moneda,
@@ -49,10 +51,14 @@ __all_models__ = [
     TipoMovimiento,
     Transaccion,
     Ventas,
+    Provincia,
+    Municipio,
+    Cuenta,
+    Grupo,
+    Usuario,
+    TipoContrato,
+    EstadoContrato,
 ]
-
-# Create database tables - Removed in favor of Alembic migrations
-# SQLModel.metadata.create_all(engine)
 
 app = FastAPI(
     title="API de Inventario",
@@ -61,12 +67,10 @@ app = FastAPI(
     redirect_slashes=False,
 )
 
-# Configure CORS
-# Define defaults for development; in production, strict environment variables should be used.
 default_origins = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
-    "http://localhost:5173",  # Vite default
+    "http://localhost:5173",
     "http://127.0.0.1:5173",
 ]
 
@@ -82,18 +86,10 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=cors_origins,
     allow_credentials=True,
-    allow_methods=[
-        "GET",
-        "POST",
-        "PUT",
-        "DELETE",
-        "OPTIONS",
-        "PATCH",
-    ],  # Specific methods instead of "*"
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allow_headers=["*"],
 )
 
-# Include API routes
 app.include_router(api_router)
 
 

@@ -47,7 +47,29 @@ from .movimientos_dto import (
     MovimientoRead,
     MovimientoUpdate,
 )
-from .dependencias_dto import DependenciaRead
+from .cuentas_dto import (
+    CuentaBase,
+    CuentaCreate,
+    CuentaRead,
+    CuentaUpdate,
+)
+from .tipo_cuenta_dto import (
+    TipoCuentaBase,
+    TipoCuentaCreate,
+    TipoCuentaRead,
+    TipoCuentaUpdate,
+)
+from .dependencias_dto import (
+    TipoDependenciaBase,
+    TipoDependenciaCreate,
+    TipoDependenciaRead,
+    TipoDependenciaUpdate,
+    DependenciaBase,
+    DependenciaCreate,
+    DependenciaConCuentasCreate,
+    DependenciaRead,
+    DependenciaUpdate,
+)
 from .dashboard_dto import (
     DashboardStats,
     ProductoStats,
@@ -78,11 +100,42 @@ from .convenios_dto import (
     AnexoRead,
     AnexoUpdate,
 )
+from .contratos_dto import (
+    TipoContratoBase,
+    TipoContratoCreate,
+    TipoContratoRead,
+    TipoContratoUpdate,
+    EstadoContratoBase,
+    EstadoContratoCreate,
+    EstadoContratoRead,
+    EstadoContratoUpdate,
+)
+from .usuarios_dto import (
+    GrupoBase,
+    GrupoCreate,
+    GrupoRead,
+    GrupoUpdate,
+    UsuarioBase,
+    UsuarioCreate,
+    UsuarioRead,
+    UsuarioUpdate,
+    DependenciaSimpleRead,
+)
+from .ubicaciones_dto import (
+    ProvinciaBase,
+    ProvinciaCreate,
+    ProvinciaRead,
+    ProvinciaUpdate,
+    MunicipioBase,
+    MunicipioCreate,
+    MunicipioRead,
+    MunicipioUpdate,
+)
 
-# Rebuild models to resolve forward references
 VentaRead.model_rebuild()
 ClienteRead.model_rebuild()
 ClienteReadWithVentas.model_rebuild()
+
 
 __all__ = [
     "MonedaBase",
@@ -122,7 +175,15 @@ __all__ = [
     "MovimientoCreate",
     "MovimientoRead",
     "MovimientoUpdate",
+    "TipoDependenciaBase",
+    "TipoDependenciaCreate",
+    "TipoDependenciaRead",
+    "TipoDependenciaUpdate",
+    "DependenciaBase",
+    "DependenciaCreate",
+    "DependenciaConCuentasCreate",
     "DependenciaRead",
+    "DependenciaUpdate",
     "DashboardStats",
     "ProductoStats",
     "VentasTrends",
@@ -149,4 +210,37 @@ __all__ = [
     "AnexoCreate",
     "AnexoRead",
     "AnexoUpdate",
+    "TipoContratoBase",
+    "TipoContratoCreate",
+    "TipoContratoRead",
+    "TipoContratoUpdate",
+    "EstadoContratoBase",
+    "EstadoContratoCreate",
+    "EstadoContratoRead",
+    "EstadoContratoUpdate",
+    "CuentaBase",
+    "CuentaCreate",
+    "CuentaRead",
+    "CuentaUpdate",
+    "TipoCuentaBase",
+    "TipoCuentaCreate",
+    "TipoCuentaRead",
+    "TipoCuentaUpdate",
+    "GrupoBase",
+    "GrupoCreate",
+    "GrupoRead",
+    "GrupoUpdate",
+    "UsuarioBase",
+    "UsuarioCreate",
+    "UsuarioRead",
+    "UsuarioUpdate",
+    "DependenciaSimpleRead",
+    "ProvinciaBase",
+    "ProvinciaCreate",
+    "ProvinciaRead",
+    "ProvinciaUpdate",
+    "MunicipioBase",
+    "MunicipioCreate",
+    "MunicipioRead",
+    "MunicipioUpdate",
 ]

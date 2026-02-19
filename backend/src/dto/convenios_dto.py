@@ -4,9 +4,9 @@ from datetime import date
 from decimal import Decimal
 
 
-# DTOs para TipoProvedor
 class TipoProvedorBase(SQLModel):
     nombre: str
+    descripcion: Optional[str] = None
 
 
 class TipoProvedorCreate(TipoProvedorBase):
@@ -19,9 +19,9 @@ class TipoProvedorRead(TipoProvedorBase):
 
 class TipoProvedorUpdate(SQLModel):
     nombre: Optional[str] = None
+    descripcion: Optional[str] = None
 
 
-# DTOs para Provedor
 class ProvedorBase(SQLModel):
     id_tipo_provedor: int
     nombre: str
@@ -45,9 +45,9 @@ class ProvedorUpdate(SQLModel):
     direccion: Optional[str] = None
 
 
-# DTOs para TipoConvenio
 class TipoConvenioBase(SQLModel):
     nombre: str
+    descripcion: Optional[str] = None
 
 
 class TipoConvenioCreate(TipoConvenioBase):
@@ -60,9 +60,9 @@ class TipoConvenioRead(TipoConvenioBase):
 
 class TipoConvenioUpdate(SQLModel):
     nombre: Optional[str] = None
+    descripcion: Optional[str] = None
 
 
-# DTOs para Convenio
 class ConvenioBase(SQLModel):
     id_provedor: int
     nombre_convenio: str
@@ -89,7 +89,6 @@ class ConvenioUpdate(SQLModel):
     id_tipo_convenio: Optional[int] = None
 
 
-# DTOs para Anexo
 class AnexoBase(SQLModel):
     id_convenio: int
     nombre_anexo: str
@@ -117,7 +116,6 @@ class AnexoUpdate(SQLModel):
     comision: Optional[Decimal] = None
 
 
-# DTOs simplificados
 class ProvedorSimpleRead(SQLModel):
     id_provedores: int
     nombre: str

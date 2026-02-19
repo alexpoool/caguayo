@@ -117,11 +117,39 @@ caguayo-webapp/
 │   │   │   ├── convenio.py       # Convenios
 │   │   │   ├── tipo_convenio.py  # Tipos de convenio
 │   │   │   ├── anexo.py          # Anexos
-│   │   │   ├── dependencia.py    # Dependencias
+│   │   │   ├── dependencia.py    # Dependencias, Provincias, Municipios
+│   │   │   ├── tipo_dependencia.py # Tipos de dependencia
+│   │   │   ├── cuenta.py         # Cuentas bancarias
+│   │   │   ├── grupo.py          # Grupos de usuarios
+│   │   │   ├── usuarios.py       # Usuarios del sistema
+│   │   │   ├── contrato.py       # Tipos y estados de contrato
 │   │   │   ├── liquidacion.py    # Liquidaciones
 │   │   │   └── transaccion.py    # Transacciones
 │   │   ├── routes/           # Endpoints de la API
+│   │   │   ├── api.py
+│   │   │   ├── productos.py
+│   │   │   ├── categorias.py
+│   │   │   ├── subcategorias.py
+│   │   │   ├── ventas.py
+│   │   │   ├── clientes.py
+│   │   │   ├── monedas.py
+│   │   │   ├── movimientos.py
+│   │   │   ├── provedores.py
+│   │   │   ├── convenios.py
+│   │   │   ├── anexos.py
+│   │   │   ├── dependencias.py
+│   │   │   ├── configuracion.py  # Configuración general
+│   │   │   └── administracion.py # Usuarios, cuentas
 │   │   ├── services/         # Lógica de negocio
+│   │   │   ├── contrato_service.py
+│   │   │   ├── cuenta_service.py
+│   │   │   └── usuario_service.py
+│   │   ├── dto/              # Data Transfer Objects
+│   │   │   ├── contratos_dto.py
+│   │   │   ├── cuentas_dto.py
+│   │   │   ├── usuarios_dto.py
+│   │   │   ├── dependencias_dto.py
+│   │   │   └── ubicaciones_dto.py
 │   │   ├── repository/       # Capa de acceso a datos
 │   │   └── database/         # Configuración de BD
 │   ├── main.py              # Punto de entrada FastAPI
@@ -138,9 +166,18 @@ caguayo-webapp/
     │   │   ├── Ventas.tsx
     │   │   ├── Clientes.tsx
     │   │   ├── Movimientos.tsx
-    │   │   └── Monedas.tsx
+    │   │   ├── Monedas.tsx
+    │   │   ├── Configuracion.tsx  # Página de configuración
+    │   │   ├── Usuarios.tsx       # Gestión de usuarios
+    │   │   └── Dependencias.tsx   # Gestión de dependencias
     │   ├── services/        # Llamadas a la API
+    │   │   └── administracion.ts
     │   └── types/           # Tipos TypeScript
+    │       ├── contrato.ts
+    │       ├── cuenta.ts
+    │       ├── usuario.ts
+    │       ├── dependencia.ts
+    │       └── ubicacion.ts
     ├── package.json
     └── vite.config.ts       # Configuración de Vite
 ```
@@ -149,6 +186,7 @@ caguayo-webapp/
 
 ### Entidades Principales
 
+#### Inventario
 | Entidad | Descripción |
 |---------|-------------|
 | **Moneda** | Divisas soportadas (USD, EUR, etc.) |
@@ -158,11 +196,25 @@ caguayo-webapp/
 | **Venta / DetalleVenta** | Transacciones de venta con estados |
 | **Movimiento** | Control de entradas/salidas de inventario |
 | **TipoMovimiento** | Tipos: AJUSTE, MERMA, DONACION, RECEPCION, DEVOLUCION |
-| **Proveedor / TipoProveedor** | Gestión de proveedores |
-| **Convenio / TipoConvenio** | Acuerdos comerciales con vigencia |
-| **Anexo** | Documentos asociados a convenios |
-| **Dependencia** | Ubicaciones físicas (almacenes, sucursales) |
 | **Liquidacion** | Agrupación de movimientos |
+
+#### Administración
+| Entidad | Descripción |
+|---------|-------------|
+| **TipoContrato** | Tipos de contratos disponibles |
+| **EstadoContrato** | Estados posibles de un contrato |
+| **TipoProveedor** | Clasificación de proveedores |
+| **Proveedor** | Información de proveedores |
+| **TipoConvenio** | Tipos de convenios comerciales |
+| **Convenio** | Acuerdos comerciales con vigencia |
+| **Anexo** | Documentos asociados a convenios |
+| **TipoDependencia** | Clasificación de dependencias |
+| **Dependencia** | Ubicaciones físicas jerárquicas (almacenes, sucursales) |
+| **Provincia** | Provincias del país |
+| **Municipio** | Municipios por provincia |
+| **Cuenta** | Cuentas bancarias asociadas a dependencias |
+| **Grupo** | Grupos de usuarios para permisos |
+| **Usuario** | Usuarios del sistema con autenticación |
 | **Transaccion** | Entidad base para transacciones |
 
 ### Estados de Venta

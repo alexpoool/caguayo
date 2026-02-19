@@ -2,8 +2,9 @@ from typing import List, Optional, cast
 import logging
 from datetime import datetime
 from sqlmodel.ext.asyncio.session import AsyncSession
+from sqlmodel import select
 from src.repository import movimiento_repo
-from src.models import Movimiento, TipoMovimiento
+from src.models import Movimiento, TipoMovimiento, Anexo, Productos
 from src.dto import (
     MovimientoCreate,
     MovimientoRead,
@@ -197,6 +198,28 @@ class MovimientoService:
                     "codigo": mov.producto.codigo if mov.producto else None,
                 }
             productos_dict[mov.id_producto]["cantidad"] += mov.cantidad
+
+        # También verificar si el anexo tiene un producto directamente asignado
+        anexo_statement = select(Anexo).where(Anexo.id_anexo == id_anexo)
+        anexo_result = await db.exec(anexo_statement)
+        anexo = anexo_result.first()
+
+        if anexo and anexo.id_producto and anexo.id_producto not in productos_dict:
+            # Consultar el producto directamente
+            producto_statement = select(Productos).where(
+                Productos.id_producto == anexo.id_producto
+            )
+            producto_result = await db.exec(producto_statement)
+            producto = producto_result.first()
+
+            if producto:
+                productos_dict[anexo.id_producto] = {
+                    "id_producto": anexo.id_producto,
+                    "nombre": producto.nombre,
+                    "descripcion": producto.descripcion,
+                    "cantidad": 0,
+                    "codigo": producto.codigo,
+                }
 
         return list(productos_dict.values())
 

@@ -11,6 +11,8 @@ from .provedores import router as provedores_router
 from .convenios import router as convenios_router
 from .anexos import router as anexos_router
 from .dependencias import router as dependencias_router
+from .configuracion import router as configuracion_router
+from .administracion import router as administracion_router
 
 api_router = APIRouter(prefix="/api/v1")
 
@@ -26,6 +28,8 @@ api_router.include_router(provedores_router)
 api_router.include_router(convenios_router)
 api_router.include_router(anexos_router)
 api_router.include_router(dependencias_router)
+api_router.include_router(configuracion_router)
+api_router.include_router(administracion_router)
 
 
 @api_router.get("/")
@@ -40,6 +44,9 @@ async def api_info():
             "clientes": "/api/v1/clientes",
             "monedas": "/api/v1/monedas",
             "movimientos": "/api/v1/movimientos",
+            "configuracion": "/api/v1/configuracion",
+            "administracion": "/api/v1/administracion",
+            "dependencias": "/api/v1/dependencias",
             "dashboard": "/api/v1/dashboard/stats",
         },
     }

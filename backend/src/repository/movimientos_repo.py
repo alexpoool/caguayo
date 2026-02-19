@@ -11,6 +11,10 @@ from src.models import (
     Provedor,
     TipoProvedor,
     TipoConvenio,
+    Dependencia,
+    TipoDependencia,
+    Provincia,
+    Municipio,
 )
 from src.repository.base import CRUDBase
 from src.dto import (
@@ -24,7 +28,12 @@ class MovimientoRepository(CRUDBase[Movimiento, MovimientoCreate, MovimientoUpda
         """Helper method to get all selectinload options for Movimiento relationships."""
         return [
             selectinload(Movimiento.tipo_movimiento),  # type: ignore
-            selectinload(Movimiento.dependencia),  # type: ignore
+            selectinload(Movimiento.dependencia).selectinload(
+                Dependencia.tipo_dependencia
+            ),  # type: ignore
+            selectinload(Movimiento.dependencia).selectinload(Dependencia.provincia),  # type: ignore
+            selectinload(Movimiento.dependencia).selectinload(Dependencia.municipio),  # type: ignore
+            selectinload(Movimiento.dependencia).selectinload(Dependencia.cuentas),  # type: ignore
             selectinload(Movimiento.anexo),  # type: ignore
             selectinload(Movimiento.producto)
             .selectinload(  # type: ignore

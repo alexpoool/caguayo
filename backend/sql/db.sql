@@ -1,9 +1,3 @@
--- ============================================================================
--- CAGUAYO WEBAPP - SISTEMA DE INVENTARIO
--- Script de creación de base de datos basado en modelos SQLModel
--- ============================================================================
-
--- 1. Tabla: moneda
 CREATE TABLE moneda (
     id_moneda SERIAL PRIMARY KEY,
     nombre VARCHAR(50) NOT NULL UNIQUE,
@@ -11,14 +5,12 @@ CREATE TABLE moneda (
     simbolo VARCHAR(5) NOT NULL UNIQUE
 );
 
--- 2. Tabla: categorias
 CREATE TABLE categorias (
     id_categoria SERIAL PRIMARY KEY,
     nombre VARCHAR(100) NOT NULL UNIQUE,
     descripcion TEXT
 );
 
--- 3. Tabla: subcategorias
 CREATE TABLE subcategorias (
     id_subcategoria SERIAL PRIMARY KEY,
     id_categoria INTEGER NOT NULL REFERENCES categorias(id_categoria) ON DELETE CASCADE,
@@ -27,53 +19,99 @@ CREATE TABLE subcategorias (
     UNIQUE (id_categoria, nombre)
 );
 
--- 4. Tabla: tipo_movimiento
 CREATE TABLE tipo_movimiento (
     id_tipo_movimiento SERIAL PRIMARY KEY,
     tipo VARCHAR(20) NOT NULL UNIQUE,
     factor INTEGER NOT NULL CHECK (factor IN (1, -1))
 );
 
--- 5. Tabla: tipo_dependencia
 CREATE TABLE tipo_dependencia (
     id_tipo_dependencia SERIAL PRIMARY KEY,
     nombre VARCHAR(20) NOT NULL UNIQUE,
     descripcion TEXT
 );
 
--- 6. Tabla: datos_generales_dependencia
-CREATE TABLE datos_generales_dependencia (
-    id_datos_generales SERIAL PRIMARY KEY,
-    direccion VARCHAR(255) NOT NULL,
-    telefono VARCHAR(20) NOT NULL,
-    email VARCHAR(100) NOT NULL
+CREATE TABLE tipo_contrato (
+    id_tipo_contrato SERIAL PRIMARY KEY,
+    nombre VARCHAR(100) NOT NULL UNIQUE,
+    descripcion TEXT
 );
 
--- 7. Tabla: dependencia
+CREATE TABLE estado_contrato (
+    id_estado_contrato SERIAL PRIMARY KEY,
+    nombre VARCHAR(100) NOT NULL UNIQUE,
+    descripcion TEXT
+);
+
+CREATE TABLE provincia (
+    id_provincia SERIAL PRIMARY KEY,
+    nombre VARCHAR(100) NOT NULL UNIQUE
+);
+
+CREATE TABLE municipio (
+    id_municipio SERIAL PRIMARY KEY,
+    id_provincia INTEGER NOT NULL REFERENCES provincia(id_provincia) ON DELETE CASCADE,
+    nombre VARCHAR(100) NOT NULL,
+    UNIQUE (id_provincia, nombre)
+);
+
+CREATE TABLE cuenta (
+    id_cuenta SERIAL PRIMARY KEY,
+    titular VARCHAR(150) NOT NULL,
+    banco VARCHAR(100) NOT NULL,
+    sucursal INTEGER,
+    direccion VARCHAR(255) NOT NULL,
+    tipo_cuenta VARCHAR(50) NOT NULL,
+    id_moneda INTEGER NOT NULL REFERENCES moneda(id_moneda) ON DELETE CASCADE
+);
+
+CREATE TABLE grupo (
+    id_grupo SERIAL PRIMARY KEY,
+    nombre VARCHAR(100) NOT NULL UNIQUE,
+    descripcion TEXT
+);
+
 CREATE TABLE dependencia (
     id_dependencia SERIAL PRIMARY KEY,
     id_tipo_dependencia INTEGER NOT NULL REFERENCES tipo_dependencia(id_tipo_dependencia) ON DELETE CASCADE,
-    id_datos_generales INTEGER NOT NULL REFERENCES datos_generales_dependencia(id_datos_generales) ON DELETE CASCADE,
-    nombre VARCHAR(100) NOT NULL
+    codigo_padre INTEGER REFERENCES dependencia(id_dependencia) ON DELETE SET NULL,
+    nombre VARCHAR(100) NOT NULL,
+    direccion VARCHAR(255) NOT NULL,
+    telefono VARCHAR(20) NOT NULL,
+    email VARCHAR(100),
+    web VARCHAR(100),
+    id_cuenta INTEGER REFERENCES cuenta(id_cuenta) ON DELETE SET NULL,
+    id_provincia INTEGER REFERENCES provincia(id_provincia) ON DELETE SET NULL,
+    id_municipio INTEGER REFERENCES municipio(id_municipio) ON DELETE SET NULL,
+    descripcion TEXT
 );
 
--- 8. Tabla: liquidacion
+CREATE TABLE usuarios (
+    id_usuario SERIAL PRIMARY KEY,
+    ci VARCHAR(20) NOT NULL UNIQUE,
+    nombre VARCHAR(100) NOT NULL,
+    primer_apellido VARCHAR(100) NOT NULL,
+    segundo_apellido VARCHAR(100),
+    alias VARCHAR(50) NOT NULL UNIQUE,
+    contrasenia VARCHAR(255) NOT NULL,
+    id_grupo INTEGER NOT NULL REFERENCES grupo(id_grupo) ON DELETE CASCADE,
+    id_dependencia INTEGER REFERENCES dependencia(id_dependencia) ON DELETE SET NULL
+);
+
 CREATE TABLE liquidacion (
     id_liquidacion SERIAL PRIMARY KEY
 );
 
--- 9. Tabla: transaccion
 CREATE TABLE transaccion (
     id_transaccion SERIAL PRIMARY KEY
 );
 
--- 10. Tabla: tipo_provedores
 CREATE TABLE tipo_provedores (
     id_tipo_provedores SERIAL PRIMARY KEY,
-    nombre VARCHAR(100) NOT NULL
+    nombre VARCHAR(100) NOT NULL,
+    descripcion TEXT
 );
 
--- 11. Tabla: provedores
 CREATE TABLE provedores (
     id_provedores SERIAL PRIMARY KEY,
     id_tipo_provedor INTEGER NOT NULL REFERENCES tipo_provedores(id_tipo_provedores) ON DELETE CASCADE,
@@ -82,13 +120,12 @@ CREATE TABLE provedores (
     direccion VARCHAR(255)
 );
 
--- 12. Tabla: tipo_convenio
 CREATE TABLE tipo_convenio (
     id_tipo_convenio SERIAL PRIMARY KEY,
-    nombre VARCHAR(100) NOT NULL
+    nombre VARCHAR(100) NOT NULL,
+    descripcion TEXT
 );
 
--- 13. Tabla: convenio
 CREATE TABLE convenio (
     id_convenio SERIAL PRIMARY KEY,
     id_provedor INTEGER NOT NULL REFERENCES provedores(id_provedores) ON DELETE CASCADE,
@@ -98,7 +135,6 @@ CREATE TABLE convenio (
     id_tipo_convenio INTEGER NOT NULL REFERENCES tipo_convenio(id_tipo_convenio) ON DELETE CASCADE
 );
 
--- 14. Tabla: anexo (ACTUALIZADA - Migración o5p6q7r8s9t0)
 CREATE TABLE anexo (
     id_anexo SERIAL PRIMARY KEY,
     id_convenio INTEGER NOT NULL REFERENCES convenio(id_convenio) ON DELETE CASCADE,
@@ -110,7 +146,6 @@ CREATE TABLE anexo (
     comision NUMERIC(10, 2)
 );
 
--- 15. Tabla: productos (ACTUALIZADA - Migración l2m3n4o5p6q7)
 CREATE TABLE productos (
     id_producto SERIAL PRIMARY KEY,
     codigo VARCHAR(50) UNIQUE,
@@ -124,7 +159,6 @@ CREATE TABLE productos (
     precio_minimo NUMERIC(15, 4) NOT NULL
 );
 
--- 16. Tabla: clientes (NUEVO - Migración 4afe28ed5947)
 CREATE TABLE clientes (
     id_cliente SERIAL PRIMARY KEY,
     nombre VARCHAR(150) NOT NULL,
@@ -136,7 +170,6 @@ CREATE TABLE clientes (
     fecha_registro TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
--- 17. Tabla: ventas (ACTUALIZADA - Migración 4afe28ed5947)
 CREATE TABLE ventas (
     id_venta SERIAL PRIMARY KEY,
     id_cliente INTEGER NOT NULL REFERENCES clientes(id_cliente) ON DELETE CASCADE,
@@ -148,7 +181,6 @@ CREATE TABLE ventas (
     fecha_actualizacion TIMESTAMP
 );
 
--- 18. Tabla: detalle_ventas (NUEVO - Migración 4afe28ed5947)
 CREATE TABLE detalle_ventas (
     id_detalle SERIAL PRIMARY KEY,
     id_venta INTEGER NOT NULL REFERENCES ventas(id_venta) ON DELETE CASCADE,
@@ -158,7 +190,6 @@ CREATE TABLE detalle_ventas (
     subtotal NUMERIC(15, 2) NOT NULL
 );
 
--- 19. Tabla: movimiento (ACTUALIZADA - Migraciones m3n4o5p6q7r8, o5p6q7r8s9t0)
 CREATE TABLE movimiento (
     id_movimiento SERIAL PRIMARY KEY,
     id_tipo_movimiento INTEGER NOT NULL REFERENCES tipo_movimiento(id_tipo_movimiento) ON DELETE CASCADE,
@@ -179,10 +210,6 @@ CREATE TABLE movimiento (
     id_moneda_venta INTEGER REFERENCES moneda(id_moneda) ON DELETE CASCADE
 );
 
--- ============================================================================
--- ÍNDICES PARA OPTIMIZACIÓN
--- ============================================================================
-
 CREATE INDEX idx_productos_codigo ON productos(codigo);
 CREATE INDEX idx_productos_subcategoria ON productos(id_subcategoria);
 CREATE INDEX idx_anexo_numero ON anexo(numero_anexo);
@@ -201,7 +228,234 @@ CREATE INDEX idx_detalle_venta_venta ON detalle_ventas(id_venta);
 CREATE INDEX idx_detalle_venta_producto ON detalle_ventas(id_producto);
 CREATE INDEX idx_clientes_cedula ON clientes(cedula_rif);
 CREATE INDEX idx_convenio_provedor ON convenio(id_provedor);
+CREATE INDEX idx_dependencia_padre ON dependencia(codigo_padre);
+CREATE INDEX idx_dependencia_tipo ON dependencia(id_tipo_dependencia);
+CREATE INDEX idx_usuarios_grupo ON usuarios(id_grupo);
+CREATE INDEX idx_usuarios_dependencia ON usuarios(id_dependencia);
+CREATE INDEX idx_cuenta_moneda ON cuenta(id_moneda);
+CREATE INDEX idx_anexo_dependencia ON anexo(id_dependencia);
 
--- Foreign Key para anexo.id_producto (Migración o5p6q7r8s9t0)
 ALTER TABLE anexo ADD CONSTRAINT fk_anexo_producto FOREIGN KEY (id_producto) REFERENCES productos(id_producto);
+-- Datos reales de provincias de Cuba
+INSERT INTO provincia (nombre) VALUES 
+('Pinar del Río'),
+('Artemisa'),
+('La Habana'),
+('Mayabeque'),
+('Matanzas'),
+('Cienfuegos'),
+('Villa Clara'),
+('Sancti Spiritus'),
+('Ciego de Ávila'),
+('Camagüey'),
+('Las Tunas'),
+('Holguín'),
+('Granma'),
+('Santiago de Cuba'),
+('Guantánamo'),
+('Isla de la Juventud');
 
+-- Datos reales de municipios de Cuba
+INSERT INTO municipio (id_provincia, nombre) VALUES
+-- Pinar del Río (id=1)
+(1, 'Sandino'),
+(1, 'Mantua'),
+(1, 'Minas de Matahambre'),
+(1, 'Viñales'),
+(1, 'La Palma'),
+(1, 'Los Palacios'),
+(1, 'Consolación del Sur'),
+(1, 'Pinar del Río'),
+(1, 'San Luis'),
+(1, 'San Juan y Martínez'),
+(1, 'Guane'),
+
+-- Artemisa (id=2)
+(2, 'Bahía Honda'),
+(2, 'Mariel'),
+(2, 'Guanajay'),
+(2, 'Caimito'),
+(2, 'Bauta'),
+(2, 'San Antonio de los Baños'),
+(2, 'Güira de Melena'),
+(2, 'Artemisa'),
+(2, 'Candelaria'),
+(2, 'San Cristóbal'),
+(2, 'Alquízar'),
+(2, 'Güines'),
+(2, 'Batabanó'),
+(2, 'Melena del Sur'),
+(2, 'Quivicán'),
+
+-- La Habana (id=3)
+(3, 'Playa'),
+(3, 'Plaza de la Revolución'),
+(3, 'Centro Habana'),
+(3, 'La Habana Vieja'),
+(3, 'Regla'),
+(3, 'La Habana del Este'),
+(3, 'Guanabacoa'),
+(3, 'San Miguel del Padrón'),
+(3, 'Diez de Octubre'),
+(3, 'Cerro'),
+(3, 'Marianao'),
+(3, 'La Lisa'),
+(3, 'Boyeros'),
+(3, 'Arroyo Naranjo'),
+(3, 'Cotorro'),
+
+-- Mayabeque (id=4)
+(4, 'Bejucal'),
+(4, 'San José de las Lajas'),
+(4, 'Jaruco'),
+(4, 'Santa Cruz del Norte'),
+(4, 'Madruga'),
+(4, 'Nueva Paz'),
+(4, 'San Nicolás'),
+(4, 'Güines'),
+(4, 'Melena del Sur'),
+(4, 'Batabanó'),
+
+-- Matanzas (id=5)
+(5, 'Matanzas'),
+(5, 'Cárdenas'),
+(5, 'Martí'),
+(5, 'Colón'),
+(5, 'Perico'),
+(5, 'Jovellanos'),
+(5, 'Pedro Betancourt'),
+(5, 'Limonar'),
+(5, 'Unión de Reyes'),
+(5, 'Ciénaga de Zapata'),
+(5, 'Jagüey Grande'),
+(5, 'Calimete'),
+(5, 'Los Arabos'),
+
+-- Cienfuegos (id=6)
+(6, 'Aguada de Pasajeros'),
+(6, 'Rodas'),
+(6, 'Palmira'),
+(6, 'Lajas'),
+(6, 'Cruces'),
+(6, 'Cumanayagua'),
+(6, 'Cienfuegos'),
+(6, 'Abreus'),
+
+-- Villa Clara (id=7)
+(7, 'Corralillo'),
+(7, 'Quemado de Güines'),
+(7, 'Sagua la Grande'),
+(7, 'Encrucijada'),
+(7, 'Camajuaní'),
+(7, 'Caibarién'),
+(7, 'Remedios'),
+(7, 'Placetas'),
+(7, 'Santa Clara'),
+(7, 'Cifuentes'),
+(7, 'Santo Domingo'),
+(7, 'Ranchuelo'),
+(7, 'Manicaragua'),
+
+-- Sancti Spiritus (id=8)
+(8, 'Yaguajay'),
+(8, 'Jatibonico'),
+(8, 'Taguasco'),
+(8, 'Cabaiguán'),
+(8, 'Fomento'),
+(8, 'Trinidad'),
+(8, 'Sancti Spíritus'),
+(8, 'La Sierpe'),
+
+-- Ciego de Ávila (id=9)
+(9, 'Chambas'),
+(9, 'Morón'),
+(9, 'Bolivia'),
+(9, 'Primero de Enero'),
+(9, 'Ciro Redondo'),
+(9, 'Florencia'),
+(9, 'Majagua'),
+(9, 'Ciego de Ávila'),
+(9, 'Venezuela'),
+(9, 'Baraguá'),
+
+-- Camagüey (id=10)
+(10, 'Carlos Manuel de Céspedes'),
+(10, 'Esmeralda'),
+(10, 'Sierra de Cubitas'),
+(10, 'Minas'),
+(10, 'Nuevitas'),
+(10, 'Guáimaro'),
+(10, 'Sibanicú'),
+(10, 'Najasa'),
+(10, 'Santa Cruz del Sur'),
+(10, 'Camagüey'),
+(10, 'Florida'),
+(10, 'Vertientes'),
+(10, 'Jimaguayú'),
+
+-- Las Tunas (id=11)
+(11, 'Manatí'),
+(11, 'Puerto Padre'),
+(11, 'Jesús Menéndez'),
+(11, 'Majibacoa'),
+(11, 'Las Tunas'),
+(11, 'Jobabo'),
+(11, 'Colombia'),
+(11, 'Amancio'),
+
+-- Holguín (id=12)
+(12, 'Gibara'),
+(12, 'Rafael Freyre'),
+(12, 'Banes'),
+(12, 'Antilla'),
+(12, 'Báguanos'),
+(12, 'Holguín'),
+(12, 'Calixto García'),
+(12, 'Cacocum'),
+(12, 'Urbano Noris'),
+(12, 'Cueto'),
+(12, 'Mayarí'),
+(12, 'Frank País'),
+(12, 'Sagua de Tánamo'),
+(12, 'Moa'),
+
+-- Granma (id=13)
+(13, 'Río Cauto'),
+(13, 'Cauto Cristo'),
+(13, 'Jiguaní'),
+(13, 'Bayamo'),
+(13, 'Yara'),
+(13, 'Manzanillo'),
+(13, 'Media Luna'),
+(13, 'Campechuela'),
+(13, 'Niquero'),
+(13, 'Pilón'),
+(13, 'Bartolomé Masó'),
+(13, 'Buey Arriba'),
+(13, 'Guisa'),
+
+-- Santiago de Cuba (id=14)
+(14, 'Contramaestre'),
+(14, 'Mella'),
+(14, 'San Luis'),
+(14, 'Segundo Frente'),
+(14, 'Songo-La Maya'),
+(14, 'Santiago de Cuba'),
+(14, 'Palma Soriano'),
+(14, 'Tercer Frente'),
+(14, 'Guama'),
+
+-- Guantánamo (id=15)
+(15, 'Yateras'),
+(15, 'Baracoa'),
+(15, 'Maisí'),
+(15, 'Imías'),
+(15, 'San Antonio del Sur'),
+(15, 'Caimanera'),
+(15, 'Guantánamo'),
+(15, 'Niceto Pérez'),
+(15, 'Manuel Tames'),
+(15, 'El Salvador'),
+
+-- Isla de la Juventud (id=16)
+(16, 'Isla de la Juventud');

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { monedaService } from '../services/api';
 import type { Moneda, MonedaCreate, MonedaUpdate } from '../types/moneda';
-import { Plus, Edit, Trash2, Coins, Save, X, ArrowLeft, RefreshCw } from 'lucide-react';
+import { Plus, Edit, Trash2, Coins, CircleDollarSign, Save, X, ArrowLeft, RefreshCw, Type, Text, Sparkles, AlertCircle, Wallet } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { 
   Button, 
@@ -173,37 +173,60 @@ export function MonedasPage() {
   // VISTA: FORMULARIO
   if (view === 'form') {
     return (
-      <div className="space-y-6">
+      <div className="space-y-6 animate-fade-in-up">
+        {/* Header con icono animado */}
         <div className="flex justify-between items-center">
-          <h1 className="text-2xl font-bold text-gray-900">
-            {editingMoneda ? 'Editar Moneda' : 'Nueva Moneda'}
-          </h1>
-          <Button variant="secondary" onClick={() => {
-            setView('list');
-            setEditingMoneda(null);
-            resetForm();
-          }} className="gap-2">
-            <ArrowLeft className="h-4 w-4" />
-            Volver a la lista
-          </Button>
+          <div className="flex items-center gap-4">
+            <div className="p-3 bg-gradient-to-br from-yellow-500 to-amber-600 rounded-xl shadow-lg animate-bounce-subtle">
+              <Coins className="h-8 w-8 text-white" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">
+                {editingMoneda ? 'Editar Moneda' : 'Nueva Moneda'}
+              </h1>
+              <p className="text-sm text-gray-500">
+                {editingMoneda ? 'Actualice la información de la moneda' : 'Complete los datos para crear una nueva moneda'}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <Sparkles className="h-6 w-6 text-yellow-500 animate-pulse" />
+            <Button 
+              variant="secondary" 
+              onClick={() => {
+                setView('list');
+                setEditingMoneda(null);
+                resetForm();
+              }} 
+              className="gap-2 hover:scale-105 transition-transform"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Volver a la lista
+            </Button>
+          </div>
         </div>
 
         <form onSubmit={handleSubmit}>
-          <Card>
-            <CardHeader>
+          <Card className="hover:shadow-lg transition-shadow duration-300">
+            <CardHeader className="border-b bg-gradient-to-r from-yellow-50 to-amber-50">
               <CardTitle className="flex items-center gap-2">
-                <Coins className="h-5 w-5" />
+                <div className="p-2 bg-gradient-to-br from-yellow-500 to-amber-600 rounded-lg">
+                  <CircleDollarSign className="h-5 w-5 text-white" />
+                </div>
                 Información de la Moneda
               </CardTitle>
             </CardHeader>
-            <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="md:col-span-2">
-                <Label>Nombre *</Label>
+            <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-6">
+              <div className="md:col-span-2 space-y-2">
+                <Label className="flex items-center gap-2 text-gray-700">
+                  <Type className="h-5 w-5 text-blue-500" />
+                  Nombre *
+                </Label>
                 <Input
                   type="text"
                   value={formData.nombre}
                   onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
-                  className={`mt-1 ${formErrors.nombre ? 'border-red-500' : ''}`}
+                  className={`mt-1 transition-all duration-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${formErrors.nombre ? 'border-red-500' : ''}`}
                   placeholder="Ej. Dólar"
                 />
                 {formErrors.nombre && (
@@ -211,13 +234,16 @@ export function MonedasPage() {
                 )}
               </div>
 
-              <div className="md:col-span-2">
-                <Label>Denominación *</Label>
+              <div className="md:col-span-2 space-y-2">
+                <Label className="flex items-center gap-2 text-gray-700">
+                  <Text className="h-5 w-5 text-green-500" />
+                  Denominación *
+                </Label>
                 <Input
                   type="text"
                   value={formData.denominacion}
                   onChange={(e) => setFormData({ ...formData, denominacion: e.target.value })}
-                  className={`mt-1 ${formErrors.denominacion ? 'border-red-500' : ''}`}
+                  className={`mt-1 transition-all duration-200 focus:ring-2 focus:ring-green-500 focus:border-green-500 ${formErrors.denominacion ? 'border-red-500' : ''}`}
                   placeholder="Ej. Dólar estadounidense"
                 />
                 {formErrors.denominacion && (
@@ -225,13 +251,16 @@ export function MonedasPage() {
                 )}
               </div>
 
-              <div>
-                <Label>Símbolo *</Label>
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2 text-gray-700">
+                  <Wallet className="h-5 w-5 text-purple-500" />
+                  Símbolo *
+                </Label>
                 <Input
                   type="text"
                   value={formData.simbolo}
                   onChange={(e) => setFormData({ ...formData, simbolo: e.target.value })}
-                  className={`mt-1 ${formErrors.simbolo ? 'border-red-500' : ''}`}
+                  className={`mt-1 transition-all duration-200 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 ${formErrors.simbolo ? 'border-red-500' : ''}`}
                   placeholder="Ej. $"
                   maxLength={5}
                 />
@@ -241,7 +270,7 @@ export function MonedasPage() {
               </div>
 
               <div className="flex items-end">
-                <p className="text-sm text-gray-500">
+                <p className="text-sm text-gray-500 bg-gray-50 px-3 py-2 rounded-lg">
                   Ejemplos: $ (Dólar), € (Euro), Bs (Bolívar)
                 </p>
               </div>
@@ -249,7 +278,7 @@ export function MonedasPage() {
               <div className="flex gap-4 md:col-span-2 pt-4 border-t">
                 <Button 
                   type="submit" 
-                  className="w-32 gap-2"
+                  className="gap-2 bg-gradient-to-r from-yellow-500 to-amber-600 hover:from-yellow-600 hover:to-amber-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300"
                   disabled={createMutation.isPending || updateMutation.isPending}
                 >
                   <Save className="h-4 w-4" />
@@ -266,7 +295,7 @@ export function MonedasPage() {
                     setEditingMoneda(null);
                     resetForm();
                   }}
-                  className="gap-2"
+                  className="gap-2 hover:bg-gray-200 transition-colors"
                 >
                   <X className="h-4 w-4" />
                   Cancelar
@@ -283,8 +312,10 @@ export function MonedasPage() {
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center h-96 gap-4">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-        <div className="text-gray-500">Cargando monedas...</div>
+        <div className="p-4 bg-gradient-to-br from-yellow-100 to-amber-100 rounded-full animate-pulse">
+          <Coins className="h-12 w-12 text-yellow-600 animate-spin" />
+        </div>
+        <div className="text-gray-600 font-medium">Cargando monedas...</div>
       </div>
     );
   }
@@ -292,10 +323,14 @@ export function MonedasPage() {
   if (isError) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-red-500 text-center">
-          <p className="font-bold text-lg mb-2">Error al cargar monedas</p>
-          <p>{error instanceof Error ? error.message : 'Error desconocido'}</p>
-          <Button onClick={() => queryClient.invalidateQueries({ queryKey: ['monedas'] })} className="mt-4 gap-2" variant="secondary">
+        <div className="text-center bg-red-50 border border-red-200 rounded-xl p-8">
+          <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+          <p className="font-bold text-lg mb-2 text-red-700">Error al cargar monedas</p>
+          <p className="text-red-600 mb-4">{error instanceof Error ? error.message : 'Error desconocido'}</p>
+          <Button 
+            onClick={() => queryClient.invalidateQueries({ queryKey: ['monedas'] })} 
+            className="gap-2 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white"
+          >
             <RefreshCw className="h-4 w-4" />
             Reintentar
           </Button>
@@ -305,11 +340,17 @@ export function MonedasPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-fade-in-up">
+      {/* Header con icono animado */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Monedas</h1>
-          <p className="text-gray-500 mt-1">Gestión de monedas ({monedas.length} registradas)</p>
+        <div className="flex items-center gap-4">
+          <div className="p-3 bg-gradient-to-br from-yellow-500 to-amber-600 rounded-xl shadow-lg animate-bounce-subtle">
+            <Coins className="h-8 w-8 text-white" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Monedas</h1>
+            <p className="text-gray-500 mt-1">Gestión de monedas del sistema</p>
+          </div>
         </div>
         <Button
           onClick={() => {
@@ -317,56 +358,77 @@ export function MonedasPage() {
             setEditingMoneda(null);
             setView('form');
           }}
-          className="gap-2"
+          className="gap-2 bg-gradient-to-r from-yellow-500 to-amber-600 hover:from-yellow-600 hover:to-amber-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300"
         >
           <Plus className="h-4 w-4" />
           Nueva Moneda
         </Button>
       </div>
 
-      <Card className="overflow-hidden">
+      <Card className="overflow-hidden hover:shadow-lg transition-shadow duration-300">
         <div className="overflow-x-auto">
           <Table>
-            <TableHeader className="bg-gray-50">
+            <TableHeader className="bg-gradient-to-r from-yellow-50 to-amber-50">
               <TableRow>
-                <TableHead>ID</TableHead>
-                <TableHead>Nombre</TableHead>
-                <TableHead>Denominación</TableHead>
-                <TableHead>Símbolo</TableHead>
+                <TableHead className="flex items-center gap-2">
+                  <Wallet className="h-4 w-4 text-yellow-600" />
+                  ID
+                </TableHead>
+                <TableHead>
+                  <div className="flex items-center gap-2">
+                    <Type className="h-4 w-4 text-blue-500" />
+                    Nombre
+                  </div>
+                </TableHead>
+                <TableHead>
+                  <div className="flex items-center gap-2">
+                    <Text className="h-4 w-4 text-green-500" />
+                    Denominación
+                  </div>
+                </TableHead>
+                <TableHead>
+                  <div className="flex items-center gap-2">
+                    <CircleDollarSign className="h-4 w-4 text-purple-500" />
+                    Símbolo
+                  </div>
+                </TableHead>
                 <TableHead className="text-right">Acciones</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {monedas.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center py-12 text-gray-500">
-                    <Coins className="h-12 w-12 mx-auto mb-3 text-gray-300" />
-                    <p className="mb-2">No se encontraron monedas</p>
-                    <Button 
-                      onClick={() => setView('form')} 
-                      variant="secondary"
-                      className="gap-2"
-                    >
-                      <Plus className="h-4 w-4" />
-                      Agregar primera moneda
-                    </Button>
+                  <TableCell colSpan={5} className="text-center py-12">
+                    <div className="flex flex-col items-center justify-center text-gray-400">
+                      <div className="p-4 bg-gray-100 rounded-full mb-4">
+                        <Coins className="h-12 w-12 text-gray-300" />
+                      </div>
+                      <p className="text-lg font-medium mb-2">No se encontraron monedas</p>
+                      <p className="text-sm mb-4">Comience creando una nueva moneda</p>
+                      <Button 
+                        onClick={() => setView('form')} 
+                        className="gap-2 bg-gradient-to-r from-yellow-500 to-amber-600 hover:from-yellow-600 hover:to-amber-700 text-white"
+                      >
+                        <Plus className="h-4 w-4" />
+                        Crear Moneda
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ) : (
                 monedas.map((moneda) => (
-                  <TableRow key={moneda.id_moneda} className="hover:bg-gray-50">
-                    <TableCell className="font-medium">#{moneda.id_moneda}</TableCell>
+                  <TableRow key={moneda.id_moneda} className="hover:bg-gray-50 transition-colors">
                     <TableCell>
-                      <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-full bg-yellow-100 flex items-center justify-center">
-                          <Coins className="h-4 w-4 text-yellow-600" />
-                        </div>
-                        <span className="font-medium">{moneda.nombre}</span>
-                      </div>
+                      <span className="inline-flex items-center gap-1 px-2 py-1 bg-yellow-100 text-yellow-700 rounded text-sm font-medium">
+                        <Wallet className="h-3 w-3" />
+                        #{moneda.id_moneda}
+                      </span>
                     </TableCell>
+                    <TableCell className="font-semibold">{moneda.nombre}</TableCell>
                     <TableCell>{moneda.denominacion}</TableCell>
                     <TableCell>
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-sm font-semibold bg-blue-100 text-blue-800">
+                      <span className="inline-flex items-center gap-1 px-2 py-1 bg-purple-100 text-purple-700 rounded text-sm font-bold">
+                        <CircleDollarSign className="h-3 w-3" />
                         {moneda.simbolo}
                       </span>
                     </TableCell>
@@ -376,17 +438,16 @@ export function MonedasPage() {
                           variant="ghost"
                           size="icon"
                           onClick={() => handleEdit(moneda)}
-                          className="text-green-600 hover:text-green-800 hover:bg-green-50"
+                          className="text-blue-600 hover:bg-blue-50 hover:scale-110 transition-all"
                           title="Editar"
                         >
                           <Edit className="h-4 w-4" />
                         </Button>
-
                         <Button
                           variant="ghost"
                           size="icon"
                           onClick={() => handleEliminar(moneda)}
-                          className="text-red-600 hover:text-red-800 hover:bg-red-50"
+                          className="text-red-600 hover:bg-red-50 hover:scale-110 transition-all"
                           title="Eliminar"
                         >
                           <Trash2 className="h-4 w-4" />
@@ -408,8 +469,6 @@ export function MonedasPage() {
         title={confirmModal.title}
         message={confirmModal.message}
         type={confirmModal.type}
-        confirmText="Sí, eliminar"
-        cancelText="Cancelar"
       />
     </div>
   );

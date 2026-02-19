@@ -132,12 +132,7 @@ export interface Anexo {
   comision?: number;
 }
 
-export interface Dependencia {
-  id_dependencia: number;
-  id_tipo_dependencia: number;
-  id_datos_generales: number;
-  nombre: string;
-}
+// Dependencia se importa desde dependencia.ts
 
 export interface DashboardStats {
   total_productos: number;
@@ -226,3 +221,6 @@ export interface SubcategoriasUpdate {
 
 // Re-exportar tipos de ventas.ts
 export * from './ventas';
+
+// Re-exportar tipos de dependencia.ts
+export * from './dependencia';
