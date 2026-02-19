@@ -117,8 +117,14 @@ export function DependenciasPage() {
   // Estados para modales de detalle
   const [detailModal, setDetailModal] = useState<{
     isOpen: boolean;
-    dependencia: Dependencia | null;
-  }>({ isOpen: false, dependencia: null });
+    dependenciaId: number | null;
+  }>({ isOpen: false, dependenciaId: null });
+
+  const { data: dependenciaDetalle } = useQuery({
+    queryKey: ['dependencia-detalle', detailModal.dependenciaId],
+    queryFn: () => detailModal.dependenciaId ? dependenciasService.getDependencia(detailModal.dependenciaId) : Promise.resolve(null),
+    enabled: !!detailModal.dependenciaId,
+  });
 
   const [cuentaDetailModal, setCuentaDetailModal] = useState<{
     isOpen: boolean;
@@ -393,11 +399,11 @@ export function DependenciasPage() {
 
   // Funciones para modales de detalle
   const handleSelectDependencia = (dep: Dependencia) => {
-    setDetailModal({ isOpen: true, dependencia: dep });
+    setDetailModal({ isOpen: true, dependenciaId: dep.id_dependencia });
   };
 
   const handleCloseDetailModal = () => {
-    setDetailModal({ isOpen: false, dependencia: null });
+    setDetailModal({ isOpen: false, dependenciaId: null });
   };
 
   const handleShowCuentaDetail = (cuenta: any) => {
@@ -950,7 +956,7 @@ export function DependenciasPage() {
       />
 
       {/* Modal de detalle de dependencia */}
-      {detailModal.isOpen && detailModal.dependencia && (
+      {detailModal.isOpen && dependenciaDetalle && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 animate-fade-in">
           <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col animate-scale-in">
             <div className="flex-shrink-0 flex items-center justify-between p-6 border-b bg-gradient-to-r from-blue-50 to-indigo-50 rounded-t-2xl">
@@ -981,7 +987,7 @@ export function DependenciasPage() {
                         <Building className="h-4 w-4" />
                         Nombre
                       </Label>
-                      <p className="font-semibold text-gray-900 text-lg">{detailModal.dependencia.nombre}</p>
+                      <p className="font-semibold text-gray-900 text-lg">{dependenciaDetalle.nombre}</p>
                     </div>
                     <div className="space-y-1">
                       <Label className="flex items-center gap-2 text-gray-500 text-sm">
@@ -989,7 +995,7 @@ export function DependenciasPage() {
                         Tipo
                       </Label>
                       <span className="inline-flex items-center gap-1 px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm font-medium">
-                        {detailModal.dependencia.tipo_dependencia?.nombre || '-'}
+                        {dependenciaDetalle.tipo_dependencia?.nombre || '-'}
                       </span>
                     </div>
                     <div className="col-span-2 space-y-1">
@@ -997,28 +1003,28 @@ export function DependenciasPage() {
                         <MapPin className="h-4 w-4" />
                         Dirección
                       </Label>
-                      <p className="font-medium text-gray-900">{detailModal.dependencia.direccion}</p>
+                      <p className="font-medium text-gray-900">{dependenciaDetalle.direccion}</p>
                     </div>
                     <div className="space-y-1">
                       <Label className="flex items-center gap-2 text-gray-500 text-sm">
                         <Phone className="h-4 w-4" />
                         Teléfono
                       </Label>
-                      <p className="font-medium text-gray-900">{detailModal.dependencia.telefono}</p>
+                      <p className="font-medium text-gray-900">{dependenciaDetalle.telefono}</p>
                     </div>
                     <div className="space-y-1">
                       <Label className="flex items-center gap-2 text-gray-500 text-sm">
                         <Mail className="h-4 w-4" />
                         Email
                       </Label>
-                      <p className="font-medium text-gray-900">{detailModal.dependencia.email || '-'}</p>
+                      <p className="font-medium text-gray-900">{dependenciaDetalle.email || '-'}</p>
                     </div>
                     <div className="space-y-1">
                       <Label className="flex items-center gap-2 text-gray-500 text-sm">
                         <Globe className="h-4 w-4" />
                         Web
                       </Label>
-                      <p className="font-medium text-gray-900">{detailModal.dependencia.web || '-'}</p>
+                      <p className="font-medium text-gray-900">{dependenciaDetalle.web || '-'}</p>
                     </div>
                     <div className="space-y-1">
                       <Label className="flex items-center gap-2 text-gray-500 text-sm">
@@ -1026,20 +1032,20 @@ export function DependenciasPage() {
                         Ubicación
                       </Label>
                       <p className="font-medium text-gray-900">
-                        {detailModal.dependencia.provincia?.nombre || '-'}, {detailModal.dependencia.municipio?.nombre || '-'}
+                        {dependenciaDetalle.provincia?.nombre || '-'}, {dependenciaDetalle.municipio?.nombre || '-'}
                       </p>
                     </div>
                   </div>
                 </div>
 
                 {/* Cuentas bancarias */}
-                {detailModal.dependencia.cuentas && detailModal.dependencia.cuentas.length > 0 && (
+                {dependenciaDetalle.cuentas && dependenciaDetalle.cuentas.length > 0 && (
                   <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl p-5">
                     <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
                       <Wallet className="h-5 w-5 text-green-600" />
                       Cuentas Bancarias
                       <span className="ml-2 px-2 py-0.5 bg-green-200 text-green-800 rounded-full text-xs">
-                        {detailModal.dependencia.cuentas.length}
+                        {dependenciaDetalle.cuentas.length}
                       </span>
                     </h3>
                     <div className="rounded-lg overflow-hidden border border-green-200">
@@ -1066,7 +1072,7 @@ export function DependenciasPage() {
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {detailModal.dependencia.cuentas.map((cuenta, index) => {
+                          {dependenciaDetalle.cuentas.map((cuenta, index) => {
                             const tipoCuenta = tiposCuenta.find(tc => tc.id_tipo_cuenta === cuenta.id_tipo_cuenta);
                             return (
                               <TableRow key={index} className="hover:bg-green-50/50 transition-colors">
@@ -1099,7 +1105,7 @@ export function DependenciasPage() {
 
                 {/* Subdependencias */}
                 {(() => {
-                  const hijos = dependencias.filter(d => d.codigo_padre === detailModal.dependencia!.id_dependencia);
+                  const hijos = dependencias.filter(d => d.codigo_padre === dependenciaDetalle!.id_dependencia);
                   if (hijos.length === 0) return null;
                   return (
                     <div className="bg-gradient-to-br from-indigo-50 to-blue-50 rounded-xl p-5">

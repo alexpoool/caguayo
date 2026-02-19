@@ -1,5 +1,7 @@
 from typing import List
 from sqlmodel.ext.asyncio.session import AsyncSession
+from sqlmodel import select
+from sqlalchemy.orm import selectinload
 from src.repository.base import CRUDBase
 from src.models import Cuenta
 from src.dto import CuentaCreate, CuentaUpdate, CuentaRead
@@ -11,6 +13,14 @@ class CuentaService:
     @staticmethod
     async def create(db: AsyncSession, data: CuentaCreate) -> CuentaRead:
         db_obj = await cuenta_repo.create(db, obj_in=data)
+        # Recargar con la relación tipo_cuenta
+        statement = (
+            select(Cuenta)
+            .where(Cuenta.id_cuenta == db_obj.id_cuenta)
+            .options(selectinload(Cuenta.tipo_cuenta))
+        )
+        result = await db.exec(statement)
+        db_obj = result.first()
         return CuentaRead.model_validate(db_obj)
 
     @staticmethod

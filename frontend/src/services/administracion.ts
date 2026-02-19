@@ -156,6 +156,10 @@ export const dependenciasService = {
     return await apiClient.get('/dependencias/jerarquia', { params });
   },
 
+  getDependencia: async (id: number): Promise<Dependencia> => {
+    return await apiClient.get(`/dependencias/${id}`);
+  },
+
   createDependencia: async (data: DependenciaConCuentasCreate): Promise<Dependencia> => {
     return await apiClient.post('/dependencias', data);
   },

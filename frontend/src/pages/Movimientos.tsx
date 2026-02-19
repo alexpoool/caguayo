@@ -128,7 +128,7 @@ export function MovimientosPage() {
       {/* Panel Superior - Selector de Tipos */}
       <div className="flex-shrink-0">
         <div className="bg-white rounded-xl shadow-md border border-gray-200 p-3">
-          <div className="flex gap-3 overflow-x-auto">
+          <div className="flex justify-center gap-3 overflow-x-auto">
             {tiposDisponibles.map((tipo) => {
               const config = getTipoConfig(tipo.tipo);
               const Icon = config.icon;

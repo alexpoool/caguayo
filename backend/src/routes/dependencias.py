@@ -83,7 +83,7 @@ async def listar_dependencias(
         selectinload(Dependencia.tipo_dependencia),
         selectinload(Dependencia.provincia),
         selectinload(Dependencia.municipio),
-        selectinload(Dependencia.cuentas),
+        selectinload(Dependencia.cuentas).selectinload(Cuenta.tipo_cuenta),
     )
     if search:
         statement = statement.where(
@@ -104,7 +104,7 @@ async def listar_dependencias_jerarquia(
         selectinload(Dependencia.tipo_dependencia),
         selectinload(Dependencia.provincia),
         selectinload(Dependencia.municipio),
-        selectinload(Dependencia.cuentas),
+        selectinload(Dependencia.cuentas).selectinload(Cuenta.tipo_cuenta),
     )
     if padre_id:
         statement = statement.where(Dependencia.codigo_padre == padre_id)
@@ -138,7 +138,8 @@ async def crear_dependencia(
     if data.cuentas:
         for cuenta_data in data.cuentas:
             cuenta_create = CuentaCreate(
-                id_dependencia=db_obj.id_dependencia, **cuenta_data.model_dump()
+                id_dependencia=db_obj.id_dependencia,
+                **cuenta_data.model_dump(exclude={"id_dependencia"}),
             )
             await CuentaService.create(db, cuenta_create)
 
@@ -150,7 +151,7 @@ async def crear_dependencia(
             selectinload(Dependencia.tipo_dependencia),
             selectinload(Dependencia.provincia),
             selectinload(Dependencia.municipio),
-            selectinload(Dependencia.cuentas),
+            selectinload(Dependencia.cuentas).selectinload(Cuenta.tipo_cuenta),
             selectinload(Dependencia.padre),
         )
     )
@@ -172,7 +173,7 @@ async def obtener_dependencia(
             selectinload(Dependencia.tipo_dependencia),
             selectinload(Dependencia.provincia),
             selectinload(Dependencia.municipio),
-            selectinload(Dependencia.cuentas),
+            selectinload(Dependencia.cuentas).selectinload(Cuenta.tipo_cuenta),
         )
     )
     results = await db.exec(statement)
@@ -213,11 +214,13 @@ async def actualizar_dependencia(
             selectinload(Dependencia.tipo_dependencia),
             selectinload(Dependencia.provincia),
             selectinload(Dependencia.municipio),
-            selectinload(Dependencia.cuentas),
+            selectinload(Dependencia.cuentas).selectinload(Cuenta.tipo_cuenta),
             selectinload(Dependencia.padre).selectinload(Dependencia.tipo_dependencia),
             selectinload(Dependencia.padre).selectinload(Dependencia.provincia),
             selectinload(Dependencia.padre).selectinload(Dependencia.municipio),
-            selectinload(Dependencia.padre).selectinload(Dependencia.cuentas),
+            selectinload(Dependencia.padre)
+            .selectinload(Dependencia.cuentas)
+            .selectinload(Cuenta.tipo_cuenta),
             selectinload(Dependencia.padre).selectinload(Dependencia.padre),
         )
     )
