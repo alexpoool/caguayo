@@ -54,21 +54,26 @@ class ProductosRepository(CRUDBase[Productos, ProductosCreate, ProductosUpdate])
         return await self._get_with_relations(db, db_obj.id_producto)
 
     async def get_multi(
-        self, db: AsyncSession, *, skip: int = 0, limit: int = 100
+        self, db: AsyncSession, *, skip: int = 0, limit: int = 100, search: str = None
     ) -> List[Productos]:
-        statement = (
-            select(self.model)
-            .options(
-                selectinload(Productos.subcategoria).selectinload(
-                    Subcategorias.categoria
-                ),
-                selectinload(Productos.moneda_compra_rel),
-                selectinload(Productos.moneda_venta_rel),
-            )
-            .order_by(self.model.id_producto.desc())
-            .offset(skip)
-            .limit(limit)
+        statement = select(self.model).options(
+            selectinload(Productos.subcategoria).selectinload(Subcategorias.categoria),
+            selectinload(Productos.moneda_compra_rel),
+            selectinload(Productos.moneda_venta_rel),
         )
+
+        # Agregar filtro de búsqueda si se proporciona
+        if search:
+            search_term = f"%{search}%"
+            statement = statement.where(
+                (self.model.nombre.ilike(search_term))
+                | (self.model.descripcion.ilike(search_term))
+            )
+
+        statement = (
+            statement.order_by(self.model.id_producto.desc()).offset(skip).limit(limit)
+        )
+
         results = await db.exec(statement)
         return results.all()
 

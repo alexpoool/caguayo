@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { movimientosService } from '../services/api';
 
@@ -14,7 +15,6 @@ import {
   Clock,
   CheckCircle,
   Trash2,
-  Eye,
   X,
   Sparkles,
   Calendar,
@@ -249,7 +249,7 @@ export function MovimientosPendientesPage() {
     }
   };
 
-  return (
+  const content = (
     <div className="h-[calc(100vh-8rem)] flex flex-col animate-fade-in-up">
       <Card className="flex-1 shadow-lg">
         <CardContent className="p-6">
@@ -289,80 +289,82 @@ export function MovimientosPendientesPage() {
               </p>
             </div>
           ) : (
-            <div className="space-y-4">
-              {movimientosPendientes.map((mov: MovimientoPendiente) => {
-                const config = getTipoConfig(mov.tipo_movimiento?.tipo || 'RECEPCION');
-                const Icon = config.icon;
-                const ImpactoIcon = config.impactoIcon;
-                return (
-                  <div
-                    key={mov.id_movimiento}
-                    className={`bg-white border-2 ${config.borderColor} rounded-xl p-5 hover:shadow-xl transition-all duration-300 hover:-translate-y-1`}
-                  >
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-start gap-4">
-                        <div className={`p-3 rounded-xl bg-gradient-to-br ${config.gradient} text-white shadow-lg`}>
-                          <Icon className="h-6 w-6" />
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-2 mb-1">
-                            <h4 className={`font-bold text-lg ${config.textColor}`}>
-                              {mov.tipo_movimiento?.tipo || 'Movimiento'}
-                            </h4>
-                            <span className={`flex items-center gap-1 text-xs font-bold px-2 py-1 rounded-full ${config.badgeBg} ${config.impactoColor}`}>
-                              <ImpactoIcon className="h-3 w-3" />
-                              {config.impacto}
-                            </span>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-gray-200">
+                    <th className="text-left py-3 px-4 text-sm font-semibold text-gray-600">Tipo</th>
+                    <th className="text-left py-3 px-4 text-sm font-semibold text-gray-600">Producto</th>
+                    <th className="text-center py-3 px-4 text-sm font-semibold text-gray-600">Cantidad</th>
+                    <th className="text-left py-3 px-4 text-sm font-semibold text-gray-600">Fecha</th>
+                    <th className="text-left py-3 px-4 text-sm font-semibold text-gray-600">Dependencia</th>
+                    <th className="text-center py-3 px-4 text-sm font-semibold text-gray-600">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {movimientosPendientes.map((mov: MovimientoPendiente) => {
+                    const config = getTipoConfig(mov.tipo_movimiento?.tipo || 'RECEPCION');
+                    return (
+                      <tr
+                        key={mov.id_movimiento}
+                        className="border-b border-gray-100 hover:bg-gray-50 transition-colors cursor-pointer"
+                        onClick={() => handleVerDetalle(mov)}
+                      >
+                        <td className="py-3 px-4">
+                          <div className="flex items-center gap-2">
+                            <div>
+                              <span className={`font-semibold text-sm ${config.textColor}`}>
+                                {mov.tipo_movimiento?.tipo || 'Movimiento'}
+                              </span>
+                              <span className={`ml-2 text-xs px-2 py-0.5 rounded-full ${config.badgeBg} ${config.impactoColor}`}>
+                                {config.impacto}
+                              </span>
+                            </div>
                           </div>
-                          <p className="text-gray-700 font-medium">{mov.producto?.nombre || 'Producto no disponible'}</p>
-                          <div className="flex items-center gap-4 mt-2 text-sm text-gray-500">
-                            <span className="flex items-center gap-1">
-                              <Hash className="h-4 w-4" />
-                              Cantidad: <span className="font-semibold text-gray-700">{mov.cantidad}</span>
-                            </span>
-                            <span className="flex items-center gap-1">
-                              <Calendar className="h-4 w-4" />
-                              {new Date(mov.fecha).toLocaleDateString('es-ES')}
-                            </span>
-                            <span className="flex items-center gap-1">
-                              <MapPin className="h-4 w-4" />
-                              {mov.dependencia?.nombre || 'Sin dependencia'}
-                            </span>
+                        </td>
+                        <td className="py-3 px-4">
+                          <span className="text-gray-900 font-medium">{mov.producto?.nombre || 'Producto no disponible'}</span>
+                        </td>
+                        <td className="py-3 px-4 text-center">
+                          <span className="font-semibold text-gray-900">{mov.cantidad}</span>
+                        </td>
+                        <td className="py-3 px-4 text-gray-600">
+                          {new Date(mov.fecha).toLocaleDateString('es-ES')}
+                        </td>
+                        <td className="py-3 px-4 text-gray-600">
+                          {mov.dependencia?.nombre || 'Sin dependencia'}
+                        </td>
+                        <td className="py-3 px-4">
+                          <div className="flex items-center justify-center gap-1">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleConfirmarMovimiento(mov.id_movimiento);
+                              }}
+                              disabled={confirmarMutation.isPending}
+                              className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-all disabled:opacity-50"
+                              title="Confirmar movimiento"
+                            >
+                              <CheckCircle className="h-4 w-4" />
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleEliminarMovimiento(mov.id_movimiento);
+                              }}
+                              disabled={eliminarMutation.isPending}
+                              className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-all disabled:opacity-50"
+                              title="Eliminar movimiento"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
                           </div>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        {/* Botón Ver Detalle */}
-                        <button
-                          onClick={() => handleVerDetalle(mov)}
-                          className="p-2.5 text-blue-600 hover:bg-blue-50 rounded-xl transition-all hover:scale-110"
-                          title="Ver detalle"
-                        >
-                          <Eye className="h-5 w-5" />
-                        </button>
-                        {/* Botón Confirmar */}
-                        <button
-                          onClick={() => handleConfirmarMovimiento(mov.id_movimiento)}
-                          disabled={confirmarMutation.isPending}
-                          className="p-2.5 text-green-600 hover:bg-green-50 rounded-xl transition-all hover:scale-110 disabled:opacity-50"
-                          title="Confirmar movimiento"
-                        >
-                          <CheckCircle className="h-5 w-5" />
-                        </button>
-                        {/* Botón Eliminar */}
-                        <button
-                          onClick={() => handleEliminarMovimiento(mov.id_movimiento)}
-                          disabled={eliminarMutation.isPending}
-                          className="p-2.5 text-red-600 hover:bg-red-50 rounded-xl transition-all hover:scale-110 disabled:opacity-50"
-                          title="Eliminar movimiento"
-                        >
-                          <Trash2 className="h-5 w-5" />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
           )}
         </CardContent>
@@ -379,259 +381,267 @@ export function MovimientosPendientesPage() {
         confirmText="Eliminar"
         cancelText="Cancelar"
       />
+    </div>
+  );
 
-      {/* Modal de Error de Stock */}
-      {stockErrorModal.isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 animate-fade-in">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full animate-scale-in">
-            <div className="p-6">
-              <div className="flex items-center justify-center mb-4">
-                <div className="w-20 h-20 bg-gradient-to-br from-red-100 to-rose-100 rounded-full flex items-center justify-center">
-                  <AlertCircle className="h-10 w-10 text-red-600" />
+  const ModalStockError = () => createPortal(
+    stockErrorModal.isOpen && (
+      <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 animate-fade-in">
+        <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full animate-scale-in">
+          <div className="p-6">
+            <div className="flex items-center justify-center mb-4">
+              <div className="w-20 h-20 bg-gradient-to-br from-red-100 to-rose-100 rounded-full flex items-center justify-center">
+                <AlertCircle className="h-10 w-10 text-red-600" />
+              </div>
+            </div>
+            <h3 className="text-2xl font-bold text-gray-900 text-center mb-2">
+              Stock Insuficiente
+            </h3>
+            <p className="text-gray-600 text-center mb-6">
+              No hay suficiente stock para confirmar este movimiento.
+            </p>
+
+            <div className="space-y-3 mb-6">
+              <div className="bg-gray-50 p-4 rounded-xl">
+                <p className="text-xs text-gray-500 uppercase tracking-wider">Producto</p>
+                <p className="font-bold text-gray-900">{stockErrorModal.productoNombre}</p>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-4 rounded-xl border border-green-200">
+                  <p className="text-xs text-green-600 uppercase tracking-wider">Stock Disponible</p>
+                  <p className="font-bold text-green-900 text-2xl">{stockErrorModal.stockDisponible}</p>
+                </div>
+                <div className="bg-gradient-to-br from-red-50 to-rose-50 p-4 rounded-xl border border-red-200">
+                  <p className="text-xs text-red-600 uppercase tracking-wider">Cantidad Solicitada</p>
+                  <p className="font-bold text-red-900 text-2xl">{stockErrorModal.cantidadSolicitada}</p>
                 </div>
               </div>
-              <h3 className="text-2xl font-bold text-gray-900 text-center mb-2">
-                Stock Insuficiente
-              </h3>
-              <p className="text-gray-600 text-center mb-6">
-                No hay suficiente stock para confirmar este movimiento.
-              </p>
+            </div>
 
-              <div className="space-y-3 mb-6">
-                <div className="bg-gray-50 p-4 rounded-xl">
-                  <p className="text-xs text-gray-500 uppercase tracking-wider">Producto</p>
-                  <p className="font-bold text-gray-900">{stockErrorModal.productoNombre}</p>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-4 rounded-xl border border-green-200">
-                    <p className="text-xs text-green-600 uppercase tracking-wider">Stock Disponible</p>
-                    <p className="font-bold text-green-900 text-2xl">{stockErrorModal.stockDisponible}</p>
-                  </div>
-                  <div className="bg-gradient-to-br from-red-50 to-rose-50 p-4 rounded-xl border border-red-200">
-                    <p className="text-xs text-red-600 uppercase tracking-wider">Cantidad Solicitada</p>
-                    <p className="font-bold text-red-900 text-2xl">{stockErrorModal.cantidadSolicitada}</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex gap-3">
-                <button
-                  onClick={() => setStockErrorModal({ ...stockErrorModal, isOpen: false })}
-                  className="flex-1 px-4 py-3 text-gray-700 bg-gray-100 rounded-xl hover:bg-gray-200 transition-colors font-medium"
-                >
-                  Cerrar
-                </button>
-                <button
-                  onClick={() => {
-                    if (stockErrorModal.movimiento) {
-                      handleEliminarMovimiento(stockErrorModal.movimiento.id_movimiento);
-                    }
-                    setStockErrorModal({ ...stockErrorModal, isOpen: false });
-                  }}
-                  disabled={eliminarMutation.isPending}
-                  className="flex-1 px-4 py-3 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-xl hover:from-red-600 hover:to-red-700 transition-all font-medium flex items-center justify-center gap-2 disabled:opacity-50 shadow-lg"
-                >
-                  <Trash2 className="h-4 w-4" />
-                  Eliminar Movimiento
-                </button>
-              </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setStockErrorModal({ ...stockErrorModal, isOpen: false })}
+                className="flex-1 px-4 py-3 text-gray-700 bg-gray-100 rounded-xl hover:bg-gray-200 transition-colors font-medium"
+              >
+                Cerrar
+              </button>
+              <button
+                onClick={() => {
+                  if (stockErrorModal.movimiento) {
+                    handleEliminarMovimiento(stockErrorModal.movimiento.id_movimiento);
+                  }
+                  setStockErrorModal({ ...stockErrorModal, isOpen: false });
+                }}
+                disabled={eliminarMutation.isPending}
+                className="flex-1 px-4 py-3 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-xl hover:from-red-600 hover:to-red-700 transition-all font-medium flex items-center justify-center gap-2 disabled:opacity-50 shadow-lg"
+              >
+                <Trash2 className="h-4 w-4" />
+                Eliminar Movimiento
+              </button>
             </div>
           </div>
         </div>
-      )}
+      </div>
+    ),
+    document.body
+  );
 
-      {/* Modal de Detalle */}
-      {detailModal.isOpen && detailModal.movimiento && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 animate-fade-in">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-auto animate-scale-in">
-            {(() => {
-              const config = getTipoConfig(detailModal.movimiento?.tipo_movimiento?.tipo || 'RECEPCION');
-              const Icon = config.icon;
-              const ImpactoIcon = config.impactoIcon;
-              return (
-                <>
-                  <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-white">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-4">
-                        <div className={`p-3 rounded-xl bg-gradient-to-br ${config.gradient} text-white shadow-lg`}>
-                          <Icon className="h-7 w-7" />
+  const ModalDetalle = () => createPortal(
+    detailModal.isOpen && detailModal.movimiento && (
+      <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 animate-fade-in">
+        <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-auto animate-scale-in">
+          {(() => {
+            const config = getTipoConfig(detailModal.movimiento?.tipo_movimiento?.tipo || 'RECEPCION');
+            const Icon = config.icon;
+            const ImpactoIcon = config.impactoIcon;
+            return (
+              <>
+                <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-white">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <div className={`p-3 rounded-xl bg-gradient-to-br ${config.gradient} text-white shadow-lg`}>
+                        <Icon className="h-7 w-7" />
+                      </div>
+                      <div>
+                        <h3 className="text-2xl font-bold text-gray-900">
+                          {detailModal.movimiento?.tipo_movimiento?.tipo}
+                        </h3>
+                        <p className="text-sm text-gray-500">
+                          Movimiento #{detailModal.movimiento?.id_movimiento}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className={`flex items-center gap-1 text-sm font-bold px-3 py-1.5 rounded-full ${config.bgColor} ${config.impactoColor}`}>
+                        <ImpactoIcon className="h-4 w-4" />
+                        {config.impacto}
+                      </span>
+                      <button
+                        onClick={() => setDetailModal({ isOpen: false, movimiento: null })}
+                        className="p-2 hover:bg-gray-200 rounded-full transition-colors"
+                      >
+                        <X className="h-6 w-6 text-gray-500" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-6 space-y-6">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-4 rounded-xl border border-blue-100">
+                      <p className="flex items-center gap-2 text-xs text-blue-600 uppercase tracking-wider mb-1">
+                        <Package className="h-3 w-3" />
+                        Producto
+                      </p>
+                      <p className="font-bold text-gray-900">{detailModal.movimiento?.producto?.nombre || 'N/A'}</p>
+                    </div>
+                    <div className="bg-gradient-to-br from-orange-50 to-amber-50 p-4 rounded-xl border border-orange-100">
+                      <p className="flex items-center gap-2 text-xs text-orange-600 uppercase tracking-wider mb-1">
+                        <Hash className="h-3 w-3" />
+                        Cantidad
+                      </p>
+                      <p className="font-bold text-gray-900 text-lg">{detailModal.movimiento?.cantidad}</p>
+                    </div>
+                    <div className="bg-gradient-to-br from-purple-50 to-pink-50 p-4 rounded-xl border border-purple-100">
+                      <p className="flex items-center gap-2 text-xs text-purple-600 uppercase tracking-wider mb-1">
+                        <Calendar className="h-3 w-3" />
+                        Fecha
+                      </p>
+                      <p className="font-bold text-gray-900">
+                        {new Date(detailModal.movimiento?.fecha || '').toLocaleDateString('es-ES', {
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </p>
+                    </div>
+                    <div className="bg-gradient-to-br from-red-50 to-rose-50 p-4 rounded-xl border border-red-100">
+                      <p className="flex items-center gap-2 text-xs text-red-600 uppercase tracking-wider mb-1">
+                        <MapPin className="h-3 w-3" />
+                        Dependencia
+                      </p>
+                      <p className="font-bold text-gray-900">{detailModal.movimiento?.dependencia?.nombre || 'N/A'}</p>
+                    </div>
+                  </div>
+
+                  {detailModal.movimiento?.tipo_movimiento?.tipo === 'RECEPCION' && (
+                    <div className="border-t border-gray-200 pt-6">
+                      <h4 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
+                        <div className={`p-2 rounded-lg bg-gradient-to-br ${config.gradient} text-white`}>
+                          <Truck className="h-4 w-4" />
                         </div>
-                        <div>
-                          <h3 className="text-2xl font-bold text-gray-900">
-                            {detailModal.movimiento?.tipo_movimiento?.tipo}
-                          </h3>
-                          <p className="text-sm text-gray-500">
-                            Movimiento #{detailModal.movimiento?.id_movimiento}
+                        Información del Proveedor
+                      </h4>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="bg-gray-50 p-4 rounded-xl">
+                          <p className="flex items-center gap-2 text-xs text-gray-500 uppercase tracking-wider mb-1">
+                            <Building className="h-3 w-3" />
+                            Proveedor
+                          </p>
+                          <p className="font-bold text-gray-900">{detailModal.movimiento?.provedor?.nombre || 'N/A'}</p>
+                        </div>
+                        <div className="bg-gray-50 p-4 rounded-xl">
+                          <p className="flex items-center gap-2 text-xs text-gray-500 uppercase tracking-wider mb-1">
+                            <FileText className="h-3 w-3" />
+                            Convenio
+                          </p>
+                          <p className="font-bold text-gray-900">{detailModal.movimiento?.convenio?.nombre_convenio || 'N/A'}</p>
+                        </div>
+                        <div className="bg-gray-50 p-4 rounded-xl">
+                          <p className="flex items-center gap-2 text-xs text-gray-500 uppercase tracking-wider mb-1">
+                            <ClipboardList className="h-3 w-3" />
+                            Anexo
+                          </p>
+                          <p className="font-bold text-gray-900">
+                            {detailModal.movimiento?.anexo
+                              ? `${detailModal.movimiento.anexo.nombre_anexo} - ${detailModal.movimiento.anexo.numero_anexo}`
+                              : 'N/A'}
+                          </p>
+                        </div>
+                        <div className="bg-gray-50 p-4 rounded-xl">
+                          <p className="flex items-center gap-2 text-xs text-gray-500 uppercase tracking-wider mb-1">
+                            <Hash className="h-3 w-3" />
+                            Código
+                          </p>
+                          <p className="font-bold text-gray-900 font-mono">{detailModal.movimiento?.codigo || 'N/A'}</p>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4 mt-4">
+                        <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-4 rounded-xl border border-blue-200">
+                          <p className="flex items-center gap-2 text-xs text-blue-600 uppercase tracking-wider mb-1">
+                            <TrendingDown className="h-3 w-3" />
+                            Precio de Compra
+                          </p>
+                          <p className="font-bold text-blue-900 text-xl">
+                            {detailModal.movimiento?.precio_compra
+                              ? `$${detailModal.movimiento.precio_compra.toFixed(2)}`
+                              : 'N/A'}
+                          </p>
+                        </div>
+                        <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-4 rounded-xl border border-green-200">
+                          <p className="flex items-center gap-2 text-xs text-green-600 uppercase tracking-wider mb-1">
+                            <TrendingUp className="h-3 w-3" />
+                            Precio de Venta
+                          </p>
+                          <p className="font-bold text-green-900 text-xl">
+                            {detailModal.movimiento?.precio_venta
+                              ? `$${detailModal.movimiento.precio_venta.toFixed(2)}`
+                              : 'N/A'}
                           </p>
                         </div>
                       </div>
-                      <div className="flex items-center gap-3">
-                        <span className={`flex items-center gap-1 text-sm font-bold px-3 py-1.5 rounded-full ${config.badgeBg} ${config.impactoColor}`}>
-                          <ImpactoIcon className="h-4 w-4" />
-                          {config.impacto}
-                        </span>
-                        <button
-                          onClick={() => setDetailModal({ isOpen: false, movimiento: null })}
-                          className="p-2 hover:bg-gray-200 rounded-full transition-colors"
-                        >
-                          <X className="h-6 w-6 text-gray-500" />
-                        </button>
-                      </div>
                     </div>
-                  </div>
+                  )}
 
-                  <div className="p-6 space-y-6">
-                    {/* Información General */}
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-4 rounded-xl border border-blue-100">
-                        <p className="flex items-center gap-2 text-xs text-blue-600 uppercase tracking-wider mb-1">
-                          <Package className="h-3 w-3" />
-                          Producto
-                        </p>
-                        <p className="font-bold text-gray-900">{detailModal.movimiento?.producto?.nombre || 'N/A'}</p>
-                      </div>
-                      <div className="bg-gradient-to-br from-orange-50 to-amber-50 p-4 rounded-xl border border-orange-100">
-                        <p className="flex items-center gap-2 text-xs text-orange-600 uppercase tracking-wider mb-1">
-                          <Hash className="h-3 w-3" />
-                          Cantidad
-                        </p>
-                        <p className="font-bold text-gray-900 text-lg">{detailModal.movimiento?.cantidad}</p>
-                      </div>
-                      <div className="bg-gradient-to-br from-purple-50 to-pink-50 p-4 rounded-xl border border-purple-100">
-                        <p className="flex items-center gap-2 text-xs text-purple-600 uppercase tracking-wider mb-1">
-                          <Calendar className="h-3 w-3" />
-                          Fecha
-                        </p>
-                        <p className="font-bold text-gray-900">
-                          {new Date(detailModal.movimiento?.fecha || '').toLocaleDateString('es-ES', {
-                            year: 'numeric',
-                            month: 'long',
-                            day: 'numeric',
-                            hour: '2-digit',
-                            minute: '2-digit',
-                          })}
-                        </p>
-                      </div>
-                      <div className="bg-gradient-to-br from-red-50 to-rose-50 p-4 rounded-xl border border-red-100">
-                        <p className="flex items-center gap-2 text-xs text-red-600 uppercase tracking-wider mb-1">
-                          <MapPin className="h-3 w-3" />
-                          Dependencia
-                        </p>
-                        <p className="font-bold text-gray-900">{detailModal.movimiento?.dependencia?.nombre || 'N/A'}</p>
-                      </div>
+                  {detailModal.movimiento?.observacion && (
+                    <div className="border-t border-gray-200 pt-6">
+                      <h4 className="font-bold text-gray-900 mb-3 flex items-center gap-2">
+                        <ClipboardList className="h-4 w-4 text-gray-500" />
+                        Observación
+                      </h4>
+                      <p className="text-gray-700 bg-gray-50 p-4 rounded-xl border border-gray-200">
+                        {detailModal.movimiento.observacion}
+                      </p>
                     </div>
+                  )}
+                </div>
 
-                    {/* Información de Proveedor (solo para RECEPCION) */}
-                    {detailModal.movimiento?.tipo_movimiento?.tipo === 'RECEPCION' && (
-                      <div className="border-t border-gray-200 pt-6">
-                        <h4 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
-                          <div className={`p-2 rounded-lg bg-gradient-to-br ${config.gradient} text-white`}>
-                            <Truck className="h-4 w-4" />
-                          </div>
-                          Información del Proveedor
-                        </h4>
-                        <div className="grid grid-cols-2 gap-4">
-                          <div className="bg-gray-50 p-4 rounded-xl">
-                            <p className="flex items-center gap-2 text-xs text-gray-500 uppercase tracking-wider mb-1">
-                              <Building className="h-3 w-3" />
-                              Proveedor
-                            </p>
-                            <p className="font-bold text-gray-900">{detailModal.movimiento?.provedor?.nombre || 'N/A'}</p>
-                          </div>
-                          <div className="bg-gray-50 p-4 rounded-xl">
-                            <p className="flex items-center gap-2 text-xs text-gray-500 uppercase tracking-wider mb-1">
-                              <FileText className="h-3 w-3" />
-                              Convenio
-                            </p>
-                            <p className="font-bold text-gray-900">{detailModal.movimiento?.convenio?.nombre_convenio || 'N/A'}</p>
-                          </div>
-                          <div className="bg-gray-50 p-4 rounded-xl">
-                            <p className="flex items-center gap-2 text-xs text-gray-500 uppercase tracking-wider mb-1">
-                              <ClipboardList className="h-3 w-3" />
-                              Anexo
-                            </p>
-                            <p className="font-bold text-gray-900">
-                              {detailModal.movimiento?.anexo
-                                ? `${detailModal.movimiento.anexo.nombre_anexo} - ${detailModal.movimiento.anexo.numero_anexo}`
-                                : 'N/A'}
-                            </p>
-                          </div>
-                          <div className="bg-gray-50 p-4 rounded-xl">
-                            <p className="flex items-center gap-2 text-xs text-gray-500 uppercase tracking-wider mb-1">
-                              <Hash className="h-3 w-3" />
-                              Código
-                            </p>
-                            <p className="font-bold text-gray-900 font-mono">{detailModal.movimiento?.codigo || 'N/A'}</p>
-                          </div>
-                        </div>
-
-                        {/* Precios */}
-                        <div className="grid grid-cols-2 gap-4 mt-4">
-                          <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-4 rounded-xl border border-blue-200">
-                            <p className="flex items-center gap-2 text-xs text-blue-600 uppercase tracking-wider mb-1">
-                              <TrendingDown className="h-3 w-3" />
-                              Precio de Compra
-                            </p>
-                            <p className="font-bold text-blue-900 text-xl">
-                              {detailModal.movimiento?.precio_compra
-                                ? `$${detailModal.movimiento.precio_compra.toFixed(2)}`
-                                : 'N/A'}
-                            </p>
-                          </div>
-                          <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-4 rounded-xl border border-green-200">
-                            <p className="flex items-center gap-2 text-xs text-green-600 uppercase tracking-wider mb-1">
-                              <TrendingUp className="h-3 w-3" />
-                              Precio de Venta
-                            </p>
-                            <p className="font-bold text-green-900 text-xl">
-                              {detailModal.movimiento?.precio_venta
-                                ? `$${detailModal.movimiento.precio_venta.toFixed(2)}`
-                                : 'N/A'}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Observación */}
-                    {detailModal.movimiento?.observacion && (
-                      <div className="border-t border-gray-200 pt-6">
-                        <h4 className="font-bold text-gray-900 mb-3 flex items-center gap-2">
-                          <ClipboardList className="h-4 w-4 text-gray-500" />
-                          Observación
-                        </h4>
-                        <p className="text-gray-700 bg-gray-50 p-4 rounded-xl border border-gray-200">
-                          {detailModal.movimiento.observacion}
-                        </p>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="p-6 border-t border-gray-200 bg-gray-50 flex justify-end gap-3">
-                    <button
-                      onClick={() => setDetailModal({ isOpen: false, movimiento: null })}
-                      className="px-6 py-3 text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors font-medium"
-                    >
-                      Cerrar
-                    </button>
-                    <button
-                      onClick={() => {
-                        handleConfirmarMovimiento(detailModal.movimiento!.id_movimiento);
-                        setDetailModal({ isOpen: false, movimiento: null });
-                      }}
-                      disabled={confirmarMutation.isPending}
-                      className="px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl hover:from-green-600 hover:to-emerald-700 transition-all disabled:opacity-50 flex items-center gap-2 shadow-lg font-bold"
-                    >
-                      <CheckCircle className="h-5 w-5" />
-                      Confirmar
-                    </button>
-                  </div>
-                </>
-              );
-            })()}
-          </div>
+                <div className="p-6 border-t border-gray-200 bg-gray-50 flex justify-end gap-3">
+                  <button
+                    onClick={() => setDetailModal({ isOpen: false, movimiento: null })}
+                    className="px-6 py-3 text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors font-medium"
+                  >
+                    Cerrar
+                  </button>
+                  <button
+                    onClick={() => {
+                      handleConfirmarMovimiento(detailModal.movimiento!.id_movimiento);
+                      setDetailModal({ isOpen: false, movimiento: null });
+                    }}
+                    disabled={confirmarMutation.isPending}
+                    className="px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl hover:from-green-600 hover:to-emerald-700 transition-all disabled:opacity-50 flex items-center gap-2 shadow-lg font-bold"
+                  >
+                    <CheckCircle className="h-5 w-5" />
+                    Confirmar
+                  </button>
+                </div>
+              </>
+            );
+          })()}
         </div>
-      )}
-    </div>
+      </div>
+    ),
+    document.body
+  );
+
+  return (
+    <>
+      {content}
+      <ModalStockError />
+      <ModalDetalle />
+    </>
   );
 }

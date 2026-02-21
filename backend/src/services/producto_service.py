@@ -23,9 +23,11 @@ class ProductosService:
 
     @staticmethod
     async def get_productos(
-        db: AsyncSession, skip: int = 0, limit: int = 100
+        db: AsyncSession, skip: int = 0, limit: int = 100, search: str = None
     ) -> List[ProductosRead]:
-        db_productos = await productos_repo.get_multi(db, skip=skip, limit=limit)
+        db_productos = await productos_repo.get_multi(
+            db, skip=skip, limit=limit, search=search
+        )
         return [ProductosRead.from_orm(p) for p in db_productos]
 
     @staticmethod

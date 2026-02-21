@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useLocation, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -12,6 +12,7 @@ import { MovimientosPage } from './pages/Movimientos';
 import { MovimientosPendientesPage } from './pages/MovimientosPendientes';
 import { ConfiguracionPage } from './pages/Configuracion';
 import { UsuariosPage } from './pages/Usuarios';
+import { GruposPage } from './pages/Grupos';
 import { DependenciasPage } from './pages/Dependencias';
 import React from 'react';
 import { 
@@ -29,7 +30,7 @@ import {
   Coins
 } from 'lucide-react';
 
-type Modulo = 'administracion' | 'comercializacion' | 'representacion' | 'inventario' | 'reportes';
+type Modulo = 'administracion' | 'venta' | 'compra' | 'inventario' | 'reportes';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -44,9 +45,9 @@ const queryClient = new QueryClient({
 // Definición de rutas por módulo (excluyendo el Dashboard que es global)
 const rutasPorModulo: Record<Modulo, string[]> = {
   inventario: ['/movimientos', '/movimientos/pendientes', '/productos'],
-  administracion: ['/configuracion', '/usuarios', '/monedas', '/dependencias'],
-  comercializacion: ['/ventas', '/clientes'],
-  representacion: [],
+  administracion: ['/configuracion', '/usuarios', '/grupos', '/monedas', '/dependencias'],
+  venta: ['/ventas', '/clientes'],
+  compra: [],
   reportes: [],
 };
 
@@ -74,91 +75,11 @@ function ProtectedRoute({
 
 function App() {
   const [moduloActivo, setModuloActivo] = useState<Modulo>('inventario');
-  const [isHeaderVisible, setIsHeaderVisible] = useState(true);
-  const [isHoveringHeader, setIsHoveringHeader] = useState(false);
-  const [isSidebarVisible, setIsSidebarVisible] = useState(true);
-  const [isHoveringSidebar, setIsHoveringSidebar] = useState(false);
-  const hideTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const sidebarTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const location = useLocation();
 
   const handleLinkClick = () => {};
 
-  // Auto-hide header after inactivity (500ms)
-  useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      // Show header when cursor is in top 40px
-      if (e.clientY < 40) {
-        setIsHeaderVisible(true);
-        if (hideTimeoutRef.current) {
-          clearTimeout(hideTimeoutRef.current);
-          hideTimeoutRef.current = null;
-        }
-      } else if (!isHoveringHeader) {
-        // Start hide timer when cursor leaves header area (500ms)
-        if (!hideTimeoutRef.current) {
-          hideTimeoutRef.current = setTimeout(() => {
-            setIsHeaderVisible(false);
-          }, 500);
-        }
-      }
-    };
-
-    window.addEventListener('mousemove', handleMouseMove);
-    
-    // Initial hide after 500ms
-    const initialTimeout = setTimeout(() => {
-      if (!isHoveringHeader) {
-        setIsHeaderVisible(false);
-      }
-    }, 500);
-
-    return () => {
-      window.removeEventListener('mousemove', handleMouseMove);
-      clearTimeout(initialTimeout);
-      if (hideTimeoutRef.current) {
-        clearTimeout(hideTimeoutRef.current);
-      }
-    };
-  }, [isHoveringHeader]);
-
-  // Auto-hide sidebar after inactivity (500ms)
-  useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      // Show sidebar when cursor is in left 40px
-      if (e.clientX < 40) {
-        setIsSidebarVisible(true);
-        if (sidebarTimeoutRef.current) {
-          clearTimeout(sidebarTimeoutRef.current);
-          sidebarTimeoutRef.current = null;
-        }
-      } else if (!isHoveringSidebar) {
-        // Start hide timer when cursor leaves sidebar area (500ms)
-        if (!sidebarTimeoutRef.current) {
-          sidebarTimeoutRef.current = setTimeout(() => {
-            setIsSidebarVisible(false);
-          }, 500);
-        }
-      }
-    };
-
-    window.addEventListener('mousemove', handleMouseMove);
-    
-    // Initial hide after 500ms
-    const initialTimeout = setTimeout(() => {
-      if (!isHoveringSidebar) {
-        setIsSidebarVisible(false);
-      }
-    }, 500);
-
-    return () => {
-      window.removeEventListener('mousemove', handleMouseMove);
-      clearTimeout(initialTimeout);
-      if (sidebarTimeoutRef.current) {
-        clearTimeout(sidebarTimeoutRef.current);
-      }
-    };
-  }, [isHoveringSidebar]);
+  // Sidebar and header are always visible
 
   const NavLink = ({ to, children, onClick, exact = false }: { to: string; children: React.ReactNode; onClick?: () => void; exact?: boolean }) => {
     const linkLocation = useLocation();
@@ -202,8 +123,8 @@ function App() {
 
   const modulos: { id: Modulo; label: string; icon: React.ElementType }[] = [
     { id: 'administracion', label: 'Administración', icon: Shield },
-    { id: 'comercializacion', label: 'Comercialización', icon: Briefcase },
-    { id: 'representacion', label: 'Representación', icon: UserCircle },
+    { id: 'venta', label: 'Venta', icon: Briefcase },
+    { id: 'compra', label: 'Compra', icon: UserCircle },
     { id: 'inventario', label: 'Inventario', icon: Boxes },
     { id: 'reportes', label: 'Reportes', icon: BarChart3 },
   ];
@@ -224,16 +145,7 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <div className="flex h-screen bg-gray-50">
         <aside 
-          className={`fixed left-0 top-0 h-full w-64 bg-slate-900 text-white flex flex-col shadow-xl z-50 transition-transform duration-300 ease-in-out ${
-            isSidebarVisible ? 'translate-x-0' : '-translate-x-full'
-          }`}
-          onMouseEnter={() => setIsHoveringSidebar(true)}
-          onMouseLeave={() => {
-            setIsHoveringSidebar(false);
-            sidebarTimeoutRef.current = setTimeout(() => {
-              setIsSidebarVisible(false);
-            }, 500);
-          }}
+          className="fixed left-0 top-0 h-full w-64 bg-slate-900 text-white flex flex-col shadow-xl z-50"
         >
           <div className="p-6 border-b border-slate-800">
             <h1 className="text-2xl font-bold tracking-wider text-blue-400 text-center">CAGUAYO</h1>
@@ -275,6 +187,12 @@ function App() {
                   <NavLink to="/usuarios" onClick={handleLinkClick}>
                     <Users className="w-5 h-5" />
                     Usuarios
+                  </NavLink>
+                </li>
+                <li>
+                  <NavLink to="/grupos" onClick={handleLinkClick}>
+                    <Shield className="w-5 h-5" />
+                    Grupos
                   </NavLink>
                 </li>
                 <li>
@@ -330,22 +248,11 @@ function App() {
         </aside>
 
         <div 
-          className={`flex-1 flex flex-col overflow-hidden min-w-0 relative transition-all duration-300 ease-in-out ${
-            isSidebarVisible ? 'ml-64' : 'ml-0'
-          }`}
+          className="flex-1 flex flex-col overflow-hidden min-w-0 ml-64"
         >
-          {/* Header with auto-hide */}
+          {/* Header always visible */}
           <header 
-            className={`fixed top-0 ${isSidebarVisible ? 'left-64' : 'left-0'} right-0 z-40 bg-white shadow-sm border-b border-gray-200 px-6 py-4 h-16 flex items-center justify-between transition-all duration-300 ease-in-out ${
-              isHeaderVisible ? 'translate-y-0' : '-translate-y-full'
-            }`}
-            onMouseEnter={() => setIsHoveringHeader(true)}
-            onMouseLeave={() => {
-              setIsHoveringHeader(false);
-              hideTimeoutRef.current = setTimeout(() => {
-                setIsHeaderVisible(false);
-              }, 500);
-            }}
+            className="fixed top-0 left-64 right-0 z-40 bg-white shadow-sm border-b border-gray-200 px-6 py-4 h-16 flex items-center justify-between"
           >
             <Link
               to="/"
@@ -358,7 +265,7 @@ function App() {
               {modulos.map((modulo) => {
                 const Icon = modulo.icon;
                 const isActive = moduloActivo === modulo.id;
-                const isEnabled = modulo.id === 'inventario' || modulo.id === 'administracion';
+                const isEnabled = ['inventario', 'administracion', 'venta', 'compra'].includes(modulo.id);
                 
                 return (
                   <button
@@ -489,6 +396,14 @@ function App() {
                   } 
                 />
                 <Route 
+                  path="/grupos" 
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/grupos">
+                      <GruposPage />
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route
                   path="/dependencias" 
                   element={
                     <ProtectedRoute moduloActivo={moduloActivo} currentPath="/dependencias">

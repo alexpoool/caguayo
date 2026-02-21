@@ -81,7 +81,7 @@ function Modal({ isOpen, onClose, title, children }: ModalProps) {
   
   return (
     <div 
-      className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 animate-fade-in" 
+      className="fixed inset-0 bg-black/60 flex items-center justify-center z-[100] p-4 animate-fade-in" 
       onClick={handleBackdropClick}
     >
       <div className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] flex flex-col animate-scale-in">

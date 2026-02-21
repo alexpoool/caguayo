@@ -36,8 +36,12 @@ import type {
 } from '../types/moneda';
 
 export const productosService = {
-  async getProductos(skip = 0, limit = 100): Promise<Productos[]> {
-    return apiClient.get<Productos[]>(`/productos?skip=${skip}&limit=${limit}`);
+  async getProductos(skip = 0, limit = 100, search?: string): Promise<Productos[]> {
+    let url = `/productos?skip=${skip}&limit=${limit}`;
+    if (search && search.trim()) {
+      url += `&search=${encodeURIComponent(search.trim())}`;
+    }
+    return apiClient.get<Productos[]>(url);
   },
 
   async getProducto(id: number): Promise<Productos> {

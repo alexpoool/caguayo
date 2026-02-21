@@ -120,6 +120,9 @@ export function DependenciasPage() {
     dependenciaId: number | null;
   }>({ isOpen: false, dependenciaId: null });
 
+  // Estado para dependencia seleccionada desde el árbol
+  const [dependenciaSeleccionadaArbol, setDependenciaSeleccionadaArbol] = useState<Dependencia | null>(null);
+
   const { data: dependenciaDetalle } = useQuery({
     queryKey: ['dependencia-detalle', detailModal.dependenciaId],
     queryFn: () => detailModal.dependenciaId ? dependenciasService.getDependencia(detailModal.dependenciaId) : Promise.resolve(null),
@@ -399,7 +402,15 @@ export function DependenciasPage() {
 
   // Funciones para modales de detalle
   const handleSelectDependencia = (dep: Dependencia) => {
+    setDependenciaSeleccionadaArbol(dep);
+  };
+
+  const handleVerDetalleDesdeTabla = (dep: Dependencia) => {
     setDetailModal({ isOpen: true, dependenciaId: dep.id_dependencia });
+  };
+
+  const handleLimpiarSeleccionArbol = () => {
+    setDependenciaSeleccionadaArbol(null);
   };
 
   const handleCloseDetailModal = () => {
@@ -886,9 +897,55 @@ export function DependenciasPage() {
 
         <Card className="lg:col-span-2">
           <CardHeader>
-            <CardTitle>Listado de Dependencias</CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center gap-2">
+                {dependenciaSeleccionadaArbol ? (
+                  <>
+                    <Network className="h-5 w-5 text-blue-600" />
+                    <span>{dependenciaSeleccionadaArbol.nombre}</span>
+                    <span className="text-sm font-normal text-gray-500">(y sus subdependencias)</span>
+                  </>
+                ) : (
+                  <>
+                    <Building2 className="h-5 w-5 text-blue-600" />
+                    Listado de Dependencias
+                  </>
+                )}
+              </CardTitle>
+              {dependenciaSeleccionadaArbol && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleLimpiarSeleccionArbol}
+                  className="text-gray-600 hover:text-gray-900 border-gray-300 hover:border-gray-400"
+                >
+                  <ArrowLeft className="h-4 w-4 mr-1" />
+                  Ver todas
+                </Button>
+              )}
+            </div>
           </CardHeader>
           <CardContent>
+            {dependenciaSeleccionadaArbol && (
+              <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg flex items-center gap-3">
+                <div className="p-2 bg-blue-100 rounded-lg">
+                  <Building className="h-5 w-5 text-blue-600" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-blue-900">{dependenciaSeleccionadaArbol.nombre}</p>
+                  <p className="text-xs text-blue-700">Selecciona una fila para ver detalles</p>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleVerDetalleDesdeTabla(dependenciaSeleccionadaArbol)}
+                  className="text-blue-600 hover:text-blue-800 hover:bg-blue-100"
+                >
+                  <FileText className="h-4 w-4 mr-1" />
+                  Detalles
+                </Button>
+              </div>
+            )}
             <Table>
               <TableHeader className="bg-gray-50">
                 <TableRow>
@@ -899,47 +956,70 @@ export function DependenciasPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {dependencias.map((dep) => (
-                  <TableRow key={dep.id_dependencia}>
-                    <TableCell className="font-medium">
-                      <div className="flex items-center gap-2">
-                        {dep.codigo_padre && <span className="text-gray-400">└─</span>}
-                        {dep.nombre}
-                      </div>
-                    </TableCell>
-                    <TableCell>{dep.tipo_dependencia?.nombre || '-'}</TableCell>
-                    <TableCell>{dep.telefono}</TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleNuevaSubdependencia(dep)}
-                          className="text-green-600"
-                        >
-                          <Plus className="h-4 w-4 mr-1" />
-                          Sub
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleEdit(dep)}
-                          className="text-blue-600"
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleDelete(dep)}
-                          className="text-red-600"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {(() => {
+                  const depsFiltradas = dependenciaSeleccionadaArbol
+                    ? dependencias.filter(dep => 
+                        dep.codigo_padre === dependenciaSeleccionadaArbol.id_dependencia
+                      )
+                    : dependencias;
+                  
+                  if (depsFiltradas.length === 0) {
+                    return (
+                      <TableRow>
+                        <TableCell colSpan={4} className="text-center py-8 text-gray-500">
+                          <Building className="h-8 w-8 mx-auto mb-2 text-gray-300" />
+                          <p>No hay subdependencias</p>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  }
+                  
+                  return depsFiltradas.map((dep) => (
+                    <TableRow 
+                      key={dep.id_dependencia}
+                      className="cursor-pointer hover:bg-blue-50 transition-colors"
+                      onClick={() => handleVerDetalleDesdeTabla(dep)}
+                    >
+                      <TableCell className="font-medium">
+                        <div className="flex items-center gap-2">
+                          {dep.codigo_padre && <span className="text-gray-400">└─</span>}
+                          {dep.nombre}
+                        </div>
+                      </TableCell>
+                      <TableCell>{dep.tipo_dependencia?.nombre || '-'}</TableCell>
+                      <TableCell>{dep.telefono}</TableCell>
+                      <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleNuevaSubdependencia(dep)}
+                            className="text-green-600"
+                          >
+                            <Plus className="h-4 w-4 mr-1" />
+                            Sub
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleEdit(dep)}
+                            className="text-blue-600"
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleDelete(dep)}
+                            className="text-red-600"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ));
+                })()}
               </TableBody>
             </Table>
           </CardContent>
@@ -957,7 +1037,7 @@ export function DependenciasPage() {
 
       {/* Modal de detalle de dependencia */}
       {detailModal.isOpen && dependenciaDetalle && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 animate-fade-in">
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[100] p-4 animate-fade-in">
           <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col animate-scale-in">
             <div className="flex-shrink-0 flex items-center justify-between p-6 border-b bg-gradient-to-r from-blue-50 to-indigo-50 rounded-t-2xl">
               <div className="flex items-center gap-3">
@@ -1137,7 +1217,7 @@ export function DependenciasPage() {
 
       {/* Modal de detalle de cuenta */}
       {cuentaDetailModal.isOpen && cuentaDetailModal.cuenta && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[60] p-4 animate-fade-in">
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[100] p-4 animate-fade-in">
           <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full animate-scale-in">
             <div className="flex items-center justify-between p-6 border-b bg-gradient-to-r from-emerald-50 to-green-50 rounded-t-2xl">
               <div className="flex items-center gap-3">

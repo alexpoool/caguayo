@@ -35,7 +35,8 @@ import {
   Sparkles,
   MapPin,
   ClipboardList,
-  ArrowRight
+  ArrowRight,
+  ArrowLeft
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -569,6 +570,14 @@ export function MovimientoRecepcionForm({
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-4">
+          <button
+            type="button"
+            onClick={onCancel}
+            className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+            title="Volver"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </button>
           <div className={`p-4 rounded-2xl bg-gradient-to-br ${config.gradient} text-white shadow-xl animate-bounce-subtle`}>
             <Icon className="h-8 w-8" />
           </div>

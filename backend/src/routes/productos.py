@@ -31,9 +31,14 @@ async def create_producto(
 
 @router.get("", response_model=List[ProductosRead])
 async def read_productos(
-    skip: int = 0, limit: int = 100, db: AsyncSession = Depends(get_session)
+    skip: int = 0,
+    limit: int = 100,
+    search: str = None,
+    db: AsyncSession = Depends(get_session),
 ):
-    return await ProductosService.get_productos(db, skip=skip, limit=limit)
+    return await ProductosService.get_productos(
+        db, skip=skip, limit=limit, search=search
+    )
 
 
 @router.get("/search/{nombre}", response_model=List[ProductosRead])

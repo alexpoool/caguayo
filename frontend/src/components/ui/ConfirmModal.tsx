@@ -1,4 +1,5 @@
 import { AlertTriangle, X } from 'lucide-react';
+import { createPortal } from 'react-dom';
 import { Button } from './Button';
 
 interface ConfirmModalProps {
@@ -22,8 +23,6 @@ export function ConfirmModal({
   cancelText = 'Cancelar',
   type = 'danger',
 }: ConfirmModalProps) {
-  if (!isOpen) return null;
-
   const typeStyles = {
     danger: {
       icon: 'text-red-600',
@@ -44,10 +43,9 @@ export function ConfirmModal({
 
   const styles = typeStyles[type];
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50 backdrop-blur-sm">
+  const modalContent = !isOpen ? null : (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 animate-fade-in">
       <div className="relative w-full max-w-md bg-white rounded-lg shadow-xl animate-in fade-in zoom-in duration-200">
-        {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-gray-200">
           <div className="flex items-center gap-3">
             <div className={`p-2 rounded-full ${styles.bg}`}>
@@ -63,12 +61,10 @@ export function ConfirmModal({
           </button>
         </div>
 
-        {/* Content */}
         <div className="p-6">
           <p className="text-gray-600">{message}</p>
         </div>
 
-        {/* Footer */}
         <div className="flex justify-end gap-3 p-4 border-t border-gray-200 bg-gray-50 rounded-b-lg">
           <Button variant="secondary" onClick={onClose}>
             {cancelText}
@@ -86,4 +82,6 @@ export function ConfirmModal({
       </div>
     </div>
   );
+
+  return createPortal(modalContent, document.body);
 }

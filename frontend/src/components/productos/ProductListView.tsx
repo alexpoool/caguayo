@@ -1,5 +1,5 @@
 
-import { Package, Edit, Trash2, Search, Plus, RefreshCw } from 'lucide-react';
+import { Package, Edit, Trash2, Search, Plus, RefreshCw, Loader2 } from 'lucide-react';
 import type { Productos } from '../../types/index';
 import { 
   Button, 
@@ -12,6 +12,7 @@ import {
   TableHead, 
   TableCell 
 } from '../ui';
+import { RefObject } from 'react';
 
 interface ProductListViewProps {
   productos: Productos[];
@@ -22,8 +23,10 @@ interface ProductListViewProps {
   onDelete: (id: number) => void;
   onCreateNew: () => void;
   isLoading: boolean;
+  isFetchingMore?: boolean;
   isError: boolean;
   onRetry: () => void;
+  loadMoreRef?: RefObject<HTMLDivElement>;
 }
 
 export function ProductListView({
@@ -35,8 +38,10 @@ export function ProductListView({
   onDelete,
   onCreateNew,
   isLoading,
+  isFetchingMore,
   isError,
-  onRetry
+  onRetry,
+  loadMoreRef
 }: ProductListViewProps) {
 
   if (isLoading) {
@@ -174,6 +179,17 @@ export function ProductListView({
             </TableBody>
           </Table>
         </div>
+        {/* Elemento para scroll infinito */}
+        {loadMoreRef && (
+          <div ref={loadMoreRef} className="flex justify-center py-4">
+            {isFetchingMore && (
+              <div className="flex items-center gap-2 text-gray-500">
+                <Loader2 className="h-5 w-5 animate-spin" />
+                <span>Cargando más productos...</span>
+              </div>
+            )}
+          </div>
+        )}
       </Card>
     </div>
   );
