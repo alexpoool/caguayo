@@ -46,6 +46,9 @@ from .movimientos_dto import (
     MovimientoCreate,
     MovimientoRead,
     MovimientoUpdate,
+    DestinoAjuste,
+    AjusteCreate,
+    MovimientoAjusteRead,
 )
 from .cuentas_dto import (
     CuentaBase,
@@ -175,6 +178,9 @@ __all__ = [
     "MovimientoCreate",
     "MovimientoRead",
     "MovimientoUpdate",
+    "DestinoAjuste",
+    "AjusteCreate",
+    "MovimientoAjusteRead",
     "TipoDependenciaBase",
     "TipoDependenciaCreate",
     "TipoDependenciaRead",

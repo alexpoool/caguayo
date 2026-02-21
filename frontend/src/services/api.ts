@@ -259,6 +259,19 @@ export const movimientosService = {
 
   async getOrigenRecepcion(movimientoId: number): Promise<OrigenRecepcion> {
     return apiClient.get<OrigenRecepcion>(`/movimientos/${movimientoId}/origen`);
+  },
+
+  async getRecepcionesStock(): Promise<any[]> {
+    return apiClient.get<any[]>('/movimientos/recepciones-stock');
+  },
+
+  async crearAjuste(data: {
+    id_movimiento_origen: number;
+    destinos: { id_dependencia: number; cantidad: number }[];
+    fecha?: string;
+    observacion?: string;
+  }): Promise<any[]> {
+    return apiClient.post<any[]>('/movimientos/ajuste', data);
   }
 };
 

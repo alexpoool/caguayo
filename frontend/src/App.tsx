@@ -10,6 +10,8 @@ import { PerfilClientePage } from './pages/PerfilCliente';
 import { MonedasPage } from './pages/Monedas';
 import { MovimientosPage } from './pages/Movimientos';
 import { MovimientosPendientesPage } from './pages/MovimientosPendientes';
+import { RecepcionesPage } from './pages/RecepcionesPage';
+import { MovimientoAjusteForm } from './pages/movimientos/MovimientoAjusteForm';
 import { ConfiguracionPage } from './pages/Configuracion';
 import { UsuariosPage } from './pages/Usuarios';
 import { GruposPage } from './pages/Grupos';
@@ -330,14 +332,30 @@ function App() {
                 
                 {/* Rutas de Comercialización - protegidas */}
                 <Route 
-                  path="/ventas" 
+                  path="/movimientos/pendientes" 
                   element={
-                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/ventas">
-                      <VentasPage />
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/movimientos/pendientes">
+                      <MovimientosPendientesPage />
                     </ProtectedRoute>
                   } 
                 />
                 <Route 
+                  path="/movimientos/seleccionar-recepcion" 
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/movimientos">
+                      <RecepcionesPage />
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route 
+                  path="/movimientos/ajuste" 
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/movimientos">
+                      <MovimientoAjusteForm />
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route
                   path="/clientes" 
                   element={
                     <ProtectedRoute moduloActivo={moduloActivo} currentPath="/clientes">

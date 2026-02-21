@@ -93,3 +93,24 @@ class MovimientoUpdate(SQLModel):
     id_moneda_compra: Optional[int] = None
     precio_venta: Optional[Decimal] = None
     id_moneda_venta: Optional[int] = None
+
+
+# DTOs para Ajuste
+class DestinoAjuste(SQLModel):
+    id_dependencia: int
+    cantidad: int
+
+
+class AjusteCreate(SQLModel):
+    id_movimiento_origen: int
+    destinos: list[DestinoAjuste]
+    fecha: Optional[str] = None
+    observacion: Optional[str] = None
+
+
+class MovimientoAjusteRead(SQLModel):
+    id_movimiento: int
+    tipo: str
+    cantidad: int
+    id_dependencia: int
+    dependencia_nombre: Optional[str] = None

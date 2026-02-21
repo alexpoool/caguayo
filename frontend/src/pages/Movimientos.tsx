@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useQuery } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import { movimientosService } from '../services/api';
 import type { TipoMovimiento } from '../types/index';
 import { useMovimientos } from '../hooks/useMovimientos';
@@ -24,6 +25,7 @@ import {
   ClipboardList,
   Hash,
   CheckCircle,
+  ArrowRightLeft,
 } from 'lucide-react';
 import {
   Button,
@@ -32,6 +34,7 @@ import {
 } from '../components/ui';
 
 export function MovimientosPage() {
+  const navigate = useNavigate();
   const [selectedTipo, setSelectedTipo] = useState<TipoMovimiento | null>(null);
   const [view, setView] = useState<'list' | 'form'>('list');
   const [detailModal, setDetailModal] = useState<{ isOpen: boolean; movimiento: any | null }>({
@@ -56,6 +59,7 @@ export function MovimientosPage() {
   const { data: tiposMovimiento = [], isLoading: isLoadingTipos } = useQuery({
     queryKey: ['tipos-movimiento'],
     queryFn: () => movimientosService.getTiposMovimiento(),
+    staleTime: 0,
   });
 
   const {
@@ -91,20 +95,27 @@ export function MovimientosPage() {
     return () => observer.disconnect();
   }, [hasMore, isFetchingMore, loadMore]);
 
-  const tiposDisponibles = tiposMovimiento
-    .filter((tipo) => ['RECEPCION', 'MERMA', 'DONACION', 'DEVOLUCION'].includes(tipo.tipo))
-    .sort((a, b) => {
-      if (a.tipo === 'RECEPCION') return -1;
-      if (b.tipo === 'RECEPCION') return 1;
-      return 0;
-    });
-
   const handleTipoSelect = (tipo: string) => {
-    const tipoObj = tiposMovimiento.find(t => t.tipo === tipo);
-    if (tipoObj) {
-      setSelectedTipo(tipoObj);
-      setView('form');
+    if (tipo === 'AJUSTE') {
+      navigate('/movimientos/ajuste');
+      return;
     }
+    // Buscar el tipo en la lista, si no existe crear uno con la estructura mínima
+    let tipoObj = tiposMovimiento.find((t: any) => t.tipo === tipo);
+    
+    if (!tipoObj) {
+      // Crear un objeto temporal si no se ha cargado la lista
+      tipoObj = {
+        id_tipo_movimiento: tipo === 'RECEPCION' ? 1 : 
+                           tipo === 'MERMA' ? 2 : 
+                           tipo === 'DONACION' ? 3 : 4,
+        tipo: tipo,
+        factor: tipo === 'RECEPCION' ? 1 : -1
+      };
+    }
+    
+    setSelectedTipo(tipoObj);
+    setView('form');
   };
 
   const handleFormSubmit = () => {
@@ -227,23 +238,41 @@ export function MovimientosPage() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          {tiposDisponibles.map((tipo) => {
-            const config = getTipoConfig(tipo.tipo);
-            const Icon = config.icon;
-            return (
-              <Button
-                key={tipo.id_tipo_movimiento}
-                onClick={() => handleTipoSelect(tipo.tipo)}
-                className="gap-2 shadow-sm"
-              >
-                <Icon className="h-4 w-4" />
-                {tipo.tipo === 'RECEPCION' && 'Recepción'}
-                {tipo.tipo === 'MERMA' && 'Merma'}
-                {tipo.tipo === 'DONACION' && 'Donación'}
-                {tipo.tipo === 'DEVOLUCION' && 'Devolución'}
-              </Button>
-            );
-          })}
+          <Button
+            onClick={() => handleTipoSelect('RECEPCION')}
+            className="gap-2 shadow-sm bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white"
+          >
+            <Truck className="h-4 w-4" />
+            Recepción
+          </Button>
+          <Button
+            onClick={() => handleTipoSelect('MERMA')}
+            className="gap-2 shadow-sm bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700 text-white"
+          >
+            <AlertCircle className="h-4 w-4" />
+            Merma
+          </Button>
+          <Button
+            onClick={() => handleTipoSelect('DONACION')}
+            className="gap-2 shadow-sm bg-gradient-to-r from-purple-500 to-violet-600 hover:from-purple-600 hover:to-violet-700 text-white"
+          >
+            <Gift className="h-4 w-4" />
+            Donación
+          </Button>
+          <Button
+            onClick={() => handleTipoSelect('DEVOLUCION')}
+            className="gap-2 shadow-sm bg-gradient-to-r from-orange-500 to-amber-600 hover:from-orange-600 hover:to-amber-700 text-white"
+          >
+            <RotateCcw className="h-4 w-4" />
+            Devolución
+          </Button>
+          <Button
+            onClick={() => handleTipoSelect('AJUSTE')}
+            className="gap-2 shadow-sm bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white"
+          >
+            <ArrowRightLeft className="h-4 w-4" />
+            Ajuste
+          </Button>
         </div>
       </div>
 

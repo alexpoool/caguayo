@@ -23,7 +23,9 @@ import {
   Building,
   FileText,
   ClipboardList,
-  PackageCheck
+  PackageCheck,
+  ArrowRight,
+  ArrowLeft
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -231,6 +233,34 @@ export function MovimientosPendientesPage() {
           descripcion: 'Registro de devoluciones a proveedores',
           badgeBg: 'bg-orange-100',
           buttonBg: 'hover:bg-orange-50',
+        };
+      case 'AJUSTE_AGREGAR':
+        return {
+          icon: ArrowRight,
+          gradient: 'from-blue-500 to-indigo-600',
+          bgColor: 'bg-blue-50',
+          borderColor: 'border-blue-200',
+          textColor: 'text-blue-700',
+          impacto: 'Entrada',
+          impactoIcon: TrendingUp,
+          impactoColor: 'text-green-600',
+          descripcion: 'Ajuste: entrada de productos por transferencia',
+          badgeBg: 'bg-blue-100',
+          buttonBg: 'hover:bg-blue-50',
+        };
+      case 'AJUSTE_QUITAR':
+        return {
+          icon: ArrowLeft,
+          gradient: 'from-red-500 to-rose-600',
+          bgColor: 'bg-red-50',
+          borderColor: 'border-red-200',
+          textColor: 'text-red-700',
+          impacto: 'Salida',
+          impactoIcon: TrendingDown,
+          impactoColor: 'text-red-600',
+          descripcion: 'Ajuste: salida de productos por transferencia',
+          badgeBg: 'bg-red-100',
+          buttonBg: 'hover:bg-red-50',
         };
       default:
         return {

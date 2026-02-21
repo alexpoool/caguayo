@@ -10,6 +10,8 @@ from src.dto import (
     MovimientoCreate,
     MovimientoRead,
     TipoMovimientoRead,
+    AjusteCreate,
+    MovimientoAjusteRead,
 )
 
 logger = logging.getLogger(__name__)
@@ -25,7 +27,7 @@ async def listar_tipos_movimiento(
     statement = select(TipoMovimiento)
     results = await db.exec(statement)
     tipos = results.all()
-    return [TipoMovimientoRead.from_orm(t) for t in tipos]
+    return [TipoMovimientoRead.model_validate(t) for t in tipos]
 
 
 @router.get("", response_model=List[MovimientoRead])
@@ -46,6 +48,17 @@ async def listar_movimientos_pendientes(
     return await MovimientoService.get_movimientos_pendientes(db)
 
 
+@router.get("/recepciones-stock", response_model=List[dict])
+async def listar_recepciones_stock(
+    db: AsyncSession = Depends(get_session),
+):
+    """Obtener movimientos de tipo RECEPCION.
+
+    Retorna lista de recepciones disponibles para ajustar.
+    """
+    return await MovimientoService.get_recepciones_stock(db)
+
+
 @router.post("", response_model=MovimientoRead, status_code=201)
 async def crear_movimiento(
     movimiento: MovimientoCreate,
@@ -62,6 +75,31 @@ async def crear_movimiento(
         raise HTTPException(
             status_code=500, detail=f"Error al crear movimiento: {str(e)}"
         )
+
+
+@router.post("/ajuste", response_model=List[MovimientoAjusteRead])
+async def crear_ajuste(
+    ajuste: AjusteCreate,
+    db: AsyncSession = Depends(get_session),
+):
+    """Crear movimientos de ajuste (quitar de origen, agregar a destinos).
+
+    Recibe:
+    - id_movimiento_origen: ID del movimiento de recepción original
+    - destinos: Lista de dependencias destino con sus cantidades
+
+    Crea:
+    - 1 movimiento AJUSTE_QUITAR (factor -1) en la dependencia origen
+    - N movimientos AJUSTE_AGREGAR (factor +1) en cada dependencia destino
+    """
+    try:
+        result = await MovimientoService.crear_ajuste(db, ajuste)
+        return result
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Error al crear ajuste: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Error al crear ajuste: {str(e)}")
 
 
 @router.get("/{movimiento_id}", response_model=MovimientoRead)
