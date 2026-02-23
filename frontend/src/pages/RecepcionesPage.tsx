@@ -10,9 +10,7 @@ import {
   Building,
   Truck,
   FileText,
-  Hash,
-  ClipboardList,
-  FolderOpen
+  Hash
 } from 'lucide-react';
 
 interface RecepcionStock {

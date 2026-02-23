@@ -65,27 +65,16 @@ export function UsuariosPage() {
       )
     : usuarios;
 
-  const generatePassword = (ci: string): string => {
-    let hash = 0;
-    for (let i = 0; i < ci.length; i++) {
-      const char = ci.charCodeAt(i);
-      hash = ((hash << 5) - hash) + char;
-      hash = hash & hash;
-    }
-    return Math.abs(hash).toString(16).padStart(8, '0').substring(0, 8);
-  };
-
   const createUsuario = useMutation({
     mutationFn: administracionService.createUsuario,
-    onSuccess: (data, variables) => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['usuarios'] });
       toast.success('Usuario creado exitosamente');
       resetUsuarioForm();
-      const contraseniaGenerada = generatePassword(variables.ci);
       setCreatedUserModal({
         isOpen: true,
         usuario: data,
-        contrasenia: contraseniaGenerada,
+        contrasenia: data.password_temporal || '',
       });
     },
     onError: () => toast.error('Error al crear usuario'),
@@ -466,9 +455,11 @@ export function UsuariosPage() {
                       size="icon"
                       className="h-6 w-6"
                       onClick={() => {
-                        navigator.clipboard.writeText(createdUserModal.usuario!.password_temporal);
-                        setCopiedField('password');
-                        setTimeout(() => setCopiedField(null), 2000);
+                        if (createdUserModal.usuario!.password_temporal) {
+                          navigator.clipboard.writeText(createdUserModal.usuario!.password_temporal!);
+                          setCopiedField('password');
+                          setTimeout(() => setCopiedField(null), 2000);
+                        }
                       }}
                     >
                       {copiedField === 'password' ? <CheckCircle className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
@@ -517,10 +508,6 @@ export function UsuariosPage() {
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label className="text-gray-600">Correo</Label>
-                <div className="font-medium">{detailModal.usuario.correo || '-'}</div>
-              </div>
               <div>
                 <Label className="text-gray-600">C.I</Label>
                 <div className="font-medium">{detailModal.usuario.ci}</div>

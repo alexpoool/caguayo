@@ -35,7 +35,7 @@ import {
 
 export function MovimientosPage() {
   const navigate = useNavigate();
-  const [selectedTipo, setSelectedTipo] = useState<TipoMovimiento | null>(null);
+  const [selectedTipoForm, setSelectedTipoForm] = useState<TipoMovimiento | null>(null);
   const [view, setView] = useState<'list' | 'form'>('list');
   const [detailModal, setDetailModal] = useState<{ isOpen: boolean; movimiento: any | null }>({
     isOpen: false,
@@ -114,19 +114,19 @@ export function MovimientosPage() {
       };
     }
     
-    setSelectedTipo(tipoObj);
+    setSelectedTipoForm(tipoObj);
     setView('form');
   };
 
   const handleFormSubmit = () => {
     setView('list');
-    setSelectedTipo(null);
+    setSelectedTipoForm(null);
     refresh();
   };
 
   const handleFormCancel = () => {
     setView('list');
-    setSelectedTipo(null);
+    setSelectedTipoForm(null);
   };
 
   const handleVerDetalle = (movimiento: any) => {
@@ -195,6 +195,28 @@ export function MovimientosPage() {
           impactoIcon: TrendingDown,
           impactoColor: 'text-red-600',
         };
+      case 'AJUSTE_AGREGAR':
+        return {
+          icon: Package,
+          gradient: 'from-blue-500 to-indigo-600',
+          bgColor: 'bg-blue-50',
+          borderColor: 'border-blue-200',
+          textColor: 'text-blue-700',
+          impacto: 'Entrada',
+          impactoIcon: TrendingUp,
+          impactoColor: 'text-green-600',
+        };
+      case 'AJUSTE_QUITAR':
+        return {
+          icon: Package,
+          gradient: 'from-amber-500 to-orange-600',
+          bgColor: 'bg-amber-50',
+          borderColor: 'border-amber-200',
+          textColor: 'text-amber-700',
+          impacto: 'Salida',
+          impactoIcon: TrendingDown,
+          impactoColor: 'text-red-600',
+        };
       default:
         return {
           icon: Package,
@@ -217,11 +239,11 @@ export function MovimientosPage() {
     );
   }
 
-  if (view === 'form' && selectedTipo) {
+  if (view === 'form' && selectedTipoForm) {
     return (
       <MovimientoRecepcionForm
-        key={selectedTipo.id_tipo_movimiento}
-        tipoMovimiento={selectedTipo.tipo as 'RECEPCION' | 'MERMA' | 'DONACION' | 'DEVOLUCION'}
+        key={selectedTipoForm.id_tipo_movimiento}
+        tipoMovimiento={selectedTipoForm.tipo as 'RECEPCION' | 'MERMA' | 'DONACION' | 'DEVOLUCION'}
         onSubmit={handleFormSubmit}
         onCancel={handleFormCancel}
       />
@@ -276,12 +298,12 @@ export function MovimientosPage() {
         </div>
       </div>
 
-      <div className="flex gap-2">
-        <div className="flex-1 relative max-w-md">
+      <div className="flex flex-wrap gap-2 items-center">
+        <div className="relative max-w-md flex-1">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
           <Input
             type="text"
-            placeholder="Buscar por producto, tipo o dependencia..."
+            placeholder="Buscar... (usa tipo:RECEPCION, tipo:AJUSTE_AGREGAR, etc.)"
             value={searchTerm}
             onChange={(e) => setSearch(e.target.value)}
             className="pl-10"

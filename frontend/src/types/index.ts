@@ -32,8 +32,8 @@ export interface Productos {
   moneda_venta: number;
   precio_venta: number;
   precio_minimo: number;
-  // Campo calculado desde movimientos confirmados
   cantidad?: number;
+  stock?: number;
   subcategoria?: Subcategorias;
   moneda_compra_rel?: Moneda;
   moneda_venta_rel?: Moneda;
@@ -77,6 +77,10 @@ export interface Movimiento {
   id_moneda_venta?: number;
   tipo_movimiento?: TipoMovimiento;
   producto?: Productos;
+  dependencia?: {
+    id_dependencia: number;
+    nombre: string;
+  };
 }
 
 export interface MovimientoCreate {

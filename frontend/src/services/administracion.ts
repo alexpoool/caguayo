@@ -4,8 +4,8 @@ import type { EstadoContrato, EstadoContratoCreate, EstadoContratoUpdate } from 
 import type { TipoProveedor, TipoProveedorCreate, TipoProveedorUpdate } from '../types/proveedor';
 import type { TipoConvenio, TipoConvenioCreate, TipoConvenioUpdate } from '../types/proveedor';
 import type { Cuenta, CuentaCreate, CuentaUpdate } from '../types/cuenta';
-import type { Grupo, GrupoCreate, GrupoUpdate, Usuario, UsuarioCreate, UsuarioUpdate } from '../types/usuario';
-import type { TipoDependencia, TipoDependenciaCreate, TipoDependenciaUpdate, Dependencia, DependenciaCreate, DependenciaConCuentasCreate, DependenciaUpdate } from '../types/dependencia';
+import type { Grupo, GrupoCreate, GrupoUpdate, Funcionalidad, Usuario, UsuarioCreate, UsuarioUpdate } from '../types/usuario';
+import type { TipoDependencia, TipoDependenciaCreate, TipoDependenciaUpdate, Dependencia, DependenciaConCuentasCreate, DependenciaUpdate } from '../types/dependencia';
 import type { Provincia, Municipio } from '../types/ubicacion';
 import type { Moneda } from '../types/moneda';
 import type { TipoCuenta, TipoCuentaCreate, TipoCuentaUpdate } from '../types/tipo_cuenta';
@@ -107,6 +107,10 @@ export const administracionService = {
 
   deleteCuenta: async (id: number): Promise<void> => {
     await apiClient.delete(`/administracion/cuentas/${id}`);
+  },
+
+  getFuncionalidades: async (): Promise<Funcionalidad[]> => {
+    return await apiClient.get('/administracion/funcionalidades');
   },
 
   getGrupos: async (): Promise<Grupo[]> => {

@@ -34,10 +34,13 @@ async def listar_tipos_movimiento(
 async def listar_movimientos(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=1000),
+    tipo: str = Query(None, description="Filtrar por tipo de movimiento"),
     db: AsyncSession = Depends(get_session),
 ):
-    """Listar todos los movimientos con paginación."""
-    return await MovimientoService.get_movimientos(db, skip=skip, limit=limit)
+    """Listar todos los movimientos con paginación y filtro opcional por tipo."""
+    return await MovimientoService.get_movimientos(
+        db, skip=skip, limit=limit, tipo=tipo
+    )
 
 
 @router.get("/pendientes", response_model=List[MovimientoRead])

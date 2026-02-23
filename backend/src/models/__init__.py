@@ -17,6 +17,7 @@ from .contrato import TipoContrato, EstadoContrato
 from .cuenta import Cuenta
 from .tipo_cuenta import TipoCuenta
 from .usuarios import Grupo, Usuario
+from .funcionalidades import Funcionalidad, GrupoFuncionalidad
 
 __all__ = [
     "Moneda",
@@ -46,4 +47,6 @@ __all__ = [
     "TipoCuenta",
     "Grupo",
     "Usuario",
+    "Funcionalidad",
+    "GrupoFuncionalidad",
 ]

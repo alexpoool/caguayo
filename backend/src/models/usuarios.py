@@ -3,6 +3,7 @@ from typing import Optional, List, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from .dependencia import Dependencia
+    from .funcionalidades import GrupoFuncionalidad
 
 
 class Grupo(SQLModel, table=True):
@@ -13,6 +14,7 @@ class Grupo(SQLModel, table=True):
     descripcion: Optional[str] = None
 
     usuarios: List["Usuario"] = Relationship(back_populates="grupo")
+    funcionalidades: List["GrupoFuncionalidad"] = Relationship(back_populates="grupo")
 
 
 class Usuario(SQLModel, table=True):

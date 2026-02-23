@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { 
-  Shield, ShieldCheck, Edit, Trash2, Save, X, Plus, Search, FileText
+  Shield, ShieldCheck, Edit, Trash2, Save, X, Plus, Search, FileText, Check
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import {
@@ -10,14 +10,14 @@ import {
   ConfirmModal, Table, TableHeader, TableBody, TableRow, TableHead, TableCell
 } from '../components/ui';
 import { administracionService } from '../services/administracion';
-import type { Grupo, GrupoCreate } from '../types/usuario';
+import type { Grupo, GrupoCreate, GrupoUpdate } from '../types/usuario';
 
 export function GruposPage() {
   const queryClient = useQueryClient();
   const [view, setView] = useState<'list' | 'form'>('list');
   const [editingGrupo, setEditingGrupo] = useState<Grupo | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [grupoForm, setGrupoForm] = useState<GrupoCreate>({ nombre: '', descripcion: '' });
+  const [grupoForm, setGrupoForm] = useState<GrupoCreate>({ nombre: '', descripcion: '', funcionalidades: [] });
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
     title: string;
@@ -33,6 +33,11 @@ export function GruposPage() {
   const { data: grupos = [] } = useQuery({
     queryKey: ['grupos'],
     queryFn: () => administracionService.getGrupos(),
+  });
+
+  const { data: funcionalidades = [] } = useQuery({
+    queryKey: ['funcionalidades'],
+    queryFn: () => administracionService.getFuncionalidades(),
   });
 
   const { data: usuarios = [] } = useQuery({
@@ -62,7 +67,7 @@ export function GruposPage() {
   });
 
   const updateGrupo = useMutation({
-    mutationFn: ({ id, data }: { id: number; data: Partial<Grupo> }) =>
+    mutationFn: ({ id, data }: { id: number; data: GrupoUpdate }) =>
       administracionService.updateGrupo(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['grupos'] });
@@ -80,7 +85,16 @@ export function GruposPage() {
     },
   });
 
-  const resetGrupoForm = () => setGrupoForm({ nombre: '', descripcion: '' });
+  const resetGrupoForm = () => setGrupoForm({ nombre: '', descripcion: '', funcionalidades: [] });
+
+  const handleFuncionalidadChange = (funcionalidadId: number, checked: boolean) => {
+    const current = grupoForm.funcionalidades || [];
+    if (checked) {
+      setGrupoForm({ ...grupoForm, funcionalidades: [...current, funcionalidadId] });
+    } else {
+      setGrupoForm({ ...grupoForm, funcionalidades: current.filter(id => id !== funcionalidadId) });
+    }
+  };
 
   const handleGrupoSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -112,7 +126,15 @@ export function GruposPage() {
 
   const handleEdit = (grupo: Grupo) => {
     setEditingGrupo(grupo);
-    setGrupoForm(grupo);
+    const funcs = grupo.funcionalidades;
+    const funcIds = Array.isArray(funcs) 
+      ? funcs.map(f => typeof f === 'number' ? f : f.id_funcionalidad)
+      : [];
+    setGrupoForm({
+      nombre: grupo.nombre,
+      descripcion: grupo.descripcion,
+      funcionalidades: funcIds
+    });
     setView('form');
   };
 
@@ -181,6 +203,41 @@ export function GruposPage() {
                   placeholder="Descripción opcional"
                   className="transition-all duration-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
+              </div>
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2 text-gray-700">
+                  <Check className="h-5 w-5 text-green-500" />
+                  Funcionalidades
+                </Label>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-2">
+                  {funcionalidades.map((func) => (
+                    <label
+                      key={func.id_funcionalidad}
+                      className={`flex items-center gap-2 p-2 rounded-lg border cursor-pointer transition-all duration-200 ${
+                        grupoForm.funcionalidades?.includes(func.id_funcionalidad)
+                          ? 'border-green-500 bg-green-50 text-green-700'
+                          : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={grupoForm.funcionalidades?.includes(func.id_funcionalidad) || false}
+                        onChange={(e) => handleFuncionalidadChange(func.id_funcionalidad, e.target.checked)}
+                        className="sr-only"
+                      />
+                      <div className={`w-4 h-4 rounded border flex items-center justify-center ${
+                        grupoForm.funcionalidades?.includes(func.id_funcionalidad)
+                          ? 'bg-green-500 border-green-500'
+                          : 'border-gray-300'
+                      }`}>
+                        {grupoForm.funcionalidades?.includes(func.id_funcionalidad) && (
+                          <Check className="w-3 h-3 text-white" />
+                        )}
+                      </div>
+                      <span className="text-sm font-medium capitalize">{func.nombre}</span>
+                    </label>
+                  ))}
+                </div>
               </div>
               <div className="flex gap-3 pt-2">
                 <Button 
@@ -345,6 +402,29 @@ export function GruposPage() {
             <div>
               <Label className="text-gray-600">Usuarios asignados</Label>
               <div className="font-medium">{getUsuariosCountByGrupo(detailModal.grupo.id_grupo)} usuario(s)</div>
+            </div>
+            <div>
+              <Label className="text-gray-600">Funcionalidades</Label>
+              <div className="flex flex-wrap gap-2 mt-2">
+                {detailModal.grupo.funcionalidades && detailModal.grupo.funcionalidades.length > 0 ? (
+                  detailModal.grupo.funcionalidades.map((func) => {
+                    const f = typeof func === 'number' ? func : func.id_funcionalidad;
+                    return (
+                      <span
+                        key={f}
+                        className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-medium"
+                      >
+                        {typeof func === 'number' 
+                          ? funcionalidades.find(fn => fn.id_funcionalidad === func)?.nombre || 'Desconocido'
+                          : func.nombre
+                        }
+                      </span>
+                    );
+                  })
+                ) : (
+                  <span className="text-gray-400">Sin funcionalidades asignadas</span>
+                )}
+              </div>
             </div>
           </div>
           <div className="flex justify-end p-4 border-t gap-2">

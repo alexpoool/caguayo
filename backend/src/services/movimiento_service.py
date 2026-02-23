@@ -71,9 +71,11 @@ class MovimientoService:
 
     @staticmethod
     async def get_movimientos(
-        db: AsyncSession, skip: int = 0, limit: int = 100
+        db: AsyncSession, skip: int = 0, limit: int | None = None, tipo: str = None
     ) -> List[MovimientoRead]:
-        db_movimientos = await movimiento_repo.get_multi(db, skip=skip, limit=limit)
+        db_movimientos = await movimiento_repo.get_multi(
+            db, skip=skip, limit=limit, tipo=tipo
+        )
         return [MovimientoRead.from_orm(m) for m in db_movimientos]
 
     @staticmethod

@@ -15,6 +15,7 @@ from src.models import (
     TipoDependencia,
     Provincia,
     Municipio,
+    TipoMovimiento,
 )
 from src.repository.base import CRUDBase
 from src.dto import (
@@ -86,14 +87,25 @@ class MovimientoRepository(CRUDBase[Movimiento, MovimientoCreate, MovimientoUpda
         return result
 
     async def get_multi(
-        self, db: AsyncSession, *, skip: int = 0, limit: int = 100
+        self,
+        db: AsyncSession,
+        *,
+        skip: int = 0,
+        limit: int | None = None,
+        tipo: str = None,
     ) -> List[Movimiento]:
-        statement = (
-            select(self.model)
-            .options(*self._get_selectinload_options())
-            .offset(skip)
-            .limit(limit)
-        )
+        from sqlalchemy import desc
+
+        statement = select(Movimiento).options(*self._get_selectinload_options())
+
+        if tipo:
+            statement = statement.where(TipoMovimiento.tipo == tipo)
+
+        statement = statement.order_by(desc(Movimiento.fecha))
+
+        if limit:
+            statement = statement.offset(skip).limit(limit)
+
         results = await db.exec(statement)
         return list(results.all())
 
