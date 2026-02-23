@@ -498,7 +498,7 @@ export function MovimientoAjusteForm() {
                           type="number"
                           min="1"
                           max={stockOrigen}
-                          value={destino.cantidad}
+                          value={destino.cantidad || ''}
                           onChange={(e) => handleDestinoChange(destino.id, 'cantidad', parseInt(e.target.value) || 0)}
                           placeholder="0"
                           className="transition-all duration-200 focus:ring-2 focus:ring-orange-500 focus:border-orange-500"

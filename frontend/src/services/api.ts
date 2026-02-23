@@ -233,8 +233,13 @@ export const movimientosService = {
     return apiClient.get<TipoMovimiento[]>('/movimientos/tipos');
   },
 
-  async getMovimientos(skip = 0, limit = 100): Promise<Movimiento[]> {
-    return apiClient.get<Movimiento[]>(`/movimientos?skip=${skip}&limit=${limit}`);
+  async getMovimientos(tipo?: string): Promise<Movimiento[]> {
+    const params = new URLSearchParams();
+    if (tipo) {
+      params.append('tipo', tipo);
+    }
+    const queryString = params.toString();
+    return apiClient.get<Movimiento[]>(`/movimientos${queryString ? '?' + queryString : ''}`);
   },
 
   async getMovimientosPendientes(): Promise<Movimiento[]> {

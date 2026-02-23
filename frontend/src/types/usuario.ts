@@ -1,17 +1,27 @@
+export interface Funcionalidad {
+  id_funcionalidad: number;
+  nombre: string;
+}
+
+export type GrupoFuncionalidades = Funcionalidad[] | number[];
+
 export interface Grupo {
   id_grupo: number;
   nombre: string;
   descripcion?: string;
+  funcionalidades?: GrupoFuncionalidades;
 }
 
 export interface GrupoCreate {
   nombre: string;
   descripcion?: string;
+  funcionalidades?: number[];
 }
 
 export interface GrupoUpdate {
   nombre?: string;
   descripcion?: string;
+  funcionalidades?: number[];
 }
 
 export interface DependenciaSimple {
@@ -30,6 +40,8 @@ export interface Usuario {
   id_dependencia?: number;
   grupo?: Grupo;
   dependencia?: DependenciaSimple;
+  password_temporal?: string;
+  correo?: string;
 }
 
 export interface UsuarioCreate {

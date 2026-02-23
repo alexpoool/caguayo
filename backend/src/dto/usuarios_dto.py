@@ -2,22 +2,35 @@ from sqlmodel import SQLModel
 from typing import Optional, List
 
 
+class GrupoSimpleRead(SQLModel):
+    id_grupo: int
+    nombre: str
+    descripcion: Optional[str] = None
+
+
+class FuncionalidadRead(SQLModel):
+    id_funcionalidad: int
+    nombre: str
+
+
 class GrupoBase(SQLModel):
     nombre: str
     descripcion: Optional[str] = None
 
 
 class GrupoCreate(GrupoBase):
-    pass
+    funcionalidades: Optional[List[int]] = []
 
 
 class GrupoRead(GrupoBase):
     id_grupo: int
+    funcionalidades: Optional[List[FuncionalidadRead]] = []
 
 
 class GrupoUpdate(SQLModel):
     nombre: Optional[str] = None
     descripcion: Optional[str] = None
+    funcionalidades: Optional[List[int]] = None
 
 
 class UsuarioBase(SQLModel):
@@ -48,7 +61,8 @@ class UsuarioRead(SQLModel):
     alias: str
     id_grupo: int
     id_dependencia: Optional[int] = None
-    grupo: Optional[GrupoRead] = None
+    password_temporal: Optional[str] = None
+    grupo: Optional[GrupoSimpleRead] = None
     dependencia: Optional[DependenciaSimpleRead] = None
 
 

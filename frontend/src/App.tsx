@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { BrowserRouter as Router, Routes, Route, Link, useLocation, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Dashboard } from './pages/Dashboard';
 import { ProductosPage } from './pages/Productos';
-import { VentasPage } from './pages/Ventas';
+// import { VentasPage } from './pages/Ventas';
 import { ClientesPage } from './pages/Clientes';
 import { PerfilClientePage } from './pages/PerfilCliente';
 import { MonedasPage } from './pages/Monedas';
@@ -16,6 +17,11 @@ import { ConfiguracionPage } from './pages/Configuracion';
 import { UsuariosPage } from './pages/Usuarios';
 import { GruposPage } from './pages/Grupos';
 import { DependenciasPage } from './pages/Dependencias';
+import { InventarioHome } from './pages/home/InventarioHome';
+import { AdministracionHome } from './pages/home/AdministracionHome';
+import { VentaHome } from './pages/home/VentaHome';
+import { CompraHome } from './pages/home/CompraHome';
+import { ReportesHome } from './pages/home/ReportesHome';
 import React from 'react';
 import { 
   ArrowLeftRight, 
@@ -46,11 +52,11 @@ const queryClient = new QueryClient({
 
 // Definición de rutas por módulo (excluyendo el Dashboard que es global)
 const rutasPorModulo: Record<Modulo, string[]> = {
-  inventario: ['/movimientos', '/movimientos/pendientes', '/productos'],
-  administracion: ['/configuracion', '/usuarios', '/grupos', '/monedas', '/dependencias'],
-  venta: ['/ventas', '/clientes'],
-  compra: [],
-  reportes: [],
+  inventario: ['/inventario', '/movimientos', '/movimientos/pendientes', '/movimientos/ajuste', '/movimientos/seleccionar-recepcion', '/productos'],
+  administracion: ['/administracion', '/configuracion', '/usuarios', '/grupos', '/monedas', '/dependencias'],
+  venta: ['/venta', '/ventas', '/clientes'],
+  compra: ['/compra'],
+  reportes: ['/reportes'],
 };
 
 // Componente para proteger rutas según el módulo
@@ -78,8 +84,15 @@ function ProtectedRoute({
 function App() {
   const [moduloActivo, setModuloActivo] = useState<Modulo>('inventario');
   const location = useLocation();
+  const navigate = useNavigate();
 
   const handleLinkClick = () => {};
+
+  const handleModuloClick = (moduloId: Modulo) => {
+    setModuloActivo(moduloId);
+    // Navegar a la página home del módulo
+    navigate(`/${moduloId}`);
+  };
 
   // Sidebar and header are always visible
 
@@ -160,7 +173,7 @@ function App() {
                 <li>
                   <NavLink to="/movimientos" onClick={handleLinkClick} exact>
                     <ArrowLeftRight className="w-5 h-5" />
-                    Movimiento
+                    Movimientos
                   </NavLink>
                 </li>
                 <li>
@@ -267,12 +280,12 @@ function App() {
               {modulos.map((modulo) => {
                 const Icon = modulo.icon;
                 const isActive = moduloActivo === modulo.id;
-                const isEnabled = ['inventario', 'administracion', 'venta', 'compra'].includes(modulo.id);
+                const isEnabled = ['inventario', 'administracion', 'venta', 'compra', 'reportes'].includes(modulo.id);
                 
                 return (
                   <button
                     key={modulo.id}
-                    onClick={() => isEnabled && setModuloActivo(modulo.id)}
+                    onClick={() => isEnabled && handleModuloClick(modulo.id)}
                     disabled={!isEnabled}
                     className={`
                       group flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold 
@@ -330,8 +343,16 @@ function App() {
                   } 
                 />
                 
-                {/* Rutas de Comercialización - protegidas */}
+                {/* Rutas de Inventario - protegidas */}
                 <Route 
+                  path="/inventario" 
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/inventario">
+                      <InventarioHome />
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route
                   path="/movimientos/pendientes" 
                   element={
                     <ProtectedRoute moduloActivo={moduloActivo} currentPath="/movimientos/pendientes">
@@ -355,8 +376,16 @@ function App() {
                     </ProtectedRoute>
                   } 
                 />
+                {/* Rutas de Ventas - protegidas */}
+                <Route 
+                  path="/venta" 
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/venta">
+                      <VentaHome />
+                    </ProtectedRoute>
+                  } 
+                />
                 <Route
-                  path="/clientes" 
                   element={
                     <ProtectedRoute moduloActivo={moduloActivo} currentPath="/clientes">
                       <ClientesPage />
@@ -374,7 +403,15 @@ function App() {
                 
                 {/* Rutas de Administración - protegidas */}
                 <Route 
-                  path="/monedas" 
+                  path="/administracion" 
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/administracion">
+                      <AdministracionHome />
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route 
+                  path="/monedas"
                   element={
                     <ProtectedRoute moduloActivo={moduloActivo} currentPath="/monedas">
                       <MonedasPage />
@@ -426,6 +463,26 @@ function App() {
                   element={
                     <ProtectedRoute moduloActivo={moduloActivo} currentPath="/dependencias">
                       <DependenciasPage />
+                    </ProtectedRoute>
+                  } 
+                />
+                
+                {/* Rutas de Compras - protegidas */}
+                <Route 
+                  path="/compra" 
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/compra">
+                      <CompraHome />
+                    </ProtectedRoute>
+                  } 
+                />
+                
+                {/* Rutas de Reportes - protegidas */}
+                <Route 
+                  path="/reportes" 
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/reportes">
+                      <ReportesHome />
                     </ProtectedRoute>
                   } 
                 />

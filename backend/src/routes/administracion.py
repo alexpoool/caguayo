@@ -1,9 +1,11 @@
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlmodel.ext.asyncio.session import AsyncSession
+from sqlmodel import select
 from src.database.connection import get_session
 from src.services.cuenta_service import CuentaService
 from src.services.usuario_service import GrupoService, UsuarioService
+from src.models import Funcionalidad
 from src.dto import (
     CuentaCreate,
     CuentaRead,
@@ -11,6 +13,7 @@ from src.dto import (
     GrupoCreate,
     GrupoRead,
     GrupoUpdate,
+    FuncionalidadRead,
     UsuarioCreate,
     UsuarioRead,
     UsuarioUpdate,
@@ -69,6 +72,16 @@ async def eliminar_cuenta(
     success = await CuentaService.delete(db, cuenta_id)
     if not success:
         raise HTTPException(status_code=404, detail="Cuenta no encontrada")
+
+
+@router.get("/funcionalidades", response_model=List[FuncionalidadRead])
+async def listar_funcionalidades(
+    db: AsyncSession = Depends(get_session),
+):
+    statement = select(Funcionalidad).order_by(Funcionalidad.id_funcionalidad)
+    result = await db.exec(statement)
+    funcionalidades = result.all()
+    return [FuncionalidadRead.model_validate(f) for f in funcionalidades]
 
 
 @router.get("/grupos", response_model=List[GrupoRead])

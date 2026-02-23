@@ -1,78 +1,58 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { movimientosService } from '../services/api';
 import toast from 'react-hot-toast';
-import { useState, useCallback, useEffect } from 'react';
+import { useState } from 'react';
 
-const DEFAULT_LIMIT = 50;
+const TIPO_REGEX = /tipo:(\w+)/gi;
+
+function extractTipoFilter(searchTerm: string): { cleanTerm: string; tipo: string | undefined } {
+  const match = TIPO_REGEX.exec(searchTerm);
+  if (match) {
+    const tipo = match[1].toUpperCase();
+    const cleanTerm = searchTerm.replace(TIPO_REGEX, '').trim().replace(/\s+/g, ' ');
+    return { cleanTerm, tipo };
+  }
+  return { cleanTerm: searchTerm, tipo: undefined };
+}
 
 export function useMovimientos() {
   const queryClient = useQueryClient();
-  const [allMovimientos, setAllMovimientos] = useState<any[]>([]);
-  const [hasMore, setHasMore] = useState(true);
-  const [skip, setSkip] = useState(0);
   const [searchTerm, setSearchTerm] = useState('');
 
-  const resetPagination = useCallback(() => {
-    setSkip(0);
-    setAllMovimientos([]);
-    setHasMore(true);
-  }, []);
-
-  const setSearch = useCallback((term: string) => {
-    setSearchTerm(term);
-    resetPagination();
-  }, [resetPagination]);
-
   const query = useQuery({
-    queryKey: ['movimientos', skip, searchTerm],
+    queryKey: ['movimientos', searchTerm],
     queryFn: async () => {
-      const newMovimientos = await movimientosService.getMovimientos(skip, DEFAULT_LIMIT);
+      const { cleanTerm, tipo } = extractTipoFilter(searchTerm);
+      console.log('[useMovimientos] searchTerm:', searchTerm, '-> cleanTerm:', cleanTerm, 'tipo:', tipo);
       
-      let filteredMovimientos = newMovimientos;
-      if (searchTerm) {
-        const term = searchTerm.toLowerCase();
-        filteredMovimientos = newMovimientos.filter((m: any) => 
+      const movimientos = await movimientosService.getMovimientos(tipo);
+      console.log('[useMovimientos] got movimientos, count:', movimientos.length);
+      if (movimientos.length > 0) {
+        const tiposUnicos = [...new Set(movimientos.map((m: any) => m.tipo_movimiento?.tipo).filter(Boolean))];
+        console.log('[useMovimientos] tipos únicos en datos:', tiposUnicos);
+      }
+      
+      let filteredMovimientos = movimientos;
+      if (cleanTerm) {
+        const term = cleanTerm.toLowerCase();
+        filteredMovimientos = movimientos.filter((m: any) => 
           m.producto?.nombre?.toLowerCase().includes(term) ||
           m.tipo_movimiento?.tipo?.toLowerCase().includes(term) ||
           m.dependencia?.nombre?.toLowerCase().includes(term)
         );
       }
       
-      if (filteredMovimientos.length < DEFAULT_LIMIT) {
-        setHasMore(false);
-      } else {
-        setHasMore(true);
-      }
-      
-      if (skip === 0) {
-        setAllMovimientos(filteredMovimientos);
-      } else {
-        setAllMovimientos(prev => [...prev, ...filteredMovimientos]);
-      }
-      
-      return filteredMovimientos;
+      return [...filteredMovimientos].sort((a, b) => 
+        new Date(b.fecha).getTime() - new Date(a.fecha).getTime()
+      );
     },
     staleTime: 0,
-    refetchOnMount: true,
   });
-
-  useEffect(() => {
-    if (searchTerm !== '' && skip === 0 && query.data) {
-      setAllMovimientos(query.data);
-    }
-  }, [searchTerm, skip, query.data]);
-
-  const loadMore = useCallback(() => {
-    if (!query.isFetching && hasMore) {
-      setSkip(prev => prev + DEFAULT_LIMIT);
-    }
-  }, [query.isFetching, hasMore]);
 
   const deleteMutation = useMutation({
     mutationFn: movimientosService.deleteMovimiento,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['movimientos'] });
-      resetPagination();
       toast.success('Movimiento eliminado correctamente');
     },
     onError: (error: any) => {
@@ -81,19 +61,18 @@ export function useMovimientos() {
   });
 
   return {
-    movimientos: allMovimientos,
+    movimientos: query.data || [],
     totalMovimientos: query.data?.length || 0,
-    isLoading: query.isLoading && skip === 0,
+    isLoading: query.isLoading,
     isFetchingMore: query.isFetching,
     isError: query.isError,
     error: query.error,
-    hasMore,
-    loadMore,
+    hasMore: false,
+    loadMore: () => {},
     searchTerm,
-    setSearch,
+    setSearch: setSearchTerm,
     deleteMovimiento: deleteMutation.mutate,
     refresh: () => {
-      resetPagination();
       queryClient.invalidateQueries({ queryKey: ['movimientos'] });
     },
     isDeleting: deleteMutation.isPending
