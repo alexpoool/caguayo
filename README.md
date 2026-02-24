@@ -1,10 +1,11 @@
-# Caguayo Webapp - Sistema de Inventario
+# Caguayo
 
-Aplicación web para la gestión y visualización de inventario, desarrollada con un stack moderno de Python y TypeScript.
+Aplicación web desarrollada con un stack moderno de Python y TypeScript.
 
 ## 🚀 Tecnologías
 
 ### Backend
+
 - **FastAPI**: Framework web moderno y rápido para construir APIs con Python.
 - **SQLModel**: ORM híbrido que combina SQLAlchemy y Pydantic.
 - **PostgreSQL**: Base de datos relacional robusta.
@@ -13,6 +14,7 @@ Aplicación web para la gestión y visualización de inventario, desarrollada co
 - **UV**: Gestor de paquetes y proyectos de Python ultra rápido.
 
 ### Frontend
+
 - **React**: Biblioteca para construir interfaces de usuario.
 - **TypeScript**: Superset de JavaScript con tipado estático.
 - **Vite**: Herramienta de construcción frontend de próxima generación.
@@ -33,6 +35,7 @@ Aplicación web para la gestión y visualización de inventario, desarrollada co
 ## ⚙️ Configuración del Entorno
 
 ### 1. Clonar el repositorio
+
 ```bash
 git clone https://github.com/alexpoool/caguayo.git
 cd caguayo
@@ -41,16 +44,19 @@ cd caguayo
 ### 2. Configurar Backend
 
 1. Navegar al directorio backend:
+
    ```bash
    cd backend
    ```
 
 2. Crear archivo `.env`:
+
    ```bash
    cp .env.example .env
    ```
-   
+
 3. Editar `.env` con tus credenciales de PostgreSQL:
+
    ```env
    DATABASE_URL=postgresql+psycopg://usuario:password@localhost:5432/caguayo_inventario
    DEBUG=True
@@ -58,21 +64,25 @@ cd caguayo
    ```
 
 4. Instalar dependencias:
+
    ```bash
    uv sync
    ```
 
 5. Activar git hooks (Pre-commit):
+
    ```bash
    uv run pre-commit install --config ../.pre-commit-config.yaml
    ```
 
 6. Ejecutar migraciones de base de datos:
+
    ```bash
    uv run alembic upgrade head
    ```
 
 7. Iniciar servidor de desarrollo:
+
    ```bash
    uv run uvicorn main:app --reload
    ```
@@ -80,16 +90,19 @@ cd caguayo
 ### 3. Configurar Frontend
 
 1. Navegar al directorio frontend:
+
    ```bash
    cd frontend
    ```
 
 2. Instalar dependencias:
+
    ```bash
    pnpm install
    ```
 
 3. Iniciar servidor de desarrollo:
+
    ```bash
    pnpm dev
    ```
@@ -187,6 +200,7 @@ caguayo-webapp/
 ### Entidades Principales
 
 #### Inventario
+
 | Entidad | Descripción |
 |---------|-------------|
 | **Moneda** | Divisas soportadas (USD, EUR, etc.) |
@@ -199,6 +213,7 @@ caguayo-webapp/
 | **Liquidacion** | Agrupación de movimientos |
 
 #### Administración
+
 | Entidad | Descripción |
 |---------|-------------|
 | **TipoContrato** | Tipos de contratos disponibles |
@@ -218,6 +233,7 @@ caguayo-webapp/
 | **Transaccion** | Entidad base para transacciones |
 
 ### Estados de Venta
+
 - `PENDIENTE`: Venta en proceso
 - `COMPLETADA`: Venta finalizada
 - `ANULADA`: Venta cancelada
@@ -236,39 +252,31 @@ Listado de migraciones disponibles:
 
 | Revisión | Descripción |
 |----------|-------------|
-| `5eb4bad34494` | Migración inicial - Constraints base |
-| `4afe28ed5947` | Agrega tablas clientes, ventas y detalle_ventas |
-| `e3f8a9b2c1d0` | Agrega columna código único a productos |
-| `f5a7b9c3d2e1` | Agrega convenios, proveedores y anexos |
-| `g6h8i0j4k5l2` | Agrega campos de precios y convenios a movimientos |
-| `h1i2j3k4l5m6` | Datos de prueba iniciales |
-| `i7j8k9l0m1n2` | Constraint CHECK para stock >= 0 |
-| `j8k9l0m1n2o3` | Hace id_anexo nullable en movimientos |
 
 Para crear una nueva migración:
+
 ```bash
 uv run alembic revision --autogenerate -m "descripcion"
 ```
 
 Para aplicar migraciones:
+
 ```bash
 uv run alembic upgrade head
 ```
 
 Para revertir una migración:
+
 ```bash
 uv run alembic downgrade -1
 ```
 
 ## 🔒 Seguridad
 
-- Las credenciales de base de datos se gestionan mediante variables de entorno
-- CORS está configurado para permitir peticiones solo desde orígenes autorizados
-- Las contraseñas y datos sensibles nunca deben commitearse al repositorio
-
 ## 🧪 Testing
 
 Ejecutar tests del backend:
+
 ```bash
 cd backend
 uv run pytest
@@ -277,24 +285,19 @@ uv run pytest
 ## 📦 Construcción para Producción
 
 ### Backend
+
 ```bash
 cd backend
 uv run uvicorn main:app --host 0.0.0.0 --port 8000
 ```
 
 ### Frontend
+
 ```bash
 cd frontend
 pnpm build
 ```
 
-## 🤝 Contribución
-
-1. Crear una rama para tu feature: `git checkout -b feature/nueva-funcionalidad`
-2. Commitear tus cambios: `git commit -m 'Agrega nueva funcionalidad'`
-3. Push a la rama: `git push origin feature/nueva-funcionalidad`
-4. Crear un Pull Request
-
 ## 📄 Licencia
 
-Este proyecto es propiedad de Caguayo. Todos los derechos reservados.
+Este proyecto es propiedad de ACM. Todos los derechos reservados.

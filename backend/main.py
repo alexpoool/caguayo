@@ -61,8 +61,8 @@ __all_models__ = [
 ]
 
 app = FastAPI(
-    title="API de Inventario",
-    description="API para visualización y gestión de base de datos de inventario",
+    title="Caguayo",
+    description="",
     version="1.0.0",
     redirect_slashes=False,
 )
@@ -92,10 +92,9 @@ app.add_middleware(
 
 app.include_router(api_router)
 
-
 @app.get("/")
 async def root():
-    return {"message": "API de Inventario funcionando"}
+    return {"message": "API de Caguayo funcionando"}
 
 
 @app.get("/health")
