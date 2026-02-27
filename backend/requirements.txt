@@ -1,0 +1,25 @@
+# Example Python dependencies for this project
+# - One package per line
+# - Comments start with `#`
+# - Version specifiers: ==, >=, <=, ~=, !=
+
+# Stable pinned version (recommended for apps): exact match
+fastapi==0.101.0
+
+# Package with optional extras
+uvicorn[standard]==0.23.2
+
+# Minimum version (allows newer):
+SQLAlchemy>=2.0.20
+
+# Compatible release (PEP 440 ~=): allows bugfix releases
+pydantic~=2.2
+
+# Package without specifying version (gets latest):
+python-dotenv
+
+# From PyPI with extra markers (platform/env specific examples):
+psycopg[binary]==3.2.0; platform_system == "Windows"
+
+# To install these: pip install -r requirements.txt
+# To capture current env: pip freeze > requirements.txt

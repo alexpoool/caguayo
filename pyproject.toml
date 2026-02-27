@@ -1,0 +1,17 @@
+[project]
+name = "caguayo"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "dotenv>=0.9.9",
+    "fastapi>=0.133.1",
+    "sqlmodel>=0.0.37",
+    "uvicorn>=0.41.0",
+]
+
+[tool.uv.workspace]
+members = [
+    "backend",
+]

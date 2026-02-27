@@ -5,17 +5,7 @@ import uvicorn
 from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    handlers=[logging.StreamHandler(sys.stdout)],
-)
-
-load_dotenv()
-
 from src.routes import api_router
-
 from src.models import (
     Anexo,
     Categorias,
@@ -37,6 +27,14 @@ from src.models import (
     TipoContrato,
     EstadoContrato,
 )
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    handlers=[logging.StreamHandler(sys.stdout)],
+)
+
+load_dotenv()
 
 __all_models__ = [
     Anexo,
