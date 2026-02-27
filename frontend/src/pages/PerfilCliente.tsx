@@ -94,9 +94,7 @@ export function PerfilClientePage() {
         <Card>
           <CardHeader className="pb-4">
             <div className="flex items-center gap-4">
-              <div className="w-16 h-16 rounded-full bg-blue-100 flex items-center justify-center">
-                <User className="h-8 w-8 text-blue-600" />
-              </div>
+              <img src="/default.jpg" alt="avatar" className="w-16 h-16 rounded-full object-cover" />
               <div>
                 <CardTitle className="text-xl">{cliente.nombre || 'Cliente sin nombre'}</CardTitle>
                 <p className="text-sm text-gray-500">Cliente desde {new Date(cliente.fecha_registro).toLocaleDateString('es-ES')}</p>

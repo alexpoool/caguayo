@@ -1,4 +1,4 @@
-import { Briefcase, ShoppingCart, Users, DollarSign, FileText } from 'lucide-react';
+import { Briefcase, ShoppingCart, Users, DollarSign, FileText, Construction } from 'lucide-react';
 
 export function VentaHome() {
   return (
@@ -8,7 +8,7 @@ export function VentaHome() {
           <div className="inline-flex p-3 rounded-2xl bg-gradient-to-br from-green-500 to-emerald-600 text-white shadow-md mb-3">
             <Briefcase className="h-8 w-8" />
           </div>
-          <h1 className="text-2xl font-bold text-gray-800">MÓDULO DE VENTAS</h1>
+          <h1 className="text-2xl font-bold text-gray-800">MÓDULO DE COMERCIALIZACIÓN</h1>
           <p className="text-sm text-gray-600 mt-1">Gestión comercial y atención al cliente</p>
         </div>
 
@@ -21,7 +21,7 @@ export function VentaHome() {
             <div className="flex items-start gap-2 p-3 bg-green-50 rounded-lg">
               <ShoppingCart className="h-4 w-4 text-green-600 mt-0.5 flex-shrink-0" />
               <div>
-                <h3 className="font-bold text-sm text-gray-800">Ventas</h3>
+                <h3 className="font-bold text-sm text-gray-800">Representación</h3>
                 <p className="text-xs text-gray-600 mt-0.5">Registro de operaciones con productos, cantidades, precios y totales.</p>
               </div>
             </div>
@@ -37,7 +37,7 @@ export function VentaHome() {
             <div className="flex items-start gap-2 p-3 bg-blue-50 rounded-lg">
               <FileText className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
               <div>
-                <h3 className="font-bold text-sm text-gray-800">Estados de Venta</h3>
+                <h3 className="font-bold text-sm text-gray-800">Estados de Representación</h3>
                 <p className="text-xs text-gray-600 mt-0.5">Pendiente, confirmada o cancelada. El sistema controla cada estado.</p>
               </div>
             </div>
@@ -50,6 +50,14 @@ export function VentaHome() {
               </div>
             </div>
           </div>
+
+          <div className="p-4 bg-gradient-to-r from-green-100 to-emerald-100 rounded-lg border-2 border-dashed border-green-300 mt-4">
+            <div className="flex items-center justify-center gap-2">
+              <Construction className="h-5 w-5 text-green-500" />
+              <span className="text-sm font-bold text-green-700">Próximamente disponible</span>
+            </div>
+          </div>
+
         </div>
       </div>
     </div>

@@ -104,6 +104,22 @@ function App() {
 
   const handleToggleSlim = () => setSlimSidebar((prev) => !prev);
 
+  const [showAccountModal, setShowAccountModal] = useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+
+  const handleLogout = () => {
+    try {
+      localStorage.clear();
+    } catch (e) {}
+    setShowAccountModal(false);
+    navigate('/');
+  };
+
+  // const handleViewProfile = () => {
+  //   setShowAccountModal(false);
+  //   navigate('/configuracion');
+  // };
+
   useEffect(() => {
     const rutasPermitidas = rutasPorModulo[moduloActivo];
     const isCurrentRouteAllowed = rutasPermitidas.some(route => 
@@ -155,8 +171,8 @@ function App() {
 
   const modulos: { id: Modulo; label: string; icon: React.ElementType }[] = [
     { id: 'administracion', label: 'Administración', icon: Shield },
-    { id: 'venta', label: 'Venta', icon: Briefcase },
-    { id: 'compra', label: 'Compra', icon: UserCircle },
+    { id: 'venta', label: 'Comercialización', icon: Briefcase },
+    { id: 'compra', label: 'Representación', icon: UserCircle },
     { id: 'inventario', label: 'Inventario', icon: Boxes },
     { id: 'reportes', label: 'Reportes', icon: BarChart3 },
   ];
@@ -205,6 +221,12 @@ function App() {
               {moduloActivo === 'administracion' && (
               <ul className="space-y-1 px-3">
                 <li>
+                  <NavLink to="/usuarios" onClick={handleLinkClick}>
+                    <UserCircle className="w-6 h-6" />
+                    Usuario
+                  </NavLink>
+                </li>
+                <li>
                   <NavLink to="/grupos" onClick={handleLinkClick}>
                     <Shield className="w-6 h-6" />
                     Grupos
@@ -246,7 +268,7 @@ function App() {
                     </li>
                   </ul>
                 )}
-                {(moduloActivo !== 'inventario' && moduloActivo !== 'administracion' && moduloActivo !== 'compra' && moduloActivo !== 'venta') && (
+                {(moduloActivo !== 'inventario' && moduloActivo !== 'administracion' && moduloActivo !== 'compra') && (
               <div className={`${slimSidebar ? 'flex flex-col items-center px-0 py-4' : 'flex items-center gap-2 px-6 py-4'}`}>
                 <Clock className="w-5 h-5 text-slate-300 shrink-0" />
                 {!slimSidebar && <p className="text-slate-400 text-sm">Módulo en construcción</p>}
@@ -258,19 +280,22 @@ function App() {
             )}
           </nav>
           {/* Usuario en el sidebar al final */}
-          {!isHome && (
             <div className={`flex items-center ${slimSidebar ? 'justify-center' : 'justify-between'} gap-2 px-2 py-5 border-t border-slate-800 mt-auto`}>
               <div className={`flex items-center ${slimSidebar ? '' : 'gap-2'}`}>
-                <div className="w-9 h-9 rounded-full bg-blue-500 flex items-center justify-center text-base font-bold">S</div>
-                {!slimSidebar && <span className="text-sm font-medium">Solji Charón</span>}
-              </div>
+                  <img src="/default.jpg" alt="avatar" className="w-9 h-9 rounded-full object-cover" />
+                  {!slimSidebar && <span className="text-sm font-medium">Solji Charón</span>}
+                </div>
               {!slimSidebar && (
-                <button className="p-2 rounded-full hover:bg-slate-800 transition-colors" title="Configuración de cuenta">
+                // TODO: Aquí implementar la lógica del botón de ajustes si se requiere (abrir menú, enviar evento, etc.)
+                <button
+                  className="p-2 rounded-full hover:bg-slate-800 transition-colors"
+                  title="Configuración de cuenta"
+                  onClick={() => setShowAccountModal(true)}
+                >
                   <Settings className="w-5 h-5 text-slate-400" />
                 </button>
               )}
             </div>
-          )}
         </aside>
         <header className="col-start-2 col-end-3 row-start-1 row-end-2 sticky top-0 z-40 bg-white shadow-sm border-b border-gray-200 px-6 py-4 h-16 flex items-center justify-between">
           <Link
@@ -344,6 +369,73 @@ function App() {
           </main>
         </div>
       </div>
+    {showAccountModal && (
+      <div
+        className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4"
+        onClick={() => { setShowLogoutConfirm(false); setShowAccountModal(false); }}
+      >
+        <div
+          className="bg-white rounded-xl shadow-2xl w-full max-w-sm p-6 transform transition-all animate-fade-in-up"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="flex items-center gap-3">
+            <img src="/default.jpg" alt="avatar" className="w-12 h-12 rounded-full object-cover" />
+            <div>
+              <div className="text-sm font-semibold">Solji Charón</div>
+              <div className="text-xs text-slate-400">Cuenta de usuario</div>
+            </div>
+          </div>
+
+          <div className="mt-4 border-t border-gray-100 pt-4 space-y-2">
+            {/* TODO: Implementar la acción de 'Ver perfil' aquí. Ej: navegar a /perfil o abrir componente de edición. */}
+            <button
+              className="w-full text-left px-4 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700 transition-colors"
+              onClick={() => { /* TODO: implementar ver perfil */ }}
+            >
+              Ver perfil
+            </button>
+
+            {/* TODO: Implementar la acción de 'Salir del sistema' aquí (por ejemplo llamar a la API y limpiar estado). */}
+            <button
+              className="w-full text-left px-4 py-2 rounded-md border border-red-200 text-red-600 bg-red-50 hover:bg-red-100 transition-colors"
+              onClick={() => { /* TODO: implementar logout */ }}
+            >
+              Salir del sistema
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {showLogoutConfirm && (
+      <div
+        className="fixed inset-0 z-60 flex items-center justify-center bg-black/60 px-4"
+        onClick={() => setShowLogoutConfirm(false)}
+      >
+        <div
+          className="bg-white rounded-lg shadow-xl w-full max-w-xs p-5"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <h4 className="text-lg font-semibold">Confirmar cierre de sesión</h4>
+          <p className="text-sm text-slate-500 mt-2">¿Estás seguro que quieres cerrar la sesión?</p>
+          <div className="mt-4 flex justify-end gap-2">
+            <button
+              className="px-3 py-1.5 rounded-md bg-gray-100 hover:bg-gray-200"
+              onClick={() => setShowLogoutConfirm(false)}
+            >
+              Cancelar
+            </button>
+            <button
+              className="px-3 py-1.5 rounded-md bg-red-600 text-white hover:bg-red-700"
+              onClick={handleLogout}
+            >
+              Cerrar sesión
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+
     </QueryClientProvider>
   );
 }
