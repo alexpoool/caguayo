@@ -1,5 +1,6 @@
 import { apiClient } from '../lib/api';
-import type { 
+import { configuracionService as configService } from './administracion';
+import type {
   Productos, 
   ProductosCreate, 
   ProductosUpdate,
@@ -27,7 +28,13 @@ import type {
   Cliente,
   ClienteCreate,
   ClienteUpdate,
-  ClienteWithVentas
+  ClienteWithVentas,
+  ClienteNatural,
+  ClienteNaturalCreate,
+  ClienteTCP,
+  ClienteTCPCreate,
+  TipoEntidad,
+  Cuenta
 } from '../types/ventas';
 import type {
   Moneda,
@@ -184,6 +191,58 @@ export const clientesService = {
   }
 };
 
+export const tiposEntidadService = {
+  async getTiposEntidad(): Promise<TipoEntidad[]> {
+    return apiClient.get<TipoEntidad[]>('/tipos-entidad');
+  }
+};
+
+export const clienteNaturalService = {
+  async createClienteNatural(data: ClienteNaturalCreate): Promise<ClienteNatural> {
+    return apiClient.post<ClienteNatural>('/clientes-naturales', data);
+  },
+
+  async updateClienteNatural(id: number, data: Partial<ClienteNaturalCreate>): Promise<ClienteNatural> {
+    return apiClient.put<ClienteNatural>(`/clientes-naturales/${id}`, data);
+  },
+
+  async getClienteNatural(idCliente: number): Promise<ClienteNatural | null> {
+    return apiClient.get<ClienteNatural>(`/clientes-naturales/by-cliente/${idCliente}`);
+  }
+};
+
+export const clienteTCPService = {
+  async createClienteTCP(data: ClienteTCPCreate): Promise<ClienteTCP> {
+    return apiClient.post<ClienteTCP>('/clientes-tcp', data);
+  },
+
+  async updateClienteTCP(id: number, data: Partial<ClienteTCPCreate>): Promise<ClienteTCP> {
+    return apiClient.put<ClienteTCP>(`/clientes-tcp/${id}`, data);
+  },
+
+  async getClienteTCP(idCliente: number): Promise<ClienteTCP | null> {
+    return apiClient.get<ClienteTCP>(`/clientes-tcp/by-cliente/${idCliente}`);
+  }
+};
+
+export const cuentasService = {
+  async getCuentasByCliente(idCliente: number): Promise<Cuenta[]> {
+    return apiClient.get<Cuenta[]>(`/cuentas/by-cliente/${idCliente}`);
+  },
+
+  async createCuenta(data: Partial<Cuenta>): Promise<Cuenta> {
+    return apiClient.post<Cuenta>('/cuentas', data);
+  },
+
+  async updateCuenta(id: number, data: Partial<Cuenta>): Promise<Cuenta> {
+    return apiClient.put<Cuenta>(`/cuentas/${id}`, data);
+  },
+
+  async deleteCuenta(id: number): Promise<void> {
+    return apiClient.delete<void>(`/cuentas/${id}`);
+  }
+};
+
 export const subcategoriasService = {
   async getSubcategorias(skip = 0, limit = 100): Promise<Subcategorias[]> {
     return apiClient.get<Subcategorias[]>(`/subcategorias?skip=${skip}&limit=${limit}`);
@@ -299,9 +358,9 @@ export const provedoresService = {
 };
 
 export const conveniosService = {
-  async getConvenios(provedorId?: number, search?: string, skip = 0, limit = 100): Promise<Convenio[]> {
+  async getConvenios(clienteId?: number, search?: string, skip = 0, limit = 100): Promise<Convenio[]> {
     const params = new URLSearchParams();
-    if (provedorId) params.append('provedor_id', provedorId.toString());
+    if (clienteId) params.append('cliente_id', clienteId.toString());
     if (search) params.append('search', search);
     params.append('skip', skip.toString());
     params.append('limit', limit.toString());
@@ -312,6 +371,22 @@ export const conveniosService = {
     return apiClient.get<Convenio>(`/convenios/${id}`);
   },
 
+  async createConvenio(data: Partial<Convenio>): Promise<Convenio> {
+    return apiClient.post<Convenio>('/convenios', data);
+  },
+
+  async updateConvenio(id: number, data: Partial<Convenio>): Promise<Convenio> {
+    return apiClient.patch<Convenio>(`/convenios/${id}`, data);
+  },
+
+  async deleteConvenio(id: number): Promise<void> {
+    return apiClient.delete(`/convenios/${id}`);
+  },
+
+  async getConveniosSimple(): Promise<{id_convenio: number; nombre: string}[]> {
+    return apiClient.get<{id_convenio: number; nombre: string}[]>('/convenios/simple');
+  },
+
   async getAnexosByConvenio(convenioId: number): Promise<Anexo[]> {
     return apiClient.get<Anexo[]>(`/convenios/${convenioId}/anexos`);
   }
@@ -320,7 +395,7 @@ export const conveniosService = {
 export const anexosService = {
   async getAnexos(convenioId?: number, search?: string, skip = 0, limit = 100): Promise<Anexo[]> {
     const params = new URLSearchParams();
-    if (convenioId) params.append('convenio_id', convenioId.toString());
+    if (convenioId) params.append('convenio_id',convenioId.toString());
     if (search) params.append('search', search);
     params.append('skip', skip.toString());
     params.append('limit', limit.toString());
@@ -329,6 +404,18 @@ export const anexosService = {
 
   async getAnexo(id: number): Promise<Anexo> {
     return apiClient.get<Anexo>(`/anexos/${id}`);
+  },
+
+  async createAnexo(data: Partial<Anexo>): Promise<Anexo> {
+    return apiClient.post<Anexo>('/anexos', data);
+  },
+
+  async updateAnexo(id: number, data: Partial<Anexo>): Promise<Anexo> {
+    return apiClient.patch<Anexo>(`/anexos/${id}`, data);
+  },
+
+  async deleteAnexo(id: number): Promise<void> {
+    return apiClient.delete(`/anexos/${id}`);
   }
 };
 
@@ -345,3 +432,5 @@ export const dependenciasService = {
     return apiClient.get<Dependencia>(`/dependencias/${id}`);
   }
 };
+
+export const configuracionService = configService;

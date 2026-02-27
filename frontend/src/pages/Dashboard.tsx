@@ -695,10 +695,10 @@ export function Dashboard() {
                   onClick={() => navigate(`/clientes/${cliente.id_cliente}`)}
                 >
                   <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-semibold">
-                    {cliente.nombre.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()}
+                    {(cliente.nombre || 'C').split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900 truncate">{cliente.nombre}</p>
+                    <p className="text-sm font-medium text-gray-900 truncate">{cliente.nombre || 'Cliente sin nombre'}</p>
                     <p className="text-xs text-gray-500">
                       {cliente.fecha_registro ? new Date(cliente.fecha_registro).toLocaleDateString('es-ES') : 'Fecha no disponible'}
                     </p>

@@ -117,13 +117,36 @@ export interface Provedor {
   direccion?: string;
 }
 
+export interface TipoConvenio {
+  id_tipo_convenio: number;
+  nombre: string;
+  descripcion?: string;
+}
+
+export interface TipoConvenioCreate {
+  nombre: string;
+  descripcion?: string;
+}
+
+export interface TipoConvenioUpdate {
+  nombre?: string;
+  descripcion?: string;
+}
+
+export interface ClienteSimple {
+  id_cliente: number;
+  nombre: string;
+}
+
 export interface Convenio {
   id_convenio: number;
-  id_provedor: number;
+  id_cliente: number;
   nombre_convenio: string;
   fecha: string;
   vigencia: string;
   id_tipo_convenio: number;
+  cliente?: ClienteSimple;
+  tipo_convenio?: TipoConvenio;
 }
 
 export interface Anexo {
@@ -132,8 +155,14 @@ export interface Anexo {
   nombre_anexo: string;
   fecha: string;
   numero_anexo: string;
-  id_dependencia: number;
+  id_dependencia?: number | null;
   comision?: number;
+  dependencia_nombre?: string;
+  id_producto?: number | null;
+  convenio?: {
+    id_convenio: number;
+    nombre_convenio: string;
+  };
 }
 
 // Dependencia se importa desde dependencia.ts

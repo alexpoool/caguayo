@@ -5,14 +5,14 @@ from decimal import Decimal
 from pydantic import field_serializer, ConfigDict
 from .dependencias_dto import DependenciaRead
 from .productos_dto import ProductosRead
-from .convenios_dto import ConvenioRead, ProvedorRead, AnexoRead
+from .convenios_dto import ClienteRead, AnexoRead
 from .monedas_dto import MonedaRead
 
 
 # DTOs para Tipo Movimiento
 class TipoMovimientoBase(SQLModel):
-    tipo: str  # 'AJUSTE', 'MERMA', 'DONACION', 'RECEPCION', 'DEVOLUCION'
-    factor: int  # 1 o -1
+    tipo: str
+    factor: int
 
 
 class TipoMovimientoCreate(TipoMovimientoBase):
@@ -36,9 +36,8 @@ class MovimientoBase(SQLModel):
     id_producto: int
     cantidad: int
     observacion: Optional[str] = None
-    # Nuevos campos
     id_convenio: Optional[int] = None
-    id_provedor: Optional[int] = None
+    id_cliente: Optional[int] = None
     precio_compra: Optional[Decimal] = None
     id_moneda_compra: Optional[int] = None
     precio_venta: Optional[Decimal] = None
@@ -61,9 +60,7 @@ class MovimientoRead(MovimientoBase):
     dependencia: Optional[DependenciaRead] = None
     producto: Optional[ProductosRead] = None
     anexo: Optional[AnexoRead] = None
-    # Nuevas relaciones
-    convenio: Optional[ConvenioRead] = None
-    provedor: Optional[ProvedorRead] = None
+    cliente: Optional[ClienteRead] = None
     moneda_compra_rel: Optional[MonedaRead] = None
     moneda_venta_rel: Optional[MonedaRead] = None
 
@@ -86,9 +83,8 @@ class MovimientoUpdate(SQLModel):
     id_liquidacion: Optional[int] = None
     estado: Optional[str] = None
     codigo: Optional[str] = None
-    # Nuevos campos
     id_convenio: Optional[int] = None
-    id_provedor: Optional[int] = None
+    id_cliente: Optional[int] = None
     precio_compra: Optional[Decimal] = None
     id_moneda_compra: Optional[int] = None
     precio_venta: Optional[Decimal] = None

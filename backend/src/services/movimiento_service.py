@@ -27,16 +27,16 @@ class MovimientoService:
         logger.info(f"Movimiento creado en repo: {db_movimiento}")
 
         # Generar código autogenerado para TODOS los tipos de movimiento
-        # Formato: año + id_movimiento + id_provedor + id_convenio + id_anexo + id_producto
+        # Formato: año + id_movimiento + id_cliente + id_convenio + id_anexo + id_producto
         anio = datetime.utcnow().year
         id_movimiento = db_movimiento.id_movimiento
-        id_provedor = db_movimiento.id_provedor or 0
+        id_cliente = db_movimiento.id_cliente or 0
         id_convenio = db_movimiento.id_convenio or 0
         id_anexo = db_movimiento.id_anexo or 0
         id_producto = db_movimiento.id_producto
 
         codigo = (
-            f"{anio}{id_movimiento}{id_provedor}{id_convenio}{id_anexo}{id_producto}"
+            f"{anio}{id_movimiento}{id_cliente}{id_convenio}{id_anexo}{id_producto}"
         )
         db_movimiento.codigo = codigo
         await db.commit()
@@ -283,12 +283,10 @@ class MovimientoService:
                 "codigo": codigo,
                 "anio": anio,
                 "proveedor": {
-                    "id_provedor": movimiento.id_provedor,
-                    "nombre": movimiento.provedor.nombre
-                    if movimiento.provedor
-                    else None,
+                    "id_cliente": movimiento.id_cliente,
+                    "nombre": movimiento.cliente.nombre if movimiento.cliente else None,
                 }
-                if movimiento.provedor
+                if movimiento.cliente
                 else None,
                 "convenio": {
                     "id_convenio": movimiento.id_convenio,
@@ -315,12 +313,10 @@ class MovimientoService:
             return {
                 "codigo": codigo,
                 "proveedor": {
-                    "id_provedor": movimiento.id_provedor,
-                    "nombre": movimiento.provedor.nombre
-                    if movimiento.provedor
-                    else None,
+                    "id_cliente": movimiento.id_cliente,
+                    "nombre": movimiento.cliente.nombre if movimiento.cliente else None,
                 }
-                if movimiento.provedor
+                if movimiento.cliente
                 else None,
                 "convenio": {
                     "id_convenio": movimiento.id_convenio,
@@ -349,7 +345,7 @@ class MovimientoService:
 
         Returns lista de recepciones con información de producto, cantidad y dependencia.
         """
-        from src.models import Provedor, Convenio, Anexo, TipoDependencia
+        from src.models import Cliente, Convenio, Anexo, TipoDependencia
 
         # Primero obtener los movimientos de tipo RECEPCION
         # Buscar el ID del tipo RECEPCION
@@ -387,8 +383,8 @@ class MovimientoService:
 
             # Obtener proveedor
             proveedor_nombre = None
-            if mov.id_provedor:
-                proveedor = await db.get(Provedor, mov.id_provedor)
+            if mov.id_cliente:
+                proveedor = await db.get(Provedor, mov.id_cliente)
                 if proveedor:
                     proveedor_nombre = proveedor.nombre
 
@@ -417,7 +413,7 @@ class MovimientoService:
                     "cantidad": mov.cantidad,
                     "id_dependencia": mov.id_dependencia,
                     "nombre_dependencia": dependencia_nombre,
-                    "id_proveedor": mov.id_provedor,
+                    "id_proveedor": mov.id_cliente,
                     "proveedor_nombre": proveedor_nombre,
                     "id_convenio": mov.id_convenio,
                     "convenio_nombre": convenioconvenio_nombre,
@@ -496,7 +492,7 @@ class MovimientoService:
             fecha=fecha,
             observacion=ajuste.observacion,
             id_convenio=origen.id_convenio,
-            id_provedor=origen.id_provedor,
+            id_cliente=origen.id_cliente,
             precio_compra=origen.precio_compra,
             id_moneda_compra=origen.id_moneda_compra,
             precio_venta=origen.precio_venta,
@@ -515,7 +511,7 @@ class MovimientoService:
         if not id_mov_quitar:
             raise ValueError("No se pudo obtener ID para movimiento de quitar")
 
-        codigo_quitar = f"{anio}{id_mov_quitar}{origen.id_provedor or 0}{origen.id_convenio or 0}{origen.id_anexo or 0}{origen.id_producto}"
+        codigo_quitar = f"{anio}{id_mov_quitar}{origen.id_cliente or 0}{origen.id_convenio or 0}{origen.id_anexo or 0}{origen.id_producto}"
         movimiento_quitar.codigo = codigo_quitar
 
         # Obtener nombre de dependencia origen
@@ -543,7 +539,7 @@ class MovimientoService:
                 fecha=fecha,
                 observacion=ajuste.observacion,
                 id_convenio=origen.id_convenio,
-                id_provedor=origen.id_provedor,
+                id_cliente=origen.id_cliente,
                 precio_compra=origen.precio_compra,
                 id_moneda_compra=origen.id_moneda_compra,
                 precio_venta=origen.precio_venta,
@@ -558,7 +554,7 @@ class MovimientoService:
             if not id_mov_agregar:
                 raise ValueError("No se pudo obtener ID para movimiento de agregar")
 
-            codigo_agregar = f"{anio}{id_mov_agregar}{origen.id_provedor or 0}{origen.id_convenio or 0}{origen.id_anexo or 0}{origen.id_producto}"
+            codigo_agregar = f"{anio}{id_mov_agregar}{origen.id_cliente or 0}{origen.id_convenio or 0}{origen.id_anexo or 0}{origen.id_producto}"
             movimiento_agregar.codigo = codigo_agregar
 
             # Obtener nombre de dependencia destino

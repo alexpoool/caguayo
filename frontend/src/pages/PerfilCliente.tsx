@@ -98,7 +98,7 @@ export function PerfilClientePage() {
                 <User className="h-8 w-8 text-blue-600" />
               </div>
               <div>
-                <CardTitle className="text-xl">{cliente.nombre}</CardTitle>
+                <CardTitle className="text-xl">{cliente.nombre || 'Cliente sin nombre'}</CardTitle>
                 <p className="text-sm text-gray-500">Cliente desde {new Date(cliente.fecha_registro).toLocaleDateString('es-ES')}</p>
               </div>
             </div>

@@ -16,7 +16,8 @@ import {
   Building,
   Coins,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  FileText
 } from 'lucide-react';
 
 import { Dashboard } from './pages/Dashboard';
@@ -38,6 +39,8 @@ import { AdministracionHome } from './pages/home/AdministracionHome';
 import { VentaHome } from './pages/home/VentaHome';
 import { CompraHome } from './pages/home/CompraHome';
 import { ReportesHome } from './pages/home/ReportesHome';
+import { ConveniosPage } from './pages/Convenios';
+import { AnexosPage } from './pages/Anexos';
 
 type Modulo = 'administracion' | 'venta' | 'compra' | 'inventario' | 'reportes';
 
@@ -54,8 +57,8 @@ const queryClient = new QueryClient({
 const rutasPorModulo: Record<Modulo, string[]> = {
   inventario: ['/inventario', '/movimientos', '/movimientos/pendientes', '/movimientos/ajuste', '/movimientos/seleccionar-recepcion', '/productos'],
   administracion: ['/administracion', '/configuracion', '/usuarios', '/grupos', '/monedas', '/dependencias'],
-  venta: ['/venta', '/ventas', '/clientes'],
-  compra: ['/compra'],
+  venta: ['/venta', '/ventas'],
+  compra: ['/compra', '/compra/clientes', '/compra/convenios', '/compra/anexos', '/clientes'],
   reportes: ['/reportes'],
 };
 
@@ -221,7 +224,29 @@ function App() {
                 </li>
               </ul>
                 )}
-                {(moduloActivo !== 'inventario' && moduloActivo !== 'administracion') && (
+                {moduloActivo === 'compra' && (
+                  <ul className="space-y-1 px-3">
+                    <li>
+                      <NavLink to="/compra/clientes" onClick={handleLinkClick}>
+                        <UserCircle className="w-6 h-6" />
+                        Clientes
+                      </NavLink>
+                    </li>
+                    <li>
+                      <NavLink to="/compra/convenios" onClick={handleLinkClick}>
+                        <FileText className="w-6 h-6" />
+                        Convenios
+                      </NavLink>
+                    </li>
+                    <li>
+                      <NavLink to="/compra/anexos" onClick={handleLinkClick}>
+                        <Boxes className="w-6 h-6" />
+                        Anexos
+                      </NavLink>
+                    </li>
+                  </ul>
+                )}
+                {(moduloActivo !== 'inventario' && moduloActivo !== 'administracion' && moduloActivo !== 'compra' && moduloActivo !== 'venta') && (
               <div className={`${slimSidebar ? 'flex flex-col items-center px-0 py-4' : 'flex items-center gap-2 px-6 py-4'}`}>
                 <Clock className="w-5 h-5 text-slate-300 shrink-0" />
                 {!slimSidebar && <p className="text-slate-400 text-sm">Módulo en construcción</p>}
@@ -301,8 +326,11 @@ function App() {
                 <Route path="/movimientos/seleccionar-recepcion" element={<ProtectedRoute moduloActivo={moduloActivo} currentPath="/movimientos"><RecepcionesPage /></ProtectedRoute>} />
                 <Route path="/movimientos/ajuste" element={<ProtectedRoute moduloActivo={moduloActivo} currentPath="/movimientos"><MovimientoAjusteForm /></ProtectedRoute>} />
                 <Route path="/venta" element={<ProtectedRoute moduloActivo={moduloActivo} currentPath="/venta"><VentaHome /></ProtectedRoute>} />
-                <Route path="/clientes" element={<ProtectedRoute moduloActivo={moduloActivo} currentPath="/clientes"><ClientesPage /></ProtectedRoute>} />
-                <Route path="/clientes/:id" element={<ProtectedRoute moduloActivo={moduloActivo} currentPath="/clientes"><PerfilClientePage /></ProtectedRoute>} />
+                <Route path="/compra" element={<ProtectedRoute moduloActivo={moduloActivo} currentPath="/compra"><CompraHome /></ProtectedRoute>} />
+                <Route path="/compra/clientes" element={<ProtectedRoute moduloActivo={moduloActivo} currentPath="/compra/clientes"><ClientesPage /></ProtectedRoute>} />
+                <Route path="/compra/clientes/:id" element={<ProtectedRoute moduloActivo={moduloActivo} currentPath="/compra/clientes"><PerfilClientePage /></ProtectedRoute>} />
+                <Route path="/compra/convenios" element={<ProtectedRoute moduloActivo={moduloActivo} currentPath="/compra/convenios"><ConveniosPage /></ProtectedRoute>} />
+                <Route path="/compra/anexos" element={<ProtectedRoute moduloActivo={moduloActivo} currentPath="/compra/anexos"><AnexosPage /></ProtectedRoute>} />
                 <Route path="/administracion" element={<ProtectedRoute moduloActivo={moduloActivo} currentPath="/administracion"><AdministracionHome /></ProtectedRoute>} />
                 <Route path="/monedas" element={<ProtectedRoute moduloActivo={moduloActivo} currentPath="/monedas"><MonedasPage /></ProtectedRoute>} />
                 <Route path="/configuracion" element={<ProtectedRoute moduloActivo={moduloActivo} currentPath="/configuracion"><ConfiguracionPage /></ProtectedRoute>} />

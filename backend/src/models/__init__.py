@@ -9,8 +9,7 @@ from .dependencia import TipoDependencia, Dependencia, Provincia, Municipio
 from .anexo import Anexo
 from .liquidacion import Liquidacion
 from .transaccion import Transaccion
-from .tipo_provedor import TipoProvedor
-from .provedor import Provedor
+from .tipo_cliente import TipoCliente
 from .tipo_convenio import TipoConvenio
 from .convenio import Convenio
 from .contrato import TipoContrato, EstadoContrato
@@ -18,6 +17,11 @@ from .cuenta import Cuenta
 from .tipo_cuenta import TipoCuenta
 from .usuarios import Grupo, Usuario
 from .funcionalidades import Funcionalidad, GrupoFuncionalidad
+from .especialidades_artisticas import EspecialidadesArtisticas
+from .anexo_producto import AnexoProducto
+from .tipo_entidad import TipoEntidad
+from .cliente_natural import ClienteNatural
+from .cliente_tcp import ClienteTCP
 
 __all__ = [
     "Moneda",
@@ -37,8 +41,7 @@ __all__ = [
     "Anexo",
     "Liquidacion",
     "Transaccion",
-    "TipoProvedor",
-    "Provedor",
+    "TipoCliente",
     "TipoConvenio",
     "Convenio",
     "TipoContrato",
@@ -49,4 +52,9 @@ __all__ = [
     "Usuario",
     "Funcionalidad",
     "GrupoFuncionalidad",
+    "EspecialidadesArtisticas",
+    "AnexoProducto",
+    "TipoEntidad",
+    "ClienteNatural",
+    "ClienteTCP",
 ]

@@ -4,6 +4,7 @@ from typing import Optional, TYPE_CHECKING
 if TYPE_CHECKING:
     from .dependencia import Dependencia
     from .tipo_cuenta import TipoCuenta
+    from .cliente import Cliente
 
 
 class Cuenta(SQLModel, table=True):
@@ -13,6 +14,7 @@ class Cuenta(SQLModel, table=True):
     id_dependencia: Optional[int] = Field(
         default=None, foreign_key="dependencia.id_dependencia"
     )
+    id_cliente: Optional[int] = Field(default=None, foreign_key="clientes.id_cliente")
     id_tipo_cuenta: Optional[int] = Field(
         default=None, foreign_key="tipo_cuenta.id_tipo_cuenta"
     )
@@ -23,3 +25,4 @@ class Cuenta(SQLModel, table=True):
 
     tipo_cuenta: "TipoCuenta" = Relationship(back_populates="cuentas")
     dependencia: Optional["Dependencia"] = Relationship(back_populates="cuentas")
+    cliente: Optional["Cliente"] = Relationship(back_populates="cuentas")

@@ -24,26 +24,26 @@ class ClienteService:
     @staticmethod
     async def create_cliente(db: AsyncSession, cliente: ClienteCreate) -> ClienteRead:
         db_cliente = await cliente_repo.create(db, obj_in=cliente)
-        return ClienteRead.from_orm(db_cliente)
+        return ClienteRead.model_validate(db_cliente)
 
     @staticmethod
     async def get_cliente(db: AsyncSession, cliente_id: int) -> Optional[ClienteRead]:
         db_cliente = await cliente_repo.get(db, id=cliente_id)
-        return ClienteRead.from_orm(db_cliente) if db_cliente else None
+        return ClienteRead.model_validate(db_cliente) if db_cliente else None
 
     @staticmethod
     async def get_cliente_with_ventas(
         db: AsyncSession, cliente_id: int
     ) -> Optional[ClienteReadWithVentas]:
         db_cliente = await cliente_repo.get_with_ventas(db, id=cliente_id)
-        return ClienteReadWithVentas.from_orm(db_cliente) if db_cliente else None
+        return ClienteReadWithVentas.model_validate(db_cliente) if db_cliente else None
 
     @staticmethod
     async def get_clientes(
         db: AsyncSession, skip: int = 0, limit: int = 100
     ) -> List[ClienteRead]:
         db_clientes = await cliente_repo.get_multi(db, skip=skip, limit=limit)
-        return [ClienteRead.from_orm(c) for c in db_clientes]
+        return [ClienteRead.model_validate(c) for c in db_clientes]
 
     @staticmethod
     async def update_cliente(
@@ -56,11 +56,10 @@ class ClienteService:
         updated_cliente = await cliente_repo.update(
             db, db_obj=db_cliente, obj_in=cliente_update
         )
-        return ClienteRead.from_orm(updated_cliente)
+        return ClienteRead.model_validate(updated_cliente)
 
     @staticmethod
     async def delete_cliente(db: AsyncSession, cliente_id: int) -> bool:
-        # Verificar si el cliente tiene ventas
         has_ventas = await cliente_repo.has_ventas(db, id=cliente_id)
         if has_ventas:
             raise ValueError(
@@ -75,7 +74,7 @@ class ClienteService:
         db: AsyncSession, cedula_rif: str
     ) -> Optional[ClienteRead]:
         db_cliente = await cliente_repo.get_by_cedula(db, cedula_rif=cedula_rif)
-        return ClienteRead.from_orm(db_cliente) if db_cliente else None
+        return ClienteRead.model_validate(db_cliente) if db_cliente else None
 
 
 class VentasService:
@@ -120,12 +119,12 @@ class VentasService:
 
         # Recargar la venta con todas las relaciones
         db_venta = await ventas_repo.get_with_relations(db, id=db_venta.id_venta)
-        return VentaRead.from_orm(db_venta)
+        return VentaRead.model_validate(db_venta)
 
     @staticmethod
     async def get_venta(db: AsyncSession, venta_id: int) -> Optional[VentaRead]:
         db_venta = await ventas_repo.get_with_relations(db, id=venta_id)
-        return VentaRead.from_orm(db_venta) if db_venta else None
+        return VentaRead.model_validate(db_venta) if db_venta else None
 
     @staticmethod
     async def get_ventas(
@@ -134,7 +133,7 @@ class VentasService:
         db_ventas = await ventas_repo.get_multi_with_relations(
             db, skip=skip, limit=limit
         )
-        return [VentaRead.from_orm(v) for v in db_ventas]
+        return [VentaRead.model_validate(v) for v in db_ventas]
 
     @staticmethod
     async def get_ventas_by_cliente(
@@ -143,13 +142,13 @@ class VentasService:
         db_ventas = await ventas_repo.get_by_cliente(
             db, id_cliente=cliente_id, skip=skip, limit=limit
         )
-        return [VentaRead.from_orm(v) for v in db_ventas]
+        return [VentaRead.model_validate(v) for v in db_ventas]
 
     @staticmethod
     async def get_ventas_mes_actual(db: AsyncSession) -> List[VentaRead]:
         now = datetime.now()
         db_ventas = await ventas_repo.get_by_mes(db, year=now.year, month=now.month)
-        return [VentaRead.from_orm(v) for v in db_ventas]
+        return [VentaRead.model_validate(v) for v in db_ventas]
 
     @staticmethod
     async def update_venta(
@@ -171,7 +170,7 @@ class VentasService:
         updated_venta = await ventas_repo.get_with_relations(
             db, id=updated_venta.id_venta
         )
-        return VentaRead.from_orm(updated_venta)
+        return VentaRead.model_validate(updated_venta)
 
     @staticmethod
     async def confirmar_venta(db: AsyncSession, venta_id: int) -> Optional[VentaRead]:
@@ -189,7 +188,7 @@ class VentasService:
 
         # Recargar con relaciones
         db_venta = await ventas_repo.get_with_relations(db, id=db_venta.id_venta)
-        return VentaRead.from_orm(db_venta)
+        return VentaRead.model_validate(db_venta)
 
     @staticmethod
     async def anular_venta(db: AsyncSession, venta_id: int) -> Optional[VentaRead]:
@@ -214,7 +213,7 @@ class VentasService:
 
         # Recargar con relaciones
         db_venta = await ventas_repo.get_with_relations(db, id=db_venta.id_venta)
-        return VentaRead.from_orm(db_venta)
+        return VentaRead.model_validate(db_venta)
 
     @staticmethod
     async def delete_venta(db: AsyncSession, venta_id: int) -> bool:

@@ -1,10 +1,9 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { clientesService } from '../services/api';
-import type { Cliente, ClienteCreate, ClienteUpdate } from '../types/ventas';
-import { Plus, Edit, Trash2, User, Phone, Mail, MapPin, CreditCard, CheckCircle, XCircle, UserCircle, Search, X, ArrowLeft, Save, RefreshCw } from 'lucide-react';
+import { clientesService, tiposEntidadService, clienteNaturalService, clienteTCPService, cuentasService } from '../services/api';
+import type { Cliente, ClienteCreate, ClienteUpdate, Cuenta } from '../types/ventas';
+import { Plus, Edit, Trash2, User, Phone, Mail, CreditCard, Search, ArrowLeft, Save, Building2, Briefcase } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { useNavigate } from 'react-router-dom';
 import { 
   Button, 
   Input, 
@@ -22,11 +21,13 @@ import {
   ConfirmModal
 } from '../components/ui';
 
+type TipoPersona = 'NATURAL' | 'JURIDICA' | 'TCP';
+
 export function ClientesPage() {
   const queryClient = useQueryClient();
-  const navigate = useNavigate();
   const [view, setView] = useState<'list' | 'form'>('list');
   const [editingCliente, setEditingCliente] = useState<Cliente | null>(null);
+  const [tipoPersona, setTipoPersona] = useState<TipoPersona>('NATURAL');
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
     title: string;
@@ -41,27 +42,125 @@ export function ClientesPage() {
     type: 'danger'
   });
 
-  // Form state
+  // Form state - Cliente base
   const [formData, setFormData] = useState<ClienteCreate>({
     nombre: '',
     telefono: '',
     email: '',
     cedula_rif: '',
     direccion: '',
-    activo: true
+    activo: true,
+    tipo_relacion: 'CLIENTE',
+    fax: '',
+    web: '',
+    numero_cliente: '',
+    codigo_postal: '',
+    nit: ''
   });
+
+  // Datos Persona Natural
+  const [datosNatural, setDatosNatural] = useState({
+    codigo_expediente: '',
+    numero_registro: '',
+    carnet_identidad: '',
+    es_trabajador: false,
+    ocupacion: '',
+    centro_laboral: '',
+    centro_trabajo: '',
+    correo_trabajo: '',
+    direccion_trabajo: '',
+    telefono_trabajo: '',
+    catalogo: '',
+    baja: false,
+    fecha_baja: '',
+    vigencia: '',
+    codigo_reeup: '',
+    id_tipo_entidad: undefined as number | undefined
+  });
+
+  // Datos TCP
+  const [datosTCP, setDatosTCP] = useState({
+    nombre: '',
+    primer_apellido: '',
+    segundo_apellido: '',
+    direccion: '',
+    numero_registro_proyecto: '',
+    fecha_aprobacion: ''
+  });
+
+  // Cuentas bancarias
+  const [cuentas, setCuentas] = useState<Partial<Cuenta>[]>([]);
+  const [nuevaCuenta, setNuevaCuenta] = useState({
+    titular: '',
+    banco: '',
+    sucursal: 0,
+    direccion: ''
+  });
+
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [searchTerm, setSearchTerm] = useState('');
 
   // Queries
-  const { data: clientes = [], isLoading, isError, error } = useQuery({
+  const { data: clientes = [] } = useQuery({
     queryKey: ['clientes'],
     queryFn: () => clientesService.getClientes(),
   });
 
+  const { data: tiposEntidad = [] } = useQuery({
+    queryKey: ['tiposEntidad'],
+    queryFn: () => tiposEntidadService.getTiposEntidad(),
+  });
+
   // Mutations
   const createMutation = useMutation({
-    mutationFn: clientesService.createCliente,
+    mutationFn: async (data: ClienteCreate) => {
+      const cliente = await clientesService.createCliente(data);
+      
+      // Crear datos según tipo de persona
+      if (tipoPersona === 'NATURAL' || tipoPersona === 'JURIDICA') {
+        await clienteNaturalService.createClienteNatural({
+          id_cliente: cliente.id_cliente,
+          codigo_expediente: datosNatural.codigo_expediente || undefined,
+          numero_registro: datosNatural.numero_registro || undefined,
+          carnet_identidad: datosNatural.carnet_identidad || undefined,
+          es_trabajador: datosNatural.es_trabajador,
+          ocupacion: datosNatural.ocupacion || undefined,
+          centro_laboral: datosNatural.centro_laboral || undefined,
+          centro_trabajo: datosNatural.centro_trabajo || undefined,
+          correo_trabajo: datosNatural.correo_trabajo || undefined,
+          direccion_trabajo: datosNatural.direccion_trabajo || undefined,
+          telefono_trabajo: datosNatural.telefono_trabajo || undefined,
+          catalogo: datosNatural.catalogo || undefined,
+          baja: datosNatural.baja,
+          fecha_baja: datosNatural.fecha_baja || undefined,
+          vigencia: datosNatural.vigencia || undefined,
+          codigo_reeup: datosNatural.codigo_reeup || undefined,
+          id_tipo_entidad: datosNatural.id_tipo_entidad
+        });
+      } else if (tipoPersona === 'TCP') {
+        await clienteTCPService.createClienteTCP({
+          id_cliente: cliente.id_cliente,
+          nombre: datosTCP.nombre,
+          primer_apellido: datosTCP.primer_apellido || undefined,
+          segundo_apellido: datosTCP.segundo_apellido || undefined,
+          direccion: datosTCP.direccion || undefined,
+          numero_registro_proyecto: datosTCP.numero_registro_proyecto || undefined,
+          fecha_aprobacion: datosTCP.fecha_aprobacion || undefined
+        });
+      }
+
+      // Crear cuentas bancarias
+      for (const cuenta of cuentas) {
+        if (cuenta.titular && cuenta.banco) {
+          await cuentasService.createCuenta({
+            ...cuenta,
+            id_cliente: cliente.id_cliente
+          });
+        }
+      }
+
+      return cliente;
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['clientes'] });
       toast.success('Cliente creado correctamente');
@@ -100,59 +199,52 @@ export function ClientesPage() {
     }
   });
 
-  // Validation
-  const validateForm = (): boolean => {
-    const errors: Record<string, string> = {};
-    
-    if (!formData.nombre || formData.nombre.trim().length < 2) {
-      errors.nombre = 'El nombre es requerido (mínimo 2 caracteres)';
-    }
-    
-    if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      errors.email = 'El formato del email no es válido';
-    }
-    
-    if (formData.telefono && formData.telefono.length < 7) {
-      errors.telefono = 'El teléfono debe tener al menos 7 caracteres';
-    }
-    
-    setFormErrors(errors);
-    return Object.keys(errors).length === 0;
-  };
-
   // Handlers
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!validateForm()) {
+    const errors: Record<string, string> = {};
+    
+    if (!formData.nombre || formData.nombre.trim().length < 2) {
+      errors.nombre = 'El nombre es requerido';
+    }
+
+    if (tipoPersona === 'TCP' && !datosTCP.nombre) {
+      errors.tcp_nombre = 'El nombre del líder es requerido';
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setFormErrors(errors);
       toast.error('Por favor corrija los errores del formulario');
       return;
     }
 
-    const data = {
-      ...formData,
-      nombre: formData.nombre.trim(),
-      telefono: formData.telefono?.trim() || undefined,
-      email: formData.email?.trim() || undefined,
-      cedula_rif: formData.cedula_rif?.trim() || undefined,
-      direccion: formData.direccion?.trim() || undefined,
-    };
-
     if (editingCliente) {
-      updateMutation.mutate({ id: editingCliente.id_cliente, data });
+      updateMutation.mutate({ id: editingCliente.id_cliente, data: formData });
     } else {
-      createMutation.mutate(data);
+      createMutation.mutate(formData);
     }
   };
 
   const resetForm = () => {
     setFormData({
-      nombre: '',
-      telefono: '',
-      email: '',
-      cedula_rif: '',
-      direccion: '',
-      activo: true
+      nombre: '', telefono: '', email: '', cedula_rif: '', direccion: '',
+      activo: true, tipo_relacion: 'CLIENTE', fax: '', web: '',
+      numero_cliente: '', codigo_postal: '', nit: ''
     });
+    setDatosNatural({
+      codigo_expediente: '', numero_registro: '', carnet_identidad: '',
+      es_trabajador: false, ocupacion: '', centro_laboral: '',
+      centro_trabajo: '', correo_trabajo: '', direccion_trabajo: '',
+      telefono_trabajo: '', catalogo: '', baja: false, fecha_baja: '',
+      vigencia: '', codigo_reeup: '', id_tipo_entidad: undefined
+    });
+    setDatosTCP({
+      nombre: '', primer_apellido: '', segundo_apellido: '',
+      direccion: '', numero_registro_proyecto: '', fecha_aprobacion: ''
+    });
+    setCuentas([]);
+    setNuevaCuenta({ titular: '', banco: '', sucursal: 0, direccion: '' });
+    setTipoPersona('NATURAL');
     setFormErrors({});
   };
 
@@ -164,23 +256,35 @@ export function ClientesPage() {
       email: cliente.email || '',
       cedula_rif: cliente.cedula_rif || '',
       direccion: cliente.direccion || '',
-      activo: cliente.activo
+      activo: cliente.activo,
+      fax: cliente.fax || '',
+      web: cliente.web || '',
+      numero_cliente: cliente.numero_cliente || '',
+      codigo_postal: cliente.codigo_postal || '',
+      nit: cliente.nit || ''
     });
     setView('form');
   };
 
-  const handleEliminar = (cliente: Cliente) => {
+  const handleDelete = (cliente: Cliente) => {
     setConfirmModal({
       isOpen: true,
       title: '¿Eliminar cliente?',
-      message: `¿Está seguro que desea eliminar al cliente "${cliente.nombre}"? Esta acción no se puede deshacer. Si el cliente tiene ventas asociadas, no podrá ser eliminado.`,
+      message: `¿Está seguro de eliminar al cliente "${cliente.nombre}"?`,
       onConfirm: () => deleteMutation.mutate(cliente.id_cliente),
       type: 'danger'
     });
   };
 
-  const handleVerPerfil = (clienteId: number) => {
-    navigate(`/clientes/${clienteId}`);
+  const addCuenta = () => {
+    if (nuevaCuenta.titular && nuevaCuenta.banco) {
+      setCuentas([...cuentas, { ...nuevaCuenta, sucursal: nuevaCuenta.sucursal || 0 }]);
+      setNuevaCuenta({ titular: '', banco: '', sucursal: 0, direccion: '' });
+    }
+  };
+
+  const removeCuenta = (index: number) => {
+    setCuentas(cuentas.filter((_, i) => i !== index));
   };
 
   // VISTA: FORMULARIO
@@ -191,324 +295,304 @@ export function ClientesPage() {
           <h1 className="text-2xl font-bold text-gray-900">
             {editingCliente ? 'Editar Cliente' : 'Nuevo Cliente'}
           </h1>
-          <Button variant="secondary" onClick={() => {
-            setView('list');
-            setEditingCliente(null);
-            resetForm();
-          }} className="gap-2">
-            <ArrowLeft className="h-4 w-4" />
-            Volver a la lista
+          <Button variant="secondary" onClick={() => { setView('list'); setEditingCliente(null); resetForm(); }}>
+            <ArrowLeft className="h-4 w-4 mr-2" />Volver
           </Button>
         </div>
 
         <form onSubmit={handleSubmit}>
-          <Card>
+          {/* Tipo de Persona */}
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <User className="h-5 w-5" />
+                Tipo de Persona
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex gap-4">
+                {[
+                  { value: 'NATURAL', label: 'Persona Natural', icon: User },
+                  { value: 'JURIDICA', label: 'Persona Jurídica', icon: Building2 },
+                  { value: 'TCP', label: 'TCP (Trabajo por Cuenta Propia)', icon: Briefcase }
+                ].map((tipo) => (
+                  <label key={tipo.value} className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="tipoPersona"
+                      value={tipo.value}
+                      checked={tipoPersona === tipo.value}
+                      onChange={(e) => setTipoPersona(e.target.value as TipoPersona)}
+                      className="w-4 h-4"
+                    />
+                    <tipo.icon className="h-4 w-4" />
+                    {tipo.label}
+                  </label>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Datos Base del Cliente */}
+          <Card className="mb-6">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <User className="h-5 w-5" />
                 Información del Cliente
               </CardTitle>
             </CardHeader>
-            <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <Label># de Cliente</Label>
+                <Input
+                  value={formData.numero_cliente}
+                  onChange={(e) => setFormData({ ...formData, numero_cliente: e.target.value })}
+                  placeholder="Ingresado por usuario"
+                />
+              </div>
               <div className="md:col-span-2">
                 <Label>Nombre Completo *</Label>
-                <div className="relative">
-                  <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
-                  <Input
-                    type="text"
-                    value={formData.nombre}
-                    onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
-                    className={`pl-10 ${formErrors.nombre ? 'border-red-500' : ''}`}
-                    placeholder="Ej. Juan Pérez"
-                  />
-                </div>
-                {formErrors.nombre && (
-                  <p className="text-red-500 text-sm mt-1">{formErrors.nombre}</p>
-                )}
+                <Input
+                  value={formData.nombre}
+                  onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
+                  className={formErrors.nombre ? 'border-red-500' : ''}
+                />
+                {formErrors.nombre && <p className="text-red-500 text-sm">{formErrors.nombre}</p>}
               </div>
-
               <div>
                 <Label>Cédula / RIF</Label>
-                <div className="relative">
-                  <CreditCard className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
-                  <Input
-                    type="text"
-                    value={formData.cedula_rif}
-                    onChange={(e) => setFormData({ ...formData, cedula_rif: e.target.value })}
-                    className="pl-10"
-                    placeholder="Ej. V-12345678"
-                  />
-                </div>
+                <Input value={formData.cedula_rif} onChange={(e) => setFormData({ ...formData, cedula_rif: e.target.value })} placeholder="V-12345678" />
               </div>
-
               <div>
                 <Label>Teléfono</Label>
-                <div className="relative">
-                  <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
-                  <Input
-                    type="text"
-                    value={formData.telefono}
-                    onChange={(e) => setFormData({ ...formData, telefono: e.target.value })}
-                    className={`pl-10 ${formErrors.telefono ? 'border-red-500' : ''}`}
-                    placeholder="Ej. 0412-1234567"
-                  />
-                </div>
-                {formErrors.telefono && (
-                  <p className="text-red-500 text-sm mt-1">{formErrors.telefono}</p>
-                )}
+                <Input value={formData.telefono} onChange={(e) => setFormData({ ...formData, telefono: e.target.value })} />
               </div>
-
               <div>
                 <Label>Email</Label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
-                  <Input
-                    type="email"
-                    value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    className={`pl-10 ${formErrors.email ? 'border-red-500' : ''}`}
-                    placeholder="Ej. cliente@email.com"
-                  />
-                </div>
-                {formErrors.email && (
-                  <p className="text-red-500 text-sm mt-1">{formErrors.email}</p>
-                )}
+                <Input type="email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} />
               </div>
-
-              <div className="flex items-center gap-2 pt-6">
+              <div>
+                <Label>Fax</Label>
+                <Input value={formData.fax} onChange={(e) => setFormData({ ...formData, fax: e.target.value })} />
+              </div>
+              <div>
+                <Label>Web</Label>
+                <Input value={formData.web} onChange={(e) => setFormData({ ...formData, web: e.target.value })} placeholder="https://..." />
+              </div>
+              <div>
+                <Label>Código Postal</Label>
+                <Input value={formData.codigo_postal} onChange={(e) => setFormData({ ...formData, codigo_postal: e.target.value })} />
+              </div>
+              <div>
+                <Label>NIT</Label>
+                <Input value={formData.nit} onChange={(e) => setFormData({ ...formData, nit: e.target.value })} />
+              </div>
+              <div className="md:col-span-3">
+                <Label>Dirección</Label>
+                <Input value={formData.direccion} onChange={(e) => setFormData({ ...formData, direccion: e.target.value })} />
+              </div>
+              <div>
+                <Label>Tipo de Relación</Label>
+                <select
+                  value={formData.tipo_relacion || 'CLIENTE'}
+                  onChange={(e) => setFormData({ ...formData, tipo_relacion: e.target.value })}
+                  className="w-full mt-1 px-3 py-2 border rounded-lg"
+                >
+                  <option value="CLIENTE">Cliente (solo compra)</option>
+                  <option value="PRODUCTOR">Productor (solo vende)</option>
+                  <option value="AMBOS">Cliente y Productor</option>
+                </select>
+              </div>
+              <div className="flex items-center gap-2">
                 <input
                   type="checkbox"
-                  id="activo"
                   checked={formData.activo}
                   onChange={(e) => setFormData({ ...formData, activo: e.target.checked })}
-                  className="h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                  className="w-4 h-4"
                 />
-                <Label htmlFor="activo" className="mb-0">Cliente activo</Label>
-              </div>
-
-              <div className="md:col-span-2">
-                <Label>Dirección</Label>
-                <div className="relative">
-                  <MapPin className="absolute left-3 top-3 text-gray-400 h-5 w-5" />
-                  <textarea
-                    value={formData.direccion}
-                    onChange={(e) => setFormData({ ...formData, direccion: e.target.value })}
-                    rows={2}
-                    className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none resize-none"
-                    placeholder="Dirección completa del cliente..."
-                  />
-                </div>
-              </div>
-
-              <div className="flex gap-4 md:col-span-2 pt-4 border-t">
-                <Button 
-                  type="submit" 
-                  className="w-32 gap-2"
-                  disabled={createMutation.isPending || updateMutation.isPending}
-                >
-                  <Save className="h-4 w-4" />
-                  {createMutation.isPending || updateMutation.isPending 
-                    ? 'Guardando...' 
-                    : (editingCliente ? 'Actualizar' : 'Guardar')
-                  }
-                </Button>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  onClick={() => {
-                    setView('list');
-                    setEditingCliente(null);
-                    resetForm();
-                  }}
-                  className="gap-2"
-                >
-                  <X className="h-4 w-4" />
-                  Cancelar
-                </Button>
+                <Label className="mb-0">Cliente activo</Label>
               </div>
             </CardContent>
           </Card>
+
+          {/* Datos según tipo de persona */}
+          {(tipoPersona === 'NATURAL' || tipoPersona === 'JURIDICA') && (
+            <Card className="mb-6">
+              <CardHeader>
+                <CardTitle>{tipoPersona === 'NATURAL' ? 'Datos Persona Natural' : 'Datos Persona Jurídica'}</CardTitle>
+              </CardHeader>
+              <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {tipoPersona === 'NATURAL' ? (
+                  <>
+                    <div><Label>Código Expediente</Label><Input value={datosNatural.codigo_expediente} onChange={(e) => setDatosNatural({...datosNatural, codigo_expediente: e.target.value})} /></div>
+                    <div><Label># de Registro</Label><Input value={datosNatural.numero_registro} onChange={(e) => setDatosNatural({...datosNatural, numero_registro: e.target.value})} /></div>
+                    <div><Label>Carnet de Identidad</Label><Input value={datosNatural.carnet_identidad} onChange={(e) => setDatosNatural({...datosNatural, carnet_identidad: e.target.value})} /></div>
+                    <div className="flex items-center gap-2">
+                      <input type="checkbox" checked={datosNatural.es_trabajador} onChange={(e) => setDatosNatural({...datosNatural, es_trabajador: e.target.checked})} />
+                      <Label className="mb-0">¿Es trabajador?</Label>
+                    </div>
+                    {datosNatural.es_trabajador && (
+                      <>
+                        <div><Label>Ocupación</Label><Input value={datosNatural.ocupacion} onChange={(e) => setDatosNatural({...datosNatural, ocupacion: e.target.value})} /></div>
+                        <div><Label>Centro Laboral</Label><Input value={datosNatural.centro_laboral} onChange={(e) => setDatosNatural({...datosNatural, centro_laboral: e.target.value})} /></div>
+                        <div><Label>Centro de Trabajo</Label><Input value={datosNatural.centro_trabajo} onChange={(e) => setDatosNatural({...datosNatural, centro_trabajo: e.target.value})} /></div>
+                        <div><Label>Correo Trabajo</Label><Input type="email" value={datosNatural.correo_trabajo} onChange={(e) => setDatosNatural({...datosNatural, correo_trabajo: e.target.value})} /></div>
+                        <div><Label>Dirección Trabajo</Label><Input value={datosNatural.direccion_trabajo} onChange={(e) => setDatosNatural({...datosNatural, direccion_trabajo: e.target.value})} /></div>
+                        <div><Label>Teléfono Trabajo</Label><Input value={datosNatural.telefono_trabajo} onChange={(e) => setDatosNatural({...datosNatural, telefono_trabajo: e.target.value})} /></div>
+                      </>
+                    )}
+                    <div><Label>Catálogo</Label><Input value={datosNatural.catalogo} onChange={(e) => setDatosNatural({...datosNatural, catalogo: e.target.value})} /></div>
+                    <div className="flex items-center gap-2">
+                      <input type="checkbox" checked={datosNatural.baja} onChange={(e) => setDatosNatural({...datosNatural, baja: e.target.checked})} />
+                      <Label className="mb-0">¿En baja?</Label>
+                    </div>
+                    {datosNatural.baja && (
+                      <>
+                        <div><Label>Fecha de Baja</Label><Input type="date" value={datosNatural.fecha_baja} onChange={(e) => setDatosNatural({...datosNatural, fecha_baja: e.target.value})} /></div>
+                      </>
+                    )}
+                    <div><Label>Vigencia</Label><Input type="date" value={datosNatural.vigencia} onChange={(e) => setDatosNatural({...datosNatural, vigencia: e.target.value})} /></div>
+                  </>
+                ) : (
+                  <>
+                    <div><Label>Código REEUP (XXX.XX.XXXXX)</Label><Input value={datosNatural.codigo_reeup} onChange={(e) => setDatosNatural({...datosNatural, codigo_reeup: e.target.value})} placeholder="123.45.67890" /></div>
+                    <div>
+                      <Label>Tipo de Entidad</Label>
+                      <select
+                        value={datosNatural.id_tipo_entidad || ''}
+                        onChange={(e) => setDatosNatural({...datosNatural, id_tipo_entidad: e.target.value ? parseInt(e.target.value) : undefined})}
+                        className="w-full mt-1 px-3 py-2 border rounded-lg"
+                      >
+                        <option value="">Seleccione tipo</option>
+                        {tiposEntidad.map((t) => <option key={t.id_tipo_entidad} value={t.id_tipo_entidad}>{t.nombre}</option>)}
+                      </select>
+                    </div>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Datos TCP */}
+          {tipoPersona === 'TCP' && (
+            <Card className="mb-6">
+              <CardHeader>
+                <CardTitle>Datos TCP (Trabajo por Cuenta Propia)</CardTitle>
+              </CardHeader>
+              <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="md:col-span-2">
+                  <Label>Nombre del Líder *</Label>
+                  <Input
+                    value={datosTCP.nombre}
+                    onChange={(e) => setDatosTCP({...datosTCP, nombre: e.target.value})}
+                    className={formErrors.tcp_nombre ? 'border-red-500' : ''}
+                  />
+                  {formErrors.tcp_nombre && <p className="text-red-500 text-sm">{formErrors.tcp_nombre}</p>}
+                </div>
+                <div><Label>Primer Apellido</Label><Input value={datosTCP.primer_apellido} onChange={(e) => setDatosTCP({...datosTCP, primer_apellido: e.target.value})} /></div>
+                <div><Label>Segundo Apellido</Label><Input value={datosTCP.segundo_apellido} onChange={(e) => setDatosTCP({...datosTCP, segundo_apellido: e.target.value})} /></div>
+                <div className="md:col-span-2"><Label>Dirección</Label><Input value={datosTCP.direccion} onChange={(e) => setDatosTCP({...datosTCP, direccion: e.target.value})} /></div>
+                <div><Label># de Registro del Proyecto</Label><Input value={datosTCP.numero_registro_proyecto} onChange={(e) => setDatosTCP({...datosTCP, numero_registro_proyecto: e.target.value})} /></div>
+                <div><Label>Fecha de Aprobación</Label><Input type="date" value={datosTCP.fecha_aprobacion} onChange={(e) => setDatosTCP({...datosTCP, fecha_aprobacion: e.target.value})} /></div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Cuentas Bancarias */}
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <CreditCard className="h-5 w-5" />
+                Cuentas Bancarias
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-4 gap-2 mb-4">
+                <Input placeholder="Titular" value={nuevaCuenta.titular} onChange={(e) => setNuevaCuenta({...nuevaCuenta, titular: e.target.value})} />
+                <Input placeholder="Banco" value={nuevaCuenta.banco} onChange={(e) => setNuevaCuenta({...nuevaCuenta, banco: e.target.value})} />
+                <Input placeholder="Sucursal" type="number" value={nuevaCuenta.sucursal || ''} onChange={(e) => setNuevaCuenta({...nuevaCuenta, sucursal: parseInt(e.target.value) || 0})} />
+                <Button type="button" onClick={addCuenta} variant="outline"><Plus className="h-4 w-4" /></Button>
+              </div>
+              {cuentas.length > 0 && (
+                <Table>
+                  <TableHeader>
+                    <TableRow><TableHead>Titular</TableHead><TableHead>Banco</TableHead><TableHead>Sucursal</TableHead><TableHead></TableHead></TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {cuentas.map((cuenta, index) => (
+                      <TableRow key={index}>
+                        <TableCell>{cuenta.titular}</TableCell>
+                        <TableCell>{cuenta.banco}</TableCell>
+                        <TableCell>{cuenta.sucursal}</TableCell>
+                        <TableCell><button onClick={() => removeCuenta(index)}><Trash2 className="h-4 w-4 text-red-600" /></button></TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+
+          <div className="flex gap-3">
+            <Button type="submit"><Save className="h-4 w-4 mr-2" />{editingCliente ? 'Actualizar' : 'Crear'}</Button>
+            <Button type="button" variant="outline" onClick={() => { setView('list'); resetForm(); }}>Cancelar</Button>
+          </div>
         </form>
       </div>
     );
   }
 
-  // Filtrar clientes según el término de búsqueda
-  const filteredClientes = clientes.filter(cliente => {
-    if (!searchTerm) return true;
-    const term = searchTerm.toLowerCase();
-    return (
-      cliente.nombre.toLowerCase().includes(term) ||
-      (cliente.email?.toLowerCase() || '').includes(term) ||
-      (cliente.telefono?.toLowerCase() || '').includes(term) ||
-      (cliente.cedula_rif?.toLowerCase() || '').includes(term)
-    );
-  });
-
   // VISTA: LISTA
-  if (isLoading) {
-    return (
-      <div className="flex flex-col items-center justify-center h-96 gap-4">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-        <div className="text-gray-500">Cargando clientes...</div>
-      </div>
-    );
-  }
-
-  if (isError) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-red-500 text-center">
-          <p className="font-bold text-lg mb-2">Error al cargar clientes</p>
-          <p>{error instanceof Error ? error.message : 'Error desconocido'}</p>
-          <Button onClick={() => queryClient.invalidateQueries({ queryKey: ['clientes'] })} className="mt-4 gap-2" variant="secondary">
-            <RefreshCw className="h-4 w-4" />
-            Reintentar
-          </Button>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Clientes</h1>
-          <p className="text-gray-500 mt-1">Gestión de clientes ({filteredClientes.length} de {clientes.length} registrados)</p>
-        </div>
-        <Button
-          onClick={() => {
-            resetForm();
-            setEditingCliente(null);
-            setView('form');
-          }}
-          className="gap-2"
-        >
-          <Plus className="h-4 w-4" />
-          Nuevo Cliente
-        </Button>
+      <div className="flex justify-between items-center">
+        <h1 className="text-2xl font-bold">Clientes</h1>
+        <Button onClick={() => { resetForm(); setView('form'); }}><Plus className="h-4 w-4 mr-2" />Nuevo Cliente</Button>
       </div>
 
-      {/* Barra de búsqueda */}
       <div className="relative">
         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
         <Input
-          type="text"
-          placeholder="Buscar clientes por nombre, email, teléfono o cédula..."
+          placeholder="Buscar clientes..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          className="pl-10 pr-10 w-full"
+          className="pl-10"
         />
-        {searchTerm && (
-          <button
-            onClick={() => setSearchTerm('')}
-            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-          >
-            <X className="h-5 w-5" />
-          </button>
-        )}
       </div>
 
-      <Card className="overflow-hidden">
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHeader className="bg-gray-50">
-              <TableRow>
-                <TableHead>ID</TableHead>
-                <TableHead>Nombre</TableHead>
-                <TableHead>Teléfono</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Cédula/RIF</TableHead>
-                <TableHead>Estado</TableHead>
-                <TableHead className="text-right">Acciones</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredClientes.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={7} className="text-center py-12 text-gray-500">
-                    {searchTerm ? 'No se encontraron clientes que coincidan con la búsqueda' : 'No se encontraron clientes'}
-                  </TableCell>
-                </TableRow>
-              ) : (
-                filteredClientes.map((cliente) => (
-                  <TableRow key={cliente.id_cliente} className="hover:bg-gray-50">
-                    <TableCell className="font-medium">#{cliente.id_cliente}</TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
-                          <User className="h-4 w-4 text-blue-600" />
-                        </div>
-                        <span className="font-medium">{cliente.nombre}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell>{cliente.telefono || '-'}</TableCell>
-                    <TableCell>{cliente.email || '-'}</TableCell>
-                    <TableCell>{cliente.cedula_rif || '-'}</TableCell>
-                    <TableCell>
-                      {cliente.activo ? (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                          <CheckCircle className="h-3 w-3" />
-                          Activo
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                          <XCircle className="h-3 w-3" />
-                          Inactivo
-                        </span>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleVerPerfil(cliente.id_cliente)}
-                          className="text-blue-600 hover:text-blue-800 hover:bg-blue-50"
-                          title="Ver perfil"
-                        >
-                          <UserCircle className="h-4 w-4" />
-                        </Button>
-                        
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleEdit(cliente)}
-                          className="text-green-600 hover:text-green-800 hover:bg-green-50"
-                          title="Editar"
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleEliminar(cliente)}
-                          className="text-red-600 hover:text-red-800 hover:bg-red-50"
-                          title="Eliminar"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </div>
-      </Card>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {clientes.filter(c => c.nombre?.toLowerCase().includes(searchTerm.toLowerCase())).map((cliente) => (
+          <Card key={cliente.id_cliente} className="hover:shadow-lg transition-shadow">
+            <CardContent className="pt-4">
+              <div className="flex justify-between items-start">
+                <div>
+                  <h3 className="font-semibold text-lg">{cliente.nombre}</h3>
+                  <p className="text-sm text-gray-500">{cliente.cedula_rif || 'Sin identificación'}</p>
+                </div>
+                <span className={`px-2 py-1 rounded text-xs ${cliente.activo ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                  {cliente.activo ? 'Activo' : 'Inactivo'}
+                </span>
+              </div>
+              <div className="mt-3 space-y-1 text-sm">
+                {cliente.telefono && <p className="flex items-center gap-2"><Phone className="h-3 w-3" /> {cliente.telefono}</p>}
+                {cliente.email && <p className="flex items-center gap-2"><Mail className="h-3 w-3" /> {cliente.email}</p>}
+              </div>
+              <div className="mt-4 flex gap-2">
+                <Button variant="outline" size="sm" onClick={() => handleEdit(cliente)}><Edit className="h-4 w-4" /></Button>
+                <Button variant="outline" size="sm" onClick={() => handleDelete(cliente)}><Trash2 className="h-4 w-4 text-red-600" /></Button>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
 
       <ConfirmModal
         isOpen={confirmModal.isOpen}
-        onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
-        onConfirm={confirmModal.onConfirm}
         title={confirmModal.title}
         message={confirmModal.message}
         type={confirmModal.type}
-        confirmText="Sí, eliminar"
-        cancelText="Cancelar"
+        onConfirm={() => confirmModal.onConfirm()}
+        onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
       />
     </div>
   );

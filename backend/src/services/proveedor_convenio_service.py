@@ -2,55 +2,55 @@ from typing import List
 from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlmodel import select
 from src.repository.base import CRUDBase
-from src.models import TipoProvedor, TipoConvenio
+from src.models import TipoCliente, TipoConvenio
 from src.dto import (
-    TipoProvedorCreate,
-    TipoProvedorUpdate,
-    TipoProvedorRead,
+    TipoClienteCreate,
+    TipoClienteUpdate,
+    TipoClienteRead,
     TipoConvenioCreate,
     TipoConvenioUpdate,
     TipoConvenioRead,
 )
 
-tipo_provedor_repo = CRUDBase[TipoProvedor, TipoProvedorCreate, TipoProvedorUpdate](
-    TipoProvedor
+tipo_cliente_repo = CRUDBase[TipoCliente, TipoClienteCreate, TipoClienteUpdate](
+    TipoCliente
 )
 tipo_convenio_repo = CRUDBase[TipoConvenio, TipoConvenioCreate, TipoConvenioUpdate](
     TipoConvenio
 )
 
 
-class TipoProvedorService:
+class TipoClienteService:
     @staticmethod
-    async def create(db: AsyncSession, data: TipoProvedorCreate) -> TipoProvedorRead:
-        db_obj = await tipo_provedor_repo.create(db, obj_in=data)
-        return TipoProvedorRead.model_validate(db_obj)
+    async def create(db: AsyncSession, data: TipoClienteCreate) -> TipoClienteRead:
+        db_obj = await tipo_cliente_repo.create(db, obj_in=data)
+        return TipoClienteRead.model_validate(db_obj)
 
     @staticmethod
-    async def get(db: AsyncSession, id: int) -> TipoProvedorRead:
-        db_obj = await tipo_provedor_repo.get(db, id=id)
-        return TipoProvedorRead.model_validate(db_obj) if db_obj else None
+    async def get(db: AsyncSession, id: int) -> TipoClienteRead:
+        db_obj = await tipo_cliente_repo.get(db, id=id)
+        return TipoClienteRead.model_validate(db_obj) if db_obj else None
 
     @staticmethod
     async def get_all(
         db: AsyncSession, skip: int = 0, limit: int = 100
-    ) -> List[TipoProvedorRead]:
-        db_objs = await tipo_provedor_repo.get_multi(db, skip=skip, limit=limit)
-        return [TipoProvedorRead.model_validate(obj) for obj in db_objs]
+    ) -> List[TipoClienteRead]:
+        db_objs = await tipo_cliente_repo.get_multi(db, skip=skip, limit=limit)
+        return [TipoClienteRead.model_validate(obj) for obj in db_objs]
 
     @staticmethod
     async def update(
-        db: AsyncSession, id: int, data: TipoProvedorUpdate
-    ) -> TipoProvedorRead:
-        db_obj = await tipo_provedor_repo.get(db, id=id)
+        db: AsyncSession, id: int, data: TipoClienteUpdate
+    ) -> TipoClienteRead:
+        db_obj = await tipo_cliente_repo.get(db, id=id)
         if db_obj:
-            updated = await tipo_provedor_repo.update(db, db_obj=db_obj, obj_in=data)
-            return TipoProvedorRead.model_validate(updated)
+            updated = await tipo_cliente_repo.update(db, db_obj=db_obj, obj_in=data)
+            return TipoClienteRead.model_validate(updated)
         return None
 
     @staticmethod
     async def delete(db: AsyncSession, id: int) -> bool:
-        result = await tipo_provedor_repo.remove(db, id=id)
+        result = await tipo_cliente_repo.remove(db, id=id)
         return result is not None
 
 

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 
 export function WelcomePage() {
   const [nombre, setNombre] = useState('Solji Charón');
