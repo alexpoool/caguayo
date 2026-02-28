@@ -51,12 +51,7 @@ export function CompraHome() {
             </div>
           </div>
 
-          <div className="p-4 bg-gradient-to-r from-orange-100 to-amber-100 rounded-lg border-2 border-dashed border-orange-300">
-            <div className="flex items-center justify-center gap-2">
-              <Construction className="h-5 w-5 text-orange-500" />
-              <span className="text-sm font-bold text-orange-700">Próximamente disponible</span>
-            </div>
-          </div>
+          {/* Bloque de 'Próximamente disponible' eliminado a petición del usuario */}
         </div>
       </div>
     </div>

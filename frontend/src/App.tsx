@@ -4,7 +4,6 @@ import { BrowserRouter as Router, Routes, Route, Link, useLocation, Navigate } f
 import { Toaster } from 'react-hot-toast';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import React from 'react';
-//import './styles/animation.css';
 import { 
   ArrowLeftRight, 
   Boxes, 
@@ -22,7 +21,6 @@ import {
   FileText
 } from 'lucide-react';
 
-import { Dashboard } from './pages/Dashboard';
 import { WelcomePage } from './pages/Welcome';
 import { ProductosPage } from './pages/Productos';
 import { ClientesPage } from './pages/Clientes';
@@ -45,7 +43,7 @@ import { CompraClientesPage } from './pages/compra/ClientesPage';
 import { CompraConveniosPage } from './pages/compra/ConveniosPage';
 import { CompraAnexosPage } from './pages/compra/AnexosPage';
 
-type Modulo = 'administracion' | 'venta' | 'compra' | 'inventario' | 'reportes';
+type Modulo = 'administracion' | 'venta' | 'compra' | 'inventario' | 'reportes' | 'home';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -61,8 +59,9 @@ const rutasPorModulo: Record<Modulo, string[]> = {
   inventario: ['/inventario', '/movimientos', '/movimientos/pendientes', '/movimientos/ajuste', '/movimientos/seleccionar-recepcion', '/productos'],
   administracion: ['/administracion', '/configuracion', '/usuarios', '/grupos', '/monedas', '/dependencias'],
   venta: ['/venta', '/ventas', '/clientes'],
-  compra: ['/compra', '/clientes', '/convenios', '/anexos'],
+  compra: ['/compra', '/compra/clientes', '/convenios', '/anexos'],
   reportes: ['/reportes'],
+  home: ['/'],
 };
 
 // Componente para proteger rutas según el módulo
@@ -95,18 +94,32 @@ function App() {
   const navigate = useNavigate();
   const location = useLocation();
 
+  const handleLogout = () => {
+    // Close dialogs and navigate to home (add real logout logic here)
+    setShowLogoutConfirm(false);
+    setShowAccountModal(false);
+    navigate('/');
+  };
+
   useEffect(() => {
-    // Ajustar el módulo activo según la ruta actual para que el sidebar muestre el menú correcto
-    const path = location.pathname || '/';
-    for (const [moduloKey, rutas] of Object.entries(rutasPorModulo) as [Modulo, string[]][]) {
-      if (rutas.some(route => route === '/' ? path === route : path === route || (route !== '/' && path.startsWith(route)))) {
-        setModuloActivo(moduloKey);
+      const path = location.pathname || '/';
+      if (path === '/') {
+        setModuloActivo('home');
         return;
       }
-    }
-    // Si no coincide ninguna ruta, mantener inventario por defecto
-    setModuloActivo('inventario');
+      for (const [moduloKey, rutas] of Object.entries(rutasPorModulo) as [Modulo, string[]][]) {
+        if (rutas.some(route => route === '/' ? path === route : path === route || (route !== '/' && path.startsWith(route)))) {
+          setModuloActivo(moduloKey);
+          return;
+        }
+      }
+      setModuloActivo('inventario');
   }, [location.pathname]);
+
+  // Ensure sidebar is expanded on initial load
+  useEffect(() => {
+    setSlimSidebar(false);
+  }, []);
 
   const handleLinkClick = () => {};
 
@@ -159,8 +172,8 @@ function App() {
 
   const modulos: { id: Modulo; label: string; icon: React.ElementType }[] = [
     { id: 'administracion', label: 'Administración', icon: Shield },
-    { id: 'venta', label: 'Comercialización', icon: Briefcase },
-    { id: 'compra', label: 'Representación', icon: UserCircle },
+    { id: 'venta', label: 'Venta', icon: Briefcase },
+    { id: 'compra', label: 'Compra', icon: UserCircle },
     { id: 'inventario', label: 'Inventario', icon: Boxes },
     { id: 'reportes', label: 'Reportes', icon: BarChart3 },
   ];
@@ -168,13 +181,6 @@ function App() {
   function handleToggleSlim(_event: React.MouseEvent<HTMLButtonElement>): void {
     setSlimSidebar(prev => !prev);
   }
-
-  function handleLogout(_event?: React.MouseEvent<HTMLButtonElement> | any): void {
-    setShowLogoutConfirm(false);
-    setShowAccountModal(false);
-    navigate('/');
-  }
-
   return (
     <QueryClientProvider client={queryClient}>
       <div className={`grid ${slimSidebar ? 'grid-cols-[4.5rem_1fr]' : 'grid-cols-[16rem_1fr]'} grid-rows-[auto_1fr] h-screen bg-gray-50`}>
@@ -246,7 +252,7 @@ function App() {
                 {moduloActivo === 'compra' && (
                   <ul className="space-y-1 px-3">
                     <li>
-                      <NavLink to="/clientes" onClick={handleLinkClick}>
+                      <NavLink to="/compra/clientes" onClick={handleLinkClick}>
                         <UserCircle className="w-6 h-6" />
                         Clientes
                       </NavLink>
@@ -264,12 +270,6 @@ function App() {
                       </NavLink>
                     </li>
                   </ul>
-                )}
-                {(moduloActivo !== 'inventario' && moduloActivo !== 'administracion' && moduloActivo !== 'compra') && (
-              <div className={`${slimSidebar ? 'flex flex-col items-center px-0 py-4' : 'flex items-center gap-2 px-6 py-4'}`}>
-                <Clock className="w-5 h-5 text-slate-300 shrink-0" />
-                {!slimSidebar && <p className="text-slate-400 text-sm">Módulo en construcción</p>}
-              </div>
                 )}
               </>
           </nav>
@@ -294,7 +294,7 @@ function App() {
         <header className="col-start-2 col-end-3 row-start-1 row-end-2 sticky top-0 z-40 bg-white shadow-sm border-b border-gray-200 px-6 py-4 h-16 flex items-center justify-between">
           <Link
             to="/"
-            onClick={() => setModuloActivo('inventario')}
+            onClick={() => setModuloActivo('home')}
             className="p-2 rounded-lg hover:bg-gray-100 transition-all duration-300 ease-out hover:scale-110 active:scale-95 group"
             title="Ir al Dashboard"
           >
@@ -338,16 +338,21 @@ function App() {
           <main className="flex-1 overflow-auto bg-gray-50 p-8">
             <div className="animate-fade-in-up animation-fill-both">
               <Routes>
-                <Route path="/" element={<WelcomePage />} />
-                
-                {/* Rutas de Inventario - protegidas */}
-                <Route 
-                  path="/movimientos" 
+                <Route
+                  path="/"
                   element={
-                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/movimientos">
-                      <MovimientosPage />
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/">
+                      <WelcomePage />
                     </ProtectedRoute>
-                  } 
+                  }
+                />
+                <Route
+                  path="/compra/clientes"
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/compra/clientes">
+                      <CompraClientesPage />
+                    </ProtectedRoute>
+                  }
                 />
                 <Route 
                   path="/movimientos/pendientes" 
@@ -500,7 +505,7 @@ function App() {
                   } 
                 />
                 <Route
-                  path="/clientes"
+                  path="compra/clientes"
                   element={
                     <ProtectedRoute moduloActivo={moduloActivo} currentPath="/clientes">
                       <CompraClientesPage />

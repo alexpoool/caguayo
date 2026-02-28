@@ -1,4 +1,4 @@
-import { Briefcase, ShoppingCart, Users, DollarSign, FileText } from 'lucide-react';
+import { Briefcase, ShoppingCart, Users, DollarSign, FileText, Construction } from 'lucide-react';
 
 export function VentaHome() {
   return (
@@ -50,6 +50,14 @@ export function VentaHome() {
               </div>
             </div>
           </div>
+
+          <div className="p-4 bg-gradient-to-r from-green-100 to-emerald-100 rounded-lg border-2 border-dashed border-green-300 mt-4">
+            <div className="flex items-center justify-center gap-2">
+              <Construction className="h-5 w-5 text-green-500" />
+              <span className="text-sm font-bold text-green-700">Próximamente disponible</span>
+            </div>
+          </div>
+
         </div>
       </div>
     </div>

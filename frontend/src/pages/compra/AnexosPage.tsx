@@ -8,7 +8,7 @@ export function CompraAnexosPage() {
         <div className="p-2 rounded-lg bg-amber-50 text-amber-600">
           <Boxes className="w-6 h-6" />
         </div>
-        <h2 className="text-xl font-semibold">Anexos (Representación)</h2>
+        <h2 className="text-xl font-semibold">Anexos</h2>
       </div>
       <div className="bg-white rounded-lg shadow p-4 text-sm text-gray-600">
         Gestión de anexos vinculados a convenios y clientes.

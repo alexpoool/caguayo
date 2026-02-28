@@ -394,6 +394,7 @@ export function ClientesPage() {
               <div>
                 <Label>Tipo de Relación</Label>
                 <select
+                  aria-label="Tipo de Relación"
                   value={formData.tipo_relacion || 'CLIENTE'}
                   onChange={(e) => setFormData({ ...formData, tipo_relacion: e.target.value })}
                   className="w-full mt-1 px-3 py-2 border rounded-lg"
@@ -406,6 +407,7 @@ export function ClientesPage() {
               <div className="flex items-center gap-2">
                 <input
                   type="checkbox"
+                  aria-label="Cliente activo"
                   checked={formData.activo}
                   onChange={(e) => setFormData({ ...formData, activo: e.target.checked })}
                   className="w-4 h-4"
@@ -428,7 +430,7 @@ export function ClientesPage() {
                     <div><Label># de Registro</Label><Input value={datosNatural.numero_registro} onChange={(e) => setDatosNatural({...datosNatural, numero_registro: e.target.value})} /></div>
                     <div><Label>Carnet de Identidad</Label><Input value={datosNatural.carnet_identidad} onChange={(e) => setDatosNatural({...datosNatural, carnet_identidad: e.target.value})} /></div>
                     <div className="flex items-center gap-2">
-                      <input type="checkbox" checked={datosNatural.es_trabajador} onChange={(e) => setDatosNatural({...datosNatural, es_trabajador: e.target.checked})} />
+                      <input type="checkbox" aria-label="Es trabajador" checked={datosNatural.es_trabajador} onChange={(e) => setDatosNatural({...datosNatural, es_trabajador: e.target.checked})} />
                       <Label className="mb-0">¿Es trabajador?</Label>
                     </div>
                     {datosNatural.es_trabajador && (
@@ -443,7 +445,7 @@ export function ClientesPage() {
                     )}
                     <div><Label>Catálogo</Label><Input value={datosNatural.catalogo} onChange={(e) => setDatosNatural({...datosNatural, catalogo: e.target.value})} /></div>
                     <div className="flex items-center gap-2">
-                      <input type="checkbox" checked={datosNatural.baja} onChange={(e) => setDatosNatural({...datosNatural, baja: e.target.checked})} />
+                      <input type="checkbox" aria-label="En baja" checked={datosNatural.baja} onChange={(e) => setDatosNatural({...datosNatural, baja: e.target.checked})} />
                       <Label className="mb-0">¿En baja?</Label>
                     </div>
                     {datosNatural.baja && (
@@ -459,6 +461,7 @@ export function ClientesPage() {
                     <div>
                       <Label>Tipo de Entidad</Label>
                       <select
+                        aria-label="Tipo de Entidad"
                         value={datosNatural.id_tipo_entidad || ''}
                         onChange={(e) => setDatosNatural({...datosNatural, id_tipo_entidad: e.target.value ? parseInt(e.target.value) : undefined})}
                         className="w-full mt-1 px-3 py-2 border rounded-lg"
@@ -507,11 +510,11 @@ export function ClientesPage() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-4 gap-2 mb-4">
-                <Input placeholder="Titular" value={nuevaCuenta.titular} onChange={(e) => setNuevaCuenta({...nuevaCuenta, titular: e.target.value})} />
-                <Input placeholder="Banco" value={nuevaCuenta.banco} onChange={(e) => setNuevaCuenta({...nuevaCuenta, banco: e.target.value})} />
-                <Input placeholder="Sucursal" type="number" value={nuevaCuenta.sucursal || ''} onChange={(e) => setNuevaCuenta({...nuevaCuenta, sucursal: parseInt(e.target.value) || 0})} />
-                <Button type="button" onClick={addCuenta} variant="outline"><Plus className="h-4 w-4" /></Button>
+                <div className="grid grid-cols-4 gap-2 mb-4">
+                <Input placeholder="Titular" aria-label="Titular cuenta" value={nuevaCuenta.titular} onChange={(e) => setNuevaCuenta({...nuevaCuenta, titular: e.target.value})} />
+                <Input placeholder="Banco" aria-label="Banco cuenta" value={nuevaCuenta.banco} onChange={(e) => setNuevaCuenta({...nuevaCuenta, banco: e.target.value})} />
+                <Input placeholder="Sucursal" aria-label="Sucursal cuenta" type="number" value={nuevaCuenta.sucursal || ''} onChange={(e) => setNuevaCuenta({...nuevaCuenta, sucursal: parseInt(e.target.value) || 0})} />
+                <Button type="button" aria-label="Agregar cuenta" onClick={addCuenta} variant="outline"><Plus className="h-4 w-4" /></Button>
               </div>
               {cuentas.length > 0 && (
                 <Table>
@@ -524,7 +527,7 @@ export function ClientesPage() {
                         <TableCell>{cuenta.titular}</TableCell>
                         <TableCell>{cuenta.banco}</TableCell>
                         <TableCell>{cuenta.sucursal}</TableCell>
-                        <TableCell><button onClick={() => removeCuenta(index)}><Trash2 className="h-4 w-4 text-red-600" /></button></TableCell>
+                        <TableCell><button aria-label="Eliminar cuenta" title="Eliminar cuenta" onClick={() => removeCuenta(index)}><Trash2 className="h-4 w-4 text-red-600" /></button></TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
