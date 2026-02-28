@@ -1,43 +1,64 @@
-import { Link } from 'react-router-dom';
-import { Users, FileText, FolderOpen, ShoppingCart } from 'lucide-react';
-import { ModuleHome } from '../../components/ModuleHome';
+import { ShoppingCart, Construction, Package, FileText, Truck } from 'lucide-react';
 
 export function CompraHome() {
   return (
-    <ModuleHome title="MÓDULO DE REPRESENTACIÓN" description="Gestión de adquisiciones y representación" icon={ShoppingCart}>
-      <p className="text-sm text-gray-700 mb-4">Este módulo centraliza las operaciones relacionadas con la representación comercial: clientes, convenios y documentos anexos.</p>
+    <div className="h-[calc(100vh-8rem)] overflow-hidden flex flex-col items-center justify-center p-4">
+      <div className="w-full max-w-3xl">
+        <div className="text-center mb-4">
+          <div className="inline-flex p-3 rounded-2xl bg-gradient-to-br from-orange-500 to-amber-600 text-white shadow-md mb-3">
+            <ShoppingCart className="h-8 w-8" />
+          </div>
+          <h1 className="text-2xl font-bold text-gray-800">MÓDULO DE COMPRAS</h1>
+          <p className="text-sm text-gray-600 mt-1">Gestión de adquisiciones</p>
+        </div>
 
-      <div className="grid grid-cols-3 gap-3">
-        <Link to="/compra/clientes" className="flex items-start gap-2 p-3 bg-blue-50 rounded-lg">
-          <div className="w-7 h-7 rounded-full bg-blue-100 flex items-center justify-center mt-0.5">
-            <Users className="h-4 w-4 text-blue-600" />
-          </div>
-          <div>
-            <h3 className="font-bold text-sm text-gray-800">Clientes</h3>
-            <p className="text-xs text-gray-600 mt-0.5">Gestión de clientes y representación</p>
-          </div>
-        </Link>
+        <div className="bg-white rounded-xl shadow-lg p-4">
+          <p className="text-sm text-gray-700 mb-4">
+            El módulo de Compras estará dedicado a la gestión de proveedores y órdenes de compra. Permitirá controlar el ciclo completo de adquisiciones.
+          </p>
 
-        <Link to="/compra/convenios" className="flex items-start gap-2 p-3 bg-green-50 rounded-lg">
-          <div className="w-7 h-7 rounded-full bg-green-100 flex items-center justify-center mt-0.5">
-            <FileText className="h-4 w-4 text-green-600" />
-          </div>
-          <div>
-            <h3 className="font-bold text-sm text-gray-800">Convenios</h3>
-            <p className="text-xs text-gray-600 mt-0.5">Contratos y acuerdos comerciales</p>
-          </div>
-        </Link>
+          <div className="grid grid-cols-2 gap-3 mb-4">
+            <div className="flex items-start gap-2 p-3 bg-blue-50 rounded-lg">
+              <Package className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
+              <div>
+                <h3 className="font-bold text-sm text-gray-800">Proveedores</h3>
+                <p className="text-xs text-gray-600 mt-0.5">Registro y gestión de empresas proveedoras.</p>
+              </div>
+            </div>
 
-        <Link to="/compra/anexos" className="flex items-start gap-2 p-3 bg-purple-50 rounded-lg">
-          <div className="w-7 h-7 rounded-full bg-purple-100 flex items-center justify-center mt-0.5">
-            <FolderOpen className="h-4 w-4 text-purple-600" />
+            <div className="flex items-start gap-2 p-3 bg-green-50 rounded-lg">
+              <FileText className="h-4 w-4 text-green-600 mt-0.5 flex-shrink-0" />
+              <div>
+                <h3 className="font-bold text-sm text-gray-800">Órdenes</h3>
+                <p className="text-xs text-gray-600 mt-0.5">Generación y seguimiento de órdenes.</p>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-2 p-3 bg-amber-50 rounded-lg">
+              <Truck className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
+              <div>
+                <h3 className="font-bold text-sm text-gray-800">Recepción</h3>
+                <p className="text-xs text-gray-600 mt-0.5">Registro de productos recibidos.</p>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-2 p-3 bg-purple-50 rounded-lg">
+              <FileText className="h-4 w-4 text-purple-600 mt-0.5 flex-shrink-0" />
+              <div>
+                <h3 className="font-bold text-sm text-gray-800">Seguimiento</h3>
+                <p className="text-xs text-gray-600 mt-0.5">Estado de cada orden.</p>
+              </div>
+            </div>
           </div>
-          <div>
-            <h3 className="font-bold text-sm text-gray-800">Anexos</h3>
-            <p className="text-xs text-gray-600 mt-0.5">Documentos anexos a convenios</p>
+
+          <div className="p-4 bg-gradient-to-r from-orange-100 to-amber-100 rounded-lg border-2 border-dashed border-orange-300">
+            <div className="flex items-center justify-center gap-2">
+              <Construction className="h-5 w-5 text-orange-500" />
+              <span className="text-sm font-bold text-orange-700">Próximamente disponible</span>
+            </div>
           </div>
-        </Link>
+        </div>
       </div>
-    </ModuleHome>
+    </div>
   );
 }

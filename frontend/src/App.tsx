@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Link, useLocation, Navigate, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Link, useLocation, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import React from 'react';
@@ -23,6 +24,7 @@ import {
 import { Dashboard } from './pages/Dashboard';
 import { WelcomePage } from './pages/Welcome';
 import { ProductosPage } from './pages/Productos';
+// import { VentasPage } from './pages/Ventas';
 import { ClientesPage } from './pages/Clientes';
 import { PerfilClientePage } from './pages/PerfilCliente';
 import { MonedasPage } from './pages/Monedas';
@@ -39,8 +41,21 @@ import { AdministracionHome } from './pages/home/AdministracionHome';
 import { VentaHome } from './pages/home/VentaHome';
 import { CompraHome } from './pages/home/CompraHome';
 import { ReportesHome } from './pages/home/ReportesHome';
-import { ConveniosPage } from './pages/Convenios';
-import { AnexosPage } from './pages/Anexos';
+import React from 'react';
+import { 
+  ArrowLeftRight, 
+  Boxes, 
+  Clock, 
+  Home,
+  Briefcase,
+  BarChart3,
+  UserCircle,
+  Shield,
+  Settings,
+  Users,
+  Building,
+  Coins
+} from 'lucide-react';
 
 type Modulo = 'administracion' | 'venta' | 'compra' | 'inventario' | 'reportes';
 
@@ -57,11 +72,12 @@ const queryClient = new QueryClient({
 const rutasPorModulo: Record<Modulo, string[]> = {
   inventario: ['/inventario', '/movimientos', '/movimientos/pendientes', '/movimientos/ajuste', '/movimientos/seleccionar-recepcion', '/productos'],
   administracion: ['/administracion', '/configuracion', '/usuarios', '/grupos', '/monedas', '/dependencias'],
-  venta: ['/venta', '/ventas'],
-  compra: ['/compra', '/compra/clientes', '/compra/convenios', '/compra/anexos', '/clientes'],
+  venta: ['/venta', '/ventas', '/clientes'],
+  compra: ['/compra'],
   reportes: ['/reportes'],
 };
 
+// Componente para proteger rutas según el módulo
 function ProtectedRoute({ 
   children, 
   moduloActivo, 
@@ -89,46 +105,16 @@ function App() {
   const [slimSidebar, setSlimSidebar] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
-  const isHome = location.pathname === '/';
-
-  useEffect(() => {
-    setSlimSidebar(isHome);
-  }, [isHome]);
 
   const handleLinkClick = () => {};
 
   const handleModuloClick = (moduloId: Modulo) => {
     setModuloActivo(moduloId);
+    // Navegar a la página home del módulo
     navigate(`/${moduloId}`);
   };
 
-  const handleToggleSlim = () => setSlimSidebar((prev) => !prev);
-
-  const [showAccountModal, setShowAccountModal] = useState(false);
-  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
-
-  const handleLogout = () => {
-    try {
-      localStorage.clear();
-    } catch (e) {}
-    setShowAccountModal(false);
-    navigate('/');
-  };
-
-  // const handleViewProfile = () => {
-  //   setShowAccountModal(false);
-  //   navigate('/configuracion');
-  // };
-
-  useEffect(() => {
-    const rutasPermitidas = rutasPorModulo[moduloActivo];
-    const isCurrentRouteAllowed = rutasPermitidas.some(route => 
-      location.pathname === route || (route !== '/' && location.pathname.startsWith(route))
-    );
-    if (!isCurrentRouteAllowed && location.pathname !== '/') {
-      // ProtectedRoute will redirect if needed
-    }
-  }, [moduloActivo, location.pathname]);
+  // Sidebar and header are always visible
 
   const NavLink = ({ to, children, onClick, exact = false }: { to: string; children: React.ReactNode; onClick?: () => void; exact?: boolean }) => {
     const linkLocation = useLocation();
@@ -200,8 +186,8 @@ function App() {
               <ul className={`space-y-1 ${slimSidebar ? 'px-0' : 'px-3'}`}>
                 <li>
                   <NavLink to="/movimientos" onClick={handleLinkClick} exact>
-                    <ArrowLeftRight className="w-6 h-6" />
-                    Movimiento
+                    <ArrowLeftRight className="w-5 h-5" />
+                    Movimientos
                   </NavLink>
                 </li>
                 <li>
@@ -311,8 +297,9 @@ function App() {
             <div className="flex items-center gap-2">
               {modulos.map((modulo) => {
                 const Icon = modulo.icon;
-                const isActive = moduloActivo === modulo.id && location.pathname !== '/';
+                const isActive = moduloActivo === modulo.id;
                 const isEnabled = ['inventario', 'administracion', 'venta', 'compra', 'reportes'].includes(modulo.id);
+                
                 return (
                   <button
                     key={modulo.id}
@@ -342,28 +329,177 @@ function App() {
           <main className="flex-1 overflow-auto bg-gray-50 p-8">
             <div className="animate-fade-in-up" style={{ animationFillMode: 'both' }}>
               <Routes>
-                <Route path="/" element={<WelcomePage />} />
-                <Route path="/dashboard" element={<Dashboard />} />
-                <Route path="/movimientos" element={<ProtectedRoute moduloActivo={moduloActivo} currentPath="/movimientos"><MovimientosPage /></ProtectedRoute>} />
-                <Route path="/movimientos/pendientes" element={<ProtectedRoute moduloActivo={moduloActivo} currentPath="/movimientos/pendientes"><MovimientosPendientesPage /></ProtectedRoute>} />
-                <Route path="/productos" element={<ProtectedRoute moduloActivo={moduloActivo} currentPath="/productos"><ProductosPage /></ProtectedRoute>} />
-                <Route path="/inventario" element={<ProtectedRoute moduloActivo={moduloActivo} currentPath="/inventario"><InventarioHome /></ProtectedRoute>} />
-                <Route path="/movimientos/seleccionar-recepcion" element={<ProtectedRoute moduloActivo={moduloActivo} currentPath="/movimientos"><RecepcionesPage /></ProtectedRoute>} />
-                <Route path="/movimientos/ajuste" element={<ProtectedRoute moduloActivo={moduloActivo} currentPath="/movimientos"><MovimientoAjusteForm /></ProtectedRoute>} />
-                <Route path="/venta" element={<ProtectedRoute moduloActivo={moduloActivo} currentPath="/venta"><VentaHome /></ProtectedRoute>} />
-                <Route path="/compra" element={<ProtectedRoute moduloActivo={moduloActivo} currentPath="/compra"><CompraHome /></ProtectedRoute>} />
-                <Route path="/compra/clientes" element={<ProtectedRoute moduloActivo={moduloActivo} currentPath="/compra/clientes"><ClientesPage /></ProtectedRoute>} />
-                <Route path="/compra/clientes/:id" element={<ProtectedRoute moduloActivo={moduloActivo} currentPath="/compra/clientes"><PerfilClientePage /></ProtectedRoute>} />
-                <Route path="/compra/convenios" element={<ProtectedRoute moduloActivo={moduloActivo} currentPath="/compra/convenios"><ConveniosPage /></ProtectedRoute>} />
-                <Route path="/compra/anexos" element={<ProtectedRoute moduloActivo={moduloActivo} currentPath="/compra/anexos"><AnexosPage /></ProtectedRoute>} />
-                <Route path="/administracion" element={<ProtectedRoute moduloActivo={moduloActivo} currentPath="/administracion"><AdministracionHome /></ProtectedRoute>} />
-                <Route path="/monedas" element={<ProtectedRoute moduloActivo={moduloActivo} currentPath="/monedas"><MonedasPage /></ProtectedRoute>} />
-                <Route path="/configuracion" element={<ProtectedRoute moduloActivo={moduloActivo} currentPath="/configuracion"><ConfiguracionPage /></ProtectedRoute>} />
-                <Route path="/usuarios" element={<ProtectedRoute moduloActivo={moduloActivo} currentPath="/usuarios"><UsuariosPage /></ProtectedRoute>} />
-                <Route path="/grupos" element={<ProtectedRoute moduloActivo={moduloActivo} currentPath="/grupos"><GruposPage /></ProtectedRoute>} />
-                <Route path="/dependencias" element={<ProtectedRoute moduloActivo={moduloActivo} currentPath="/dependencias"><DependenciasPage /></ProtectedRoute>} />
-                <Route path="/compra" element={<ProtectedRoute moduloActivo={moduloActivo} currentPath="/compra"><CompraHome /></ProtectedRoute>} />
-                <Route path="/reportes" element={<ProtectedRoute moduloActivo={moduloActivo} currentPath="/reportes"><ReportesHome /></ProtectedRoute>} />
+                <Route path="/" element={<Dashboard />} />
+                
+                {/* Rutas de Inventario - protegidas */}
+                <Route 
+                  path="/movimientos" 
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/movimientos">
+                      <MovimientosPage />
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route 
+                  path="/movimientos/pendientes" 
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/movimientos/pendientes">
+                      <MovimientosPendientesPage />
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route 
+                  path="/productos" 
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/productos">
+                      <ProductosPage />
+                    </ProtectedRoute>
+                  } 
+                />
+                
+                {/* Rutas de Inventario - protegidas */}
+                <Route 
+                  path="/inventario" 
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/inventario">
+                      <InventarioHome />
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route
+                  path="/movimientos/pendientes" 
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/movimientos/pendientes">
+                      <MovimientosPendientesPage />
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route 
+                  path="/movimientos/seleccionar-recepcion" 
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/movimientos">
+                      <RecepcionesPage />
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route 
+                  path="/movimientos/ajuste" 
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/movimientos">
+                      <MovimientoAjusteForm />
+                    </ProtectedRoute>
+                  } 
+                />
+                {/* Rutas de Ventas - protegidas */}
+                <Route 
+                  path="/venta" 
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/venta">
+                      <VentaHome />
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/clientes">
+                      <ClientesPage />
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route 
+                  path="/clientes/:id" 
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/clientes">
+                      <PerfilClientePage />
+                    </ProtectedRoute>
+                  } 
+                />
+                
+                {/* Rutas de Administración - protegidas */}
+                <Route 
+                  path="/administracion" 
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/administracion">
+                      <AdministracionHome />
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route 
+                  path="/monedas"
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/monedas">
+                      <MonedasPage />
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route 
+                  path="/movimientos" 
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/movimientos">
+                      <MovimientosPage />
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route 
+                  path="/movimientos/pendientes" 
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/movimientos/pendientes">
+                      <MovimientosPendientesPage />
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route 
+                  path="/configuracion" 
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/configuracion">
+                      <ConfiguracionPage />
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route 
+                  path="/usuarios" 
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/usuarios">
+                      <UsuariosPage />
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route 
+                  path="/grupos" 
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/grupos">
+                      <GruposPage />
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route
+                  path="/dependencias" 
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/dependencias">
+                      <DependenciasPage />
+                    </ProtectedRoute>
+                  } 
+                />
+                
+                {/* Rutas de Compras - protegidas */}
+                <Route 
+                  path="/compra" 
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/compra">
+                      <CompraHome />
+                    </ProtectedRoute>
+                  } 
+                />
+                
+                {/* Rutas de Reportes - protegidas */}
+                <Route 
+                  path="/reportes" 
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/reportes">
+                      <ReportesHome />
+                    </ProtectedRoute>
+                  } 
+                />
               </Routes>
             </div>
           </main>
