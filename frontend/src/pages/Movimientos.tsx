@@ -490,6 +490,8 @@ export function MovimientosPage() {
                       <button
                         onClick={() => setDetailModal({ isOpen: false, movimiento: null })}
                         className="p-2 hover:bg-gray-200 rounded-full transition-colors"
+                        aria-label="Cerrar"
+                        title="Cerrar"
                       >
                         <X className="h-6 w-6 text-gray-500" />
                       </button>

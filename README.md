@@ -109,7 +109,7 @@ cd caguayo
 
 ## 🏗️ Estructura del Proyecto
 
-```
+``` #type ignore
 caguayo-webapp/
 ├── backend/
 │   ├── alembic/

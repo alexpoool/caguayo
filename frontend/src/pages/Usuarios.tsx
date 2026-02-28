@@ -1,3 +1,19 @@
+import { useState } from 'react';
+import { createPortal } from 'react-dom';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { 
+  Users, UserPlus, Shield, Edit, Trash2, Save, X, 
+  Copy, CheckCircle, User, Building, CreditCard, Plus, Search
+} from 'lucide-react';
+import toast from 'react-hot-toast';
+import {
+  Button, Input, Label, Card, CardContent, CardHeader, CardTitle,
+  ConfirmModal, Table, TableHeader, TableBody, TableRow, TableHead, TableCell
+} from '../components/ui';
+import { administracionService } from '../services/administracion';
+import { dependenciasService } from '../services/administracion';
+import type { Usuario, UsuarioCreate } from '../types/usuario';
+
 export function UsuariosPage() {
   const queryClient = useQueryClient();
   const [view, setView] = useState<'list' | 'form'>('list');
@@ -209,11 +225,13 @@ export function UsuariosPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label className="flex items-center gap-2 text-gray-700">
+                <Label htmlFor="id_grupo" className="flex items-center gap-2 text-gray-700">
                   <Shield className="h-5 w-5 text-orange-500" />
                   Grupo *
                 </Label>
                 <select
+                  id="id_grupo"
+                  aria-label="Grupo"
                   className="w-full border rounded-md px-3 py-2 transition-all duration-200 focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
                   value={usuarioForm.id_grupo}
                   onChange={(e) => setUsuarioForm({ ...usuarioForm, id_grupo: parseInt(e.target.value) })}
@@ -225,11 +243,13 @@ export function UsuariosPage() {
                 </select>
               </div>
               <div className="space-y-2">
-                <Label className="flex items-center gap-2 text-gray-700">
+                <Label htmlFor="id_dependencia" className="flex items-center gap-2 text-gray-700">
                   <Building className="h-5 w-5 text-indigo-500" />
                   Dependencia
                 </Label>
                 <select
+                  id="id_dependencia"
+                  aria-label="Dependencia"
                   className="w-full border rounded-md px-3 py-2 transition-all duration-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                   value={usuarioForm.id_dependencia || ''}
                   onChange={(e) => setUsuarioForm({ ...usuarioForm, id_dependencia: e.target.value ? parseInt(e.target.value) : undefined })}
@@ -270,25 +290,116 @@ export function UsuariosPage() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Usuarios</h1>
-          <p className="text-gray-500 mt-1">En construcción</p>
+          <p className="text-gray-500 mt-1">
+            {filteredUsuarios.length === usuarios.length 
+              ? `Gestión de usuarios (${usuarios.length} usuarios)`
+              : `Mostrando ${filteredUsuarios.length} de ${usuarios.length} usuarios`
+            }
+          </p>
         </div>
+        <Button onClick={() => setView('form')} className="gap-2 shadow-sm">
+          <Plus className="h-4 w-4" />
+          Nuevo Usuario
+        </Button>
       </div>
 
       <div className="flex gap-2">
-        <button className="px-4 py-2 rounded bg-blue-600 text-white disabled:opacity-60" disabled>
-          Nuevo Usuario
-        </button>
-        <button className="px-4 py-2 rounded bg-gray-200 text-gray-700 disabled:opacity-60" disabled>
-          Editar
-        </button>
-        <button className="px-4 py-2 rounded bg-red-600 text-white disabled:opacity-60" disabled>
-          Eliminar
-        </button>
+        <div className="flex-1 relative max-w-md">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+          <Input
+            type="text"
+            placeholder="Buscar por nombre, apellido o CI..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10"
+          />
+        </div>
       </div>
 
-      <div className="border border-dashed border-gray-200 rounded-lg h-64 flex items-center justify-center text-gray-400">
-        Área en blanco para desarrollo de usuarios
-      </div>
+      <Card className="overflow-hidden shadow-sm border-gray-200">
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader className="bg-gray-50/50">
+              <TableRow>
+                <TableHead>Nombre</TableHead>
+                <TableHead>CI</TableHead>
+                <TableHead>Alias</TableHead>
+                <TableHead>Grupo</TableHead>
+                <TableHead>Dependencia</TableHead>
+                <TableHead className="text-right">Acciones</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredUsuarios.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="text-center py-12 text-gray-500">
+                    {searchTerm ? 'No se encontraron usuarios que coincidan con la búsqueda' : 'No hay usuarios'}
+                  </TableCell>
+                </TableRow>
+              ) : (
+                filteredUsuarios.map((usuario) => (
+                  <TableRow 
+                    key={usuario.id_usuario} 
+                    className="hover:bg-gray-50/50 transition-colors cursor-pointer"
+                    onClick={() => setDetailModal({ isOpen: true, usuario })}
+                  >
+                    <TableCell className="font-medium">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-green-400 to-emerald-500 flex items-center justify-center text-white font-bold text-sm">
+                          {usuario.nombre.charAt(0).toUpperCase()}
+                        </div>
+                        {usuario.nombre} {usuario.primer_apellido} {usuario.segundo_apellido || ''}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <span className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs font-medium">
+                        {usuario.ci}
+                      </span>
+                    </TableCell>
+                    <TableCell>{usuario.alias}</TableCell>
+                    <TableCell>
+                      <span className="inline-flex items-center gap-1 px-2 py-1 bg-purple-100 text-purple-700 rounded text-xs font-medium">
+                        <Shield className="h-3 w-3" />
+                        {usuario.grupo?.nombre || 'Sin grupo'}
+                      </span>
+                    </TableCell>
+                    <TableCell>{usuario.dependencia?.nombre || '-'}</TableCell>
+                    <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleEdit(usuario)}
+                          className="text-blue-600 hover:bg-blue-50 h-8 w-8"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleDeleteUsuario(usuario)}
+                          className="text-red-600 hover:bg-red-50 h-8 w-8"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
+      </Card>
+
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+        onConfirm={confirmModal.onConfirm}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        type="danger"
+      />
     </div>
   );
 

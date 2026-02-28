@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, /*useEffect*/ } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { BrowserRouter as Router, Routes, Route, Link, useLocation, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import React from 'react';
+//import './styles/animation.css';
 import { 
   ArrowLeftRight, 
   Boxes, 
@@ -22,9 +23,7 @@ import {
 } from 'lucide-react';
 
 import { Dashboard } from './pages/Dashboard';
-import { WelcomePage } from './pages/Welcome';
 import { ProductosPage } from './pages/Productos';
-// import { VentasPage } from './pages/Ventas';
 import { ClientesPage } from './pages/Clientes';
 import { PerfilClientePage } from './pages/PerfilCliente';
 import { MonedasPage } from './pages/Monedas';
@@ -41,21 +40,6 @@ import { AdministracionHome } from './pages/home/AdministracionHome';
 import { VentaHome } from './pages/home/VentaHome';
 import { CompraHome } from './pages/home/CompraHome';
 import { ReportesHome } from './pages/home/ReportesHome';
-import React from 'react';
-import { 
-  ArrowLeftRight, 
-  Boxes, 
-  Clock, 
-  Home,
-  Briefcase,
-  BarChart3,
-  UserCircle,
-  Shield,
-  Settings,
-  Users,
-  Building,
-  Coins
-} from 'lucide-react';
 
 type Modulo = 'administracion' | 'venta' | 'compra' | 'inventario' | 'reportes';
 
@@ -102,8 +86,9 @@ function ProtectedRoute({
 
 function App() {
   const [moduloActivo, setModuloActivo] = useState<Modulo>('inventario');
-  const [slimSidebar, setSlimSidebar] = useState(false);
-  const location = useLocation();
+  const [slimSidebar] = useState(false);
+  const [showAccountModal, setShowAccountModal] = useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const navigate = useNavigate();
 
   const handleLinkClick = () => {};
@@ -163,6 +148,14 @@ function App() {
     { id: 'reportes', label: 'Reportes', icon: BarChart3 },
   ];
 
+  function handleToggleSlim(_event: React.MouseEvent<HTMLButtonElement>): void {
+    throw new Error('Function not implemented.');
+  }
+
+  function handleLogout(_event: React.MouseEvent<HTMLButtonElement>): void {
+    throw new Error('Function not implemented.');
+  }
+
   return (
     <QueryClientProvider client={queryClient}>
       <div className={`grid ${slimSidebar ? 'grid-cols-[4.5rem_1fr]' : 'grid-cols-[16rem_1fr]'} grid-rows-[auto_1fr] h-screen bg-gray-50`}>
@@ -180,7 +173,7 @@ function App() {
               </button>
             </div>
           <nav className={`flex-1 overflow-y-auto py-4 ${slimSidebar ? 'px-1' : ''}`}>
-            {!isHome ? (
+            {!Home ? (
               <>
                 {moduloActivo === 'inventario' && (
               <ul className={`space-y-1 ${slimSidebar ? 'px-0' : 'px-3'}`}>
@@ -323,11 +316,12 @@ function App() {
               })}
             </div>
           </div>
+            <div className="animate-fade-in-up animation-fill-both">
+            </div>
         </header>
-
         <div className="col-start-2 col-end-3 row-start-2 row-end-3 min-w-0 flex flex-col overflow-hidden">
           <main className="flex-1 overflow-auto bg-gray-50 p-8">
-            <div className="animate-fade-in-up" style={{ animationFillMode: 'both' }}>
+            <div className="animate-fade-in-up animation-fill-both">
               <Routes>
                 <Route path="/" element={<Dashboard />} />
                 
@@ -571,7 +565,6 @@ function App() {
         </div>
       </div>
     )}
-
     </QueryClientProvider>
   );
 }
