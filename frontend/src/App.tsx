@@ -86,7 +86,7 @@ function ProtectedRoute({
 
 function App() {
   const [moduloActivo, setModuloActivo] = useState<Modulo>('inventario');
-  const [slimSidebar] = useState(false);
+  const [slimSidebar, setSlimSidebar] = useState(false);
   const [showAccountModal, setShowAccountModal] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const navigate = useNavigate();
@@ -149,11 +149,13 @@ function App() {
   ];
 
   function handleToggleSlim(_event: React.MouseEvent<HTMLButtonElement>): void {
-    throw new Error('Function not implemented.');
+    setSlimSidebar(prev => !prev);
   }
 
-  function handleLogout(_event: React.MouseEvent<HTMLButtonElement>): void {
-    throw new Error('Function not implemented.');
+  function handleLogout(_event?: React.MouseEvent<HTMLButtonElement> | any): void {
+    setShowLogoutConfirm(false);
+    setShowAccountModal(false);
+    navigate('/');
   }
 
   return (
@@ -173,7 +175,6 @@ function App() {
               </button>
             </div>
           <nav className={`flex-1 overflow-y-auto py-4 ${slimSidebar ? 'px-1' : ''}`}>
-            {!Home ? (
               <>
                 {moduloActivo === 'inventario' && (
               <ul className={`space-y-1 ${slimSidebar ? 'px-0' : 'px-3'}`}>
@@ -254,9 +255,6 @@ function App() {
               </div>
                 )}
               </>
-            ) : (
-              <div className="h-full" />
-            )}
           </nav>
           {/* Usuario en el sidebar al final */}
             <div className={`flex items-center ${slimSidebar ? 'justify-center' : 'justify-between'} gap-2 px-2 py-5 border-t border-slate-800 mt-auto`}>
