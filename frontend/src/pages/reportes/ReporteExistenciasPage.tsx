@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { reportesService } from '../../services/reportesService';
 import { Download, ArrowLeft, Filter } from 'lucide-react';

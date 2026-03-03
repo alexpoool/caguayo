@@ -1,6 +1,8 @@
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import inch
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import letter, landscape
 from io import BytesIO
 from datetime import datetime
 from typing import List, Dict, Any
@@ -25,8 +27,9 @@ class PdfReportService:
     def _get_header_footer(self, canvas, doc):
         canvas.saveState()
         canvas.setFont('Helvetica', 9)
+        width, height = doc.pagesize
         canvas.drawString(inch, 0.75 * inch, f"Generado el: {datetime.now().strftime('%d/%m/%Y %H:%M')}")
-        canvas.drawString(landscape(letter)[0] - 2 * inch, 0.75 * inch, f"Página {doc.page}")
+        canvas.drawString(width - 2 * inch, 0.75 * inch, f"Página {doc.page}")
         canvas.restoreState()
 
     def generate_stock_pdf(self, data: List[Dict[str, Any]], filters: Dict[str, Any]) -> BytesIO:
@@ -67,7 +70,7 @@ class PdfReportService:
             ]))
             elements.append(table)
 
-        doc.build(elements)
+        doc.build(elements, onFirstPage=self._get_header_footer, onLaterPages=self._get_header_footer)
         buffer.seek(0)
         return buffer
 

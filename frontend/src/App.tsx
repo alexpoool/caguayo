@@ -18,7 +18,9 @@ import {
   Coins,
   ChevronLeft,
   ChevronRight,
-  FileText
+  FileText,
+  ShoppingCart,
+  Package
 } from 'lucide-react';
 
 import { WelcomePage } from './pages/Welcome';
@@ -276,6 +278,28 @@ function App() {
                     </li>
                   </ul>
                 )}
+                {moduloActivo === 'reportes' && (
+                  <ul className="space-y-1 px-3">
+                    <li>
+                      <NavLink to="/reportes/inventario" onClick={handleLinkClick}>
+                        <Package className="w-6 h-6" />
+                        Inventario
+                      </NavLink>
+                    </li>
+                    <li>
+                      <div className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-500 cursor-not-allowed ${slimSidebar ? 'justify-center' : ''}`}>
+                        <ShoppingCart className="w-6 h-6" />
+                        {!slimSidebar && <span className="font-medium">Compras</span>}
+                      </div>
+                    </li>
+                    <li>
+                      <div className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-500 cursor-not-allowed ${slimSidebar ? 'justify-center' : ''}`}>
+                        <Coins className="w-6 h-6" />
+                        {!slimSidebar && <span className="font-medium">Ventas</span>}
+                      </div>
+                    </li>
+                  </ul>
+                )}
               </>
           </nav>
           {/* Usuario en el sidebar al final */}
@@ -525,31 +549,7 @@ function App() {
                     </ProtectedRoute>
                   }
                 />
-                <Route
-                  path="/anexos"
-                  element={
-                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/anexos">
-                      <CompraAnexosPage />
-                    </ProtectedRoute>
-                  }
-                />
-                
-                {/* Rutas de Reportes - protegidas */}
-                <Route
-                  path="/reportes"
-                  element={
-                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/reportes">
-                      <ReportesHome />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/reportes/inventario"
-                  element={
-                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/reportes">
-                      <ReportesLayout>
-                        <ReportesInventarioHome />
-                      </ReportesLayout>
+                <RouteInventarioHome />
                     </ProtectedRoute>
                   }
                 />
@@ -557,7 +557,23 @@ function App() {
                   path="/reportes/inventario/existencias"
                   element={
                     <ProtectedRoute moduloActivo={moduloActivo} currentPath="/reportes">
-                      <ReportesLayout>
+                       <ReporteExistenciasPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/reportes/inventario/movimientos-dependencia"
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/reportes">
+                      <ReporteMovimientosDependenciaPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/reportes/inventario/kardex"
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/reportes">
+                         <ReporteKardexPage /
                          <ReporteExistenciasPage />
                       </ReportesLayout>
                     </ProtectedRoute>

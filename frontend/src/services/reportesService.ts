@@ -6,7 +6,7 @@ export interface StockReportData {
     nombre: string;
     categoria: string;
     subcategoria: string;
-    stock_actual: string; // The API might return Decimal as string or number, let's assume number but check backend. Backend returns Decimal, which FastApi usually serializes as float or string. Let's start with number.
+    stock_actual: string; 
 }
 
 export interface MovimientosReportData {
@@ -16,9 +16,9 @@ export interface MovimientosReportData {
     tipo: string;
     cantidad: number;
     factor: number;
-    impacto_stock: number;
     dependencia: string;
     observacion: string;
+    saldo: number;
 }
 
 export const reportesService = {
