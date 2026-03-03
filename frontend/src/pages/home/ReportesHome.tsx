@@ -1,5 +1,4 @@
 import { BarChart3, Construction, Package, DollarSign, Download, TrendingUp } from 'lucide-react';
-import { Link } from 'react-router-dom';
 
 export function ReportesHome() {
   return (
@@ -19,7 +18,7 @@ export function ReportesHome() {
           </p>
 
           <div className="grid grid-cols-2 gap-3 mb-4">
-            <div className="flex items-start gap-2 p-3 bg-green-50 rounded-lg opacity-50 cursor-not-allowed">
+            <div className="flex items-start gap-2 p-3 bg-green-50 rounded-lg">
               <TrendingUp className="h-4 w-4 text-green-600 mt-0.5 flex-shrink-0" />
               <div>
                 <h3 className="font-bold text-sm text-gray-800">Ventas</h3>
@@ -27,15 +26,15 @@ export function ReportesHome() {
               </div>
             </div>
 
-            <Link to="/reportes/inventario" className="flex items-start gap-2 p-3 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors cursor-pointer ring-1 ring-blue-200">
+            <div className="flex items-start gap-2 p-3 bg-blue-50 rounded-lg">
               <Package className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
               <div>
-                <h3 className="font-bold text-sm text-blue-900">Inventario</h3>
-                <p className="text-xs text-blue-700 mt-0.5">Stock actual, movimientos y alertas.</p>
+                <h3 className="font-bold text-sm text-gray-800">Inventario</h3>
+                <p className="text-xs text-gray-600 mt-0.5">Stock actual, movimientos y alertas.</p>
               </div>
-            </Link>
+            </div>
 
-            <div className="flex items-start gap-2 p-3 bg-amber-50 rounded-lg opacity-50 cursor-not-allowed">
+            <div className="flex items-start gap-2 p-3 bg-amber-50 rounded-lg">
               <DollarSign className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
               <div>
                 <h3 className="font-bold text-sm text-gray-800">Financieros</h3>
@@ -43,7 +42,7 @@ export function ReportesHome() {
               </div>
             </div>
 
-            <div className="flex items-start gap-2 p-3 bg-purple-50 rounded-lg opacity-50 cursor-not-allowed">
+            <div className="flex items-start gap-2 p-3 bg-purple-50 rounded-lg">
               <Download className="h-4 w-4 text-purple-600 mt-0.5 flex-shrink-0" />
               <div>
                 <h3 className="font-bold text-sm text-gray-800">Exportar</h3>
@@ -56,7 +55,7 @@ export function ReportesHome() {
           <div className="p-4 bg-gradient-to-r from-indigo-100 to-purple-100 rounded-lg border-2 border-dashed border-indigo-300">
             <div className="flex items-center justify-center gap-2">
               <Construction className="h-5 w-5 text-indigo-500" />
-              <span className="text-sm font-bold text-indigo-700">Próximamente disponible</span>
+              <span className="text-sm font-bold text-indigo-700">En construcción</span>
             </div>
           </div>
         </div>

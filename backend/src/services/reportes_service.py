@@ -12,11 +12,14 @@ class ReportesService:
     def __init__(self, db: AsyncSession):
         self.db = db
 
-    async def get_stock_por_producto(self, id_dependencia: Optional[int] = None) -> List[Dict[str, Any]]:
+    async def get_stock_por_producto(self, id_dependencia: Optional[int] = None, fecha_corte = None) -> List[Dict[str, Any]]:
         """
         Obtiene el stock actual de productos.
         Si se especifica id_dependencia, filtra por esa dependencia.
+        Si se especifica fecha_corte, solo considera movimientos hasta esa fecha.
         """
+        from datetime import datetime, time
+
         # Calcular el stock sumando (cantidad * factor)
         # Necesitamos unir Movimiento con TipoMovimiento para obtener el factor
         
@@ -36,11 +39,12 @@ class ReportesService:
 
         if id_dependencia:
             query = query.where(Movimiento.id_dependencia == id_dependencia)
+
+        if fecha_corte:
+            # Incluir todos los movimientos hasta el final del día de corte
+            fecha_limite = datetime.combine(fecha_corte, time(23, 59, 59))
+            query = query.where(Movimiento.fecha <= fecha_limite)
             
-        # Filtrar solo productos con stock > 0
-        # Generalmente, reporte de existencias muestra todo lo que tiene movimiento o existencia.
-        # Por ahora mostramos todo lo agrupado.
-        
         results = (await self.db.exec(query)).all()
         
         report_data = []

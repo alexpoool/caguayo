@@ -22,9 +22,10 @@ export interface MovimientosReportData {
 }
 
 export const reportesService = {
-    getInventarioStock: async (idDependencia?: number) => {
+    getInventarioStock: async (idDependencia?: number, fechaCorte?: string) => {
         return await apiClient.get<StockReportData[]>('/reportes/inventario/stock', { 
-            id_dependencia: idDependencia 
+            id_dependencia: idDependencia,
+            fecha_corte: fechaCorte
         });
     },
 
@@ -37,8 +38,11 @@ export const reportesService = {
         return await apiClient.get<MovimientosReportData[]>('/reportes/inventario/movimientos', filters);
     },
 
-    downloadStockPdf: async (idDependencia?: number) => {
-        return await apiClient.download('/reportes/inventario/stock/pdf', { id_dependencia: idDependencia }, 'reporte_stock.pdf');
+    downloadStockPdf: async (idDependencia?: number, fechaCorte?: string) => {
+        return await apiClient.download('/reportes/inventario/stock/pdf', { 
+            id_dependencia: idDependencia,
+            fecha_corte: fechaCorte
+        }, 'existencias_por_producto.pdf');
     },
 
     downloadMovimientosPdf: async (filters: {

@@ -384,7 +384,7 @@ class MovimientoService:
             # Obtener proveedor
             proveedor_nombre = None
             if mov.id_cliente:
-                proveedor = await db.get(Provedor, mov.id_cliente)
+                proveedor = await db.get(Cliente, mov.id_cliente)
                 if proveedor:
                     proveedor_nombre = proveedor.nombre
 

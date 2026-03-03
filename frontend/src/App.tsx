@@ -20,7 +20,8 @@ import {
   ChevronRight,
   FileText,
   ShoppingCart,
-  Package
+  Package,
+  DollarSign
 } from 'lucide-react';
 
 import { WelcomePage } from './pages/Welcome';
@@ -44,8 +45,9 @@ import { ReportesHome } from './pages/home/ReportesHome';
 import { CompraClientesPage } from './pages/compra/ClientesPage';
 import { CompraConveniosPage } from './pages/compra/ConveniosPage';
 import { CompraAnexosPage } from './pages/compra/AnexosPage';
-import { ReportesLayout } from './pages/reportes/ReportesLayout';
 import { ReportesInventarioHome } from './pages/reportes/InventarioHome';
+import { ReportesComprasHome } from './pages/reportes/ComprasHome';
+import { ReportesVentasHome } from './pages/reportes/VentasHome';
 import { ReporteExistenciasPage } from './pages/reportes/ReporteExistenciasPage';
 import { ReporteMovimientosDependenciaPage } from './pages/reportes/ReporteMovimientosDependenciaPage';
 import { ReporteKardexPage } from './pages/reportes/ReporteKardexPage';
@@ -163,8 +165,8 @@ function App() {
           ${isActive ? 'h-8 bg-white' : ''}
         `} />
         <span className={`
-          transition-all duration-300
-          ${isActive ? 'text-white scale-110' : 'text-slate-500 group-hover:text-blue-400 group-hover:scale-110'}
+          flex-shrink-0 transition-all duration-300
+          ${isActive ? 'text-white' : 'text-slate-500 group-hover:text-blue-400 group-hover:scale-110'}
         `}>
           {children && React.Children.toArray(children)[0]}
         </span>
@@ -282,21 +284,21 @@ function App() {
                   <ul className="space-y-1 px-3">
                     <li>
                       <NavLink to="/reportes/inventario" onClick={handleLinkClick}>
-                        <Package className="w-6 h-6" />
+                        <Package className="w-5 h-5" />
                         Inventario
                       </NavLink>
                     </li>
                     <li>
-                      <div className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-500 cursor-not-allowed ${slimSidebar ? 'justify-center' : ''}`}>
-                        <ShoppingCart className="w-6 h-6" />
-                        {!slimSidebar && <span className="font-medium">Compras</span>}
-                      </div>
+                      <NavLink to="/reportes/compras" onClick={handleLinkClick}>
+                        <ShoppingCart className="w-5 h-5" />
+                        Compras
+                      </NavLink>
                     </li>
                     <li>
-                      <div className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-500 cursor-not-allowed ${slimSidebar ? 'justify-center' : ''}`}>
-                        <Coins className="w-6 h-6" />
-                        {!slimSidebar && <span className="font-medium">Ventas</span>}
-                      </div>
+                      <NavLink to="/reportes/ventas" onClick={handleLinkClick}>
+                        <DollarSign className="w-5 h-5" />
+                        Ventas
+                      </NavLink>
                     </li>
                   </ul>
                 )}
@@ -409,14 +411,6 @@ function App() {
                     </ProtectedRoute>
                   } 
                 />
-                <Route
-                  path="/movimientos/pendientes" 
-                  element={
-                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/movimientos/pendientes">
-                      <MovimientosPendientesPage />
-                    </ProtectedRoute>
-                  } 
-                />
                 <Route 
                   path="/movimientos/seleccionar-recepcion" 
                   element={
@@ -443,6 +437,7 @@ function App() {
                   } 
                 />
                 <Route
+                  path="/clientes"
                   element={
                     <ProtectedRoute moduloActivo={moduloActivo} currentPath="/clientes">
                       <ClientesPage />
@@ -480,14 +475,6 @@ function App() {
                   element={
                     <ProtectedRoute moduloActivo={moduloActivo} currentPath="/movimientos">
                       <MovimientosPage />
-                    </ProtectedRoute>
-                  } 
-                />
-                <Route 
-                  path="/movimientos/pendientes" 
-                  element={
-                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/movimientos/pendientes">
-                      <MovimientosPendientesPage />
                     </ProtectedRoute>
                   } 
                 />
@@ -534,14 +521,6 @@ function App() {
                   } 
                 />
                 <Route
-                  path="compra/clientes"
-                  element={
-                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/clientes">
-                      <CompraClientesPage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
                   path="/convenios"
                   element={
                     <ProtectedRoute moduloActivo={moduloActivo} currentPath="/convenios">
@@ -549,7 +528,29 @@ function App() {
                     </ProtectedRoute>
                   }
                 />
-                <RouteInventarioHome />
+                <Route
+                  path="/anexos"
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/anexos">
+                      <CompraAnexosPage />
+                    </ProtectedRoute>
+                  }
+                />
+                
+                {/* Rutas de Reportes - protegidas */}
+                <Route
+                  path="/reportes"
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/reportes">
+                      <ReportesHome />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/reportes/inventario"
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/reportes">
+                      <ReportesInventarioHome />
                     </ProtectedRoute>
                   }
                 />
@@ -557,7 +558,7 @@ function App() {
                   path="/reportes/inventario/existencias"
                   element={
                     <ProtectedRoute moduloActivo={moduloActivo} currentPath="/reportes">
-                       <ReporteExistenciasPage />
+                      <ReporteExistenciasPage />
                     </ProtectedRoute>
                   }
                 />
@@ -573,29 +574,23 @@ function App() {
                   path="/reportes/inventario/kardex"
                   element={
                     <ProtectedRoute moduloActivo={moduloActivo} currentPath="/reportes">
-                         <ReporteKardexPage /
-                         <ReporteExistenciasPage />
-                      </ReportesLayout>
+                      <ReporteKardexPage />
                     </ProtectedRoute>
                   }
                 />
                 <Route
-                  path="/reportes/inventario/movimientos-dependencia"
+                  path="/reportes/compras"
                   element={
                     <ProtectedRoute moduloActivo={moduloActivo} currentPath="/reportes">
-                      <ReportesLayout>
-                        <ReporteMovimientosDependenciaPage />
-                      </ReportesLayout>
+                      <ReportesComprasHome />
                     </ProtectedRoute>
                   }
                 />
                 <Route
-                  path="/reportes/inventario/kardex"
+                  path="/reportes/ventas"
                   element={
                     <ProtectedRoute moduloActivo={moduloActivo} currentPath="/reportes">
-                       <ReportesLayout>
-                         <ReporteKardexPage />
-                       </ReportesLayout>
+                      <ReportesVentasHome />
                     </ProtectedRoute>
                   }
                 />

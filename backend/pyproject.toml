@@ -6,4 +6,10 @@ readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
     "asyncpg>=0.31.0",
+    "dotenv>=0.9.9",
+    "fastapi>=0.133.1",
+    "reportlab>=4.4.10",
+    "sqlalchemy>=2.0.47",
+    "sqlmodel>=0.0.37",
+    "uvicorn>=0.41.0",
 ]
