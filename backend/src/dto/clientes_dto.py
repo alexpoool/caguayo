@@ -12,7 +12,6 @@ class ClienteBase(SQLModel):
     cedula_rif: Optional[str] = None
     direccion: Optional[str] = None
     activo: bool = True
-    tipo_relacion: str = "CLIENTE"
 
 
 class ClienteCreate(ClienteBase):
@@ -29,7 +28,6 @@ class ClienteCreate(ClienteBase):
     fecha_inicio_contrato: Optional[datetime] = None
     fecha_fin_contrato: Optional[datetime] = None
     observaciones: Optional[str] = None
-    tipo_relacion: str = "CLIENTE"
 
 
 class ClienteRead(ClienteBase):
@@ -48,7 +46,6 @@ class ClienteRead(ClienteBase):
     fecha_inicio_contrato: Optional[datetime] = None
     fecha_fin_contrato: Optional[datetime] = None
     observaciones: Optional[str] = None
-    tipo_relacion: str = "CLIENTE"
 
 
 class ClienteReadWithVentas(ClienteRead):
@@ -75,7 +72,6 @@ class ClienteUpdate(SQLModel):
     fecha_inicio_contrato: Optional[datetime] = None
     fecha_fin_contrato: Optional[datetime] = None
     observaciones: Optional[str] = None
-    tipo_relacion: Optional[str] = None
 
 
 class ClienteSimpleRead(SQLModel):

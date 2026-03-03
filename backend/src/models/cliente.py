@@ -1,7 +1,6 @@
 from sqlmodel import SQLModel, Field, Relationship
 from typing import Optional, List, TYPE_CHECKING
-from sqlalchemy import Column, String, Boolean, ARRAY, Integer
-from datetime import datetime
+from sqlalchemy import Column, String, ARRAY
 
 if TYPE_CHECKING:
     from .venta import Ventas
@@ -10,7 +9,6 @@ if TYPE_CHECKING:
     from .movimiento import Movimiento
     from .dependencia import Provincia, Municipio
     from .especialidades_artisticas import EspecialidadesArtisticas
-    from .cuenta import Cuenta
     from .cliente_natural import ClienteNatural
     from .cliente_tcp import ClienteTCP
 
@@ -53,12 +51,6 @@ class Cliente(SQLModel, table=True):
         default=None, foreign_key="municipio.id_municipio"
     )
     cedula_rif: Optional[str] = Field(default=None, max_length=20)
-    tipo_relacion: str = Field(default="CLIENTE", max_length=20)
-    fax: Optional[str] = Field(default=None, max_length=20)
-    web: Optional[str] = Field(default=None, max_length=100)
-    numero_cliente: Optional[str] = Field(default=None, max_length=50)
-    codigo_postal: Optional[str] = Field(default=None, max_length=20)
-    nit: Optional[str] = Field(default=None, max_length=20)
     activo: bool = Field(default=True)
 
     tipo_cliente: Optional["TipoCliente"] = Relationship(back_populates="clientes")
@@ -76,6 +68,5 @@ class Cliente(SQLModel, table=True):
     ventas: List["Ventas"] = Relationship(back_populates="cliente")
     convenios: List["Convenio"] = Relationship(back_populates="cliente")
     movimientos: List["Movimiento"] = Relationship(back_populates="cliente")
-    cuentas: List["Cuenta"] = Relationship(back_populates="cliente")
     cliente_natural: Optional["ClienteNatural"] = Relationship(back_populates="cliente")
     cliente_tcp: Optional["ClienteTCP"] = Relationship(back_populates="cliente")

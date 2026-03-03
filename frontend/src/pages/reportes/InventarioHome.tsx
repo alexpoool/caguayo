@@ -18,7 +18,7 @@ export function ReportesInventarioHome() {
       color: 'bg-green-500',
     },
     {
-      title: 'Movimientos por Producto (Kardex)',
+      title: 'Movimientos por Producto',
       description: 'Trazabilidad detallada de un artículo específico.',
       icon: History,
       path: '/reportes/inventario/kardex',

@@ -1,323 +1,195 @@
-from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, KeepTogether
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.lib.units import inch, cm
+from reportlab.lib.units import inch
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import letter, landscape
-from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
+from reportlab.lib.enums import TA_LEFT
 from io import BytesIO
-from datetime import datetime, date
-from typing import List, Dict, Any
+from datetime import datetime
 
 class PdfReportService:
     def __init__(self):
         self.styles = getSampleStyleSheet()
-        self.title_style = ParagraphStyle(
-            'CustomTitle',
-            parent=self.styles['Heading1'],
-            fontSize=16,
-            spaceAfter=30,
-            alignment=1  # Center
-        )
-        self.header_style = ParagraphStyle(
-            'Header',
-            parent=self.styles['Normal'],
-            fontSize=10,
-            textColor=colors.grey
-        )
-
-    def _get_header_footer(self, canvas, doc):
-        canvas.saveState()
-        canvas.setFont('Helvetica', 9)
-        width, height = doc.pagesize
-        canvas.drawString(inch, 0.75 * inch, f"Generado el: {datetime.now().strftime('%d/%m/%Y %H:%M')}")
-        canvas.drawString(width - 2 * inch, 0.75 * inch, f"Página {doc.page}")
-        canvas.restoreState()
-
-    def generate_stock_pdf(self, data: List[Dict[str, Any]], filters: Dict[str, Any]) -> BytesIO:
-        buffer = BytesIO()
-        doc = SimpleDocTemplate(buffer, pagesize=letter, rightMargin=30, leftMargin=30, topMargin=30, bottomMargin=18)
-        elements = []
-
-        # Title
-        title = "Reporte de Existencias por Producto"
-        if filters.get('dependencia_nombre'):
-            title += f"\nDependencia: {filters['dependencia_nombre']}"
-        elements.append(Paragraph(title, self.title_style))
-
-        # Data Table
-        if not data:
-            elements.append(Paragraph("No se encontraron datos para este reporte.", self.styles["Normal"]))
-        else:
-            table_data = [['Código', 'Producto', 'Categoría', 'Stock']]
-            for item in data:
-                table_data.append([
-                    item.get('codigo', '-'),
-                    item.get('nombre', '-'),
-                    f"{item.get('categoria', '')} / {item.get('subcategoria', '')}",
-                    str(item.get('stock_actual', 0))
-                ])
-
-            table = Table(table_data, colWidths=[1.5*inch, 3*inch, 2.5*inch, 1*inch])
-            table.setStyle(TableStyle([
-                ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
-                ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-                ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
-                ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
-                ('GRID', (0, 0), (-1, -1), 1, colors.black),
-                ('ALIGN', (1, 1), (1, -1), 'LEFT'),  # Align product name left
-                ('ALIGN', (-1, 1), (-1, -1), 'RIGHT'), # Align stock right
-            ]))
-            elements.append(table)
-
-        doc.build(elements, onFirstPage=self._get_header_footer, onLaterPages=self._get_header_footer)
-        buffer.seek(0)
-        return buffer
-
-    def generate_movimientos_pdf(self, data: List[Dict[str, Any]], filters: Dict[str, Any]) -> BytesIO:
-        buffer = BytesIO()
-        # Use landscape for more columns
-        doc = SimpleDocTemplate(buffer, pagesize=landscape(letter), rightMargin=30, leftMargin=30, topMargin=30, bottomMargin=18)
-        elements = []
-
-        # Title
-        title_text = "Reporte de Movimientos de Inventario"
-        subtitles = []
-        if filters.get('fecha_inicio') and filters.get('fecha_fin'):
-            subtitles.append(f"Desde: {filters['fecha_inicio'].strftime('%d/%m/%Y')} Hasta: {filters['fecha_fin'].strftime('%d/%m/%Y')}")
-        if filters.get('dependencia_nombre'):
-            subtitles.append(f"Dependencia: {filters['dependencia_nombre']}")
+        # Colores exactos del modelo
+        self.color_header_bg = colors.HexColor('#DDEBF7')  # Azul claro del cuadro
+        self.color_table_header = colors.HexColor('#D9E1F2') # Gris azulado encabezado tabla
         
-        elements.append(Paragraph(title_text, self.title_style))
-        for subt in subtitles:
-            elements.append(Paragraph(subt, self.styles["Normal"]))
-        elements.append(Spacer(1, 12))
-
-        # Data Table
-        if not data:
-            elements.append(Paragraph("No se encontraron movimientos en el período seleccionado.", self.styles["Normal"]))
-        else:
-            # Headers
-            headers = ['Fecha', 'Producto', 'Tipo', 'Dependencia', 'Obs', 'Cant.']
-            table_data = [headers]
-            
-            for item in data:
-                fecha = item.get('fecha')
-                if isinstance(fecha, str):
-                   pass # already string
-                elif isinstance(fecha, datetime):
-                   fecha = fecha.strftime('%d/%m/%Y %H:%M')
-
-                cantidad = item.get('cantidad', 0)
-                factor = item.get('factor', 1)
-                signo = '+' if factor > 0 else ''
-                cantidad_str = f"{signo}{cantidad}"
-
-                table_data.append([
-                    fecha,
-                    item.get('producto', '')[:30], # Truncate long names
-                    item.get('tipo', ''),
-                    item.get('dependencia', '')[:20],
-                    item.get('observacion', '')[:25] if item.get('observacion') else '-',
-                    cantidad_str
-                ])
-
-            # Col widths for landscape letter (11 inches wide approx)
-            # Total width available ~10 inches
-            col_widths = [1.2*inch, 3*inch, 1.2*inch, 2*inch, 1.8*inch, 0.8*inch]
-            
-            table = Table(table_data, colWidths=col_widths)
-            table.setStyle(TableStyle([
-                ('BACKGROUND', (0, 0), (-1, 0), colors.darkblue),
-                ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-                ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-                ('FONTSIZE', (0, 0), (-1, -1), 9),
-                ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
-                ('BACKGROUND', (0, 1), (-1, -1), colors.whitesmoke),
-                ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
-                ('ALIGN', (-1, 1), (-1, -1), 'RIGHT'), # Cantidad right aligned
-            ]))
-            elements.append(table)
-
-        doc.build(elements)
-        buffer.seek(0)
-        return buffer
-
-    def generate_existencias_pdf(self, data: List[Dict[str, Any]], filters: Dict[str, Any]) -> BytesIO:
-        """
-        Genera el PDF de Existencias por Producto de Inventario.
-        Columnas: CÓDIGO, DESCRIPCIÓN, CANTIDAD.
-        Incluye bloque de firmas al final (Confeccionado por / Aprobado por).
-        """
-        buffer = BytesIO()
-        doc = SimpleDocTemplate(
-            buffer,
-            pagesize=letter,
-            rightMargin=40,
-            leftMargin=40,
-            topMargin=40,
-            bottomMargin=50
+        # Estilos de texto optimizados
+        self.style_title = ParagraphStyle(
+            'ReportTitle',
+            parent=self.styles['Normal'],
+            fontSize=16,
+            fontName='Helvetica-Bold',
+            leading=18,
+            alignment=TA_LEFT
         )
+        self.style_label_header = ParagraphStyle(
+            'LabelHeader',
+            parent=self.styles['Normal'],
+            fontSize=9,
+            fontName='Helvetica',
+            leading=11
+        )
+        self.style_table_cell = ParagraphStyle(
+            'TableCell',
+            parent=self.styles['Normal'],
+            fontSize=8,
+            fontName='Helvetica',
+            leading=10
+        )
+
+    def _crear_encabezado_estandar(self, titulo, info_empresa, lineas_extra_izq, width_izq=4.5, width_der=2.5):
+        """
+        Crea el encabezado con título a la izquierda y cuadro azul a la derecha.
+        """
+        # Columna Izquierda: Título y Fechas
+        content_izq = [[Paragraph(titulo, self.style_title)]]
+        for linea in lineas_extra_izq:
+            content_izq.append([Paragraph(linea, self.style_label_header)])
+        
+        t_izq = Table(content_izq, colWidths=[width_izq * inch])
+        t_izq.setStyle(TableStyle([('VALIGN', (0,0), (-1,-1), 'TOP'), ('LEFTPADDING', (0,0), (-1,-1), 0)]))
+
+        # Columna Derecha: Cuadro Azul (Empresa/Dependencia)
+        info_data = [
+            [Paragraph(f"<b>EMPRESA:</b> {info_empresa.get('empresa', '')}", self.style_label_header)],
+            [Paragraph(f"<b>DEPENDENCIA:</b> {info_empresa.get('dependencia', '')}", self.style_label_header)],
+            [Paragraph(f"<b>DIRECCIÓN:</b> {info_empresa.get('direccion', '')}", self.style_label_header)]
+        ]
+        t_der = Table(info_data, colWidths=[width_der * inch])
+        t_der.setStyle(TableStyle([
+            ('BACKGROUND', (0,0), (-1,-1), self.color_header_bg),
+            ('BOX', (0,0), (-1,-1), 0.5, colors.black),
+            ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+            ('TOPPADDING', (0,0), (-1,-1), 4),
+            ('BOTTOMPADDING', (0,0), (-1,-1), 4),
+        ]))
+
+        return Table([[t_izq, t_der]], colWidths=[(width_izq + 0.3) * inch, width_der * inch])
+
+    def _crear_bloque_firmas(self, width=7.5):
+        """Crea la sección de firmas exactamente como el modelo (sin etiquetas extra)."""
+        col_w = (width / 2) * inch
+        data = [
+            [Paragraph("<b>CONFECCIONADO POR:</b>", self.style_label_header), Paragraph("<b>APROBADO POR:</b>", self.style_label_header)],
+            [Paragraph("CARGO:", self.style_label_header), Paragraph("CARGO:", self.style_label_header)],
+            [Paragraph("FECHA DE EMISIÓN:", self.style_label_header), Paragraph("FECHA:", self.style_label_header)],
+            [Paragraph("FIRMA:", self.style_label_header), Paragraph("FIRMA:", self.style_label_header)],
+        ]
+        t = Table(data, colWidths=[col_w, col_w])
+        t.setStyle(TableStyle([
+            ('VALIGN', (0,0), (-1,-1), 'TOP'),
+            ('TOPPADDING', (0,0), (-1,-1), 12),
+            ('BOTTOMPADDING', (0,0), (-1,-1), 12),
+        ]))
+        return t
+
+    def generate_existencias_pdf(self, data, filters):
+        buffer = BytesIO()
+        doc = SimpleDocTemplate(buffer, pagesize=letter, margin=40)
         elements = []
 
-        # --- Estilos personalizados ---
-        style_title = ParagraphStyle(
-            'ExistTitle',
-            parent=self.styles['Heading1'],
-            fontSize=14,
-            alignment=TA_CENTER,
-            spaceAfter=4,
-            fontName='Helvetica-Bold'
-        )
-        style_subtitle = ParagraphStyle(
-            'ExistSubtitle',
-            parent=self.styles['Normal'],
-            fontSize=10,
-            alignment=TA_CENTER,
-            spaceAfter=2,
-            textColor=colors.HexColor('#333333')
-        )
-        style_normal = ParagraphStyle(
-            'ExistNormal',
-            parent=self.styles['Normal'],
-            fontSize=9,
-            leading=12
-        )
-        style_firma_label = ParagraphStyle(
-            'FirmaLabel',
-            parent=self.styles['Normal'],
-            fontSize=9,
-            fontName='Helvetica-Bold',
-            spaceAfter=2
-        )
-        style_firma_field = ParagraphStyle(
-            'FirmaField',
-            parent=self.styles['Normal'],
-            fontSize=9,
-            spaceAfter=1
-        )
+        # Encabezado
+        info = {'empresa': filters.get('empresa'), 'dependencia': filters.get('dependencia'), 'direccion': filters.get('direccion')}
+        fecha = f"FECHA: {datetime.now().strftime('%d/%m/%Y')}"
+        elements.append(self._crear_encabezado_estandar("EXISTENCIAS EN INVENTARIO", info, [fecha]))
+        elements.append(Spacer(1, 20))
 
-        # --- Encabezado ---
-        elements.append(Paragraph("EXISTENCIAS POR PRODUCTO DE INVENTARIO", style_title))
+        # Tabla (3 columnas: Código, Descripción, Cantidad)
+        table_data = [[Paragraph('<b>CÓDIGO</b>', self.style_table_cell), 
+                       Paragraph('<b>DESCRIPCIÓN</b>', self.style_table_cell), 
+                       Paragraph('<b>CANTIDAD</b>', self.style_table_cell)]]
+        
+        for item in data:
+            table_data.append([item.get('codigo'), Paragraph(item.get('descripcion'), self.style_table_cell), item.get('cantidad')])
 
-        dep_nombre = filters.get('dependencia_nombre', 'Todas las dependencias')
-        elements.append(Paragraph(f"Dependencia: {dep_nombre}", style_subtitle))
+        t = Table(table_data, colWidths=[1.5*inch, 4.5*inch, 1.0*inch])
+        t.setStyle(TableStyle([
+            ('GRID', (0,0), (-1,-1), 0.5, colors.grey),
+            ('BACKGROUND', (0,0), (-1,0), self.color_table_header),
+            ('ALIGN', (2,0), (2,-1), 'CENTER'),
+        ]))
+        elements.append(t)
+        elements.append(Spacer(1, 40))
+        elements.append(self._crear_bloque_firmas(7.0))
+        
+        doc.build(elements)
+        return buffer.getvalue()
 
-        fecha_corte = filters.get('fecha_corte')
-        if fecha_corte:
-            if isinstance(fecha_corte, (date, datetime)):
-                fecha_str = fecha_corte.strftime('%d/%m/%Y')
-            else:
-                fecha_str = str(fecha_corte)
-            elements.append(Paragraph(f"Fecha de corte: {fecha_str}", style_subtitle))
-        else:
-            elements.append(Paragraph(f"Fecha de corte: {datetime.now().strftime('%d/%m/%Y')} (actual)", style_subtitle))
+    def generate_movimientos_dependencia_pdf(self, data, filters):
+        buffer = BytesIO()
+        # Landscape para 7 columnas
+        doc = SimpleDocTemplate(buffer, pagesize=landscape(letter), margin=30)
+        elements = []
 
-        elements.append(Spacer(1, 16))
+        info = {'empresa': filters.get('empresa'), 'dependencia': filters.get('dependencia'), 'direccion': filters.get('direccion')}
+        rango = [f"DESDE: {filters.get('desde')}", f"HASTA: {filters.get('hasta')}"]
+        
+        elements.append(self._crear_encabezado_estandar("MOVIMIENTOS DE INVENTARIO", info, rango, width_izq=6.5, width_der=3.0))
+        elements.append(Spacer(1, 15))
 
-        # --- Tabla de datos ---
-        if not data:
-            elements.append(Paragraph(
-                "No se encontraron productos con existencia para los filtros seleccionados.",
-                style_normal
-            ))
-        else:
-            # Encabezados: CÓDIGO | DESCRIPCIÓN | CANTIDAD
-            table_data = [['CÓDIGO', 'DESCRIPCIÓN', 'CANTIDAD']]
-            for item in data:
-                table_data.append([
-                    str(item.get('codigo', '-')),
-                    Paragraph(str(item.get('nombre', '-')), style_normal),
-                    str(item.get('stock_actual', 0))
-                ])
+        # Tabla (7 columnas según modelo)
+        headers = ['FECHA', 'CÓDIGO', 'SALDO INICIAL', 'TIPO', 'DESCRIPCIÓN', 'CANTIDAD', 'SALDO FINAL']
+        table_data = [[Paragraph(f"<b>{h}</b>", self.style_table_cell) for h in headers]]
+        
+        for row in data:
+            table_data.append([
+                row.get('fecha'), row.get('codigo'), row.get('saldo_inicial'),
+                row.get('tipo'), Paragraph(row.get('descripcion'), self.style_table_cell),
+                row.get('cantidad'), row.get('saldo_final')
+            ])
 
-            # Ancho disponible ~7.3 pulgadas (letter 8.5 - márgenes)
-            col_widths = [1.5 * inch, 4.3 * inch, 1.5 * inch]
-
-            table = Table(table_data, colWidths=col_widths, repeatRows=1)
-            table.setStyle(TableStyle([
-                # Encabezado
-                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#2C3E50')),
-                ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
-                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-                ('FONTSIZE', (0, 0), (-1, 0), 10),
-                ('BOTTOMPADDING', (0, 0), (-1, 0), 10),
-                ('TOPPADDING', (0, 0), (-1, 0), 10),
-                ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
-
-                # Cuerpo
-                ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
-                ('FONTSIZE', (0, 1), (-1, -1), 9),
-                ('BOTTOMPADDING', (0, 1), (-1, -1), 6),
-                ('TOPPADDING', (0, 1), (-1, -1), 6),
-
-                # Alineación por columna
-                ('ALIGN', (0, 1), (0, -1), 'CENTER'),   # Código centrado
-                ('ALIGN', (1, 1), (1, -1), 'LEFT'),      # Descripción izquierda
-                ('ALIGN', (2, 1), (2, -1), 'CENTER'),    # Cantidad centrada
-                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-
-                # Bordes
-                ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#BDC3C7')),
-                ('LINEBELOW', (0, 0), (-1, 0), 1.5, colors.HexColor('#2C3E50')),
-
-                # Filas alternas
-                ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#F8F9FA')]),
-            ]))
-            elements.append(table)
-
+        t = Table(table_data, colWidths=[0.9*inch, 1.1*inch, 1.1*inch, 0.8*inch, 3.5*inch, 1.0*inch, 1.1*inch])
+        t.setStyle(TableStyle([
+            ('GRID', (0,0), (-1,-1), 0.5, colors.grey),
+            ('BACKGROUND', (0,0), (-1,0), self.color_table_header),
+            ('FONTSIZE', (0,0), (-1,-1), 7),
+            ('ALIGN', (0,0), (-1,-1), 'CENTER'),
+            ('ALIGN', (4,1), (4,-1), 'LEFT'),
+        ]))
+        elements.append(t)
         elements.append(Spacer(1, 30))
+        elements.append(self._crear_bloque_firmas(10.0))
+        
+        doc.build(elements)
+        return buffer.getvalue()
 
-        # --- Bloque de Validación (Firmas) ---
-        firma_data = [
-            ['Confeccionado por:', '', 'Aprobado por:', ''],
-            ['Nombre:', '____________________________', 'Nombre:', '____________________________'],
-            ['Cargo:', '____________________________', 'Cargo:', '____________________________'],
-            ['Fecha:', '____________________________', 'Fecha:', '____________________________'],
-            ['Firma:', '____________________________', 'Firma:', '____________________________'],
+    def generate_movimientos_producto_pdf(self, data, filters):
+        buffer = BytesIO()
+        doc = SimpleDocTemplate(buffer, pagesize=landscape(letter), margin=30)
+        elements = []
+
+        info = {'empresa': filters.get('empresa'), 'dependencia': filters.get('dependencia'), 'direccion': filters.get('direccion')}
+        # Este reporte lleva Producto y Código a la izquierda según el PDF
+        extras = [
+            f"PRODUCTO: {filters.get('producto_nombre')}",
+            f"CÓDIGO: {filters.get('producto_codigo')}",
+            f"DESDE: {filters.get('desde')}  HASTA: {filters.get('hasta')}"
         ]
+        
+        elements.append(self._crear_encabezado_estandar("MOVIMIENTOS DE INVENTARIO", info, extras, width_izq=6.5, width_der=3.0))
+        elements.append(Spacer(1, 15))
 
-        firma_table = Table(
-            firma_data,
-            colWidths=[1.0 * inch, 2.5 * inch, 1.0 * inch, 2.5 * inch],
-            hAlign='LEFT'
-        )
-        firma_table.setStyle(TableStyle([
-            # Sección títulos "Confeccionado por" / "Aprobado por"
-            ('FONTNAME', (0, 0), (0, 0), 'Helvetica-Bold'),
-            ('FONTNAME', (2, 0), (2, 0), 'Helvetica-Bold'),
-            ('FONTSIZE', (0, 0), (-1, -1), 9),
-            ('BOTTOMPADDING', (0, 0), (-1, 0), 14),
-            ('TOPPADDING', (0, 0), (-1, 0), 6),
-            ('BOTTOMPADDING', (0, 1), (-1, -1), 8),
-            ('TOPPADDING', (0, 1), (-1, -1), 4),
+        # Tabla (6 columnas: Quita código porque ya está arriba)
+        headers = ['FECHA', 'SALDO INICIAL', 'TIPO', 'DESCRIPCIÓN', 'CANTIDAD', 'SALDO FINAL']
+        table_data = [[Paragraph(f"<b>{h}</b>", self.style_table_cell) for h in headers]]
+        
+        for row in data:
+            table_data.append([
+                row.get('fecha'), row.get('saldo_inicial'), row.get('tipo'),
+                Paragraph(row.get('descripcion'), self.style_table_cell),
+                row.get('cantidad'), row.get('saldo_final')
+            ])
 
-            # Labels en bold
-            ('FONTNAME', (0, 1), (0, -1), 'Helvetica-Bold'),
-            ('FONTNAME', (2, 1), (2, -1), 'Helvetica-Bold'),
-
-            # Sin bordes visibles para las firmas
-            ('LINEBELOW', (0, 0), (-1, 0), 0.5, colors.HexColor('#BDC3C7')),
-            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-            ('VALIGN', (0, 0), (-1, -1), 'BOTTOM'),
+        t = Table(table_data, colWidths=[1.2*inch, 1.5*inch, 1.0*inch, 4.0*inch, 1.2*inch, 1.5*inch])
+        t.setStyle(TableStyle([
+            ('GRID', (0,0), (-1,-1), 0.5, colors.grey),
+            ('BACKGROUND', (0,0), (-1,0), self.color_table_header),
+            ('ALIGN', (0,0), (-1,-1), 'CENTER'),
         ]))
-
-        # Envolver en KeepTogether para que no se divida entre páginas
-        elements.append(KeepTogether([
-            Spacer(1, 10),
-            firma_table
-        ]))
-
-        def _header_footer(canvas, doc):
-            canvas.saveState()
-            canvas.setFont('Helvetica', 8)
-            width, height = doc.pagesize
-            canvas.drawString(40, 28, f"Generado el: {datetime.now().strftime('%d/%m/%Y %H:%M')} — Sistema CAGUAYO")
-            canvas.drawRightString(width - 40, 28, f"Página {doc.page}")
-            canvas.restoreState()
-
-        doc.build(elements, onFirstPage=_header_footer, onLaterPages=_header_footer)
-        buffer.seek(0)
-        return buffer
+        elements.append(t)
+        elements.append(Spacer(1, 30))
+        elements.append(self._crear_bloque_firmas(10.0))
+        
+        doc.build(elements)
+        return buffer.getvalue()

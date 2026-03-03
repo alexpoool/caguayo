@@ -8,19 +8,18 @@ from sqlmodel import select
 router = APIRouter(prefix="/cuentas", tags=["cuentas"], redirect_slashes=False)
 
 
-@router.get("/by-cliente/{id_cliente}")
-async def obtener_cuentas_por_cliente(
-    id_cliente: int,
+@router.get("/by-dependencia/{id_dependencia}")
+async def obtener_cuentas_por_dependencia(
+    id_dependencia: int,
     db: AsyncSession = Depends(get_session),
 ):
-    """Obtener cuentas por ID de cliente."""
-    statement = select(Cuenta).where(Cuenta.id_cliente == id_cliente)
+    """Obtener cuentas por ID de dependencia."""
+    statement = select(Cuenta).where(Cuenta.id_dependencia == id_dependencia)
     results = await db.exec(statement)
     cuentas = results.all()
     return [
         {
             "id_cuenta": c.id_cuenta,
-            "id_cliente": c.id_cliente,
             "id_dependencia": c.id_dependencia,
             "id_tipo_cuenta": c.id_tipo_cuenta,
             "titular": c.titular,

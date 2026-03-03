@@ -17,6 +17,7 @@ from src.models import (
     Municipio,
     TipoMovimiento,
 )
+from src.models.anexo import Anexo
 from src.repository.base import CRUDBase
 from src.dto import (
     MovimientoCreate,
@@ -35,7 +36,8 @@ class MovimientoRepository(CRUDBase[Movimiento, MovimientoCreate, MovimientoUpda
             selectinload(Movimiento.dependencia).selectinload(Dependencia.provincia),  # type: ignore
             selectinload(Movimiento.dependencia).selectinload(Dependencia.municipio),  # type: ignore
             selectinload(Movimiento.dependencia).selectinload(Dependencia.cuentas),  # type: ignore
-            selectinload(Movimiento.anexo),  # type: ignore
+            selectinload(Movimiento.anexo).selectinload(Anexo.convenio).selectinload(Convenio.cliente).selectinload(Cliente.tipo_cliente),  # type: ignore
+            selectinload(Movimiento.anexo).selectinload(Anexo.convenio).selectinload(Convenio.tipo_convenio),  # type: ignore
             selectinload(Movimiento.producto)
             .selectinload(  # type: ignore
                 Productos.subcategoria

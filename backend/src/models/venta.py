@@ -16,8 +16,6 @@ class EstadoVenta(str, Enum):
 
 
 class Ventas(SQLModel, table=True):
-    __tablename__ = "ventas"
-
     id_venta: Optional[int] = Field(default=None, primary_key=True)
     id_cliente: int = Field(foreign_key="clientes.id_cliente")
     fecha: datetime = Field(default_factory=datetime.utcnow)

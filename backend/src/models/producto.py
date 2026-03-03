@@ -5,15 +5,12 @@ from decimal import Decimal
 if TYPE_CHECKING:
     from .categoria import Subcategorias
     from .moneda import Moneda
-    from .venta import Ventas
     from .movimiento import Movimiento
     from .detalle_venta import DetalleVenta
-    from .anexo import Anexo
     from .anexo_producto import AnexoProducto
 
 
 class Productos(SQLModel, table=True):
-    __tablename__ = "productos"
 
     id_producto: Optional[int] = Field(default=None, primary_key=True)
     codigo: Optional[str] = Field(default=None, max_length=50, unique=True)
@@ -38,5 +35,4 @@ class Productos(SQLModel, table=True):
     )
     movimientos: List["Movimiento"] = Relationship(back_populates="producto")
     detalles_venta: List["DetalleVenta"] = Relationship(back_populates="producto")
-    anexos: List["Anexo"] = Relationship(back_populates="producto")
     anexos_productos: List["AnexoProducto"] = Relationship(back_populates="producto")

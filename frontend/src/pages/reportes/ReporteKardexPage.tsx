@@ -80,7 +80,7 @@ export function ReporteKardexPage() {
             <ArrowLeft className="w-5 h-5" />
           </Link>
           <div>
-            <h1 className="text-lg font-bold text-gray-800">Movimientos por Producto (Kardex)</h1>
+            <h1 className="text-lg font-bold text-gray-800">Movimientos por Producto</h1>
             <p className="text-sm text-gray-500">Trazabilidad detallada por artículo</p>
           </div>
         </div>
