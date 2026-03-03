@@ -42,6 +42,11 @@ import { ReportesHome } from './pages/home/ReportesHome';
 import { CompraClientesPage } from './pages/compra/ClientesPage';
 import { CompraConveniosPage } from './pages/compra/ConveniosPage';
 import { CompraAnexosPage } from './pages/compra/AnexosPage';
+import { ReportesLayout } from './pages/reportes/ReportesLayout';
+import { ReportesInventarioHome } from './pages/reportes/InventarioHome';
+import { ReporteExistenciasPage } from './pages/reportes/ReporteExistenciasPage';
+import { ReporteMovimientosDependenciaPage } from './pages/reportes/ReporteMovimientosDependenciaPage';
+import { ReporteKardexPage } from './pages/reportes/ReporteKardexPage';
 
 type Modulo = 'administracion' | 'venta' | 'compra' | 'inventario' | 'reportes' | 'home';
 
@@ -530,13 +535,53 @@ function App() {
                 />
                 
                 {/* Rutas de Reportes - protegidas */}
-                <Route 
-                  path="/reportes" 
+                <Route
+                  path="/reportes"
                   element={
                     <ProtectedRoute moduloActivo={moduloActivo} currentPath="/reportes">
                       <ReportesHome />
                     </ProtectedRoute>
-                  } 
+                  }
+                />
+                <Route
+                  path="/reportes/inventario"
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/reportes">
+                      <ReportesLayout>
+                        <ReportesInventarioHome />
+                      </ReportesLayout>
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/reportes/inventario/existencias"
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/reportes">
+                      <ReportesLayout>
+                         <ReporteExistenciasPage />
+                      </ReportesLayout>
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/reportes/inventario/movimientos-dependencia"
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/reportes">
+                      <ReportesLayout>
+                        <ReporteMovimientosDependenciaPage />
+                      </ReportesLayout>
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/reportes/inventario/kardex"
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/reportes">
+                       <ReportesLayout>
+                         <ReporteKardexPage />
+                       </ReportesLayout>
+                    </ProtectedRoute>
+                  }
                 />
               </Routes>
             </div>
