@@ -6,8 +6,12 @@ import { Download, ArrowLeft, Filter, Calendar, Loader2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 export function ReporteExistenciasPage() {
-  const [dependenciaId, setDependenciaId] = useState<number | undefined>(undefined);
+  const [selectedDep, setSelectedDep] = useState<string>('');
   const [fechaCorte, setFechaCorte] = useState<string>('');
+
+  // Derive dependenciaId for API calls
+  const dependenciaId = selectedDep && selectedDep !== 'todas' ? Number(selectedDep) : undefined;
+  const hasDepSelected = selectedDep !== '';
   const [isExporting, setIsExporting] = useState(false);
 
   // Cargar dependencias reales desde el backend
@@ -17,13 +21,13 @@ export function ReporteExistenciasPage() {
   });
 
   const { data: stockData, isLoading: loadingStock } = useQuery({
-    queryKey: ['reportes', 'stock', dependenciaId, fechaCorte],
+    queryKey: ['reportes', 'stock', dependenciaId, fechaCorte, selectedDep],
     queryFn: () => reportesService.getInventarioStock(dependenciaId, fechaCorte || undefined),
-    enabled: !!dependenciaId,
+    enabled: hasDepSelected,
   });
 
   const handleExport = async () => {
-    if (!dependenciaId) return;
+    if (!hasDepSelected) return;
     setIsExporting(true);
     try {
       await reportesService.downloadStockPdf(dependenciaId, fechaCorte || undefined);
@@ -49,7 +53,7 @@ export function ReporteExistenciasPage() {
         </div>
         <button
           onClick={handleExport}
-          disabled={isExporting || !dependenciaId || !stockData?.length}
+          disabled={isExporting || !hasDepSelected || !stockData?.length}
           className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {isExporting ? (
@@ -67,13 +71,14 @@ export function ReporteExistenciasPage() {
           <Filter className="w-4 h-4 text-gray-400" />
           <select
             className="border border-gray-300 rounded-md px-3 py-1.5 text-sm w-64"
-            value={dependenciaId || ''}
-            onChange={(e) => setDependenciaId(e.target.value ? Number(e.target.value) : undefined)}
+            value={selectedDep}
+            onChange={(e) => setSelectedDep(e.target.value)}
             disabled={loadingDeps}
           >
             <option value="">
-              {loadingDeps ? 'Cargando...' : 'Todas las dependencias'}
+              {loadingDeps ? 'Cargando...' : 'Seleccionar dependencia'}
             </option>
+            <option value="todas">Todas las dependencias</option>
             {dependencias?.map((dep) => (
               <option key={dep.id_dependencia} value={dep.id_dependencia}>
                 {dep.nombre}
@@ -112,7 +117,7 @@ export function ReporteExistenciasPage() {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {!dependenciaId ? (
+              {!hasDepSelected ? (
                 <tr>
                   <td colSpan={3} className="px-6 py-8 text-center text-gray-400">
                     Seleccione una dependencia para ver las existencias

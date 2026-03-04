@@ -98,7 +98,10 @@ async def crear_grupo(
     data: GrupoCreate,
     db: AsyncSession = Depends(get_session),
 ):
-    return await GrupoService.create(db, data)
+    try:
+        return await GrupoService.create(db, data)
+    except ValueError as e:
+        raise HTTPException(status_code=409, detail=str(e))
 
 
 @router.get("/grupos/{grupo_id}", response_model=GrupoRead)

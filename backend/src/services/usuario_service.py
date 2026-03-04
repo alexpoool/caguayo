@@ -2,6 +2,7 @@ import hashlib
 from typing import List
 from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlalchemy.orm import selectinload
+from sqlalchemy.exc import IntegrityError
 from sqlmodel import select
 from src.repository.base import CRUDBase
 from src.models import Grupo, Usuario, Funcionalidad, GrupoFuncionalidad
@@ -29,7 +30,11 @@ class GrupoService:
 
         db_obj = Grupo(**data_dict)
         db.add(db_obj)
-        await db.flush()
+        try:
+            await db.flush()
+        except IntegrityError:
+            await db.rollback()
+            raise ValueError(f"Ya existe un grupo con el nombre '{data.nombre}'")
 
         for func_id in funcionalidades_ids:
             gf = GrupoFuncionalidad(id_grupo=db_obj.id_grupo, id_funcionalidad=func_id)

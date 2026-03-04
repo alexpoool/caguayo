@@ -4,8 +4,6 @@ export interface StockReportData {
     id_producto: number;
     codigo: string;
     nombre: string;
-    categoria: string;
-    subcategoria: string;
     stock_actual: string; 
 }
 

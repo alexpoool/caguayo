@@ -1,90 +1,94 @@
-from fastapi import APIRouter, Depends, Query, Response
-from fastapi.responses import StreamingResponse
+from fastapi import APIRouter, Depends, Query
+from fastapi.responses import Response
 from sqlmodel.ext.asyncio.session import AsyncSession
-from typing import Optional, Dict, Any
-from datetime import datetime, date
+from typing import Optional, List, Dict, Any
+from datetime import date, datetime
+
 from src.database.connection import get_session
 from src.services.reportes_service import ReportesService
 from src.services.pdf_report_service import PdfReportService
-from src.models.dependencia import Dependencia
 
 router = APIRouter(prefix="/reportes", tags=["reportes"])
 
+pdf_service = PdfReportService()
+
+
 @router.get("/inventario/stock")
-async def get_stock_report(
-    id_dependencia: Optional[int] = Query(None, description="Filtrar por dependencia"),
-    fecha_corte: Optional[date] = Query(None, description="Fecha de corte para el cálculo de stock"),
-    db: AsyncSession = Depends(get_session)
+async def get_inventario_stock(
+    id_dependencia: Optional[int] = Query(None),
+    fecha_corte: Optional[date] = Query(None),
+    db: AsyncSession = Depends(get_session),
 ):
     service = ReportesService(db)
     return await service.get_stock_por_producto(id_dependencia, fecha_corte)
 
+
 @router.get("/inventario/stock/pdf")
-async def get_stock_report_pdf(
-    id_dependencia: Optional[int] = Query(None, description="Filtrar por dependencia"),
-    fecha_corte: Optional[date] = Query(None, description="Fecha de corte para el cálculo de stock"),
-    db: AsyncSession = Depends(get_session)
+async def get_inventario_stock_pdf(
+    id_dependencia: Optional[int] = Query(None),
+    fecha_corte: Optional[date] = Query(None),
+    db: AsyncSession = Depends(get_session),
 ):
     service = ReportesService(db)
     data = await service.get_stock_por_producto(id_dependencia, fecha_corte)
-    
+    pdf_data = [
+        {"codigo": r["codigo"], "descripcion": r["nombre"], "cantidad": r["stock_actual"]}
+        for r in data
+    ]
     filters: Dict[str, Any] = {}
-    if id_dependencia:
-        dep = await db.get(Dependencia, id_dependencia)
-        if dep:
-            filters['dependencia_nombre'] = dep.nombre
-    if fecha_corte:
-        filters['fecha_corte'] = fecha_corte
-
-    pdf_service = PdfReportService()
-    pdf_buffer = pdf_service.generate_existencias_pdf(data, filters)
-    
-    filename = f"existencias_por_producto_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf"
-    
-    return StreamingResponse(
-        pdf_buffer, 
+    pdf_bytes = pdf_service.generate_existencias_pdf(pdf_data, filters)
+    return Response(
+        content=pdf_bytes,
         media_type="application/pdf",
-        headers={"Content-Disposition": f"attachment; filename={filename}"}
+        headers={"Content-Disposition": "attachment; filename=existencias_por_producto.pdf"},
     )
 
+
 @router.get("/inventario/movimientos")
-async def get_movimientos_report(
-    fecha_inicio: Optional[datetime] = Query(None),
-    fecha_fin: Optional[datetime] = Query(None),
+async def get_inventario_movimientos(
+    fecha_inicio: Optional[date] = Query(None),
+    fecha_fin: Optional[date] = Query(None),
     id_dependencia: Optional[int] = Query(None),
     id_producto: Optional[int] = Query(None),
-    db: AsyncSession = Depends(get_session)
+    db: AsyncSession = Depends(get_session),
 ):
     service = ReportesService(db)
-    return await service.get_movimientos_filtro(fecha_inicio, fecha_fin, id_dependencia, id_producto)
+    fi = datetime.combine(fecha_inicio, datetime.min.time()) if fecha_inicio else None
+    ff = datetime.combine(fecha_fin, datetime.max.time()) if fecha_fin else None
+    return await service.get_movimientos_filtro(fi, ff, id_dependencia, id_producto)
+
 
 @router.get("/inventario/movimientos/pdf")
-async def get_movimientos_report_pdf(
-    fecha_inicio: Optional[datetime] = Query(None),
-    fecha_fin: Optional[datetime] = Query(None),
+async def get_inventario_movimientos_pdf(
+    fecha_inicio: Optional[date] = Query(None),
+    fecha_fin: Optional[date] = Query(None),
     id_dependencia: Optional[int] = Query(None),
     id_producto: Optional[int] = Query(None),
-    db: AsyncSession = Depends(get_session)
+    db: AsyncSession = Depends(get_session),
 ):
     service = ReportesService(db)
-    data = await service.get_movimientos_filtro(fecha_inicio, fecha_fin, id_dependencia, id_producto)
-    
+    fi = datetime.combine(fecha_inicio, datetime.min.time()) if fecha_inicio else None
+    ff = datetime.combine(fecha_fin, datetime.max.time()) if fecha_fin else None
+    data = await service.get_movimientos_filtro(fi, ff, id_dependencia, id_producto)
+    pdf_data = [
+        {
+            "fecha": str(r.get("fecha", "")),
+            "codigo": "",
+            "saldo_inicial": r.get("saldo", 0),
+            "tipo": r.get("tipo", ""),
+            "descripcion": r.get("producto", ""),
+            "cantidad": r.get("cantidad", 0),
+            "saldo_final": r.get("saldo", 0),
+        }
+        for r in data
+    ]
     filters: Dict[str, Any] = {
-        'fecha_inicio': fecha_inicio,
-        'fecha_fin': fecha_fin,
+        "desde": str(fecha_inicio) if fecha_inicio else "",
+        "hasta": str(fecha_fin) if fecha_fin else "",
     }
-    if id_dependencia:
-        dep = await db.get(Dependencia, id_dependencia)
-        if dep:
-            filters['dependencia_nombre'] = dep.nombre
-            
-    pdf_service = PdfReportService()
-    pdf_buffer = pdf_service.generate_movimientos_pdf(data, filters)
-    
-    filename = f"reporte_movimientos_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf"
-    
-    return StreamingResponse(
-        pdf_buffer, 
+    pdf_bytes = pdf_service.generate_movimientos_dependencia_pdf(pdf_data, filters)
+    return Response(
+        content=pdf_bytes,
         media_type="application/pdf",
-        headers={"Content-Disposition": f"attachment; filename={filename}"}
+        headers={"Content-Disposition": "attachment; filename=reporte_movimientos.pdf"},
     )

@@ -2,13 +2,15 @@ import { useState, useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { reportesService } from '../../services/reportesService';
 import { productosService } from '../../services/api';
+import { dependenciasService } from '../../services/administracion';
 import { useDebounce } from '../../hooks/useDebounce';
-import { Download, ArrowLeft, Search, Calendar, X } from 'lucide-react';
+import { Download, ArrowLeft, Search, Calendar, X, Filter } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
 
 export function ReporteKardexPage() {
   const [productoId, setProductoId] = useState<number | undefined>(undefined);
+  const [selectedDep, setSelectedDep] = useState<string>('');
   const [fechaInicio, setFechaInicio] = useState<string>('');
   const [fechaFin, setFechaFin] = useState<string>('');
   
@@ -17,6 +19,15 @@ export function ReporteKardexPage() {
   const [showResults, setShowResults] = useState(false);
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
   const searchRef = useRef<HTMLDivElement>(null);
+
+  // Derive dependenciaId for API calls
+  const dependenciaId = selectedDep && selectedDep !== 'todas' ? Number(selectedDep) : undefined;
+
+  // Cargar dependencias reales desde el backend
+  const { data: dependencias, isLoading: loadingDeps } = useQuery({
+    queryKey: ['dependencias'],
+    queryFn: () => dependenciasService.getDependencias(),
+  });
 
   // Close search results when clicking outside
   useEffect(() => {
@@ -39,7 +50,7 @@ export function ReporteKardexPage() {
 
   const handleSelectProduct = (product: any) => {
     setProductoId(product.id_producto);
-    setSearchTerm(product.nombre);
+    setSearchTerm(`${product.codigo} - ${product.nombre}`);
     setShowResults(false);
   };
 
@@ -49,11 +60,12 @@ export function ReporteKardexPage() {
   };
 
   const { data: movimientosData, isLoading } = useQuery({
-    queryKey: ['reportes', 'kardex', productoId, fechaInicio, fechaFin],
+    queryKey: ['reportes', 'kardex', productoId, dependenciaId, selectedDep, fechaInicio, fechaFin],
     queryFn: () => reportesService.getInventarioMovimientos({
       fecha_inicio: fechaInicio || undefined,
       fecha_fin: fechaFin || undefined,
-      id_producto: productoId
+      id_producto: productoId,
+      id_dependencia: dependenciaId
     }),
     enabled: !!productoId
   });
@@ -64,7 +76,8 @@ export function ReporteKardexPage() {
       await reportesService.downloadMovimientosPdf({
         fecha_inicio: fechaInicio || undefined,
         fecha_fin: fechaFin || undefined,
-        id_producto: productoId
+        id_producto: productoId,
+        id_dependencia: dependenciaId
       });
     } catch (error) {
       console.error("Error downloading PDF:", error);
@@ -136,9 +149,9 @@ export function ReporteKardexPage() {
                                 className="cursor-pointer select-none relative py-2 pl-3 pr-9 hover:bg-blue-50"
                                 onClick={() => handleSelectProduct(product)}
                             >
-                                <div className="flex items-center">
-                                    <span className="font-medium truncate block">{product.nombre}</span>
-                                    <span className="ml-2 text-gray-500 text-xs truncate block">({product.codigo})</span>
+                                <div className="flex items-center gap-2">
+                                    <span className="text-xs font-mono bg-gray-100 text-gray-700 px-1.5 py-0.5 rounded shrink-0">{product.codigo}</span>
+                                    <span className="font-medium truncate">{product.nombre}</span>
                                 </div>
                             </div>
                         ))
@@ -147,6 +160,27 @@ export function ReporteKardexPage() {
                     )}
                 </div>
             )}
+        </div>
+
+        {/* Dependencia Filter */}
+        <div className="flex items-center gap-2 border-l pl-4 border-gray-200">
+            <Filter className="w-4 h-4 text-gray-400" />
+            <select 
+                className="border border-gray-300 rounded-md px-3 py-1.5 text-sm w-64"
+                value={selectedDep}
+                onChange={(e) => setSelectedDep(e.target.value)}
+                disabled={loadingDeps}
+            >
+                <option value="">
+                  {loadingDeps ? 'Cargando...' : 'Seleccionar dependencia'}
+                </option>
+                <option value="todas">Todas las dependencias</option>
+                {dependencias?.map((dep) => (
+                  <option key={dep.id_dependencia} value={dep.id_dependencia}>
+                    {dep.nombre}
+                  </option>
+                ))}
+            </select>
         </div>
 
         <div className="flex items-center gap-2 border-l pl-4 border-gray-200">

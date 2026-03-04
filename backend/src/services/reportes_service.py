@@ -6,7 +6,6 @@ from datetime import datetime
 from ..models.movimiento import Movimiento, TipoMovimiento
 from ..models.producto import Productos
 from ..models.dependencia import Dependencia
-from ..models.categoria import Categorias, Subcategorias
 
 class ReportesService:
     def __init__(self, db: AsyncSession):
@@ -26,15 +25,11 @@ class ReportesService:
         query = (
             select(
                 Productos,
-                Categorias.nombre,
-                Subcategorias.nombre,
                 func.sum(Movimiento.cantidad * TipoMovimiento.factor).label("stock_actual")
             )
             .join(Movimiento, Productos.id_producto == Movimiento.id_producto)  # type: ignore
             .join(TipoMovimiento, Movimiento.id_tipo_movimiento == TipoMovimiento.id_tipo_movimiento)  # type: ignore
-            .join(Subcategorias, Productos.id_subcategoria == Subcategorias.id_subcategoria)  # type: ignore
-            .join(Categorias, Subcategorias.id_categoria == Categorias.id_categoria)  # type: ignore
-            .group_by(col(Productos.id_producto), col(Categorias.nombre), col(Subcategorias.nombre))
+            .group_by(col(Productos.id_producto))
         )
 
         if id_dependencia:
@@ -50,14 +45,12 @@ class ReportesService:
         report_data = []
         for row in results:
             producto = row[0]
-            stock_actual = row[3]
+            stock_actual = row[1]
             if stock_actual != 0:
                 report_data.append({
                     "id_producto": producto.id_producto,
                     "codigo": producto.codigo,
                     "nombre": producto.nombre,
-                    "categoria": row[1],
-                    "subcategoria": row[2],
                     "stock_actual": stock_actual
                 })
                 

@@ -1,14 +1,26 @@
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { reportesService } from '../../services/reportesService';
-import { Download, ArrowLeft, Filter, Calendar } from 'lucide-react';
+import { dependenciasService } from '../../services/administracion';
+import { Download, ArrowLeft, Filter, Calendar, Loader2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
 
 export function ReporteMovimientosDependenciaPage() {
-  const [dependenciaId, setDependenciaId] = useState<number | undefined>(undefined);
+  const [selectedDep, setSelectedDep] = useState<string>('');
   const [fechaInicio, setFechaInicio] = useState<string>('');
   const [fechaFin, setFechaFin] = useState<string>('');
+  const [isExporting, setIsExporting] = useState(false);
+
+  // Derive dependenciaId for API calls
+  const dependenciaId = selectedDep && selectedDep !== 'todas' ? Number(selectedDep) : undefined;
+  const hasDepSelected = selectedDep !== '';
+
+  // Cargar dependencias reales desde el backend
+  const { data: dependencias, isLoading: loadingDeps } = useQuery({
+    queryKey: ['dependencias'],
+    queryFn: () => dependenciasService.getDependencias(),
+  });
 
   const { data: movimientosData, isLoading } = useQuery({
     queryKey: ['reportes', 'movimientos-dep', dependenciaId, fechaInicio, fechaFin],
@@ -17,10 +29,15 @@ export function ReporteMovimientosDependenciaPage() {
       fecha_fin: fechaFin || undefined,
       id_dependencia: dependenciaId
     }),
-    enabled: !!dependenciaId || (!!fechaInicio && !!fechaFin) // Only run if filters active (optional logic) or always run
+    enabled: hasDepSelected || (!!fechaInicio && !!fechaFin) // Only run if filters active (optional logic) or always run
   });
 
+  const hasFilters = hasDepSelected || (!!fechaInicio && !!fechaFin);
+  const hasData = movimientosData && movimientosData.length > 0;
+
   const handleExport = async () => {
+    if (!hasData) return;
+    setIsExporting(true);
     try {
       await reportesService.downloadMovimientosPdf({
         fecha_inicio: fechaInicio || undefined,
@@ -29,6 +46,8 @@ export function ReporteMovimientosDependenciaPage() {
       });
     } catch (error) {
       console.error("Error downloading PDF:", error);
+    } finally {
+      setIsExporting(false);
     }
   };
 
@@ -47,9 +66,14 @@ export function ReporteMovimientosDependenciaPage() {
         </div>
         <button 
           onClick={handleExport}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium"
+          disabled={isExporting || !hasData}
+          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          <Download className="w-4 h-4" />
+          {isExporting ? (
+            <Loader2 className="w-4 h-4 animate-spin" />
+          ) : (
+            <Download className="w-4 h-4" />
+          )}
           Generar PDF
         </button>
       </div>
@@ -60,12 +84,19 @@ export function ReporteMovimientosDependenciaPage() {
             <Filter className="w-4 h-4 text-gray-400" />
             <select 
                 className="border border-gray-300 rounded-md px-3 py-1.5 text-sm w-64"
-                value={dependenciaId || ''}
-                onChange={(e) => setDependenciaId(e.target.value ? Number(e.target.value) : undefined)}
+                value={selectedDep}
+                onChange={(e) => setSelectedDep(e.target.value)}
+                disabled={loadingDeps}
             >
-                <option value="">Todas las dependencias</option>
-                {/* Populate dependencies */}
-                <option value="1">Dependencia 1 (Mock)</option>
+                <option value="">
+                  {loadingDeps ? 'Cargando...' : 'Seleccionar dependencia'}
+                </option>
+                <option value="todas">Todas las dependencias</option>
+                {dependencias?.map((dep) => (
+                  <option key={dep.id_dependencia} value={dep.id_dependencia}>
+                    {dep.nombre}
+                  </option>
+                ))}
             </select>
         </div>
 
@@ -102,10 +133,27 @@ export function ReporteMovimientosDependenciaPage() {
                      </tr>
                  </thead>
                  <tbody className="bg-white divide-y divide-gray-200">
-                     {isLoading ? (
-                         <tr><td colSpan={6} className="px-6 py-4 text-center">Cargando...</td></tr>
+                     {!hasFilters ? (
+                         <tr>
+                           <td colSpan={6} className="px-6 py-8 text-center text-gray-400">
+                             Seleccione una dependencia o rango de fechas para ver los movimientos
+                           </td>
+                         </tr>
+                     ) : isLoading ? (
+                         <tr>
+                           <td colSpan={6} className="px-6 py-8 text-center">
+                             <div className="flex items-center justify-center gap-2 text-gray-500">
+                               <Loader2 className="w-5 h-5 animate-spin" />
+                               <span>Cargando movimientos...</span>
+                             </div>
+                           </td>
+                         </tr>
                      ) : movimientosData?.length === 0 ? (
-                         <tr><td colSpan={6} className="px-6 py-4 text-center text-gray-500">No hay movimientos en este período</td></tr>
+                         <tr>
+                           <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
+                             No hay datos para mostrar con los filtros seleccionados.
+                           </td>
+                         </tr>
                      ) : (
                          movimientosData?.map((item) => (
                              <tr key={item.id_movimiento} className="hover:bg-gray-50">

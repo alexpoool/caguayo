@@ -93,6 +93,19 @@ CREATE TABLE grupo (
     descripcion TEXT
 );
 
+-- Funcionalidades del Sistema
+CREATE TABLE funcionalidad (
+    id_funcionalidad SERIAL PRIMARY KEY,
+    nombre VARCHAR(100) NOT NULL UNIQUE
+);
+
+-- Relación Grupo-Funcionalidad
+CREATE TABLE grupo_funcionalidad (
+    id_grupo INTEGER NOT NULL REFERENCES grupo(id_grupo) ON DELETE CASCADE,
+    id_funcionalidad INTEGER NOT NULL REFERENCES funcionalidad(id_funcionalidad) ON DELETE CASCADE,
+    PRIMARY KEY (id_grupo, id_funcionalidad)
+);
+
 -- Dependencias (Almacenes/Sucursales)
 CREATE TABLE dependencia (
     id_dependencia SERIAL PRIMARY KEY,
