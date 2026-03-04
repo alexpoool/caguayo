@@ -50,7 +50,8 @@ export function ReporteKardexPage() {
 
   const handleSelectProduct = (product: any) => {
     setProductoId(product.id_producto);
-    setSearchTerm(`${product.codigo} - ${product.nombre}`);
+    const loteInfo = product.codigo_lote ? ` [Lote: ${product.codigo_lote}]` : '';
+    setSearchTerm(`${product.codigo} - ${product.nombre}${loteInfo}`);
     setShowResults(false);
   };
 
@@ -149,9 +150,16 @@ export function ReporteKardexPage() {
                                 className="cursor-pointer select-none relative py-2 pl-3 pr-9 hover:bg-blue-50"
                                 onClick={() => handleSelectProduct(product)}
                             >
-                                <div className="flex items-center gap-2">
-                                    <span className="text-xs font-mono bg-gray-100 text-gray-700 px-1.5 py-0.5 rounded shrink-0">{product.codigo}</span>
-                                    <span className="font-medium truncate">{product.nombre}</span>
+                                <div className="flex flex-col gap-0.5">
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-xs font-mono bg-gray-100 text-gray-700 px-1.5 py-0.5 rounded shrink-0">{product.codigo}</span>
+                                        <span className="font-medium truncate">{product.nombre}</span>
+                                    </div>
+                                    {product.codigo_lote && (
+                                        <span className="text-[11px] font-mono text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded w-fit">
+                                            Lote: {product.codigo_lote}
+                                        </span>
+                                    )}
                                 </div>
                             </div>
                         ))
@@ -213,47 +221,55 @@ export function ReporteKardexPage() {
                 <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
                         <tr>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fecha</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tipo</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Dependencia</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Observación</th>
-                            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Entrada</th>
-                            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Salida</th>
-                            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Saldo</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fecha</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Código</th>
+                            <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Saldo Inicial</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tipo</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Dependencia</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Observación</th>
+                            <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Entrada</th>
+                            <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Salida</th>
+                            <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Saldo Final</th>
                         </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
                         {isLoading ? (
-                            <tr><td colSpan={7} className="px-6 py-4 text-center">Cargando...</td></tr>
+                            <tr><td colSpan={9} className="px-6 py-4 text-center">Cargando...</td></tr>
                         ) : movimientosData?.length === 0 ? (
-                            <tr><td colSpan={7} className="px-6 py-4 text-center text-gray-500">No hay movimientos en este período</td></tr>
+                            <tr><td colSpan={9} className="px-6 py-4 text-center text-gray-500">No hay movimientos en este período</td></tr>
                         ) : (
                             movimientosData?.map((item) => (
                                 <tr key={item.id_movimiento} className="hover:bg-gray-50">
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
                                         {format(new Date(item.fecha), 'dd/MM/yyyy HH:mm')}
                                     </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                    <td className="px-4 py-4 whitespace-nowrap text-sm font-mono text-gray-900">
+                                        {item.codigo_movimiento || item.codigo_producto || '-'}
+                                    </td>
+                                    <td className="px-4 py-4 whitespace-nowrap text-sm text-right text-gray-700 font-medium">
+                                        {item.saldo_inicial}
+                                    </td>
+                                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
                                         <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${item.factor > 0 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
                                             {item.tipo}
                                         </span>
                                     </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{item.dependencia}</td>
-                                    <td className="px-6 py-4 text-sm text-gray-500 truncate max-w-xs">{item.observacion || '-'}</td>
+                                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">{item.dependencia}</td>
+                                    <td className="px-4 py-4 text-sm text-gray-500 truncate max-w-xs">{item.observacion || '-'}</td>
                                     
                                     {/* Entrada Column */}
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-green-600 font-medium">
+                                    <td className="px-4 py-4 whitespace-nowrap text-sm text-right text-green-600 font-medium">
                                         {item.factor > 0 ? item.cantidad : '-'}
                                     </td>
                                     
                                     {/* Salida Column */}
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-red-600 font-medium">
+                                    <td className="px-4 py-4 whitespace-nowrap text-sm text-right text-red-600 font-medium">
                                         {item.factor < 0 ? item.cantidad : '-'}
                                     </td>
 
-                                    {/* Saldo Column */}
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-800 font-bold">
-                                        {item.saldo !== undefined ? item.saldo : '-'}
+                                    {/* Saldo Final Column */}
+                                    <td className="px-4 py-4 whitespace-nowrap text-sm text-right text-gray-800 font-bold">
+                                        {item.saldo_final}
                                     </td>
                                 </tr>
                             ))

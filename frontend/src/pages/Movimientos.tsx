@@ -26,6 +26,7 @@ import {
   Hash,
   CheckCircle,
   ArrowRightLeft,
+  Tag,
 } from 'lucide-react';
 import {
   Button,
@@ -55,6 +56,7 @@ export function MovimientosPage() {
     type: 'danger',
   });
   const loadMoreRef = useRef<HTMLDivElement>(null);
+  const [usarCodigoDetallado, setUsarCodigoDetallado] = useState(false);
 
   const { data: tiposMovimiento = [], isLoading: isLoadingTipos } = useQuery({
     queryKey: ['tipos-movimiento'],
@@ -309,6 +311,28 @@ export function MovimientosPage() {
             className="pl-10"
           />
         </div>
+
+        {/* Toggle: Código detallado (lotes) */}
+        <label className="flex items-center gap-2 cursor-pointer select-none ml-2">
+          <span className="flex items-center gap-1 text-sm text-gray-600">
+            <Tag className="h-4 w-4 text-gray-400" />
+            ¿Usar código detallado (lotes)?
+          </span>
+          <button
+            role="switch"
+            aria-checked={usarCodigoDetallado}
+            onClick={() => setUsarCodigoDetallado(prev => !prev)}
+            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
+              usarCodigoDetallado ? 'bg-blue-600' : 'bg-gray-300'
+            }`}
+          >
+            <span
+              className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
+                usarCodigoDetallado ? 'translate-x-6' : 'translate-x-1'
+              }`}
+            />
+          </button>
+        </label>
       </div>
 
       {isLoading ? (
@@ -335,6 +359,9 @@ export function MovimientosPage() {
                   <tr className="border-b border-gray-200 bg-gray-50/50">
                     <th className="text-left py-3 px-4 text-sm font-semibold text-gray-600">Tipo</th>
                     <th className="text-left py-3 px-4 text-sm font-semibold text-gray-600">Producto</th>
+                    {usarCodigoDetallado && (
+                      <th className="text-left py-3 px-4 text-sm font-semibold text-gray-600">Código (Lote)</th>
+                    )}
                     <th className="text-center py-3 px-4 text-sm font-semibold text-gray-600">Cantidad</th>
                     <th className="text-left py-3 px-4 text-sm font-semibold text-gray-600">Fecha</th>
                     <th className="text-left py-3 px-4 text-sm font-semibold text-gray-600">Dependencia</th>
@@ -345,7 +372,7 @@ export function MovimientosPage() {
                 <tbody>
                   {movimientos.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="text-center py-12 text-gray-500">
+                      <td colSpan={usarCodigoDetallado ? 8 : 7} className="text-center py-12 text-gray-500">
                         {searchTerm ? 'No se encontraron movimientos que coincidan con la búsqueda' : 'No se encontraron movimientos'}
                       </td>
                     </tr>
@@ -375,6 +402,13 @@ export function MovimientosPage() {
                           <td className="py-3 px-4">
                             <span className="text-gray-900 font-medium">{mov.producto?.nombre || 'Producto no disponible'}</span>
                           </td>
+                          {usarCodigoDetallado && (
+                            <td className="py-3 px-4">
+                              <span className="font-mono text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded">
+                                {mov.codigo || <span className="text-gray-400 italic">Sin código</span>}
+                              </span>
+                            </td>
+                          )}
                           <td className="py-3 px-4 text-center">
                             <span className="font-semibold text-gray-900">{mov.cantidad}</span>
                           </td>

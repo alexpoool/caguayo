@@ -34,6 +34,8 @@ export interface Productos {
   precio_minimo: number;
   cantidad?: number;
   stock?: number;
+  // Código extenso del último lote/movimiento asociado (trazabilidad)
+  codigo_lote?: string;
   subcategoria?: Subcategorias;
   moneda_compra_rel?: Moneda;
   moneda_venta_rel?: Moneda;

@@ -28,7 +28,15 @@ class ProductosService:
         db_productos = await productos_repo.get_multi(
             db, skip=skip, limit=limit, search=search
         )
-        return [ProductosRead.from_orm(p) for p in db_productos]
+        productos = [ProductosRead.from_orm(p) for p in db_productos]
+
+        # Enriquecer con el código de lote más reciente
+        product_ids = [p.id_producto for p in productos]
+        lot_codes = await productos_repo.get_latest_lot_codes(db, product_ids)
+        for p in productos:
+            p.codigo_lote = lot_codes.get(p.id_producto)
+
+        return productos
 
     @staticmethod
     async def update_producto(

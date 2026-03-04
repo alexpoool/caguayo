@@ -11,13 +11,18 @@ export interface MovimientosReportData {
     id_movimiento: number;
     fecha: string;
     producto: string;
+    codigo_producto: string;
+    codigo_movimiento: string;
     tipo: string;
     cantidad: number;
     factor: number;
     dependencia: string;
     observacion: string;
-    saldo: number;
+    saldo_inicial: number;
+    saldo_final: number;
 }
+
+export type VistaCodigoType = 'clasificador' | 'recibo';
 
 export const reportesService = {
     getInventarioStock: async (idDependencia?: number, fechaCorte?: string) => {
@@ -48,6 +53,7 @@ export const reportesService = {
         fecha_fin?: string;
         id_dependencia?: number;
         id_producto?: number;
+        vista?: VistaCodigoType;
     }) => {
         return await apiClient.download('/reportes/inventario/movimientos/pdf', filters, 'reporte_movimientos.pdf');
     }

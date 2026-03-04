@@ -29,6 +29,8 @@ class ProductosRead(ProductosBase):
     moneda_venta_rel: Optional[MonedaRead] = None
     # Campo calculado - cantidad total de movimientos confirmados
     cantidad: int = 0
+    # Código extenso del último lote/movimiento asociado (trazabilidad)
+    codigo_lote: Optional[str] = None
 
 
 class ProductosUpdate(SQLModel):

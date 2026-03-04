@@ -1,8 +1,8 @@
-from sqlmodel import select
+from sqlmodel import select, col, func
 from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlalchemy.orm import selectinload
-from typing import List, Optional
-from src.models import Productos, Subcategorias
+from typing import List, Optional, Dict
+from src.models import Productos, Subcategorias, Movimiento
 from src.repository.base import CRUDBase
 from src.dto import (
     ProductosCreate,
@@ -124,6 +124,38 @@ class ProductosRepository(CRUDBase[Productos, ProductosCreate, ProductosUpdate])
         )
         results = await db.exec(statement)
         return list(results.all())
+
+
+    async def get_latest_lot_codes(self, db: AsyncSession, product_ids: List[int]) -> Dict[int, str]:
+        """Obtiene el código de lote más reciente para cada producto.
+        Busca el último movimiento con código no nulo por producto."""
+        if not product_ids:
+            return {}
+
+        from sqlalchemy import literal_column
+
+        # Subquery: max id_movimiento con codigo no nulo por producto
+        subq = (
+            select(
+                Movimiento.id_producto,
+                func.max(Movimiento.id_movimiento).label("max_id")
+            )
+            .where(
+                col(Movimiento.id_producto).in_(product_ids),
+                Movimiento.codigo.isnot(None),  # type: ignore
+                Movimiento.codigo != "",
+            )
+            .group_by(Movimiento.id_producto)
+            .subquery()
+        )
+
+        query = (
+            select(Movimiento.id_producto, Movimiento.codigo)
+            .join(subq, (Movimiento.id_producto == subq.c.id_producto) & (Movimiento.id_movimiento == subq.c.max_id))
+        )
+
+        results = (await db.exec(query)).all()
+        return {row[0]: row[1] for row in results if row[1]}
 
 
 productos_repo = ProductosRepository(Productos)
