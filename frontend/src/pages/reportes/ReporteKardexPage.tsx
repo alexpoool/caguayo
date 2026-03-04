@@ -211,73 +211,62 @@ export function ReporteKardexPage() {
 
       {/* Content */}
       <div className="flex-1 overflow-auto p-4">
-        {!productoId ? (
-            <div className="h-64 flex flex-col items-center justify-center text-gray-400">
-                <Search className="w-12 h-12 mb-2 opacity-20" />
-                <p>Seleccione un producto para ver su historial</p>
-            </div>
-        ) : (
-            <div className="bg-white rounded-lg shadow border border-gray-200 overflow-hidden">
-                <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                        <tr>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fecha</th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Código</th>
-                            <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Saldo Inicial</th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tipo</th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Dependencia</th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Observación</th>
-                            <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Entrada</th>
-                            <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Salida</th>
-                            <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Saldo Final</th>
-                        </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                        {isLoading ? (
-                            <tr><td colSpan={9} className="px-6 py-4 text-center">Cargando...</td></tr>
-                        ) : movimientosData?.length === 0 ? (
-                            <tr><td colSpan={9} className="px-6 py-4 text-center text-gray-500">No hay movimientos en este período</td></tr>
-                        ) : (
-                            movimientosData?.map((item) => (
-                                <tr key={item.id_movimiento} className="hover:bg-gray-50">
-                                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
-                                        {format(new Date(item.fecha), 'dd/MM/yyyy HH:mm')}
-                                    </td>
-                                    <td className="px-4 py-4 whitespace-nowrap text-sm font-mono text-gray-900">
-                                        {item.codigo_movimiento || item.codigo_producto || '-'}
-                                    </td>
-                                    <td className="px-4 py-4 whitespace-nowrap text-sm text-right text-gray-700 font-medium">
-                                        {item.saldo_inicial}
-                                    </td>
-                                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
-                                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${item.factor > 0 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                                            {item.tipo}
-                                        </span>
-                                    </td>
-                                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">{item.dependencia}</td>
-                                    <td className="px-4 py-4 text-sm text-gray-500 truncate max-w-xs">{item.observacion || '-'}</td>
-                                    
-                                    {/* Entrada Column */}
-                                    <td className="px-4 py-4 whitespace-nowrap text-sm text-right text-green-600 font-medium">
-                                        {item.factor > 0 ? item.cantidad : '-'}
-                                    </td>
-                                    
-                                    {/* Salida Column */}
-                                    <td className="px-4 py-4 whitespace-nowrap text-sm text-right text-red-600 font-medium">
-                                        {item.factor < 0 ? item.cantidad : '-'}
-                                    </td>
-
-                                    {/* Saldo Final Column */}
-                                    <td className="px-4 py-4 whitespace-nowrap text-sm text-right text-gray-800 font-bold">
-                                        {item.saldo_final}
-                                    </td>
-                                </tr>
-                            ))
-                        )}
-                    </tbody>
-                </table>
-            </div>
-        )}
+        <div className="bg-white rounded-lg shadow border border-gray-200 overflow-hidden">
+            <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                    <tr>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fecha</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Código</th>
+                        <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Saldo Inicial</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tipo</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Descripción</th>
+                        <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Cantidad</th>
+                        <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Saldo Final</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Dependencia</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Observación</th>
+                    </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                    {isLoading ? (
+                        <tr><td colSpan={9} className="px-6 py-4 text-center">Cargando...</td></tr>
+                    ) : !productoId ? (
+                        <tr><td colSpan={9} className="px-6 py-4 text-center text-gray-500">Seleccione un producto para ver su historial</td></tr>
+                    ) : movimientosData?.length === 0 ? (
+                        <tr><td colSpan={9} className="px-6 py-4 text-center text-gray-500">No hay movimientos en este período</td></tr>
+                    ) : (
+                        movimientosData?.map((item) => (
+                            <tr key={item.id_movimiento} className="hover:bg-gray-50">
+                                <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
+                                    {format(new Date(item.fecha), 'dd/MM/yyyy HH:mm')}
+                                </td>
+                                <td className="px-4 py-4 whitespace-nowrap text-sm font-mono text-gray-900">
+                                    {item.codigo_movimiento || item.codigo_producto || '-'}
+                                </td>
+                                <td className="px-4 py-4 whitespace-nowrap text-sm text-right text-gray-700 font-medium">
+                                    {item.saldo_inicial}
+                                </td>
+                                <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
+                                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${item.factor > 0 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                                        {item.tipo}
+                                    </span>
+                                </td>
+                                <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-600">
+                                    {item.producto}
+                                </td>
+                                <td className={`px-4 py-4 whitespace-nowrap text-sm text-right font-bold ${item.factor > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                    {item.factor > 0 ? '+' : '-'}{item.cantidad}
+                                </td>
+                                <td className="px-4 py-4 whitespace-nowrap text-sm text-right text-gray-800 font-bold">
+                                    {item.saldo_final}
+                                </td>
+                                <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">{item.dependencia}</td>
+                                <td className="px-4 py-4 text-sm text-gray-500 truncate max-w-xs">{item.observacion || '-'}</td>
+                            </tr>
+                        ))
+                    )}
+                </tbody>
+            </table>
+        </div>
       </div>
     </div>
   );
