@@ -1,5 +1,6 @@
 from typing import List, Optional, cast
 import logging
+import psycopg2
 from datetime import datetime
 from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlmodel import select, func
@@ -13,6 +14,37 @@ from src.dto import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+async def verificar_usuario_en_base_datos(
+    base_datos: str,
+    host: str,
+    puerto: int,
+    alias_usuario: str,
+    usuario_db: str = "postgres",
+    contrasenia_db: str = "1234",
+) -> bool:
+    """Verifica si un usuario existe en una base de datos externa."""
+    if not base_datos:
+        return False
+
+    try:
+        conn = psycopg2.connect(
+            host=host,
+            port=puerto,
+            database=base_datos,
+            user=usuario_db,
+            password=contrasenia_db,
+        )
+        cursor = conn.cursor()
+        cursor.execute("SELECT 1 FROM usuarios WHERE alias = %s", (alias_usuario,))
+        resultado = cursor.fetchone() is not None
+        cursor.close()
+        conn.close()
+        return resultado
+    except Exception as e:
+        logger.error(f"Error verificando usuario en {base_datos}: {e}")
+        return False
 
 
 class MovimientoService:
@@ -433,13 +465,14 @@ class MovimientoService:
 
     @staticmethod
     async def crear_ajuste(
-        db: AsyncSession, ajuste: AjusteCreate
+        db: AsyncSession, ajuste: AjusteCreate, alias_usuario: str = None
     ) -> List[MovimientoAjusteRead]:
         """Crear movimientos de ajuste (quitar de origen, agregar a destinos).
 
         Args:
             db: Sesión de base de datos
             ajuste: Datos del ajuste
+            alias_usuario: Alias del usuario que hace el ajuste (del token JWT)
 
         Returns:
             Lista de movimientos creados (quitar + agregar)
@@ -451,6 +484,60 @@ class MovimientoService:
 
         if origen.estado != "confirmado":
             raise ValueError("El movimiento de origen debe estar confirmado")
+
+        # Obtener información de la dependencia origen
+        dep_origen = await db.get(Dependencia, origen.id_dependencia)
+        if not dep_origen:
+            raise ValueError("Dependencia origen no encontrada")
+
+        # Verificar usuario en BD origen (si hay base de datos y alias de usuario)
+        if alias_usuario and dep_origen.base_datos:
+            usuario_existe_origen = await verificar_usuario_en_base_datos(
+                base_datos=dep_origen.base_datos,
+                host=dep_origen.host or "localhost",
+                puerto=dep_origen.puerto or 5432,
+                alias_usuario=alias_usuario,
+            )
+            if not usuario_existe_origen:
+                raise ValueError(
+                    f"El usuario '{alias_usuario}' no existe en la base de datos de origen '{dep_origen.base_datos}'"
+                )
+
+        # Recoger IDs de dependencias destino para verificar
+        ids_destinos = [d.id_dependencia for d in ajuste.destinos]
+        statement_deps = select(Dependencia).where(
+            Dependencia.id_dependencia.in_(ids_destinos)
+        )
+        result_deps = await db.exec(statement_deps)
+        deps_destino = {d.id_dependencia: d for d in result_deps.all()}
+
+        # Verificar usuario en cada BD destino
+        bases_datos_verificadas = set()
+        for destino in ajuste.destinos:
+            dep_destino = deps_destino.get(destino.id_dependencia)
+            if not dep_destino or not dep_destino.base_datos:
+                continue
+
+            # Evitar verificar la misma base de datos múltiples veces
+            if dep_destino.base_datos in bases_datos_verificadas:
+                continue
+            bases_datos_verificadas.add(dep_destino.base_datos)
+
+            # No verificar si es la misma que el origen
+            if dep_origen.base_datos == dep_destino.base_datos:
+                continue
+
+            if alias_usuario:
+                usuario_existe_destino = await verificar_usuario_en_base_datos(
+                    base_datos=dep_destino.base_datos,
+                    host=dep_destino.host or "localhost",
+                    puerto=dep_destino.puerto or 5432,
+                    alias_usuario=alias_usuario,
+                )
+                if not usuario_existe_destino:
+                    raise ValueError(
+                        f"El usuario '{alias_usuario}' no existe en la base de datos '{dep_destino.base_datos}' de la dependencia '{dep_destino.nombre}'"
+                    )
 
         # Validar que la cantidad total en destinos no exceda la cantidad en origen
         cantidad_total_destinos = sum(d.cantidad for d in ajuste.destinos)

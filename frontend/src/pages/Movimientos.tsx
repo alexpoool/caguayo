@@ -386,9 +386,9 @@ export function MovimientosPage() {
                           </td>
                           <td className="py-3 px-4">
                             <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                              mov.estado === 'CONFIRMADO' 
+                              mov.estado === 'confirmado' 
                                 ? 'bg-green-100 text-green-800'
-                                : mov.estado === 'PENDIENTE'
+                                : mov.estado === 'pendiente'
                                 ? 'bg-yellow-100 text-yellow-800'
                                 : 'bg-gray-100 text-gray-800'
                             }`}>
@@ -542,9 +542,9 @@ export function MovimientosPage() {
                       </p>
                       <p className="font-bold text-gray-900">
                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          detailModal.movimiento?.estado === 'CONFIRMADO' 
+                          detailModal.movimiento?.estado === 'confirmado' 
                             ? 'bg-green-100 text-green-800'
-                            : detailModal.movimiento?.estado === 'PENDIENTE'
+                            : detailModal.movimiento?.estado === 'pendiente'
                             ? 'bg-yellow-100 text-yellow-800'
                             : 'bg-gray-100 text-gray-800'
                         }`}>

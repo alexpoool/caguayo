@@ -1,3 +1,4 @@
+-- Tablas base (sin dependencias)
 CREATE TABLE moneda (
     id_moneda SERIAL PRIMARY KEY,
     nombre VARCHAR(50) NOT NULL UNIQUE,
@@ -25,12 +26,6 @@ CREATE TABLE tipo_movimiento (
     factor INTEGER NOT NULL CHECK (factor IN (1, -1))
 );
 
-CREATE TABLE tipo_dependencia (
-    id_tipo_dependencia SERIAL PRIMARY KEY,
-    nombre VARCHAR(20) NOT NULL UNIQUE,
-    descripcion TEXT
-);
-
 CREATE TABLE tipo_contrato (
     id_tipo_contrato SERIAL PRIMARY KEY,
     nombre VARCHAR(100) NOT NULL UNIQUE,
@@ -55,19 +50,20 @@ CREATE TABLE municipio (
     UNIQUE (id_provincia, nombre)
 );
 
-CREATE TABLE cuenta (
-    id_cuenta SERIAL PRIMARY KEY,
-    titular VARCHAR(150) NOT NULL,
-    banco VARCHAR(100) NOT NULL,
-    sucursal INTEGER,
-    direccion VARCHAR(255) NOT NULL,
-    tipo_cuenta VARCHAR(50) NOT NULL,
-    id_moneda INTEGER NOT NULL REFERENCES moneda(id_moneda) ON DELETE CASCADE
-);
-
 CREATE TABLE grupo (
     id_grupo SERIAL PRIMARY KEY,
     nombre VARCHAR(100) NOT NULL UNIQUE,
+    descripcion TEXT
+);
+
+CREATE TABLE funcionalidad (
+    id_funcionalidad SERIAL PRIMARY KEY,
+    nombre VARCHAR(100) NOT NULL UNIQUE
+);
+
+CREATE TABLE tipo_dependencia (
+    id_tipo_dependencia SERIAL PRIMARY KEY,
+    nombre VARCHAR(20) NOT NULL UNIQUE,
     descripcion TEXT
 );
 
@@ -80,10 +76,34 @@ CREATE TABLE dependencia (
     telefono VARCHAR(20) NOT NULL,
     email VARCHAR(100),
     web VARCHAR(100),
-    id_cuenta INTEGER REFERENCES cuenta(id_cuenta) ON DELETE SET NULL,
     id_provincia INTEGER REFERENCES provincia(id_provincia) ON DELETE SET NULL,
     id_municipio INTEGER REFERENCES municipio(id_municipio) ON DELETE SET NULL,
+    descripcion TEXT,
+    base_datos VARCHAR(100)
+);
+
+CREATE TABLE tipo_cuenta (
+    id_tipo_cuenta SERIAL PRIMARY KEY,
+    nombre VARCHAR(50) NOT NULL UNIQUE,
     descripcion TEXT
+);
+
+CREATE TABLE cuenta (
+    id_cuenta SERIAL PRIMARY KEY,
+    id_dependencia INTEGER REFERENCES dependencia(id_dependencia) ON DELETE CASCADE,
+    id_tipo_cuenta INTEGER NOT NULL REFERENCES tipo_cuenta(id_tipo_cuenta) ON DELETE CASCADE,
+    titular VARCHAR(150) NOT NULL,
+    banco VARCHAR(100) NOT NULL,
+    sucursal INTEGER,
+    direccion VARCHAR(255) NOT NULL,
+    id_moneda INTEGER NOT NULL REFERENCES moneda(id_moneda) ON DELETE CASCADE
+);
+
+CREATE TABLE grupo_funcionalidad (
+    id_grupo_funcionalidad SERIAL PRIMARY KEY,
+    id_grupo INTEGER NOT NULL REFERENCES grupo(id_grupo) ON DELETE CASCADE,
+    id_funcionalidad INTEGER NOT NULL REFERENCES funcionalidad(id_funcionalidad) ON DELETE CASCADE,
+    UNIQUE (id_grupo, id_funcionalidad)
 );
 
 CREATE TABLE usuarios (
@@ -96,6 +116,14 @@ CREATE TABLE usuarios (
     contrasenia VARCHAR(255) NOT NULL,
     id_grupo INTEGER NOT NULL REFERENCES grupo(id_grupo) ON DELETE CASCADE,
     id_dependencia INTEGER REFERENCES dependencia(id_dependencia) ON DELETE SET NULL
+);
+
+CREATE TABLE sesion (
+    id_sesion SERIAL PRIMARY KEY,
+    id_usuario INTEGER NOT NULL REFERENCES usuarios(id_usuario) ON DELETE CASCADE,
+    token VARCHAR(500) NOT NULL,
+    fecha_creacion TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    fecha_expiracion TIMESTAMP NOT NULL
 );
 
 CREATE TABLE liquidacion (
@@ -124,26 +152,6 @@ CREATE TABLE tipo_convenio (
     id_tipo_convenio SERIAL PRIMARY KEY,
     nombre VARCHAR(100) NOT NULL,
     descripcion TEXT
-);
-
-CREATE TABLE convenio (
-    id_convenio SERIAL PRIMARY KEY,
-    id_provedor INTEGER NOT NULL REFERENCES provedores(id_provedores) ON DELETE CASCADE,
-    nombre_convenio VARCHAR(200) NOT NULL,
-    fecha DATE NOT NULL,
-    vigencia DATE NOT NULL,
-    id_tipo_convenio INTEGER NOT NULL REFERENCES tipo_convenio(id_tipo_convenio) ON DELETE CASCADE
-);
-
-CREATE TABLE anexo (
-    id_anexo SERIAL PRIMARY KEY,
-    id_convenio INTEGER NOT NULL REFERENCES convenio(id_convenio) ON DELETE CASCADE,
-    id_producto INTEGER REFERENCES productos(id_producto) ON DELETE CASCADE,
-    nombre_anexo VARCHAR(200) NOT NULL,
-    fecha DATE NOT NULL,
-    numero_anexo VARCHAR(50) NOT NULL,
-    id_dependencia INTEGER NOT NULL,
-    comision NUMERIC(10, 2)
 );
 
 CREATE TABLE productos (
@@ -190,6 +198,17 @@ CREATE TABLE detalle_ventas (
     subtotal NUMERIC(15, 2) NOT NULL
 );
 
+CREATE TABLE anexo (
+    id_anexo SERIAL PRIMARY KEY,
+    id_convenio INTEGER REFERENCES convenio(id_convenio) ON DELETE CASCADE,
+    id_producto INTEGER REFERENCES productos(id_producto) ON DELETE CASCADE,
+    nombre_anexo VARCHAR(200) NOT NULL,
+    fecha DATE NOT NULL,
+    numero_anexo VARCHAR(50) NOT NULL,
+    id_dependencia INTEGER NOT NULL,
+    comision NUMERIC(10, 2)
+);
+
 CREATE TABLE movimiento (
     id_movimiento SERIAL PRIMARY KEY,
     id_tipo_movimiento INTEGER NOT NULL REFERENCES tipo_movimiento(id_tipo_movimiento) ON DELETE CASCADE,
@@ -210,6 +229,17 @@ CREATE TABLE movimiento (
     id_moneda_venta INTEGER REFERENCES moneda(id_moneda) ON DELETE CASCADE
 );
 
+-- Tabla de conexiones a bases de datos
+CREATE TABLE conexion_database (
+    id_conexion SERIAL PRIMARY KEY,
+    host VARCHAR(100) DEFAULT 'localhost' NOT NULL,
+    puerto INTEGER DEFAULT '5432' NOT NULL,
+    usuario VARCHAR(100),
+    contrasenia VARCHAR(255),
+    nombre_database VARCHAR(100) NOT NULL
+);
+
+-- Indices
 CREATE INDEX idx_productos_codigo ON productos(codigo);
 CREATE INDEX idx_productos_subcategoria ON productos(id_subcategoria);
 CREATE INDEX idx_anexo_numero ON anexo(numero_anexo);
@@ -233,10 +263,15 @@ CREATE INDEX idx_dependencia_tipo ON dependencia(id_tipo_dependencia);
 CREATE INDEX idx_usuarios_grupo ON usuarios(id_grupo);
 CREATE INDEX idx_usuarios_dependencia ON usuarios(id_dependencia);
 CREATE INDEX idx_cuenta_moneda ON cuenta(id_moneda);
+CREATE INDEX idx_cuenta_dependencia ON cuenta(id_dependencia);
 CREATE INDEX idx_anexo_dependencia ON anexo(id_dependencia);
+CREATE INDEX idx_funcionalidad_nombre ON funcionalidad(nombre);
+CREATE INDEX idx_grupo_funcionalidad_grupo ON grupo_funcionalidad(id_grupo);
+CREATE INDEX idx_grupo_funcionalidad_funcionalidad ON grupo_funcionalidad(id_funcionalidad);
+CREATE INDEX idx_sesion_usuario ON sesion(id_usuario);
+CREATE INDEX idx_sesion_token ON sesion(token);
 
-ALTER TABLE anexo ADD CONSTRAINT fk_anexo_producto FOREIGN KEY (id_producto) REFERENCES productos(id_producto);
--- Datos reales de provincias de Cuba
+-- Datos iniciales: Provincias de Cuba
 INSERT INTO provincia (nombre) VALUES 
 ('Pinar del Río'),
 ('Artemisa'),
@@ -255,7 +290,7 @@ INSERT INTO provincia (nombre) VALUES
 ('Guantánamo'),
 ('Isla de la Juventud');
 
--- Datos reales de municipios de Cuba
+-- Datos iniciales: Municipios de Cuba
 INSERT INTO municipio (id_provincia, nombre) VALUES
 -- Pinar del Río (id=1)
 (1, 'Sandino'),
@@ -269,7 +304,6 @@ INSERT INTO municipio (id_provincia, nombre) VALUES
 (1, 'San Luis'),
 (1, 'San Juan y Martínez'),
 (1, 'Guane'),
-
 -- Artemisa (id=2)
 (2, 'Bahía Honda'),
 (2, 'Mariel'),
@@ -286,7 +320,6 @@ INSERT INTO municipio (id_provincia, nombre) VALUES
 (2, 'Batabanó'),
 (2, 'Melena del Sur'),
 (2, 'Quivicán'),
-
 -- La Habana (id=3)
 (3, 'Playa'),
 (3, 'Plaza de la Revolución'),
@@ -303,7 +336,6 @@ INSERT INTO municipio (id_provincia, nombre) VALUES
 (3, 'Boyeros'),
 (3, 'Arroyo Naranjo'),
 (3, 'Cotorro'),
-
 -- Mayabeque (id=4)
 (4, 'Bejucal'),
 (4, 'San José de las Lajas'),
@@ -315,7 +347,6 @@ INSERT INTO municipio (id_provincia, nombre) VALUES
 (4, 'Güines'),
 (4, 'Melena del Sur'),
 (4, 'Batabanó'),
-
 -- Matanzas (id=5)
 (5, 'Matanzas'),
 (5, 'Cárdenas'),
@@ -330,9 +361,8 @@ INSERT INTO municipio (id_provincia, nombre) VALUES
 (5, 'Jagüey Grande'),
 (5, 'Calimete'),
 (5, 'Los Arabos'),
-
 -- Cienfuegos (id=6)
-(6, 'Aguada de Pasajeros'),
+(6, 'Aguada de Pasajes'),
 (6, 'Rodas'),
 (6, 'Palmira'),
 (6, 'Lajas'),
@@ -340,7 +370,6 @@ INSERT INTO municipio (id_provincia, nombre) VALUES
 (6, 'Cumanayagua'),
 (6, 'Cienfuegos'),
 (6, 'Abreus'),
-
 -- Villa Clara (id=7)
 (7, 'Corralillo'),
 (7, 'Quemado de Güines'),
@@ -355,7 +384,6 @@ INSERT INTO municipio (id_provincia, nombre) VALUES
 (7, 'Santo Domingo'),
 (7, 'Ranchuelo'),
 (7, 'Manicaragua'),
-
 -- Sancti Spiritus (id=8)
 (8, 'Yaguajay'),
 (8, 'Jatibonico'),
@@ -365,7 +393,6 @@ INSERT INTO municipio (id_provincia, nombre) VALUES
 (8, 'Trinidad'),
 (8, 'Sancti Spíritus'),
 (8, 'La Sierpe'),
-
 -- Ciego de Ávila (id=9)
 (9, 'Chambas'),
 (9, 'Morón'),
@@ -377,7 +404,6 @@ INSERT INTO municipio (id_provincia, nombre) VALUES
 (9, 'Ciego de Ávila'),
 (9, 'Venezuela'),
 (9, 'Baraguá'),
-
 -- Camagüey (id=10)
 (10, 'Carlos Manuel de Céspedes'),
 (10, 'Esmeralda'),
@@ -392,7 +418,6 @@ INSERT INTO municipio (id_provincia, nombre) VALUES
 (10, 'Florida'),
 (10, 'Vertientes'),
 (10, 'Jimaguayú'),
-
 -- Las Tunas (id=11)
 (11, 'Manatí'),
 (11, 'Puerto Padre'),
@@ -402,7 +427,6 @@ INSERT INTO municipio (id_provincia, nombre) VALUES
 (11, 'Jobabo'),
 (11, 'Colombia'),
 (11, 'Amancio'),
-
 -- Holguín (id=12)
 (12, 'Gibara'),
 (12, 'Rafael Freyre'),
@@ -418,7 +442,6 @@ INSERT INTO municipio (id_provincia, nombre) VALUES
 (12, 'Frank País'),
 (12, 'Sagua de Tánamo'),
 (12, 'Moa'),
-
 -- Granma (id=13)
 (13, 'Río Cauto'),
 (13, 'Cauto Cristo'),
@@ -433,7 +456,6 @@ INSERT INTO municipio (id_provincia, nombre) VALUES
 (13, 'Bartolomé Masó'),
 (13, 'Buey Arriba'),
 (13, 'Guisa'),
-
 -- Santiago de Cuba (id=14)
 (14, 'Contramaestre'),
 (14, 'Mella'),
@@ -444,7 +466,6 @@ INSERT INTO municipio (id_provincia, nombre) VALUES
 (14, 'Palma Soriano'),
 (14, 'Tercer Frente'),
 (14, 'Guama'),
-
 -- Guantánamo (id=15)
 (15, 'Yateras'),
 (15, 'Baracoa'),
@@ -456,6 +477,34 @@ INSERT INTO municipio (id_provincia, nombre) VALUES
 (15, 'Niceto Pérez'),
 (15, 'Manuel Tames'),
 (15, 'El Salvador'),
-
 -- Isla de la Juventud (id=16)
 (16, 'Isla de la Juventud');
+
+-- Monedas por defecto
+INSERT INTO moneda (nombre, denominacion, simbolo) VALUES 
+('Dólar Americano', 'Dólar Estadounidense', 'USD'),
+('Euro', 'Euro de la Unión Europea', 'EUR'),
+('Peso Mexicano', 'Peso Mexicano', 'MXN'),
+('Peso Colombiano', 'Peso Colombiano', 'COP'),
+('BRICS', 'Alianza BRICS', 'BRICS'),
+('Peso Cubano', 'Peso Cubano', 'CUP');
+
+-- Funcionalidades por defecto
+INSERT INTO funcionalidad (nombre) VALUES 
+('movimientos'),
+('pendientes'),
+('producto'),
+('configuracion'),
+('usuarios'),
+('grupos'),
+('monedas'),
+('dependencias');
+
+-- Grupo Super Admin
+INSERT INTO grupo (nombre, descripcion) VALUES 
+('Super Admin', 'Grupo con todos los permisos');
+
+-- Usuario superadmin (contraseña: superadmin123)
+-- La contraseña hasheada se insertará desde Python después de crear las tablas
+-- INSERT INTO usuarios (ci, nombre, primer_apellido, segundo_apellido, alias, contrasenia, id_grupo, id_dependencia) 
+-- VALUES ('00000000000', 'Super', 'Admin', '', 'superadmin', '$2b$12$...hash...', 1, NULL);

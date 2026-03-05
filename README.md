@@ -69,12 +69,14 @@ cd caguayo
 
 6. Ejecutar migraciones de base de datos:
    ```bash
-   uv run alembic upgrade head
+   cd backend
+   .venv/bin/alembic upgrade head
    ```
 
 7. Iniciar servidor de desarrollo:
    ```bash
-   uv run uvicorn main:app --reload
+   cd backend
+   .venv/bin/uvicorn main:app --reload --port 8000
    ```
 
 ### 3. Configurar Frontend
@@ -97,10 +99,13 @@ cd caguayo
 ## 🏗️ Estructura del Proyecto
 
 ```
-caguayo-webapp/
+caguayo/
 ├── backend/
 │   ├── alembic/
-│   │   └── versions/          # Migraciones de base de datos
+│   │   ├── env.py              # Configuración de migraciones (async)
+│   │   ├── script.py.mako      # Template para nuevas migraciones
+│   │   ├── versions/           # Migraciones de base de datos
+│   │   └── alembic.ini         # Configuración de Alembic
 │   ├── sql/
 │   │   └── db.sql            # Schema de base de datos (exportado de modelos)
 │   ├── src/
@@ -214,7 +219,7 @@ caguayo-webapp/
 | **Municipio** | Municipios por provincia |
 | **Cuenta** | Cuentas bancarias asociadas a dependencias |
 | **Grupo** | Grupos de usuarios para permisos |
-| **Usuario** | Usuarios del sistema con autenticación |
+| **Usuario** | Usuarios del sis.venv/bin/alembic upgrade headtema con autenticación |
 | **Transaccion** | Entidad base para transacciones |
 
 ### Estados de Venta
@@ -232,33 +237,68 @@ caguayo-webapp/
 
 ## 🔄 Migraciones de Base de Datos
 
-Listado de migraciones disponibles:
+> **Nota:** Las migraciones de Alembic están configuradas para usar el driver asíncrono `asyncpg`. El archivo `alembic/env.py` está configurado para manejar conexiones asíncronas correctamente.
+
+### Comandos de Alembic
+
+```bash
+# Navegar al directorio backend
+cd backend
+
+# Ver revisión actual
+.venv/bin/alembic current
+
+# Ver historial de migraciones
+.venv/bin/alembic history
+
+# Verificar que la base de datos está sincronizada
+.venv/bin/alembic check
+
+# Crear una nueva migración (autogenerada desde los modelos)
+.venv/bin/alembic revision --autogenerate -m "descripcion de la migracion"
+
+# Crear una migración vacía (manual)
+.venv/bin/alembic revision -m "descripcion"
+
+# Aplicar todas las migraciones
+.venv/bin/alembic upgrade head
+
+# Aplicar una migración específica
+.venv/bin/alembic upgrade +1
+
+# Revertir la última migración
+.venv/bin/alembic downgrade -1
+
+# Marcar una revisión sin ejecutar (para bases de datos existentes)
+.venv/bin/alembic stamp <revision>
+```
+
+### Estructura de Alembic
+
+```
+backend/
+├── alembic/
+│   ├── env.py              # Configuración de migraciones (async)
+│   ├── script.py.mako     # Template para nuevas migraciones
+│   ├── versions/          # Archivos de migración
+│   └── alembic.ini        # Configuración principal
+```
+
+### Migraciones Existentes
 
 | Revisión | Descripción |
 |----------|-------------|
-| `5eb4bad34494` | Migración inicial - Constraints base |
-| `4afe28ed5947` | Agrega tablas clientes, ventas y detalle_ventas |
-| `e3f8a9b2c1d0` | Agrega columna código único a productos |
-| `f5a7b9c3d2e1` | Agrega convenios, proveedores y anexos |
-| `g6h8i0j4k5l2` | Agrega campos de precios y convenios a movimientos |
-| `h1i2j3k4l5m6` | Datos de prueba iniciales |
-| `i7j8k9l0m1n2` | Constraint CHECK para stock >= 0 |
-| `j8k9l0m1n2o3` | Hace id_anexo nullable en movimientos |
+| `a9d239ce0765` | Estado inicial - Marca el estado actual de la base de datos (sin cambios) |
 
-Para crear una nueva migración:
-```bash
-uv run alembic revision --autogenerate -m "descripcion"
-```
+**Nota:** La base de datos existente se sincronizó creando una migración inicial vacía. Los modelos SQLModel se comparan con la base de datos y mostrarán diferencias en `alembic check` hasta que se generen y apliquen nuevas migraciones explícitamente.
 
-Para aplicar migraciones:
-```bash
-uv run alembic upgrade head
-```
+### Configuración de Base de Datos
 
-Para revertir una migración:
-```bash
-uv run alembic downgrade -1
-```
+La URL de la base de datos se configura en:
+- `backend/alembic.ini` - Configuración de Alembic
+- `backend/.env` - Variables de entorno (DATABASE_URL)
+
+Formato: `postgresql+asyncpg://usuario:password@host:5432/database`
 
 ## 🔒 Seguridad
 

@@ -29,6 +29,11 @@ export interface Dependencia {
   id_provincia?: number;
   id_municipio?: number;
   descripcion?: string;
+  host?: string;
+  puerto?: number;
+  usuario?: string;
+  contrasenia?: string;
+  base_datos: string;
   tipo_dependencia?: TipoDependencia;
   padre?: Dependencia;
   provincia?: Provincia;
@@ -47,6 +52,11 @@ export interface DependenciaCreate {
   id_provincia?: number;
   id_municipio?: number;
   descripcion?: string;
+  host?: string;
+  puerto?: number;
+  usuario?: string;
+  contrasenia?: string;
+  base_datos: string;
 }
 
 export interface DependenciaConCuentasCreate {
@@ -65,4 +75,21 @@ export interface DependenciaUpdate {
   id_provincia?: number;
   id_municipio?: number;
   descripcion?: string;
+  host?: string;
+  puerto?: number;
+  usuario?: string;
+  contrasenia?: string;
+  base_datos?: string;
+}
+
+export interface DatabaseCreationResult {
+  creada: boolean;
+  ya_existia: boolean;
+  tablas: string[];
+  mensaje: string;
+}
+
+export interface DependenciaConDatabaseResponse {
+  dependencia: Dependencia;
+  database_result: DatabaseCreationResult;
 }

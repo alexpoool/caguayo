@@ -13,9 +13,13 @@ from .anexos import router as anexos_router
 from .dependencias import router as dependencias_router
 from .configuracion import router as configuracion_router
 from .administracion import router as administracion_router
+from .auth import router as auth_router
+from .conexiones import router as conexiones_router
 
 api_router = APIRouter(prefix="/api/v1")
 
+api_router.include_router(auth_router)
+api_router.include_router(conexiones_router)
 api_router.include_router(productos_router)
 api_router.include_router(dashboard_router)
 api_router.include_router(categorias_router)

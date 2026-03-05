@@ -5,6 +5,7 @@ if TYPE_CHECKING:
     from .cuenta import Cuenta
     from .usuarios import Usuario
     from .movimiento import Movimiento
+    from .conexion_database import ConexionDatabase
 
 
 class TipoDependencia(SQLModel, table=True):
@@ -38,6 +39,18 @@ class Dependencia(SQLModel, table=True):
     )
     descripcion: Optional[str] = None
 
+    # Campos de conexión a la base de datos de la dependencia
+    host: Optional[str] = Field(default="localhost", max_length=100)
+    puerto: Optional[int] = Field(default=5432)
+    usuario: Optional[str] = Field(default=None, max_length=100)
+    contrasenia: Optional[str] = Field(default=None, max_length=255)
+    base_datos: str = Field(max_length=100)
+
+    # FK a tabla de conexiones (varias dependencias pueden compartir la misma BD)
+    id_conexion: Optional[int] = Field(
+        default=None, foreign_key="conexion_database.id_conexion"
+    )
+
     tipo_dependencia: "TipoDependencia" = Relationship(back_populates="dependencias")
     padre: Optional["Dependencia"] = Relationship(
         back_populates="subdependencias",
@@ -51,6 +64,7 @@ class Dependencia(SQLModel, table=True):
     municipio: Optional["Municipio"] = Relationship(back_populates="dependencias")
     usuarios: List["Usuario"] = Relationship(back_populates="dependencia")
     movimientos: List["Movimiento"] = Relationship(back_populates="dependencia")
+    conexion: Optional["ConexionDatabase"] = Relationship(back_populates="dependencias")
 
 
 class Provincia(SQLModel, table=True):

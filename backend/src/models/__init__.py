@@ -6,6 +6,7 @@ from .venta import Ventas, EstadoVenta
 from .detalle_venta import DetalleVenta
 from .movimiento import TipoMovimiento, Movimiento
 from .dependencia import TipoDependencia, Dependencia, Provincia, Municipio
+from .conexion_database import ConexionDatabase
 from .anexo import Anexo
 from .liquidacion import Liquidacion
 from .transaccion import Transaccion
@@ -18,6 +19,7 @@ from .cuenta import Cuenta
 from .tipo_cuenta import TipoCuenta
 from .usuarios import Grupo, Usuario
 from .funcionalidades import Funcionalidad, GrupoFuncionalidad
+from .sesion import Sesion
 
 __all__ = [
     "Moneda",
@@ -34,6 +36,7 @@ __all__ = [
     "Dependencia",
     "Provincia",
     "Municipio",
+    "ConexionDatabase",
     "Anexo",
     "Liquidacion",
     "Transaccion",
@@ -49,4 +52,5 @@ __all__ = [
     "Usuario",
     "Funcionalidad",
     "GrupoFuncionalidad",
+    "Sesion",
 ]
