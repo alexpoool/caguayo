@@ -2,15 +2,13 @@ import { useState, useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { reportesService } from '../../services/reportesService';
 import { productosService } from '../../services/api';
-import { dependenciasService } from '../../services/administracion';
 import { useDebounce } from '../../hooks/useDebounce';
-import { Download, ArrowLeft, Search, Calendar, X, Filter } from 'lucide-react';
+import { Download, ArrowLeft, Search, Calendar, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
 
 export function ReporteKardexPage() {
   const [productoId, setProductoId] = useState<number | undefined>(undefined);
-  const [selectedDep, setSelectedDep] = useState<string>('');
   const [fechaInicio, setFechaInicio] = useState<string>('');
   const [fechaFin, setFechaFin] = useState<string>('');
   
@@ -19,15 +17,6 @@ export function ReporteKardexPage() {
   const [showResults, setShowResults] = useState(false);
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
   const searchRef = useRef<HTMLDivElement>(null);
-
-  // Derive dependenciaId for API calls
-  const dependenciaId = selectedDep && selectedDep !== 'todas' ? Number(selectedDep) : undefined;
-
-  // Cargar dependencias reales desde el backend
-  const { data: dependencias, isLoading: loadingDeps } = useQuery({
-    queryKey: ['dependencias'],
-    queryFn: () => dependenciasService.getDependencias(),
-  });
 
   // Close search results when clicking outside
   useEffect(() => {
@@ -61,12 +50,11 @@ export function ReporteKardexPage() {
   };
 
   const { data: movimientosData, isLoading } = useQuery({
-    queryKey: ['reportes', 'kardex', productoId, dependenciaId, selectedDep, fechaInicio, fechaFin],
+    queryKey: ['reportes', 'kardex', productoId, fechaInicio, fechaFin],
     queryFn: () => reportesService.getInventarioMovimientos({
       fecha_inicio: fechaInicio || undefined,
       fecha_fin: fechaFin || undefined,
-      id_producto: productoId,
-      id_dependencia: dependenciaId
+      id_producto: productoId
     }),
     enabled: !!productoId
   });
@@ -77,8 +65,7 @@ export function ReporteKardexPage() {
       await reportesService.downloadMovimientosPdf({
         fecha_inicio: fechaInicio || undefined,
         fecha_fin: fechaFin || undefined,
-        id_producto: productoId,
-        id_dependencia: dependenciaId
+        id_producto: productoId
       });
     } catch (error) {
       console.error("Error downloading PDF:", error);
@@ -170,27 +157,6 @@ export function ReporteKardexPage() {
             )}
         </div>
 
-        {/* Dependencia Filter */}
-        <div className="flex items-center gap-2 border-l pl-4 border-gray-200">
-            <Filter className="w-4 h-4 text-gray-400" />
-            <select 
-                className="border border-gray-300 rounded-md px-3 py-1.5 text-sm w-64"
-                value={selectedDep}
-                onChange={(e) => setSelectedDep(e.target.value)}
-                disabled={loadingDeps}
-            >
-                <option value="">
-                  {loadingDeps ? 'Cargando...' : 'Seleccionar dependencia'}
-                </option>
-                <option value="todas">Todas las dependencias</option>
-                {dependencias?.map((dep) => (
-                  <option key={dep.id_dependencia} value={dep.id_dependencia}>
-                    {dep.nombre}
-                  </option>
-                ))}
-            </select>
-        </div>
-
         <div className="flex items-center gap-2 border-l pl-4 border-gray-200">
             <Calendar className="w-4 h-4 text-gray-400" />
             <input 
@@ -222,17 +188,15 @@ export function ReporteKardexPage() {
                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Descripción</th>
                         <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Cantidad</th>
                         <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Saldo Final</th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Dependencia</th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Observación</th>
                     </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                     {isLoading ? (
-                        <tr><td colSpan={9} className="px-6 py-4 text-center">Cargando...</td></tr>
+                        <tr><td colSpan={7} className="px-6 py-4 text-center">Cargando...</td></tr>
                     ) : !productoId ? (
-                        <tr><td colSpan={9} className="px-6 py-4 text-center text-gray-500">Seleccione un producto para ver su historial</td></tr>
+                        <tr><td colSpan={7} className="px-6 py-4 text-center text-gray-500">Seleccione un producto para ver su historial</td></tr>
                     ) : movimientosData?.length === 0 ? (
-                        <tr><td colSpan={9} className="px-6 py-4 text-center text-gray-500">No hay movimientos en este período</td></tr>
+                        <tr><td colSpan={7} className="px-6 py-4 text-center text-gray-500">No hay movimientos en este período</td></tr>
                     ) : (
                         movimientosData?.map((item) => (
                             <tr key={item.id_movimiento} className="hover:bg-gray-50">
@@ -259,8 +223,6 @@ export function ReporteKardexPage() {
                                 <td className="px-4 py-4 whitespace-nowrap text-sm text-right text-gray-800 font-bold">
                                     {item.saldo_final}
                                 </td>
-                                <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">{item.dependencia}</td>
-                                <td className="px-4 py-4 text-sm text-gray-500 truncate max-w-xs">{item.observacion || '-'}</td>
                             </tr>
                         ))
                     )}
