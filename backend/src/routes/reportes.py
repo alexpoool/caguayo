@@ -115,8 +115,9 @@ async def get_inventario_movimientos_pdf(
         ]
         pdf_bytes = pdf_service.generate_movimientos_dependencia_pdf(pdf_data, filters)
 
+    filename = f"reporte_movimientos_{vista}.pdf"
     return Response(
         content=pdf_bytes,
         media_type="application/pdf",
-        headers={"Content-Disposition": "attachment; filename=reporte_movimientos.pdf"},
+        headers={"Content-Disposition": f"attachment; filename={filename}"},
     )
