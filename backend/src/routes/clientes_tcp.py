@@ -10,23 +10,16 @@ router = APIRouter(
 )
 
 
-@router.post("", status_code=201)
-async def crear_cliente_tcp(
-    datos: dict,
+@router.get("", response_model=List[ClienteTCP])
+async def listar_clientes_tcp(
+    skip: int = 0,
+    limit: int = 100,
     db: AsyncSession = Depends(get_session),
 ):
-    """Crear datos de TCP."""
-    try:
-        db_tcp = ClienteTCP(**datos)
-        db.add(db_tcp)
-        await db.commit()
-        await db.refresh(db_tcp)
-        return {
-            "id_cliente_tcp": db_tcp.id_cliente_tcp,
-            "id_cliente": db_tcp.id_cliente,
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error al crear: {str(e)}")
+    """Listar todos los clientes TCP."""
+    statement = select(ClienteTCP).offset(skip).limit(limit)
+    results = await db.exec(statement)
+    return results.all()
 
 
 @router.get("/by-cliente/{id_cliente}")
@@ -41,7 +34,6 @@ async def obtener_por_cliente(
     if not tcp:
         return None
     return {
-        "id_cliente_tcp": tcp.id_cliente_tcp,
         "id_cliente": tcp.id_cliente,
         "nombre": tcp.nombre,
         "primer_apellido": tcp.primer_apellido,
@@ -52,14 +44,30 @@ async def obtener_por_cliente(
     }
 
 
-@router.put("/{id}")
+@router.post("", status_code=201)
+async def crear_cliente_tcp(
+    datos: dict,
+    db: AsyncSession = Depends(get_session),
+):
+    """Crear datos de TCP."""
+    try:
+        db_tcp = ClienteTCP(**datos)
+        db.add(db_tcp)
+        await db.commit()
+        await db.refresh(db_tcp)
+        return {"id_cliente": db_tcp.id_cliente}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error al crear: {str(e)}")
+
+
+@router.put("/{id_cliente}")
 async def actualizar_cliente_tcp(
-    id: int,
+    id_cliente: int,
     datos: dict,
     db: AsyncSession = Depends(get_session),
 ):
     """Actualizar datos de TCP."""
-    statement = select(ClienteTCP).where(ClienteTCP.id_cliente_tcp == id)
+    statement = select(ClienteTCP).where(ClienteTCP.id_cliente == id_cliente)
     results = await db.exec(statement)
     db_tcp = results.first()
     if not db_tcp:
@@ -71,4 +79,19 @@ async def actualizar_cliente_tcp(
 
     await db.commit()
     await db.refresh(db_tcp)
-    return {"id_cliente_tcp": db_tcp.id_cliente_tcp}
+    return {"id_cliente": db_tcp.id_cliente}
+
+
+@router.delete("/{id_cliente}", status_code=204)
+async def eliminar_cliente_tcp(
+    id_cliente: int,
+    db: AsyncSession = Depends(get_session),
+):
+    """Eliminar datos de TCP."""
+    statement = select(ClienteTCP).where(ClienteTCP.id_cliente == id_cliente)
+    results = await db.exec(statement)
+    db_tcp = results.first()
+    if not db_tcp:
+        raise HTTPException(status_code=404, detail="No encontrado")
+    await db.delete(db_tcp)
+    await db.commit()

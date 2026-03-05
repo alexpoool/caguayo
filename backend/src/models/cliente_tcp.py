@@ -7,7 +7,7 @@ if TYPE_CHECKING:
 
 
 class ClienteTCP(SQLModel, table=True):
-    __tablename__ = "cliente_tcp"
+    __tablename__ = "cliente_persona_tcp"
 
     id_cliente_tcp: Optional[int] = Field(default=None, primary_key=True)
     id_cliente: int = Field(foreign_key="clientes.id_cliente")

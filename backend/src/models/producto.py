@@ -10,6 +10,7 @@ if TYPE_CHECKING:
     from .detalle_venta import DetalleVenta
     from .anexo import Anexo
     from .anexo_producto import AnexoProducto
+    from .nuevas_tablas import ContratoProducto, SuplementoProducto, FacturaProducto, VentaEfectivo, VentaEfectivoProducto
 
 
 class Productos(SQLModel, table=True):
@@ -40,3 +41,8 @@ class Productos(SQLModel, table=True):
     detalles_venta: List["DetalleVenta"] = Relationship(back_populates="producto")
     anexos: List["Anexo"] = Relationship(back_populates="producto")
     anexos_productos: List["AnexoProducto"] = Relationship(back_populates="producto")
+    contrato_productos: List["ContratoProducto"] = Relationship(back_populates="producto")
+    suplemento_productos: List["SuplementoProducto"] = Relationship(back_populates="producto")
+    factura_productos: List["FacturaProducto"] = Relationship(back_populates="producto")
+    ventas_efectivo: List["VentaEfectivo"] = Relationship(back_populates="producto")
+    venta_efectivo_productos: List["VentaEfectivoProducto"] = Relationship(back_populates="producto")

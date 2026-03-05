@@ -75,15 +75,20 @@ CREATE TABLE tipo_cuenta (
     descripcion TEXT
 );
 
--- Cuentas Bancarias
+-- Cuentas Bancarias / Tarjetas
 CREATE TABLE cuenta (
     id_cuenta SERIAL PRIMARY KEY,
     id_dependencia INTEGER REFERENCES dependencia(id_dependencia) ON DELETE SET NULL,
+    id_cliente INTEGER REFERENCES clientes(id_cliente) ON DELETE SET NULL,
     id_tipo_cuenta INTEGER REFERENCES tipo_cuenta(id_tipo_cuenta) ON DELETE SET NULL,
+    id_moneda INTEGER REFERENCES moneda(id_moneda) ON DELETE SET NULL,
     titular VARCHAR(150) NOT NULL,
     banco VARCHAR(100) NOT NULL,
+    numero_cuenta VARCHAR(50),
+    numero_tarjeta VARCHAR(50),
     sucursal INTEGER,
-    direccion VARCHAR(255) NOT NULL
+    direccion VARCHAR(255) NOT NULL,
+    activo BOOLEAN DEFAULT true
 );
 
 -- Grupos de Usuarios
@@ -155,63 +160,81 @@ CREATE TABLE especialidades_artisticas (
     activo BOOLEAN DEFAULT true
 );
 
--- Clientes (fusionado con provedores)
+-- Clientes (modificado)
 CREATE TABLE clientes (
     id_cliente SERIAL PRIMARY KEY,
-    id_tipo_cliente INTEGER REFERENCES tipo_cliente(id_tipo_cliente) ON DELETE SET NULL,
-    nombre VARCHAR(150),
-    email VARCHAR(100),
-    direccion VARCHAR(255),
-    tipo_persona VARCHAR(20) DEFAULT 'JURIDICA',
-    nombre_artistico VARCHAR(150),
-    telefono_principal VARCHAR(20),
-    telefono_secundario VARCHAR(20),
+    numero_cliente VARCHAR(20) NOT NULL UNIQUE,
+    nombre VARCHAR(150) NOT NULL,
+    tipo_persona VARCHAR(20) NOT NULL CHECK (tipo_persona IN ('NATURAL', 'JURIDICA', 'TCP')),
+    cedula_rif VARCHAR(20),
     telefono VARCHAR(20),
-    direccion_fiscal VARCHAR(255),
-    direccion_estudio TEXT,
-    especialidad_id INTEGER REFERENCES especialidades_artisticas(id_especialidad) ON DELETE SET NULL,
-    estilo_artistico VARCHAR(100),
-    tecnicas_principales TEXT[],
-    ano_inicio_carrera INTEGER,
-    estado VARCHAR(20) DEFAULT 'ACTIVO',
-    fecha_registro VARCHAR(100) DEFAULT CURRENT_TIMESTAMP,
-    fecha_ultima_actualizacion VARCHAR(100),
-    etiquetas TEXT[],
+    email VARCHAR(100),
+    fax VARCHAR(20),
+    web VARCHAR(100),
+    codigo_postal VARCHAR(10),
+    nit VARCHAR(20),
+    direccion VARCHAR(255),
     id_provincia INTEGER REFERENCES provincia(id_provincia) ON DELETE SET NULL,
     id_municipio INTEGER REFERENCES municipio(id_municipio) ON DELETE SET NULL,
-    cedula_rif VARCHAR(20),
+    tipo_relacion VARCHAR(20) NOT NULL CHECK (tipo_relacion IN ('CLIENTE', 'PROVEEDOR', 'AMBAS')),
+    id_tipo_cliente INTEGER REFERENCES tipo_cliente(id_tipo_cliente) ON DELETE SET NULL,
+    estado VARCHAR(20) DEFAULT 'ACTIVO',
+    fecha_registro TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    fecha_actualizacion TIMESTAMP,
     activo BOOLEAN DEFAULT true
 );
 
 -- Clientes - Persona Natural
-CREATE TABLE clientes_persona_natural (
+CREATE TABLE cliente_persona_natural (
     id_cliente INTEGER PRIMARY KEY REFERENCES clientes(id_cliente) ON DELETE CASCADE,
-    carnet_identidad VARCHAR(11) NOT NULL UNIQUE,
-    primer_nombre VARCHAR(50) NOT NULL,
-    segundo_nombre VARCHAR(50),
+    nombre VARCHAR(100) NOT NULL,
     primer_apellido VARCHAR(50) NOT NULL,
     segundo_apellido VARCHAR(50),
-    genero VARCHAR(10) CHECK (genero IN ('MASCULINO', 'FEMENINO'))
+    codigo_expediente VARCHAR(50),
+    numero_registro VARCHAR(50),
+    carnet_identidad VARCHAR(20),
+    catalogo VARCHAR(100),
+    es_trabajador BOOLEAN DEFAULT false,
+    ocupacion VARCHAR(100),
+    centro_trabajo VARCHAR(150),
+    correo_trabajo VARCHAR(100),
+    direccion_trabajo VARCHAR(255),
+    telefono_trabajo VARCHAR(20),
+    en_baja BOOLEAN DEFAULT false,
+    fecha_baja DATE,
+    vigencia DATE
 );
 
+-- Tipos de Entidad
+CREATE TABLE tipo_entidad (
+    id_tipo_entidad SERIAL PRIMARY KEY,
+    nombre VARCHAR(50) NOT NULL UNIQUE,
+    descripcion TEXT
+);
+
+INSERT INTO tipo_entidad (nombre, descripcion) VALUES
+('COOPERATIVA', 'Cooperativa'),
+('ASOCIACION', 'Asociación'),
+('FUNDACION', 'Fundación'),
+('EMPRESA_COMERCIAL', 'Empresa Comercial');
+
 -- Clientes - Persona Jurídica
-CREATE TABLE clientes_persona_juridica (
+CREATE TABLE cliente_persona_juridica (
     id_cliente INTEGER PRIMARY KEY REFERENCES clientes(id_cliente) ON DELETE CASCADE,
-    rif VARCHAR(20) NOT NULL UNIQUE,
-    razon_social VARCHAR(200) NOT NULL,
-    nombre_comercial VARCHAR(150),
-    denominacion_comercial VARCHAR(100),
-    numero_registro_mercantil VARCHAR(50),
-    numero_artistas_asociados INTEGER,
-    es_cooperativa BOOLEAN DEFAULT false,
-    es_asociacion BOOLEAN DEFAULT false,
-    es_fundacion BOOLEAN DEFAULT false,
-    es_empresa_comercial BOOLEAN DEFAULT false,
-    representante_legal_nombre VARCHAR(150) NOT NULL,
-    representante_legal_cedula VARCHAR(20) NOT NULL,
-    representante_legal_cargo VARCHAR(100) NOT NULL,
-    representante_legal_telefono VARCHAR(20),
-    representante_legal_email VARCHAR(100)
+    codigo_reup VARCHAR(20) NOT NULL UNIQUE,
+    id_tipo_entidad INTEGER REFERENCES tipo_entidad(id_tipo_entidad) ON DELETE SET NULL
+);
+
+-- Clientes - TCP
+CREATE TABLE cliente_persona_tcp (
+    id_cliente_tcp SERIAL PRIMARY KEY,
+    id_cliente INTEGER NOT NULL REFERENCES clientes(id_cliente) ON DELETE CASCADE,
+    nombre VARCHAR(150) NOT NULL,
+    primer_apellido VARCHAR(100),
+    segundo_apellido VARCHAR(100),
+    direccion VARCHAR(255),
+    numero_registro_proyecto VARCHAR(50),
+    fecha_aprobacion DATE
 );
 
 -- Tipos de Convenio
@@ -308,6 +331,103 @@ CREATE TABLE movimiento (
     id_moneda_venta INTEGER REFERENCES moneda(id_moneda) ON DELETE CASCADE
 );
 
+-- Contratos
+CREATE TABLE contrato (
+    id_contrato SERIAL PRIMARY KEY,
+    id_cliente INTEGER NOT NULL REFERENCES clientes(id_cliente) ON DELETE CASCADE,
+    nombre_contrato VARCHAR(255) NOT NULL,
+    proforma VARCHAR(500),
+    estado VARCHAR(20) NOT NULL CHECK (estado IN ('activo', 'cancelado', 'finalizado')),
+    fecha DATE NOT NULL,
+    vigencia DATE NOT NULL,
+    tipo VARCHAR(100),
+    id_moneda INTEGER NOT NULL REFERENCES moneda(id_moneda) ON DELETE RESTRICT,
+    id_producto INTEGER REFERENCES productos(id_producto) ON DELETE SET NULL,
+    productos JSONB,
+    monto NUMERIC(10, 2),
+    documento_final VARCHAR(500)
+);
+
+-- Contrato - Producto (tabla pivote para múltiples productos)
+CREATE TABLE contrato_producto (
+    id_contrato_producto SERIAL PRIMARY KEY,
+    id_contrato INTEGER NOT NULL REFERENCES contrato(id_contrato) ON DELETE CASCADE,
+    id_producto INTEGER NOT NULL REFERENCES productos(id_producto) ON DELETE CASCADE,
+    cantidad INTEGER NOT NULL DEFAULT 1,
+    precio_unitario NUMERIC(10, 2) NOT NULL,
+    UNIQUE (id_contrato, id_producto)
+);
+
+-- Suplementos
+CREATE TABLE suplemento (
+    id_suplemento SERIAL PRIMARY KEY,
+    id_contrato INTEGER NOT NULL REFERENCES contrato(id_contrato) ON DELETE CASCADE,
+    nombre_suplemento VARCHAR(255) NOT NULL,
+    estado VARCHAR(20) NOT NULL CHECK (estado IN ('activo', 'cancelado', 'finalizado')),
+    fecha DATE NOT NULL,
+    id_moneda INTEGER NOT NULL REFERENCES moneda(id_moneda) ON DELETE RESTRICT,
+    id_producto INTEGER REFERENCES productos(id_producto) ON DELETE SET NULL,
+    productos JSONB,
+    monto NUMERIC(10, 2),
+    documento VARCHAR(500)
+);
+
+-- Suplemento - Producto
+CREATE TABLE suplemento_producto (
+    id_suplemento_producto SERIAL PRIMARY KEY,
+    id_suplemento INTEGER NOT NULL REFERENCES suplemento(id_suplemento) ON DELETE CASCADE,
+    id_producto INTEGER NOT NULL REFERENCES productos(id_producto) ON DELETE CASCADE,
+    cantidad INTEGER NOT NULL DEFAULT 1,
+    precio_unitario NUMERIC(10, 2) NOT NULL,
+    UNIQUE (id_suplemento, id_producto)
+);
+
+-- Facturas
+CREATE TABLE factura (
+    id_factura SERIAL PRIMARY KEY,
+    id_contrato INTEGER NOT NULL REFERENCES contrato(id_contrato) ON DELETE CASCADE,
+    codigo VARCHAR(50) NOT NULL,
+    descripcion TEXT,
+    observaciones TEXT,
+    fecha DATE NOT NULL,
+    id_moneda INTEGER NOT NULL REFERENCES moneda(id_moneda) ON DELETE RESTRICT,
+    id_producto INTEGER REFERENCES productos(id_producto) ON DELETE SET NULL,
+    productos JSONB,
+    monto NUMERIC(10, 2)
+);
+
+-- Factura - Producto
+CREATE TABLE factura_producto (
+    id_factura_producto SERIAL PRIMARY KEY,
+    id_factura INTEGER NOT NULL REFERENCES factura(id_factura) ON DELETE CASCADE,
+    id_producto INTEGER NOT NULL REFERENCES productos(id_producto) ON DELETE CASCADE,
+    cantidad INTEGER NOT NULL DEFAULT 1,
+    precio_unitario NUMERIC(10, 2) NOT NULL,
+    UNIQUE (id_factura, id_producto)
+);
+
+-- Ventas en Efectivo
+CREATE TABLE venta_en_efectivo (
+    id_venta_efectivo SERIAL PRIMARY KEY,
+    slip VARCHAR(50),
+    fecha DATE NOT NULL,
+    id_dependencia INTEGER NOT NULL REFERENCES dependencia(id_dependencia) ON DELETE RESTRICT,
+    id_producto INTEGER REFERENCES productos(id_producto) ON DELETE SET NULL,
+    cajero VARCHAR(100) NOT NULL,
+    productos JSONB,
+    monto NUMERIC(10, 2)
+);
+
+-- Venta en Efectivo - Producto
+CREATE TABLE venta_efectivo_producto (
+    id_venta_efectivo_producto SERIAL PRIMARY KEY,
+    id_venta_efectivo INTEGER NOT NULL REFERENCES venta_en_efectivo(id_venta_efectivo) ON DELETE CASCADE,
+    id_producto INTEGER NOT NULL REFERENCES productos(id_producto) ON DELETE CASCADE,
+    cantidad INTEGER NOT NULL DEFAULT 1,
+    precio_unitario NUMERIC(10, 2) NOT NULL,
+    UNIQUE (id_venta_efectivo, id_producto)
+);
+
 -- =====================================================
 -- ÍNDICES
 -- =====================================================
@@ -339,6 +459,27 @@ CREATE INDEX idx_usuarios_dependencia ON usuarios(id_dependencia);
 CREATE INDEX idx_cuenta_dependencia ON cuenta(id_dependencia);
 CREATE INDEX idx_cuenta_tipo ON cuenta(id_tipo_cuenta);
 CREATE INDEX idx_anexo_dependencia ON anexo(id_dependencia);
+CREATE INDEX idx_contrato_cliente ON contrato(id_cliente);
+CREATE INDEX idx_contrato_moneda ON contrato(id_moneda);
+CREATE INDEX idx_contrato_estado ON contrato(estado);
+CREATE INDEX idx_suplemento_contrato ON suplemento(id_contrato);
+CREATE INDEX idx_suplemento_moneda ON suplemento(id_moneda);
+CREATE INDEX idx_factura_contrato ON factura(id_contrato);
+CREATE INDEX idx_factura_moneda ON factura(id_moneda);
+CREATE INDEX idx_factura_codigo ON factura(codigo);
+CREATE INDEX idx_pago_factura ON pago(id_factura);
+CREATE INDEX idx_pago_moneda ON pago(id_moneda);
+CREATE INDEX idx_venta_efectivo_dependencia ON venta_en_efectivo(id_dependencia);
+CREATE INDEX idx_venta_efectivo_fecha ON venta_en_efectivo(id_venta_efectivo);
+CREATE INDEX idx_venta_efectivo_producto ON venta_en_efectivo(id_producto);
+CREATE INDEX idx_contrato_producto_contrato ON contrato_producto(id_contrato);
+CREATE INDEX idx_contrato_producto_producto ON contrato_producto(id_producto);
+CREATE INDEX idx_suplemento_producto_suplemento ON suplemento_producto(id_suplemento);
+CREATE INDEX idx_suplemento_producto_producto ON suplemento_producto(id_producto);
+CREATE INDEX idx_factura_producto_factura ON factura_producto(id_factura);
+CREATE INDEX idx_factura_producto_producto ON factura_producto(id_producto);
+CREATE INDEX idx_venta_efectivo_producto_venta ON venta_efectivo_producto(id_venta_efectivo);
+CREATE INDEX idx_venta_efectivo_producto_producto ON venta_efectivo_producto(id_producto);
 
 -- =====================================================
 -- DATOS INICIALES - PROVINCIAS DE CUBA

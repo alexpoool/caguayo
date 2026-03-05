@@ -9,6 +9,7 @@ if TYPE_CHECKING:
     from .convenio import Convenio
     from .producto import Productos
     from .anexo_producto import AnexoProducto
+    from .moneda import Moneda
 
 
 class Anexo(SQLModel, table=True):
@@ -16,13 +17,12 @@ class Anexo(SQLModel, table=True):
 
     id_anexo: Optional[int] = Field(default=None, primary_key=True)
     id_convenio: int = Field(foreign_key="convenio.id_convenio")
-    id_producto: Optional[int] = Field(
-        default=None, foreign_key="productos.id_producto"
-    )
     nombre_anexo: str = Field(max_length=200)
+    codigo: Optional[str] = Field(default=None, max_length=30, unique=True)
     fecha: date
     numero_anexo: str = Field(max_length=50)
     id_dependencia: Optional[int] = None
+    id_moneda: Optional[int] = Field(default=None, foreign_key="moneda.id_moneda")
     comision: Optional[Decimal] = Field(default=None, decimal_places=2, max_digits=10)
 
     # Relaciones
@@ -30,3 +30,4 @@ class Anexo(SQLModel, table=True):
     producto: Optional["Productos"] = Relationship(back_populates="anexos")
     movimientos: List["Movimiento"] = Relationship(back_populates="anexo")
     productos: List["AnexoProducto"] = Relationship(back_populates="anexo")
+    moneda: Optional["Moneda"] = Relationship(back_populates="anexos")

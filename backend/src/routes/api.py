@@ -16,6 +16,7 @@ from .tipos_entidad import router as tipos_entidad_router
 from .clientes_naturales import router as clientes_naturales_router
 from .clientes_tcp import router as clientes_tcp_router
 from .cuentas import router as cuentas_router
+from .nuevas_tablas import router as nuevas_tablas_router
 
 api_router = APIRouter(prefix="/api/v1")
 
@@ -36,6 +37,7 @@ api_router.include_router(tipos_entidad_router)
 api_router.include_router(clientes_naturales_router)
 api_router.include_router(clientes_tcp_router)
 api_router.include_router(cuentas_router)
+api_router.include_router(nuevas_tablas_router)
 
 
 @api_router.get("/")

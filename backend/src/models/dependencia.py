@@ -6,6 +6,7 @@ if TYPE_CHECKING:
     from .usuarios import Usuario
     from .movimiento import Movimiento
     from .cliente import Cliente
+    from .nuevas_tablas import VentaEfectivo
 
 
 class TipoDependencia(SQLModel, table=True):
@@ -52,6 +53,7 @@ class Dependencia(SQLModel, table=True):
     municipio: Optional["Municipio"] = Relationship(back_populates="dependencias")
     usuarios: List["Usuario"] = Relationship(back_populates="dependencia")
     movimientos: List["Movimiento"] = Relationship(back_populates="dependencia")
+    ventas_efectivo: List["VentaEfectivo"] = Relationship(back_populates="dependencia")
 
 
 class Provincia(SQLModel, table=True):

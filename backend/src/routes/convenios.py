@@ -33,6 +33,7 @@ async def listar_convenios(
             "id_convenio": c.id_convenio,
             "id_cliente": c.id_cliente,
             "nombre_convenio": c.nombre_convenio,
+            "codigo": c.codigo,
             "fecha": str(c.fecha),
             "vigencia": str(c.vigencia),
             "id_tipo_convenio": c.id_tipo_convenio,
@@ -78,6 +79,7 @@ async def obtener_convenio(
         "id_convenio": c.id_convenio,
         "id_cliente": c.id_cliente,
         "nombre_convenio": c.nombre_convenio,
+        "codigo": c.codigo,
         "fecha": str(c.fecha),
         "vigencia": str(c.vigencia),
         "id_tipo_convenio": c.id_tipo_convenio,
@@ -91,12 +93,39 @@ async def crear_convenio(
 ):
     try:
         datos_convertidos = datos.copy()
+
+        id_cliente = datos_convertidos.get("id_cliente")
+        if not id_cliente:
+            raise HTTPException(status_code=400, detail="El cliente es obligatorio")
+
+        stmt_cliente = select(Cliente).where(Cliente.id_cliente == id_cliente)
+        result_cliente = await db.exec(stmt_cliente)
+        cliente = result_cliente.first()
+
+        if not cliente:
+            raise HTTPException(status_code=404, detail="Cliente no encontrado")
+
+        if cliente.tipo_relacion not in ("PROVEEDOR", "AMBAS"):
+            raise HTTPException(
+                status_code=400,
+                detail="El cliente debe ser proveedor o tener ambas relaciones (cliente y proveedor) para crear un convenio",
+            )
+
         if isinstance(datos_convertidos.get("fecha"), str):
             datos_convertidos["fecha"] = date.fromisoformat(datos_convertidos["fecha"])
         if isinstance(datos_convertidos.get("vigencia"), str):
             datos_convertidos["vigencia"] = date.fromisoformat(
                 datos_convertidos["vigencia"]
             )
+
+        if not datos_convertidos.get("codigo"):
+            year = str(datos_convertidos["fecha"])[:4]
+            stmt_count = select(func.count(Convenio.id_convenio)).where(
+                func.extract("year", Convenio.fecha) == int(year)
+            )
+            result_count = await db.exec(stmt_count)
+            num = (result_count.one() or 0) + 1
+            datos_convertidos["codigo"] = f"{year}.{num}"
 
         db_convenio = Convenio(**datos_convertidos)
         db.add(db_convenio)
@@ -106,6 +135,7 @@ async def crear_convenio(
             "id_convenio": db_convenio.id_convenio,
             "id_cliente": db_convenio.id_cliente,
             "nombre_convenio": db_convenio.nombre_convenio,
+            "codigo": db_convenio.codigo,
             "fecha": str(db_convenio.fecha),
             "vigencia": str(db_convenio.vigencia),
             "id_tipo_convenio": db_convenio.id_tipo_convenio,
@@ -140,6 +170,7 @@ async def actualizar_convenio(
         "id_convenio": db_convenio.id_convenio,
         "id_cliente": db_convenio.id_cliente,
         "nombre_convenio": db_convenio.nombre_convenio,
+        "codigo": db_convenio.codigo,
         "fecha": str(db_convenio.fecha),
         "vigencia": str(db_convenio.vigencia),
         "id_tipo_convenio": db_convenio.id_tipo_convenio,
