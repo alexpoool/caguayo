@@ -140,6 +140,122 @@ export interface ClienteSimple {
   nombre: string;
 }
 
+export interface Cliente {
+  id_cliente: number;
+  numero_cliente: string;
+  nombre: string;
+  tipo_persona: 'NATURAL' | 'JURIDICA' | 'TCP';
+  cedula_rif?: string;
+  telefono?: string;
+  email?: string;
+  fax?: string;
+  web?: string;
+  codigo_postal?: string;
+  nit?: string;
+  direccion?: string;
+  id_provincia?: number;
+  id_municipio?: number;
+  tipo_relacion: 'CLIENTE' | 'PROVEEDOR' | 'AMBAS';
+  id_tipo_cliente?: number;
+  estado?: string;
+  fecha_registro?: string;
+  fecha_actualizacion?: string;
+  activo?: boolean;
+}
+
+export interface ClienteCreate {
+  numero_cliente: string;
+  nombre: string;
+  tipo_persona: 'NATURAL' | 'JURIDICA' | 'TCP';
+  cedula_rif?: string;
+  telefono?: string;
+  email?: string;
+  fax?: string;
+  web?: string;
+  codigo_postal?: string;
+  nit?: string;
+  direccion?: string;
+  id_provincia?: number;
+  id_municipio?: number;
+  tipo_relacion: 'CLIENTE' | 'PROVEEDOR' | 'AMBAS';
+  id_tipo_cliente?: number;
+}
+
+export interface ClienteUpdate {
+  numero_cliente?: string;
+  nombre?: string;
+  tipo_persona?: 'NATURAL' | 'JURIDICA' | 'TCP';
+  cedula_rif?: string;
+  telefono?: string;
+  email?: string;
+  fax?: string;
+  web?: string;
+  codigo_postal?: string;
+  nit?: string;
+  direccion?: string;
+  id_provincia?: number;
+  id_municipio?: number;
+  tipo_relacion?: 'CLIENTE' | 'PROVEEDOR' | 'AMBAS';
+  id_tipo_cliente?: number;
+  estado?: string;
+  activo?: boolean;
+}
+
+export interface ClienteNatural {
+  id_cliente: number;
+  nombre: string;
+  primer_apellido: string;
+  segundo_apellido?: string;
+  codigo_expediente?: string;
+  numero_registro?: string;
+  carnet_identidad?: string;
+  catalogo?: string;
+  es_trabajador: boolean;
+  ocupacion?: string;
+  centro_trabajo?: string;
+  correo_trabajo?: string;
+  direccion_trabajo?: string;
+  telefono_trabajo?: string;
+  en_baja: boolean;
+  fecha_baja?: string;
+  vigencia?: string;
+}
+
+export interface ClienteJuridica {
+  id_cliente: number;
+  codigo_reup: string;
+  id_tipo_entidad?: number;
+  tipo_entidad_nombre?: string;
+}
+
+export interface ClienteTCP {
+  id_cliente: number;
+  nombre: string;
+  primer_apellido?: string;
+  segundo_apellido?: string;
+  direccion?: string;
+  numero_registro_proyecto?: string;
+  fecha_aprobacion?: string;
+}
+
+export interface TipoEntidad {
+  id_tipo_entidad: number;
+  nombre: string;
+  descripcion?: string;
+}
+
+export interface Convenio {
+  id_convenio: number;
+  id_cliente: number;
+  nombre_convenio: string;
+  codigo?: string;
+  fecha: string;
+  vigencia: string;
+  id_tipo_convenio: number;
+  cliente?: ClienteSimple;
+  tipo_convenio?: TipoConvenio;
+}
+
 export interface Convenio {
   id_convenio: number;
   id_cliente: number;
@@ -155,16 +271,35 @@ export interface Anexo {
   id_anexo: number;
   id_convenio: number;
   nombre_anexo: string;
+  codigo?: string;
   fecha: string;
   numero_anexo: string;
   id_dependencia?: number | null;
+  id_moneda?: number | null;
   comision?: number;
   dependencia_nombre?: string;
   id_producto?: number | null;
+  moneda_nombre?: string;
   convenio?: {
     id_convenio: number;
     nombre_convenio: string;
+    codigo?: string;
   };
+}
+
+export interface AnexoCreate {
+  id_convenio: number;
+  nombre_anexo: string;
+  fecha: string;
+  numero_anexo: string;
+  id_dependencia?: number;
+  id_moneda?: number;
+  comision?: number;
+  productos?: {
+    id_producto: number;
+    cantidad: number;
+    precio_compra: number;
+  }[];
 }
 
 // Dependencia se importa desde dependencia.ts

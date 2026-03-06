@@ -41,6 +41,23 @@ import type {
   MonedaCreate,
   MonedaUpdate
 } from '../types/moneda';
+import type {
+  Contrato,
+  ContratoCreate,
+  ContratoUpdate,
+  Suplemento,
+  SuplementoCreate,
+  SuplementoUpdate,
+  Factura,
+  FacturaCreate,
+  FacturaUpdate,
+  Pago,
+  PagoCreate,
+  PagoUpdate,
+  VentaEfectivo,
+  VentaEfectivoCreate,
+  VentaEfectivoUpdate,
+} from '../types/ventas_contrato';
 
 export const productosService = {
   async getProductos(skip = 0, limit = 100, search?: string): Promise<Productos[]> {
@@ -430,6 +447,153 @@ export const dependenciasService = {
 
   async getDependencia(id: number): Promise<Dependencia> {
     return apiClient.get<Dependencia>(`/dependencias/${id}`);
+  }
+};
+
+// ============== SERVICIOS CONTRATOS ==============
+export const contratosService = {
+  async getContratos(skip = 0, limit = 100): Promise<Contrato[]> {
+    return apiClient.get<Contrato[]>(`/contratos?skip=${skip}&limit=${limit}`);
+  },
+
+  async getContrato(id: number): Promise<Contrato> {
+    return apiClient.get<Contrato>(`/contratos/${id}`);
+  },
+
+  async getContratosByCliente(clienteId: number): Promise<Contrato[]> {
+    return apiClient.get<Contrato[]>(`/contratos/cliente/${clienteId}`);
+  },
+
+  async getContratoProductos(contratoId: number): Promise<ContratoProducto[]> {
+    return apiClient.get<ContratoProducto[]>(`/contrato-productos/contrato/${contratoId}`);
+  },
+
+  async createContrato(data: Partial<Contrato>): Promise<Contrato> {
+    return apiClient.post<Contrato>('/contratos', data);
+  },
+
+  async updateContrato(id: number, data: Partial<Contrato>): Promise<Contrato> {
+    return apiClient.put<Contrato>(`/contratos/${id}`, data);
+  },
+
+  async deleteContrato(id: number): Promise<void> {
+    return apiClient.delete<void>(`/contratos/${id}`);
+  }
+};
+
+// ============== SERVICIOS SUPLEMENTOS ==============
+export const suplementosService = {
+  async getSuplementos(skip = 0, limit = 100): Promise<Suplemento[]> {
+    return apiClient.get<Suplemento[]>(`/suplementos?skip=${skip}&limit=${limit}`);
+  },
+
+  async getSuplemento(id: number): Promise<Suplemento> {
+    return apiClient.get<Suplemento>(`/suplementos/${id}`);
+  },
+
+  async getSuplementosByContrato(contratoId: number): Promise<Suplemento[]> {
+    return apiClient.get<Suplemento[]>(`/suplementos/contrato/${contratoId}`);
+  },
+
+  async getSuplementoProductos(suplementoId: number): Promise<SuplementoProducto[]> {
+    return apiClient.get<SuplementoProducto[]>(`/suplemento-productos/suplemento/${suplementoId}`);
+  },
+
+  async createSuplemento(data: Partial<Suplemento>): Promise<Suplemento> {
+    return apiClient.post<Suplemento>('/suplementos', data);
+  },
+
+  async updateSuplemento(id: number, data: Partial<Suplemento>): Promise<Suplemento> {
+    return apiClient.put<Suplemento>(`/suplementos/${id}`, data);
+  },
+
+  async deleteSuplemento(id: number): Promise<void> {
+    return apiClient.delete<void>(`/suplementos/${id}`);
+  }
+};
+
+// ============== SERVICIOS FACTURAS ==============
+export const facturasService = {
+  async getFacturas(skip = 0, limit = 100): Promise<Factura[]> {
+    return apiClient.get<Factura[]>(`/facturas?skip=${skip}&limit=${limit}`);
+  },
+
+  async getFactura(id: number): Promise<Factura> {
+    return apiClient.get<Factura>(`/facturas/${id}`);
+  },
+
+  async getFacturasByContrato(contratoId: number): Promise<Factura[]> {
+    return apiClient.get<Factura[]>(`/facturas/contrato/${contratoId}`);
+  },
+
+  async getFacturaProductos(facturaId: number): Promise<FacturaProducto[]> {
+    return apiClient.get<FacturaProducto[]>(`/factura-productos/factura/${facturaId}`);
+  },
+
+  async createFactura(data: Partial<Factura>): Promise<Factura> {
+    return apiClient.post<Factura>('/facturas', data);
+  },
+
+  async updateFactura(id: number, data: Partial<Factura>): Promise<Factura> {
+    return apiClient.put<Factura>(`/facturas/${id}`, data);
+  },
+
+  async deleteFactura(id: number): Promise<void> {
+    return apiClient.delete<void>(`/facturas/${id}`);
+  }
+};
+
+// ============== SERVICIOS PAGOS ==============
+export const pagosService = {
+  async getPagos(skip = 0, limit = 100): Promise<Pago[]> {
+    return apiClient.get<Pago[]>(`/pagos?skip=${skip}&limit=${limit}`);
+  },
+
+  async getPago(id: number): Promise<Pago> {
+    return apiClient.get<Pago>(`/pagos/${id}`);
+  },
+
+  async getPagosByFactura(facturaId: number): Promise<Pago[]> {
+    return apiClient.get<Pago[]>(`/pagos/factura/${facturaId}`);
+  },
+
+  async createPago(data: Partial<Pago>): Promise<Pago> {
+    return apiClient.post<Pago>('/pagos', data);
+  },
+
+  async updatePago(id: number, data: Partial<Pago>): Promise<Pago> {
+    return apiClient.put<Pago>(`/pagos/${id}`, data);
+  },
+
+  async deletePago(id: number): Promise<void> {
+    return apiClient.delete<void>(`/pagos/${id}`);
+  }
+};
+
+// ============== SERVICIOS VENTAS EFECTIVO ==============
+export const ventasEfectivoService = {
+  async getVentasEfectivo(skip = 0, limit = 100): Promise<VentaEfectivo[]> {
+    return apiClient.get<VentaEfectivo[]>(`/ventas-efectivo?skip=${skip}&limit=${limit}`);
+  },
+
+  async getVentaEfectivo(id: number): Promise<VentaEfectivo> {
+    return apiClient.get<VentaEfectivo>(`/ventas-efectivo/${id}`);
+  },
+
+  async getVentasEfectivoByDependencia(dependenciaId: number): Promise<VentaEfectivo[]> {
+    return apiClient.get<VentaEfectivo[]>(`/ventas-efectivo/dependencia/${dependenciaId}`);
+  },
+
+  async createVentaEfectivo(data: Partial<VentaEfectivo>): Promise<VentaEfectivo> {
+    return apiClient.post<VentaEfectivo>('/ventas-efectivo', data);
+  },
+
+  async updateVentaEfectivo(id: number, data: Partial<VentaEfectivo>): Promise<VentaEfectivo> {
+    return apiClient.put<VentaEfectivo>(`/ventas-efectivo/${id}`, data);
+  },
+
+  async deleteVentaEfectivo(id: number): Promise<void> {
+    return apiClient.delete<void>(`/ventas-efectivo/${id}`);
   }
 };
 

@@ -68,6 +68,7 @@ class TipoConvenioUpdate(SQLModel):
 class ConvenioBase(SQLModel):
     id_cliente: int
     nombre_convenio: str
+    codigo: Optional[str] = None
     fecha: date
     vigencia: date
     id_tipo_convenio: int
@@ -86,6 +87,7 @@ class ConvenioRead(ConvenioBase):
 class ConvenioUpdate(SQLModel):
     id_cliente: Optional[int] = None
     nombre_convenio: Optional[str] = None
+    codigo: Optional[str] = None
     fecha: Optional[date] = None
     vigencia: Optional[date] = None
     id_tipo_convenio: Optional[int] = None
@@ -94,9 +96,11 @@ class ConvenioUpdate(SQLModel):
 class AnexoBase(SQLModel):
     id_convenio: int
     nombre_anexo: str
+    codigo: Optional[str] = None
     fecha: date
     numero_anexo: str
     id_dependencia: Optional[int] = None
+    id_moneda: Optional[int] = None
     comision: Optional[Decimal] = None
 
 
@@ -121,12 +125,14 @@ class AnexoCreate(AnexoBase):
 
 class AnexoRead(AnexoBase):
     id_anexo: int
+    codigo: Optional[str] = None
     convenio: Optional[ConvenioRead] = None
 
 
 class AnexoUpdate(SQLModel):
     id_convenio: Optional[int] = None
     nombre_anexo: Optional[str] = None
+    codigo: Optional[str] = None
     fecha: Optional[date] = None
     numero_anexo: Optional[str] = None
     id_dependencia: Optional[int] = None

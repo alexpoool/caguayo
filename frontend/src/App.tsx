@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { BrowserRouter as Router, Routes, Route, Link, useLocation, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
@@ -51,6 +51,12 @@ import { ReportesVentasHome } from './pages/reportes/VentasHome';
 import { ReporteExistenciasPage } from './pages/reportes/ReporteExistenciasPage';
 import { ReporteMovimientosDependenciaPage } from './pages/reportes/ReporteMovimientosDependenciaPage';
 import { ReporteKardexPage } from './pages/reportes/ReporteKardexPage';
+import { CompraProductosPage } from './pages/compra/ProductosPage';
+import { ContratosPage } from './pages/ventas/ContratosPage';
+import { SuplementosPage } from './pages/ventas/SuplementosPage';
+import { FacturasPage } from './pages/ventas/FacturasPage';
+import { PagosPage } from './pages/ventas/PagosPage';
+import { VentasEfectivoPage } from './pages/ventas/VentasEfectivoPage';
 
 type Modulo = 'administracion' | 'venta' | 'compra' | 'inventario' | 'reportes' | 'home';
 
@@ -67,8 +73,8 @@ const queryClient = new QueryClient({
 const rutasPorModulo: Record<Modulo, string[]> = {
   inventario: ['/inventario', '/movimientos', '/movimientos/pendientes', '/movimientos/ajuste', '/movimientos/seleccionar-recepcion', '/productos'],
   administracion: ['/administracion', '/configuracion', '/usuarios', '/grupos', '/monedas', '/dependencias'],
-  venta: ['/venta', '/ventas', '/clientes'],
-  compra: ['/compra', '/compra/clientes', '/convenios', '/anexos'],
+  venta: ['/venta', '/ventas', '/clientes', '/contratos', '/suplementos', '/facturas', '/pagos', '/ventas-efectivo'],
+  compra: ['/compra', '/compra/clientes', '/convenios', '/anexos', '/compra/productos'],
   reportes: ['/reportes'],
   home: ['/'],
 };
@@ -276,6 +282,46 @@ function App() {
                       <NavLink to="/anexos" onClick={handleLinkClick}>
                         <Boxes className="w-6 h-6" />
                         Anexos
+                      </NavLink>
+                    </li>
+                    <li>
+                      <NavLink to="/compra/productos" onClick={handleLinkClick}>
+                        <Boxes className="w-6 h-6" />
+                        Productos
+                      </NavLink>
+                    </li>
+                  </ul>
+                )}
+                {moduloActivo === 'venta' && (
+                  <ul className="space-y-1 px-3">
+                    <li>
+                      <NavLink to="/contratos" onClick={handleLinkClick}>
+                        <FileText className="w-6 h-6" />
+                        Contratos
+                      </NavLink>
+                    </li>
+                    <li>
+                      <NavLink to="/suplementos" onClick={handleLinkClick}>
+                        <FileText className="w-6 h-6" />
+                        Suplementos
+                      </NavLink>
+                    </li>
+                    <li>
+                      <NavLink to="/facturas" onClick={handleLinkClick}>
+                        <FileText className="w-6 h-6" />
+                        Facturas
+                      </NavLink>
+                    </li>
+                    <li>
+                      <NavLink to="/pagos" onClick={handleLinkClick}>
+                        <FileText className="w-6 h-6" />
+                        Pagos
+                      </NavLink>
+                    </li>
+                    <li>
+                      <NavLink to="/ventas-efectivo" onClick={handleLinkClick}>
+                        <Coins className="w-6 h-6" />
+                        Ventas Efectivo
                       </NavLink>
                     </li>
                   </ul>
@@ -535,6 +581,56 @@ function App() {
                       <CompraAnexosPage />
                     </ProtectedRoute>
                   }
+                />
+                <Route
+                  path="/compra/productos"
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/compra/productos">
+                      <CompraProductosPage />
+                    </ProtectedRoute>
+                  }
+                />
+
+                {/* Rutas de Ventas - protegidas */}
+                <Route 
+                  path="/contratos" 
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/contratos">
+                      <ContratosPage />
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route 
+                  path="/suplementos" 
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/suplementos">
+                      <SuplementosPage />
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route 
+                  path="/facturas" 
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/facturas">
+                      <FacturasPage />
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route 
+                  path="/pagos" 
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/pagos">
+                      <PagosPage />
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route 
+                  path="/ventas-efectivo" 
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/ventas-efectivo">
+                      <VentasEfectivoPage />
+                    </ProtectedRoute>
+                  } 
                 />
                 
                 {/* Rutas de Reportes - protegidas */}

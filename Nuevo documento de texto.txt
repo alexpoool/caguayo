@@ -1,0 +1,81 @@
+Ahora necesito agregar las siguientes tablas nuevas a la base de datos existente, basándome en la siguiente estructura
+
+clientes->todos los clientes que sean clientes y/o clientes y proveedores
+contrato->cliente, nombre_contrato, proforma(borrador del documento final), estado(activo, cancelado, finalizado), fecha, vigencia(otra fecha), tipo, tipo de moneda, documento final
+suplemento->contrato, nombre_suplemento, estado(los_mismos_que_en_contrato), fecha, tipo_de_moneda, documento
+factura->contrato, codigo, descripcion, observaciones, fecha, moneda
+pago->factura, numero_cheque/transferencia, monto, numero_factura_RODAS, fecha
+venta_en_efectivo->slip, fecha, caja(dependencia), cajero(a)
+
+Tablas que ya existen en la base de datos:
+
+· clientes (con campo id)
+· producto (con campo id, precio y otros campos)
+· moneda (con campos: id, codigo, nombre, simbolo)
+· dependencia (con campo id)
+
+Tablas que necesito CREAR:
+
+· contrato
+· suplemento
+· factura
+· pago
+· venta_en_efectivo
+
+Especificaciones detalladas:
+
+1. Tabla contrato:
+   · Relacionada con clientes (un cliente puede tener varios contratos)
+   · Relacionada con moneda (el contrato se hace en un tipo de moneda específico, y todas las acciones derivadas usarán esta moneda)
+   · Campo productos de tipo JSONB para almacenar los productos incluidos (id_producto, cantidad, precio_unitario)
+   · Campo monto de tipo NUMERIC(10,2) (calculado en backend)
+   · Campos según estructura: cliente (FK), nombre_contrato, proforma, estado, fecha, vigencia, tipo, documento_final
+   · Estados permitidos: 'activo', 'cancelado', 'finalizado'
+2. Tabla suplemento:
+   · Relacionada con contrato (un contrato puede tener varios suplementos)
+   · Relacionada con moneda (hereda la moneda del contrato)
+   · Campo productos de tipo JSONB para almacenar los productos incluidos
+   · Campo monto de tipo NUMERIC(10,2)
+   · Campos según estructura: contrato (FK), nombre_suplemento, estado, fecha, documento
+   · Estados permitidos: 'activo', 'cancelado', 'finalizado'
+3. Tabla factura:
+   · Relacionada con contrato (una factura pertenece a un contrato)
+   · Relacionada con moneda (hereda la moneda del contrato)
+   · Campo productos de tipo JSONB para almacenar los productos incluidos
+   · Campo monto de tipo NUMERIC(10,2)
+   · Campos según estructura: contrato (FK), codigo, descripcion, observaciones, fecha
+4. Tabla pago:
+   · Relacionada con factura (un pago corresponde a una factura)
+   · Relacionada con moneda (hereda la moneda del contrato a través de la factura)
+   · Campos según estructura: factura (FK), numero_cheque_transferencia (VARCHAR), monto (NUMERIC(10,2)), numero_factura_RODAS (VARCHAR, obligatorio), fecha
+5. Tabla venta_en_efectivo:
+   · Relacionada con dependencia (caja/dependencia donde se realiza la venta)
+   · Relacionada con producto a través de campo productos JSONB
+   · Campo monto de tipo NUMERIC(10,2)
+   · Campos según estructura: slip (VARCHAR), fecha, cajero (VARCHAR)
+   · Nota: Esta tabla es para ventas sin cliente registrado
+
+Instrucciones para generar el código SQL:
+
+Por favor, genera los comandos CREATE TABLE en PostgreSQL para estas 5 tablas nuevas, incluyendo:
+
+1. Tipos de datos específicos:
+   · SERIAL para campos id
+   · VARCHAR(255) para nombres y textos cortos
+   · TEXT para descripciones largas y observaciones
+   · DATE para fechas
+   · NUMERIC(10,2) para montos
+   · JSONB para campos de productos
+   · VARCHAR(20) con CHECK para estados
+2. Claves primarias: cada tabla con id SERIAL PRIMARY KEY
+3. Claves foráneas:
+   · contrato.cliente_id → clientes.id
+   · contrato.moneda_id → moneda.id
+   · suplemento.contrato_id → contrato.id
+· suplemento.moneda_id → moneda.id
+   · factura.contrato_id → contrato.id
+   · factura.moneda_id → moneda.id
+   · pago.factura_id → factura.id
+   · pago.moneda_id → moneda.id
+   · venta_en_efectivo.dependencia_id → dependencia.id
+4. Verificaciones de existencia: IF NOT EXISTS en cada CREATE TABLE

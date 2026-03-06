@@ -22,6 +22,17 @@ from .tipo_entidad import TipoEntidad
 from .especialidades_artisticas import EspecialidadesArtisticas
 from .usuarios import Grupo, Usuario
 from .funcionalidades import Funcionalidad, GrupoFuncionalidad
+from .nuevas_tablas import (
+    Contrato,
+    ContratoProducto,
+    Suplemento,
+    SuplementoProducto,
+    Factura,
+    FacturaProducto,
+    Pago,
+    VentaEfectivo,
+    VentaEfectivoProducto,
+)
 
 __all__ = [
     "Moneda",
@@ -57,4 +68,13 @@ __all__ = [
     "Usuario",
     "Funcionalidad",
     "GrupoFuncionalidad",
+    "Contrato",
+    "ContratoProducto",
+    "Suplemento",
+    "SuplementoProducto",
+    "Factura",
+    "FacturaProducto",
+    "Pago",
+    "VentaEfectivo",
+    "VentaEfectivoProducto",
 ]

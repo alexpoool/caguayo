@@ -5,6 +5,9 @@ if TYPE_CHECKING:
     from .producto import Productos
     from .venta import Ventas
     from .movimiento import Movimiento
+    from .cuenta import Cuenta
+    from .anexo import Anexo
+    from .nuevas_tablas import Contrato, Suplemento, Factura, Pago
 
 
 class Moneda(SQLModel, table=True):
@@ -33,3 +36,9 @@ class Moneda(SQLModel, table=True):
         back_populates="moneda_venta_rel",
         sa_relationship_kwargs={"foreign_keys": "Movimiento.id_moneda_venta"},
     )
+    cuentas: List["Cuenta"] = Relationship(back_populates="moneda")
+    anexos: List["Anexo"] = Relationship(back_populates="moneda")
+    contratos: List["Contrato"] = Relationship(back_populates="moneda")
+    suplementos: List["Suplemento"] = Relationship(back_populates="moneda")
+    facturas: List["Factura"] = Relationship(back_populates="moneda")
+    pagos: List["Pago"] = Relationship(back_populates="moneda")

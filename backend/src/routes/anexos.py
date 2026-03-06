@@ -15,7 +15,7 @@ from src.models import (
 )
 from src.dto.convenios_dto import AnexoRead, AnexoCreate, AnexoProductoCreate
 from src.dto import DependenciaRead
-from sqlmodel import select
+from sqlmodel import select, func
 
 router = APIRouter(prefix="/anexos", tags=["anexos"], redirect_slashes=False)
 
@@ -90,6 +90,15 @@ async def crear_anexo(
         if datetime.now().date() > convenio.vigencia:
             raise HTTPException(status_code=400, detail="El convenio no está vigente")
 
+        if not datos.codigo:
+            stmt_count = select(func.count(Anexo.id_anexo)).where(
+                Anexo.id_convenio == datos.id_convenio
+            )
+            result_count = await db.exec(stmt_count)
+            num_anexo = (result_count.one() or 0) + 1
+            codigo_convenio = convenio.codigo or ""
+            datos_dict["codigo"] = f"{codigo_convenio}.{num_anexo}"
+
         db_anexo = Anexo(**datos_dict)
         db.add(db_anexo)
         await db.flush()
@@ -163,11 +172,11 @@ async def crear_anexo(
             "id_anexo": db_anexo.id_anexo,
             "id_convenio": db_anexo.id_convenio,
             "nombre_anexo": db_anexo.nombre_anexo,
+            "codigo": db_anexo.codigo,
             "fecha": str(db_anexo.fecha),
             "numero_anexo": db_anexo.numero_anexo,
             "id_dependencia": db_anexo.id_dependencia,
             "comision": float(db_anexo.comision) if db_anexo.comision else None,
-            "id_producto": db_anexo.id_producto,
             "movimientos": movimientos_creados,
         }
     except HTTPException:
@@ -202,11 +211,12 @@ async def actualizar_anexo(
         "id_anexo": db_anexo.id_anexo,
         "id_convenio": db_anexo.id_convenio,
         "nombre_anexo": db_anexo.nombre_anexo,
+        "codigo": db_anexo.codigo,
         "fecha": str(db_anexo.fecha),
         "numero_anexo": db_anexo.numero_anexo,
         "id_dependencia": db_anexo.id_dependencia,
+        "id_moneda": db_anexo.id_moneda,
         "comision": float(db_anexo.comision) if db_anexo.comision else None,
-        "id_producto": db_anexo.id_producto,
     }
 
 
