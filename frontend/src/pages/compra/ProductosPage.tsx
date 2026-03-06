@@ -1,4 +1,4 @@
-import { Package, Search, Filter } from 'lucide-react';
+import { Package, Search, Filter, Loader2 } from 'lucide-react';
 import { useProductos } from '../../hooks/useProductos';
 import { useState } from 'react';
 import { 
@@ -10,8 +10,7 @@ import {
   TableBody, 
   TableRow, 
   TableHead, 
-  TableCell,
-  Loader2
+  TableCell
 } from '../../components/ui';
 
 export function CompraProductosPage() {

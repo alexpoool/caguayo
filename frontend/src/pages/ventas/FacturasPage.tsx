@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { facturasService, contratosService, monedaService } from '../../services/api';
-import { Plus, Edit, Trash2, Search, Save, ArrowLeft, FileReceipt, DollarSign, Eye } from 'lucide-react';
+import { Plus, Edit, Trash2, Search, Save, ArrowLeft, Receipt, DollarSign, Eye } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { 
   Button, 
@@ -381,7 +381,7 @@ export function FacturasPage() {
               <TableBody>
                 {filteredFacturas.map((factura) => (
                   <TableRow key={factura.id_factura} className="cursor-pointer" onClick={() => handleViewDetails(factura)}>
-                    <TableCell><div className="flex items-center gap-2"><FileReceipt className="h-4 w-4 text-gray-400" /><span className="font-medium">{factura.codigo}</span></div></TableCell>
+                    <TableCell><div className="flex items-center gap-2"><Receipt className="h-4 w-4 text-gray-400" /><span className="font-medium">{factura.codigo}</span></div></TableCell>
                     <TableCell>{factura.contrato?.nombre_contrato || getContratoNombre(factura.id_contrato)}</TableCell>
                     <TableCell>{factura.fecha}</TableCell>
                     <TableCell className="max-w-xs truncate">{factura.descripcion || '-'}</TableCell>
