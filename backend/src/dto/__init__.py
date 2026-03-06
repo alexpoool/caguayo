@@ -91,7 +91,7 @@ from .convenios_dto import (
     TipoConvenioUpdate,
     ConvenioBase,
     ConvenioCreate,
-    ConvencioRead,
+    ConvenioRead,
     ConvenioUpdate,
     AnexoBase,
     AnexoCreate,

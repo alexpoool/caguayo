@@ -102,7 +102,16 @@ function ProtectedRoute({
 }
 
 function App() {
-  const [moduloActivo, setModuloActivo] = useState<Modulo>('inventario');
+  const [moduloActivo, setModuloActivo] = useState<Modulo>(() => {
+    const path = window.location.pathname || '/';
+    if (path === '/') return 'home';
+    for (const [moduloKey, rutas] of Object.entries(rutasPorModulo) as [Modulo, string[]][]) {
+      if (rutas.some(route => route === '/' ? path === route : path === route || (route !== '/' && path.startsWith(route)))) {
+        return moduloKey;
+      }
+    }
+    return 'inventario'; // Fallback
+  });
   const [slimSidebar, setSlimSidebar] = useState(false);
   const [showAccountModal, setShowAccountModal] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);

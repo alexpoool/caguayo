@@ -4,7 +4,6 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from src.database.connection import get_session
 from src.models import ClienteNatural
 from sqlmodel import select
-from sqlmodel.sql.sqltypes import Enum
 
 router = APIRouter(
     prefix="/clientes-naturales", tags=["clientes-naturales"], redirect_slashes=False

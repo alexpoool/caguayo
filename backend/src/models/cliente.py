@@ -1,6 +1,6 @@
 from sqlmodel import SQLModel, Field, Relationship
 from typing import Optional, List, TYPE_CHECKING
-from sqlalchemy import Column, String, ARRAY, Boolean
+from sqlalchemy import Column, String, ARRAY, Boolean, CheckConstraint
 from datetime import datetime
 
 if TYPE_CHECKING:
@@ -25,7 +25,7 @@ class Cliente(SQLModel, table=True):
     tipo_persona: str = Field(
         sa_column=Column(
             String(20),
-            check_constraint="tipo_persona IN ('NATURAL', 'JURIDICA', 'TCP')",
+            CheckConstraint("tipo_persona IN ('NATURAL', 'JURIDICA', 'TCP')"),
         )
     )
     cedula_rif: Optional[str] = Field(default=None, max_length=20)
@@ -46,7 +46,7 @@ class Cliente(SQLModel, table=True):
         max_length=20,
         sa_column=Column(
             String(20),
-            check_constraint="tipo_relacion IN ('CLIENTE', 'PROVEEDOR', 'AMBAS')",
+            CheckConstraint("tipo_relacion IN ('CLIENTE', 'PROVEEDOR', 'AMBAS')"),
         ),
     )
     id_tipo_cliente: Optional[int] = Field(

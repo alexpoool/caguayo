@@ -12,7 +12,3 @@ dependencies = [
     "uvicorn>=0.41.0",
 ]
 
-[tool.uv.workspace]
-members = [
-    "backend",
-]
