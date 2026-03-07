@@ -5,6 +5,7 @@ from .tipo_cliente import TipoCliente
 from .cliente import Cliente
 from .cliente_natural import ClienteNatural
 from .cliente_tcp import ClienteTCP
+from .cliente_juridica import ClienteJuridica
 from .venta import Ventas, EstadoVenta
 from .detalle_venta import DetalleVenta
 from .movimiento import TipoMovimiento, Movimiento
@@ -43,6 +44,7 @@ __all__ = [
     "Cliente",
     "ClienteNatural",
     "ClienteTCP",
+    "ClienteJuridica",
     "Ventas",
     "EstadoVenta",
     "DetalleVenta",

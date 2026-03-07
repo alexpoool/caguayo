@@ -2,7 +2,6 @@ from sqlmodel import SQLModel, Field, Relationship
 from typing import Optional, List, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from .cliente_natural import ClienteNatural
     from .cliente_juridica import ClienteJuridica
 
 
@@ -13,9 +12,6 @@ class TipoEntidad(SQLModel, table=True):
     nombre: str = Field(max_length=50, unique=True)
     descripcion: Optional[str] = None
 
-    clientes_naturales: List["ClienteNatural"] = Relationship(
-        back_populates="tipo_entidad"
-    )
     clientes_juridicos: List["ClienteJuridica"] = Relationship(
         back_populates="tipo_entidad"
     )

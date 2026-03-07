@@ -14,6 +14,7 @@ if TYPE_CHECKING:
     from .cliente_tcp import ClienteTCP
     from .cliente_juridica import ClienteJuridica
     from .nuevas_tablas import Contrato
+    from .cuenta import Cuenta
 
 
 class Cliente(SQLModel, table=True):
@@ -52,6 +53,9 @@ class Cliente(SQLModel, table=True):
     id_tipo_cliente: Optional[int] = Field(
         default=None, foreign_key="tipo_cliente.id_tipo_cliente"
     )
+    id_especialidad: Optional[int] = Field(
+        default=None, foreign_key="especialidades_artisticas.id_especialidad"
+    )
     estado: str = Field(default="ACTIVO", sa_column=Column(String(20)))
     fecha_registro: Optional[datetime] = Field(default=None)
     fecha_actualizacion: Optional[datetime] = Field(default=None)
@@ -78,3 +82,4 @@ class Cliente(SQLModel, table=True):
         back_populates="cliente"
     )
     contratos: List["Contrato"] = Relationship(back_populates="cliente")
+    cuentas: List["Cuenta"] = Relationship(back_populates="cliente")
