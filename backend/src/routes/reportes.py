@@ -81,11 +81,11 @@ async def get_inventario_movimientos_pdf(
         # ── Reporte por Producto (Kardex) — código extenso obligatorio ──
         pdf_data = [
             {
-                "fecha": str(r.get("fecha", "")),
+                "fecha": r.get("fecha").strftime("%d/%m/%Y") if r.get("fecha") else "",
                 "saldo_inicial": r.get("saldo_inicial", 0),
                 "tipo": r.get("tipo", ""),
                 "descripcion": r.get("observacion", "") or r.get("dependencia", ""),
-                "cantidad": r.get("cantidad", 0),
+                "cantidad": r.get("cantidad", 0) * r.get("factor", 1),
                 "saldo_final": r.get("saldo_final", 0),
             }
             for r in data
@@ -100,15 +100,14 @@ async def get_inventario_movimientos_pdf(
         pdf_bytes = pdf_service.generate_movimientos_producto_pdf(pdf_data, filters)
     else:
         # ── Reporte por Dependencia — desdoblamiento de códigos ──
-        code_key = "codigo_movimiento" if vista == "recibo" else "codigo_producto"
         pdf_data = [
             {
-                "fecha": str(r.get("fecha", "")),
-                "codigo": r.get(code_key, "") or r.get("codigo_producto", ""),
+                "fecha": r.get("fecha").strftime("%d/%m/%Y") if r.get("fecha") else "",
+                "codigo": r.get("codigo_movimiento", "") if vista == "recibo" else r.get("codigo_producto", ""),
                 "saldo_inicial": r.get("saldo_inicial", 0),
                 "tipo": r.get("tipo", ""),
                 "descripcion": r.get("producto", ""),
-                "cantidad": r.get("cantidad", 0),
+                "cantidad": r.get("cantidad", 0) * r.get("factor", 1),
                 "saldo_final": r.get("saldo_final", 0),
             }
             for r in data
