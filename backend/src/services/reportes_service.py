@@ -112,7 +112,7 @@ class ReportesService:
             )
             .join(TipoMovimiento, Movimiento.id_tipo_movimiento == TipoMovimiento.id_tipo_movimiento)  # type: ignore
             .where(col(Movimiento.id_producto).in_(product_ids))
-            #.group_by(Movimiento.id_producto)
+            .group_by(Movimiento.id_producto)
         )
         if fecha_fin:
             stock_query = stock_query.where(Movimiento.fecha <= fecha_fin)

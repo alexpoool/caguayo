@@ -114,7 +114,7 @@ async def get_inventario_movimientos_pdf(
         ]
         pdf_bytes = pdf_service.generate_movimientos_dependencia_pdf(pdf_data, filters)
 
-    filename = f"reporte_movimientos_{vista}.pdf"
+    filename = "reporte_movimientos.pdf" if id_producto else f"reporte_movimientos_{vista}.pdf"
     return Response(
         content=pdf_bytes,
         media_type="application/pdf",
