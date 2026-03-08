@@ -32,7 +32,11 @@ async def get_inventario_stock_pdf(
     service = ReportesService(db)
     data = await service.get_stock_por_producto(id_dependencia, fecha_corte)
     pdf_data = [
-        {"codigo": r["codigo"], "descripcion": r["nombre"], "cantidad": r["stock_actual"]}
+        {
+            "codigo": r["codigo"],
+            "descripcion": r["nombre"],
+            "cantidad": r["stock_actual"],
+        }
         for r in data
     ]
     filters: Dict[str, Any] = {}
@@ -40,7 +44,9 @@ async def get_inventario_stock_pdf(
     return Response(
         content=pdf_bytes,
         media_type="application/pdf",
-        headers={"Content-Disposition": "attachment; filename=existencias_por_producto.pdf"},
+        headers={
+            "Content-Disposition": "attachment; filename=existencias_por_producto.pdf"
+        },
     )
 
 
@@ -92,18 +98,23 @@ async def get_inventario_movimientos_pdf(
         ]
         if data:
             filters["producto_nombre"] = data[0].get("producto", "")
-            # Código extenso obligatorio para este reporte
-            filters["producto_codigo"] = (
-                data[0].get("codigo_movimiento", "")
-                or data[0].get("codigo_producto", "")
-            )
+            # Usar el código extenso más completo disponible entre todos los movimientos
+            # (el de mayor longitud tendrá producto + anexo + proveedor)
+            codigo_extenso = max(
+                (r.get("codigo_movimiento", "") for r in data),
+                key=len,
+                default="",
+            ) or data[0].get("codigo_producto", "")
+            filters["producto_codigo"] = codigo_extenso
         pdf_bytes = pdf_service.generate_movimientos_producto_pdf(pdf_data, filters)
     else:
         # ── Reporte por Dependencia — desdoblamiento de códigos ──
         pdf_data = [
             {
                 "fecha": r.get("fecha").strftime("%d/%m/%Y") if r.get("fecha") else "",
-                "codigo": r.get("codigo_movimiento", "") if vista == "recibo" else r.get("codigo_producto", ""),
+                "codigo": r.get("codigo_movimiento", "")
+                if vista == "recibo"
+                else r.get("codigo_producto", ""),
                 "saldo_inicial": r.get("saldo_inicial", 0),
                 "tipo": r.get("tipo", ""),
                 "descripcion": r.get("producto", ""),
@@ -114,7 +125,9 @@ async def get_inventario_movimientos_pdf(
         ]
         pdf_bytes = pdf_service.generate_movimientos_dependencia_pdf(pdf_data, filters)
 
-    filename = "reporte_movimientos.pdf" if id_producto else f"reporte_movimientos_{vista}.pdf"
+    filename = (
+        "reporte_movimientos.pdf" if id_producto else f"reporte_movimientos_{vista}.pdf"
+    )
     return Response(
         content=pdf_bytes,
         media_type="application/pdf",
