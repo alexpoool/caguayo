@@ -15,6 +15,12 @@ class ReportesService:
     def __init__(self, db: AsyncSession):
         self.db = db
 
+    async def get_dependencia(self, id_dependencia: int) -> Optional[Dependencia]:
+        result = await self.db.exec(
+            select(Dependencia).where(Dependencia.id_dependencia == id_dependencia)
+        )
+        return result.first()
+
     async def get_stock_por_producto(
         self, id_dependencia: Optional[int] = None, fecha_corte=None
     ) -> List[Dict[str, Any]]:

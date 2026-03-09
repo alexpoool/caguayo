@@ -31,6 +31,8 @@ async def get_inventario_stock_pdf(
 ):
     service = ReportesService(db)
     data = await service.get_stock_por_producto(id_dependencia, fecha_corte)
+
+    dep = await service.get_dependencia(id_dependencia) if id_dependencia else None
     pdf_data = [
         {
             "codigo": r["codigo"],
@@ -39,7 +41,11 @@ async def get_inventario_stock_pdf(
         }
         for r in data
     ]
-    filters: Dict[str, Any] = {}
+    filters: Dict[str, Any] = {
+        "empresa": "Caguayo",
+        "dependencia": dep.nombre if dep else "",
+        "direccion": dep.direccion if dep else "",
+    }
     pdf_bytes = pdf_service.generate_existencias_pdf(pdf_data, filters)
     return Response(
         content=pdf_bytes,
@@ -78,9 +84,13 @@ async def get_inventario_movimientos_pdf(
     ff = datetime.combine(fecha_fin, datetime.max.time()) if fecha_fin else None
     data = await service.get_movimientos_filtro(fi, ff, id_dependencia, id_producto)
 
+    dep = await service.get_dependencia(id_dependencia) if id_dependencia else None
     filters: Dict[str, Any] = {
         "desde": str(fecha_inicio) if fecha_inicio else "",
         "hasta": str(fecha_fin) if fecha_fin else "",
+        "empresa": "Caguayo",
+        "dependencia": dep.nombre if dep else "",
+        "direccion": dep.direccion if dep else "",
     }
 
     if id_producto:
