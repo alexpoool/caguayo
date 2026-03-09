@@ -2,20 +2,35 @@ from .moneda import Moneda
 from .categoria import Categorias, Subcategorias
 from .producto import Productos
 from .cliente import Cliente
+from .cliente_natural import ClienteNatural
+from .cliente_juridica import ClienteJuridica
+from .cliente_tcp import ClienteTCP
 from .venta import Ventas, EstadoVenta
 from .detalle_venta import DetalleVenta
 from .movimiento import TipoMovimiento, Movimiento
 from .dependencia import TipoDependencia, Dependencia, Provincia, Municipio
 from .anexo import Anexo
+from .anexo_producto import AnexoProducto
 from .liquidacion import Liquidacion
 from .transaccion import Transaccion
-from .tipo_provedor import TipoProvedor
-from .provedor import Provedor
 from .tipo_convenio import TipoConvenio
+from .tipo_cliente import TipoCliente
 from .convenio import Convenio
-from .contrato import TipoContrato, EstadoContrato
+from .contrato import (
+    TipoContrato,
+    EstadoContrato,
+    Contrato,
+    ContratoProducto,
+    Suplemento,
+    SuplementoProducto,
+    Factura,
+    FacturaProducto,
+    VentaEfectivo,
+    VentaEfectivoProducto,
+)
 from .cuenta import Cuenta
 from .tipo_cuenta import TipoCuenta
+from .tipo_entidad import TipoEntidad
 from .usuarios import Grupo, Usuario
 from .funcionalidades import Funcionalidad, GrupoFuncionalidad
 
@@ -25,6 +40,9 @@ __all__ = [
     "Subcategorias",
     "Productos",
     "Cliente",
+    "ClienteNatural",
+    "ClienteJuridica",
+    "ClienteTCP",
     "Ventas",
     "EstadoVenta",
     "DetalleVenta",
@@ -35,16 +53,25 @@ __all__ = [
     "Provincia",
     "Municipio",
     "Anexo",
+    "AnexoProducto",
     "Liquidacion",
     "Transaccion",
-    "TipoProvedor",
-    "Provedor",
     "TipoConvenio",
+    "TipoCliente",
     "Convenio",
     "TipoContrato",
     "EstadoContrato",
+    "Contrato",
+    "ContratoProducto",
+    "Suplemento",
+    "SuplementoProducto",
+    "Factura",
+    "FacturaProducto",
+    "VentaEfectivo",
+    "VentaEfectivoProducto",
     "Cuenta",
     "TipoCuenta",
+    "TipoEntidad",
     "Grupo",
     "Usuario",
     "Funcionalidad",

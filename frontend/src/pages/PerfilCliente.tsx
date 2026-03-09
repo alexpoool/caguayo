@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { clientesService } from '../services/api';
 import type { ClienteWithVentas, Venta } from '../types/ventas';
 import { 
-  ArrowLeft, User, Phone, Mail, MapPin, CreditCard, 
+  ArrowLeft, Phone, Mail, MapPin, CreditCard, 
   Calendar, ShoppingCart, DollarSign, Package, TrendingUp,
   CheckCircle, XCircle, ExternalLink
 } from 'lucide-react';

@@ -18,7 +18,10 @@ import {
   Coins,
   ChevronLeft,
   ChevronRight,
-  FileText
+  FileText,
+  FilePlus,
+  Receipt,
+  DollarSign
 } from 'lucide-react';
 
 import { WelcomePage } from './pages/Welcome';
@@ -42,6 +45,7 @@ import { ReportesHome } from './pages/home/ReportesHome';
 import { CompraClientesPage } from './pages/compra/ClientesPage';
 import { CompraConveniosPage } from './pages/compra/ConveniosPage';
 import { CompraAnexosPage } from './pages/compra/AnexosPage';
+import { VentasOperacionesPage } from './pages/VentasOperaciones';
 
 type Modulo = 'administracion' | 'venta' | 'compra' | 'inventario' | 'reportes' | 'home';
 
@@ -58,7 +62,7 @@ const queryClient = new QueryClient({
 const rutasPorModulo: Record<Modulo, string[]> = {
   inventario: ['/inventario', '/movimientos', '/movimientos/pendientes', '/movimientos/ajuste', '/movimientos/seleccionar-recepcion', '/productos'],
   administracion: ['/administracion', '/configuracion', '/usuarios', '/grupos', '/monedas', '/dependencias'],
-  venta: ['/venta', '/ventas', '/clientes'],
+  venta: ['/venta', '/ventas', '/clientes', '/ventas/operaciones'],
   compra: ['/compra', '/compra/clientes', '/convenios', '/anexos'],
   reportes: ['/reportes'],
   home: ['/'],
@@ -271,6 +275,40 @@ function App() {
                     </li>
                   </ul>
                 )}
+                {moduloActivo === 'venta' && (
+                  <ul className="space-y-1 px-3">
+                    <li>
+                      <NavLink to="/clientes" onClick={handleLinkClick}>
+                        <UserCircle className="w-6 h-6" />
+                        Clientes
+                      </NavLink>
+                    </li>
+                    <li>
+                      <NavLink to="/ventas/operaciones" onClick={handleLinkClick}>
+                        <FilePlus className="w-6 h-6" />
+                        Contrato
+                      </NavLink>
+                    </li>
+                    <li>
+                      <NavLink to="/ventas/operaciones" onClick={handleLinkClick}>
+                        <FileText className="w-6 h-6" />
+                        Suplemento
+                      </NavLink>
+                    </li>
+                    <li>
+                      <NavLink to="/ventas/operaciones" onClick={handleLinkClick}>
+                        <Receipt className="w-6 h-6" />
+                        Factura
+                      </NavLink>
+                    </li>
+                    <li>
+                      <NavLink to="/ventas/operaciones" onClick={handleLinkClick}>
+                        <DollarSign className="w-6 h-6" />
+                        Venta en Efectivo
+                      </NavLink>
+                    </li>
+                  </ul>
+                )}
               </>
           </nav>
           {/* Usuario en el sidebar al final */}
@@ -425,6 +463,14 @@ function App() {
                   element={
                     <ProtectedRoute moduloActivo={moduloActivo} currentPath="/clientes">
                       <PerfilClientePage />
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route 
+                  path="/ventas/operaciones" 
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/ventas/operaciones">
+                      <VentasOperacionesPage />
                     </ProtectedRoute>
                   } 
                 />

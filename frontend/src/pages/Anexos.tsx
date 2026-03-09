@@ -1,22 +1,24 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { anexosService, conveniosService, dependenciasService, productosService } from '../services/api';
+import { anexosService, conveniosService, dependenciasService, productosService, monedaService } from '../services/api';
 import { Plus, Edit, Trash2, Search, Save, ArrowLeft, Package } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 interface Anexo {
   id_anexo: number;
   id_convenio: number;
+  id_moneda?: number | null;
   nombre_anexo: string;
   fecha: string;
-  numero_anexo: string;
+  codigo_anexo?: string;
   id_dependencia?: number | null;
   comision?: number;
   dependencia_nombre?: string;
   id_producto?: number | null;
-  convenios?: {
+  anexo_convenio?: {
     id_convenio: number;
     nombre_convenio: string;
+    codigo_convenio?: string;
   };
 }
 
@@ -63,10 +65,10 @@ export function AnexosPage() {
 
   const [formData, setFormData] = useState({
     id_convenio: 0,
+    id_moneda: undefined as number | undefined,
     nombre_anexo: '',
     fecha: '',
-    numero_anexo: '',
-    id_dependencia: undefined as number | undefined,
+    id_dependencia: null as number | null | undefined,
     comision: 0,
     productos: [] as AnexoProducto[]
   });
@@ -96,6 +98,11 @@ export function AnexosPage() {
   const { data: productos = [] } = useQuery({
     queryKey: ['productos'],
     queryFn: () => productosService.getProductos(),
+  });
+
+  const { data: monedas = [] } = useQuery({
+    queryKey: ['monedas'],
+    queryFn: () => monedaService.getMonedas(),
   });
 
   const createMutation = useMutation({
@@ -134,9 +141,9 @@ export function AnexosPage() {
   const resetForm = () => {
     setFormData({
       id_convenio: 0,
+      id_moneda: undefined,
       nombre_anexo: '',
       fecha: '',
-      numero_anexo: '',
       id_dependencia: undefined,
       comision: 0,
       productos: []
@@ -175,10 +182,10 @@ export function AnexosPage() {
     setEditingAnexo(anexo);
     setFormData({
       id_convenio: anexo.id_convenio,
+      id_moneda: anexo.id_moneda ?? undefined,
       nombre_anexo: anexo.nombre_anexo,
       fecha: anexo.fecha,
-      numero_anexo: anexo.numero_anexo,
-      id_dependencia: anexo.id_dependencia ?? undefined,
+      id_dependencia: anexo.id_dependencia ?? null,
       comision: anexo.comision || 0,
       productos: []
     });
@@ -202,7 +209,6 @@ export function AnexosPage() {
     if (!formData.id_convenio) errors.id_convenio = 'Seleccione un convenio';
     if (!formData.nombre_anexo) errors.nombre_anexo = 'Ingrese el nombre';
     if (!formData.fecha) errors.fecha = 'Ingrese la fecha';
-    if (!formData.numero_anexo) errors.numero_anexo = 'Ingrese el número';
     if (!formData.productos || formData.productos.length === 0) errors.productos = 'Agregue al menos un producto';
     
     if (Object.keys(errors).length > 0) {
@@ -231,8 +237,8 @@ export function AnexosPage() {
     const term = searchTerm.toLowerCase();
     return (
       a.nombre_anexo?.toLowerCase().includes(term) ||
-      a.numero_anexo?.toLowerCase().includes(term) ||
-      a.convenio?.nombre_convenio?.toLowerCase().includes(term)
+      a.codigo_anexo?.toLowerCase().includes(term) ||
+      a.anexo_convenio?.nombre_convenio?.toLowerCase().includes(term)
     );
   });
 
@@ -272,6 +278,22 @@ export function AnexosPage() {
               </div>
 
               <div>
+                <Label>Moneda</Label>
+                <select
+                  value={formData.id_moneda || ''}
+                  onChange={(e) => setFormData({ ...formData, id_moneda: e.target.value ? parseInt(e.target.value) : undefined })}
+                  className="w-full mt-1 px-3 py-2 border rounded-lg"
+                >
+                  <option value="">Seleccione una moneda</option>
+                  {monedas.map((m) => (
+                    <option key={m.id_moneda} value={m.id_moneda}>
+                      {m.nombre}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
                 <Label>Nombre del Anexo *</Label>
                 <Input
                   value={formData.nombre_anexo}
@@ -290,15 +312,6 @@ export function AnexosPage() {
                     onChange={(e) => setFormData({ ...formData, fecha: e.target.value })}
                   />
                   {formErrors.fecha && <p className="text-red-500 text-sm mt-1">{formErrors.fecha}</p>}
-                </div>
-                <div>
-                  <Label>Número *</Label>
-                  <Input
-                    value={formData.numero_anexo}
-                    onChange={(e) => setFormData({ ...formData, numero_anexo: e.target.value })}
-                    placeholder="Número de anexo"
-                  />
-                  {formErrors.numero_anexo && <p className="text-red-500 text-sm mt-1">{formErrors.numero_anexo}</p>}
                 </div>
               </div>
 
@@ -468,9 +481,9 @@ export function AnexosPage() {
               <TableBody>
                 {filteredAnexos.map((anexo) => (
                   <TableRow key={anexo.id_anexo}>
-                    <TableCell>{anexo.convenio?.nombre_convenio || 'Sin convenio'}</TableCell>
-                    <TableCell className="font-medium">{anexo.nombre_anexo}</TableCell>
-                    <TableCell>{anexo.numero_anexo}</TableCell>
+                    <TableCell>{anexo.anexo_convenio?.nombre_convenio || 'Sin convenio'}</TableCell>
+                    <TableCell className="font-medium">{anexo.codigo_anexo || '-'}</TableCell>
+                    <TableCell>{anexo.nombre_anexo}</TableCell>
                     <TableCell>{anexo.fecha}</TableCell>
                     <TableCell>{anexo.comision ? `${anexo.comision}%` : '-'}</TableCell>
                     <TableCell>

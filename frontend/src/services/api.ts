@@ -31,6 +31,8 @@ import type {
   ClienteWithVentas,
   ClienteNatural,
   ClienteNaturalCreate,
+  ClienteJuridica,
+  ClienteJuridicaCreate,
   ClienteTCP,
   ClienteTCPCreate,
   TipoEntidad,
@@ -41,6 +43,20 @@ import type {
   MonedaCreate,
   MonedaUpdate
 } from '../types/moneda';
+import type {
+  ContratoWithDetails,
+  ContratoCreate,
+  ContratoUpdate,
+  SuplementoWithDetails,
+  SuplementoCreate,
+  SuplementoUpdate,
+  FacturaWithDetails,
+  FacturaCreate,
+  FacturaUpdate,
+  VentaEfectivoWithDetails,
+  VentaEfectivoCreate,
+  VentaEfectivoUpdate,
+} from '../types/contrato';
 
 export const productosService = {
   async getProductos(skip = 0, limit = 100, search?: string): Promise<Productos[]> {
@@ -199,29 +215,51 @@ export const tiposEntidadService = {
 
 export const clienteNaturalService = {
   async createClienteNatural(data: ClienteNaturalCreate): Promise<ClienteNatural> {
-    return apiClient.post<ClienteNatural>('/clientes-naturales', data);
+    return apiClient.post<ClienteNatural>(`/clientes/natural/${data.id_cliente}`, data);
   },
 
   async updateClienteNatural(id: number, data: Partial<ClienteNaturalCreate>): Promise<ClienteNatural> {
-    return apiClient.put<ClienteNatural>(`/clientes-naturales/${id}`, data);
+    return apiClient.put<ClienteNatural>(`/clientes/natural/${id}`, data);
   },
 
   async getClienteNatural(idCliente: number): Promise<ClienteNatural | null> {
-    return apiClient.get<ClienteNatural>(`/clientes-naturales/by-cliente/${idCliente}`);
+    return apiClient.get<ClienteNatural>(`/clientes/natural/${idCliente}`);
+  },
+
+  async deleteClienteNatural(idCliente: number): Promise<void> {
+    return apiClient.delete<void>(`/clientes/natural/${idCliente}`);
+  }
+};
+
+export const clienteJuridicaService = {
+  async createClienteJuridica(data: ClienteJuridicaCreate): Promise<ClienteJuridica> {
+    return apiClient.post<ClienteJuridica>(`/clientes/juridica/${data.id_cliente}`, data);
+  },
+
+  async updateClienteJuridica(id: number, data: Partial<ClienteJuridicaCreate>): Promise<ClienteJuridica> {
+    return apiClient.put<ClienteJuridica>(`/clientes/juridica/${id}`, data);
+  },
+
+  async getClienteJuridica(idCliente: number): Promise<ClienteJuridica | null> {
+    return apiClient.get<ClienteJuridica>(`/clientes/juridica/${idCliente}`);
+  },
+
+  async deleteClienteJuridica(idCliente: number): Promise<void> {
+    return apiClient.delete<void>(`/clientes/juridica/${idCliente}`);
   }
 };
 
 export const clienteTCPService = {
   async createClienteTCP(data: ClienteTCPCreate): Promise<ClienteTCP> {
-    return apiClient.post<ClienteTCP>('/clientes-tcp', data);
+    return apiClient.post<ClienteTCP>(`/clientes/tcp/${data.id_cliente}`, data);
   },
 
   async updateClienteTCP(id: number, data: Partial<ClienteTCPCreate>): Promise<ClienteTCP> {
-    return apiClient.put<ClienteTCP>(`/clientes-tcp/${id}`, data);
+    return apiClient.put<ClienteTCP>(`/clientes/tcp/${id}`, data);
   },
 
   async getClienteTCP(idCliente: number): Promise<ClienteTCP | null> {
-    return apiClient.get<ClienteTCP>(`/clientes-tcp/by-cliente/${idCliente}`);
+    return apiClient.get<ClienteTCP>(`/clientes/tcp/${idCliente}`);
   }
 };
 
@@ -430,6 +468,98 @@ export const dependenciasService = {
 
   async getDependencia(id: number): Promise<Dependencia> {
     return apiClient.get<Dependencia>(`/dependencias/${id}`);
+  }
+};
+
+export const contratosService = {
+  async getContratos(skip = 0, limit = 100): Promise<ContratoWithDetails[]> {
+    return apiClient.get<ContratoWithDetails[]>(`/contratos?skip=${skip}&limit=${limit}`);
+  },
+
+  async getContrato(id: number): Promise<ContratoWithDetails> {
+    return apiClient.get<ContratoWithDetails>(`/contratos/${id}`);
+  },
+
+  async createContrato(data: ContratoCreate): Promise<ContratoWithDetails> {
+    return apiClient.post<ContratoWithDetails>('/contratos', data);
+  },
+
+  async updateContrato(id: number, data: ContratoUpdate): Promise<ContratoWithDetails> {
+    return apiClient.put<ContratoWithDetails>(`/contratos/${id}`, data);
+  },
+
+  async deleteContrato(id: number): Promise<void> {
+    return apiClient.delete<void>(`/contratos/${id}`);
+  }
+};
+
+export const suplementosService = {
+  async getSuplementosByContrato(contratoId: number): Promise<SuplementoWithDetails[]> {
+    return apiClient.get<SuplementoWithDetails[]>(`/suplementos/contrato/${contratoId}`);
+  },
+
+  async getSuplemento(id: number): Promise<SuplementoWithDetails> {
+    return apiClient.get<SuplementoWithDetails>(`/suplementos/${id}`);
+  },
+
+  async createSuplemento(data: SuplementoCreate): Promise<SuplementoWithDetails> {
+    return apiClient.post<SuplementoWithDetails>('/suplementos', data);
+  },
+
+  async updateSuplemento(id: number, data: SuplementoUpdate): Promise<SuplementoWithDetails> {
+    return apiClient.put<SuplementoWithDetails>(`/suplementos/${id}`, data);
+  },
+
+  async deleteSuplemento(id: number): Promise<void> {
+    return apiClient.delete<void>(`/suplementos/${id}`);
+  }
+};
+
+export const facturasService = {
+  async getFacturas(skip = 0, limit = 100): Promise<FacturaWithDetails[]> {
+    return apiClient.get<FacturaWithDetails[]>(`/facturas?skip=${skip}&limit=${limit}`);
+  },
+
+  async getFacturasByContrato(contratoId: number): Promise<FacturaWithDetails[]> {
+    return apiClient.get<FacturaWithDetails[]>(`/facturas/contrato/${contratoId}`);
+  },
+
+  async getFactura(id: number): Promise<FacturaWithDetails> {
+    return apiClient.get<FacturaWithDetails>(`/facturas/${id}`);
+  },
+
+  async createFactura(data: FacturaCreate): Promise<FacturaWithDetails> {
+    return apiClient.post<FacturaWithDetails>('/facturas', data);
+  },
+
+  async updateFactura(id: number, data: FacturaUpdate): Promise<FacturaWithDetails> {
+    return apiClient.put<FacturaWithDetails>(`/facturas/${id}`, data);
+  },
+
+  async deleteFactura(id: number): Promise<void> {
+    return apiClient.delete<void>(`/facturas/${id}`);
+  }
+};
+
+export const ventasEfectivoService = {
+  async getVentasEfectivo(skip = 0, limit = 100): Promise<VentaEfectivoWithDetails[]> {
+    return apiClient.get<VentaEfectivoWithDetails[]>(`/ventas-efectivo?skip=${skip}&limit=${limit}`);
+  },
+
+  async getVentaEfectivo(id: number): Promise<VentaEfectivoWithDetails> {
+    return apiClient.get<VentaEfectivoWithDetails>(`/ventas-efectivo/${id}`);
+  },
+
+  async createVentaEfectivo(data: VentaEfectivoCreate): Promise<VentaEfectivoWithDetails> {
+    return apiClient.post<VentaEfectivoWithDetails>('/ventas-efectivo', data);
+  },
+
+  async updateVentaEfectivo(id: number, data: VentaEfectivoUpdate): Promise<VentaEfectivoWithDetails> {
+    return apiClient.put<VentaEfectivoWithDetails>(`/ventas-efectivo/${id}`, data);
+  },
+
+  async deleteVentaEfectivo(id: number): Promise<void> {
+    return apiClient.delete<void>(`/ventas-efectivo/${id}`);
   }
 };
 

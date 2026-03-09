@@ -2,8 +2,8 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlmodel.ext.asyncio.session import AsyncSession
 from src.database.connection import get_session
-from src.services.ventas_clientes_service import ClienteService
-from src.dto import ClienteCreate, ClienteRead, ClienteReadWithVentas, ClienteUpdate
+from src.services.cliente_service import ClienteService
+from src.dto import ClienteCreate, ClienteRead, ClienteUpdate
 
 router = APIRouter(prefix="/clientes", tags=["clientes"], redirect_slashes=False)
 
@@ -54,18 +54,6 @@ async def obtener_cliente(
     return cliente
 
 
-@router.get("/{cliente_id}/perfil", response_model=ClienteReadWithVentas)
-async def obtener_perfil_cliente(
-    cliente_id: int,
-    db: AsyncSession = Depends(get_session),
-):
-    """Obtener el perfil completo de un cliente con su historial de ventas."""
-    cliente = await ClienteService.get_cliente_with_ventas(db, cliente_id)
-    if not cliente:
-        raise HTTPException(status_code=404, detail="Cliente no encontrado")
-    return cliente
-
-
 @router.put("/{cliente_id}", response_model=ClienteRead)
 async def actualizar_cliente(
     cliente_id: int,
@@ -89,13 +77,11 @@ async def eliminar_cliente(
     cliente_id: int,
     db: AsyncSession = Depends(get_session),
 ):
-    """Eliminar un cliente. No se puede eliminar si tiene ventas asociadas."""
+    """Eliminar un cliente."""
     try:
         success = await ClienteService.delete_cliente(db, cliente_id)
         if not success:
             raise HTTPException(status_code=404, detail="Cliente no encontrado")
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"Error al eliminar cliente: {str(e)}"

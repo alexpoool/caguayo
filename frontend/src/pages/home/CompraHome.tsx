@@ -1,4 +1,4 @@
-import { ShoppingCart, Construction, Package, FileText, Truck } from 'lucide-react';
+import { ShoppingCart, Package, FileText, Truck } from 'lucide-react';
 
 export function CompraHome() {
   return (

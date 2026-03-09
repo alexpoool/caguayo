@@ -4,11 +4,13 @@ from .tipo_cuenta_dto import TipoCuentaRead
 
 
 class CuentaBase(SQLModel):
+    id_cliente: Optional[int] = None
     id_dependencia: Optional[int] = None
     id_tipo_cuenta: Optional[int] = None
     titular: str
     banco: str
     sucursal: Optional[int] = None
+    numero_cuenta: str
     direccion: str
 
 
@@ -22,9 +24,11 @@ class CuentaRead(CuentaBase):
 
 
 class CuentaUpdate(SQLModel):
+    id_cliente: Optional[int] = None
     id_dependencia: Optional[int] = None
     id_tipo_cuenta: Optional[int] = None
     titular: Optional[str] = None
     banco: Optional[str] = None
     sucursal: Optional[int] = None
+    numero_cuenta: Optional[str] = None
     direccion: Optional[str] = None

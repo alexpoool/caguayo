@@ -46,21 +46,22 @@ export interface VentaUpdate {
 // Tipos para Cliente
 export interface Cliente {
   id_cliente: number;
+  numero_cliente: string;
   nombre: string;
+  tipo_persona: 'NATURAL' | 'JURIDICA' | 'TCP';
+  cedula_rif: string;
   telefono?: string;
   email?: string;
-  cedula_rif?: string;
-  direccion?: string;
-  activo: boolean;
-  fecha_registro: string;
   fax?: string;
   web?: string;
-  numero_cliente?: string;
-  codigo_postal?: string;
-  nit?: string;
   id_provincia?: number;
   id_municipio?: number;
-  id_tipo_cliente?: number;
+  codigo_postal?: string;
+  direccion: string;
+  tipo_relacion: 'CLIENTE' | 'PROVEEDOR' | 'AMBAS';
+  estado: 'ACTIVO' | 'INACTIVO';
+  fecha_registro: string;
+  activo: boolean;
 }
 
 export interface ClienteWithVentas extends Cliente {
@@ -68,89 +69,89 @@ export interface ClienteWithVentas extends Cliente {
 }
 
 export interface ClienteCreate {
+  numero_cliente: string;
   nombre: string;
+  tipo_persona: 'NATURAL' | 'JURIDICA' | 'TCP';
+  cedula_rif: string;
   telefono?: string;
   email?: string;
-  cedula_rif?: string;
-  direccion?: string;
-  activo?: boolean;
-  tipo_relacion?: string;
   fax?: string;
   web?: string;
-  numero_cliente?: string;
-  codigo_postal?: string;
-  nit?: string;
   id_provincia?: number;
   id_municipio?: number;
-  id_tipo_cliente?: number;
+  codigo_postal?: string;
+  direccion: string;
+  tipo_relacion: 'CLIENTE' | 'PROVEEDOR' | 'AMBAS';
+  estado: 'ACTIVO' | 'INACTIVO';
+  fecha_registro: string;
+  activo?: boolean;
 }
 
 export interface ClienteUpdate {
+  numero_cliente?: string;
   nombre?: string;
+  tipo_persona?: 'NATURAL' | 'JURIDICA' | 'TCP';
+  cedula_rif?: string;
   telefono?: string;
   email?: string;
-  cedula_rif?: string;
-  direccion?: string;
-  activo?: boolean;
-  tipo_relacion?: string;
   fax?: string;
   web?: string;
-  numero_cliente?: string;
-  codigo_postal?: string;
-  nit?: string;
   id_provincia?: number;
   id_municipio?: number;
-  id_tipo_cliente?: number;
+  codigo_postal?: string;
+  direccion?: string;
+  tipo_relacion?: 'CLIENTE' | 'PROVEEDOR' | 'AMBAS';
+  estado?: 'ACTIVO' | 'INACTIVO';
+  fecha_registro?: string;
+  activo?: boolean;
 }
 
 // Tipos para Persona Natural
 export interface ClienteNatural {
-  id_cliente_natural?: number;
   id_cliente: number;
+  nombre: string;
+  primer_apellido: string;
+  segundo_apellido?: string;
+  carnet_identidad: string;
   codigo_expediente?: string;
   numero_registro?: string;
-  carnet_identidad?: string;
-  es_trabajador?: boolean;
+  catalogo?: string;
+  es_trabajador: boolean;
   ocupacion?: string;
-  centro_laboral?: string;
   centro_trabajo?: string;
   correo_trabajo?: string;
   direccion_trabajo?: string;
   telefono_trabajo?: string;
-  catalogo?: string;
-  baja?: boolean;
+  en_baja: boolean;
   fecha_baja?: string;
   vigencia?: string;
-  codigo_reeup?: string;
-  id_tipo_entidad?: number;
 }
 
 export interface ClienteNaturalCreate {
   id_cliente: number;
+  nombre: string;
+  primer_apellido: string;
+  segundo_apellido?: string;
+  carnet_identidad: string;
   codigo_expediente?: string;
   numero_registro?: string;
-  carnet_identidad?: string;
+  catalogo?: string;
   es_trabajador?: boolean;
   ocupacion?: string;
-  centro_laboral?: string;
   centro_trabajo?: string;
   correo_trabajo?: string;
   direccion_trabajo?: string;
   telefono_trabajo?: string;
-  catalogo?: string;
-  baja?: boolean;
+  en_baja?: boolean;
   fecha_baja?: string;
   vigencia?: string;
-  codigo_reeup?: string;
-  id_tipo_entidad?: number;
 }
 
 // Tipos para TCP (Trabajo por Cuenta Propia)
 export interface ClienteTCP {
-  id_cliente_tcp?: number;
   id_cliente: number;
   nombre: string;
-  primer_apellido?: string;
+  primer_apellido: string;
   segundo_apellido?: string;
   direccion?: string;
   numero_registro_proyecto?: string;
@@ -165,6 +166,19 @@ export interface ClienteTCPCreate {
   direccion?: string;
   numero_registro_proyecto?: string;
   fecha_aprobacion?: string;
+}
+
+// Tipos para Persona Jurídica
+export interface ClienteJuridica {
+  id_cliente: number;
+  codigo_reup: string;
+  id_tipo_entidad?: number;
+}
+
+export interface ClienteJuridicaCreate {
+  id_cliente: number;
+  codigo_reup: string;
+  id_tipo_entidad?: number;
 }
 
 // Tipos para Tipo Entidad
@@ -182,6 +196,7 @@ export interface Cuenta {
   titular: string;
   banco: string;
   sucursal?: number;
+  numero_cuenta?: string;
   direccion: string;
 }
 

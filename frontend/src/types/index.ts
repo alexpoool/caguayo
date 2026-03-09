@@ -140,6 +140,7 @@ export interface ClienteSimple {
 
 export interface Convenio {
   id_convenio: number;
+  codigo_convenio?: string;
   id_cliente: number;
   nombre_convenio: string;
   fecha: string;
@@ -154,14 +155,17 @@ export interface Anexo {
   id_convenio: number;
   nombre_anexo: string;
   fecha: string;
-  numero_anexo: string;
+  codigo_anexo?: string;
+  numero_anexo?: string;
   id_dependencia?: number | null;
   comision?: number;
   dependencia_nombre?: string;
   id_producto?: number | null;
-  convenio?: {
+  id_moneda?: number | null;
+  anexo_convenio?: {
     id_convenio: number;
     nombre_convenio: string;
+    codigo_anexo?: string;
   };
 }
 
@@ -257,3 +261,6 @@ export * from './ventas';
 
 // Re-exportar tipos de dependencia.ts
 export * from './dependencia';
+
+// Re-exportar tipos de contrato.ts
+export * from './contrato';

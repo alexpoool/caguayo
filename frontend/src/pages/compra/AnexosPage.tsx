@@ -1,4 +1,3 @@
-import React from 'react';
 import { Boxes } from 'lucide-react';
 
 export function CompraAnexosPage() {

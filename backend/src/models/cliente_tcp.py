@@ -9,12 +9,11 @@ if TYPE_CHECKING:
 class ClienteTCP(SQLModel, table=True):
     __tablename__ = "cliente_tcp"
 
-    id_cliente_tcp: Optional[int] = Field(default=None, primary_key=True)
-    id_cliente: int = Field(foreign_key="clientes.id_cliente")
-    nombre: str = Field(max_length=150)
-    primer_apellido: Optional[str] = Field(default=None, max_length=100)
-    segundo_apellido: Optional[str] = Field(default=None, max_length=100)
-    direccion: Optional[str] = Field(default=None, max_length=255)
+    id_cliente: int = Field(primary_key=True, foreign_key="clientes.id_cliente")
+    nombre: str = Field(max_length=50)
+    primer_apellido: str = Field(max_length=50)
+    segundo_apellido: Optional[str] = Field(default=None, max_length=50)
+    direccion: str = Field(sa_column_kwargs={'nullable': True})
     numero_registro_proyecto: Optional[str] = Field(default=None, max_length=50)
     fecha_aprobacion: Optional[date] = Field(default=None)
 

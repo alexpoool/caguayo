@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { conveniosService, clientesService, configuracionService } from '../services/api';
-import { Plus, Edit, Trash2, Search, Save, ArrowLeft, Building } from 'lucide-react';
+import { Plus, Edit, Trash2, Search, Save, ArrowLeft, Building, Eye } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 interface ClienteSimple {
@@ -17,6 +17,7 @@ interface TipoConvenio {
 
 interface Convenio {
   id_convenio: number;
+  codigo_convenio?: string;
   id_cliente: number;
   nombre_convenio: string;
   fecha: string;
@@ -32,7 +33,7 @@ import {
   Label, 
   Card, 
   CardContent, 
-  CardHeader, 
+  CardHeader,
   Table,
   TableHeader,
   TableBody,
@@ -44,8 +45,9 @@ import {
 
 export function ConveniosPage() {
   const queryClient = useQueryClient();
-  const [view, setView] = useState<'list' | 'form'>('list');
+  const [view, setView] = useState<'list' | 'form' | 'detail'>('list');
   const [editingConvenio, setEditingConvenio] = useState<Convenio | null>(null);
+  const [viewingConvenio, setViewingConvenio] = useState<Convenio | null>(null);
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
     title: string;
@@ -287,6 +289,47 @@ export function ConveniosPage() {
     );
   }
 
+  // VISTA: DETALLE
+  if (view === 'detail' && viewingConvenio) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center gap-4 mb-6">
+          <button
+            onClick={() => { setView('list'); setViewingConvenio(null); }}
+            className="p-2 hover:bg-gray-100 rounded-lg"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </button>
+          <h1 className="text-2xl font-bold text-gray-900">Detalle del Convenio</h1>
+        </div>
+
+        <Card>
+          <CardHeader>
+            <CardContent className="pt-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div><Label>Código</Label><p className="font-medium">{viewingConvenio.codigo_convenio || 'N/A'}</p></div>
+                <div><Label>Nombre</Label><p className="font-medium">{viewingConvenio.nombre_convenio}</p></div>
+                <div><Label>Cliente</Label><p className="font-medium">{viewingConvenio.cliente?.nombre || 'N/A'}</p></div>
+                <div><Label>Tipo de Convenio</Label><p className="font-medium">{viewingConvenio.tipo_convenio?.nombre || 'N/A'}</p></div>
+                <div><Label>Fecha</Label><p className="font-medium">{viewingConvenio.fecha}</p></div>
+                <div><Label>Vigencia</Label><p className="font-medium">{viewingConvenio.vigencia}</p></div>
+              </div>
+            </CardContent>
+          </CardHeader>
+        </Card>
+
+        <div className="flex gap-3">
+          <Button onClick={() => { setEditingConvenio(viewingConvenio); setView('form'); }}>
+            <Edit className="h-4 w-4 mr-2" />Editar
+          </Button>
+          <Button variant="outline" onClick={() => { setView('list'); setViewingConvenio(null); }}>
+            Cancelar
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
@@ -322,6 +365,7 @@ export function ConveniosPage() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead>Código</TableHead>
                   <TableHead>Cliente</TableHead>
                   <TableHead>Nombre</TableHead>
                   <TableHead>Fecha</TableHead>
@@ -332,6 +376,7 @@ export function ConveniosPage() {
               <TableBody>
                 {filteredConvenios.map((convenio) => (
                   <TableRow key={convenio.id_convenio}>
+                    <TableCell className="font-medium">{convenio.codigo_convenio || '-'}</TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
                         <Building className="h-4 w-4 text-gray-400" />
@@ -343,6 +388,12 @@ export function ConveniosPage() {
                     <TableCell>{convenio.vigencia}</TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => { setViewingConvenio(convenio); setView('detail'); }}
+                          className="p-1 hover:bg-gray-100 rounded"
+                        >
+                          <Eye className="h-4 w-4 text-green-600" />
+                        </button>
                         <button
                           onClick={() => handleEdit(convenio)}
                           className="p-1 hover:bg-gray-100 rounded"

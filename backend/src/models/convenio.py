@@ -13,6 +13,7 @@ class Convenio(SQLModel, table=True):
     __tablename__ = "convenio"
 
     id_convenio: Optional[int] = Field(default=None, primary_key=True)
+    codigo_convenio: Optional[str] = Field(default=None, max_length=50)
     id_cliente: int = Field(foreign_key="clientes.id_cliente")
     nombre_convenio: str = Field(max_length=200)
     fecha: date

@@ -78,11 +78,13 @@ CREATE TABLE tipo_cuenta (
 -- Cuentas Bancarias
 CREATE TABLE cuenta (
     id_cuenta SERIAL PRIMARY KEY,
+    id_cliente INTEGER REFERENCES clientes(id_cliente) ON DELETE CASCADE,
     id_dependencia INTEGER REFERENCES dependencia(id_dependencia) ON DELETE SET NULL,
     id_tipo_cuenta INTEGER REFERENCES tipo_cuenta(id_tipo_cuenta) ON DELETE SET NULL,
     titular VARCHAR(150) NOT NULL,
     banco VARCHAR(100) NOT NULL,
     sucursal INTEGER,
+    numero_cuenta VARCHAR(50) NOT NULL,
     direccion VARCHAR(255) NOT NULL
 );
 
@@ -155,63 +157,71 @@ CREATE TABLE especialidades_artisticas (
     activo BOOLEAN DEFAULT true
 );
 
+-- Tipos de Entidad (para personas jurídicas)
+CREATE TABLE tipo_entidad (
+    id_tipo_entidad SERIAL PRIMARY KEY,
+    nombre VARCHAR(100) NOT NULL UNIQUE,
+    descripcion TEXT
+);
+
 -- Clientes (fusionado con provedores)
 CREATE TABLE clientes (
     id_cliente SERIAL PRIMARY KEY,
-    id_tipo_cliente INTEGER REFERENCES tipo_cliente(id_tipo_cliente) ON DELETE SET NULL,
-    nombre VARCHAR(150),
-    email VARCHAR(100),
-    direccion VARCHAR(255),
-    tipo_persona VARCHAR(20) DEFAULT 'JURIDICA',
-    nombre_artistico VARCHAR(150),
-    telefono_principal VARCHAR(20),
-    telefono_secundario VARCHAR(20),
+    numero_cliente VARCHAR(20) NOT NULL UNIQUE,
+    nombre VARCHAR(200) NOT NULL,
+    tipo_persona VARCHAR(20) NOT NULL CHECK (tipo_persona IN ('NATURAL', 'JURIDICA', 'TCP')),
+    cedula_rif VARCHAR(20) NOT NULL UNIQUE,
     telefono VARCHAR(20),
-    direccion_fiscal VARCHAR(255),
-    direccion_estudio TEXT,
-    especialidad_id INTEGER REFERENCES especialidades_artisticas(id_especialidad) ON DELETE SET NULL,
-    estilo_artistico VARCHAR(100),
-    tecnicas_principales TEXT[],
-    ano_inicio_carrera INTEGER,
-    estado VARCHAR(20) DEFAULT 'ACTIVO',
-    fecha_registro VARCHAR(100) DEFAULT CURRENT_TIMESTAMP,
-    fecha_ultima_actualizacion VARCHAR(100),
-    etiquetas TEXT[],
+    email VARCHAR(100),
+    fax VARCHAR(20),
+    web VARCHAR(100),
     id_provincia INTEGER REFERENCES provincia(id_provincia) ON DELETE SET NULL,
     id_municipio INTEGER REFERENCES municipio(id_municipio) ON DELETE SET NULL,
-    cedula_rif VARCHAR(20),
-    activo BOOLEAN DEFAULT true
+    codigo_postal VARCHAR(10),
+    direccion TEXT NOT NULL,
+    tipo_relacion VARCHAR(20) NOT NULL CHECK (tipo_relacion IN ('CLIENTE', 'PROVEEDOR', 'AMBAS')),
+    estado VARCHAR(20) NOT NULL CHECK (estado IN ('ACTIVO', 'INACTIVO')),
+    fecha_registro DATE NOT NULL DEFAULT CURRENT_DATE,
+    activo BOOLEAN NOT NULL DEFAULT true
 );
 
 -- Clientes - Persona Natural
 CREATE TABLE clientes_persona_natural (
     id_cliente INTEGER PRIMARY KEY REFERENCES clientes(id_cliente) ON DELETE CASCADE,
-    carnet_identidad VARCHAR(11) NOT NULL UNIQUE,
-    primer_nombre VARCHAR(50) NOT NULL,
-    segundo_nombre VARCHAR(50),
+    nombre VARCHAR(50) NOT NULL,
     primer_apellido VARCHAR(50) NOT NULL,
     segundo_apellido VARCHAR(50),
-    genero VARCHAR(10) CHECK (genero IN ('MASCULINO', 'FEMENINO'))
+    carnet_identidad VARCHAR(11) NOT NULL UNIQUE,
+    codigo_expediente VARCHAR(50),
+    numero_registro VARCHAR(50),
+    catalogo VARCHAR(100),
+    es_trabajador BOOLEAN NOT NULL DEFAULT false,
+    ocupacion VARCHAR(100),
+    centro_trabajo VARCHAR(200),
+    correo_trabajo VARCHAR(100),
+    direccion_trabajo TEXT,
+    telefono_trabajo VARCHAR(20),
+    en_baja BOOLEAN NOT NULL DEFAULT false,
+    fecha_baja DATE,
+    vigencia DATE
 );
 
 -- Clientes - Persona Jurídica
 CREATE TABLE clientes_persona_juridica (
     id_cliente INTEGER PRIMARY KEY REFERENCES clientes(id_cliente) ON DELETE CASCADE,
-    rif VARCHAR(20) NOT NULL UNIQUE,
-    razon_social VARCHAR(200) NOT NULL,
-    nombre_comercial VARCHAR(150),
-    denominacion_comercial VARCHAR(100),
-    numero_registro_mercantil VARCHAR(50),
-    numero_artistas_asociados INTEGER,
-    es_cooperativa BOOLEAN DEFAULT false,
-    es_asociacion BOOLEAN DEFAULT false,
-    es_fundacion BOOLEAN DEFAULT false,
-    es_empresa_comercial BOOLEAN DEFAULT false,
-    representante_legal_nombre VARCHAR(150) NOT NULL,
-    representante_legal_cedula VARCHAR(20) NOT NULL,
-    representante_legal_cargo VARCHAR(100) NOT NULL,
-    representante_legal_telefono VARCHAR(20),
-    representante_legal_email VARCHAR(100)
+    codigo_reup VARCHAR(50) NOT NULL UNIQUE,
+    id_tipo_entidad INTEGER REFERENCES tipo_entidad(id_tipo_entidad) ON DELETE SET NULL
+);
+
+-- Clientes - TCP (Trabajador por Cuenta Propia)
+CREATE TABLE cliente_tcp (
+    id_cliente INTEGER PRIMARY KEY REFERENCES clientes(id_cliente) ON DELETE CASCADE,
+    nombre VARCHAR(50) NOT NULL,
+    primer_apellido VARCHAR(50) NOT NULL,
+    segundo_apellido VARCHAR(50),
+    direccion TEXT NOT NULL,
+    numero_registro_proyecto VARCHAR(50),
+    fecha_aprobacion DATE
 );
 
 -- Tipos de Convenio
@@ -224,6 +234,7 @@ CREATE TABLE tipo_convenio (
 -- Convenios
 CREATE TABLE convenio (
     id_convenio SERIAL PRIMARY KEY,
+    codigo_convenio VARCHAR(50),
     id_cliente INTEGER NOT NULL REFERENCES clientes(id_cliente) ON DELETE CASCADE,
     nombre_convenio VARCHAR(200) NOT NULL,
     fecha DATE NOT NULL,
@@ -235,9 +246,10 @@ CREATE TABLE convenio (
 CREATE TABLE anexo (
     id_anexo SERIAL PRIMARY KEY,
     id_convenio INTEGER NOT NULL REFERENCES convenio(id_convenio) ON DELETE CASCADE,
+    id_moneda INTEGER REFERENCES moneda(id_moneda) ON DELETE SET NULL,
     nombre_anexo VARCHAR(200) NOT NULL,
     fecha DATE NOT NULL,
-    numero_anexo VARCHAR(50) NOT NULL,
+    codigo_anexo VARCHAR(50),
     id_dependencia INTEGER REFERENCES dependencia(id_dependencia) ON DELETE SET NULL,
     comision NUMERIC(10, 2)
 );
@@ -308,6 +320,90 @@ CREATE TABLE movimiento (
     id_moneda_venta INTEGER REFERENCES moneda(id_moneda) ON DELETE CASCADE
 );
 
+-- Contratos
+CREATE TABLE contrato (
+    id_contrato SERIAL PRIMARY KEY,
+    id_cliente INTEGER NOT NULL REFERENCES clientes(id_cliente) ON DELETE CASCADE,
+    nombre VARCHAR(200) NOT NULL,
+    proforma VARCHAR(100),
+    id_estado INTEGER NOT NULL REFERENCES estado_contrato(id_estado_contrato) ON DELETE CASCADE,
+    fecha DATE NOT NULL DEFAULT CURRENT_DATE,
+    vigencia DATE NOT NULL,
+    id_tipo_contrato INTEGER NOT NULL REFERENCES tipo_contrato(id_tipo_contrato) ON DELETE CASCADE,
+    id_moneda INTEGER NOT NULL REFERENCES moneda(id_moneda) ON DELETE CASCADE,
+    monto NUMERIC(15, 2) NOT NULL DEFAULT 0.00,
+    documento_final VARCHAR(255)
+);
+
+-- Contrato-Producto (relación muchos a muchos)
+CREATE TABLE contrato_producto (
+    id_contrato_producto SERIAL PRIMARY KEY,
+    id_contrato INTEGER NOT NULL REFERENCES contrato(id_contrato) ON DELETE CASCADE,
+    id_producto INTEGER NOT NULL REFERENCES productos(id_producto) ON DELETE CASCADE,
+    cantidad INTEGER NOT NULL DEFAULT 1,
+    UNIQUE (id_contrato, id_producto)
+);
+
+-- Suplementos
+CREATE TABLE suplemento (
+    id_suplemento SERIAL PRIMARY KEY,
+    id_contrato INTEGER NOT NULL REFERENCES contrato(id_contrato) ON DELETE CASCADE,
+    nombre VARCHAR(200) NOT NULL,
+    id_estado INTEGER NOT NULL REFERENCES estado_contrato(id_estado_contrato) ON DELETE CASCADE,
+    fecha DATE NOT NULL DEFAULT CURRENT_DATE,
+    monto NUMERIC(15, 2) NOT NULL DEFAULT 0.00,
+    documento VARCHAR(255)
+);
+
+-- Suplemento-Producto (relación muchos a muchos)
+CREATE TABLE suplemento_producto (
+    id_suplemento_producto SERIAL PRIMARY KEY,
+    id_suplemento INTEGER NOT NULL REFERENCES suplemento(id_suplemento) ON DELETE CASCADE,
+    id_producto INTEGER NOT NULL REFERENCES productos(id_producto) ON DELETE CASCADE,
+    cantidad INTEGER NOT NULL DEFAULT 1,
+    UNIQUE (id_suplemento, id_producto)
+);
+
+-- Facturas
+CREATE TABLE factura (
+    id_factura SERIAL PRIMARY KEY,
+    id_contrato INTEGER NOT NULL REFERENCES contrato(id_contrato) ON DELETE CASCADE,
+    codigo_factura VARCHAR(50) NOT NULL UNIQUE,
+    descripcion TEXT,
+    observaciones TEXT,
+    fecha DATE NOT NULL DEFAULT CURRENT_DATE,
+    monto NUMERIC(15, 2) NOT NULL DEFAULT 0.00,
+    pago_actual NUMERIC(15, 2) NOT NULL DEFAULT 0.00
+);
+
+-- Factura-Producto (relación muchos a muchos)
+CREATE TABLE factura_producto (
+    id_factura_producto SERIAL PRIMARY KEY,
+    id_factura INTEGER NOT NULL REFERENCES factura(id_factura) ON DELETE CASCADE,
+    id_producto INTEGER NOT NULL REFERENCES productos(id_producto) ON DELETE CASCADE,
+    cantidad INTEGER NOT NULL DEFAULT 1,
+    UNIQUE (id_factura, id_producto)
+);
+
+-- Ventas en Efectivo
+CREATE TABLE venta_efectivo (
+    id_venta_efectivo SERIAL PRIMARY KEY,
+    slip VARCHAR(100) NOT NULL,
+    fecha DATE NOT NULL DEFAULT CURRENT_DATE,
+    id_dependencia INTEGER NOT NULL REFERENCES dependencia(id_dependencia) ON DELETE CASCADE,
+    cajero VARCHAR(100) NOT NULL,
+    monto NUMERIC(15, 2) NOT NULL DEFAULT 0.00
+);
+
+-- Venta Efectivo-Producto (relación muchos a muchos)
+CREATE TABLE venta_efectivo_producto (
+    id_venta_efectivo_producto SERIAL PRIMARY KEY,
+    id_venta_efectivo INTEGER NOT NULL REFERENCES venta_efectivo(id_venta_efectivo) ON DELETE CASCADE,
+    id_producto INTEGER NOT NULL REFERENCES productos(id_producto) ON DELETE CASCADE,
+    cantidad INTEGER NOT NULL DEFAULT 1,
+    UNIQUE (id_venta_efectivo, id_producto)
+);
+
 -- =====================================================
 -- ÍNDICES
 -- =====================================================
@@ -338,7 +434,59 @@ CREATE INDEX idx_usuarios_grupo ON usuarios(id_grupo);
 CREATE INDEX idx_usuarios_dependencia ON usuarios(id_dependencia);
 CREATE INDEX idx_cuenta_dependencia ON cuenta(id_dependencia);
 CREATE INDEX idx_cuenta_tipo ON cuenta(id_tipo_cuenta);
+CREATE INDEX idx_cuenta_cliente ON cuenta(id_cliente);
 CREATE INDEX idx_anexo_dependencia ON anexo(id_dependencia);
+
+-- Índices para nuevas tablas
+CREATE INDEX idx_contrato_cliente ON contrato(id_cliente);
+CREATE INDEX idx_contrato_estado ON contrato(id_estado);
+CREATE INDEX idx_contrato_tipo ON contrato(id_tipo_contrato);
+CREATE INDEX idx_contrato_moneda ON contrato(id_moneda);
+CREATE INDEX idx_contrato_producto_contrato ON contrato_producto(id_contrato);
+CREATE INDEX idx_contrato_producto_producto ON contrato_producto(id_producto);
+CREATE INDEX idx_suplemento_contrato ON suplemento(id_contrato);
+CREATE INDEX idx_suplemento_estado ON suplemento(id_estado);
+CREATE INDEX idx_suplemento_producto_suplemento ON suplemento_producto(id_suplemento);
+CREATE INDEX idx_suplemento_producto_producto ON suplemento_producto(id_producto);
+CREATE INDEX idx_factura_contrato ON factura(id_contrato);
+CREATE INDEX idx_factura_codigo ON factura(codigo_factura);
+CREATE INDEX idx_factura_producto_factura ON factura_producto(id_factura);
+CREATE INDEX idx_factura_producto_producto ON factura_producto(id_producto);
+CREATE INDEX idx_venta_efectivo_dependencia ON venta_efectivo(id_dependencia);
+CREATE INDEX idx_venta_efectivo_fecha ON venta_efectivo(fecha);
+CREATE INDEX idx_venta_efectivo_producto_venta ON venta_efectivo_producto(id_venta_efectivo);
+CREATE INDEX idx_venta_efectivo_producto_producto ON venta_efectivo_producto(id_producto);
+
+-- =====================================================
+-- DATOS INICIALES - TIPOS DE CONTRATO
+-- =====================================================
+
+INSERT INTO tipo_contrato (nombre, descripcion) VALUES 
+('SERVICIO', 'Contrato de servicios'),
+('OBRA', 'Contrato de obra'),
+('MANTENIMIENTO', 'Contrato de mantenimiento'),
+('ALQUILER', 'Contrato de alquiler'),
+('COMPRA', 'Contrato de compraventa');
+
+-- =====================================================
+-- DATOS INICIALES - ESTADOS DE CONTRATO
+-- =====================================================
+
+INSERT INTO estado_contrato (nombre, descripcion) VALUES 
+('ACTIVO', 'Contrato vigente'),
+('CANCELADO', 'Contrato cancelado'),
+('FINALIZADO', 'Contrato finalizado'),
+('PENDIENTE', 'Contrato pendiente de aprobación');
+
+-- =====================================================
+-- DATOS INICIALES - TIPOS DE ENTIDAD
+-- =====================================================
+
+INSERT INTO tipo_entidad (nombre, descripcion) VALUES 
+('OSDE', 'Organización Superior de Dirección Empresarial'),
+('UEB', 'Unidad Empresarial de Base'),
+('Empresas Presupuestadas', 'Entidades presupuestadas del Estado'),
+('Instituciones MINSAP', 'Instituciones rectoras del Ministerio de Salud Pública');
 
 -- =====================================================
 -- DATOS INICIALES - PROVINCIAS DE CUBA

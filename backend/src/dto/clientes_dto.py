@@ -1,54 +1,34 @@
 from sqlmodel import SQLModel
 from typing import Optional, List
-from datetime import datetime
-from decimal import Decimal
+from datetime import date
 from .ventas_dto import VentaRead
 
 
 class ClienteBase(SQLModel):
+    numero_cliente: str
     nombre: str
+    tipo_persona: str  # NATURAL, JURIDICA, TCP
+    cedula_rif: str
     telefono: Optional[str] = None
     email: Optional[str] = None
-    cedula_rif: Optional[str] = None
-    direccion: Optional[str] = None
+    fax: Optional[str] = None
+    web: Optional[str] = None
+    id_provincia: Optional[int] = None
+    id_municipio: Optional[int] = None
+    codigo_postal: Optional[str] = None
+    direccion: str
+    tipo_relacion: str  # CLIENTE, PROVEEDOR, AMBAS
+    estado: str  # ACTIVO, INACTIVO
+    fecha_registro: date
     activo: bool = True
-    tipo_relacion: str = "CLIENTE"
 
 
 class ClienteCreate(ClienteBase):
-    id_tipo_cliente: Optional[int] = None
-    tipo_persona: str = "JURIDICA"
-    nombre_artistico: Optional[str] = None
-    razon_social: Optional[str] = None
-    pagina_web: Optional[str] = None
-    instagram: Optional[str] = None
-    twitter: Optional[str] = None
-    youtube: Optional[str] = None
-    spotify: Optional[str] = None
-    estado_artista: str = "PENDIENTE"
-    fecha_inicio_contrato: Optional[datetime] = None
-    fecha_fin_contrato: Optional[datetime] = None
-    observaciones: Optional[str] = None
-    tipo_relacion: str = "CLIENTE"
+    pass
 
 
 class ClienteRead(ClienteBase):
     id_cliente: int
-    fecha_registro: datetime
-    id_tipo_cliente: Optional[int] = None
-    tipo_persona: str = "JURIDICA"
-    nombre_artistico: Optional[str] = None
-    razon_social: Optional[str] = None
-    pagina_web: Optional[str] = None
-    instagram: Optional[str] = None
-    twitter: Optional[str] = None
-    youtube: Optional[str] = None
-    spotify: Optional[str] = None
-    estado_artista: str = "PENDIENTE"
-    fecha_inicio_contrato: Optional[datetime] = None
-    fecha_fin_contrato: Optional[datetime] = None
-    observaciones: Optional[str] = None
-    tipo_relacion: str = "CLIENTE"
 
 
 class ClienteReadWithVentas(ClienteRead):
@@ -56,28 +36,29 @@ class ClienteReadWithVentas(ClienteRead):
 
 
 class ClienteUpdate(SQLModel):
+    numero_cliente: Optional[str] = None
     nombre: Optional[str] = None
+    tipo_persona: Optional[str] = None
+    cedula_rif: Optional[str] = None
     telefono: Optional[str] = None
     email: Optional[str] = None
-    cedula_rif: Optional[str] = None
+    fax: Optional[str] = None
+    web: Optional[str] = None
+    id_provincia: Optional[int] = None
+    id_municipio: Optional[int] = None
+    codigo_postal: Optional[str] = None
     direccion: Optional[str] = None
-    activo: Optional[bool] = None
-    id_tipo_cliente: Optional[int] = None
-    tipo_persona: Optional[str] = None
-    nombre_artistico: Optional[str] = None
-    razon_social: Optional[str] = None
-    pagina_web: Optional[str] = None
-    instagram: Optional[str] = None
-    twitter: Optional[str] = None
-    youtube: Optional[str] = None
-    spotify: Optional[str] = None
-    estado_artista: Optional[str] = None
-    fecha_inicio_contrato: Optional[datetime] = None
-    fecha_fin_contrato: Optional[datetime] = None
-    observaciones: Optional[str] = None
     tipo_relacion: Optional[str] = None
+    estado: Optional[str] = None
+    fecha_registro: Optional[date] = None
+    activo: Optional[bool] = None
 
 
 class ClienteSimpleRead(SQLModel):
     id_cliente: int
+    numero_cliente: str
     nombre: str
+    cedula_rif: str
+    tipo_persona: str
+    estado: str
+    activo: bool

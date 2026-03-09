@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { clientesService, tiposEntidadService, clienteNaturalService, clienteTCPService, cuentasService } from '../services/api';
-import type { Cliente, ClienteCreate, ClienteUpdate, Cuenta } from '../types/ventas';
-import { Plus, Edit, Trash2, User, Phone, Mail, CreditCard, Search, ArrowLeft, Save, Building2, Briefcase } from 'lucide-react';
+import { clientesService, tiposEntidadService, clienteNaturalService, clienteJuridicaService, clienteTCPService, cuentasService } from '../services/api';
+import type { Cliente, ClienteCreate, ClienteUpdate, ClienteNatural, ClienteJuridica, ClienteTCP, Cuenta } from '../types/ventas';
+import { Plus, Edit, Trash2, User, Phone, Mail, CreditCard, Search, ArrowLeft, Save, Building2, Briefcase, Eye } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { 
   Button, 
@@ -22,12 +22,19 @@ import {
 } from '../components/ui';
 
 type TipoPersona = 'NATURAL' | 'JURIDICA' | 'TCP';
+type TipoRelacion = 'CLIENTE' | 'PROVEEDOR' | 'AMBAS';
+type EstadoCliente = 'ACTIVO' | 'INACTIVO';
 
 export function ClientesPage() {
   const queryClient = useQueryClient();
-  const [view, setView] = useState<'list' | 'form'>('list');
+  const [view, setView] = useState<'list' | 'form' | 'detail'>('list');
   const [editingCliente, setEditingCliente] = useState<Cliente | null>(null);
+  const [viewingCliente, setViewingCliente] = useState<Cliente | null>(null);
   const [tipoPersona, setTipoPersona] = useState<TipoPersona>('NATURAL');
+  const [datosNatural, setDatosNatural] = useState<ClienteNatural | null>(null);
+  const [datosJuridica, setDatosJuridica] = useState<ClienteJuridica | null>(null);
+  const [datosTCP, setDatosTCP] = useState<ClienteTCP | null>(null);
+  const [cuentasCliente, setCuentasCliente] = useState<Cuenta[]>([]);
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
     title: string;
@@ -44,42 +51,52 @@ export function ClientesPage() {
 
   // Form state - Cliente base
   const [formData, setFormData] = useState<ClienteCreate>({
+    numero_cliente: '',
     nombre: '',
+    tipo_persona: 'NATURAL',
+    cedula_rif: '',
     telefono: '',
     email: '',
-    cedula_rif: '',
-    direccion: '',
-    activo: true,
-    tipo_relacion: 'CLIENTE',
     fax: '',
     web: '',
-    numero_cliente: '',
+    id_provincia: undefined,
+    id_municipio: undefined,
     codigo_postal: '',
-    nit: ''
+    direccion: '',
+    tipo_relacion: 'CLIENTE',
+    estado: 'ACTIVO',
+    fecha_registro: new Date().toISOString().split('T')[0],
+    activo: true
   });
 
   // Datos Persona Natural
-  const [datosNatural, setDatosNatural] = useState({
+  const [datosNaturalForm, setDatosNaturalForm] = useState({
+    nombre: '',
+    primer_apellido: '',
+    segundo_apellido: '',
+    carnet_identidad: '',
     codigo_expediente: '',
     numero_registro: '',
-    carnet_identidad: '',
+    catalogo: '',
     es_trabajador: false,
     ocupacion: '',
-    centro_laboral: '',
     centro_trabajo: '',
     correo_trabajo: '',
     direccion_trabajo: '',
     telefono_trabajo: '',
-    catalogo: '',
-    baja: false,
+    en_baja: false,
     fecha_baja: '',
-    vigencia: '',
-    codigo_reeup: '',
+    vigencia: ''
+  });
+
+  // Datos Persona Jurídica
+  const [datosJuridicaForm, setDatosJuridicaForm] = useState({
+    codigo_reup: '',
     id_tipo_entidad: undefined as number | undefined
   });
 
   // Datos TCP
-  const [datosTCP, setDatosTCP] = useState({
+  const [datosTCPForm, setDatosTCPForm] = useState({
     nombre: '',
     primer_apellido: '',
     segundo_apellido: '',
@@ -115,37 +132,42 @@ export function ClientesPage() {
   const createMutation = useMutation({
     mutationFn: async (data: ClienteCreate) => {
       const cliente = await clientesService.createCliente(data);
-      
       // Crear datos según tipo de persona
-      if (tipoPersona === 'NATURAL' || tipoPersona === 'JURIDICA') {
+      if (tipoPersona === 'NATURAL') {
         await clienteNaturalService.createClienteNatural({
           id_cliente: cliente.id_cliente,
-          codigo_expediente: datosNatural.codigo_expediente || undefined,
-          numero_registro: datosNatural.numero_registro || undefined,
-          carnet_identidad: datosNatural.carnet_identidad || undefined,
-          es_trabajador: datosNatural.es_trabajador,
-          ocupacion: datosNatural.ocupacion || undefined,
-          centro_laboral: datosNatural.centro_laboral || undefined,
-          centro_trabajo: datosNatural.centro_trabajo || undefined,
-          correo_trabajo: datosNatural.correo_trabajo || undefined,
-          direccion_trabajo: datosNatural.direccion_trabajo || undefined,
-          telefono_trabajo: datosNatural.telefono_trabajo || undefined,
-          catalogo: datosNatural.catalogo || undefined,
-          baja: datosNatural.baja,
-          fecha_baja: datosNatural.fecha_baja || undefined,
-          vigencia: datosNatural.vigencia || undefined,
-          codigo_reeup: datosNatural.codigo_reeup || undefined,
-          id_tipo_entidad: datosNatural.id_tipo_entidad
+          nombre: datosNaturalForm.nombre,
+          primer_apellido: datosNaturalForm.primer_apellido || '',
+          segundo_apellido: datosNaturalForm.segundo_apellido || '',
+          carnet_identidad: datosNaturalForm.carnet_identidad,
+          codigo_expediente: datosNaturalForm.codigo_expediente || '',
+          numero_registro: datosNaturalForm.numero_registro || '',
+          catalogo: datosNaturalForm.catalogo || '',
+          es_trabajador: datosNaturalForm.es_trabajador,
+          ocupacion: datosNaturalForm.ocupacion || '',
+          centro_trabajo: datosNaturalForm.centro_trabajo || '',
+          correo_trabajo: datosNaturalForm.correo_trabajo || '',
+          direccion_trabajo: datosNaturalForm.direccion_trabajo || '',
+          telefono_trabajo: datosNaturalForm.telefono_trabajo || '',
+          en_baja: datosNaturalForm.en_baja,
+          fecha_baja: datosNaturalForm.fecha_baja || '',
+          vigencia: datosNaturalForm.vigencia || ''
+        });
+      } else if (tipoPersona === 'JURIDICA') {
+        await clienteJuridicaService.createClienteJuridica({
+          id_cliente: cliente.id_cliente,
+          codigo_reup: datosJuridicaForm.codigo_reup || '',
+          id_tipo_entidad: datosJuridicaForm.id_tipo_entidad
         });
       } else if (tipoPersona === 'TCP') {
         await clienteTCPService.createClienteTCP({
           id_cliente: cliente.id_cliente,
-          nombre: datosTCP.nombre,
-          primer_apellido: datosTCP.primer_apellido || undefined,
-          segundo_apellido: datosTCP.segundo_apellido || undefined,
-          direccion: datosTCP.direccion || undefined,
-          numero_registro_proyecto: datosTCP.numero_registro_proyecto || undefined,
-          fecha_aprobacion: datosTCP.fecha_aprobacion || undefined
+          nombre: datosTCPForm.nombre,
+          primer_apellido: datosTCPForm.primer_apellido || undefined,
+          segundo_apellido: datosTCPForm.segundo_apellido || undefined,
+          direccion: datosTCPForm.direccion || undefined,
+          numero_registro_proyecto: datosTCPForm.numero_registro_proyecto || undefined,
+          fecha_aprobacion: datosTCPForm.fecha_aprobacion || undefined
         });
       }
 
@@ -208,7 +230,7 @@ export function ClientesPage() {
       errors.nombre = 'El nombre es requerido';
     }
 
-    if (tipoPersona === 'TCP' && !datosTCP.nombre) {
+    if (tipoPersona === 'TCP' && !datosTCPForm.nombre) {
       errors.tcp_nombre = 'El nombre del líder es requerido';
     }
 
@@ -227,20 +249,52 @@ export function ClientesPage() {
 
   const resetForm = () => {
     setFormData({
-      nombre: '', telefono: '', email: '', cedula_rif: '', direccion: '',
-      activo: true, tipo_relacion: 'CLIENTE', fax: '', web: '',
-      numero_cliente: '', codigo_postal: '', nit: ''
+      numero_cliente: '',
+      nombre: '',
+      tipo_persona: 'NATURAL',
+      cedula_rif: '',
+      telefono: '',
+      email: '',
+      fax: '',
+      web: '',
+      id_provincia: undefined,
+      id_municipio: undefined,
+      codigo_postal: '',
+      direccion: '',
+      tipo_relacion: 'CLIENTE',
+      estado: 'ACTIVO',
+      fecha_registro: new Date().toISOString().split('T')[0],
+      activo: true
     });
-    setDatosNatural({
-      codigo_expediente: '', numero_registro: '', carnet_identidad: '',
-      es_trabajador: false, ocupacion: '', centro_laboral: '',
-      centro_trabajo: '', correo_trabajo: '', direccion_trabajo: '',
-      telefono_trabajo: '', catalogo: '', baja: false, fecha_baja: '',
-      vigencia: '', codigo_reeup: '', id_tipo_entidad: undefined
+    setDatosNaturalForm({
+      nombre: '',
+      primer_apellido: '',
+      segundo_apellido: '',
+      carnet_identidad: '',
+      codigo_expediente: '',
+      numero_registro: '',
+      catalogo: '',
+      es_trabajador: false,
+      ocupacion: '',
+      centro_trabajo: '',
+      correo_trabajo: '',
+      direccion_trabajo: '',
+      telefono_trabajo: '',
+      en_baja: false,
+      fecha_baja: '',
+      vigencia: ''
     });
-    setDatosTCP({
-      nombre: '', primer_apellido: '', segundo_apellido: '',
-      direccion: '', numero_registro_proyecto: '', fecha_aprobacion: ''
+    setDatosJuridicaForm({
+      codigo_reup: '',
+      id_tipo_entidad: undefined
+    });
+    setDatosTCPForm({
+      nombre: '',
+      primer_apellido: '',
+      segundo_apellido: '',
+      direccion: '',
+      numero_registro_proyecto: '',
+      fecha_aprobacion: ''
     });
     setCuentas([]);
     setNuevaCuenta({ titular: '', banco: '', sucursal: 0, direccion: '' });
@@ -248,21 +302,59 @@ export function ClientesPage() {
     setFormErrors({});
   };
 
+  const handleViewDetails = async (cliente: Cliente) => {
+    setViewingCliente(cliente);
+    
+    // Cargar datos específicos según tipo de persona
+    try {
+      if (cliente.tipo_persona === 'NATURAL') {
+        const data = await clienteNaturalService.getClienteNatural(cliente.id_cliente);
+        setDatosNatural(data);
+        setDatosJuridica(null);
+        setDatosTCP(null);
+      } else if (cliente.tipo_persona === 'JURIDICA') {
+        const data = await clienteJuridicaService.getClienteJuridica(cliente.id_cliente);
+        setDatosJuridica(data);
+        setDatosNatural(null);
+        setDatosTCP(null);
+      } else if (cliente.tipo_persona === 'TCP') {
+        const data = await clienteTCPService.getClienteTCP(cliente.id_cliente);
+        setDatosTCP(data);
+        setDatosNatural(null);
+        setDatosJuridica(null);
+      }
+      
+      // Cargar cuentas
+      const cuentasData = await cuentasService.getCuentasByCliente(cliente.id_cliente);
+      setCuentasCliente(cuentasData);
+      
+      setView('detail');
+    } catch (error) {
+      toast.error('Error al cargar detalles del cliente');
+    }
+  };
+
   const handleEdit = (cliente: Cliente) => {
     setEditingCliente(cliente);
     setFormData({
-      nombre: cliente.nombre,
+      numero_cliente: cliente.numero_cliente || '',
+      nombre: cliente.nombre || '',
+      tipo_persona: cliente.tipo_persona || 'NATURAL',
+      cedula_rif: cliente.cedula_rif || '',
       telefono: cliente.telefono || '',
       email: cliente.email || '',
-      cedula_rif: cliente.cedula_rif || '',
-      direccion: cliente.direccion || '',
-      activo: cliente.activo,
       fax: cliente.fax || '',
       web: cliente.web || '',
-      numero_cliente: cliente.numero_cliente || '',
+      id_provincia: cliente.id_provincia,
+      id_municipio: cliente.id_municipio,
       codigo_postal: cliente.codigo_postal || '',
-      nit: cliente.nit || ''
+      direccion: cliente.direccion || '',
+      tipo_relacion: cliente.tipo_relacion || 'CLIENTE',
+      estado: cliente.estado || 'ACTIVO',
+      fecha_registro: cliente.fecha_registro || new Date().toISOString().split('T')[0],
+      activo: cliente.activo
     });
+    setTipoPersona(cliente.tipo_persona || 'NATURAL');
     setView('form');
   };
 
@@ -383,10 +475,6 @@ export function ClientesPage() {
                 <Label>Código Postal</Label>
                 <Input value={formData.codigo_postal} onChange={(e) => setFormData({ ...formData, codigo_postal: e.target.value })} />
               </div>
-              <div>
-                <Label>NIT</Label>
-                <Input value={formData.nit} onChange={(e) => setFormData({ ...formData, nit: e.target.value })} />
-              </div>
               <div className="md:col-span-3">
                 <Label>Dirección</Label>
                 <Input value={formData.direccion} onChange={(e) => setFormData({ ...formData, direccion: e.target.value })} />
@@ -396,12 +484,24 @@ export function ClientesPage() {
                 <select
                   aria-label="Tipo de Relación"
                   value={formData.tipo_relacion || 'CLIENTE'}
-                  onChange={(e) => setFormData({ ...formData, tipo_relacion: e.target.value })}
+                  onChange={(e) => setFormData({ ...formData, tipo_relacion: e.target.value as TipoRelacion })}
                   className="w-full mt-1 px-3 py-2 border rounded-lg"
                 >
                   <option value="CLIENTE">Cliente (solo compra)</option>
-                  <option value="PRODUCTOR">Productor (solo vende)</option>
-                  <option value="AMBOS">Cliente y Productor</option>
+                  <option value="PROVEEDOR">Proveedor (solo vende)</option>
+                  <option value="AMBAS">Cliente y Proveedor</option>
+                </select>
+              </div>
+              <div>
+                <Label>Estado</Label>
+                <select
+                  aria-label="Estado"
+                  value={formData.estado || 'ACTIVO'}
+                  onChange={(e) => setFormData({ ...formData, estado: e.target.value as EstadoCliente })}
+                  className="w-full mt-1 px-3 py-2 border rounded-lg"
+                >
+                  <option value="ACTIVO">Activo</option>
+                  <option value="INACTIVO">Inactivo</option>
                 </select>
               </div>
               <div className="flex items-center gap-2">
@@ -418,60 +518,64 @@ export function ClientesPage() {
           </Card>
 
           {/* Datos según tipo de persona */}
-          {(tipoPersona === 'NATURAL' || tipoPersona === 'JURIDICA') && (
+          {tipoPersona === 'NATURAL' && (
             <Card className="mb-6">
               <CardHeader>
-                <CardTitle>{tipoPersona === 'NATURAL' ? 'Datos Persona Natural' : 'Datos Persona Jurídica'}</CardTitle>
+                <CardTitle>Datos Persona Natural</CardTitle>
               </CardHeader>
               <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {tipoPersona === 'NATURAL' ? (
+                <div><Label>Nombre</Label><Input value={datosNaturalForm.nombre} onChange={(e) => setDatosNaturalForm({...datosNaturalForm, nombre: e.target.value})} /></div>
+                <div><Label>Primer Apellido</Label><Input value={datosNaturalForm.primer_apellido} onChange={(e) => setDatosNaturalForm({...datosNaturalForm, primer_apellido: e.target.value})} /></div>
+                <div><Label>Segundo Apellido</Label><Input value={datosNaturalForm.segundo_apellido} onChange={(e) => setDatosNaturalForm({...datosNaturalForm, segundo_apellido: e.target.value})} /></div>
+                <div><Label>Carnet de Identidad</Label><Input value={datosNaturalForm.carnet_identidad} onChange={(e) => setDatosNaturalForm({...datosNaturalForm, carnet_identidad: e.target.value})} /></div>
+                <div><Label>Código Expediente</Label><Input value={datosNaturalForm.codigo_expediente} onChange={(e) => setDatosNaturalForm({...datosNaturalForm, codigo_expediente: e.target.value})} /></div>
+                <div><Label># de Registro</Label><Input value={datosNaturalForm.numero_registro} onChange={(e) => setDatosNaturalForm({...datosNaturalForm, numero_registro: e.target.value})} /></div>
+                <div><Label>Catálogo</Label><Input value={datosNaturalForm.catalogo} onChange={(e) => setDatosNaturalForm({...datosNaturalForm, catalogo: e.target.value})} /></div>
+                <div className="flex items-center gap-2">
+                  <input type="checkbox" aria-label="Es trabajador" checked={datosNaturalForm.es_trabajador} onChange={(e) => setDatosNaturalForm({...datosNaturalForm, es_trabajador: e.target.checked})} />
+                  <Label className="mb-0">¿Es trabajador?</Label>
+                </div>
+                {datosNaturalForm.es_trabajador && (
                   <>
-                    <div><Label>Código Expediente</Label><Input value={datosNatural.codigo_expediente} onChange={(e) => setDatosNatural({...datosNatural, codigo_expediente: e.target.value})} /></div>
-                    <div><Label># de Registro</Label><Input value={datosNatural.numero_registro} onChange={(e) => setDatosNatural({...datosNatural, numero_registro: e.target.value})} /></div>
-                    <div><Label>Carnet de Identidad</Label><Input value={datosNatural.carnet_identidad} onChange={(e) => setDatosNatural({...datosNatural, carnet_identidad: e.target.value})} /></div>
-                    <div className="flex items-center gap-2">
-                      <input type="checkbox" aria-label="Es trabajador" checked={datosNatural.es_trabajador} onChange={(e) => setDatosNatural({...datosNatural, es_trabajador: e.target.checked})} />
-                      <Label className="mb-0">¿Es trabajador?</Label>
-                    </div>
-                    {datosNatural.es_trabajador && (
-                      <>
-                        <div><Label>Ocupación</Label><Input value={datosNatural.ocupacion} onChange={(e) => setDatosNatural({...datosNatural, ocupacion: e.target.value})} /></div>
-                        <div><Label>Centro Laboral</Label><Input value={datosNatural.centro_laboral} onChange={(e) => setDatosNatural({...datosNatural, centro_laboral: e.target.value})} /></div>
-                        <div><Label>Centro de Trabajo</Label><Input value={datosNatural.centro_trabajo} onChange={(e) => setDatosNatural({...datosNatural, centro_trabajo: e.target.value})} /></div>
-                        <div><Label>Correo Trabajo</Label><Input type="email" value={datosNatural.correo_trabajo} onChange={(e) => setDatosNatural({...datosNatural, correo_trabajo: e.target.value})} /></div>
-                        <div><Label>Dirección Trabajo</Label><Input value={datosNatural.direccion_trabajo} onChange={(e) => setDatosNatural({...datosNatural, direccion_trabajo: e.target.value})} /></div>
-                        <div><Label>Teléfono Trabajo</Label><Input value={datosNatural.telefono_trabajo} onChange={(e) => setDatosNatural({...datosNatural, telefono_trabajo: e.target.value})} /></div>
-                      </>
-                    )}
-                    <div><Label>Catálogo</Label><Input value={datosNatural.catalogo} onChange={(e) => setDatosNatural({...datosNatural, catalogo: e.target.value})} /></div>
-                    <div className="flex items-center gap-2">
-                      <input type="checkbox" aria-label="En baja" checked={datosNatural.baja} onChange={(e) => setDatosNatural({...datosNatural, baja: e.target.checked})} />
-                      <Label className="mb-0">¿En baja?</Label>
-                    </div>
-                    {datosNatural.baja && (
-                      <>
-                        <div><Label>Fecha de Baja</Label><Input type="date" value={datosNatural.fecha_baja} onChange={(e) => setDatosNatural({...datosNatural, fecha_baja: e.target.value})} /></div>
-                      </>
-                    )}
-                    <div><Label>Vigencia</Label><Input type="date" value={datosNatural.vigencia} onChange={(e) => setDatosNatural({...datosNatural, vigencia: e.target.value})} /></div>
-                  </>
-                ) : (
-                  <>
-                    <div><Label>Código REEUP (XXX.XX.XXXXX)</Label><Input value={datosNatural.codigo_reeup} onChange={(e) => setDatosNatural({...datosNatural, codigo_reeup: e.target.value})} placeholder="123.45.67890" /></div>
-                    <div>
-                      <Label>Tipo de Entidad</Label>
-                      <select
-                        aria-label="Tipo de Entidad"
-                        value={datosNatural.id_tipo_entidad || ''}
-                        onChange={(e) => setDatosNatural({...datosNatural, id_tipo_entidad: e.target.value ? parseInt(e.target.value) : undefined})}
-                        className="w-full mt-1 px-3 py-2 border rounded-lg"
-                      >
-                        <option value="">Seleccione tipo</option>
-                        {tiposEntidad.map((t) => <option key={t.id_tipo_entidad} value={t.id_tipo_entidad}>{t.nombre}</option>)}
-                      </select>
-                    </div>
+                    <div><Label>Ocupación</Label><Input value={datosNaturalForm.ocupacion} onChange={(e) => setDatosNaturalForm({...datosNaturalForm, ocupacion: e.target.value})} /></div>
+                    <div><Label>Centro de Trabajo</Label><Input value={datosNaturalForm.centro_trabajo} onChange={(e) => setDatosNaturalForm({...datosNaturalForm, centro_trabajo: e.target.value})} /></div>
+                    <div><Label>Correo Trabajo</Label><Input type="email" value={datosNaturalForm.correo_trabajo} onChange={(e) => setDatosNaturalForm({...datosNaturalForm, correo_trabajo: e.target.value})} /></div>
+                    <div><Label>Dirección Trabajo</Label><Input value={datosNaturalForm.direccion_trabajo} onChange={(e) => setDatosNaturalForm({...datosNaturalForm, direccion_trabajo: e.target.value})} /></div>
+                    <div><Label>Teléfono Trabajo</Label><Input value={datosNaturalForm.telefono_trabajo} onChange={(e) => setDatosNaturalForm({...datosNaturalForm, telefono_trabajo: e.target.value})} /></div>
+                    <div><Label>Vigencia</Label><Input type="date" value={datosNaturalForm.vigencia} onChange={(e) => setDatosNaturalForm({...datosNaturalForm, vigencia: e.target.value})} /></div>
                   </>
                 )}
+                <div className="flex items-center gap-2">
+                  <input type="checkbox" aria-label="En baja" checked={datosNaturalForm.en_baja} onChange={(e) => setDatosNaturalForm({...datosNaturalForm, en_baja: e.target.checked})} />
+                  <Label className="mb-0">¿En baja?</Label>
+                </div>
+                {datosNaturalForm.en_baja && (
+                  <div><Label>Fecha de Baja</Label><Input type="date" value={datosNaturalForm.fecha_baja} onChange={(e) => setDatosNaturalForm({...datosNaturalForm, fecha_baja: e.target.value})} /></div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Datos Persona Jurídica */}
+          {tipoPersona === 'JURIDICA' && (
+            <Card className="mb-6">
+              <CardHeader>
+                <CardTitle>Datos Persona Jurídica</CardTitle>
+              </CardHeader>
+              <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div><Label>Código REUP</Label><Input value={datosJuridicaForm.codigo_reup} onChange={(e) => setDatosJuridicaForm({...datosJuridicaForm, codigo_reup: e.target.value})} placeholder="123.45.67890" /></div>
+                <div>
+                  <Label>Tipo de Entidad</Label>
+                  <select
+                    aria-label="Tipo de Entidad"
+                    value={datosJuridicaForm.id_tipo_entidad || ''}
+                    onChange={(e) => setDatosJuridicaForm({...datosJuridicaForm, id_tipo_entidad: e.target.value ? parseInt(e.target.value) : undefined})}
+                    className="w-full mt-1 px-3 py-2 border rounded-lg"
+                  >
+                    <option value="">Seleccione tipo</option>
+                    {tiposEntidad.map((t) => <option key={t.id_tipo_entidad} value={t.id_tipo_entidad}>{t.nombre}</option>)}
+                  </select>
+                </div>
               </CardContent>
             </Card>
           )}
@@ -486,17 +590,17 @@ export function ClientesPage() {
                 <div className="md:col-span-2">
                   <Label>Nombre del Líder *</Label>
                   <Input
-                    value={datosTCP.nombre}
-                    onChange={(e) => setDatosTCP({...datosTCP, nombre: e.target.value})}
+                    value={datosTCPForm.nombre}
+                    onChange={(e) => setDatosTCPForm({...datosTCPForm, nombre: e.target.value})}
                     className={formErrors.tcp_nombre ? 'border-red-500' : ''}
                   />
                   {formErrors.tcp_nombre && <p className="text-red-500 text-sm">{formErrors.tcp_nombre}</p>}
                 </div>
-                <div><Label>Primer Apellido</Label><Input value={datosTCP.primer_apellido} onChange={(e) => setDatosTCP({...datosTCP, primer_apellido: e.target.value})} /></div>
-                <div><Label>Segundo Apellido</Label><Input value={datosTCP.segundo_apellido} onChange={(e) => setDatosTCP({...datosTCP, segundo_apellido: e.target.value})} /></div>
-                <div className="md:col-span-2"><Label>Dirección</Label><Input value={datosTCP.direccion} onChange={(e) => setDatosTCP({...datosTCP, direccion: e.target.value})} /></div>
-                <div><Label># de Registro del Proyecto</Label><Input value={datosTCP.numero_registro_proyecto} onChange={(e) => setDatosTCP({...datosTCP, numero_registro_proyecto: e.target.value})} /></div>
-                <div><Label>Fecha de Aprobación</Label><Input type="date" value={datosTCP.fecha_aprobacion} onChange={(e) => setDatosTCP({...datosTCP, fecha_aprobacion: e.target.value})} /></div>
+                <div><Label>Primer Apellido</Label><Input value={datosTCPForm.primer_apellido} onChange={(e) => setDatosTCPForm({...datosTCPForm, primer_apellido: e.target.value})} /></div>
+                <div><Label>Segundo Apellido</Label><Input value={datosTCPForm.segundo_apellido} onChange={(e) => setDatosTCPForm({...datosTCPForm, segundo_apellido: e.target.value})} /></div>
+                <div className="md:col-span-2"><Label>Dirección</Label><Input value={datosTCPForm.direccion} onChange={(e) => setDatosTCPForm({...datosTCPForm, direccion: e.target.value})} /></div>
+                <div><Label># de Registro del Proyecto</Label><Input value={datosTCPForm.numero_registro_proyecto} onChange={(e) => setDatosTCPForm({...datosTCPForm, numero_registro_proyecto: e.target.value})} /></div>
+                <div><Label>Fecha de Aprobación</Label><Input type="date" value={datosTCPForm.fecha_aprobacion} onChange={(e) => setDatosTCPForm({...datosTCPForm, fecha_aprobacion: e.target.value})} /></div>
               </CardContent>
             </Card>
           )}
@@ -545,6 +649,136 @@ export function ClientesPage() {
     );
   }
 
+  // VISTA: DETALLES
+  if (view === 'detail' && viewingCliente) {
+    return (
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <h1 className="text-2xl font-bold text-gray-900">Detalles del Cliente</h1>
+          <Button variant="secondary" onClick={() => { setView('list'); setViewingCliente(null); }}>
+            <ArrowLeft className="h-4 w-4 mr-2" />Volver
+          </Button>
+        </div>
+
+        {/* Información General */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Información General</CardTitle>
+          </CardHeader>
+          <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div><Label># Cliente</Label><p className="font-medium">{viewingCliente.numero_cliente || 'N/A'}</p></div>
+            <div><Label>Nombre</Label><p className="font-medium">{viewingCliente.nombre}</p></div>
+            <div><Label>Cédula/RIF</Label><p className="font-medium">{viewingCliente.cedula_rif || 'N/A'}</p></div>
+            <div><Label>Tipo Persona</Label><p className="font-medium">{viewingCliente.tipo_persona}</p></div>
+            <div><Label>Tipo Relación</Label><p className="font-medium">{viewingCliente.tipo_relacion}</p></div>
+            <div><Label>Estado</Label><p className="font-medium">{viewingCliente.estado}</p></div>
+            <div><Label>Teléfono</Label><p className="font-medium">{viewingCliente.telefono || 'N/A'}</p></div>
+            <div><Label>Email</Label><p className="font-medium">{viewingCliente.email || 'N/A'}</p></div>
+            <div><Label>Fax</Label><p className="font-medium">{viewingCliente.fax || 'N/A'}</p></div>
+            <div><Label>Web</Label><p className="font-medium">{viewingCliente.web || 'N/A'}</p></div>
+            <div><Label>Código Postal</Label><p className="font-medium">{viewingCliente.codigo_postal || 'N/A'}</p></div>
+            <div><Label>Fecha Registro</Label><p className="font-medium">{viewingCliente.fecha_registro}</p></div>
+            <div className="md:col-span-3"><Label>Dirección</Label><p className="font-medium">{viewingCliente.direccion}</p></div>
+          </CardContent>
+        </Card>
+
+        {/* Datos según tipo de persona */}
+        {viewingCliente.tipo_persona === 'NATURAL' && datosNatural && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Datos Persona Natural</CardTitle>
+            </CardHeader>
+            <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div><Label>Nombre</Label><p className="font-medium">{datosNatural.nombre || 'N/A'}</p></div>
+              <div><Label>Primer Apellido</Label><p className="font-medium">{datosNatural.primer_apellido || 'N/A'}</p></div>
+              <div><Label>Segundo Apellido</Label><p className="font-medium">{datosNatural.segundo_apellido || 'N/A'}</p></div>
+              <div><Label>Carnet de Identidad</Label><p className="font-medium">{datosNatural.carnet_identidad || 'N/A'}</p></div>
+              <div><Label>Código Expediente</Label><p className="font-medium">{datosNatural.codigo_expediente || 'N/A'}</p></div>
+              <div><Label>Número de Registro</Label><p className="font-medium">{datosNatural.numero_registro || 'N/A'}</p></div>
+              <div><Label>Catálogo</Label><p className="font-medium">{datosNatural.catalogo || 'N/A'}</p></div>
+              <div><Label>¿Es Trabajador?</Label><p className="font-medium">{datosNatural.es_trabajador ? 'Sí' : 'No'}</p></div>
+              {datosNatural.es_trabajador && (
+                <>
+                  <div><Label>Ocupación</Label><p className="font-medium">{datosNatural.ocupacion || 'N/A'}</p></div>
+                  <div><Label>Centro de Trabajo</Label><p className="font-medium">{datosNatural.centro_trabajo || 'N/A'}</p></div>
+                  <div><Label>Correo Trabajo</Label><p className="font-medium">{datosNatural.correo_trabajo || 'N/A'}</p></div>
+                  <div><Label>Dirección Trabajo</Label><p className="font-medium">{datosNatural.direccion_trabajo || 'N/A'}</p></div>
+                  <div><Label>Teléfono Trabajo</Label><p className="font-medium">{datosNatural.telefono_trabajo || 'N/A'}</p></div>
+                  <div><Label>Vigencia</Label><p className="font-medium">{datosNatural.vigencia || 'N/A'}</p></div>
+                </>
+              )}
+              <div><Label>¿En Baja?</Label><p className="font-medium">{datosNatural.en_baja ? 'Sí' : 'No'}</p></div>
+              {datosNatural.en_baja && (
+                <div><Label>Fecha de Baja</Label><p className="font-medium">{datosNatural.fecha_baja || 'N/A'}</p></div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {viewingCliente.tipo_persona === 'JURIDICA' && datosJuridica && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Datos Persona Jurídica</CardTitle>
+            </CardHeader>
+            <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div><Label>Código REUP</Label><p className="font-medium">{datosJuridica.codigo_reup || 'N/A'}</p></div>
+              <div><Label>Tipo de Entidad</Label><p className="font-medium">{tiposEntidad.find(t => t.id_tipo_entidad === datosJuridica.id_tipo_entidad)?.nombre || 'N/A'}</p></div>
+            </CardContent>
+          </Card>
+        )}
+
+        {viewingCliente.tipo_persona === 'TCP' && datosTCP && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Datos TCP</CardTitle>
+            </CardHeader>
+            <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div><Label>Nombre</Label><p className="font-medium">{datosTCP.nombre || 'N/A'}</p></div>
+              <div><Label>Primer Apellido</Label><p className="font-medium">{datosTCP.primer_apellido || 'N/A'}</p></div>
+              <div><Label>Segundo Apellido</Label><p className="font-medium">{datosTCP.segundo_apellido || 'N/A'}</p></div>
+              <div className="md:col-span-2"><Label>Dirección</Label><p className="font-medium">{datosTCP.direccion || 'N/A'}</p></div>
+              <div><Label># Registro Proyecto</Label><p className="font-medium">{datosTCP.numero_registro_proyecto || 'N/A'}</p></div>
+              <div><Label>Fecha Aprobación</Label><p className="font-medium">{datosTCP.fecha_aprobacion || 'N/A'}</p></div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Cuentas Bancarias */}
+        {cuentasCliente.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Cuentas Bancarias</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Titular</TableHead>
+                    <TableHead>Banco</TableHead>
+                    <TableHead>Sucursal</TableHead>
+                    <TableHead>Número Cuenta</TableHead>
+                    <TableHead>Dirección</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {cuentasCliente.map((cuenta) => (
+                    <TableRow key={cuenta.id_cuenta}>
+                      <TableCell>{cuenta.titular}</TableCell>
+                      <TableCell>{cuenta.banco}</TableCell>
+                      <TableCell>{cuenta.sucursal}</TableCell>
+                      <TableCell>{cuenta.numero_cuenta || 'N/A'}</TableCell>
+                      <TableCell>{cuenta.direccion}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        )}
+      </div>
+    );
+  }
+
   // VISTA: LISTA
   return (
     <div className="space-y-6">
@@ -581,6 +815,7 @@ export function ClientesPage() {
                 {cliente.email && <p className="flex items-center gap-2"><Mail className="h-3 w-3" /> {cliente.email}</p>}
               </div>
               <div className="mt-4 flex gap-2">
+                <Button variant="outline" size="sm" onClick={() => handleViewDetails(cliente)}><Eye className="h-4 w-4" /></Button>
                 <Button variant="outline" size="sm" onClick={() => handleEdit(cliente)}><Edit className="h-4 w-4" /></Button>
                 <Button variant="outline" size="sm" onClick={() => handleDelete(cliente)}><Trash2 className="h-4 w-4 text-red-600" /></Button>
               </div>

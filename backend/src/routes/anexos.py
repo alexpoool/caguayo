@@ -15,7 +15,7 @@ from src.models import (
 )
 from src.dto.convenios_dto import AnexoRead, AnexoCreate, AnexoProductoCreate
 from src.dto import DependenciaRead
-from sqlmodel import select
+from sqlmodel import select, func
 
 router = APIRouter(prefix="/anexos", tags=["anexos"], redirect_slashes=False)
 
@@ -25,7 +25,7 @@ async def listar_anexos(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=1000),
     convenio_id: int = Query(None, description="Filtrar por convenio"),
-    search: str = Query(None, description="Buscar por nombre o número"),
+    search: str = Query(None, description="Buscar por nombre o código"),
     db: AsyncSession = Depends(get_session),
 ):
     """Listar anexos con opción de búsqueda y filtro por convenio."""
@@ -40,12 +40,12 @@ async def listar_anexos(
     if search:
         statement = statement.where(
             (Anexo.nombre_anexo.ilike(f"%{search}%"))
-            | (Anexo.numero_anexo.ilike(f"%{search}%"))
+            | (Anexo.codigo_anexo.ilike(f"%{search}%"))
         )
     statement = statement.offset(skip).limit(limit)
     results = await db.exec(statement)
     anexos = results.all()
-    return [AnexoRead.from_orm(a) for a in anexos]
+    return [AnexoRead.model_validate(a) for a in anexos]
 
 
 @router.get("/{anexo_id}", response_model=AnexoRead)
@@ -59,7 +59,7 @@ async def obtener_anexo(
     anexo = results.first()
     if not anexo:
         raise HTTPException(status_code=404, detail="Anexo no encontrado")
-    return AnexoRead.from_orm(anexo)
+    return AnexoRead.model_validate(anexo)
 
 
 @router.post("", status_code=201)
@@ -82,13 +82,25 @@ async def crear_anexo(
             Convenio.id_convenio == datos.id_convenio
         )
         result_conv = await db.exec(stmt_convenio)
-        convenio = result_conv.first()
+        conveni = result_conv.first()
 
-        if not convenio:
+        if not conveni:
             raise HTTPException(status_code=400, detail="Convenio no encontrado")
 
-        if datetime.now().date() > convenio.vigencia:
+        if datetime.now().date() > conveni.vigencia:
             raise HTTPException(status_code=400, detail="El convenio no está vigente")
+
+        count_statement = select(func.count(Anexo.id_anexo)).where(
+            Anexo.id_convenio == datos.id_convenio
+        )
+        count_result = await db.exec(count_statement)
+        total_anexos = count_result.one()
+        
+        numero_anexo = total_anexos + 1
+        codigo_convenio = conveni.codigo_convenio or str(conveni.id_convenio)
+        codigo_anexo = f"{codigo_convenio}.{numero_anexo}"
+        
+        datos_dict["codigo_anexo"] = codigo_anexo
 
         db_anexo = Anexo(**datos_dict)
         db.add(db_anexo)
@@ -125,7 +137,7 @@ async def crear_anexo(
                 id_dependencia=1,
                 id_anexo=db_anexo.id_anexo,
                 id_convenio=db_anexo.id_convenio,
-                id_cliente=convenio.id_cliente,
+                id_cliente=conveni.id_cliente,
                 id_producto=prod["id_producto"],
                 cantidad=prod["cantidad"],
                 fecha=datetime.utcnow(),
@@ -161,13 +173,13 @@ async def crear_anexo(
 
         return {
             "id_anexo": db_anexo.id_anexo,
+            "codigo_anexo": db_anexo.codigo_anexo,
             "id_convenio": db_anexo.id_convenio,
             "nombre_anexo": db_anexo.nombre_anexo,
             "fecha": str(db_anexo.fecha),
-            "numero_anexo": db_anexo.numero_anexo,
+            "id_moneda": db_anexo.id_moneda,
             "id_dependencia": db_anexo.id_dependencia,
             "comision": float(db_anexo.comision) if db_anexo.comision else None,
-            "id_producto": db_anexo.id_producto,
             "movimientos": movimientos_creados,
         }
     except HTTPException:
@@ -200,13 +212,13 @@ async def actualizar_anexo(
     await db.refresh(db_anexo)
     return {
         "id_anexo": db_anexo.id_anexo,
+        "codigo_anexo": db_anexo.codigo_anexo,
         "id_convenio": db_anexo.id_convenio,
         "nombre_anexo": db_anexo.nombre_anexo,
         "fecha": str(db_anexo.fecha),
-        "numero_anexo": db_anexo.numero_anexo,
+        "id_moneda": db_anexo.id_moneda,
         "id_dependencia": db_anexo.id_dependencia,
         "comision": float(db_anexo.comision) if db_anexo.comision else None,
-        "id_producto": db_anexo.id_producto,
     }
 
 

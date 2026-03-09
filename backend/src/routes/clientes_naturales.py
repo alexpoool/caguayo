@@ -1,84 +1,71 @@
-from typing import List
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel.ext.asyncio.session import AsyncSession
 from src.database.connection import get_session
-from src.models import ClienteNatural
-from sqlmodel import select
+from src.services.cliente_service import ClienteNaturalService
+from src.dto import ClienteNaturalCreate, ClienteNaturalRead, ClienteNaturalUpdate
 
 router = APIRouter(
-    prefix="/clientes-naturales", tags=["clientes-naturales"], redirect_slashes=False
+    prefix="/clientes/natural", tags=["clientes-naturales"], redirect_slashes=False
 )
 
 
-@router.post("", status_code=201)
+@router.post("/{cliente_id}", response_model=ClienteNaturalRead, status_code=201)
 async def crear_cliente_natural(
-    datos: dict,
+    cliente_id: int,
+    cliente_natural: ClienteNaturalCreate,
     db: AsyncSession = Depends(get_session),
 ):
-    """Crear datos de persona natural."""
+    """Crear datos de persona natural para un cliente."""
+    cliente_natural.id_cliente = cliente_id
     try:
-        db_natural = ClienteNatural(**datos)
-        db.add(db_natural)
-        await db.commit()
-        await db.refresh(db_natural)
-        return {
-            "id_cliente_natural": db_natural.id_cliente_natural,
-            "id_cliente": db_natural.id_cliente,
-        }
+        return await ClienteNaturalService.create(db, cliente_natural)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error al crear: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Error al crear cliente natural: {str(e)}"
+        )
 
 
-@router.get("/by-cliente/{id_cliente}")
-async def obtener_por_cliente(
-    id_cliente: int,
+@router.get("/{cliente_id}", response_model=ClienteNaturalRead)
+async def obtener_cliente_natural(
+    cliente_id: int,
     db: AsyncSession = Depends(get_session),
 ):
-    """Obtener datos de persona natural por ID de cliente."""
-    statement = select(ClienteNatural).where(ClienteNatural.id_cliente == id_cliente)
-    results = await db.exec(statement)
-    natural = results.first()
-    if not natural:
-        return None
-    return {
-        "id_cliente_natural": natural.id_cliente_natural,
-        "id_cliente": natural.id_cliente,
-        "codigo_expediente": natural.codigo_expediente,
-        "numero_registro": natural.numero_registro,
-        "carnet_identidad": natural.carnet_identidad,
-        "es_trabajador": natural.es_trabajador,
-        "ocupacion": natural.ocupacion,
-        "centro_laboral": natural.centro_laboral,
-        "centro_trabajo": natural.centro_trabajo,
-        "correo_trabajo": natural.correo_trabajo,
-        "direccion_trabajo": natural.direccion_trabajo,
-        "telefono_trabajo": natural.telefono_trabajo,
-        "catalogo": natural.catalogo,
-        "baja": natural.baja,
-        "fecha_baja": str(natural.fecha_baja) if natural.fecha_baja else None,
-        "vigencia": str(natural.vigencia) if natural.vigencia else None,
-        "codigo_reeup": natural.codigo_reeup,
-        "id_tipo_entidad": natural.id_tipo_entidad,
-    }
+    """Obtener datos de persona natural de un cliente."""
+    cliente = await ClienteNaturalService.get(db, cliente_id)
+    if not cliente:
+        raise HTTPException(status_code=404, detail="Cliente natural no encontrado")
+    return cliente
 
 
-@router.put("/{id}")
+@router.put("/{cliente_id}", response_model=ClienteNaturalRead)
 async def actualizar_cliente_natural(
-    id: int,
-    datos: dict,
+    cliente_id: int,
+    update_data: ClienteNaturalUpdate,
     db: AsyncSession = Depends(get_session),
 ):
-    """Actualizar datos de persona natural."""
-    statement = select(ClienteNatural).where(ClienteNatural.id_cliente_natural == id)
-    results = await db.exec(statement)
-    db_natural = results.first()
-    if not db_natural:
-        raise HTTPException(status_code=404, detail="No encontrado")
+    """Actualizar datos de persona natural de un cliente."""
+    try:
+        cliente = await ClienteNaturalService.update(db, cliente_id, update_data)
+        if not cliente:
+            raise HTTPException(status_code=404, detail="Cliente natural no encontrado")
+        return cliente
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Error al actualizar cliente natural: {str(e)}"
+        )
 
-    for key, value in datos.items():
-        if value is not None:
-            setattr(db_natural, key, value)
 
-    await db.commit()
-    await db.refresh(db_natural)
-    return {"id_cliente_natural": db_natural.id_cliente_natural}
+@router.delete("/{cliente_id}", status_code=204)
+async def eliminar_cliente_natural(
+    cliente_id: int,
+    db: AsyncSession = Depends(get_session),
+):
+    """Eliminar datos de persona natural de un cliente."""
+    try:
+        success = await ClienteNaturalService.delete(db, cliente_id)
+        if not success:
+            raise HTTPException(status_code=404, detail="Cliente natural no encontrado")
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Error al eliminar cliente natural: {str(e)}"
+        )
