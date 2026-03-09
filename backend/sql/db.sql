@@ -154,6 +154,15 @@ CREATE TABLE tipo_convenio (
     descripcion TEXT
 );
 
+CREATE TABLE convenio (
+    id_convenio SERIAL PRIMARY KEY,
+    id_tipo_convenio INTEGER NOT NULL REFERENCES tipo_convenio(id_tipo_convenio) ON DELETE CASCADE,
+    id_provedor INTEGER NOT NULL REFERENCES provedores(id_provedores) ON DELETE CASCADE,
+    vigencia INTEGER NOT NULL,
+    fecha DATE NOT NULL,
+    nombre_convenio VARCHAR(200) NOT NULL
+);
+
 CREATE TABLE productos (
     id_producto SERIAL PRIMARY KEY,
     codigo VARCHAR(50) UNIQUE,
