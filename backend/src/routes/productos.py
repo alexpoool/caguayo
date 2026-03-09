@@ -1,0 +1,124 @@
+from fastapi import APIRouter, Depends, HTTPException
+from sqlmodel.ext.asyncio.session import AsyncSession
+from typing import List
+import logging
+from src.database.connection import get_session
+from src.services import ProductosService
+from src.services.movimiento_service import MovimientoService
+from src.dto import ProductosCreate, ProductosRead, ProductosUpdate
+
+router = APIRouter(prefix="/productos", tags=["productos"])
+logger = logging.getLogger(__name__)
+
+
+@router.post("", response_model=ProductosRead)
+async def create_producto(
+    producto: ProductosCreate, db: AsyncSession = Depends(get_session)
+):
+    try:
+        return await ProductosService.create_producto(db, producto)
+    except Exception as e:
+        error_msg = str(e)
+        if "IntegrityError" in type(e).__name__ or "violates" in error_msg:
+            logger.error(f"Integrity Error creating product: {e}")
+            raise HTTPException(
+                status_code=400,
+                detail="Error de datos: Verifique que la subcategoría y monedas seleccionadas existan.",
+            )
+        logger.error(f"Error creating product: {e}")
+        raise HTTPException(status_code=400, detail=error_msg)
+
+
+@router.get("", response_model=List[ProductosRead])
+async def read_productos(
+    skip: int = 0,
+    limit: int = 100,
+    search: str = None,
+    db: AsyncSession = Depends(get_session),
+):
+    return await ProductosService.get_productos(
+        db, skip=skip, limit=limit, search=search
+    )
+
+
+@router.get("/search/{nombre}", response_model=List[ProductosRead])
+async def search_productos(nombre: str, db: AsyncSession = Depends(get_session)):
+    return await ProductosService.search_productos(db, nombre=nombre)
+
+
+@router.get("/{producto_id}", response_model=ProductosRead)
+async def read_producto(producto_id: int, db: AsyncSession = Depends(get_session)):
+    producto = await ProductosService.get_producto(db, producto_id)
+    if not producto:
+        raise HTTPException(status_code=404, detail="Producto no encontrado")
+    return producto
+
+
+@router.put("/{producto_id}", response_model=ProductosRead)
+async def update_producto(
+    producto_id: int, producto: ProductosUpdate, db: AsyncSession = Depends(get_session)
+):
+    updated_producto = await ProductosService.update_producto(db, producto_id, producto)
+    if not updated_producto:
+        raise HTTPException(status_code=404, detail="Producto no encontrado")
+    return updated_producto
+
+
+@router.delete("/{producto_id}")
+async def delete_producto(producto_id: int, db: AsyncSession = Depends(get_session)):
+    try:
+        deleted = await ProductosService.delete_producto(db, producto_id)
+        if not deleted:
+            raise HTTPException(status_code=404, detail="Producto no encontrado")
+        return {"message": "Producto eliminado correctamente"}
+    except Exception as e:
+        error_msg = str(e)
+        if (
+            "IntegrityError" in type(e).__name__
+            or "violates foreign key constraint" in error_msg
+        ):
+            logger.error(f"Integrity Error deleting product: {e}")
+            raise HTTPException(
+                status_code=400,
+                detail="No se puede eliminar el producto porque tiene ventas o movimientos asociados.",
+            )
+        logger.error(f"Error deleting product: {e}")
+        raise HTTPException(status_code=500, detail=error_msg)
+
+
+@router.get("/anexo/{anexo_id}")
+async def get_productos_by_anexo(
+    anexo_id: int,
+    db: AsyncSession = Depends(get_session),
+):
+    """Obtener productos disponibles en un anexo específico.
+
+    Retorna productos únicos con su cantidad total disponible en ese anexo.
+    """
+    try:
+        productos = await MovimientoService.get_productos_by_anexo(db, anexo_id)
+        return productos
+    except Exception as e:
+        logger.error(f"Error al obtener productos por anexo: {e}")
+        raise HTTPException(
+            status_code=500, detail=f"Error al obtener productos: {str(e)}"
+        )
+
+
+@router.get("/con-stock")
+async def get_productos_con_stock(
+    db: AsyncSession = Depends(get_session),
+):
+    """Obtener productos que tienen stock disponible.
+
+    Retorna productos únicos con su cantidad total disponible
+    (suma de movimientos confirmados).
+    """
+    try:
+        productos = await MovimientoService.get_productos_con_stock(db)
+        return productos
+    except Exception as e:
+        logger.error(f"Error al obtener productos con stock: {e}")
+        raise HTTPException(
+            status_code=500, detail=f"Error al obtener productos: {str(e)}"
+        )
