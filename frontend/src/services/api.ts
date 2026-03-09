@@ -564,3 +564,27 @@ export const ventasEfectivoService = {
 };
 
 export const configuracionService = configService;
+
+export const provinciaService = {
+  async getProvincias(): Promise<any[]> {
+    return apiClient.get<any[]>('/dependencias/ubicaciones/provincias');
+  }
+};
+
+export const municipioService = {
+  async getMunicipios(provinciaId: number): Promise<any[]> {
+    return apiClient.get<any[]>(`/dependencias/ubicaciones/municipios?provincia_id=${provinciaId}`);
+  }
+};
+
+export const tipoConvenioService = {
+  async getTiposConvenio(): Promise<any[]> {
+    return apiClient.get<any[]>('/configuracion/tipos-convenios');
+  }
+};
+
+export const tipoEntidadService = {
+  async getTiposEntidad(): Promise<any[]> {
+    return apiClient.get<any[]>('/tipos-entidad');
+  }
+};

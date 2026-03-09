@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Button, Input, Label, Card, CardContent, CardHeader, CardTitle } from '../components/ui';
 import { contratosService, suplementosService, facturasService, ventasEfectivoService, clientesService, monedaService, productosService, dependenciasService } from '../services/api';
 import type { Cliente } from '../types/ventas';
@@ -19,8 +20,13 @@ type View = 'list' | 'form';
 type TabType = 'contratos' | 'suplementos' | 'facturas' | 'efectivo';
 
 export function VentasOperacionesPage() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [view, setView] = useState<View>('list');
-  const [tab, setTab] = useState<TabType>('contratos');
+  const [tab, setTab] = useState<TabType>(() => {
+    const t = searchParams.get('tab');
+    if (t === 'contratos' || t === 'suplementos' || t === 'facturas' || t === 'efectivo') return t;
+    return 'contratos';
+  });
   
   const [contratos, setContratos] = useState<ContratoWithDetails[]>([]);
   const [suplementos, setSuplementos] = useState<SuplementoWithDetails[]>([]);
@@ -178,10 +184,10 @@ export function VentasOperacionesPage() {
 
   const renderTabs = () => (
     <div className="flex gap-2 mb-6">
-      <Button variant={tab === 'contratos' ? 'primary' : 'outline'} onClick={() => { setTab('contratos'); setSelectedContratoId(null); }}><FileText className="w-4 h-4 mr-2" />Contratos</Button>
-      <Button variant={tab === 'suplementos' ? 'primary' : 'outline'} onClick={() => setTab('suplementos')} disabled={!selectedContratoId && tab !== 'suplementos'}><FileText className="w-4 h-4 mr-2" />Suplementos</Button>
-      <Button variant={tab === 'facturas' ? 'primary' : 'outline'} onClick={() => setTab('facturas')} disabled={!selectedContratoId && tab !== 'facturas'}><Receipt className="w-4 h-4 mr-2" />Facturas</Button>
-      <Button variant={tab === 'efectivo' ? 'primary' : 'outline'} onClick={() => { setTab('efectivo'); setSelectedContratoId(null); }}><CreditCard className="w-4 h-4 mr-2" />Efectivo</Button>
+      <Button variant={tab === 'contratos' ? 'primary' : 'outline'} onClick={() => { setTab('contratos'); setSelectedContratoId(null); setSearchParams({ tab: 'contratos' }); }}><FileText className="w-4 h-4 mr-2" />Contratos</Button>
+      <Button variant={tab === 'suplementos' ? 'primary' : 'outline'} onClick={() => { setTab('suplementos'); setSearchParams({ tab: 'suplementos' }); }} disabled={!selectedContratoId && tab !== 'suplementos'}><FileText className="w-4 h-4 mr-2" />Suplementos</Button>
+      <Button variant={tab === 'facturas' ? 'primary' : 'outline'} onClick={() => { setTab('facturas'); setSearchParams({ tab: 'facturas' }); }} disabled={!selectedContratoId && tab !== 'facturas'}><Receipt className="w-4 h-4 mr-2" />Facturas</Button>
+      <Button variant={tab === 'efectivo' ? 'primary' : 'outline'} onClick={() => { setTab('efectivo'); setSelectedContratoId(null); setSearchParams({ tab: 'efectivo' }); }}><CreditCard className="w-4 h-4 mr-2" />Efectivo</Button>
     </div>
   );
 

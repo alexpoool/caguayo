@@ -101,13 +101,14 @@ class ContratoUpdateWithProductos(ContratoUpdate):
 class MonedaRead(SQLModel):
     id_moneda: int
     nombre: str
+    denominacion: str
     simbolo: str
 
 
 class ClienteSimpleRead(SQLModel):
     id_cliente: int
     nombre: str
-    cedula_rif: str
+    cedula_rif: Optional[str] = None
 
 
 class ProductoSimpleRead(SQLModel):

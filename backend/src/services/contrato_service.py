@@ -165,7 +165,9 @@ async def map_contrato_to_read(
                     id_producto=producto.id_producto,
                     nombre=producto.nombre,
                     precio_venta=producto.precio_venta,
-                ) if producto else None,
+                )
+                if producto
+                else None,
             )
         )
 
@@ -190,21 +192,30 @@ async def map_contrato_to_read(
         estado=EstadoContratoRead(
             id_estado_contrato=estado.id_estado_contrato,
             nombre=estado.nombre,
-        ) if estado else None,
+        )
+        if estado
+        else None,
         tipo_contrato=TipoContratoRead(
             id_tipo_contrato=tipo_contrato.id_tipo_contrato,
             nombre=tipo_contrato.nombre,
-        ) if tipo_contrato else None,
+        )
+        if tipo_contrato
+        else None,
         moneda=MonedaRead(
             id_moneda=moneda.id_moneda,
             nombre=moneda.nombre,
+            denominacion=moneda.denominacion,
             simbolo=moneda.simbolo,
-        ) if moneda else None,
+        )
+        if moneda
+        else None,
         cliente=ClienteSimpleRead(
             id_cliente=cliente.id_cliente,
             nombre=cliente.nombre,
             cedula_rif=cliente.cedula_rif,
-        ) if cliente else None,
+        )
+        if cliente
+        else None,
     )
 
 
@@ -245,14 +256,14 @@ class ContratoService:
         contrato = await contrato_repo.get(db, id)
         if not contrato:
             return False
-        
+
         productos_stmt = select(ContratoProducto).where(
             ContratoProducto.id_contrato == id
         )
         productos_result = await db.exec(productos_stmt)
         for cp in productos_result.all():
             await db.delete(cp)
-        
+
         await contrato_repo.remove(db, id=id)
         return True
 
@@ -276,7 +287,9 @@ async def map_suplemento_to_read(
                     id_producto=producto.id_producto,
                     nombre=producto.nombre,
                     precio_venta=producto.precio_venta,
-                ) if producto else None,
+                )
+                if producto
+                else None,
             )
         )
 
@@ -294,13 +307,17 @@ async def map_suplemento_to_read(
         estado=EstadoContratoRead(
             id_estado_contrato=estado.id_estado_contrato,
             nombre=estado.nombre,
-        ) if estado else None,
+        )
+        if estado
+        else None,
     )
 
 
 class SuplementoService:
     @staticmethod
-    async def create(db: AsyncSession, data: SuplementoCreate) -> SuplementoReadWithDetails:
+    async def create(
+        db: AsyncSession, data: SuplementoCreate
+    ) -> SuplementoReadWithDetails:
         suplemento = await suplemento_repo.create_with_productos(db, data)
         return await map_suplemento_to_read(db, suplemento)
 
@@ -335,14 +352,14 @@ class SuplementoService:
         suplemento = await suplemento_repo.get(db, id)
         if not suplemento:
             return False
-        
+
         productos_stmt = select(SuplementoProducto).where(
             SuplementoProducto.id_suplemento == id
         )
         productos_result = await db.exec(productos_stmt)
         for sp in productos_result.all():
             await db.delete(sp)
-        
+
         await suplemento_repo.remove(db, id=id)
         return True
 
@@ -366,7 +383,9 @@ async def map_factura_to_read(
                     id_producto=producto.id_producto,
                     nombre=producto.nombre,
                     precio_venta=producto.precio_venta,
-                ) if producto else None,
+                )
+                if producto
+                else None,
             )
         )
 
@@ -430,14 +449,12 @@ class FacturaService:
         factura = await factura_repo.get(db, id)
         if not factura:
             return False
-        
-        productos_stmt = select(FacturaProducto).where(
-            FacturaProducto.id_factura == id
-        )
+
+        productos_stmt = select(FacturaProducto).where(FacturaProducto.id_factura == id)
         productos_result = await db.exec(productos_stmt)
         for fp in productos_result.all():
             await db.delete(fp)
-        
+
         await factura_repo.remove(db, id=id)
         return True
 
@@ -446,7 +463,7 @@ async def map_venta_efectivo_to_read(
     db: AsyncSession, venta: VentaEfectivo
 ) -> VentaEfectivoReadWithDetails:
     from src.models import Dependencia
-    
+
     productos_stmt = select(VentaEfectivoProducto).where(
         VentaEfectivoProducto.id_venta_efectivo == venta.id_venta_efectivo
     )
@@ -463,7 +480,9 @@ async def map_venta_efectivo_to_read(
                     id_producto=producto.id_producto,
                     nombre=producto.nombre,
                     precio_venta=producto.precio_venta,
-                ) if producto else None,
+                )
+                if producto
+                else None,
             )
         )
 
@@ -480,13 +499,17 @@ async def map_venta_efectivo_to_read(
         dependencia=DependenciaSimpleRead(
             id_dependencia=dependencia.id_dependencia,
             nombre=dependencia.nombre,
-        ) if dependencia else None,
+        )
+        if dependencia
+        else None,
     )
 
 
 class VentaEfectivoService:
     @staticmethod
-    async def create(db: AsyncSession, data: VentaEfectivoCreate) -> VentaEfectivoReadWithDetails:
+    async def create(
+        db: AsyncSession, data: VentaEfectivoCreate
+    ) -> VentaEfectivoReadWithDetails:
         venta = await venta_efectivo_repo.create_with_productos(db, data)
         return await map_venta_efectivo_to_read(db, venta)
 
@@ -521,13 +544,13 @@ class VentaEfectivoService:
         venta = await venta_efectivo_repo.get(db, id)
         if not venta:
             return False
-        
+
         productos_stmt = select(VentaEfectivoProducto).where(
             VentaEfectivoProducto.id_venta_efectivo == id
         )
         productos_result = await db.exec(productos_stmt)
         for vep in productos_result.all():
             await db.delete(vep)
-        
+
         await venta_efectivo_repo.remove(db, id=id)
         return True

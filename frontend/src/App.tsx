@@ -45,7 +45,10 @@ import { ReportesHome } from './pages/home/ReportesHome';
 import { CompraClientesPage } from './pages/compra/ClientesPage';
 import { CompraConveniosPage } from './pages/compra/ConveniosPage';
 import { CompraAnexosPage } from './pages/compra/AnexosPage';
-import { VentasOperacionesPage } from './pages/VentasOperaciones';
+import { ContratosPage } from './pages/ventas/ContratosPage';
+import { SuplementosPage } from './pages/ventas/SuplementosPage';
+import { FacturasPage } from './pages/ventas/FacturasPage';
+import { VentasEfectivoPage } from './pages/ventas/VentasEfectivoPage';
 
 type Modulo = 'administracion' | 'venta' | 'compra' | 'inventario' | 'reportes' | 'home';
 
@@ -62,8 +65,8 @@ const queryClient = new QueryClient({
 const rutasPorModulo: Record<Modulo, string[]> = {
   inventario: ['/inventario', '/movimientos', '/movimientos/pendientes', '/movimientos/ajuste', '/movimientos/seleccionar-recepcion', '/productos'],
   administracion: ['/administracion', '/configuracion', '/usuarios', '/grupos', '/monedas', '/dependencias'],
-  venta: ['/venta', '/ventas', '/clientes', '/ventas/operaciones'],
-  compra: ['/compra', '/compra/clientes', '/convenios', '/anexos'],
+  venta: ['/venta', '/ventas', '/clientes', '/ventas/operaciones', '/ventas/contratos', '/ventas/suplementos', '/ventas/facturas', '/ventas/efectivo'],
+  compra: ['/compra', '/compra/clientes', '/compra/convenios', '/compra/anexos'],
   reportes: ['/reportes'],
   home: ['/'],
 };
@@ -262,13 +265,13 @@ function App() {
                       </NavLink>
                     </li>
                     <li>
-                      <NavLink to="/convenios" onClick={handleLinkClick}>
+                      <NavLink to="/compra/convenios" onClick={handleLinkClick}>
                         <FileText className="w-6 h-6" />
                         Convenios
                       </NavLink>
                     </li>
                     <li>
-                      <NavLink to="/anexos" onClick={handleLinkClick}>
+                      <NavLink to="/compra/anexos" onClick={handleLinkClick}>
                         <Boxes className="w-6 h-6" />
                         Anexos
                       </NavLink>
@@ -284,25 +287,25 @@ function App() {
                       </NavLink>
                     </li>
                     <li>
-                      <NavLink to="/ventas/operaciones" onClick={handleLinkClick}>
+                      <NavLink to="/ventas/contratos" onClick={handleLinkClick}>
                         <FilePlus className="w-6 h-6" />
                         Contrato
                       </NavLink>
                     </li>
                     <li>
-                      <NavLink to="/ventas/operaciones" onClick={handleLinkClick}>
+                      <NavLink to="/ventas/suplementos" onClick={handleLinkClick}>
                         <FileText className="w-6 h-6" />
                         Suplemento
                       </NavLink>
                     </li>
                     <li>
-                      <NavLink to="/ventas/operaciones" onClick={handleLinkClick}>
+                      <NavLink to="/ventas/facturas" onClick={handleLinkClick}>
                         <Receipt className="w-6 h-6" />
                         Factura
                       </NavLink>
                     </li>
                     <li>
-                      <NavLink to="/ventas/operaciones" onClick={handleLinkClick}>
+                      <NavLink to="/ventas/efectivo" onClick={handleLinkClick}>
                         <DollarSign className="w-6 h-6" />
                         Venta en Efectivo
                       </NavLink>
@@ -470,7 +473,39 @@ function App() {
                   path="/ventas/operaciones" 
                   element={
                     <ProtectedRoute moduloActivo={moduloActivo} currentPath="/ventas/operaciones">
-                      <VentasOperacionesPage />
+                      <VentaHome />
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route 
+                  path="/ventas/contratos" 
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/ventas/contratos">
+                      <ContratosPage />
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route 
+                  path="/ventas/suplementos" 
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/ventas/suplementos">
+                      <SuplementosPage />
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route 
+                  path="/ventas/facturas" 
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/ventas/facturas">
+                      <FacturasPage />
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route 
+                  path="/ventas/efectivo" 
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/ventas/efectivo">
+                      <VentasEfectivoPage />
                     </ProtectedRoute>
                   } 
                 />
@@ -551,25 +586,25 @@ function App() {
                   } 
                 />
                 <Route
-                  path="compra/clientes"
+                  path="/compra/clientes"
                   element={
-                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/clientes">
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/compra/clientes">
                       <CompraClientesPage />
                     </ProtectedRoute>
                   }
                 />
                 <Route
-                  path="/convenios"
+                  path="/compra/convenios"
                   element={
-                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/convenios">
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/compra/convenios">
                       <CompraConveniosPage />
                     </ProtectedRoute>
                   }
                 />
                 <Route
-                  path="/anexos"
+                  path="/compra/anexos"
                   element={
-                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/anexos">
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/compra/anexos">
                       <CompraAnexosPage />
                     </ProtectedRoute>
                   }

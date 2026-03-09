@@ -38,5 +38,4 @@ class Productos(SQLModel, table=True):
     )
     movimientos: List["Movimiento"] = Relationship(back_populates="producto")
     detalles_venta: List["DetalleVenta"] = Relationship(back_populates="producto")
-    anexos: List["Anexo"] = Relationship(back_populates="producto")
     anexos_productos: List["AnexoProducto"] = Relationship(back_populates="producto")
