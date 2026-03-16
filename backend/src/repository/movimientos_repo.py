@@ -7,12 +7,12 @@ from src.models import (
     Movimiento,
     Productos,
     Subcategorias,
-    Convenio,
-    Provedor,
-    TipoProvedor,
+    Cliente,
+    TipoCliente,
     TipoConvenio,
     Dependencia,
     TipoDependencia,
+    Convenio,
     Provincia,
     Municipio,
     TipoMovimiento,
@@ -49,10 +49,10 @@ class MovimientoRepository(CRUDBase[Movimiento, MovimientoCreate, MovimientoUpda
             ),
             selectinload(Movimiento.liquidacion),  # type: ignore
             selectinload(Movimiento.convenio)
-            .selectinload(Convenio.provedor)  # type: ignore
-            .selectinload(Provedor.tipo_provedor),  # type: ignore
+            .selectinload(Convenio.cliente)  # type: ignore
+            .selectinload(Cliente.tipo_cliente),  # type: ignore
             selectinload(Movimiento.convenio).selectinload(Convenio.tipo_convenio),  # type: ignore
-            selectinload(Movimiento.provedor).selectinload(Provedor.tipo_provedor),  # type: ignore
+            selectinload(Movimiento.cliente).selectinload(Cliente.tipo_cliente),  # type: ignore
             selectinload(Movimiento.moneda_compra_rel),  # type: ignore
             selectinload(Movimiento.moneda_venta_rel),  # type: ignore
         ]

@@ -4,43 +4,45 @@ from datetime import date
 from decimal import Decimal
 
 
-class TipoProvedorBase(SQLModel):
+class TipoClienteBase(SQLModel):
     nombre: str
     descripcion: Optional[str] = None
 
 
-class TipoProvedorCreate(TipoProvedorBase):
+class TipoClienteCreate(TipoClienteBase):
     pass
 
 
-class TipoProvedorRead(TipoProvedorBase):
-    id_tipo_provedores: int
+class TipoClienteRead(TipoClienteBase):
+    id_tipo_cliente: int
 
 
-class TipoProvedorUpdate(SQLModel):
+class TipoClienteUpdate(SQLModel):
     nombre: Optional[str] = None
     descripcion: Optional[str] = None
 
 
-class ProvedorBase(SQLModel):
-    id_tipo_provedor: int
+class ClienteBase(SQLModel):
+    id_tipo_cliente: Optional[int] = None
     nombre: str
+    telefono: Optional[str] = None
     email: Optional[str] = None
     direccion: Optional[str] = None
 
 
-class ProvedorCreate(ProvedorBase):
+class ClienteCreate(ClienteBase):
     pass
 
 
-class ProvedorRead(ProvedorBase):
-    id_provedores: int
-    tipo_provedor: Optional[TipoProvedorRead] = None
+class ClienteRead(ClienteBase):
+    id_cliente: int
+    tipo_cliente: Optional[TipoClienteRead] = None
 
 
-class ProvedorUpdate(SQLModel):
-    id_tipo_provedor: Optional[int] = None
+class ClienteUpdate(SQLModel):
+    id_tipo_cliente: Optional[int] = None
     nombre: Optional[str] = None
+    telefono: Optional[str] = None
     email: Optional[str] = None
     direccion: Optional[str] = None
 
@@ -64,7 +66,8 @@ class TipoConvenioUpdate(SQLModel):
 
 
 class ConvenioBase(SQLModel):
-    id_provedor: int
+    codigo_convenio: Optional[str] = None
+    id_cliente: int
     nombre_convenio: str
     fecha: date
     vigencia: date
@@ -77,12 +80,13 @@ class ConvenioCreate(ConvenioBase):
 
 class ConvenioRead(ConvenioBase):
     id_convenio: int
-    provedor: Optional[ProvedorRead] = None
+    cliente: Optional[ClienteRead] = None
     tipo_convenio: Optional[TipoConvenioRead] = None
 
 
 class ConvenioUpdate(SQLModel):
-    id_provedor: Optional[int] = None
+    codigo_convenio: Optional[str] = None
+    id_cliente: Optional[int] = None
     nombre_convenio: Optional[str] = None
     fecha: Optional[date] = None
     vigencia: Optional[date] = None
@@ -91,33 +95,51 @@ class ConvenioUpdate(SQLModel):
 
 class AnexoBase(SQLModel):
     id_convenio: int
+    id_moneda: Optional[int] = None
     nombre_anexo: str
     fecha: date
-    numero_anexo: str
-    id_dependencia: int
+    codigo_anexo: Optional[str] = None
+    id_dependencia: Optional[int] = None
     comision: Optional[Decimal] = None
 
 
-class AnexoCreate(AnexoBase):
+class AnexoProductoBase(SQLModel):
+    id_producto: int
+    cantidad: int
+    precio_compra: Decimal
+
+
+class AnexoProductoCreate(AnexoProductoBase):
     pass
+
+
+class AnexoProductoRead(AnexoProductoBase):
+    id_anexo_producto: int
+    id_anexo: int
+
+
+class AnexoCreate(AnexoBase):
+    productos: Optional[List[AnexoProductoCreate]] = None
 
 
 class AnexoRead(AnexoBase):
     id_anexo: int
+    numero_anexo: Optional[str] = None
     convenio: Optional[ConvenioRead] = None
 
 
 class AnexoUpdate(SQLModel):
     id_convenio: Optional[int] = None
+    id_moneda: Optional[int] = None
     nombre_anexo: Optional[str] = None
     fecha: Optional[date] = None
-    numero_anexo: Optional[str] = None
+    codigo_anexo: Optional[str] = None
     id_dependencia: Optional[int] = None
     comision: Optional[Decimal] = None
 
 
-class ProvedorSimpleRead(SQLModel):
-    id_provedores: int
+class ClienteSimpleRead(SQLModel):
+    id_cliente: int
     nombre: str
 
 

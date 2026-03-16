@@ -2,17 +2,16 @@ from sqlmodel import SQLModel
 from typing import Optional
 from datetime import datetime
 from decimal import Decimal
-from pydantic import field_serializer, ConfigDict
+from pydantic import validator
 from .dependencias_dto import DependenciaRead
 from .productos_dto import ProductosRead
-from .convenios_dto import ConvenioRead, ProvedorRead, AnexoRead
+from .convenios_dto import ClienteRead, AnexoRead
 from .monedas_dto import MonedaRead
 
 
-# DTOs para Tipo Movimiento
 class TipoMovimientoBase(SQLModel):
-    tipo: str  # 'AJUSTE', 'MERMA', 'DONACION', 'RECEPCION', 'DEVOLUCION'
-    factor: int  # 1 o -1
+    tipo: str
+    factor: int
 
 
 class TipoMovimientoCreate(TipoMovimientoBase):
@@ -28,7 +27,6 @@ class TipoMovimientoUpdate(SQLModel):
     factor: Optional[int] = None
 
 
-# DTOs para Movimientos
 class MovimientoBase(SQLModel):
     id_tipo_movimiento: int
     id_dependencia: int
@@ -36,9 +34,8 @@ class MovimientoBase(SQLModel):
     id_producto: int
     cantidad: int
     observacion: Optional[str] = None
-    # Nuevos campos
     id_convenio: Optional[int] = None
-    id_provedor: Optional[int] = None
+    id_cliente: Optional[int] = None
     precio_compra: Optional[Decimal] = None
     id_moneda_compra: Optional[int] = None
     precio_venta: Optional[Decimal] = None
@@ -50,7 +47,8 @@ class MovimientoCreate(MovimientoBase):
 
 
 class MovimientoRead(MovimientoBase):
-    model_config = ConfigDict(from_attributes=True)
+    class Config:
+        from_attributes = True
 
     id_movimiento: int
     fecha: datetime
@@ -61,19 +59,15 @@ class MovimientoRead(MovimientoBase):
     dependencia: Optional[DependenciaRead] = None
     producto: Optional[ProductosRead] = None
     anexo: Optional[AnexoRead] = None
-    # Nuevas relaciones
-    convenio: Optional[ConvenioRead] = None
-    provedor: Optional[ProvedorRead] = None
+    cliente: Optional[ClienteRead] = None
     moneda_compra_rel: Optional[MonedaRead] = None
     moneda_venta_rel: Optional[MonedaRead] = None
 
-    @field_serializer("precio_compra")
-    def serialize_precio_compra(self, value: Optional[Decimal]) -> Optional[float]:
-        return float(value) if value is not None else None
-
-    @field_serializer("precio_venta")
-    def serialize_precio_venta(self, value: Optional[Decimal]) -> Optional[float]:
-        return float(value) if value is not None else None
+    @validator('precio_compra', 'precio_venta', pre=True)
+    def parse_decimal(cls, v):
+        if v is None:
+            return None
+        return float(v)
 
 
 class MovimientoUpdate(SQLModel):
@@ -86,16 +80,14 @@ class MovimientoUpdate(SQLModel):
     id_liquidacion: Optional[int] = None
     estado: Optional[str] = None
     codigo: Optional[str] = None
-    # Nuevos campos
     id_convenio: Optional[int] = None
-    id_provedor: Optional[int] = None
+    id_cliente: Optional[int] = None
     precio_compra: Optional[Decimal] = None
     id_moneda_compra: Optional[int] = None
     precio_venta: Optional[Decimal] = None
     id_moneda_venta: Optional[int] = None
 
 
-# DTOs para Ajuste
 class DestinoAjuste(SQLModel):
     id_dependencia: int
     cantidad: int

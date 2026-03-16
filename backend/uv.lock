@@ -57,11 +57,17 @@ dependencies = [
     { name = "alembic" },
     { name = "asyncpg" },
     { name = "fastapi" },
+<<<<<<< HEAD
     { name = "passlib", extra = ["bcrypt"] },
     { name = "psycopg", extra = ["binary"] },
     { name = "psycopg2-binary" },
     { name = "python-dotenv" },
     { name = "python-jose", extra = ["cryptography"] },
+=======
+    { name = "psycopg", extra = ["binary"] },
+    { name = "psycopg2-binary" },
+    { name = "python-dotenv" },
+>>>>>>> leo
     { name = "python-multipart" },
     { name = "sqlmodel" },
     { name = "uvicorn", extra = ["standard"] },
@@ -82,11 +88,17 @@ requires-dist = [
     { name = "alembic", specifier = ">=1.12.0" },
     { name = "asyncpg", specifier = ">=0.31.0" },
     { name = "fastapi", specifier = ">=0.104.0" },
+<<<<<<< HEAD
     { name = "passlib", extras = ["bcrypt"], specifier = ">=1.7.4" },
     { name = "psycopg", extras = ["binary"], specifier = ">=3.1.0" },
     { name = "psycopg2-binary", specifier = ">=2.9.11" },
     { name = "python-dotenv", specifier = ">=1.0.0" },
     { name = "python-jose", extras = ["cryptography"], specifier = ">=3.3.0" },
+=======
+    { name = "psycopg", extras = ["binary"], specifier = ">=3.1.0" },
+    { name = "psycopg2-binary", specifier = ">=2.9.11" },
+    { name = "python-dotenv", specifier = ">=1.0.0" },
+>>>>>>> leo
     { name = "python-multipart", specifier = ">=0.0.6" },
     { name = "sqlmodel", specifier = ">=0.0.14" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.24.0" },
@@ -180,6 +192,7 @@ wheels = [
 ]
 
 [[package]]
+<<<<<<< HEAD
 name = "bcrypt"
 version = "5.0.0"
 source = { registry = "https://pypi.org/simple" }
@@ -250,6 +263,8 @@ wheels = [
 ]
 
 [[package]]
+=======
+>>>>>>> leo
 name = "certifi"
 version = "2026.1.4"
 source = { registry = "https://pypi.org/simple" }
@@ -259,6 +274,7 @@ wheels = [
 ]
 
 [[package]]
+<<<<<<< HEAD
 name = "cffi"
 version = "2.0.0"
 source = { registry = "https://pypi.org/simple" }
@@ -341,6 +357,8 @@ wheels = [
 ]
 
 [[package]]
+=======
+>>>>>>> leo
 name = "cfgv"
 version = "3.5.0"
 source = { registry = "https://pypi.org/simple" }
@@ -371,6 +389,7 @@ wheels = [
 ]
 
 [[package]]
+<<<<<<< HEAD
 name = "cryptography"
 version = "46.0.5"
 source = { registry = "https://pypi.org/simple" }
@@ -431,6 +450,8 @@ wheels = [
 ]
 
 [[package]]
+=======
+>>>>>>> leo
 name = "distlib"
 version = "0.4.0"
 source = { registry = "https://pypi.org/simple" }
@@ -440,6 +461,7 @@ wheels = [
 ]
 
 [[package]]
+<<<<<<< HEAD
 name = "ecdsa"
 version = "0.19.1"
 source = { registry = "https://pypi.org/simple" }
@@ -452,6 +474,8 @@ wheels = [
 ]
 
 [[package]]
+=======
+>>>>>>> leo
 name = "exceptiongroup"
 version = "1.3.1"
 source = { registry = "https://pypi.org/simple" }
@@ -764,6 +788,7 @@ wheels = [
 ]
 
 [[package]]
+<<<<<<< HEAD
 name = "passlib"
 version = "1.7.4"
 source = { registry = "https://pypi.org/simple" }
@@ -778,6 +803,8 @@ bcrypt = [
 ]
 
 [[package]]
+=======
+>>>>>>> leo
 name = "platformdirs"
 version = "4.5.1"
 source = { registry = "https://pypi.org/simple" }
@@ -955,6 +982,7 @@ wheels = [
 ]
 
 [[package]]
+<<<<<<< HEAD
 name = "pyasn1"
 version = "0.6.2"
 source = { registry = "https://pypi.org/simple" }
@@ -973,6 +1001,8 @@ wheels = [
 ]
 
 [[package]]
+=======
+>>>>>>> leo
 name = "pydantic"
 version = "2.12.5"
 source = { registry = "https://pypi.org/simple" }
@@ -1156,6 +1186,7 @@ wheels = [
 ]
 
 [[package]]
+<<<<<<< HEAD
 name = "python-jose"
 version = "3.5.0"
 source = { registry = "https://pypi.org/simple" }
@@ -1175,6 +1206,8 @@ cryptography = [
 ]
 
 [[package]]
+=======
+>>>>>>> leo
 name = "python-multipart"
 version = "0.0.22"
 source = { registry = "https://pypi.org/simple" }
@@ -1248,6 +1281,7 @@ wheels = [
 ]
 
 [[package]]
+<<<<<<< HEAD
 name = "rsa"
 version = "4.9.1"
 source = { registry = "https://pypi.org/simple" }
@@ -1260,6 +1294,8 @@ wheels = [
 ]
 
 [[package]]
+=======
+>>>>>>> leo
 name = "ruff"
 version = "0.15.0"
 source = { registry = "https://pypi.org/simple" }
@@ -1285,6 +1321,7 @@ wheels = [
 ]
 
 [[package]]
+<<<<<<< HEAD
 name = "six"
 version = "1.17.0"
 source = { registry = "https://pypi.org/simple" }
@@ -1294,6 +1331,8 @@ wheels = [
 ]
 
 [[package]]
+=======
+>>>>>>> leo
 name = "sqlalchemy"
 version = "2.0.46"
 source = { registry = "https://pypi.org/simple" }

@@ -386,9 +386,9 @@ export function MovimientosPage() {
                           </td>
                           <td className="py-3 px-4">
                             <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                              mov.estado === 'confirmado' 
+                              mov.estado === 'CONFIRMADO' 
                                 ? 'bg-green-100 text-green-800'
-                                : mov.estado === 'pendiente'
+                                : mov.estado === 'PENDIENTE'
                                 ? 'bg-yellow-100 text-yellow-800'
                                 : 'bg-gray-100 text-gray-800'
                             }`}>
@@ -490,6 +490,8 @@ export function MovimientosPage() {
                       <button
                         onClick={() => setDetailModal({ isOpen: false, movimiento: null })}
                         className="p-2 hover:bg-gray-200 rounded-full transition-colors"
+                        aria-label="Cerrar"
+                        title="Cerrar"
                       >
                         <X className="h-6 w-6 text-gray-500" />
                       </button>
@@ -542,9 +544,9 @@ export function MovimientosPage() {
                       </p>
                       <p className="font-bold text-gray-900">
                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          detailModal.movimiento?.estado === 'confirmado' 
+                          detailModal.movimiento?.estado === 'CONFIRMADO' 
                             ? 'bg-green-100 text-green-800'
-                            : detailModal.movimiento?.estado === 'pendiente'
+                            : detailModal.movimiento?.estado === 'PENDIENTE'
                             ? 'bg-yellow-100 text-yellow-800'
                             : 'bg-gray-100 text-gray-800'
                         }`}>

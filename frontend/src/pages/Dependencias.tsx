@@ -3,17 +3,16 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Building, Building2, Plus, Edit, Trash2, Save, X, ChevronRight, ChevronDown, Trash,
   Tag, Network, MapPin, Phone, Mail, Globe, Map, Locate, FileText,
-  Landmark, Store, Wallet, CreditCard, User, ArrowLeft, Sparkles, CheckCircle2,
-  Database, Lock, CheckCircle, XCircle
+  Landmark, Store, Wallet, CreditCard, User, ArrowLeft, Sparkles, CheckCircle2
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import {
   Button, Input, Label, Card, CardContent, CardHeader, CardTitle,
   Table, TableHeader, TableBody, TableRow, TableHead, TableCell,
-  ConfirmModal, Modal
+  ConfirmModal
 } from '../components/ui';
 import { dependenciasService, configuracionService } from '../services/administracion';
-import type { Dependencia, DependenciaCreate, DependenciaConDatabaseResponse } from '../types/dependencia';
+import type { Dependencia, DependenciaCreate } from '../types/dependencia';
 import type { CuentaCreate } from '../types/cuenta';
 import type { TipoCuenta } from '../types/tipo_cuenta';
 
@@ -70,7 +69,7 @@ function ArbolDependencia({ dependencias, dependenciasPadre, nivel, onSelect, se
               ) : (
                 <Building className="h-4 w-4 text-gray-500" />
               )}
-              <span className="flex-1 truncate">{dep.nombre}</span>
+              <span className="flex-1">{dep.nombre}</span>
             </div>
             {isExpanded && hijos.length > 0 && (
               <ArbolDependencia
@@ -98,9 +97,6 @@ export function DependenciasPage() {
     nombre: '',
     direccion: '',
     telefono: '',
-    host: 'localhost',
-    puerto: 5432,
-    base_datos: '',
   });
   const [cuentas, setCuentas] = useState<CuentaCreate[]>([]);
   const [editingCuentaIndex, setEditingCuentaIndex] = useState<number | null>(null);
@@ -118,30 +114,11 @@ export function DependenciasPage() {
     onConfirm: () => void;
   }>({ isOpen: false, title: '', message: '', onConfirm: () => {} });
 
-  const [dbResultModal, setDbResultModal] = useState<{
-    isOpen: boolean;
-    success: boolean;
-    info: boolean;  // Para cuando no se especificó base de datos
-    message: string;
-    tablas: string[];
-    baseDatos: string;
-  }>({ isOpen: false, success: false, info: false, message: '', tablas: [], baseDatos: '' });
-
   // Estados para modales de detalle
   const [detailModal, setDetailModal] = useState<{
     isOpen: boolean;
     dependenciaId: number | null;
   }>({ isOpen: false, dependenciaId: null });
-
-  // Estado para resultado de validación de conexión
-  const [dbValidacion, setDbValidacion] = useState<{
-    validada: boolean;
-    valida: boolean;
-    mensaje: string;
-    ya_existe: boolean;
-    tiene_tablas: boolean;
-    tablas: string[];
-  } | null>(null);
 
   // Estado para dependencia seleccionada desde el árbol
   const [dependenciaSeleccionadaArbol, setDependenciaSeleccionadaArbol] = useState<Dependencia | null>(null);
@@ -202,48 +179,24 @@ export function DependenciasPage() {
 
   const createDependencia = useMutation({
     mutationFn: dependenciasService.createDependencia,
-    onSuccess: (data: DependenciaConDatabaseResponse) => {
-      toast.success('Dependencia creada exitosamente');
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['dependencias'] });
-      
-      // Determinar tipo de resultado
-      const dbNoEspecificada = !data.dependencia.base_datos || data.dependencia.base_datos === '';
-      const dbCreada = data.database_result?.creada ?? false;
-      
-      setDbResultModal({
-        isOpen: true,
-        success: dbCreada,
-        info: dbNoEspecificada,
-        message: data.database_result?.mensaje ?? (dbNoEspecificada ? 'Dependencia creada sin base de datos' : 'Dependencia creada'),
-        tablas: data.database_result?.tablas ?? [],
-        baseDatos: data.dependencia.base_datos ?? '',
-      });
+      toast.success('Dependencia creada exitosamente');
+      setView('list');
+      resetForm();
     },
-    onError: (error) => {
-      console.error('Error creating dependencia:', error);
-      toast.error('Error al crear dependencia');
-    },
+    onError: () => toast.error('Error al crear dependencia'),
   });
 
   const updateDependencia = useMutation({
     mutationFn: ({ id, data }: { id: number; data: Partial<Dependencia> }) =>
       dependenciasService.updateDependencia(id, data),
-    onSuccess: (data: DependenciaConDatabaseResponse) => {
-      toast.success('Dependencia actualizada exitosamente');
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['dependencias'] });
-      
-      // Determinar tipo de resultado
-      const dbNoEspecificada = !data.dependencia.base_datos || data.dependencia.base_datos === '';
-      const dbCreada = data.database_result?.creada ?? false;
-      
-      setDbResultModal({
-        isOpen: true,
-        success: dbCreada,
-        info: dbNoEspecificada,
-        message: data.database_result?.mensaje ?? (dbNoEspecificada ? 'Dependencia actualizada sin base de datos' : 'Dependencia actualizada'),
-        tablas: data.database_result?.tablas ?? [],
-        baseDatos: data.dependencia.base_datos ?? '',
-      });
+      toast.success('Dependencia actualizada');
+      setView('list');
+      setEditingDependencia(null);
+      resetForm();
     },
     onError: (error) => {
       toast.error('Error al actualizar dependencia');
@@ -256,27 +209,6 @@ export function DependenciasPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['dependencias'] });
       toast.success('Dependencia eliminada');
-    },
-  });
-
-  const validarConexion = useMutation({
-    mutationFn: async (data: {
-      host: string;
-      puerto: number;
-      usuario: string;
-      contrasenia: string;
-      base_datos: string;
-    }) => {
-      const result = await dependenciasService.validarConexion(data);
-      setDbValidacion({
-        validada: true,
-        valida: result.valida,
-        mensaje: result.mensaje,
-        ya_existe: result.ya_existe,
-        tiene_tablas: result.tiene_tablas,
-        tablas: result.tablas,
-      });
-      return result;
     },
   });
 
@@ -299,9 +231,6 @@ export function DependenciasPage() {
       nombre: '',
       direccion: '',
       telefono: '',
-      host: 'localhost',
-      puerto: 5432,
-      base_datos: '',
       id_provincia: isNew ? provinciaId : undefined,
       id_municipio: isNew ? municipioId : undefined,
     });
@@ -319,15 +248,8 @@ export function DependenciasPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // Validar campos requeridos (solo nombre, dirección, teléfono y tipo son requeridos)
-    if (!formData.nombre || !formData.direccion || !formData.telefono || formData.id_tipo_dependencia === 0) {
+    if (!formData.nombre || !formData.direccion || !formData.telefono || !formData.id_tipo_dependencia) {
       toast.error('Todos los campos requeridos deben completarse');
-      return;
-    }
-
-    // Validar base de datos solo al crear nueva dependencia
-    if (!editingDependencia && !formData.base_datos) {
-      toast.error('El nombre de la base de datos es requerido');
       return;
     }
 
@@ -403,9 +325,6 @@ export function DependenciasPage() {
       direccion: '',
       telefono: '',
       codigo_padre: padre.id_dependencia,
-      host: 'localhost',
-      puerto: 5432,
-      base_datos: '',
       id_provincia: provinciaId,
       id_municipio: municipioId,
     });
@@ -558,8 +477,8 @@ export function DependenciasPage() {
             </div>
           </CardHeader>
           <CardContent className="pt-6">
-<form onSubmit={handleSubmit} className="grid grid-cols-2 gap-6">
-              {/* Fila 1: Nombre + Nombre BD */}
+            <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-6">
+              {/* Nombre */}
               <div className="space-y-2">
                 <Label className="flex items-center gap-2 text-gray-700">
                   <Building className="h-5 w-5 text-blue-500" />
@@ -573,22 +492,25 @@ export function DependenciasPage() {
                 />
               </div>
 
+              {/* Tipo */}
               <div className="space-y-2">
                 <Label className="flex items-center gap-2 text-gray-700">
-                  <Database className="h-5 w-5 text-indigo-500" />
-                  Nombre de Base de Datos {editingDependencia ? '' : '*'}
+                  <Tag className="h-5 w-5 text-purple-500" />
+                  Tipo de Dependencia *
                 </Label>
-                <Input
-                  value={formData.base_datos}
-                  onChange={(e) => {
-                    setFormData({ ...formData, base_datos: e.target.value });
-                  }}
-                  placeholder="Nombre de la base de datos"
-                  className="transition-all duration-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                />
+                <select
+                  className="w-full border rounded-md px-3 py-2 transition-all duration-200 focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                  value={formData.id_tipo_dependencia}
+                  onChange={(e) => setFormData({ ...formData, id_tipo_dependencia: parseInt(e.target.value) })}
+                >
+                  <option value={0}>Seleccione un tipo</option>
+                  {tiposDependencia.map((t) => (
+                    <option key={t.id_tipo_dependencia} value={t.id_tipo_dependencia}>{t.nombre}</option>
+                  ))}
+                </select>
               </div>
 
-              {/* Fila 2: Dependencia Padre + Tipo Dependencia */}
+              {/* Padre */}
               <div className="space-y-2">
                 <Label className="flex items-center gap-2 text-gray-700">
                   <Network className="h-5 w-5 text-green-500" />
@@ -613,25 +535,8 @@ export function DependenciasPage() {
                 )}
               </div>
 
-              <div className="space-y-2">
-                <Label className="flex items-center gap-2 text-gray-700">
-                  <Tag className="h-5 w-5 text-purple-500" />
-                  Tipo de Dependencia *
-                </Label>
-                <select
-                  className="w-full border rounded-md px-3 py-2 transition-all duration-200 focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                  value={formData.id_tipo_dependencia}
-                  onChange={(e) => setFormData({ ...formData, id_tipo_dependencia: parseInt(e.target.value) })}
-                >
-                  <option value={0}>Seleccione un tipo</option>
-                  {tiposDependencia.map((t) => (
-                    <option key={t.id_tipo_dependencia} value={t.id_tipo_dependencia}>{t.nombre}</option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Fila 3: Dirección + Teléfono */}
-              <div className="space-y-2">
+              {/* Dirección */}
+              <div className="col-span-2 space-y-2">
                 <Label className="flex items-center gap-2 text-gray-700">
                   <MapPin className="h-5 w-5 text-red-500" />
                   Dirección *
@@ -644,6 +549,7 @@ export function DependenciasPage() {
                 />
               </div>
 
+              {/* Contacto */}
               <div className="space-y-2">
                 <Label className="flex items-center gap-2 text-gray-700">
                   <Phone className="h-5 w-5 text-green-500" />
@@ -657,7 +563,6 @@ export function DependenciasPage() {
                 />
               </div>
 
-              {/* Fila 4: Email + Web */}
               <div className="space-y-2">
                 <Label className="flex items-center gap-2 text-gray-700">
                   <Mail className="h-5 w-5 text-blue-500" />
@@ -684,7 +589,7 @@ export function DependenciasPage() {
                 />
               </div>
 
-              {/* Fila 5: Provincia + Municipio */}
+              {/* Ubicación */}
               <div className="space-y-2">
                 <Label className="flex items-center gap-2 text-gray-700">
                   <Map className="h-5 w-5 text-orange-500" />
@@ -732,7 +637,7 @@ export function DependenciasPage() {
                 </select>
               </div>
 
-              {/* Fila 6: Descripción */}
+              {/* Descripción */}
               <div className="col-span-2 space-y-2">
                 <Label className="flex items-center gap-2 text-gray-700">
                   <FileText className="h-5 w-5 text-gray-500" />
@@ -746,8 +651,6 @@ export function DependenciasPage() {
                   rows={3}
                 />
               </div>
-
-              {/* Fin del formulario */}
             </form>
           </CardContent>
         </Card>
@@ -949,7 +852,6 @@ export function DependenciasPage() {
         {/* Botón de guardar */}
         <div className="flex justify-end pt-4">
           <Button
-            type="submit"
             onClick={handleSubmit}
             className="gap-2 px-6 py-3 text-lg font-semibold bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300"
           >
@@ -1042,22 +944,6 @@ export function DependenciasPage() {
                   <FileText className="h-4 w-4 mr-1" />
                   Detalles
                 </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => handleEdit(dependenciaSeleccionadaArbol)}
-                  className="text-blue-600 hover:text-blue-800 hover:bg-blue-100"
-                >
-                  <Edit className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => handleDelete(dependenciaSeleccionadaArbol)}
-                  className="text-red-600 hover:text-red-800 hover:bg-red-100"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
               </div>
             )}
             <Table>
@@ -1149,89 +1035,24 @@ export function DependenciasPage() {
         type="danger"
       />
 
-      {/* Modal de resultado de base de datos */}
-      <Modal
-        isOpen={dbResultModal.isOpen}
-        onClose={() => {
-          setDbResultModal({ ...dbResultModal, isOpen: false });
-          setView('list');
-          resetForm();
-        }}
-      >
-        <div className={`flex items-center gap-3 p-6 rounded-t-2xl ${
-          dbResultModal.success ? 'bg-green-50' : dbResultModal.info ? 'bg-blue-50' : 'bg-red-50'
-        }`}>
-          <div className={`p-3 rounded-full ${dbResultModal.success ? 'bg-green-100' : dbResultModal.info ? 'bg-blue-100' : 'bg-red-100'}`}>
-            {dbResultModal.success ? (
-              <CheckCircle className="h-8 w-8 text-green-600" />
-            ) : dbResultModal.info ? (
-              <Database className="h-8 w-8 text-blue-600" />
-            ) : (
-              <XCircle className="h-8 w-8 text-red-600" />
-            )}
-          </div>
-          <div>
-            <h2 className="text-xl font-bold text-gray-900">
-              {dbResultModal.success ? 'Dependencia Creada' : dbResultModal.info ? 'Dependencia Creada' : 'Error'}
-            </h2>
-            <p className="text-sm text-gray-500">
-              {dbResultModal.info ? 'Sin base de datos' : `Base de datos: ${dbResultModal.baseDatos}`}
-            </p>
-          </div>
-        </div>
-        
-        <div className="p-6 space-y-4">
-          <p className="text-gray-700">{dbResultModal.message}</p>
-          
-          {dbResultModal.success && dbResultModal.tablas.length > 0 && (
-            <div>
-              <p className="text-sm font-medium text-gray-700 mb-2">
-                Tablas creadas ({dbResultModal.tablas.length}):
-              </p>
-              <div className="max-h-40 overflow-y-auto bg-gray-50 rounded-lg p-3">
-                <ul className="space-y-1">
-                  {dbResultModal.tablas.map((tabla, idx) => (
-                    <li key={idx} className="flex items-center gap-2 text-sm text-gray-600">
-                      <CheckCircle className="h-3 w-3 text-green-500" />
-                      {tabla}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </div>
-          )}
-        </div>
-        
-        <div className="flex justify-end p-6 border-t bg-gray-50 rounded-b-2xl">
-          <Button onClick={() => {
-            setDbResultModal({ ...dbResultModal, isOpen: false });
-            setView('list');
-            resetForm();
-          }}>
-            Aceptar
-          </Button>
-        </div>
-      </Modal>
-
       {/* Modal de detalle de dependencia */}
-      <Modal
-        isOpen={detailModal.isOpen && !!dependenciaDetalle}
-        onClose={handleCloseDetailModal}
-        className="max-w-2xl w-full max-h-[90vh] flex flex-col"
-      >
-        <div className="flex-shrink-0 flex items-center justify-between p-6 border-b bg-gradient-to-r from-blue-50 to-indigo-50 rounded-t-2xl">
-          <div className="flex items-center gap-3">
-            <div className="p-3 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-lg">
-              <Building className="h-7 w-7 text-white" />
+      {detailModal.isOpen && dependenciaDetalle && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[100] p-4 animate-fade-in">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col animate-scale-in">
+            <div className="flex-shrink-0 flex items-center justify-between p-6 border-b bg-gradient-to-r from-blue-50 to-indigo-50 rounded-t-2xl">
+              <div className="flex items-center gap-3">
+                <div className="p-3 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-lg">
+                  <Building className="h-7 w-7 text-white" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-gray-900">Detalle de Dependencia</h2>
+                  <p className="text-sm text-gray-500">Información completa</p>
+                </div>
+              </div>
+              <Button variant="ghost" size="icon" onClick={handleCloseDetailModal} className="hover:bg-gray-200 rounded-full">
+                <X className="h-6 w-6" />
+              </Button>
             </div>
-            <div>
-              <h2 className="text-xl font-bold text-gray-900">Detalle de Dependencia</h2>
-              <p className="text-sm text-gray-500">Información completa</p>
-            </div>
-          </div>
-        </div>
-        {dependenciaDetalle && (
-          <>
             <div className="flex-1 overflow-auto p-6">
               <div className="space-y-8">
                 {/* Información básica */}
@@ -1390,72 +1211,73 @@ export function DependenciasPage() {
                 })()}
               </div>
             </div>
-          </>
-        )}
-      </Modal>
+          </div>
+        </div>
+      )}
 
       {/* Modal de detalle de cuenta */}
-      <Modal
-        isOpen={cuentaDetailModal.isOpen && !!cuentaDetailModal.cuenta}
-        onClose={handleCloseCuentaDetailModal}
-        className="max-w-md w-full"
-      >
-        <div className="flex items-center justify-between p-6 border-b bg-gradient-to-r from-emerald-50 to-green-50 rounded-t-2xl">
-          <div className="flex items-center gap-3">
-            <div className="p-3 bg-gradient-to-br from-emerald-500 to-green-600 rounded-xl shadow-lg">
-              <CreditCard className="h-7 w-7 text-white" />
+      {cuentaDetailModal.isOpen && cuentaDetailModal.cuenta && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[100] p-4 animate-fade-in">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full animate-scale-in">
+            <div className="flex items-center justify-between p-6 border-b bg-gradient-to-r from-emerald-50 to-green-50 rounded-t-2xl">
+              <div className="flex items-center gap-3">
+                <div className="p-3 bg-gradient-to-br from-emerald-500 to-green-600 rounded-xl shadow-lg">
+                  <CreditCard className="h-7 w-7 text-white" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-gray-900">Detalle de Cuenta</h2>
+                  <p className="text-sm text-gray-500">Información bancaria</p>
+                </div>
+              </div>
+              <Button variant="ghost" size="icon" onClick={handleCloseCuentaDetailModal} className="hover:bg-gray-200 rounded-full">
+                <X className="h-6 w-6" />
+              </Button>
             </div>
-            <div>
-              <h2 className="text-xl font-bold text-gray-900">Detalle de Cuenta</h2>
-              <p className="text-sm text-gray-500">Información bancaria</p>
+            <div className="p-6 space-y-5">
+              <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-4 space-y-1">
+                <Label className="flex items-center gap-2 text-blue-600 text-sm font-medium">
+                  <User className="h-4 w-4" />
+                  Titular
+                </Label>
+                <p className="font-bold text-gray-900 text-lg">{cuentaDetailModal.cuenta.titular}</p>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl p-4 space-y-1">
+                  <Label className="flex items-center gap-2 text-purple-600 text-sm font-medium">
+                    <Landmark className="h-4 w-4" />
+                    Banco
+                  </Label>
+                  <p className="font-semibold text-gray-900">{cuentaDetailModal.cuenta.banco}</p>
+                </div>
+                <div className="bg-gradient-to-br from-orange-50 to-yellow-50 rounded-xl p-4 space-y-1">
+                  <Label className="flex items-center gap-2 text-orange-600 text-sm font-medium">
+                    <Store className="h-4 w-4" />
+                    Sucursal
+                  </Label>
+                  <p className="font-semibold text-gray-900">{cuentaDetailModal.cuenta.sucursal || '-'}</p>
+                </div>
+              </div>
+              <div className="bg-gradient-to-br from-red-50 to-rose-50 rounded-xl p-4 space-y-1">
+                <Label className="flex items-center gap-2 text-red-600 text-sm font-medium">
+                  <MapPin className="h-4 w-4" />
+                  Dirección
+                </Label>
+                <p className="font-semibold text-gray-900">{cuentaDetailModal.cuenta.direccion}</p>
+              </div>
+              <div className="bg-gradient-to-br from-indigo-50 to-blue-50 rounded-xl p-4 space-y-1">
+                <Label className="flex items-center gap-2 text-indigo-600 text-sm font-medium">
+                  <CreditCard className="h-4 w-4" />
+                  Tipo de Cuenta
+                </Label>
+                <span className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-100 text-indigo-800 rounded-full text-sm font-bold">
+                  <CreditCard className="h-4 w-4" />
+                  {tiposCuenta.find(tc => tc.id_tipo_cuenta === cuentaDetailModal.cuenta!.id_tipo_cuenta)?.nombre || '-'}
+                </span>
+              </div>
             </div>
           </div>
         </div>
-        {cuentaDetailModal.cuenta && (
-          <div className="p-6 space-y-5">
-            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-4 space-y-1">
-              <Label className="flex items-center gap-2 text-blue-600 text-sm font-medium">
-                <User className="h-4 w-4" />
-                Titular
-              </Label>
-              <p className="font-bold text-gray-900 text-lg">{cuentaDetailModal.cuenta.titular}</p>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl p-4 space-y-1">
-                <Label className="flex items-center gap-2 text-purple-600 text-sm font-medium">
-                  <Landmark className="h-4 w-4" />
-                  Banco
-                </Label>
-                <p className="font-semibold text-gray-900">{cuentaDetailModal.cuenta.banco}</p>
-              </div>
-              <div className="bg-gradient-to-br from-orange-50 to-yellow-50 rounded-xl p-4 space-y-1">
-                <Label className="flex items-center gap-2 text-orange-600 text-sm font-medium">
-                  <Store className="h-4 w-4" />
-                  Sucursal
-                </Label>
-                <p className="font-semibold text-gray-900">{cuentaDetailModal.cuenta.sucursal || '-'}</p>
-              </div>
-            </div>
-            <div className="bg-gradient-to-br from-red-50 to-rose-50 rounded-xl p-4 space-y-1">
-              <Label className="flex items-center gap-2 text-red-600 text-sm font-medium">
-                <MapPin className="h-4 w-4" />
-                Dirección
-              </Label>
-              <p className="font-semibold text-gray-900">{cuentaDetailModal.cuenta.direccion}</p>
-            </div>
-            <div className="bg-gradient-to-br from-indigo-50 to-blue-50 rounded-xl p-4 space-y-1">
-              <Label className="flex items-center gap-2 text-indigo-600 text-sm font-medium">
-                <CreditCard className="h-4 w-4" />
-                Tipo de Cuenta
-              </Label>
-              <span className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-100 text-indigo-800 rounded-full text-sm font-bold">
-                <CreditCard className="h-4 w-4" />
-                {tiposCuenta.find(tc => tc.id_tipo_cuenta === cuentaDetailModal.cuenta!.id_tipo_cuenta)?.nombre || '-'}
-              </span>
-            </div>
-          </div>
-        )}
-      </Modal>
+      )}
     </div>
   );
 }

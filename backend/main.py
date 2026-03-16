@@ -5,17 +5,7 @@ import uvicorn
 from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    handlers=[logging.StreamHandler(sys.stdout)],
-)
-
-load_dotenv()
-
 from src.routes import api_router
-
 from src.models import (
     Anexo,
     Categorias,
@@ -37,6 +27,14 @@ from src.models import (
     TipoContrato,
     EstadoContrato,
 )
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    handlers=[logging.StreamHandler(sys.stdout)],
+)
+
+load_dotenv()
 
 __all_models__ = [
     Anexo,
@@ -61,8 +59,8 @@ __all_models__ = [
 ]
 
 app = FastAPI(
-    title="API de Inventario",
-    description="API para visualización y gestión de base de datos de inventario",
+    title="Caguayo",
+    description="",
     version="1.0.0",
     redirect_slashes=False,
 )
@@ -92,10 +90,9 @@ app.add_middleware(
 
 app.include_router(api_router)
 
-
 @app.get("/")
 async def root():
-    return {"message": "API de Inventario funcionando"}
+    return {"message": "API de Caguayo funcionando"}
 
 
 @app.get("/health")

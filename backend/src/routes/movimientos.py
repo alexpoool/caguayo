@@ -1,9 +1,8 @@
 from typing import List
 import logging
-from fastapi import APIRouter, Depends, HTTPException, Query, Header
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlmodel import select
-from jose import jwt
 from src.database.connection import get_session
 from src.services.movimiento_service import MovimientoService
 from src.models import TipoMovimiento
@@ -14,7 +13,6 @@ from src.dto import (
     AjusteCreate,
     MovimientoAjusteRead,
 )
-from src.services.auth_service import SECRET_KEY, ALGORITHM
 
 logger = logging.getLogger(__name__)
 
@@ -85,7 +83,6 @@ async def crear_movimiento(
 @router.post("/ajuste", response_model=List[MovimientoAjusteRead])
 async def crear_ajuste(
     ajuste: AjusteCreate,
-    authorization: str = Header(None),
     db: AsyncSession = Depends(get_session),
 ):
     """Crear movimientos de ajuste (quitar de origen, agregar a destinos).
@@ -98,18 +95,8 @@ async def crear_ajuste(
     - 1 movimiento AJUSTE_QUITAR (factor -1) en la dependencia origen
     - N movimientos AJUSTE_AGREGAR (factor +1) en cada dependencia destino
     """
-    # Extraer alias del token JWT
-    alias_usuario = None
-    if authorization and authorization.startswith("Bearer "):
-        token = authorization.replace("Bearer ", "")
-        try:
-            payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-            alias_usuario = payload.get("alias")
-        except Exception:
-            pass
-
     try:
-        result = await MovimientoService.crear_ajuste(db, ajuste, alias_usuario)
+        result = await MovimientoService.crear_ajuste(db, ajuste)
         return result
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))

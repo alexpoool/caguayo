@@ -225,11 +225,13 @@ export function UsuariosPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label className="flex items-center gap-2 text-gray-700">
+                <Label htmlFor="id_grupo" className="flex items-center gap-2 text-gray-700">
                   <Shield className="h-5 w-5 text-orange-500" />
                   Grupo *
                 </Label>
                 <select
+                  id="id_grupo"
+                  aria-label="Grupo"
                   className="w-full border rounded-md px-3 py-2 transition-all duration-200 focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
                   value={usuarioForm.id_grupo}
                   onChange={(e) => setUsuarioForm({ ...usuarioForm, id_grupo: parseInt(e.target.value) })}
@@ -241,11 +243,13 @@ export function UsuariosPage() {
                 </select>
               </div>
               <div className="space-y-2">
-                <Label className="flex items-center gap-2 text-gray-700">
+                <Label htmlFor="id_dependencia" className="flex items-center gap-2 text-gray-700">
                   <Building className="h-5 w-5 text-indigo-500" />
                   Dependencia
                 </Label>
                 <select
+                  id="id_dependencia"
+                  aria-label="Dependencia"
                   className="w-full border rounded-md px-3 py-2 transition-all duration-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                   value={usuarioForm.id_dependencia || ''}
                   onChange={(e) => setUsuarioForm({ ...usuarioForm, id_dependencia: e.target.value ? parseInt(e.target.value) : undefined })}

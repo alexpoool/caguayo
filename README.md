@@ -1,10 +1,20 @@
+<<<<<<< HEAD
 # Caguayo Webapp - Sistema de Inventario
 
 Aplicación web para la gestión y visualización de inventario, desarrollada con un stack moderno de Python y TypeScript.
+=======
+# Caguayo
+
+Aplicación web desarrollada con un stack moderno de Python y TypeScript.
+>>>>>>> leo
 
 ## 🚀 Tecnologías
 
 ### Backend
+<<<<<<< HEAD
+=======
+
+>>>>>>> leo
 - **FastAPI**: Framework web moderno y rápido para construir APIs con Python.
 - **SQLModel**: ORM híbrido que combina SQLAlchemy y Pydantic.
 - **PostgreSQL**: Base de datos relacional robusta.
@@ -13,6 +23,10 @@ Aplicación web para la gestión y visualización de inventario, desarrollada co
 - **UV**: Gestor de paquetes y proyectos de Python ultra rápido.
 
 ### Frontend
+<<<<<<< HEAD
+=======
+
+>>>>>>> leo
 - **React**: Biblioteca para construir interfaces de usuario.
 - **TypeScript**: Superset de JavaScript con tipado estático.
 - **Vite**: Herramienta de construcción frontend de próxima generación.
@@ -33,6 +47,10 @@ Aplicación web para la gestión y visualización de inventario, desarrollada co
 ## ⚙️ Configuración del Entorno
 
 ### 1. Clonar el repositorio
+<<<<<<< HEAD
+=======
+
+>>>>>>> leo
 ```bash
 git clone https://github.com/alexpoool/caguayo.git
 cd caguayo
@@ -41,16 +59,30 @@ cd caguayo
 ### 2. Configurar Backend
 
 1. Navegar al directorio backend:
+<<<<<<< HEAD
+=======
+
+>>>>>>> leo
    ```bash
    cd backend
    ```
 
 2. Crear archivo `.env`:
+<<<<<<< HEAD
    ```bash
    cp .env.example .env
    ```
    
 3. Editar `.env` con tus credenciales de PostgreSQL:
+=======
+
+   ```bash
+   cp .env.example .env
+   ```
+
+3. Editar `.env` con tus credenciales de PostgreSQL:
+
+>>>>>>> leo
    ```env
    DATABASE_URL=postgresql+psycopg://usuario:password@localhost:5432/caguayo_inventario
    DEBUG=True
@@ -58,16 +90,25 @@ cd caguayo
    ```
 
 4. Instalar dependencias:
+<<<<<<< HEAD
+=======
+
+>>>>>>> leo
    ```bash
    uv sync
    ```
 
 5. Activar git hooks (Pre-commit):
+<<<<<<< HEAD
+=======
+
+>>>>>>> leo
    ```bash
    uv run pre-commit install --config ../.pre-commit-config.yaml
    ```
 
 6. Ejecutar migraciones de base de datos:
+<<<<<<< HEAD
    ```bash
    cd backend
    .venv/bin/alembic upgrade head
@@ -77,27 +118,51 @@ cd caguayo
    ```bash
    cd backend
    .venv/bin/uvicorn main:app --reload --port 8000
+=======
+
+   ```bash
+   uv run alembic upgrade head
+   ```
+
+7. Iniciar servidor de desarrollo:
+
+   ```bash
+   uv run uvicorn main:app --reload
+>>>>>>> leo
    ```
 
 ### 3. Configurar Frontend
 
 1. Navegar al directorio frontend:
+<<<<<<< HEAD
+=======
+
+>>>>>>> leo
    ```bash
    cd frontend
    ```
 
 2. Instalar dependencias:
+<<<<<<< HEAD
+=======
+
+>>>>>>> leo
    ```bash
    pnpm install
    ```
 
 3. Iniciar servidor de desarrollo:
+<<<<<<< HEAD
+=======
+
+>>>>>>> leo
    ```bash
    pnpm dev
    ```
 
 ## 🏗️ Estructura del Proyecto
 
+<<<<<<< HEAD
 ```
 caguayo/
 ├── backend/
@@ -106,6 +171,13 @@ caguayo/
 │   │   ├── script.py.mako      # Template para nuevas migraciones
 │   │   ├── versions/           # Migraciones de base de datos
 │   │   └── alembic.ini         # Configuración de Alembic
+=======
+``` #type ignore
+caguayo-webapp/
+├── backend/
+│   ├── alembic/
+│   │   └── versions/          # Migraciones de base de datos
+>>>>>>> leo
 │   ├── sql/
 │   │   └── db.sql            # Schema de base de datos (exportado de modelos)
 │   ├── src/
@@ -192,6 +264,10 @@ caguayo/
 ### Entidades Principales
 
 #### Inventario
+<<<<<<< HEAD
+=======
+
+>>>>>>> leo
 | Entidad | Descripción |
 |---------|-------------|
 | **Moneda** | Divisas soportadas (USD, EUR, etc.) |
@@ -204,6 +280,10 @@ caguayo/
 | **Liquidacion** | Agrupación de movimientos |
 
 #### Administración
+<<<<<<< HEAD
+=======
+
+>>>>>>> leo
 | Entidad | Descripción |
 |---------|-------------|
 | **TipoContrato** | Tipos de contratos disponibles |
@@ -219,10 +299,18 @@ caguayo/
 | **Municipio** | Municipios por provincia |
 | **Cuenta** | Cuentas bancarias asociadas a dependencias |
 | **Grupo** | Grupos de usuarios para permisos |
+<<<<<<< HEAD
 | **Usuario** | Usuarios del sis.venv/bin/alembic upgrade headtema con autenticación |
 | **Transaccion** | Entidad base para transacciones |
 
 ### Estados de Venta
+=======
+| **Usuario** | Usuarios del sistema con autenticación |
+| **Transaccion** | Entidad base para transacciones |
+
+### Estados de Venta
+
+>>>>>>> leo
 - `PENDIENTE`: Venta en proceso
 - `COMPLETADA`: Venta finalizada
 - `ANULADA`: Venta cancelada
@@ -237,6 +325,7 @@ caguayo/
 
 ## 🔄 Migraciones de Base de Datos
 
+<<<<<<< HEAD
 > **Nota:** Las migraciones de Alembic están configuradas para usar el driver asíncrono `asyncpg`. El archivo `alembic/env.py` está configurado para manejar conexiones asíncronas correctamente.
 
 ### Comandos de Alembic
@@ -309,6 +398,37 @@ Formato: `postgresql+asyncpg://usuario:password@host:5432/database`
 ## 🧪 Testing
 
 Ejecutar tests del backend:
+=======
+Listado de migraciones disponibles:
+
+| Revisión | Descripción |
+|----------|-------------|
+
+Para crear una nueva migración:
+
+```bash
+uv run alembic revision --autogenerate -m "descripcion"
+```
+
+Para aplicar migraciones:
+
+```bash
+uv run alembic upgrade head
+```
+
+Para revertir una migración:
+
+```bash
+uv run alembic downgrade -1
+```
+
+## 🔒 Seguridad
+
+## 🧪 Testing
+
+Ejecutar tests del backend:
+
+>>>>>>> leo
 ```bash
 cd backend
 uv run pytest
@@ -317,17 +437,26 @@ uv run pytest
 ## 📦 Construcción para Producción
 
 ### Backend
+<<<<<<< HEAD
+=======
+
+>>>>>>> leo
 ```bash
 cd backend
 uv run uvicorn main:app --host 0.0.0.0 --port 8000
 ```
 
 ### Frontend
+<<<<<<< HEAD
+=======
+
+>>>>>>> leo
 ```bash
 cd frontend
 pnpm build
 ```
 
+<<<<<<< HEAD
 ## 🤝 Contribución
 
 1. Crear una rama para tu feature: `git checkout -b feature/nueva-funcionalidad`
@@ -338,3 +467,8 @@ pnpm build
 ## 📄 Licencia
 
 Este proyecto es propiedad de Caguayo. Todos los derechos reservados.
+=======
+## 📄 Licencia
+
+Este proyecto es propiedad de ACM. Todos los derechos reservados.
+>>>>>>> leo

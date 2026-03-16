@@ -1,5 +1,6 @@
 const API_BASE_URL = 'http://localhost:8000/api/v1';
 
+<<<<<<< HEAD
 const TOKEN_KEY = 'auth_token';
 const USER_KEY = 'auth_user';
 const BASE_DATOS_KEY = 'auth_base_datos';
@@ -9,12 +10,16 @@ class ApiClient {
     return localStorage.getItem(TOKEN_KEY);
   }
 
+=======
+class ApiClient {
+>>>>>>> leo
   private async request<T>(
     endpoint: string,
     options: RequestInit = {}
   ): Promise<T> {
     const url = `${API_BASE_URL}${endpoint}`;
     
+<<<<<<< HEAD
     const token = this.getToken();
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
@@ -24,6 +29,13 @@ class ApiClient {
 
     const config: RequestInit = {
       headers,
+=======
+    const config: RequestInit = {
+      headers: {
+        'Content-Type': 'application/json',
+        ...options.headers,
+      },
+>>>>>>> leo
       ...options,
     };
 
@@ -83,6 +95,16 @@ class ApiClient {
     });
   }
 
+<<<<<<< HEAD
+=======
+  async patch<T>(endpoint: string, data: any): Promise<T> {
+    return this.request<T>(endpoint, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  }
+
+>>>>>>> leo
   async delete<T>(endpoint: string): Promise<T> {
     return this.request<T>(endpoint, {
       method: 'DELETE',
@@ -90,6 +112,7 @@ class ApiClient {
   }
 }
 
+<<<<<<< HEAD
 export const apiClient = new ApiClient();
 
 // Auth helpers
@@ -141,3 +164,6 @@ export const authHelpers = {
     return !!this.getToken();
   }
 };
+=======
+export const apiClient = new ApiClient();
+>>>>>>> leo

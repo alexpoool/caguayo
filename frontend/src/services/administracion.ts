@@ -5,7 +5,7 @@ import type { TipoProveedor, TipoProveedorCreate, TipoProveedorUpdate } from '..
 import type { TipoConvenio, TipoConvenioCreate, TipoConvenioUpdate } from '../types/proveedor';
 import type { Cuenta, CuentaCreate, CuentaUpdate } from '../types/cuenta';
 import type { Grupo, GrupoCreate, GrupoUpdate, Funcionalidad, Usuario, UsuarioCreate, UsuarioUpdate } from '../types/usuario';
-import type { TipoDependencia, TipoDependenciaCreate, TipoDependenciaUpdate, Dependencia, DependenciaConCuentasCreate, DependenciaUpdate, DependenciaConDatabaseResponse } from '../types/dependencia';
+import type { TipoDependencia, TipoDependenciaCreate, TipoDependenciaUpdate, Dependencia, DependenciaConCuentasCreate, DependenciaUpdate } from '../types/dependencia';
 import type { Provincia, Municipio } from '../types/ubicacion';
 import type { Moneda } from '../types/moneda';
 import type { TipoCuenta, TipoCuentaCreate, TipoCuentaUpdate } from '../types/tipo_cuenta';
@@ -164,11 +164,11 @@ export const dependenciasService = {
     return await apiClient.get(`/dependencias/${id}`);
   },
 
-  createDependencia: async (data: DependenciaConCuentasCreate): Promise<DependenciaConDatabaseResponse> => {
+  createDependencia: async (data: DependenciaConCuentasCreate): Promise<Dependencia> => {
     return await apiClient.post('/dependencias', data);
   },
 
-  updateDependencia: async (id: number, data: DependenciaUpdate): Promise<DependenciaConDatabaseResponse> => {
+  updateDependencia: async (id: number, data: DependenciaUpdate): Promise<Dependencia> => {
     return await apiClient.put(`/dependencias/${id}`, data);
   },
 
@@ -199,21 +199,5 @@ export const dependenciasService = {
   getMunicipios: async (provinciaId?: number): Promise<Municipio[]> => {
     const params = provinciaId !== undefined ? { provincia_id: provinciaId } : {};
     return await apiClient.get('/dependencias/ubicaciones/municipios', params);
-  },
-
-  validarConexion: async (data: {
-    host: string;
-    puerto: number;
-    usuario: string;
-    contrasenia: string;
-    base_datos: string;
-  }): Promise<{
-    valida: boolean;
-    mensaje: string;
-    ya_existe: boolean;
-    tiene_tablas: boolean;
-    tablas: string[];
-  }> => {
-    return await apiClient.post('/dependencias/validar-conexion', data);
   },
 };

@@ -33,12 +33,6 @@ class DependenciaBase(SQLModel):
     id_provincia: Optional[int] = None
     id_municipio: Optional[int] = None
     descripcion: Optional[str] = None
-    host: Optional[str] = "localhost"
-    puerto: Optional[int] = 5432
-    usuario: Optional[str] = None
-    contrasenia: Optional[str] = None
-    base_datos: str
-    id_conexion: Optional[int] = None
 
 
 class DependenciaCreate(DependenciaBase):
@@ -62,12 +56,6 @@ class DependenciaRead(SQLModel):
     id_provincia: Optional[int] = None
     id_municipio: Optional[int] = None
     descripcion: Optional[str] = None
-    host: Optional[str] = "localhost"
-    puerto: Optional[int] = 5432
-    usuario: Optional[str] = None
-    contrasenia: Optional[str] = None
-    base_datos: str
-    id_conexion: Optional[int] = None
     tipo_dependencia: Optional[TipoDependenciaRead] = None
     provincia: Optional[ProvinciaRead] = None
     municipio: Optional[MunicipioRead] = None
@@ -85,9 +73,3 @@ class DependenciaUpdate(SQLModel):
     id_provincia: Optional[int] = None
     id_municipio: Optional[int] = None
     descripcion: Optional[str] = None
-    host: Optional[str] = None
-    puerto: Optional[int] = None
-    usuario: Optional[str] = None
-    contrasenia: Optional[str] = None
-    base_datos: Optional[str] = None
-    id_conexion: Optional[int] = None

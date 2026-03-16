@@ -54,7 +54,10 @@ export function ConfirmModal({
             <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
           </div>
           <button
+            type="button"
             onClick={onClose}
+            aria-label="Fechar"
+            title="Fechar"
             className="p-1 text-gray-400 hover:text-gray-600 transition-colors"
           >
             <X className="h-5 w-5" />

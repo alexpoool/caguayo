@@ -24,6 +24,13 @@ import { ReportesHome } from './pages/home/ReportesHome';
 import { LoginPage } from './pages/Login';
 import { PerfilPage } from './pages/Perfil';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { CompraClientesPage } from './pages/compra/ClientesPage';
+import { CompraConveniosPage } from './pages/compra/ConveniosPage';
+import { CompraAnexosPage } from './pages/compra/AnexosPage';
+import { ContratosPage } from './pages/ventas/ContratosPage';
+import { SuplementosPage } from './pages/ventas/SuplementosPage';
+import { FacturasPage } from './pages/ventas/FacturasPage';
+import { VentasEfectivoPage } from './pages/ventas/VentasEfectivoPage';
 import React from 'react';
 import { 
   ArrowLeftRight, 
@@ -59,8 +66,8 @@ const queryClient = new QueryClient({
 const rutasPorModulo: Record<Modulo, string[]> = {
   inventario: ['/inventario', '/movimientos', '/movimientos/pendientes', '/movimientos/ajuste', '/movimientos/seleccionar-recepcion', '/productos'],
   administracion: ['/administracion', '/configuracion', '/usuarios', '/grupos', '/monedas', '/dependencias'],
-  venta: ['/venta', '/ventas', '/clientes'],
-  compra: ['/compra'],
+  venta: ['/venta', '/ventas', '/clientes', '/ventas/operaciones', '/ventas/contratos', '/ventas/suplementos', '/ventas/facturas', '/ventas/efectivo'],
+  compra: ['/compra', '/compra/clientes', '/compra/convenios', '/compra/anexos'],
   reportes: ['/reportes'],
 };
 
@@ -421,6 +428,31 @@ function AppContent() {
               <Route path="/movimientos/ajuste" element={<MovimientoAjusteForm />} />
               
               <Route path="/venta" element={<VentaHome />} />
+              <Route path="/ventas/operaciones" element={
+                <ProtectedRoute moduloActivo={moduloActivo} currentPath="/ventas/operaciones">
+                  <VentaHome />
+                </ProtectedRoute>
+              } />
+              <Route path="/ventas/contratos" element={
+                <ProtectedRoute moduloActivo={moduloActivo} currentPath="/ventas/contratos">
+                  <ContratosPage />
+                </ProtectedRoute>
+              } />
+              <Route path="/ventas/suplementos" element={
+                <ProtectedRoute moduloActivo={moduloActivo} currentPath="/ventas/suplementos">
+                  <SuplementosPage />
+                </ProtectedRoute>
+              } />
+              <Route path="/ventas/facturas" element={
+                <ProtectedRoute moduloActivo={moduloActivo} currentPath="/ventas/facturas">
+                  <FacturasPage />
+                </ProtectedRoute>
+              } />
+              <Route path="/ventas/efectivo" element={
+                <ProtectedRoute moduloActivo={moduloActivo} currentPath="/ventas/efectivo">
+                  <VentasEfectivoPage />
+                </ProtectedRoute>
+              } />
               <Route path="/clientes" element={<ClientesPage />} />
               <Route path="/clientes/:id" element={<PerfilClientePage />} />
               
@@ -432,6 +464,21 @@ function AppContent() {
               <Route path="/dependencias" element={<DependenciasPage />} />
               
               <Route path="/compra" element={<CompraHome />} />
+              <Route path="/compra/clientes" element={
+                <ProtectedRoute moduloActivo={moduloActivo} currentPath="/compra/clientes">
+                  <CompraClientesPage />
+                </ProtectedRoute>
+              } />
+              <Route path="/compra/convenios" element={
+                <ProtectedRoute moduloActivo={moduloActivo} currentPath="/compra/convenios">
+                  <CompraConveniosPage />
+                </ProtectedRoute>
+              } />
+              <Route path="/compra/anexos" element={
+                <ProtectedRoute moduloActivo={moduloActivo} currentPath="/compra/anexos">
+                  <CompraAnexosPage />
+                </ProtectedRoute>
+              } />
               <Route path="/perfil" element={<PerfilPage />} />
               <Route path="/reportes" element={<ReportesHome />} />
             </Routes>

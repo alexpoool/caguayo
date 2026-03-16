@@ -15,6 +15,16 @@ from .configuracion import router as configuracion_router
 from .administracion import router as administracion_router
 from .auth import router as auth_router
 from .conexiones import router as conexiones_router
+from .tipos_entidad import router as tipos_entidad_router
+from .clientes_naturales import router as clientes_naturales_router
+from .clientes_tcp import router as clientes_tcp_router
+from .cuentas import router as cuentas_router
+from .ventas_operaciones import (
+    contratos_router,
+    suplementos_router,
+    facturas_router,
+    ventas_efectivo_router,
+)
 
 api_router = APIRouter(prefix="/api/v1")
 
@@ -34,6 +44,14 @@ api_router.include_router(anexos_router)
 api_router.include_router(dependencias_router)
 api_router.include_router(configuracion_router)
 api_router.include_router(administracion_router)
+api_router.include_router(tipos_entidad_router)
+api_router.include_router(clientes_naturales_router)
+api_router.include_router(clientes_tcp_router)
+api_router.include_router(cuentas_router)
+api_router.include_router(contratos_router)
+api_router.include_router(suplementos_router)
+api_router.include_router(facturas_router)
+api_router.include_router(ventas_efectivo_router)
 
 
 @api_router.get("/")
@@ -46,11 +64,16 @@ async def api_info():
             "subcategorias": "/api/v1/subcategorias",
             "ventas": "/api/v1/ventas",
             "clientes": "/api/v1/clientes",
-            "monedas": "/api/v1/monedas",
+            "monedas": "/api/v1/monedass",
             "movimientos": "/api/v1/movimientos",
             "configuracion": "/api/v1/configuracion",
             "administracion": "/api/v1/administracion",
             "dependencias": "/api/v1/dependencias",
             "dashboard": "/api/v1/dashboard/stats",
+            "auth": "/api/v1/auth",
+            "contratos": "/api/v1/contratos",
+            "facturas": "/api/v1/facturas",
+            "suplementos": "/api/v1/suplementos",
+            "ventas_efectivo": "/api/v1/ventas-efectivo",
         },
     }
