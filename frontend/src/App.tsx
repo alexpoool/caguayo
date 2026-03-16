@@ -25,6 +25,9 @@ import {
 } from 'lucide-react';
 
 import { WelcomePage } from './pages/Welcome';
+import { LoginPage } from './pages/Login';
+import { PerfilPage } from './pages/Perfil';
+import { AuthProvider, useAuth } from './context/AuthContext';
 import { ProductosPage } from './pages/Productos';
 import { ClientesPage } from './pages/Clientes';
 import { PerfilClientePage } from './pages/PerfilCliente';
@@ -94,6 +97,7 @@ function ProtectedRoute({
 }
 
 function App() {
+  const { isAuthenticated, isLoading } = useAuth();
   const [moduloActivo, setModuloActivo] = useState<Modulo>('inventario');
   const [slimSidebar, setSlimSidebar] = useState(false);
   const [showAccountModal, setShowAccountModal] = useState(false);
@@ -101,6 +105,25 @@ function App() {
   const navigate = useNavigate();
   const location = useLocation();
   const isHomePage = location.pathname === '/';
+
+  // Redirect to login if not authenticated
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated && location.pathname !== '/login') {
+      navigate('/login');
+    }
+  }, [isAuthenticated, isLoading, location.pathname, navigate]);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return null;
+  }
 
   const handleLogout = () => {
     // Close dialogs and navigate to home (add real logout logic here)
@@ -700,7 +723,12 @@ function AppWrapper() {
   return (
     <Router>
       <Toaster position="top-right" />
-      <App />
+      <AuthProvider>
+        <Routes>
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/*" element={<App />} />
+        </Routes>
+      </AuthProvider>
     </Router>
   );
 }
