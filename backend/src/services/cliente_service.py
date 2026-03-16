@@ -34,7 +34,21 @@ from src.dto import (
 class ClienteService:
     @staticmethod
     async def create_cliente(db: AsyncSession, cliente: ClienteCreate) -> ClienteRead:
-        db_cliente = await cliente_repo.create(db, obj_in=cliente)
+        # Convertir DTO a diccionario
+        obj_data = cliente.model_dump()
+        print(f"DEBUG model_dump: {obj_data}")
+
+        # Crear el cliente directamente
+        db_cliente = Cliente(**obj_data)
+        print(f"DEBUG Cliente created: {db_cliente.__dict__}")
+
+        db.add(db_cliente)
+        await db.commit()
+        await db.refresh(db_cliente)
+
+        # Verificar qué se guardó
+        print(f"DEBUG After commit: {db_cliente.__dict__}")
+
         return ClienteRead.model_validate(db_cliente)
 
     @staticmethod
@@ -46,7 +60,9 @@ class ClienteService:
     async def get_clientes(
         db: AsyncSession, skip: int = 0, limit: int = 100
     ) -> List[ClienteRead]:
-        db_clientes = await cliente_repo.get_multi_with_relations(db, skip=skip, limit=limit)
+        db_clientes = await cliente_repo.get_multi_with_relations(
+            db, skip=skip, limit=limit
+        )
         return [ClienteRead.model_validate(c) for c in db_clientes]
 
     @staticmethod
@@ -94,7 +110,9 @@ class ClienteNaturalService:
         db_obj = await cliente_natural_repo.get_with_cliente(db, id_cliente=id_cliente)
         if not db_obj:
             return None
-        updated = await cliente_natural_repo.update(db, db_obj=db_obj, obj_in=update_data)
+        updated = await cliente_natural_repo.update(
+            db, db_obj=db_obj, obj_in=update_data
+        )
         return ClienteNaturalRead.model_validate(updated)
 
     @staticmethod
@@ -126,7 +144,9 @@ class ClienteJuridicaService:
         db_obj = await cliente_juridica_repo.get_with_cliente(db, id_cliente=id_cliente)
         if not db_obj:
             return None
-        updated = await cliente_juridica_repo.update(db, db_obj=db_obj, obj_in=update_data)
+        updated = await cliente_juridica_repo.update(
+            db, db_obj=db_obj, obj_in=update_data
+        )
         return ClienteJuridicaRead.model_validate(updated)
 
     @staticmethod
@@ -170,7 +190,9 @@ class ClienteTCPService:
 
 class TipoEntidadService:
     @staticmethod
-    async def create(db: AsyncSession, tipo_entidad: TipoEntidadCreate) -> TipoEntidadRead:
+    async def create(
+        db: AsyncSession, tipo_entidad: TipoEntidadCreate
+    ) -> TipoEntidadRead:
         db_obj = await tipo_entidad_repo.create(db, obj_in=tipo_entidad)
         return TipoEntidadRead.model_validate(db_obj)
 
@@ -212,7 +234,9 @@ class CuentaService:
         return CuentaRead.model_validate(db_obj) if db_obj else None
 
     @staticmethod
-    async def get_all(db: AsyncSession, skip: int = 0, limit: int = 100) -> List[CuentaRead]:
+    async def get_all(
+        db: AsyncSession, skip: int = 0, limit: int = 100
+    ) -> List[CuentaRead]:
         db_objs = await cuenta_repo.get_multi(db, skip=skip, limit=limit)
         return [CuentaRead.model_validate(o) for o in db_objs]
 

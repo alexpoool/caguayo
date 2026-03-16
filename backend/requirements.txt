@@ -19,7 +19,7 @@ pydantic~=2.2
 python-dotenv
 
 # From PyPI with extra markers (platform/env specific examples):
-psycopg[binary]==3.2.0
+psycopg[binary]>=3.1
 sqlmodel
 
 # To install these: pip install -r requirements.txt

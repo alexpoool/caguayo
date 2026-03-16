@@ -26,22 +26,9 @@ class MovimientoService:
         db_movimiento = await movimiento_repo.create(db, obj_in=movimiento)
         logger.info(f"Movimiento creado en repo: {db_movimiento}")
 
-        # Generar código autogenerado para TODOS los tipos de movimiento
-        # Formato: año + id_movimiento + id_cliente + id_convenio + id_anexo + id_producto
-        anio = datetime.utcnow().year
-        id_movimiento = db_movimiento.id_movimiento
-        id_cliente = db_movimiento.id_cliente or 0
-        id_convenio = db_movimiento.id_convenio or 0
-        id_anexo = db_movimiento.id_anexo or 0
-        id_producto = db_movimiento.id_producto
-
-        codigo = (
-            f"{anio}{id_movimiento}{id_cliente}{id_convenio}{id_anexo}{id_producto}"
-        )
-        db_movimiento.codigo = codigo
-        await db.commit()
-        await db.refresh(db_movimiento)
-        logger.info(f"Código generado para movimiento: {codigo}")
+        # Si el código no viene del frontend, no se autogenera
+        if not db_movimiento.codigo:
+            logger.info("Código no proporcionado por frontend, se guardará sin código")
 
         try:
             # Recargar el movimiento con todas sus relaciones
@@ -53,7 +40,7 @@ class MovimientoService:
             if db_movimiento_con_relaciones is None:
                 raise ValueError("No se pudo recargar el movimiento con relaciones")
 
-            result = MovimientoRead.from_orm(db_movimiento_con_relaciones)
+            result = MovimientoRead.model_validate(db_movimiento_con_relaciones)
             logger.info(f"Movimiento convertido a DTO exitosamente")
             return result
         except Exception as e:
@@ -76,12 +63,26 @@ class MovimientoService:
         db_movimientos = await movimiento_repo.get_multi(
             db, skip=skip, limit=limit, tipo=tipo
         )
-        return [MovimientoRead.from_orm(m) for m in db_movimientos]
+        results = []
+        for m in db_movimientos:
+            try:
+                results.append(MovimientoRead.model_validate(m, from_attributes=True))
+            except Exception as e:
+                logger.warning(f"Error validating movimiento {m.id_movimiento}: {e}")
+                continue
+        return results
 
     @staticmethod
     async def get_movimientos_pendientes(db: AsyncSession) -> List[MovimientoRead]:
         db_movimientos = await movimiento_repo.get_pendientes(db)
-        return [MovimientoRead.from_orm(m) for m in db_movimientos]
+        results = []
+        for m in db_movimientos:
+            try:
+                results.append(MovimientoRead.model_validate(m, from_attributes=True))
+            except Exception as e:
+                logger.warning(f"Error validating movimiento {m.id_movimiento}: {e}")
+                continue
+        return results
 
     @staticmethod
     async def confirmar_movimiento(
@@ -491,12 +492,11 @@ class MovimientoService:
             cantidad=cantidad_total_destinos,
             fecha=fecha,
             observacion=ajuste.observacion,
-            id_convenio=origen.id_convenio,
             id_cliente=origen.id_cliente,
             precio_compra=origen.precio_compra,
-            id_moneda_compra=origen.id_moneda_compra,
+            moneda_compra=origen.moneda_compra,
             precio_venta=origen.precio_venta,
-            id_moneda_venta=origen.id_moneda_venta,
+            moneda_venta=origen.moneda_venta,
             estado="pendiente",
         )
         db.add(movimiento_quitar)
@@ -533,17 +533,15 @@ class MovimientoService:
             movimiento_agregar = Movimiento(
                 id_tipo_movimiento=tipo_agregar.id_tipo_movimiento,
                 id_dependencia=destino.id_dependencia,
-                id_anexo=origen.id_anexo,
                 id_producto=origen.id_producto,
                 cantidad=destino.cantidad,
                 fecha=fecha,
                 observacion=ajuste.observacion,
-                id_convenio=origen.id_convenio,
                 id_cliente=origen.id_cliente,
                 precio_compra=origen.precio_compra,
-                id_moneda_compra=origen.id_moneda_compra,
+                moneda_compra=origen.moneda_compra,
                 precio_venta=origen.precio_venta,
-                id_moneda_venta=origen.id_moneda_venta,
+                moneda_venta=origen.moneda_venta,
                 estado="pendiente",
             )
             db.add(movimiento_agregar)

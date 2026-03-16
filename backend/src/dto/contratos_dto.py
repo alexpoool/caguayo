@@ -2,6 +2,7 @@ from sqlmodel import SQLModel
 from typing import Optional, List
 from datetime import date
 from decimal import Decimal
+from src.dto.convenios_dto import AnexoProductoCreate
 
 
 class TipoContratoBase(SQLModel):
@@ -54,12 +55,7 @@ class ContratoBase(SQLModel):
 
 
 class ContratoCreate(ContratoBase):
-    productos: List["ContratoProductoCreate"] = []
-
-
-class ContratoProductoCreate(SQLModel):
-    id_producto: int
-    cantidad: int = 1
+    pass
 
 
 class ContratoRead(ContratoBase):
@@ -67,18 +63,10 @@ class ContratoRead(ContratoBase):
 
 
 class ContratoReadWithDetails(ContratoRead):
-    productos: List["ContratoProductoRead"] = []
     estado: Optional["EstadoContratoRead"] = None
     tipo_contrato: Optional["TipoContratoRead"] = None
     moneda: Optional["MonedaRead"] = None
     cliente: Optional["ClienteSimpleRead"] = None
-
-
-class ContratoProductoRead(SQLModel):
-    id_contrato_producto: int
-    id_producto: int
-    cantidad: int
-    producto: Optional["ProductoSimpleRead"] = None
 
 
 class ContratoUpdate(SQLModel):
@@ -94,10 +82,6 @@ class ContratoUpdate(SQLModel):
     documento_final: Optional[str] = None
 
 
-class ContratoUpdateWithProductos(ContratoUpdate):
-    productos: List["ContratoProductoCreate"] = []
-
-
 class MonedaRead(SQLModel):
     id_moneda: int
     nombre: str
@@ -111,12 +95,6 @@ class ClienteSimpleRead(SQLModel):
     cedula_rif: Optional[str] = None
 
 
-class ProductoSimpleRead(SQLModel):
-    id_producto: int
-    nombre: str
-    precio_venta: Decimal
-
-
 class SuplementoBase(SQLModel):
     id_contrato: int
     nombre: str
@@ -127,12 +105,7 @@ class SuplementoBase(SQLModel):
 
 
 class SuplementoCreate(SuplementoBase):
-    productos: List["SuplementoProductoCreate"] = []
-
-
-class SuplementoProductoCreate(SQLModel):
-    id_producto: int
-    cantidad: int = 1
+    pass
 
 
 class SuplementoRead(SuplementoBase):
@@ -140,15 +113,7 @@ class SuplementoRead(SuplementoBase):
 
 
 class SuplementoReadWithDetails(SuplementoRead):
-    productos: List["SuplementoProductoRead"] = []
     estado: Optional[EstadoContratoRead] = None
-
-
-class SuplementoProductoRead(SQLModel):
-    id_suplemento_producto: int
-    id_producto: int
-    cantidad: int
-    producto: Optional[ProductoSimpleRead] = None
 
 
 class SuplementoUpdate(SQLModel):
@@ -158,10 +123,6 @@ class SuplementoUpdate(SQLModel):
     fecha: Optional[date] = None
     monto: Optional[Decimal] = None
     documento: Optional[str] = None
-
-
-class SuplementoUpdateWithProductos(SuplementoUpdate):
-    productos: List[SuplementoProductoCreate] = []
 
 
 class FacturaBase(SQLModel):
@@ -175,12 +136,8 @@ class FacturaBase(SQLModel):
 
 
 class FacturaCreate(FacturaBase):
-    productos: List["FacturaProductoCreate"] = []
-
-
-class FacturaProductoCreate(SQLModel):
-    id_producto: int
-    cantidad: int = 1
+    id_moneda: Optional[int] = None
+    productos: Optional[List[AnexoProductoCreate]] = None
 
 
 class FacturaRead(FacturaBase):
@@ -188,14 +145,7 @@ class FacturaRead(FacturaBase):
 
 
 class FacturaReadWithDetails(FacturaRead):
-    productos: List["FacturaProductoRead"] = []
-
-
-class FacturaProductoRead(SQLModel):
-    id_factura_producto: int
-    id_producto: int
-    cantidad: int
-    producto: Optional[ProductoSimpleRead] = None
+    pass
 
 
 class FacturaUpdate(SQLModel):
@@ -208,10 +158,6 @@ class FacturaUpdate(SQLModel):
     pago_actual: Optional[Decimal] = None
 
 
-class FacturaUpdateWithProductos(FacturaUpdate):
-    productos: List[FacturaProductoCreate] = []
-
-
 class VentaEfectivoBase(SQLModel):
     slip: str
     fecha: date
@@ -221,12 +167,8 @@ class VentaEfectivoBase(SQLModel):
 
 
 class VentaEfectivoCreate(VentaEfectivoBase):
-    productos: List["VentaEfectivoProductoCreate"] = []
-
-
-class VentaEfectivoProductoCreate(SQLModel):
-    id_producto: int
-    cantidad: int = 1
+    id_moneda: Optional[int] = None
+    productos: Optional[List[AnexoProductoCreate]] = None
 
 
 class VentaEfectivoRead(VentaEfectivoBase):
@@ -234,15 +176,7 @@ class VentaEfectivoRead(VentaEfectivoBase):
 
 
 class VentaEfectivoReadWithDetails(VentaEfectivoRead):
-    productos: List["VentaEfectivoProductoRead"] = []
     dependencia: Optional["DependenciaSimpleRead"] = None
-
-
-class VentaEfectivoProductoRead(SQLModel):
-    id_venta_efectivo_producto: int
-    id_producto: int
-    cantidad: int
-    producto: Optional[ProductoSimpleRead] = None
 
 
 class VentaEfectivoUpdate(SQLModel):
@@ -251,10 +185,6 @@ class VentaEfectivoUpdate(SQLModel):
     id_dependencia: Optional[int] = None
     cajero: Optional[str] = None
     monto: Optional[Decimal] = None
-
-
-class VentaEfectivoUpdateWithProductos(VentaEfectivoUpdate):
-    productos: List[VentaEfectivoProductoCreate] = []
 
 
 class DependenciaSimpleRead(SQLModel):

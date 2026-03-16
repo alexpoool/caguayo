@@ -1,20 +1,10 @@
-<<<<<<< HEAD
-# Caguayo Webapp - Sistema de Inventario
-
-Aplicación web para la gestión y visualización de inventario, desarrollada con un stack moderno de Python y TypeScript.
-=======
-# Caguayo
+# Caguayo - Sistema de Gestión de Inventario
 
 Aplicación web desarrollada con un stack moderno de Python y TypeScript.
->>>>>>> leo
 
 ## 🚀 Tecnologías
 
 ### Backend
-<<<<<<< HEAD
-=======
-
->>>>>>> leo
 - **FastAPI**: Framework web moderno y rápido para construir APIs con Python.
 - **SQLModel**: ORM híbrido que combina SQLAlchemy y Pydantic.
 - **PostgreSQL**: Base de datos relacional robusta.
@@ -23,10 +13,6 @@ Aplicación web desarrollada con un stack moderno de Python y TypeScript.
 - **UV**: Gestor de paquetes y proyectos de Python ultra rápido.
 
 ### Frontend
-<<<<<<< HEAD
-=======
-
->>>>>>> leo
 - **React**: Biblioteca para construir interfaces de usuario.
 - **TypeScript**: Superset de JavaScript con tipado estático.
 - **Vite**: Herramienta de construcción frontend de próxima generación.
@@ -47,122 +33,123 @@ Aplicación web desarrollada con un stack moderno de Python y TypeScript.
 ## ⚙️ Configuración del Entorno
 
 ### 1. Clonar el repositorio
-<<<<<<< HEAD
-=======
-
->>>>>>> leo
 ```bash
 git clone https://github.com/alexpoool/caguayo.git
 cd caguayo
 ```
 
-### 2. Configurar Backend
+### 2. Configurar PostgreSQL
+
+#### Crear la base de datos
+```bash
+# Conectarse a PostgreSQL
+psql -U postgres -h localhost -p 5432
+
+# Crear la base de datos
+CREATE DATABASE caguayo_inventario;
+
+# Salir de psql
+\q
+```
+
+#### Crear usuario lector (opcional)
+```bash
+# Conectarse a PostgreSQL como postgres
+psql -U postgres -h localhost -p 5432
+
+-- Crear usuario lector con contraseña
+CREATE USER usuariolector WITH PASSWORD 'usuariolector123';
+
+-- Dar permiso de conexión a la base de datos
+GRANT CONNECT ON DATABASE caguayo_inventario TO usuariolector;
+
+-- Dar permiso de solo lectura
+GRANT SELECT ON ALL TABLES IN SCHEMA public TO usuariolector;
+
+-- Verificar que se creó correctamente
+\du usuariolector
+```
+
+### 3. Configurar Backend
 
 1. Navegar al directorio backend:
-<<<<<<< HEAD
-=======
-
->>>>>>> leo
    ```bash
    cd backend
    ```
 
 2. Crear archivo `.env`:
-<<<<<<< HEAD
-   ```bash
-   cp .env.example .env
-   ```
-   
-3. Editar `.env` con tus credenciales de PostgreSQL:
-=======
-
    ```bash
    cp .env.example .env
    ```
 
 3. Editar `.env` con tus credenciales de PostgreSQL:
-
->>>>>>> leo
    ```env
-   DATABASE_URL=postgresql+psycopg://usuario:password@localhost:5432/caguayo_inventario
+   DATABASE_URL=postgresql+psycopg://postgres:1234@localhost:5432/caguayo_inventario
    DEBUG=True
    CORS_ORIGINS=http://localhost:3000,http://127.0.0.1:3000,http://localhost:5173,http://127.0.0.1:5173
    ```
 
 4. Instalar dependencias:
-<<<<<<< HEAD
-=======
-
->>>>>>> leo
    ```bash
    uv sync
    ```
 
-5. Activar git hooks (Pre-commit):
-<<<<<<< HEAD
-=======
-
->>>>>>> leo
+5. Ejecutar el script de base de datos:
    ```bash
-   uv run pre-commit install --config ../.pre-commit-config.yaml
+   # Ejecutar el schema completo
+   psql -U postgres -d caguayo_inventario -f sql/db.sql
    ```
 
-6. Ejecutar migraciones de base de datos:
-<<<<<<< HEAD
-   ```bash
-   cd backend
-   .venv/bin/alembic upgrade head
-   ```
-
-7. Iniciar servidor de desarrollo:
-   ```bash
-   cd backend
-   .venv/bin/uvicorn main:app --reload --port 8000
-=======
-
-   ```bash
-   uv run alembic upgrade head
-   ```
-
-7. Iniciar servidor de desarrollo:
-
+6. Iniciar servidor de desarrollo:
    ```bash
    uv run uvicorn main:app --reload
->>>>>>> leo
    ```
 
-### 3. Configurar Frontend
+### 4. Configurar Frontend
 
 1. Navegar al directorio frontend:
-<<<<<<< HEAD
-=======
-
->>>>>>> leo
    ```bash
    cd frontend
    ```
 
 2. Instalar dependencias:
-<<<<<<< HEAD
-=======
-
->>>>>>> leo
    ```bash
    pnpm install
    ```
 
 3. Iniciar servidor de desarrollo:
-<<<<<<< HEAD
-=======
-
->>>>>>> leo
    ```bash
    pnpm dev
    ```
 
+## 👤 Usuario Superadministrador
+
+Al crear la base de datos por primera vez con `db.sql`, se crea automáticamente un super usuario:
+
+| Campo | Valor |
+|-------|-------|
+| **CI** | 00000000000 |
+| **Nombre** | Administrador Sistema Caguayo |
+| **Alias** | admin |
+| **Contraseña** | Admin123@ |
+| **Grupo** | ADMINISTRADOR (acceso total) |
+| **Dependencia** | Caguayo Matriz |
+
+**Importante**: Cambiar la contraseña en el primer inicio de sesión.
+
+### Grupos creados automáticamente:
+- **ADMINISTRADOR**: Acceso total al sistema
+- **GERENCIA**: Permisos de gestión
+- **VENTAS**: Módulo de ventas
+- **COMPRAS**: Módulo de compras
+- **INVENTARIO**: Gestión de inventario
+- **CONTABILIDAD**: Módulo de contabilidad
+
+### Permisos del grupo ADMINISTRADOR:
+Todas las funcionalidades del sistema (crear, editar, eliminar, ver para cada módulo).
+
 ## 🏗️ Estructura del Proyecto
 
-<<<<<<< HEAD
 ```
 caguayo/
 ├── backend/
@@ -171,146 +158,94 @@ caguayo/
 │   │   ├── script.py.mako      # Template para nuevas migraciones
 │   │   ├── versions/           # Migraciones de base de datos
 │   │   └── alembic.ini         # Configuración de Alembic
-=======
-``` #type ignore
-caguayo-webapp/
-├── backend/
-│   ├── alembic/
-│   │   └── versions/          # Migraciones de base de datos
->>>>>>> leo
 │   ├── sql/
-│   │   └── db.sql            # Schema de base de datos (exportado de modelos)
+│   │   ├── db.sql            # Schema completo de base de datos
+│   │   └── nuevas_tablas.sql # Tablas adicionales
 │   ├── src/
 │   │   ├── models/           # Modelos SQLModel
-│   │   │   ├── categoria.py      # Categorias, Subcategorias
-│   │   │   ├── producto.py       # Productos
-│   │   │   ├── moneda.py         # Monedas
-│   │   │   ├── cliente.py        # Clientes
-│   │   │   ├── venta.py          # Ventas
-│   │   │   ├── detalle_venta.py  # Detalle de ventas
-│   │   │   ├── movimiento.py     # Movimientos, Tipos de movimiento
-│   │   │   ├── provedor.py       # Proveedores
-│   │   │   ├── tipo_provedor.py  # Tipos de proveedor
-│   │   │   ├── convenio.py       # Convenios
-│   │   │   ├── tipo_convenio.py  # Tipos de convenio
-│   │   │   ├── anexo.py          # Anexos
-│   │   │   ├── dependencia.py    # Dependencias, Provincias, Municipios
-│   │   │   ├── tipo_dependencia.py # Tipos de dependencia
-│   │   │   ├── cuenta.py         # Cuentas bancarias
-│   │   │   ├── grupo.py          # Grupos de usuarios
-│   │   │   ├── usuarios.py       # Usuarios del sistema
-│   │   │   ├── contrato.py       # Tipos y estados de contrato
-│   │   │   ├── liquidacion.py    # Liquidaciones
-│   │   │   └── transaccion.py    # Transacciones
 │   │   ├── routes/           # Endpoints de la API
-│   │   │   ├── api.py
-│   │   │   ├── productos.py
-│   │   │   ├── categorias.py
-│   │   │   ├── subcategorias.py
-│   │   │   ├── ventas.py
-│   │   │   ├── clientes.py
-│   │   │   ├── monedas.py
-│   │   │   ├── movimientos.py
-│   │   │   ├── provedores.py
-│   │   │   ├── convenios.py
-│   │   │   ├── anexos.py
-│   │   │   ├── dependencias.py
-│   │   │   ├── configuracion.py  # Configuración general
-│   │   │   └── administracion.py # Usuarios, cuentas
 │   │   ├── services/         # Lógica de negocio
-│   │   │   ├── contrato_service.py
-│   │   │   ├── cuenta_service.py
-│   │   │   └── usuario_service.py
 │   │   ├── dto/              # Data Transfer Objects
-│   │   │   ├── contratos_dto.py
-│   │   │   ├── cuentas_dto.py
-│   │   │   ├── usuarios_dto.py
-│   │   │   ├── dependencias_dto.py
-│   │   │   └── ubicaciones_dto.py
 │   │   ├── repository/       # Capa de acceso a datos
 │   │   └── database/         # Configuración de BD
-│   ├── main.py              # Punto de entrada FastAPI
-│   ├── .env.example         # Plantilla de variables de entorno
-│   └── pyproject.toml       # Dependencias Python
+│   ├── main.py               # Punto de entrada FastAPI
+│   ├── .env.example          # Plantilla de variables de entorno
+│   └── pyproject.toml        # Dependencias Python
 └── frontend/
     ├── src/
     │   ├── components/       # Componentes React
-    │   │   ├── productos/
-    │   │   └── ui/          # Componentes UI reutilizables
     │   ├── pages/           # Vistas principales
-    │   │   ├── Dashboard.tsx
-    │   │   ├── Productos.tsx
-    │   │   ├── Ventas.tsx
-    │   │   ├── Clientes.tsx
-    │   │   ├── Movimientos.tsx
-    │   │   ├── Monedas.tsx
-    │   │   ├── Configuracion.tsx  # Página de configuración
-    │   │   ├── Usuarios.tsx       # Gestión de usuarios
-    │   │   └── Dependencias.tsx   # Gestión de dependencias
     │   ├── services/        # Llamadas a la API
-    │   │   └── administracion.ts
     │   └── types/           # Tipos TypeScript
-    │       ├── contrato.ts
-    │       ├── cuenta.ts
-    │       ├── usuario.ts
-    │       ├── dependencia.ts
-    │       └── ubicacion.ts
     ├── package.json
     └── vite.config.ts       # Configuración de Vite
 ```
 
 ## 🗄️ Modelos de Datos
 
-### Entidades Principales
-
-#### Inventario
-<<<<<<< HEAD
-=======
-
->>>>>>> leo
+### Catálogo
 | Entidad | Descripción |
 |---------|-------------|
-| **Moneda** | Divisas soportadas (USD, EUR, etc.) |
+| **Moneda** | Divisas soportadas (USD, EUR, CUP, etc.) |
 | **Categoria / Subcategoria** | Clasificación jerárquica de productos |
+| **TipoMovimiento** | Tipos: AJUSTE, MERMA, DONACION, RECEPCION, DEVOLUCION |
+| **TipoDependencia** | Clasificación de dependencias (MATRIZ, SUCURSAL, ALMACEN) |
+| **TipoCuenta** | Tipos de cuentas bancarias |
+| **TipoEntidad** | Tipos de entidad jurídica (OSDE, UEB, etc.) |
+| **TipoCliente** | Tipos de cliente |
+| **TipoProveedor** | Clasificación de proveedores |
+| **TipoConvenio** | Tipos de convenios comerciales |
+| **TipoContrato** | Tipos de contratos |
+| **EstadoContrato** | Estados de contratos |
+
+### Geográficos
+| Entidad | Descripción |
+|---------|-------------|
+| **Provincia** | Provincias de Cuba (16 provincias) |
+| **Municipio** | Municipios por provincia |
+
+### Principaless
+| Entidad | Descripción |
+|---------|-------------|
 | **Producto** | Inventario con código único, stock y precios |
-| **Cliente** | Gestión de clientes para ventas |
+| **Cliente** | Clientes (tipo_relacion: CLIENTE, PROVEEDOR, AMBAS) |
+| **ClienteNatural** | Datos de persona natural |
+| **ClienteJuridica** | Datos de persona jurídica |
+| **ClienteTCP** | Trabajador por cuenta propia |
+| **Proveedor** | Información de proveedores |
 | **Venta / DetalleVenta** | Transacciones de venta con estados |
 | **Movimiento** | Control de entradas/salidas de inventario |
-| **TipoMovimiento** | Tipos: AJUSTE, MERMA, DONACION, RECEPCION, DEVOLUCION |
-| **Liquidacion** | Agrupación de movimientos |
+| **Liquidacion** | Agrupación de movimientos con cálculos financieros |
+| **ProductosEnLiquidacion** | Productos asociados a liquidaciones |
 
-#### Administración
-<<<<<<< HEAD
-=======
-
->>>>>>> leo
+### Convenios y Contratos
 | Entidad | Descripción |
 |---------|-------------|
-| **TipoContrato** | Tipos de contratos disponibles |
-| **EstadoContrato** | Estados posibles de un contrato |
-| **TipoProveedor** | Clasificación de proveedores |
-| **Proveedor** | Información de proveedores |
-| **TipoConvenio** | Tipos de convenios comerciales |
 | **Convenio** | Acuerdos comerciales con vigencia |
 | **Anexo** | Documentos asociados a convenios |
-| **TipoDependencia** | Clasificación de dependencias |
+| **AnexoProducto** | Relación anexo-productos |
+| **Contrato** | Contratos con clientes |
+| **ContratoProducto** | Relación contrato-productos |
+| **Suplemento** | Suplementos de contratos |
+| **SuplementoProducto** | Relación suplemento-productos |
+| **Factura** | Facturas de contratos |
+| **FacturaProducto** | Relación factura-productos |
+
+### Administración
+| Entidad | Descripción |
+|---------|-------------|
 | **Dependencia** | Ubicaciones físicas jerárquicas (almacenes, sucursales) |
 | **Provincia** | Provincias del país |
 | **Municipio** | Municipios por provincia |
 | **Cuenta** | Cuentas bancarias asociadas a dependencias |
 | **Grupo** | Grupos de usuarios para permisos |
-<<<<<<< HEAD
-| **Usuario** | Usuarios del sis.venv/bin/alembic upgrade headtema con autenticación |
-| **Transaccion** | Entidad base para transacciones |
-
-### Estados de Venta
-=======
+| **Funcionalidad** | Funcionalidades del sistema |
+| **GrupoFuncionalidad** | Relación grupo-funcionalidades |
 | **Usuario** | Usuarios del sistema con autenticación |
-| **Transaccion** | Entidad base para transacciones |
+| **Sesion** | Control de sesiones de usuarios |
+| **ConexionDatabase** | Conexiones a otras bases de datos |
 
 ### Estados de Venta
-
->>>>>>> leo
 - `PENDIENTE`: Venta en proceso
 - `COMPLETADA`: Venta finalizada
 - `ANULADA`: Venta cancelada
@@ -325,8 +260,7 @@ caguayo-webapp/
 
 ## 🔄 Migraciones de Base de Datos
 
-<<<<<<< HEAD
-> **Nota:** Las migraciones de Alembic están configuradas para usar el driver asíncrono `asyncpg`. El archivo `alembic/env.py` está configurado para manejar conexiones asíncronas correctamente.
+> **Nota:** Las migraciones de Alembic están configuradas para usar el driver asíncrono `asyncpg`.
 
 ### Comandos de Alembic
 
@@ -335,100 +269,57 @@ caguayo-webapp/
 cd backend
 
 # Ver revisión actual
-.venv/bin/alembic current
+uv run alembic current
 
 # Ver historial de migraciones
-.venv/bin/alembic history
+uv run alembic history
 
 # Verificar que la base de datos está sincronizada
-.venv/bin/alembic check
+uv run alembic check
 
 # Crear una nueva migración (autogenerada desde los modelos)
-.venv/bin/alembic revision --autogenerate -m "descripcion de la migracion"
+uv run alembic revision --autogenerate -m "descripcion de la migracion"
 
 # Crear una migración vacía (manual)
-.venv/bin/alembic revision -m "descripcion"
+uv run alembic revision -m "descripcion"
 
 # Aplicar todas las migraciones
-.venv/bin/alembic upgrade head
+uv run alembic upgrade head
 
 # Aplicar una migración específica
-.venv/bin/alembic upgrade +1
+uv run alembic upgrade +1
 
 # Revertir la última migración
-.venv/bin/alembic downgrade -1
+uv run alembic downgrade -1
 
 # Marcar una revisión sin ejecutar (para bases de datos existentes)
-.venv/bin/alembic stamp <revision>
+uv run alembic stamp <revision>
 ```
 
-### Estructura de Alembic
+### Sincronizar modelos con base de datos existente
 
+Si tienes una base de datos existente y quieres sincronizar los modelos:
+
+```bash
+# 1. Exportar schema actual a SQL
+pg_dump -U postgres -d caguayo_inventario --schema-only > schema_actual.sql
+
+# 2. Comparar con db.sql y hacer los ajustes necesarios
+
+# 3. Aplicar los cambios directamente a la base de datos
+psql -U postgres -d caguayo_inventario -f sql/db.sql
 ```
-backend/
-├── alembic/
-│   ├── env.py              # Configuración de migraciones (async)
-│   ├── script.py.mako     # Template para nuevas migraciones
-│   ├── versions/          # Archivos de migración
-│   └── alembic.ini        # Configuración principal
-```
-
-### Migraciones Existentes
-
-| Revisión | Descripción |
-|----------|-------------|
-| `a9d239ce0765` | Estado inicial - Marca el estado actual de la base de datos (sin cambios) |
-
-**Nota:** La base de datos existente se sincronizó creando una migración inicial vacía. Los modelos SQLModel se comparan con la base de datos y mostrarán diferencias en `alembic check` hasta que se generen y apliquen nuevas migraciones explícitamente.
-
-### Configuración de Base de Datos
-
-La URL de la base de datos se configura en:
-- `backend/alembic.ini` - Configuración de Alembic
-- `backend/.env` - Variables de entorno (DATABASE_URL)
-
-Formato: `postgresql+asyncpg://usuario:password@host:5432/database`
 
 ## 🔒 Seguridad
 
 - Las credenciales de base de datos se gestionan mediante variables de entorno
 - CORS está configurado para permitir peticiones solo desde orígenes autorizados
 - Las contraseñas y datos sensibles nunca deben commitearse al repositorio
+- El sistema de grupos y funcionalidades permite control granular de permisos
 
 ## 🧪 Testing
 
 Ejecutar tests del backend:
-=======
-Listado de migraciones disponibles:
-
-| Revisión | Descripción |
-|----------|-------------|
-
-Para crear una nueva migración:
-
-```bash
-uv run alembic revision --autogenerate -m "descripcion"
-```
-
-Para aplicar migraciones:
-
-```bash
-uv run alembic upgrade head
-```
-
-Para revertir una migración:
-
-```bash
-uv run alembic downgrade -1
-```
-
-## 🔒 Seguridad
-
-## 🧪 Testing
-
-Ejecutar tests del backend:
-
->>>>>>> leo
 ```bash
 cd backend
 uv run pytest
@@ -437,26 +328,17 @@ uv run pytest
 ## 📦 Construcción para Producción
 
 ### Backend
-<<<<<<< HEAD
-=======
-
->>>>>>> leo
 ```bash
 cd backend
 uv run uvicorn main:app --host 0.0.0.0 --port 8000
 ```
 
 ### Frontend
-<<<<<<< HEAD
-=======
-
->>>>>>> leo
 ```bash
 cd frontend
 pnpm build
 ```
 
-<<<<<<< HEAD
 ## 🤝 Contribución
 
 1. Crear una rama para tu feature: `git checkout -b feature/nueva-funcionalidad`
@@ -467,8 +349,3 @@ pnpm build
 ## 📄 Licencia
 
 Este proyecto es propiedad de Caguayo. Todos los derechos reservados.
-=======
-## 📄 Licencia
-
-Este proyecto es propiedad de ACM. Todos los derechos reservados.
->>>>>>> leo

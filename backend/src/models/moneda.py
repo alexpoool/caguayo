@@ -27,9 +27,9 @@ class Moneda(SQLModel, table=True):
     # Nuevas relaciones con movimientos
     movimientos_compra: List["Movimiento"] = Relationship(
         back_populates="moneda_compra_rel",
-        sa_relationship_kwargs={"foreign_keys": "Movimiento.id_moneda_compra"},
+        sa_relationship_kwargs={"foreign_keys": "Movimiento.moneda_compra"},
     )
     movimientos_venta: List["Movimiento"] = Relationship(
         back_populates="moneda_venta_rel",
-        sa_relationship_kwargs={"foreign_keys": "Movimiento.id_moneda_venta"},
+        sa_relationship_kwargs={"foreign_keys": "Movimiento.moneda_venta"},
     )

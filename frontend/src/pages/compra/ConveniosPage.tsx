@@ -111,37 +111,54 @@ export function CompraConveniosPage() {
       {convenios.length === 0 ? (
         <p className="text-gray-500">No hay convenios registrados.</p>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {convenios.map((item) => (
-            <Card key={item.id_convenio} className={`hover:shadow-lg transition-shadow ${!isVigente(item.vigencia) ? 'opacity-60' : ''}`}>
-              <CardContent className="p-4">
-                <div className="flex justify-between items-start mb-2">
-                  <div className="flex items-center gap-2">
-                    <FileText className="w-5 h-5 text-green-600" />
-                    <span className="font-mono text-sm font-bold">{item.codigo_convenio}</span>
-                  </div>
-                  <span className={`px-2 py-1 rounded text-xs ${isVigente(item.vigencia) ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                    {isVigente(item.vigencia) ? 'Vigente' : 'Vencido'}
-                  </span>
-                </div>
-                <h3 className="font-semibold text-lg">{item.nombre_convenio}</h3>
-                <p className="text-sm text-gray-500">Cliente: {getClienteNombre(item.id_cliente)}</p>
-                <p className="text-sm text-gray-500">Tipo: {getTipoConvenioNombre(item.id_tipo_convenio)}</p>
-                <div className="flex items-center gap-2 mt-2 text-sm text-gray-500">
-                  <Calendar className="w-4 h-4" />
-                  <span>{item.fecha} - {item.vigencia}</span>
-                </div>
-                <div className="mt-3 flex gap-2">
-                  <Button variant="outline" size="sm" onClick={() => navigate(`/compra/anexos?convenio=${item.id_convenio}`)} className="flex-1">
-                    Ver Anexos
-                  </Button>
-                  <Button variant="outline" size="sm" onClick={() => openForm(item)}><Edit className="w-4 h-4" /></Button>
-                  <Button variant="outline" size="sm" onClick={() => handleDelete(item.id_convenio)}><Trash2 className="w-4 h-4 text-red-500" /></Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+        <Card>
+          <CardContent className="p-0">
+            <table className="w-full">
+              <thead className="bg-gray-50 border-b">
+                <tr>
+                  <th className="text-left p-3 font-medium text-gray-600">Código</th>
+                  <th className="text-left p-3 font-medium text-gray-600">Nombre</th>
+                  <th className="text-left p-3 font-medium text-gray-600">Cliente</th>
+                  <th className="text-left p-3 font-medium text-gray-600">Vigencia</th>
+                  <th className="text-right p-3 font-medium text-gray-600">Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                {convenios.map((item) => (
+                  <tr key={item.id_convenio} className={`border-b hover:bg-gray-50 ${!isVigente(item.vigencia) ? 'opacity-60' : ''}`}>
+                    <td className="p-3">
+                      <div className="flex items-center gap-2">
+                        <FileText className="w-4 h-4 text-green-600" />
+                        <span className="font-mono text-sm">{item.codigo_convenio || '-'}</span>
+                      </div>
+                    </td>
+                    <td className="p-3 font-medium">{item.nombre_convenio}</td>
+                    <td className="p-3 text-gray-600">{getClienteNombre(item.id_cliente)}</td>
+                    <td className="p-3">
+                      <div className="flex flex-col gap-1">
+                        <span className={`inline-flex px-2 py-0.5 rounded text-xs w-fit ${isVigente(item.vigencia) ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                          {isVigente(item.vigencia) ? 'Vigente' : 'Vencido'}
+                        </span>
+                        <span className="text-xs text-gray-500">
+                          {item.vigencia}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="p-3 text-right">
+                      <div className="flex justify-end gap-1">
+                        <Button variant="outline" size="sm" onClick={() => navigate(`/compra/anexos?convenio=${item.id_convenio}`)}>
+                          Anexos
+                        </Button>
+                        <Button variant="ghost" size="sm" onClick={() => openForm(item)}><Edit className="w-4 h-4" /></Button>
+                        <Button variant="ghost" size="sm" onClick={() => handleDelete(item.id_convenio)}><Trash2 className="w-4 h-4 text-red-500" /></Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </CardContent>
+        </Card>
       )}
     </div>
   );

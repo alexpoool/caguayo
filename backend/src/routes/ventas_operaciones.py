@@ -11,19 +11,21 @@ from src.services.contrato_service import (
 from src.dto import (
     ContratoCreate,
     ContratoReadWithDetails,
-    ContratoUpdateWithProductos,
+    ContratoUpdate,
     SuplementoCreate,
     SuplementoReadWithDetails,
-    SuplementoUpdateWithProductos,
+    SuplementoUpdate,
     FacturaCreate,
     FacturaReadWithDetails,
-    FacturaUpdateWithProductos,
+    FacturaUpdate,
     VentaEfectivoCreate,
     VentaEfectivoReadWithDetails,
-    VentaEfectivoUpdateWithProductos,
+    VentaEfectivoUpdate,
 )
 
-contratos_router = APIRouter(prefix="/contratos", tags=["contratos"], redirect_slashes=False)
+contratos_router = APIRouter(
+    prefix="/contratos", tags=["contratos"], redirect_slashes=False
+)
 
 
 @contratos_router.post("", response_model=ContratoReadWithDetails, status_code=201)
@@ -70,7 +72,7 @@ async def obtener_contrato(
 @contratos_router.put("/{contrato_id}", response_model=ContratoReadWithDetails)
 async def actualizar_contrato(
     contrato_id: int,
-    update_data: ContratoUpdateWithProductos,
+    update_data: ContratoUpdate,
     db: AsyncSession = Depends(get_session),
 ):
     """Actualizar un contrato."""
@@ -101,7 +103,9 @@ async def eliminar_contrato(
         )
 
 
-suplementos_router = APIRouter(prefix="/suplementos", tags=["suplementos"], redirect_slashes=False)
+suplementos_router = APIRouter(
+    prefix="/suplementos", tags=["suplementos"], redirect_slashes=False
+)
 
 
 @suplementos_router.post("", response_model=SuplementoReadWithDetails, status_code=201)
@@ -118,7 +122,9 @@ async def crear_suplemento(
         )
 
 
-@suplementos_router.get("/contrato/{contrato_id}", response_model=List[SuplementoReadWithDetails])
+@suplementos_router.get(
+    "/contrato/{contrato_id}", response_model=List[SuplementoReadWithDetails]
+)
 async def obtener_suplementos_por_contrato(
     contrato_id: int,
     db: AsyncSession = Depends(get_session),
@@ -147,7 +153,7 @@ async def obtener_suplemento(
 @suplementos_router.put("/{suplemento_id}", response_model=SuplementoReadWithDetails)
 async def actualizar_suplemento(
     suplemento_id: int,
-    update_data: SuplementoUpdateWithProductos,
+    update_data: SuplementoUpdate,
     db: AsyncSession = Depends(get_session),
 ):
     """Actualizar un suplemento."""
@@ -178,7 +184,9 @@ async def eliminar_suplemento(
         )
 
 
-facturas_router = APIRouter(prefix="/facturas", tags=["facturas"], redirect_slashes=False)
+facturas_router = APIRouter(
+    prefix="/facturas", tags=["facturas"], redirect_slashes=False
+)
 
 
 @facturas_router.post("", response_model=FacturaReadWithDetails, status_code=201)
@@ -190,9 +198,7 @@ async def crear_factura(
     try:
         return await FacturaService.create(db, factura)
     except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Error al crear factura: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Error al crear factura: {str(e)}")
 
 
 @facturas_router.get("", response_model=List[FacturaReadWithDetails])
@@ -210,7 +216,9 @@ async def obtener_facturas(
         )
 
 
-@facturas_router.get("/contrato/{contrato_id}", response_model=List[FacturaReadWithDetails])
+@facturas_router.get(
+    "/contrato/{contrato_id}", response_model=List[FacturaReadWithDetails]
+)
 async def obtener_facturas_por_contrato(
     contrato_id: int,
     db: AsyncSession = Depends(get_session),
@@ -239,7 +247,7 @@ async def obtener_factura(
 @facturas_router.put("/{factura_id}", response_model=FacturaReadWithDetails)
 async def actualizar_factura(
     factura_id: int,
-    update_data: FacturaUpdateWithProductos,
+    update_data: FacturaUpdate,
     db: AsyncSession = Depends(get_session),
 ):
     """Actualizar una factura."""
@@ -270,10 +278,14 @@ async def eliminar_factura(
         )
 
 
-ventas_efectivo_router = APIRouter(prefix="/ventas-efectivo", tags=["ventas-efectivo"], redirect_slashes=False)
+ventas_efectivo_router = APIRouter(
+    prefix="/ventas-efectivo", tags=["ventas-efectivo"], redirect_slashes=False
+)
 
 
-@ventas_efectivo_router.post("", response_model=VentaEfectivoReadWithDetails, status_code=201)
+@ventas_efectivo_router.post(
+    "", response_model=VentaEfectivoReadWithDetails, status_code=201
+)
 async def crear_venta_efectivo(
     venta: VentaEfectivoCreate,
     db: AsyncSession = Depends(get_session),
@@ -317,14 +329,16 @@ async def obtener_venta_efectivo(
 @ventas_efectivo_router.put("/{venta_id}", response_model=VentaEfectivoReadWithDetails)
 async def actualizar_venta_efectivo(
     venta_id: int,
-    update_data: VentaEfectivoUpdateWithProductos,
+    update_data: VentaEfectivoUpdate,
     db: AsyncSession = Depends(get_session),
 ):
     """Actualizar una venta en efectivo."""
     try:
         venta = await VentaEfectivoService.update(db, venta_id, update_data)
         if not venta:
-            raise HTTPException(status_code=404, detail="Venta en efectivo no encontrada")
+            raise HTTPException(
+                status_code=404, detail="Venta en efectivo no encontrada"
+            )
         return venta
     except Exception as e:
         raise HTTPException(
@@ -341,7 +355,9 @@ async def eliminar_venta_efectivo(
     try:
         success = await VentaEfectivoService.delete(db, venta_id)
         if not success:
-            raise HTTPException(status_code=404, detail="Venta en efectivo no encontrada")
+            raise HTTPException(
+                status_code=404, detail="Venta en efectivo no encontrada"
+            )
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"Error al eliminar venta en efectivo: {str(e)}"

@@ -24,11 +24,12 @@ class ProductosCreate(ProductosBase):
 class ProductosRead(ProductosBase):
     id_producto: int
     codigo: Optional[str] = None
-    subcategoria: Optional[SubcategoriasRead] = None
+    subcategoria: Optional["SubcategoriasRead"] = None
     moneda_compra_rel: Optional[MonedaRead] = None
     moneda_venta_rel: Optional[MonedaRead] = None
-    # Campo calculado - cantidad total de movimientos confirmados
     cantidad: int = 0
+
+    model_config = {"validate_assignment": False}
 
 
 class ProductosUpdate(SQLModel):
@@ -50,6 +51,6 @@ class ProductoSimpleRead(SQLModel):
     nombre: str
     descripcion: Optional[str] = None
     precio_venta: Decimal
-    precio_minimo: Decimal
+    precio_minimo: Optional[Decimal] = None
     # Campo calculado - cantidad total de movimientos confirmados
     cantidad: int = 0

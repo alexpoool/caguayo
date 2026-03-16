@@ -6,7 +6,6 @@ from decimal import Decimal
 if TYPE_CHECKING:
     from .cliente import Cliente
     from .moneda import Moneda
-    from .producto import Productos
     from .dependencia import Dependencia
 
 
@@ -45,21 +44,8 @@ class Contrato(SQLModel, table=True):
     estado: "EstadoContrato" = Relationship()
     tipo_contrato: "TipoContrato" = Relationship()
     moneda: "Moneda" = Relationship()
-    productos: List["ContratoProducto"] = Relationship(back_populates="contrato")
     suplementos: List["Suplemento"] = Relationship(back_populates="contrato")
     facturas: List["Factura"] = Relationship(back_populates="contrato")
-
-
-class ContratoProducto(SQLModel, table=True):
-    __tablename__ = "contrato_producto"
-
-    id_contrato_producto: Optional[int] = Field(default=None, primary_key=True)
-    id_contrato: int = Field(foreign_key="contrato.id_contrato")
-    id_producto: int = Field(foreign_key="productos.id_producto")
-    cantidad: int = Field(default=1)
-
-    contrato: "Contrato" = Relationship(back_populates="productos")
-    producto: "Productos" = Relationship()
 
 
 class Suplemento(SQLModel, table=True):
@@ -75,19 +61,6 @@ class Suplemento(SQLModel, table=True):
 
     contrato: "Contrato" = Relationship(back_populates="suplementos")
     estado: "EstadoContrato" = Relationship()
-    productos: List["SuplementoProducto"] = Relationship(back_populates="suplemento")
-
-
-class SuplementoProducto(SQLModel, table=True):
-    __tablename__ = "suplemento_producto"
-
-    id_suplemento_producto: Optional[int] = Field(default=None, primary_key=True)
-    id_suplemento: int = Field(foreign_key="suplemento.id_suplemento")
-    id_producto: int = Field(foreign_key="productos.id_producto")
-    cantidad: int = Field(default=1)
-
-    suplemento: "Suplemento" = Relationship(back_populates="productos")
-    producto: "Productos" = Relationship()
 
 
 class Factura(SQLModel, table=True):
@@ -103,19 +76,6 @@ class Factura(SQLModel, table=True):
     pago_actual: Decimal = Field(default=Decimal("0.00"))
 
     contrato: "Contrato" = Relationship(back_populates="facturas")
-    productos: List["FacturaProducto"] = Relationship(back_populates="factura")
-
-
-class FacturaProducto(SQLModel, table=True):
-    __tablename__ = "factura_producto"
-
-    id_factura_producto: Optional[int] = Field(default=None, primary_key=True)
-    id_factura: int = Field(foreign_key="factura.id_factura")
-    id_producto: int = Field(foreign_key="productos.id_producto")
-    cantidad: int = Field(default=1)
-
-    factura: "Factura" = Relationship(back_populates="productos")
-    producto: "Productos" = Relationship()
 
 
 class VentaEfectivo(SQLModel, table=True):
@@ -129,16 +89,3 @@ class VentaEfectivo(SQLModel, table=True):
     monto: Decimal = Field(default=Decimal("0.00"))
 
     dependencia: "Dependencia" = Relationship()
-    productos: List["VentaEfectivoProducto"] = Relationship(back_populates="venta_efectivo")
-
-
-class VentaEfectivoProducto(SQLModel, table=True):
-    __tablename__ = "venta_efectivo_producto"
-
-    id_venta_efectivo_producto: Optional[int] = Field(default=None, primary_key=True)
-    id_venta_efectivo: int = Field(foreign_key="venta_efectivo.id_venta_efectivo")
-    id_producto: int = Field(foreign_key="productos.id_producto")
-    cantidad: int = Field(default=1)
-
-    venta_efectivo: "VentaEfectivo" = Relationship(back_populates="productos")
-    producto: "Productos" = Relationship()

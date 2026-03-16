@@ -47,6 +47,13 @@ class ClienteUpdate(SQLModel):
     direccion: Optional[str] = None
 
 
+# Alias to avoid conflict with clientes_dto.py
+ConvenioClienteBase = ClienteBase
+ConvenioClienteCreate = ClienteCreate
+ConvenioClienteRead = ClienteRead
+ConvenioClienteUpdate = ClienteUpdate
+
+
 class TipoConvenioBase(SQLModel):
     nombre: str
     descripcion: Optional[str] = None
@@ -66,7 +73,6 @@ class TipoConvenioUpdate(SQLModel):
 
 
 class ConvenioBase(SQLModel):
-    codigo_convenio: Optional[str] = None
     id_cliente: int
     nombre_convenio: str
     fecha: date
@@ -85,7 +91,6 @@ class ConvenioRead(ConvenioBase):
 
 
 class ConvenioUpdate(SQLModel):
-    codigo_convenio: Optional[str] = None
     id_cliente: Optional[int] = None
     nombre_convenio: Optional[str] = None
     fecha: Optional[date] = None

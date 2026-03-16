@@ -5,6 +5,8 @@ if TYPE_CHECKING:
     from .dependencia import Dependencia
     from .tipo_cuenta import TipoCuenta
     from .cliente import Cliente
+    from .moneda import Moneda
+    from .provedor import Provedor
 
 
 class Cuenta(SQLModel, table=True):

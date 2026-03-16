@@ -140,6 +140,18 @@ export function CompraAnexosPage() {
     return prod?.nombre || `Producto ${id}`;
   };
 
+  const getDependenciaNombre = (id?: number) => {
+    if (!id) return '-';
+    const dep = dependencias.find(d => d.id_dependencia === id);
+    return dep?.nombre || `Dependencia ${id}`;
+  };
+
+  const getMonedaNombre = (id?: number) => {
+    if (!id) return '-';
+    const mon = monedas.find(m => m.id_moneda === id);
+    return mon?.simbolo || `Moneda ${id}`;
+  };
+
   const renderList = () => (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
@@ -163,30 +175,43 @@ export function CompraAnexosPage() {
       
       {selectedConvenio && anexos.length === 0 ? (
         <p className="text-gray-500">No hay anexos registrados.</p>
-      ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {anexos.map((item) => (
-            <Card key={item.id_anexo} className="hover:shadow-lg transition-shadow">
-              <CardContent className="p-4">
-                <div className="flex justify-between items-start mb-2">
-                  <div className="flex items-center gap-2">
-                    <Boxes className="w-5 h-5 text-amber-600" />
-                    <span className="font-mono text-sm font-bold">{item.codigo_anexo}</span>
-                  </div>
-                </div>
-                <h3 className="font-semibold">{item.nombre_anexo}</h3>
-                <p className="text-sm text-gray-500">Fecha: {item.fecha}</p>
-                {item.productos && (
-                  <p className="text-sm text-gray-500">Productos: {item.productos.length}</p>
-                )}
-                <div className="mt-3 flex gap-2">
-                  <Button variant="outline" size="sm" onClick={() => openForm(item)}><Edit className="w-4 h-4" /></Button>
-                  <Button variant="outline" size="sm" onClick={() => handleDelete(item.id_anexo)}><Trash2 className="w-4 h-4 text-red-500" /></Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+      ) : selectedConvenio && (
+        <Card>
+          <CardContent className="p-0">
+            <table className="w-full">
+              <thead className="bg-gray-50 border-b">
+                <tr>
+                  <th className="text-left p-3 font-medium text-gray-600">Código</th>
+                  <th className="text-left p-3 font-medium text-gray-600">Nombre</th>
+                  <th className="text-left p-3 font-medium text-gray-600">Comisión</th>
+                  <th className="text-left p-3 font-medium text-gray-600">Productos</th>
+                  <th className="text-right p-3 font-medium text-gray-600">Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                {anexos.map((item) => (
+                  <tr key={item.id_anexo} className="border-b hover:bg-gray-50">
+                    <td className="p-3">
+                      <div className="flex items-center gap-2">
+                        <Boxes className="w-4 h-4 text-amber-600" />
+                        <span className="font-mono text-sm">{item.codigo_anexo || '-'}</span>
+                      </div>
+                    </td>
+                    <td className="p-3 font-medium">{item.nombre_anexo}</td>
+                    <td className="p-3 text-gray-600">{item.comision ? `${item.comision}%` : '-'}</td>
+                    <td className="p-3 text-gray-600">{item.productos?.length || 0}</td>
+                    <td className="p-3 text-right">
+                      <div className="flex justify-end gap-1">
+                        <Button variant="ghost" size="sm" onClick={() => openForm(item)}><Edit className="w-4 h-4" /></Button>
+                        <Button variant="ghost" size="sm" onClick={() => handleDelete(item.id_anexo)}><Trash2 className="w-4 h-4 text-red-500" /></Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </CardContent>
+        </Card>
       )}
     </div>
   );

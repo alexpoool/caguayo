@@ -1,37 +1,54 @@
 import { useEffect, useState } from 'react';
+import { useAuth } from '../context/AuthContext';
 
 export function WelcomePage() {
-  const [nombre, setNombre] = useState('Solji Charón');
+  const { user } = useAuth();
+  const [nombre, setNombre] = useState<string>('');
+
+  const getSaludo = () => {
+    const hora = new Date().getHours();
+    if (hora < 12) return 'Buenos días';
+    if (hora < 18) return 'Buenas tardes';
+    return 'Buenas noches';
+  };
 
   useEffect(() => {
-    try {
-      const raw =
-        localStorage.getItem('usuario') ||
-        localStorage.getItem('user') ||
-        localStorage.getItem('username') ||
-        localStorage.getItem('nombre') ||
-        localStorage.getItem('nombre_usuario');
+    if (user) {
+      const fullName = [user.nombre, user.primer_apellido, user.segundo_apellido]
+        .filter(Boolean)
+        .join(' ')
+        .trim();
+      setNombre(fullName || user.alias || 'Usuario');
+    } else {
+      try {
+        const raw =
+          localStorage.getItem('usuario') ||
+          localStorage.getItem('user') ||
+          localStorage.getItem('username') ||
+          localStorage.getItem('nombre') ||
+          localStorage.getItem('nombre_usuario');
 
-      if (raw) {
-        let name = 'Usuario';
-        try {
-          const parsed = JSON.parse(raw);
-          if (parsed.nombre || parsed.first_name || parsed.username) {
-            name = `${parsed.nombre || parsed.first_name || parsed.username} ${parsed.primer_apellido || ''}`.trim();
-          } else if (parsed.nombre_completo) {
-            name = parsed.nombre_completo;
-          } else {
-            name = String(parsed);
+        if (raw) {
+          let name = 'Usuario';
+          try {
+            const parsed = JSON.parse(raw);
+            if (parsed.nombre || parsed.first_name || parsed.username) {
+              name = `${parsed.nombre || parsed.first_name || parsed.username} ${parsed.primer_apellido || ''}`.trim();
+            } else if (parsed.nombre_completo) {
+              name = parsed.nombre_completo;
+            } else {
+              name = String(parsed);
+            }
+          } catch {
+            name = raw;
           }
-        } catch {
-          name = raw;
+          setNombre(name || 'Usuario');
         }
-        setNombre(name || 'Usuario');
+      } catch (e) {
+        // ignore
       }
-    } catch (e) {
-      // ignore
     }
-  }, []);
+  }, [user]);
 
   return (
     <div className="max-w-xl mx-auto py-24">
@@ -39,7 +56,7 @@ export function WelcomePage() {
         <img src="/default.jpg" alt="avatar" className="w-24 h-24 rounded-full object-cover mb-4" />
         <h1 className="text-3xl font-extrabold">Bienvenido al sistema</h1>
         <p className="mt-3 text-xl">{nombre}</p>
-        <p className="mt-4 text-sm text-white/80">¡Que tengas un buen día!</p>
+        <p className="mt-4 text-sm text-white/80">¡{getSaludo()}!</p>
       </div>
     </div>
   );

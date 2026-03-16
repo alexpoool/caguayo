@@ -30,16 +30,15 @@ class TipoMovimientoUpdate(SQLModel):
 class MovimientoBase(SQLModel):
     id_tipo_movimiento: int
     id_dependencia: int
-    id_anexo: Optional[int] = None
     id_producto: int
     cantidad: int
+    codigo: Optional[str] = None
     observacion: Optional[str] = None
-    id_convenio: Optional[int] = None
     id_cliente: Optional[int] = None
     precio_compra: Optional[Decimal] = None
-    id_moneda_compra: Optional[int] = None
+    moneda_compra: Optional[int] = None
     precio_venta: Optional[Decimal] = None
-    id_moneda_venta: Optional[int] = None
+    moneda_venta: Optional[int] = None
 
 
 class MovimientoCreate(MovimientoBase):
@@ -52,18 +51,16 @@ class MovimientoRead(MovimientoBase):
 
     id_movimiento: int
     fecha: datetime
-    id_liquidacion: Optional[int] = None
     estado: str = "pendiente"
     codigo: Optional[str] = None
     tipo_movimiento: Optional[TipoMovimientoRead] = None
     dependencia: Optional[DependenciaRead] = None
     producto: Optional[ProductosRead] = None
-    anexo: Optional[AnexoRead] = None
     cliente: Optional[ClienteRead] = None
     moneda_compra_rel: Optional[MonedaRead] = None
     moneda_venta_rel: Optional[MonedaRead] = None
 
-    @validator('precio_compra', 'precio_venta', pre=True)
+    @validator("precio_compra", "precio_venta", pre=True)
     def parse_decimal(cls, v):
         if v is None:
             return None
@@ -73,19 +70,16 @@ class MovimientoRead(MovimientoBase):
 class MovimientoUpdate(SQLModel):
     id_tipo_movimiento: Optional[int] = None
     id_dependencia: Optional[int] = None
-    id_anexo: Optional[int] = None
     id_producto: Optional[int] = None
     cantidad: Optional[int] = None
     observacion: Optional[str] = None
-    id_liquidacion: Optional[int] = None
     estado: Optional[str] = None
     codigo: Optional[str] = None
-    id_convenio: Optional[int] = None
     id_cliente: Optional[int] = None
     precio_compra: Optional[Decimal] = None
-    id_moneda_compra: Optional[int] = None
+    moneda_compra: Optional[int] = None
     precio_venta: Optional[Decimal] = None
-    id_moneda_venta: Optional[int] = None
+    moneda_venta: Optional[int] = None
 
 
 class DestinoAjuste(SQLModel):

@@ -1,8 +1,10 @@
-from sqlmodel import select
+from sqlmodel import select, func
 from sqlmodel.ext.asyncio.session import AsyncSession
 from typing import List, Optional, Type, TypeVar
+from datetime import datetime
 from src.repository.base import CRUDBase
-from src.models.liquidacion import Liquidacion, ProductosLiquidacion
+from src.models.liquidacion import Liquidacion
+from src.models.productos_en_liquidacion import ProductosEnLiquidacion
 
 ModelType = TypeVar("ModelType")
 
@@ -27,10 +29,10 @@ class LiquidacionRepository(CRUDBase[Liquidacion, dict, dict]):
         result = await db.exec(statement)
         return result.all()
 
-    async def get_by_factura(
-        self, db: AsyncSession, factura_id: int
+    async def get_by_anexo(
+        self, db: AsyncSession, anexo_id: int
     ) -> Optional[Liquidacion]:
-        statement = select(Liquidacion).where(Liquidacion.id_factura == factura_id)
+        statement = select(Liquidacion).where(Liquidacion.id_anexo == anexo_id)
         result = await db.exec(statement)
         return result.first()
 
@@ -72,36 +74,18 @@ class LiquidacionRepository(CRUDBase[Liquidacion, dict, dict]):
         result = await db.exec(statement)
         return result.all()
 
-
-class ProductosLiquidacionRepository(CRUDBase[ProductosLiquidacion, dict, dict]):
-    async def get_by_liquidacion(
-        self, db: AsyncSession, liquidacion_id: int
-    ) -> List[ProductosLiquidacion]:
-        statement = select(ProductosLiquidacion).where(
-            ProductosLiquidacion.id_liquidacion == liquidacion_id
+    async def get_cantidad_liquidaciones_anio(self, db: AsyncSession, anio: int) -> int:
+        statement = (
+            select(func.count())
+            .select_from(Liquidacion)
+            .where(func.extract("YEAR", Liquidacion.fecha_emision) == anio)
         )
         result = await db.exec(statement)
-        return result.all()
+        return result.one()
 
-    async def get_by_transaccion(
-        self, db: AsyncSession, tipo_transaccion: str, id_transaccion: int
-    ) -> List[ProductosLiquidacion]:
-        statement = select(ProductosLiquidacion).where(
-            ProductosLiquidacion.tipo_transaccion == tipo_transaccion,
-            ProductosLiquidacion.id_transaccion == id_transaccion,
-        )
-        result = await db.exec(statement)
-        return result.all()
-
-    async def get_pendientes_by_cliente(
-        self, db: AsyncSession, cliente_id: int
-    ) -> List[ProductosLiquidacion]:
-        statement = select(ProductosLiquidacion).where(
-            ProductosLiquidacion.liquidado == False
-        )
-        result = await db.exec(statement)
-        return result.all()
+    async def get_codigo_anio(self, db: AsyncSession, anio: int) -> int:
+        cantidad = await self.get_cantidad_liquidaciones_anio(db, anio)
+        return cantidad + 1
 
 
 liquidacion_repo = LiquidacionRepository(Liquidacion)
-productos_liquidacion_repo = ProductosLiquidacionRepository(ProductosLiquidacion)

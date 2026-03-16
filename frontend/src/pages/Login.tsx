@@ -160,7 +160,7 @@ export function LoginPage() {
                     </option>
                     {conexiones.map((conn) => (
                       <option key={conn.id_conexion} value={conn.nombre_database}>
-                        {conn.nombre_database} ({conn.host}:{conn.puerto})
+                        {conn.nombre_database}
                       </option>
                     ))}
                   </select>

@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlmodel.ext.asyncio.session import AsyncSession
 from src.database.connection import get_session
@@ -8,8 +8,8 @@ from src.dto import (
     LiquidacionRead,
     LiquidacionUpdate,
     LiquidacionConfirmar,
-    ProductosLiquidacionCreate,
 )
+from src.dto.productos_en_liquidacion_dto import ProductosEnLiquidacionRead
 
 router = APIRouter(
     prefix="/liquidaciones", tags=["liquidaciones"], redirect_slashes=False
@@ -60,6 +60,21 @@ async def listar_liquidaciones_por_cliente(
     """Listar liquidaciones de un cliente específico."""
     return await liquidacion_service.get_liquidaciones_by_cliente(
         db, cliente_id, skip=skip, limit=limit
+    )
+
+
+@router.get(
+    "/productos-pendientes/cliente/{cliente_id}",
+    response_model=List[ProductosEnLiquidacionRead],
+)
+async def listar_productos_pendientes_por_cliente(
+    cliente_id: int,
+    anexo_id: Optional[int] = Query(None),
+    db: AsyncSession = Depends(get_session),
+):
+    """Listar productos pendientes de un cliente específico (y opcionalmente por anexo)."""
+    return await liquidacion_service.get_productos_pendientes_by_cliente(
+        db, cliente_id, anexo_id
     )
 
 
@@ -148,44 +163,4 @@ async def eliminar_liquidacion(
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"Error al eliminar liquidación: {str(e)}"
-        )
-
-
-@router.post("/{liquidacion_id}/productos", response_model=LiquidacionRead)
-async def agregar_productos_liquidacion(
-    liquidacion_id: int,
-    productos: List[ProductosLiquidacionCreate],
-    db: AsyncSession = Depends(get_session),
-):
-    """Agregar productos a una liquidación."""
-    try:
-        liquidacion = await liquidacion_service.agregar_productos_liquidacion(
-            db, liquidacion_id, productos
-        )
-        if not liquidacion:
-            raise HTTPException(status_code=404, detail="Liquidación no encontrada")
-        return liquidacion
-    except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Error al agregar productos: {str(e)}"
-        )
-
-
-@router.delete("/productos/{producto_liquidacion_id}", status_code=204)
-async def eliminar_producto_liquidacion(
-    producto_liquidacion_id: int,
-    db: AsyncSession = Depends(get_session),
-):
-    """Eliminar un producto de una liquidación."""
-    try:
-        success = await liquidacion_service.eliminar_producto_liquidacion(
-            db, producto_liquidacion_id
-        )
-        if not success:
-            raise HTTPException(
-                status_code=404, detail="Producto en liquidación no encontrado"
-            )
-    except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Error al eliminar producto: {str(e)}"
         )

@@ -446,7 +446,7 @@ export function MovimientoRecepcionForm({
         toast.error('Debe ingresar un precio de venta válido');
         return;
       }
-      if (!formData.id_moneda_compra || !formData.id_moneda_venta) {
+      if (!formData.moneda_compra || !formData.moneda_venta) {
         toast.error('Debe seleccionar las monedas');
         return;
       }
@@ -466,9 +466,9 @@ export function MovimientoRecepcionForm({
       // Solo incluir precios para RECEPCION
       ...(tipoMovimiento === 'RECEPCION' && {
         precio_compra: formData.precio_compra,
-        id_moneda_compra: formData.id_moneda_compra,
+        moneda_compra: formData.moneda_compra,
         precio_venta: formData.precio_venta,
-        id_moneda_venta: formData.id_moneda_venta,
+        moneda_venta: formData.moneda_venta,
       }),
     };
 
@@ -846,8 +846,8 @@ export function MovimientoRecepcionForm({
                         className="flex-1 transition-all duration-200 focus:ring-2 focus:ring-red-500 focus:border-red-500"
                       />
                       <select
-                        value={formData.id_moneda_compra || ''}
-                        onChange={(e) => setFormData({ ...formData, id_moneda_compra: parseInt(e.target.value) || 0 })}
+                        value={formData.moneda_compra || ''}
+                        onChange={(e) => setFormData({ ...formData, moneda_compra: parseInt(e.target.value) || 0 })}
                         disabled={isLoadingMonedas}
                         className="w-40 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none bg-white transition-all"
                       >
@@ -878,8 +878,8 @@ export function MovimientoRecepcionForm({
                         className="flex-1 transition-all duration-200 focus:ring-2 focus:ring-green-500 focus:border-green-500"
                       />
                       <select
-                        value={formData.id_moneda_venta || ''}
-                        onChange={(e) => setFormData({ ...formData, id_moneda_venta: parseInt(e.target.value) || 0 })}
+                        value={formData.moneda_venta || ''}
+                        onChange={(e) => setFormData({ ...formData, moneda_venta: parseInt(e.target.value) || 0 })}
                         disabled={isLoadingMonedas}
                         className="w-40 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none bg-white transition-all"
                       >

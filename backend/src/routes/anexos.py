@@ -16,6 +16,7 @@ from src.models import (
 from src.dto.convenios_dto import AnexoRead, AnexoCreate, AnexoProductoCreate
 from src.dto import DependenciaRead
 from sqlmodel import select, func
+from src.services.productos_en_liquidacion_service import agregar_desde_anexo
 
 router = APIRouter(prefix="/anexos", tags=["anexos"], redirect_slashes=False)
 
@@ -30,9 +31,7 @@ async def listar_anexos(
 ):
     """Listar anexos con opción de búsqueda y filtro por convenio."""
     statement = select(Anexo).options(
-        selectinload(Anexo.convenio)
-        .selectinload(Convenio.cliente)
-        .selectinload(Cliente.tipo_cliente),
+        selectinload(Anexo.convenio).selectinload(Convenio.cliente),
         selectinload(Anexo.convenio).selectinload(Convenio.tipo_convenio),
     )
     if convenio_id:
@@ -95,11 +94,10 @@ async def crear_anexo(
         )
         count_result = await db.exec(count_statement)
         total_anexos = count_result.one()
-        
+
         numero_anexo = total_anexos + 1
-        codigo_convenio = conveni.codigo_convenio or str(conveni.id_convenio)
-        codigo_anexo = f"{codigo_convenio}.{numero_anexo}"
-        
+        codigo_anexo = f"{conveni.id_convenio}.{numero_anexo}"
+
         datos_dict["codigo_anexo"] = codigo_anexo
 
         db_anexo = Anexo(**datos_dict)
@@ -122,14 +120,14 @@ async def crear_anexo(
             await db.flush()
 
             stmt_tipo_mov = select(TipoMovimiento).where(
-                TipoMovimiento.tipo == "RECEPCION"
+                TipoMovimiento.tipo == "compra"
             )
             result_tipo = await db.exec(stmt_tipo_mov)
             tipo_mov = result_tipo.first()
 
             if not tipo_mov or tipo_mov.id_tipo_movimiento is None:
                 raise HTTPException(
-                    status_code=500, detail="Tipo de movimiento RECEPCION no encontrado"
+                    status_code=500, detail="Tipo de movimiento 'compra' no encontrado"
                 )
 
             db_movimiento = Movimiento(
@@ -142,6 +140,7 @@ async def crear_anexo(
                 cantidad=prod["cantidad"],
                 fecha=datetime.utcnow(),
                 precio_compra=prod["precio_compra"],
+                moneda_compra=db_anexo.id_moneda,
                 estado="pendiente",
             )
             db.add(db_movimiento)
@@ -151,12 +150,9 @@ async def crear_anexo(
                 raise HTTPException(status_code=500, detail="Error al crear movimiento")
 
             anio = datetime.utcnow().year
-            id_mov = db_movimiento.id_movimiento
-            id_cliente = db_movimiento.id_cliente or 0
             id_convenio = db_movimiento.id_convenio or 0
-            id_anexo = db_movimiento.id_anexo or 0
 
-            codigo = f"{anio}{id_mov}{id_cliente}{id_convenio}{id_anexo}{prod['id_producto']}"
+            codigo = f"{anio}.{id_convenio}.{codigo_anexo}.{prod['id_producto']}"
             db_movimiento.codigo = codigo
 
             movimientos_creados.append(
@@ -167,6 +163,19 @@ async def crear_anexo(
                     "cantidad": prod["cantidad"],
                 }
             )
+
+        productos_para_liquidacion = [
+            {
+                "id_producto": prod["id_producto"],
+                "cantidad": prod["cantidad"],
+                "precio": prod.get("precio_compra", 0),
+                "id_moneda": db_anexo.id_moneda,
+            }
+            for prod in productos_data
+        ]
+
+        if productos_para_liquidacion:
+            await agregar_desde_anexo(db, db_anexo.id_anexo, productos_para_liquidacion)
 
         await db.commit()
         await db.refresh(db_anexo)

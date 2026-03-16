@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { clientesService, tiposEntidadService, clienteNaturalService, clienteJuridicaService, clienteTCPService, cuentasService } from '../services/api';
 import type { Cliente, ClienteCreate, ClienteUpdate, ClienteNatural, ClienteJuridica, ClienteTCP, Cuenta } from '../types/ventas';
@@ -27,7 +28,15 @@ type EstadoCliente = 'ACTIVO' | 'INACTIVO';
 
 export function ClientesPage() {
   const queryClient = useQueryClient();
+  const location = useLocation();
   const [view, setView] = useState<'list' | 'form' | 'detail'>('list');
+  
+  // Check if this is the proveedor view (from /compra/clientes)
+  const isProveedorView = location.pathname.includes('/compra/clientes') || location.search.includes('tipo=proveedor');
+  
+  // Default tipo_relacion based on view
+  const defaultTipoRelacion = isProveedorView ? 'PROVEEDOR' : 'CLIENTE';
+  
   const [editingCliente, setEditingCliente] = useState<Cliente | null>(null);
   const [viewingCliente, setViewingCliente] = useState<Cliente | null>(null);
   const [tipoPersona, setTipoPersona] = useState<TipoPersona>('NATURAL');
@@ -63,7 +72,7 @@ export function ClientesPage() {
     id_municipio: undefined,
     codigo_postal: '',
     direccion: '',
-    tipo_relacion: 'CLIENTE',
+    tipo_relacion: defaultTipoRelacion,
     estado: 'ACTIVO',
     fecha_registro: new Date().toISOString().split('T')[0],
     activo: true
@@ -261,7 +270,7 @@ export function ClientesPage() {
       id_municipio: undefined,
       codigo_postal: '',
       direccion: '',
-      tipo_relacion: 'CLIENTE',
+      tipo_relacion: defaultTipoRelacion,
       estado: 'ACTIVO',
       fecha_registro: new Date().toISOString().split('T')[0],
       activo: true
@@ -379,18 +388,17 @@ export function ClientesPage() {
     setCuentas(cuentas.filter((_, i) => i !== index));
   };
 
-  // VISTA: FORMULARIO
-  if (view === 'form') {
-    return (
-      <div className="space-y-6">
-        <div className="flex justify-between items-center">
-          <h1 className="text-2xl font-bold text-gray-900">
-            {editingCliente ? 'Editar Cliente' : 'Nuevo Cliente'}
-          </h1>
-          <Button variant="secondary" onClick={() => { setView('list'); setEditingCliente(null); resetForm(); }}>
-            <ArrowLeft className="h-4 w-4 mr-2" />Volver
-          </Button>
-        </div>
+  // Render views based on state
+  const renderFormView = () => (
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h1 className="text-2xl font-bold text-gray-900">
+          {editingCliente ? (isProveedorView ? 'Editar Proveedor' : 'Editar Cliente') : (isProveedorView ? 'Nuevo Proveedor' : 'Nuevo Cliente')}
+        </h1>
+        <Button variant="secondary" onClick={() => { setView('list'); setEditingCliente(null); resetForm(); }}>
+          <ArrowLeft className="h-4 w-4 mr-2" />Volver
+        </Button>
+      </div>
 
         <form onSubmit={handleSubmit}>
           {/* Tipo de Persona */}
@@ -646,16 +654,15 @@ export function ClientesPage() {
           </div>
         </form>
       </div>
-    );
-  }
+  );
 
-  // VISTA: DETALLES
-  if (view === 'detail' && viewingCliente) {
+  const renderDetailView = () => {
+    if (!viewingCliente) return null;
     return (
-      <div className="space-y-6">
-        <div className="flex justify-between items-center">
-          <h1 className="text-2xl font-bold text-gray-900">Detalles del Cliente</h1>
-          <Button variant="secondary" onClick={() => { setView('list'); setViewingCliente(null); }}>
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h1 className="text-2xl font-bold text-gray-900">Detalles del Cliente</h1>
+        <Button variant="secondary" onClick={() => { setView('list'); setViewingCliente(null); }}>
             <ArrowLeft className="h-4 w-4 mr-2" />Volver
           </Button>
         </div>
@@ -777,52 +784,128 @@ export function ClientesPage() {
         )}
       </div>
     );
-  }
+  };
 
   // VISTA: LISTA
+  const filteredClientes = useMemo(() => {
+    let result = clientes;
+    
+    // Filter by tipo_relacion if this is the proveedor view
+    if (isProveedorView) {
+      result = result.filter(c => c.tipo_relacion === 'PROVEEDOR' || c.tipo_relacion === 'AMBAS');
+    }
+    
+    if (!searchTerm) return result;
+    return result.filter(c => 
+      c.nombre?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      c.cedula_rif?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      c.telefono?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      c.email?.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [clientes, searchTerm, isProveedorView]);
+
+  // Render based on view state
+  if (view === 'form') {
+    return renderFormView();
+  }
+
+  if (view === 'detail' && viewingCliente) {
+    return renderDetailView();
+  }
+
+  // Default: render list view
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold">Clientes</h1>
-        <Button onClick={() => { resetForm(); setView('form'); }}><Plus className="h-4 w-4 mr-2" />Nuevo Cliente</Button>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">{isProveedorView ? 'Proveedores' : 'Clientes'}</h1>
+          <p className="text-gray-500 mt-1">
+            {filteredClientes.length === clientes.length 
+              ? `Gestión de clientes (${clientes.length} items)`
+              : `Mostrando ${filteredClientes.length} de ${clientes.length} clientes`
+            }
+          </p>
+        </div>
+        <Button onClick={() => { resetForm(); setView('form'); }}><Plus className="h-4 w-4 mr-2" />{isProveedorView ? 'Nuevo Proveedor' : 'Nuevo Cliente'}</Button>
       </div>
 
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
-        <Input
-          placeholder="Buscar clientes..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="pl-10"
-        />
+      <div className="flex gap-2">
+        <div className="flex-1 relative max-w-md">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+          <Input
+            placeholder="Buscar clientes..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10"
+          />
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {clientes.filter(c => c.nombre?.toLowerCase().includes(searchTerm.toLowerCase())).map((cliente) => (
-          <Card key={cliente.id_cliente} className="hover:shadow-lg transition-shadow">
-            <CardContent className="pt-4">
-              <div className="flex justify-between items-start">
-                <div>
-                  <h3 className="font-semibold text-lg">{cliente.nombre}</h3>
-                  <p className="text-sm text-gray-500">{cliente.cedula_rif || 'Sin identificación'}</p>
-                </div>
-                <span className={`px-2 py-1 rounded text-xs ${cliente.activo ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                  {cliente.activo ? 'Activo' : 'Inactivo'}
-                </span>
-              </div>
-              <div className="mt-3 space-y-1 text-sm">
-                {cliente.telefono && <p className="flex items-center gap-2"><Phone className="h-3 w-3" /> {cliente.telefono}</p>}
-                {cliente.email && <p className="flex items-center gap-2"><Mail className="h-3 w-3" /> {cliente.email}</p>}
-              </div>
-              <div className="mt-4 flex gap-2">
-                <Button variant="outline" size="sm" onClick={() => handleViewDetails(cliente)}><Eye className="h-4 w-4" /></Button>
-                <Button variant="outline" size="sm" onClick={() => handleEdit(cliente)}><Edit className="h-4 w-4" /></Button>
-                <Button variant="outline" size="sm" onClick={() => handleDelete(cliente)}><Trash2 className="h-4 w-4 text-red-600" /></Button>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+      {/* Tabla de clientes */}
+      <Card>
+        <CardContent className="p-0">
+          <table className="w-full">
+            <thead className="bg-gray-50 border-b">
+              <tr>
+                <th className="text-left p-4 font-medium text-gray-600">Nombre</th>
+                <th className="text-left p-4 font-medium text-gray-600">Cédula/RIF</th>
+                <th className="text-left p-4 font-medium text-gray-600">Teléfono</th>
+                <th className="text-left p-4 font-medium text-gray-600">Email</th>
+                <th className="text-left p-4 font-medium text-gray-600">Tipo</th>
+                <th className="text-left p-4 font-medium text-gray-600">Estado</th>
+                <th className="text-right p-4 font-medium text-gray-600">Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredClientes.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="p-8 text-center text-gray-500">
+                    {isProveedorView ? 'No hay proveedores registrados' : 'No hay clientes registrados'}
+                  </td>
+                </tr>
+              ) : (
+                filteredClientes.map((cliente) => (
+                  <tr key={cliente.id_cliente} className="border-b hover:bg-gray-50">
+                    <td className="p-4">{cliente.nombre || '(Sin nombre)'}</td>
+                    <td className="p-4">{cliente.cedula_rif || '-'}</td>
+                    <td className="p-4">{cliente.telefono || '-'}</td>
+                    <td className="p-4">{cliente.email || '-'}</td>
+                    <td className="p-4">
+                      <span className={`px-2 py-1 rounded text-xs ${
+                        cliente.tipo_persona === 'NATURAL' ? 'bg-blue-100 text-blue-800' :
+                        cliente.tipo_persona === 'JURIDICA' ? 'bg-purple-100 text-purple-800' :
+                        'bg-orange-100 text-orange-800'
+                      }`}>
+                        {cliente.tipo_persona || 'NATURAL'}
+                      </span>
+                    </td>
+                    <td className="p-4">
+                      <span className={`px-2 py-1 rounded text-xs ${
+                        cliente.estado === 'ACTIVO' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                      }`}>
+                        {cliente.estado || 'ACTIVO'}
+                      </span>
+                    </td>
+                    <td className="p-4 text-right">
+                      <div className="flex justify-end gap-2">
+                        <Button variant="ghost" size="sm" onClick={() => handleViewDetails(cliente)}>
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="sm" onClick={() => handleEdit(cliente)}>
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="sm" onClick={() => handleDelete(cliente)}>
+                          <Trash2 className="h-4 w-4 text-red-500" />
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </CardContent>
+      </Card>
 
       <ConfirmModal
         isOpen={confirmModal.isOpen}

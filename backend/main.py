@@ -26,6 +26,7 @@ from src.models import (
     Usuario,
     TipoContrato,
     EstadoContrato,
+    ProductosEnLiquidacion,
 )
 
 logging.basicConfig(
@@ -56,6 +57,7 @@ __all_models__ = [
     Usuario,
     TipoContrato,
     EstadoContrato,
+    ProductosEnLiquidacion,
 ]
 
 app = FastAPI(
@@ -89,6 +91,7 @@ app.add_middleware(
 )
 
 app.include_router(api_router)
+
 
 @app.get("/")
 async def root():

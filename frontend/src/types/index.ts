@@ -60,17 +60,13 @@ export interface Movimiento {
   id_movimiento: number;
   id_tipo_movimiento: number;
   id_dependencia: number;
-  id_anexo: number;
   id_producto: number;
   cantidad: number;
   fecha: string;
   observacion?: string;
-  id_liquidacion?: number;
   estado: string;
   codigo?: string;
-  // Nuevos campos
-  id_convenio?: number;
-  id_provedor?: number;
+  id_cliente?: number;
   precio_compra?: number;
   id_moneda_compra?: number;
   precio_venta?: number;
@@ -81,26 +77,31 @@ export interface Movimiento {
     id_dependencia: number;
     nombre: string;
   };
+  cliente?: {
+    id_cliente: number;
+    nombre: string;
+  };
 }
 
 export interface MovimientoCreate {
   id_tipo_movimiento: number;
   id_dependencia: number;
-  id_anexo?: number;
   id_producto: number;
   cantidad: number;
   fecha: string;
   observacion?: string;
-  id_liquidacion?: number;
   estado?: string;
   codigo?: string;
-  // Nuevos campos
-  id_convenio?: number;
-  id_provedor?: number;
+  id_cliente?: number;
   precio_compra?: number;
   id_moneda_compra?: number;
   precio_venta?: number;
   id_moneda_venta?: number;
+  id_contrato?: number;
+  id_suplemento?: number;
+  id_anexo?: number;
+  id_provedor?: number;
+  id_convenio?: number;
 }
 
 export interface TipoMovimiento {

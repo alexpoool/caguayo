@@ -95,6 +95,7 @@ export function DependenciasPage() {
   const [formData, setFormData] = useState<DependenciaCreate>({
     id_tipo_dependencia: 0,
     nombre: '',
+    base_datos: '',
     direccion: '',
     telefono: '',
   });
@@ -229,6 +230,7 @@ export function DependenciasPage() {
     setFormData({
       id_tipo_dependencia: 0,
       nombre: '',
+      base_datos: '',
       direccion: '',
       telefono: '',
       id_provincia: isNew ? provinciaId : undefined,
@@ -283,7 +285,19 @@ export function DependenciasPage() {
 
   const handleEdit = (dep: Dependencia) => {
     setEditingDependencia(dep);
-    setFormData(dep);
+    setFormData({
+      id_tipo_dependencia: dep.id_tipo_dependencia,
+      codigo_padre: dep.codigo_padre,
+      nombre: dep.nombre,
+      base_datos: dep.base_datos || '',
+      direccion: dep.direccion,
+      telefono: dep.telefono,
+      email: dep.email,
+      web: dep.web,
+      id_provincia: dep.id_provincia,
+      id_municipio: dep.id_municipio,
+      descripcion: dep.descripcion,
+    });
     // Cargar cuentas existentes de la dependencia
     if (dep.cuentas && dep.cuentas.length > 0) {
       setCuentas(dep.cuentas.map(c => ({
@@ -322,6 +336,7 @@ export function DependenciasPage() {
     setFormData({
       id_tipo_dependencia: 0,
       nombre: '',
+      base_datos: '',
       direccion: '',
       telefono: '',
       codigo_padre: padre.id_dependencia,
@@ -492,22 +507,18 @@ export function DependenciasPage() {
                 />
               </div>
 
-              {/* Tipo */}
+              {/* Base de Datos */}
               <div className="space-y-2">
                 <Label className="flex items-center gap-2 text-gray-700">
-                  <Tag className="h-5 w-5 text-purple-500" />
-                  Tipo de Dependencia *
+                  <Building className="h-5 w-5 text-green-500" />
+                  Base de Datos
                 </Label>
-                <select
-                  className="w-full border rounded-md px-3 py-2 transition-all duration-200 focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                  value={formData.id_tipo_dependencia}
-                  onChange={(e) => setFormData({ ...formData, id_tipo_dependencia: parseInt(e.target.value) })}
-                >
-                  <option value={0}>Seleccione un tipo</option>
-                  {tiposDependencia.map((t) => (
-                    <option key={t.id_tipo_dependencia} value={t.id_tipo_dependencia}>{t.nombre}</option>
-                  ))}
-                </select>
+                <Input
+                  value={formData.base_datos}
+                  onChange={(e) => setFormData({ ...formData, base_datos: e.target.value })}
+                  placeholder="Nombre de la base de datos"
+                  className="transition-all duration-200 focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                />
               </div>
 
               {/* Padre */}
@@ -535,8 +546,26 @@ export function DependenciasPage() {
                 )}
               </div>
 
-              {/* Dirección */}
-              <div className="col-span-2 space-y-2">
+              {/* Tipo */}
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2 text-gray-700">
+                  <Tag className="h-5 w-5 text-purple-500" />
+                  Tipo de Dependencia *
+                </Label>
+                <select
+                  className="w-full border rounded-md px-3 py-2 transition-all duration-200 focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                  value={formData.id_tipo_dependencia}
+                  onChange={(e) => setFormData({ ...formData, id_tipo_dependencia: parseInt(e.target.value) })}
+                >
+                  <option value={0}>Seleccione un tipo</option>
+                  {tiposDependencia.map((t) => (
+                    <option key={t.id_tipo_dependencia} value={t.id_tipo_dependencia}>{t.nombre}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Dirección y Teléfono */}
+              <div className="space-y-2">
                 <Label className="flex items-center gap-2 text-gray-700">
                   <MapPin className="h-5 w-5 text-red-500" />
                   Dirección *
@@ -549,7 +578,6 @@ export function DependenciasPage() {
                 />
               </div>
 
-              {/* Contacto */}
               <div className="space-y-2">
                 <Label className="flex items-center gap-2 text-gray-700">
                   <Phone className="h-5 w-5 text-green-500" />
@@ -558,11 +586,12 @@ export function DependenciasPage() {
                 <Input
                   value={formData.telefono}
                   onChange={(e) => setFormData({ ...formData, telefono: e.target.value })}
-                  placeholder=" +53"
+                  placeholder="+53"
                   className="transition-all duration-200 focus:ring-2 focus:ring-green-500 focus:border-green-500"
                 />
               </div>
 
+              {/* Email y Web */}
               <div className="space-y-2">
                 <Label className="flex items-center gap-2 text-gray-700">
                   <Mail className="h-5 w-5 text-blue-500" />
@@ -589,7 +618,7 @@ export function DependenciasPage() {
                 />
               </div>
 
-              {/* Ubicación */}
+              {/* Provincia y Municipio */}
               <div className="space-y-2">
                 <Label className="flex items-center gap-2 text-gray-700">
                   <Map className="h-5 w-5 text-orange-500" />

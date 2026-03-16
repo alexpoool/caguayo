@@ -6,16 +6,12 @@ from .ventas_clientes_repo import ClienteRepository, cliente_repo, ventas_repo
 from .contratos_repo import (
     ContratoRepository,
     contrato_repo,
-    ContratoProductoRepository,
     SuplementoRepository,
     suplemento_repo,
-    SuplementoProductoRepository,
     FacturaRepository,
     factura_repo,
-    FacturaProductoRepository,
     VentaEfectivoRepository,
     venta_efectivo_repo,
-    VentaEfectivoProductoRepository,
 )
 
 __all__ = [
@@ -32,14 +28,10 @@ __all__ = [
     "ventas_repo",
     "ContratoRepository",
     "contrato_repo",
-    "ContratoProductoRepository",
     "SuplementoRepository",
     "suplemento_repo",
-    "SuplementoProductoRepository",
     "FacturaRepository",
     "factura_repo",
-    "FacturaProductoRepository",
     "VentaEfectivoRepository",
     "venta_efectivo_repo",
-    "VentaEfectivoProductoRepository",
 ]

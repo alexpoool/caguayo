@@ -592,3 +592,181 @@ export const tipoEntidadService = {
     return apiClient.get<any[]>('/tipos-entidad');
   }
 };
+
+export interface ProductosEnLiquidacion {
+  id_producto_en_liquidacion: number;
+  codigo: string;
+  id_producto: number;
+  cantidad: number;
+  precio: number;
+  id_moneda: number;
+  tipo_compra: 'FACTURA' | 'VENTA_EFECTIVO' | 'ANEXO';
+  id_factura?: number;
+  id_venta_efectivo?: number;
+  id_anexo?: number;
+  liquidada: boolean;
+  fecha: string;
+  fecha_liquidacion?: string;
+  producto?: any;
+  moneda?: any;
+}
+
+export interface ProductosEnLiquidacionCreate {
+  id_producto: number;
+  cantidad: number;
+  precio: number;
+  id_moneda: number;
+  tipo_compra: 'FACTURA' | 'VENTA_EFECTIVO' | 'ANEXO';
+  id_factura?: number;
+  id_venta_efectivo?: number;
+  id_anexo?: number;
+}
+
+export const productosEnLiquidacionService = {
+  async getProductosEnLiquidacion(skip = 0, limit = 100): Promise<ProductosEnLiquidacion[]> {
+    return apiClient.get<ProductosEnLiquidacion[]>(`/productos-en-liquidacion?skip=${skip}&limit=${limit}`);
+  },
+
+  async getProductosEnLiquidacionPendientes(skip = 0, limit = 100): Promise<ProductosEnLiquidacion[]> {
+    return apiClient.get<ProductosEnLiquidacion[]>(`/productos-en-liquidacion/pendientes?skip=${skip}&limit=${limit}`);
+  },
+
+  async getProductosEnLiquidacionLiquidadas(skip = 0, limit = 100): Promise<ProductosEnLiquidacion[]> {
+    return apiClient.get<ProductosEnLiquidacion[]>(`/productos-en-liquidacion/liquidadas?skip=${skip}&limit=${limit}`);
+  },
+
+  async getProductoEnLiquidacion(id: number): Promise<ProductosEnLiquidacion> {
+    return apiClient.get<ProductosEnLiquidacion>(`/productos-en-liquidacion/${id}`);
+  },
+
+  async createProductoEnLiquidacion(data: ProductosEnLiquidacionCreate): Promise<ProductosEnLiquidacion> {
+    return apiClient.post<ProductosEnLiquidacion>('/productos-en-liquidacion', data);
+  },
+
+  async updateProductoEnLiquidacion(id: number, data: Partial<ProductosEnLiquidacionCreate>): Promise<ProductosEnLiquidacion> {
+    return apiClient.put<ProductosEnLiquidacion>(`/productos-en-liquidacion/${id}`, data);
+  },
+
+  async deleteProducto(id: number): Promise<void> {
+    return apiClient.delete<void>(`/productos-en-liquidacion/${id}`);
+  },
+
+  async liquidarProducto(id: number): Promise<ProductosEnLiquidacion> {
+    return apiClient.post<ProductosEnLiquidacion>(`/productos-en-liquidacion/${id}/liquidar`, {});
+  },
+};
+
+export interface Liquidacion {
+  id_liquidacion: number;
+  codigo: string;
+  id_cliente: number;
+  id_convenio?: number;
+  id_anexo?: number;
+  id_moneda: number;
+  liquidada: boolean;
+  fecha_emision: string;
+  fecha_liquidacion?: string;
+  observaciones?: string;
+  devengado: number;
+  tributario: number;
+  comision_bancaria: number;
+  gasto_empresa: number;
+  importe: number;
+  neto_pagar: number;
+  tipo_pago: string;
+  cliente?: any;
+  moneda?: any;
+  productos_en_liquidacion?: ProductosEnLiquidacion[];
+}
+
+export interface LiquidacionCreate {
+  id_cliente: number;
+  id_convenio?: number;
+  id_anexo?: number;
+  id_moneda: number;
+  devengado?: number;
+  tributario?: number;
+  comision_bancaria?: number;
+  gasto_empresa?: number;
+  tipo_pago?: string;
+  observaciones?: string;
+  producto_ids: number[];
+}
+
+export interface LiquidacionConfirmar {
+  tipo_pago: string;
+  devengado?: number;
+  tributario?: number;
+  comision_bancaria?: number;
+  gasto_empresa?: number;
+  observaciones?: string;
+}
+
+export const liquidacionService = {
+  async getLiquidaciones(skip = 0, limit = 100): Promise<Liquidacion[]> {
+    return apiClient.get<Liquidacion[]>(`/liquidaciones?skip=${skip}&limit=${limit}`);
+  },
+
+  async getLiquidacionesPendientes(skip = 0, limit = 100): Promise<Liquidacion[]> {
+    return apiClient.get<Liquidacion[]>(`/liquidaciones/pendientes?skip=${skip}&limit=${limit}`);
+  },
+
+  async getLiquidacionesLiquidadas(skip = 0, limit = 100): Promise<Liquidacion[]> {
+    return apiClient.get<Liquidacion[]>(`/liquidaciones/liquidadas?skip=${skip}&limit=${limit}`);
+  },
+
+  async getLiquidacion(id: number): Promise<Liquidacion> {
+    return apiClient.get<Liquidacion>(`/liquidaciones/${id}`);
+  },
+
+  async getLiquidacionesByCliente(clienteId: number): Promise<Liquidacion[]> {
+    return apiClient.get<Liquidacion[]>(`/liquidaciones/cliente/${clienteId}`);
+  },
+
+  async getProductosPendientesByCliente(clienteId: number, anexoId?: number): Promise<ProductosEnLiquidacion[]> {
+    let url = `/liquidaciones/productos-pendientes/cliente/${clienteId}`;
+    if (anexoId) {
+      url += `?anexo_id=${anexoId}`;
+    }
+    return apiClient.get<ProductosEnLiquidacion[]>(url);
+  },
+
+  async createLiquidacion(data: LiquidacionCreate): Promise<Liquidacion> {
+    return apiClient.post<Liquidacion>('/liquidaciones', data);
+  },
+
+  async updateLiquidacion(id: number, data: Partial<LiquidacionCreate>): Promise<Liquidacion> {
+    return apiClient.put<Liquidacion>(`/liquidaciones/${id}`, data);
+  },
+
+  async confirmarLiquidacion(id: number, data: LiquidacionConfirmar): Promise<Liquidacion> {
+    return apiClient.post<Liquidacion>(`/liquidaciones/${id}/confirmar`, data);
+  },
+
+  async deleteLiquidacion(id: number): Promise<void> {
+    return apiClient.delete<void>(`/liquidaciones/${id}`);
+  },
+};
+
+export type {
+  Cliente,
+  ClienteCreate,
+  ClienteUpdate,
+  ClienteWithVentas,
+  ClienteNatural,
+  ClienteNaturalCreate,
+  ClienteJuridica,
+  ClienteJuridicaCreate,
+  ClienteTCP,
+  ClienteTCPCreate,
+  Anexo,
+  Moneda,
+  MonedaCreate,
+  MonedaUpdate,
+  Provedor,
+  Convenio,
+  Dependencia,
+  Cuenta,
+  TipoEntidad,
+  TipoMovimiento,
+};

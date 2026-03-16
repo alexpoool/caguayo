@@ -31,7 +31,6 @@ async def listar_convenios(
     return [
         {
             "id_convenio": c.id_convenio,
-            "codigo_convenio": c.codigo_convenio,
             "id_cliente": c.id_cliente,
             "nombre_convenio": c.nombre_convenio,
             "fecha": str(c.fecha),
@@ -77,7 +76,6 @@ async def obtener_convenio(
         raise HTTPException(status_code=404, detail="Convenio no encontrado")
     return {
         "id_convenio": c.id_convenio,
-        "codigo_convenio": c.codigo_convenio,
         "id_cliente": c.id_cliente,
         "nombre_convenio": c.nombre_convenio,
         "fecha": str(c.fecha),
@@ -93,24 +91,24 @@ async def crear_convenio(
 ):
     try:
         datos_convertidos = datos.copy()
-        
+
         id_cliente = datos_convertidos.get("id_cliente")
         if not id_cliente:
             raise HTTPException(status_code=400, detail="El cliente es requerido")
-        
+
         stmt_cliente = select(Cliente).where(Cliente.id_cliente == id_cliente)
         result_cliente = await db.exec(stmt_cliente)
         cliente = result_cliente.first()
-        
+
         if not cliente:
             raise HTTPException(status_code=404, detail="Cliente no encontrado")
-        
+
         if cliente.tipo_relacion not in ["PROVEEDOR", "AMBAS"]:
             raise HTTPException(
-                status_code=400, 
-                detail="Solo los clientes que son proveedores o ambos pueden tener convenios"
+                status_code=400,
+                detail="Solo los clientes que son proveedores o ambos pueden tener convenios",
             )
-        
+
         if isinstance(datos_convertidos.get("fecha"), str):
             datos_convertidos["fecha"] = date.fromisoformat(datos_convertidos["fecha"])
         if isinstance(datos_convertidos.get("vigencia"), str):
@@ -121,14 +119,12 @@ async def crear_convenio(
         año = datos_convertidos.get("fecha", date.today()).year
 
         count_statement = select(func.count(Convenio.id_convenio)).where(
-            func.extract("year",Convenio.fecha) == año
+            func.extract("year", Convenio.fecha) == año
         )
         count_result = await db.exec(count_statement)
         total_convenios = count_result.one()
-        
+
         numero = total_convenios + 1
-        codigo = f"{año}.{numero}"
-        datos_convertidos["codigo_convenio"] = codigo
 
         db_convenio = Convenio(**datos_convertidos)
         db.add(db_convenio)
@@ -136,7 +132,6 @@ async def crear_convenio(
         await db.refresh(db_convenio)
         return {
             "id_convenio": db_convenio.id_convenio,
-            "codigo_convenio": db_convenio.codigo_convenio,
             "id_cliente": db_convenio.id_cliente,
             "nombre_convenio": db_convenio.nombre_convenio,
             "fecha": str(db_convenio.fecha),
@@ -173,7 +168,6 @@ async def actualizar_convenio(
     await db.refresh(db_convenio)
     return {
         "id_convenio": db_convenio.id_convenio,
-        "codigo_convenio": db_convenio.codigo_convenio,
         "id_cliente": db_convenio.id_cliente,
         "nombre_convenio": db_convenio.nombre_convenio,
         "fecha": str(db_convenio.fecha),

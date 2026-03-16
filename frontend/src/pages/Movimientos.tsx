@@ -151,6 +151,28 @@ export function MovimientosPage() {
 
   const getTipoConfig = (tipo: string) => {
     switch (tipo) {
+      case 'compra':
+        return {
+          icon: Truck,
+          gradient: 'from-green-500 to-emerald-600',
+          bgColor: 'bg-green-50',
+          borderColor: 'border-green-200',
+          textColor: 'text-green-700',
+          impacto: 'Entrada',
+          impactoIcon: TrendingUp,
+          impactoColor: 'text-green-600',
+        };
+      case 'venta':
+        return {
+          icon: TrendingDown,
+          gradient: 'from-red-500 to-rose-600',
+          bgColor: 'bg-red-50',
+          borderColor: 'border-red-200',
+          textColor: 'text-red-700',
+          impacto: 'Salida',
+          impactoIcon: TrendingDown,
+          impactoColor: 'text-red-600',
+        };
       case 'RECEPCION':
         return {
           icon: Truck,
@@ -621,6 +643,102 @@ export function MovimientosPage() {
                               ? `$${detailModal.movimiento.precio_venta.toFixed(2)}`
                               : 'N/A'}
                           </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {detailModal.movimiento?.tipo_movimiento?.tipo === 'compra' && (
+                    <div className="border-t border-gray-200 pt-6">
+                      <h4 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
+                        <div className={`p-2 rounded-lg bg-gradient-to-br ${config.gradient} text-white`}>
+                          <Truck className="h-4 w-4" />
+                        </div>
+                        Información de Compra (Anexo)
+                      </h4>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="bg-gray-50 p-4 rounded-xl">
+                          <p className="flex items-center gap-2 text-xs text-gray-500 uppercase tracking-wider mb-1">
+                            <Building className="h-3 w-3" />
+                            Proveedor
+                          </p>
+                          <p className="font-bold text-gray-900">{detailModal.movimiento?.provedor?.nombre || 'N/A'}</p>
+                        </div>
+                        <div className="bg-gray-50 p-4 rounded-xl">
+                          <p className="flex items-center gap-2 text-xs text-gray-500 uppercase tracking-wider mb-1">
+                            <FileText className="h-3 w-3" />
+                            Cliente
+                          </p>
+                          <p className="font-bold text-gray-900">{detailModal.movimiento?.cliente?.nombre || 'N/A'}</p>
+                        </div>
+                        <div className="bg-gray-50 p-4 rounded-xl">
+                          <p className="flex items-center gap-2 text-xs text-gray-500 uppercase tracking-wider mb-1">
+                            <Hash className="h-3 w-3" />
+                            Código
+                          </p>
+                          <p className="font-bold text-gray-900 font-mono">{detailModal.movimiento?.codigo || 'N/A'}</p>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4 mt-4">
+                        <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-4 rounded-xl border border-blue-200">
+                          <p className="flex items-center gap-2 text-xs text-blue-600 uppercase tracking-wider mb-1">
+                            <TrendingDown className="h-3 w-3" />
+                            Precio de Compra
+                          </p>
+                          <p className="font-bold text-blue-900 text-xl">
+                            {detailModal.movimiento?.precio_compra
+                              ? `$${detailModal.movimiento.precio_compra.toFixed(2)}`
+                              : 'N/A'}
+                          </p>
+                        </div>
+                        <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-4 rounded-xl border border-green-200">
+                          <p className="flex items-center gap-2 text-xs text-green-600 uppercase tracking-wider mb-1">
+                            <TrendingUp className="h-3 w-3" />
+                            Precio de Venta
+                          </p>
+                          <p className="font-bold text-green-900 text-xl">
+                            {detailModal.movimiento?.precio_venta
+                              ? `$${detailModal.movimiento.precio_venta.toFixed(2)}`
+                              : 'N/A'}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {detailModal.movimiento?.tipo_movimiento?.tipo === 'venta' && (
+                    <div className="border-t border-gray-200 pt-6">
+                      <h4 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
+                        <div className={`p-2 rounded-lg bg-gradient-to-br ${config.gradient} text-white`}>
+                          <TrendingDown className="h-4 w-4" />
+                        </div>
+                        Información de Venta
+                      </h4>
+                      <div className="grid grid-cols-2 gap-4">
+                        {detailModal.movimiento?.id_factura && (
+                          <div className="bg-gray-50 p-4 rounded-xl">
+                            <p className="flex items-center gap-2 text-xs text-gray-500 uppercase tracking-wider mb-1">
+                              <FileText className="h-3 w-3" />
+                              Factura
+                            </p>
+                            <p className="font-bold text-gray-900">#{detailModal.movimiento.id_factura}</p>
+                          </div>
+                        )}
+                        {detailModal.movimiento?.id_venta_efectivo && (
+                          <div className="bg-gray-50 p-4 rounded-xl">
+                            <p className="flex items-center gap-2 text-xs text-gray-500 uppercase tracking-wider mb-1">
+                              <TrendingDown className="h-3 w-3" />
+                              Venta Efectivo
+                            </p>
+                            <p className="font-bold text-gray-900">#{detailModal.movimiento.id_venta_efectivo}</p>
+                          </div>
+                        )}
+                        <div className="bg-gray-50 p-4 rounded-xl">
+                          <p className="flex items-center gap-2 text-xs text-gray-500 uppercase tracking-wider mb-1">
+                            <Hash className="h-3 w-3" />
+                            Código
+                          </p>
+                          <p className="font-bold text-gray-900 font-mono">{detailModal.movimiento?.codigo || 'N/A'}</p>
                         </div>
                       </div>
                     </div>

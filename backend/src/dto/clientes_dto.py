@@ -1,14 +1,16 @@
 from sqlmodel import SQLModel
 from typing import Optional, List
-from datetime import date
+from datetime import date, datetime
 from .ventas_dto import VentaRead
 
 
 class ClienteBase(SQLModel):
-    numero_cliente: str
-    nombre: str
-    tipo_persona: str  # NATURAL, JURIDICA, TCP
-    cedula_rif: str
+    model_config = {"populate_by_name": True}
+
+    numero_cliente: Optional[str] = None
+    nombre: Optional[str] = None
+    tipo_persona: Optional[str] = None
+    cedula_rif: Optional[str] = None
     telefono: Optional[str] = None
     email: Optional[str] = None
     fax: Optional[str] = None
@@ -16,11 +18,11 @@ class ClienteBase(SQLModel):
     id_provincia: Optional[int] = None
     id_municipio: Optional[int] = None
     codigo_postal: Optional[str] = None
-    direccion: str
-    tipo_relacion: str  # CLIENTE, PROVEEDOR, AMBAS
-    estado: str  # ACTIVO, INACTIVO
-    fecha_registro: date
-    activo: bool = True
+    direccion: Optional[str] = None
+    tipo_relacion: Optional[str] = None
+    estado: Optional[str] = None
+    fecha_registro: Optional[datetime] = None
+    activo: Optional[bool] = None
 
 
 class ClienteCreate(ClienteBase):
@@ -28,7 +30,7 @@ class ClienteCreate(ClienteBase):
 
 
 class ClienteRead(ClienteBase):
-    id_cliente: int
+    id_cliente: int = 0
 
 
 class ClienteReadWithVentas(ClienteRead):
@@ -50,15 +52,15 @@ class ClienteUpdate(SQLModel):
     direccion: Optional[str] = None
     tipo_relacion: Optional[str] = None
     estado: Optional[str] = None
-    fecha_registro: Optional[date] = None
+    fecha_registro: Optional[datetime] = None
     activo: Optional[bool] = None
 
 
 class ClienteSimpleRead(SQLModel):
     id_cliente: int
-    numero_cliente: str
-    nombre: str
-    cedula_rif: str
-    tipo_persona: str
-    estado: str
-    activo: bool
+    numero_cliente: Optional[str] = None
+    nombre: Optional[str] = None
+    cedula_rif: Optional[str] = None
+    tipo_persona: Optional[str] = None
+    estado: Optional[str] = None
+    activo: Optional[bool] = None

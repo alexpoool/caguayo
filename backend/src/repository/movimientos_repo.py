@@ -27,6 +27,18 @@ from src.dto import (
 class MovimientoRepository(CRUDBase[Movimiento, MovimientoCreate, MovimientoUpdate]):
     def _get_selectinload_options(self):
         """Helper method to get all selectinload options for Movimiento relationships."""
+        from src.models import (
+            Cliente,
+            TipoCliente,
+            TipoConvenio,
+            Dependencia,
+            TipoDependencia,
+            Provincia,
+            Municipio,
+            Subcategorias,
+            TipoMovimiento,
+        )
+
         return [
             selectinload(Movimiento.tipo_movimiento),  # type: ignore
             selectinload(Movimiento.dependencia).selectinload(
@@ -34,25 +46,10 @@ class MovimientoRepository(CRUDBase[Movimiento, MovimientoCreate, MovimientoUpda
             ),  # type: ignore
             selectinload(Movimiento.dependencia).selectinload(Dependencia.provincia),  # type: ignore
             selectinload(Movimiento.dependencia).selectinload(Dependencia.municipio),  # type: ignore
-            selectinload(Movimiento.dependencia).selectinload(Dependencia.cuentas),  # type: ignore
-            selectinload(Movimiento.anexo),  # type: ignore
             selectinload(Movimiento.producto)
-            .selectinload(  # type: ignore
-                Productos.subcategoria
-            )
+            .selectinload(Productos.subcategoria)
             .selectinload(Subcategorias.categoria),  # type: ignore
-            selectinload(Movimiento.producto).selectinload(  # type: ignore
-                Productos.moneda_compra_rel
-            ),
-            selectinload(Movimiento.producto).selectinload(  # type: ignore
-                Productos.moneda_venta_rel
-            ),
-            selectinload(Movimiento.liquidacion),  # type: ignore
-            selectinload(Movimiento.convenio)
-            .selectinload(Convenio.cliente)  # type: ignore
-            .selectinload(Cliente.tipo_cliente),  # type: ignore
-            selectinload(Movimiento.convenio).selectinload(Convenio.tipo_convenio),  # type: ignore
-            selectinload(Movimiento.cliente).selectinload(Cliente.tipo_cliente),  # type: ignore
+            selectinload(Movimiento.cliente),  # type: ignore
             selectinload(Movimiento.moneda_compra_rel),  # type: ignore
             selectinload(Movimiento.moneda_venta_rel),  # type: ignore
         ]
@@ -126,17 +123,6 @@ class MovimientoRepository(CRUDBase[Movimiento, MovimientoCreate, MovimientoUpda
             .options(*self._get_selectinload_options())
             .where(Movimiento.estado == "pendiente")
             .order_by(Movimiento.fecha.desc())
-        )
-        results = await db.exec(statement)
-        return list(results.all())
-
-    async def get_by_anexo(self, db: AsyncSession, id_anexo: int) -> List[Movimiento]:
-        """Obtener movimientos confirmados por anexo (para obtener productos disponibles)."""
-        statement = (
-            select(Movimiento)
-            .options(*self._get_selectinload_options())
-            .where(Movimiento.id_anexo == id_anexo)
-            .where(Movimiento.estado == "confirmado")
         )
         results = await db.exec(statement)
         return list(results.all())

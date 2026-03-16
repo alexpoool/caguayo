@@ -23,13 +23,9 @@ from .contrato import (
     TipoContrato,
     EstadoContrato,
     Contrato,
-    ContratoProducto,
     Suplemento,
-    SuplementoProducto,
     Factura,
-    FacturaProducto,
     VentaEfectivo,
-    VentaEfectivoProducto,
 )
 from .cuenta import Cuenta
 from .tipo_cuenta import TipoCuenta
@@ -39,6 +35,7 @@ from .funcionalidades import Funcionalidad, GrupoFuncionalidad
 from .sesion import Sesion
 from .conexion_database import ConexionDatabase
 from .especialidades_artisticas import EspecialidadesArtisticas
+from .productos_en_liquidacion import ProductosEnLiquidacion, TipoCompra
 
 __all__ = [
     "Moneda",
@@ -70,13 +67,9 @@ __all__ = [
     "TipoContrato",
     "EstadoContrato",
     "Contrato",
-    "ContratoProducto",
     "Suplemento",
-    "SuplementoProducto",
     "Factura",
-    "FacturaProducto",
     "VentaEfectivo",
-    "VentaEfectivoProducto",
     "Cuenta",
     "TipoCuenta",
     "TipoEntidad",
@@ -87,4 +80,6 @@ __all__ = [
     "Sesion",
     "ConexionDatabase",
     "EspecialidadesArtisticas",
+    "ProductosEnLiquidacion",
+    "TipoCompra",
 ]

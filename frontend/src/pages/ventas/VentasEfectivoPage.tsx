@@ -1,10 +1,10 @@
-import { useState, useEffect } from 'react';
-import { Button, Input, Label, Card, CardContent, CardHeader, CardTitle } from '../../components/ui';
+import { useState, useEffect, useMemo } from 'react';
+import { Button, Input, Label, Card, CardContent, CardHeader, CardTitle, Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../../components/ui';
 import { ventasEfectivoService, productosService, dependenciasService } from '../../services/api';
 import type { Productos } from '../../types';
 import type { Dependencia } from '../../types/dependencia';
 import type { VentaEfectivoWithDetails } from '../../types/contrato';
-import { Plus, Save, Trash2, Edit, X, ArrowLeft } from 'lucide-react';
+import { Plus, Save, Trash2, Edit, X, ArrowLeft, Search } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 type View = 'list' | 'form';
@@ -19,6 +19,7 @@ export function VentasEfectivoPage() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [formData, setFormData] = useState<Record<string, any>>({});
   const [selectedProducts, setSelectedProducts] = useState<{id_producto: number; cantidad: number}[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => { loadInitialData(); }, []);
 
@@ -111,35 +112,109 @@ export function VentasEfectivoPage() {
     </div>
   );
 
+  const filteredVentas = useMemo(() => {
+    if (!searchTerm) return ventasEfectivo;
+    return ventasEfectivo.filter(v => 
+      v.slip?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      v.cajero?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      v.dependencia?.nombre?.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [ventasEfectivo, searchTerm]);
+
   const renderList = () => (
-    <div className="space-y-4">
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold">Ventas en Efectivo</h2>
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Ventas en Efectivo</h1>
+          <p className="text-gray-500 mt-1">
+            {filteredVentas.length === ventasEfectivo.length 
+              ? `Gestión de ventas (${ventasEfectivo.length} items)`
+              : `Mostrando ${filteredVentas.length} de ${ventasEfectivo.length} ventas`
+            }
+          </p>
+        </div>
         <Button onClick={() => openForm()}><Plus className="w-4 h-4 mr-2" />Nueva</Button>
       </div>
-      {ventasEfectivo.length === 0 ? (
-        <p className="text-gray-500">No hay ventas en efectivo.</p>
-      ) : (
-        <div className="grid gap-4">
-          {ventasEfectivo.map((item) => (
-            <Card key={item.id_venta_efectivo}>
-              <CardContent className="p-4">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <h3 className="font-semibold text-lg">Slip: {item.slip}</h3>
-                    <p className="text-sm">Cajero: {item.cajero} | Monto: ${Number(item.monto).toFixed(2)}</p>
-                    <p className="text-sm text-gray-500">Fecha: {item.fecha} | Dependencia: {item.dependencia?.nombre}</p>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button variant="outline" size="sm" onClick={() => openForm(item)}><Edit className="w-4 h-4" /></Button>
-                    <Button variant="outline" size="sm" onClick={() => handleDelete(item.id_venta_efectivo)}><Trash2 className="w-4 h-4 text-red-500" /></Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+
+      <div className="flex gap-2">
+        <div className="flex-1 relative max-w-md">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+          <Input
+            placeholder="Buscar ventas..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10"
+          />
         </div>
-      )}
+      </div>
+
+      <Card className="overflow-hidden shadow-sm border-gray-200">
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader className="bg-gray-50/50">
+              <TableRow>
+                <TableHead className="w-[15%]">Slip</TableHead>
+                <TableHead>Cajero</TableHead>
+                <TableHead>Monto</TableHead>
+                <TableHead>Fecha</TableHead>
+                <TableHead>Dependencia</TableHead>
+                <TableHead className="text-right">Acciones</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredVentas.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="text-center py-12 text-gray-500">
+                    {searchTerm ? 'No se encontraron ventas que coincidan con la búsqueda' : 'No hay ventas en efectivo'}
+                  </TableCell>
+                </TableRow>
+              ) : (
+                filteredVentas.map((item) => (
+                  <TableRow key={item.id_venta_efectivo} className="hover:bg-gray-50/50 transition-colors">
+                    <TableCell>
+                      <span className="font-medium text-gray-900">{item.slip}</span>
+                    </TableCell>
+                    <TableCell className="text-gray-500">
+                      {item.cajero || 'N/A'}
+                    </TableCell>
+                    <TableCell className="font-medium text-gray-900">
+                      ${Number(item.monto).toFixed(2)}
+                    </TableCell>
+                    <TableCell className="text-gray-500">
+                      {item.fecha}
+                    </TableCell>
+                    <TableCell className="text-gray-500">
+                      {item.dependencia?.nombre || 'N/A'}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => openForm(item)}
+                          className="text-blue-600 hover:text-blue-800 hover:bg-blue-50 h-8 w-8"
+                          title="Editar"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleDelete(item.id_venta_efectivo)}
+                          className="text-red-600 hover:text-red-800 hover:bg-red-50 h-8 w-8"
+                          title="Eliminar"
+                        >
+                          <Trash2 className="h-4 w-4 text-red-500" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
+      </Card>
     </div>
   );
 

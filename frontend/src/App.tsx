@@ -45,9 +45,11 @@ import { AdministracionHome } from './pages/home/AdministracionHome';
 import { VentaHome } from './pages/home/VentaHome';
 import { CompraHome } from './pages/home/CompraHome';
 import { ReportesHome } from './pages/home/ReportesHome';
-import { CompraClientesPage } from './pages/compra/ClientesPage';
 import { CompraConveniosPage } from './pages/compra/ConveniosPage';
 import { CompraAnexosPage } from './pages/compra/AnexosPage';
+import { ProductosEnLiquidacionPage } from './pages/compra/ProductosEnLiquidacionPage';
+import { LiquidacionesPage } from './pages/compra/LiquidacionesPage';
+import { CrearLiquidacionPage } from './pages/compra/CrearLiquidacionPage';
 import { ContratosPage } from './pages/ventas/ContratosPage';
 import { SuplementosPage } from './pages/ventas/SuplementosPage';
 import { FacturasPage } from './pages/ventas/FacturasPage';
@@ -69,7 +71,7 @@ const rutasPorModulo: Record<Modulo, string[]> = {
   inventario: ['/inventario', '/movimientos', '/movimientos/pendientes', '/movimientos/ajuste', '/movimientos/seleccionar-recepcion', '/productos'],
   administracion: ['/administracion', '/configuracion', '/usuarios', '/grupos', '/monedas', '/dependencias', '/perfil'],
   venta: ['/venta', '/ventas', '/clientes', '/ventas/operaciones', '/ventas/contratos', '/ventas/suplementos', '/ventas/facturas', '/ventas/efectivo'],
-  compra: ['/compra', '/compra/clientes', '/compra/convenios', '/compra/anexos'],
+  compra: ['/compra', '/compra/clientes', '/compra/convenios', '/compra/anexos', '/compra/liquidaciones', '/compra/productos-liquidacion'],
   reportes: ['/reportes'],
   home: ['/'],
 };
@@ -109,7 +111,7 @@ function App() {
   // All hooks must be called before any early returns
   useEffect(() => {
     // Only redirect to login if we're not loading and not authenticated, and not already on login page
-    if (!isLoading && !isAuthenticated && location.pathname !== '/login' && location.pathname !== '/') {
+    if (!isLoading && !isAuthenticated && location.pathname !== '/login') {
       navigate('/login');
     }
   }, [isAuthenticated, isLoading, location.pathname, navigate]);
@@ -143,14 +145,14 @@ function App() {
     );
   }
 
-  if (!isAuthenticated) {
-    return null;
-  }
+  // When not authenticated, redirect to login happens via useEffect
+  // The content below is only for authenticated users
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     setShowLogoutConfirm(false);
     setShowAccountModal(false);
-    navigate('/');
+    await logout();
+    navigate('/login', { replace: true });
   };
 
   const handleLinkClick = () => {};
@@ -292,7 +294,7 @@ function App() {
                     <li>
                       <NavLink to="/compra/clientes" onClick={handleLinkClick}>
                         <UserCircle className="w-6 h-6" />
-                        Clientes
+                        Proveedores
                       </NavLink>
                     </li>
                     <li>
@@ -305,6 +307,18 @@ function App() {
                       <NavLink to="/compra/anexos" onClick={handleLinkClick}>
                         <Boxes className="w-6 h-6" />
                         Anexos
+                      </NavLink>
+                    </li>
+                    <li>
+                      <NavLink to="/compra/liquidaciones" onClick={handleLinkClick}>
+                        <Coins className="w-6 h-6" />
+                        Liquidaciones
+                      </NavLink>
+                    </li>
+                    <li>
+                      <NavLink to="/compra/productos-liquidacion" onClick={handleLinkClick}>
+                        <Coins className="w-6 h-6" />
+                        Productos en Liquidación
                       </NavLink>
                     </li>
                   </ul>
@@ -338,7 +352,7 @@ function App() {
                     <li>
                       <NavLink to="/ventas/efectivo" onClick={handleLinkClick}>
                         <DollarSign className="w-6 h-6" />
-                        Venta en Efectivo
+                        Efectivo
                       </NavLink>
                     </li>
                   </ul>
@@ -411,23 +425,15 @@ function App() {
             <div className="animate-fade-in-up animation-fill-both">
               <Routes>
                 <Route
-                  path="/"
-                  element={
-                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/">
-                      <WelcomePage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
                   path="/compra/clientes"
                   element={
                     <ProtectedRoute moduloActivo={moduloActivo} currentPath="/compra/clientes">
-                      <CompraClientesPage />
+                      <ClientesPage />
                     </ProtectedRoute>
                   }
                 />
                 <Route 
-                  path="/movimientos/pendientes" 
+                  path="/movimientos/pendientes"
                   element={
                     <ProtectedRoute moduloActivo={moduloActivo} currentPath="/movimientos/pendientes">
                       <MovimientosPendientesPage />
@@ -618,14 +624,6 @@ function App() {
                   } 
                 />
                 <Route
-                  path="/compra/clientes"
-                  element={
-                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/compra/clientes">
-                      <CompraClientesPage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
                   path="/compra/convenios"
                   element={
                     <ProtectedRoute moduloActivo={moduloActivo} currentPath="/compra/convenios">
@@ -638,6 +636,30 @@ function App() {
                   element={
                     <ProtectedRoute moduloActivo={moduloActivo} currentPath="/compra/anexos">
                       <CompraAnexosPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/compra/liquidaciones"
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/compra/liquidaciones">
+                      <LiquidacionesPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/compra/liquidaciones/crear"
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/compra/liquidaciones">
+                      <CrearLiquidacionPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/compra/productos-liquidacion"
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/compra/productos-liquidacion">
+                      <ProductosEnLiquidacionPage />
                     </ProtectedRoute>
                   }
                 />
@@ -682,12 +704,12 @@ function App() {
           </div>
 
           <div className="mt-4 border-t border-gray-100 pt-4 space-y-2">
-            {/* TODO: Implementar la acción de 'Ver perfil' aquí. Ej: navegar a /perfil o abrir componente de edición. */}
             <button
               className="w-full text-left px-4 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700 transition-colors"
               onClick={() => {
                 setShowAccountModal(false);
-                setTimeout(() => navigate('/perfil'), 0);
+                setModuloActivo('administracion');
+                navigate('/perfil');
               }}
             >
               Ver perfil
@@ -696,7 +718,11 @@ function App() {
             {/* TODO: Implementar la acción de 'Salir del sistema' aquí (por ejemplo llamar a la API y limpiar estado). */}
             <button
               className="w-full text-left px-4 py-2 rounded-md border border-red-200 text-red-600 bg-red-50 hover:bg-red-100 transition-colors"
-              onClick={async () => { setShowAccountModal(false); await logout(); navigate('/login'); }}
+              onClick={async () => { 
+                setShowAccountModal(false); 
+                await logout();
+                navigate('/login', { replace: true });
+              }}
             >
               Salir del sistema
             </button>

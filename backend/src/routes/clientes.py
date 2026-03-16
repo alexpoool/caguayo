@@ -25,6 +25,7 @@ async def crear_cliente(
 ):
     """Crear un nuevo cliente."""
     try:
+        print(f"DEBUG ROUTE: Received cliente = {cliente.model_dump()}")
         return await ClienteService.create_cliente(db, cliente)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error al crear cliente: {str(e)}")

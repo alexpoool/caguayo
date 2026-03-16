@@ -1,22 +1,22 @@
 import random
 import string
 from typing import List, Optional
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal
 from sqlmodel.ext.asyncio.session import AsyncSession
-from src.repository.liquidacion_repo import (
-    liquidacion_repo,
-    productos_liquidacion_repo,
-)
-from src.models.liquidacion import Liquidacion, ProductosLiquidacion, TipoPago
+from sqlalchemy import select
+from src.repository.liquidacion_repo import liquidacion_repo
+from src.repository.productos_en_liquidacion_repo import productos_en_liquidacion_repo
+from src.models.liquidacion import Liquidacion, TipoPago
+from src.models.productos_en_liquidacion import ProductosEnLiquidacion
+from src.models.producto import Productos
 from src.dto import (
     LiquidacionCreate,
     LiquidacionRead,
     LiquidacionUpdate,
     LiquidacionConfirmar,
-    ProductosLiquidacionCreate,
-    ProductosLiquidacionRead,
 )
+from src.dto.productos_en_liquidacion_dto import ProductosEnLiquidacionRead
 
 
 def generate_codigo() -> str:
@@ -25,59 +25,113 @@ def generate_codigo() -> str:
 
 class LiquidacionService:
     @staticmethod
+    async def generate_codigo_liquidacion(db: AsyncSession) -> str:
+        anio = datetime.now().year
+        cantidad = await liquidacion_repo.get_codigo_anio(db, anio)
+        return f"{anio}.{cantidad}"
+
+    @staticmethod
     async def create_liquidacion(
         db: AsyncSession, data: LiquidacionCreate
     ) -> LiquidacionRead:
+        productos_ids = data.producto_ids
+
+        productos_db = await productos_en_liquidacion_repo.get_by_ids(db, productos_ids)
+
+        if not productos_db:
+            raise ValueError("No se encontraron productos para liquidar")
+
+        importe = Decimal("0.00")
+        for prod in productos_db:
+            producto_stmt = select(Productos).where(
+                Productos.id_producto == prod.id_producto
+            )
+            producto_result = await db.exec(producto_stmt)
+            producto = producto_result.first()
+
+            if producto:
+                importe += producto.precio_venta * prod.cantidad
+
+        devengado = data.devengado or Decimal("0.00")
+        tributario = data.tributario or Decimal("0.00")
+        comision_bancaria = data.comision_bancaria or Decimal("0.00")
+        gasto_empresa = data.gasto_empresa or Decimal("0.00")
+
+        neto_pagar = importe - tributario - comision_bancaria - gasto_empresa
+
+        codigo = await LiquidacionService.generate_codigo_liquidacion(db)
+
         db_liquidacion = Liquidacion(
-            codigo=generate_codigo(),
+            codigo=codigo,
             id_cliente=data.id_cliente,
-            id_factura=data.id_factura,
+            id_convenio=data.id_convenio,
+            id_anexo=data.id_anexo,
             id_moneda=data.id_moneda,
             liquidada=False,
             fecha_emision=data.fecha_emision or date.today(),
-            descripcion=data.descripcion,
-            devengado=data.devengado or Decimal("0.00"),
-            tributario=data.tributario or Decimal("0.00"),
-            comision_bancaria=data.comision_bancaria or Decimal("0.00"),
-            gasto_empresa=data.gasto_empresa or Decimal("0.00"),
-            tipo_concepto=data.tipo_concepto,
-            importe=data.importe,
-            observacion=data.observacion,
-            tipo_pago=TipoPago(data.tipo_pago)
-            if data.tipo_pago
-            else TipoPago.TRANSFERENCIA,
+            observaciones=data.observaciones,
+            devengado=devengado,
+            tributario=tributario,
+            comision_bancaria=comision_bancaria,
+            gasto_empresa=gasto_empresa,
+            importe=importe,
+            neto_pagar=neto_pagar,
+            tipo_pago=data.tipo_pago,
         )
         db.add(db_liquidacion)
         await db.commit()
         await db.refresh(db_liquidacion)
 
-        for producto_data in data.productos:
-            db_producto_liquidacion = ProductosLiquidacion(
-                codigo=generate_codigo(),
-                cantidad=producto_data.cantidad,
-                liquidado=False,
-                tipo_transaccion=producto_data.tipo_transaccion,
-                id_transaccion=producto_data.id_transaccion,
-                id_liquidacion=db_liquidacion.id_liquidacion,
-                id_producto=producto_data.id_producto,
-            )
-            db.add(db_producto_liquidacion)
+        for prod in productos_db:
+            prod.id_liquidacion = db_liquidacion.id_liquidacion
+            prod.liquidada = True
+            prod.fecha_liquidacion = datetime.utcnow()
+            db.add(prod)
 
         await db.commit()
 
         db_liquidacion = await liquidacion_repo.get_with_relations(
             db, db_liquidacion.id_liquidacion
         )
-        return LiquidacionRead.model_validate(db_liquidacion)
+
+        productos_response = await productos_en_liquidacion_repo.get_by_ids(
+            db, productos_ids
+        )
+
+        return LiquidacionRead(
+            id_liquidacion=db_liquidacion.id_liquidacion,
+            codigo=db_liquidacion.codigo,
+            id_cliente=db_liquidacion.id_cliente,
+            id_convenio=db_liquidacion.id_convenio,
+            id_anexo=db_liquidacion.id_anexo,
+            id_moneda=db_liquidacion.id_moneda,
+            liquidada=db_liquidacion.liquidada,
+            fecha_emision=db_liquidacion.fecha_emision,
+            fecha_liquidacion=db_liquidacion.fecha_liquidacion,
+            observaciones=db_liquidacion.observaciones,
+            devengado=db_liquidacion.devengado,
+            tributario=db_liquidacion.tributario,
+            comision_bancaria=db_liquidacion.comision_bancaria,
+            gasto_empresa=db_liquidacion.gasto_empresa,
+            importe=db_liquidacion.importe,
+            neto_pagar=db_liquidacion.neto_pagar,
+            tipo_pago=db_liquidacion.tipo_pago,
+            productos_en_liquidacion=[
+                ProductosEnLiquidacionRead.model_validate(p) for p in productos_response
+            ],
+        )
 
     @staticmethod
     async def get_liquidacion(
         db: AsyncSession, liquidacion_id: int
     ) -> Optional[LiquidacionRead]:
         db_liquidacion = await liquidacion_repo.get_with_relations(db, liquidacion_id)
-        return (
-            LiquidacionRead.model_validate(db_liquidacion) if db_liquidacion else None
-        )
+        if not db_liquidacion:
+            return None
+
+        productos = await productos_en_liquidacion_repo.get_by_ids(db, [])
+
+        return LiquidacionRead.model_validate(db_liquidacion)
 
     @staticmethod
     async def get_liquidaciones(
@@ -116,6 +170,17 @@ class LiquidacionService:
         return [LiquidacionRead.model_validate(l) for l in db_liquidaciones]
 
     @staticmethod
+    async def get_productos_pendientes_by_cliente(
+        db: AsyncSession, cliente_id: int, anexo_id: Optional[int] = None
+    ) -> List[ProductosEnLiquidacionRead]:
+        productos = (
+            await productos_en_liquidacion_repo.get_pendientes_by_cliente_y_anexo(
+                db, cliente_id, anexo_id
+            )
+        )
+        return [ProductosEnLiquidacionRead.model_validate(p) for p in productos]
+
+    @staticmethod
     async def update_liquidacion(
         db: AsyncSession, liquidacion_id: int, data: LiquidacionUpdate
     ) -> Optional[LiquidacionRead]:
@@ -147,9 +212,7 @@ class LiquidacionService:
 
         db_liquidacion.liquidada = True
         db_liquidacion.fecha_liquidacion = date.today()
-        db_liquidacion.tipo_pago = (
-            TipoPago(data.tipo_pago) if data.tipo_pago else db_liquidacion.tipo_pago
-        )
+        db_liquidacion.tipo_pago = data.tipo_pago or db_liquidacion.tipo_pago
 
         if data.devengado is not None:
             db_liquidacion.devengado = data.devengado
@@ -167,11 +230,8 @@ class LiquidacionService:
             - db_liquidacion.gasto_empresa
         )
 
-        if data.observacion:
-            db_liquidacion.observacion = data.observacion
-
-        for producto_liq in db_liquidacion.productos_liquidacion:
-            producto_liq.liquidado = True
+        if data.observaciones:
+            db_liquidacion.observaciones = data.observacion
 
         await db.commit()
         await db.refresh(db_liquidacion)
@@ -185,49 +245,15 @@ class LiquidacionService:
         if not db_liquidacion:
             return False
 
-        for producto_liq in db_liquidacion.productos_liquidacion:
-            await db.delete(producto_liq)
+        productos = await productos_en_liquidacion_repo.get_by_ids(db, [])
+
+        for prod in productos:
+            prod.id_liquidacion = None
+            prod.liquidada = False
+            prod.fecha_liquidacion = None
+            db.add(prod)
 
         await db.delete(db_liquidacion)
-        await db.commit()
-        return True
-
-    @staticmethod
-    async def agregar_productos_liquidacion(
-        db: AsyncSession,
-        liquidacion_id: int,
-        productos: List[ProductosLiquidacionCreate],
-    ) -> Optional[LiquidacionRead]:
-        db_liquidacion = await liquidacion_repo.get(db, liquidacion_id)
-        if not db_liquidacion:
-            return None
-
-        for producto_data in productos:
-            db_producto_liquidacion = ProductosLiquidacion(
-                codigo=generate_codigo(),
-                cantidad=producto_data.cantidad,
-                liquidado=False,
-                tipo_transaccion=producto_data.tipo_transaccion,
-                id_transaccion=producto_data.id_transaccion,
-                id_liquidacion=liquidacion_id,
-                id_producto=producto_data.id_producto,
-            )
-            db.add(db_producto_liquidacion)
-
-        await db.commit()
-
-        db_liquidacion = await liquidacion_repo.get_with_relations(db, liquidacion_id)
-        return LiquidacionRead.model_validate(db_liquidacion)
-
-    @staticmethod
-    async def eliminar_producto_liquidacion(
-        db: AsyncSession, producto_liquidacion_id: int
-    ) -> bool:
-        db_producto = await productos_liquidacion_repo.get(db, producto_liquidacion_id)
-        if not db_producto:
-            return False
-
-        await db.delete(db_producto)
         await db.commit()
         return True
 

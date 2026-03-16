@@ -3,8 +3,10 @@ import type { TipoCuenta } from './tipo_cuenta';
 export interface Cuenta {
   id_cuenta: number;
   id_cliente?: number;
+  id_provedor?: number;
   id_dependencia?: number;
   id_tipo_cuenta?: number;
+  id_moneda?: number;
   titular: string;
   banco: string;
   sucursal?: number;
@@ -15,8 +17,10 @@ export interface Cuenta {
 
 export interface CuentaCreate {
   id_cliente?: number;
+  id_provedor?: number;
   id_dependencia?: number;
   id_tipo_cuenta?: number;
+  id_moneda?: number;
   titular: string;
   banco: string;
   sucursal?: number;
@@ -26,8 +30,10 @@ export interface CuentaCreate {
 
 export interface CuentaUpdate {
   id_cliente?: number;
+  id_provedor?: number;
   id_dependencia?: number;
   id_tipo_cuenta?: number;
+  id_moneda?: number;
   titular?: string;
   banco?: string;
   sucursal?: number;

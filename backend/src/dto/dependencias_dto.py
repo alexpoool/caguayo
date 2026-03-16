@@ -30,6 +30,9 @@ class DependenciaBase(SQLModel):
     telefono: str
     email: Optional[str] = None
     web: Optional[str] = None
+    base_datos: Optional[str] = None
+    host: Optional[str] = "localhost"
+    puerto: Optional[int] = 5432
     id_provincia: Optional[int] = None
     id_municipio: Optional[int] = None
     descripcion: Optional[str] = None
@@ -53,6 +56,9 @@ class DependenciaRead(SQLModel):
     telefono: str
     email: Optional[str] = None
     web: Optional[str] = None
+    base_datos: Optional[str] = None
+    host: Optional[str] = None
+    puerto: Optional[int] = None
     id_provincia: Optional[int] = None
     id_municipio: Optional[int] = None
     descripcion: Optional[str] = None
@@ -70,6 +76,9 @@ class DependenciaUpdate(SQLModel):
     telefono: Optional[str] = None
     email: Optional[str] = None
     web: Optional[str] = None
+    base_datos: Optional[str] = None
+    host: Optional[str] = None
+    puerto: Optional[int] = None
     id_provincia: Optional[int] = None
     id_municipio: Optional[int] = None
     descripcion: Optional[str] = None
