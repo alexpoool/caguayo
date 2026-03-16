@@ -38,6 +38,7 @@ from .usuarios import Grupo, Usuario
 from .funcionalidades import Funcionalidad, GrupoFuncionalidad
 from .sesion import Sesion
 from .conexion_database import ConexionDatabase
+from .especialidades_artisticas import EspecialidadesArtisticas
 
 __all__ = [
     "Moneda",
@@ -85,4 +86,5 @@ __all__ = [
     "GrupoFuncionalidad",
     "Sesion",
     "ConexionDatabase",
+    "EspecialidadesArtisticas",
 ]

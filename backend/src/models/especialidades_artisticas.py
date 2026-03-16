@@ -13,5 +13,3 @@ class EspecialidadesArtisticas(SQLModel, table=True):
     descripcion: Optional[str] = None
     categoria: Optional[str] = Field(default=None, max_length=50)
     activo: bool = Field(default=True)
-
-    clientes: List["Cliente"] = Relationship(back_populates="especialidad")

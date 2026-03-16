@@ -67,7 +67,7 @@ const queryClient = new QueryClient({
 
 const rutasPorModulo: Record<Modulo, string[]> = {
   inventario: ['/inventario', '/movimientos', '/movimientos/pendientes', '/movimientos/ajuste', '/movimientos/seleccionar-recepcion', '/productos'],
-  administracion: ['/administracion', '/configuracion', '/usuarios', '/grupos', '/monedas', '/dependencias'],
+  administracion: ['/administracion', '/configuracion', '/usuarios', '/grupos', '/monedas', '/dependencias', '/perfil'],
   venta: ['/venta', '/ventas', '/clientes', '/ventas/operaciones', '/ventas/contratos', '/ventas/suplementos', '/ventas/facturas', '/ventas/efectivo'],
   compra: ['/compra', '/compra/clientes', '/compra/convenios', '/compra/anexos'],
   reportes: ['/reportes'],
@@ -106,13 +106,35 @@ function App() {
   const location = useLocation();
   const isHomePage = location.pathname === '/';
 
-  // Redirect to login if not authenticated
+  // All hooks must be called before any early returns
   useEffect(() => {
-    if (!isLoading && !isAuthenticated && location.pathname !== '/login') {
+    // Only redirect to login if we're not loading and not authenticated, and not already on login page
+    if (!isLoading && !isAuthenticated && location.pathname !== '/login' && location.pathname !== '/') {
       navigate('/login');
     }
   }, [isAuthenticated, isLoading, location.pathname, navigate]);
 
+  useEffect(() => {
+    const path = location.pathname || '/';
+    if (path === '/') {
+      setModuloActivo('home');
+      return;
+    }
+    for (const [moduloKey, rutas] of Object.entries(rutasPorModulo) as [Modulo, string[]][]) {
+      if (rutas.some(route => route === '/' ? path === route : path === route || (route !== '/' && path.startsWith(route)))) {
+        setModuloActivo(moduloKey);
+        return;
+      }
+    }
+    setModuloActivo('inventario');
+  }, [location.pathname]);
+
+  // Ensure sidebar is expanded on initial load
+  useEffect(() => {
+    setSlimSidebar(false);
+  }, []);
+
+  // Early returns must come AFTER all hooks
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -126,31 +148,10 @@ function App() {
   }
 
   const handleLogout = () => {
-    // Close dialogs and navigate to home (add real logout logic here)
     setShowLogoutConfirm(false);
     setShowAccountModal(false);
     navigate('/');
   };
-
-  useEffect(() => {
-      const path = location.pathname || '/';
-      if (path === '/') {
-        setModuloActivo('home');
-        return;
-      }
-      for (const [moduloKey, rutas] of Object.entries(rutasPorModulo) as [Modulo, string[]][]) {
-        if (rutas.some(route => route === '/' ? path === route : path === route || (route !== '/' && path.startsWith(route)))) {
-          setModuloActivo(moduloKey);
-          return;
-        }
-      }
-      setModuloActivo('inventario');
-  }, [location.pathname]);
-
-  // Ensure sidebar is expanded on initial load
-  useEffect(() => {
-    setSlimSidebar(false);
-  }, []);
 
   const handleLinkClick = () => {};
 
@@ -684,7 +685,10 @@ function App() {
             {/* TODO: Implementar la acción de 'Ver perfil' aquí. Ej: navegar a /perfil o abrir componente de edición. */}
             <button
               className="w-full text-left px-4 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700 transition-colors"
-              onClick={() => { setShowAccountModal(false); navigate('/perfil'); }}
+              onClick={() => {
+                setShowAccountModal(false);
+                setTimeout(() => navigate('/perfil'), 0);
+              }}
             >
               Ver perfil
             </button>
