@@ -100,6 +100,7 @@ function App() {
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
+  const isHomePage = location.pathname === '/';
 
   const handleLogout = () => {
     // Close dialogs and navigate to home (add real logout logic here)
@@ -190,8 +191,8 @@ function App() {
   }
   return (
     <QueryClientProvider client={queryClient}>
-      <div className={`grid ${slimSidebar ? 'grid-cols-[4.5rem_1fr]' : 'grid-cols-[16rem_1fr]'} grid-rows-[auto_1fr] h-screen bg-gray-50`}>
-          <aside className={`row-span-2 col-start-1 col-end-2 h-full bg-slate-900 text-white flex flex-col shadow-xl min-h-screen transition-all duration-300 ${slimSidebar ? 'w-[4.5rem]' : 'w-64'}`}>
+      <div className={`grid ${isHomePage ? 'grid-cols-[0_1fr]' : slimSidebar ? 'grid-cols-[4.5rem_1fr]' : 'grid-cols-[16rem_1fr]'} grid-rows-[auto_1fr] h-screen bg-gray-50`}>
+          <aside className={`row-span-2 col-start-1 col-end-2 h-full bg-slate-900 text-white flex flex-col shadow-xl min-h-screen transition-all duration-300 ${isHomePage ? 'hidden' : slimSidebar ? 'w-[4.5rem]' : 'w-64'}`}>
             <div className={`flex items-center ${slimSidebar ? 'justify-center px-0' : 'px-6'} py-4 border-b border-slate-800`}>
               {!slimSidebar && (
                 <h1 className="text-2xl font-bold tracking-wider text-blue-400">CAGUAYO</h1>
@@ -332,7 +333,7 @@ function App() {
               )}
             </div>
         </aside>
-        <header className="col-start-2 col-end-3 row-start-1 row-end-2 sticky top-0 z-40 bg-white shadow-sm border-b border-gray-200 px-6 py-4 h-16 flex items-center justify-between">
+        <header className={`${isHomePage ? 'col-start-1 col-end-3' : 'col-start-2 col-end-3'} row-start-1 row-end-2 sticky top-0 z-40 bg-white shadow-sm border-b border-gray-200 px-6 py-4 h-16 flex items-center justify-between`}>
           <Link
             to="/"
             onClick={() => setModuloActivo('home')}
@@ -375,7 +376,7 @@ function App() {
             <div className="animate-fade-in-up animation-fill-both">
             </div>
         </header>
-        <div className="col-start-2 col-end-3 row-start-2 row-end-3 min-w-0 flex flex-col overflow-hidden">
+        <div className={`${isHomePage ? 'col-start-1 col-end-3' : 'col-start-2 col-end-3'} row-start-2 row-end-3 min-w-0 flex flex-col overflow-hidden`}>
           <main className="flex-1 overflow-auto bg-gray-50 p-8">
             <div className="animate-fade-in-up animation-fill-both">
               <Routes>
