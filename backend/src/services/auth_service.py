@@ -452,3 +452,46 @@ async def get_all_bases_datos_by_alias(
         )
         for d in dependencias_con_db
     ]
+
+
+class AuthService:
+    @staticmethod
+    async def login(
+        db: AsyncSession, login_data: LoginRequest
+    ) -> Optional[LoginResponse]:
+        return await login(db, login_data)
+
+    @staticmethod
+    async def logout(db: AsyncSession, token: str) -> bool:
+        return await logout(db, token)
+
+    @staticmethod
+    async def get_current_user(db: AsyncSession, token: str) -> Optional[UsuarioInfo]:
+        return await get_current_user(db, token)
+
+    @staticmethod
+    async def get_funcionalidades_by_token(
+        db: AsyncSession, token: str
+    ) -> List[FuncionalidadInfo]:
+        return await get_funcionalidades_by_token(db, token)
+
+    @staticmethod
+    async def search_by_alias(
+        db: AsyncSession, alias: str
+    ) -> Optional[AliasSearchResponse]:
+        return await search_by_alias(db, alias)
+
+    @staticmethod
+    async def get_all_bases_datos_by_alias(
+        db: AsyncSession, alias: str
+    ) -> List[DependenciaInfo]:
+        return await get_all_bases_datos_by_alias(db, alias)
+
+    @staticmethod
+    async def update_perfil(
+        db: AsyncSession, token: str, perfil_data: PerfilUpdateRequest
+    ) -> PerfilResponse:
+        return await update_perfil(db, token, perfil_data)
+
+
+auth_service = AuthService()

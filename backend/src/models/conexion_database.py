@@ -14,5 +14,3 @@ class ConexionDatabase(SQLModel, table=True):
     usuario: Optional[str] = Field(default=None, max_length=100)
     contrasenia: Optional[str] = Field(default=None, max_length=255)
     nombre_database: str = Field(max_length=100)
-
-    dependencias: List["Dependencia"] = Relationship(back_populates="conexion")

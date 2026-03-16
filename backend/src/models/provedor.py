@@ -18,5 +18,3 @@ class Provedor(SQLModel, table=True):
 
     # Relaciones
     tipo_provedor: Optional["TipoProvedor"] = Relationship(back_populates="provedores")
-    convenios: List["Convenio"] = Relationship(back_populates="provedor")
-    movimientos: List["Movimiento"] = Relationship(back_populates="provedor")

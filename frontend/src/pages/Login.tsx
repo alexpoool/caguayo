@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { Button, Input } from '../components/ui';
 import { Box, Loader2, Database, User, Lock, CheckCircle, XCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { apiClient } from '../lib/api';
 
 interface ConexionInfo {
   id_conexion: number;
@@ -35,11 +36,8 @@ export function LoginPage() {
   useEffect(() => {
     const fetchConexiones = async () => {
       try {
-        const response = await fetch('/api/v1/conexiones');
-        if (response.ok) {
-          const data = await response.json();
-          setConexiones(data);
-        }
+        const response = await apiClient.get<ConexionInfo[]>('/conexiones');
+        setConexiones(response);
       } catch (error) {
         console.error('Error fetching conexiones:', error);
       } finally {
@@ -58,17 +56,12 @@ export function LoginPage() {
     setConexionStatus('testing');
     try {
       const conn = conexiones.find(c => c.nombre_database === dbName);
-      const response = await fetch('/api/v1/conexiones/test', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          nombre_database: dbName,
-          host: conn?.host || 'localhost',
-          puerto: conn?.puerto || 5432,
-        }),
+      const response = await apiClient.post<{ success: boolean }>('/conexiones/test', {
+        nombre_database: dbName,
+        host: conn?.host || 'localhost',
+        puerto: conn?.puerto || 5432,
       });
-      const data = await response.json();
-      if (data.success) {
+      if (response.success) {
         setConexionStatus('connected');
       } else {
         setConexionStatus('error');

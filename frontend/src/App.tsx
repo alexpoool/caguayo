@@ -97,7 +97,7 @@ function ProtectedRoute({
 }
 
 function App() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, user, logout } = useAuth();
   const [moduloActivo, setModuloActivo] = useState<Modulo>('inventario');
   const [slimSidebar, setSlimSidebar] = useState(false);
   const [showAccountModal, setShowAccountModal] = useState(false);
@@ -342,7 +342,7 @@ function App() {
             <div className={`flex items-center ${slimSidebar ? 'justify-center' : 'justify-between'} gap-2 px-2 py-5 border-t border-slate-800 mt-auto`}>
               <div className={`flex items-center ${slimSidebar ? '' : 'gap-2'}`}>
                   <img src="/default.jpg" alt="avatar" className="w-9 h-9 rounded-full object-cover" />
-                  {!slimSidebar && <span className="text-sm font-medium">Solji Charón</span>}
+                  {!slimSidebar && <span className="text-sm font-medium">{user ? `${user.nombre} ${user.primer_apellido}` : 'Usuario'}</span>}
                 </div>
               {!slimSidebar && (
                 // TODO: Aquí implementar la lógica del botón de ajustes si se requiere (abrir menú, enviar evento, etc.)
@@ -644,6 +644,14 @@ function App() {
                     </ProtectedRoute>
                   } 
                 />
+                <Route 
+                  path="/perfil" 
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/perfil">
+                      <PerfilPage />
+                    </ProtectedRoute>
+                  } 
+                />
               </Routes>
             </div>
           </main>
@@ -661,8 +669,8 @@ function App() {
           <div className="flex items-center gap-3">
             <img src="/default.jpg" alt="avatar" className="w-12 h-12 rounded-full object-cover" />
             <div>
-              <div className="text-sm font-semibold">Solji Charón</div>
-              <div className="text-xs text-slate-400">Cuenta de usuario</div>
+              <div className="text-sm font-semibold">{user ? `${user.nombre} ${user.primer_apellido}` : 'Usuario'}</div>
+              <div className="text-xs text-slate-400">{user?.alias || 'Cuenta de usuario'}</div>
             </div>
           </div>
 
@@ -670,7 +678,7 @@ function App() {
             {/* TODO: Implementar la acción de 'Ver perfil' aquí. Ej: navegar a /perfil o abrir componente de edición. */}
             <button
               className="w-full text-left px-4 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700 transition-colors"
-              onClick={() => { /* TODO: implementar ver perfil */ }}
+              onClick={() => { setShowAccountModal(false); navigate('/perfil'); }}
             >
               Ver perfil
             </button>
@@ -678,7 +686,7 @@ function App() {
             {/* TODO: Implementar la acción de 'Salir del sistema' aquí (por ejemplo llamar a la API y limpiar estado). */}
             <button
               className="w-full text-left px-4 py-2 rounded-md border border-red-200 text-red-600 bg-red-50 hover:bg-red-100 transition-colors"
-              onClick={() => { /* TODO: implementar logout */ }}
+              onClick={async () => { setShowAccountModal(false); await logout(); navigate('/login'); }}
             >
               Salir del sistema
             </button>

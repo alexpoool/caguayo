@@ -32,6 +32,9 @@ class Dependencia(SQLModel, table=True):
     telefono: str = Field(max_length=20)
     email: Optional[str] = Field(default=None, max_length=100)
     web: Optional[str] = Field(default=None, max_length=100)
+    base_datos: Optional[str] = Field(default=None, max_length=100)
+    host: Optional[str] = Field(default="localhost", max_length=100)
+    puerto: Optional[int] = Field(default=5432)
     id_provincia: Optional[int] = Field(
         default=None, foreign_key="provincia.id_provincia"
     )
