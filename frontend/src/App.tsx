@@ -255,6 +255,12 @@ function App() {
               {moduloActivo === 'administracion' && (
               <ul className="space-y-1 px-3">
                 <li>
+                  <NavLink to="/configuracion" onClick={handleLinkClick}>
+                    <Settings className="w-6 h-6" />
+                    Configuración
+                  </NavLink>
+                </li>
+                <li>
                   <NavLink to="/usuarios" onClick={handleLinkClick}>
                     <UserCircle className="w-6 h-6" />
                     Usuario
