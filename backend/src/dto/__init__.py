@@ -196,7 +196,16 @@ from .ubicaciones_dto import (
     MunicipioRead,
     MunicipioUpdate,
 )
-
+from .proveedor_dto import (
+    ProvedorBase,
+    ProvedorCreate,
+    ProvedorRead,
+    ProvedorUpdate,
+    TipoProvedorBase,
+    TipoProvedorCreate,
+    TipoProvedorRead,
+    TipoProvedorUpdate,
+)
 
 
 __all__ = [
@@ -361,4 +370,12 @@ __all__ = [
     "MunicipioCreate",
     "MunicipioRead",
     "MunicipioUpdate",
+    "ProvedorBase",
+    "ProvedorCreate",
+    "ProvedorRead",
+    "ProvedorUpdate",
+    "TipoProvedorBase",
+    "TipoProvedorCreate",
+    "TipoProvedorRead",
+    "TipoProvedorUpdate",
 ]

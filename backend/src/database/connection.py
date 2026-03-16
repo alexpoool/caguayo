@@ -25,3 +25,19 @@ async def get_session() -> AsyncSession:
     async_session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
     async with async_session() as session:
         yield session
+
+
+async def get_auth_session(db_name: str = None) -> AsyncSession:
+    """Get session for authentication database."""
+    auth_db_url = os.getenv("AUTH_DATABASE", "caguayo_inventario")
+    if db_name:
+        auth_db_url = db_name
+
+    auth_url = DATABASE_URL.replace(DATABASE_URL.split("/")[-1], auth_db_url)
+
+    auth_engine = create_async_engine(auth_url, echo=False, future=True)
+    async_session = sessionmaker(
+        auth_engine, class_=AsyncSession, expire_on_commit=False
+    )
+    async with async_session() as session:
+        yield session

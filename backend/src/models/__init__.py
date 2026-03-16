@@ -17,6 +17,8 @@ from .transaccion import Transaccion
 from .tipo_convenio import TipoConvenio
 from .tipo_cliente import TipoCliente
 from .convenio import Convenio
+from .provedor import Provedor
+from .tipo_provedor import TipoProvedor
 from .contrato import (
     TipoContrato,
     EstadoContrato,
@@ -34,6 +36,8 @@ from .tipo_cuenta import TipoCuenta
 from .tipo_entidad import TipoEntidad
 from .usuarios import Grupo, Usuario
 from .funcionalidades import Funcionalidad, GrupoFuncionalidad
+from .sesion import Sesion
+from .conexion_database import ConexionDatabase
 
 __all__ = [
     "Moneda",
@@ -60,6 +64,8 @@ __all__ = [
     "TipoConvenio",
     "TipoCliente",
     "Convenio",
+    "Provedor",
+    "TipoProvedor",
     "TipoContrato",
     "EstadoContrato",
     "Contrato",
@@ -77,4 +83,6 @@ __all__ = [
     "Usuario",
     "Funcionalidad",
     "GrupoFuncionalidad",
+    "Sesion",
+    "ConexionDatabase",
 ]
