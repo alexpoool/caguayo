@@ -31,12 +31,21 @@ import {
   Button,
   Input,
   Card,
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
 } from '../components/ui';
+
+type TipoFiltro = 'todos';
 
 export function MovimientosPage() {
   const navigate = useNavigate();
   const [selectedTipoForm, setSelectedTipoForm] = useState<TipoMovimiento | null>(null);
   const [view, setView] = useState<'list' | 'form'>('list');
+  const [tipoFiltro] = useState<TipoFiltro>('todos');
   const [detailModal, setDetailModal] = useState<{ isOpen: boolean; movimiento: any | null }>({
     isOpen: false,
     movimiento: null,
@@ -74,7 +83,7 @@ export function MovimientosPage() {
     deleteMovimiento,
     refresh,
     isDeleting
-  } = useMovimientos();
+  } = useMovimientos(tipoFiltro);
 
   useEffect(() => {
     if (!hasMore || isFetchingMore) return;
@@ -352,63 +361,90 @@ export function MovimientosPage() {
         <>
           <Card className="overflow-hidden shadow-sm border-gray-200">
             <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-gray-200 bg-gray-50/50">
-                    <th className="text-left py-3 px-4 text-sm font-semibold text-gray-600">Tipo</th>
-                    <th className="text-left py-3 px-4 text-sm font-semibold text-gray-600">Producto</th>
-                    <th className="text-center py-3 px-4 text-sm font-semibold text-gray-600">Cantidad</th>
-                    <th className="text-left py-3 px-4 text-sm font-semibold text-gray-600">Fecha</th>
-                    <th className="text-left py-3 px-4 text-sm font-semibold text-gray-600">Dependencia</th>
-                    <th className="text-left py-3 px-4 text-sm font-semibold text-gray-600">Estado</th>
-                    <th className="text-right py-3 px-4 text-sm font-semibold text-gray-600">Acciones</th>
-                  </tr>
-                </thead>
-                <tbody>
+              <Table>
+                <TableHeader className="bg-gradient-to-r from-slate-50 to-gray-100">
+                  <TableRow>
+                    <TableHead>
+                      <div className="flex items-center gap-2">
+                        <ArrowRightLeft className="h-4 w-4 text-slate-600" />
+                        Tipo
+                      </div>
+                    </TableHead>
+                    <TableHead>
+                      <div className="flex items-center gap-2">
+                        <Package className="h-4 w-4 text-slate-600" />
+                        Producto
+                      </div>
+                    </TableHead>
+                    <TableHead>
+                      <div className="flex items-center gap-2">
+                        <Hash className="h-4 w-4 text-slate-600" />
+                        Cantidad
+                      </div>
+                    </TableHead>
+                    <TableHead>
+                      <div className="flex items-center gap-2">
+                        <Calendar className="h-4 w-4 text-slate-600" />
+                        Fecha
+                      </div>
+                    </TableHead>
+                    <TableHead>
+                      <div className="flex items-center gap-2">
+                        <Building className="h-4 w-4 text-slate-600" />
+                        Dependencia
+                      </div>
+                    </TableHead>
+                    <TableHead>Estado</TableHead>
+                    <TableHead className="text-right">Acciones</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
                   {movimientos.length === 0 ? (
-                    <tr>
-                      <td colSpan={7} className="text-center py-12 text-gray-500">
+                    <TableRow>
+                      <TableCell colSpan={7} className="text-center py-12 text-gray-500">
                         {searchTerm ? 'No se encontraron movimientos que coincidan con la búsqueda' : 'No se encontraron movimientos'}
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                   ) : (
                     movimientos.map((mov) => {
                       const config = getTipoConfig(mov.tipo_movimiento?.tipo || 'RECEPCION');
                       const ImpactoIcon = config.impactoIcon;
                       return (
-                        <tr
+                        <TableRow
                           key={mov.id_movimiento}
-                          className="border-b border-gray-100 hover:bg-gray-50 transition-colors cursor-pointer"
+                          className="hover:bg-gray-50/50 transition-colors cursor-pointer"
                           onClick={() => handleVerDetalle(mov)}
                         >
-                          <td className="py-3 px-4">
+                          <TableCell>
+                            <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${config.bgColor} ${config.impactoColor}`}>
+                              <ImpactoIcon className="h-3 w-3" />
+                              {config.impacto}
+                            </span>
+                            <span className={`ml-2 font-semibold text-sm ${config.textColor}`}>
+                              {mov.tipo_movimiento?.tipo || 'Movimiento'}
+                            </span>
+                          </TableCell>
+                          <TableCell>
                             <div className="flex items-center gap-2">
-                              <div>
-                                <span className={`font-semibold text-sm ${config.textColor}`}>
-                                  {mov.tipo_movimiento?.tipo || 'Movimiento'}
-                                </span>
-                                <span className={`ml-2 text-xs px-2 py-0.5 rounded-full ${config.bgColor} ${config.impactoColor}`}>
-                                  <ImpactoIcon className="h-3 w-3 inline mr-1" />
-                                  {config.impacto}
-                                </span>
-                              </div>
+                              <Package className="h-4 w-4 text-gray-400" />
+                              <span className="font-medium text-gray-900">{mov.producto?.nombre || 'Producto no disponible'}</span>
                             </div>
-                          </td>
-                          <td className="py-3 px-4">
-                            <span className="text-gray-900 font-medium">{mov.producto?.nombre || 'Producto no disponible'}</span>
-                          </td>
-                          <td className="py-3 px-4 text-center">
-                            <span className="font-semibold text-gray-900">{mov.cantidad}</span>
-                          </td>
-                          <td className="py-3 px-4 text-gray-600">
+                          </TableCell>
+                          <TableCell>
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-slate-50 text-slate-700 rounded text-sm font-mono font-medium">
+                              <Hash className="h-3 w-3" />
+                              {mov.cantidad}
+                            </span>
+                          </TableCell>
+                          <TableCell className="text-gray-500">
                             {new Date(mov.fecha).toLocaleDateString('es-ES')}
-                          </td>
-                          <td className="py-3 px-4 text-gray-600">
+                          </TableCell>
+                          <TableCell className="text-gray-500">
                             {mov.dependencia?.nombre || 'Sin dependencia'}
-                          </td>
-                          <td className="py-3 px-4">
+                          </TableCell>
+                          <TableCell>
                             <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                              mov.estado === 'CONFIRMADO' 
+                              mov.estado === 'CONFIRMADO'
                                 ? 'bg-green-100 text-green-800'
                                 : mov.estado === 'PENDIENTE'
                                 ? 'bg-yellow-100 text-yellow-800'
@@ -416,8 +452,8 @@ export function MovimientosPage() {
                             }`}>
                               {mov.estado}
                             </span>
-                          </td>
-                          <td className="py-3 px-4 text-right">
+                          </TableCell>
+                          <TableCell className="text-right">
                             <div className="flex items-center justify-end gap-1">
                               <button
                                 onClick={(e) => {
@@ -425,19 +461,19 @@ export function MovimientosPage() {
                                   handleEliminarMovimiento(mov.id_movimiento);
                                 }}
                                 disabled={isDeleting}
-                                className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-all disabled:opacity-50"
+                                className="p-1.5 text-red-600 hover:bg-red-50 rounded h-8 w-8 flex items-center justify-center transition-all disabled:opacity-50"
                                 title="Eliminar movimiento"
                               >
                                 <Trash2 className="h-4 w-4" />
                               </button>
                             </div>
-                          </td>
-                        </tr>
+                          </TableCell>
+                        </TableRow>
                       );
                     })
                   )}
-                </tbody>
-              </table>
+                </TableBody>
+              </Table>
             </div>
             <div ref={loadMoreRef} className="h-4" />
           </Card>
@@ -446,8 +482,9 @@ export function MovimientosPage() {
     </div>
   );
 
-  const ModalConfirmacion = () => createPortal(
-    confirmModal.isOpen && (
+  const ModalConfirmacion = () => {
+    if (!confirmModal.isOpen) return null;
+    return createPortal(
       <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 animate-fade-in">
         <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full animate-scale-in">
           <div className="p-6">
@@ -474,13 +511,14 @@ export function MovimientosPage() {
             </div>
           </div>
         </div>
-      </div>
-    ),
-    document.body
-  );
+      </div>,
+      document.body
+    );
+  };
 
-  const ModalDetalle = () => createPortal(
-    detailModal.isOpen && detailModal.movimiento && (
+  const ModalDetalle = () => {
+    if (!detailModal.isOpen || !detailModal.movimiento) return null;
+    return createPortal(
       <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 animate-fade-in">
         <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-auto animate-scale-in">
           {(() => {
@@ -629,7 +667,7 @@ export function MovimientosPage() {
                           </p>
                           <p className="font-bold text-blue-900 text-xl">
                             {detailModal.movimiento?.precio_compra
-                              ? `$${detailModal.movimiento.precio_compra.toFixed(2)}`
+                              ? `$${Number(detailModal.movimiento.precio_compra).toFixed(2)}`
                               : 'N/A'}
                           </p>
                         </div>
@@ -640,7 +678,7 @@ export function MovimientosPage() {
                           </p>
                           <p className="font-bold text-green-900 text-xl">
                             {detailModal.movimiento?.precio_venta
-                              ? `$${detailModal.movimiento.precio_venta.toFixed(2)}`
+                              ? `$${Number(detailModal.movimiento.precio_venta).toFixed(2)}`
                               : 'N/A'}
                           </p>
                         </div>
@@ -687,7 +725,7 @@ export function MovimientosPage() {
                           </p>
                           <p className="font-bold text-blue-900 text-xl">
                             {detailModal.movimiento?.precio_compra
-                              ? `$${detailModal.movimiento.precio_compra.toFixed(2)}`
+                              ? `$${Number(detailModal.movimiento.precio_compra).toFixed(2)}`
                               : 'N/A'}
                           </p>
                         </div>
@@ -698,7 +736,7 @@ export function MovimientosPage() {
                           </p>
                           <p className="font-bold text-green-900 text-xl">
                             {detailModal.movimiento?.precio_venta
-                              ? `$${detailModal.movimiento.precio_venta.toFixed(2)}`
+                              ? `$${Number(detailModal.movimiento.precio_venta).toFixed(2)}`
                               : 'N/A'}
                           </p>
                         </div>
@@ -769,10 +807,10 @@ export function MovimientosPage() {
             );
           })()}
         </div>
-      </div>
-    ),
-    document.body
-  );
+      </div>,
+      document.body
+    );
+  };
 
   return (
     <>

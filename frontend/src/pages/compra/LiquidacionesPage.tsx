@@ -1,18 +1,26 @@
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
+import { Button, Card, CardHeader, CardTitle, CardContent, Label, Input, Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../../components/ui';
 import { 
   Search, 
   Plus, 
   Edit, 
   Trash2, 
   CheckCircle, 
+  Check,
   XCircle,
   Filter,
   Eye,
   DollarSign,
-  FileText
+  FileText,
+  ScrollText,
+  Tag,
+  Calendar,
+  User,
+  X
 } from 'lucide-react';
 import { 
   liquidacionService, 
@@ -35,6 +43,7 @@ export function LiquidacionesPage() {
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [selectedLiquidacion, setSelectedLiquidacion] = useState<Liquidacion | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [detailModal, setDetailModal] = useState<{ isOpen: boolean; item: Liquidacion | null }>({ isOpen: false, item: null });
   
   const [filtroCliente, setFiltroCliente] = useState<number | null>(null);
   const [filtroAnexo, setFiltroAnexo] = useState<number | null>(null);
@@ -241,15 +250,23 @@ export function LiquidacionesPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-gray-800">Liquidaciones</h1>
-        <button
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div className="flex items-center gap-4">
+          <div className="p-3 bg-gradient-to-br from-lime-500 to-green-600 rounded-xl shadow-lg animate-bounce-subtle">
+            <ScrollText className="h-8 w-8 text-white" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Liquidaciones</h1>
+            <p className="text-gray-500 mt-1">Gestión de liquidaciones a proveedores</p>
+          </div>
+        </div>
+        <Button
           onClick={() => navigate('/compra/liquidaciones/crear')}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          className="gap-2 bg-gradient-to-r from-lime-500 to-green-600 hover:from-lime-600 hover:to-green-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300"
         >
-          <Plus className="w-5 h-5" />
+          <Plus className="h-4 w-4" />
           Nueva Liquidación
-        </button>
+        </Button>
       </div>
 
       <div className="flex gap-4 border-b">
@@ -259,7 +276,7 @@ export function LiquidacionesPage() {
             onClick={() => setActiveTab(tab)}
             className={`px-4 py-2 font-medium transition-colors ${
               activeTab === tab
-                ? 'text-blue-600 border-b-2 border-blue-600'
+                ? 'text-lime-600 border-b-2 border-lime-600'
                 : 'text-gray-500 hover:text-gray-700'
             }`}
           >
@@ -276,124 +293,152 @@ export function LiquidacionesPage() {
             placeholder="Buscar liquidaciones..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-lime-500 focus:border-transparent"
           />
         </div>
       </div>
 
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        <table className="w-full">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Código</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Proveedor</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Anexo</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Importe</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Neto Pagar</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Estado</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Fecha</th>
-              <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Acciones</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-200">
-            {isLoading ? (
-              <tr>
-                <td colSpan={8} className="px-4 py-8 text-center text-gray-500">Cargando...</td>
-              </tr>
-            ) : filteredLiquidaciones.length === 0 ? (
-              <tr>
-                <td colSpan={8} className="px-4 py-8 text-center text-gray-500">No hay liquidaciones</td>
-              </tr>
-            ) : (
-              filteredLiquidaciones.map((liquidacion: Liquidacion) => (
-                <tr key={liquidacion.id_liquidacion} className="hover:bg-gray-50">
-                  <td className="px-4 py-3 font-medium">{liquidacion.codigo}</td>
-                  <td className="px-4 py-3">{getClienteNombre(liquidacion.id_cliente)}</td>
-                  <td className="px-4 py-3">{liquidacion.id_anexo ? getAnexoInfo(liquidacion.id_anexo) : '-'}</td>
-                  <td className="px-4 py-3">{liquidacion.importe?.toLocaleString()}</td>
-                  <td className="px-4 py-3 font-medium">{liquidacion.neto_pagar?.toLocaleString()}</td>
-                  <td className="px-4 py-3">
-                    <span className={`px-2 py-1 rounded-full text-xs ${
-                      liquidacion.liquidada 
-                        ? 'bg-green-100 text-green-800' 
-                        : 'bg-yellow-100 text-yellow-800'
-                    }`}>
-                      {liquidacion.liquidada ? 'Liquidada' : 'Pendiente'}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">{new Date(liquidacion.fecha_emision).toLocaleDateString()}</td>
-                  <td className="px-4 py-3 text-right">
-                    <div className="flex justify-end gap-2">
-                      <button
-                        onClick={() => {
-                          setSelectedLiquidacion(liquidacion);
-                          setShowDetailModal(true);
-                        }}
-                        className="p-1 text-blue-600 hover:bg-blue-50 rounded"
-                        title="Ver detalle"
-                      >
-                        <Eye className="w-5 h-5" />
-                      </button>
-                      {!liquidacion.liquidada && (
-                        <button
+      <Card className="overflow-hidden shadow-sm border-gray-200">
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader className="bg-gradient-to-r from-lime-50 to-green-50">
+              <TableRow>
+                <TableHead>
+                  <div className="flex items-center gap-2">
+                    <Tag className="h-4 w-4 text-lime-600" />
+                    Código
+                  </div>
+                </TableHead>
+                <TableHead>
+                  <div className="flex items-center gap-2">
+                    <User className="h-4 w-4 text-lime-600" />
+                    Proveedor
+                  </div>
+                </TableHead>
+                <TableHead>
+                  <div className="flex items-center gap-2">
+                    <FileText className="h-4 w-4 text-lime-600" />
+                    Anexo
+                  </div>
+                </TableHead>
+                <TableHead>
+                  <div className="flex items-center gap-2">
+                    <DollarSign className="h-4 w-4 text-lime-600" />
+                    Importe
+                  </div>
+                </TableHead>
+                <TableHead>Neto Pagar</TableHead>
+                <TableHead>Estado</TableHead>
+                <TableHead className="text-right">Acciones</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {isLoading ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center py-8 text-gray-500">Cargando...</TableCell>
+                </TableRow>
+              ) : filteredLiquidaciones.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center py-12 text-gray-500">No hay liquidaciones</TableCell>
+                </TableRow>
+              ) : (
+                filteredLiquidaciones.map((liquidacion: Liquidacion) => (
+                  <TableRow key={liquidacion.id_liquidacion} className="hover:bg-gray-50/50 transition-colors cursor-pointer" onClick={() => setDetailModal({ isOpen: true, item: liquidacion })}>
+                    <TableCell>
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-lime-50 text-lime-700 rounded text-sm font-mono font-medium">
+                        <Tag className="h-3 w-3" />
+                        {liquidacion.codigo}
+                      </span>
+                    </TableCell>
+                    <TableCell>{getClienteNombre(liquidacion.id_cliente)}</TableCell>
+                    <TableCell className="text-gray-500">{liquidacion.id_anexo ? getAnexoInfo(liquidacion.id_anexo) : '-'}</TableCell>
+                    <TableCell className="font-medium text-gray-900">{liquidacion.importe?.toLocaleString()}</TableCell>
+                    <TableCell className="font-medium text-gray-900">{liquidacion.neto_pagar?.toLocaleString()}</TableCell>
+                    <TableCell>
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                        liquidacion.liquidada ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+                      }`}>
+                        {liquidacion.liquidada ? 'Liquidada' : 'Pendiente'}
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                      <div className="flex justify-end gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => { setSelectedLiquidacion(liquidacion); setShowDetailModal(true); }}
+                          className="text-blue-600 hover:text-blue-800 hover:bg-blue-50 h-8 w-8"
+                          title="Ver detalle"
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        {!liquidacion.liquidada && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => {
+                              if (confirm('¿Confirmar liquidación?')) {
+                                confirmarMutation.mutate({
+                                  id: liquidacion.id_liquidacion,
+                                  data: {
+                                    tipo_pago: liquidacion.tipo_pago,
+                                    devengado: liquidacion.devengado,
+                                    tributario: liquidacion.tributario,
+                                    comision_bancaria: liquidacion.comision_bancaria,
+                                    gasto_empresa: liquidacion.gasto_empresa
+                                  }
+                                });
+                              }
+                            }}
+                            className="text-green-600 hover:text-green-800 hover:bg-green-50 h-8 w-8"
+                            title="Confirmar"
+                          >
+                            <Check className="h-4 w-4" />
+                          </Button>
+                        )}
+                        <Button
+                          variant="ghost"
+                          size="icon"
                           onClick={() => {
-                            if (confirm('¿Confirmar liquidación?')) {
-                              confirmarMutation.mutate({
-                                id: liquidacion.id_liquidacion,
-                                data: {
-                                  tipo_pago: liquidacion.tipo_pago,
-                                  devengado: liquidacion.devengado,
-                                  tributario: liquidacion.tributario,
-                                  comision_bancaria: liquidacion.comision_bancaria,
-                                  gasto_empresa: liquidacion.gasto_empresa
-                                }
-                              });
+                            if (confirm('¿Eliminar liquidación?')) {
+                              deleteMutation.mutate(liquidacion.id_liquidacion);
                             }
                           }}
-                          className="p-1 text-green-600 hover:bg-green-50 rounded"
-                          title="Confirmar"
+                          className="text-red-600 hover:text-red-800 hover:bg-red-50 h-8 w-8"
+                          title="Eliminar"
                         >
-                          <CheckCircle className="w-5 h-5" />
-                        </button>
-                      )}
-                      <button
-                        onClick={() => {
-                          if (confirm('¿Eliminar liquidación?')) {
-                            deleteMutation.mutate(liquidacion.id_liquidacion);
-                          }
-                        }}
-                        className="p-1 text-red-600 hover:bg-red-50 rounded"
-                        title="Eliminar"
-                      >
-                        <Trash2 className="w-5 h-5" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
+      </Card>
 
       {showModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-4xl max-h-[90vh] overflow-hidden">
-            <div className="px-6 py-4 border-b flex justify-between items-center">
-              <h2 className="text-xl font-bold">Nueva Liquidación</h2>
-              <button onClick={() => { setShowModal(false); resetForm(); }} className="text-gray-400 hover:text-gray-600">
-                <XCircle className="w-6 h-6" />
-              </button>
-            </div>
+            <CardHeader>
+              <div className="flex items-center gap-4">
+                <CardTitle>Nueva Liquidación</CardTitle>
+                <button onClick={() => { setShowModal(false); resetForm(); }} className="ml-auto text-gray-400 hover:text-gray-600">
+                  <XCircle className="w-5 h-5" />
+                </button>
+              </div>
+            </CardHeader>
             
             <div className="p-6 overflow-y-auto max-h-[calc(90vh-140px)]">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Proveedor *</label>
+                  <Label>Proveedor *</Label>
                   <select
                     value={filtroCliente || ''}
                     onChange={(e) => handleClienteChange(Number(e.target.value))}
-                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                    className="w-full p-2 border rounded"
                   >
                     <option value="">Seleccionar proveedor</option>
                     {clientes.map((cliente: Cliente) => (
@@ -405,11 +450,11 @@ export function LiquidacionesPage() {
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Anexo</label>
+                  <Label>Anexo</Label>
                   <select
                     value={filtroAnexo || ''}
                     onChange={(e) => handleAnexoChange(e.target.value ? Number(e.target.value) : null)}
-                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                    className="w-full p-2 border rounded"
                     disabled={!filtroCliente}
                   >
                     <option value="">Todos los anexos</option>
@@ -422,11 +467,11 @@ export function LiquidacionesPage() {
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Moneda *</label>
+                  <Label>Moneda *</Label>
                   <select
                     value={formData.id_moneda}
                     onChange={(e) => setFormData(prev => ({ ...prev, id_moneda: Number(e.target.value) }))}
-                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                    className="w-full p-2 border rounded"
                   >
                     {monedas.map((moneda: Moneda) => (
                       <option key={moneda.id_moneda} value={moneda.id_moneda}>
@@ -437,11 +482,11 @@ export function LiquidacionesPage() {
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Tipo de Pago</label>
+                  <Label>Tipo de Pago</Label>
                   <select
                     value={formData.tipo_pago}
                     onChange={(e) => setFormData(prev => ({ ...prev, tipo_pago: e.target.value }))}
-                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                    className="w-full p-2 border rounded"
                   >
                     <option value="TRANSFERENCIA">Transferencia</option>
                     <option value="EFECTIVO">Efectivo</option>
@@ -514,45 +559,41 @@ export function LiquidacionesPage() {
                 </div>
               )}
 
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+              <div className="grid gap-4 md:grid-cols-4 mb-6">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Tributario (%)</label>
-                  <input
+                  <Label>Tributario (%)</Label>
+                  <Input
                     type="number"
                     step="0.01"
                     value={formData.tributario}
                     onChange={(e) => setFormData(prev => ({ ...prev, tributario: Number(e.target.value) }))}
-                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Comisión Bancaria (%)</label>
-                  <input
+                  <Label>Comisión Bancaria (%)</Label>
+                  <Input
                     type="number"
                     step="0.01"
                     value={formData.comision_bancaria}
                     onChange={(e) => setFormData(prev => ({ ...prev, comision_bancaria: Number(e.target.value) }))}
-                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Gasto Empresa</label>
-                  <input
+                  <Label>Gasto Empresa</Label>
+                  <Input
                     type="number"
                     step="0.01"
                     value={formData.gasto_empresa}
                     onChange={(e) => setFormData(prev => ({ ...prev, gasto_empresa: Number(e.target.value) }))}
-                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Devengado (%)</label>
-                  <input
+                  <Label>Devengado (%)</Label>
+                  <Input
                     type="number"
                     step="0.01"
                     value={formData.devengado}
                     onChange={(e) => setFormData(prev => ({ ...prev, devengado: Number(e.target.value) }))}
-                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
               </div>
@@ -581,24 +622,21 @@ export function LiquidacionesPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Observaciones</label>
+                <Label>Observaciones</Label>
                 <textarea
                   value={formData.observaciones}
                   onChange={(e) => setFormData(prev => ({ ...prev, observaciones: e.target.value }))}
                   rows={3}
-                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                  className="w-full p-2 border rounded resize-none"
                 />
               </div>
             </div>
 
             <div className="px-6 py-4 border-t bg-gray-50 flex justify-end gap-3">
-              <button
-                onClick={() => { setShowModal(false); resetForm(); }}
-                className="px-4 py-2 border rounded-lg hover:bg-gray-100"
-              >
+              <Button variant="outline" onClick={() => { setShowModal(false); resetForm(); }}>
                 Cancelar
-              </button>
-              <button
+              </Button>
+              <Button
                 onClick={() => {
                   if (!formData.id_cliente || selectedProductos.length === 0) {
                     toast.error('Seleccione un proveedor y al menos un producto');
@@ -610,10 +648,9 @@ export function LiquidacionesPage() {
                   });
                 }}
                 disabled={createMutation.isPending || selectedProductos.length === 0}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
               >
                 {createMutation.isPending ? 'Creando...' : 'Crear Liquidación'}
-              </button>
+              </Button>
             </div>
           </div>
         </div>
@@ -709,6 +746,81 @@ export function LiquidacionesPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {detailModal.isOpen && detailModal.item && createPortal(
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 animate-fade-in">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-auto animate-scale-in">
+            <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-lime-50 to-green-50">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="p-3 rounded-xl bg-gradient-to-br from-lime-500 to-green-600 text-white shadow-lg">
+                    <ScrollText className="h-7 w-7" />
+                  </div>
+                  <div>
+                    <h3 className="text-2xl font-bold text-gray-900">Liquidación</h3>
+                    <p className="text-sm text-gray-500 font-mono">{detailModal.item.codigo || 'Sin código'}</p>
+                  </div>
+                </div>
+                <button onClick={() => setDetailModal({ isOpen: false, item: null })} className="p-2 hover:bg-gray-200 rounded-full transition-colors">
+                  <X className="h-6 w-6 text-gray-500" />
+                </button>
+              </div>
+            </div>
+            <div className="p-6 space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-4 rounded-xl border border-blue-100">
+                  <p className="text-xs text-blue-600 uppercase tracking-wider mb-1">Proveedor</p>
+                  <p className="font-bold text-gray-900">{getClienteNombre(detailModal.item.id_cliente)}</p>
+                </div>
+                <div className="bg-gray-50 p-4 rounded-xl">
+                  <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Anexo</p>
+                  <p className="font-bold text-gray-900">{detailModal.item.id_anexo ? getAnexoInfo(detailModal.item.id_anexo) : '-'}</p>
+                </div>
+                <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-4 rounded-xl border border-green-100">
+                  <p className="text-xs text-green-600 uppercase tracking-wider mb-1">Importe</p>
+                  <p className="font-bold text-green-900 text-xl">{detailModal.item.importe?.toLocaleString()}</p>
+                </div>
+                <div className="bg-gradient-to-br from-lime-50 to-green-50 p-4 rounded-xl border border-lime-100">
+                  <p className="text-xs text-lime-600 uppercase tracking-wider mb-1">Neto a Pagar</p>
+                  <p className="font-bold text-lime-900 text-xl">{detailModal.item.neto_pagar?.toLocaleString()}</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-gray-50 p-4 rounded-xl">
+                  <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Estado</p>
+                  <span className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium ${detailModal.item.liquidada ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
+                    {detailModal.item.liquidada ? 'Liquidada' : 'Pendiente'}
+                  </span>
+                </div>
+                <div className="bg-gradient-to-br from-purple-50 to-pink-50 p-4 rounded-xl border border-purple-100">
+                  <p className="text-xs text-purple-600 uppercase tracking-wider mb-1">Fecha Emisión</p>
+                  <p className="font-bold text-gray-900">{new Date(detailModal.item.fecha_emision).toLocaleDateString()}</p>
+                </div>
+              </div>
+              {(detailModal.item.tributario || detailModal.item.comision_bancaria || detailModal.item.gasto_empresa) && (
+                <div className="bg-gray-50 p-4 rounded-xl">
+                  <p className="text-xs text-gray-500 uppercase tracking-wider mb-2">Descuentos</p>
+                  <div className="space-y-1 text-sm">
+                    {detailModal.item.tributario ? <div className="flex justify-between"><span>Tributario</span><span className="text-red-600">-{detailModal.item.tributario?.toLocaleString()}</span></div> : null}
+                    {detailModal.item.comision_bancaria ? <div className="flex justify-between"><span>Comisión Bancaria</span><span className="text-red-600">-{detailModal.item.comision_bancaria?.toLocaleString()}</span></div> : null}
+                    {detailModal.item.gasto_empresa ? <div className="flex justify-between"><span>Gasto Empresa</span><span className="text-red-600">-{detailModal.item.gasto_empresa?.toLocaleString()}</span></div> : null}
+                  </div>
+                </div>
+              )}
+              {detailModal.item.observaciones && (
+                <div className="bg-gray-50 p-4 rounded-xl">
+                  <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Observaciones</p>
+                  <p className="text-gray-700">{detailModal.item.observaciones}</p>
+                </div>
+              )}
+            </div>
+            <div className="p-6 border-t border-gray-200 bg-gray-50 flex justify-end">
+              <button onClick={() => setDetailModal({ isOpen: false, item: null })} className="px-6 py-3 text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors font-medium">Cerrar</button>
+            </div>
+          </div>
+        </div>,
+        document.body
       )}
     </div>
   );

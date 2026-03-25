@@ -6,6 +6,7 @@ export interface DependenciaInfo {
   base_datos: string;
   host?: string;
   puerto?: number;
+  email?: string;
 }
 
 export interface GrupoInfo {

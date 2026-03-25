@@ -288,16 +288,21 @@ export function UsuariosPage() {
   const content = (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Usuarios</h1>
-          <p className="text-gray-500 mt-1">
-            {filteredUsuarios.length === usuarios.length 
-              ? `Gestión de usuarios (${usuarios.length} usuarios)`
-              : `Mostrando ${filteredUsuarios.length} de ${usuarios.length} usuarios`
-            }
-          </p>
+        <div className="flex items-center gap-4">
+          <div className="p-3 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl shadow-lg animate-bounce-subtle">
+            <Users className="h-8 w-8 text-white" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Usuarios</h1>
+            <p className="text-gray-500 mt-1">
+              {filteredUsuarios.length === usuarios.length 
+                ? `Gestión de usuarios (${usuarios.length} usuarios)`
+                : `Mostrando ${filteredUsuarios.length} de ${usuarios.length} usuarios`
+              }
+            </p>
+          </div>
         </div>
-        <Button onClick={() => setView('form')} className="gap-2 shadow-sm">
+        <Button onClick={() => setView('form')} className="gap-2 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300">
           <Plus className="h-4 w-4" />
           Nuevo Usuario
         </Button>
@@ -316,10 +321,10 @@ export function UsuariosPage() {
         </div>
       </div>
 
-      <Card className="overflow-hidden shadow-sm border-gray-200">
+      <Card className="overflow-hidden hover:shadow-lg transition-shadow duration-300">
         <div className="overflow-x-auto">
           <Table>
-            <TableHeader className="bg-gray-50/50">
+            <TableHeader className="bg-gradient-to-r from-green-50 to-emerald-50">
               <TableRow>
                 <TableHead>Nombre</TableHead>
                 <TableHead>CI</TableHead>

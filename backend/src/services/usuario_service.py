@@ -1,4 +1,4 @@
-import hashlib
+import bcrypt
 from typing import List
 from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -136,16 +136,16 @@ class UsuarioService:
         return f"{nombre.lower()}.{primer_apellido.lower()}"
 
     @staticmethod
-    def _generar_contrasenia(ci: str) -> tuple[str, str]:
+    def _generar_contrasenia() -> tuple[str, str]:
         import random
         import string
 
         password_temporal = "".join(
             random.choices(string.ascii_lowercase + string.digits, k=8)
         )
-        contrasenia_hasheada = hashlib.sha256(password_temporal.encode()).hexdigest()[
-            :32
-        ]
+        contrasenia_hasheada = bcrypt.hashpw(
+            password_temporal.encode("utf-8"), bcrypt.gensalt()
+        ).decode("utf-8")
         return contrasenia_hasheada, password_temporal
 
     @staticmethod
@@ -156,12 +156,12 @@ class UsuarioService:
         )
 
         if data.contrasenia:
-            contrasenia = data.contrasenia
+            contrasenia = bcrypt.hashpw(
+                data.contrasenia.encode("utf-8"), bcrypt.gensalt()
+            ).decode("utf-8")
             password_temporal = data.contrasenia
         else:
-            contrasenia, password_temporal = UsuarioService._generar_contrasenia(
-                data.ci
-            )
+            contrasenia, password_temporal = UsuarioService._generar_contrasenia()
 
         # Crear objeto con todos los datos
         usuario_data = {

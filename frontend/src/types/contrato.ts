@@ -48,13 +48,6 @@ export interface ProductoSimple {
   precio_venta: number;
 }
 
-export interface ContratoProducto {
-  id_contrato_producto: number;
-  id_producto: number;
-  cantidad: number;
-  producto?: ProductoSimple;
-}
-
 export interface Contrato {
   id_contrato: number;
   id_cliente: number;
@@ -67,10 +60,10 @@ export interface Contrato {
   id_moneda: number;
   monto: number;
   documento_final?: string;
+  codigo?: string;
 }
 
 export interface ContratoWithDetails extends Contrato {
-  productos: ContratoProducto[];
   estado?: EstadoContrato;
   tipo_contrato?: TipoContrato;
   moneda?: Moneda;
@@ -88,7 +81,6 @@ export interface ContratoCreate {
   id_moneda: number;
   monto?: number;
   documento_final?: string;
-  productos: { id_producto: number; cantidad: number }[];
 }
 
 export interface ContratoUpdate {
@@ -102,14 +94,6 @@ export interface ContratoUpdate {
   id_moneda?: number;
   monto?: number;
   documento_final?: string;
-  productos?: { id_producto: number; cantidad: number }[];
-}
-
-export interface SuplementoProducto {
-  id_suplemento_producto: number;
-  id_producto: number;
-  cantidad: number;
-  producto?: ProductoSimple;
 }
 
 export interface Suplemento {
@@ -120,10 +104,10 @@ export interface Suplemento {
   fecha: string;
   monto: number;
   documento?: string;
+  codigo?: string;
 }
 
 export interface SuplementoWithDetails extends Suplemento {
-  productos: SuplementoProducto[];
   estado?: EstadoContrato;
 }
 
@@ -134,7 +118,6 @@ export interface SuplementoCreate {
   fecha: string;
   monto?: number;
   documento?: string;
-  productos: { id_producto: number; cantidad: number }[];
 }
 
 export interface SuplementoUpdate {
@@ -144,14 +127,73 @@ export interface SuplementoUpdate {
   fecha?: string;
   monto?: number;
   documento?: string;
-  productos?: { id_producto: number; cantidad: number }[];
 }
 
-export interface FacturaProducto {
-  id_factura_producto: number;
+export interface ItemAnexo {
+  id_item_anexo: number;
+  id_anexo: number;
   id_producto: number;
   cantidad: number;
+  precio_compra: number;
+  precio_venta: number;
+  id_moneda: number;
   producto?: ProductoSimple;
+}
+
+export interface ItemAnexoCreate {
+  id_producto: number;
+  cantidad: number;
+  precio_venta: number;
+  id_moneda: number;
+}
+
+export interface Anexo {
+  id_anexo: number;
+  id_convenio: number;
+  nombre_anexo: string;
+  fecha: string;
+  codigo_anexo?: string;
+  numero_anexo?: string;
+  id_dependencia?: number | null;
+  comision?: number;
+  id_moneda?: number | null;
+}
+
+export interface AnexoWithDetails extends Anexo {
+  items: ItemAnexo[];
+  dependencia?: DependenciaSimple;
+  convenios?: {
+    id_convenio: number;
+    nombre_convenio: string;
+  };
+}
+
+export interface AnexoCreate {
+  id_convenio: number;
+  nombre_anexo: string;
+  fecha: string;
+  id_dependencia?: number;
+  id_moneda?: number;
+  comision?: number;
+  items: ItemAnexoCreate[];
+}
+
+export interface ItemFactura {
+  id_item_factura: number;
+  id_factura: number;
+  id_producto: number;
+  cantidad: number;
+  precio_compra: number;
+  precio_venta: number;
+  id_moneda: number;
+  producto?: ProductoSimple;
+}
+
+export interface ItemFacturaCreate {
+  id_producto: number;
+  cantidad: number;
+  precio_venta: number;
+  id_moneda: number;
 }
 
 export interface Factura {
@@ -163,10 +205,12 @@ export interface Factura {
   fecha: string;
   monto: number;
   pago_actual: number;
+  id_dependencia?: number;
+  id_moneda?: number;
 }
 
 export interface FacturaWithDetails extends Factura {
-  productos: FacturaProducto[];
+  items: ItemFactura[];
 }
 
 export interface FacturaCreate {
@@ -177,7 +221,9 @@ export interface FacturaCreate {
   fecha: string;
   monto?: number;
   pago_actual?: number;
-  productos: { id_producto: number; cantidad: number }[];
+  id_dependencia?: number;
+  id_moneda?: number;
+  items: ItemFacturaCreate[];
 }
 
 export interface FacturaUpdate {
@@ -188,7 +234,8 @@ export interface FacturaUpdate {
   fecha?: string;
   monto?: number;
   pago_actual?: number;
-  productos?: { id_producto: number; cantidad: number }[];
+  id_dependencia?: number;
+  items?: ItemFacturaCreate[];
 }
 
 export interface DependenciaSimple {
@@ -196,11 +243,22 @@ export interface DependenciaSimple {
   nombre: string;
 }
 
-export interface VentaEfectivoProducto {
-  id_venta_efectivo_producto: number;
+export interface ItemVentaEfectivo {
+  id_item_venta_efectivo: number;
+  id_venta_efectivo: number;
   id_producto: number;
   cantidad: number;
+  precio_compra: number;
+  precio_venta: number;
+  id_moneda: number;
   producto?: ProductoSimple;
+}
+
+export interface ItemVentaEfectivoCreate {
+  id_producto: number;
+  cantidad: number;
+  precio_venta: number;
+  id_moneda: number;
 }
 
 export interface VentaEfectivo {
@@ -210,10 +268,12 @@ export interface VentaEfectivo {
   id_dependencia: number;
   cajero: string;
   monto: number;
+  id_moneda?: number;
+  codigo?: string;
 }
 
 export interface VentaEfectivoWithDetails extends VentaEfectivo {
-  productos: VentaEfectivoProducto[];
+  items: ItemVentaEfectivo[];
   dependencia?: DependenciaSimple;
 }
 
@@ -223,7 +283,8 @@ export interface VentaEfectivoCreate {
   id_dependencia: number;
   cajero: string;
   monto?: number;
-  productos: { id_producto: number; cantidad: number }[];
+  id_moneda?: number;
+  items: ItemVentaEfectivoCreate[];
 }
 
 export interface VentaEfectivoUpdate {
@@ -232,5 +293,5 @@ export interface VentaEfectivoUpdate {
   id_dependencia?: number;
   cajero?: string;
   monto?: number;
-  productos?: { id_producto: number; cantidad: number }[];
+  items?: ItemVentaEfectivoCreate[];
 }

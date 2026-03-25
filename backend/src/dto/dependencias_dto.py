@@ -66,6 +66,7 @@ class DependenciaRead(SQLModel):
     provincia: Optional[ProvinciaRead] = None
     municipio: Optional[MunicipioRead] = None
     cuentas: List[CuentaRead] = []
+    tablas_creadas: Optional[List[str]] = None
 
 
 class DependenciaUpdate(SQLModel):

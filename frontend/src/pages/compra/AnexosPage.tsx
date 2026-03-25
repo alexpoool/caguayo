@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react';
-import { Button, Input, Label, Card, CardContent, CardHeader, CardTitle } from '../../components/ui';
-import { anexosService, conveniosService, productosService, monedaService, dependenciasService } from '../../services/api';
+import { useState, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
+import { Button, Input, Label, Card, CardContent, CardHeader, CardTitle, Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../../components/ui';
+import { anexosService, conveniosService, productosService, monedaService, dependenciasService, clientesService } from '../../services/api';
 import type { Productos } from '../../types';
-import { Plus, Save, Trash2, Edit, X, Boxes, ArrowLeft } from 'lucide-react';
+import { Plus, Save, Trash2, Edit, X, Boxes, ArrowLeft, Package, DollarSign, Tag, Eye, User } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useSearchParams } from 'react-router-dom';
 
@@ -15,6 +16,7 @@ export function CompraAnexosPage() {
   const [view, setView] = useState<View>('list');
   const [anexos, setAnexos] = useState<any[]>([]);
   const [convenios, setConvenios] = useState<any[]>([]);
+  const [clientes, setClientes] = useState<any[]>([]);
   const [productos, setProductos] = useState<Productos[]>([]);
   const [monedas, setMonedas] = useState<any[]>([]);
   const [dependencias, setDependencias] = useState<any[]>([]);
@@ -22,29 +24,34 @@ export function CompraAnexosPage() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [formData, setFormData] = useState<Record<string, any>>({});
   const [selectedConvenio, setSelectedConvenio] = useState<number | null>(initialConvenioId ? Number(initialConvenioId) : null);
-  const [selectedProducts, setSelectedProducts] = useState<{id_producto: number; cantidad: number; precio_compra: number}[]>([]);
+  const [filtroCliente, setFiltroCliente] = useState<number | null>(null);
+  const [selectedProducts, setSelectedProducts] = useState<{id_producto: number; cantidad: number; precio_venta: number}[]>([]);
+  const [detailModal, setDetailModal] = useState<{ isOpen: boolean; item: any | null }>({ isOpen: false, item: null });
 
   useEffect(() => { loadInitialData(); }, []);
-  useEffect(() => { if (view === 'list') loadAnexos(); }, [view, selectedConvenio]);
 
   const loadInitialData = async () => {
     try {
-      const [conv, prod, mon, dep] = await Promise.all([
+      const [conv, cli, prod, mon, dep] = await Promise.all([
         conveniosService.getConvenios(),
+        clientesService.getClientes(0, 1000),
         productosService.getProductos(0, 1000),
         monedaService.getMonedas(0, 100),
         dependenciasService.getDependencias(undefined, 0, 1000)
       ]);
       setConvenios(conv.filter((c: any) => new Date(c.vigencia) >= new Date()));
+      setClientes(cli);
       setProductos(prod);
       setMonedas(mon);
       setDependencias(dep);
     } catch (error) { console.error('Error:', error); }
   };
 
+  useEffect(() => { if (view === 'list') loadAnexos(); }, [view]);
+
   const loadAnexos = async () => {
     try {
-      const data = await anexosService.getAnexos(selectedConvenio || undefined);
+      const data = await anexosService.getAnexos();
       setAnexos(data);
     } catch (error) { console.error('Error:', error); }
   };
@@ -58,10 +65,11 @@ export function CompraAnexosPage() {
         id_dependencia: formData.id_dependencia ? Number(formData.id_dependencia) : undefined,
         id_moneda: formData.id_moneda ? Number(formData.id_moneda) : undefined,
         comision: formData.comision ? Number(formData.comision) : undefined,
-        productos: selectedProducts.map(p => ({
+        items: selectedProducts.map(p => ({
           id_producto: p.id_producto,
           cantidad: p.cantidad,
-          precio_compra: p.precio_compra
+          precio_venta: p.precio_venta,
+          id_moneda: formData.id_moneda ? Number(formData.id_moneda) : 1
         }))
       };
       
@@ -104,10 +112,10 @@ export function CompraAnexosPage() {
         comision: item.comision,
         codigo_anexo: item.codigo_anexo,
       });
-      setSelectedProducts(item.productos?.map((p: any) => ({
+      setSelectedProducts(item.items?.map((p: any) => ({
         id_producto: p.id_producto,
         cantidad: p.cantidad,
-        precio_compra: p.precio_compra || 0
+        precio_venta: p.precio_venta || p.precio_compra || 0
       })) || []);
     } else { resetForm(); }
     setView('form');
@@ -118,7 +126,7 @@ export function CompraAnexosPage() {
       setSelectedProducts([...selectedProducts, { 
         id_producto: producto.id_producto, 
         cantidad: 1, 
-        precio_compra: Number(producto.precio_compra) 
+        precio_venta: Number(producto.precio_venta) 
       }]);
     }
   };
@@ -133,7 +141,7 @@ export function CompraAnexosPage() {
     setSelectedProducts(selectedProducts.filter(p => p.id_producto !== id));
   };
 
-  const calcTotal = () => selectedProducts.reduce((t, p) => t + (p.cantidad * p.precio_compra), 0);
+  const calcTotal = () => selectedProducts.reduce((t, p) => t + (p.cantidad * p.precio_venta), 0);
 
   const getProductoNombre = (id: number) => {
     const prod = productos.find(p => p.id_producto === id);
@@ -152,67 +160,148 @@ export function CompraAnexosPage() {
     return mon?.simbolo || `Moneda ${id}`;
   };
 
+  const getClienteFromConvenio = (id_convenio: number) => {
+    const convenio = convenios.find(c => c.id_convenio === id_convenio);
+    if (!convenio) return null;
+    return clientes.find(cli => cli.id_cliente === convenio.id_cliente) || null;
+  };
+
+  const conveniosFiltrados = useMemo(() => {
+    if (!filtroCliente) return convenios;
+    return convenios.filter(c => c.id_cliente === filtroCliente);
+  }, [convenios, filtroCliente]);
+
+  const filteredAnexos = useMemo(() => {
+    let result = anexos;
+    if (filtroCliente) {
+      const conveniosIds = conveniosFiltrados.map(c => c.id_convenio);
+      result = result.filter(a => conveniosIds.includes(a.id_convenio));
+    }
+    if (selectedConvenio) {
+      result = result.filter(a => a.id_convenio === selectedConvenio);
+    }
+    return result;
+  }, [anexos, filtroCliente, selectedConvenio, conveniosFiltrados]);
+
   const renderList = () => (
-    <div className="space-y-4">
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold">Anexos</h2>
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div className="flex items-center gap-4">
+          <div className="p-3 bg-gradient-to-br from-fuchsia-500 to-pink-600 rounded-xl shadow-lg animate-bounce-subtle">
+            <Boxes className="h-8 w-8 text-white" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Anexos</h1>
+            <p className="text-gray-500 mt-1">Gestión de anexos por convenio</p>
+          </div>
+        </div>
         <div className="flex gap-2">
-          <select 
-            className="p-2 border rounded" 
-            value={selectedConvenio || ''} 
-            onChange={(e: any) => setSelectedConvenio(Number(e.target.value) || null)}
+          <select
+            className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-fuchsia-500 outline-none bg-white text-sm"
+            value={filtroCliente || ''}
+            onChange={(e) => {
+              setFiltroCliente(Number(e.target.value) || null);
+              setSelectedConvenio(null);
+            }}
+          >
+            <option value="">Todos los clientes</option>
+            {clientes.map(c => <option key={c.id_cliente} value={c.id_cliente}>{c.nombre}</option>)}
+          </select>
+          <select
+            className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-fuchsia-500 outline-none bg-white text-sm"
+            value={selectedConvenio || ''}
+            onChange={(e) => setSelectedConvenio(Number(e.target.value) || null)}
           >
             <option value="">Todos los convenios</option>
-            {convenios.map(c => <option key={c.id_convenio} value={c.id_convenio}>{c.codigo_convenio} - {c.nombre_convenio}</option>)}
+            {conveniosFiltrados.map(c => <option key={c.id_convenio} value={c.id_convenio}>{c.codigo_convenio} - {c.nombre_convenio}</option>)}
           </select>
-          <Button onClick={() => openForm()} disabled={!selectedConvenio}><Plus className="w-4 h-4 mr-2" />Nuevo</Button>
+          <Button
+            onClick={() => openForm()}
+            disabled={!selectedConvenio && !filtroCliente}
+            className="gap-2 bg-gradient-to-r from-fuchsia-500 to-pink-600 hover:from-fuchsia-600 hover:to-pink-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300 disabled:opacity-50 disabled:transform-none"
+          >
+            <Plus className="h-4 w-4" />
+            Nuevo Anexo
+          </Button>
         </div>
       </div>
-      
-      {!selectedConvenio && (
-        <p className="text-gray-500">Seleccione un convenio para ver sus anexos.</p>
-      )}
-      
-      {selectedConvenio && anexos.length === 0 ? (
-        <p className="text-gray-500">No hay anexos registrados.</p>
-      ) : selectedConvenio && (
-        <Card>
-          <CardContent className="p-0">
-            <table className="w-full">
-              <thead className="bg-gray-50 border-b">
-                <tr>
-                  <th className="text-left p-3 font-medium text-gray-600">Código</th>
-                  <th className="text-left p-3 font-medium text-gray-600">Nombre</th>
-                  <th className="text-left p-3 font-medium text-gray-600">Comisión</th>
-                  <th className="text-left p-3 font-medium text-gray-600">Productos</th>
-                  <th className="text-right p-3 font-medium text-gray-600">Acciones</th>
-                </tr>
-              </thead>
-              <tbody>
-                {anexos.map((item) => (
-                  <tr key={item.id_anexo} className="border-b hover:bg-gray-50">
-                    <td className="p-3">
-                      <div className="flex items-center gap-2">
-                        <Boxes className="w-4 h-4 text-amber-600" />
-                        <span className="font-mono text-sm">{item.codigo_anexo || '-'}</span>
-                      </div>
-                    </td>
-                    <td className="p-3 font-medium">{item.nombre_anexo}</td>
-                    <td className="p-3 text-gray-600">{item.comision ? `${item.comision}%` : '-'}</td>
-                    <td className="p-3 text-gray-600">{item.productos?.length || 0}</td>
-                    <td className="p-3 text-right">
-                      <div className="flex justify-end gap-1">
-                        <Button variant="ghost" size="sm" onClick={() => openForm(item)}><Edit className="w-4 h-4" /></Button>
-                        <Button variant="ghost" size="sm" onClick={() => handleDelete(item.id_anexo)}><Trash2 className="w-4 h-4 text-red-500" /></Button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </CardContent>
+
+      <Card className="overflow-hidden shadow-sm border-gray-200">
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader className="bg-gradient-to-r from-fuchsia-50 to-pink-50">
+              <TableRow>
+                <TableHead>
+                  <div className="flex items-center gap-2">
+                    <Tag className="h-4 w-4 text-fuchsia-600" />
+                    Código
+                  </div>
+                </TableHead>
+                <TableHead>
+                  <div className="flex items-center gap-2">
+                    <Boxes className="h-4 w-4 text-fuchsia-600" />
+                    Nombre
+                  </div>
+                </TableHead>
+                <TableHead>
+                  <div className="flex items-center gap-2">
+                    <User className="h-4 w-4 text-fuchsia-600" />
+                    Cliente
+                  </div>
+                </TableHead>
+                <TableHead>Comisión</TableHead>
+                <TableHead>
+                  <div className="flex items-center gap-2">
+                    <Package className="h-4 w-4 text-fuchsia-600" />
+                    Productos
+                  </div>
+                </TableHead>
+                <TableHead className="text-right">Acciones</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredAnexos.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="text-center py-12 text-gray-500">
+                    {filtroCliente ? 'No hay anexos para este cliente' : 'No hay anexos registrados'}
+                  </TableCell>
+                </TableRow>
+              ) : (
+                filteredAnexos.map((item) => (
+                    <TableRow key={item.id_anexo} className="hover:bg-gray-50/50 transition-colors cursor-pointer" onClick={() => setDetailModal({ isOpen: true, item })}>
+                      <TableCell>
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-fuchsia-50 text-fuchsia-700 rounded text-sm font-mono font-medium">
+                          <Tag className="h-3 w-3" />
+                          {item.codigo_anexo || '-'}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <span className="font-medium text-gray-900">{item.nombre_anexo}</span>
+                      </TableCell>
+                      <TableCell>
+                        <span className="text-gray-600">
+                          {getClienteFromConvenio(item.id_convenio)?.nombre || '-'}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-gray-500">{item.comision ? `${item.comision}%` : '-'}</TableCell>
+                      <TableCell className="text-gray-500">{item.items?.length || 0}</TableCell>
+                      <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex justify-end gap-2">
+                          <Button variant="ghost" size="icon" onClick={() => openForm(item)} className="text-blue-600 hover:text-blue-800 hover:bg-blue-50 h-8 w-8" title="Editar">
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="icon" onClick={() => handleDelete(item.id_anexo)} className="text-red-600 hover:text-red-800 hover:bg-red-50 h-8 w-8" title="Eliminar">
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
         </Card>
-      )}
     </div>
   );
 
@@ -273,7 +362,7 @@ export function CompraAnexosPage() {
                   <tr>
                     <th className="px-3 py-2 text-left">Producto</th>
                     <th className="px-3 py-2 text-left">Cantidad</th>
-                    <th className="px-3 py-2 text-left">Precio Compra</th>
+                    <th className="px-3 py-2 text-left">Precio Venta</th>
                     <th className="px-3 py-2 text-left">Subtotal</th>
                     <th className="px-3 py-2"></th>
                   </tr>
@@ -295,12 +384,12 @@ export function CompraAnexosPage() {
                         <Input 
                           type="number" 
                           step="0.01"
-                          value={p.precio_compra} 
-                          onChange={(e: any) => updateProduct(p.id_producto, 'precio_compra', Number(e.target.value))}
+                          value={p.precio_venta} 
+                          onChange={(e: any) => updateProduct(p.id_producto, 'precio_venta', Number(e.target.value))}
                           className="w-24 h-8"
                         />
                       </td>
-                      <td className="px-3 py-2 font-medium">${(p.cantidad * p.precio_compra).toFixed(2)}</td>
+                      <td className="px-3 py-2 font-medium">${(p.cantidad * p.precio_venta).toFixed(2)}</td>
                       <td className="px-3 py-2">
                         <button onClick={() => removeProduct(p.id_producto)} className="text-red-500"><X className="w-4 h-4" /></button>
                       </td>
@@ -332,6 +421,66 @@ export function CompraAnexosPage() {
       <h1 className="text-3xl font-bold mb-6">Gestión de Anexos</h1>
       {view === 'list' && renderList()}
       {view === 'form' && renderForm()}
+
+      {detailModal.isOpen && detailModal.item && createPortal(
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 animate-fade-in">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-auto animate-scale-in">
+            <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-fuchsia-50 to-pink-50">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="p-3 rounded-xl bg-gradient-to-br from-fuchsia-500 to-pink-600 text-white shadow-lg">
+                    <Boxes className="h-7 w-7" />
+                  </div>
+                  <div>
+                    <h3 className="text-2xl font-bold text-gray-900">{detailModal.item.nombre_anexo}</h3>
+                    <p className="text-sm text-gray-500 font-mono">{detailModal.item.codigo_anexo || 'Sin código'}</p>
+                  </div>
+                </div>
+                <button onClick={() => setDetailModal({ isOpen: false, item: null })} className="p-2 hover:bg-gray-200 rounded-full transition-colors">
+                  <X className="h-6 w-6 text-gray-500" />
+                </button>
+              </div>
+            </div>
+            <div className="p-6 space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-gradient-to-br from-purple-50 to-pink-50 p-4 rounded-xl border border-purple-100">
+                  <p className="text-xs text-purple-600 uppercase tracking-wider mb-1">Fecha</p>
+                  <p className="font-bold text-gray-900">{detailModal.item.fecha || 'N/A'}</p>
+                </div>
+                <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-4 rounded-xl border border-green-100">
+                  <p className="text-xs text-green-600 uppercase tracking-wider mb-1">Comisión</p>
+                  <p className="font-bold text-green-900 text-xl">{detailModal.item.comision ? `${detailModal.item.comision}%` : 'N/A'}</p>
+                </div>
+                <div className="bg-gray-50 p-4 rounded-xl">
+                  <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Productos</p>
+                  <p className="font-bold text-gray-900 text-xl">{detailModal.item.items?.length || 0}</p>
+                </div>
+                <div className="bg-gray-50 p-4 rounded-xl">
+                  <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Dependencia</p>
+                  <p className="font-bold text-gray-900">{getDependenciaNombre(detailModal.item.id_dependencia)}</p>
+                </div>
+              </div>
+              {detailModal.item.items && detailModal.item.items.length > 0 && (
+                <div className="bg-gray-50 p-4 rounded-xl">
+                  <p className="text-xs text-gray-500 uppercase tracking-wider mb-2">Detalle de Productos</p>
+                  <div className="space-y-1">
+                    {detailModal.item.items.map((p: any, idx: number) => (
+                      <div key={idx} className="flex justify-between text-sm">
+                        <span className="text-gray-700">{getProductoNombre(p.id_producto)}</span>
+                        <span className="text-gray-500">{p.cantidad} x ${Number(p.precio_venta || 0).toFixed(2)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+            <div className="p-6 border-t border-gray-200 bg-gray-50 flex justify-end">
+              <button onClick={() => setDetailModal({ isOpen: false, item: null })} className="px-6 py-3 text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors font-medium">Cerrar</button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   );
 }

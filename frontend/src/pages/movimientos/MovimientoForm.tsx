@@ -5,15 +5,14 @@ import {
   movimientosService,
   productosService,
   monedaService,
-  provedoresService,
-  conveniosService,
-  anexosService,
-  dependenciasService
+  dependenciasService,
 } from '../../services/api';
 import type {
   MovimientoCreate
 } from '../../types/index';
-import { Button, Card, CardContent, Input, Label } from '../../components/ui';
+import type { FacturaWithDetails } from '../../types/contrato';
+import { generarCodigoMovimiento } from '../../utils/codigos';
+import { Button, Card, CardContent, CardHeader, CardTitle, Input, Label } from '../../components/ui';
 import {
   Truck,
   AlertCircle,
@@ -320,33 +319,6 @@ export function MovimientoRecepcionForm({
     },
   });
 
-  // Cargar todos los datos
-  const { data: proveedores = [], isLoading: isLoadingProveedores } = useQuery({
-    queryKey: ['proveedores'],
-    queryFn: () => provedoresService.getProvedores(),
-  });
-
-  // Convenios filtrados por proveedor seleccionado
-  const { data: convenios = [], isLoading: isLoadingConvenios } = useQuery({
-    queryKey: ['convenios', formData.id_provedor],
-    queryFn: () => conveniosService.getConvenios(formData.id_provedor!),
-    enabled: !!formData.id_provedor,
-  });
-
-  // Anexos filtrados por convenio seleccionado
-  const { data: anexos = [], isLoading: isLoadingAnexos } = useQuery({
-    queryKey: ['anexos', formData.id_convenio],
-    queryFn: () => anexosService.getAnexos(formData.id_convenio!),
-    enabled: !!formData.id_convenio,
-  });
-
-  // Productos filtrados por anexo seleccionado
-  const { data: productos = [], isLoading: isLoadingProductos } = useQuery({
-    queryKey: ['productos-anexo', formData.id_anexo],
-    queryFn: () => productosService.getProductosByAnexo(formData.id_anexo!),
-    enabled: !!formData.id_anexo,
-  });
-
   const { data: monedas = [], isLoading: isLoadingMonedas } = useQuery({
     queryKey: ['monedas'],
     queryFn: () => monedaService.getMonedas(),
@@ -362,44 +334,39 @@ export function MovimientoRecepcionForm({
     queryFn: () => movimientosService.getTiposMovimiento(),
   });
 
-  // Generar código automáticamente cuando se seleccionan todos los campos
+  // Productos con stock (todos los movimientos)
+  const { data: productos = [], isLoading: isLoadingProductos } = useQuery({
+    queryKey: ['productos-con-stock'],
+    queryFn: () => productosService.getProductosConStock(),
+  });
+
+  // Producto seleccionado para acceder a id_convenio e id_anexo
+  const selectedProduct = productos.find(p => Number(p.id_producto) === Number(formData.id_producto));
+
+  // Generar código automáticamente cuando se selecciona el producto
   useEffect(() => {
-    if (formData.id_provedor && formData.id_convenio && formData.id_anexo && formData.id_producto) {
-      // El código será generado por el backend con formato: año+id_movimiento+id_provedor+id_convenio+id_anexo+id_producto
+    if (formData.id_producto && selectedProduct) {
       const anio = new Date().getFullYear();
-      const codigoPreview = `${anio}-${formData.id_provedor}-${formData.id_convenio}-${formData.id_anexo}-${formData.id_producto}`;
-      setCodigoGenerado(codigoPreview);
+      const tipoMap: Record<string, 'REC' | 'MER' | 'DON' | 'DEV'> = {
+        'RECEPCION': 'REC',
+        'MERMA': 'MER',
+        'DONACION': 'DON',
+        'DEVOLUCION': 'DEV',
+      };
+      const idConvenio = selectedProduct.id_convenio || 0;
+      const idAnexo = selectedProduct.id_anexo || 0;
+      const codigo = generarCodigoMovimiento(
+        tipoMap[tipoMovimiento] || 'REC',
+        anio,
+        idConvenio,
+        idAnexo,
+        formData.id_producto
+      );
+      setCodigoGenerado(codigo);
     } else {
       setCodigoGenerado('');
     }
-  }, [formData.id_provedor, formData.id_convenio, formData.id_anexo, formData.id_producto]);
-
-  const handleProveedorChange = (value: number | null) => {
-    setFormData({
-      ...formData,
-      id_provedor: value || undefined,
-      id_convenio: undefined,
-      id_anexo: undefined,
-      id_producto: undefined,
-    });
-  };
-
-  const handleConvenioChange = (value: number | null) => {
-    setFormData({
-      ...formData,
-      id_convenio: value || undefined,
-      id_anexo: undefined,
-      id_producto: undefined,
-    });
-  };
-
-  const handleAnexoChange = (value: number | null) => {
-    setFormData({
-      ...formData,
-      id_anexo: value || undefined,
-      id_producto: undefined,
-    });
-  };
+  }, [formData.id_producto, tipoMovimiento, selectedProduct]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -411,18 +378,6 @@ export function MovimientoRecepcionForm({
     }
 
     // Validaciones comunes para todos los tipos
-    if (!formData.id_provedor) {
-      toast.error('Debe seleccionar un proveedor');
-      return;
-    }
-    if (!formData.id_convenio) {
-      toast.error('Debe seleccionar un convenio');
-      return;
-    }
-    if (!formData.id_anexo) {
-      toast.error('Debe seleccionar un anexo');
-      return;
-    }
     if (!formData.id_producto) {
       toast.error('Debe seleccionar un producto');
       return;
@@ -434,6 +389,23 @@ export function MovimientoRecepcionForm({
     if (!formData.id_dependencia) {
       toast.error('Debe seleccionar una dependencia');
       return;
+    }
+    if (!dependencias.some(d => d.id_dependencia === formData.id_dependencia)) {
+      toast.error('La dependencia seleccionada no está registrada en el sistema');
+      return;
+    }
+
+    // Validaciones específicas para salidas: verificar stock disponible
+    if (['MERMA', 'DONACION', 'DEVOLUCION'].includes(tipoMovimiento)) {
+      const productoStock = selectedProduct?.cantidad || 0;
+      if (productoStock <= 0) {
+        toast.error('No hay stock disponible para este producto. Debe crear primero una recepción.');
+        return;
+      }
+      if (formData.cantidad > productoStock) {
+        toast.error(`La cantidad no puede exceder el stock disponible (${productoStock} unidades)`);
+        return;
+      }
     }
 
     // Validaciones específicas solo para RECEPCION
@@ -454,24 +426,28 @@ export function MovimientoRecepcionForm({
 
     const movimientoData: MovimientoCreate = {
       id_tipo_movimiento: tipoMov.id_tipo_movimiento,
-      id_dependencia: formData.id_dependencia || 0,
-      id_anexo: formData.id_anexo || 0,
-      id_producto: formData.id_producto || 0,
-      cantidad: formData.cantidad || 0,
+      id_dependencia: Number(formData.id_dependencia) || 0,
+      id_producto: Number(formData.id_producto) || 0,
+      cantidad: Number(formData.cantidad) || 0,
       fecha: formData.fecha || new Date().toISOString(),
       observacion: formData.observacion,
       estado: formData.estado || 'pendiente',
-      id_convenio: formData.id_convenio,
-      id_provedor: formData.id_provedor,
-      // Solo incluir precios para RECEPCION
-      ...(tipoMovimiento === 'RECEPCION' && {
+      codigo: codigoGenerado,
+      // Para RECEPCION incluir precios, para otros movimientos 0
+      ...(tipoMovimiento === 'RECEPCION' ? {
         precio_compra: formData.precio_compra,
         moneda_compra: formData.moneda_compra,
         precio_venta: formData.precio_venta,
         moneda_venta: formData.moneda_venta,
+      } : {
+        precio_compra: 0,
+        moneda_compra: undefined,
+        precio_venta: 0,
+        moneda_venta: undefined,
       }),
     };
 
+    console.log('Submitting movimiento:', movimientoData);
     try {
       await crearMutation.mutateAsync(movimientoData);
       onSubmit(movimientoData);
@@ -564,193 +540,85 @@ export function MovimientoRecepcionForm({
   const Icon = config.icon;
   const ImpactoIcon = config.impactoIcon;
   const mostrarPrecios = tipoMovimiento === 'RECEPCION';
+  const esSalida = ['MERMA', 'DONACION', 'DEVOLUCION'].includes(tipoMovimiento);
+  const sinStock = esSalida && (!selectedProduct || selectedProduct.cantidad <= 0);
 
   return (
-    <div className="max-w-6xl mx-auto animate-fade-in-up">
+    <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <button
-            type="button"
-            onClick={onCancel}
-            className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-            title="Volver"
-          >
-            <ArrowLeft className="h-5 w-5" />
-          </button>
-          <div className={`p-4 rounded-2xl bg-gradient-to-br ${config.gradient} text-white shadow-xl animate-bounce-subtle`}>
+          <div className={`p-3 rounded-xl bg-gradient-to-br ${config.gradient} text-white shadow-lg animate-bounce-subtle`}>
             <Icon className="h-8 w-8" />
           </div>
           <div>
-            <h1 className={`text-3xl font-bold ${config.textColor}`}>
-              {tipoMovimiento}
-            </h1>
-            <p className="text-gray-500 mt-1">
-              {config.descripcion}
-            </p>
+            <h2 className="text-2xl font-bold text-gray-900">{tipoMovimiento}</h2>
+            <p className="text-gray-500 mt-1">{config.descripcion}</p>
           </div>
         </div>
-        <div className="flex items-center gap-3">
-          <Sparkles className={`h-6 w-6 ${config.impactoColor} animate-pulse`} />
-          <div className={`flex items-center gap-2 text-sm font-bold px-4 py-2 rounded-full ${config.bgColor} ${config.impactoColor} border ${config.borderColor}`}>
-            <ImpactoIcon className="h-5 w-5" />
-            {config.impacto}
-          </div>
-        </div>
+        <Button variant="outline" onClick={onCancel} className="gap-2">
+          <ArrowLeft className="h-4 w-4" />
+          Volver
+        </Button>
       </div>
 
       <form onSubmit={handleSubmit}>
         <div className="space-y-6">
-          {/* Sección de Proveedor - Jerarquía */}
-          <Card className={`border-l-4 ${config.sectionColor} shadow-md hover:shadow-lg transition-shadow duration-300 overflow-visible`}>
-            <CardContent className="p-6">
-              <h3 className="text-lg font-bold text-gray-800 mb-5 flex items-center gap-2">
-                <div className={`p-2 rounded-lg bg-gradient-to-br ${config.gradient} text-white`}>
-                  <Truck className="h-5 w-5" />
-                </div>
-                Información del Proveedor
-                <ArrowRight className="h-5 w-5 text-gray-400" />
-                <span className="text-sm font-normal text-gray-500">Jerarquía: Proveedor → Convenio → Anexo</span>
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                <div>
-                  <SearchableSelect
-                    label="Proveedor"
-                    required
-                    icon={<Building className="h-4 w-4 text-blue-500" />}
-                    value={formData.id_provedor || null}
-                    onChange={handleProveedorChange}
-                    options={proveedores}
-                    isLoading={isLoadingProveedores}
-                    placeholder="Buscar proveedor..."
-                    getOptionLabel={(item) => item.nombre}
-                    getOptionValue={(item) => item.id_provedores}
-                    idField="id_provedores"
-                  />
-                </div>
-
-                <div>
-                  <SearchableSelect
-                    label="Convenio"
-                    required
-                    icon={<FileText className="h-4 w-4 text-green-500" />}
-                    disabled={!formData.id_provedor}
-                    value={formData.id_convenio || null}
-                    onChange={handleConvenioChange}
-                    options={convenios}
-                    isLoading={isLoadingConvenios}
-                    placeholder={!formData.id_provedor ? "Seleccione un proveedor primero" : "Buscar convenio..."}
-                    getOptionLabel={(item) => item.nombre_convenio}
-                    getOptionValue={(item) => item.id_convenio}
-                    idField="id_convenio"
-                  />
-                  {!formData.id_provedor && (
-                    <p className="text-xs text-gray-400 mt-1 flex items-center gap-1">
-                      <AlertCircle className="h-3 w-3" />
-                      Seleccione un proveedor para ver sus convenios
-                    </p>
-                  )}
-                  {formData.id_provedor && convenios.length === 0 && !isLoadingConvenios && (
-                    <p className="text-xs text-amber-600 mt-1 flex items-center gap-1">
-                      <AlertCircle className="h-3 w-3" />
-                      Este proveedor no tiene convenios registrados
-                    </p>
-                  )}
-                </div>
-
-                <div>
-                  <SearchableSelect
-                    label="Anexo"
-                    required
-                    icon={<ClipboardList className="h-4 w-4 text-purple-500" />}
-                    disabled={!formData.id_convenio}
-                    value={formData.id_anexo || null}
-                    onChange={handleAnexoChange}
-                    options={anexos}
-                    isLoading={isLoadingAnexos}
-                    placeholder={!formData.id_convenio ? "Seleccione un convenio primero" : "Buscar anexo..."}
-                    getOptionLabel={(item) => `${item.nombre_anexo} - ${item.numero_anexo}`}
-                    getOptionValue={(item) => item.id_anexo}
-                    getOptionDisplay={(item) => (
-                      <div className="flex flex-col">
-                        <span className="font-medium">{item.nombre_anexo}</span>
-                        <span className="text-gray-500 text-xs">Anexo N° {item.numero_anexo}</span>
-                      </div>
-                    )}
-                    idField="id_anexo"
-                  />
-                  {!formData.id_convenio && (
-                    <p className="text-xs text-gray-400 mt-1 flex items-center gap-1">
-                      <AlertCircle className="h-3 w-3" />
-                      Seleccione un convenio para ver sus anexos
-                    </p>
-                  )}
-                  {formData.id_convenio && anexos.length === 0 && !isLoadingAnexos && (
-                    <p className="text-xs text-amber-600 mt-1 flex items-center gap-1">
-                      <AlertCircle className="h-3 w-3" />
-                      Este convenio no tiene anexos registrados
-                    </p>
-                  )}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
           {/* Sección de Producto y Cantidad */}
-          <Card className="shadow-md hover:shadow-lg transition-shadow duration-300 overflow-visible">
-            <CardContent className="p-6">
-              <h3 className="text-lg font-bold text-gray-800 mb-5 flex items-center gap-2">
-                <div className="p-2 rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 text-white">
-                  <Package className="h-5 w-5" />
-                </div>
+          <Card className="shadow-sm border-gray-200">
+            <CardHeader className="border-b bg-gray-50/50">
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <Package className={`h-5 w-5 ${config.textColor}`} />
                 Producto y Cantidad
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                <div className="md:col-span-2">
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
                   <SearchableSelect
                     label="Producto"
                     required
                     icon={<Package className="h-4 w-4 text-blue-500" />}
-                    disabled={!formData.id_anexo}
-                    value={formData.id_producto || null}
-                    onChange={(value) => setFormData({ ...formData, id_producto: value || undefined })}
+                    value={Number(formData.id_producto) || null}
+                    onChange={(value) => {
+                      setFormData({ ...formData, id_producto: value ? Number(value) : undefined });
+                    }}
                     options={productos}
                     isLoading={isLoadingProductos}
-                    placeholder={!formData.id_anexo ? "Seleccione un anexo primero" : "Buscar producto por nombre..."}
+                    placeholder="Buscar producto del inventario..."
                     getOptionLabel={(item) => item.nombre}
-                    getOptionValue={(item) => item.id_producto}
+                    getOptionValue={(item) => Number(item.id_producto)}
                     getOptionDisplay={(item) => (
                       <div className="flex justify-between items-center">
                         <span>{item.nombre}</span>
-                        <span className="text-gray-500 text-xs">Disponible: {item.cantidad || 0}</span>
+                        <div className="flex flex-col items-end gap-0.5">
+                          <span className="text-gray-500 text-xs">Disponible: {item.cantidad || 0}</span>
+                          {(item as any).precio_compra && (
+                            <span className="text-green-600 text-xs font-medium">
+                              Precio: {(item as any).precio_compra}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     )}
                     idField="id_producto"
                   />
-                  {!formData.id_anexo && (
-                    <p className="text-xs text-gray-400 mt-1 flex items-center gap-1">
-                      <AlertCircle className="h-3 w-3" />
-                      Seleccione un anexo para ver los productos disponibles
-                    </p>
-                  )}
-                  {formData.id_anexo && productos.length === 0 && !isLoadingProductos && (
-                    <p className="text-xs text-amber-600 mt-1 flex items-center gap-1">
-                      <AlertCircle className="h-3 w-3" />
-                      No hay productos disponibles en este anexo
-                    </p>
+                  {sinStock && (
+                    <div className="mt-2 px-3 py-2 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2">
+                      <AlertCircle className="h-4 w-4 text-red-500" />
+                      <span className="text-sm text-red-700">
+                        No hay stock disponible. Solo se permiten recepciones para este producto.
+                      </span>
+                    </div>
                   )}
                 </div>
-
                 <div>
-                  <Label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
-                    <Hash className="h-4 w-4 text-orange-500" />
-                    Cantidad *
-                  </Label>
+                  <Label className="text-sm font-medium">Cantidad *</Label>
                   <Input
                     type="number"
                     min="1"
                     required
-                    className="mt-1.5 transition-all duration-200 focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                    className="mt-1 focus:ring-2 focus:ring-blue-500 outline-none"
                     value={formData.cantidad || ''}
                     onChange={(e) => setFormData({ ...formData, cantidad: parseInt(e.target.value) || 0 })}
                     placeholder="Cantidad"
@@ -761,80 +629,78 @@ export function MovimientoRecepcionForm({
           </Card>
 
           {/* Sección de Fecha, Dependencia y Código */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-            <div>
-              <Label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
-                <Calendar className="h-4 w-4 text-blue-500" />
-                Fecha *
-              </Label>
-              <Input
-                type="date"
-                required
-                className="mt-1.5 transition-all duration-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                value={formData.fecha || ''}
-                onChange={(e) => setFormData({ ...formData, fecha: e.target.value })}
-              />
-            </div>
-
-            <div>
-              <SearchableSelect
-                label="Dependencia"
-                required
-                icon={<MapPin className="h-4 w-4 text-red-500" />}
-                value={formData.id_dependencia || null}
-                onChange={(value) => setFormData({ ...formData, id_dependencia: value || undefined })}
-                options={dependencias}
-                isLoading={isLoadingDependencias}
-                placeholder="Buscar dependencia..."
-                getOptionLabel={(item) => item.nombre}
-                getOptionValue={(item) => item.id_dependencia}
-                idField="id_dependencia"
-              />
-            </div>
-
-            {/* Código Generado */}
-            <div>
-              <Label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
-                <Hash className="h-4 w-4 text-green-500" />
-                Código del Movimiento
-              </Label>
-              <div className={`mt-1.5 px-4 py-3 rounded-lg border-2 flex items-center gap-2 ${
-                codigoGenerado 
-                  ? 'bg-gradient-to-r from-green-50 to-emerald-50 border-green-300 text-green-800 font-mono font-bold shadow-sm' 
-                  : 'bg-gray-100 border-gray-200 text-gray-400'
-              }`}>
-                {codigoGenerado ? (
-                  <>
-                    <CheckCircle2 className="h-5 w-5 text-green-600" />
-                    {codigoGenerado}
-                  </>
-                ) : (
-                  <>
-                    <Hash className="h-5 w-5" />
-                    Se generará automáticamente
-                  </>
-                )}
+          <Card className="shadow-sm border-gray-200">
+            <CardHeader className="border-b bg-gray-50/50">
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <MapPin className={`h-5 w-5 ${config.textColor}`} />
+                Detalles del Movimiento
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <Label className="text-sm font-medium">Fecha *</Label>
+                  <Input
+                    type="date"
+                    required
+                    className="mt-1 focus:ring-2 focus:ring-blue-500 outline-none"
+                    value={formData.fecha || ''}
+                    onChange={(e) => setFormData({ ...formData, fecha: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <SearchableSelect
+                    label="Dependencia"
+                    required
+                    icon={<MapPin className="h-4 w-4 text-red-500" />}
+                    value={formData.id_dependencia || null}
+                    onChange={(value) => setFormData({ ...formData, id_dependencia: value || undefined })}
+                    options={dependencias}
+                    isLoading={isLoadingDependencias}
+                    placeholder="Buscar dependencia..."
+                    getOptionLabel={(item) => item.nombre}
+                    getOptionValue={(item) => item.id_dependencia}
+                    idField="id_dependencia"
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <Label className="text-sm font-medium">Código del Movimiento</Label>
+                  <div className={`mt-1 px-4 py-3 rounded-lg border-2 flex items-center gap-2 ${
+                    codigoGenerado
+                      ? 'bg-gradient-to-r from-green-50 to-emerald-50 border-green-300 text-green-800 font-mono font-bold shadow-sm'
+                      : 'bg-gray-100 border-gray-200 text-gray-400'
+                  }`}>
+                    {codigoGenerado ? (
+                      <>
+                        <CheckCircle2 className="h-5 w-5 text-green-600" />
+                        {codigoGenerado}
+                      </>
+                    ) : (
+                      <>
+                        <Hash className="h-5 w-5" />
+                        Se generará automáticamente
+                      </>
+                    )}
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
 
           {/* Sección de Precios - SOLO PARA RECEPCION */}
           {mostrarPrecios && (
-            <Card className="border-l-4 border-l-green-500 shadow-md hover:shadow-lg transition-shadow duration-300">
-              <CardContent className="p-6">
-                <h3 className="text-lg font-bold text-gray-800 mb-5 flex items-center gap-2">
-                  <div className="p-2 rounded-lg bg-gradient-to-br from-green-500 to-emerald-600 text-white">
-                    <DollarSign className="h-5 w-5" />
-                  </div>
+            <Card className="shadow-sm border-gray-200">
+              <CardHeader className="border-b bg-gray-50/50">
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <DollarSign className="h-5 w-5 text-green-600" />
                   Precios y Monedas
-                </h3>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
-                    <Label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
-                      <TrendingDown className="h-4 w-4 text-red-500" />
-                      Precio de Compra *
-                    </Label>
-                    <div className="flex gap-2 mt-1.5">
+                    <Label className="text-sm font-medium">Precio de Compra *</Label>
+                    <div className="flex gap-2 mt-1">
                       <Input
                         type="number"
                         step="0.01"
@@ -843,15 +709,15 @@ export function MovimientoRecepcionForm({
                         value={formData.precio_compra || ''}
                         onChange={(e) => setFormData({ ...formData, precio_compra: parseFloat(e.target.value) || 0 })}
                         placeholder="0.00"
-                        className="flex-1 transition-all duration-200 focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                        className="flex-1 focus:ring-2 focus:ring-green-500 outline-none"
                       />
                       <select
                         value={formData.moneda_compra || ''}
                         onChange={(e) => setFormData({ ...formData, moneda_compra: parseInt(e.target.value) || 0 })}
                         disabled={isLoadingMonedas}
-                        className="w-40 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none bg-white transition-all"
+                        className="w-40 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none bg-white"
                       >
-                        <option value="">💱 Moneda</option>
+                        <option value="">Moneda</option>
                         {monedas.map((moneda) => (
                           <option key={moneda.id_moneda} value={moneda.id_moneda}>
                             {moneda.simbolo} - {moneda.denominacion}
@@ -860,13 +726,9 @@ export function MovimientoRecepcionForm({
                       </select>
                     </div>
                   </div>
-
                   <div>
-                    <Label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
-                      <TrendingUp className="h-4 w-4 text-green-500" />
-                      Precio de Venta *
-                    </Label>
-                    <div className="flex gap-2 mt-1.5">
+                    <Label className="text-sm font-medium">Precio de Venta *</Label>
+                    <div className="flex gap-2 mt-1">
                       <Input
                         type="number"
                         step="0.01"
@@ -875,15 +737,15 @@ export function MovimientoRecepcionForm({
                         value={formData.precio_venta || ''}
                         onChange={(e) => setFormData({ ...formData, precio_venta: parseFloat(e.target.value) || 0 })}
                         placeholder="0.00"
-                        className="flex-1 transition-all duration-200 focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                        className="flex-1 focus:ring-2 focus:ring-green-500 outline-none"
                       />
                       <select
                         value={formData.moneda_venta || ''}
                         onChange={(e) => setFormData({ ...formData, moneda_venta: parseInt(e.target.value) || 0 })}
                         disabled={isLoadingMonedas}
-                        className="w-40 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none bg-white transition-all"
+                        className="w-40 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none bg-white"
                       >
-                        <option value="">💱 Moneda</option>
+                        <option value="">Moneda</option>
                         {monedas.map((moneda) => (
                           <option key={moneda.id_moneda} value={moneda.id_moneda}>
                             {moneda.simbolo} - {moneda.denominacion}
@@ -898,36 +760,39 @@ export function MovimientoRecepcionForm({
           )}
 
           {/* Observación */}
-          <div>
-            <Label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
-              <ClipboardList className="h-4 w-4 text-gray-500" />
-              Observación
-            </Label>
-            <textarea
-              value={formData.observacion || ''}
-              onChange={(e) => setFormData({ ...formData, observacion: e.target.value })}
-              rows={3}
-              className="w-full mt-1.5 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all resize-none"
-              placeholder={`Describa detalles de la ${tipoMovimiento.toLowerCase()}...`}
-            />
-          </div>
+          <Card className="shadow-sm border-gray-200">
+            <CardHeader className="border-b bg-gray-50/50">
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <ClipboardList className="h-5 w-5 text-gray-600" />
+                Observación
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-6">
+              <textarea
+                value={formData.observacion || ''}
+                onChange={(e) => setFormData({ ...formData, observacion: e.target.value })}
+                rows={3}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none resize-none"
+                placeholder={`Describa detalles de la ${tipoMovimiento.toLowerCase()}...`}
+              />
+            </CardContent>
+          </Card>
 
           {/* Botones */}
-          <div className="flex gap-4 pt-6 mt-6 border-t">
+          <div className="flex gap-3 mt-8 pt-6 border-t">
             <Button
               type="submit"
-              disabled={crearMutation.isPending || isSubmitting}
-              className={`gap-2 px-8 py-6 text-lg font-bold bg-gradient-to-r ${config.gradient} hover:opacity-90 text-white shadow-xl hover:shadow-2xl hover:scale-105 active:scale-95 transition-all duration-300`}
+              disabled={crearMutation.isPending || isSubmitting || sinStock}
+              className={`gap-2 bg-gradient-to-r ${config.gradient} hover:opacity-90 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300`}
             >
-              <Save className="h-5 w-5" />
+              <Save className="h-4 w-4" />
               {crearMutation.isPending ? 'Guardando...' : 'Guardar Movimiento'}
             </Button>
             <Button
               type="button"
-              variant="secondary"
+              variant="outline"
               onClick={onCancel}
               disabled={crearMutation.isPending}
-              className="px-6 py-6 hover:bg-gray-200 transition-colors"
             >
               Cancelar
             </Button>

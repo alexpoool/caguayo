@@ -1,14 +1,17 @@
 import { useState, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { useLocation } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { clientesService, tiposEntidadService, clienteNaturalService, clienteJuridicaService, clienteTCPService, cuentasService } from '../services/api';
+import { clientesService, tiposEntidadService, clienteNaturalService, clienteJuridicaService, clienteTCPService, cuentasService, monedaService } from '../services/api';
+import { dependenciasService } from '../services/administracion';
 import type { Cliente, ClienteCreate, ClienteUpdate, ClienteNatural, ClienteJuridica, ClienteTCP, Cuenta } from '../types/ventas';
-import { Plus, Edit, Trash2, User, Phone, Mail, CreditCard, Search, ArrowLeft, Save, Building2, Briefcase, Eye } from 'lucide-react';
+import { Plus, Edit, Trash2, User, Phone, Mail, CreditCard, Search, ArrowLeft, Save, Building2, Briefcase, Eye, MapPin, Globe, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { 
   Button, 
   Input, 
-  Label, 
+  Label,
+  Select,
   Card, 
   CardContent, 
   CardHeader, 
@@ -56,6 +59,10 @@ export function ClientesPage() {
     message: '',
     onConfirm: () => {},
     type: 'danger'
+  });
+  const [detailModal, setDetailModal] = useState<{ isOpen: boolean; cliente: Cliente | null }>({
+    isOpen: false,
+    cliente: null,
   });
 
   // Form state - Cliente base
@@ -120,7 +127,9 @@ export function ClientesPage() {
     titular: '',
     banco: '',
     sucursal: 0,
-    direccion: ''
+    direccion: '',
+    numero_cuenta: '',
+    id_moneda: undefined as number | undefined
   });
 
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
@@ -137,6 +146,33 @@ export function ClientesPage() {
     queryFn: () => tiposEntidadService.getTiposEntidad(),
   });
 
+  // Monedas
+  const { data: monedas = [] } = useQuery({
+    queryKey: ['monedas'],
+    queryFn: () => monedaService.getMonedas(),
+  });
+
+  // Provincias y municipios
+  const { data: provincias = [] } = useQuery({
+    queryKey: ['provincias'],
+    queryFn: () => dependenciasService.getProvincias(),
+  });
+
+  const { data: municipios = [] } = useQuery({
+    queryKey: ['municipios', formData.id_provincia],
+    queryFn: () => dependenciasService.getMunicipios(formData.id_provincia),
+    enabled: !!formData.id_provincia,
+  });
+
+  // Handler para provincia
+  const handleProvinciaChange = (provinciaId: number | undefined) => {
+    setFormData({
+      ...formData,
+      id_provincia: provinciaId,
+      id_municipio: undefined
+    });
+  };
+
   // Mutations
   const createMutation = useMutation({
     mutationFn: async (data: ClienteCreate) => {
@@ -147,20 +183,20 @@ export function ClientesPage() {
           id_cliente: cliente.id_cliente,
           nombre: datosNaturalForm.nombre,
           primer_apellido: datosNaturalForm.primer_apellido || '',
-          segundo_apellido: datosNaturalForm.segundo_apellido || '',
+          segundo_apellido: datosNaturalForm.segundo_apellido || undefined,
           carnet_identidad: datosNaturalForm.carnet_identidad,
-          codigo_expediente: datosNaturalForm.codigo_expediente || '',
-          numero_registro: datosNaturalForm.numero_registro || '',
-          catalogo: datosNaturalForm.catalogo || '',
+          codigo_expediente: datosNaturalForm.codigo_expediente || undefined,
+          numero_registro: datosNaturalForm.numero_registro || undefined,
+          catalogo: datosNaturalForm.catalogo || undefined,
           es_trabajador: datosNaturalForm.es_trabajador,
-          ocupacion: datosNaturalForm.ocupacion || '',
-          centro_trabajo: datosNaturalForm.centro_trabajo || '',
-          correo_trabajo: datosNaturalForm.correo_trabajo || '',
-          direccion_trabajo: datosNaturalForm.direccion_trabajo || '',
-          telefono_trabajo: datosNaturalForm.telefono_trabajo || '',
+          ocupacion: datosNaturalForm.ocupacion || undefined,
+          centro_trabajo: datosNaturalForm.centro_trabajo || undefined,
+          correo_trabajo: datosNaturalForm.correo_trabajo || undefined,
+          direccion_trabajo: datosNaturalForm.direccion_trabajo || undefined,
+          telefono_trabajo: datosNaturalForm.telefono_trabajo || undefined,
           en_baja: datosNaturalForm.en_baja,
-          fecha_baja: datosNaturalForm.fecha_baja || '',
-          vigencia: datosNaturalForm.vigencia || ''
+          fecha_baja: datosNaturalForm.fecha_baja || undefined,
+          vigencia: datosNaturalForm.vigencia || undefined
         });
       } else if (tipoPersona === 'JURIDICA') {
         await clienteJuridicaService.createClienteJuridica({
@@ -239,8 +275,31 @@ export function ClientesPage() {
       errors.nombre = 'El nombre es requerido';
     }
 
-    if (tipoPersona === 'TCP' && !datosTCPForm.nombre) {
-      errors.tcp_nombre = 'El nombre del líder es requerido';
+    if (tipoPersona === 'NATURAL') {
+      if (!datosNaturalForm.nombre) {
+        errors.nombre = 'El nombre es requerido';
+      }
+      if (!datosNaturalForm.primer_apellido) {
+        errors.primer_apellido = 'El primer apellido es requerido';
+      }
+      if (!datosNaturalForm.carnet_identidad) {
+        errors.carnet_identidad = 'El carnet de identidad es requerido';
+      }
+    }
+
+    if (tipoPersona === 'JURIDICA') {
+      if (!datosJuridicaForm.codigo_reup) {
+        errors.codigo_reup = 'El código REUP es requerido';
+      }
+    }
+
+    if (tipoPersona === 'TCP') {
+      if (!datosTCPForm.nombre) {
+        errors.tcp_nombre = 'El nombre del líder es requerido';
+      }
+      if (!datosTCPForm.primer_apellido) {
+        errors.tcp_primer_apellido = 'El primer apellido es requerido';
+      }
     }
 
     if (Object.keys(errors).length > 0) {
@@ -306,7 +365,7 @@ export function ClientesPage() {
       fecha_aprobacion: ''
     });
     setCuentas([]);
-    setNuevaCuenta({ titular: '', banco: '', sucursal: 0, direccion: '' });
+    setNuevaCuenta({ titular: '', banco: '', sucursal: 0, direccion: '', numero_cuenta: '', id_moneda: undefined });
     setTipoPersona('NATURAL');
     setFormErrors({});
   };
@@ -380,7 +439,7 @@ export function ClientesPage() {
   const addCuenta = () => {
     if (nuevaCuenta.titular && nuevaCuenta.banco) {
       setCuentas([...cuentas, { ...nuevaCuenta, sucursal: nuevaCuenta.sucursal || 0 }]);
-      setNuevaCuenta({ titular: '', banco: '', sucursal: 0, direccion: '' });
+      setNuevaCuenta({ titular: '', banco: '', sucursal: 0, direccion: '', numero_cuenta: '', id_moneda: undefined });
     }
   };
 
@@ -391,21 +450,30 @@ export function ClientesPage() {
   // Render views based on state
   const renderFormView = () => (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-gray-900">
-          {editingCliente ? (isProveedorView ? 'Editar Proveedor' : 'Editar Cliente') : (isProveedorView ? 'Nuevo Proveedor' : 'Nuevo Cliente')}
-        </h1>
-        <Button variant="secondary" onClick={() => { setView('list'); setEditingCliente(null); resetForm(); }}>
-          <ArrowLeft className="h-4 w-4 mr-2" />Volver
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <div className="p-3 bg-gradient-to-br from-teal-500 to-cyan-600 rounded-xl shadow-lg animate-bounce-subtle">
+            <User className="h-8 w-8 text-white" />
+          </div>
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900">
+              {editingCliente ? (isProveedorView ? 'Editar Proveedor' : 'Editar Cliente') : (isProveedorView ? 'Nuevo Proveedor' : 'Nuevo Cliente')}
+            </h2>
+            <p className="text-gray-500 mt-1">Complete los datos del registro</p>
+          </div>
+        </div>
+        <Button variant="outline" onClick={() => { setView('list'); setEditingCliente(null); resetForm(); }} className="gap-2">
+          <ArrowLeft className="h-4 w-4" />
+          Volver
         </Button>
       </div>
 
         <form onSubmit={handleSubmit}>
           {/* Tipo de Persona */}
-          <Card className="mb-6">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <User className="h-5 w-5" />
+          <Card className="mb-6 shadow-sm border-gray-200">
+            <CardHeader className="border-b bg-gray-50/50">
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <User className="h-5 w-5 text-teal-600" />
                 Tipo de Persona
               </CardTitle>
             </CardHeader>
@@ -422,7 +490,11 @@ export function ClientesPage() {
                       name="tipoPersona"
                       value={tipo.value}
                       checked={tipoPersona === tipo.value}
-                      onChange={(e) => setTipoPersona(e.target.value as TipoPersona)}
+                      onChange={(e) => {
+                        const newValue = e.target.value as TipoPersona;
+                        setTipoPersona(newValue);
+                        setFormData({ ...formData, tipo_persona: newValue });
+                      }}
                       className="w-4 h-4"
                     />
                     <tipo.icon className="h-4 w-4" />
@@ -434,10 +506,10 @@ export function ClientesPage() {
           </Card>
 
           {/* Datos Base del Cliente */}
-          <Card className="mb-6">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <User className="h-5 w-5" />
+          <Card className="mb-6 shadow-sm border-gray-200">
+            <CardHeader className="border-b bg-gray-50/50">
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <User className="h-5 w-5 text-teal-600" />
                 Información del Cliente
               </CardTitle>
             </CardHeader>
@@ -483,6 +555,41 @@ export function ClientesPage() {
                 <Label>Código Postal</Label>
                 <Input value={formData.codigo_postal} onChange={(e) => setFormData({ ...formData, codigo_postal: e.target.value })} />
               </div>
+              <div>
+                <Label className="flex items-center gap-2">
+                  <Globe className="h-4 w-4" />
+                  Provincia
+                </Label>
+                <select
+                  value={formData.id_provincia || ''}
+                  onChange={(e) => handleProvinciaChange(e.target.value ? parseInt(e.target.value) : undefined)}
+                  className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white"
+                >
+                  <option value="">Seleccione provincia</option>
+                  {provincias.map((p: any) => (
+                    <option key={p.id_provincia} value={p.id_provincia}>{p.nombre}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <Label className="flex items-center gap-2">
+                  <MapPin className="h-4 w-4" />
+                  Municipio
+                </Label>
+                <select
+                  value={formData.id_municipio || ''}
+                  onChange={(e) => setFormData({ ...formData, id_municipio: e.target.value ? parseInt(e.target.value) : undefined })}
+                  disabled={!formData.id_provincia}
+                  className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white disabled:bg-gray-100 disabled:cursor-not-allowed"
+                >
+                  <option value="">
+                    {formData.id_provincia ? 'Seleccione municipio' : 'Primero seleccione provincia'}
+                  </option>
+                  {municipios.map((m: any) => (
+                    <option key={m.id_municipio} value={m.id_municipio}>{m.nombre}</option>
+                  ))}
+                </select>
+              </div>
               <div className="md:col-span-3">
                 <Label>Dirección</Label>
                 <Input value={formData.direccion} onChange={(e) => setFormData({ ...formData, direccion: e.target.value })} />
@@ -493,7 +600,7 @@ export function ClientesPage() {
                   aria-label="Tipo de Relación"
                   value={formData.tipo_relacion || 'CLIENTE'}
                   onChange={(e) => setFormData({ ...formData, tipo_relacion: e.target.value as TipoRelacion })}
-                  className="w-full mt-1 px-3 py-2 border rounded-lg"
+                  className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white"
                 >
                   <option value="CLIENTE">Cliente (solo compra)</option>
                   <option value="PROVEEDOR">Proveedor (solo vende)</option>
@@ -506,7 +613,7 @@ export function ClientesPage() {
                   aria-label="Estado"
                   value={formData.estado || 'ACTIVO'}
                   onChange={(e) => setFormData({ ...formData, estado: e.target.value as EstadoCliente })}
-                  className="w-full mt-1 px-3 py-2 border rounded-lg"
+                  className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white"
                 >
                   <option value="ACTIVO">Activo</option>
                   <option value="INACTIVO">Inactivo</option>
@@ -578,7 +685,7 @@ export function ClientesPage() {
                     aria-label="Tipo de Entidad"
                     value={datosJuridicaForm.id_tipo_entidad || ''}
                     onChange={(e) => setDatosJuridicaForm({...datosJuridicaForm, id_tipo_entidad: e.target.value ? parseInt(e.target.value) : undefined})}
-                    className="w-full mt-1 px-3 py-2 border rounded-lg"
+                    className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white"
                   >
                     <option value="">Seleccione tipo</option>
                     {tiposEntidad.map((t) => <option key={t.id_tipo_entidad} value={t.id_tipo_entidad}>{t.nombre}</option>)}
@@ -622,16 +729,27 @@ export function ClientesPage() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-                <div className="grid grid-cols-4 gap-2 mb-4">
+                <div className="grid grid-cols-6 gap-2 mb-4">
                 <Input placeholder="Titular" aria-label="Titular cuenta" value={nuevaCuenta.titular} onChange={(e) => setNuevaCuenta({...nuevaCuenta, titular: e.target.value})} />
                 <Input placeholder="Banco" aria-label="Banco cuenta" value={nuevaCuenta.banco} onChange={(e) => setNuevaCuenta({...nuevaCuenta, banco: e.target.value})} />
                 <Input placeholder="Sucursal" aria-label="Sucursal cuenta" type="number" value={nuevaCuenta.sucursal || ''} onChange={(e) => setNuevaCuenta({...nuevaCuenta, sucursal: parseInt(e.target.value) || 0})} />
+                <Select 
+                  aria-label="Moneda cuenta" 
+                  value={nuevaCuenta.id_moneda || ''} 
+                  onChange={(e) => setNuevaCuenta({...nuevaCuenta, id_moneda: e.target.value ? parseInt(e.target.value) : undefined})}
+                >
+                  <option value="">Moneda</option>
+                  {monedas.map((m) => (
+                    <option key={m.id_moneda} value={m.id_moneda}>{m.simbolo} - {m.nombre}</option>
+                  ))}
+                </Select>
+                <Input placeholder="# Cuenta" aria-label="Numero cuenta" value={nuevaCuenta.numero_cuenta || ''} onChange={(e) => setNuevaCuenta({...nuevaCuenta, numero_cuenta: e.target.value})} />
                 <Button type="button" aria-label="Agregar cuenta" onClick={addCuenta} variant="outline"><Plus className="h-4 w-4" /></Button>
               </div>
               {cuentas.length > 0 && (
                 <Table>
                   <TableHeader>
-                    <TableRow><TableHead>Titular</TableHead><TableHead>Banco</TableHead><TableHead>Sucursal</TableHead><TableHead></TableHead></TableRow>
+                    <TableRow><TableHead>Titular</TableHead><TableHead>Banco</TableHead><TableHead>Sucursal</TableHead><TableHead>Moneda</TableHead><TableHead># Cuenta</TableHead><TableHead></TableHead></TableRow>
                   </TableHeader>
                   <TableBody>
                     {cuentas.map((cuenta, index) => (
@@ -639,6 +757,8 @@ export function ClientesPage() {
                         <TableCell>{cuenta.titular}</TableCell>
                         <TableCell>{cuenta.banco}</TableCell>
                         <TableCell>{cuenta.sucursal}</TableCell>
+                        <TableCell>{monedas.find(m => m.id_moneda === cuenta.id_moneda)?.simbolo || '-'}</TableCell>
+                        <TableCell>{cuenta.numero_cuenta}</TableCell>
                         <TableCell><button aria-label="Eliminar cuenta" title="Eliminar cuenta" onClick={() => removeCuenta(index)}><Trash2 className="h-4 w-4 text-red-600" /></button></TableCell>
                       </TableRow>
                     ))}
@@ -648,8 +768,11 @@ export function ClientesPage() {
             </CardContent>
           </Card>
 
-          <div className="flex gap-3">
-            <Button type="submit"><Save className="h-4 w-4 mr-2" />{editingCliente ? 'Actualizar' : 'Crear'}</Button>
+          <div className="flex gap-3 mt-8 pt-6 border-t">
+            <Button type="submit" className="gap-2 bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300">
+              <Save className="h-4 w-4" />
+              {editingCliente ? 'Actualizar' : 'Crear'}
+            </Button>
             <Button type="button" variant="outline" onClick={() => { setView('list'); resetForm(); }}>Cancelar</Button>
           </div>
         </form>
@@ -684,6 +807,8 @@ export function ClientesPage() {
             <div><Label>Fax</Label><p className="font-medium">{viewingCliente.fax || 'N/A'}</p></div>
             <div><Label>Web</Label><p className="font-medium">{viewingCliente.web || 'N/A'}</p></div>
             <div><Label>Código Postal</Label><p className="font-medium">{viewingCliente.codigo_postal || 'N/A'}</p></div>
+            <div><Label>Provincia</Label><p className="font-medium">{viewingCliente.provincia?.nombre || 'N/A'}</p></div>
+            <div><Label>Municipio</Label><p className="font-medium">{viewingCliente.municipio?.nombre || 'N/A'}</p></div>
             <div><Label>Fecha Registro</Label><p className="font-medium">{viewingCliente.fecha_registro}</p></div>
             <div className="md:col-span-3"><Label>Dirección</Label><p className="font-medium">{viewingCliente.direccion}</p></div>
           </CardContent>
@@ -817,16 +942,27 @@ export function ClientesPage() {
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">{isProveedorView ? 'Proveedores' : 'Clientes'}</h1>
-          <p className="text-gray-500 mt-1">
-            {filteredClientes.length === clientes.length 
-              ? `Gestión de clientes (${clientes.length} items)`
-              : `Mostrando ${filteredClientes.length} de ${clientes.length} clientes`
-            }
-          </p>
+        <div className="flex items-center gap-4">
+          <div className="p-3 bg-gradient-to-br from-teal-500 to-cyan-600 rounded-xl shadow-lg animate-bounce-subtle">
+            <User className="h-8 w-8 text-white" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">{isProveedorView ? 'Proveedores' : 'Clientes'}</h1>
+            <p className="text-gray-500 mt-1">
+              {filteredClientes.length === clientes.length 
+                ? `Gestión de clientes (${clientes.length} items)`
+                : `Mostrando ${filteredClientes.length} de ${clientes.length} clientes`
+              }
+            </p>
+          </div>
         </div>
-        <Button onClick={() => { resetForm(); setView('form'); }}><Plus className="h-4 w-4 mr-2" />{isProveedorView ? 'Nuevo Proveedor' : 'Nuevo Cliente'}</Button>
+        <Button
+          onClick={() => { resetForm(); setView('form'); }}
+          className="gap-2 bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300"
+        >
+          <Plus className="h-4 w-4" />
+          {isProveedorView ? 'Nuevo Proveedor' : 'Nuevo Cliente'}
+        </Button>
       </div>
 
       <div className="flex gap-2">
@@ -842,69 +978,98 @@ export function ClientesPage() {
       </div>
 
       {/* Tabla de clientes */}
-      <Card>
-        <CardContent className="p-0">
-          <table className="w-full">
-            <thead className="bg-gray-50 border-b">
-              <tr>
-                <th className="text-left p-4 font-medium text-gray-600">Nombre</th>
-                <th className="text-left p-4 font-medium text-gray-600">Cédula/RIF</th>
-                <th className="text-left p-4 font-medium text-gray-600">Teléfono</th>
-                <th className="text-left p-4 font-medium text-gray-600">Email</th>
-                <th className="text-left p-4 font-medium text-gray-600">Tipo</th>
-                <th className="text-left p-4 font-medium text-gray-600">Estado</th>
-                <th className="text-right p-4 font-medium text-gray-600">Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
+      <Card className="overflow-hidden shadow-sm border-gray-200">
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader className="bg-gradient-to-r from-teal-50 to-cyan-50">
+              <TableRow>
+                <TableHead>
+                  <div className="flex items-center gap-2">
+                    <User className="h-4 w-4 text-teal-600" />
+                    Nombre
+                  </div>
+                </TableHead>
+                <TableHead>Tipo</TableHead>
+                <TableHead>Estado</TableHead>
+                <TableHead className="text-right">Acciones</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {filteredClientes.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="p-8 text-center text-gray-500">
+                <TableRow>
+                  <TableCell colSpan={4} className="text-center py-12 text-gray-500">
                     {isProveedorView ? 'No hay proveedores registrados' : 'No hay clientes registrados'}
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               ) : (
                 filteredClientes.map((cliente) => (
-                  <tr key={cliente.id_cliente} className="border-b hover:bg-gray-50">
-                    <td className="p-4">{cliente.nombre || '(Sin nombre)'}</td>
-                    <td className="p-4">{cliente.cedula_rif || '-'}</td>
-                    <td className="p-4">{cliente.telefono || '-'}</td>
-                    <td className="p-4">{cliente.email || '-'}</td>
-                    <td className="p-4">
-                      <span className={`px-2 py-1 rounded text-xs ${
+                  <TableRow key={cliente.id_cliente} className="hover:bg-gray-50/50 transition-colors cursor-pointer" onClick={() => setDetailModal({ isOpen: true, cliente })}>
+                    <TableCell>
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 bg-teal-50 rounded-lg text-teal-600">
+                          <User className="h-4 w-4" />
+                        </div>
+                        <div>
+                          <span className="font-medium text-gray-900 block">{cliente.nombre || '(Sin nombre)'}</span>
+                          {cliente.numero_cliente && (
+                            <span className="text-xs text-gray-500 block">#{cliente.numero_cliente}</span>
+                          )}
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                         cliente.tipo_persona === 'NATURAL' ? 'bg-blue-100 text-blue-800' :
                         cliente.tipo_persona === 'JURIDICA' ? 'bg-purple-100 text-purple-800' :
                         'bg-orange-100 text-orange-800'
                       }`}>
                         {cliente.tipo_persona || 'NATURAL'}
                       </span>
-                    </td>
-                    <td className="p-4">
-                      <span className={`px-2 py-1 rounded text-xs ${
+                    </TableCell>
+                    <TableCell>
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                         cliente.estado === 'ACTIVO' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
                       }`}>
                         {cliente.estado || 'ACTIVO'}
                       </span>
-                    </td>
-                    <td className="p-4 text-right">
+                    </TableCell>
+                    <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                       <div className="flex justify-end gap-2">
-                        <Button variant="ghost" size="sm" onClick={() => handleViewDetails(cliente)}>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleViewDetails(cliente)}
+                          className="text-blue-600 hover:text-blue-800 hover:bg-blue-50 h-8 w-8"
+                          title="Ver detalle"
+                        >
                           <Eye className="h-4 w-4" />
                         </Button>
-                        <Button variant="ghost" size="sm" onClick={() => handleEdit(cliente)}>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleEdit(cliente)}
+                          className="text-green-600 hover:text-green-800 hover:bg-green-50 h-8 w-8"
+                          title="Editar"
+                        >
                           <Edit className="h-4 w-4" />
                         </Button>
-                        <Button variant="ghost" size="sm" onClick={() => handleDelete(cliente)}>
-                          <Trash2 className="h-4 w-4 text-red-500" />
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleDelete(cliente)}
+                          className="text-red-600 hover:text-red-800 hover:bg-red-50 h-8 w-8"
+                          title="Eliminar"
+                        >
+                          <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 ))
               )}
-            </tbody>
-          </table>
-        </CardContent>
+            </TableBody>
+          </Table>
+        </div>
       </Card>
 
       <ConfirmModal
@@ -915,6 +1080,71 @@ export function ClientesPage() {
         onConfirm={() => confirmModal.onConfirm()}
         onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
       />
+
+      {detailModal.isOpen && detailModal.cliente && createPortal(
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 animate-fade-in">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-auto animate-scale-in">
+            <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-teal-50 to-cyan-50">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="p-3 rounded-xl bg-gradient-to-br from-teal-500 to-cyan-600 text-white shadow-lg">
+                    <User className="h-7 w-7" />
+                  </div>
+                  <div>
+                    <h3 className="text-2xl font-bold text-gray-900">{detailModal.cliente.nombre || '(Sin nombre)'}</h3>
+                    <p className="text-sm text-gray-500">Cliente #{detailModal.cliente.numero_cliente || detailModal.cliente.id_cliente}</p>
+                  </div>
+                </div>
+                <button onClick={() => setDetailModal({ isOpen: false, cliente: null })} className="p-2 hover:bg-gray-200 rounded-full transition-colors">
+                  <X className="h-6 w-6 text-gray-500" />
+                </button>
+              </div>
+            </div>
+            <div className="p-6 space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-4 rounded-xl border border-blue-100">
+                  <p className="text-xs text-blue-600 uppercase tracking-wider mb-1">Cédula/RIF</p>
+                  <p className="font-bold text-gray-900">{detailModal.cliente.cedula_rif || '-'}</p>
+                </div>
+                <div className="bg-gradient-to-br from-purple-50 to-pink-50 p-4 rounded-xl border border-purple-100">
+                  <p className="text-xs text-purple-600 uppercase tracking-wider mb-1">Tipo Persona</p>
+                  <p className="font-bold text-gray-900">{detailModal.cliente.tipo_persona || 'NATURAL'}</p>
+                </div>
+                <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-4 rounded-xl border border-green-100">
+                  <p className="text-xs text-green-600 uppercase tracking-wider mb-1">Teléfono</p>
+                  <p className="font-bold text-gray-900">{detailModal.cliente.telefono || '-'}</p>
+                </div>
+                <div className="bg-gradient-to-br from-orange-50 to-amber-50 p-4 rounded-xl border border-orange-100">
+                  <p className="text-xs text-orange-600 uppercase tracking-wider mb-1">Email</p>
+                  <p className="font-bold text-gray-900 text-sm break-all">{detailModal.cliente.email || '-'}</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-gray-50 p-4 rounded-xl">
+                  <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Tipo Relación</p>
+                  <p className="font-bold text-gray-900">{detailModal.cliente.tipo_relacion || '-'}</p>
+                </div>
+                <div className="bg-gray-50 p-4 rounded-xl">
+                  <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Estado</p>
+                  <span className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium ${detailModal.cliente.estado === 'ACTIVO' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                    {detailModal.cliente.estado || 'ACTIVO'}
+                  </span>
+                </div>
+              </div>
+              {detailModal.cliente.direccion && (
+                <div className="bg-gray-50 p-4 rounded-xl">
+                  <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Dirección</p>
+                  <p className="text-gray-700">{detailModal.cliente.direccion}</p>
+                </div>
+              )}
+            </div>
+            <div className="p-6 border-t border-gray-200 bg-gray-50 flex justify-end">
+              <button onClick={() => setDetailModal({ isOpen: false, cliente: null })} className="px-6 py-3 text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors font-medium">Cerrar</button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   );
 }

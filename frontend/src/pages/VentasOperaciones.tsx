@@ -1,10 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Button, Input, Label, Card, CardContent, CardHeader, CardTitle } from '../components/ui';
-import { contratosService, suplementosService, facturasService, ventasEfectivoService, clientesService, monedaService, productosService, dependenciasService } from '../services/api';
+import { contratosService, suplementosService, facturasService, ventasEfectivoService, clientesService, monedaService, dependenciasService } from '../services/api';
 import type { Cliente } from '../types/ventas';
 import type { Moneda } from '../types/moneda';
-import type { Productos } from '../types';
 import type { Dependencia } from '../types/dependencia';
 import type { 
   ContratoWithDetails, 
@@ -13,7 +12,7 @@ import type {
   FacturaWithDetails, 
   VentaEfectivoWithDetails
 } from '../types/contrato';
-import { Plus, Save, Trash2, Edit, X, FileText, Receipt, CreditCard } from 'lucide-react';
+import { Plus, Save, Trash2, Edit, FileText, Receipt, CreditCard } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 type View = 'list' | 'form';
@@ -35,7 +34,6 @@ export function VentasOperacionesPage() {
   
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [monedas, setMonedas] = useState<Moneda[]>([]);
-  const [productos, setProductos] = useState<Productos[]>([]);
   const [dependencias, setDependencias] = useState<Dependencia[]>([]);
   const [estados, setEstados] = useState<{id: number, nombre: string}[]>([]);
   const [tiposContrato, setTiposContrato] = useState<{id: number, nombre: string}[]>([]);
@@ -43,7 +41,6 @@ export function VentasOperacionesPage() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [selectedContratoId, setSelectedContratoId] = useState<number | null>(null);
   const [formData, setFormData] = useState<Record<string, any>>({});
-  const [selectedProducts, setSelectedProducts] = useState<{id_producto: number; cantidad: number}[]>([]);
 
   useEffect(() => { loadInitialData(); }, []);
   useEffect(() => {
@@ -55,15 +52,13 @@ export function VentasOperacionesPage() {
 
   const loadInitialData = async () => {
     try {
-      const [clientesRes, monedasRes, productosRes, depsRes] = await Promise.all([
+      const [clientesRes, monedasRes, depsRes] = await Promise.all([
         clientesService.getClientes(0, 1000),
         monedaService.getMonedas(0, 100),
-        productosService.getProductos(0, 1000),
         dependenciasService.getDependencias(undefined, 0, 1000)
       ]);
       setClientes(clientesRes);
       setMonedas(monedasRes);
-      setProductos(productosRes);
       setDependencias(depsRes);
       setEstados([{ id: 1, nombre: 'ACTIVO' }, { id: 2, nombre: 'CANCELADO' }, { id: 3, nombre: 'FINALIZADO' }, { id: 4, nombre: 'PENDIENTE' }]);
       setTiposContrato([{ id: 1, nombre: 'SERVICIO' }, { id: 2, nombre: 'OBRA' }, { id: 3, nombre: 'MANTENIMIENTO' }, { id: 4, nombre: 'ALQUILER' }, { id: 5, nombre: 'COMPRA' }]);
@@ -104,8 +99,7 @@ export function VentasOperacionesPage() {
           fecha: formData.fecha || new Date().toISOString().split('T')[0],
           vigencia: formData.vigencia || new Date().toISOString().split('T')[0],
           proforma: formData.proforma,
-          documento_final: formData.documento_final,
-          productos: selectedProducts 
+          documento_final: formData.documento_final
         };
         editingId ? await contratosService.updateContrato(editingId, data) : await contratosService.createContrato(data);
         toast.success(editingId ? 'Actualizado' : 'Creado');
@@ -115,8 +109,7 @@ export function VentasOperacionesPage() {
           nombre: formData.nombre || '',
           id_estado: Number(formData.id_estado) || 1, 
           fecha: formData.fecha || new Date().toISOString().split('T')[0],
-          documento: formData.documento,
-          productos: selectedProducts 
+          documento: formData.documento
         };
         editingId ? await suplementosService.updateSuplemento(editingId, data as any) : await suplementosService.createSuplemento(data as any);
         toast.success(editingId ? 'Actualizado' : 'Creado');
@@ -127,8 +120,7 @@ export function VentasOperacionesPage() {
           fecha: formData.fecha || new Date().toISOString().split('T')[0],
           descripcion: formData.descripcion,
           observaciones: formData.observaciones,
-          pago_actual: Number(formData.pago_actual) || 0,
-          productos: selectedProducts 
+          pago_actual: Number(formData.pago_actual) || 0
         };
         editingId ? await facturasService.updateFactura(editingId, data as any) : await facturasService.createFactura(data as any);
         toast.success(editingId ? 'Actualizado' : 'Creado');
@@ -137,8 +129,7 @@ export function VentasOperacionesPage() {
           slip: formData.slip || '',
           fecha: formData.fecha || new Date().toISOString().split('T')[0],
           cajero: formData.cajero || '',
-          id_dependencia: Number(formData.id_dependencia) || 1, 
-          productos: selectedProducts 
+          id_dependencia: Number(formData.id_dependencia) || 1
         };
         editingId ? await ventasEfectivoService.updateVentaEfectivo(editingId, data as any) : await ventasEfectivoService.createVentaEfectivo(data as any);
         toast.success(editingId ? 'Actualizado' : 'Creado');
@@ -163,7 +154,7 @@ export function VentasOperacionesPage() {
     } catch (error: any) { toast.error(error.message || 'Error'); }
   };
 
-  const resetForm = () => { setFormData({}); setSelectedProducts([]); setEditingId(null); };
+  const resetForm = () => { setFormData({}); setEditingId(null); };
 
   const openForm = (item?: any) => {
     if (item) {
@@ -172,15 +163,9 @@ export function VentasOperacionesPage() {
       else if (tab === 'suplementos') setFormData({ nombre: item.nombre, id_estado: item.id_estado, fecha: item.fecha, documento: item.documento });
       else if (tab === 'facturas') setFormData({ codigo_factura: item.codigo_factura, descripcion: item.descripcion, observaciones: item.observaciones, fecha: item.fecha, pago_actual: item.pago_actual });
       else setFormData({ slip: item.slip, fecha: item.fecha, id_dependencia: item.id_dependencia, cajero: item.cajero });
-      setSelectedProducts(item.productos?.map((p: any) => ({ id_producto: p.id_producto, cantidad: p.cantidad })) || []);
     } else { resetForm(); }
     setView('form');
   };
-
-  const addProduct = (id: number) => { if (!selectedProducts.find(p => p.id_producto === id)) setSelectedProducts([...selectedProducts, { id_producto: id, cantidad: 1 }]); };
-  const updateCantidad = (id: number, qty: number) => { setSelectedProducts(selectedProducts.map(p => p.id_producto === id ? { ...p, cantidad: qty } : p)); };
-  const removeProduct = (id: number) => { setSelectedProducts(selectedProducts.filter(p => p.id_producto !== id)); };
-  const calcMonto = () => selectedProducts.reduce((t, p) => { const pr = productos.find(pr => pr.id_producto === p.id_producto); return t + (pr ? Number(pr.precio_venta) * p.cantidad : 0); }, 0);
 
   const renderTabs = () => (
     <div className="flex gap-2 mb-6">
@@ -188,28 +173,6 @@ export function VentasOperacionesPage() {
       <Button variant={tab === 'suplementos' ? 'primary' : 'outline'} onClick={() => { setTab('suplementos'); setSearchParams({ tab: 'suplementos' }); }} disabled={!selectedContratoId && tab !== 'suplementos'}><FileText className="w-4 h-4 mr-2" />Suplementos</Button>
       <Button variant={tab === 'facturas' ? 'primary' : 'outline'} onClick={() => { setTab('facturas'); setSearchParams({ tab: 'facturas' }); }} disabled={!selectedContratoId && tab !== 'facturas'}><Receipt className="w-4 h-4 mr-2" />Facturas</Button>
       <Button variant={tab === 'efectivo' ? 'primary' : 'outline'} onClick={() => { setTab('efectivo'); setSelectedContratoId(null); setSearchParams({ tab: 'efectivo' }); }}><CreditCard className="w-4 h-4 mr-2" />Efectivo</Button>
-    </div>
-  );
-
-  const renderProductSelector = () => (
-    <div className="mt-4 p-4 border rounded-lg bg-gray-50">
-      <Label className="mb-2 block">Productos</Label>
-      <div className="flex flex-wrap gap-2 mb-3">
-        {productos.map(p => <Button key={p.id_producto} variant="outline" size="sm" onClick={() => addProduct(p.id_producto)} disabled={selectedProducts.some(sp => sp.id_producto === p.id_producto)}>{p.nombre}</Button>)}
-      </div>
-      {selectedProducts.length > 0 && (
-        <div className="space-y-2">
-          {selectedProducts.map(p => { const pr = productos.find(pr => pr.id_producto === p.id_producto); return (
-            <div key={p.id_producto} className="flex items-center gap-2 p-2 bg-white rounded">
-              <span className="flex-1">{pr?.nombre}</span>
-              <Input type="number" min="1" value={p.cantidad} onChange={(e: any) => updateCantidad(p.id_producto, Number(e.target.value))} className="w-20" />
-              <span className="w-24 text-right">${pr ? (Number(pr.precio_venta) * p.cantidad).toFixed(2) : '0.00'}</span>
-              <button onClick={() => removeProduct(p.id_producto)} className="text-red-500"><X className="w-4 h-4" /></button>
-            </div>
-          ); })}
-          <div className="text-right font-bold">Total: ${calcMonto().toFixed(2)}</div>
-        </div>
-      )}
     </div>
   );
 
@@ -277,7 +240,6 @@ export function VentasOperacionesPage() {
             <div className="grid grid-cols-2 gap-4"><div><Label>Fecha</Label><Input type="date" value={formData.fecha || ''} onChange={(e: any) => setFormData({...formData, fecha: e.target.value})} /></div><div><Label>Cajero</Label><Input value={formData.cajero || ''} onChange={(e: any) => setFormData({...formData, cajero: e.target.value})} /></div></div>
             <div><Label>Dependencia</Label><select className="w-full p-2 border rounded" value={formData.id_dependencia || ''} onChange={(e: any) => setFormData({...formData, id_dependencia: e.target.value})}><option value="">Seleccionar</option>{dependencias.map(d => <option key={d.id_dependencia} value={d.id_dependencia}>{d.nombre}</option>)}</select></div>
           </>}
-          {renderProductSelector()}
           <div className="flex gap-2 mt-4">
             <Button onClick={handleSave}><Save className="w-4 h-4 mr-2" />Guardar</Button>
             <Button variant="outline" onClick={() => { setView('list'); resetForm(); }}>Cancelar</Button>

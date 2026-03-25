@@ -11,14 +11,12 @@ from .detalle_venta import DetalleVenta
 from .movimiento import TipoMovimiento, Movimiento
 from .dependencia import TipoDependencia, Dependencia, Provincia, Municipio
 from .anexo import Anexo
-from .anexo_producto import AnexoProducto
 from .liquidacion import Liquidacion
 from .transaccion import Transaccion
 from .tipo_convenio import TipoConvenio
 from .tipo_cliente import TipoCliente
+from .tipo_proveedor import TipoProveedor
 from .convenio import Convenio
-from .provedor import Provedor
-from .tipo_provedor import TipoProvedor
 from .contrato import (
     TipoContrato,
     EstadoContrato,
@@ -36,6 +34,9 @@ from .sesion import Sesion
 from .conexion_database import ConexionDatabase
 from .especialidades_artisticas import EspecialidadesArtisticas
 from .productos_en_liquidacion import ProductosEnLiquidacion, TipoCompra
+from .item_anexo import ItemAnexo
+from .item_factura import ItemFactura
+from .item_venta_efectivo import ItemVentaEfectivo
 
 __all__ = [
     "Moneda",
@@ -56,14 +57,12 @@ __all__ = [
     "Provincia",
     "Municipio",
     "Anexo",
-    "AnexoProducto",
     "Liquidacion",
     "Transaccion",
     "TipoConvenio",
     "TipoCliente",
+    "TipoProveedor",
     "Convenio",
-    "Provedor",
-    "TipoProvedor",
     "TipoContrato",
     "EstadoContrato",
     "Contrato",
@@ -82,4 +81,7 @@ __all__ = [
     "EspecialidadesArtisticas",
     "ProductosEnLiquidacion",
     "TipoCompra",
+    "ItemAnexo",
+    "ItemFactura",
+    "ItemVentaEfectivo",
 ]

@@ -1,4 +1,5 @@
 from sqlmodel import select, func
+from sqlalchemy.orm import selectinload
 from sqlmodel.ext.asyncio.session import AsyncSession
 from typing import List, Optional, Type, TypeVar
 from datetime import datetime
@@ -36,6 +37,10 @@ class ProductosEnLiquidacionRepository(CRUDBase[ProductosEnLiquidacion, dict, di
         statement = (
             select(ProductosEnLiquidacion)
             .where(ProductosEnLiquidacion.liquidada == False)
+            .options(
+                selectinload(ProductosEnLiquidacion.producto),
+                selectinload(ProductosEnLiquidacion.moneda),
+            )
             .order_by(ProductosEnLiquidacion.fecha.desc())
             .offset(skip)
             .limit(limit)
@@ -49,6 +54,10 @@ class ProductosEnLiquidacionRepository(CRUDBase[ProductosEnLiquidacion, dict, di
         statement = (
             select(ProductosEnLiquidacion)
             .where(ProductosEnLiquidacion.liquidada == True)
+            .options(
+                selectinload(ProductosEnLiquidacion.producto),
+                selectinload(ProductosEnLiquidacion.moneda),
+            )
             .order_by(ProductosEnLiquidacion.fecha_liquidacion.desc())
             .offset(skip)
             .limit(limit)
@@ -141,16 +150,24 @@ class ProductosEnLiquidacionRepository(CRUDBase[ProductosEnLiquidacion, dict, di
         if anexo_id:
             statement = (
                 select(ProductosEnLiquidacion)
+                .join(Anexo, ProductosEnLiquidacion.id_anexo == Anexo.id_anexo)
+                .join(Convenio, Anexo.id_convenio == Convenio.id_convenio)
                 .where(
                     ProductosEnLiquidacion.liquidada == False,
                     ProductosEnLiquidacion.id_anexo == anexo_id,
+                    Convenio.id_cliente == cliente_id,
                 )
                 .order_by(ProductosEnLiquidacion.fecha.desc())
             )
         else:
             statement = (
                 select(ProductosEnLiquidacion)
-                .where(ProductosEnLiquidacion.liquidada == False)
+                .join(Anexo, ProductosEnLiquidacion.id_anexo == Anexo.id_anexo)
+                .join(Convenio, Anexo.id_convenio == Convenio.id_convenio)
+                .where(
+                    ProductosEnLiquidacion.liquidada == False,
+                    Convenio.id_cliente == cliente_id,
+                )
                 .order_by(ProductosEnLiquidacion.fecha.desc())
             )
 
@@ -165,6 +182,91 @@ class ProductosEnLiquidacionRepository(CRUDBase[ProductosEnLiquidacion, dict, di
         )
         result = await db.exec(statement)
         return result.all()
+
+    async def get_items_anexo_con_estado_por_cliente(
+        self, db: AsyncSession, cliente_id: int, anexo_id: Optional[int] = None
+    ) -> List[dict]:
+        """Obtiene todos los items de anexos del cliente con su estado (NO_VENDIDO, VENDIDO, LIQUIDADO)."""
+        from src.models.item_anexo import ItemAnexo
+        from src.models.anexo import Anexo
+        from src.models.convenio import Convenio
+        from src.models.producto import Productos
+
+        statement = (
+            select(
+                ItemAnexo.id_item_anexo,
+                ItemAnexo.id_producto,
+                ItemAnexo.id_anexo,
+                ItemAnexo.cantidad,
+                ItemAnexo.precio_compra,
+                ItemAnexo.precio_venta,
+                ItemAnexo.id_moneda,
+                Anexo.nombre_anexo,
+                Productos.nombre.label("producto_nombre"),
+                Productos.codigo.label("producto_codigo"),
+                ProductosEnLiquidacion.id_producto_en_liquidacion,
+                ProductosEnLiquidacion.liquidada,
+            )
+            .join(Anexo, ItemAnexo.id_anexo == Anexo.id_anexo)
+            .join(Convenio, Anexo.id_convenio == Convenio.id_convenio)
+            .join(Productos, ItemAnexo.id_producto == Productos.id_producto)
+            .outerjoin(
+                ProductosEnLiquidacion,
+                (ItemAnexo.id_producto == ProductosEnLiquidacion.id_producto)
+                & (ItemAnexo.id_anexo == ProductosEnLiquidacion.id_anexo),
+            )
+            .where(Convenio.id_cliente == cliente_id)
+            .order_by(Anexo.nombre_anexo, Productos.nombre)
+        )
+
+        if anexo_id:
+            statement = statement.where(Anexo.id_anexo == anexo_id)
+
+        result = await db.exec(statement)
+        rows = result.all()
+
+        items = []
+        for row in rows:
+            (
+                id_item_anexo,
+                id_producto,
+                id_anexo,
+                cantidad,
+                precio_compra,
+                precio_venta,
+                id_moneda,
+                nombre_anexo,
+                producto_nombre,
+                producto_codigo,
+                id_pel,
+                liquidada,
+            ) = row
+
+            if id_pel is None:
+                estado = "NO_VENDIDO"
+            elif liquidada:
+                estado = "LIQUIDADO"
+            else:
+                estado = "VENDIDO"
+
+            items.append(
+                {
+                    "id_item_anexo": id_item_anexo,
+                    "id_producto": id_producto,
+                    "id_anexo": id_anexo,
+                    "cantidad": cantidad,
+                    "precio_compra": float(precio_compra),
+                    "precio_venta": float(precio_venta),
+                    "id_moneda": id_moneda,
+                    "nombre_anexo": nombre_anexo,
+                    "producto_nombre": producto_nombre,
+                    "producto_codigo": producto_codigo,
+                    "id_producto_en_liquidacion": id_pel,
+                    "estado": estado,
+                }
+            )
+
+        return items
 
 
 productos_en_liquidacion_repo = ProductosEnLiquidacionRepository(ProductosEnLiquidacion)

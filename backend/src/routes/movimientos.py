@@ -62,6 +62,49 @@ async def listar_recepciones_stock(
     return await MovimientoService.get_recepciones_stock(db)
 
 
+@router.get("/stock")
+async def obtener_stock_producto_dependencia(
+    producto_id: int = Query(..., description="ID del producto"),
+    dependencia_id: int = Query(..., description="ID de la dependencia"),
+    db: AsyncSession = Depends(get_session),
+):
+    """Obtener el stock de un producto en una dependencia específica.
+
+    Retorna la suma de todos los movimientos confirmados.
+    """
+    try:
+        stock = await MovimientoService.get_stock_producto_dependencia(
+            db, producto_id, dependencia_id
+        )
+        return {
+            "producto_id": producto_id,
+            "dependencia_id": dependencia_id,
+            "stock": stock,
+        }
+    except Exception as e:
+        logger.error(f"Error al obtener stock: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/productos-por-dependencia")
+async def obtener_productos_por_dependencia(
+    dependencia_id: int = Query(..., description="ID de la dependencia"),
+    db: AsyncSession = Depends(get_session),
+):
+    """Obtener productos con stock en una dependencia específica.
+
+    Retorna productos con movimientos de tipo RECEPCION o compra.
+    """
+    try:
+        productos = await MovimientoService.get_productos_con_stock_por_dependencia(
+            db, dependencia_id
+        )
+        return productos
+    except Exception as e:
+        logger.error(f"Error al obtener productos por dependencia: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.post("", response_model=MovimientoRead, status_code=201)
 async def crear_movimiento(
     movimiento: MovimientoCreate,
@@ -73,6 +116,8 @@ async def crear_movimiento(
         result = await MovimientoService.create_movimiento(db, movimiento)
         logger.info(f"Movimiento creado exitosamente: {result}")
         return result
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         logger.error(f"Error al crear movimiento: {str(e)}", exc_info=True)
         raise HTTPException(

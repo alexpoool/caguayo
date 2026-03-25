@@ -13,11 +13,14 @@ class CuentaService:
     @staticmethod
     async def create(db: AsyncSession, data: CuentaCreate) -> CuentaRead:
         db_obj = await cuenta_repo.create(db, obj_in=data)
-        # Recargar con la relación tipo_cuenta
+        # Recargar con las relaciones
         statement = (
             select(Cuenta)
             .where(Cuenta.id_cuenta == db_obj.id_cuenta)
-            .options(selectinload(Cuenta.tipo_cuenta))
+            .options(
+                selectinload(Cuenta.tipo_cuenta),
+                selectinload(Cuenta.moneda),
+            )
         )
         result = await db.exec(statement)
         db_obj = result.first()

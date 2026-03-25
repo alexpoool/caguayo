@@ -9,12 +9,24 @@ class LoginRequest(BaseModel):
     base_datos: str
 
 
+class RegisterRequest(BaseModel):
+    ci: str
+    nombre: str
+    primer_apellido: str
+    segundo_apellido: str | None = None
+    alias: str
+    contrasenia: str
+    base_datos: str
+    id_dependencia: int
+
+
 class DependenciaInfo(BaseModel):
     id_dependencia: int
     nombre: str
     base_datos: str
     host: Optional[str] = "localhost"
     puerto: Optional[int] = 5432
+    email: Optional[str] = None
 
     class Config:
         from_attributes = True

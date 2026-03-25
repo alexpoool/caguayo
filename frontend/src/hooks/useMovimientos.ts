@@ -3,38 +3,20 @@ import { movimientosService } from '../services/api';
 import toast from 'react-hot-toast';
 import { useState } from 'react';
 
-const TIPO_REGEX = /tipo:(\w+)/gi;
-
-function extractTipoFilter(searchTerm: string): { cleanTerm: string; tipo: string | undefined } {
-  const match = TIPO_REGEX.exec(searchTerm);
-  if (match) {
-    const tipo = match[1].toUpperCase();
-    const cleanTerm = searchTerm.replace(TIPO_REGEX, '').trim().replace(/\s+/g, ' ');
-    return { cleanTerm, tipo };
-  }
-  return { cleanTerm: searchTerm, tipo: undefined };
-}
-
-export function useMovimientos() {
+export function useMovimientos(tipoFiltro?: 'todos') {
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState('');
 
   const query = useQuery({
-    queryKey: ['movimientos', searchTerm],
+    queryKey: ['movimientos', tipoFiltro, searchTerm],
     queryFn: async () => {
-      const { cleanTerm, tipo } = extractTipoFilter(searchTerm);
-      console.log('[useMovimientos] searchTerm:', searchTerm, '-> cleanTerm:', cleanTerm, 'tipo:', tipo);
+      const tipo = tipoFiltro && tipoFiltro !== 'todos' ? tipoFiltro : undefined;
       
       const movimientos = await movimientosService.getMovimientos(tipo);
-      console.log('[useMovimientos] got movimientos, count:', movimientos.length);
-      if (movimientos.length > 0) {
-        const tiposUnicos = [...new Set(movimientos.map((m: any) => m.tipo_movimiento?.tipo).filter(Boolean))];
-        console.log('[useMovimientos] tipos únicos en datos:', tiposUnicos);
-      }
       
       let filteredMovimientos = movimientos;
-      if (cleanTerm) {
-        const term = cleanTerm.toLowerCase();
+      if (searchTerm) {
+        const term = searchTerm.toLowerCase();
         filteredMovimientos = movimientos.filter((m: any) => 
           m.producto?.nombre?.toLowerCase().includes(term) ||
           m.tipo_movimiento?.tipo?.toLowerCase().includes(term) ||

@@ -7,3 +7,4 @@ export * from './ConfirmModal';
 export * from './Skeleton';
 export * from './AnimatedCard';
 export * from './Avatar';
+export * from './Select';

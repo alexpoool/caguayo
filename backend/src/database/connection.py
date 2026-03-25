@@ -1,10 +1,22 @@
 import os
-from sqlalchemy.ext.asyncio import create_async_engine
+from contextvars import ContextVar
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncEngine
 from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlalchemy.orm import sessionmaker
 from dotenv import load_dotenv
 
 load_dotenv()
+
+# Context variable to store the database name for the current request
+_current_db: ContextVar[str] = ContextVar(
+    "current_db", default=os.getenv("AUTH_DATABASE", "caguayo_inventario")
+)
+
+
+def set_current_db(db_name: str):
+    """Set the database name for the current request (called by middleware)."""
+    _current_db.set(db_name)
+
 
 # Ensure we use the async driver
 DATABASE_URL = os.getenv("DATABASE_URL")
@@ -18,26 +30,40 @@ elif DATABASE_URL.startswith("postgresql+psycopg://"):
         "postgresql+psycopg://", "postgresql+asyncpg://"
     )
 
+AUTH_DATABASE = os.getenv("AUTH_DATABASE", "caguayo_inventario")
+
+# Default engine for auth database
 engine = create_async_engine(DATABASE_URL, echo=True, future=True)
+
+# Cache of engines per database name
+_engines: dict[str, AsyncEngine] = {AUTH_DATABASE: engine}
+
+
+def _get_engine_for_db(db_name: str) -> AsyncEngine:
+    """Get or create an async engine for the given database name."""
+    if db_name not in _engines:
+        db_url = DATABASE_URL.replace(DATABASE_URL.split("/")[-1], db_name)
+        _engines[db_name] = create_async_engine(db_url, echo=False, future=True)
+    return _engines[db_name]
 
 
 async def get_session() -> AsyncSession:
-    async_session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+    """Get session for the user's selected database (from ContextVar)."""
+    db_name = _current_db.get()
+    target_engine = _get_engine_for_db(db_name)
+    async_session = sessionmaker(
+        target_engine, class_=AsyncSession, expire_on_commit=False
+    )
     async with async_session() as session:
         yield session
 
 
 async def get_auth_session(db_name: str = None) -> AsyncSession:
     """Get session for authentication database."""
-    auth_db_url = os.getenv("AUTH_DATABASE", "caguayo_inventario")
-    if db_name:
-        auth_db_url = db_name
-
-    auth_url = DATABASE_URL.replace(DATABASE_URL.split("/")[-1], auth_db_url)
-
-    auth_engine = create_async_engine(auth_url, echo=False, future=True)
+    auth_db = db_name or AUTH_DATABASE
+    target_engine = _get_engine_for_db(auth_db)
     async_session = sessionmaker(
-        auth_engine, class_=AsyncSession, expire_on_commit=False
+        target_engine, class_=AsyncSession, expire_on_commit=False
     )
     async with async_session() as session:
         yield session

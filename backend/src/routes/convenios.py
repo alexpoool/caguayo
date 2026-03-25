@@ -6,6 +6,7 @@ from sqlmodel import select, func
 
 from src.database.connection import get_session
 from src.models import Cliente, Cliente as ClienteModel, Convenio
+from src.utils import generar_codigo_anio
 
 router = APIRouter(prefix="/convenios", tags=["convenios"], redirect_slashes=False)
 
@@ -36,6 +37,7 @@ async def listar_convenios(
             "fecha": str(c.fecha),
             "vigencia": str(c.vigencia),
             "id_tipo_convenio": c.id_tipo_convenio,
+            "codigo": c.codigo,
         }
         for c in convenios
     ]
@@ -81,6 +83,7 @@ async def obtener_convenio(
         "fecha": str(c.fecha),
         "vigencia": str(c.vigencia),
         "id_tipo_convenio": c.id_tipo_convenio,
+        "codigo": c.codigo,
     }
 
 
@@ -118,15 +121,9 @@ async def crear_convenio(
 
         año = datos_convertidos.get("fecha", date.today()).year
 
-        count_statement = select(func.count(Convenio.id_convenio)).where(
-            func.extract("year", Convenio.fecha) == año
-        )
-        count_result = await db.exec(count_statement)
-        total_convenios = count_result.one()
+        codigo = await generar_codigo_anio(db, "convenio", "fecha", año)
 
-        numero = total_convenios + 1
-
-        db_convenio = Convenio(**datos_convertidos)
+        db_convenio = Convenio(**datos_convertidos, codigo=codigo)
         db.add(db_convenio)
         await db.commit()
         await db.refresh(db_convenio)
@@ -137,6 +134,7 @@ async def crear_convenio(
             "fecha": str(db_convenio.fecha),
             "vigencia": str(db_convenio.vigencia),
             "id_tipo_convenio": db_convenio.id_tipo_convenio,
+            "codigo": db_convenio.codigo,
         }
     except HTTPException:
         raise
@@ -173,6 +171,7 @@ async def actualizar_convenio(
         "fecha": str(db_convenio.fecha),
         "vigencia": str(db_convenio.vigencia),
         "id_tipo_convenio": db_convenio.id_tipo_convenio,
+        "codigo": db_convenio.codigo,
     }
 
 

@@ -2,7 +2,6 @@ from sqlmodel import SQLModel
 from typing import Optional, List
 from datetime import date
 from decimal import Decimal
-from src.dto.convenios_dto import AnexoProductoCreate
 
 
 class TipoContratoBase(SQLModel):
@@ -52,6 +51,7 @@ class ContratoBase(SQLModel):
     id_moneda: int
     monto: Decimal = Decimal("0.00")
     documento_final: Optional[str] = None
+    codigo: Optional[str] = None
 
 
 class ContratoCreate(ContratoBase):
@@ -102,6 +102,7 @@ class SuplementoBase(SQLModel):
     fecha: date
     monto: Decimal = Decimal("0.00")
     documento: Optional[str] = None
+    codigo: Optional[str] = None
 
 
 class SuplementoCreate(SuplementoBase):
@@ -125,19 +126,37 @@ class SuplementoUpdate(SQLModel):
     documento: Optional[str] = None
 
 
+class ItemFacturaBase(SQLModel):
+    id_producto: int
+    cantidad: int
+    precio_venta: Decimal
+    id_moneda: int
+
+
+class ItemFacturaCreate(ItemFacturaBase):
+    pass
+
+
+class ItemFacturaRead(ItemFacturaBase):
+    id_item_factura: int
+    id_factura: int
+    precio_compra: Decimal
+
+
 class FacturaBase(SQLModel):
     id_contrato: int
-    codigo_factura: str
+    codigo_factura: Optional[str] = None
     descripcion: Optional[str] = None
     observaciones: Optional[str] = None
     fecha: date
     monto: Decimal = Decimal("0.00")
     pago_actual: Decimal = Decimal("0.00")
+    id_dependencia: Optional[int] = None
 
 
 class FacturaCreate(FacturaBase):
     id_moneda: Optional[int] = None
-    productos: Optional[List[AnexoProductoCreate]] = None
+    items: Optional[List[ItemFacturaCreate]] = None
 
 
 class FacturaRead(FacturaBase):
@@ -158,17 +177,35 @@ class FacturaUpdate(SQLModel):
     pago_actual: Optional[Decimal] = None
 
 
+class ItemVentaEfectivoBase(SQLModel):
+    id_producto: int
+    cantidad: int
+    precio_venta: Decimal
+    id_moneda: int
+
+
+class ItemVentaEfectivoCreate(ItemVentaEfectivoBase):
+    pass
+
+
+class ItemVentaEfectivoRead(ItemVentaEfectivoBase):
+    id_item_venta_efectivo: int
+    id_venta_efectivo: int
+    precio_compra: Decimal
+
+
 class VentaEfectivoBase(SQLModel):
     slip: str
     fecha: date
     id_dependencia: int
     cajero: str
     monto: Decimal = Decimal("0.00")
+    codigo: Optional[str] = None
 
 
 class VentaEfectivoCreate(VentaEfectivoBase):
     id_moneda: Optional[int] = None
-    productos: Optional[List[AnexoProductoCreate]] = None
+    items: Optional[List[ItemVentaEfectivoCreate]] = None
 
 
 class VentaEfectivoRead(VentaEfectivoBase):

@@ -9,6 +9,7 @@ from src.services import auth_service
 from src.dto.auth_dto import (
     LoginRequest,
     LoginResponse,
+    RegisterRequest,
     PerfilUpdateRequest,
     PerfilResponse,
     FuncionalidadInfo,
@@ -29,6 +30,21 @@ async def login(
     result = await auth_service.login(db, login_data)
     if not result:
         raise HTTPException(status_code=401, detail="Credenciales inválidas")
+    return result
+
+
+@router.post("/register", response_model=LoginResponse)
+async def register(
+    register_data: RegisterRequest,
+    db: AsyncSession = Depends(get_auth_session),
+):
+    """Registrar un nuevo usuario en una base de datos"""
+    result = await auth_service.register(db, register_data)
+    if not result:
+        raise HTTPException(
+            status_code=400,
+            detail="No se pudo registrar el usuario. El alias ya existe o la dependencia no es válida.",
+        )
     return result
 
 

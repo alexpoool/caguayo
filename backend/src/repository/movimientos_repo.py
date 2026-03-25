@@ -37,6 +37,7 @@ class MovimientoRepository(CRUDBase[Movimiento, MovimientoCreate, MovimientoUpda
             Municipio,
             Subcategorias,
             TipoMovimiento,
+            Moneda,
         )
 
         return [
@@ -49,6 +50,8 @@ class MovimientoRepository(CRUDBase[Movimiento, MovimientoCreate, MovimientoUpda
             selectinload(Movimiento.producto)
             .selectinload(Productos.subcategoria)
             .selectinload(Subcategorias.categoria),  # type: ignore
+            selectinload(Movimiento.producto).selectinload(Productos.moneda_compra_rel),  # type: ignore
+            selectinload(Movimiento.producto).selectinload(Productos.moneda_venta_rel),  # type: ignore
             selectinload(Movimiento.cliente),  # type: ignore
             selectinload(Movimiento.moneda_compra_rel),  # type: ignore
             selectinload(Movimiento.moneda_venta_rel),  # type: ignore
@@ -128,12 +131,30 @@ class MovimientoRepository(CRUDBase[Movimiento, MovimientoCreate, MovimientoUpda
         return list(results.all())
 
     async def get_productos_con_stock(self, db: AsyncSession) -> List[Movimiento]:
-        """Obtener movimientos confirmados con cantidad > 0 (para salidas)."""
+        """Obtener movimientos confirmados de tipo entrada (RECEPCION/compra) con cantidad > 0."""
         statement = (
             select(Movimiento)
             .options(*self._get_selectinload_options())
+            .join(TipoMovimiento)
             .where(Movimiento.estado == "confirmado")
             .where(Movimiento.cantidad > 0)
+            .where(TipoMovimiento.tipo.in_(["RECEPCION", "compra"]))
+        )
+        results = await db.exec(statement)
+        return list(results.all())
+
+    async def get_productos_con_stock_por_dependencia(
+        self, db: AsyncSession, id_dependencia: int
+    ) -> List[Movimiento]:
+        """Obtener productos con movimientos de entrada en una dependencia específica."""
+        statement = (
+            select(Movimiento)
+            .options(*self._get_selectinload_options())
+            .join(TipoMovimiento)
+            .where(Movimiento.id_dependencia == id_dependencia)
+            .where(Movimiento.estado == "confirmado")
+            .where(Movimiento.cantidad > 0)
+            .where(TipoMovimiento.tipo.in_(["RECEPCION", "compra"]))
         )
         results = await db.exec(statement)
         return list(results.all())
@@ -155,6 +176,30 @@ class MovimientoRepository(CRUDBase[Movimiento, MovimientoCreate, MovimientoUpda
         )
         results = await db.exec(statement)
         return results.first()
+
+    async def get_by_anexo(self, db: AsyncSession, id_anexo: int) -> List[Movimiento]:
+        """Obtener movimientos por ID de anexo."""
+        statement = (
+            select(Movimiento)
+            .options(*self._get_selectinload_options())
+            .where(Movimiento.id_anexo == id_anexo)
+            .where(Movimiento.estado == "confirmado")
+        )
+        results = await db.exec(statement)
+        return list(results.all())
+
+    async def get_by_factura(
+        self, db: AsyncSession, id_factura: int
+    ) -> List[Movimiento]:
+        """Obtener movimientos por ID de factura."""
+        statement = (
+            select(Movimiento)
+            .options(*self._get_selectinload_options())
+            .where(Movimiento.id_factura == id_factura)
+            .where(Movimiento.estado == "confirmado")
+        )
+        results = await db.exec(statement)
+        return list(results.all())
 
 
 movimiento_repo = MovimientoRepository(Movimiento)

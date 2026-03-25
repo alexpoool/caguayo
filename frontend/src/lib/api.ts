@@ -35,7 +35,23 @@ class ApiClient {
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         console.error('API Error:', errorData);
-        throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
+        
+        let errorMessage = `HTTP error! status: ${response.status}`;
+        
+        if (errorData.detail) {
+          if (Array.isArray(errorData.detail)) {
+            errorMessage = errorData.detail
+              .map((err: any) => {
+                const field = err.loc?.slice(1).join('.') || 'unknown';
+                return `${field}: ${err.msg}`;
+              })
+              .join('\n');
+          } else {
+            errorMessage = errorData.detail;
+          }
+        }
+        
+        throw new Error(errorMessage);
       }
 
       // Handle 204 No Content responses

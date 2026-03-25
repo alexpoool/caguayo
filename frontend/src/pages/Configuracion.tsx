@@ -1,18 +1,46 @@
 import { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Settings, Tag, FolderTree, Truck,
   Plus, Edit, Trash2, X, Save, Sparkles, FileCheck, FileText,
   ScrollText, ToggleLeft, Package, BuildingIcon, Wallet,
-  AlertCircle
+  AlertCircle, Search, Coins, Users, Shield, Building
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import {
-  Button, Input, Label, Card, CardContent,
+  Button, Input, Label, Card, CardContent, CardHeader, CardTitle,
   Table, TableHeader, TableBody, TableRow, TableHead, TableCell,
 } from '../components/ui';
 import { configuracionService, dependenciasService } from '../services/administracion';
-import { categoriasService, subcategoriasService } from '../services/api';
+import { categoriasService, subcategoriasService, monedaService } from '../services/api';
+import { MonedasPage } from './Monedas';
+import { UsuariosPage } from './Usuarios';
+import { GruposPage } from './Grupos';
+import { DependenciasPage } from './Dependencias';
+
+type TabType = 'configuracion' | 'monedas' | 'usuarios' | 'grupos' | 'dependencias';
+
+type ConfigSubTabType = 'tipo-contrato' | 'estado-contrato' | 'categorias' | 'subcategorias' | 'tipo-proveedores' | 'tipo-convenios' | 'tipo-dependencia' | 'tipo-cuenta';
+
+const tabs: { id: TabType; label: string; icon: React.ElementType }[] = [
+  { id: 'configuracion', label: 'Configuración', icon: Settings },
+  { id: 'monedas', label: 'Monedas', icon: Coins },
+  { id: 'usuarios', label: 'Usuarios', icon: Users },
+  { id: 'grupos', label: 'Grupos', icon: Shield },
+  { id: 'dependencias', label: 'Dependencias', icon: Building },
+];
+
+const configSubTabs: { id: ConfigSubTabType; label: string }[] = [
+  { id: 'tipo-contrato', label: 'Tipos de Contrato' },
+  { id: 'estado-contrato', label: 'Estados de Contrato' },
+  { id: 'categorias', label: 'Categorías' },
+  { id: 'subcategorias', label: 'Subcategorías' },
+  { id: 'tipo-proveedores', label: 'Tipos de Proveedores' },
+  { id: 'tipo-convenios', label: 'Tipos de Convenio' },
+  { id: 'tipo-dependencia', label: 'Tipos de Dependencia' },
+  { id: 'tipo-cuenta', label: 'Tipos de Cuenta' },
+];
 
 
 interface ConfigCardProps {
@@ -112,65 +140,55 @@ function Modal({ isOpen, onClose, title, children }: ModalProps) {
 
 export function ConfiguracionPage() {
   const queryClient = useQueryClient();
+  const [activeTab, setActiveTab] = useState<TabType>('configuracion');
+  const [activeConfigSubTab, setActiveConfigSubTab] = useState<ConfigSubTabType>('tipo-contrato');
+  const [searchTerm, setSearchTerm] = useState('');
   const [modalType, setModalType] = useState<string | null>(null);
   const [editingItem, setEditingItem] = useState<any>(null);
   const [formData, setFormData] = useState<any>({});
-
-  const { data: tiposContrato = [], refetch: refetchTiposContrato } = useQuery({
+  const [confirmDelete, setConfirmDelete] = useState<{ isOpen: boolean; type: string | null; item: any | null }>({ isOpen: false, type: null, item: null });
+  const [detailModal, setDetailModal] = useState<{ isOpen: boolean; item: any | null }>({ isOpen: false, item: null });
+  const { data: tiposContrato = [], isLoading: loadingTiposContrato, refetch: refetchTiposContrato } = useQuery({
     queryKey: ['tiposContrato'],
     queryFn: () => configuracionService.getTiposContrato(),
-    staleTime: 0,
-    refetchOnMount: true,
   });
 
-  const { data: estadosContrato = [], refetch: refetchEstadosContrato } = useQuery({
+  const { data: estadosContrato = [], isLoading: loadingEstadosContrato, refetch: refetchEstadosContrato } = useQuery({
     queryKey: ['estadosContrato'],
     queryFn: () => configuracionService.getEstadosContrato(),
-    staleTime: 0,
-    refetchOnMount: true,
   });
 
-  const { data: categorias = [], refetch: refetchCategorias } = useQuery({
+  const { data: categorias = [], isLoading: loadingCategorias, refetch: refetchCategorias } = useQuery({
     queryKey: ['categorias'],
     queryFn: () => categoriasService.getCategorias(),
-    staleTime: 0,
-    refetchOnMount: true,
   });
 
-  const { data: subcategorias = [], refetch: refetchSubcategorias } = useQuery({
+  const { data: subcategorias = [], isLoading: loadingSubcategorias, refetch: refetchSubcategorias } = useQuery({
     queryKey: ['subcategorias'],
     queryFn: () => subcategoriasService.getSubcategorias(),
-    staleTime: 0,
-    refetchOnMount: true,
   });
 
-  const { data: tiposProveedor = [], refetch: refetchTiposProveedor } = useQuery({
+  const { data: tiposProveedor = [], isLoading: loadingTiposProveedor, refetch: refetchTiposProveedor } = useQuery({
     queryKey: ['tiposProveedor'],
     queryFn: () => configuracionService.getTiposProveedor(),
-    staleTime: 0,
-    refetchOnMount: true,
   });
 
-  const { data: tiposConvenio = [], refetch: refetchTiposConvenio } = useQuery({
+  const { data: tiposConvenio = [], isLoading: loadingTiposConvenio, refetch: refetchTiposConvenio } = useQuery({
     queryKey: ['tiposConvenio'],
     queryFn: () => configuracionService.getTiposConvenio(),
-    staleTime: 0,
-    refetchOnMount: true,
   });
 
-  const { data: tiposDependencia = [], refetch: refetchTiposDependencia } = useQuery({
+  const { data: tiposDependencia = [], isLoading: loadingTiposDependencia, refetch: refetchTiposDependencia } = useQuery({
     queryKey: ['tiposDependencia'],
     queryFn: () => dependenciasService.getTiposDependencia(),
-    staleTime: 0,
-    refetchOnMount: true,
   });
 
-  const { data: tiposCuenta = [], refetch: refetchTiposCuenta } = useQuery({
+  const { data: tiposCuenta = [], isLoading: loadingTiposCuenta, refetch: refetchTiposCuenta } = useQuery({
     queryKey: ['tiposCuenta'],
     queryFn: () => configuracionService.getTiposCuenta(),
-    staleTime: 0,
-    refetchOnMount: true,
   });
+
+  const isAnyLoading = loadingTiposContrato || loadingEstadosContrato || loadingCategorias || loadingSubcategorias || loadingTiposProveedor || loadingTiposConvenio || loadingTiposDependencia || loadingTiposCuenta;
 
   // Mutations para tipos de contrato
   const createTipoContrato = useMutation({
@@ -537,7 +555,7 @@ export function ConfiguracionPage() {
         break;
       case 'tipo-proveedores':
         if (editingItem) {
-          updateTipoProveedor.mutate({ id: editingItem.id_tipo_provedores, data: formData });
+          updateTipoProveedor.mutate({ id: editingItem.id_tipo_proveedor, data: formData });
         } else {
           createTipoProveedor.mutate(formData);
         }
@@ -567,34 +585,39 @@ export function ConfiguracionPage() {
   };
 
   const handleDelete = (type: string, item: any) => {
-    if (confirm('¿Está seguro de eliminar este elemento?')) {
-      switch (type) {
-        case 'tipo-contrato':
-          deleteTipoContrato.mutate(item.id_tipo_contrato);
-          break;
-        case 'estado-contrato':
-          deleteEstadoContrato.mutate(item.id_estado_contrato);
-          break;
-        case 'categorias':
-          deleteCategoria.mutate(item.id_categoria);
-          break;
-        case 'subcategorias':
-          deleteSubcategoria.mutate(item.id_subcategoria);
-          break;
-        case 'tipo-proveedores':
-          deleteTipoProveedor.mutate(item.id_tipo_provedores);
-          break;
-        case 'tipo-convenios':
-          deleteTipoConvenio.mutate(item.id_tipo_convenio);
-          break;
-        case 'tipo-dependencia':
-          deleteTipoDependencia.mutate(item.id_tipo_dependencia);
-          break;
-        case 'tipo-cuenta':
-          deleteTipoCuenta.mutate(item.id_tipo_cuenta);
-          break;
-      }
+    setConfirmDelete({ isOpen: true, type, item });
+  };
+
+  const executeDelete = () => {
+    const { type, item } = confirmDelete;
+    if (!type || !item) return;
+    switch (type) {
+      case 'tipo-contrato':
+        deleteTipoContrato.mutate(item.id_tipo_contrato);
+        break;
+      case 'estado-contrato':
+        deleteEstadoContrato.mutate(item.id_estado_contrato);
+        break;
+      case 'categorias':
+        deleteCategoria.mutate(item.id_categoria);
+        break;
+      case 'subcategorias':
+        deleteSubcategoria.mutate(item.id_subcategoria);
+        break;
+      case 'tipo-proveedores':
+        deleteTipoProveedor.mutate(item.id_tipo_proveedor);
+        break;
+      case 'tipo-convenios':
+        deleteTipoConvenio.mutate(item.id_tipo_convenio);
+        break;
+      case 'tipo-dependencia':
+        deleteTipoDependencia.mutate(item.id_tipo_dependencia);
+        break;
+      case 'tipo-cuenta':
+        deleteTipoCuenta.mutate(item.id_tipo_cuenta);
+        break;
     }
+    setConfirmDelete({ isOpen: false, type: null, item: null });
   };
 
   const configCards = [
@@ -665,7 +688,7 @@ export function ConfiguracionPage() {
   ];
 
   const getItems = () => {
-    switch (modalType) {
+    switch (activeConfigSubTab) {
       case 'tipo-contrato':
         return tiposContrato;
       case 'estado-contrato':
@@ -688,7 +711,7 @@ export function ConfiguracionPage() {
   };
 
   const getItemId = (item: any) => {
-    switch (modalType) {
+    switch (activeConfigSubTab) {
       case 'tipo-contrato':
         return item.id_tipo_contrato;
       case 'estado-contrato':
@@ -698,7 +721,7 @@ export function ConfiguracionPage() {
       case 'subcategorias':
         return item.id_subcategoria;
       case 'tipo-proveedores':
-        return item.id_tipo_provedores;
+        return item.id_tipo_proveedor;
       case 'tipo-convenios':
         return item.id_tipo_convenio;
       case 'tipo-dependencia':
@@ -710,7 +733,7 @@ export function ConfiguracionPage() {
     }
   };
 
-  const isSubcategoria = modalType === 'subcategorias';
+  const isSubcategoria = activeConfigSubTab === 'subcategorias';
 
   const getFormTitle = () => {
     if (editingItem) return 'Editar Elemento';
@@ -784,96 +807,124 @@ export function ConfiguracionPage() {
     }
   };
 
+  const getListHeaderGradient = () => {
+    switch (activeConfigSubTab) {
+      case 'tipo-contrato': return 'bg-gradient-to-r from-blue-50 to-indigo-50';
+      case 'estado-contrato': return 'bg-gradient-to-r from-green-50 to-emerald-50';
+      case 'categorias': return 'bg-gradient-to-r from-purple-50 to-pink-50';
+      case 'subcategorias': return 'bg-gradient-to-r from-orange-50 to-amber-50';
+      case 'tipo-proveedores': return 'bg-gradient-to-r from-red-50 to-rose-50';
+      case 'tipo-convenios': return 'bg-gradient-to-r from-teal-50 to-cyan-50';
+      case 'tipo-dependencia': return 'bg-gradient-to-r from-indigo-50 to-blue-50';
+      case 'tipo-cuenta': return 'bg-gradient-to-r from-cyan-50 to-sky-50';
+      default: return 'bg-gray-50';
+    }
+  };
+
+  const getListBadgeColors = () => {
+    switch (activeConfigSubTab) {
+      case 'tipo-contrato': return { bg: 'bg-blue-100', text: 'text-blue-700' };
+      case 'estado-contrato': return { bg: 'bg-green-100', text: 'text-green-700' };
+      case 'categorias': return { bg: 'bg-purple-100', text: 'text-purple-700' };
+      case 'subcategorias': return { bg: 'bg-orange-100', text: 'text-orange-700' };
+      case 'tipo-proveedores': return { bg: 'bg-red-100', text: 'text-red-700' };
+      case 'tipo-convenios': return { bg: 'bg-teal-100', text: 'text-teal-700' };
+      case 'tipo-dependencia': return { bg: 'bg-indigo-100', text: 'text-indigo-700' };
+      case 'tipo-cuenta': return { bg: 'bg-cyan-100', text: 'text-cyan-700' };
+      default: return { bg: 'bg-gray-100', text: 'text-gray-700' };
+    }
+  };
+
+  const getListIconColor = () => {
+    switch (activeConfigSubTab) {
+      case 'tipo-contrato': return 'text-blue-600';
+      case 'estado-contrato': return 'text-green-600';
+      case 'categorias': return 'text-purple-600';
+      case 'subcategorias': return 'text-orange-600';
+      case 'tipo-proveedores': return 'text-red-600';
+      case 'tipo-convenios': return 'text-teal-600';
+      case 'tipo-dependencia': return 'text-indigo-600';
+      case 'tipo-cuenta': return 'text-cyan-600';
+      default: return 'text-gray-600';
+    }
+  };
+
   const renderModalContent = () => {
     const items = getItems();
     
     return (
       <div className="space-y-6 animate-fade-in-up">
         {/* Formulario */}
-        <div className={`bg-gradient-to-br ${getModalGradient()} rounded-2xl shadow-lg border p-6`}>
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-3">
-              <div className={`p-3 rounded-xl bg-gradient-to-br ${getButtonGradient().split(' ')[0].replace('from-', 'from-').replace('600', '500').replace('700', '600')} text-white shadow-lg`}>
-                {getFormIcon('lg')}
+        <Card className="shadow-sm border-gray-200">
+          <CardHeader className="border-b bg-gray-50/50">
+            <CardTitle className="flex items-center gap-2 text-lg">
+              {getFormIcon('sm')}
+              {getFormTitle()}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-6">
+            <form onSubmit={handleSubmit} className="space-y-5">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <Label className="text-sm font-medium">Nombre *</Label>
+                  <Input
+                    placeholder="Nombre del elemento"
+                    value={formData.nombre || ''}
+                    onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
+                    className="mt-1 focus:ring-2 focus:ring-blue-500 outline-none"
+                  />
+                </div>
+                {isSubcategoria && (
+                  <div className="space-y-1">
+                    <Label className="text-sm font-medium">Categoría *</Label>
+                    <select
+                      className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white"
+                      value={formData.id_categoria || ''}
+                      onChange={(e) => setFormData({ ...formData, id_categoria: e.target.value })}
+                    >
+                      <option value="">Seleccione una categoría</option>
+                      {categorias.map((cat) => (
+                        <option key={cat.id_categoria} value={cat.id_categoria}>
+                          {cat.nombre}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
               </div>
-              <div>
-                <h3 className="text-xl font-bold text-gray-900">{getFormTitle()}</h3>
-                <p className="text-sm text-gray-500">Complete los campos requeridos</p>
-              </div>
-            </div>
-          </div>
-          
-          <form onSubmit={handleSubmit} className="space-y-5">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label className="flex items-center gap-2 text-gray-700 font-medium">
-                  <FileCheck className="h-5 w-5 text-blue-500" />
-                  Nombre *
-                </Label>
+              
+              <div className="space-y-1">
+                <Label className="text-sm font-medium">Descripción</Label>
                 <Input
-                  placeholder="Nombre del elemento"
-                  value={formData.nombre || ''}
-                  onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
-                  className="bg-white transition-all duration-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="Descripción opcional"
+                  value={formData.descripcion || ''}
+                  onChange={(e) => setFormData({ ...formData, descripcion: e.target.value })}
+                  className="mt-1 focus:ring-2 focus:ring-blue-500 outline-none"
                 />
               </div>
-              {isSubcategoria && (
-                <div className="space-y-2">
-                  <Label className="flex items-center gap-2 text-gray-700 font-medium">
-                    <FolderTree className="h-5 w-5 text-purple-500" />
-                    Categoría *
-                  </Label>
-                  <select
-                    className="w-full border rounded-md px-3 py-2 bg-white transition-all duration-200 focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                    value={formData.id_categoria || ''}
-                    onChange={(e) => setFormData({ ...formData, id_categoria: e.target.value })}
-                  >
-                    <option value="">Seleccione una categoría</option>
-                    {categorias.map((cat) => (
-                      <option key={cat.id_categoria} value={cat.id_categoria}>
-                        {cat.nombre}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
-            </div>
-            
-            <div className="space-y-2">
-              <Label className="flex items-center gap-2 text-gray-700 font-medium">
-                <FileText className="h-5 w-5 text-gray-500" />
-                Descripción
-              </Label>
-              <Input
-                placeholder="Descripción opcional"
-                value={formData.descripcion || ''}
-                onChange={(e) => setFormData({ ...formData, descripcion: e.target.value })}
-                className="bg-white transition-all duration-200 focus:ring-2 focus:ring-gray-500 focus:border-gray-500"
-              />
-            </div>
-            
-            <div className="flex gap-3 pt-2">
-              <Button 
-                type="submit" 
-                className={`gap-2 bg-gradient-to-r ${getButtonGradient()} text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300`}
-              >
-                <Save className="h-4 w-4" />
-                {editingItem ? 'Actualizar' : 'Agregar'}
-              </Button>
-              {editingItem && (
+              
+              <div className="flex gap-3 mt-6 pt-4 border-t">
                 <Button 
-                  type="button" 
-                  variant="secondary" 
-                  onClick={() => setEditingItem(null)}
-                  className="hover:bg-gray-200 transition-colors"
+                  type="submit" 
+                  className={`gap-2 bg-gradient-to-r ${getButtonGradient()} text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300`}
                 >
-                  <X className="h-4 w-4 mr-2" />
-                  Cancelar
+                  <Save className="h-4 w-4" />
+                  {editingItem ? 'Actualizar' : 'Agregar'}
                 </Button>
-              )}
-            </div>
-          </form>
-        </div>
+                {editingItem && (
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    onClick={() => setEditingItem(null)}
+                  >
+                    <X className="h-4 w-4 mr-2" />
+                    Cancelar
+                  </Button>
+                )}
+              </div>
+            </form>
+          </CardContent>
+        </Card>
 
         {/* Tabla */}
         <div className="rounded-xl border border-gray-200 overflow-hidden shadow-sm">
@@ -969,50 +1020,366 @@ export function ConfiguracionPage() {
     );
   };
 
+  const renderConfigListView = () => {
+    const currentItems = getItems();
+    const filteredItems = currentItems.filter((item: any) => 
+      item.nombre?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.descripcion?.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+    const currentSubTab = configSubTabs.find(t => t.id === activeConfigSubTab);
+
+    return (
+      <div className="space-y-4 animate-fade-in-up">
+        {/* Header de la sección */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className={`p-2 rounded-lg ${
+              activeConfigSubTab === 'tipo-contrato' ? 'bg-blue-100' :
+              activeConfigSubTab === 'estado-contrato' ? 'bg-green-100' :
+              activeConfigSubTab === 'categorias' ? 'bg-purple-100' :
+              activeConfigSubTab === 'subcategorias' ? 'bg-orange-100' :
+              activeConfigSubTab === 'tipo-proveedores' ? 'bg-red-100' :
+              activeConfigSubTab === 'tipo-convenios' ? 'bg-teal-100' :
+              activeConfigSubTab === 'tipo-dependencia' ? 'bg-indigo-100' : 'bg-cyan-100'
+            }`}>
+              {activeConfigSubTab === 'tipo-contrato' && <ScrollText className="w-5 h-5 text-blue-600" />}
+              {activeConfigSubTab === 'estado-contrato' && <ToggleLeft className="w-5 h-5 text-green-600" />}
+              {activeConfigSubTab === 'categorias' && <FolderTree className="w-5 h-5 text-purple-600" />}
+              {activeConfigSubTab === 'subcategorias' && <Tag className="w-5 h-5 text-orange-600" />}
+              {activeConfigSubTab === 'tipo-proveedores' && <Truck className="w-5 h-5 text-red-600" />}
+              {activeConfigSubTab === 'tipo-convenios' && <FileText className="w-5 h-5 text-teal-600" />}
+              {activeConfigSubTab === 'tipo-dependencia' && <BuildingIcon className="w-5 h-5 text-indigo-600" />}
+              {activeConfigSubTab === 'tipo-cuenta' && <Wallet className="w-5 h-5 text-cyan-600" />}
+            </div>
+            <h2 className="text-lg font-bold text-gray-900">{currentSubTab?.label}</h2>
+            {isAnyLoading ? (
+              <span className="text-sm text-blue-500">Cargando...</span>
+            ) : (
+              <span className="text-sm text-gray-500">({filteredItems.length} elementos)</span>
+            )}
+          </div>
+          <Button onClick={() => openModal(activeConfigSubTab)}>
+            <Plus className="w-4 h-4 mr-2" />Nuevo
+          </Button>
+        </div>
+
+        {/* Buscador */}
+        <div className="relative max-w-md">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <Input
+            placeholder="Buscar..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+
+        {/* Tabla */}
+        <Card className="overflow-hidden hover:shadow-lg transition-shadow duration-300">
+          <CardContent className="p-0">
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader className={getListHeaderGradient()}>
+                  <TableRow>
+                    <TableHead>
+                      <div className="flex items-center gap-2">
+                        <Package className={`h-4 w-4 ${getListIconColor()}`} />
+                        ID
+                      </div>
+                    </TableHead>
+                    <TableHead>
+                      <div className="flex items-center gap-2">
+                        <FileCheck className={`h-4 w-4 ${getListIconColor()}`} />
+                        Nombre
+                      </div>
+                    </TableHead>
+                    {activeConfigSubTab === 'subcategorias' && (
+                      <TableHead>
+                        <div className="flex items-center gap-2">
+                          <FolderTree className={`h-4 w-4 ${getListIconColor()}`} />
+                          Categoría
+                        </div>
+                      </TableHead>
+                    )}
+                    <TableHead>
+                      <div className="flex items-center gap-2">
+                        <FileText className={`h-4 w-4 ${getListIconColor()}`} />
+                        Descripción
+                      </div>
+                    </TableHead>
+                    <TableHead className="text-right">Acciones</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredItems.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={activeConfigSubTab === 'subcategorias' ? 5 : 4} className="text-center py-12">
+                        <div className="flex flex-col items-center justify-center text-gray-400">
+                          <div className="p-4 bg-gray-100 rounded-full mb-4">
+                            <AlertCircle className="h-12 w-12 text-gray-300" />
+                          </div>
+                          <p className="text-lg font-medium mb-2">No hay elementos registrados</p>
+                          <p className="text-sm">Agregue elementos usando el botón "Nuevo"</p>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    filteredItems.map((item: any) => (
+                      <TableRow key={getItemId(item)} className="hover:bg-gray-50 transition-colors cursor-pointer" onClick={() => setDetailModal({ isOpen: true, item })}>
+                        <TableCell>
+                          <span className={`inline-flex items-center gap-1 px-2 py-1 ${getListBadgeColors().bg} ${getListBadgeColors().text} rounded text-sm font-medium`}>
+                            <Package className="h-3 w-3" />
+                            #{getItemId(item)}
+                          </span>
+                        </TableCell>
+                        <TableCell className="font-semibold">{item.nombre}</TableCell>
+                        {activeConfigSubTab === 'subcategorias' && (
+                          <TableCell>
+                            <span className="inline-flex items-center gap-1 px-2 py-1 bg-purple-100 text-purple-700 rounded text-sm">
+                              <FolderTree className="h-3 w-3" />
+                              {item.categoria?.nombre || '-'}
+                            </span>
+                          </TableCell>
+                        )}
+                        <TableCell className="text-gray-500">{item.descripcion || '-'}</TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-2">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => {
+                                setEditingItem(item);
+                                setFormData(item);
+                                setModalType(activeConfigSubTab);
+                              }}
+                              className="text-blue-600 hover:bg-blue-50 hover:scale-110 transition-all"
+                              title="Editar"
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleDelete(activeConfigSubTab, item)}
+                              className="text-red-600 hover:bg-red-50 hover:scale-110 transition-all"
+                              title="Eliminar"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Modal */}
+        <Modal
+          isOpen={!!modalType}
+          onClose={closeModal}
+          title={currentSubTab?.label || ''}
+        >
+          {renderModalContent()}
+        </Modal>
+      </div>
+    );
+  };
+
+  const renderTabContent = () => {
+    switch (activeTab) {
+      case 'configuracion':
+        return (
+          <div className="space-y-6">
+            {/* Sub-tabs de configuración */}
+            <div className="flex gap-1 border-b overflow-x-auto">
+              {configSubTabs.map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => {
+                    setActiveConfigSubTab(tab.id);
+                    setSearchTerm('');
+                  }}
+                  className={`px-4 py-2 text-sm font-medium whitespace-nowrap transition-colors ${
+                    activeConfigSubTab === tab.id
+                      ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50'
+                      : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+            {/* Vista de lista */}
+            {renderConfigListView()}
+          </div>
+        );
+      case 'monedas':
+        return <div className="p-0"><MonedasPage /></div>;
+      case 'usuarios':
+        return <div className="p-0"><UsuariosPage /></div>;
+      case 'grupos':
+        return <div className="p-0"><GruposPage /></div>;
+      case 'dependencias':
+        return <div className="p-0"><DependenciasPage /></div>;
+      default:
+        return null;
+    }
+  };
+
   return (
-    <div className="space-y-8 animate-fade-in-up">
-      {/* Header con icono animado */}
+    <div className="space-y-6 animate-fade-in-up">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <div className="p-4 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl shadow-xl animate-bounce-subtle">
-            <Settings className="h-10 w-10 text-white" />
+          <div className="p-3 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl shadow-lg">
+            <Settings className="h-8 w-8 text-white" />
           </div>
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Configuración</h1>
-            <p className="text-gray-500 mt-1">Gestión de parámetros del sistema</p>
+            <h1 className="text-2xl font-bold text-gray-900">Administración</h1>
+            <p className="text-gray-500 text-sm">Gestión del sistema</p>
           </div>
         </div>
-        <Sparkles className="h-8 w-8 text-blue-500 animate-pulse" />
       </div>
 
-      {/* Grid de Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-        {configCards.map((card, index) => (
-          <div 
-            key={card.type}
-            className="animate-fade-in"
-            style={{ animationDelay: `${index * 50}ms` }}
-          >
-            <ConfigCard
-              title={card.title}
-              icon={card.icon}
-              description={card.description}
-              count={card.count}
-              color={card.color}
-              onClick={() => openModal(card.type)}
-            />
+      {/* Tabs Navigation */}
+      <div className="flex gap-1 border-b bg-white rounded-t-lg px-2 pt-2">
+        {tabs.map((tab) => {
+          const Icon = tab.icon;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`flex items-center gap-2 px-4 py-3 text-sm font-medium transition-all duration-200 rounded-t-lg ${
+                activeTab === tab.id
+                  ? 'text-blue-600 bg-blue-50 border-b-2 border-blue-600'
+                  : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+              }`}
+            >
+              <Icon className="w-4 h-4" />
+              {tab.label}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Tab Content */}
+      <div className="bg-white rounded-b-lg rounded-tr-lg p-6 border border-t-0">
+        {renderTabContent()}
+      </div>
+
+      {/* Confirm Delete Modal */}
+      {confirmDelete.isOpen && createPortal(
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 animate-fade-in">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full animate-scale-in">
+            <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-red-50 to-rose-50">
+              <div className="flex items-center gap-4">
+                <div className="p-3 rounded-xl bg-gradient-to-br from-red-500 to-rose-600 text-white shadow-lg">
+                  <Trash2 className="h-7 w-7" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-gray-900">Confirmar Eliminación</h3>
+                  <p className="text-sm text-gray-500 mt-1">Esta acción no se puede deshacer</p>
+                </div>
+              </div>
+            </div>
+            <div className="p-6">
+              <p className="text-gray-600">¿Está seguro de que desea eliminar este elemento?</p>
+              {confirmDelete.item?.nombre && (
+                <p className="mt-2 text-sm font-medium text-gray-800 bg-gray-50 px-3 py-2 rounded-lg">
+                  {confirmDelete.item.nombre}
+                </p>
+              )}
+            </div>
+            <div className="p-6 border-t border-gray-200 bg-gray-50 flex justify-end gap-3">
+              <Button
+                variant="outline"
+                onClick={() => setConfirmDelete({ isOpen: false, type: null, item: null })}
+              >
+                Cancelar
+              </Button>
+              <Button
+                onClick={executeDelete}
+                className="gap-2 bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300"
+              >
+                <Trash2 className="h-4 w-4" />
+                Eliminar
+              </Button>
+            </div>
           </div>
-        ))}
-      </div>
+        </div>,
+        document.body
+      )}
 
-      {/* Modal Mejorado */}
-      <Modal
-        isOpen={!!modalType}
-        onClose={closeModal}
-        title={configCards.find(c => c.type === modalType)?.title || ''}
-      >
-        {renderModalContent()}
-      </Modal>
+      {/* Detail Modal */}
+      {detailModal.isOpen && detailModal.item && createPortal(
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 animate-fade-in">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-auto animate-scale-in">
+            <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className={`p-3 rounded-xl bg-gradient-to-br ${getButtonGradient()} text-white shadow-lg`}>
+                    {getFormIcon('lg')}
+                  </div>
+                  <div>
+                    <h3 className="text-2xl font-bold text-gray-900">{detailModal.item.nombre}</h3>
+                    <p className="text-sm text-gray-500">{configSubTabs.find(t => t.id === activeConfigSubTab)?.label || 'Detalle'}</p>
+                  </div>
+                </div>
+                <button onClick={() => setDetailModal({ isOpen: false, item: null })} className="p-2 hover:bg-gray-200 rounded-full transition-colors">
+                  <X className="h-6 w-6 text-gray-500" />
+                </button>
+              </div>
+            </div>
+            <div className="p-6 space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-4 rounded-xl border border-blue-100">
+                  <p className="text-xs text-blue-600 uppercase tracking-wider mb-1">ID</p>
+                  <p className="font-bold text-gray-900">#{getItemId(detailModal.item)}</p>
+                </div>
+                <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-4 rounded-xl border border-green-100">
+                  <p className="text-xs text-green-600 uppercase tracking-wider mb-1">Nombre</p>
+                  <p className="font-bold text-gray-900">{detailModal.item.nombre}</p>
+                </div>
+              </div>
+              {activeConfigSubTab === 'subcategorias' && detailModal.item.categoria && (
+                <div className="bg-gradient-to-br from-purple-50 to-pink-50 p-4 rounded-xl border border-purple-100">
+                  <p className="text-xs text-purple-600 uppercase tracking-wider mb-1">Categoría</p>
+                  <p className="font-bold text-gray-900">{detailModal.item.categoria.nombre}</p>
+                </div>
+              )}
+              <div className="bg-gray-50 p-4 rounded-xl">
+                <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Descripción</p>
+                <p className="text-gray-700">{detailModal.item.descripcion || 'Sin descripción'}</p>
+              </div>
+            </div>
+            <div className="p-6 border-t border-gray-200 bg-gray-50 flex justify-end gap-3">
+              <Button
+                variant="outline"
+                onClick={() => setDetailModal({ isOpen: false, item: null })}
+              >
+                Cerrar
+              </Button>
+              <Button
+                onClick={() => {
+                  setEditingItem(detailModal.item);
+                  setFormData(detailModal.item);
+                  setModalType(activeConfigSubTab);
+                  setDetailModal({ isOpen: false, item: null });
+                }}
+                className={`gap-2 bg-gradient-to-r ${getButtonGradient()} text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300`}
+              >
+                <Edit className="h-4 w-4" />
+                Editar
+              </Button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   );
 }

@@ -3,9 +3,11 @@ import sys
 import logging
 import uvicorn
 from dotenv import load_dotenv
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from src.routes import api_router
+from src.database.connection import set_current_db
 from src.models import (
     Anexo,
     Categorias,
@@ -91,6 +93,37 @@ app.add_middleware(
 )
 
 app.include_router(api_router)
+
+
+@app.middleware("http")
+async def database_middleware(request: Request, call_next):
+    """Set the database context from the JWT token in the Authorization header."""
+    try:
+        auth = request.headers.get("Authorization", "")
+        if auth.startswith("Bearer "):
+            token = auth.replace("Bearer ", "")
+            from jose import jwt
+
+            SECRET_KEY = os.getenv(
+                "SECRET_KEY", "caguayo-secret-key-change-in-production"
+            )
+            payload = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
+            base_datos = payload.get("base_datos")
+            if base_datos:
+                set_current_db(base_datos)
+    except Exception:
+        pass
+    response = await call_next(request)
+    return response
+
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    return JSONResponse(
+        status_code=500,
+        content={"detail": str(exc)},
+        headers={"Access-Control-Allow-Origin": "*"},
+    )
 
 
 @app.get("/")

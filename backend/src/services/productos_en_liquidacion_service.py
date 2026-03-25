@@ -54,7 +54,9 @@ class ProductosEnLiquidacionService:
             db, producto_en_liquidacion_id
         )
         if db_producto:
-            return ProductosEnLiquidacionRead.model_validate(db_producto)
+            return ProductosEnLiquidacionRead.model_validate(
+                db_producto, from_attributes=True
+            )
         return None
 
     @staticmethod
@@ -98,7 +100,10 @@ class ProductosEnLiquidacionService:
         db_productos = await productos_en_liquidacion_repo.get_pendientes(
             db, skip=skip, limit=limit
         )
-        return [ProductosEnLiquidacionRead.model_validate(p) for p in db_productos]
+        return [
+            ProductosEnLiquidacionRead.model_validate(p, from_attributes=True)
+            for p in db_productos
+        ]
 
     @staticmethod
     async def get_liquidadas(
@@ -107,7 +112,10 @@ class ProductosEnLiquidacionService:
         db_productos = await productos_en_liquidacion_repo.get_liquidadas(
             db, skip=skip, limit=limit
         )
-        return [ProductosEnLiquidacionRead.model_validate(p) for p in db_productos]
+        return [
+            ProductosEnLiquidacionRead.model_validate(p, from_attributes=True)
+            for p in db_productos
+        ]
 
     @staticmethod
     async def update(
@@ -176,7 +184,7 @@ async def agregar_desde_factura(
             codigo=codigo,
             id_producto=prod["id_producto"],
             cantidad=prod["cantidad"],
-            precio=prod.get("precio", 0),
+            precio=Decimal(str(prod.get("precio_venta", prod.get("precio", 0)))),
             id_moneda=prod.get("id_moneda", 1),
             tipo_compra="FACTURA",
             id_factura=id_factura,
@@ -196,7 +204,7 @@ async def agregar_desde_venta_efectivo(
             codigo=codigo,
             id_producto=prod["id_producto"],
             cantidad=prod["cantidad"],
-            precio=prod.get("precio", 0),
+            precio=Decimal(str(prod.get("precio_venta", prod.get("precio", 0)))),
             id_moneda=prod.get("id_moneda", 1),
             tipo_compra="VENTA_EFECTIVO",
             id_venta_efectivo=id_venta_efectivo,

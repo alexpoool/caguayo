@@ -81,8 +81,8 @@ CREATE TABLE tipo_cliente (
 );
 
 -- Tipos de Proveedor
-CREATE TABLE tipo_provedores (
-    id_tipo_provedores SERIAL PRIMARY KEY,
+CREATE TABLE tipo_proveedor (
+    id_tipo_proveedor SERIAL PRIMARY KEY,
     nombre VARCHAR(100) NOT NULL,
     descripcion TEXT
 );
@@ -125,7 +125,7 @@ CREATE TABLE municipio (
 -- TABLAS DE CLIENTES
 -- =====================================================
 
--- Clientes (fusionado con provedores)
+-- Clientes
 CREATE TABLE clientes (
     id_cliente SERIAL PRIMARY KEY,
     numero_cliente VARCHAR(20) NOT NULL UNIQUE,
@@ -185,15 +185,6 @@ CREATE TABLE cliente_tcp (
     fecha_aprobacion DATE
 );
 
--- Proveedores
-CREATE TABLE provedores (
-    id_provedores SERIAL PRIMARY KEY,
-    id_tipo_provedor INTEGER NOT NULL REFERENCES tipo_provedores(id_tipo_provedores),
-    nombre VARCHAR(150) NOT NULL,
-    email VARCHAR(100),
-    direccion VARCHAR(255)
-);
-
 -- =====================================================
 -- TABLAS DE ORGANIZACIÓN
 -- =====================================================
@@ -230,6 +221,9 @@ CREATE TABLE dependencia (
     web VARCHAR(100),
     id_provincia INTEGER REFERENCES provincia(id_provincia) ON DELETE SET NULL,
     id_municipio INTEGER REFERENCES municipio(id_municipio) ON DELETE SET NULL,
+    base_datos VARCHAR(100),
+    host VARCHAR(100) DEFAULT 'localhost',
+    puerto INTEGER DEFAULT 5432,
     descripcion TEXT
 );
 
@@ -278,7 +272,6 @@ CREATE TABLE conexion_database (
 CREATE TABLE cuenta (
     id_cuenta SERIAL PRIMARY KEY,
     id_cliente INTEGER REFERENCES clientes(id_cliente) ON DELETE CASCADE,
-    id_provedor INTEGER REFERENCES provedores(id_provedores) ON DELETE CASCADE,
     id_dependencia INTEGER REFERENCES dependencia(id_dependencia) ON DELETE SET NULL,
     id_tipo_cuenta INTEGER REFERENCES tipo_cuenta(id_tipo_cuenta) ON DELETE SET NULL,
     id_moneda INTEGER REFERENCES moneda(id_moneda) ON DELETE SET NULL,
@@ -333,13 +326,15 @@ CREATE TABLE anexo (
     comision NUMERIC(10, 2)
 );
 
--- Anexo-Producto (relación muchos a muchos)
-CREATE TABLE anexo_producto (
+-- Item-Anexo (reemplaza anexo_producto)
+CREATE TABLE item_anexo (
+    id_item_anexo SERIAL PRIMARY KEY,
     id_anexo INTEGER NOT NULL REFERENCES anexo(id_anexo) ON DELETE CASCADE,
     id_producto INTEGER NOT NULL REFERENCES productos(id_producto) ON DELETE CASCADE,
-    cantidad INTEGER DEFAULT 1,
-    precio_acordado NUMERIC(15, 4),
-    PRIMARY KEY (id_anexo, id_producto)
+    cantidad INTEGER NOT NULL DEFAULT 1,
+    precio_compra NUMERIC(15, 4) NOT NULL,
+    precio_venta NUMERIC(15, 4) NOT NULL,
+    id_moneda INTEGER NOT NULL REFERENCES moneda(id_moneda) ON DELETE CASCADE
 );
 
 -- =====================================================
@@ -361,14 +356,7 @@ CREATE TABLE contrato (
     documento_final VARCHAR(255)
 );
 
--- Contrato-Producto (relación muchos a muchos)
-CREATE TABLE contrato_producto (
-    id_contrato_producto SERIAL PRIMARY KEY,
-    id_contrato INTEGER NOT NULL REFERENCES contrato(id_contrato) ON DELETE CASCADE,
-    id_producto INTEGER NOT NULL REFERENCES productos(id_producto) ON DELETE CASCADE,
-    cantidad INTEGER NOT NULL DEFAULT 1,
-    UNIQUE (id_contrato, id_producto)
-);
+
 
 -- Suplementos
 CREATE TABLE suplemento (
@@ -381,14 +369,7 @@ CREATE TABLE suplemento (
     documento VARCHAR(255)
 );
 
--- Suplemento-Producto (relación muchos a muchos)
-CREATE TABLE suplemento_producto (
-    id_suplemento_producto SERIAL PRIMARY KEY,
-    id_suplemento INTEGER NOT NULL REFERENCES suplemento(id_suplemento) ON DELETE CASCADE,
-    id_producto INTEGER NOT NULL REFERENCES productos(id_producto) ON DELETE CASCADE,
-    cantidad INTEGER NOT NULL DEFAULT 1,
-    UNIQUE (id_suplemento, id_producto)
-);
+
 
 -- Facturas
 CREATE TABLE factura (
@@ -402,13 +383,15 @@ CREATE TABLE factura (
     pago_actual NUMERIC(15, 2) NOT NULL DEFAULT 0.00
 );
 
--- Factura-Producto (relación muchos a muchos)
-CREATE TABLE factura_producto (
-    id_factura_producto SERIAL PRIMARY KEY,
+-- Item-Factura (reemplaza factura_producto)
+CREATE TABLE item_factura (
+    id_item_factura SERIAL PRIMARY KEY,
     id_factura INTEGER NOT NULL REFERENCES factura(id_factura) ON DELETE CASCADE,
     id_producto INTEGER NOT NULL REFERENCES productos(id_producto) ON DELETE CASCADE,
     cantidad INTEGER NOT NULL DEFAULT 1,
-    UNIQUE (id_factura, id_producto)
+    precio_compra NUMERIC(15, 4) NOT NULL,
+    precio_venta NUMERIC(15, 4) NOT NULL,
+    id_moneda INTEGER NOT NULL REFERENCES moneda(id_moneda) ON DELETE CASCADE
 );
 
 -- =====================================================
@@ -447,13 +430,15 @@ CREATE TABLE venta_efectivo (
     monto NUMERIC(15, 2) NOT NULL DEFAULT 0.00
 );
 
--- Venta Efectivo-Producto (relación muchos a muchos)
-CREATE TABLE venta_efectivo_producto (
-    id_venta_efectivo_producto SERIAL PRIMARY KEY,
+-- Item-Venta-Efectivo (reemplaza venta_efectivo_producto)
+CREATE TABLE item_venta_efectivo (
+    id_item_venta_efectivo SERIAL PRIMARY KEY,
     id_venta_efectivo INTEGER NOT NULL REFERENCES venta_efectivo(id_venta_efectivo) ON DELETE CASCADE,
     id_producto INTEGER NOT NULL REFERENCES productos(id_producto) ON DELETE CASCADE,
     cantidad INTEGER NOT NULL DEFAULT 1,
-    UNIQUE (id_venta_efectivo, id_producto)
+    precio_compra NUMERIC(15, 4) NOT NULL,
+    precio_venta NUMERIC(15, 4) NOT NULL,
+    id_moneda INTEGER NOT NULL REFERENCES moneda(id_moneda) ON DELETE CASCADE
 );
 
 -- =====================================================
@@ -521,12 +506,12 @@ CREATE TABLE movimiento (
     id_liquidacion INTEGER REFERENCES liquidacion(id_liquidacion) ON DELETE CASCADE,
     estado VARCHAR(20) DEFAULT 'pendiente',
     codigo VARCHAR(100),
-    id_convenio INTEGER REFERENCES anexo(id_anexo) ON DELETE CASCADE,
+    id_convenio INTEGER REFERENCES convenio(id_convenio) ON DELETE CASCADE,
     id_cliente INTEGER REFERENCES clientes(id_cliente) ON DELETE SET NULL,
     precio_compra NUMERIC(15, 4),
-    id_moneda_compra INTEGER REFERENCES moneda(id_moneda) ON DELETE CASCADE,
+    moneda_compra INTEGER REFERENCES moneda(id_moneda) ON DELETE CASCADE,
     precio_venta NUMERIC(15, 4),
-    id_moneda_venta INTEGER REFERENCES moneda(id_moneda) ON DELETE CASCADE,
+    moneda_venta INTEGER REFERENCES moneda(id_moneda) ON DELETE CASCADE,
     id_factura INTEGER REFERENCES factura(id_factura) ON DELETE CASCADE,
     id_venta_efectivo INTEGER REFERENCES venta_efectivo(id_venta_efectivo) ON DELETE CASCADE,
     id_contrato INTEGER REFERENCES contrato(id_contrato) ON DELETE CASCADE
@@ -538,9 +523,8 @@ CREATE TABLE movimiento (
 
 CREATE INDEX idx_productos_codigo ON productos(codigo);
 CREATE INDEX idx_productos_subcategoria ON productos(id_subcategoria);
-CREATE INDEX idx_anexo_numero ON anexo(numero_anexo);
+CREATE INDEX idx_anexo_codigo ON anexo(codigo_anexo);
 CREATE INDEX idx_anexo_convenio ON anexo(id_convenio);
-CREATE INDEX idx_anexo_producto ON anexo(id_producto);
 CREATE INDEX idx_movimiento_codigo ON movimiento(codigo);
 CREATE INDEX idx_movimiento_convenio ON movimiento(id_convenio);
 CREATE INDEX idx_movimiento_cliente ON movimiento(id_cliente);
@@ -564,24 +548,22 @@ CREATE INDEX idx_cuenta_dependencia ON cuenta(id_dependencia);
 CREATE INDEX idx_cuenta_tipo ON cuenta(id_tipo_cuenta);
 CREATE INDEX idx_cuenta_cliente ON cuenta(id_cliente);
 CREATE INDEX idx_anexo_dependencia ON anexo(id_dependencia);
+CREATE INDEX idx_item_anexo_anexo ON item_anexo(id_anexo);
+CREATE INDEX idx_item_anexo_producto ON item_anexo(id_producto);
 CREATE INDEX idx_contrato_cliente ON contrato(id_cliente);
 CREATE INDEX idx_contrato_estado ON contrato(id_estado);
 CREATE INDEX idx_contrato_tipo ON contrato(id_tipo_contrato);
 CREATE INDEX idx_contrato_moneda ON contrato(id_moneda);
-CREATE INDEX idx_contrato_producto_contrato ON contrato_producto(id_contrato);
-CREATE INDEX idx_contrato_producto_producto ON contrato_producto(id_producto);
 CREATE INDEX idx_suplemento_contrato ON suplemento(id_contrato);
 CREATE INDEX idx_suplemento_estado ON suplemento(id_estado);
-CREATE INDEX idx_suplemento_producto_suplemento ON suplemento_producto(id_suplemento);
-CREATE INDEX idx_suplemento_producto_producto ON suplemento_producto(id_producto);
 CREATE INDEX idx_factura_contrato ON factura(id_contrato);
 CREATE INDEX idx_factura_codigo ON factura(codigo_factura);
-CREATE INDEX idx_factura_producto_factura ON factura_producto(id_factura);
-CREATE INDEX idx_factura_producto_producto ON factura_producto(id_producto);
+CREATE INDEX idx_item_factura_factura ON item_factura(id_factura);
+CREATE INDEX idx_item_factura_producto ON item_factura(id_producto);
 CREATE INDEX idx_venta_efectivo_dependencia ON venta_efectivo(id_dependencia);
 CREATE INDEX idx_venta_efectivo_fecha ON venta_efectivo(fecha);
-CREATE INDEX idx_venta_efectivo_producto_venta ON venta_efectivo_producto(id_venta_efectivo);
-CREATE INDEX idx_venta_efectivo_producto_producto ON venta_efectivo_producto(id_producto);
+CREATE INDEX idx_item_venta_efectivo_venta ON item_venta_efectivo(id_venta_efectivo);
+CREATE INDEX idx_item_venta_efectivo_producto ON item_venta_efectivo(id_producto);
 
 -- =====================================================
 -- DATOS INICIALES
@@ -604,6 +586,14 @@ INSERT INTO tipo_contrato (nombre, descripcion) VALUES
 ('ALQUILER', 'Contrato de alquiler'),
 ('COMPRA', 'Contrato de compraventa');
 
+-- Tipos de Convenio
+INSERT INTO tipo_convenio (nombre, descripcion) VALUES 
+('Contrato de Servicios', 'Contrato de servicios'),
+('Acuerdo de Suministro', 'Acuerdo de suministro'),
+('Contrato de Obra', 'Contrato de obra'),
+('Convenio Marco', 'Convenio marco'),
+('COMPRA VENTA', 'Convenio de compraventa de productos');
+
 -- Estados de Contrato
 INSERT INTO estado_contrato (nombre, descripcion) VALUES 
 ('ACTIVO', 'Contrato vigente'),
@@ -616,6 +606,9 @@ INSERT INTO tipo_movimiento (tipo, factor) VALUES
 ('compra', 1),
 ('venta', -1),
 ('RECEPCION', 1),
+('MERMA', -1),
+('DONACION', -1),
+('DEVOLUCION', -1),
 ('AJUSTE_QUITAR', -1),
 ('AJUSTE_AGREGAR', 1);
 
@@ -625,6 +618,28 @@ INSERT INTO tipo_entidad (nombre, descripcion) VALUES
 ('UEB', 'Unidad Empresarial de Base'),
 ('Empresas Presupuestadas', 'Entidades presupuestadas del Estado'),
 ('Instituciones MINSAP', 'Instituciones rectoras del Ministerio de Salud Pública');
+
+-- Tipos de Proveedor
+INSERT INTO tipo_proveedor (nombre, descripcion) VALUES 
+('Nacional', 'Proveedor nacional'),
+('Internacional', 'Proveedor internacional'),
+('Persona Natural', 'Persona física como proveedor'),
+('Persona Jurídica', 'Empresa o entidad jurídica como proveedor');
+
+-- Tipos de Cuenta
+INSERT INTO tipo_cuenta (nombre, descripcion) VALUES 
+('Corriente', 'Cuenta corriente'),
+('Ahorros', 'Cuenta de ahorros'),
+('Moneda Nacional', 'Cuenta en moneda nacional'),
+('Moneda Extranjera', 'Cuenta en moneda extranjera');
+
+-- Categorías
+INSERT INTO categorias (nombre, descripcion) VALUES 
+('General', 'Categoría general de productos');
+
+-- Subcategorías
+INSERT INTO subcategorias (id_categoria, nombre, descripcion) VALUES 
+(1, 'General', 'Subcategoría general de productos');
 
 -- Provincias de Cuba
 INSERT INTO provincia (nombre) VALUES 
@@ -856,76 +871,27 @@ INSERT INTO municipio (id_provincia, nombre) VALUES
 
 -- Grupos
 INSERT INTO grupo (nombre, descripcion) VALUES 
-('ADMINISTRADOR', 'Grupo con acceso total al sistema'),
-('GERENCIA', 'Grupo de gerencia con permisos de gestión'),
-('VENTAS', 'Grupo de ventas'),
-('COMPRAS', 'Grupo de compras'),
-('INVENTARIO', 'Grupo de inventario'),
-('CONTABILIDAD', 'Grupo de contabilidad');
+('ADMINISTRADOR', 'Grupo con acceso total al sistema');
 
--- Funcionalidades del sistema
+-- Funcionalidades del sistema (solo items de sidebar y tabs de configuración)
 INSERT INTO funcionalidad (nombre) VALUES 
-('ventas'),
-('ventas_crear'),
-('ventas_editar'),
-('ventas_eliminar'),
-('ventas_ver'),
-('compras'),
-('compras_crear'),
-('compras_editar'),
-('compras_eliminar'),
-('compras_ver'),
-('inventario'),
-('inventario_crear'),
-('inventario_editar'),
-('inventario_eliminar'),
-('inventario_ver'),
 ('movimientos'),
-('movimientos_crear'),
-('movimientos_editar'),
-('movimientos_ver'),
-('clientes'),
-('clientes_crear'),
-('clientes_editar'),
-('clientes_eliminar'),
-('clientes_ver'),
-('proveedores'),
-('proveedores_crear'),
-('proveedores_editar'),
-('proveedores_eliminar'),
-('proveedores_ver'),
-('convenios'),
-('convenios_crear'),
-('convenios_editar'),
-('convenios_eliminar'),
-('convenios_ver'),
-('contratos'),
-('contratos_crear'),
-('contratos_editar'),
-('contratos_eliminar'),
-('contratos_ver'),
-('liquidaciones'),
-('liquidaciones_crear'),
-('liquidaciones_editar'),
-('liquidaciones_eliminar'),
-('liquidaciones_ver'),
+('pendientes'),
 ('productos'),
-('productos_crear'),
-('productos_editar'),
-('productos_eliminar'),
-('productos_ver'),
-('usuarios'),
-('usuarios_crear'),
-('usuarios_editar'),
-('usuarios_eliminar'),
-('usuarios_ver'),
 ('configuracion'),
-('configuracion_editar'),
-('configuracion_ver'),
-('reportes'),
-('reportes_ver'),
-('dashboard'),
-('dashboard_ver');
+('monedas'),
+('usuarios'),
+('grupos'),
+('proveedores'),
+('convenios'),
+('anexos'),
+('liquidaciones'),
+('productos_liquidacion'),
+('clientes'),
+('contratos'),
+('suplementos'),
+('facturas'),
+('efectivo');
 
 -- Asignar todas las funcionalidades al grupo ADMINISTRADOR
 INSERT INTO grupo_funcionalidad (id_grupo, id_funcionalidad)
@@ -934,13 +900,12 @@ SELECT 1, id_funcionalidad FROM funcionalidad;
 
 -- Tipo de dependencia para la matriz
 INSERT INTO tipo_dependencia (nombre, descripcion) VALUES 
-('MATRIZ', 'Casa matriz o oficina principal'),
 ('SUCURSAL', 'Sucursal o agencia'),
 ('ALMACEN', 'Almacén de productos');
 
 -- Dependencia matriz (oficina principal)
 INSERT INTO dependencia (id_tipo_dependencia, nombre, direccion, telefono, email, web, id_provincia, id_municipio, descripcion)
-VALUES (1, 'Caguayo Matriz', 'Vista Alegre', '+53 7 1234567', 'info@caguayo.cu', 'https://caguayo.cu', 3, 35, 'Oficina principal de Caguayo');
+VALUES (1, 'Caguayo', 'Vista Alegre', '+53 7 1234567', 'info@caguayo.cu', 'https://caguayo.cu', 14, 14, 'Oficina principal de Caguayo');
 
 -- Usuario superadministrador (contraseña: Admin123@)
 INSERT INTO usuarios (ci, nombre, primer_apellido, segundo_apellido, alias, contrasenia, id_grupo, id_dependencia)

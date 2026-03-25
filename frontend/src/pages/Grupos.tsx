@@ -267,16 +267,21 @@ export function GruposPage() {
   const content = (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Grupos</h1>
-          <p className="text-gray-500 mt-1">
-            {filteredGrupos.length === grupos.length 
-              ? `Gestión de grupos (${grupos.length} grupos)`
-              : `Mostrando ${filteredGrupos.length} de ${grupos.length} grupos`
-            }
-          </p>
+        <div className="flex items-center gap-4">
+          <div className="p-3 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl shadow-lg animate-bounce-subtle">
+            <Shield className="h-8 w-8 text-white" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Grupos</h1>
+            <p className="text-gray-500 mt-1">
+              {filteredGrupos.length === grupos.length 
+                ? `Gestión de grupos (${grupos.length} grupos)`
+                : `Mostrando ${filteredGrupos.length} de ${grupos.length} grupos`
+              }
+            </p>
+          </div>
         </div>
-        <Button onClick={() => setView('form')} className="gap-2 shadow-sm">
+        <Button onClick={() => setView('form')} className="gap-2 bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300">
           <Plus className="h-4 w-4" />
           Nuevo Grupo
         </Button>
@@ -295,10 +300,10 @@ export function GruposPage() {
         </div>
       </div>
 
-      <Card className="overflow-hidden shadow-sm border-gray-200">
+      <Card className="overflow-hidden hover:shadow-lg transition-shadow duration-300">
         <div className="overflow-x-auto">
           <Table>
-            <TableHeader className="bg-gray-50/50">
+            <TableHeader className="bg-gradient-to-r from-purple-50 to-pink-50">
               <TableRow>
                 <TableHead>ID</TableHead>
                 <TableHead>Nombre</TableHead>

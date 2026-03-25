@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button, Input, Label, Card, CardContent, CardHeader, CardTitle } from '../../components/ui';
 import { clientesService, anexosService, monedaService, liquidacionService } from '../../services/api';
-import type { Cliente, Anexo, Moneda, ProductosEnLiquidacion, LiquidacionCreate } from '../../services/api';
-import { Plus, Save, ArrowLeft, CheckCircle } from 'lucide-react';
+import type { Cliente, Anexo, Moneda, LiquidacionCreate } from '../../services/api';
+import { Plus, Save, ArrowLeft, CheckCircle, Package } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export function CrearLiquidacionPage() {
@@ -12,7 +12,7 @@ export function CrearLiquidacionPage() {
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [anexos, setAnexos] = useState<Anexo[]>([]);
   const [monedas, setMonedas] = useState<Moneda[]>([]);
-  const [productosPendientes, setProductosPendientes] = useState<ProductosEnLiquidacion[]>([]);
+  const [itemsAnexo, setItemsAnexo] = useState<any[]>([]);
   
   const [filtroCliente, setFiltroCliente] = useState<number | null>(null);
   const [filtroAnexo, setFiltroAnexo] = useState<number | null>(null);
@@ -40,9 +40,9 @@ export function CrearLiquidacionPage() {
 
   useEffect(() => {
     if (filtroCliente) {
-      loadProductosPendientes();
+      loadItemsAnexo();
     } else {
-      setProductosPendientes([]);
+      setItemsAnexo([]);
     }
   }, [filtroCliente, filtroAnexo]);
 
@@ -54,16 +54,7 @@ export function CrearLiquidacionPage() {
         monedaService.getMonedas()
       ]);
       
-      console.log('Clientes raw:', clientesData);
-      console.log('Clientes filtrados:', clientesData.filter((c: Cliente) => 
-        c.tipo_relacion === 'PROVEEDOR' || c.tipo_relacion === 'AMBAS'
-      ));
-      
-      // Temporal: mostrar todos los clientes para debug
       setClientes(clientesData);
-      // setClientes(clientesData.filter((c: Cliente) => 
-      //   c.tipo_relacion === 'PROVEEDOR' || c.tipo_relacion === 'AMBAS'
-      // ));
       setAnexos(anexosData);
       setMonedas(monedasData);
     } catch (error) {
@@ -71,16 +62,25 @@ export function CrearLiquidacionPage() {
     }
   };
 
-  const loadProductosPendientes = async () => {
+  const anexosFiltrados = useMemo(() => {
+    if (!filtroCliente) return anexos;
+    // Filtrar anexos cuyo convenio pertenezca al cliente seleccionado
+    return anexos.filter(a => {
+      const convenio = (a as any).convenio;
+      return convenio && convenio.id_cliente === filtroCliente;
+    });
+  }, [anexos, filtroCliente]);
+
+  const loadItemsAnexo = async () => {
     if (!filtroCliente) return;
     
     setIsLoadingProductos(true);
     try {
-      const data = await liquidacionService.getProductosPendientesByCliente(
+      const data = await liquidacionService.getItemsAnexoConEstado(
         filtroCliente, 
         filtroAnexo || undefined
       );
-      setProductosPendientes(data);
+      setItemsAnexo(data);
       setSelectedProductos([]);
     } catch (error) {
       console.error('Error cargando productos:', error);
@@ -127,7 +127,8 @@ export function CrearLiquidacionPage() {
   };
 
   const handleSelectAll = () => {
-    const allIds = productosPendientes.map((p: ProductosEnLiquidacion) => p.id_producto_en_liquidacion);
+    const vendidos = itemsAnexo.filter((item: any) => item.estado === 'VENDIDO' && item.id_producto_en_liquidacion);
+    const allIds = vendidos.map((item: any) => item.id_producto_en_liquidacion);
     setSelectedProductos(allIds);
     setFormData(prev => ({ ...prev, producto_ids: allIds }));
   };
@@ -138,10 +139,10 @@ export function CrearLiquidacionPage() {
   };
 
   const calculateImporte = () => {
-    return productosPendientes
-      .filter((p: ProductosEnLiquidacion) => selectedProductos.includes(p.id_producto_en_liquidacion))
-      .reduce((sum: number, p: ProductosEnLiquidacion) => {
-        return sum + (p.precio * p.cantidad);
+    return itemsAnexo
+      .filter((item: any) => item.estado === 'VENDIDO' && selectedProductos.includes(item.id_producto_en_liquidacion))
+      .reduce((sum: number, item: any) => {
+        return sum + (item.precio_venta * item.cantidad);
       }, 0);
   };
 
@@ -228,7 +229,7 @@ export function CrearLiquidacionPage() {
                 disabled={!filtroCliente}
               >
                 <option value="">Todos los anexos</option>
-                {anexos.map((anexo: Anexo) => (
+                {anexosFiltrados.map((anexo: Anexo) => (
                   <option key={anexo.id_anexo} value={anexo.id_anexo}>
                     {anexo.nombre_anexo}
                   </option>
@@ -291,41 +292,60 @@ export function CrearLiquidacionPage() {
               
               {isLoadingProductos ? (
                 <p className="text-gray-500 py-4">Cargando productos...</p>
-              ) : productosPendientes.length === 0 ? (
-                <p className="text-gray-500 py-4">No hay productos pendientes para este proveedor</p>
+              ) : itemsAnexo.length === 0 ? (
+                <p className="text-gray-500 py-4">No hay productos en los anexos de este proveedor</p>
               ) : (
-                <div className="border rounded-lg max-h-64 overflow-y-auto">
+                <div className="border rounded-lg max-h-80 overflow-y-auto">
                   <table className="w-full text-sm">
                     <thead className="bg-gray-50 sticky top-0">
                       <tr>
                         <th className="px-3 py-2 text-left w-10"></th>
-                        <th className="px-3 py-2 text-left">Código</th>
+                        <th className="px-3 py-2 text-left">Anexo</th>
                         <th className="px-3 py-2 text-left">Producto</th>
                         <th className="px-3 py-2 text-right">Cantidad</th>
-                        <th className="px-3 py-2 text-right">Precio</th>
+                        <th className="px-3 py-2 text-right">Precio Venta</th>
                         <th className="px-3 py-2 text-right">Total</th>
+                        <th className="px-3 py-2 text-center">Estado</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y">
-                      {productosPendientes.map((prod: ProductosEnLiquidacion) => (
-                        <tr key={prod.id_producto_en_liquidacion} className="hover:bg-gray-50">
-                          <td className="px-3 py-2">
-                            <input
-                              type="checkbox"
-                              checked={selectedProductos.includes(prod.id_producto_en_liquidacion)}
-                              onChange={() => handleProductoSelect(prod.id_producto_en_liquidacion)}
-                              className="rounded"
-                            />
-                          </td>
-                          <td className="px-3 py-2">{prod.codigo}</td>
-                          <td className="px-3 py-2">{prod.producto?.nombre || `Producto ${prod.id_producto}`}</td>
-                          <td className="px-3 py-2 text-right">{prod.cantidad}</td>
-                          <td className="px-3 py-2 text-right">{prod.precio?.toLocaleString()}</td>
-                          <td className="px-3 py-2 text-right font-medium">
-                            {(prod.precio * prod.cantidad).toLocaleString()}
-                          </td>
-                        </tr>
-                      ))}
+                      {itemsAnexo.map((item: any) => {
+                        const isVendido = item.estado === 'VENDIDO';
+                        const isLiquidado = item.estado === 'LIQUIDADO';
+                        const isSelected = isVendido && item.id_producto_en_liquidacion && selectedProductos.includes(item.id_producto_en_liquidacion);
+                        return (
+                          <tr key={item.id_item_anexo} className={`hover:bg-gray-50 ${!isVendido ? 'opacity-60' : ''}`}>
+                            <td className="px-3 py-2">
+                              {isVendido && item.id_producto_en_liquidacion ? (
+                                <input
+                                  type="checkbox"
+                                  checked={isSelected}
+                                  onChange={() => handleProductoSelect(item.id_producto_en_liquidacion)}
+                                  className="rounded"
+                                />
+                              ) : (
+                                <span className="text-gray-300">-</span>
+                              )}
+                            </td>
+                            <td className="px-3 py-2 text-gray-600">{item.nombre_anexo}</td>
+                            <td className="px-3 py-2">{item.producto_nombre || `Producto ${item.id_producto}`}</td>
+                            <td className="px-3 py-2 text-right">{item.cantidad}</td>
+                            <td className="px-3 py-2 text-right">${Number(item.precio_venta).toFixed(2)}</td>
+                            <td className="px-3 py-2 text-right font-medium">
+                              ${(item.precio_venta * item.cantidad).toFixed(2)}
+                            </td>
+                            <td className="px-3 py-2 text-center">
+                              <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${
+                                isLiquidado ? 'bg-green-100 text-green-800' :
+                                isVendido ? 'bg-blue-100 text-blue-800' :
+                                'bg-gray-100 text-gray-600'
+                              }`}>
+                                {item.estado}
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>

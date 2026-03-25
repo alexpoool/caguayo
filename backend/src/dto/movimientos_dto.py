@@ -39,6 +39,8 @@ class MovimientoBase(SQLModel):
     moneda_compra: Optional[int] = None
     precio_venta: Optional[Decimal] = None
     moneda_venta: Optional[int] = None
+    id_anexo: Optional[int] = None
+    id_factura: Optional[int] = None
 
 
 class MovimientoCreate(MovimientoBase):
@@ -88,10 +90,13 @@ class DestinoAjuste(SQLModel):
 
 
 class AjusteCreate(SQLModel):
-    id_movimiento_origen: int
+    id_movimiento_origen: Optional[int] = None
+    id_producto: Optional[int] = None
+    id_dependencia_origen: Optional[int] = None
     destinos: list[DestinoAjuste]
     fecha: Optional[str] = None
     observacion: Optional[str] = None
+    codigo: Optional[str] = None
 
 
 class MovimientoAjusteRead(SQLModel):

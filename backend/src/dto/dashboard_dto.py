@@ -1,10 +1,6 @@
 from sqlmodel import SQLModel
-from typing import List, Optional
+from typing import List, Any
 from decimal import Decimal
-from datetime import date
-from .productos_dto import ProductoSimpleRead
-from .ventas_dto import VentaRead
-from .clientes_dto import ClienteRead
 
 
 class ProductoStats(SQLModel):
@@ -18,56 +14,39 @@ class ProductoStats(SQLModel):
 
 
 class DashboardStats(SQLModel):
-    # Conteos principales
-    total_productos: int
-    total_ventas: int
-    total_clientes: int
-    total_categorias: int
-    total_monedas: int
-
-    # Ventas de hoy (prioridad según usuario)
-    ventas_hoy: Decimal
-    ventas_hoy_cantidad: int
-
-    # Comparativas
-    ventas_ayer: Decimal
-    ventas_crecimiento_porcentaje: float
-
-    # Estados de ventas
-    ventas_pendientes: int
-    ventas_completadas: int
-    ventas_anuladas: int
-
-    # Métricas
-    ticket_promedio: Decimal
-
-    # Inventario
-    productos_stock_bajo: List[ProductoSimpleRead]
-    productos_agotados: int
-    valor_inventario_compra: Decimal
-    valor_inventario_venta: Decimal
-
-    # Listas para tablas
-    ultimas_ventas: List[VentaRead]
-    clientes_recientes: List[ClienteRead]
-    top_productos: List[ProductoStats]
+    total_productos: int = 0
+    total_ventas: int = 0
+    total_clientes: int = 0
+    total_categorias: int = 0
+    total_monedas: int = 0
+    ventas_hoy: Decimal = Decimal("0")
+    ventas_hoy_cantidad: int = 0
+    ventas_ayer: Decimal = Decimal("0")
+    ventas_crecimiento_porcentaje: float = 0.0
+    ventas_pendientes: int = 0
+    ventas_completadas: int = 0
+    ventas_anuladas: int = 0
+    ticket_promedio: Decimal = Decimal("0")
+    productos_stock_bajo: List[Any] = []
+    productos_agotados: int = 0
+    valor_inventario_compra: Decimal = Decimal("0")
+    valor_inventario_venta: Decimal = Decimal("0")
+    ultimas_ventas: List[Any] = []
+    clientes_recientes: List[Any] = []
+    top_productos: List[Any] = []
 
 
 class VentasTrends(SQLModel):
-    """Tendencia de ventas para gráficos"""
-
-    fechas: List[str]  # Formato ISO: "2024-01-15"
-    montos: List[Decimal]
-    cantidades: List[int]
-    periodo: str  # "hoy", "semana", "mes", "año"
+    fechas: List[str] = []
+    montos: List[Decimal] = []
+    cantidades: List[int] = []
+    periodo: str = ""
 
 
 class MovimientosTrends(SQLModel):
-    """Tendencia de movimientos para gráficos"""
-
-    fechas: List[str]  # Formato ISO: "2024-01-15"
-    recepciones: List[int]
-    mermas: List[int]
-    donaciones: List[int]
-    devoluciones: List[int]
-    periodo: str  # "hoy", "semana", "mes", "año"
+    fechas: List[str] = []
+    recepciones: List[int] = []
+    mermas: List[int] = []
+    donaciones: List[int] = []
+    devoluciones: List[int] = []
+    periodo: str = ""

@@ -6,6 +6,7 @@ from src.services.contrato_service import TipoContratoService, EstadoContratoSer
 from src.services.proveedor_convenio_service import (
     TipoClienteService,
     TipoConvenioService,
+    TipoProveedorService,
 )
 from src.services.tipo_dependencia_service import TipoDependenciaService
 from src.services.tipo_cuenta_service import TipoCuentaService
@@ -19,6 +20,9 @@ from src.dto import (
     TipoClienteCreate,
     TipoClienteRead,
     TipoClienteUpdate,
+    TipoProveedorCreate,
+    TipoProveedorRead,
+    TipoProveedorUpdate,
     TipoConvenioCreate,
     TipoConvenioRead,
     TipoConvenioUpdate,
@@ -182,6 +186,57 @@ async def eliminar_tipo_proveedor(
     db: AsyncSession = Depends(get_session),
 ):
     success = await TipoClienteService.delete(db, tipo_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Tipo de proveedor no encontrado")
+
+
+# Endpoints para Tipos de Proveedores
+@router.get("/tipos-proveedores", response_model=List[TipoProveedorRead])
+async def listar_tipos_proveedor(
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=1000),
+    db: AsyncSession = Depends(get_session),
+):
+    return await TipoProveedorService.get_all(db, skip=skip, limit=limit)
+
+
+@router.post("/tipos-proveedores", response_model=TipoProveedorRead, status_code=201)
+async def crear_tipo_proveedor(
+    data: TipoProveedorCreate,
+    db: AsyncSession = Depends(get_session),
+):
+    return await TipoProveedorService.create(db, data)
+
+
+@router.get("/tipos-proveedores/{tipo_id}", response_model=TipoProveedorRead)
+async def obtener_tipo_proveedor(
+    tipo_id: int,
+    db: AsyncSession = Depends(get_session),
+):
+    result = await TipoProveedorService.get(db, tipo_id)
+    if not result:
+        raise HTTPException(status_code=404, detail="Tipo de proveedor no encontrado")
+    return result
+
+
+@router.put("/tipos-proveedores/{tipo_id}", response_model=TipoProveedorRead)
+async def actualizar_tipo_proveedor(
+    tipo_id: int,
+    data: TipoProveedorUpdate,
+    db: AsyncSession = Depends(get_session),
+):
+    result = await TipoProveedorService.update(db, tipo_id, data)
+    if not result:
+        raise HTTPException(status_code=404, detail="Tipo de proveedor no encontrado")
+    return result
+
+
+@router.delete("/tipos-proveedores/{tipo_id}", status_code=204)
+async def eliminar_tipo_proveedor(
+    tipo_id: int,
+    db: AsyncSession = Depends(get_session),
+):
+    success = await TipoProveedorService.delete(db, tipo_id)
     if not success:
         raise HTTPException(status_code=404, detail="Tipo de proveedor no encontrado")
 

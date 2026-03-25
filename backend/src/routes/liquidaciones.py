@@ -78,6 +78,21 @@ async def listar_productos_pendientes_por_cliente(
     )
 
 
+@router.get(
+    "/productos-anexo/cliente/{cliente_id}",
+    response_model=List[dict],
+)
+async def listar_items_anexo_con_estado(
+    cliente_id: int,
+    anexo_id: Optional[int] = Query(None),
+    db: AsyncSession = Depends(get_session),
+):
+    """Listar todos los items de anexos del cliente con estado (NO_VENDIDO, VENDIDO, LIQUIDADO)."""
+    return await liquidacion_service.get_items_anexo_con_estado(
+        db, cliente_id, anexo_id
+    )
+
+
 @router.post("", response_model=LiquidacionRead, status_code=201)
 async def crear_liquidacion(
     liquidacion: LiquidacionCreate,

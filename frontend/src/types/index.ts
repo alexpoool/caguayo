@@ -94,14 +94,12 @@ export interface MovimientoCreate {
   codigo?: string;
   id_cliente?: number;
   precio_compra?: number;
-  id_moneda_compra?: number;
+  moneda_compra?: number;
   precio_venta?: number;
-  id_moneda_venta?: number;
+  moneda_venta?: number;
   id_contrato?: number;
-  id_suplemento?: number;
+  id_factura?: number;
   id_anexo?: number;
-  id_provedor?: number;
-  id_convenio?: number;
 }
 
 export interface TipoMovimiento {
@@ -110,12 +108,20 @@ export interface TipoMovimiento {
   factor: number;
 }
 
-export interface Provedor {
-  id_provedores: number;
-  id_tipo_provedor: number;
+export interface TipoProveedor {
+  id_tipo_proveedor: number;
   nombre: string;
-  email?: string;
-  direccion?: string;
+  descripcion?: string;
+}
+
+export interface TipoProveedorCreate {
+  nombre: string;
+  descripcion?: string;
+}
+
+export interface TipoProveedorUpdate {
+  nombre?: string;
+  descripcion?: string;
 }
 
 export interface TipoConvenio {
@@ -201,6 +207,9 @@ export interface ProductoConCantidad {
   nombre: string;
   descripcion?: string;
   cantidad: number;
+  precio_compra?: number;
+  id_anexo?: number;
+  id_convenio?: number;
 }
 
 export interface ProductosUpdate {
@@ -219,8 +228,8 @@ export interface ProductosUpdate {
 export interface OrigenRecepcion {
   codigo: string;
   anio?: number;
-  proveedor?: {
-    id_provedor: number;
+  cliente?: {
+    id_cliente: number;
     nombre: string;
   };
   convenio?: {

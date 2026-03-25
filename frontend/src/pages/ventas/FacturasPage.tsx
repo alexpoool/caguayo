@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
-import { Button, Input, Label, Card, CardContent, CardHeader, CardTitle } from '../../components/ui';
-import { facturasService, contratosService, productosService } from '../../services/api';
+import { createPortal } from 'react-dom';
+import { Button, Input, Label, Card, CardContent, CardHeader, CardTitle, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, ConfirmModal } from '../../components/ui';
+import { facturasService, contratosService, productosService, monedaService, dependenciasService } from '../../services/api';
 import type { ContratoWithDetails } from '../../types/contrato';
 import type { Productos } from '../../types';
 import type { FacturaWithDetails } from '../../types/contrato';
-import { Plus, Save, Trash2, Edit, X, ArrowLeft } from 'lucide-react';
+import type { Dependencia } from '../../types/dependencia';
+import { Plus, Save, Trash2, Edit, X, ArrowLeft, Search, Receipt, DollarSign, Calendar, FileText } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 type View = 'list' | 'form';
@@ -15,22 +17,43 @@ export function FacturasPage() {
   const [facturas, setFacturas] = useState<FacturaWithDetails[]>([]);
   const [contratos, setContratos] = useState<ContratoWithDetails[]>([]);
   const [productos, setProductos] = useState<Productos[]>([]);
+  const [monedas, setMonedas] = useState<any[]>([]);
+  const [dependencias, setDependencias] = useState<Dependencia[]>([]);
   
   const [editingId, setEditingId] = useState<number | null>(null);
   const [selectedContratoId, setSelectedContratoId] = useState<number | null>(null);
   const [formData, setFormData] = useState<Record<string, any>>({});
-  const [selectedProducts, setSelectedProducts] = useState<{id_producto: number; cantidad: number}[]>([]);
+  const [selectedProducts, setSelectedProducts] = useState<{id_producto: number; cantidad: number; precio_venta: number}[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [detailModal, setDetailModal] = useState<{ isOpen: boolean; item: FacturaWithDetails | null }>({ isOpen: false, item: null });
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+    type: 'danger' | 'warning' | 'info';
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => {},
+    type: 'danger'
+  });
 
   useEffect(() => { loadInitialData(); }, []);
 
   const loadInitialData = async () => {
     try {
-      const [contratosRes, productosRes] = await Promise.all([
+      const [contratosRes, productosRes, monedasRes, depsRes] = await Promise.all([
         contratosService.getContratos(0, 1000),
-        productosService.getProductos(0, 1000)
+        productosService.getProductos(0, 1000),
+        monedaService.getMonedas(0, 100),
+        dependenciasService.getDependencias(undefined, 0, 1000)
       ]);
       setContratos(contratosRes);
       setProductos(productosRes);
+      setMonedas(monedasRes);
+      setDependencias(depsRes);
     } catch (error) { console.error('Error:', error); }
   };
 
@@ -51,12 +74,18 @@ export function FacturasPage() {
     try {
       const data = { 
         id_contrato: selectedContratoId, 
-        codigo_factura: formData.codigo_factura || '',
+        ...(formData.codigo_factura ? { codigo_factura: formData.codigo_factura } : {}),
         fecha: formData.fecha || new Date().toISOString().split('T')[0],
         descripcion: formData.descripcion,
         observaciones: formData.observaciones,
-        pago_actual: Number(formData.pago_actual) || 0,
-        productos: selectedProducts 
+        id_dependencia: formData.id_dependencia ? Number(formData.id_dependencia) : 4,
+        id_moneda: formData.id_moneda ? Number(formData.id_moneda) : undefined,
+        items: selectedProducts.map(p => ({
+          id_producto: p.id_producto,
+          cantidad: p.cantidad,
+          precio_venta: p.precio_venta,
+          id_moneda: formData.id_moneda ? Number(formData.id_moneda) : 1
+        }))
       };
       editingId ? await facturasService.updateFactura(editingId, data as any) : await facturasService.createFactura(data as any);
       toast.success(editingId ? 'Actualizado' : 'Creado');
@@ -66,13 +95,20 @@ export function FacturasPage() {
     } catch (error: any) { toast.error(error.message || 'Error'); }
   };
 
-  const handleDelete = async (id: number) => {
-    if (!confirm('¿Eliminar?')) return;
-    try {
-      await facturasService.deleteFactura(id);
-      toast.success('Eliminado');
-      loadFacturas();
-    } catch (error: any) { toast.error(error.message || 'Error'); }
+  const handleDelete = async (id: number, codigo: string) => {
+    setConfirmModal({
+      isOpen: true,
+      title: '¿Eliminar factura?',
+      message: `¿Está seguro de eliminar la factura "${codigo}"?`,
+      onConfirm: async () => {
+        try {
+          await facturasService.deleteFactura(id);
+          toast.success('Eliminado');
+          loadFacturas();
+        } catch (error: any) { toast.error(error.message || 'Error'); }
+      },
+      type: 'danger'
+    });
   };
 
   const resetForm = () => { setFormData({}); setSelectedProducts([]); setEditingId(null); };
@@ -85,100 +121,247 @@ export function FacturasPage() {
         descripcion: item.descripcion,
         observaciones: item.observaciones,
         fecha: item.fecha,
-        pago_actual: item.pago_actual
+        id_dependencia: item.id_dependencia || '',
+        id_moneda: item.id_moneda || ''
       });
-      setSelectedProducts(item.productos?.map((p: any) => ({ id_producto: p.id_producto, cantidad: p.cantidad })) || []);
+      setSelectedProducts(item.items?.map((p: any) => ({ id_producto: p.id_producto, cantidad: p.cantidad, precio_venta: p.precio_venta || 0 })) || []);
     } else { resetForm(); }
     setView('form');
   };
 
-  const addProduct = (id: number) => { if (!selectedProducts.find(p => p.id_producto === id)) setSelectedProducts([...selectedProducts, { id_producto: id, cantidad: 1 }]); };
+  const addProduct = (id: number) => { 
+    const producto = productos.find(p => p.id_producto === id);
+    if (!selectedProducts.find(p => p.id_producto === id)) {
+      setSelectedProducts([...selectedProducts, { 
+        id_producto: id, 
+        cantidad: 1, 
+        precio_venta: producto ? Number(producto.precio_venta) : 0 
+      }]); 
+    }
+  };
   const updateCantidad = (id: number, qty: number) => { setSelectedProducts(selectedProducts.map(p => p.id_producto === id ? { ...p, cantidad: qty } : p)); };
+  const updatePrecioVenta = (id: number, precio: number) => { setSelectedProducts(selectedProducts.map(p => p.id_producto === id ? { ...p, precio_venta: precio } : p)); };
   const removeProduct = (id: number) => { setSelectedProducts(selectedProducts.filter(p => p.id_producto !== id)); };
 
-  const renderProductSelector = () => (
-    <div className="mt-4 p-4 border rounded-lg bg-gray-50">
-      <Label className="mb-2 block">Productos</Label>
-      <div className="flex flex-wrap gap-2 mb-3">
-        {productos.map(p => <Button key={p.id_producto} variant="outline" size="sm" onClick={() => addProduct(p.id_producto)} disabled={selectedProducts.some(sp => sp.id_producto === p.id_producto)}>{p.nombre}</Button>)}
-      </div>
-      {selectedProducts.length > 0 && (
-        <div className="space-y-2">
-          {selectedProducts.map(p => { const pr = productos.find(pr => pr.id_producto === p.id_producto); return (
-            <div key={p.id_producto} className="flex items-center gap-2 p-2 bg-white rounded">
-              <span className="flex-1">{pr?.nombre}</span>
-              <Input type="number" min="1" value={p.cantidad} onChange={(e: any) => updateCantidad(p.id_producto, Number(e.target.value))} className="w-20" />
-              <button onClick={() => removeProduct(p.id_producto)} className="text-red-500"><X className="w-4 h-4" /></button>
-            </div>
-          ); })}
+  const renderProductSelector = () => {
+    const calcTotal = () => selectedProducts.reduce((t, p) => t + (p.cantidad * p.precio_venta), 0);
+    
+    return (
+      <div className="mt-4 p-4 border rounded-lg bg-gray-50">
+        <Label className="mb-2 block">Productos</Label>
+        <div className="flex flex-wrap gap-2 mb-3">
+          {productos.map(p => <Button key={p.id_producto} variant="outline" size="sm" onClick={() => addProduct(p.id_producto)} disabled={selectedProducts.some(sp => sp.id_producto === p.id_producto)}>{p.nombre}</Button>)}
         </div>
-      )}
-    </div>
-  );
+        {selectedProducts.length > 0 && (
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 p-2 bg-gray-100 rounded font-semibold text-sm">
+              <span className="flex-1">Producto</span>
+              <span className="w-20 text-center">Cantidad</span>
+              <span className="w-24 text-center">Precio</span>
+              <span className="w-20 text-right">Subtotal</span>
+              <span className="w-6"></span>
+            </div>
+            {selectedProducts.map(p => { const pr = productos.find(pr => pr.id_producto === p.id_producto); return (
+              <div key={p.id_producto} className="flex items-center gap-2 p-2 bg-white rounded">
+                <span className="flex-1">{pr?.nombre}</span>
+                <Input type="number" min="1" value={p.cantidad} onChange={(e: any) => updateCantidad(p.id_producto, Number(e.target.value))} className="w-20" placeholder="Cantidad" />
+                <Input type="number" step="0.01" value={p.precio_venta} onChange={(e: any) => updatePrecioVenta(p.id_producto, Number(e.target.value))} className="w-24" placeholder="Precio" />
+                <span className="w-20 text-right text-gray-600">${(p.cantidad * p.precio_venta).toFixed(2)}</span>
+                <button onClick={() => removeProduct(p.id_producto)} className="text-red-500"><X className="w-4 h-4" /></button>
+              </div>
+            ); })}
+            <div className="text-right font-bold text-lg mt-2 pt-2 border-t">
+              Monto Total: ${calcTotal().toFixed(2)}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
 
   const renderList = () => (
-    <div className="space-y-4">
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold">Facturas</h2>
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div className="flex items-center gap-4">
+          <div className="p-3 bg-gradient-to-br from-violet-500 to-purple-600 rounded-xl shadow-lg animate-bounce-subtle">
+            <Receipt className="h-8 w-8 text-white" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Facturas</h1>
+            <p className="text-gray-500 mt-1">Gestión de facturas por contrato</p>
+          </div>
+        </div>
         <div className="flex gap-2">
-          <select className="p-2 border rounded" value={selectedContratoId || ''} onChange={(e: any) => setSelectedContratoId(Number(e.target.value) || null)}>
+          <select className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 outline-none" value={selectedContratoId || ''} onChange={(e: any) => setSelectedContratoId(Number(e.target.value) || null)}>
             <option value="">Seleccionar Contrato</option>
             {contratos.map(c => <option key={c.id_contrato} value={c.id_contrato}>{c.nombre}</option>)}
           </select>
-          <Button onClick={() => openForm()} disabled={!selectedContratoId}><Plus className="w-4 h-4 mr-2" />Nueva</Button>
+          <Button
+            onClick={() => openForm()}
+            disabled={!selectedContratoId}
+            className="gap-2 bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300 disabled:opacity-50 disabled:transform-none"
+          >
+            <Plus className="h-4 w-4" />
+            Nueva Factura
+          </Button>
         </div>
       </div>
+
       {!selectedContratoId ? (
-        <p className="text-gray-500">Seleccione un contrato para ver sus facturas.</p>
-      ) : facturas.length === 0 ? (
-        <p className="text-gray-500">No hay facturas.</p>
+        <p className="text-gray-500 text-center py-12">Seleccione un contrato para ver sus facturas.</p>
       ) : (
-        <div className="grid gap-4">
-          {facturas.map((item) => (
-            <Card key={item.id_factura}>
-              <CardContent className="p-4">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <h3 className="font-semibold text-lg">Factura: {item.codigo_factura}</h3>
-                    <p className="text-sm">Monto: ${Number(item.monto).toFixed(2)} | Pago: ${Number(item.pago_actual).toFixed(2)}</p>
-                    <p className="text-sm text-gray-500">Fecha: {item.fecha}</p>
-                    {item.descripcion && <p className="text-sm">{item.descripcion}</p>}
-                  </div>
-                  <div className="flex gap-2">
-                    <Button variant="outline" size="sm" onClick={() => openForm(item)}><Edit className="w-4 h-4" /></Button>
-                    <Button variant="outline" size="sm" onClick={() => handleDelete(item.id_factura)}><Trash2 className="w-4 h-4 text-red-500" /></Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+        <Card className="overflow-hidden shadow-sm border-gray-200">
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader className="bg-gradient-to-r from-violet-50 to-purple-50">
+                <TableRow>
+                  <TableHead>
+                    <div className="flex items-center gap-2">
+                      <Receipt className="h-4 w-4 text-violet-600" />
+                      Código
+                    </div>
+                  </TableHead>
+                  <TableHead>
+                    <div className="flex items-center gap-2">
+                      <DollarSign className="h-4 w-4 text-violet-600" />
+                      Monto
+                    </div>
+                  </TableHead>
+                  <TableHead>
+                    <div className="flex items-center gap-2">
+                      <DollarSign className="h-4 w-4 text-violet-600" />
+                      Pago Actual
+                    </div>
+                  </TableHead>
+                  <TableHead>
+                    <div className="flex items-center gap-2">
+                      <Calendar className="h-4 w-4 text-violet-600" />
+                      Fecha
+                    </div>
+                  </TableHead>
+                  <TableHead>
+                    <div className="flex items-center gap-2">
+                      <FileText className="h-4 w-4 text-violet-600" />
+                      Descripción
+                    </div>
+                  </TableHead>
+                  <TableHead className="text-right">Acciones</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {facturas.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center py-12 text-gray-500">
+                      No hay facturas para este contrato
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  facturas.map((item) => (
+                    <TableRow key={item.id_factura} className="hover:bg-gray-50/50 transition-colors cursor-pointer" onClick={() => setDetailModal({ isOpen: true, item })}>
+                      <TableCell>
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-violet-50 text-violet-700 rounded text-sm font-mono font-medium">
+                          <Receipt className="h-3 w-3" />
+                          {item.codigo_factura || 'N/A'}
+                        </span>
+                      </TableCell>
+                      <TableCell className="font-medium text-gray-900">
+                        ${Number(item.monto).toFixed(2)}
+                      </TableCell>
+                      <TableCell className="font-medium text-gray-900">
+                        ${Number(item.pago_actual).toFixed(2)}
+                      </TableCell>
+                      <TableCell className="text-gray-500">{item.fecha}</TableCell>
+                      <TableCell className="text-gray-500">{item.descripcion || '-'}</TableCell>
+                      <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex justify-end gap-2">
+                          <Button variant="ghost" size="icon" onClick={() => openForm(item)} className="text-blue-600 hover:text-blue-800 hover:bg-blue-50 h-8 w-8" title="Editar">
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="icon" onClick={() => handleDelete(item.id_factura, item.codigo_factura)} className="text-red-600 hover:text-red-800 hover:bg-red-50 h-8 w-8" title="Eliminar">
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </Card>
       )}
     </div>
   );
 
   const renderForm = () => (
-    <Card>
-      <CardHeader>
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="sm" onClick={() => { setView('list'); resetForm(); }}><ArrowLeft className="w-4 h-4" /></Button>
-          <CardTitle>{editingId ? 'Editar' : 'Nueva'} Factura</CardTitle>
-        </div>
-      </CardHeader>
-      <CardContent>
-        <div className="grid gap-4">
-          <div><Label>Código Factura</Label><Input value={formData.codigo_factura || ''} onChange={(e: any) => setFormData({...formData, codigo_factura: e.target.value})} /></div>
-          <div><Label>Descripción</Label><Input value={formData.descripcion || ''} onChange={(e: any) => setFormData({...formData, descripcion: e.target.value})} /></div>
-          <div><Label>Observaciones</Label><Input value={formData.observaciones || ''} onChange={(e: any) => setFormData({...formData, observaciones: e.target.value})} /></div>
-          <div className="grid grid-cols-2 gap-4"><div><Label>Fecha</Label><Input type="date" value={formData.fecha || ''} onChange={(e: any) => setFormData({...formData, fecha: e.target.value})} /></div><div><Label>Pago Actual</Label><Input type="number" step="0.01" value={formData.pago_actual || ''} onChange={(e: any) => setFormData({...formData, pago_actual: e.target.value})} /></div></div>
-          {renderProductSelector()}
-          <div className="flex gap-2 mt-4">
-            <Button onClick={handleSave}><Save className="w-4 h-4 mr-2" />Guardar</Button>
-            <Button variant="outline" onClick={() => { setView('list'); resetForm(); }}>Cancelar</Button>
+          <div className="p-3 bg-gradient-to-br from-violet-500 to-purple-600 rounded-xl shadow-lg animate-bounce-subtle">
+            <Receipt className="h-8 w-8 text-white" />
+          </div>
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900">{editingId ? 'Editar Factura' : 'Nueva Factura'}</h2>
+            <p className="text-gray-500 mt-1">Complete los datos de la factura</p>
           </div>
         </div>
-      </CardContent>
-    </Card>
+        <Button variant="outline" onClick={() => { setView('list'); resetForm(); }} className="gap-2">
+          <ArrowLeft className="h-4 w-4" />
+          Volver
+        </Button>
+      </div>
+
+      <Card className="shadow-sm border-gray-200">
+        <CardHeader className="border-b bg-gray-50/50">
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <Receipt className="h-5 w-5 text-violet-600" />
+            Información de la Factura
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <Label className="text-sm font-medium">Código Factura</Label>
+              <Input value={formData.codigo_factura || ''} readOnly className="mt-1 bg-gray-100" placeholder="Se genera automáticamente" />
+            </div>
+            <div>
+              <Label className="text-sm font-medium">Fecha</Label>
+              <Input type="date" value={formData.fecha || ''} onChange={(e: any) => setFormData({...formData, fecha: e.target.value})} className="mt-1" />
+            </div>
+            <div>
+              <Label className="text-sm font-medium">Descripción</Label>
+              <Input value={formData.descripcion || ''} onChange={(e: any) => setFormData({...formData, descripcion: e.target.value})} className="mt-1" placeholder="Descripción de la factura" />
+            </div>
+            <div>
+              <Label className="text-sm font-medium">Dependencia</Label>
+              <select className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 outline-none bg-white" value={formData.id_dependencia || ''} onChange={(e: any) => setFormData({...formData, id_dependencia: e.target.value})}>
+                <option value="">Seleccionar dependencia</option>
+                {dependencias.map(d => <option key={d.id_dependencia} value={d.id_dependencia}>{d.nombre}</option>)}
+              </select>
+            </div>
+            <div>
+              <Label className="text-sm font-medium">Moneda</Label>
+              <select className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 outline-none bg-white" value={formData.id_moneda || ''} onChange={(e: any) => setFormData({...formData, id_moneda: e.target.value})}>
+                <option value="">Seleccionar moneda</option>
+                {monedas.map(m => <option key={m.id_moneda} value={m.id_moneda}>{m.nombre} ({m.simbolo})</option>)}
+              </select>
+            </div>
+            <div className="md:col-span-2">
+              <Label className="text-sm font-medium">Observaciones</Label>
+              <Input value={formData.observaciones || ''} onChange={(e: any) => setFormData({...formData, observaciones: e.target.value})} className="mt-1" placeholder="Observaciones adicionales" />
+            </div>
+          </div>
+          <div className="mt-6">{renderProductSelector()}</div>
+          <div className="flex gap-3 mt-8 pt-6 border-t">
+            <Button onClick={handleSave} className="gap-2 bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300">
+              <Save className="h-4 w-4" />
+              {editingId ? 'Actualizar' : 'Guardar'}
+            </Button>
+            <Button variant="outline" onClick={() => { setView('list'); resetForm(); }}>Cancelar</Button>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
   );
 
   return (
@@ -186,6 +369,70 @@ export function FacturasPage() {
       <h1 className="text-3xl font-bold mb-6">Facturas</h1>
       {view === 'list' && renderList()}
       {view === 'form' && renderForm()}
+
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        type={confirmModal.type}
+        onConfirm={() => confirmModal.onConfirm()}
+        onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+      />
+
+      {detailModal.isOpen && detailModal.item && createPortal(
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 animate-fade-in">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-auto animate-scale-in">
+            <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-violet-50 to-purple-50">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="p-3 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 text-white shadow-lg">
+                    <Receipt className="h-7 w-7" />
+                  </div>
+                  <div>
+                    <h3 className="text-2xl font-bold text-gray-900">Factura</h3>
+                    <p className="text-sm text-gray-500 font-mono">{detailModal.item.codigo_factura || 'Sin código'}</p>
+                  </div>
+                </div>
+                <button onClick={() => setDetailModal({ isOpen: false, item: null })} className="p-2 hover:bg-gray-200 rounded-full transition-colors">
+                  <X className="h-6 w-6 text-gray-500" />
+                </button>
+              </div>
+            </div>
+            <div className="p-6 space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-4 rounded-xl border border-green-100">
+                  <p className="text-xs text-green-600 uppercase tracking-wider mb-1">Monto</p>
+                  <p className="font-bold text-green-900 text-xl">${Number(detailModal.item.monto).toFixed(2)}</p>
+                </div>
+                <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-4 rounded-xl border border-blue-100">
+                  <p className="text-xs text-blue-600 uppercase tracking-wider mb-1">Pago Actual</p>
+                  <p className="font-bold text-blue-900 text-xl">${Number(detailModal.item.pago_actual).toFixed(2)}</p>
+                </div>
+                <div className="bg-gradient-to-br from-purple-50 to-pink-50 p-4 rounded-xl border border-purple-100">
+                  <p className="text-xs text-purple-600 uppercase tracking-wider mb-1">Fecha</p>
+                  <p className="font-bold text-gray-900">{detailModal.item.fecha || 'N/A'}</p>
+                </div>
+              </div>
+              {detailModal.item.descripcion && (
+                <div className="bg-gray-50 p-4 rounded-xl">
+                  <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Descripción</p>
+                  <p className="text-gray-700">{detailModal.item.descripcion}</p>
+                </div>
+              )}
+              {detailModal.item.observaciones && (
+                <div className="bg-gray-50 p-4 rounded-xl">
+                  <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Observaciones</p>
+                  <p className="text-gray-700">{detailModal.item.observaciones}</p>
+                </div>
+              )}
+            </div>
+            <div className="p-6 border-t border-gray-200 bg-gray-50 flex justify-end">
+              <button onClick={() => setDetailModal({ isOpen: false, item: null })} className="px-6 py-3 text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors font-medium">Cerrar</button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   );
 }

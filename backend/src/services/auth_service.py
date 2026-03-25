@@ -18,6 +18,7 @@ from src.models import (
 from src.dto.auth_dto import (
     LoginRequest,
     LoginResponse,
+    RegisterRequest,
     AliasSearchResponse,
     UsuarioInfo,
     DependenciaInfo,
@@ -114,6 +115,7 @@ async def search_by_alias(
             base_datos=dependencia.base_datos,
             host=dependencia.host,
             puerto=dependencia.puerto,
+            email=dependencia.email,
         )
         if dependencia
         else None,
@@ -292,6 +294,7 @@ async def get_current_user(db: AsyncSession, token: str) -> Optional[UsuarioInfo
             base_datos=dependencia.base_datos,
             host=dependencia.host,
             puerto=dependencia.puerto,
+            email=dependencia.email,
         )
         if dependencia
         else None,
@@ -420,6 +423,7 @@ async def update_perfil(
             base_datos=dependencia.base_datos,
             host=dependencia.host,
             puerto=dependencia.puerto,
+            email=dependencia.email,
         )
         if dependencia
         else None,
@@ -449,9 +453,147 @@ async def get_all_bases_datos_by_alias(
             base_datos=d.base_datos,
             host=d.host,
             puerto=d.puerto,
+            email=d.email,
         )
         for d in dependencias_con_db
     ]
+
+
+async def register(
+    db: AsyncSession, register_data: RegisterRequest
+) -> Optional[LoginResponse]:
+    """Registra un nuevo usuario en la base de datos seleccionada"""
+
+    # 1. Buscar la conexión a la base de datos seleccionada
+    statement = select(ConexionDatabase).where(
+        ConexionDatabase.nombre_database == register_data.base_datos
+    )
+    results = await db.exec(statement)
+    conexion = results.first()
+
+    host = conexion.host if conexion else "localhost"
+    puerto = conexion.puerto if conexion else 5432
+    usuario_db = conexion.usuario if conexion else "postgres"
+    contrasenia_db = conexion.contrasenia if conexion else "1234"
+
+    # 2. Conectarse a la base de datos seleccionada
+    from sqlalchemy import create_engine
+
+    db_url = f"postgresql://{usuario_db}:{contrasenia_db}@{host}:{puerto}/{register_data.base_datos}"
+    engine = create_engine(db_url)
+
+    from sqlmodel import Session
+
+    with Session(engine) as db_target:
+        # 3. Verificar que el alias no exista en la BD seleccionada
+        statement = select(Usuario).where(Usuario.alias == register_data.alias)
+        results = db_target.exec(statement)
+        existing = results.first()
+        if existing:
+            return None
+
+        # 4. Verificar que la dependencia exista en la BD seleccionada
+        dep = db_target.get(Dependencia, register_data.id_dependencia)
+        if not dep:
+            return None
+
+        # 5. Hashear contraseña con bcrypt
+        hashed_password = get_password_hash(register_data.contrasenia)
+
+        # 6. Buscar grupo ADMINISTRADOR (id_grupo=1)
+        grupo = db_target.get(Grupo, 1)
+        id_grupo = grupo.id_grupo if grupo else 1
+
+        # 7. Crear el usuario
+        usuario = Usuario(
+            ci=register_data.ci,
+            nombre=register_data.nombre,
+            primer_apellido=register_data.primer_apellido,
+            segundo_apellido=register_data.segundo_apellido,
+            alias=register_data.alias,
+            contrasenia=hashed_password,
+            id_grupo=id_grupo,
+            id_dependencia=register_data.id_dependencia,
+        )
+        db_target.add(usuario)
+        db_target.commit()
+        db_target.refresh(usuario)
+
+        # 8. Obtener funcionalidades del grupo
+        statement = select(GrupoFuncionalidad).where(
+            GrupoFuncionalidad.id_grupo == id_grupo
+        )
+        results = db_target.exec(statement)
+        grupo_funcionalidades = results.all()
+
+        funcionalidades = []
+        for gf in grupo_funcionalidades:
+            func = db_target.get(Funcionalidad, gf.id_funcionalidad)
+            if func:
+                funcionalidades.append(
+                    FuncionalidadInfo(
+                        id_funcionalidad=func.id_funcionalidad,
+                        nombre=func.nombre,
+                    )
+                )
+
+    # 9. Obtener dependencia y grupo desde la BD central para la respuesta
+    dependencia_central = None
+    statement = select(Dependencia).where(
+        Dependencia.id_dependencia == register_data.id_dependencia
+    )
+    results = await db.exec(statement)
+    dependencia_central = results.first()
+
+    grupo_central = await db.get(Grupo, id_grupo)
+
+    # 10. Crear token JWT
+    token_data = {
+        "sub": str(usuario.id_usuario),
+        "alias": usuario.alias,
+        "base_datos": register_data.base_datos,
+    }
+    token = create_access_token(token_data)
+
+    # 11. Guardar sesión
+    fecha_expiracion = datetime.utcnow() + timedelta(hours=ACCESS_TOKEN_EXPIRE_HOURS)
+    sesion = Sesion(
+        id_usuario=usuario.id_usuario,
+        token=token,
+        base_datos=register_data.base_datos,
+        fecha_expiracion=fecha_expiracion,
+    )
+    db.add(sesion)
+    await db.commit()
+
+    return LoginResponse(
+        token=token,
+        usuario=UsuarioInfo(
+            id_usuario=usuario.id_usuario,
+            ci=usuario.ci,
+            nombre=usuario.nombre,
+            primer_apellido=usuario.primer_apellido,
+            segundo_apellido=usuario.segundo_apellido,
+            alias=usuario.alias,
+            dependencia=DependenciaInfo(
+                id_dependencia=dependencia_central.id_dependencia,
+                nombre=dependencia_central.nombre,
+                base_datos=dependencia_central.base_datos or "",
+                host=dependencia_central.host or "localhost",
+                puerto=dependencia_central.puerto or 5432,
+            )
+            if dependencia_central
+            else None,
+            grupo=GrupoInfo(
+                id_grupo=grupo_central.id_grupo,
+                nombre=grupo_central.nombre,
+            )
+            if grupo_central
+            else None,
+        ),
+        funcionalidades=funcionalidades,
+        base_datos=register_data.base_datos,
+    )
 
 
 class AuthService:
@@ -492,6 +634,12 @@ class AuthService:
         db: AsyncSession, token: str, perfil_data: PerfilUpdateRequest
     ) -> PerfilResponse:
         return await update_perfil(db, token, perfil_data)
+
+    @staticmethod
+    async def register(
+        db: AsyncSession, register_data: RegisterRequest
+    ) -> Optional[LoginResponse]:
+        return await register(db, register_data)
 
 
 auth_service = AuthService()

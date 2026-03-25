@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Building, Building2, Plus, Edit, Trash2, Save, X, ChevronRight, ChevronDown, Trash,
   Tag, Network, MapPin, Phone, Mail, Globe, Map, Locate, FileText,
-  Landmark, Store, Wallet, CreditCard, User, ArrowLeft, Sparkles, CheckCircle2
+  Landmark, Store, Wallet, CreditCard, User, ArrowLeft, Sparkles, CheckCircle2, Database, Copy, Check
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import {
@@ -135,6 +136,14 @@ export function DependenciasPage() {
     cuenta: any;
   }>({ isOpen: false, cuenta: null });
 
+  const [databaseCreatedModal, setDatabaseCreatedModal] = useState<{
+    isOpen: boolean;
+    dependencia: Dependencia | null;
+    tablas: string[];
+  }>({ isOpen: false, dependencia: null, tablas: [] });
+
+  const [copiedTable, setCopiedTable] = useState<string | null>(null);
+
   const { data: tiposCuenta = [] } = useQuery<TipoCuenta[]>({
     queryKey: ['tiposCuenta'],
     queryFn: () => configuracionService.getTiposCuenta(),
@@ -180,13 +189,25 @@ export function DependenciasPage() {
 
   const createDependencia = useMutation({
     mutationFn: dependenciasService.createDependencia,
-    onSuccess: () => {
+    onSuccess: (data) => {
+      console.log('Create dependencia response:', data);
       queryClient.invalidateQueries({ queryKey: ['dependencias'] });
-      toast.success('Dependencia creada exitosamente');
-      setView('list');
-      resetForm();
+      if (data.tablas_creadas && data.tablas_creadas.length > 0) {
+        setDatabaseCreatedModal({
+          isOpen: true,
+          dependencia: data,
+          tablas: data.tablas_creadas,
+        });
+      } else {
+        toast.success('Dependencia creada exitosamente');
+        setView('list');
+        resetForm();
+      }
     },
-    onError: () => toast.error('Error al crear dependencia'),
+    onError: (error: any) => {
+      console.log('Create dependencia error:', error);
+      toast.error(error?.message || error?.detail || 'Error al crear dependencia');
+    },
   });
 
   const updateDependencia = useMutation({
@@ -895,18 +916,23 @@ export function DependenciasPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Dependencias</h1>
-          <p className="text-gray-500 mt-1">Gestión jerárquica de dependencias</p>
+        <div className="flex items-center gap-4">
+          <div className="p-3 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-lg animate-bounce-subtle">
+            <Building className="h-8 w-8 text-white" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Dependencias</h1>
+            <p className="text-gray-500 mt-1">Gestión jerárquica de dependencias</p>
+          </div>
         </div>
-        <Button onClick={() => { setView('form'); setEditingDependencia(null); resetForm(true); }}>
-          <Plus className="h-4 w-4 mr-2" />
+        <Button onClick={() => { setView('form'); setEditingDependencia(null); resetForm(true); }} className="gap-2 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300">
+          <Plus className="h-4 w-4" />
           Nueva Dependencia
         </Button>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <Card className="lg:col-span-1">
+        <Card className="lg:col-span-1 hover:shadow-lg transition-shadow duration-300">
           <CardHeader>
             <CardTitle>Estructura Jerárquica</CardTitle>
           </CardHeader>
@@ -924,7 +950,7 @@ export function DependenciasPage() {
           </CardContent>
         </Card>
 
-        <Card className="lg:col-span-2">
+        <Card className="lg:col-span-2 overflow-hidden hover:shadow-lg transition-shadow duration-300">
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle className="flex items-center gap-2">
@@ -976,7 +1002,7 @@ export function DependenciasPage() {
               </div>
             )}
             <Table>
-              <TableHeader className="bg-gray-50">
+              <TableHeader className="bg-gradient-to-r from-blue-50 to-indigo-50">
                 <TableRow>
                   <TableHead>Nombre</TableHead>
                   <TableHead>Tipo</TableHead>
@@ -1064,9 +1090,169 @@ export function DependenciasPage() {
         type="danger"
       />
 
+      {/* Modal de base de datos creada exitosamente */}
+      {databaseCreatedModal.isOpen && databaseCreatedModal.dependencia && createPortal(
+        <div 
+          className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 animate-fade-in"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setDatabaseCreatedModal({ isOpen: false, dependencia: null, tablas: [] });
+              setView('list');
+              resetForm();
+            }
+          }}
+        >
+          <div className="relative w-full max-w-xl bg-white rounded-2xl shadow-2xl animate-scale-in max-h-[90vh] flex flex-col">
+            <div className="flex-shrink-0 flex items-center justify-between p-6 border-b bg-gradient-to-r from-green-50 to-emerald-50 rounded-t-2xl">
+              <div className="flex items-center gap-3">
+                <div className="p-3 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl shadow-lg">
+                  <CheckCircle2 className="h-7 w-7 text-white" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-gray-900">Base de Datos Creada</h2>
+                  <p className="text-sm text-gray-500">La base de datos se ha creado exitosamente</p>
+                </div>
+              </div>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                onClick={() => {
+                  setDatabaseCreatedModal({ isOpen: false, dependencia: null, tablas: [] });
+                  setView('list');
+                  resetForm();
+                }} 
+                className="hover:bg-gray-200 rounded-full"
+              >
+                <X className="h-6 w-6" />
+              </Button>
+            </div>
+            <div className="flex-1 overflow-auto p-6">
+              <div className="space-y-6">
+                <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl p-5">
+                  <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                    <Building className="h-5 w-5 text-green-500" />
+                    Dependencia Creada
+                  </h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <Label className="flex items-center gap-2 text-gray-500 text-sm">
+                        Nombre
+                      </Label>
+                      <p className="font-semibold text-gray-900">{databaseCreatedModal.dependencia.nombre}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="flex items-center gap-2 text-gray-500 text-sm">
+                        Tipo
+                      </Label>
+                      <span className="inline-flex items-center gap-1 px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm font-medium">
+                        {databaseCreatedModal.dependencia.tipo_dependencia?.nombre || '-'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl p-5">
+                  <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                    <Database className="h-5 w-5 text-green-500" />
+                    Base de Datos Creada
+                  </h3>
+                  <div className="bg-white rounded-lg p-4 border border-green-200">
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-1">
+                        <Label className="flex items-center gap-2 text-gray-500 text-sm">
+                          Nombre de la Base de Datos
+                        </Label>
+                        <p className="font-mono font-semibold text-green-700 text-lg">
+                          {databaseCreatedModal.dependencia.base_datos}
+                        </p>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          navigator.clipboard.writeText(databaseCreatedModal.dependencia?.base_datos || '');
+                          toast.success('Copiado al portapapeles');
+                        }}
+                        className="text-green-600 hover:text-green-700 hover:bg-green-100"
+                      >
+                        <Copy className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-5">
+                  <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                    <CheckCircle2 className="h-5 w-5 text-blue-500" />
+                    Tablas Creadas ({databaseCreatedModal.tablas.length})
+                  </h3>
+                  <div className="bg-white rounded-lg border border-blue-200 max-h-60 overflow-auto">
+                    <div className="divide-y divide-gray-100">
+                      {databaseCreatedModal.tablas.map((tabla, index) => (
+                        <div 
+                          key={tabla} 
+                          className="flex items-center justify-between px-4 py-2 hover:bg-gray-50 transition-colors"
+                        >
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-gray-400 font-mono w-6">{index + 1}</span>
+                            <span className="font-mono text-sm text-gray-700">{tabla}</span>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              navigator.clipboard.writeText(tabla);
+                              setCopiedTable(tabla);
+                              setTimeout(() => setCopiedTable(null), 2000);
+                            }}
+                            className="text-gray-400 hover:text-gray-600"
+                          >
+                            {copiedTable === tabla ? (
+                              <Check className="h-4 w-4 text-green-500" />
+                            ) : (
+                              <Copy className="h-4 w-4" />
+                            )}
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+                  <p className="text-sm text-amber-800">
+                    <strong>Nota:</strong> Guarde el nombre de la base de datos. La conexión se realizarÃ¡ usando las credenciales configuradas en el servidor.
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div className="flex-shrink-0 p-6 border-t bg-gray-50 rounded-b-2xl">
+              <div className="flex justify-end gap-3">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setDatabaseCreatedModal({ isOpen: false, dependencia: null, tablas: [] });
+                    setView('list');
+                    resetForm();
+                  }}
+                >
+                  Cerrar
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
       {/* Modal de detalle de dependencia */}
-      {detailModal.isOpen && dependenciaDetalle && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[100] p-4 animate-fade-in">
+      {detailModal.isOpen && dependenciaDetalle && createPortal(
+        <div 
+          className="fixed inset-0 bg-black/60 flex items-center justify-center z-[100] p-4 animate-fade-in"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) handleCloseDetailModal();
+          }}
+        >
           <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col animate-scale-in">
             <div className="flex-shrink-0 flex items-center justify-between p-6 border-b bg-gradient-to-r from-blue-50 to-indigo-50 rounded-t-2xl">
               <div className="flex items-center gap-3">
@@ -1241,12 +1427,18 @@ export function DependenciasPage() {
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Modal de detalle de cuenta */}
-      {cuentaDetailModal.isOpen && cuentaDetailModal.cuenta && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[100] p-4 animate-fade-in">
+      {cuentaDetailModal.isOpen && cuentaDetailModal.cuenta && createPortal(
+        <div 
+          className="fixed inset-0 bg-black/60 flex items-center justify-center z-[100] p-4 animate-fade-in"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) handleCloseCuentaDetailModal();
+          }}
+        >
           <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full animate-scale-in">
             <div className="flex items-center justify-between p-6 border-b bg-gradient-to-r from-emerald-50 to-green-50 rounded-t-2xl">
               <div className="flex items-center gap-3">
@@ -1305,7 +1497,8 @@ export function DependenciasPage() {
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

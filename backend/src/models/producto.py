@@ -9,7 +9,9 @@ if TYPE_CHECKING:
     from .movimiento import Movimiento
     from .detalle_venta import DetalleVenta
     from .anexo import Anexo
-    from .anexo_producto import AnexoProducto
+    from .item_anexo import ItemAnexo
+    from .item_factura import ItemFactura
+    from .item_venta_efectivo import ItemVentaEfectivo
 
 
 class Productos(SQLModel, table=True):
@@ -38,4 +40,8 @@ class Productos(SQLModel, table=True):
     )
     movimientos: List["Movimiento"] = Relationship(back_populates="producto")
     detalles_venta: List["DetalleVenta"] = Relationship(back_populates="producto")
-    anexos_productos: List["AnexoProducto"] = Relationship(back_populates="producto")
+    items_anexo: List["ItemAnexo"] = Relationship(back_populates="producto")
+    items_factura: List["ItemFactura"] = Relationship(back_populates="producto")
+    items_venta_efectivo: List["ItemVentaEfectivo"] = Relationship(
+        back_populates="producto"
+    )

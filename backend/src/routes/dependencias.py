@@ -1,6 +1,7 @@
-from typing import List
+from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlmodel.ext.asyncio.session import AsyncSession
+from sqlalchemy import text
 from sqlalchemy.orm import selectinload
 from src.database.connection import get_session
 from src.models import Dependencia, TipoDependencia, Provincia, Municipio, Cuenta
@@ -17,6 +18,7 @@ from src.dto import (
     CuentaCreate,
 )
 from src.services.cuenta_service import CuentaService
+from src.services.database_service import DatabaseService
 from src.repository.base import CRUDBase
 from sqlmodel import select, func
 
@@ -120,7 +122,6 @@ async def crear_dependencia(
     data: DependenciaConCuentasCreate,
     db: AsyncSession = Depends(get_session),
 ):
-    # Validar que no se cree un ciclo
     if data.dependencia.codigo_padre:
         tiene_ciclo = await validar_ciclo_dependencia(
             db, 0, data.dependencia.codigo_padre
@@ -131,10 +132,8 @@ async def crear_dependencia(
                 detail="No se puede crear la dependencia porque se formaría un ciclo en la jerarquía",
             )
 
-    # Crear la dependencia
     db_obj = await dependencia_repo.create(db, obj_in=data.dependencia)
 
-    # Crear las cuentas asociadas a la dependencia
     if data.cuentas:
         for cuenta_data in data.cuentas:
             cuenta_create = CuentaCreate(
@@ -143,7 +142,6 @@ async def crear_dependencia(
             )
             await CuentaService.create(db, cuenta_create)
 
-    # Recargar el objeto con las relaciones
     statement = (
         select(Dependencia)
         .where(Dependencia.id_dependencia == db_obj.id_dependencia)
@@ -158,7 +156,19 @@ async def crear_dependencia(
     results = await db.exec(statement)
     db_obj = results.first()
 
-    return DependenciaRead.model_validate(db_obj)
+    response = DependenciaRead.model_validate(db_obj)
+
+    if data.dependencia.base_datos:
+        try:
+            tablas = DatabaseService.crear_base_datos(data.dependencia.base_datos)
+            response.tablas_creadas = tablas
+        except Exception as e:
+            raise HTTPException(
+                status_code=500,
+                detail=f"Dependencia creada, pero error al crear la base de datos: {str(e)}",
+            )
+
+    return response
 
 
 @router.get("/{dependencia_id}", response_model=DependenciaRead)
@@ -235,8 +245,12 @@ async def eliminar_dependencia(
     dependencia_id: int,
     db: AsyncSession = Depends(get_session),
 ):
-    success = await dependencia_repo.remove(db, id=dependencia_id)
-    if not success:
+    result = await db.execute(
+        text("DELETE FROM dependencia WHERE id_dependencia = :id"),
+        {"id": dependencia_id},
+    )
+    await db.commit()
+    if result.rowcount == 0:
         raise HTTPException(status_code=404, detail="Dependencia no encontrada")
 
 

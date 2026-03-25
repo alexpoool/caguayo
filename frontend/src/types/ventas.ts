@@ -43,6 +43,8 @@ export interface VentaUpdate {
   estado?: 'PENDIENTE' | 'COMPLETADA' | 'ANULADA';
 }
 
+import type { Provincia, Municipio } from './ubicacion';
+
 // Tipos para Cliente
 export interface Cliente {
   id_cliente: number;
@@ -62,6 +64,8 @@ export interface Cliente {
   estado: 'ACTIVO' | 'INACTIVO';
   fecha_registro: string;
   activo: boolean;
+  provincia?: Provincia;
+  municipio?: Municipio;
 }
 
 export interface ClienteWithVentas extends Cliente {
@@ -193,6 +197,7 @@ export interface Cuenta {
   id_cliente?: number;
   id_dependencia?: number;
   id_tipo_cuenta?: number;
+  id_moneda?: number;
   titular: string;
   banco: string;
   sucursal?: number;

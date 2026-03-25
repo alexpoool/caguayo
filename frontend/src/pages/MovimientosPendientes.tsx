@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { movimientosService } from '../services/api';
 
-import { Card, CardContent, ConfirmModal } from '../components/ui';
+import { Card, CardContent, ConfirmModal, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, Button, Input } from '../components/ui';
 import {
   Truck,
   AlertCircle,
@@ -25,7 +25,11 @@ import {
   ClipboardList,
   PackageCheck,
   ArrowRight,
-  ArrowLeft
+  ArrowLeft,
+  ArrowRightLeft,
+  Check,
+  Search,
+  ShoppingCart
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -99,6 +103,8 @@ export function MovimientosPendientesPage() {
   });
 
   const queryClient = useQueryClient();
+  const [searchTerm, setSearchTerm] = useState('');
+  const [tipoFiltro, setTipoFiltro] = useState<string>('todos');
 
   const { data: movimientosPendientes = [], isLoading: isLoadingPendientes } = useQuery({
     queryKey: ['movimientos-pendientes'],
@@ -109,6 +115,8 @@ export function MovimientosPendientesPage() {
     mutationFn: (id: number) => movimientosService.confirmarMovimiento(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['movimientos-pendientes'] });
+      queryClient.invalidateQueries({ queryKey: ['productos-con-stock'] });
+      queryClient.invalidateQueries({ queryKey: ['productos-por-dependencia'] });
       toast.success('Movimiento confirmado exitosamente');
     },
     onError: (error: any, variables: number) => {
@@ -138,6 +146,8 @@ export function MovimientosPendientesPage() {
     mutationFn: (id: number) => movimientosService.deleteMovimiento(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['movimientos-pendientes'] });
+      queryClient.invalidateQueries({ queryKey: ['productos-con-stock'] });
+      queryClient.invalidateQueries({ queryKey: ['productos-por-dependencia'] });
       toast.success('Movimiento eliminado exitosamente');
     },
     onError: (error: any) => {
@@ -168,6 +178,23 @@ export function MovimientosPendientesPage() {
       type: 'danger',
     });
   };
+
+  const filteredPendientes = useMemo(() => {
+    let result = movimientosPendientes;
+    if (tipoFiltro !== 'todos') {
+      result = result.filter((m: any) => m.tipo_movimiento?.tipo === tipoFiltro);
+    }
+    if (searchTerm) {
+      const search = searchTerm.toLowerCase();
+      result = result.filter((m: any) =>
+        m.producto?.nombre?.toLowerCase().includes(search) ||
+        m.codigo?.toLowerCase().includes(search) ||
+        m.dependencia?.nombre?.toLowerCase().includes(search) ||
+        m.tipo_movimiento?.tipo?.toLowerCase().includes(search)
+      );
+    }
+    return result;
+  }, [movimientosPendientes, tipoFiltro, searchTerm]);
 
   const handleVerDetalle = (movimiento: MovimientoPendiente) => {
     setDetailModal({
@@ -262,6 +289,20 @@ export function MovimientosPendientesPage() {
           badgeBg: 'bg-red-100',
           buttonBg: 'hover:bg-red-50',
         };
+      case 'venta':
+        return {
+          icon: ShoppingCart,
+          gradient: 'from-indigo-500 to-blue-600',
+          bgColor: 'bg-indigo-50',
+          borderColor: 'border-indigo-200',
+          textColor: 'text-indigo-700',
+          impacto: 'Salida',
+          impactoIcon: TrendingDown,
+          impactoColor: 'text-indigo-600',
+          descripcion: 'Registro de ventas de productos',
+          badgeBg: 'bg-indigo-100',
+          buttonBg: 'hover:bg-indigo-50',
+        };
       default:
         return {
           icon: Package,
@@ -297,9 +338,36 @@ export function MovimientosPendientesPage() {
             <div className="flex items-center gap-2">
               <Sparkles className="h-5 w-5 text-amber-500 animate-pulse" />
               <span className="px-3 py-1 bg-amber-100 text-amber-800 rounded-full text-sm font-medium">
-                {movimientosPendientes.length} pendientes
+                {filteredPendientes.length} pendientes
               </span>
             </div>
+          </div>
+
+          <div className="flex flex-col sm:flex-row gap-3">
+            <div className="relative flex-1 max-w-md">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Buscar por producto, código..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent text-sm"
+              />
+            </div>
+            <select
+              value={tipoFiltro}
+              onChange={(e) => setTipoFiltro(e.target.value)}
+              className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none bg-white text-sm"
+            >
+              <option value="todos">Todos los tipos</option>
+              <option value="RECEPCION">Recepción</option>
+              <option value="venta">Venta</option>
+              <option value="MERMA">Merma</option>
+              <option value="DONACION">Donación</option>
+              <option value="DEVOLUCION">Devolución</option>
+              <option value="AJUSTE_AGREGAR">Ajuste +</option>
+              <option value="AJUSTE_QUITAR">Ajuste -</option>
+            </select>
           </div>
 
           {isLoadingPendientes ? (
@@ -308,93 +376,130 @@ export function MovimientosPendientesPage() {
                 <Clock className="h-12 w-12 text-amber-600 animate-spin" />
               </div>
             </div>
-          ) : movimientosPendientes.length === 0 ? (
+          ) : filteredPendientes.length === 0 ? (
             <div className="text-center py-12">
-              <div className="w-24 h-24 mx-auto mb-4 bg-gradient-to-br from-green-100 to-emerald-100 rounded-full flex items-center justify-center">
-                <PackageCheck className="h-12 w-12 text-green-600" />
+              <div className="w-24 h-24 mx-auto mb-4 bg-gradient-to-br from-amber-100 to-orange-100 rounded-full flex items-center justify-center">
+                <PackageCheck className="h-12 w-12 text-amber-600" />
               </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-2">¡Todo al día!</h3>
+              <h3 className="text-xl font-bold text-gray-900 mb-2">
+                {searchTerm || tipoFiltro !== 'todos' ? 'Sin resultados' : '¡Todo al día!'}
+              </h3>
               <p className="text-gray-500 max-w-md mx-auto">
-                No hay movimientos pendientes de confirmación. El inventario está actualizado.
+                {searchTerm || tipoFiltro !== 'todos'
+                  ? 'No se encontraron movimientos con los filtros aplicados'
+                  : 'No hay movimientos pendientes de confirmación. El inventario está actualizado.'}
               </p>
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-gray-200">
-                    <th className="text-left py-3 px-4 text-sm font-semibold text-gray-600">Tipo</th>
-                    <th className="text-left py-3 px-4 text-sm font-semibold text-gray-600">Producto</th>
-                    <th className="text-center py-3 px-4 text-sm font-semibold text-gray-600">Cantidad</th>
-                    <th className="text-left py-3 px-4 text-sm font-semibold text-gray-600">Fecha</th>
-                    <th className="text-left py-3 px-4 text-sm font-semibold text-gray-600">Dependencia</th>
-                    <th className="text-center py-3 px-4 text-sm font-semibold text-gray-600">Acciones</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {movimientosPendientes.map((mov: MovimientoPendiente) => {
+              <Table>
+                <TableHeader className="bg-gradient-to-r from-amber-50 to-orange-50">
+                  <TableRow>
+                    <TableHead>
+                      <div className="flex items-center gap-2">
+                        <ArrowRightLeft className="h-4 w-4 text-amber-600" />
+                        Tipo
+                      </div>
+                    </TableHead>
+                    <TableHead>
+                      <div className="flex items-center gap-2">
+                        <Package className="h-4 w-4 text-amber-600" />
+                        Producto
+                      </div>
+                    </TableHead>
+                    <TableHead>
+                      <div className="flex items-center gap-2">
+                        <Hash className="h-4 w-4 text-amber-600" />
+                        Cantidad
+                      </div>
+                    </TableHead>
+                    <TableHead>
+                      <div className="flex items-center gap-2">
+                        <Calendar className="h-4 w-4 text-amber-600" />
+                        Fecha
+                      </div>
+                    </TableHead>
+                    <TableHead>
+                      <div className="flex items-center gap-2">
+                        <MapPin className="h-4 w-4 text-amber-600" />
+                        Dependencia
+                      </div>
+                    </TableHead>
+                    <TableHead className="text-center">Acciones</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredPendientes.map((mov: MovimientoPendiente) => {
                     const config = getTipoConfig(mov.tipo_movimiento?.tipo || 'RECEPCION');
+                    const ImpactoIcon = config.impactoIcon;
                     return (
-                      <tr
+                      <TableRow
                         key={mov.id_movimiento}
-                        className="border-b border-gray-100 hover:bg-gray-50 transition-colors cursor-pointer"
+                        className="hover:bg-gray-50/50 transition-colors cursor-pointer"
                         onClick={() => handleVerDetalle(mov)}
                       >
-                        <td className="py-3 px-4">
+                        <TableCell>
+                          <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${config.badgeBg} ${config.impactoColor}`}>
+                            <ImpactoIcon className="h-3 w-3" />
+                            {config.impacto}
+                          </span>
+                          <span className={`ml-2 font-semibold text-sm ${config.textColor}`}>
+                            {mov.tipo_movimiento?.tipo || 'Movimiento'}
+                          </span>
+                        </TableCell>
+                        <TableCell>
                           <div className="flex items-center gap-2">
-                            <div>
-                              <span className={`font-semibold text-sm ${config.textColor}`}>
-                                {mov.tipo_movimiento?.tipo || 'Movimiento'}
-                              </span>
-                              <span className={`ml-2 text-xs px-2 py-0.5 rounded-full ${config.badgeBg} ${config.impactoColor}`}>
-                                {config.impacto}
-                              </span>
-                            </div>
+                            <Package className="h-4 w-4 text-gray-400" />
+                            <span className="font-medium text-gray-900">{mov.producto?.nombre || 'Producto no disponible'}</span>
                           </div>
-                        </td>
-                        <td className="py-3 px-4">
-                          <span className="text-gray-900 font-medium">{mov.producto?.nombre || 'Producto no disponible'}</span>
-                        </td>
-                        <td className="py-3 px-4 text-center">
-                          <span className="font-semibold text-gray-900">{mov.cantidad}</span>
-                        </td>
-                        <td className="py-3 px-4 text-gray-600">
+                        </TableCell>
+                        <TableCell>
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-amber-50 text-amber-700 rounded text-sm font-mono font-medium">
+                            <Hash className="h-3 w-3" />
+                            {mov.cantidad}
+                          </span>
+                        </TableCell>
+                        <TableCell className="text-gray-500">
                           {new Date(mov.fecha).toLocaleDateString('es-ES')}
-                        </td>
-                        <td className="py-3 px-4 text-gray-600">
+                        </TableCell>
+                        <TableCell className="text-gray-500">
                           {mov.dependencia?.nombre || 'Sin dependencia'}
-                        </td>
-                        <td className="py-3 px-4">
+                        </TableCell>
+                        <TableCell>
                           <div className="flex items-center justify-center gap-1">
-                            <button
-                              onClick={(e) => {
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={(e: any) => {
                                 e.stopPropagation();
                                 handleConfirmarMovimiento(mov.id_movimiento);
                               }}
                               disabled={confirmarMutation.isPending}
-                              className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-all disabled:opacity-50"
+                              className="text-green-600 hover:text-green-800 hover:bg-green-50 h-8 w-8"
                               title="Confirmar movimiento"
                             >
-                              <CheckCircle className="h-4 w-4" />
-                            </button>
-                            <button
-                              onClick={(e) => {
+                              <Check className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={(e: any) => {
                                 e.stopPropagation();
                                 handleEliminarMovimiento(mov.id_movimiento);
                               }}
                               disabled={eliminarMutation.isPending}
-                              className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-all disabled:opacity-50"
+                              className="text-red-600 hover:text-red-800 hover:bg-red-50 h-8 w-8"
                               title="Eliminar movimiento"
                             >
                               <Trash2 className="h-4 w-4" />
-                            </button>
+                            </Button>
                           </div>
-                        </td>
-                      </tr>
+                        </TableCell>
+                      </TableRow>
                     );
                   })}
-                </tbody>
-              </table>
+                </TableBody>
+              </Table>
             </div>
           )}
         </CardContent>
@@ -497,7 +602,7 @@ export function MovimientosPendientesPage() {
                           {detailModal.movimiento?.tipo_movimiento?.tipo}
                         </h3>
                         <p className="text-sm text-gray-500">
-                          Movimiento #{detailModal.movimiento?.id_movimiento}
+                          Movimiento {detailModal.movimiento?.id_movimiento}
                         </p>
                       </div>
                     </div>

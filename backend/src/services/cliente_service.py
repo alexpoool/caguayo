@@ -1,5 +1,6 @@
 from typing import List, Optional
 from sqlmodel.ext.asyncio.session import AsyncSession
+from sqlalchemy import text
 from src.repository.cliente_repo import (
     cliente_repo,
     cliente_natural_repo,
@@ -79,8 +80,11 @@ class ClienteService:
 
     @staticmethod
     async def delete_cliente(db: AsyncSession, cliente_id: int) -> bool:
-        db_cliente = await cliente_repo.remove(db, id=cliente_id)
-        return db_cliente is not None
+        await db.execute(
+            text("DELETE FROM clientes WHERE id_cliente = :id"), {"id": cliente_id}
+        )
+        await db.commit()
+        return True
 
     @staticmethod
     async def get_cliente_by_cedula(

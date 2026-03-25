@@ -22,6 +22,25 @@ class TipoClienteUpdate(SQLModel):
     descripcion: Optional[str] = None
 
 
+# DTOs para TipoProveedor
+class TipoProveedorBase(SQLModel):
+    nombre: str
+    descripcion: Optional[str] = None
+
+
+class TipoProveedorCreate(TipoProveedorBase):
+    pass
+
+
+class TipoProveedorRead(TipoProveedorBase):
+    id_tipo_proveedor: int
+
+
+class TipoProveedorUpdate(SQLModel):
+    nombre: Optional[str] = None
+    descripcion: Optional[str] = None
+
+
 class ClienteBase(SQLModel):
     id_tipo_cliente: Optional[int] = None
     nombre: str
@@ -78,6 +97,7 @@ class ConvenioBase(SQLModel):
     fecha: date
     vigencia: date
     id_tipo_convenio: int
+    codigo: Optional[str] = None
 
 
 class ConvenioCreate(ConvenioBase):
@@ -108,29 +128,31 @@ class AnexoBase(SQLModel):
     comision: Optional[Decimal] = None
 
 
-class AnexoProductoBase(SQLModel):
+class ItemAnexoBase(SQLModel):
     id_producto: int
     cantidad: int
-    precio_compra: Decimal
+    precio_venta: Decimal
+    id_moneda: int
 
 
-class AnexoProductoCreate(AnexoProductoBase):
+class ItemAnexoCreate(ItemAnexoBase):
     pass
 
 
-class AnexoProductoRead(AnexoProductoBase):
-    id_anexo_producto: int
+class ItemAnexoRead(ItemAnexoBase):
+    id_item_anexo: int
     id_anexo: int
+    precio_compra: Decimal
 
 
 class AnexoCreate(AnexoBase):
-    productos: Optional[List[AnexoProductoCreate]] = None
+    items: Optional[List[ItemAnexoCreate]] = None
 
 
 class AnexoRead(AnexoBase):
     id_anexo: int
     numero_anexo: Optional[str] = None
-    convenio: Optional[ConvenioRead] = None
+    convenios: Optional[ConvenioRead] = None
 
 
 class AnexoUpdate(SQLModel):

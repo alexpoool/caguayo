@@ -7,7 +7,7 @@ import {
   Plus, Edit, Trash2, Eye, Ban, CheckCircle, 
   User, Package, AlertCircle, PlusCircle,
   MinusCircle, ShoppingCart, Search, X,
-  ArrowLeft, Save, RefreshCw
+  ArrowLeft, Save, RefreshCw, Wallet, Calendar, DollarSign
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { 
@@ -728,9 +728,14 @@ export function VentasPage() {
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Ventas</h1>
-          <p className="text-gray-500 mt-1">Gestión de ventas ({filteredVentas.length} registros)</p>
+        <div className="flex items-center gap-4">
+          <div className="p-3 bg-gradient-to-br from-indigo-500 to-blue-600 rounded-xl shadow-lg animate-bounce-subtle">
+            <ShoppingCart className="h-8 w-8 text-white" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Ventas</h1>
+            <p className="text-gray-500 mt-1">Gestión de ventas ({filteredVentas.length} registros)</p>
+          </div>
         </div>
         <Button
           onClick={() => {
@@ -738,7 +743,7 @@ export function VentasPage() {
             setEditingVenta(null);
             setView('form');
           }}
-          className="gap-2"
+          className="gap-2 bg-gradient-to-r from-indigo-500 to-blue-600 hover:from-indigo-600 hover:to-blue-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300"
         >
           <Plus className="h-4 w-4" />
           Nueva Venta
@@ -758,13 +763,12 @@ export function VentasPage() {
         </select>
       </div>
 
-      <Card className="overflow-hidden">
+      <Card className="overflow-hidden shadow-sm border-gray-200">
         <div className="overflow-x-auto">
           <Table>
-            <TableHeader className="bg-gray-50">
+            <TableHeader className="bg-gradient-to-r from-indigo-50 to-blue-50">
               <TableRow>
-                <TableHead>ID</TableHead>
-                <TableHead>Fecha</TableHead>
+                <TableHead>Venta</TableHead>
                 <TableHead>Cliente</TableHead>
                 <TableHead>Productos</TableHead>
                 <TableHead>Total</TableHead>
@@ -775,16 +779,23 @@ export function VentasPage() {
             <TableBody>
               {filteredVentas.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-12 text-gray-500">
-                    No se encontraron ventas
+                  <TableCell colSpan={6} className="text-center py-12 text-gray-500">
+                    {filterEstado ? 'No se encontraron ventas con este estado' : 'No se encontraron ventas'}
                   </TableCell>
                 </TableRow>
               ) : (
                 filteredVentas.map((venta) => (
-                  <TableRow key={venta.id_venta} className="hover:bg-gray-50">
-                    <TableCell className="font-medium">#{venta.id_venta}</TableCell>
+                  <TableRow key={venta.id_venta} className="hover:bg-gray-50/50 transition-colors">
                     <TableCell>
-                      {new Date(venta.fecha).toLocaleDateString('es-ES')}
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 bg-indigo-50 rounded-lg text-indigo-600">
+                          <ShoppingCart className="h-4 w-4" />
+                        </div>
+                        <div>
+                          <span className="font-medium text-gray-900 block">#{venta.id_venta}</span>
+                          <span className="text-xs text-gray-500 block">{new Date(venta.fecha).toLocaleDateString('es-ES')}</span>
+                        </div>
+                      </div>
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
@@ -798,7 +809,7 @@ export function VentasPage() {
                         {venta.detalles?.length || 0} productos
                       </div>
                     </TableCell>
-                    <TableCell className="font-medium">
+                    <TableCell className="font-medium text-gray-900">
                       ${venta.total.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                     </TableCell>
                     <TableCell>
@@ -815,7 +826,7 @@ export function VentasPage() {
                             setSelectedVenta(venta);
                             setView('detail');
                           }}
-                          className="text-blue-600 hover:text-blue-800 hover:bg-blue-50"
+                          className="text-blue-600 hover:text-blue-800 hover:bg-blue-50 h-8 w-8"
                           title="Ver detalle"
                         >
                           <Eye className="h-4 w-4" />
@@ -839,7 +850,7 @@ export function VentasPage() {
                               });
                               setView('form');
                             }}
-                            className="text-green-600 hover:text-green-800 hover:bg-green-50"
+                            className="text-green-600 hover:text-green-800 hover:bg-green-50 h-8 w-8"
                             title="Editar"
                           >
                             <Edit className="h-4 w-4" />
@@ -851,7 +862,7 @@ export function VentasPage() {
                             variant="ghost"
                             size="icon"
                             onClick={() => handleAnular(venta)}
-                            className="text-orange-600 hover:text-orange-800 hover:bg-orange-50"
+                            className="text-orange-600 hover:text-orange-800 hover:bg-orange-50 h-8 w-8"
                             title="Anular"
                           >
                             <Ban className="h-4 w-4" />
@@ -862,7 +873,7 @@ export function VentasPage() {
                           variant="ghost"
                           size="icon"
                           onClick={() => handleEliminar(venta)}
-                          className="text-red-600 hover:text-red-800 hover:bg-red-50"
+                          className="text-red-600 hover:text-red-800 hover:bg-red-50 h-8 w-8"
                           title="Eliminar"
                         >
                           <Trash2 className="h-4 w-4" />

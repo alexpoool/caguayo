@@ -35,6 +35,7 @@ export interface Dependencia {
   provincia?: Provincia;
   municipio?: Municipio;
   cuentas: Cuenta[];
+  tablas_creadas?: string[];
 }
 
 export interface DependenciaCreate {

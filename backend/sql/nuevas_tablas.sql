@@ -20,15 +20,6 @@ CREATE TABLE IF NOT EXISTS contrato (
     documento_final VARCHAR(255)
 );
 
--- Contrato-Producto (relación muchos a muchos)
-CREATE TABLE IF NOT EXISTS contrato_producto (
-    id_contrato_producto SERIAL PRIMARY KEY,
-    id_contrato INTEGER NOT NULL REFERENCES contrato(id_contrato) ON DELETE CASCADE,
-    id_producto INTEGER NOT NULL REFERENCES productos(id_producto) ON DELETE CASCADE,
-    cantidad INTEGER NOT NULL DEFAULT 1,
-    UNIQUE (id_contrato, id_producto)
-);
-
 -- Suplementos
 CREATE TABLE IF NOT EXISTS suplemento (
     id_suplemento SERIAL PRIMARY KEY,
@@ -38,15 +29,6 @@ CREATE TABLE IF NOT EXISTS suplemento (
     fecha DATE NOT NULL DEFAULT CURRENT_DATE,
     monto NUMERIC(15, 2) NOT NULL DEFAULT 0.00,
     documento VARCHAR(255)
-);
-
--- Suplemento-Producto (relación muchos a muchos)
-CREATE TABLE IF NOT EXISTS suplemento_producto (
-    id_suplemento_producto SERIAL PRIMARY KEY,
-    id_suplemento INTEGER NOT NULL REFERENCES suplemento(id_suplemento) ON DELETE CASCADE,
-    id_producto INTEGER NOT NULL REFERENCES productos(id_producto) ON DELETE CASCADE,
-    cantidad INTEGER NOT NULL DEFAULT 1,
-    UNIQUE (id_suplemento, id_producto)
 );
 
 -- Facturas
@@ -61,15 +43,6 @@ CREATE TABLE IF NOT EXISTS factura (
     pago_actual NUMERIC(15, 2) NOT NULL DEFAULT 0.00
 );
 
--- Factura-Producto (relación muchos a muchos)
-CREATE TABLE IF NOT EXISTS factura_producto (
-    id_factura_producto SERIAL PRIMARY KEY,
-    id_factura INTEGER NOT NULL REFERENCES factura(id_factura) ON DELETE CASCADE,
-    id_producto INTEGER NOT NULL REFERENCES productos(id_producto) ON DELETE CASCADE,
-    cantidad INTEGER NOT NULL DEFAULT 1,
-    UNIQUE (id_factura, id_producto)
-);
-
 -- Ventas en Efectivo
 CREATE TABLE IF NOT EXISTS venta_efectivo (
     id_venta_efectivo SERIAL PRIMARY KEY,
@@ -80,13 +53,26 @@ CREATE TABLE IF NOT EXISTS venta_efectivo (
     monto NUMERIC(15, 2) NOT NULL DEFAULT 0.00
 );
 
--- Venta Efectivo-Producto (relación muchos a muchos)
-CREATE TABLE IF NOT EXISTS venta_efectivo_producto (
-    id_venta_efectivo_producto SERIAL PRIMARY KEY,
+-- Item-Factura (reemplaza factura_producto)
+CREATE TABLE IF NOT EXISTS item_factura (
+    id_item_factura SERIAL PRIMARY KEY,
+    id_factura INTEGER NOT NULL REFERENCES factura(id_factura) ON DELETE CASCADE,
+    id_producto INTEGER NOT NULL REFERENCES productos(id_producto) ON DELETE CASCADE,
+    cantidad INTEGER NOT NULL DEFAULT 1,
+    precio_compra NUMERIC(15, 4) NOT NULL,
+    precio_venta NUMERIC(15, 4) NOT NULL,
+    id_moneda INTEGER NOT NULL REFERENCES moneda(id_moneda) ON DELETE CASCADE
+);
+
+-- Item-Venta-Efectivo (reemplaza venta_efectivo_producto)
+CREATE TABLE IF NOT EXISTS item_venta_efectivo (
+    id_item_venta_efectivo SERIAL PRIMARY KEY,
     id_venta_efectivo INTEGER NOT NULL REFERENCES venta_efectivo(id_venta_efectivo) ON DELETE CASCADE,
     id_producto INTEGER NOT NULL REFERENCES productos(id_producto) ON DELETE CASCADE,
     cantidad INTEGER NOT NULL DEFAULT 1,
-    UNIQUE (id_venta_efectivo, id_producto)
+    precio_compra NUMERIC(15, 4) NOT NULL,
+    precio_venta NUMERIC(15, 4) NOT NULL,
+    id_moneda INTEGER NOT NULL REFERENCES moneda(id_moneda) ON DELETE CASCADE
 );
 
 -- =====================================================
@@ -97,20 +83,16 @@ CREATE INDEX IF NOT EXISTS idx_contrato_cliente ON contrato(id_cliente);
 CREATE INDEX IF NOT EXISTS idx_contrato_estado ON contrato(id_estado);
 CREATE INDEX IF NOT EXISTS idx_contrato_tipo ON contrato(id_tipo_contrato);
 CREATE INDEX IF NOT EXISTS idx_contrato_moneda ON contrato(id_moneda);
-CREATE INDEX IF NOT EXISTS idx_contrato_producto_contrato ON contrato_producto(id_contrato);
-CREATE INDEX IF NOT EXISTS idx_contrato_producto_producto ON contrato_producto(id_producto);
 CREATE INDEX IF NOT EXISTS idx_suplemento_contrato ON suplemento(id_contrato);
 CREATE INDEX IF NOT EXISTS idx_suplemento_estado ON suplemento(id_estado);
-CREATE INDEX IF NOT EXISTS idx_suplemento_producto_suplemento ON suplemento_producto(id_suplemento);
-CREATE INDEX IF NOT EXISTS idx_suplemento_producto_producto ON suplemento_producto(id_producto);
 CREATE INDEX IF NOT EXISTS idx_factura_contrato ON factura(id_contrato);
 CREATE INDEX IF NOT EXISTS idx_factura_codigo ON factura(codigo_factura);
-CREATE INDEX IF NOT EXISTS idx_factura_producto_factura ON factura_producto(id_factura);
-CREATE INDEX IF NOT EXISTS idx_factura_producto_producto ON factura_producto(id_producto);
+CREATE INDEX IF NOT EXISTS idx_item_factura_factura ON item_factura(id_factura);
+CREATE INDEX IF NOT EXISTS idx_item_factura_producto ON item_factura(id_producto);
 CREATE INDEX IF NOT EXISTS idx_venta_efectivo_dependencia ON venta_efectivo(id_dependencia);
 CREATE INDEX IF NOT EXISTS idx_venta_efectivo_fecha ON venta_efectivo(fecha);
-CREATE INDEX IF NOT EXISTS idx_venta_efectivo_producto_venta ON venta_efectivo_producto(id_venta_efectivo);
-CREATE INDEX IF NOT EXISTS idx_venta_efectivo_producto_producto ON venta_efectivo_producto(id_producto);
+CREATE INDEX IF NOT EXISTS idx_item_venta_efectivo_venta ON item_venta_efectivo(id_venta_efectivo);
+CREATE INDEX IF NOT EXISTS idx_item_venta_efectivo_producto ON item_venta_efectivo(id_producto);
 
 -- =====================================================
 -- DATOS INICIALES - TIPOS DE CONTRATO

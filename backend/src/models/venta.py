@@ -1,4 +1,5 @@
 from sqlmodel import SQLModel, Field, Relationship
+from sqlalchemy import Column, ForeignKey
 from typing import Optional, List, TYPE_CHECKING
 from decimal import Decimal
 from datetime import datetime
@@ -19,7 +20,11 @@ class Ventas(SQLModel, table=True):
     __tablename__ = "ventas"
 
     id_venta: Optional[int] = Field(default=None, primary_key=True)
-    id_cliente: int = Field(foreign_key="clientes.id_cliente")
+    id_cliente: int = Field(
+        sa_column=Column(
+            ForeignKey("clientes.id_cliente", ondelete="CASCADE"), nullable=False
+        )
+    )
     fecha: datetime = Field(default_factory=datetime.utcnow)
     total: Decimal = Field(default=0, decimal_places=2)
     estado: EstadoVenta = Field(default=EstadoVenta.PENDIENTE)

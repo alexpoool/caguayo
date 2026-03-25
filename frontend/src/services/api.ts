@@ -14,7 +14,6 @@ import type {
   Movimiento,
   MovimientoCreate,
   TipoMovimiento,
-  Provedor,
   Convenio,
   Anexo,
   Dependencia,
@@ -90,6 +89,10 @@ export const productosService = {
   // Nuevos métodos para movimientos
   async getProductosByAnexo(anexoId: number): Promise<ProductoConCantidad[]> {
     return apiClient.get<ProductoConCantidad[]>(`/productos/anexo/${anexoId}`);
+  },
+
+  async getProductosByFactura(facturaId: number): Promise<ProductoConCantidad[]> {
+    return apiClient.get<ProductoConCantidad[]>(`/productos/factura/${facturaId}`);
   },
 
   async getProductosConStock(): Promise<ProductoConCantidad[]> {
@@ -372,30 +375,27 @@ export const movimientosService = {
   },
 
   async crearAjuste(data: {
-    id_movimiento_origen: number;
+    id_movimiento_origen?: number;
+    id_producto?: number;
+    id_dependencia_origen?: number;
     destinos: { id_dependencia: number; cantidad: number }[];
     fecha?: string;
     observacion?: string;
+    codigo?: string;
   }): Promise<any[]> {
     return apiClient.post<any[]>('/movimientos/ajuste', data);
-  }
-};
-
-export const provedoresService = {
-  async getProvedores(search?: string, skip = 0, limit = 100): Promise<Provedor[]> {
-    const params = new URLSearchParams();
-    if (search) params.append('search', search);
-    params.append('skip', skip.toString());
-    params.append('limit', limit.toString());
-    return apiClient.get<Provedor[]>(`/provedores?${params.toString()}`);
   },
 
-  async getProvedor(id: number): Promise<Provedor> {
-    return apiClient.get<Provedor>(`/provedores/${id}`);
+  async getStockProductoDependencia(productoId: number, dependenciaId: number): Promise<{ producto_id: number; dependencia_id: number; stock: number }> {
+    return apiClient.get<{ producto_id: number; dependencia_id: number; stock: number }>(
+      `/movimientos/stock?producto_id=${productoId}&dependencia_id=${dependenciaId}`
+    );
   },
 
-  async getConveniosByProvedor(provedorId: number): Promise<Convenio[]> {
-    return apiClient.get<Convenio[]>(`/provedores/${provedorId}/convenios`);
+  async getProductosPorDependencia(dependenciaId: number): Promise<ProductoConCantidad[]> {
+    return apiClient.get<ProductoConCantidad[]>(
+      `/movimientos/productos-por-dependencia?dependencia_id=${dependenciaId}`
+    );
   }
 };
 
@@ -526,6 +526,10 @@ export const facturasService = {
 
   async getFacturasByContrato(contratoId: number): Promise<FacturaWithDetails[]> {
     return apiClient.get<FacturaWithDetails[]>(`/facturas/contrato/${contratoId}`);
+  },
+
+  async getProductosByFactura(facturaId: number): Promise<ProductoConCantidad[]> {
+    return apiClient.get<ProductoConCantidad[]>(`/productos/factura/${facturaId}`);
   },
 
   async getFactura(id: number): Promise<FacturaWithDetails> {
@@ -731,6 +735,14 @@ export const liquidacionService = {
     return apiClient.get<ProductosEnLiquidacion[]>(url);
   },
 
+  async getItemsAnexoConEstado(clienteId: number, anexoId?: number): Promise<any[]> {
+    let url = `/liquidaciones/productos-anexo/cliente/${clienteId}`;
+    if (anexoId) {
+      url += `?anexo_id=${anexoId}`;
+    }
+    return apiClient.get<any[]>(url);
+  },
+
   async createLiquidacion(data: LiquidacionCreate): Promise<Liquidacion> {
     return apiClient.post<Liquidacion>('/liquidaciones', data);
   },
@@ -763,7 +775,6 @@ export type {
   Moneda,
   MonedaCreate,
   MonedaUpdate,
-  Provedor,
   Convenio,
   Dependencia,
   Cuenta,

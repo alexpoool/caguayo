@@ -1,8 +1,7 @@
 import { apiClient } from '../lib/api';
 import type { TipoContrato, TipoContratoCreate, TipoContratoUpdate } from '../types/contrato';
 import type { EstadoContrato, EstadoContratoCreate, EstadoContratoUpdate } from '../types/contrato';
-import type { TipoProveedor, TipoProveedorCreate, TipoProveedorUpdate } from '../types/proveedor';
-import type { TipoConvenio, TipoConvenioCreate, TipoConvenioUpdate } from '../types/proveedor';
+import type { TipoProveedor, TipoProveedorCreate, TipoProveedorUpdate, TipoConvenio, TipoConvenioCreate, TipoConvenioUpdate } from '../types/index';
 import type { Cuenta, CuentaCreate, CuentaUpdate } from '../types/cuenta';
 import type { Grupo, GrupoCreate, GrupoUpdate, Funcionalidad, Usuario, UsuarioCreate, UsuarioUpdate } from '../types/usuario';
 import type { TipoDependencia, TipoDependenciaCreate, TipoDependenciaUpdate, Dependencia, DependenciaConCuentasCreate, DependenciaUpdate } from '../types/dependencia';

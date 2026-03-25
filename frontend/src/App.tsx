@@ -26,20 +26,18 @@ import {
 
 import { WelcomePage } from './pages/Welcome';
 import { LoginPage } from './pages/Login';
+import { RegisterPage } from './pages/Register';
+import { HomePage } from './pages/HomePage';
 import { PerfilPage } from './pages/Perfil';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ProductosPage } from './pages/Productos';
 import { ClientesPage } from './pages/Clientes';
 import { PerfilClientePage } from './pages/PerfilCliente';
-import { MonedasPage } from './pages/Monedas';
 import { MovimientosPage } from './pages/Movimientos';
 import { MovimientosPendientesPage } from './pages/MovimientosPendientes';
 import { RecepcionesPage } from './pages/RecepcionesPage';
 import { MovimientoAjusteForm } from './pages/movimientos/MovimientoAjusteForm';
 import { ConfiguracionPage } from './pages/Configuracion';
-import { UsuariosPage } from './pages/Usuarios';
-import { GruposPage } from './pages/Grupos';
-import { DependenciasPage } from './pages/Dependencias';
 import { InventarioHome } from './pages/home/InventarioHome';
 import { AdministracionHome } from './pages/home/AdministracionHome';
 import { VentaHome } from './pages/home/VentaHome';
@@ -69,7 +67,7 @@ const queryClient = new QueryClient({
 
 const rutasPorModulo: Record<Modulo, string[]> = {
   inventario: ['/inventario', '/movimientos', '/movimientos/pendientes', '/movimientos/ajuste', '/movimientos/seleccionar-recepcion', '/productos'],
-  administracion: ['/administracion', '/configuracion', '/usuarios', '/grupos', '/monedas', '/dependencias', '/perfil'],
+  administracion: ['/administracion', '/perfil'],
   venta: ['/venta', '/ventas', '/clientes', '/ventas/operaciones', '/ventas/contratos', '/ventas/suplementos', '/ventas/facturas', '/ventas/efectivo'],
   compra: ['/compra', '/compra/clientes', '/compra/convenios', '/compra/anexos', '/compra/liquidaciones', '/compra/productos-liquidacion'],
   reportes: ['/reportes'],
@@ -106,12 +104,12 @@ function App() {
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
-  const isHomePage = location.pathname === '/';
+  const isHomePage = location.pathname === '/' || location.pathname === '/administracion' || location.pathname === '/perfil';
 
   // All hooks must be called before any early returns
   useEffect(() => {
-    // Only redirect to login if we're not loading and not authenticated, and not already on login page
-    if (!isLoading && !isAuthenticated && location.pathname !== '/login') {
+    // Only redirect to login if we're not loading and not authenticated, and not already on login or register page
+    if (!isLoading && !isAuthenticated && location.pathname !== '/login' && location.pathname !== '/register') {
       navigate('/login');
     }
   }, [isAuthenticated, isLoading, location.pathname, navigate]);
@@ -205,7 +203,6 @@ function App() {
   };
 
   const modulos: { id: Modulo; label: string; icon: React.ElementType }[] = [
-    { id: 'administracion', label: 'Administración', icon: Shield },
     { id: 'venta', label: 'Venta', icon: Briefcase },
     { id: 'compra', label: 'Compra', icon: UserCircle },
     { id: 'inventario', label: 'Inventario', icon: Boxes },
@@ -261,30 +258,6 @@ function App() {
                   <NavLink to="/configuracion" onClick={handleLinkClick}>
                     <Settings className="w-6 h-6" />
                     Configuración
-                  </NavLink>
-                </li>
-                <li>
-                  <NavLink to="/usuarios" onClick={handleLinkClick}>
-                    <UserCircle className="w-6 h-6" />
-                    Usuario
-                  </NavLink>
-                </li>
-                <li>
-                  <NavLink to="/grupos" onClick={handleLinkClick}>
-                    <Shield className="w-6 h-6" />
-                    Grupos
-                  </NavLink>
-                </li>
-                <li>
-                  <NavLink to="/monedas" onClick={handleLinkClick}>
-                    <Coins className="w-6 h-6" />
-                    Monedas
-                  </NavLink>
-                </li>
-                <li>
-                  <NavLink to="/dependencias" onClick={handleLinkClick}>
-                    <Building className="w-6 h-6" />
-                    Dependencias
                   </NavLink>
                 </li>
               </ul>
@@ -359,63 +332,54 @@ function App() {
                 )}
               </>
           </nav>
-          {/* Usuario en el sidebar al final */}
-            <div className={`flex items-center ${slimSidebar ? 'justify-center' : 'justify-between'} gap-2 px-2 py-5 border-t border-slate-800 mt-auto`}>
-              <div className={`flex items-center ${slimSidebar ? '' : 'gap-2'}`}>
-                  <img src="/default.jpg" alt="avatar" className="w-9 h-9 rounded-full object-cover" />
-                  {!slimSidebar && <span className="text-sm font-medium">{user ? `${user.nombre} ${user.primer_apellido}` : 'Usuario'}</span>}
-                </div>
-              {!slimSidebar && (
-                // TODO: Aquí implementar la lógica del botón de ajustes si se requiere (abrir menú, enviar evento, etc.)
-                <button
-                  className="p-2 rounded-full hover:bg-slate-800 transition-colors"
-                  title="Configuración de cuenta"
-                  onClick={() => setShowAccountModal(true)}
-                >
-                  <Settings className="w-5 h-5 text-slate-400" />
-                </button>
-              )}
-            </div>
         </aside>
         <header className={`${isHomePage ? 'col-start-1 col-end-3' : 'col-start-2 col-end-3'} row-start-1 row-end-2 sticky top-0 z-40 bg-white shadow-sm border-b border-gray-200 px-6 py-4 h-16 flex items-center justify-between`}>
-          <Link
-            to="/"
-            onClick={() => setModuloActivo('home')}
-            className="p-2 rounded-lg hover:bg-gray-100 transition-all duration-300 ease-out hover:scale-110 active:scale-95 group"
-            title="Ir al Dashboard"
-          >
-            <Home className="w-6 h-6 text-gray-700 group-hover:text-blue-600 transition-colors" />
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link
+              to="/"
+              onClick={() => setModuloActivo('home')}
+              className="p-2 rounded-lg hover:bg-gray-100 transition-all duration-300 ease-out hover:scale-110 active:scale-95 group"
+              title="Inicio"
+            >
+              <Home className="w-6 h-6 text-gray-700 group-hover:text-blue-600 transition-colors" />
+            </Link>
+            <Link
+              to="/administracion"
+              onClick={() => setModuloActivo('administracion')}
+              className="p-2 rounded-lg hover:bg-gray-100 transition-all duration-300 ease-out hover:scale-110 active:scale-95 group"
+              title="Administración"
+            >
+              <Settings className="w-6 h-6 text-gray-700 group-hover:text-blue-600 transition-colors" />
+            </Link>
+            <button
+              onClick={() => setShowAccountModal(true)}
+              className="p-2 rounded-lg hover:bg-gray-100 transition-all duration-300 ease-out hover:scale-110 active:scale-95 group"
+              title="Cuenta"
+            >
+              <UserCircle className="w-6 h-6 text-gray-700 group-hover:text-blue-600 transition-colors" />
+            </button>
+          </div>
 
-          <div className="flex-1 flex justify-end">
-            <div className="flex items-center gap-2">
-              {modulos.map((modulo) => {
-                const Icon = modulo.icon;
-                const isActive = moduloActivo === modulo.id;
-                const isEnabled = ['inventario', 'administracion', 'venta', 'compra', 'reportes'].includes(modulo.id);
-                
-                return (
-                  <button
-                    key={modulo.id}
-                    onClick={() => isEnabled && handleModuloClick(modulo.id)}
-                    disabled={!isEnabled}
-                    className={`
-                      group flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold 
-                      transition-all duration-300 ease-out
-                      ${isActive
-                        ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30 hover:bg-blue-700 hover:shadow-blue-600/40 hover:-translate-y-0.5'
-                        : isEnabled
-                        ? 'text-blue-700 bg-blue-50 hover:bg-blue-100 hover:text-blue-800 hover:-translate-y-0.5 hover:shadow-md'
-                        : 'text-gray-400 cursor-not-allowed bg-gray-100'
-                      }
-                    `}
-                  >
-                    <Icon className="w-6 h-6 transition-transform duration-300" />
-                    <span>{modulo.label}</span>
-                  </button>
-                );
-              })}
-            </div>
+          <div className="flex items-center gap-6">
+            {['compra', 'venta', 'inventario', 'reportes'].map((moduloId) => {
+              const modulo = modulos.find(m => m.id === moduloId);
+              if (!modulo) return null;
+              const isActive = moduloActivo === modulo.id;
+              return (
+                <button
+                  key={modulo.id}
+                  onClick={() => handleModuloClick(modulo.id)}
+                  className={`text-sm font-medium transition-all duration-300 ease-out hover:-translate-y-0.5 pb-1
+                    ${isActive
+                      ? 'text-blue-900 font-semibold border-b-2 border-blue-600'
+                      : 'text-blue-600 hover:text-blue-800'
+                    }
+                  `}
+                >
+                  {modulo.label}
+                </button>
+              );
+            })}
           </div>
             <div className="animate-fade-in-up animation-fill-both">
             </div>
@@ -424,6 +388,10 @@ function App() {
           <main className="flex-1 overflow-auto bg-gray-50 p-8">
             <div className="animate-fade-in-up animation-fill-both">
               <Routes>
+                <Route
+                  path="/"
+                  element={<HomePage />}
+                />
                 <Route
                   path="/compra/clientes"
                   element={
@@ -553,15 +521,7 @@ function App() {
                   path="/administracion" 
                   element={
                     <ProtectedRoute moduloActivo={moduloActivo} currentPath="/administracion">
-                      <AdministracionHome />
-                    </ProtectedRoute>
-                  } 
-                />
-                <Route 
-                  path="/monedas"
-                  element={
-                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/monedas">
-                      <MonedasPage />
+                      <ConfiguracionPage />
                     </ProtectedRoute>
                   } 
                 />
@@ -586,30 +546,6 @@ function App() {
                   element={
                     <ProtectedRoute moduloActivo={moduloActivo} currentPath="/configuracion">
                       <ConfiguracionPage />
-                    </ProtectedRoute>
-                  } 
-                />
-                <Route 
-                  path="/usuarios" 
-                  element={
-                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/usuarios">
-                      <UsuariosPage />
-                    </ProtectedRoute>
-                  } 
-                />
-                <Route 
-                  path="/grupos" 
-                  element={
-                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/grupos">
-                      <GruposPage />
-                    </ProtectedRoute>
-                  } 
-                />
-                <Route
-                  path="/dependencias" 
-                  element={
-                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/dependencias">
-                      <DependenciasPage />
                     </ProtectedRoute>
                   } 
                 />
@@ -770,6 +706,7 @@ function AppWrapper() {
       <AuthProvider>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
           <Route path="/*" element={<App />} />
         </Routes>
       </AuthProvider>

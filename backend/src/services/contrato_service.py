@@ -1,7 +1,8 @@
 from typing import List
 from datetime import datetime
+from decimal import Decimal
 from sqlmodel.ext.asyncio.session import AsyncSession
-from sqlmodel import select
+from sqlmodel import select, func
 from src.repository.base import CRUDBase
 from src.repository.contratos_repo import (
     ContratoRepository,
@@ -12,6 +13,8 @@ from src.repository.contratos_repo import (
     factura_repo,
     VentaEfectivoRepository,
     venta_efectivo_repo,
+    item_factura_repo,
+    item_venta_efectivo_repo,
 )
 from src.models import (
     TipoContrato,
@@ -24,6 +27,8 @@ from src.models import (
     Moneda,
     Movimiento,
     TipoMovimiento,
+    Anexo,
+    Productos,
 )
 from src.dto import (
     TipoContratoCreate,
@@ -51,6 +56,13 @@ from src.dto import (
     MonedaRead,
     ClienteSimpleRead,
     DependenciaSimpleRead,
+    ItemFacturaCreate,
+    ItemVentaEfectivoCreate,
+)
+from src.utils import generar_codigo_anio, generar_codigo_con_padre
+from src.services.productos_en_liquidacion_service import (
+    agregar_desde_factura,
+    agregar_desde_venta_efectivo,
 )
 
 tipo_contrato_repo = CRUDBase[TipoContrato, TipoContratoCreate, TipoContratoUpdate](
@@ -151,6 +163,7 @@ async def map_contrato_to_read(
         id_moneda=contrato.id_moneda,
         monto=contrato.monto,
         documento_final=contrato.documento_final,
+        codigo=contrato.codigo,
         estado=EstadoContratoRead(
             id_estado_contrato=estado.id_estado_contrato,
             nombre=estado.nombre,
@@ -184,7 +197,9 @@ async def map_contrato_to_read(
 class ContratoService:
     @staticmethod
     async def create(db: AsyncSession, data: ContratoCreate) -> ContratoReadWithDetails:
-        contrato = await contrato_repo.create(db, data)
+        anio = data.fecha.year
+        codigo = await generar_codigo_anio(db, "contrato", "fecha", anio)
+        contrato = await contrato_repo.create(db, data, codigo=codigo)
         return await map_contrato_to_read(db, contrato)
 
     @staticmethod
@@ -235,6 +250,7 @@ async def map_suplemento_to_read(
         fecha=suplemento.fecha,
         monto=suplemento.monto,
         documento=suplemento.documento,
+        codigo=suplemento.codigo,
         estado=EstadoContratoRead(
             id_estado_contrato=estado.id_estado_contrato,
             nombre=estado.nombre,
@@ -249,7 +265,15 @@ class SuplementoService:
     async def create(
         db: AsyncSession, data: SuplementoCreate
     ) -> SuplementoReadWithDetails:
-        suplemento = await suplemento_repo.create(db, data)
+        contrato = await db.get(Contrato, data.id_contrato)
+        prefijo = (
+            contrato.codigo if (contrato and contrato.codigo) else str(data.id_contrato)
+        )
+        anio = data.fecha.year
+        codigo = await generar_codigo_con_padre(
+            db, prefijo, "suplemento", "fecha", anio
+        )
+        suplemento = await suplemento_repo.create(db, data, codigo=codigo)
         return await map_suplemento_to_read(db, suplemento)
 
     @staticmethod
@@ -306,38 +330,60 @@ class FacturaService:
     @staticmethod
     async def create(db: AsyncSession, data: FacturaCreate) -> FacturaReadWithDetails:
         data_dict = data.model_dump(exclude_none=True)
-        productos_data = data_dict.pop("productos", [])
+        items_data = data_dict.pop("items", [])
 
+        if not data_dict.get("codigo_factura"):
+            anio = data.fecha.year
+            data_dict["codigo_factura"] = await generar_codigo_anio(
+                db, "factura", "fecha", anio
+            )
+
+        data.codigo_factura = data_dict["codigo_factura"]
         factura = await factura_repo.create(db, data)
 
-        if productos_data:
-            stmt_tipo = select(TipoMovimiento).where(TipoMovimiento.tipo == "venta")
-            result_tipo = await db.exec(stmt_tipo)
-            tipo_venta = result_tipo.first()
+        contrato = await db.get(Contrato, factura.id_contrato)
+        id_dependencia = data.id_dependencia or 4
 
-            if tipo_venta:
-                for prod in productos_data:
-                    db_movimiento = Movimiento(
-                        id_tipo_movimiento=tipo_venta.id_tipo_movimiento,
-                        id_dependencia=1,
-                        id_factura=factura.id_factura,
-                        id_contrato=factura.id_contrato,
-                        id_producto=prod["id_producto"],
-                        cantidad=prod["cantidad"],
-                        fecha=datetime.utcnow(),
-                        precio_venta=prod.get("precio_compra", 0),
-                        moneda_venta=data.id_moneda,
-                        estado="pendiente",
-                    )
-                    db.add(db_movimiento)
-                    await db.flush()
+        stmt_tipo_mov = select(TipoMovimiento).where(TipoMovimiento.tipo == "venta")
+        result_tipo = await db.exec(stmt_tipo_mov)
+        tipo_mov = result_tipo.first()
 
-                    if db_movimiento.id_movimiento:
-                        anio = datetime.utcnow().year
-                        codigo = (
-                            f"{anio}.{factura.codigo_factura}.0.{prod['id_producto']}"
-                        )
-                        db_movimiento.codigo = codigo
+        if items_data and tipo_mov:
+            await item_factura_repo.create_items(db, factura.id_factura, items_data)
+
+            for item in items_data:
+                producto = await db.get(Productos, item["id_producto"])
+                if not producto:
+                    continue
+
+                producto.precio_venta = item["precio_venta"]
+                producto.moneda_venta = item["id_moneda"]
+                producto.precio_minimo = item["precio_venta"] * Decimal("0.8")
+
+                db_movimiento = Movimiento(
+                    id_tipo_movimiento=tipo_mov.id_tipo_movimiento,
+                    id_dependencia=id_dependencia,
+                    id_factura=factura.id_factura,
+                    id_contrato=factura.id_contrato,
+                    id_cliente=contrato.id_cliente if contrato else None,
+                    id_producto=item["id_producto"],
+                    cantidad=item["cantidad"],
+                    fecha=datetime.utcnow(),
+                    precio_compra=producto.precio_compra,
+                    moneda_compra=producto.moneda_compra,
+                    precio_venta=item["precio_venta"],
+                    moneda_venta=item["id_moneda"],
+                    estado="pendiente",
+                )
+                db.add(db_movimiento)
+                await db.flush()
+
+                if db_movimiento.id_movimiento:
+                    anio = datetime.utcnow().year
+                    codigo = f"{anio}.FAC{factura.id_factura}.{item['id_producto']}"
+                    db_movimiento.codigo = codigo
+
+        await agregar_desde_factura(db, factura.id_factura, items_data)
 
         await db.commit()
         await db.refresh(factura)
@@ -403,6 +449,7 @@ async def map_venta_efectivo_to_read(
         id_dependencia=venta.id_dependencia,
         cajero=venta.cajero,
         monto=venta.monto,
+        codigo=venta.codigo,
         dependencia=DependenciaSimpleRead(
             id_dependencia=dependencia.id_dependencia,
             nombre=dependencia.nombre,
@@ -418,40 +465,54 @@ class VentaEfectivoService:
         db: AsyncSession, data: VentaEfectivoCreate
     ) -> VentaEfectivoReadWithDetails:
         data_dict = data.model_dump(exclude_none=True)
-        productos_data = data_dict.pop("productos", [])
+        items_data = data_dict.pop("items", [])
 
-        venta = await venta_efectivo_repo.create(db, data)
+        anio = data.fecha.year
+        codigo = await generar_codigo_anio(db, "venta_efectivo", "fecha", anio)
+        data_dict["codigo"] = codigo
 
-        if productos_data:
-            stmt_tipo = select(TipoMovimiento).where(TipoMovimiento.tipo == "venta")
-            result_tipo = await db.exec(stmt_tipo)
-            tipo_venta = result_tipo.first()
+        venta = await venta_efectivo_repo.create(db, data, codigo=codigo)
 
-            if tipo_venta:
-                for prod in productos_data:
-                    db_movimiento = Movimiento(
-                        id_tipo_movimiento=tipo_venta.id_tipo_movimiento,
-                        id_dependencia=venta.id_dependencia,
-                        id_venta_efectivo=venta.id_venta_efectivo,
-                        id_producto=prod["id_producto"],
-                        cantidad=prod["cantidad"],
-                        fecha=datetime.utcnow(),
-                        precio_venta=prod.get("precio_compra", 0),
-                        moneda_venta=data.id_moneda,
-                        estado="pendiente",
-                    )
-                    db.add(db_movimiento)
-                    await db.flush()
+        stmt_tipo_mov = select(TipoMovimiento).where(TipoMovimiento.tipo == "venta")
+        result_tipo = await db.exec(stmt_tipo_mov)
+        tipo_mov = result_tipo.first()
 
-                    if db_movimiento.id_movimiento:
-                        anio = datetime.utcnow().year
-                        codigo_venta = (
-                            f"VE{venta.id_venta_efectivo}"
-                            if venta.id_venta_efectivo
-                            else "VE0"
-                        )
-                        codigo = f"{anio}.{codigo_venta}.0.{prod['id_producto']}"
-                        db_movimiento.codigo = codigo
+        if items_data and tipo_mov:
+            await item_venta_efectivo_repo.create_items(
+                db, venta.id_venta_efectivo, items_data
+            )
+
+            for item in items_data:
+                producto = await db.get(Productos, item["id_producto"])
+                if not producto:
+                    continue
+
+                producto.precio_venta = item["precio_venta"]
+                producto.moneda_venta = item["id_moneda"]
+                producto.precio_minimo = item["precio_venta"] * Decimal("0.8")
+
+                db_movimiento = Movimiento(
+                    id_tipo_movimiento=tipo_mov.id_tipo_movimiento,
+                    id_dependencia=venta.id_dependencia,
+                    id_venta_efectivo=venta.id_venta_efectivo,
+                    id_producto=item["id_producto"],
+                    cantidad=item["cantidad"],
+                    fecha=datetime.utcnow(),
+                    precio_compra=producto.precio_compra,
+                    moneda_compra=producto.moneda_compra,
+                    precio_venta=item["precio_venta"],
+                    moneda_venta=item["id_moneda"],
+                    estado="pendiente",
+                )
+                db.add(db_movimiento)
+                await db.flush()
+
+                if db_movimiento.id_movimiento:
+                    anio = datetime.utcnow().year
+                    codigo = f"{anio}.VE{venta.id_venta_efectivo}.{item['id_producto']}"
+                    db_movimiento.codigo = codigo
+
+        await agregar_desde_venta_efectivo(db, venta.id_venta_efectivo, items_data)
 
         await db.commit()
         await db.refresh(venta)

@@ -181,6 +181,17 @@ class LiquidacionService:
         return [ProductosEnLiquidacionRead.model_validate(p) for p in productos]
 
     @staticmethod
+    async def get_items_anexo_con_estado(
+        db: AsyncSession, cliente_id: int, anexo_id: Optional[int] = None
+    ) -> List[dict]:
+        """Obtiene todos los items de anexos del cliente con estado (NO_VENDIDO, VENDIDO, LIQUIDADO)."""
+        return (
+            await productos_en_liquidacion_repo.get_items_anexo_con_estado_por_cliente(
+                db, cliente_id, anexo_id
+            )
+        )
+
+    @staticmethod
     async def update_liquidacion(
         db: AsyncSession, liquidacion_id: int, data: LiquidacionUpdate
     ) -> Optional[LiquidacionRead]:

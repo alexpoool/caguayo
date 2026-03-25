@@ -27,6 +27,10 @@ from src.models.contrato import (
     Factura,
     VentaEfectivo,
 )
+from src.models.item_anexo import ItemAnexo
+from src.models.item_factura import ItemFactura
+from src.models.item_venta_efectivo import ItemVentaEfectivo
+from src.models.producto import Productos
 from src.dto.contratos_dto import (
     ContratoCreate,
     ContratoUpdate,
@@ -36,7 +40,10 @@ from src.dto.contratos_dto import (
     FacturaUpdate,
     VentaEfectivoCreate,
     VentaEfectivoUpdate,
+    ItemFacturaCreate,
+    ItemVentaEfectivoCreate,
 )
+from src.dto.convenios_dto import ItemAnexoCreate
 
 
 class ContratoRepository(CRUDBase[Contrato, ContratoCreate, ContratoUpdate]):
@@ -57,7 +64,9 @@ class ContratoRepository(CRUDBase[Contrato, ContratoCreate, ContratoUpdate]):
     ) -> Optional[Contrato]:
         return await db.get(Contrato, id_contrato)
 
-    async def create(self, db: AsyncSession, contrato_data: ContratoCreate) -> Contrato:
+    async def create(
+        self, db: AsyncSession, contrato_data: ContratoCreate, codigo: str = None
+    ) -> Contrato:
         contrato_dict = {
             "id_cliente": normalize_id(contrato_data.id_cliente),
             "nombre": contrato_data.nombre,
@@ -69,6 +78,7 @@ class ContratoRepository(CRUDBase[Contrato, ContratoCreate, ContratoUpdate]):
             "id_moneda": normalize_id(contrato_data.id_moneda),
             "monto": contrato_data.monto or Decimal("0.00"),
             "documento_final": contrato_data.documento_final,
+            "codigo": codigo,
         }
 
         contrato = Contrato(**contrato_dict)
@@ -116,7 +126,7 @@ class SuplementoRepository(CRUDBase[Suplemento, SuplementoCreate, SuplementoUpda
         return await db.get(Suplemento, id_suplemento)
 
     async def create(
-        self, db: AsyncSession, suplemento_data: SuplementoCreate
+        self, db: AsyncSession, suplemento_data: SuplementoCreate, codigo: str = None
     ) -> Suplemento:
         suplemento_dict = {
             "id_contrato": normalize_id(suplemento_data.id_contrato),
@@ -125,6 +135,7 @@ class SuplementoRepository(CRUDBase[Suplemento, SuplementoCreate, SuplementoUpda
             "fecha": suplemento_data.fecha,
             "monto": suplemento_data.monto or Decimal("0.00"),
             "documento": suplemento_data.documento,
+            "codigo": codigo,
         }
 
         suplemento = Suplemento(**suplemento_dict)
@@ -242,7 +253,7 @@ class VentaEfectivoRepository(
         return await db.get(VentaEfectivo, id_venta_efectivo)
 
     async def create(
-        self, db: AsyncSession, venta_data: VentaEfectivoCreate
+        self, db: AsyncSession, venta_data: VentaEfectivoCreate, codigo: str = None
     ) -> VentaEfectivo:
         venta_dict = {
             "slip": venta_data.slip,
@@ -250,6 +261,7 @@ class VentaEfectivoRepository(
             "id_dependencia": normalize_id(venta_data.id_dependencia),
             "cajero": venta_data.cajero,
             "monto": venta_data.monto or Decimal("0.00"),
+            "codigo": codigo,
         }
 
         venta = VentaEfectivo(**venta_dict)
@@ -283,3 +295,103 @@ contrato_repo = ContratoRepository(Contrato)
 suplemento_repo = SuplementoRepository(Suplemento)
 factura_repo = FacturaRepository(Factura)
 venta_efectivo_repo = VentaEfectivoRepository(VentaEfectivo)
+
+
+class ItemAnexoRepository(CRUDBase[ItemAnexo, ItemAnexoCreate, dict]):
+    async def get_by_anexo(self, db: AsyncSession, id_anexo: int) -> List[ItemAnexo]:
+        statement = select(ItemAnexo).where(ItemAnexo.id_anexo == id_anexo)
+        results = await db.exec(statement)
+        return results.all()
+
+    async def create_items(
+        self, db: AsyncSession, id_anexo: int, items_data: List[ItemAnexoCreate]
+    ) -> List[ItemAnexo]:
+        created_items = []
+        for item in items_data:
+            producto = await db.get(Productos, item["id_producto"])
+            if producto:
+                item_dict = {
+                    "id_anexo": id_anexo,
+                    "id_producto": item["id_producto"],
+                    "cantidad": item["cantidad"],
+                    "precio_compra": producto.precio_compra,
+                    "precio_venta": item["precio_venta"],
+                    "id_moneda": item["id_moneda"],
+                }
+                db_item = ItemAnexo(**item_dict)
+                db.add(db_item)
+                created_items.append(db_item)
+        await db.flush()
+        return created_items
+
+
+class ItemFacturaRepository(CRUDBase[ItemFactura, ItemFacturaCreate, dict]):
+    async def get_by_factura(
+        self, db: AsyncSession, id_factura: int
+    ) -> List[ItemFactura]:
+        statement = select(ItemFactura).where(ItemFactura.id_factura == id_factura)
+        results = await db.exec(statement)
+        return results.all()
+
+    async def create_items(
+        self, db: AsyncSession, id_factura: int, items_data: List[ItemFacturaCreate]
+    ) -> List[ItemFactura]:
+        created_items = []
+        for item in items_data:
+            producto = await db.get(Productos, item["id_producto"])
+            if producto:
+                item_dict = {
+                    "id_factura": id_factura,
+                    "id_producto": item["id_producto"],
+                    "cantidad": item["cantidad"],
+                    "precio_compra": producto.precio_compra,
+                    "precio_venta": item["precio_venta"],
+                    "id_moneda": item["id_moneda"],
+                }
+                db_item = ItemFactura(**item_dict)
+                db.add(db_item)
+                created_items.append(db_item)
+        await db.flush()
+        return created_items
+
+
+class ItemVentaEfectivoRepository(
+    CRUDBase[ItemVentaEfectivo, ItemVentaEfectivoCreate, dict]
+):
+    async def get_by_venta(
+        self, db: AsyncSession, id_venta_efectivo: int
+    ) -> List[ItemVentaEfectivo]:
+        statement = select(ItemVentaEfectivo).where(
+            ItemVentaEfectivo.id_venta_efectivo == id_venta_efectivo
+        )
+        results = await db.exec(statement)
+        return results.all()
+
+    async def create_items(
+        self,
+        db: AsyncSession,
+        id_venta_efectivo: int,
+        items_data: List[ItemVentaEfectivoCreate],
+    ) -> List[ItemVentaEfectivo]:
+        created_items = []
+        for item in items_data:
+            producto = await db.get(Productos, item["id_producto"])
+            if producto:
+                item_dict = {
+                    "id_venta_efectivo": id_venta_efectivo,
+                    "id_producto": item["id_producto"],
+                    "cantidad": item["cantidad"],
+                    "precio_compra": producto.precio_compra,
+                    "precio_venta": item["precio_venta"],
+                    "id_moneda": item["id_moneda"],
+                }
+                db_item = ItemVentaEfectivo(**item_dict)
+                db.add(db_item)
+                created_items.append(db_item)
+        await db.flush()
+        return created_items
+
+
+item_anexo_repo = ItemAnexoRepository(ItemAnexo)
+item_factura_repo = ItemFacturaRepository(ItemFactura)
+item_venta_efectivo_repo = ItemVentaEfectivoRepository(ItemVentaEfectivo)

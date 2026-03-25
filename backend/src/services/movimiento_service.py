@@ -1,10 +1,19 @@
 from typing import List, Optional, cast
 import logging
 from datetime import datetime
+from decimal import Decimal
 from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlmodel import select, func
+from sqlalchemy.orm import selectinload
 from src.repository import movimiento_repo
-from src.models import Movimiento, TipoMovimiento, Anexo, Productos, Dependencia
+from src.models import (
+    Movimiento,
+    TipoMovimiento,
+    Anexo,
+    Productos,
+    Dependencia,
+    ItemAnexo,
+)
 from src.dto import (
     MovimientoCreate,
     MovimientoRead,
@@ -21,6 +30,18 @@ class MovimientoService:
         db: AsyncSession, movimiento: MovimientoCreate
     ) -> MovimientoRead:
         logger.info(f"Creando movimiento en servicio: {movimiento}")
+
+        # Validar que la dependencia existe
+        dep = await db.get(Dependencia, movimiento.id_dependencia)
+        if not dep:
+            raise ValueError(
+                f"La dependencia con id {movimiento.id_dependencia} no existe"
+            )
+
+        # Validar que el producto existe
+        prod = await db.get(Productos, movimiento.id_producto)
+        if not prod:
+            raise ValueError(f"El producto con id {movimiento.id_producto} no existe")
 
         # Crear el movimiento
         db_movimiento = await movimiento_repo.create(db, obj_in=movimiento)
@@ -185,13 +206,56 @@ class MovimientoService:
 
     @staticmethod
     async def get_productos_by_anexo(db: AsyncSession, id_anexo: int) -> List[dict]:
-        """Obtener productos únicos disponibles en un anexo específico.
+        """Obtener productos únicos disponibles en un anexo específico desde item_anexo.
+
+        Returns lista de productos con su cantidad, precios e info de convenio/anexo.
+        """
+        from src.models import Anexo
+
+        statement = (
+            select(ItemAnexo)
+            .options(selectinload(ItemAnexo.producto))
+            .where(ItemAnexo.id_anexo == id_anexo)
+        )
+        results = await db.exec(statement)
+        items_anexo = results.all()
+
+        anexo_statement = select(Anexo).where(Anexo.id_anexo == id_anexo)
+        anexo_result = await db.exec(anexo_statement)
+        anexo = anexo_result.first()
+        id_convenio = anexo.id_convenio if anexo else None
+
+        productos_list = []
+        for item in items_anexo:
+            if item.producto:
+                productos_list.append(
+                    {
+                        "id_producto": item.id_producto,
+                        "nombre": item.producto.nombre,
+                        "descripcion": item.producto.descripcion,
+                        "cantidad": item.cantidad,
+                        "codigo": item.producto.codigo,
+                        "precio_compra": float(item.precio_compra)
+                        if item.precio_compra
+                        else None,
+                        "precio_venta": float(item.precio_venta)
+                        if item.precio_venta
+                        else None,
+                        "id_anexo": item.id_anexo,
+                        "id_convenio": id_convenio,
+                    }
+                )
+
+        return productos_list
+
+    @staticmethod
+    async def get_productos_by_factura(db: AsyncSession, id_factura: int) -> List[dict]:
+        """Obtener productos únicos disponibles en una factura específica.
 
         Returns lista de productos con su cantidad total disponible.
         """
-        movimientos = await movimiento_repo.get_by_anexo(db, id_anexo)
+        movimientos = await movimiento_repo.get_by_factura(db, id_factura)
 
-        # Agrupar por producto y sumar cantidades
         productos_dict = {}
         for mov in movimientos:
             if mov.id_producto not in productos_dict:
@@ -203,28 +267,6 @@ class MovimientoService:
                     "codigo": mov.producto.codigo if mov.producto else None,
                 }
             productos_dict[mov.id_producto]["cantidad"] += mov.cantidad
-
-        # También verificar si el anexo tiene un producto directamente asignado
-        anexo_statement = select(Anexo).where(Anexo.id_anexo == id_anexo)
-        anexo_result = await db.exec(anexo_statement)
-        anexo = anexo_result.first()
-
-        if anexo and anexo.id_producto and anexo.id_producto not in productos_dict:
-            # Consultar el producto directamente
-            producto_statement = select(Productos).where(
-                Productos.id_producto == anexo.id_producto
-            )
-            producto_result = await db.exec(producto_statement)
-            producto = producto_result.first()
-
-            if producto:
-                productos_dict[anexo.id_producto] = {
-                    "id_producto": anexo.id_producto,
-                    "nombre": producto.nombre,
-                    "descripcion": producto.descripcion,
-                    "cantidad": 0,
-                    "codigo": producto.codigo,
-                }
 
         return list(productos_dict.values())
 
@@ -232,25 +274,126 @@ class MovimientoService:
     async def get_productos_con_stock(db: AsyncSession) -> List[dict]:
         """Obtener productos que tienen stock disponible (movimientos confirmados).
 
-        Returns lista de productos con su cantidad total disponible.
+        Returns lista de productos con su cantidad total disponible e info de anexo/convenio.
+        Si el movimiento no tiene id_anexo/id_convenio, busca en item_anexo.
         """
+        from src.models import Anexo
+
         movimientos = await movimiento_repo.get_productos_con_stock(db)
 
-        # Agrupar por producto y sumar cantidades
         productos_dict = {}
         for mov in movimientos:
+            id_anexo = mov.id_anexo
+            id_convenio = mov.id_convenio
+
+            if not id_anexo or not id_convenio:
+                item_stmt = (
+                    select(ItemAnexo)
+                    .where(ItemAnexo.id_producto == mov.id_producto)
+                    .limit(1)
+                )
+                item_result = await db.exec(item_stmt)
+                item = item_result.first()
+                if item:
+                    id_anexo = id_anexo or item.id_anexo
+                    if not id_convenio:
+                        anexo_stmt = select(Anexo).where(
+                            Anexo.id_anexo == item.id_anexo
+                        )
+                        anexo_result = await db.exec(anexo_stmt)
+                        anexo = anexo_result.first()
+                        if anexo:
+                            id_convenio = anexo.id_convenio
+
+            cantidad_ajustada = mov.cantidad
             if mov.id_producto not in productos_dict:
                 productos_dict[mov.id_producto] = {
                     "id_producto": mov.id_producto,
                     "nombre": mov.producto.nombre if mov.producto else "",
                     "descripcion": mov.producto.descripcion if mov.producto else None,
-                    "cantidad": 0,
+                    "cantidad": cantidad_ajustada,
                     "codigo": mov.producto.codigo if mov.producto else None,
+                    "id_anexo": id_anexo,
+                    "id_convenio": id_convenio,
                 }
-            productos_dict[mov.id_producto]["cantidad"] += mov.cantidad
+            else:
+                productos_dict[mov.id_producto]["cantidad"] += cantidad_ajustada
 
-        # Filtrar solo los que tienen cantidad > 0
         return [p for p in productos_dict.values() if p["cantidad"] > 0]
+
+    @staticmethod
+    async def get_productos_con_stock_por_dependencia(
+        db: AsyncSession, id_dependencia: int
+    ) -> List[dict]:
+        """Obtener productos con movimientos de entrada en una dependencia específica.
+
+        Returns lista de productos con cantidad del último movimiento RECEPCION/compra.
+        """
+        from src.models import Anexo
+
+        movimientos = await movimiento_repo.get_productos_con_stock_por_dependencia(
+            db, id_dependencia
+        )
+
+        productos_dict = {}
+        for mov in movimientos:
+            id_anexo = mov.id_anexo
+            id_convenio = mov.id_convenio
+
+            if not id_anexo or not id_convenio:
+                item_stmt = (
+                    select(ItemAnexo)
+                    .where(ItemAnexo.id_producto == mov.id_producto)
+                    .limit(1)
+                )
+                item_result = await db.exec(item_stmt)
+                item = item_result.first()
+                if item:
+                    id_anexo = id_anexo or item.id_anexo
+                    if not id_convenio:
+                        anexo_stmt = select(Anexo).where(
+                            Anexo.id_anexo == item.id_anexo
+                        )
+                        anexo_result = await db.exec(anexo_stmt)
+                        anexo = anexo_result.first()
+                        if anexo:
+                            id_convenio = anexo.id_convenio
+
+            if mov.id_producto not in productos_dict:
+                productos_dict[mov.id_producto] = {
+                    "id_producto": mov.id_producto,
+                    "nombre": mov.producto.nombre if mov.producto else "",
+                    "descripcion": mov.producto.descripcion if mov.producto else None,
+                    "cantidad": mov.cantidad,
+                    "codigo": mov.producto.codigo if mov.producto else None,
+                    "id_anexo": id_anexo,
+                    "id_convenio": id_convenio,
+                }
+            else:
+                productos_dict[mov.id_producto]["cantidad"] += mov.cantidad
+
+        return list(productos_dict.values())
+
+    @staticmethod
+    async def get_stock_producto_dependencia(
+        db: AsyncSession, producto_id: int, dependencia_id: int
+    ) -> int:
+        """Obtener la suma de cantidades de movimientos de tipo RECEPCION/compra
+        para un producto en una dependencia específica.
+        """
+        statement = (
+            select(func.sum(Movimiento.cantidad))
+            .join(TipoMovimiento)
+            .where(
+                Movimiento.id_producto == producto_id,
+                Movimiento.id_dependencia == dependencia_id,
+                Movimiento.estado == "confirmado",
+                TipoMovimiento.tipo.in_(["RECEPCION", "compra"]),
+            )
+        )
+        result = await db.exec(statement)
+        total = result.one_or_none()
+        return int(total) if total else 0
 
     @staticmethod
     async def get_origen_recepcion(
@@ -382,12 +525,14 @@ class MovimientoService:
                 dependencia.nombre if dependencia else "Sin dependencia"
             )
 
-            # Obtener proveedor
-            proveedor_nombre = None
+            # Obtener cliente
+            cliente_nombre = None
             if mov.id_cliente:
-                proveedor = await db.get(Provedor, mov.id_cliente)
-                if proveedor:
-                    proveedor_nombre = proveedor.nombre
+                from src.models import Cliente
+
+                cliente = await db.get(Cliente, mov.id_cliente)
+                if cliente:
+                    cliente_nombre = cliente.nombre
 
             # Obtener anexo
             anexo_nombre = None
@@ -436,25 +581,56 @@ class MovimientoService:
 
         Args:
             db: Sesión de base de datos
-            ajuste: Datos del ajuste
+            ajuste: Datos del ajuste (id_movimiento_origen O id_producto + id_dependencia_origen)
 
         Returns:
             Lista de movimientos creados (quitar + agregar)
         """
-        # Obtener el movimiento origen para validar y copiar datos
-        origen = await movimiento_repo.get(db, ajuste.id_movimiento_origen)
-        if not origen:
-            raise ValueError("Movimiento de origen no encontrado")
-
-        if origen.estado != "confirmado":
-            raise ValueError("El movimiento de origen debe estar confirmado")
-
-        # Validar que la cantidad total en destinos no exceda la cantidad en origen
         cantidad_total_destinos = sum(d.cantidad for d in ajuste.destinos)
-        if cantidad_total_destinos > origen.cantidad:
+
+        if ajuste.id_movimiento_origen:
+            origen = await movimiento_repo.get(db, ajuste.id_movimiento_origen)
+            if not origen:
+                raise ValueError("Movimiento de origen no encontrado")
+            if origen.estado != "confirmado":
+                raise ValueError("El movimiento de origen debe estar confirmado")
+            if cantidad_total_destinos > origen.cantidad:
+                raise ValueError(
+                    f"La cantidad total en destinos ({cantidad_total_destinos}) "
+                    f"no puede exceder la cantidad en origen ({origen.cantidad})"
+                )
+        elif ajuste.id_producto and ajuste.id_dependencia_origen:
+            stmt = (
+                select(Movimiento)
+                .where(
+                    Movimiento.id_producto == ajuste.id_producto,
+                    Movimiento.id_dependencia == ajuste.id_dependencia_origen,
+                    Movimiento.estado == "confirmado",
+                )
+                .order_by(Movimiento.fecha.desc())
+                .limit(1)
+            )
+            result = await db.exec(stmt)
+            origen = result.first()
+            if not origen:
+                stmt2 = (
+                    select(Movimiento)
+                    .where(
+                        Movimiento.id_producto == ajuste.id_producto,
+                        Movimiento.estado == "confirmado",
+                    )
+                    .order_by(Movimiento.fecha.desc())
+                    .limit(1)
+                )
+                result2 = await db.exec(stmt2)
+                origen = result2.first()
+                if not origen:
+                    raise ValueError(
+                        "No se encontró movimiento de origen para el producto seleccionado"
+                    )
+        else:
             raise ValueError(
-                f"La cantidad total en destinos ({cantidad_total_destinos}) "
-                f"no puede exceder la cantidad en origen ({origen.cantidad})"
+                "Debe proporcionar id_movimiento_origen o id_producto + id_dependencia_origen"
             )
 
         # Obtener tipos de movimiento AJUSTE_QUITAR y AJUSTE_AGREGAR
@@ -482,6 +658,7 @@ class MovimientoService:
             if not ajuste.fecha
             else datetime.fromisoformat(ajuste.fecha)
         )
+        codigo_ajuste = ajuste.codigo or ""
 
         # Crear movimiento de quitar (AJUSTE_QUITAR)
         movimiento_quitar = Movimiento(
@@ -497,22 +674,17 @@ class MovimientoService:
             moneda_compra=origen.moneda_compra,
             precio_venta=origen.precio_venta,
             moneda_venta=origen.moneda_venta,
+            id_convenio=origen.id_convenio,
             estado="pendiente",
+            codigo=codigo_ajuste,
         )
         db.add(movimiento_quitar)
-
-        # Generar código para movimiento quitar
-        anio = fecha.year
-        id_mov_quitar = None  # Se asignará después de flush
 
         # Flush para obtener el ID
         await db.flush()
         id_mov_quitar = movimiento_quitar.id_movimiento
         if not id_mov_quitar:
             raise ValueError("No se pudo obtener ID para movimiento de quitar")
-
-        codigo_quitar = f"{anio}{id_mov_quitar}{origen.id_cliente or 0}{origen.id_convenio or 0}{origen.id_anexo or 0}{origen.id_producto}"
-        movimiento_quitar.codigo = codigo_quitar
 
         # Obtener nombre de dependencia origen
         dep_origen = await db.get(Dependencia, origen.id_dependencia)
@@ -533,6 +705,7 @@ class MovimientoService:
             movimiento_agregar = Movimiento(
                 id_tipo_movimiento=tipo_agregar.id_tipo_movimiento,
                 id_dependencia=destino.id_dependencia,
+                id_anexo=origen.id_anexo,
                 id_producto=origen.id_producto,
                 cantidad=destino.cantidad,
                 fecha=fecha,
@@ -542,7 +715,9 @@ class MovimientoService:
                 moneda_compra=origen.moneda_compra,
                 precio_venta=origen.precio_venta,
                 moneda_venta=origen.moneda_venta,
+                id_convenio=origen.id_convenio,
                 estado="pendiente",
+                codigo=codigo_ajuste,
             )
             db.add(movimiento_agregar)
 
@@ -551,9 +726,6 @@ class MovimientoService:
             id_mov_agregar = movimiento_agregar.id_movimiento
             if not id_mov_agregar:
                 raise ValueError("No se pudo obtener ID para movimiento de agregar")
-
-            codigo_agregar = f"{anio}{id_mov_agregar}{origen.id_cliente or 0}{origen.id_convenio or 0}{origen.id_anexo or 0}{origen.id_producto}"
-            movimiento_agregar.codigo = codigo_agregar
 
             # Obtener nombre de dependencia destino
             dep_destino = await db.get(Dependencia, destino.id_dependencia)

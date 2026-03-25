@@ -2,9 +2,21 @@ from typing import List, Optional
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlalchemy.orm import selectinload
-from src.models import Cliente, ClienteNatural, ClienteJuridica, ClienteTCP, TipoEntidad, Cuenta
+from src.models import (
+    Cliente,
+    ClienteNatural,
+    ClienteJuridica,
+    ClienteTCP,
+    TipoEntidad,
+    Cuenta,
+)
 from src.repository.base import CRUDBase
-from src.dto import ClienteCreate, ClienteUpdate, ClienteNaturalCreate, ClienteNaturalUpdate
+from src.dto import (
+    ClienteCreate,
+    ClienteUpdate,
+    ClienteNaturalCreate,
+    ClienteNaturalUpdate,
+)
 from src.dto import ClienteJuridicaCreate, ClienteJuridicaUpdate
 from src.dto import ClienteTCPCreate, ClienteTCPUpdate
 from src.dto import TipoEntidadCreate, TipoEntidadUpdate
@@ -54,7 +66,9 @@ class ClienteRepository(CRUDBase[Cliente, ClienteCreate, ClienteUpdate]):
     async def get_by_numero(
         self, db: AsyncSession, numero_cliente: str
     ) -> Optional[Cliente]:
-        statement = select(self.model).where(self.model.numero_cliente == numero_cliente)
+        statement = select(self.model).where(
+            self.model.numero_cliente == numero_cliente
+        )
         results = await db.exec(statement)
         return results.first()
 
@@ -85,9 +99,7 @@ class ClienteJuridicaRepository(
         return results.first()
 
 
-class ClienteTCPRepository(
-    CRUDBase[ClienteTCP, ClienteTCPCreate, ClienteTCPUpdate]
-):
+class ClienteTCPRepository(CRUDBase[ClienteTCP, ClienteTCPCreate, ClienteTCPUpdate]):
     async def get_with_cliente(
         self, db: AsyncSession, id_cliente: int
     ) -> Optional[ClienteTCP]:
@@ -96,7 +108,9 @@ class ClienteTCPRepository(
         return results.first()
 
 
-class TipoEntidadRepository(CRUDBase[TipoEntidad, TipoEntidadCreate, TipoEntidadUpdate]):
+class TipoEntidadRepository(
+    CRUDBase[TipoEntidad, TipoEntidadCreate, TipoEntidadUpdate]
+):
     pass
 
 
@@ -107,18 +121,20 @@ class CuentaRepository(CRUDBase[Cuenta, CuentaCreate, CuentaUpdate]):
             .options(
                 selectinload(Cuenta.tipo_cuenta),
                 selectinload(Cuenta.cliente),
+                selectinload(Cuenta.moneda),
             )
             .where(self.model.id_cuenta == id)
         )
         results = await db.exec(statement)
         return results.first()
 
-    async def get_by_cliente(
-        self, db: AsyncSession, id_cliente: int
-    ) -> List[Cuenta]:
+    async def get_by_cliente(self, db: AsyncSession, id_cliente: int) -> List[Cuenta]:
         statement = (
             select(self.model)
-            .options(selectinload(Cuenta.tipo_cuenta))
+            .options(
+                selectinload(Cuenta.tipo_cuenta),
+                selectinload(Cuenta.moneda),
+            )
             .where(self.model.id_cliente == id_cliente)
         )
         results = await db.exec(statement)
