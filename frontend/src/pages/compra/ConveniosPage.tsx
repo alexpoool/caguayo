@@ -154,7 +154,7 @@ export function CompraConveniosPage() {
           value={filtroCliente || ''}
           onChange={(e) => setFiltroCliente(Number(e.target.value) || null)}
         >
-          <option value="">Todos los clientes</option>
+          <option value="">Todos los proveedores</option>
           {clientes.map(c => <option key={c.id_cliente} value={c.id_cliente}>{c.nombre}</option>)}
         </select>
         <div className="flex-1 relative max-w-md">
@@ -277,8 +277,8 @@ export function CompraConveniosPage() {
         </div>
       </CardHeader>
       <CardContent>
-        <div className="grid gap-4 md:grid-cols-2">
-          <div className="md:col-span-2">
+        <div className="grid gap-4 md:grid-cols-3 mb-4">
+          <div>
             <Label>Cliente *</Label>
             <select className="w-full p-2 border rounded" value={formData.id_cliente || ''} onChange={(e: any) => setFormData({...formData, id_cliente: e.target.value})}>
               <option value="">Seleccionar cliente</option>
@@ -286,7 +286,7 @@ export function CompraConveniosPage() {
             </select>
           </div>
           
-          <div className="md:col-span-2"><Label>Nombre del Convenio *</Label><Input value={formData.nombre_convenio || ''} onChange={(e: any) => setFormData({...formData, nombre_convenio: e.target.value})} /></div>
+          <div><Label>Nombre del Convenio *</Label><Input value={formData.nombre_convenio || ''} onChange={(e: any) => setFormData({...formData, nombre_convenio: e.target.value})} /></div>
           
           <div><Label>Tipo de Convenio *</Label>
             <select className="w-full p-2 border rounded" value={formData.id_tipo_convenio || ''} onChange={(e: any) => setFormData({...formData, id_tipo_convenio: e.target.value})}>
@@ -294,7 +294,9 @@ export function CompraConveniosPage() {
               {tiposConvenio.map(t => <option key={t.id_tipo_convenio} value={t.id_tipo_convenio}>{t.nombre}</option>)}
             </select>
           </div>
-          
+        </div>
+        
+        <div className="grid gap-4 md:grid-cols-2">
           <div><Label>Fecha *</Label><Input type="date" value={formData.fecha || ''} onChange={(e: any) => setFormData({...formData, fecha: e.target.value})} /></div>
           
           <div><Label>Vigencia *</Label><Input type="date" value={formData.vigencia || ''} onChange={(e: any) => setFormData({...formData, vigencia: e.target.value})} /></div>

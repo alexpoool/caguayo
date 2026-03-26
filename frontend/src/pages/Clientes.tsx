@@ -515,7 +515,7 @@ export function ClientesPage() {
             </CardHeader>
             <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
-                <Label># de Cliente</Label>
+                <Label>Numero de cliente</Label>
                 <Input
                   value={formData.numero_cliente}
                   onChange={(e) => setFormData({ ...formData, numero_cliente: e.target.value })}
@@ -523,7 +523,7 @@ export function ClientesPage() {
                 />
               </div>
               <div className="md:col-span-2">
-                <Label>Nombre Completo *</Label>
+                <Label>{tipoPersona === 'NATURAL' ? 'Nombre Artistico' : 'Nombre de la Empresa'} *</Label>
                 <Input
                   value={formData.nombre}
                   onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
@@ -607,28 +607,32 @@ export function ClientesPage() {
                   <option value="AMBAS">Cliente y Proveedor</option>
                 </select>
               </div>
-              <div>
-                <Label>Estado</Label>
-                <select
-                  aria-label="Estado"
-                  value={formData.estado || 'ACTIVO'}
-                  onChange={(e) => setFormData({ ...formData, estado: e.target.value as EstadoCliente })}
-                  className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white"
-                >
-                  <option value="ACTIVO">Activo</option>
-                  <option value="INACTIVO">Inactivo</option>
-                </select>
-              </div>
-              <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  aria-label="Cliente activo"
-                  checked={formData.activo}
-                  onChange={(e) => setFormData({ ...formData, activo: e.target.checked })}
-                  className="w-4 h-4"
-                />
-                <Label className="mb-0">Cliente activo</Label>
-              </div>
+              {editingCliente && (
+                <div>
+                  <Label>Estado</Label>
+                  <select
+                    aria-label="Estado"
+                    value={formData.estado || 'ACTIVO'}
+                    onChange={(e) => setFormData({ ...formData, estado: e.target.value as EstadoCliente })}
+                    className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white"
+                  >
+                    <option value="ACTIVO">Activo</option>
+                    <option value="INACTIVO">Inactivo</option>
+                  </select>
+                </div>
+              )}
+              {editingCliente && (
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    aria-label="Cliente activo"
+                    checked={formData.activo}
+                    onChange={(e) => setFormData({ ...formData, activo: e.target.checked })}
+                    className="w-4 h-4"
+                  />
+                  <Label className="mb-0">Cliente activo</Label>
+                </div>
+              )}
             </CardContent>
           </Card>
 

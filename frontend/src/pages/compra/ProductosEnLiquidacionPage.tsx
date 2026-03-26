@@ -5,7 +5,7 @@ import { productosEnLiquidacionService, productosService, monedaService } from '
 import type { ProductosEnLiquidacion, ProductosEnLiquidacionCreate } from '../../services/api';
 import type { Productos } from '../../types';
 import type { Moneda } from '../../types/moneda';
-import { Plus, Save, Trash2, Edit, X, ArrowLeft, Search, Check, Package, Tag, DollarSign, Calendar, ClipboardList, Eye } from 'lucide-react';
+import { Plus, Save, Trash2, Edit, X, ArrowLeft, Search, Check, Package, Tag, DollarSign, ClipboardList, Eye } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 type View = 'list' | 'form';
@@ -194,12 +194,6 @@ export function ProductosEnLiquidacionPage() {
                   </div>
                 </TableHead>
                 <TableHead>Tipo Compra</TableHead>
-                <TableHead>
-                  <div className="flex items-center gap-2">
-                    <Calendar className="h-4 w-4 text-red-600" />
-                    Fecha
-                  </div>
-                </TableHead>
                 <TableHead>Estado</TableHead>
                 <TableHead className="text-right">Acciones</TableHead>
               </TableRow>
@@ -207,7 +201,7 @@ export function ProductosEnLiquidacionPage() {
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center py-8">
+                  <TableCell colSpan={7} className="text-center py-8">
                     <div className="flex justify-center">
                       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
                     </div>
@@ -215,7 +209,7 @@ export function ProductosEnLiquidacionPage() {
                 </TableRow>
               ) : filteredProductos.length === 0 ? (
                 <TableRow>
-                    <TableCell colSpan={9} className="text-center py-12 text-gray-500">
+                    <TableCell colSpan={8} className="text-center py-12 text-gray-500">
                     {searchTerm ? 'No se encontraron productos que coincidan con la búsqueda' : 'No hay productos'}
                   </TableCell>
                 </TableRow>
@@ -247,9 +241,6 @@ export function ProductosEnLiquidacionPage() {
                       <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
                         {getTipoLabel(item.tipo_compra)}
                       </span>
-                    </TableCell>
-                    <TableCell className="text-gray-500">
-                      {new Date(item.fecha).toLocaleDateString()}
                     </TableCell>
                     <TableCell>
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${item.liquidada ? 'bg-green-100 text-green-800' : 'bg-amber-100 text-amber-800'}`}>

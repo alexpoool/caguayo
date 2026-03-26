@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { Button, Input, Label, Card, CardContent, CardHeader, CardTitle, Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../../components/ui';
 import { anexosService, conveniosService, productosService, monedaService, dependenciasService, clientesService } from '../../services/api';
 import type { Productos } from '../../types';
-import { Plus, Save, Trash2, Edit, X, Boxes, ArrowLeft, Package, DollarSign, Tag, Eye, User } from 'lucide-react';
+import { Plus, Save, Trash2, Edit, X, Boxes, ArrowLeft, Package, DollarSign, Tag, Eye, User, Search } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useSearchParams } from 'react-router-dom';
 
@@ -26,6 +26,7 @@ export function CompraAnexosPage() {
   const [selectedConvenio, setSelectedConvenio] = useState<number | null>(initialConvenioId ? Number(initialConvenioId) : null);
   const [filtroCliente, setFiltroCliente] = useState<number | null>(null);
   const [selectedProducts, setSelectedProducts] = useState<{id_producto: number; cantidad: number; precio_venta: number}[]>([]);
+  const [productSearch, setProductSearch] = useState('');
   const [detailModal, setDetailModal] = useState<{ isOpen: boolean; item: any | null }>({ isOpen: false, item: null });
 
   useEffect(() => { loadInitialData(); }, []);
@@ -97,7 +98,8 @@ export function CompraAnexosPage() {
   const resetForm = () => { 
     setFormData({}); 
     setSelectedProducts([]); 
-    setEditingId(null); 
+    setEditingId(null);
+    setProductSearch('');
   };
 
   const openForm = (item?: any) => {
@@ -170,6 +172,15 @@ export function CompraAnexosPage() {
     if (!filtroCliente) return convenios;
     return convenios.filter(c => c.id_cliente === filtroCliente);
   }, [convenios, filtroCliente]);
+
+  const productosFiltrados = useMemo(() => {
+    if (!productSearch.trim()) return [];
+    const search = productSearch.toLowerCase();
+    return productos.filter(p => 
+      p.nombre.toLowerCase().includes(search) &&
+      !selectedProducts.some(sp => sp.id_producto === p.id_producto)
+    ).slice(0, 10);
+  }, [productos, productSearch, selectedProducts]);
 
   const filteredAnexos = useMemo(() => {
     let result = anexos;
@@ -341,18 +352,32 @@ export function CompraAnexosPage() {
 
         <div className="mt-6">
           <Label className="mb-2 block">Productos</Label>
-          <div className="flex flex-wrap gap-2 mb-3">
-            {productos.map(p => (
-              <Button 
-                key={p.id_producto} 
-                variant="outline" 
-                size="sm" 
-                onClick={() => addProduct(p)} 
-                disabled={selectedProducts.some(sp => sp.id_producto === p.id_producto)}
-              >
-                {p.nombre}
-              </Button>
-            ))}
+          <div className="relative mb-3">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <Input
+              placeholder="Buscar producto para agregar..."
+              value={productSearch}
+              onChange={(e) => setProductSearch(e.target.value)}
+              className="pl-9"
+            />
+            {productSearch.trim() && (
+              <div className="absolute z-10 w-full mt-1 bg-white border rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                {productosFiltrados.length === 0 ? (
+                  <div className="px-3 py-2 text-sm text-gray-500">No se encontraron productos</div>
+                ) : (
+                  productosFiltrados.map(p => (
+                    <button
+                      key={p.id_producto}
+                      onClick={() => { addProduct(p); setProductSearch(''); }}
+                      className="w-full px-3 py-2 text-left text-sm hover:bg-fuchsia-50 flex justify-between items-center"
+                    >
+                      <span>{p.nombre}</span>
+                      <span className="text-gray-400 text-xs">${Number(p.precio_venta).toFixed(2)}</span>
+                    </button>
+                  ))
+                )}
+              </div>
+            )}
           </div>
           
           {selectedProducts.length > 0 && (

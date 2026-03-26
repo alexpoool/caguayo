@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { Button, Input, Label, Card, CardContent, CardHeader, CardTitle, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, ConfirmModal } from '../../components/ui';
 import { facturasService, contratosService, productosService, monedaService, dependenciasService } from '../../services/api';
@@ -24,6 +24,7 @@ export function FacturasPage() {
   const [selectedContratoId, setSelectedContratoId] = useState<number | null>(null);
   const [formData, setFormData] = useState<Record<string, any>>({});
   const [selectedProducts, setSelectedProducts] = useState<{id_producto: number; cantidad: number; precio_venta: number}[]>([]);
+  const [productSearch, setProductSearch] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [detailModal, setDetailModal] = useState<{ isOpen: boolean; item: FacturaWithDetails | null }>({ isOpen: false, item: null });
   const [confirmModal, setConfirmModal] = useState<{
@@ -111,7 +112,7 @@ export function FacturasPage() {
     });
   };
 
-  const resetForm = () => { setFormData({}); setSelectedProducts([]); setEditingId(null); };
+  const resetForm = () => { setFormData({}); setSelectedProducts([]); setEditingId(null); setProductSearch(''); };
 
   const openForm = (item?: FacturaWithDetails) => {
     if (item) {
@@ -143,14 +144,47 @@ export function FacturasPage() {
   const updatePrecioVenta = (id: number, precio: number) => { setSelectedProducts(selectedProducts.map(p => p.id_producto === id ? { ...p, precio_venta: precio } : p)); };
   const removeProduct = (id: number) => { setSelectedProducts(selectedProducts.filter(p => p.id_producto !== id)); };
 
+  const productosFiltrados = useMemo(() => {
+    if (!productSearch.trim()) return [];
+    const search = productSearch.toLowerCase();
+    return productos.filter(p => 
+      p.nombre.toLowerCase().includes(search) &&
+      !selectedProducts.some(sp => sp.id_producto === p.id_producto)
+    ).slice(0, 10);
+  }, [productos, productSearch, selectedProducts]);
+
   const renderProductSelector = () => {
     const calcTotal = () => selectedProducts.reduce((t, p) => t + (p.cantidad * p.precio_venta), 0);
     
     return (
       <div className="mt-4 p-4 border rounded-lg bg-gray-50">
         <Label className="mb-2 block">Productos</Label>
-        <div className="flex flex-wrap gap-2 mb-3">
-          {productos.map(p => <Button key={p.id_producto} variant="outline" size="sm" onClick={() => addProduct(p.id_producto)} disabled={selectedProducts.some(sp => sp.id_producto === p.id_producto)}>{p.nombre}</Button>)}
+        <div className="relative mb-3">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <Input
+            placeholder="Buscar producto para agregar..."
+            value={productSearch}
+            onChange={(e) => setProductSearch(e.target.value)}
+            className="pl-9"
+          />
+          {productSearch.trim() && (
+            <div className="absolute z-10 w-full mt-1 bg-white border rounded-lg shadow-lg max-h-48 overflow-y-auto">
+              {productosFiltrados.length === 0 ? (
+                <div className="px-3 py-2 text-sm text-gray-500">No se encontraron productos</div>
+              ) : (
+                productosFiltrados.map(p => (
+                  <button
+                    key={p.id_producto}
+                    onClick={() => { addProduct(p.id_producto); setProductSearch(''); }}
+                    className="w-full px-3 py-2 text-left text-sm hover:bg-violet-50 flex justify-between items-center"
+                  >
+                    <span>{p.nombre}</span>
+                    <span className="text-gray-400 text-xs">${Number(p.precio_venta).toFixed(2)}</span>
+                  </button>
+                ))
+              )}
+            </div>
+          )}
         </div>
         {selectedProducts.length > 0 && (
           <div className="space-y-2">
@@ -320,10 +354,6 @@ export function FacturasPage() {
         </CardHeader>
         <CardContent className="p-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <Label className="text-sm font-medium">Código Factura</Label>
-              <Input value={formData.codigo_factura || ''} readOnly className="mt-1 bg-gray-100" placeholder="Se genera automáticamente" />
-            </div>
             <div>
               <Label className="text-sm font-medium">Fecha</Label>
               <Input type="date" value={formData.fecha || ''} onChange={(e: any) => setFormData({...formData, fecha: e.target.value})} className="mt-1" />

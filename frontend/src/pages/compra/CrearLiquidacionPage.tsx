@@ -66,7 +66,7 @@ export function CrearLiquidacionPage() {
     if (!filtroCliente) return anexos;
     // Filtrar anexos cuyo convenio pertenezca al cliente seleccionado
     return anexos.filter(a => {
-      const convenio = (a as any).convenio;
+      const convenio = (a as any).convenios;
       return convenio && convenio.id_cliente === filtroCliente;
     });
   }, [anexos, filtroCliente]);

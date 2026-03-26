@@ -21,6 +21,7 @@ export function VentasEfectivoPage() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [formData, setFormData] = useState<Record<string, any>>({});
   const [selectedProducts, setSelectedProducts] = useState<{id_producto: number; cantidad: number; precio_venta: number}[]>([]);
+  const [productSearch, setProductSearch] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [detailModal, setDetailModal] = useState<{ isOpen: boolean; item: VentaEfectivoWithDetails | null }>({ isOpen: false, item: null });
   const [confirmModal, setConfirmModal] = useState<{
@@ -100,7 +101,7 @@ export function VentasEfectivoPage() {
     });
   };
 
-  const resetForm = () => { setFormData({}); setSelectedProducts([]); setEditingId(null); };
+  const resetForm = () => { setFormData({}); setSelectedProducts([]); setEditingId(null); setProductSearch(''); };
 
   const openForm = (item?: VentaEfectivoWithDetails) => {
     if (item) {
@@ -132,12 +133,45 @@ export function VentasEfectivoPage() {
   const removeProduct = (id: number) => { setSelectedProducts(selectedProducts.filter(p => p.id_producto !== id)); };
   const calcMonto = () => selectedProducts.reduce((t, p) => t + (p.cantidad * p.precio_venta), 0);
 
+  const productosFiltrados = useMemo(() => {
+    if (!productSearch.trim()) return [];
+    const search = productSearch.toLowerCase();
+    return productos.filter(p => 
+      p.nombre.toLowerCase().includes(search) &&
+      !selectedProducts.some(sp => sp.id_producto === p.id_producto)
+    ).slice(0, 10);
+  }, [productos, productSearch, selectedProducts]);
+
   const renderProductSelector = () => (
     <div className="mt-4 p-4 border rounded-lg bg-gray-50">
       <Label className="mb-2 block">Productos</Label>
-      <div className="flex flex-wrap gap-2 mb-3">
-        {productos.map(p => <Button key={p.id_producto} variant="outline" size="sm" onClick={() => addProduct(p.id_producto)} disabled={selectedProducts.some(sp => sp.id_producto === p.id_producto)}>{p.nombre}</Button>)}
-      </div>
+      <div className="relative mb-3">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <Input
+            placeholder="Buscar producto para agregar..."
+            value={productSearch}
+            onChange={(e) => setProductSearch(e.target.value)}
+            className="pl-9"
+          />
+          {productSearch.trim() && (
+            <div className="absolute z-10 w-full mt-1 bg-white border rounded-lg shadow-lg max-h-48 overflow-y-auto">
+              {productosFiltrados.length === 0 ? (
+                <div className="px-3 py-2 text-sm text-gray-500">No se encontraron productos</div>
+              ) : (
+                productosFiltrados.map(p => (
+                  <button
+                    key={p.id_producto}
+                    onClick={() => { addProduct(p.id_producto); setProductSearch(''); }}
+                    className="w-full px-3 py-2 text-left text-sm hover:bg-emerald-50 flex justify-between items-center"
+                  >
+                    <span>{p.nombre}</span>
+                    <span className="text-gray-400 text-xs">${Number(p.precio_venta).toFixed(2)}</span>
+                  </button>
+                ))
+              )}
+            </div>
+          )}
+        </div>
       {selectedProducts.length > 0 && (
         <div className="space-y-2">
           {selectedProducts.map(p => { const pr = productos.find(pr => pr.id_producto === p.id_producto); return (
