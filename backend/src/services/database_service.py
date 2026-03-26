@@ -15,6 +15,7 @@ class DatabaseService:
             user=os.getenv("ADMIN_DB_USER", "postgres"),
             password=os.getenv("ADMIN_DB_PASSWORD", "postgres"),
             database=os.getenv("ADMIN_DB_NAME", "postgres"),
+            client_encoding="utf8",
         )
 
     @staticmethod
@@ -97,6 +98,7 @@ class DatabaseService:
             user=os.getenv("ADMIN_DB_USER", "postgres"),
             password=os.getenv("ADMIN_DB_PASSWORD", "postgres"),
             database=base_datos,
+            client_encoding="utf8",
         )
         conn.autocommit = True
         cur = conn.cursor()
@@ -146,6 +148,7 @@ class DatabaseService:
             user=os.getenv("ADMIN_DB_USER", "postgres"),
             password=os.getenv("ADMIN_DB_PASSWORD", "postgres"),
             database=base_datos,
+            client_encoding="utf8",
         )
         cur = conn.cursor()
         cur.execute(

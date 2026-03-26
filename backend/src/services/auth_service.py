@@ -142,8 +142,7 @@ async def login(db: AsyncSession, login_data: LoginRequest) -> Optional[LoginRes
     contrasenia_db = conexion.contrasenia if conexion else "1234"
 
     # 3. Conectarse a la base de datos seleccionada
-    from sqlalchemy import create_engine
-    from sqlalchemy.ext.asyncio import AsyncSession as DbSession
+    from sqlalchemy import create_engine, text
 
     db_url = f"postgresql://{usuario_db}:{contrasenia_db}@{host}:{puerto}/{login_data.base_datos}"
     engine = create_engine(db_url)
@@ -152,6 +151,7 @@ async def login(db: AsyncSession, login_data: LoginRequest) -> Optional[LoginRes
     from sqlmodel import Session
 
     with Session(engine) as db_target:
+        db_target.execute(text("SET client_encoding TO 'UTF8'"))
         statement = select(Usuario).where(Usuario.alias == login_data.alias)
         results = db_target.exec(statement)
         usuario = results.first()
@@ -477,7 +477,7 @@ async def register(
     contrasenia_db = conexion.contrasenia if conexion else "1234"
 
     # 2. Conectarse a la base de datos seleccionada
-    from sqlalchemy import create_engine
+    from sqlalchemy import create_engine, text
 
     db_url = f"postgresql://{usuario_db}:{contrasenia_db}@{host}:{puerto}/{register_data.base_datos}"
     engine = create_engine(db_url)
@@ -485,6 +485,7 @@ async def register(
     from sqlmodel import Session
 
     with Session(engine) as db_target:
+        db_target.execute(text("SET client_encoding TO 'UTF8'"))
         # 3. Verificar que el alias no exista en la BD seleccionada
         statement = select(Usuario).where(Usuario.alias == register_data.alias)
         results = db_target.exec(statement)

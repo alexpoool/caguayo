@@ -32,6 +32,7 @@ async def get_conexiones():
             user=os.getenv("LECTOR_USER", "usuariolector"),
             password=os.getenv("LECTOR_PASSWORD", "usuariolector123"),
             database="postgres",
+            client_encoding="utf8",
         )
         cur = conn.cursor()
         cur.execute(
@@ -57,6 +58,7 @@ async def test_conexion(data: ConexionTestRequest):
             user=os.getenv("LECTOR_USER", "usuariolector"),
             password=os.getenv("LECTOR_PASSWORD", "usuariolector123"),
             database=data.nombre_database,
+            client_encoding="utf8",
         )
         cur = conn.cursor()
         cur.execute("SELECT 1")
@@ -82,6 +84,7 @@ async def get_dependencias_por_db(db_name: str):
             user=os.getenv("ADMIN_DB_USER", "postgres"),
             password=os.getenv("ADMIN_DB_PASSWORD", "1234"),
             database=db_name,
+            client_encoding="utf8",
         )
         cur = conn.cursor()
         cur.execute("SELECT id_dependencia, nombre FROM dependencia ORDER BY nombre")
