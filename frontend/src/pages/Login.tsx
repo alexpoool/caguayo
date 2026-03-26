@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Button, Input } from '../components/ui';
-import { Box, Loader2, Database, User, Lock, CheckCircle, XCircle } from 'lucide-react';
+import { Loader2, Database, User, Lock, CheckCircle, XCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { apiClient } from '../lib/api';
 
@@ -119,41 +119,49 @@ export function LoginPage() {
     if (conexionStatus === 'connected') return 'border-green-500 focus:ring-green-500';
     if (conexionStatus === 'error') return 'border-red-500 focus:ring-red-500';
     if (conexionStatus === 'testing') return 'border-amber-500 focus:ring-amber-500';
-    return 'border-gray-300 focus:ring-amber-500';
+    return 'border-slate-200 focus:ring-blue-500 focus:border-blue-500';
   };
 
   return (
-    <div className="min-h-screen bg-white flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-slate-50 flex items-center justify-center p-4 relative overflow-hidden">
+      {/* Decorative background elements */}
+      <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
+        <div className="absolute -top-40 -right-40 w-96 h-96 bg-blue-100 rounded-full opacity-40 blur-3xl" />
+        <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-blue-50 rounded-full opacity-50 blur-3xl" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-blue-100/20 rounded-full blur-3xl" />
+      </div>
+
+      <div className="w-full max-w-md relative z-10">
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-amber-500 to-orange-600 rounded-2xl shadow-lg mb-4">
-            <Box className="h-10 w-10 text-white" />
-          </div>
-          <h1 className="text-3xl font-bold text-gray-900">Caguayo</h1>
-          <p className="text-gray-500 mt-2">Sistema de Inventario</p>
+          <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent">
+            Caguayo
+          </h1>
+          <p className="text-slate-500 mt-2 text-sm tracking-wide uppercase">Sistema de Inventario</p>
+          <div className="mx-auto mt-4 w-12 h-1 bg-gradient-to-r from-blue-400 to-blue-600 rounded-full" />
         </div>
 
         {/* Login Card */}
-        <div className="border border-gray-200 rounded-2xl shadow-lg">
+        <div className="bg-white/80 backdrop-blur-sm border-0 rounded-2xl shadow-2xl shadow-blue-900/10 ring-1 ring-blue-100 overflow-hidden">
+          <div className="h-1 bg-gradient-to-r from-blue-500 via-blue-600 to-blue-700" />
           <div className="p-8">
-            <h2 className="text-xl font-semibold text-gray-900 mb-6 text-center">
+            <h2 className="text-xl font-semibold text-blue-900 mb-6 text-center">
               Iniciar Sesión
             </h2>
 
             <div className="space-y-5">
               {/* Base de Datos - PRIMERO */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-slate-700 mb-2">
                   Base de Datos
                 </label>
                 <div className="relative">
-                  <Database className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400 z-10" />
+                  <Database className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-blue-400 z-10" />
                   <select
                     value={baseDatos}
                     onChange={(e) => handleBaseDatosChange(e.target.value)}
                     disabled={loadingConexiones}
-                    className={`w-full pl-10 pr-10 py-3 border-2 rounded-xl focus:ring-2 focus:border-transparent bg-white transition-colors ${getSelectBorderClass()}`}
+                    className={`w-full pl-10 pr-10 py-3 border-2 rounded-xl focus:ring-2 focus:border-transparent bg-white transition-all duration-200 ${getSelectBorderClass()}`}
                   >
                     <option value="">
                       {loadingConexiones ? 'Cargando...' : 'Seleccione una base de datos'}
@@ -177,27 +185,27 @@ export function LoginPage() {
                   </div>
                 </div>
                 {conexionStatus === 'connected' && (
-                  <p className="text-xs text-green-600 mt-1">✓ Conectado</p>
+                  <p className="text-xs text-green-600 mt-1 font-medium">✓ Conectado</p>
                 )}
                 {conexionStatus === 'error' && (
-                  <p className="text-xs text-red-600 mt-1">✗ Error de conexión</p>
+                  <p className="text-xs text-red-600 mt-1 font-medium">✗ Error de conexión</p>
                 )}
               </div>
 
               {/* Alias */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-slate-700 mb-2">
                   Alias de Usuario
                 </label>
                 <div className="relative">
-                  <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                  <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-blue-400" />
                   <Input
                     type="text"
                     placeholder="Ingrese su alias"
                     value={alias}
                     onChange={(e) => setAlias(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
-                    className="pl-10"
+                    className="pl-10 border-slate-200 focus:ring-blue-500 focus:border-blue-500 rounded-xl transition-all duration-200"
                     disabled={!baseDatos}
                   />
                 </div>
@@ -205,18 +213,18 @@ export function LoginPage() {
 
               {/* Contraseña */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-slate-700 mb-2">
                   Contraseña
                 </label>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-blue-400" />
                   <Input
                     type="password"
                     placeholder="Ingrese su contraseña"
                     value={contrasenia}
                     onChange={(e) => setContrasenia(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
-                    className="pl-10"
+                    className="pl-10 border-slate-200 focus:ring-blue-500 focus:border-blue-500 rounded-xl transition-all duration-200"
                     disabled={!baseDatos}
                   />
                 </div>
@@ -226,7 +234,7 @@ export function LoginPage() {
               <Button
                 onClick={handleLogin}
                 disabled={loadingLogin || loadingConexiones || !baseDatos}
-                className="w-full"
+                className="w-full rounded-xl h-12 text-base font-semibold shadow-lg shadow-blue-600/25 hover:shadow-xl hover:shadow-blue-600/30"
               >
                 {loadingLogin ? (
                   <Loader2 className="h-5 w-5 animate-spin" />
@@ -237,6 +245,11 @@ export function LoginPage() {
             </div>
           </div>
         </div>
+
+        {/* Footer */}
+        <p className="text-center text-xs text-slate-400 mt-6">
+          © {new Date().getFullYear()} Caguayo. Todos los derechos reservados.
+        </p>
       </div>
     </div>
   );

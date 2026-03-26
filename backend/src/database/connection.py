@@ -33,7 +33,12 @@ elif DATABASE_URL.startswith("postgresql+psycopg://"):
 AUTH_DATABASE = os.getenv("AUTH_DATABASE", "caguayo_inventario")
 
 # Default engine for auth database
-engine = create_async_engine(DATABASE_URL, echo=True, future=True)
+engine = create_async_engine(
+    DATABASE_URL,
+    echo=True,
+    future=True,
+    connect_args={"server_settings": {"client_encoding": "utf8"}},
+)
 
 # Cache of engines per database name
 _engines: dict[str, AsyncEngine] = {AUTH_DATABASE: engine}
@@ -43,7 +48,12 @@ def _get_engine_for_db(db_name: str) -> AsyncEngine:
     """Get or create an async engine for the given database name."""
     if db_name not in _engines:
         db_url = DATABASE_URL.replace(DATABASE_URL.split("/")[-1], db_name)
-        _engines[db_name] = create_async_engine(db_url, echo=False, future=True)
+        _engines[db_name] = create_async_engine(
+            db_url,
+            echo=False,
+            future=True,
+            connect_args={"server_settings": {"client_encoding": "utf8"}},
+        )
     return _engines[db_name]
 
 
