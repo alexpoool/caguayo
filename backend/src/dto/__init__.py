@@ -120,6 +120,7 @@ from .convenios_dto import (
     ConvenioBase,
     ConvenioCreate,
     ConvenioRead,
+    ConvenioUpdate,
     ClienteRead as ConvenioClienteRead,
     ClienteUpdate as ConvenioClienteUpdate,
     ClienteSimpleRead as ConvenioClienteSimpleRead,
