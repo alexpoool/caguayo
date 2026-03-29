@@ -89,7 +89,7 @@ class Factura(SQLModel, table=True):
 
     contrato: "Contrato" = Relationship(back_populates="facturas")
     items_factura: List["ItemFactura"] = Relationship(
-        back_populates="factura", sa_relationship_kwargs={"lazy": "selectin"}
+        back_populates="factura"
     )
 
 
@@ -106,5 +106,5 @@ class VentaEfectivo(SQLModel, table=True):
 
     dependencia: "Dependencia" = Relationship()
     items_venta_efectivo: List["ItemVentaEfectivo"] = Relationship(
-        back_populates="venta_efectivo", sa_relationship_kwargs={"lazy": "selectin"}
+        back_populates="venta_efectivo"
     )

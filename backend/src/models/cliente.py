@@ -43,40 +43,40 @@ class Cliente(SQLModel, table=True):
     provincia: Optional["Provincia"] = Relationship(
         sa_relationship_kwargs={
             "foreign_keys": "Cliente.id_provincia",
-            "lazy": "selectin",
+
         },
     )
     municipio: Optional["Municipio"] = Relationship(
         sa_relationship_kwargs={
             "foreign_keys": "Cliente.id_municipio",
-            "lazy": "selectin",
+
         },
     )
     ventas: List["Ventas"] = Relationship(
         back_populates="cliente",
-        sa_relationship_kwargs={"lazy": "selectin", "passive_deletes": True},
+        sa_relationship_kwargs={"passive_deletes": True},
     )
     convenios: List["Convenio"] = Relationship(
         back_populates="cliente",
-        sa_relationship_kwargs={"lazy": "selectin", "passive_deletes": True},
+        sa_relationship_kwargs={"passive_deletes": True},
     )
     movimientos: List["Movimiento"] = Relationship(
-        back_populates="cliente", sa_relationship_kwargs={"lazy": "selectin"}
+        back_populates="cliente"
     )
     cuentas: List["Cuenta"] = Relationship(
         back_populates="cliente",
-        sa_relationship_kwargs={"lazy": "selectin", "passive_deletes": True},
+        sa_relationship_kwargs={"passive_deletes": True},
     )
     cliente_natural: Optional["ClienteNatural"] = Relationship(
-        back_populates="cliente", sa_relationship_kwargs={"lazy": "selectin"}
+        back_populates="cliente"
     )
     cliente_juridica: Optional["ClienteJuridica"] = Relationship(
-        back_populates="cliente", sa_relationship_kwargs={"lazy": "selectin"}
+        back_populates="cliente"
     )
     cliente_tcp: Optional["ClienteTCP"] = Relationship(
-        back_populates="cliente", sa_relationship_kwargs={"lazy": "selectin"}
+        back_populates="cliente"
     )
     contratos: List["Contrato"] = Relationship(
         back_populates="cliente",
-        sa_relationship_kwargs={"lazy": "selectin", "passive_deletes": True},
+        sa_relationship_kwargs={"passive_deletes": True},
     )

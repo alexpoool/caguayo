@@ -50,7 +50,7 @@ class Dependencia(SQLModel, table=True):
     )
     subdependencias: List["Dependencia"] = Relationship(back_populates="padre")
     cuentas: List["Cuenta"] = Relationship(
-        back_populates="dependencia", sa_relationship_kwargs={"lazy": "selectin"}
+        back_populates="dependencia"
     )
     provincia: Optional["Provincia"] = Relationship(back_populates="dependencias")
     municipio: Optional["Municipio"] = Relationship(back_populates="dependencias")

@@ -27,14 +27,14 @@ class Cuenta(SQLModel, table=True):
     direccion: str = Field(max_length=255)
 
     tipo_cuenta: "TipoCuenta" = Relationship(
-        back_populates="cuentas", sa_relationship_kwargs={"lazy": "selectin"}
+        back_populates="cuentas"
     )
     dependencia: Optional["Dependencia"] = Relationship(
-        back_populates="cuentas", sa_relationship_kwargs={"lazy": "selectin"}
+        back_populates="cuentas"
     )
     cliente: Optional["Cliente"] = Relationship(
-        back_populates="cuentas", sa_relationship_kwargs={"lazy": "selectin"}
+        back_populates="cuentas"
     )
     moneda: Optional["Moneda"] = Relationship(
-        back_populates="cuentas", sa_relationship_kwargs={"lazy": "selectin"}
+        back_populates="cuentas"
     )

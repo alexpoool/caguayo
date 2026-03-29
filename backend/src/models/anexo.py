@@ -28,8 +28,8 @@ class Anexo(SQLModel, table=True):
     )
 
     convenios: Optional["Convenio"] = Relationship(
-        back_populates="anexos", sa_relationship_kwargs={"lazy": "selectin"}
+        back_populates="anexos"
     )
     items_anexo: List["ItemAnexo"] = Relationship(
-        back_populates="anexo", sa_relationship_kwargs={"lazy": "selectin"}
+        back_populates="anexo"
     )

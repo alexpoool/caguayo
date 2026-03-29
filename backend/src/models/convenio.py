@@ -25,11 +25,11 @@ class Convenio(SQLModel, table=True):
     codigo: Optional[str] = Field(default=None, max_length=50)
 
     cliente: Optional["Cliente"] = Relationship(
-        back_populates="convenios", sa_relationship_kwargs={"lazy": "selectin"}
+        back_populates="convenios"
     )
     tipo_convenio: Optional["TipoConvenio"] = Relationship(
-        back_populates="convenios", sa_relationship_kwargs={"lazy": "selectin"}
+        back_populates="convenios"
     )
     anexos: List["Anexo"] = Relationship(
-        back_populates="convenios", sa_relationship_kwargs={"lazy": "selectin"}
+        back_populates="convenios"
     )
