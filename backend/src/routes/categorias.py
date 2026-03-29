@@ -1,53 +1,45 @@
-from fastapi import APIRouter, Depends, HTTPException
-from sqlmodel import Session
 from typing import List
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlmodel.ext.asyncio.session import AsyncSession
 from src.database.connection import get_session
-from src.services import CategoriasService
+from src.services.categoria_service import categoria_service
 from src.dto import CategoriasCreate, CategoriasRead, CategoriasUpdate
 
-router = APIRouter(prefix="/categorias", tags=["categorias"])
-
-
-@router.post("", response_model=CategoriasRead)
-async def create_categoria(
-    categoria: CategoriasCreate, db: Session = Depends(get_session)
-):
-    try:
-        return await CategoriasService.create_categoria(db, categoria)
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
-
+router = APIRouter(prefix="/categorias", tags=["categorias"], redirect_slashes=False)
 
 @router.get("", response_model=List[CategoriasRead])
-async def read_categorias(
-    skip: int = 0, limit: int = 100, db: Session = Depends(get_session)
+async def listar_categorias(
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=1000),
+    db: AsyncSession = Depends(get_session),
 ):
-    return await CategoriasService.get_categorias(db, skip=skip, limit=limit)
+    return await categoria_service.get_multi(db, skip=skip, limit=limit)
 
+@router.post("", response_model=CategoriasRead, status_code=201)
+async def crear_categoria(
+    categoria: CategoriasCreate,
+    db: AsyncSession = Depends(get_session),
+):
+    return await categoria_service.create(db, categoria)
 
 @router.get("/{categoria_id}", response_model=CategoriasRead)
-async def read_categoria(categoria_id: int, db: Session = Depends(get_session)):
-    categoria = await CategoriasService.get_categoria(db, categoria_id)
-    if not categoria:
-        raise HTTPException(status_code=404, detail="Categoría no encontrada")
-    return categoria
-
+async def obtener_categoria(
+    categoria_id: int,
+    db: AsyncSession = Depends(get_session),
+):
+    return await categoria_service.get(db, categoria_id)
 
 @router.put("/{categoria_id}", response_model=CategoriasRead)
-async def update_categoria(
-    categoria_id: int, categoria: CategoriasUpdate, db: Session = Depends(get_session)
+async def actualizar_categoria(
+    categoria_id: int,
+    categoria_update: CategoriasUpdate,
+    db: AsyncSession = Depends(get_session),
 ):
-    updated_categoria = await CategoriasService.update_categoria(
-        db, categoria_id, categoria
-    )
-    if not updated_categoria:
-        raise HTTPException(status_code=404, detail="Categoría no encontrada")
-    return updated_categoria
+    return await categoria_service.update(db, categoria_id, categoria_update)
 
-
-@router.delete("/{categoria_id}")
-async def delete_categoria(categoria_id: int, db: Session = Depends(get_session)):
-    deleted = await CategoriasService.delete_categoria(db, categoria_id)
-    if not deleted:
-        raise HTTPException(status_code=404, detail="Categoría no encontrada")
-    return {"message": "Categoría eliminada correctamente"}
+@router.delete("/{categoria_id}", status_code=204)
+async def eliminar_categoria(
+    categoria_id: int,
+    db: AsyncSession = Depends(get_session),
+):
+    await categoria_service.delete(db, categoria_id)

@@ -1,52 +1,35 @@
 from typing import List
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlmodel.ext.asyncio.session import AsyncSession
 from src.database.connection import get_session
-from src.services.subcategoria_service import SubcategoriasService
-from src.dto import (
-    SubcategoriasCreate,
-    SubcategoriasRead,
-    SubcategoriasUpdate,
-)
+from src.services.subcategoria_service import subcategorias_service
+from src.dto import SubcategoriasCreate, SubcategoriasRead, SubcategoriasUpdate
 
 router = APIRouter(
     prefix="/subcategorias", tags=["subcategorias"], redirect_slashes=False
 )
-
 
 @router.post("", response_model=SubcategoriasRead, status_code=201)
 async def create_subcategoria(
     subcategoria: SubcategoriasCreate,
     db: AsyncSession = Depends(get_session),
 ):
-    """Crear una nueva subcategoría."""
-    try:
-        return await SubcategoriasService.create_subcategoria(db, subcategoria)
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
-
+    return await subcategorias_service.create(db, subcategoria)
 
 @router.get("", response_model=List[SubcategoriasRead])
 async def listar_subcategorias(
-    skip: int = 0,
-    limit: int = 100,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=1000),
     db: AsyncSession = Depends(get_session),
 ):
-    """Listar todas las subcategorías con paginación."""
-    return await SubcategoriasService.get_subcategorias(db, skip=skip, limit=limit)
-
+    return await subcategorias_service.get_multi(db, skip=skip, limit=limit)
 
 @router.get("/{subcategoria_id}", response_model=SubcategoriasRead)
 async def obtener_subcategoria(
     subcategoria_id: int,
     db: AsyncSession = Depends(get_session),
 ):
-    """Obtener una subcategoría específica por ID."""
-    subcategoria = await SubcategoriasService.get_subcategoria(db, subcategoria_id)
-    if not subcategoria:
-        raise HTTPException(status_code=404, detail="Subcategoría no encontrada")
-    return subcategoria
-
+    return await subcategorias_service.get(db, subcategoria_id)
 
 @router.put("/{subcategoria_id}", response_model=SubcategoriasRead)
 async def actualizar_subcategoria(
@@ -54,22 +37,11 @@ async def actualizar_subcategoria(
     subcategoria: SubcategoriasUpdate,
     db: AsyncSession = Depends(get_session),
 ):
-    """Actualizar una subcategoría existente."""
-    updated = await SubcategoriasService.update_subcategoria(
-        db, subcategoria_id, subcategoria
-    )
-    if not updated:
-        raise HTTPException(status_code=404, detail="Subcategoría no encontrada")
-    return updated
-
+    return await subcategorias_service.update(db, subcategoria_id, subcategoria)
 
 @router.delete("/{subcategoria_id}", status_code=204)
 async def eliminar_subcategoria(
     subcategoria_id: int,
     db: AsyncSession = Depends(get_session),
 ):
-    """Eliminar una subcategoría."""
-    deleted = await SubcategoriasService.delete_subcategoria(db, subcategoria_id)
-    if not deleted:
-        raise HTTPException(status_code=404, detail="Subcategoría no encontrada")
-    return None
+    await subcategorias_service.delete(db, subcategoria_id)

@@ -8,7 +8,7 @@ from src.services.proveedor_convenio_service import (
     TipoConvenioService,
     TipoProveedorService,
 )
-from src.services.tipo_dependencia_service import TipoDependenciaService
+from src.services.tipo_dependencia_service import tipo_dependencia_service
 from src.services.tipo_cuenta_service import TipoCuentaService
 from src.dto import (
     TipoContratoCreate,
@@ -299,7 +299,7 @@ async def listar_tipos_dependencia(
     limit: int = Query(100, ge=1, le=1000),
     db: AsyncSession = Depends(get_session),
 ):
-    return await TipoDependenciaService.get_all(db, skip=skip, limit=limit)
+    return await tipo_dependencia_service.get_multi(db, skip=skip, limit=limit)
 
 
 @router.post("/tipos-dependencia", response_model=TipoDependenciaRead, status_code=201)
@@ -307,7 +307,7 @@ async def crear_tipo_dependencia(
     data: TipoDependenciaCreate,
     db: AsyncSession = Depends(get_session),
 ):
-    return await TipoDependenciaService.create(db, data)
+    return await tipo_dependencia_service.create(db, data)
 
 
 @router.get("/tipos-dependencia/{tipo_id}", response_model=TipoDependenciaRead)
@@ -315,7 +315,7 @@ async def obtener_tipo_dependencia(
     tipo_id: int,
     db: AsyncSession = Depends(get_session),
 ):
-    result = await TipoDependenciaService.get(db, tipo_id)
+    result = await tipo_dependencia_service.get(db, tipo_id)
     if not result:
         raise HTTPException(status_code=404, detail="Tipo de dependencia no encontrado")
     return result
@@ -327,7 +327,7 @@ async def actualizar_tipo_dependencia(
     data: TipoDependenciaUpdate,
     db: AsyncSession = Depends(get_session),
 ):
-    result = await TipoDependenciaService.update(db, tipo_id, data)
+    result = await tipo_dependencia_service.update(db, tipo_id, data)
     if not result:
         raise HTTPException(status_code=404, detail="Tipo de dependencia no encontrado")
     return result
@@ -338,7 +338,7 @@ async def eliminar_tipo_dependencia(
     tipo_id: int,
     db: AsyncSession = Depends(get_session),
 ):
-    success = await TipoDependenciaService.delete(db, tipo_id)
+    success = await tipo_dependencia_service.delete(db, tipo_id)
     if not success:
         raise HTTPException(status_code=404, detail="Tipo de dependencia no encontrado")
 
