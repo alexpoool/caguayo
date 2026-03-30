@@ -24,3 +24,5 @@ asyncpg>=0.28.0
 sqlmodel
 
 # To install these: pip install -r requirements.txt
+reportlab
+reportlab

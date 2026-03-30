@@ -1,6 +1,6 @@
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
-from typing import List, Optional, Type, TypeVar, Generic
+from typing import List, Optional, Type, TypeVar, Generic, Any
 
 ModelType = TypeVar("ModelType")
 CreateSchemaType = TypeVar("CreateSchemaType")
@@ -11,15 +11,28 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
     def __init__(self, model: Type[ModelType]):
         self.model = model
 
-    async def get(self, db: AsyncSession, id: int) -> Optional[ModelType]:
+    async def get(
+        self, db: AsyncSession, id: Any, load_options: Optional[List[Any]] = None
+    ) -> Optional[ModelType]:
+        if load_options:
+            return await db.get(self.model, id, options=load_options)
         return await db.get(self.model, id)
 
     async def get_multi(
-        self, db: AsyncSession, *, skip: int = 0, limit: int = 100
+        self,
+        db: AsyncSession,
+        *,
+        skip: int = 0,
+        limit: int = 100,
+        load_options: Optional[List[Any]] = None,
     ) -> List[ModelType]:
-        statement = select(self.model).offset(skip).limit(limit)
+        statement = select(self.model)
+        if load_options:
+            for option in load_options:
+                statement = statement.options(option)
+        statement = statement.offset(skip).limit(limit)
         results = await db.exec(statement)
-        return results.all()
+        return list(results.all())
 
     async def create(self, db: AsyncSession, *, obj_in: CreateSchemaType) -> ModelType:
         obj_data = obj_in.model_dump()
@@ -40,14 +53,19 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         await db.refresh(db_obj)
         return db_obj
 
-    async def remove(self, db: AsyncSession, *, id: int) -> Optional[ModelType]:
+    async def remove(self, db: AsyncSession, *, id: Any) -> Optional[ModelType]:
         obj = await db.get(self.model, id)
         if obj:
             await db.delete(obj)
             await db.commit()
         return obj
 
-    async def get_all(self, db: AsyncSession) -> List[ModelType]:
+    async def get_all(
+        self, db: AsyncSession, load_options: Optional[List[Any]] = None
+    ) -> List[ModelType]:
         statement = select(self.model)
+        if load_options:
+            for option in load_options:
+                statement = statement.options(option)
         results = await db.exec(statement)
-        return results.all()
+        return list(results.all())
