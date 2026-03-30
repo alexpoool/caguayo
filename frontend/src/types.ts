@@ -66,3 +66,7 @@ export interface DashboardStats {
     precio_venta: number;
   }>;
 }
+
+export interface Dependencia{
+  
+};
