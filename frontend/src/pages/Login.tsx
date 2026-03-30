@@ -27,11 +27,12 @@ export function LoginPage() {
   const [loadingLogin, setLoadingLogin] = useState(false);
   const [conexionStatus, setConexionStatus] = useState<ConexionStatus>('idle');
 
-  useEffect(() => {
-    if (isAuthenticated) {
-      navigate('/');
-    }
-  }, [isAuthenticated, navigate]);
+  // Comentado temporalmente para permitir ir al login manually aunque estemos "logeados"
+  // useEffect(() => {
+  //   if (isAuthenticated) {
+  //     navigate('/');
+  //   }
+  // }, [isAuthenticated, navigate]);
 
   useEffect(() => {
     const fetchConexiones = async () => {
