@@ -27,6 +27,7 @@ from .ventas_operaciones import (
 )
 from .productos_en_liquidacion import router as productos_en_liquidacion_router
 from .liquidaciones import router as liquidaciones_router
+from .pagos import router as pagos_router
 
 api_router = APIRouter(prefix="/api/v1")
 
@@ -56,6 +57,7 @@ api_router.include_router(facturas_router)
 api_router.include_router(ventas_efectivo_router)
 api_router.include_router(productos_en_liquidacion_router)
 api_router.include_router(liquidaciones_router)
+api_router.include_router(pagos_router)
 
 
 @api_router.get("/")
@@ -80,5 +82,6 @@ async def api_info():
             "suplementos": "/api/v1/suplementos",
             "ventas_efectivo": "/api/v1/ventas-efectivo",
             "productos_en_liquidacion": "/api/v1/productos-en-liquidacion",
+            "pagos": "/api/v1/pagos",
         },
     }

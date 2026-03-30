@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { Button, Card, CardHeader, CardTitle, CardContent, Label, Input, Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../../components/ui';
@@ -38,6 +38,9 @@ type TabType = 'todas' | 'pendientes' | 'liquidadas';
 export function LiquidacionesPage() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const initialProveedorId = searchParams.get('proveedor');
+
   const [activeTab, setActiveTab] = useState<TabType>('todas');
   const [showModal, setShowModal] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
@@ -45,7 +48,7 @@ export function LiquidacionesPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [detailModal, setDetailModal] = useState<{ isOpen: boolean; item: Liquidacion | null }>({ isOpen: false, item: null });
   
-  const [filtroCliente, setFiltroCliente] = useState<number | null>(null);
+  const [filtroCliente, setFiltroCliente] = useState<number | null>(initialProveedorId ? Number(initialProveedorId) : null);
   const [filtroAnexo, setFiltroAnexo] = useState<number | null>(null);
   
   const [selectedProductos, setSelectedProductos] = useState<number[]>([]);
@@ -225,6 +228,7 @@ export function LiquidacionesPage() {
   };
 
   const filteredLiquidaciones = liquidaciones.filter((l: Liquidacion) => {
+    if (filtroCliente && l.id_cliente !== filtroCliente) return false;
     if (!searchTerm) return true;
     const search = searchTerm.toLowerCase();
     return l.codigo?.toLowerCase().includes(search) || 
@@ -286,6 +290,14 @@ export function LiquidacionesPage() {
       </div>
 
       <div className="flex gap-4 items-center">
+        <select
+          className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-lime-500 outline-none bg-white text-sm"
+          value={filtroCliente || ''}
+          onChange={(e) => setFiltroCliente(Number(e.target.value) || null)}
+        >
+          <option value="">Todos los proveedores</option>
+          {clientes.map((c: Cliente) => <option key={c.id_cliente} value={c.id_cliente}>{c.nombre}</option>)}
+        </select>
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
           <input

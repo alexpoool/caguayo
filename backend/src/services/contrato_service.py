@@ -294,6 +294,16 @@ class SuplementoService:
         return result
 
     @staticmethod
+    async def get_all(
+        db: AsyncSession, skip: int = 0, limit: int = 100
+    ) -> List[SuplementoReadWithDetails]:
+        suplementos = await suplemento_repo.get_all(db)
+        result = []
+        for suplemento in suplementos:
+            result.append(await map_suplemento_to_read(db, suplemento))
+        return result
+
+    @staticmethod
     async def update(
         db: AsyncSession, id: int, data: SuplementoUpdate
     ) -> SuplementoReadWithDetails:

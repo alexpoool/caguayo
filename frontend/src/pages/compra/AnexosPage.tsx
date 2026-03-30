@@ -443,7 +443,7 @@ export function CompraAnexosPage() {
 
   return (
     <div className="p-6">
-      <h1 className="text-3xl font-bold mb-6">Gestión de Anexos</h1>
+    
       {view === 'list' && renderList()}
       {view === 'form' && renderForm()}
 

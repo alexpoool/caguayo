@@ -5,12 +5,15 @@ import { conveniosService, clientesService, tipoConvenioService } from '../../se
 import type { Cliente } from '../../types/ventas';
 import { Plus, Save, Trash2, Edit, FileText, ArrowLeft, Calendar, Tag, User, ScrollText, Boxes, ExternalLink, X, Eye, Search } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 
 type View = 'list' | 'form' | 'detail';
 
 export function CompraConveniosPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const initialProveedorId = searchParams.get('proveedor');
+
   const [view, setView] = useState<View>('list');
   
   const [convenios, setConvenios] = useState<any[]>([]);
@@ -21,7 +24,7 @@ export function CompraConveniosPage() {
   const [formData, setFormData] = useState<Record<string, any>>({});
   const [detailModal, setDetailModal] = useState<{ isOpen: boolean; item: any | null }>({ isOpen: false, item: null });
   const [searchTerm, setSearchTerm] = useState('');
-  const [filtroCliente, setFiltroCliente] = useState<number | null>(null);
+  const [filtroCliente, setFiltroCliente] = useState<number | null>(initialProveedorId ? Number(initialProveedorId) : null);
 
   useEffect(() => { loadInitialData(); }, []);
   useEffect(() => { if (view === 'list') loadConvenios(); }, [view]);
@@ -312,7 +315,6 @@ export function CompraConveniosPage() {
 
   return (
     <div className="p-6">
-      <h1 className="text-3xl font-bold mb-6">Gestión de Convenios</h1>
       {view === 'list' && renderList()}
       {view === 'form' && renderForm()}
 

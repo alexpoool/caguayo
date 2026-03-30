@@ -186,7 +186,7 @@ class ProductosEnLiquidacionRepository(CRUDBase[ProductosEnLiquidacion, dict, di
     async def get_items_anexo_con_estado_por_cliente(
         self, db: AsyncSession, cliente_id: int, anexo_id: Optional[int] = None
     ) -> List[dict]:
-        """Obtiene todos los items de anexos del cliente con su estado (NO_VENDIDO, VENDIDO, LIQUIDADO)."""
+        """Obtiene todos los items de anexos del cliente con su estado (EN_CONSIGNACION, A LIQUIDAR, LIQUIDADO)."""
         from src.models.item_anexo import ItemAnexo
         from src.models.anexo import Anexo
         from src.models.convenio import Convenio
@@ -243,11 +243,11 @@ class ProductosEnLiquidacionRepository(CRUDBase[ProductosEnLiquidacion, dict, di
             ) = row
 
             if id_pel is None:
-                estado = "NO_VENDIDO"
+                estado = "EN_CONSIGNACION"
             elif liquidada:
                 estado = "LIQUIDADO"
             else:
-                estado = "VENDIDO"
+                estado = "A LIQUIDAR"
 
             items.append(
                 {

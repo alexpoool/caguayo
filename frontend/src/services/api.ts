@@ -56,6 +56,10 @@ import type {
   VentaEfectivoCreate,
   VentaEfectivoUpdate,
 } from '../types/contrato';
+import type {
+  Pago,
+  PagoCreate,
+} from '../types/pago';
 
 export const productosService = {
   async getProductos(skip = 0, limit = 100, search?: string): Promise<Productos[]> {
@@ -498,6 +502,10 @@ export const contratosService = {
 };
 
 export const suplementosService = {
+  async getSuplementos(skip = 0, limit = 100): Promise<SuplementoWithDetails[]> {
+    return apiClient.get<SuplementoWithDetails[]>(`/suplementos?skip=${skip}&limit=${limit}`);
+  },
+
   async getSuplementosByContrato(contratoId: number): Promise<SuplementoWithDetails[]> {
     return apiClient.get<SuplementoWithDetails[]>(`/suplementos/contrato/${contratoId}`);
   },
@@ -546,6 +554,20 @@ export const facturasService = {
 
   async deleteFactura(id: number): Promise<void> {
     return apiClient.delete<void>(`/facturas/${id}`);
+  }
+};
+
+export const pagosService = {
+  async getPagosByFactura(facturaId: number): Promise<Pago[]> {
+    return apiClient.get<Pago[]>(`/pagos/factura/${facturaId}`);
+  },
+
+  async createPago(data: PagoCreate): Promise<Pago> {
+    return apiClient.post<Pago>('/pagos', data);
+  },
+
+  async deletePago(id: number): Promise<void> {
+    return apiClient.delete<void>(`/pagos/${id}`);
   }
 };
 

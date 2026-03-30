@@ -6,10 +6,14 @@ import type { ContratoWithDetails } from '../../types/contrato';
 import type { SuplementoWithDetails } from '../../types/contrato';
 import { Plus, Save, Trash2, Edit, ArrowLeft, Search, Layers, FileText, DollarSign, Calendar, Tag, X } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { useSearchParams } from 'react-router-dom';
 
 type View = 'list' | 'form';
 
 export function SuplementosPage() {
+  const [searchParams] = useSearchParams();
+  const initialContratoId = searchParams.get('contrato');
+
   const [view, setView] = useState<View>('list');
   
   const [suplementos, setSuplementos] = useState<SuplementoWithDetails[]>([]);
@@ -17,7 +21,7 @@ export function SuplementosPage() {
   const [estados, setEstados] = useState<{id: number, nombre: string}[]>([]);
   
   const [editingId, setEditingId] = useState<number | null>(null);
-  const [selectedContratoId, setSelectedContratoId] = useState<number | null>(null);
+  const [selectedContratoId, setSelectedContratoId] = useState<number | null>(initialContratoId ? Number(initialContratoId) : null);
   const [formData, setFormData] = useState<Record<string, any>>({});
   const [searchTerm, setSearchTerm] = useState('');
   const [detailModal, setDetailModal] = useState<{ isOpen: boolean; item: SuplementoWithDetails | null }>({ isOpen: false, item: null });
@@ -48,12 +52,15 @@ export function SuplementosPage() {
   };
 
   const loadSuplementos = async () => {
-    if (!selectedContratoId) {
-      setSuplementos([]);
-      return;
-    }
-    try { const data = await suplementosService.getSuplementosByContrato(selectedContratoId); setSuplementos(data); } 
-    catch (error) { console.error('Error:', error); }
+    try {
+      if (selectedContratoId) {
+        const data = await suplementosService.getSuplementosByContrato(selectedContratoId);
+        setSuplementos(data);
+      } else {
+        const data = await suplementosService.getSuplementos();
+        setSuplementos(data);
+      }
+    } catch (error) { console.error('Error:', error); }
   };
 
   useEffect(() => { 
@@ -117,12 +124,12 @@ export function SuplementosPage() {
           </div>
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Suplementos</h1>
-            <p className="text-gray-500 mt-1">Gestión de suplementos por contrato</p>
+            <p className="text-gray-500 mt-1">Gestión de suplementos de contratos</p>
           </div>
         </div>
         <div className="flex gap-2">
           <select className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none" value={selectedContratoId || ''} onChange={(e: any) => setSelectedContratoId(Number(e.target.value) || null)}>
-            <option value="">Seleccionar Contrato</option>
+            <option value="">Todos los contratos</option>
             {contratos.map(c => <option key={c.id_contrato} value={c.id_contrato}>{c.nombre}</option>)}
           </select>
           <Button
@@ -136,10 +143,7 @@ export function SuplementosPage() {
         </div>
       </div>
 
-      {!selectedContratoId ? (
-        <p className="text-gray-500 text-center py-12">Seleccione un contrato para ver sus suplementos.</p>
-      ) : (
-        <Card className="overflow-hidden shadow-sm border-gray-200">
+      <Card className="overflow-hidden shadow-sm border-gray-200">
           <div className="overflow-x-auto">
             <Table>
               <TableHeader className="bg-gradient-to-r from-amber-50 to-orange-50">
@@ -176,7 +180,7 @@ export function SuplementosPage() {
                 {suplementos.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={6} className="text-center py-12 text-gray-500">
-                      No hay suplementos para este contrato
+                      No hay suplementos
                     </TableCell>
                   </TableRow>
                 ) : (
@@ -222,7 +226,6 @@ export function SuplementosPage() {
             </Table>
           </div>
         </Card>
-      )}
     </div>
   );
 
@@ -286,7 +289,6 @@ export function SuplementosPage() {
 
   return (
     <div className="p-6">
-      <h1 className="text-3xl font-bold mb-6">Suplementos</h1>
       {view === 'list' && renderList()}
       {view === 'form' && renderForm()}
 
