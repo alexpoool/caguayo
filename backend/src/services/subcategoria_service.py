@@ -1,10 +1,10 @@
 from src.repository.subcategorias_repo import subcategorias_repo
-from src.models import Subcategoria
+from src.models import Subcategorias
 from src.dto import SubcategoriasCreate, SubcategoriasRead, SubcategoriasUpdate
 from src.services.base_service import GenericService
 
 
-class SubcategoriaServiceClass(GenericService[Subcategoria, SubcategoriasCreate, SubcategoriasUpdate, SubcategoriasRead]):
+class SubcategoriaServiceClass(GenericService[Subcategorias, SubcategoriasCreate, SubcategoriasUpdate, SubcategoriasRead]):
     def _to_read_dto(self, db_subcategoria) -> SubcategoriasRead:
         """Convierte un modelo de base de datos a DTO, evitando problemas con relaciones lazy."""
         return SubcategoriasRead(

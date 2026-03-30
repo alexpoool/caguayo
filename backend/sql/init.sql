@@ -911,3 +911,264 @@ VALUES (1, 'Caguayo', 'Vista Alegre', '+53 7 1234567', 'info@caguayo.cu', 'https
 INSERT INTO usuarios (ci, nombre, primer_apellido, segundo_apellido, alias, contrasenia, id_grupo, id_dependencia)
 VALUES 
 ('00000000000', 'Administrador', 'Sistema', 'Caguayo', 'admin', '$2b$12$21cZipaElHLRaXOxScHGjOPbMVXpvxn2aSwQus/P4/Vs0z0bouTb2', 1, 1);
+-- Script SQL para crear las nuevas tablas en PostgreSQL
+-- Proyecto: Caguayo - Módulo de Ventas
+
+-- =====================================================
+-- TABLAS PARA CONTRATOS, SUPLEMENTOS, FACTURAS Y VENTAS EN EFECTIVO
+-- =====================================================
+
+-- Contratos
+CREATE TABLE IF NOT EXISTS contrato (
+    id_contrato SERIAL PRIMARY KEY,
+    id_cliente INTEGER NOT NULL REFERENCES clientes(id_cliente) ON DELETE CASCADE,
+    nombre VARCHAR(200) NOT NULL,
+    proforma VARCHAR(100),
+    id_estado INTEGER NOT NULL REFERENCES estado_contrato(id_estado_contrato) ON DELETE CASCADE,
+    fecha DATE NOT NULL DEFAULT CURRENT_DATE,
+    vigencia DATE NOT NULL,
+    id_tipo_contrato INTEGER NOT NULL REFERENCES tipo_contrato(id_tipo_contrato) ON DELETE CASCADE,
+    id_moneda INTEGER NOT NULL REFERENCES moneda(id_moneda) ON DELETE CASCADE,
+    monto NUMERIC(15, 2) NOT NULL DEFAULT 0.00,
+    documento_final VARCHAR(255)
+);
+
+-- Suplementos
+CREATE TABLE IF NOT EXISTS suplemento (
+    id_suplemento SERIAL PRIMARY KEY,
+    id_contrato INTEGER NOT NULL REFERENCES contrato(id_contrato) ON DELETE CASCADE,
+    nombre VARCHAR(200) NOT NULL,
+    id_estado INTEGER NOT NULL REFERENCES estado_contrato(id_estado_contrato) ON DELETE CASCADE,
+    fecha DATE NOT NULL DEFAULT CURRENT_DATE,
+    monto NUMERIC(15, 2) NOT NULL DEFAULT 0.00,
+    documento VARCHAR(255)
+);
+
+-- Facturas
+CREATE TABLE IF NOT EXISTS factura (
+    id_factura SERIAL PRIMARY KEY,
+    id_contrato INTEGER NOT NULL REFERENCES contrato(id_contrato) ON DELETE CASCADE,
+    codigo_factura VARCHAR(50) NOT NULL UNIQUE,
+    descripcion TEXT,
+    observaciones TEXT,
+    fecha DATE NOT NULL DEFAULT CURRENT_DATE,
+    monto NUMERIC(15, 2) NOT NULL DEFAULT 0.00,
+    pago_actual NUMERIC(15, 2) NOT NULL DEFAULT 0.00
+);
+
+-- Ventas en Efectivo
+CREATE TABLE IF NOT EXISTS venta_efectivo (
+    id_venta_efectivo SERIAL PRIMARY KEY,
+    slip VARCHAR(100) NOT NULL,
+    fecha DATE NOT NULL DEFAULT CURRENT_DATE,
+    id_dependencia INTEGER NOT NULL REFERENCES dependencia(id_dependencia) ON DELETE CASCADE,
+    cajero VARCHAR(100) NOT NULL,
+    monto NUMERIC(15, 2) NOT NULL DEFAULT 0.00
+);
+
+-- Item-Factura (reemplaza factura_producto)
+CREATE TABLE IF NOT EXISTS item_factura (
+    id_item_factura SERIAL PRIMARY KEY,
+    id_factura INTEGER NOT NULL REFERENCES factura(id_factura) ON DELETE CASCADE,
+    id_producto INTEGER NOT NULL REFERENCES productos(id_producto) ON DELETE CASCADE,
+    cantidad INTEGER NOT NULL DEFAULT 1,
+    precio_compra NUMERIC(15, 4) NOT NULL,
+    precio_venta NUMERIC(15, 4) NOT NULL,
+    id_moneda INTEGER NOT NULL REFERENCES moneda(id_moneda) ON DELETE CASCADE
+);
+
+-- Item-Venta-Efectivo (reemplaza venta_efectivo_producto)
+CREATE TABLE IF NOT EXISTS item_venta_efectivo (
+    id_item_venta_efectivo SERIAL PRIMARY KEY,
+    id_venta_efectivo INTEGER NOT NULL REFERENCES venta_efectivo(id_venta_efectivo) ON DELETE CASCADE,
+    id_producto INTEGER NOT NULL REFERENCES productos(id_producto) ON DELETE CASCADE,
+    cantidad INTEGER NOT NULL DEFAULT 1,
+    precio_compra NUMERIC(15, 4) NOT NULL,
+    precio_venta NUMERIC(15, 4) NOT NULL,
+    id_moneda INTEGER NOT NULL REFERENCES moneda(id_moneda) ON DELETE CASCADE
+);
+
+-- =====================================================
+-- ÍNDICES PARA NUEVAS TABLAS
+-- =====================================================
+
+CREATE INDEX IF NOT EXISTS idx_contrato_cliente ON contrato(id_cliente);
+CREATE INDEX IF NOT EXISTS idx_contrato_estado ON contrato(id_estado);
+CREATE INDEX IF NOT EXISTS idx_contrato_tipo ON contrato(id_tipo_contrato);
+CREATE INDEX IF NOT EXISTS idx_contrato_moneda ON contrato(id_moneda);
+CREATE INDEX IF NOT EXISTS idx_suplemento_contrato ON suplemento(id_contrato);
+CREATE INDEX IF NOT EXISTS idx_suplemento_estado ON suplemento(id_estado);
+CREATE INDEX IF NOT EXISTS idx_factura_contrato ON factura(id_contrato);
+CREATE INDEX IF NOT EXISTS idx_factura_codigo ON factura(codigo_factura);
+CREATE INDEX IF NOT EXISTS idx_item_factura_factura ON item_factura(id_factura);
+CREATE INDEX IF NOT EXISTS idx_item_factura_producto ON item_factura(id_producto);
+CREATE INDEX IF NOT EXISTS idx_venta_efectivo_dependencia ON venta_efectivo(id_dependencia);
+CREATE INDEX IF NOT EXISTS idx_venta_efectivo_fecha ON venta_efectivo(fecha);
+CREATE INDEX IF NOT EXISTS idx_item_venta_efectivo_venta ON item_venta_efectivo(id_venta_efectivo);
+CREATE INDEX IF NOT EXISTS idx_item_venta_efectivo_producto ON item_venta_efectivo(id_producto);
+
+-- =====================================================
+-- DATOS INICIALES - TIPOS DE CONTRATO
+-- =====================================================
+
+INSERT INTO tipo_contrato (nombre, descripcion) VALUES 
+('SERVICIO', 'Contrato de servicios'),
+('OBRA', 'Contrato de obra'),
+('MANTENIMIENTO', 'Contrato de mantenimiento'),
+('ALQUILER', 'Contrato de alquiler'),
+('COMPRA', 'Contrato de compraventa')
+ON CONFLICT (nombre) DO NOTHING;
+
+-- =====================================================
+-- DATOS INICIALES - ESTADOS DE CONTRATO
+-- =====================================================
+
+INSERT INTO estado_contrato (nombre, descripcion) VALUES 
+('ACTIVO', 'Contrato vigente'),
+('CANCELADO', 'Contrato cancelado'),
+('FINALIZADO', 'Contrato finalizado'),
+('PENDIENTE', 'Contrato pendiente de aprobación')
+ON CONFLICT (nombre) DO NOTHING;
+
+-- =====================================================
+-- ACTUALIZAR RELACIÓN EN CLIENTE
+-- =====================================================
+
+-- Agregar la relación de contratos al cliente si no existe
+-- (La relación ya está definida en el modelo, esto es solo para documentación)
+
+-- Fin del script
+-- Migration: Sync movimiento table with model
+-- This script updates the movimiento table to match the SQLModel definition
+
+-- Step 1: Rename columns if they exist with old names
+ALTER TABLE movimiento RENAME COLUMN id_moneda_compra TO moneda_compra;
+ALTER TABLE movimiento RENAME COLUMN id_moneda_venta TO moneda_venta;
+
+-- Step 2: Drop unused columns (if they exist and have no data)
+-- These columns are not used by the application:
+-- id_convenio - handled through anexo
+-- id_contrato - handled through anexo
+-- id_factura - not used
+-- id_venta_efectivo - not used
+-- id_liquidacion - not used
+
+-- Uncomment the following lines ONLY if you want to remove these columns:
+-- WARNING: This will delete data if the columns exist and have values
+
+-- ALTER TABLE movimiento DROP COLUMN IF EXISTS id_convenio;
+-- ALTER TABLE movimiento DROP COLUMN IF EXISTS id_contrato;
+-- ALTER TABLE movimiento DROP COLUMN IF EXISTS id_factura;
+-- ALTER TABLE movimiento DROP COLUMN IF EXISTS id_venta_efectivo;
+-- ALTER TABLE movimiento DROP COLUMN IF EXISTS id_liquidacion;
+
+-- Step 3: Add missing columns if they don't exist
+ALTER TABLE movimiento ADD COLUMN IF NOT EXISTS id_convenio INTEGER REFERENCES convenio(id_convenio) ON DELETE CASCADE;
+ALTER TABLE movimiento ADD COLUMN IF NOT EXISTS id_contrato INTEGER REFERENCES contrato(id_contrato) ON DELETE CASCADE;
+ALTER TABLE movimiento ADD COLUMN IF NOT EXISTS id_factura INTEGER REFERENCES factura(id_factura) ON DELETE CASCADE;
+ALTER TABLE movimiento ADD COLUMN IF NOT EXISTS id_venta_efectivo INTEGER REFERENCES venta_efectivo(id_venta_efectivo) ON DELETE CASCADE;
+ALTER TABLE movimiento ADD COLUMN IF NOT EXISTS id_liquidacion INTEGER REFERENCES liquidacion(id_liquidacion) ON DELETE CASCADE;
+
+-- Step 4: Update foreign key references for id_convenio (should reference convenio, not anexo)
+-- First, drop the wrong constraint if it exists
+ALTER TABLE movimiento DROP CONSTRAINT IF EXISTS movimiento_id_convenio_fkey;
+-- Then add the correct one
+ALTER TABLE movimiento ADD CONSTRAINT movimiento_id_convenio_fkey 
+    FOREIGN KEY (id_convenio) REFERENCES convenio(id_convenio) ON DELETE CASCADE;
+
+-- Step 5: Add indices for commonly queried columns
+CREATE INDEX IF NOT EXISTS idx_movimiento_codigo ON movimiento(codigo);
+CREATE INDEX IF NOT EXISTS idx_movimiento_fecha ON movimiento(fecha);
+CREATE INDEX IF NOT EXISTS idx_movimiento_estado ON movimiento(estado);
+CREATE INDEX IF NOT EXISTS idx_movimiento_id_dependencia ON movimiento(id_dependencia);
+CREATE INDEX IF NOT EXISTS idx_movimiento_id_producto ON movimiento(id_producto);
+
+-- Step 6: Verify the table structure
+SELECT 
+    column_name, 
+    data_type, 
+    is_nullable,
+    column_default
+FROM information_schema.columns 
+WHERE table_name = 'movimiento' 
+ORDER BY ordinal_position;
+-- Migration: Create missing client type tables
+-- Created: 2026-03-18
+
+-- Clientes - Persona Natural
+CREATE TABLE clientes_persona_natural (
+    id_cliente INTEGER PRIMARY KEY REFERENCES clientes(id_cliente) ON DELETE CASCADE,
+    nombre VARCHAR(50) NOT NULL,
+    primer_apellido VARCHAR(50) NOT NULL,
+    segundo_apellido VARCHAR(50),
+    carnet_identidad VARCHAR(11) NOT NULL UNIQUE,
+    codigo_expediente VARCHAR(50),
+    numero_registro VARCHAR(50),
+    catalogo VARCHAR(100),
+    es_trabajador BOOLEAN NOT NULL DEFAULT false,
+    ocupacion VARCHAR(100),
+    centro_trabajo VARCHAR(200),
+    correo_trabajo VARCHAR(100),
+    direccion_trabajo TEXT,
+    telefono_trabajo VARCHAR(20),
+    en_baja BOOLEAN NOT NULL DEFAULT false,
+    fecha_baja DATE,
+    vigencia DATE
+);
+
+-- Clientes - Persona Jurídica
+CREATE TABLE clientes_persona_juridica (
+    id_cliente INTEGER PRIMARY KEY REFERENCES clientes(id_cliente) ON DELETE CASCADE,
+    codigo_reup VARCHAR(50) NOT NULL UNIQUE,
+    id_tipo_entidad INTEGER REFERENCES tipo_entidad(id_tipo_entidad) ON DELETE SET NULL
+);
+
+-- Clientes - TCP (Trabajador por Cuenta Propia)
+CREATE TABLE cliente_tcp (
+    id_cliente INTEGER PRIMARY KEY REFERENCES clientes(id_cliente) ON DELETE CASCADE,
+    nombre VARCHAR(50) NOT NULL,
+    primer_apellido VARCHAR(50) NOT NULL,
+    segundo_apellido VARCHAR(50),
+    direccion TEXT NOT NULL,
+    numero_registro_proyecto VARCHAR(50),
+    fecha_aprobacion DATE
+);
+-- Migration: Add id_moneda column to cuenta table
+-- Created: 2026-03-18
+
+ALTER TABLE cuenta ADD COLUMN id_moneda INTEGER REFERENCES moneda(id_moneda) ON DELETE SET NULL;
+-- Migration: Create anexo_producto table with correct schema
+-- Created: 2026-03-18
+
+DROP TABLE IF EXISTS anexo_producto CASCADE;
+
+CREATE TABLE anexo_producto (
+    id_anexo_producto SERIAL PRIMARY KEY,
+    id_anexo INTEGER NOT NULL REFERENCES anexo(id_anexo) ON DELETE CASCADE,
+    id_producto INTEGER NOT NULL REFERENCES productos(id_producto) ON DELETE CASCADE,
+    cantidad INTEGER DEFAULT 1,
+    precio_acordado NUMERIC(15, 4),
+    UNIQUE (id_anexo, id_producto)
+);
+
+CREATE INDEX IF NOT EXISTS idx_anexo_producto_producto ON anexo_producto(id_producto);
+-- Migration: Insert test data into anexo_producto
+-- Created: 2026-03-18
+
+-- Insertar 30 productos en diferentes anexos
+INSERT INTO anexo_producto (id_anexo, id_producto, cantidad, precio_acordado)
+SELECT 
+    a.id_anexo,
+    p.id_producto,
+    (RANDOM() * 50 + 1)::int as cantidad,
+    ROUND((RANDOM() * 900 + 100)::numeric, 2) as precio_acordado
+FROM (
+    SELECT id_anexo FROM anexo ORDER BY id_anexo LIMIT 10
+) a
+CROSS JOIN LATERAL (
+    SELECT id_producto FROM productos ORDER BY id_producto LIMIT 3
+) p
+ON CONFLICT DO NOTHING;
+
+-- Verificar datos insertados
+SELECT COUNT(*) as total_insertado FROM anexo_producto;

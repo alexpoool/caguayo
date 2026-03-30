@@ -17,7 +17,7 @@ from src.dto import (
     MunicipioRead,
     CuentaCreate,
 )
-from src.services.cuenta_service import CuentaService
+from src.services.cuenta_service import cuenta_service
 from src.services.database_service import DatabaseService
 from src.repository.base import CRUDBase
 from sqlmodel import select, func
@@ -140,7 +140,7 @@ async def crear_dependencia(
                 id_dependencia=db_obj.id_dependencia,
                 **cuenta_data.model_dump(exclude={"id_dependencia"}),
             )
-            await CuentaService.create(db, cuenta_create)
+            await cuenta_service.create(db, cuenta_create)
 
     statement = (
         select(Dependencia)
