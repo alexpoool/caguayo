@@ -9,39 +9,6 @@ from src.dto import VentaCreate, VentaUpdate
 
 
 class ClienteRepository(CRUDBase[Cliente, "ClienteCreate", "ClienteUpdate"]):
-    async def get_with_ventas(self, db: AsyncSession, id: int) -> Optional[Cliente]:
-        statement = (
-            select(self.model)
-            .options(
-                selectinload(Cliente.ventas)
-                .selectinload(Ventas.detalles)
-                .selectinload(DetalleVenta.producto)
-            )
-            .where(self.model.id_cliente == id)
-        )
-        results = await db.exec(statement)
-        return results.first()
-
-    async def get_multi_with_ventas_count(
-        self, db: AsyncSession, *, skip: int = 0, limit: int = 100
-    ) -> List[Cliente]:
-        statement = (
-            select(self.model)
-            .options(selectinload(Cliente.ventas))
-            .order_by(self.model.nombre)
-            .offset(skip)
-            .limit(limit)
-        )
-        results = await db.exec(statement)
-        return results.all()
-
-    async def get_by_cedula(
-        self, db: AsyncSession, cedula_rif: str
-    ) -> Optional[Cliente]:
-        statement = select(self.model).where(self.model.cedula_rif == cedula_rif)
-        results = await db.exec(statement)
-        return results.first()
-
     async def has_ventas(self, db: AsyncSession, id: int) -> bool:
         statement = select(Ventas).where(Ventas.id_cliente == id).limit(1)
         results = await db.exec(statement)
@@ -49,34 +16,6 @@ class ClienteRepository(CRUDBase[Cliente, "ClienteCreate", "ClienteUpdate"]):
 
 
 class VentasRepository(CRUDBase[Ventas, VentaCreate, VentaUpdate]):
-    async def get_with_relations(self, db: AsyncSession, id: int) -> Optional[Ventas]:
-        statement = (
-            select(self.model)
-            .options(
-                selectinload(Ventas.cliente),
-                selectinload(Ventas.detalles).selectinload(DetalleVenta.producto),
-            )
-            .where(self.model.id_venta == id)
-        )
-        results = await db.exec(statement)
-        return results.first()
-
-    async def get_multi_with_relations(
-        self, db: AsyncSession, *, skip: int = 0, limit: int = 100
-    ) -> List[Ventas]:
-        statement = (
-            select(self.model)
-            .options(
-                selectinload(Ventas.cliente),
-                selectinload(Ventas.detalles).selectinload(DetalleVenta.producto),
-            )
-            .order_by(self.model.fecha.desc())
-            .offset(skip)
-            .limit(limit)
-        )
-        results = await db.exec(statement)
-        return results.all()
-
     async def get_by_cliente(
         self, db: AsyncSession, id_cliente: int, skip: int = 0, limit: int = 100
     ) -> List[Ventas]:
@@ -92,7 +31,7 @@ class VentasRepository(CRUDBase[Ventas, VentaCreate, VentaUpdate]):
             .limit(limit)
         )
         results = await db.exec(statement)
-        return results.all()
+        return list(results.all())
 
     async def get_by_mes(self, db: AsyncSession, year: int, month: int) -> List[Ventas]:
         statement = (
@@ -108,7 +47,7 @@ class VentasRepository(CRUDBase[Ventas, VentaCreate, VentaUpdate]):
             .order_by(self.model.fecha.desc())
         )
         results = await db.exec(statement)
-        return results.all()
+        return list(results.all())
 
     async def get_by_estado(
         self, db: AsyncSession, estado: EstadoVenta, skip: int = 0, limit: int = 100
@@ -125,12 +64,11 @@ class VentasRepository(CRUDBase[Ventas, VentaCreate, VentaUpdate]):
             .limit(limit)
         )
         results = await db.exec(statement)
-        return results.all()
+        return list(results.all())
 
     async def get_by_fecha_range(
         self, db: AsyncSession, fecha_inicio: datetime, fecha_fin: datetime
     ) -> List[Ventas]:
-        """Obtener ventas en un rango de fechas."""
         statement = (
             select(self.model)
             .options(
@@ -141,7 +79,7 @@ class VentasRepository(CRUDBase[Ventas, VentaCreate, VentaUpdate]):
             .order_by(self.model.fecha.desc())
         )
         results = await db.exec(statement)
-        return results.all()
+        return list(results.all())
 
 
 class DetalleVentaRepository(
@@ -154,7 +92,7 @@ class DetalleVentaRepository(
             .where(self.model.id_venta == id_venta)
         )
         results = await db.exec(statement)
-        return results.all()
+        return list(results.all())
 
 
 # Instancias

@@ -1,6 +1,7 @@
 from typing import List, Optional
 from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlalchemy import text
+from sqlalchemy.orm import selectinload
 from src.repository.cliente_repo import (
     cliente_repo,
     cliente_natural_repo,
@@ -54,15 +55,26 @@ class ClienteService:
 
     @staticmethod
     async def get_cliente(db: AsyncSession, cliente_id: int) -> Optional[ClienteRead]:
-        db_cliente = await cliente_repo.get_with_relations(db, id=cliente_id)
+        db_cliente = await cliente_repo.get(db, id=cliente_id, load_options=[
+            selectinload(Cliente.provincia),
+            selectinload(Cliente.municipio),
+            selectinload(Cliente.cuentas),
+            selectinload(Cliente.cliente_natural),
+            selectinload(Cliente.cliente_juridica),
+            selectinload(Cliente.cliente_tcp),
+        ])
         return ClienteRead.model_validate(db_cliente) if db_cliente else None
 
     @staticmethod
     async def get_clientes(
         db: AsyncSession, skip: int = 0, limit: int = 100
     ) -> List[ClienteRead]:
-        db_clientes = await cliente_repo.get_multi_with_relations(
-            db, skip=skip, limit=limit
+        db_clientes = await cliente_repo.get_multi(
+            db, skip=skip, limit=limit, 
+            load_options=[
+                selectinload(Cliente.provincia),
+                selectinload(Cliente.municipio)
+            ]
         )
         return [ClienteRead.model_validate(c) for c in db_clientes]
 
