@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from fastapi.responses import StreamingResponse
 
-from src.database.connection import get_db
+from src.database.connection import get_session
 # Add your auth dependency as needed, for now generating dummy user
 from src.services.reportes_service import get_proveedores_por_dependencia
 from src.utils.pdf_generator import generar_pdf_proveedores_dependencia
@@ -19,7 +19,7 @@ def obtener_reporte_proveedores_dependencia(
     id_provincia: int = Query(None, description="Filtrar por provincia (opcional)"),
     aprobado_por_nombre: str = Query("", description="Nombre de quien aprueba"),
     aprobado_por_cargo: str = Query("", description="Cargo de quien aprueba"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_session)
     # user = Depends(get_current_user)
 ):
     try:

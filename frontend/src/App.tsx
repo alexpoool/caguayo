@@ -49,6 +49,7 @@ import { InventarioHome } from "./pages/home/InventarioHome";
 import { AdministracionHome } from "./pages/home/AdministracionHome";
 import { VentaHome } from "./pages/home/VentaHome";
 import { CompraHome } from "./pages/home/CompraHome";
+import { ReportesHome } from "./pages/home/ReportesHome";
 import { CompraConveniosPage } from "./pages/compra/ConveniosPage";
 import { CompraAnexosPage } from "./pages/compra/AnexosPage";
 import { ProductosEnLiquidacionPage } from "./pages/compra/ProductosEnLiquidacionPage";
@@ -58,7 +59,7 @@ import { ContratosPage } from "./pages/ventas/ContratosPage";
 import { SuplementosPage } from "./pages/ventas/SuplementosPage";
 import { FacturasPage } from "./pages/ventas/FacturasPage";
 import { VentasEfectivoPage } from "./pages/ventas/VentasEfectivoPage";
-import { ReporteProveedores } from "./pages/reportes/ReporteProveedores";
+import ReporteProveedores from "./pages/reportes/ReporteProveedores";
 
 type Modulo =
   | "administracion"
@@ -426,7 +427,16 @@ function App() {
               {moduloActivo === "reportes" && (
                 <ul className="space-y-1 px-3">
                   <li>
-                    <NavLink to="/reportes" onClick={handleLinkClick}>
+                    <NavLink to="/reportes" end onClick={handleLinkClick}>
+                      <Home className="w-6 h-6" />
+                      Inicio
+                    </NavLink>
+                  </li>
+                  <li>
+                    <NavLink
+                      to="/reportes/proveedores"
+                      onClick={handleLinkClick}
+                    >
                       <BarChart3 className="w-6 h-6" />
                       Proveedores
                     </NavLink>
@@ -786,6 +796,17 @@ function App() {
                     <ProtectedRoute
                       moduloActivo={moduloActivo}
                       currentPath="/reportes"
+                    >
+                      <ReportesHome />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/reportes/proveedores"
+                  element={
+                    <ProtectedRoute
+                      moduloActivo={moduloActivo}
+                      currentPath="/reportes/proveedores"
                     >
                       <ReporteProveedores />
                     </ProtectedRoute>

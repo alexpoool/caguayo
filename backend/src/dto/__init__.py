@@ -381,3 +381,4 @@ __all__ = [
     "ProductosEnLiquidacionRead",
     "ProductosEnLiquidacionUpdate",
 ]
+VentaRead.model_rebuild(_types_namespace=locals())

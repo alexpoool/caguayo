@@ -21,63 +21,6 @@ from src.dto import (
 )
 
 
-class ClienteService:
-    @staticmethod
-    async def create_cliente(db: AsyncSession, cliente: ClienteCreate) -> ClienteRead:
-        db_cliente = await cliente_repo.create(db, obj_in=cliente)
-        return ClienteRead.model_validate(db_cliente)
-
-    @staticmethod
-    async def get_cliente(db: AsyncSession, cliente_id: int) -> Optional[ClienteRead]:
-        db_cliente = await cliente_repo.get(db, id=cliente_id)
-        return ClienteRead.model_validate(db_cliente) if db_cliente else None
-
-    @staticmethod
-    async def get_cliente_with_ventas(
-        db: AsyncSession, cliente_id: int
-    ) -> Optional[ClienteReadWithVentas]:
-        db_cliente = await cliente_repo.get_with_ventas(db, id=cliente_id)
-        return ClienteReadWithVentas.model_validate(db_cliente) if db_cliente else None
-
-    @staticmethod
-    async def get_clientes(
-        db: AsyncSession, skip: int = 0, limit: int = 100
-    ) -> List[ClienteRead]:
-        db_clientes = await cliente_repo.get_multi(db, skip=skip, limit=limit)
-        return [ClienteRead.model_validate(c) for c in db_clientes]
-
-    @staticmethod
-    async def update_cliente(
-        db: AsyncSession, cliente_id: int, cliente_update: ClienteUpdate
-    ) -> Optional[ClienteRead]:
-        db_cliente = await cliente_repo.get(db, id=cliente_id)
-        if not db_cliente:
-            return None
-
-        updated_cliente = await cliente_repo.update(
-            db, db_obj=db_cliente, obj_in=cliente_update
-        )
-        return ClienteRead.model_validate(updated_cliente)
-
-    @staticmethod
-    async def delete_cliente(db: AsyncSession, cliente_id: int) -> bool:
-        has_ventas = await cliente_repo.has_ventas(db, id=cliente_id)
-        if has_ventas:
-            raise ValueError(
-                "No se puede eliminar el cliente porque tiene ventas asociadas"
-            )
-
-        db_cliente = await cliente_repo.remove(db, id=cliente_id)
-        return db_cliente is not None
-
-    @staticmethod
-    async def get_cliente_by_cedula(
-        db: AsyncSession, cedula_rif: str
-    ) -> Optional[ClienteRead]:
-        db_cliente = await cliente_repo.get_by_cedula(db, cedula_rif=cedula_rif)
-        return ClienteRead.model_validate(db_cliente) if db_cliente else None
-
-
 class VentasService:
     @staticmethod
     async def create_venta(db: AsyncSession, venta: VentaCreate) -> VentaRead:

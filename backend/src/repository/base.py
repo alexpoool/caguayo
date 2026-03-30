@@ -34,23 +34,29 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         results = await db.exec(statement)
         return list(results.all())
 
-    async def create(self, db: AsyncSession, *, obj_in: CreateSchemaType) -> ModelType:
+    async def create(self, db: AsyncSession, *, obj_in: CreateSchemaType, commit: bool = True) -> ModelType:
         obj_data = obj_in.model_dump()
         db_obj = self.model(**obj_data)
         db.add(db_obj)
-        await db.commit()
-        await db.refresh(db_obj)
+        if commit:
+            await db.commit()
+            await db.refresh(db_obj)
+        else:
+            await db.flush()
         return db_obj
 
     async def update(
-        self, db: AsyncSession, *, db_obj: ModelType, obj_in: UpdateSchemaType
+        self, db: AsyncSession, *, db_obj: ModelType, obj_in: UpdateSchemaType, commit: bool = True
     ) -> ModelType:
         obj_data = obj_in.model_dump(exclude_unset=True)
         for field, value in obj_data.items():
             setattr(db_obj, field, value)
         db.add(db_obj)
-        await db.commit()
-        await db.refresh(db_obj)
+        if commit:
+            await db.commit()
+            await db.refresh(db_obj)
+        else:
+            await db.flush()
         return db_obj
 
     async def remove(self, db: AsyncSession, *, id: Any) -> Optional[ModelType]:

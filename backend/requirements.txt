@@ -19,8 +19,8 @@ pydantic~=2.2
 python-dotenv
 
 # From PyPI with extra markers (platform/env specific examples):
-psycopg[binary]>=3.1
-asyncpg>=0.28.0
+psycopg2
+asyncpg
 sqlmodel
 
 # To install these: pip install -r requirements.txt

@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlmodel import select
 from src.database.connection import get_session
-from src.services.cuenta_service import CuentaService
+from src.services.cuenta_service import cuenta_service
 from src.services.usuario_service import GrupoService, UsuarioService
 from src.models import Funcionalidad
 from src.dto import (
@@ -30,7 +30,7 @@ async def listar_cuentas(
     limit: int = Query(100, ge=1, le=1000),
     db: AsyncSession = Depends(get_session),
 ):
-    return await CuentaService.get_all(db, skip=skip, limit=limit)
+    return await cuenta_service.get_all(db, skip=skip, limit=limit)
 
 
 @router.post("/cuentas", response_model=CuentaRead, status_code=201)
@@ -38,7 +38,7 @@ async def crear_cuenta(
     data: CuentaCreate,
     db: AsyncSession = Depends(get_session),
 ):
-    return await CuentaService.create(db, data)
+    return await cuenta_service.create(db, data)
 
 
 @router.get("/cuentas/{cuenta_id}", response_model=CuentaRead)
@@ -46,7 +46,7 @@ async def obtener_cuenta(
     cuenta_id: int,
     db: AsyncSession = Depends(get_session),
 ):
-    result = await CuentaService.get(db, cuenta_id)
+    result = await cuenta_service.get(db, cuenta_id)
     if not result:
         raise HTTPException(status_code=404, detail="Cuenta no encontrada")
     return result
@@ -58,7 +58,7 @@ async def actualizar_cuenta(
     data: CuentaUpdate,
     db: AsyncSession = Depends(get_session),
 ):
-    result = await CuentaService.update(db, cuenta_id, data)
+    result = await cuenta_service.update(db, cuenta_id, data)
     if not result:
         raise HTTPException(status_code=404, detail="Cuenta no encontrada")
     return result
@@ -69,7 +69,7 @@ async def eliminar_cuenta(
     cuenta_id: int,
     db: AsyncSession = Depends(get_session),
 ):
-    success = await CuentaService.delete(db, cuenta_id)
+    success = await cuenta_service.delete(db, cuenta_id)
     if not success:
         raise HTTPException(status_code=404, detail="Cuenta no encontrada")
 

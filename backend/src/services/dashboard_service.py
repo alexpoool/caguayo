@@ -145,8 +145,9 @@ class DashboardService:
         ][:5]
 
         # Últimas ventas (con relaciones)
-        ultimas_ventas_db = await ventas_repo.get_multi(load_options=[selectinload(Ventas.cliente), selectinload(Ventas.detalles).selectinload(DetalleVenta.producto)], 
-            db, skip=0, limit=5
+        ultimas_ventas_db = await ventas_repo.get_multi(
+            db, skip=0, limit=5,
+            load_options=[selectinload(Ventas.cliente), selectinload(Ventas.detalles).selectinload(DetalleVenta.producto)]
         )
         ultimas_ventas = [VentaRead.model_validate(v) for v in ultimas_ventas_db]
 
