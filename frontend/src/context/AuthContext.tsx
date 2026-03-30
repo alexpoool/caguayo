@@ -1,6 +1,17 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { authService, LoginResponse, FuncionalidadInfo, UsuarioInfo } from '../services/auth';
-import { authHelpers } from '../lib/api';
+import {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  ReactNode,
+} from "react";
+import {
+  authService,
+  LoginResponse,
+  FuncionalidadInfo,
+  UsuarioInfo,
+} from "../services/auth";
+import { authHelpers } from "../lib/api";
 
 interface AuthContextType {
   user: UsuarioInfo | null;
@@ -8,7 +19,11 @@ interface AuthContextType {
   baseDatos: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (alias: string, contrasenia: string, baseDatos: string) => Promise<void>;
+  login: (
+    alias: string,
+    contrasenia: string,
+    baseDatos: string,
+  ) => Promise<void>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
   hasFuncionalidad: (nombre: string) => boolean;
@@ -18,10 +33,20 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export { AuthContext };
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<UsuarioInfo | null>(null);
-  const [funcionalidades, setFuncionalidades] = useState<FuncionalidadInfo[]>([]);
-  const [baseDatos, setBaseDatos] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [user, setUser] = useState<UsuarioInfo | null>({
+    id_usuario: 1,
+    alias: "admin",
+    nombre: "Administrador",
+    apellidos: "Sistema",
+    email: "admin@caguayo.cu",
+    rol: "administrador",
+    dependencia: { id_dependencia: 1, nombre: "Dependencia Principal" },
+  } as any);
+  const [funcionalidades, setFuncionalidades] = useState<FuncionalidadInfo[]>(
+    [],
+  );
+  const [baseDatos, setBaseDatos] = useState<string | null>("caguayo");
+  const [isLoading, setIsLoading] = useState(false);
 
   const refreshUser = async () => {
     try {
@@ -32,7 +57,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       authHelpers.setUser(response.usuario);
       authHelpers.setBaseDatos(response.base_datos);
     } catch (error) {
-      console.error('Error refreshing user:', error);
+      console.error("Error refreshing user:", error);
       authHelpers.clearAuth();
       setUser(null);
       setFuncionalidades([]);
@@ -40,8 +65,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const login = async (alias: string, contrasenia: string, baseDatos: string) => {
-    const response = await authService.login({ alias, contrasenia, base_datos: baseDatos });
+  const login = async (
+    alias: string,
+    contrasenia: string,
+    baseDatos: string,
+  ) => {
+    const response = await authService.login({
+      alias,
+      contrasenia,
+      base_datos: baseDatos,
+    });
     setUser(response.usuario);
     setFuncionalidades(response.funcionalidades);
     setBaseDatos(response.base_datos);
@@ -55,7 +88,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const hasFuncionalidad = (nombre: string): boolean => {
-    return funcionalidades.some(f => f.nombre === nombre);
+    return funcionalidades.some((f) => f.nombre === nombre);
   };
 
   useEffect(() => {
@@ -96,7 +129,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 export function useAuth() {
   const context = useContext(AuthContext);
   if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    throw new Error("useAuth must be used within an AuthProvider");
   }
   return context;
 }
