@@ -75,7 +75,9 @@ class DatabaseService:
         cur = conn.cursor()
 
         try:
-            cur.execute(f"CREATE DATABASE {base_datos}")
+            cur.execute(
+                f"CREATE DATABASE {base_datos} WITH ENCODING 'UTF8' TEMPLATE template0"
+            )
             print(
                 f"[DB SERVICE] Database {base_datos} created successfully", flush=True
             )

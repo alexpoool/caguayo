@@ -1,46 +1,14 @@
-import { useState, useEffect, useMemo } from "react";
-import { createPortal } from "react-dom";
-import {
-  Button,
-  Input,
-  Label,
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  Table,
-  TableHeader,
-  TableBody,
-  TableRow,
-  TableHead,
-  TableCell,
-  ConfirmModal,
-} from "../../components/ui";
-import {
-  facturasService,
-  contratosService,
-  productosService,
-  monedaService,
-  dependenciasService,
-} from "../../services/api";
-import type { ContratoWithDetails } from "../../types/contrato";
-import type { Productos } from "../../types";
-import type { FacturaWithDetails } from "../../types/contrato";
-import type { Dependencia } from "../../types/dependencia";
-import {
-  Plus,
-  Save,
-  Trash2,
-  Edit,
-  X,
-  ArrowLeft,
-  Search,
-  Receipt,
-  DollarSign,
-  Calendar,
-  FileText,
-} from "lucide-react";
-import toast from "react-hot-toast";
+import { useState, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
+import { Button, Input, Label, Card, CardContent, CardHeader, CardTitle, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, ConfirmModal } from '../../components/ui';
+import { facturasService, contratosService, productosService, monedaService, dependenciasService, pagosService } from '../../services/api';
+import type { ContratoWithDetails } from '../../types/contrato';
+import type { Productos } from '../../types';
+import type { FacturaWithDetails } from '../../types/contrato';
+import type { Dependencia } from '../../types/dependencia';
+import type { Pago, PagoCreate } from '../../types/pago';
+import { Plus, Save, Trash2, Edit, X, ArrowLeft, Search, Receipt, DollarSign, Calendar, CreditCard } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 type View = "list" | "form";
 
@@ -78,7 +46,18 @@ export function FacturasPage() {
     title: "",
     message: "",
     onConfirm: () => {},
-    type: "danger",
+    type: 'danger'
+  });
+
+  const [pagoModal, setPagoModal] = useState<{ isOpen: boolean; factura: FacturaWithDetails | null; pagos: Pago[] }>({
+    isOpen: false, factura: null, pagos: []
+  });
+  const [pagoForm, setPagoForm] = useState({
+    fecha: new Date().toISOString().split('T')[0],
+    monto: '',
+    id_moneda: '',
+    tipo_pago: 'TRANSFERENCIA',
+    referencia: ''
   });
 
   useEffect(() => {
@@ -104,17 +83,15 @@ export function FacturasPage() {
   };
 
   const loadFacturas = async () => {
-    if (!selectedContratoId) {
-      setFacturas([]);
-      return;
-    }
     try {
-      const data =
-        await facturasService.getFacturasByContrato(selectedContratoId);
-      setFacturas(data);
-    } catch (error) {
-      console.error("Error:", error);
-    }
+      if (selectedContratoId) {
+        const data = await facturasService.getFacturasByContrato(selectedContratoId);
+        setFacturas(data);
+      } else {
+        const data = await facturasService.getFacturas();
+        setFacturas(data);
+      }
+    } catch (error) { console.error('Error:', error); }
   };
 
   useEffect(() => {
@@ -172,11 +149,59 @@ export function FacturasPage() {
     });
   };
 
-  const resetForm = () => {
-    setFormData({});
-    setSelectedProducts([]);
-    setEditingId(null);
-    setProductSearch("");
+  const resetForm = () => { setFormData({}); setSelectedProducts([]); setEditingId(null); setProductSearch(''); };
+
+  const openPagoModal = async (factura: FacturaWithDetails) => {
+    setPagoForm({
+      fecha: new Date().toISOString().split('T')[0],
+      monto: '',
+      id_moneda: String(factura.id_moneda || ''),
+      tipo_pago: 'TRANSFERENCIA',
+      referencia: ''
+    });
+    try {
+      const pagos = await pagosService.getPagosByFactura(factura.id_factura);
+      setPagoModal({ isOpen: true, factura, pagos });
+    } catch (error) {
+      setPagoModal({ isOpen: true, factura, pagos: [] });
+    }
+  };
+
+  const handleCreatePago = async () => {
+    if (!pagoModal.factura) return;
+    try {
+      const data: PagoCreate = {
+        id_factura: pagoModal.factura.id_factura,
+        fecha: pagoForm.fecha,
+        monto: Number(pagoForm.monto),
+        id_moneda: pagoForm.id_moneda ? Number(pagoForm.id_moneda) : undefined,
+        tipo_pago: pagoForm.tipo_pago,
+        referencia: pagoForm.referencia || undefined
+      };
+      await pagosService.createPago(data);
+      toast.success('Pago registrado');
+      const pagos = await pagosService.getPagosByFactura(pagoModal.factura.id_factura);
+      setPagoModal({ ...pagoModal, pagos });
+      setPagoForm({
+        fecha: new Date().toISOString().split('T')[0],
+        monto: '',
+        id_moneda: '',
+        tipo_pago: 'TRANSFERENCIA',
+        referencia: ''
+      });
+      loadFacturas();
+    } catch (error: any) { toast.error(error.message || 'Error al registrar pago'); }
+  };
+
+  const handleDeletePago = async (pago: Pago) => {
+    if (!pagoModal.factura) return;
+    try {
+      await pagosService.deletePago(pago.id_pago);
+      toast.success('Pago eliminado');
+      const pagos = await pagosService.getPagosByFactura(pagoModal.factura.id_factura);
+      setPagoModal({ ...pagoModal, pagos });
+      loadFacturas();
+    } catch (error: any) { toast.error(error.message || 'Error al eliminar pago'); }
   };
 
   const openForm = (item?: FacturaWithDetails) => {
@@ -354,27 +379,15 @@ export function FacturasPage() {
           <div className="p-2 bg-gradient-to-br from-violet-500 to-purple-600 rounded shadow-lg animate-bounce-subtle">
             <Receipt className="h-5 w-5 text-white" />
           </div>
-          <div className="flex items-baseline">
-            <h1 className="text-xl font-bold text-gray-900">Facturas</h1>
-            <p className="text-sm text-gray-500 ml-3 hidden sm:block">
-              Gestión de facturas por contrato
-            </p>
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Facturas</h1>
+            <p className="text-gray-500 mt-1">Gestión de facturas de contratos</p>
           </div>
         </div>
         <div className="flex gap-2">
-          <select
-            className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 outline-none"
-            value={selectedContratoId || ""}
-            onChange={(e: any) =>
-              setSelectedContratoId(Number(e.target.value) || null)
-            }
-          >
-            <option value="">Seleccionar Contrato</option>
-            {contratos.map((c) => (
-              <option key={c.id_contrato} value={c.id_contrato}>
-                {c.nombre}
-              </option>
-            ))}
+          <select className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 outline-none" value={selectedContratoId || ''} onChange={(e: any) => setSelectedContratoId(Number(e.target.value) || null)}>
+            <option value="">Todos los contratos</option>
+            {contratos.map(c => <option key={c.id_contrato} value={c.id_contrato}>{c.nombre}</option>)}
           </select>
           <Button
             onClick={() => openForm()}
@@ -387,13 +400,8 @@ export function FacturasPage() {
         </div>
       </div>
 
-      {!selectedContratoId ? (
-        <p className="text-gray-500 text-center py-12">
-          Seleccione un contrato para ver sus facturas.
-        </p>
-      ) : (
-        <Card className="overflow-hidden shadow-sm border-gray-200">
-          <div className="overflow-x-auto">
+      <Card className="overflow-hidden shadow-sm border-gray-200">
+        <div className="overflow-x-auto">
             <Table>
               <TableHeader className="bg-gradient-to-r from-violet-50 to-purple-50">
                 <TableRow>
@@ -423,8 +431,8 @@ export function FacturasPage() {
                   </TableHead>
                   <TableHead>
                     <div className="flex items-center gap-2">
-                      <FileText className="h-4 w-4 text-violet-600" />
-                      Descripción
+                      <CreditCard className="h-4 w-4 text-violet-600" />
+                      Pago
                     </div>
                   </TableHead>
                   <TableHead className="text-right">Acciones</TableHead>
@@ -433,11 +441,8 @@ export function FacturasPage() {
               <TableBody>
                 {facturas.length === 0 ? (
                   <TableRow>
-                    <TableCell
-                      colSpan={6}
-                      className="text-center py-12 text-gray-500"
-                    >
-                      No hay facturas para este contrato
+                    <TableCell colSpan={6} className="text-center py-12 text-gray-500">
+                      No hay facturas
                     </TableCell>
                   </TableRow>
                 ) : (
@@ -459,24 +464,26 @@ export function FacturasPage() {
                       <TableCell className="font-medium text-gray-900">
                         ${Number(item.pago_actual).toFixed(2)}
                       </TableCell>
-                      <TableCell className="text-gray-500">
-                        {item.fecha}
+                      <TableCell className="text-gray-500">{item.fecha}</TableCell>
+                      <TableCell onClick={(e) => e.stopPropagation()}>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => openPagoModal(item)}
+                          className="gap-1 text-green-600 border-green-200 hover:bg-green-50 hover:text-green-700"
+                        >
+                          <CreditCard className="h-3.5 w-3.5" />
+                          Ver pagos
+                        </Button>
                       </TableCell>
-                      <TableCell className="text-gray-500">
-                        {item.descripcion || "-"}
-                      </TableCell>
-                      <TableCell
-                        className="text-right"
-                        onClick={(e) => e.stopPropagation()}
-                      >
+                      <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                         <div className="flex justify-end gap-2">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => openForm(item)}
-                            className="text-blue-600 hover:text-blue-800 hover:bg-blue-50 h-8 w-8"
-                            title="Editar"
-                          >
+                          {item.monto > item.pago_actual && (
+                            <Button variant="ghost" size="icon" onClick={() => openPagoModal(item)} className="text-green-600 hover:text-green-800 hover:bg-green-50 h-8 w-8" title="Pagar">
+                              <CreditCard className="h-4 w-4" />
+                            </Button>
+                          )}
+                          <Button variant="ghost" size="icon" onClick={() => openForm(item)} className="text-blue-600 hover:text-blue-800 hover:bg-blue-50 h-8 w-8" title="Editar">
                             <Edit className="h-4 w-4" />
                           </Button>
                           <Button
@@ -499,7 +506,6 @@ export function FacturasPage() {
             </Table>
           </div>
         </Card>
-      )}
     </div>
   );
 
@@ -635,9 +641,8 @@ export function FacturasPage() {
 
   return (
     <div className="p-6">
-      <h1 className="text-xl font-bold mb-6">Facturas</h1>
-      {view === "list" && renderList()}
-      {view === "form" && renderForm()}
+      {view === 'list' && renderList()}
+      {view === 'form' && renderForm()}
 
       <ConfirmModal
         isOpen={confirmModal.isOpen}
@@ -668,76 +673,145 @@ export function FacturasPage() {
                       </p>
                     </div>
                   </div>
-                  <button
-                    onClick={() =>
-                      setDetailModal({ isOpen: false, item: null })
-                    }
-                    className="p-2 hover:bg-gray-200 rounded-full transition-colors"
-                  >
-                    <X className="h-6 w-6 text-gray-500" />
-                  </button>
                 </div>
-              </div>
-              <div className="p-6 space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-4 rounded-md border border-green-100">
-                    <p className="text-xs text-green-600 uppercase tracking-wider mb-1">
-                      Monto
-                    </p>
-                    <p className="font-bold text-green-900 text-xl">
-                      ${Number(detailModal.item.monto).toFixed(2)}
-                    </p>
-                  </div>
-                  <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-4 rounded-md border border-blue-100">
-                    <p className="text-xs text-blue-600 uppercase tracking-wider mb-1">
-                      Pago Actual
-                    </p>
-                    <p className="font-bold text-blue-900 text-xl">
-                      ${Number(detailModal.item.pago_actual).toFixed(2)}
-                    </p>
-                  </div>
-                  <div className="bg-gradient-to-br from-purple-50 to-pink-50 p-4 rounded-md border border-purple-100">
-                    <p className="text-xs text-purple-600 uppercase tracking-wider mb-1">
-                      Fecha
-                    </p>
-                    <p className="font-bold text-gray-900">
-                      {detailModal.item.fecha || "N/A"}
-                    </p>
-                  </div>
-                </div>
-                {detailModal.item.descripcion && (
-                  <div className="bg-gray-50 p-4 rounded-md">
-                    <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">
-                      Descripción
-                    </p>
-                    <p className="text-gray-700">
-                      {detailModal.item.descripcion}
-                    </p>
-                  </div>
-                )}
-                {detailModal.item.observaciones && (
-                  <div className="bg-gray-50 p-4 rounded-md">
-                    <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">
-                      Observaciones
-                    </p>
-                    <p className="text-gray-700">
-                      {detailModal.item.observaciones}
-                    </p>
-                  </div>
-                )}
-              </div>
-              <div className="p-6 border-t border-gray-200 bg-gray-50 flex justify-end">
-                <button
-                  onClick={() => setDetailModal({ isOpen: false, item: null })}
-                  className="px-6 py-3 text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors font-medium"
-                >
-                  Cerrar
+                <button onClick={() => setDetailModal({ isOpen: false, item: null })} className="p-2 hover:bg-gray-200 rounded-full transition-colors">
+                  <X className="h-6 w-6 text-gray-500" />
                 </button>
               </div>
             </div>
-          </div>,
-          document.body,
-        )}
+            <div className="p-6 space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-4 rounded-xl border border-green-100">
+                  <p className="text-xs text-green-600 uppercase tracking-wider mb-1">Monto</p>
+                  <p className="font-bold text-green-900 text-xl">${Number(detailModal.item.monto).toFixed(2)}</p>
+                </div>
+                <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-4 rounded-xl border border-blue-100">
+                  <p className="text-xs text-blue-600 uppercase tracking-wider mb-1">Pago Actual</p>
+                  <p className="font-bold text-blue-900 text-xl">${Number(detailModal.item.pago_actual).toFixed(2)}</p>
+                </div>
+                <div className="bg-gradient-to-br from-purple-50 to-pink-50 p-4 rounded-xl border border-purple-100">
+                  <p className="text-xs text-purple-600 uppercase tracking-wider mb-1">Fecha</p>
+                  <p className="font-bold text-gray-900">{detailModal.item.fecha || 'N/A'}</p>
+                </div>
+              </div>
+              {detailModal.item.descripcion && (
+                <div className="bg-gray-50 p-4 rounded-xl">
+                  <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Descripción</p>
+                  <p className="text-gray-700">{detailModal.item.descripcion}</p>
+                </div>
+              )}
+              {detailModal.item.observaciones && (
+                <div className="bg-gray-50 p-4 rounded-xl">
+                  <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Observaciones</p>
+                  <p className="text-gray-700">{detailModal.item.observaciones}</p>
+                </div>
+              )}
+            </div>
+            <div className="p-6 border-t border-gray-200 bg-gray-50 flex justify-end">
+              <button onClick={() => setDetailModal({ isOpen: false, item: null })} className="px-6 py-3 text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors font-medium">Cerrar</button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {pagoModal.isOpen && pagoModal.factura && createPortal(
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 animate-fade-in">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-auto animate-scale-in">
+            <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-green-50 to-emerald-50">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="p-3 rounded-xl bg-gradient-to-br from-green-500 to-emerald-600 text-white shadow-lg">
+                    <CreditCard className="h-7 w-7" />
+                  </div>
+                  <div>
+                    <h3 className="text-2xl font-bold text-gray-900">Pagos</h3>
+                    <p className="text-sm text-gray-500 font-mono">
+                      {pagoModal.factura.codigo_factura} — ${Number(pagoModal.factura.monto).toFixed(2)} — Pendiente: ${(Number(pagoModal.factura.monto) - Number(pagoModal.factura.pago_actual)).toFixed(2)}
+                    </p>
+                  </div>
+                </div>
+                <button onClick={() => setPagoModal({ isOpen: false, factura: null, pagos: [] })} className="p-2 hover:bg-gray-200 rounded-full transition-colors">
+                  <X className="h-6 w-6 text-gray-500" />
+                </button>
+              </div>
+            </div>
+
+            <div className="p-6 space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-sm font-medium">Fecha</Label>
+                  <Input type="date" value={pagoForm.fecha} onChange={(e: any) => setPagoForm({...pagoForm, fecha: e.target.value})} className="mt-1" />
+                </div>
+                <div>
+                  <Label className="text-sm font-medium">Monto</Label>
+                  <Input type="number" step="0.01" value={pagoForm.monto} onChange={(e: any) => setPagoForm({...pagoForm, monto: e.target.value})} className="mt-1" placeholder="0.00" />
+                </div>
+                <div>
+                  <Label className="text-sm font-medium">Tipo</Label>
+                  <select className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none bg-white" value={pagoForm.tipo_pago} onChange={(e: any) => setPagoForm({...pagoForm, tipo_pago: e.target.value})}>
+                    <option value="TRANSFERENCIA">Transferencia</option>
+                    <option value="EFECTIVO">Efectivo</option>
+                    <option value="CHEQUE">Cheque</option>
+                    <option value="OTRO">Otro</option>
+                  </select>
+                </div>
+                {pagoForm.tipo_pago === 'TRANSFERENCIA' && (
+                  <div>
+                    <Label className="text-sm font-medium">Número de cuenta</Label>
+                    <Input value={pagoForm.referencia} onChange={(e: any) => setPagoForm({...pagoForm, referencia: e.target.value})} className="mt-1" placeholder="Nro. cuenta" />
+                  </div>
+                )}
+              </div>
+              <Button onClick={handleCreatePago} disabled={!pagoForm.monto} className="w-full gap-2 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white">
+                <Plus className="h-4 w-4" />
+                Registrar Pago
+              </Button>
+
+              {pagoModal.pagos.length > 0 && (
+                <div className="mt-4">
+                  <Label className="text-sm font-medium mb-2 block">Historial de Pagos</Label>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Fecha</TableHead>
+                        <TableHead>Monto</TableHead>
+                        <TableHead>Tipo</TableHead>
+                        <TableHead>Número de cuenta</TableHead>
+                        <TableHead></TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {pagoModal.pagos.map(pago => (
+                        <TableRow key={pago.id_pago}>
+                          <TableCell className="text-gray-500">{pago.fecha}</TableCell>
+                          <TableCell className="font-medium">${Number(pago.monto).toFixed(2)}</TableCell>
+                          <TableCell>
+                            <span className="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                              {pago.tipo_pago}
+                            </span>
+                          </TableCell>
+                          <TableCell className="text-gray-500">{pago.referencia || '-'}</TableCell>
+                          <TableCell className="text-right">
+                            <button onClick={() => handleDeletePago(pago)} className="text-red-500 hover:text-red-700">
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </div>
+
+            <div className="p-6 border-t border-gray-200 bg-gray-50 flex justify-end">
+              <button onClick={() => setPagoModal({ isOpen: false, factura: null, pagos: [] })} className="px-6 py-3 text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors font-medium">Cerrar</button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   );
 }

@@ -59,7 +59,7 @@ import { ProductosEnLiquidacionPage } from "./pages/compra/ProductosEnLiquidacio
 import { LiquidacionesPage } from "./pages/compra/LiquidacionesPage";
 import { CrearLiquidacionPage } from "./pages/compra/CrearLiquidacionPage";
 import { ContratosPage } from "./pages/ventas/ContratosPage";
-import { SuplementosPage } from "./pages/ventas/SuplementosPage";
+import { SuplementosMainPage } from "./pages/ventas/SuplementosMainPage";
 import { FacturasPage } from "./pages/ventas/FacturasPage";
 import { VentasEfectivoPage } from "./pages/ventas/VentasEfectivoPage";
 import ReporteProveedores from "./pages/reportes/ReporteProveedores";
@@ -688,7 +688,7 @@ function App() {
                         moduloActivo={moduloActivo}
                         currentPath="/ventas/suplementos"
                       >
-                        <SuplementosPage />
+                        <SuplementosMainPage />
                       </ProtectedRoute>
                     }
                   />

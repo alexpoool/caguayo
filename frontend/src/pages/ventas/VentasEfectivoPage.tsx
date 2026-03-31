@@ -616,7 +616,6 @@ export function VentasEfectivoPage() {
 
   return (
     <div className="p-6">
-      <h1 className="text-xl font-bold mb-6">Ventas en Efectivo</h1>
       {view === "list" && renderList()}
       {view === "form" && renderForm()}
 

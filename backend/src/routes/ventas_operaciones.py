@@ -138,6 +138,21 @@ async def obtener_suplementos_por_contrato(
         )
 
 
+@suplementos_router.get("", response_model=List[SuplementoReadWithDetails])
+async def obtener_suplementos(
+    skip: int = 0,
+    limit: int = 100,
+    db: AsyncSession = Depends(get_session),
+):
+    """Obtener todos los suplementos."""
+    try:
+        return await SuplementoService.get_all(db, skip, limit)
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Error al obtener suplementos: {str(e)}"
+        )
+
+
 @suplementos_router.get("/{suplemento_id}", response_model=SuplementoReadWithDetails)
 async def obtener_suplemento(
     suplemento_id: int,

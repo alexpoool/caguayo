@@ -38,12 +38,17 @@ import {
   Tag,
   X,
   Eye,
+  Layers,
 } from "lucide-react";
 import toast from "react-hot-toast";
+import { useNavigate, useSearchParams } from "react-router-dom";
 
 type View = "list" | "form";
 
 export function ContratosPage() {
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const initialClienteId = searchParams.get("cliente");
   const [view, setView] = useState<View>("list");
 
   const [contratos, setContratos] = useState<ContratoWithDetails[]>([]);
@@ -57,6 +62,9 @@ export function ContratosPage() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [formData, setFormData] = useState<Record<string, any>>({});
   const [searchTerm, setSearchTerm] = useState("");
+  const [filtroCliente, setFiltroCliente] = useState<number | null>(
+    initialClienteId ? Number(initialClienteId) : null,
+  );
   const [detailModal, setDetailModal] = useState<{
     isOpen: boolean;
     item: ContratoWithDetails | null;
@@ -187,14 +195,20 @@ export function ContratosPage() {
   };
 
   const filteredContratos = useMemo(() => {
-    if (!searchTerm) return contratos;
-    return contratos.filter(
-      (c) =>
-        c.nombre?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        c.cliente?.nombre?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        c.estado?.nombre?.toLowerCase().includes(searchTerm.toLowerCase()),
-    );
-  }, [contratos, searchTerm]);
+    let result = contratos;
+    if (filtroCliente) {
+      result = result.filter((c) => c.id_cliente === filtroCliente);
+    }
+    if (searchTerm) {
+      result = result.filter(
+        (c) =>
+          c.nombre?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          c.cliente?.nombre?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          c.estado?.nombre?.toLowerCase().includes(searchTerm.toLowerCase()),
+      );
+    }
+    return result;
+  }, [contratos, filtroCliente, searchTerm]);
 
   const renderList = () => (
     <div className="space-y-4">
@@ -222,6 +236,18 @@ export function ContratosPage() {
       </div>
 
       <div className="flex gap-2">
+        <select
+          className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 outline-none bg-white text-sm"
+          value={filtroCliente || ""}
+          onChange={(e) => setFiltroCliente(Number(e.target.value) || null)}
+        >
+          <option value="">Todos los clientes</option>
+          {clientes.map((c) => (
+            <option key={c.id_cliente} value={c.id_cliente}>
+              {c.nombre}
+            </option>
+          ))}
+        </select>
         <div className="flex-1 relative max-w-md">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
           <Input
@@ -263,7 +289,7 @@ export function ContratosPage() {
                   </div>
                 </TableHead>
                 <TableHead>Estado</TableHead>
-                <TableHead>Tipo</TableHead>
+                <TableHead>Suplementos</TableHead>
                 <TableHead className="text-right">Acciones</TableHead>
               </TableRow>
             </TableHeader>
@@ -321,8 +347,20 @@ export function ContratosPage() {
                         {item.estado?.nombre || "N/A"}
                       </span>
                     </TableCell>
-                    <TableCell className="text-gray-500">
-                      {item.tipo_contrato?.nombre || "N/A"}
+                    <TableCell onClick={(e) => e.stopPropagation()}>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() =>
+                          navigate(
+                            `/ventas/suplementos?contrato=${item.id_contrato}`,
+                          )
+                        }
+                        className="gap-1 text-amber-600 border-amber-200 hover:bg-amber-50 hover:text-amber-700"
+                      >
+                        <Layers className="h-3.5 w-3.5" />
+                        Suplemento
+                      </Button>
                     </TableCell>
                     <TableCell
                       className="text-right"
@@ -546,7 +584,6 @@ export function ContratosPage() {
 
   return (
     <div className="p-6">
-      <h1 className="text-xl font-bold mb-6">Contratos</h1>
       {view === "list" && renderList()}
       {view === "form" && renderForm()}
 

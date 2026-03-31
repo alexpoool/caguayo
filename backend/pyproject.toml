@@ -1,13 +1,18 @@
 [project]
-name = "backend"
+name = "caguayo"
 version = "0.1.0"
-description = "Add your description here"
+description = "Caguayo Backend - Sistema de inventario y gestión"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
-    "asyncpg>=0.31.0",
-    "bcrypt>=5.0.0",
-    "python-jose[cryptography]>=3.5.0",
-    "reportlab>=4.4.10",
-    "ruff>=0.15.8",
+    "python-dotenv>=0.9.9",
+    "fastapi>=0.133.1",
+    "sqlmodel>=0.0.37",
+    "uvicorn>=0.41.0",
+    "sqlalchemy[asyncio]>=2.0.0",
+    "asyncpg>=0.28.0",
+    "psycopg2-binary>=2.9.0",
+    "python-jose[cryptography]>=3.3.0",
+    "bcrypt>=4.0.0",
+    "alembic>=1.12.0",
 ]

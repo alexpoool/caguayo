@@ -1,30 +1,22 @@
-# Example Python dependencies for this project
-# - One package per line
-# - Comments start with `#`
-# - Version specifiers: ==, >=, <=, ~=, !=
+# Dependencies are managed by uv via pyproject.toml and uv.lock
+# To install: uv sync
+# To add a dependency: uv add <package>
+# To remove a dependency: uv remove <package>
 
-# Stable pinned version (recommended for apps): exact match
-fastapi==0.101.0
+# Core framework
+fastapi>=0.133.1
+uvicorn>=0.41.0
+sqlmodel>=0.0.37
+sqlalchemy[asyncio]>=2.0.0
 
-# Package with optional extras
-uvicorn[standard]==0.23.2
+# Database
+asyncpg>=0.28.0
+psycopg2-binary>=2.9.0
+alembic>=1.12.0
 
-# Minimum version (allows newer):
-SQLAlchemy>=2.0.20
+# Authentication
+python-jose[cryptography]>=3.3.0
+bcrypt>=4.0.0
 
-# Compatible release (PEP 440 ~=): allows bugfix releases
-pydantic~=2.2
-
-# Package without specifying version (gets latest):
-python-dotenv
-
-# From PyPI with extra markers (platform/env specific examples):
-psycopg2
-asyncpg
-sqlmodel
-
-# To install these: pip install -r requirements.txt
-reportlab
-
-# Tooling (linting/format checks):
-ruff
+# Utilities
+python-dotenv>=0.9.9

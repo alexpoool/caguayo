@@ -87,7 +87,7 @@ async def listar_items_anexo_con_estado(
     anexo_id: Optional[int] = Query(None),
     db: AsyncSession = Depends(get_session),
 ):
-    """Listar todos los items de anexos del cliente con estado (NO_VENDIDO, VENDIDO, LIQUIDADO)."""
+    """Listar todos los items de anexos del cliente con estado (EN_CONSIGNACION, A LIQUIDAR, LIQUIDADO)."""
     return await liquidacion_service.get_items_anexo_con_estado(
         db, cliente_id, anexo_id
     )

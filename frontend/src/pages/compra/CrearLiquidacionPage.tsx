@@ -145,11 +145,13 @@ export function CrearLiquidacionPage() {
   };
 
   const handleSelectAll = () => {
-    const vendidos = itemsAnexo.filter(
+    const aLiquidar = itemsAnexo.filter(
       (item: any) =>
-        item.estado === "VENDIDO" && item.id_producto_en_liquidacion,
+        item.estado === "A LIQUIDAR" && item.id_producto_en_liquidacion,
     );
-    const allIds = vendidos.map((item: any) => item.id_producto_en_liquidacion);
+    const allIds = aLiquidar.map(
+      (item: any) => item.id_producto_en_liquidacion,
+    );
     setSelectedProductos(allIds);
     setFormData((prev) => ({ ...prev, producto_ids: allIds }));
   };
@@ -163,7 +165,7 @@ export function CrearLiquidacionPage() {
     return itemsAnexo
       .filter(
         (item: any) =>
-          item.estado === "VENDIDO" &&
+          item.estado === "A LIQUIDAR" &&
           selectedProductos.includes(item.id_producto_en_liquidacion),
       )
       .reduce((sum: number, item: any) => {
@@ -358,10 +360,10 @@ export function CrearLiquidacionPage() {
                     </thead>
                     <tbody className="divide-y">
                       {itemsAnexo.map((item: any) => {
-                        const isVendido = item.estado === "VENDIDO";
+                        const isALiquidar = item.estado === "A LIQUIDAR";
                         const isLiquidado = item.estado === "LIQUIDADO";
                         const isSelected =
-                          isVendido &&
+                          isALiquidar &&
                           item.id_producto_en_liquidacion &&
                           selectedProductos.includes(
                             item.id_producto_en_liquidacion,
@@ -369,10 +371,11 @@ export function CrearLiquidacionPage() {
                         return (
                           <tr
                             key={item.id_item_anexo}
-                            className={`hover:bg-gray-50 ${!isVendido ? "opacity-60" : ""}`}
+                            className={`hover:bg-gray-50 ${!isALiquidar ? "opacity-60" : ""}`}
                           >
                             <td className="px-3 py-2">
-                              {isVendido && item.id_producto_en_liquidacion ? (
+                              {isALiquidar &&
+                              item.id_producto_en_liquidacion ? (
                                 <input
                                   type="checkbox"
                                   checked={isSelected}
@@ -408,12 +411,16 @@ export function CrearLiquidacionPage() {
                                 className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${
                                   isLiquidado
                                     ? "bg-green-100 text-green-800"
-                                    : isVendido
+                                    : isALiquidar
                                       ? "bg-blue-100 text-blue-800"
-                                      : "bg-slate-50 text-gray-600"
+                                      : "bg-gray-100 text-gray-600"
                                 }`}
                               >
-                                {item.estado}
+                                {isLiquidado
+                                  ? "Liquidado"
+                                  : isALiquidar
+                                    ? "A Liquidar"
+                                    : "En Consignación"}
                               </span>
                             </td>
                           </tr>

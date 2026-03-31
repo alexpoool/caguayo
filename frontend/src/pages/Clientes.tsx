@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { createPortal } from "react-dom";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   clientesService,
@@ -38,6 +38,8 @@ import {
   MapPin,
   Globe,
   X,
+  ScrollText,
+  DollarSign,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import {
@@ -65,6 +67,7 @@ type EstadoCliente = "ACTIVO" | "INACTIVO";
 export function ClientesPage() {
   const queryClient = useQueryClient();
   const location = useLocation();
+  const navigate = useNavigate();
   const [view, setView] = useState<"list" | "form" | "detail">("list");
 
   // Check if this is the proveedor view (from /compra/clientes)
@@ -1697,6 +1700,10 @@ export function ClientesPage() {
                 </TableHead>
                 <TableHead>Tipo</TableHead>
                 <TableHead>Estado</TableHead>
+                <TableHead>
+                  {isProveedorView ? "Convenios" : "Contratos"}
+                </TableHead>
+                {isProveedorView && <TableHead>Liquidaciones</TableHead>}
                 <TableHead className="text-right">Acciones</TableHead>
               </TableRow>
             </TableHeader>
@@ -1704,7 +1711,7 @@ export function ClientesPage() {
               {filteredClientes.length === 0 ? (
                 <TableRow>
                   <TableCell
-                    colSpan={4}
+                    colSpan={isProveedorView ? 6 : 5}
                     className="text-center py-12 text-gray-500"
                   >
                     {isProveedorView
@@ -1760,6 +1767,46 @@ export function ClientesPage() {
                         {cliente.estado || "ACTIVO"}
                       </span>
                     </TableCell>
+                    <TableCell onClick={(e) => e.stopPropagation()}>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() =>
+                          isProveedorView
+                            ? navigate(
+                                `/compra/convenios?proveedor=${cliente.id_cliente}`,
+                              )
+                            : navigate(
+                                `/ventas/contratos?cliente=${cliente.id_cliente}`,
+                              )
+                        }
+                        className={`gap-1 ${
+                          isProveedorView
+                            ? "text-sky-600 border-sky-200 hover:bg-sky-50 hover:text-sky-700"
+                            : "text-rose-600 border-rose-200 hover:bg-rose-50 hover:text-rose-700"
+                        }`}
+                      >
+                        <ScrollText className="h-3.5 w-3.5" />
+                        {isProveedorView ? "Convenio" : "Contrato"}
+                      </Button>
+                    </TableCell>
+                    {isProveedorView && (
+                      <TableCell onClick={(e) => e.stopPropagation()}>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() =>
+                            navigate(
+                              `/compra/liquidaciones?proveedor=${cliente.id_cliente}`,
+                            )
+                          }
+                          className="gap-1 text-purple-600 border-purple-200 hover:bg-purple-50 hover:text-purple-700"
+                        >
+                          <DollarSign className="h-3.5 w-3.5" />
+                          Liquidación
+                        </Button>
+                      </TableCell>
+                    )}
                     <TableCell
                       className="text-right"
                       onClick={(e) => e.stopPropagation()}
