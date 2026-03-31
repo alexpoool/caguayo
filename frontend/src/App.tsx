@@ -511,10 +511,7 @@ function App() {
                 />
               </button>
 
-              {/* Dropdown Menu */}
-              {showAccountModal && (
-                <>
-                  {/* Invisible backdrop to close dropdown when clicking outside */}
+              
                   <div
                     className="fixed inset-0 z-40"
                     onClick={() => setShowAccountModal(false)}
@@ -954,6 +951,122 @@ function App() {
           </main>
         </div>
       </div>
+
+      
+      {showAccountModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm px-4"
+          onClick={() => setShowAccountModal(false)}
+        >
+          <div
+            className="bg-white rounded-lg shadow-2xl w-full max-w-sm overflow-hidden animate-fade-in-up"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="bg-slate-50 p-6 flex flex-col items-center border-b border-slate-100">
+              <img
+                src="/default.jpg"
+                alt="avatar"
+                className="w-20 h-20 rounded-full object-cover border-4 border-white shadow-sm mb-3"
+              />
+              <h3 className="text-lg font-bold text-slate-800">
+                {user ? `${user.nombre} ${user.primer_apellido}` : "Usuario"}
+              </h3>
+              <p className="text-sm text-slate-500">{user?.alias || "Cuenta de usuario"}</p>
+            </div>
+            
+            <div className="p-4 space-y-2">
+              <button
+                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-md bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 hover:text-blue-600 transition-colors font-medium shadow-sm"
+                onClick={() => {
+                  setShowAccountModal(false);
+                  setModuloActivo("administracion");
+                  navigate("/perfil");
+                }}
+              >
+                <Settings className="w-4 h-4" />
+                Configurar Perfil
+              </button>
+              
+              <button
+                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-md bg-red-50 text-red-600 hover:bg-red-100 transition-colors font-medium"
+                onClick={() => {
+                  setShowAccountModal(false);
+                  setShowLogoutConfirm(true);
+                }}
+              >
+                <LogOut className="w-4 h-4" />
+                Cerrar Sesión
+              </button>
+            </div>
+            <div className="p-3 bg-slate-50 border-t border-slate-100">
+                <button
+                  className="w-full px-4 py-2 rounded-mdtext-sm text-slate-500 hover:text-slate-700 transition-colors"
+                  onClick={() => setShowAccountModal(false)}
+                >
+                  Cancelar
+                </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      
+      {showAccountModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm px-4"
+          onClick={() => setShowAccountModal(false)}
+        >
+          <div
+            className="bg-white rounded-lg shadow-2xl w-full max-w-sm overflow-hidden animate-fade-in-up"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="bg-slate-50 p-6 flex flex-col items-center border-b border-slate-100">
+              <img
+                src="/default.jpg"
+                alt="avatar"
+                className="w-20 h-20 rounded-full object-cover border-4 border-white shadow-sm mb-3"
+              />
+              <h3 className="text-lg font-bold text-slate-800">
+                {user ? `${user.nombre} ${user.primer_apellido}` : "Usuario"}
+              </h3>
+              <p className="text-sm text-slate-500">{user?.alias || "Cuenta de usuario"}</p>
+            </div>
+            
+            <div className="p-4 space-y-2">
+              <button
+                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-md bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 hover:text-blue-600 transition-colors font-medium shadow-sm"
+                onClick={() => {
+                  setShowAccountModal(false);
+                  setModuloActivo("administracion");
+                  navigate("/perfil");
+                }}
+              >
+                <Settings className="w-4 h-4" />
+                Configurar Perfil
+              </button>
+              
+              <button
+                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-md bg-red-50 text-red-600 hover:bg-red-100 transition-colors font-medium"
+                onClick={() => {
+                  setShowAccountModal(false);
+                  setShowLogoutConfirm(true);
+                }}
+              >
+                <LogOut className="w-4 h-4" />
+                Cerrar Sesión
+              </button>
+            </div>
+            <div className="p-3 bg-slate-50 border-t border-slate-100">
+                <button
+                  className="w-full px-4 py-2 rounded-mdtext-sm text-slate-500 hover:text-slate-700 transition-colors"
+                  onClick={() => setShowAccountModal(false)}
+                >
+                  Cancelar
+                </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showLogoutConfirm && (
         <div
