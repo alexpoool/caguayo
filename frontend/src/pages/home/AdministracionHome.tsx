@@ -12,7 +12,7 @@ export function AdministracionHome() {
           <p className="text-sm text-gray-600 mt-1">Configuración central del sistema</p>
         </div>
 
-        <div className="bg-white rounded-xl shadow-lg p-4">
+        <div className="bg-white rounded-md shadow-lg p-4">
           <p className="text-sm text-gray-700 mb-4">
             El módulo de Administración gestiona la configuración global del sistema, incluyendo usuarios, dependencias y parámetros generales. Es la base para el funcionamiento de todos los demás módulos.
           </p>

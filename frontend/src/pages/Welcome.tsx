@@ -52,7 +52,7 @@ export function WelcomePage() {
 
   return (
     <div className="max-w-xl mx-auto py-24">
-      <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl shadow-xl p-10 flex flex-col items-center">
+      <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-md shadow-xl p-10 flex flex-col items-center">
         <img src="/default.jpg" alt="avatar" className="w-24 h-24 rounded-full object-cover mb-4" />
         <h1 className="text-3xl font-extrabold">Bienvenido al sistema</h1>
         <p className="mt-3 text-xl">{nombre}</p>

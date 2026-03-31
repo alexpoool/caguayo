@@ -72,7 +72,7 @@ function ConfigCard({ title, icon, description, count, onClick, color }: ConfigC
       <div className={`h-1 bg-gradient-to-r ${colorClasses[color]}`} />
       <CardContent className="p-6">
         <div className="flex items-start justify-between">
-          <div className={`p-4 rounded-xl bg-gradient-to-br ${colorClasses[color]} text-white shadow-lg group-hover:scale-110 transition-transform duration-300`}>
+          <div className={`p-4 rounded-md bg-gradient-to-br ${colorClasses[color]} text-white shadow-lg group-hover:scale-110 transition-transform duration-300`}>
             {icon}
           </div>
           <div className="flex flex-col items-end">
@@ -831,7 +831,7 @@ export function ConfiguracionPage() {
       case 'tipo-convenios': return { bg: 'bg-teal-100', text: 'text-teal-700' };
       case 'tipo-dependencia': return { bg: 'bg-indigo-100', text: 'text-indigo-700' };
       case 'tipo-cuenta': return { bg: 'bg-cyan-100', text: 'text-cyan-700' };
-      default: return { bg: 'bg-gray-100', text: 'text-gray-700' };
+      default: return { bg: 'bg-slate-50', text: 'text-gray-700' };
     }
   };
 
@@ -927,7 +927,7 @@ export function ConfiguracionPage() {
         </Card>
 
         {/* Tabla */}
-        <div className="rounded-xl border border-gray-200 overflow-hidden shadow-sm">
+        <div className="rounded-md border border-gray-200 overflow-hidden shadow-sm">
           <Table>
             <TableHeader className={getTableHeaderGradient()}>
               <TableRow>
@@ -962,7 +962,7 @@ export function ConfiguracionPage() {
               {items.map((item: any) => (
                 <TableRow key={getItemId(item)} className="hover:bg-gray-50 transition-colors">
                   <TableCell>
-                    <span className="inline-flex items-center gap-1 px-2 py-1 bg-gray-100 text-gray-700 rounded text-sm font-medium">
+                    <span className="inline-flex items-center gap-1 px-2 py-1 bg-slate-50 text-gray-700 rounded text-sm font-medium">
                       <Package className="h-3 w-3" />
                       #{getItemId(item)}
                     </span>
@@ -1115,7 +1115,7 @@ export function ConfiguracionPage() {
                     <TableRow>
                       <TableCell colSpan={activeConfigSubTab === 'subcategorias' ? 5 : 4} className="text-center py-12">
                         <div className="flex flex-col items-center justify-center text-gray-400">
-                          <div className="p-4 bg-gray-100 rounded-full mb-4">
+                          <div className="p-4 bg-slate-50 rounded-full mb-4">
                             <AlertCircle className="h-12 w-12 text-gray-300" />
                           </div>
                           <p className="text-lg font-medium mb-2">No hay elementos registrados</p>
@@ -1235,7 +1235,7 @@ export function ConfiguracionPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <div className="p-3 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl shadow-lg">
+          <div className="p-3 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-md shadow-lg">
             <Settings className="h-8 w-8 text-white" />
           </div>
           <div>
@@ -1277,7 +1277,7 @@ export function ConfiguracionPage() {
           <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full animate-scale-in">
             <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-red-50 to-rose-50">
               <div className="flex items-center gap-4">
-                <div className="p-3 rounded-xl bg-gradient-to-br from-red-500 to-rose-600 text-white shadow-lg">
+                <div className="p-3 rounded-md bg-gradient-to-br from-red-500 to-rose-600 text-white shadow-lg">
                   <Trash2 className="h-7 w-7" />
                 </div>
                 <div>
@@ -1321,7 +1321,7 @@ export function ConfiguracionPage() {
             <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
-                  <div className={`p-3 rounded-xl bg-gradient-to-br ${getButtonGradient()} text-white shadow-lg`}>
+                  <div className={`p-3 rounded-md bg-gradient-to-br ${getButtonGradient()} text-white shadow-lg`}>
                     {getFormIcon('lg')}
                   </div>
                   <div>
@@ -1336,22 +1336,22 @@ export function ConfiguracionPage() {
             </div>
             <div className="p-6 space-y-4">
               <div className="grid grid-cols-2 gap-4">
-                <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-4 rounded-xl border border-blue-100">
+                <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-4 rounded-md border border-blue-100">
                   <p className="text-xs text-blue-600 uppercase tracking-wider mb-1">ID</p>
                   <p className="font-bold text-gray-900">#{getItemId(detailModal.item)}</p>
                 </div>
-                <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-4 rounded-xl border border-green-100">
+                <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-4 rounded-md border border-green-100">
                   <p className="text-xs text-green-600 uppercase tracking-wider mb-1">Nombre</p>
                   <p className="font-bold text-gray-900">{detailModal.item.nombre}</p>
                 </div>
               </div>
               {activeConfigSubTab === 'subcategorias' && detailModal.item.categoria && (
-                <div className="bg-gradient-to-br from-purple-50 to-pink-50 p-4 rounded-xl border border-purple-100">
+                <div className="bg-gradient-to-br from-purple-50 to-pink-50 p-4 rounded-md border border-purple-100">
                   <p className="text-xs text-purple-600 uppercase tracking-wider mb-1">Categoría</p>
                   <p className="font-bold text-gray-900">{detailModal.item.categoria.nombre}</p>
                 </div>
               )}
-              <div className="bg-gray-50 p-4 rounded-xl">
+              <div className="bg-gray-50 p-4 rounded-md">
                 <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Descripción</p>
                 <p className="text-gray-700">{detailModal.item.descripcion || 'Sin descripción'}</p>
               </div>

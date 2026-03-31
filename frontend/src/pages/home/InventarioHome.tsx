@@ -12,7 +12,7 @@ export function InventarioHome() {
           <p className="text-sm text-gray-600 mt-1">Control y gestión de productos en el sistema</p>
         </div>
 
-        <div className="bg-white rounded-xl shadow-lg p-4">
+        <div className="bg-white rounded-md shadow-lg p-4">
           <p className="text-sm text-gray-700 mb-4">
             El módulo de Inventario permite gestionar todos los movimientos de productos dentro del sistema. Controla las entradas de productos mediante recepciones, realiza ajustes para transferir productos entre dependencias, y mantiene el seguimiento de movimientos pendientes de confirmación.
           </p>

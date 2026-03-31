@@ -177,7 +177,7 @@ export function MonedasPage() {
         {/* Header con icono animado */}
         <div className="flex justify-between items-center">
           <div className="flex items-center gap-4">
-            <div className="p-3 bg-gradient-to-br from-yellow-500 to-amber-600 rounded-xl shadow-lg animate-bounce-subtle">
+            <div className="p-3 bg-gradient-to-br from-yellow-500 to-amber-600 rounded-md shadow-lg animate-bounce-subtle">
               <Coins className="h-8 w-8 text-white" />
             </div>
             <div>
@@ -216,7 +216,7 @@ export function MonedasPage() {
                 Información de la Moneda
               </CardTitle>
             </CardHeader>
-            <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-6">
+            <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-6">
               <div className="md:col-span-2 space-y-2">
                 <Label className="flex items-center gap-2 text-gray-700">
                   <Type className="h-5 w-5 text-blue-500" />
@@ -323,7 +323,7 @@ export function MonedasPage() {
   if (isError) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-center bg-red-50 border border-red-200 rounded-xl p-8">
+        <div className="text-center bg-red-50 border border-red-200 rounded-md p-4">
           <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
           <p className="font-bold text-lg mb-2 text-red-700">Error al cargar monedas</p>
           <p className="text-red-600 mb-4">{error instanceof Error ? error.message : 'Error desconocido'}</p>
@@ -344,7 +344,7 @@ export function MonedasPage() {
       {/* Header con icono animado */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div className="flex items-center gap-4">
-          <div className="p-3 bg-gradient-to-br from-yellow-500 to-amber-600 rounded-xl shadow-lg animate-bounce-subtle">
+          <div className="p-3 bg-gradient-to-br from-yellow-500 to-amber-600 rounded-md shadow-lg animate-bounce-subtle">
             <Coins className="h-8 w-8 text-white" />
           </div>
           <div>
@@ -400,7 +400,7 @@ export function MonedasPage() {
                 <TableRow>
                   <TableCell colSpan={5} className="text-center py-12">
                     <div className="flex flex-col items-center justify-center text-gray-400">
-                      <div className="p-4 bg-gray-100 rounded-full mb-4">
+                      <div className="p-4 bg-slate-50 rounded-full mb-4">
                         <Coins className="h-12 w-12 text-gray-300" />
                       </div>
                       <p className="text-lg font-medium mb-2">No se encontraron monedas</p>

@@ -145,7 +145,7 @@ export function LoginPage() {
         {/* Login Card */}
         <div className="bg-white/80 backdrop-blur-sm border-0 rounded-2xl shadow-2xl shadow-blue-900/10 ring-1 ring-blue-100 overflow-hidden">
           <div className="h-1 bg-gradient-to-r from-blue-500 via-blue-600 to-blue-700" />
-          <div className="p-8">
+          <div className="p-4">
             <h2 className="text-xl font-semibold text-blue-900 mb-6 text-center">
               Iniciar Sesión
             </h2>
@@ -162,7 +162,7 @@ export function LoginPage() {
                     value={baseDatos}
                     onChange={(e) => handleBaseDatosChange(e.target.value)}
                     disabled={loadingConexiones}
-                    className={`w-full pl-10 pr-10 py-3 border-2 rounded-xl focus:ring-2 focus:border-transparent bg-white transition-all duration-200 ${getSelectBorderClass()}`}
+                    className={`w-full pl-10 pr-10 py-3 border-2 rounded-md focus:ring-2 focus:border-transparent bg-white transition-all duration-200 ${getSelectBorderClass()}`}
                   >
                     <option value="">
                       {loadingConexiones ? 'Cargando...' : 'Seleccione una base de datos'}
@@ -206,7 +206,7 @@ export function LoginPage() {
                     value={alias}
                     onChange={(e) => setAlias(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
-                    className="pl-10 border-slate-200 focus:ring-blue-500 focus:border-blue-500 rounded-xl transition-all duration-200"
+                    className="pl-10 border-slate-200 focus:ring-blue-500 focus:border-blue-500 rounded-md transition-all duration-200"
                     disabled={!baseDatos}
                   />
                 </div>
@@ -225,7 +225,7 @@ export function LoginPage() {
                     value={contrasenia}
                     onChange={(e) => setContrasenia(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
-                    className="pl-10 border-slate-200 focus:ring-blue-500 focus:border-blue-500 rounded-xl transition-all duration-200"
+                    className="pl-10 border-slate-200 focus:ring-blue-500 focus:border-blue-500 rounded-md transition-all duration-200"
                     disabled={!baseDatos}
                   />
                 </div>
@@ -235,7 +235,7 @@ export function LoginPage() {
               <Button
                 onClick={handleLogin}
                 disabled={loadingLogin || loadingConexiones || !baseDatos}
-                className="w-full rounded-xl h-12 text-base font-semibold shadow-lg shadow-blue-600/25 hover:shadow-xl hover:shadow-blue-600/30"
+                className="w-full rounded-md h-12 text-base font-semibold shadow-lg shadow-blue-600/25 hover:shadow-xl hover:shadow-blue-600/30"
               >
                 {loadingLogin ? (
                   <Loader2 className="h-5 w-5 animate-spin" />

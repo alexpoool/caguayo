@@ -150,7 +150,7 @@ export function UsuariosPage() {
               Cancelar
             </Button>
             <div className="flex items-center gap-3">
-              <div className="p-3 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl shadow-lg">
+              <div className="p-3 bg-gradient-to-br from-green-500 to-emerald-600 rounded-md shadow-lg">
                 <Users className="h-8 w-8 text-white" />
               </div>
               <div>
@@ -175,7 +175,7 @@ export function UsuariosPage() {
             </div>
           </CardHeader>
           <CardContent className="pt-6">
-            <form onSubmit={handleUsuarioSubmit} className="grid grid-cols-2 gap-6">
+            <form onSubmit={handleUsuarioSubmit} className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label className="flex items-center gap-2 text-gray-700">
                   <CreditCard className="h-5 w-5 text-blue-500" />
@@ -289,7 +289,7 @@ export function UsuariosPage() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div className="flex items-center gap-4">
-          <div className="p-3 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl shadow-lg animate-bounce-subtle">
+          <div className="p-3 bg-gradient-to-br from-green-500 to-emerald-600 rounded-md shadow-lg animate-bounce-subtle">
             <Users className="h-8 w-8 text-white" />
           </div>
           <div>

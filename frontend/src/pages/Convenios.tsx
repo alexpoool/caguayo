@@ -196,7 +196,7 @@ export function ConveniosPage() {
         <div className="flex items-center gap-4 mb-6">
           <button
             onClick={() => setView('list')}
-            className="p-2 hover:bg-gray-100 rounded-lg"
+            className="p-2 hover:bg-slate-50 rounded-lg"
           >
             <ArrowLeft className="h-5 w-5" />
           </button>
@@ -296,7 +296,7 @@ export function ConveniosPage() {
         <div className="flex items-center gap-4 mb-6">
           <button
             onClick={() => { setView('list'); setViewingConvenio(null); }}
-            className="p-2 hover:bg-gray-100 rounded-lg"
+            className="p-2 hover:bg-slate-50 rounded-lg"
           >
             <ArrowLeft className="h-5 w-5" />
           </button>
@@ -390,19 +390,19 @@ export function ConveniosPage() {
                       <div className="flex items-center gap-2">
                         <button
                           onClick={() => { setViewingConvenio(convenio); setView('detail'); }}
-                          className="p-1 hover:bg-gray-100 rounded"
+                          className="p-1 hover:bg-slate-50 rounded"
                         >
                           <Eye className="h-4 w-4 text-green-600" />
                         </button>
                         <button
                           onClick={() => handleEdit(convenio)}
-                          className="p-1 hover:bg-gray-100 rounded"
+                          className="p-1 hover:bg-slate-50 rounded"
                         >
                           <Edit className="h-4 w-4 text-blue-600" />
                         </button>
                         <button
                           onClick={() => handleDelete(convenio)}
-                          className="p-1 hover:bg-gray-100 rounded"
+                          className="p-1 hover:bg-slate-50 rounded"
                         >
                           <Trash2 className="h-4 w-4 text-red-600" />
                         </button>

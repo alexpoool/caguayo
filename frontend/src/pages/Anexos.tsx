@@ -248,7 +248,7 @@ export function AnexosPage() {
         <div className="flex items-center gap-4 mb-6">
           <button
             onClick={() => setView('list')}
-            className="p-2 hover:bg-gray-100 rounded-lg"
+            className="p-2 hover:bg-slate-50 rounded-lg"
           >
             <ArrowLeft className="h-5 w-5" />
           </button>
@@ -406,7 +406,7 @@ export function AnexosPage() {
                               <button
                                 type="button"
                                 onClick={() => removeProduct(index)}
-                                className="p-1 hover:bg-gray-100 rounded"
+                                className="p-1 hover:bg-slate-50 rounded"
                               >
                                 <Trash2 className="h-4 w-4 text-red-600" />
                               </button>
@@ -490,13 +490,13 @@ export function AnexosPage() {
                       <div className="flex items-center gap-2">
                         <button
                           onClick={() => handleEdit(anexo)}
-                          className="p-1 hover:bg-gray-100 rounded"
+                          className="p-1 hover:bg-slate-50 rounded"
                         >
                           <Edit className="h-4 w-4 text-blue-600" />
                         </button>
                         <button
                           onClick={() => handleDelete(anexo)}
-                          className="p-1 hover:bg-gray-100 rounded"
+                          className="p-1 hover:bg-slate-50 rounded"
                         >
                           <Trash2 className="h-4 w-4 text-red-600" />
                         </button>

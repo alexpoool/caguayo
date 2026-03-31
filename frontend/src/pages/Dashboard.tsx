@@ -322,7 +322,7 @@ export function Dashboard() {
   if (isError) {
     return (
       <div className="flex flex-col items-center justify-center h-96 gap-4">
-        <div className="bg-red-50 border border-red-200 text-red-700 px-6 py-4 rounded-lg text-center max-w-md">
+        <div className="bg-red-50 border border-red-200 text-red-700 px-6 py-2 rounded-lg text-center max-w-md">
           <p className="font-bold text-lg mb-2">Error al cargar estadísticas</p>
           <p className="text-sm mb-4">{error instanceof Error ? error.message : "Error desconocido"}</p>
           <Button onClick={handleRefresh} variant="secondary" className="gap-2">
@@ -363,7 +363,7 @@ export function Dashboard() {
       </div>
 
       {/* Tarjetas de estadísticas */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard 
           title="Total Productos"
           value={stats.total_productos.toLocaleString()}
@@ -449,7 +449,7 @@ export function Dashboard() {
       </Card>
 
       {/* Sección Ventas del Mes y Stock Bajo */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Ventas de hoy */}
         <Card animate style={{ animationDelay: '600ms' }}>
           <CardHeader>
@@ -564,7 +564,7 @@ export function Dashboard() {
       </div>
 
       {/* Últimas Ventas y Top Productos */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Últimas Ventas */}
         <Card animate style={{ animationDelay: '800ms' }}>
           <CardHeader>
@@ -648,7 +648,7 @@ export function Dashboard() {
                           index === 0 ? 'bg-yellow-100 text-yellow-700' :
                           index === 1 ? 'bg-gray-200 text-gray-700' :
                           index === 2 ? 'bg-orange-100 text-orange-700' :
-                          'bg-gray-100 text-gray-600'
+                          'bg-slate-50 text-gray-600'
                         }`}>
                           {index + 1}
                         </span>
@@ -724,7 +724,7 @@ export function Dashboard() {
       </Card>
 
       {/* Métricas de Inventario */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Card animate style={{ animationDelay: '1100ms' }}>
           <CardHeader>
             <CardTitle className="text-lg">Valor del Inventario</CardTitle>

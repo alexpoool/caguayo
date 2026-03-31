@@ -13,6 +13,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import React from "react";
 import {
   ArrowLeftRight,
+  ArrowRightLeft,
+  Package,
   Boxes,
   Clock,
   Home,
@@ -29,6 +31,7 @@ import {
   FilePlus,
   Receipt,
   DollarSign,
+  TrendingUp,
 } from "lucide-react";
 
 import { WelcomePage } from "./pages/Welcome";
@@ -60,6 +63,9 @@ import { SuplementosPage } from "./pages/ventas/SuplementosPage";
 import { FacturasPage } from "./pages/ventas/FacturasPage";
 import { VentasEfectivoPage } from "./pages/ventas/VentasEfectivoPage";
 import ReporteProveedores from "./pages/reportes/ReporteProveedores";
+import ReporteExistencias from "./pages/reportes/ReporteExistencias";
+import ReporteMovimientosDependencia from "./pages/reportes/ReporteMovimientosDependencia";
+import ReporteMovimientosProducto from "./pages/reportes/ReporteMovimientosProducto";
 
 type Modulo =
   | "administracion"
@@ -107,7 +113,13 @@ const rutasPorModulo: Record<Modulo, string[]> = {
     "/compra/liquidaciones",
     "/compra/productos-liquidacion",
   ],
-  reportes: ["/reportes"],
+  reportes: [
+    "/reportes",
+    "/reportes/proveedores",
+    "/reportes/existencias",
+    "/reportes/movimientos-dependencia",
+    "/reportes/movimientos-producto",
+  ],
   home: ["/"],
 };
 
@@ -341,7 +353,7 @@ function App() {
                 </ul>
               )}
               {moduloActivo === "administracion" && (
-                <ul className="space-y-1 px-3">
+                <ul className={`space-y-1 ${slimSidebar ? "px-0" : "px-3"}`}>
                   <li>
                     <NavLink to="/configuracion" onClick={handleLinkClick}>
                       <Settings className="w-6 h-6" />
@@ -351,7 +363,7 @@ function App() {
                 </ul>
               )}
               {moduloActivo === "compra" && (
-                <ul className="space-y-1 px-3">
+                <ul className={`space-y-1 ${slimSidebar ? "px-0" : "px-3"}`}>
                   <li>
                     <NavLink to="/compra/clientes" onClick={handleLinkClick}>
                       <UserCircle className="w-6 h-6" />
@@ -391,7 +403,7 @@ function App() {
                 </ul>
               )}
               {moduloActivo === "venta" && (
-                <ul className="space-y-1 px-3">
+                <ul className={`space-y-1 ${slimSidebar ? "px-0" : "px-3"}`}>
                   <li>
                     <NavLink to="/clientes" onClick={handleLinkClick}>
                       <UserCircle className="w-6 h-6" />
@@ -425,13 +437,7 @@ function App() {
                 </ul>
               )}
               {moduloActivo === "reportes" && (
-                <ul className="space-y-1 px-3">
-                  <li>
-                    <NavLink to="/reportes" end onClick={handleLinkClick}>
-                      <Home className="w-6 h-6" />
-                      Inicio
-                    </NavLink>
-                  </li>
+                <ul className={`space-y-1 ${slimSidebar ? "px-0" : "px-3"}`}>
                   <li>
                     <NavLink
                       to="/reportes/proveedores"
@@ -439,6 +445,33 @@ function App() {
                     >
                       <BarChart3 className="w-6 h-6" />
                       Proveedores
+                    </NavLink>
+                  </li>
+                  <li>
+                    <NavLink
+                      to="/reportes/existencias"
+                      onClick={handleLinkClick}
+                    >
+                      <Package className="w-6 h-6" />
+                      Existencias
+                    </NavLink>
+                  </li>
+                  <li>
+                    <NavLink
+                      to="/reportes/movimientos-dependencia"
+                      onClick={handleLinkClick}
+                    >
+                      <ArrowRightLeft className="w-6 h-6" />
+                      Mov. Dependencia
+                    </NavLink>
+                  </li>
+                  <li>
+                    <NavLink
+                      to="/reportes/movimientos-producto"
+                      onClick={handleLinkClick}
+                    >
+                      <ArrowRightLeft className="w-6 h-6" />
+                      Mov. Producto
                     </NavLink>
                   </li>
                 </ul>
@@ -453,7 +486,7 @@ function App() {
             <Link
               to="/"
               onClick={() => setModuloActivo("home")}
-              className="p-2 rounded-lg hover:bg-gray-100 transition-all duration-300 ease-out hover:scale-110 active:scale-95 group"
+              className="p-2 rounded-lg hover:bg-slate-50 transition-all duration-300 ease-out hover:scale-110 active:scale-95 group"
               title="Inicio"
             >
               <Home className="w-6 h-6 text-gray-700 group-hover:text-blue-600 transition-colors" />
@@ -461,21 +494,21 @@ function App() {
             <Link
               to="/administracion"
               onClick={() => setModuloActivo("administracion")}
-              className="p-2 rounded-lg hover:bg-gray-100 transition-all duration-300 ease-out hover:scale-110 active:scale-95 group"
+              className="p-2 rounded-lg hover:bg-slate-50 transition-all duration-300 ease-out hover:scale-110 active:scale-95 group"
               title="Administración"
             >
               <Settings className="w-6 h-6 text-gray-700 group-hover:text-blue-600 transition-colors" />
             </Link>
             <button
               onClick={() => setShowAccountModal(true)}
-              className="p-2 rounded-lg hover:bg-gray-100 transition-all duration-300 ease-out hover:scale-110 active:scale-95 group"
+              className="p-2 rounded-lg hover:bg-slate-50 transition-all duration-300 ease-out hover:scale-110 active:scale-95 group"
               title="Cuenta"
             >
               <UserCircle className="w-6 h-6 text-gray-700 group-hover:text-blue-600 transition-colors" />
             </button>
           </div>
 
-          <div className="flex items-center gap-6">
+          <div className="flex items-center gap-4">
             {["compra", "venta", "inventario", "reportes"].map((moduloId) => {
               const modulo = modulos.find((m) => m.id === moduloId);
               if (!modulo) return null;
@@ -502,7 +535,7 @@ function App() {
         <div
           className={`${isHomePage ? "col-start-1 col-end-3" : "col-start-2 col-end-3"} row-start-2 row-end-3 min-w-0 flex flex-col overflow-hidden`}
         >
-          <main className="flex-1 overflow-auto bg-gray-50 p-8">
+          <main className="flex-1 overflow-auto bg-gray-50 p-4">
             <div className="animate-fade-in-up animation-fill-both">
               <Routes>
                 <Route path="/" element={<HomePage />} />
@@ -813,6 +846,39 @@ function App() {
                   }
                 />
                 <Route
+                  path="/reportes/existencias"
+                  element={
+                    <ProtectedRoute
+                      moduloActivo={moduloActivo}
+                      currentPath="/reportes/existencias"
+                    >
+                      <ReporteExistencias />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/reportes/movimientos-dependencia"
+                  element={
+                    <ProtectedRoute
+                      moduloActivo={moduloActivo}
+                      currentPath="/reportes/movimientos-dependencia"
+                    >
+                      <ReporteMovimientosDependencia />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/reportes/movimientos-producto"
+                  element={
+                    <ProtectedRoute
+                      moduloActivo={moduloActivo}
+                      currentPath="/reportes/movimientos-producto"
+                    >
+                      <ReporteMovimientosProducto />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
                   path="/perfil"
                   element={
                     <ProtectedRoute
@@ -837,7 +903,7 @@ function App() {
           }}
         >
           <div
-            className="bg-white rounded-xl shadow-2xl w-full max-w-sm p-6 transform transition-all animate-fade-in-up"
+            className="bg-white rounded-md shadow-2xl w-full max-w-sm p-6 transform transition-all animate-fade-in-up"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center gap-3">
@@ -901,7 +967,7 @@ function App() {
             </p>
             <div className="mt-4 flex justify-end gap-2">
               <button
-                className="px-3 py-1.5 rounded-md bg-gray-100 hover:bg-gray-200"
+                className="px-3 py-1.5 rounded-md bg-slate-50 hover:bg-gray-200"
                 onClick={() => setShowLogoutConfirm(false)}
               >
                 Cancelar

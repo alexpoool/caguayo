@@ -108,7 +108,7 @@ export function ProductForm({ initialData, onSubmit, onCancel, isSubmitting = fa
 
   return (
     <Card className="overflow-hidden">
-      <CardHeader className="flex flex-row items-center justify-between py-4 px-6">
+      <CardHeader className="flex flex-row items-center justify-between py-2 px-6">
         <CardTitle className="text-lg">{initialData ? 'Editar Producto' : 'Nuevo Producto'}</CardTitle>
         <Button variant="ghost" onClick={onCancel} className="gap-2">
           <ArrowLeft className="h-4 w-4" />
@@ -172,7 +172,7 @@ export function ProductForm({ initialData, onSubmit, onCancel, isSubmitting = fa
                 value={formData.id_subcategoria || ''}
                 onChange={(e) => setFormData({ ...formData, id_subcategoria: parseInt(e.target.value) || 0 })}
                 disabled={!selectedCategoria || isLoadingSubcategorias}
-                className="w-full px-3 py-2 h-11 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all bg-white disabled:bg-gray-100"
+                className="w-full px-3 py-2 h-11 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all bg-white disabled:bg-slate-50"
               >
                 <option value="">{!selectedCategoria ? 'Primero seleccione una categoría' : 'Seleccione una subcategoría'}</option>
                 {subcategoriasFiltradas.map((subcategoria) => (

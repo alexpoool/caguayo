@@ -279,7 +279,7 @@ export function VentasPage() {
       COMPLETADA: 'bg-green-100 text-green-800',
       ANULADA: 'bg-red-100 text-red-800'
     };
-    return styles[estado as keyof typeof styles] || 'bg-gray-100 text-gray-800';
+    return styles[estado as keyof typeof styles] || 'bg-slate-50 text-gray-800';
   };
 
   // VISTA: DETALLE
@@ -312,7 +312,7 @@ export function VentasPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           <Card className="lg:col-span-2">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -428,7 +428,7 @@ export function VentasPage() {
             <CardHeader className="pb-4">
               <CardTitle className="text-lg">Información General</CardTitle>
             </CardHeader>
-            <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-4">
+            <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4">
               <div className="md:col-span-2">
                 <Label>Cliente *</Label>
                 <div className="relative mt-1">
@@ -479,7 +479,7 @@ export function VentasPage() {
                               setClienteSearch('');
                               setShowClienteDropdown(false);
                             }}
-                            className="px-3 py-2 hover:bg-gray-100 cursor-pointer border-b border-gray-100 last:border-0"
+                            className="px-3 py-2 hover:bg-slate-50 cursor-pointer border-b border-gray-100 last:border-0"
                           >
                             <div className="font-medium">{cliente.nombre || 'Cliente sin nombre'}</div>
                             {cliente.cedula_rif && (
@@ -598,7 +598,7 @@ export function VentasPage() {
                                       setProductoSearch({ ...productoSearch, [index]: '' });
                                       setShowProductoDropdown({ ...showProductoDropdown, [index]: false });
                                     }}
-                                    className="px-3 py-2 hover:bg-gray-100 cursor-pointer border-b border-gray-100 last:border-0"
+                                    className="px-3 py-2 hover:bg-slate-50 cursor-pointer border-b border-gray-100 last:border-0"
                                   >
                                     <div className="font-medium text-sm truncate">{p.nombre}</div>
                                     <div className="text-xs text-gray-500">Stock: {p.stock} | ${p.precio_venta}</div>
@@ -634,7 +634,7 @@ export function VentasPage() {
 
                       <div className="col-span-2">
                         <Label className="text-xs">Precio</Label>
-                        <div className="px-3 py-2 mt-1 bg-gray-100 rounded text-sm font-medium text-gray-700">
+                        <div className="px-3 py-2 mt-1 bg-slate-50 rounded text-sm font-medium text-gray-700">
                           ${detalle.precio_unitario.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                         </div>
                       </div>
@@ -729,7 +729,7 @@ export function VentasPage() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div className="flex items-center gap-4">
-          <div className="p-3 bg-gradient-to-br from-indigo-500 to-blue-600 rounded-xl shadow-lg animate-bounce-subtle">
+          <div className="p-3 bg-gradient-to-br from-indigo-500 to-blue-600 rounded-md shadow-lg animate-bounce-subtle">
             <ShoppingCart className="h-8 w-8 text-white" />
           </div>
           <div>

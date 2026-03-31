@@ -21,7 +21,7 @@ export function ModuleHome({ title, description, icon: Icon, children }: ModuleH
           {description && <p className="text-sm text-gray-600 mt-1">{description}</p>}
         </div>
 
-        <div className="bg-white rounded-xl shadow-lg p-4">
+        <div className="bg-white rounded-md shadow-lg p-4">
           {children}
         </div>
       </div>

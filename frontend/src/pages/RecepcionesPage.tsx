@@ -79,7 +79,7 @@ export function RecepcionesPage() {
         <div className="flex items-center gap-4">
           <button
             onClick={handleGoBack}
-            className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+            className="p-2 text-gray-400 hover:text-gray-600 hover:bg-slate-50 rounded-lg transition-colors"
             title="Volver"
           >
             <ArrowLeft className="h-5 w-5" />
@@ -110,7 +110,7 @@ export function RecepcionesPage() {
       </div>
 
       {/* Tabla de Recepciones */}
-      <div className="bg-white rounded-xl shadow-md overflow-hidden">
+      <div className="bg-white rounded-md shadow-md overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="bg-gray-50 border-b border-gray-200">
@@ -177,7 +177,7 @@ export function RecepcionesPage() {
                     onClick={() => handleSelectRecepcion(recepcion)}
                   >
                     <td className="px-4 py-3 whitespace-nowrap">
-                      <span className="text-sm font-mono text-gray-600 bg-gray-100 px-2 py-1 rounded">
+                      <span className="text-sm font-mono text-gray-600 bg-slate-50 px-2 py-1 rounded">
                         {recepcion.codigo || recepcion.id_movimiento}
                       </span>
                     </td>

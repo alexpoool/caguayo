@@ -448,7 +448,7 @@ export function MovimientosPage() {
                                 ? 'bg-green-100 text-green-800'
                                 : mov.estado === 'PENDIENTE'
                                 ? 'bg-yellow-100 text-yellow-800'
-                                : 'bg-gray-100 text-gray-800'
+                                : 'bg-slate-50 text-gray-800'
                             }`}>
                               {mov.estado}
                             </span>
@@ -497,14 +497,14 @@ export function MovimientosPage() {
             <div className="flex gap-3">
               <button
                 onClick={() => setConfirmModal({ ...confirmModal, isOpen: false })}
-                className="flex-1 px-4 py-3 text-gray-700 bg-gray-100 rounded-xl hover:bg-gray-200 transition-colors font-medium"
+                className="flex-1 px-4 py-3 text-gray-700 bg-slate-50 rounded-md hover:bg-gray-200 transition-colors font-medium"
               >
                 Cancelar
               </button>
               <button
                 onClick={confirmModal.onConfirm}
                 disabled={isDeleting}
-                className="flex-1 px-4 py-3 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-xl hover:from-red-600 hover:to-red-700 transition-all font-medium disabled:opacity-50"
+                className="flex-1 px-4 py-3 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-md hover:from-red-600 hover:to-red-700 transition-all font-medium disabled:opacity-50"
               >
                 {isDeleting ? 'Eliminando...' : 'Eliminar'}
               </button>
@@ -530,7 +530,7 @@ export function MovimientosPage() {
                 <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-white">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
-                      <div className={`p-3 rounded-xl bg-gradient-to-br ${config.gradient} text-white shadow-lg`}>
+                      <div className={`p-3 rounded-md bg-gradient-to-br ${config.gradient} text-white shadow-lg`}>
                         <Icon className="h-7 w-7" />
                       </div>
                       <div>
@@ -561,21 +561,21 @@ export function MovimientosPage() {
 
                 <div className="p-6 space-y-6">
                   <div className="grid grid-cols-2 gap-4">
-                    <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-4 rounded-xl border border-blue-100">
+                    <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-4 rounded-md border border-blue-100">
                       <p className="flex items-center gap-2 text-xs text-blue-600 uppercase tracking-wider mb-1">
                         <Package className="h-3 w-3" />
                         Producto
                       </p>
                       <p className="font-bold text-gray-900">{detailModal.movimiento?.producto?.nombre || 'N/A'}</p>
                     </div>
-                    <div className="bg-gradient-to-br from-orange-50 to-amber-50 p-4 rounded-xl border border-orange-100">
+                    <div className="bg-gradient-to-br from-orange-50 to-amber-50 p-4 rounded-md border border-orange-100">
                       <p className="flex items-center gap-2 text-xs text-orange-600 uppercase tracking-wider mb-1">
                         <Hash className="h-3 w-3" />
                         Cantidad
                       </p>
                       <p className="font-bold text-gray-900 text-lg">{detailModal.movimiento?.cantidad}</p>
                     </div>
-                    <div className="bg-gradient-to-br from-purple-50 to-pink-50 p-4 rounded-xl border border-purple-100">
+                    <div className="bg-gradient-to-br from-purple-50 to-pink-50 p-4 rounded-md border border-purple-100">
                       <p className="flex items-center gap-2 text-xs text-purple-600 uppercase tracking-wider mb-1">
                         <Calendar className="h-3 w-3" />
                         Fecha
@@ -590,14 +590,14 @@ export function MovimientosPage() {
                         })}
                       </p>
                     </div>
-                    <div className="bg-gradient-to-br from-red-50 to-rose-50 p-4 rounded-xl border border-red-100">
+                    <div className="bg-gradient-to-br from-red-50 to-rose-50 p-4 rounded-md border border-red-100">
                       <p className="flex items-center gap-2 text-xs text-red-600 uppercase tracking-wider mb-1">
                         <MapPin className="h-3 w-3" />
                         Dependencia
                       </p>
                       <p className="font-bold text-gray-900">{detailModal.movimiento?.dependencia?.nombre || 'N/A'}</p>
                     </div>
-                    <div className="bg-gradient-to-br from-gray-50 to-slate-50 p-4 rounded-xl border border-gray-100 col-span-2">
+                    <div className="bg-gradient-to-br from-gray-50 to-slate-50 p-4 rounded-md border border-gray-100 col-span-2">
                       <p className="flex items-center gap-2 text-xs text-gray-600 uppercase tracking-wider mb-1">
                         <CheckCircle className="h-3 w-3" />
                         Estado
@@ -608,7 +608,7 @@ export function MovimientosPage() {
                             ? 'bg-green-100 text-green-800'
                             : detailModal.movimiento?.estado === 'PENDIENTE'
                             ? 'bg-yellow-100 text-yellow-800'
-                            : 'bg-gray-100 text-gray-800'
+                            : 'bg-slate-50 text-gray-800'
                         }`}>
                           {detailModal.movimiento?.estado}
                         </span>
@@ -625,21 +625,21 @@ export function MovimientosPage() {
                         Información del Proveedor
                       </h4>
                       <div className="grid grid-cols-2 gap-4">
-                        <div className="bg-gray-50 p-4 rounded-xl">
+                        <div className="bg-gray-50 p-4 rounded-md">
                           <p className="flex items-center gap-2 text-xs text-gray-500 uppercase tracking-wider mb-1">
                             <Building className="h-3 w-3" />
                             Proveedor
                           </p>
                           <p className="font-bold text-gray-900">{detailModal.movimiento?.provedor?.nombre || 'N/A'}</p>
                         </div>
-                        <div className="bg-gray-50 p-4 rounded-xl">
+                        <div className="bg-gray-50 p-4 rounded-md">
                           <p className="flex items-center gap-2 text-xs text-gray-500 uppercase tracking-wider mb-1">
                             <FileText className="h-3 w-3" />
                             Convenio
                           </p>
                           <p className="font-bold text-gray-900">{detailModal.movimiento?.convenio?.nombre_convenio || 'N/A'}</p>
                         </div>
-                        <div className="bg-gray-50 p-4 rounded-xl">
+                        <div className="bg-gray-50 p-4 rounded-md">
                           <p className="flex items-center gap-2 text-xs text-gray-500 uppercase tracking-wider mb-1">
                             <ClipboardList className="h-3 w-3" />
                             Anexo
@@ -650,7 +650,7 @@ export function MovimientosPage() {
                               : 'N/A'}
                           </p>
                         </div>
-                        <div className="bg-gray-50 p-4 rounded-xl">
+                        <div className="bg-gray-50 p-4 rounded-md">
                           <p className="flex items-center gap-2 text-xs text-gray-500 uppercase tracking-wider mb-1">
                             <Hash className="h-3 w-3" />
                             Código
@@ -660,7 +660,7 @@ export function MovimientosPage() {
                       </div>
 
                       <div className="grid grid-cols-2 gap-4 mt-4">
-                        <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-4 rounded-xl border border-blue-200">
+                        <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-4 rounded-md border border-blue-200">
                           <p className="flex items-center gap-2 text-xs text-blue-600 uppercase tracking-wider mb-1">
                             <TrendingDown className="h-3 w-3" />
                             Precio de Compra
@@ -671,7 +671,7 @@ export function MovimientosPage() {
                               : 'N/A'}
                           </p>
                         </div>
-                        <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-4 rounded-xl border border-green-200">
+                        <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-4 rounded-md border border-green-200">
                           <p className="flex items-center gap-2 text-xs text-green-600 uppercase tracking-wider mb-1">
                             <TrendingUp className="h-3 w-3" />
                             Precio de Venta
@@ -695,21 +695,21 @@ export function MovimientosPage() {
                         Información de Compra (Anexo)
                       </h4>
                       <div className="grid grid-cols-2 gap-4">
-                        <div className="bg-gray-50 p-4 rounded-xl">
+                        <div className="bg-gray-50 p-4 rounded-md">
                           <p className="flex items-center gap-2 text-xs text-gray-500 uppercase tracking-wider mb-1">
                             <Building className="h-3 w-3" />
                             Proveedor
                           </p>
                           <p className="font-bold text-gray-900">{detailModal.movimiento?.provedor?.nombre || 'N/A'}</p>
                         </div>
-                        <div className="bg-gray-50 p-4 rounded-xl">
+                        <div className="bg-gray-50 p-4 rounded-md">
                           <p className="flex items-center gap-2 text-xs text-gray-500 uppercase tracking-wider mb-1">
                             <FileText className="h-3 w-3" />
                             Cliente
                           </p>
                           <p className="font-bold text-gray-900">{detailModal.movimiento?.cliente?.nombre || 'N/A'}</p>
                         </div>
-                        <div className="bg-gray-50 p-4 rounded-xl">
+                        <div className="bg-gray-50 p-4 rounded-md">
                           <p className="flex items-center gap-2 text-xs text-gray-500 uppercase tracking-wider mb-1">
                             <Hash className="h-3 w-3" />
                             Código
@@ -718,7 +718,7 @@ export function MovimientosPage() {
                         </div>
                       </div>
                       <div className="grid grid-cols-2 gap-4 mt-4">
-                        <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-4 rounded-xl border border-blue-200">
+                        <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-4 rounded-md border border-blue-200">
                           <p className="flex items-center gap-2 text-xs text-blue-600 uppercase tracking-wider mb-1">
                             <TrendingDown className="h-3 w-3" />
                             Precio de Compra
@@ -729,7 +729,7 @@ export function MovimientosPage() {
                               : 'N/A'}
                           </p>
                         </div>
-                        <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-4 rounded-xl border border-green-200">
+                        <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-4 rounded-md border border-green-200">
                           <p className="flex items-center gap-2 text-xs text-green-600 uppercase tracking-wider mb-1">
                             <TrendingUp className="h-3 w-3" />
                             Precio de Venta
@@ -754,7 +754,7 @@ export function MovimientosPage() {
                       </h4>
                       <div className="grid grid-cols-2 gap-4">
                         {detailModal.movimiento?.id_factura && (
-                          <div className="bg-gray-50 p-4 rounded-xl">
+                          <div className="bg-gray-50 p-4 rounded-md">
                             <p className="flex items-center gap-2 text-xs text-gray-500 uppercase tracking-wider mb-1">
                               <FileText className="h-3 w-3" />
                               Factura
@@ -763,7 +763,7 @@ export function MovimientosPage() {
                           </div>
                         )}
                         {detailModal.movimiento?.id_venta_efectivo && (
-                          <div className="bg-gray-50 p-4 rounded-xl">
+                          <div className="bg-gray-50 p-4 rounded-md">
                             <p className="flex items-center gap-2 text-xs text-gray-500 uppercase tracking-wider mb-1">
                               <TrendingDown className="h-3 w-3" />
                               Venta Efectivo
@@ -771,7 +771,7 @@ export function MovimientosPage() {
                             <p className="font-bold text-gray-900">#{detailModal.movimiento.id_venta_efectivo}</p>
                           </div>
                         )}
-                        <div className="bg-gray-50 p-4 rounded-xl">
+                        <div className="bg-gray-50 p-4 rounded-md">
                           <p className="flex items-center gap-2 text-xs text-gray-500 uppercase tracking-wider mb-1">
                             <Hash className="h-3 w-3" />
                             Código
@@ -788,7 +788,7 @@ export function MovimientosPage() {
                         <ClipboardList className="h-4 w-4 text-gray-500" />
                         Observación
                       </h4>
-                      <p className="text-gray-700 bg-gray-50 p-4 rounded-xl border border-gray-200">
+                      <p className="text-gray-700 bg-gray-50 p-4 rounded-md border border-gray-200">
                         {detailModal.movimiento.observacion}
                       </p>
                     </div>
@@ -798,7 +798,7 @@ export function MovimientosPage() {
                 <div className="p-6 border-t border-gray-200 bg-gray-50 flex justify-end">
                   <button
                     onClick={() => setDetailModal({ isOpen: false, movimiento: null })}
-                    className="px-6 py-3 text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors font-medium"
+                    className="px-6 py-3 text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors font-medium"
                   >
                     Cerrar
                   </button>

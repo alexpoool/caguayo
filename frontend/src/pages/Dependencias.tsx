@@ -51,7 +51,7 @@ function ArbolDependencia({ dependencias, dependenciasPadre, nivel, onSelect, se
           <div key={dep.id_dependencia}>
             <div
               className={`flex items-center gap-2 p-2 rounded cursor-pointer transition-colors ${
-                isSelected ? 'bg-blue-100 text-blue-800' : 'hover:bg-gray-100'
+                isSelected ? 'bg-blue-100 text-blue-800' : 'hover:bg-slate-50'
               }`}
               style={{ paddingLeft: `${nivel * 20 + 8}px` }}
               onClick={() => onSelect(dep)}
@@ -478,7 +478,7 @@ export function DependenciasPage() {
               Cancelar
             </Button>
             <div className="flex items-center gap-3">
-              <div className="p-3 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-lg animate-bounce-subtle">
+              <div className="p-3 bg-gradient-to-br from-blue-500 to-blue-600 rounded-md shadow-lg animate-bounce-subtle">
                 <Building className="h-8 w-8 text-white" />
               </div>
               <div>
@@ -513,7 +513,7 @@ export function DependenciasPage() {
             </div>
           </CardHeader>
           <CardContent className="pt-6">
-            <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-6">
+            <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-4">
               {/* Nombre */}
               <div className="space-y-2">
                 <Label className="flex items-center gap-2 text-gray-700">
@@ -673,7 +673,7 @@ export function DependenciasPage() {
                   Municipio
                 </Label>
                 <select
-                  className="w-full border rounded-md px-3 py-2 disabled:bg-gray-100 disabled:text-gray-500 transition-all duration-200 focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
+                  className="w-full border rounded-md px-3 py-2 disabled:bg-slate-50 disabled:text-gray-500 transition-all duration-200 focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
                   value={formData.id_municipio || ''}
                   onChange={(e) => setFormData({ ...formData, id_municipio: e.target.value ? parseInt(e.target.value) : undefined })}
                   disabled={!formData.id_provincia}
@@ -717,7 +717,7 @@ export function DependenciasPage() {
           </CardHeader>
           <CardContent className="pt-6">
             {/* Formulario para agregar/editar cuenta */}
-            <div className="grid grid-cols-2 gap-6 mb-6 p-6 bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl border border-gray-200">
+            <div className="grid grid-cols-2 gap-4 mb-6 p-6 bg-gradient-to-br from-gray-50 to-gray-100 rounded-md border border-gray-200">
               <div className="space-y-2">
                 <Label className="flex items-center gap-2 text-gray-700">
                   <User className="h-5 w-5 text-blue-500" />
@@ -827,7 +827,7 @@ export function DependenciasPage() {
 
             {/* Lista de cuentas agregadas */}
             {cuentas.length > 0 ? (
-              <div className="rounded-xl border border-gray-200 overflow-hidden">
+              <div className="rounded-md border border-gray-200 overflow-hidden">
                 <Table>
                   <TableHeader className="bg-gradient-to-r from-green-50 to-emerald-50">
                     <TableRow>
@@ -890,7 +890,7 @@ export function DependenciasPage() {
                 </Table>
               </div>
             ) : (
-              <div className="text-center py-8 bg-gray-50 rounded-xl border-2 border-dashed border-gray-300">
+              <div className="text-center py-8 bg-gray-50 rounded-md border-2 border-dashed border-gray-300">
                 <Wallet className="h-12 w-12 text-gray-400 mx-auto mb-3" />
                 <p className="text-gray-500 font-medium">No hay cuentas bancarias agregadas</p>
                 <p className="text-sm text-gray-400 mt-1">Agregue cuentas usando el formulario superior</p>
@@ -917,7 +917,7 @@ export function DependenciasPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <div className="p-3 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-lg animate-bounce-subtle">
+          <div className="p-3 bg-gradient-to-br from-blue-500 to-blue-600 rounded-md shadow-lg animate-bounce-subtle">
             <Building className="h-8 w-8 text-white" />
           </div>
           <div>
@@ -931,7 +931,7 @@ export function DependenciasPage() {
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <Card className="lg:col-span-1 hover:shadow-lg transition-shadow duration-300">
           <CardHeader>
             <CardTitle>Estructura Jerárquica</CardTitle>
@@ -945,7 +945,7 @@ export function DependenciasPage() {
                 onSelect={handleSelectDependencia}
               />
             ) : (
-              <p className="text-gray-500 text-center py-4">No hay dependencias registradas</p>
+              <p className="text-gray-500 text-center py-2">No hay dependencias registradas</p>
             )}
           </CardContent>
         </Card>
@@ -1105,7 +1105,7 @@ export function DependenciasPage() {
           <div className="relative w-full max-w-xl bg-white rounded-2xl shadow-2xl animate-scale-in max-h-[90vh] flex flex-col">
             <div className="flex-shrink-0 flex items-center justify-between p-6 border-b bg-gradient-to-r from-green-50 to-emerald-50 rounded-t-2xl">
               <div className="flex items-center gap-3">
-                <div className="p-3 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl shadow-lg">
+                <div className="p-3 bg-gradient-to-br from-green-500 to-emerald-600 rounded-md shadow-lg">
                   <CheckCircle2 className="h-7 w-7 text-white" />
                 </div>
                 <div>
@@ -1128,7 +1128,7 @@ export function DependenciasPage() {
             </div>
             <div className="flex-1 overflow-auto p-6">
               <div className="space-y-6">
-                <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl p-5">
+                <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-md p-5">
                   <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
                     <Building className="h-5 w-5 text-green-500" />
                     Dependencia Creada
@@ -1151,7 +1151,7 @@ export function DependenciasPage() {
                   </div>
                 </div>
 
-                <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl p-5">
+                <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-md p-5">
                   <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
                     <Database className="h-5 w-5 text-green-500" />
                     Base de Datos Creada
@@ -1181,7 +1181,7 @@ export function DependenciasPage() {
                   </div>
                 </div>
 
-                <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-5">
+                <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-md p-5">
                   <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
                     <CheckCircle2 className="h-5 w-5 text-blue-500" />
                     Tablas Creadas ({databaseCreatedModal.tablas.length})
@@ -1219,7 +1219,7 @@ export function DependenciasPage() {
                   </div>
                 </div>
 
-                <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+                <div className="bg-amber-50 border border-amber-200 rounded-md p-4">
                   <p className="text-sm text-amber-800">
                     <strong>Nota:</strong> Guarde el nombre de la base de datos. La conexión se realizarÃ¡ usando las credenciales configuradas en el servidor.
                   </p>
@@ -1256,7 +1256,7 @@ export function DependenciasPage() {
           <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col animate-scale-in">
             <div className="flex-shrink-0 flex items-center justify-between p-6 border-b bg-gradient-to-r from-blue-50 to-indigo-50 rounded-t-2xl">
               <div className="flex items-center gap-3">
-                <div className="p-3 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-lg">
+                <div className="p-3 bg-gradient-to-br from-blue-500 to-blue-600 rounded-md shadow-lg">
                   <Building className="h-7 w-7 text-white" />
                 </div>
                 <div>
@@ -1271,7 +1271,7 @@ export function DependenciasPage() {
             <div className="flex-1 overflow-auto p-6">
               <div className="space-y-8">
                 {/* Información básica */}
-                <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl p-5">
+                <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-md p-5">
                   <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
                     <Building className="h-5 w-5 text-blue-500" />
                     Información General
@@ -1335,7 +1335,7 @@ export function DependenciasPage() {
 
                 {/* Cuentas bancarias */}
                 {dependenciaDetalle.cuentas && dependenciaDetalle.cuentas.length > 0 && (
-                  <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl p-5">
+                  <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-md p-5">
                     <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
                       <Wallet className="h-5 w-5 text-green-600" />
                       Cuentas Bancarias
@@ -1403,7 +1403,7 @@ export function DependenciasPage() {
                   const hijos = dependencias.filter(d => d.codigo_padre === dependenciaDetalle!.id_dependencia);
                   if (hijos.length === 0) return null;
                   return (
-                    <div className="bg-gradient-to-br from-indigo-50 to-blue-50 rounded-xl p-5">
+                    <div className="bg-gradient-to-br from-indigo-50 to-blue-50 rounded-md p-5">
                       <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
                         <Network className="h-5 w-5 text-indigo-600" />
                         Subdependencias
@@ -1442,7 +1442,7 @@ export function DependenciasPage() {
           <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full animate-scale-in">
             <div className="flex items-center justify-between p-6 border-b bg-gradient-to-r from-emerald-50 to-green-50 rounded-t-2xl">
               <div className="flex items-center gap-3">
-                <div className="p-3 bg-gradient-to-br from-emerald-500 to-green-600 rounded-xl shadow-lg">
+                <div className="p-3 bg-gradient-to-br from-emerald-500 to-green-600 rounded-md shadow-lg">
                   <CreditCard className="h-7 w-7 text-white" />
                 </div>
                 <div>
@@ -1455,7 +1455,7 @@ export function DependenciasPage() {
               </Button>
             </div>
             <div className="p-6 space-y-5">
-              <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-4 space-y-1">
+              <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-md p-4 space-y-1">
                 <Label className="flex items-center gap-2 text-blue-600 text-sm font-medium">
                   <User className="h-4 w-4" />
                   Titular
@@ -1463,14 +1463,14 @@ export function DependenciasPage() {
                 <p className="font-bold text-gray-900 text-lg">{cuentaDetailModal.cuenta.titular}</p>
               </div>
               <div className="grid grid-cols-2 gap-4">
-                <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl p-4 space-y-1">
+                <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-md p-4 space-y-1">
                   <Label className="flex items-center gap-2 text-purple-600 text-sm font-medium">
                     <Landmark className="h-4 w-4" />
                     Banco
                   </Label>
                   <p className="font-semibold text-gray-900">{cuentaDetailModal.cuenta.banco}</p>
                 </div>
-                <div className="bg-gradient-to-br from-orange-50 to-yellow-50 rounded-xl p-4 space-y-1">
+                <div className="bg-gradient-to-br from-orange-50 to-yellow-50 rounded-md p-4 space-y-1">
                   <Label className="flex items-center gap-2 text-orange-600 text-sm font-medium">
                     <Store className="h-4 w-4" />
                     Sucursal
@@ -1478,14 +1478,14 @@ export function DependenciasPage() {
                   <p className="font-semibold text-gray-900">{cuentaDetailModal.cuenta.sucursal || '-'}</p>
                 </div>
               </div>
-              <div className="bg-gradient-to-br from-red-50 to-rose-50 rounded-xl p-4 space-y-1">
+              <div className="bg-gradient-to-br from-red-50 to-rose-50 rounded-md p-4 space-y-1">
                 <Label className="flex items-center gap-2 text-red-600 text-sm font-medium">
                   <MapPin className="h-4 w-4" />
                   Dirección
                 </Label>
                 <p className="font-semibold text-gray-900">{cuentaDetailModal.cuenta.direccion}</p>
               </div>
-              <div className="bg-gradient-to-br from-indigo-50 to-blue-50 rounded-xl p-4 space-y-1">
+              <div className="bg-gradient-to-br from-indigo-50 to-blue-50 rounded-md p-4 space-y-1">
                 <Label className="flex items-center gap-2 text-indigo-600 text-sm font-medium">
                   <CreditCard className="h-4 w-4" />
                   Tipo de Cuenta

@@ -252,7 +252,7 @@ export function LiquidacionesPage() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div className="flex items-center gap-4">
-          <div className="p-3 bg-gradient-to-br from-lime-500 to-green-600 rounded-xl shadow-lg animate-bounce-subtle">
+          <div className="p-3 bg-gradient-to-br from-lime-500 to-green-600 rounded-md shadow-lg animate-bounce-subtle">
             <ScrollText className="h-8 w-8 text-white" />
           </div>
           <div>
@@ -421,7 +421,7 @@ export function LiquidacionesPage() {
 
       {showModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-4xl max-h-[90vh] overflow-hidden">
+          <div className="bg-white rounded-md shadow-xl w-full max-w-4xl max-h-[90vh] overflow-hidden">
             <CardHeader>
               <div className="flex items-center gap-4">
                 <CardTitle>Nueva Liquidación</CardTitle>
@@ -518,7 +518,7 @@ export function LiquidacionesPage() {
                   </div>
                   
                   {productosPendientes.length === 0 ? (
-                    <p className="text-gray-500 text-sm py-4">No hay productos pendientes para este proveedor</p>
+                    <p className="text-gray-500 text-sm py-2">No hay productos pendientes para este proveedor</p>
                   ) : (
                     <div className="border rounded-lg max-h-60 overflow-y-auto">
                       <table className="w-full text-sm">
@@ -632,7 +632,7 @@ export function LiquidacionesPage() {
               </div>
             </div>
 
-            <div className="px-6 py-4 border-t bg-gray-50 flex justify-end gap-3">
+            <div className="px-6 py-2 border-t bg-gray-50 flex justify-end gap-3">
               <Button variant="outline" onClick={() => { setShowModal(false); resetForm(); }}>
                 Cancelar
               </Button>
@@ -658,8 +658,8 @@ export function LiquidacionesPage() {
 
       {showDetailModal && selectedLiquidacion && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl">
-            <div className="px-6 py-4 border-b flex justify-between items-center">
+          <div className="bg-white rounded-md shadow-xl w-full max-w-2xl">
+            <div className="px-6 py-2 border-b flex justify-between items-center">
               <h2 className="text-xl font-bold">Detalle de Liquidación</h2>
               <button onClick={() => { setShowDetailModal(false); setSelectedLiquidacion(null); }} className="text-gray-400 hover:text-gray-600">
                 <XCircle className="w-6 h-6" />
@@ -736,10 +736,10 @@ export function LiquidacionesPage() {
               )}
             </div>
 
-            <div className="px-6 py-4 border-t bg-gray-50 flex justify-end">
+            <div className="px-6 py-2 border-t bg-gray-50 flex justify-end">
               <button
                 onClick={() => { setShowDetailModal(false); setSelectedLiquidacion(null); }}
-                className="px-4 py-2 border rounded-lg hover:bg-gray-100"
+                className="px-4 py-2 border rounded-lg hover:bg-slate-50"
               >
                 Cerrar
               </button>
@@ -754,7 +754,7 @@ export function LiquidacionesPage() {
             <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-lime-50 to-green-50">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
-                  <div className="p-3 rounded-xl bg-gradient-to-br from-lime-500 to-green-600 text-white shadow-lg">
+                  <div className="p-3 rounded-md bg-gradient-to-br from-lime-500 to-green-600 text-white shadow-lg">
                     <ScrollText className="h-7 w-7" />
                   </div>
                   <div>
@@ -769,37 +769,37 @@ export function LiquidacionesPage() {
             </div>
             <div className="p-6 space-y-4">
               <div className="grid grid-cols-2 gap-4">
-                <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-4 rounded-xl border border-blue-100">
+                <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-4 rounded-md border border-blue-100">
                   <p className="text-xs text-blue-600 uppercase tracking-wider mb-1">Proveedor</p>
                   <p className="font-bold text-gray-900">{getClienteNombre(detailModal.item.id_cliente)}</p>
                 </div>
-                <div className="bg-gray-50 p-4 rounded-xl">
+                <div className="bg-gray-50 p-4 rounded-md">
                   <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Anexo</p>
                   <p className="font-bold text-gray-900">{detailModal.item.id_anexo ? getAnexoInfo(detailModal.item.id_anexo) : '-'}</p>
                 </div>
-                <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-4 rounded-xl border border-green-100">
+                <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-4 rounded-md border border-green-100">
                   <p className="text-xs text-green-600 uppercase tracking-wider mb-1">Importe</p>
                   <p className="font-bold text-green-900 text-xl">{detailModal.item.importe?.toLocaleString()}</p>
                 </div>
-                <div className="bg-gradient-to-br from-lime-50 to-green-50 p-4 rounded-xl border border-lime-100">
+                <div className="bg-gradient-to-br from-lime-50 to-green-50 p-4 rounded-md border border-lime-100">
                   <p className="text-xs text-lime-600 uppercase tracking-wider mb-1">Neto a Pagar</p>
                   <p className="font-bold text-lime-900 text-xl">{detailModal.item.neto_pagar?.toLocaleString()}</p>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
-                <div className="bg-gray-50 p-4 rounded-xl">
+                <div className="bg-gray-50 p-4 rounded-md">
                   <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Estado</p>
                   <span className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium ${detailModal.item.liquidada ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
                     {detailModal.item.liquidada ? 'Liquidada' : 'Pendiente'}
                   </span>
                 </div>
-                <div className="bg-gradient-to-br from-purple-50 to-pink-50 p-4 rounded-xl border border-purple-100">
+                <div className="bg-gradient-to-br from-purple-50 to-pink-50 p-4 rounded-md border border-purple-100">
                   <p className="text-xs text-purple-600 uppercase tracking-wider mb-1">Fecha Emisión</p>
                   <p className="font-bold text-gray-900">{new Date(detailModal.item.fecha_emision).toLocaleDateString()}</p>
                 </div>
               </div>
               {(detailModal.item.tributario || detailModal.item.comision_bancaria || detailModal.item.gasto_empresa) && (
-                <div className="bg-gray-50 p-4 rounded-xl">
+                <div className="bg-gray-50 p-4 rounded-md">
                   <p className="text-xs text-gray-500 uppercase tracking-wider mb-2">Descuentos</p>
                   <div className="space-y-1 text-sm">
                     {detailModal.item.tributario ? <div className="flex justify-between"><span>Tributario</span><span className="text-red-600">-{detailModal.item.tributario?.toLocaleString()}</span></div> : null}
@@ -809,14 +809,14 @@ export function LiquidacionesPage() {
                 </div>
               )}
               {detailModal.item.observaciones && (
-                <div className="bg-gray-50 p-4 rounded-xl">
+                <div className="bg-gray-50 p-4 rounded-md">
                   <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Observaciones</p>
                   <p className="text-gray-700">{detailModal.item.observaciones}</p>
                 </div>
               )}
             </div>
             <div className="p-6 border-t border-gray-200 bg-gray-50 flex justify-end">
-              <button onClick={() => setDetailModal({ isOpen: false, item: null })} className="px-6 py-3 text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors font-medium">Cerrar</button>
+              <button onClick={() => setDetailModal({ isOpen: false, item: null })} className="px-6 py-3 text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors font-medium">Cerrar</button>
             </div>
           </div>
         </div>,

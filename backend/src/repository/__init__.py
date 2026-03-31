@@ -2,7 +2,8 @@ from .productos_repo import ProductosRepository, productos_repo
 from .categorias_repo import CategoriasRepository, categorias_repo
 from .movimientos_repo import MovimientoRepository, movimiento_repo
 from .moneda_repo import MonedaRepository, moneda_repo
-from .ventas_clientes_repo import ClienteRepository, cliente_repo, ventas_repo
+from .cliente_repo import ClienteRepository, cliente_repo
+from .ventas_clientes_repo import ventas_repo
 from .contratos_repo import (
     ContratoRepository,
     contrato_repo,

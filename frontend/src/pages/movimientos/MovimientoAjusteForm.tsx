@@ -169,7 +169,7 @@ function SearchableSelect<T extends Record<string, any>>({
       <div className="relative">
         <div
           className={`flex items-center border rounded-lg transition-all duration-200 ${
-            disabled ? 'bg-gray-100 cursor-not-allowed border-gray-200' : 'bg-white border-gray-300 hover:border-gray-400 focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500'
+            disabled ? 'bg-slate-50 cursor-not-allowed border-gray-200' : 'bg-white border-gray-300 hover:border-gray-400 focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500'
           }`}
           onClick={() => !disabled && setIsOpen(true)}
         >
@@ -337,7 +337,7 @@ export function MovimientoAjusteForm() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <div className="p-3 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-lg animate-bounce-subtle">
+          <div className="p-3 rounded-md bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-lg animate-bounce-subtle">
             <ArrowRightLeft className="h-8 w-8" />
           </div>
           <div>
@@ -362,7 +362,7 @@ export function MovimientoAjusteForm() {
               </CardTitle>
             </CardHeader>
             <CardContent className="p-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <SearchableSelect
                   label="Seleccionar Producto"
                   required
@@ -387,7 +387,7 @@ export function MovimientoAjusteForm() {
                   <div className={`mt-1 px-4 py-3 rounded-lg border-2 flex items-center gap-2 ${
                     codigoGenerado
                       ? 'bg-gradient-to-r from-green-50 to-emerald-50 border-green-300 text-green-800 font-mono font-bold shadow-sm'
-                      : 'bg-gray-100 border-gray-200 text-gray-400'
+                      : 'bg-slate-50 border-gray-200 text-gray-400'
                   }`}>
                     {codigoGenerado ? (
                       <>
@@ -415,7 +415,7 @@ export function MovimientoAjusteForm() {
               </CardTitle>
             </CardHeader>
             <CardContent className="p-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <SearchableSelect
                   label="Seleccionar Dependencia"
                   required

@@ -12,7 +12,7 @@ export function CompraHome() {
           <p className="text-sm text-gray-600 mt-1">Gestión de adquisiciones</p>
         </div>
 
-        <div className="bg-white rounded-xl shadow-lg p-4">
+        <div className="bg-white rounded-md shadow-lg p-4">
           <p className="text-sm text-gray-700 mb-4">
             El módulo de Compras estará dedicado a la gestión de proveedores y órdenes de compra. Permitirá controlar el ciclo completo de adquisiciones.
           </p>

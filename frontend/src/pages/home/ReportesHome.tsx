@@ -12,7 +12,7 @@ export function ReportesHome() {
           <p className="text-sm text-gray-600 mt-1">Información estratégica y análisis</p>
         </div>
 
-        <div className="bg-white rounded-xl shadow-lg p-4">
+        <div className="bg-white rounded-md shadow-lg p-4">
           <p className="text-sm text-gray-700 mb-4">
             El módulo de Reportes permitirá generar informes y análisis detallados sobre diferentes aspectos del sistema. Podrás exportar los datos para análisis externo.
           </p>

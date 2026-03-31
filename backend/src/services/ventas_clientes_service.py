@@ -4,7 +4,7 @@ from datetime import datetime
 from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlalchemy.orm import selectinload
 from src.repository.ventas_clientes_repo import (
-    cliente_repo,
+    ventas_cliente_repo,
     ventas_repo,
     detalle_venta_repo,
 )

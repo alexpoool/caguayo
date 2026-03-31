@@ -1,4 +1,5 @@
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from src.models.cliente import Cliente
 from src.models.cliente_natural import ClienteNatural
 from src.models.cliente_tcp import ClienteTCP
@@ -7,6 +8,8 @@ from src.models.dependencia import Dependencia, Provincia, Municipio
 from src.models.contrato import Contrato
 from src.models.convenio import Convenio
 from src.models.anexo import Anexo
+from src.models.movimiento import Movimiento, TipoMovimiento
+from src.models.productos import Productos
 
 def get_proveedores_por_dependencia(db: Session, id_dependencia: int, tipo_entidad: str, id_provincia: int = None):
     # Determine which model to join based on tipo_entidad
@@ -75,3 +78,104 @@ def get_proveedores_por_dependencia(db: Session, id_dependencia: int, tipo_entid
         proveedores.append(proveedor_data)
 
     return proveedores, dependencia_info
+
+def get_existencias(db: Session, id_dependencia: int):
+    dependencia = db.query(Dependencia).filter(Dependencia.id_dependencia == id_dependencia).first()
+    dependencia_info = {'nombre': dependencia.nombre, 'direccion': dependencia.direccion} if dependencia else {}
+
+    results = db.query(
+        Productos.codigo.label('codigo'),
+        Productos.nombre.label('descripcion'),
+        func.sum(Movimiento.cantidad * TipoMovimiento.factor).label('cantidad')
+    ).join(
+        Productos, Movimiento.id_producto == Productos.id_producto
+    ).join(
+        TipoMovimiento, Movimiento.id_tipo_movimiento == TipoMovimiento.id_tipo_movimiento
+    ).filter(
+        Movimiento.id_dependencia == id_dependencia
+    ).group_by(
+        Productos.codigo, Productos.nombre
+    ).all()
+
+    existencias = [
+        {
+            'codigo': r.codigo,
+            'descripcion': r.descripcion,
+            'cantidad': r.cantidad or 0
+        } for r in results
+    ]
+    return existencias, dependencia_info
+
+
+def get_movimientos_dependencia(db: Session, id_dependencia: int, fecha_inicio, fecha_fin):
+    dependencia = db.query(Dependencia).filter(Dependencia.id_dependencia == id_dependencia).first()
+    dependencia_info = {'nombre': dependencia.nombre, 'direccion': dependencia.direccion} if dependencia else {}
+
+    results = db.query(
+        Movimiento.fecha,
+        TipoMovimiento.tipo.label('operacion'),
+        Productos.nombre.label('producto'),
+        func.case(
+            (TipoMovimiento.factor > 0, 'Entrada'),
+            (TipoMovimiento.factor < 0, 'Salida'),
+            else_='Neutro'
+        ).label('tipo'),
+        Movimiento.cantidad
+    ).join(
+        TipoMovimiento, Movimiento.id_tipo_movimiento == TipoMovimiento.id_tipo_movimiento
+    ).join(
+        Productos, Movimiento.id_producto == Productos.id_producto
+    ).filter(
+        Movimiento.id_dependencia == id_dependencia,
+        Movimiento.fecha >= fecha_inicio,
+        Movimiento.fecha <= fecha_fin
+    ).order_by(Movimiento.fecha.desc()).all()
+
+    movimientos = [
+        {
+            'fecha': r.fecha,
+            'operacion': r.operacion,
+            'producto': r.producto,
+            'tipo': r.tipo,
+            'cantidad': r.cantidad
+        } for r in results
+    ]
+
+    return movimientos, dependencia_info
+
+
+def get_movimientos_producto(db: Session, id_dependencia: int, id_producto: int, fecha_inicio, fecha_fin):
+    dependencia = db.query(Dependencia).filter(Dependencia.id_dependencia == id_dependencia).first()
+    dependencia_info = {'nombre': dependencia.nombre, 'direccion': dependencia.direccion} if dependencia else {}
+
+    producto = db.query(Productos).filter(Productos.id_producto == id_producto).first()
+    producto_info = {'codigo': producto.codigo, 'nombre': producto.nombre} if producto else {}
+
+    results = db.query(
+        Movimiento.fecha,
+        TipoMovimiento.tipo.label('operacion'),
+        func.case(
+            (TipoMovimiento.factor > 0, 'Entrada'),
+            (TipoMovimiento.factor < 0, 'Salida'),
+            else_='Neutro'
+        ).label('tipo'),
+        Movimiento.cantidad
+    ).join(
+        TipoMovimiento, Movimiento.id_tipo_movimiento == TipoMovimiento.id_tipo_movimiento
+    ).filter(
+        Movimiento.id_dependencia == id_dependencia,
+        Movimiento.id_producto == id_producto,
+        Movimiento.fecha >= fecha_inicio,
+        Movimiento.fecha <= fecha_fin
+    ).order_by(Movimiento.fecha.desc()).all()
+
+    movimientos = [
+        {
+            'fecha': r.fecha,
+            'operacion': r.operacion,
+            'tipo': r.tipo,
+            'cantidad': r.cantidad
+        } for r in results
+    ]
+
+    return movimientos, dependencia_info, producto_info

@@ -200,7 +200,7 @@ export function RegisterPage() {
 
         {/* Register Card */}
         <div className="border border-gray-200 rounded-2xl shadow-lg">
-          <div className="p-8">
+          <div className="p-4">
             <h2 className="text-xl font-semibold text-gray-900 mb-6 text-center">
               Crear Cuenta
             </h2>
@@ -218,7 +218,7 @@ export function RegisterPage() {
                       value={baseDatos}
                       onChange={(e) => handleBaseDatosChange(e.target.value)}
                       disabled={loadingConexiones}
-                      className={`w-full pl-10 pr-10 py-3 border-2 rounded-xl focus:ring-2 focus:border-transparent bg-white transition-colors ${getSelectBorderClass()}`}
+                      className={`w-full pl-10 pr-10 py-3 border-2 rounded-md focus:ring-2 focus:border-transparent bg-white transition-colors ${getSelectBorderClass()}`}
                     >
                       <option value="">
                         {loadingConexiones ? 'Cargando...' : 'Seleccione una base de datos'}
@@ -259,7 +259,7 @@ export function RegisterPage() {
                       value={idDependencia}
                       onChange={(e) => setIdDependencia(e.target.value)}
                       disabled={!baseDatos || conexionStatus !== 'connected' || loadingDependencias}
-                      className="w-full pl-10 pr-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-transparent bg-white transition-colors disabled:bg-gray-100"
+                      className="w-full pl-10 pr-4 py-3 border-2 border-gray-300 rounded-md focus:ring-2 focus:ring-amber-500 focus:border-transparent bg-white transition-colors disabled:bg-slate-50"
                     >
                       <option value="">
                         {loadingDependencias

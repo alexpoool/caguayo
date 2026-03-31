@@ -125,7 +125,7 @@ export function ProductosEnLiquidacionPage() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div className="flex items-center gap-4">
-          <div className="p-3 bg-gradient-to-br from-red-500 to-rose-600 rounded-xl shadow-lg animate-bounce-subtle">
+          <div className="p-3 bg-gradient-to-br from-red-500 to-rose-600 rounded-md shadow-lg animate-bounce-subtle">
             <ClipboardList className="h-8 w-8 text-white" />
           </div>
           <div>
@@ -238,7 +238,7 @@ export function ProductosEnLiquidacionPage() {
                       ${Number(item.producto?.precio_venta || 0).toFixed(2)}
                     </TableCell>
                     <TableCell>
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-50 text-gray-800">
                         {getTipoLabel(item.tipo_compra)}
                       </span>
                     </TableCell>
@@ -377,7 +377,7 @@ export function ProductosEnLiquidacionPage() {
             <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-red-50 to-rose-50">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
-                  <div className="p-3 rounded-xl bg-gradient-to-br from-red-500 to-rose-600 text-white shadow-lg">
+                  <div className="p-3 rounded-md bg-gradient-to-br from-red-500 to-rose-600 text-white shadow-lg">
                     <ClipboardList className="h-7 w-7" />
                   </div>
                   <div>
@@ -392,36 +392,36 @@ export function ProductosEnLiquidacionPage() {
             </div>
             <div className="p-6 space-y-4">
               <div className="grid grid-cols-2 gap-4">
-                <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-4 rounded-xl border border-green-100">
+                <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-4 rounded-md border border-green-100">
                   <p className="text-xs text-green-600 uppercase tracking-wider mb-1">Precio de Compra</p>
                   <p className="font-bold text-green-900 text-xl">${Number(detailModal.item.precio).toFixed(2)}</p>
                 </div>
-                <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-4 rounded-xl border border-blue-100">
+                <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-4 rounded-md border border-blue-100">
                   <p className="text-xs text-blue-600 uppercase tracking-wider mb-1">Precio de Venta</p>
                   <p className="font-bold text-blue-900 text-xl">${Number(detailModal.item.producto?.precio_venta || 0).toFixed(2)}</p>
                 </div>
-                <div className="bg-gradient-to-br from-orange-50 to-amber-50 p-4 rounded-xl border border-orange-100">
+                <div className="bg-gradient-to-br from-orange-50 to-amber-50 p-4 rounded-md border border-orange-100">
                   <p className="text-xs text-orange-600 uppercase tracking-wider mb-1">Cantidad</p>
                   <p className="font-bold text-orange-900 text-xl">{detailModal.item.cantidad}</p>
                 </div>
-                <div className="bg-gray-50 p-4 rounded-xl">
+                <div className="bg-gray-50 p-4 rounded-md">
                   <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Tipo Compra</p>
                   <p className="font-bold text-gray-900">{getTipoLabel(detailModal.item.tipo_compra)}</p>
                 </div>
-                <div className="bg-gradient-to-br from-purple-50 to-pink-50 p-4 rounded-xl border border-purple-100">
+                <div className="bg-gradient-to-br from-purple-50 to-pink-50 p-4 rounded-md border border-purple-100">
                   <p className="text-xs text-purple-600 uppercase tracking-wider mb-1">Fecha</p>
                   <p className="font-bold text-gray-900">{new Date(detailModal.item.fecha).toLocaleDateString()}</p>
                 </div>
-                <div className="bg-gray-50 p-4 rounded-xl">
+                <div className="bg-gray-50 p-4 rounded-md">
                   <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Moneda</p>
                   <p className="font-bold text-gray-900">{detailModal.item.moneda?.nombre || 'N/A'}</p>
                 </div>
               </div>
-              <div className="bg-gradient-to-br from-indigo-50 to-violet-50 p-4 rounded-xl border border-indigo-100">
+              <div className="bg-gradient-to-br from-indigo-50 to-violet-50 p-4 rounded-md border border-indigo-100">
                 <p className="text-xs text-indigo-600 uppercase tracking-wider mb-1">Total (Precio Venta × Cantidad)</p>
                 <p className="font-bold text-indigo-900 text-2xl">${Number((detailModal.item.producto?.precio_venta || 0) * detailModal.item.cantidad).toFixed(2)}</p>
               </div>
-              <div className="bg-gray-50 p-4 rounded-xl">
+              <div className="bg-gray-50 p-4 rounded-md">
                 <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Estado</p>
                 <span className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium ${detailModal.item.liquidada ? 'bg-green-100 text-green-800' : 'bg-amber-100 text-amber-800'}`}>
                   {detailModal.item.liquidada ? 'Liquidada' : 'Pendiente'}
@@ -429,7 +429,7 @@ export function ProductosEnLiquidacionPage() {
               </div>
             </div>
             <div className="p-6 border-t border-gray-200 bg-gray-50 flex justify-end">
-              <button onClick={() => setDetailModal({ isOpen: false, item: null })} className="px-6 py-3 text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors font-medium">Cerrar</button>
+              <button onClick={() => setDetailModal({ isOpen: false, item: null })} className="px-6 py-3 text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors font-medium">Cerrar</button>
             </div>
           </div>
         </div>,

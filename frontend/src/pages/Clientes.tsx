@@ -452,7 +452,7 @@ export function ClientesPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <div className="p-3 bg-gradient-to-br from-teal-500 to-cyan-600 rounded-xl shadow-lg animate-bounce-subtle">
+          <div className="p-3 bg-gradient-to-br from-teal-500 to-cyan-600 rounded-md shadow-lg animate-bounce-subtle">
             <User className="h-8 w-8 text-white" />
           </div>
           <div>
@@ -580,7 +580,7 @@ export function ClientesPage() {
                   value={formData.id_municipio || ''}
                   onChange={(e) => setFormData({ ...formData, id_municipio: e.target.value ? parseInt(e.target.value) : undefined })}
                   disabled={!formData.id_provincia}
-                  className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white disabled:bg-gray-100 disabled:cursor-not-allowed"
+                  className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white disabled:bg-slate-50 disabled:cursor-not-allowed"
                 >
                   <option value="">
                     {formData.id_provincia ? 'Seleccione municipio' : 'Primero seleccione provincia'}
@@ -947,7 +947,7 @@ export function ClientesPage() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div className="flex items-center gap-4">
-          <div className="p-3 bg-gradient-to-br from-teal-500 to-cyan-600 rounded-xl shadow-lg animate-bounce-subtle">
+          <div className="p-3 bg-gradient-to-br from-teal-500 to-cyan-600 rounded-md shadow-lg animate-bounce-subtle">
             <User className="h-8 w-8 text-white" />
           </div>
           <div>
@@ -1091,7 +1091,7 @@ export function ClientesPage() {
             <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-teal-50 to-cyan-50">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
-                  <div className="p-3 rounded-xl bg-gradient-to-br from-teal-500 to-cyan-600 text-white shadow-lg">
+                  <div className="p-3 rounded-md bg-gradient-to-br from-teal-500 to-cyan-600 text-white shadow-lg">
                     <User className="h-7 w-7" />
                   </div>
                   <div>
@@ -1106,29 +1106,29 @@ export function ClientesPage() {
             </div>
             <div className="p-6 space-y-4">
               <div className="grid grid-cols-2 gap-4">
-                <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-4 rounded-xl border border-blue-100">
+                <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-4 rounded-md border border-blue-100">
                   <p className="text-xs text-blue-600 uppercase tracking-wider mb-1">Cédula/RIF</p>
                   <p className="font-bold text-gray-900">{detailModal.cliente.cedula_rif || '-'}</p>
                 </div>
-                <div className="bg-gradient-to-br from-purple-50 to-pink-50 p-4 rounded-xl border border-purple-100">
+                <div className="bg-gradient-to-br from-purple-50 to-pink-50 p-4 rounded-md border border-purple-100">
                   <p className="text-xs text-purple-600 uppercase tracking-wider mb-1">Tipo Persona</p>
                   <p className="font-bold text-gray-900">{detailModal.cliente.tipo_persona || 'NATURAL'}</p>
                 </div>
-                <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-4 rounded-xl border border-green-100">
+                <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-4 rounded-md border border-green-100">
                   <p className="text-xs text-green-600 uppercase tracking-wider mb-1">Teléfono</p>
                   <p className="font-bold text-gray-900">{detailModal.cliente.telefono || '-'}</p>
                 </div>
-                <div className="bg-gradient-to-br from-orange-50 to-amber-50 p-4 rounded-xl border border-orange-100">
+                <div className="bg-gradient-to-br from-orange-50 to-amber-50 p-4 rounded-md border border-orange-100">
                   <p className="text-xs text-orange-600 uppercase tracking-wider mb-1">Email</p>
                   <p className="font-bold text-gray-900 text-sm break-all">{detailModal.cliente.email || '-'}</p>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
-                <div className="bg-gray-50 p-4 rounded-xl">
+                <div className="bg-gray-50 p-4 rounded-md">
                   <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Tipo Relación</p>
                   <p className="font-bold text-gray-900">{detailModal.cliente.tipo_relacion || '-'}</p>
                 </div>
-                <div className="bg-gray-50 p-4 rounded-xl">
+                <div className="bg-gray-50 p-4 rounded-md">
                   <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Estado</p>
                   <span className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium ${detailModal.cliente.estado === 'ACTIVO' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
                     {detailModal.cliente.estado || 'ACTIVO'}
@@ -1136,14 +1136,14 @@ export function ClientesPage() {
                 </div>
               </div>
               {detailModal.cliente.direccion && (
-                <div className="bg-gray-50 p-4 rounded-xl">
+                <div className="bg-gray-50 p-4 rounded-md">
                   <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Dirección</p>
                   <p className="text-gray-700">{detailModal.cliente.direccion}</p>
                 </div>
               )}
             </div>
             <div className="p-6 border-t border-gray-200 bg-gray-50 flex justify-end">
-              <button onClick={() => setDetailModal({ isOpen: false, cliente: null })} className="px-6 py-3 text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors font-medium">Cerrar</button>
+              <button onClick={() => setDetailModal({ isOpen: false, cliente: null })} className="px-6 py-3 text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors font-medium">Cerrar</button>
             </div>
           </div>
         </div>,

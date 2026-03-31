@@ -5,9 +5,9 @@ export function HomePage() {
   const { user, baseDatos } = useAuth();
 
   return (
-    <div className="h-full w-full grid grid-cols-[1fr_2fr_1fr] gap-6 p-4">
+    <div className="h-full w-full grid grid-cols-[1fr_2fr_1fr] gap-4 p-4">
       {/* Columna izquierda - Info del usuario */}
-      <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+      <div className="bg-white rounded-md shadow-sm overflow-hidden">
         <div className="p-4 flex items-center gap-3 border-b border-gray-100">
           <div className="w-10 h-10 bg-blue-50 rounded-full flex items-center justify-center">
             <User className="h-5 w-5 text-blue-600" />
@@ -73,7 +73,7 @@ export function HomePage() {
       </div>
 
       {/* Columna derecha - Info de la empresa */}
-      <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+      <div className="bg-white rounded-md shadow-sm overflow-hidden">
         <div className="p-4 flex items-center gap-3 border-b border-gray-100">
           <div className="w-10 h-10 bg-blue-50 rounded-full flex items-center justify-center">
             <Building2 className="h-5 w-5 text-blue-600" />

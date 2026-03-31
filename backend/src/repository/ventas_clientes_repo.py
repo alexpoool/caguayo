@@ -8,7 +8,7 @@ from src.repository.base import CRUDBase
 from src.dto import VentaCreate, VentaUpdate
 
 
-class ClienteRepository(CRUDBase[Cliente, "ClienteCreate", "ClienteUpdate"]):
+class VentasClienteRepository(CRUDBase[Cliente, "ClienteCreate", "ClienteUpdate"]):
     async def has_ventas(self, db: AsyncSession, id: int) -> bool:
         statement = select(Ventas).where(Ventas.id_cliente == id).limit(1)
         results = await db.exec(statement)
@@ -96,6 +96,6 @@ class DetalleVentaRepository(
 
 
 # Instancias
-cliente_repo = ClienteRepository(Cliente)
+ventas_cliente_repo = VentasClienteRepository(Cliente)
 ventas_repo = VentasRepository(Ventas)
 detalle_venta_repo = DetalleVentaRepository(DetalleVenta)

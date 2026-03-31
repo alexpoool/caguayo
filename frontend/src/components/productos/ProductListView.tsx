@@ -143,7 +143,7 @@ export function ProductListView({
                       ${producto.precio_minimo.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                     </TableCell>
                     <TableCell>
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-50 text-gray-800">
                         {producto.subcategoria?.nombre || `ID: ${producto.id_subcategoria}`}
                       </span>
                     </TableCell>
@@ -181,7 +181,7 @@ export function ProductListView({
         </div>
         {/* Elemento para scroll infinito */}
         {loadMoreRef && (
-          <div ref={loadMoreRef} className="flex justify-center py-4">
+          <div ref={loadMoreRef} className="flex justify-center py-2">
             {isFetchingMore && (
               <div className="flex items-center gap-2 text-gray-500">
                 <Loader2 className="h-5 w-5 animate-spin" />

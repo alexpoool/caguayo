@@ -188,7 +188,7 @@ export function FacturasPage() {
         </div>
         {selectedProducts.length > 0 && (
           <div className="space-y-2">
-            <div className="flex items-center gap-2 p-2 bg-gray-100 rounded font-semibold text-sm">
+            <div className="flex items-center gap-2 p-2 bg-slate-50 rounded font-semibold text-sm">
               <span className="flex-1">Producto</span>
               <span className="w-20 text-center">Cantidad</span>
               <span className="w-24 text-center">Precio</span>
@@ -217,7 +217,7 @@ export function FacturasPage() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div className="flex items-center gap-4">
-          <div className="p-3 bg-gradient-to-br from-violet-500 to-purple-600 rounded-xl shadow-lg animate-bounce-subtle">
+          <div className="p-3 bg-gradient-to-br from-violet-500 to-purple-600 rounded-md shadow-lg animate-bounce-subtle">
             <Receipt className="h-8 w-8 text-white" />
           </div>
           <div>
@@ -331,7 +331,7 @@ export function FacturasPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <div className="p-3 bg-gradient-to-br from-violet-500 to-purple-600 rounded-xl shadow-lg animate-bounce-subtle">
+          <div className="p-3 bg-gradient-to-br from-violet-500 to-purple-600 rounded-md shadow-lg animate-bounce-subtle">
             <Receipt className="h-8 w-8 text-white" />
           </div>
           <div>
@@ -353,7 +353,7 @@ export function FacturasPage() {
           </CardTitle>
         </CardHeader>
         <CardContent className="p-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <Label className="text-sm font-medium">Fecha</Label>
               <Input type="date" value={formData.fecha || ''} onChange={(e: any) => setFormData({...formData, fecha: e.target.value})} className="mt-1" />
@@ -415,7 +415,7 @@ export function FacturasPage() {
             <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-violet-50 to-purple-50">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
-                  <div className="p-3 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 text-white shadow-lg">
+                  <div className="p-3 rounded-md bg-gradient-to-br from-violet-500 to-purple-600 text-white shadow-lg">
                     <Receipt className="h-7 w-7" />
                   </div>
                   <div>
@@ -430,34 +430,34 @@ export function FacturasPage() {
             </div>
             <div className="p-6 space-y-4">
               <div className="grid grid-cols-2 gap-4">
-                <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-4 rounded-xl border border-green-100">
+                <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-4 rounded-md border border-green-100">
                   <p className="text-xs text-green-600 uppercase tracking-wider mb-1">Monto</p>
                   <p className="font-bold text-green-900 text-xl">${Number(detailModal.item.monto).toFixed(2)}</p>
                 </div>
-                <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-4 rounded-xl border border-blue-100">
+                <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-4 rounded-md border border-blue-100">
                   <p className="text-xs text-blue-600 uppercase tracking-wider mb-1">Pago Actual</p>
                   <p className="font-bold text-blue-900 text-xl">${Number(detailModal.item.pago_actual).toFixed(2)}</p>
                 </div>
-                <div className="bg-gradient-to-br from-purple-50 to-pink-50 p-4 rounded-xl border border-purple-100">
+                <div className="bg-gradient-to-br from-purple-50 to-pink-50 p-4 rounded-md border border-purple-100">
                   <p className="text-xs text-purple-600 uppercase tracking-wider mb-1">Fecha</p>
                   <p className="font-bold text-gray-900">{detailModal.item.fecha || 'N/A'}</p>
                 </div>
               </div>
               {detailModal.item.descripcion && (
-                <div className="bg-gray-50 p-4 rounded-xl">
+                <div className="bg-gray-50 p-4 rounded-md">
                   <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Descripción</p>
                   <p className="text-gray-700">{detailModal.item.descripcion}</p>
                 </div>
               )}
               {detailModal.item.observaciones && (
-                <div className="bg-gray-50 p-4 rounded-xl">
+                <div className="bg-gray-50 p-4 rounded-md">
                   <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Observaciones</p>
                   <p className="text-gray-700">{detailModal.item.observaciones}</p>
                 </div>
               )}
             </div>
             <div className="p-6 border-t border-gray-200 bg-gray-50 flex justify-end">
-              <button onClick={() => setDetailModal({ isOpen: false, item: null })} className="px-6 py-3 text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors font-medium">Cerrar</button>
+              <button onClick={() => setDetailModal({ isOpen: false, item: null })} className="px-6 py-3 text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors font-medium">Cerrar</button>
             </div>
           </div>
         </div>,

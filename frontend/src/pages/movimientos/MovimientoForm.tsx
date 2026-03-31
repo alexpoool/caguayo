@@ -245,7 +245,7 @@ function SearchableSelect<T extends Record<string, any>>({
         <div
           className={`flex items-center border rounded-lg transition-all duration-200 ${
             disabled
-              ? 'bg-gray-100 cursor-not-allowed border-gray-200'
+              ? 'bg-slate-50 cursor-not-allowed border-gray-200'
               : 'bg-white border-gray-300 hover:border-gray-400 focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500'
           }`}
           onClick={handleInputClick}
@@ -548,7 +548,7 @@ export function MovimientoRecepcionForm({
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <div className={`p-3 rounded-xl bg-gradient-to-br ${config.gradient} text-white shadow-lg animate-bounce-subtle`}>
+          <div className={`p-3 rounded-md bg-gradient-to-br ${config.gradient} text-white shadow-lg animate-bounce-subtle`}>
             <Icon className="h-8 w-8" />
           </div>
           <div>
@@ -573,7 +573,7 @@ export function MovimientoRecepcionForm({
               </CardTitle>
             </CardHeader>
             <CardContent className="p-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <SearchableSelect
                     label="Producto"
@@ -637,7 +637,7 @@ export function MovimientoRecepcionForm({
               </CardTitle>
             </CardHeader>
             <CardContent className="p-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <Label className="text-sm font-medium">Fecha *</Label>
                   <Input
@@ -668,7 +668,7 @@ export function MovimientoRecepcionForm({
                   <div className={`mt-1 px-4 py-3 rounded-lg border-2 flex items-center gap-2 ${
                     codigoGenerado
                       ? 'bg-gradient-to-r from-green-50 to-emerald-50 border-green-300 text-green-800 font-mono font-bold shadow-sm'
-                      : 'bg-gray-100 border-gray-200 text-gray-400'
+                      : 'bg-slate-50 border-gray-200 text-gray-400'
                   }`}>
                     {codigoGenerado ? (
                       <>
@@ -697,7 +697,7 @@ export function MovimientoRecepcionForm({
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <Label className="text-sm font-medium">Precio de Compra *</Label>
                     <div className="flex gap-2 mt-1">

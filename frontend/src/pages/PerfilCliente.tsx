@@ -71,7 +71,7 @@ export function PerfilClientePage() {
       COMPLETADA: 'bg-green-100 text-green-800',
       ANULADA: 'bg-red-100 text-red-800'
     };
-    return styles[estado as keyof typeof styles] || 'bg-gray-100 text-gray-800';
+    return styles[estado as keyof typeof styles] || 'bg-slate-50 text-gray-800';
   };
 
   return (
@@ -89,7 +89,7 @@ export function PerfilClientePage() {
       </div>
 
       {/* Info General y Estadísticas */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Información del Cliente */}
         <Card>
           <CardHeader className="pb-4">

@@ -203,7 +203,7 @@ export function CrearLiquidacionPage() {
           <CardTitle>Nueva Liquidación</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-6 md:grid-cols-2">
+          <div className="grid gap-4 md:grid-cols-2">
             <div>
               <Label>Proveedor *</Label>
               <select 
@@ -291,9 +291,9 @@ export function CrearLiquidacionPage() {
               </div>
               
               {isLoadingProductos ? (
-                <p className="text-gray-500 py-4">Cargando productos...</p>
+                <p className="text-gray-500 py-2">Cargando productos...</p>
               ) : itemsAnexo.length === 0 ? (
-                <p className="text-gray-500 py-4">No hay productos en los anexos de este proveedor</p>
+                <p className="text-gray-500 py-2">No hay productos en los anexos de este proveedor</p>
               ) : (
                 <div className="border rounded-lg max-h-80 overflow-y-auto">
                   <table className="w-full text-sm">
@@ -338,7 +338,7 @@ export function CrearLiquidacionPage() {
                               <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${
                                 isLiquidado ? 'bg-green-100 text-green-800' :
                                 isVendido ? 'bg-blue-100 text-blue-800' :
-                                'bg-gray-100 text-gray-600'
+                                'bg-slate-50 text-gray-600'
                               }`}>
                                 {item.estado}
                               </span>

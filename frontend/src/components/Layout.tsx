@@ -29,7 +29,7 @@ export function Sidebar({ children }: { children: React.ReactNode }) {
 
 export function Header({ children }: { children: React.ReactNode }) {
   return (
-    <header className="bg-white shadow-sm border-b border-gray-200 px-6 py-4">
+    <header className="bg-white shadow-sm border-b border-gray-200 px-6 py-2">
       <div className="flex items-center justify-between">
         {children}
       </div>

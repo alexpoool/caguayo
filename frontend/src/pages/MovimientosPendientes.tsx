@@ -314,7 +314,7 @@ export function MovimientosPendientesPage() {
           impactoIcon: Package,
           impactoColor: 'text-gray-600',
           descripcion: '',
-          badgeBg: 'bg-gray-100',
+          badgeBg: 'bg-slate-50',
           buttonBg: 'hover:bg-gray-50',
         };
     }
@@ -327,7 +327,7 @@ export function MovimientosPendientesPage() {
           {/* Header */}
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-4">
-              <div className="p-3 bg-gradient-to-br from-amber-500 to-orange-600 rounded-xl shadow-lg animate-bounce-subtle">
+              <div className="p-3 bg-gradient-to-br from-amber-500 to-orange-600 rounded-md shadow-lg animate-bounce-subtle">
                 <Clock className="h-8 w-8 text-white" />
               </div>
               <div>
@@ -537,16 +537,16 @@ export function MovimientosPendientesPage() {
             </p>
 
             <div className="space-y-3 mb-6">
-              <div className="bg-gray-50 p-4 rounded-xl">
+              <div className="bg-gray-50 p-4 rounded-md">
                 <p className="text-xs text-gray-500 uppercase tracking-wider">Producto</p>
                 <p className="font-bold text-gray-900">{stockErrorModal.productoNombre}</p>
               </div>
               <div className="grid grid-cols-2 gap-3">
-                <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-4 rounded-xl border border-green-200">
+                <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-4 rounded-md border border-green-200">
                   <p className="text-xs text-green-600 uppercase tracking-wider">Stock Disponible</p>
                   <p className="font-bold text-green-900 text-2xl">{stockErrorModal.stockDisponible}</p>
                 </div>
-                <div className="bg-gradient-to-br from-red-50 to-rose-50 p-4 rounded-xl border border-red-200">
+                <div className="bg-gradient-to-br from-red-50 to-rose-50 p-4 rounded-md border border-red-200">
                   <p className="text-xs text-red-600 uppercase tracking-wider">Cantidad Solicitada</p>
                   <p className="font-bold text-red-900 text-2xl">{stockErrorModal.cantidadSolicitada}</p>
                 </div>
@@ -556,7 +556,7 @@ export function MovimientosPendientesPage() {
             <div className="flex gap-3">
               <button
                 onClick={() => setStockErrorModal({ ...stockErrorModal, isOpen: false })}
-                className="flex-1 px-4 py-3 text-gray-700 bg-gray-100 rounded-xl hover:bg-gray-200 transition-colors font-medium"
+                className="flex-1 px-4 py-3 text-gray-700 bg-slate-50 rounded-md hover:bg-gray-200 transition-colors font-medium"
               >
                 Cerrar
               </button>
@@ -568,7 +568,7 @@ export function MovimientosPendientesPage() {
                   setStockErrorModal({ ...stockErrorModal, isOpen: false });
                 }}
                 disabled={eliminarMutation.isPending}
-                className="flex-1 px-4 py-3 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-xl hover:from-red-600 hover:to-red-700 transition-all font-medium flex items-center justify-center gap-2 disabled:opacity-50 shadow-lg"
+                className="flex-1 px-4 py-3 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-md hover:from-red-600 hover:to-red-700 transition-all font-medium flex items-center justify-center gap-2 disabled:opacity-50 shadow-lg"
               >
                 <Trash2 className="h-4 w-4" />
                 Eliminar Movimiento
@@ -594,7 +594,7 @@ export function MovimientosPendientesPage() {
                 <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-white">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
-                      <div className={`p-3 rounded-xl bg-gradient-to-br ${config.gradient} text-white shadow-lg`}>
+                      <div className={`p-3 rounded-md bg-gradient-to-br ${config.gradient} text-white shadow-lg`}>
                         <Icon className="h-7 w-7" />
                       </div>
                       <div>
@@ -623,21 +623,21 @@ export function MovimientosPendientesPage() {
 
                 <div className="p-6 space-y-6">
                   <div className="grid grid-cols-2 gap-4">
-                    <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-4 rounded-xl border border-blue-100">
+                    <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-4 rounded-md border border-blue-100">
                       <p className="flex items-center gap-2 text-xs text-blue-600 uppercase tracking-wider mb-1">
                         <Package className="h-3 w-3" />
                         Producto
                       </p>
                       <p className="font-bold text-gray-900">{detailModal.movimiento?.producto?.nombre || 'N/A'}</p>
                     </div>
-                    <div className="bg-gradient-to-br from-orange-50 to-amber-50 p-4 rounded-xl border border-orange-100">
+                    <div className="bg-gradient-to-br from-orange-50 to-amber-50 p-4 rounded-md border border-orange-100">
                       <p className="flex items-center gap-2 text-xs text-orange-600 uppercase tracking-wider mb-1">
                         <Hash className="h-3 w-3" />
                         Cantidad
                       </p>
                       <p className="font-bold text-gray-900 text-lg">{detailModal.movimiento?.cantidad}</p>
                     </div>
-                    <div className="bg-gradient-to-br from-purple-50 to-pink-50 p-4 rounded-xl border border-purple-100">
+                    <div className="bg-gradient-to-br from-purple-50 to-pink-50 p-4 rounded-md border border-purple-100">
                       <p className="flex items-center gap-2 text-xs text-purple-600 uppercase tracking-wider mb-1">
                         <Calendar className="h-3 w-3" />
                         Fecha
@@ -652,7 +652,7 @@ export function MovimientosPendientesPage() {
                         })}
                       </p>
                     </div>
-                    <div className="bg-gradient-to-br from-red-50 to-rose-50 p-4 rounded-xl border border-red-100">
+                    <div className="bg-gradient-to-br from-red-50 to-rose-50 p-4 rounded-md border border-red-100">
                       <p className="flex items-center gap-2 text-xs text-red-600 uppercase tracking-wider mb-1">
                         <MapPin className="h-3 w-3" />
                         Dependencia
@@ -670,21 +670,21 @@ export function MovimientosPendientesPage() {
                         Información del Proveedor
                       </h4>
                       <div className="grid grid-cols-2 gap-4">
-                        <div className="bg-gray-50 p-4 rounded-xl">
+                        <div className="bg-gray-50 p-4 rounded-md">
                           <p className="flex items-center gap-2 text-xs text-gray-500 uppercase tracking-wider mb-1">
                             <Building className="h-3 w-3" />
                             Proveedor
                           </p>
                           <p className="font-bold text-gray-900">{detailModal.movimiento?.provedor?.nombre || 'N/A'}</p>
                         </div>
-                        <div className="bg-gray-50 p-4 rounded-xl">
+                        <div className="bg-gray-50 p-4 rounded-md">
                           <p className="flex items-center gap-2 text-xs text-gray-500 uppercase tracking-wider mb-1">
                             <FileText className="h-3 w-3" />
                             Convenio
                           </p>
                           <p className="font-bold text-gray-900">{detailModal.movimiento?.convenio?.nombre_convenio || 'N/A'}</p>
                         </div>
-                        <div className="bg-gray-50 p-4 rounded-xl">
+                        <div className="bg-gray-50 p-4 rounded-md">
                           <p className="flex items-center gap-2 text-xs text-gray-500 uppercase tracking-wider mb-1">
                             <ClipboardList className="h-3 w-3" />
                             Anexo
@@ -695,7 +695,7 @@ export function MovimientosPendientesPage() {
                               : 'N/A'}
                           </p>
                         </div>
-                        <div className="bg-gray-50 p-4 rounded-xl">
+                        <div className="bg-gray-50 p-4 rounded-md">
                           <p className="flex items-center gap-2 text-xs text-gray-500 uppercase tracking-wider mb-1">
                             <Hash className="h-3 w-3" />
                             Código
@@ -705,7 +705,7 @@ export function MovimientosPendientesPage() {
                       </div>
 
                       <div className="grid grid-cols-2 gap-4 mt-4">
-                        <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-4 rounded-xl border border-blue-200">
+                        <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-4 rounded-md border border-blue-200">
                           <p className="flex items-center gap-2 text-xs text-blue-600 uppercase tracking-wider mb-1">
                             <TrendingDown className="h-3 w-3" />
                             Precio de Compra
@@ -716,7 +716,7 @@ export function MovimientosPendientesPage() {
                               : 'N/A'}
                           </p>
                         </div>
-                        <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-4 rounded-xl border border-green-200">
+                        <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-4 rounded-md border border-green-200">
                           <p className="flex items-center gap-2 text-xs text-green-600 uppercase tracking-wider mb-1">
                             <TrendingUp className="h-3 w-3" />
                             Precio de Venta
@@ -737,7 +737,7 @@ export function MovimientosPendientesPage() {
                         <ClipboardList className="h-4 w-4 text-gray-500" />
                         Observación
                       </h4>
-                      <p className="text-gray-700 bg-gray-50 p-4 rounded-xl border border-gray-200">
+                      <p className="text-gray-700 bg-gray-50 p-4 rounded-md border border-gray-200">
                         {detailModal.movimiento.observacion}
                       </p>
                     </div>
@@ -747,7 +747,7 @@ export function MovimientosPendientesPage() {
                 <div className="p-6 border-t border-gray-200 bg-gray-50 flex justify-end gap-3">
                   <button
                     onClick={() => setDetailModal({ isOpen: false, movimiento: null })}
-                    className="px-6 py-3 text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors font-medium"
+                    className="px-6 py-3 text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors font-medium"
                   >
                     Cerrar
                   </button>
@@ -757,7 +757,7 @@ export function MovimientosPendientesPage() {
                       setDetailModal({ isOpen: false, movimiento: null });
                     }}
                     disabled={confirmarMutation.isPending}
-                    className="px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl hover:from-green-600 hover:to-emerald-700 transition-all disabled:opacity-50 flex items-center gap-2 shadow-lg font-bold"
+                    className="px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-md hover:from-green-600 hover:to-emerald-700 transition-all disabled:opacity-50 flex items-center gap-2 shadow-lg font-bold"
                   >
                     <CheckCircle className="h-5 w-5" />
                     Confirmar

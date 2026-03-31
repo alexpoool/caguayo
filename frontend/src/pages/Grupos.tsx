@@ -154,7 +154,7 @@ export function GruposPage() {
               Cancelar
             </Button>
             <div className="flex items-center gap-3">
-              <div className="p-3 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl shadow-lg">
+              <div className="p-3 bg-gradient-to-br from-purple-500 to-purple-600 rounded-md shadow-lg">
                 <Shield className="h-8 w-8 text-white" />
               </div>
               <div>
@@ -268,7 +268,7 @@ export function GruposPage() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div className="flex items-center gap-4">
-          <div className="p-3 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl shadow-lg animate-bounce-subtle">
+          <div className="p-3 bg-gradient-to-br from-purple-500 to-purple-600 rounded-md shadow-lg animate-bounce-subtle">
             <Shield className="h-8 w-8 text-white" />
           </div>
           <div>

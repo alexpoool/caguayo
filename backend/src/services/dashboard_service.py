@@ -4,7 +4,7 @@ from typing import List
 from sqlmodel import select, func
 from sqlmodel.ext.asyncio.session import AsyncSession
 from src.repository import productos_repo, categorias_repo, moneda_repo
-from src.repository.ventas_clientes_repo import ventas_repo, cliente_repo
+from src.repository.ventas_clientes_repo import ventas_repo, ventas_cliente_repo
 from src.dto import (
     ProductosRead,
     DashboardStats,
@@ -60,7 +60,7 @@ class DashboardService:
         ventas = await ventas_repo.get_all(db)
         total_ventas = len(ventas)
 
-        clientes = await cliente_repo.get_all(db)
+        clientes = await ventas_cliente_repo.get_all(db)
         total_clientes = len(clientes)
 
         categorias = await categorias_repo.get_all(db)
@@ -152,7 +152,7 @@ class DashboardService:
         ultimas_ventas = [VentaRead.model_validate(v) for v in ultimas_ventas_db]
 
         # Clientes recientes (últimos 5 registrados)
-        clientes_recientes_db = await cliente_repo.get_multi(db, skip=0, limit=5)
+        clientes_recientes_db = await ventas_cliente_repo.get_multi(db, skip=0, limit=5)
         clientes_recientes = [
             ClienteRead.model_validate(c) for c in clientes_recientes_db
         ]

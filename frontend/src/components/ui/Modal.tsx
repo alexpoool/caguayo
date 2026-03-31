@@ -22,7 +22,7 @@ export function Modal({ isOpen, onClose, children, className = '' }: ModalProps)
       <div className={`relative w-full max-w-lg bg-white rounded-2xl shadow-2xl animate-scale-in ${className}`}>
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 p-1 text-gray-400 hover:text-gray-600 transition-colors rounded-full hover:bg-gray-100"
+          className="absolute top-4 right-4 p-1 text-gray-400 hover:text-gray-600 transition-colors rounded-full hover:bg-slate-50"
         >
           <X className="h-5 w-5" />
         </button>

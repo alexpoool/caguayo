@@ -82,7 +82,7 @@ export function PerfilPage() {
         <div className="flex items-center gap-4 mb-8">
           <button
             onClick={() => navigate('/')}
-            className="p-2 rounded-xl bg-white shadow-sm hover:shadow-md transition-all hover:bg-gray-50 border border-gray-200"
+            className="p-2 rounded-md bg-white shadow-sm hover:shadow-md transition-all hover:bg-gray-50 border border-gray-200"
           >
             <ArrowLeft className="h-5 w-5 text-gray-600" />
           </button>
@@ -93,8 +93,8 @@ export function PerfilPage() {
         </div>
 
         {/* Avatar y info principal */}
-        <div className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl p-8 mb-6 text-white">
-          <div className="flex items-center gap-6">
+        <div className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl p-4 mb-6 text-white">
+          <div className="flex items-center gap-4">
             <div className="w-20 h-20 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm">
               <User className="h-10 w-10 text-white" />
             </div>
@@ -116,30 +116,30 @@ export function PerfilPage() {
           <Card className="border-0 shadow-lg">
             <CardHeader className="bg-white rounded-t-2xl border-b border-gray-100 pb-4">
               <CardTitle className="flex items-center gap-3 text-gray-800">
-                <div className="p-2 bg-blue-100 rounded-xl">
+                <div className="p-2 bg-blue-100 rounded-md">
                   <User className="h-5 w-5 text-blue-600" />
                 </div>
                 Información Personal
               </CardTitle>
             </CardHeader>
             <CardContent className="p-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="bg-gray-50 rounded-xl p-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="bg-gray-50 rounded-md p-4">
                   <p className="text-sm text-gray-500 mb-1">Carné de Identidad</p>
                   <p className="font-semibold text-gray-900 text-lg">{user.ci}</p>
                 </div>
-                <div className="bg-gray-50 rounded-xl p-4">
+                <div className="bg-gray-50 rounded-md p-4">
                   <p className="text-sm text-gray-500 mb-1">Grupo</p>
                   <p className="font-semibold text-gray-900 text-lg">{user.grupo?.nombre}</p>
                 </div>
-                <div className="bg-gray-50 rounded-xl p-4">
+                <div className="bg-gray-50 rounded-md p-4">
                   <p className="text-sm text-gray-500 mb-1">Dependencia</p>
                   <p className="font-semibold text-gray-900 text-lg flex items-center gap-2">
                     <Building2 className="h-4 w-4 text-blue-500" />
                     {user.dependencia?.nombre}
                   </p>
                 </div>
-                <div className="bg-gray-50 rounded-xl p-4">
+                <div className="bg-gray-50 rounded-md p-4">
                   <p className="text-sm text-gray-500 mb-1">Base de Datos</p>
                   <p className="font-semibold text-gray-900 text-lg flex items-center gap-2">
                     <Database className="h-4 w-4 text-green-500" />
@@ -154,7 +154,7 @@ export function PerfilPage() {
           <Card className="border-0 shadow-lg">
             <CardHeader className="bg-white rounded-t-2xl border-b border-gray-100 pb-4">
               <CardTitle className="flex items-center gap-3 text-gray-800">
-                <div className="p-2 bg-purple-100 rounded-xl">
+                <div className="p-2 bg-purple-100 rounded-md">
                   <Shield className="h-5 w-5 text-purple-600" />
                 </div>
                 Cambiar Alias
@@ -198,7 +198,7 @@ export function PerfilPage() {
           <Card className="border-0 shadow-lg">
             <CardHeader className="bg-white rounded-t-2xl border-b border-gray-100 pb-4">
               <CardTitle className="flex items-center gap-3 text-gray-800">
-                <div className="p-2 bg-red-100 rounded-xl">
+                <div className="p-2 bg-red-100 rounded-md">
                   <Lock className="h-5 w-5 text-red-600" />
                 </div>
                 Cambiar Contraseña

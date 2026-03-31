@@ -126,7 +126,7 @@ export function CompraConveniosPage() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div className="flex items-center gap-4">
-          <div className="p-3 bg-gradient-to-br from-sky-500 to-blue-600 rounded-xl shadow-lg animate-bounce-subtle">
+          <div className="p-3 bg-gradient-to-br from-sky-500 to-blue-600 rounded-md shadow-lg animate-bounce-subtle">
             <ScrollText className="h-8 w-8 text-white" />
           </div>
           <div>
@@ -322,7 +322,7 @@ export function CompraConveniosPage() {
             <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-sky-50 to-blue-50">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
-                  <div className="p-3 rounded-xl bg-gradient-to-br from-sky-500 to-blue-600 text-white shadow-lg">
+                  <div className="p-3 rounded-md bg-gradient-to-br from-sky-500 to-blue-600 text-white shadow-lg">
                     <ScrollText className="h-7 w-7" />
                   </div>
                   <div>
@@ -337,19 +337,19 @@ export function CompraConveniosPage() {
             </div>
             <div className="p-6 space-y-4">
               <div className="grid grid-cols-2 gap-4">
-                <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-4 rounded-xl border border-blue-100">
+                <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-4 rounded-md border border-blue-100">
                   <p className="text-xs text-blue-600 uppercase tracking-wider mb-1">Cliente</p>
                   <p className="font-bold text-gray-900">{getClienteNombre(detailModal.item.id_cliente)}</p>
                 </div>
-                <div className="bg-gray-50 p-4 rounded-xl">
+                <div className="bg-gray-50 p-4 rounded-md">
                   <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Tipo</p>
                   <p className="font-bold text-gray-900">{getTipoConvenioNombre(detailModal.item.id_tipo_convenio)}</p>
                 </div>
-                <div className="bg-gradient-to-br from-purple-50 to-pink-50 p-4 rounded-xl border border-purple-100">
+                <div className="bg-gradient-to-br from-purple-50 to-pink-50 p-4 rounded-md border border-purple-100">
                   <p className="text-xs text-purple-600 uppercase tracking-wider mb-1">Fecha</p>
                   <p className="font-bold text-gray-900">{detailModal.item.fecha || 'N/A'}</p>
                 </div>
-                <div className="bg-gradient-to-br from-orange-50 to-amber-50 p-4 rounded-xl border border-orange-100">
+                <div className="bg-gradient-to-br from-orange-50 to-amber-50 p-4 rounded-md border border-orange-100">
                   <p className="text-xs text-orange-600 uppercase tracking-wider mb-1">Vigencia</p>
                   <div>
                     <span className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium ${isVigente(detailModal.item.vigencia) ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
@@ -361,7 +361,7 @@ export function CompraConveniosPage() {
               </div>
             </div>
             <div className="p-6 border-t border-gray-200 bg-gray-50 flex justify-end">
-              <button onClick={() => setDetailModal({ isOpen: false, item: null })} className="px-6 py-3 text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors font-medium">Cerrar</button>
+              <button onClick={() => setDetailModal({ isOpen: false, item: null })} className="px-6 py-3 text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors font-medium">Cerrar</button>
             </div>
           </div>
         </div>,
