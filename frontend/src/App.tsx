@@ -498,13 +498,72 @@ function App() {
             >
               <Settings className="w-5 h-5 text-gray-700 group-hover:text-blue-600 transition-colors" />
             </Link>
-            <button
-              onClick={() => setShowAccountModal(true)}
-              className="p-2 rounded-lg hover:bg-slate-50 transition-all duration-300 ease-out hover:scale-110 active:scale-95 group"
-              title="Cuenta"
-            >
-              <UserCircle className="w-5 h-5 text-gray-700 group-hover:text-blue-600 transition-colors" />
-            </button>
+            <div className="relative group">
+              <button
+                onClick={() => setShowAccountModal(!showAccountModal)}
+                className="flex items-center gap-2 p-1 rounded-md hover:bg-slate-50 transition-colors focus:outline-none"
+                title="Cuenta"
+              >
+                <img
+                  src="/default.jpg"
+                  alt="avatar"
+                  className="w-8 h-8 rounded-full object-cover border border-slate-200"
+                />
+              </button>
+
+              {/* Dropdown Menu */}
+              {showAccountModal && (
+                <>
+                  {/* Invisible backdrop to close dropdown when clicking outside */}
+                  <div
+                    className="fixed inset-0 z-40"
+                    onClick={() => setShowAccountModal(false)}
+                  ></div>
+
+                  <div className="absolute right-0 mt-2 w-56 bg-white rounded-md shadow-lg border border-slate-200 z-50 animate-fade-in-up">
+                    <div className="p-3 border-b border-slate-100 flex items-center gap-3">
+                      <img
+                        src="/default.jpg"
+                        alt="avatar"
+                        className="w-10 h-10 rounded-full object-cover"
+                      />
+                      <div className="overflow-hidden">
+                        <div className="text-sm font-semibold truncate">
+                          {user
+                            ? `${user.nombre} ${user.primer_apellido}`
+                            : "Usuario"}
+                        </div>
+                        <div className="text-xs text-slate-500 truncate">
+                          {user?.alias || "Cuenta de usuario"}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="p-2">
+                      <button
+                        className="w-full text-left px-3 py-2 text-sm rounded-md text-slate-700 hover:bg-slate-50 transition-colors"
+                        onClick={() => {
+                          setShowAccountModal(false);
+                          setModuloActivo("administracion");
+                          navigate("/perfil");
+                        }}
+                      >
+                        Ver perfil
+                      </button>
+                      <button
+                        className="w-full text-left px-3 py-2 text-sm rounded-md text-red-600 hover:bg-red-50 transition-colors mt-1"
+                        onClick={() => {
+                          setShowAccountModal(false);
+                          setShowLogoutConfirm(true);
+                        }}
+                      >
+                        Salir del sistema
+                      </button>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
           </div>
 
           <div className="flex items-center gap-4">
@@ -534,420 +593,367 @@ function App() {
         <div
           className={`${isHomePage ? "col-start-1 col-end-3" : "col-start-2 col-end-3"} row-start-2 row-end-3 min-w-0 flex flex-col overflow-hidden`}
         >
-          <main className="flex-1 overflow-auto bg-slate-50 p-4"><div className="max-w-7xl mx-auto">
-            <div className="animate-fade-in-up animation-fill-both">
-              <Routes>
-                <Route path="/" element={<HomePage />} />
-                <Route
-                  path="/compra/clientes"
-                  element={
-                    <ProtectedRoute
-                      moduloActivo={moduloActivo}
-                      currentPath="/compra/clientes"
-                    >
-                      <ClientesPage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/movimientos/pendientes"
-                  element={
-                    <ProtectedRoute
-                      moduloActivo={moduloActivo}
-                      currentPath="/movimientos/pendientes"
-                    >
-                      <MovimientosPendientesPage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/productos"
-                  element={
-                    <ProtectedRoute
-                      moduloActivo={moduloActivo}
-                      currentPath="/productos"
-                    >
-                      <ProductosPage />
-                    </ProtectedRoute>
-                  }
-                />
+          <main className="flex-1 overflow-auto bg-slate-50 p-4">
+            <div className="max-w-7xl mx-auto">
+              <div className="animate-fade-in-up animation-fill-both">
+                <Routes>
+                  <Route path="/" element={<HomePage />} />
+                  <Route
+                    path="/compra/clientes"
+                    element={
+                      <ProtectedRoute
+                        moduloActivo={moduloActivo}
+                        currentPath="/compra/clientes"
+                      >
+                        <ClientesPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/movimientos/pendientes"
+                    element={
+                      <ProtectedRoute
+                        moduloActivo={moduloActivo}
+                        currentPath="/movimientos/pendientes"
+                      >
+                        <MovimientosPendientesPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/productos"
+                    element={
+                      <ProtectedRoute
+                        moduloActivo={moduloActivo}
+                        currentPath="/productos"
+                      >
+                        <ProductosPage />
+                      </ProtectedRoute>
+                    }
+                  />
 
-                {/* Rutas de Inventario - protegidas */}
-                <Route
-                  path="/inventario"
-                  element={
-                    <ProtectedRoute
-                      moduloActivo={moduloActivo}
-                      currentPath="/inventario"
-                    >
-                      <InventarioHome />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/movimientos/pendientes"
-                  element={
-                    <ProtectedRoute
-                      moduloActivo={moduloActivo}
-                      currentPath="/movimientos/pendientes"
-                    >
-                      <MovimientosPendientesPage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/movimientos/seleccionar-recepcion"
-                  element={
-                    <ProtectedRoute
-                      moduloActivo={moduloActivo}
-                      currentPath="/movimientos"
-                    >
-                      <RecepcionesPage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/movimientos/ajuste"
-                  element={
-                    <ProtectedRoute
-                      moduloActivo={moduloActivo}
-                      currentPath="/movimientos"
-                    >
-                      <MovimientoAjusteForm />
-                    </ProtectedRoute>
-                  }
-                />
-                {/* Rutas de Ventas - protegidas */}
-                <Route
-                  path="/venta"
-                  element={
-                    <ProtectedRoute
-                      moduloActivo={moduloActivo}
-                      currentPath="/venta"
-                    >
-                      <VentaHome />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/clientes"
-                  element={
-                    <ProtectedRoute
-                      moduloActivo={moduloActivo}
-                      currentPath="/clientes"
-                    >
-                      <ClientesPage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/clientes/:id"
-                  element={
-                    <ProtectedRoute
-                      moduloActivo={moduloActivo}
-                      currentPath="/clientes"
-                    >
-                      <PerfilClientePage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/ventas/operaciones"
-                  element={
-                    <ProtectedRoute
-                      moduloActivo={moduloActivo}
-                      currentPath="/ventas/operaciones"
-                    >
-                      <VentaHome />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/ventas/contratos"
-                  element={
-                    <ProtectedRoute
-                      moduloActivo={moduloActivo}
-                      currentPath="/ventas/contratos"
-                    >
-                      <ContratosPage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/ventas/suplementos"
-                  element={
-                    <ProtectedRoute
-                      moduloActivo={moduloActivo}
-                      currentPath="/ventas/suplementos"
-                    >
-                      <SuplementosPage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/ventas/facturas"
-                  element={
-                    <ProtectedRoute
-                      moduloActivo={moduloActivo}
-                      currentPath="/ventas/facturas"
-                    >
-                      <FacturasPage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/ventas/efectivo"
-                  element={
-                    <ProtectedRoute
-                      moduloActivo={moduloActivo}
-                      currentPath="/ventas/efectivo"
-                    >
-                      <VentasEfectivoPage />
-                    </ProtectedRoute>
-                  }
-                />
+                  {/* Rutas de Inventario - protegidas */}
+                  <Route
+                    path="/inventario"
+                    element={
+                      <ProtectedRoute
+                        moduloActivo={moduloActivo}
+                        currentPath="/inventario"
+                      >
+                        <InventarioHome />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/movimientos/pendientes"
+                    element={
+                      <ProtectedRoute
+                        moduloActivo={moduloActivo}
+                        currentPath="/movimientos/pendientes"
+                      >
+                        <MovimientosPendientesPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/movimientos/seleccionar-recepcion"
+                    element={
+                      <ProtectedRoute
+                        moduloActivo={moduloActivo}
+                        currentPath="/movimientos"
+                      >
+                        <RecepcionesPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/movimientos/ajuste"
+                    element={
+                      <ProtectedRoute
+                        moduloActivo={moduloActivo}
+                        currentPath="/movimientos"
+                      >
+                        <MovimientoAjusteForm />
+                      </ProtectedRoute>
+                    }
+                  />
+                  {/* Rutas de Ventas - protegidas */}
+                  <Route
+                    path="/venta"
+                    element={
+                      <ProtectedRoute
+                        moduloActivo={moduloActivo}
+                        currentPath="/venta"
+                      >
+                        <VentaHome />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/clientes"
+                    element={
+                      <ProtectedRoute
+                        moduloActivo={moduloActivo}
+                        currentPath="/clientes"
+                      >
+                        <ClientesPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/clientes/:id"
+                    element={
+                      <ProtectedRoute
+                        moduloActivo={moduloActivo}
+                        currentPath="/clientes"
+                      >
+                        <PerfilClientePage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/ventas/operaciones"
+                    element={
+                      <ProtectedRoute
+                        moduloActivo={moduloActivo}
+                        currentPath="/ventas/operaciones"
+                      >
+                        <VentaHome />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/ventas/contratos"
+                    element={
+                      <ProtectedRoute
+                        moduloActivo={moduloActivo}
+                        currentPath="/ventas/contratos"
+                      >
+                        <ContratosPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/ventas/suplementos"
+                    element={
+                      <ProtectedRoute
+                        moduloActivo={moduloActivo}
+                        currentPath="/ventas/suplementos"
+                      >
+                        <SuplementosPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/ventas/facturas"
+                    element={
+                      <ProtectedRoute
+                        moduloActivo={moduloActivo}
+                        currentPath="/ventas/facturas"
+                      >
+                        <FacturasPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/ventas/efectivo"
+                    element={
+                      <ProtectedRoute
+                        moduloActivo={moduloActivo}
+                        currentPath="/ventas/efectivo"
+                      >
+                        <VentasEfectivoPage />
+                      </ProtectedRoute>
+                    }
+                  />
 
-                {/* Rutas de Administración - protegidas */}
-                <Route
-                  path="/administracion"
-                  element={
-                    <ProtectedRoute
-                      moduloActivo={moduloActivo}
-                      currentPath="/administracion"
-                    >
-                      <ConfiguracionPage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/movimientos"
-                  element={
-                    <ProtectedRoute
-                      moduloActivo={moduloActivo}
-                      currentPath="/movimientos"
-                    >
-                      <MovimientosPage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/movimientos/pendientes"
-                  element={
-                    <ProtectedRoute
-                      moduloActivo={moduloActivo}
-                      currentPath="/movimientos/pendientes"
-                    >
-                      <MovimientosPendientesPage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/configuracion"
-                  element={
-                    <ProtectedRoute
-                      moduloActivo={moduloActivo}
-                      currentPath="/configuracion"
-                    >
-                      <ConfiguracionPage />
-                    </ProtectedRoute>
-                  }
-                />
+                  {/* Rutas de Administración - protegidas */}
+                  <Route
+                    path="/administracion"
+                    element={
+                      <ProtectedRoute
+                        moduloActivo={moduloActivo}
+                        currentPath="/administracion"
+                      >
+                        <ConfiguracionPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/movimientos"
+                    element={
+                      <ProtectedRoute
+                        moduloActivo={moduloActivo}
+                        currentPath="/movimientos"
+                      >
+                        <MovimientosPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/movimientos/pendientes"
+                    element={
+                      <ProtectedRoute
+                        moduloActivo={moduloActivo}
+                        currentPath="/movimientos/pendientes"
+                      >
+                        <MovimientosPendientesPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/configuracion"
+                    element={
+                      <ProtectedRoute
+                        moduloActivo={moduloActivo}
+                        currentPath="/configuracion"
+                      >
+                        <ConfiguracionPage />
+                      </ProtectedRoute>
+                    }
+                  />
 
-                {/* Rutas de Compras - protegidas */}
-                <Route
-                  path="/compra"
-                  element={
-                    <ProtectedRoute
-                      moduloActivo={moduloActivo}
-                      currentPath="/compra"
-                    >
-                      <CompraHome />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/compra/convenios"
-                  element={
-                    <ProtectedRoute
-                      moduloActivo={moduloActivo}
-                      currentPath="/compra/convenios"
-                    >
-                      <CompraConveniosPage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/compra/anexos"
-                  element={
-                    <ProtectedRoute
-                      moduloActivo={moduloActivo}
-                      currentPath="/compra/anexos"
-                    >
-                      <CompraAnexosPage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/compra/liquidaciones"
-                  element={
-                    <ProtectedRoute
-                      moduloActivo={moduloActivo}
-                      currentPath="/compra/liquidaciones"
-                    >
-                      <LiquidacionesPage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/compra/liquidaciones/crear"
-                  element={
-                    <ProtectedRoute
-                      moduloActivo={moduloActivo}
-                      currentPath="/compra/liquidaciones"
-                    >
-                      <CrearLiquidacionPage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/compra/productos-liquidacion"
-                  element={
-                    <ProtectedRoute
-                      moduloActivo={moduloActivo}
-                      currentPath="/compra/productos-liquidacion"
-                    >
-                      <ProductosEnLiquidacionPage />
-                    </ProtectedRoute>
-                  }
-                />
+                  {/* Rutas de Compras - protegidas */}
+                  <Route
+                    path="/compra"
+                    element={
+                      <ProtectedRoute
+                        moduloActivo={moduloActivo}
+                        currentPath="/compra"
+                      >
+                        <CompraHome />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/compra/convenios"
+                    element={
+                      <ProtectedRoute
+                        moduloActivo={moduloActivo}
+                        currentPath="/compra/convenios"
+                      >
+                        <CompraConveniosPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/compra/anexos"
+                    element={
+                      <ProtectedRoute
+                        moduloActivo={moduloActivo}
+                        currentPath="/compra/anexos"
+                      >
+                        <CompraAnexosPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/compra/liquidaciones"
+                    element={
+                      <ProtectedRoute
+                        moduloActivo={moduloActivo}
+                        currentPath="/compra/liquidaciones"
+                      >
+                        <LiquidacionesPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/compra/liquidaciones/crear"
+                    element={
+                      <ProtectedRoute
+                        moduloActivo={moduloActivo}
+                        currentPath="/compra/liquidaciones"
+                      >
+                        <CrearLiquidacionPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/compra/productos-liquidacion"
+                    element={
+                      <ProtectedRoute
+                        moduloActivo={moduloActivo}
+                        currentPath="/compra/productos-liquidacion"
+                      >
+                        <ProductosEnLiquidacionPage />
+                      </ProtectedRoute>
+                    }
+                  />
 
-                {/* Rutas de Reportes - protegidas */}
-                <Route
-                  path="/reportes"
-                  element={
-                    <ProtectedRoute
-                      moduloActivo={moduloActivo}
-                      currentPath="/reportes"
-                    >
-                      <ReportesHome />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/reportes/proveedores"
-                  element={
-                    <ProtectedRoute
-                      moduloActivo={moduloActivo}
-                      currentPath="/reportes/proveedores"
-                    >
-                      <ReporteProveedores />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/reportes/existencias"
-                  element={
-                    <ProtectedRoute
-                      moduloActivo={moduloActivo}
-                      currentPath="/reportes/existencias"
-                    >
-                      <ReporteExistencias />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/reportes/movimientos-dependencia"
-                  element={
-                    <ProtectedRoute
-                      moduloActivo={moduloActivo}
-                      currentPath="/reportes/movimientos-dependencia"
-                    >
-                      <ReporteMovimientosDependencia />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/reportes/movimientos-producto"
-                  element={
-                    <ProtectedRoute
-                      moduloActivo={moduloActivo}
-                      currentPath="/reportes/movimientos-producto"
-                    >
-                      <ReporteMovimientosProducto />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/perfil"
-                  element={
-                    <ProtectedRoute
-                      moduloActivo={moduloActivo}
-                      currentPath="/perfil"
-                    >
-                      <PerfilPage />
-                    </ProtectedRoute>
-                  }
-                />
-              </Routes>
-            </div>
-          </div></main>
-        </div>
-      </div>
-      {showAccountModal && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4"
-          onClick={() => {
-            setShowLogoutConfirm(false);
-            setShowAccountModal(false);
-          }}
-        >
-          <div
-            className="bg-white rounded-md shadow-2xl w-full max-w-sm p-6 transform transition-all animate-fade-in-up"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center gap-3">
-              <img
-                src="/default.jpg"
-                alt="avatar"
-                className="w-12 h-12 rounded-full object-cover"
-              />
-              <div>
-                <div className="text-sm font-semibold">
-                  {user ? `${user.nombre} ${user.primer_apellido}` : "Usuario"}
-                </div>
-                <div className="text-xs text-slate-400">
-                  {user?.alias || "Cuenta de usuario"}
-                </div>
+                  {/* Rutas de Reportes - protegidas */}
+                  <Route
+                    path="/reportes"
+                    element={
+                      <ProtectedRoute
+                        moduloActivo={moduloActivo}
+                        currentPath="/reportes"
+                      >
+                        <ReportesHome />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/reportes/proveedores"
+                    element={
+                      <ProtectedRoute
+                        moduloActivo={moduloActivo}
+                        currentPath="/reportes/proveedores"
+                      >
+                        <ReporteProveedores />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/reportes/existencias"
+                    element={
+                      <ProtectedRoute
+                        moduloActivo={moduloActivo}
+                        currentPath="/reportes/existencias"
+                      >
+                        <ReporteExistencias />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/reportes/movimientos-dependencia"
+                    element={
+                      <ProtectedRoute
+                        moduloActivo={moduloActivo}
+                        currentPath="/reportes/movimientos-dependencia"
+                      >
+                        <ReporteMovimientosDependencia />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/reportes/movimientos-producto"
+                    element={
+                      <ProtectedRoute
+                        moduloActivo={moduloActivo}
+                        currentPath="/reportes/movimientos-producto"
+                      >
+                        <ReporteMovimientosProducto />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/perfil"
+                    element={
+                      <ProtectedRoute
+                        moduloActivo={moduloActivo}
+                        currentPath="/perfil"
+                      >
+                        <PerfilPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                </Routes>
               </div>
             </div>
-
-            <div className="mt-4 border-t border-gray-100 pt-4 space-y-2">
-              <button
-                className="w-full text-left px-4 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700 transition-colors"
-                onClick={() => {
-                  setShowAccountModal(false);
-                  setModuloActivo("administracion");
-                  navigate("/perfil");
-                }}
-              >
-                Ver perfil
-              </button>
-
-              {/* TODO: Implementar la acción de 'Salir del sistema' aquí (por ejemplo llamar a la API y limpiar estado). */}
-              <button
-                className="w-full text-left px-4 py-2 rounded-md border border-red-200 text-red-600 bg-red-50 hover:bg-red-100 transition-colors"
-                onClick={async () => {
-                  setShowAccountModal(false);
-                  await logout();
-                  navigate("/login", { replace: true });
-                }}
-              >
-                Salir del sistema
-              </button>
-            </div>
-          </div>
+          </main>
         </div>
-      )}
+      </div>
 
       {showLogoutConfirm && (
         <div

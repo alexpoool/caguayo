@@ -24,11 +24,20 @@ from src.dto import (
 class VentasService:
     @staticmethod
     async def create_venta(db: AsyncSession, venta: VentaCreate) -> VentaRead:
-        # Calcular el total de la venta
-        total = Decimal("0")
-        for detalle in venta.detalles:
-            detalle.subtotal = Decimal(str(detalle.cantidad)) * detalle.precio_unitario
-            total += detalle.subtotal
+        from src.domain.ventas_calc import CalculadoraVentas, DetalleCalculo
+        calc = CalculadoraVentas(
+            detalles=[
+                DetalleCalculo(
+                    cantidad=Decimal(str(d.cantidad)),
+                    precio_unitario=d.precio_unitario
+                ) for d in venta.detalles
+            ]
+        )
+        total = calc.total
+        
+        # update the subtotal loop
+        for d, calc_detail in zip(venta.detalles, calc.detalles):
+            d.subtotal = calc_detail.subtotal
 
         # Crear la venta
         fecha = venta.fecha or datetime.utcnow()

@@ -1,4 +1,4 @@
-import { BarChart3, Construction, Package, DollarSign, Download, TrendingUp } from 'lucide-react';
+import { BarChart3, Package, DollarSign, Download, TrendingUp } from 'lucide-react';
 
 export function ReportesHome() {
   return (
@@ -48,13 +48,6 @@ export function ReportesHome() {
                 <h3 className="font-bold text-sm text-gray-800">Exportar</h3>
                 <p className="text-xs text-gray-600 mt-0.5">PDF, Excel y CSV.</p>
               </div>
-            </div>
-          </div>
-
-          <div className="p-4 bg-gradient-to-r from-indigo-100 to-purple-100 rounded-lg border-2 border-dashed border-indigo-300">
-            <div className="flex items-center justify-center gap-2">
-              <Construction className="h-5 w-5 text-indigo-500" />
-              <span className="text-sm font-bold text-indigo-700">Próximamente disponible</span>
             </div>
           </div>
         </div>
