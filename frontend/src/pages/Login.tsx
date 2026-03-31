@@ -1,10 +1,17 @@
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
-import { Button, Input } from '../components/ui';
-import { Loader2, Database, User, Lock, CheckCircle, XCircle } from 'lucide-react';
-import toast from 'react-hot-toast';
-import { apiClient } from '../lib/api';
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
+import { Button, Input } from "../components/ui";
+import {
+  Loader2,
+  Database,
+  User,
+  Lock,
+  CheckCircle,
+  XCircle,
+} from "lucide-react";
+import toast from "react-hot-toast";
+import { apiClient } from "../lib/api";
 
 interface ConexionInfo {
   id_conexion: number;
@@ -13,19 +20,19 @@ interface ConexionInfo {
   puerto: number;
 }
 
-type ConexionStatus = 'idle' | 'testing' | 'connected' | 'error';
+type ConexionStatus = "idle" | "testing" | "connected" | "error";
 
 export function LoginPage() {
   const navigate = useNavigate();
   const { login, isAuthenticated } = useAuth();
-  
-  const [alias, setAlias] = useState('');
-  const [contrasenia, setContrasenia] = useState('');
-  const [baseDatos, setBaseDatos] = useState('');
+
+  const [alias, setAlias] = useState("");
+  const [contrasenia, setContrasenia] = useState("");
+  const [baseDatos, setBaseDatos] = useState("");
   const [conexiones, setConexiones] = useState<ConexionInfo[]>([]);
   const [loadingConexiones, setLoadingConexiones] = useState(true);
   const [loadingLogin, setLoadingLogin] = useState(false);
-  const [conexionStatus, setConexionStatus] = useState<ConexionStatus>('idle');
+  const [conexionStatus, setConexionStatus] = useState<ConexionStatus>("idle");
 
   // Comentado temporalmente para permitir ir al login manually aunque estemos "logeados"
   // useEffect(() => {
@@ -37,10 +44,10 @@ export function LoginPage() {
   useEffect(() => {
     const fetchConexiones = async () => {
       try {
-        const response = await apiClient.get<ConexionInfo[]>('/conexiones');
+        const response = await apiClient.get<ConexionInfo[]>("/conexiones");
         setConexiones(response);
       } catch (error) {
-        console.error('Error fetching conexiones:', error);
+        console.error("Error fetching conexiones:", error);
       } finally {
         setLoadingConexiones(false);
       }
@@ -50,27 +57,30 @@ export function LoginPage() {
 
   const probarConexion = async (dbName: string) => {
     if (!dbName) {
-      setConexionStatus('idle');
+      setConexionStatus("idle");
       return;
     }
 
-    setConexionStatus('testing');
+    setConexionStatus("testing");
     try {
-      const conn = conexiones.find(c => c.nombre_database === dbName);
-      const response = await apiClient.post<{ success: boolean }>('/conexiones/test', {
-        nombre_database: dbName,
-        host: conn?.host || 'localhost',
-        puerto: conn?.puerto || 5432,
-      });
+      const conn = conexiones.find((c) => c.nombre_database === dbName);
+      const response = await apiClient.post<{ success: boolean }>(
+        "/conexiones/test",
+        {
+          nombre_database: dbName,
+          host: conn?.host || "localhost",
+          puerto: conn?.puerto || 5432,
+        },
+      );
       if (response.success) {
-        setConexionStatus('connected');
+        setConexionStatus("connected");
       } else {
-        setConexionStatus('error');
-        toast.error('No se pudo conectar a la base de datos');
+        setConexionStatus("error");
+        toast.error("No se pudo conectar a la base de datos");
       }
     } catch (error) {
-      setConexionStatus('error');
-      console.error('Error probando conexión:', error);
+      setConexionStatus("error");
+      console.error("Error probando conexión:", error);
     }
   };
 
@@ -79,48 +89,52 @@ export function LoginPage() {
     if (value) {
       probarConexion(value);
     } else {
-      setConexionStatus('idle');
+      setConexionStatus("idle");
     }
   };
 
   const handleLogin = async () => {
     if (!baseDatos) {
-      toast.error('Seleccione una base de datos');
+      toast.error("Seleccione una base de datos");
       return;
     }
 
-    if (conexionStatus === 'error') {
-      toast.error('No puede iniciar sesión, la base de datos no está disponible');
+    if (conexionStatus === "error") {
+      toast.error(
+        "No puede iniciar sesión, la base de datos no está disponible",
+      );
       return;
     }
 
     if (!alias.trim()) {
-      toast.error('Ingrese su alias');
+      toast.error("Ingrese su alias");
       return;
     }
 
     if (!contrasenia.trim()) {
-      toast.error('Ingrese su contraseña');
+      toast.error("Ingrese su contraseña");
       return;
     }
 
     setLoadingLogin(true);
     try {
       await login(alias, contrasenia, baseDatos);
-      toast.success('Bienvenido');
-      navigate('/');
+      toast.success("Bienvenido");
+      navigate("/");
     } catch (error: any) {
-      toast.error(error.message || 'Credenciales inválidas');
+      toast.error(error.message || "Credenciales inválidas");
     } finally {
       setLoadingLogin(false);
     }
   };
 
   const getSelectBorderClass = () => {
-    if (conexionStatus === 'connected') return 'border-green-500 focus:ring-green-500';
-    if (conexionStatus === 'error') return 'border-red-500 focus:ring-red-500';
-    if (conexionStatus === 'testing') return 'border-amber-500 focus:ring-amber-500';
-    return 'border-slate-200 focus:ring-blue-500 focus:border-blue-500';
+    if (conexionStatus === "connected")
+      return "border-green-500 focus:ring-green-500";
+    if (conexionStatus === "error") return "border-red-500 focus:ring-red-500";
+    if (conexionStatus === "testing")
+      return "border-amber-500 focus:ring-amber-500";
+    return "border-slate-200 focus:ring-blue-500 focus:border-blue-500";
   };
 
   return (
@@ -138,7 +152,9 @@ export function LoginPage() {
           <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent">
             Caguayo
           </h1>
-          <p className="text-slate-500 mt-2 text-sm tracking-wide uppercase">Sistema de Inventario</p>
+          <p className="text-slate-500 mt-2 text-sm tracking-wide uppercase">
+            Sistema de Inventario
+          </p>
           <div className="mx-auto mt-4 w-12 h-1 bg-gradient-to-r from-blue-400 to-blue-600 rounded-full" />
         </div>
 
@@ -165,31 +181,40 @@ export function LoginPage() {
                     className={`w-full pl-10 pr-10 py-3 border-2 rounded-md focus:ring-2 focus:border-transparent bg-white transition-all duration-200 ${getSelectBorderClass()}`}
                   >
                     <option value="">
-                      {loadingConexiones ? 'Cargando...' : 'Seleccione una base de datos'}
+                      {loadingConexiones
+                        ? "Cargando..."
+                        : "Seleccione una base de datos"}
                     </option>
                     {conexiones.map((conn) => (
-                      <option key={conn.id_conexion} value={conn.nombre_database}>
+                      <option
+                        key={conn.id_conexion}
+                        value={conn.nombre_database}
+                      >
                         {conn.nombre_database}
                       </option>
                     ))}
                   </select>
                   <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                    {conexionStatus === 'testing' && (
+                    {conexionStatus === "testing" && (
                       <Loader2 className="h-5 w-5 text-amber-500 animate-spin" />
                     )}
-                    {conexionStatus === 'connected' && (
+                    {conexionStatus === "connected" && (
                       <CheckCircle className="h-5 w-5 text-green-500" />
                     )}
-                    {conexionStatus === 'error' && (
+                    {conexionStatus === "error" && (
                       <XCircle className="h-5 w-5 text-red-500" />
                     )}
                   </div>
                 </div>
-                {conexionStatus === 'connected' && (
-                  <p className="text-xs text-green-600 mt-1 font-medium">✓ Conectado</p>
+                {conexionStatus === "connected" && (
+                  <p className="text-xs text-green-600 mt-1 font-medium">
+                    ✓ Conectado
+                  </p>
                 )}
-                {conexionStatus === 'error' && (
-                  <p className="text-xs text-red-600 mt-1 font-medium">✗ Error de conexión</p>
+                {conexionStatus === "error" && (
+                  <p className="text-xs text-red-600 mt-1 font-medium">
+                    ✗ Error de conexión
+                  </p>
                 )}
               </div>
 
@@ -205,7 +230,7 @@ export function LoginPage() {
                     placeholder="Ingrese su alias"
                     value={alias}
                     onChange={(e) => setAlias(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
+                    onKeyDown={(e) => e.key === "Enter" && handleLogin()}
                     className="pl-10 border-slate-200 focus:ring-blue-500 focus:border-blue-500 rounded-md transition-all duration-200"
                     disabled={!baseDatos}
                   />
@@ -224,7 +249,7 @@ export function LoginPage() {
                     placeholder="Ingrese su contraseña"
                     value={contrasenia}
                     onChange={(e) => setContrasenia(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
+                    onKeyDown={(e) => e.key === "Enter" && handleLogin()}
                     className="pl-10 border-slate-200 focus:ring-blue-500 focus:border-blue-500 rounded-md transition-all duration-200"
                     disabled={!baseDatos}
                   />
@@ -240,7 +265,7 @@ export function LoginPage() {
                 {loadingLogin ? (
                   <Loader2 className="h-5 w-5 animate-spin" />
                 ) : (
-                  'Iniciar Sesión'
+                  "Iniciar Sesión"
                 )}
               </Button>
             </div>

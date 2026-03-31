@@ -1,27 +1,41 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
-import { authService } from '../services/auth';
-import { Button, Input, Card, CardContent, CardHeader, CardTitle } from '../components/ui';
-import { 
-  User, Lock, Save, ArrowLeft, Loader2, 
-  Shield, Database, Building2, BadgeCheck 
-} from 'lucide-react';
-import toast from 'react-hot-toast';
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
+import { authService } from "../services/auth";
+import {
+  Button,
+  Input,
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "../components/ui";
+import {
+  User,
+  Lock,
+  Save,
+  ArrowLeft,
+  Loader2,
+  Shield,
+  Database,
+  Building2,
+  BadgeCheck,
+} from "lucide-react";
+import toast from "react-hot-toast";
 
 export function PerfilPage() {
   const navigate = useNavigate();
   const { user, refreshUser } = useAuth();
-  
-  const [alias, setAlias] = useState(user?.alias || '');
-  const [contraseniaActual, setContraseniaActual] = useState('');
-  const [contraseniaNueva, setContraseniaNueva] = useState('');
-  const [confirmarContrasenia, setConfirmarContrasenia] = useState('');
+
+  const [alias, setAlias] = useState(user?.alias || "");
+  const [contraseniaActual, setContraseniaActual] = useState("");
+  const [contraseniaNueva, setContraseniaNueva] = useState("");
+  const [confirmarContrasenia, setConfirmarContrasenia] = useState("");
   const [loading, setLoading] = useState(false);
 
   const handleGuardar = async () => {
     if (!alias.trim()) {
-      toast.error('El alias no puede estar vacío');
+      toast.error("El alias no puede estar vacío");
       return;
     }
 
@@ -29,9 +43,9 @@ export function PerfilPage() {
     try {
       await authService.updatePerfil({ alias });
       await refreshUser();
-      toast.success('Alias actualizado correctamente');
+      toast.success("Alias actualizado correctamente");
     } catch (error: any) {
-      toast.error(error.message || 'Error al actualizar alias');
+      toast.error(error.message || "Error al actualizar alias");
     } finally {
       setLoading(false);
     }
@@ -39,19 +53,19 @@ export function PerfilPage() {
 
   const handleCambiarContrasenia = async () => {
     if (!contraseniaActual) {
-      toast.error('Ingrese la contraseña actual');
+      toast.error("Ingrese la contraseña actual");
       return;
     }
     if (!contraseniaNueva) {
-      toast.error('Ingrese la nueva contraseña');
+      toast.error("Ingrese la nueva contraseña");
       return;
     }
     if (contraseniaNueva.length < 6) {
-      toast.error('La nueva contraseña debe tener al menos 6 caracteres');
+      toast.error("La nueva contraseña debe tener al menos 6 caracteres");
       return;
     }
     if (contraseniaNueva !== confirmarContrasenia) {
-      toast.error('Las contraseñas no coinciden');
+      toast.error("Las contraseñas no coinciden");
       return;
     }
 
@@ -62,12 +76,12 @@ export function PerfilPage() {
         contrasenia_nueva: contraseniaNueva,
       });
       await refreshUser();
-      toast.success('Contraseña actualizada correctamente');
-      setContraseniaActual('');
-      setContraseniaNueva('');
-      setConfirmarContrasenia('');
+      toast.success("Contraseña actualizada correctamente");
+      setContraseniaActual("");
+      setContraseniaNueva("");
+      setConfirmarContrasenia("");
     } catch (error: any) {
-      toast.error(error.message || 'Error al cambiar contraseña');
+      toast.error(error.message || "Error al cambiar contraseña");
     } finally {
       setLoading(false);
     }
@@ -81,20 +95,24 @@ export function PerfilPage() {
         {/* Header */}
         <div className="flex items-center gap-4 mb-8">
           <button
-            onClick={() => navigate('/')}
+            onClick={() => navigate("/")}
             className="p-2 rounded-md bg-white shadow-sm hover:shadow-md transition-all hover:bg-gray-50 border border-gray-200"
           >
             <ArrowLeft className="h-5 w-5 text-gray-600" />
           </button>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Perfil de Usuario</h1>
-            <p className="text-gray-500">Gestiona tu información personal y seguridad</p>
+          <div className="flex items-baseline">
+            <h1 className="text-xl font-bold text-gray-900">
+              Perfil de Usuario
+            </h1>
+            <p className="text-gray-500">
+              Gestiona tu información personal y seguridad
+            </p>
           </div>
         </div>
 
         {/* Avatar y info principal */}
         <div className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl p-4 mb-6 text-white">
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
             <div className="w-20 h-20 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm">
               <User className="h-10 w-10 text-white" />
             </div>
@@ -105,13 +123,15 @@ export function PerfilPage() {
               <p className="text-blue-100">@{user.alias}</p>
               <div className="flex items-center gap-2 mt-2">
                 <BadgeCheck className="h-4 w-4 text-blue-200" />
-                <span className="text-sm text-blue-100">{user.grupo?.nombre}</span>
+                <span className="text-sm text-blue-100">
+                  {user.grupo?.nombre}
+                </span>
               </div>
             </div>
           </div>
         </div>
 
-        <div className="space-y-6">
+        <div className="space-y-4">
           {/* Información personal */}
           <Card className="border-0 shadow-lg">
             <CardHeader className="bg-white rounded-t-2xl border-b border-gray-100 pb-4">
@@ -125,12 +145,18 @@ export function PerfilPage() {
             <CardContent className="p-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="bg-gray-50 rounded-md p-4">
-                  <p className="text-sm text-gray-500 mb-1">Carné de Identidad</p>
-                  <p className="font-semibold text-gray-900 text-lg">{user.ci}</p>
+                  <p className="text-sm text-gray-500 mb-1">
+                    Carné de Identidad
+                  </p>
+                  <p className="font-semibold text-gray-900 text-lg">
+                    {user.ci}
+                  </p>
                 </div>
                 <div className="bg-gray-50 rounded-md p-4">
                   <p className="text-sm text-gray-500 mb-1">Grupo</p>
-                  <p className="font-semibold text-gray-900 text-lg">{user.grupo?.nombre}</p>
+                  <p className="font-semibold text-gray-900 text-lg">
+                    {user.grupo?.nombre}
+                  </p>
                 </div>
                 <div className="bg-gray-50 rounded-md p-4">
                   <p className="text-sm text-gray-500 mb-1">Dependencia</p>
@@ -143,7 +169,7 @@ export function PerfilPage() {
                   <p className="text-sm text-gray-500 mb-1">Base de Datos</p>
                   <p className="font-semibold text-gray-900 text-lg flex items-center gap-2">
                     <Database className="h-4 w-4 text-green-500" />
-                    {user.dependencia?.base_datos || 'No asignada'}
+                    {user.dependencia?.base_datos || "No asignada"}
                   </p>
                 </div>
               </div>
@@ -162,7 +188,8 @@ export function PerfilPage() {
             </CardHeader>
             <CardContent className="p-6">
               <p className="text-gray-600 mb-4">
-                El alias es tu identificador único en el sistema. Otros usuarios te reconocerán por este nombre.
+                El alias es tu identificador único en el sistema. Otros usuarios
+                te reconocerán por este nombre.
               </p>
               <div className="flex gap-4">
                 <div className="flex-1">
@@ -189,7 +216,9 @@ export function PerfilPage() {
                 </Button>
               </div>
               {alias === user.alias && (
-                <p className="text-sm text-gray-400 mt-2">El alias es igual al actual</p>
+                <p className="text-sm text-gray-400 mt-2">
+                  El alias es igual al actual
+                </p>
               )}
             </CardContent>
           </Card>
@@ -206,9 +235,10 @@ export function PerfilPage() {
             </CardHeader>
             <CardContent className="p-6">
               <p className="text-gray-600 mb-6">
-                Asegúrate de usar una contraseña segura con al menos 6 caracteres.
+                Asegúrate de usar una contraseña segura con al menos 6
+                caracteres.
               </p>
-              
+
               <div className="space-y-5">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -222,7 +252,7 @@ export function PerfilPage() {
                     className="h-12"
                   />
                 </div>
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -249,18 +279,25 @@ export function PerfilPage() {
                     />
                   </div>
                 </div>
-                
-                {contraseniaNueva && confirmarContrasenia && contraseniaNueva !== confirmarContrasenia && (
-                  <p className="text-sm text-red-500 flex items-center gap-2">
-                    <Lock className="h-4 w-4" />
-                    Las contraseñas no coinciden
-                  </p>
-                )}
-                
+
+                {contraseniaNueva &&
+                  confirmarContrasenia &&
+                  contraseniaNueva !== confirmarContrasenia && (
+                    <p className="text-sm text-red-500 flex items-center gap-2">
+                      <Lock className="h-4 w-4" />
+                      Las contraseñas no coinciden
+                    </p>
+                  )}
+
                 <div className="pt-2">
                   <Button
                     onClick={handleCambiarContrasenia}
-                    disabled={loading || !contraseniaActual || !contraseniaNueva || contraseniaNueva !== confirmarContrasenia}
+                    disabled={
+                      loading ||
+                      !contraseniaActual ||
+                      !contraseniaNueva ||
+                      contraseniaNueva !== confirmarContrasenia
+                    }
                     variant="outline"
                     className="h-12 px-6 border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300"
                   >

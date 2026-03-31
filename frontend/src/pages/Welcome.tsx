@@ -1,39 +1,44 @@
-import { useEffect, useState } from 'react';
-import { useAuth } from '../context/AuthContext';
+import { useEffect, useState } from "react";
+import { useAuth } from "../context/AuthContext";
 
 export function WelcomePage() {
   const { user } = useAuth();
-  const [nombre, setNombre] = useState<string>('');
+  const [nombre, setNombre] = useState<string>("");
 
   const getSaludo = () => {
     const hora = new Date().getHours();
-    if (hora < 12) return 'Buenos días';
-    if (hora < 18) return 'Buenas tardes';
-    return 'Buenas noches';
+    if (hora < 12) return "Buenos días";
+    if (hora < 18) return "Buenas tardes";
+    return "Buenas noches";
   };
 
   useEffect(() => {
     if (user) {
-      const fullName = [user.nombre, user.primer_apellido, user.segundo_apellido]
+      const fullName = [
+        user.nombre,
+        user.primer_apellido,
+        user.segundo_apellido,
+      ]
         .filter(Boolean)
-        .join(' ')
+        .join(" ")
         .trim();
-      setNombre(fullName || user.alias || 'Usuario');
+      setNombre(fullName || user.alias || "Usuario");
     } else {
       try {
         const raw =
-          localStorage.getItem('usuario') ||
-          localStorage.getItem('user') ||
-          localStorage.getItem('username') ||
-          localStorage.getItem('nombre') ||
-          localStorage.getItem('nombre_usuario');
+          localStorage.getItem("usuario") ||
+          localStorage.getItem("user") ||
+          localStorage.getItem("username") ||
+          localStorage.getItem("nombre") ||
+          localStorage.getItem("nombre_usuario");
 
         if (raw) {
-          let name = 'Usuario';
+          let name = "Usuario";
           try {
             const parsed = JSON.parse(raw);
             if (parsed.nombre || parsed.first_name || parsed.username) {
-              name = `${parsed.nombre || parsed.first_name || parsed.username} ${parsed.primer_apellido || ''}`.trim();
+              name =
+                `${parsed.nombre || parsed.first_name || parsed.username} ${parsed.primer_apellido || ""}`.trim();
             } else if (parsed.nombre_completo) {
               name = parsed.nombre_completo;
             } else {
@@ -42,7 +47,7 @@ export function WelcomePage() {
           } catch {
             name = raw;
           }
-          setNombre(name || 'Usuario');
+          setNombre(name || "Usuario");
         }
       } catch (e) {
         // ignore
@@ -53,8 +58,12 @@ export function WelcomePage() {
   return (
     <div className="max-w-xl mx-auto py-24">
       <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-md shadow-xl p-10 flex flex-col items-center">
-        <img src="/default.jpg" alt="avatar" className="w-24 h-24 rounded-full object-cover mb-4" />
-        <h1 className="text-3xl font-extrabold">Bienvenido al sistema</h1>
+        <img
+          src="/default.jpg"
+          alt="avatar"
+          className="w-24 h-24 rounded-full object-cover mb-4"
+        />
+        <h1 className="text-xl font-extrabold">Bienvenido al sistema</h1>
         <p className="mt-3 text-xl">{nombre}</p>
         <p className="mt-4 text-sm text-white/80">¡{getSaludo()}!</p>
       </div>

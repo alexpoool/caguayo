@@ -1,33 +1,48 @@
-import { useParams, useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
-import { clientesService } from '../services/api';
-import type { ClienteWithVentas, Venta } from '../types/ventas';
-import { 
-  ArrowLeft, Phone, Mail, MapPin, CreditCard, 
-  Calendar, ShoppingCart, DollarSign, Package, TrendingUp,
-  CheckCircle, XCircle, ExternalLink
-} from 'lucide-react';
-import { 
-  Button, 
-  Card, 
-  CardContent, 
-  CardHeader, 
+import { useParams, useNavigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { clientesService } from "../services/api";
+import type { ClienteWithVentas, Venta } from "../types/ventas";
+import {
+  ArrowLeft,
+  Phone,
+  Mail,
+  MapPin,
+  CreditCard,
+  Calendar,
+  ShoppingCart,
+  DollarSign,
+  Package,
+  TrendingUp,
+  CheckCircle,
+  XCircle,
+  ExternalLink,
+} from "lucide-react";
+import {
+  Button,
+  Card,
+  CardContent,
+  CardHeader,
   CardTitle,
   Table,
   TableHeader,
   TableBody,
   TableRow,
   TableHead,
-  TableCell
-} from '../components/ui';
+  TableCell,
+} from "../components/ui";
 
 export function PerfilClientePage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const clienteId = parseInt(id || '0');
+  const clienteId = parseInt(id || "0");
 
-  const { data: cliente, isLoading, isError, error } = useQuery<ClienteWithVentas>({
-    queryKey: ['cliente-perfil', clienteId],
+  const {
+    data: cliente,
+    isLoading,
+    isError,
+    error,
+  } = useQuery<ClienteWithVentas>({
+    queryKey: ["cliente-perfil", clienteId],
     queryFn: () => clientesService.getClienteWithVentas(clienteId),
     enabled: !!clienteId,
   });
@@ -46,8 +61,14 @@ export function PerfilClientePage() {
       <div className="flex items-center justify-center h-64">
         <div className="text-red-500 text-center">
           <p className="font-bold text-lg mb-2">Error al cargar el perfil</p>
-          <p>{error instanceof Error ? error.message : 'Cliente no encontrado'}</p>
-          <Button onClick={() => navigate('/clientes')} className="mt-4 gap-2" variant="secondary">
+          <p>
+            {error instanceof Error ? error.message : "Cliente no encontrado"}
+          </p>
+          <Button
+            onClick={() => navigate("/clientes")}
+            className="mt-4 gap-2"
+            variant="secondary"
+          >
             <ArrowLeft className="h-4 w-4" />
             Volver a Clientes
           </Button>
@@ -58,33 +79,45 @@ export function PerfilClientePage() {
 
   // Calcular estadísticas
   const totalVentas = cliente.ventas?.length || 0;
-  const ventasCompletadas = cliente.ventas?.filter((v: Venta) => v.estado === 'COMPLETADA').length || 0;
-  const ventasPendientes = cliente.ventas?.filter((v: Venta) => v.estado === 'PENDIENTE').length || 0;
-  const montoTotal = cliente.ventas?.reduce((sum: number, v: Venta) => sum + v.total, 0) || 0;
-  const montoCompletado = cliente.ventas
-    ?.filter((v: Venta) => v.estado === 'COMPLETADA')
-    .reduce((sum: number, v: Venta) => sum + v.total, 0) || 0;
+  const ventasCompletadas =
+    cliente.ventas?.filter((v: Venta) => v.estado === "COMPLETADA").length || 0;
+  const ventasPendientes =
+    cliente.ventas?.filter((v: Venta) => v.estado === "PENDIENTE").length || 0;
+  const montoTotal =
+    cliente.ventas?.reduce((sum: number, v: Venta) => sum + v.total, 0) || 0;
+  const montoCompletado =
+    cliente.ventas
+      ?.filter((v: Venta) => v.estado === "COMPLETADA")
+      .reduce((sum: number, v: Venta) => sum + v.total, 0) || 0;
 
   const getEstadoBadge = (estado: string) => {
     const styles = {
-      PENDIENTE: 'bg-yellow-100 text-yellow-800',
-      COMPLETADA: 'bg-green-100 text-green-800',
-      ANULADA: 'bg-red-100 text-red-800'
+      PENDIENTE: "bg-yellow-100 text-yellow-800",
+      COMPLETADA: "bg-green-100 text-green-800",
+      ANULADA: "bg-red-100 text-red-800",
     };
-    return styles[estado as keyof typeof styles] || 'bg-slate-50 text-gray-800';
+    return styles[estado as keyof typeof styles] || "bg-slate-50 text-gray-800";
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Header */}
-      <div className="flex items-center gap-4">
-        <Button variant="secondary" onClick={() => navigate('/clientes')} className="gap-2">
+      <div className="flex items-center gap-3">
+        <Button
+          variant="secondary"
+          onClick={() => navigate("/clientes")}
+          className="gap-2"
+        >
           <ArrowLeft className="h-4 w-4" />
           Volver
         </Button>
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Perfil del Cliente</h1>
-          <p className="text-gray-500">Información detallada y historial de compras</p>
+        <div className="flex items-baseline">
+          <h1 className="text-xl font-bold text-gray-900">
+            Perfil del Cliente
+          </h1>
+          <p className="text-gray-500">
+            Información detallada y historial de compras
+          </p>
         </div>
       </div>
 
@@ -93,11 +126,20 @@ export function PerfilClientePage() {
         {/* Información del Cliente */}
         <Card>
           <CardHeader className="pb-4">
-            <div className="flex items-center gap-4">
-              <img src="/default.jpg" alt="avatar" className="w-16 h-16 rounded-full object-cover" />
+            <div className="flex items-center gap-3">
+              <img
+                src="/default.jpg"
+                alt="avatar"
+                className="w-16 h-16 rounded-full object-cover"
+              />
               <div>
-                <CardTitle className="text-xl">{cliente.nombre || 'Cliente sin nombre'}</CardTitle>
-                <p className="text-sm text-gray-500">Cliente desde {new Date(cliente.fecha_registro).toLocaleDateString('es-ES')}</p>
+                <CardTitle className="text-xl">
+                  {cliente.nombre || "Cliente sin nombre"}
+                </CardTitle>
+                <p className="text-sm text-gray-500">
+                  Cliente desde{" "}
+                  {new Date(cliente.fecha_registro).toLocaleDateString("es-ES")}
+                </p>
               </div>
             </div>
           </CardHeader>
@@ -106,7 +148,9 @@ export function PerfilClientePage() {
               <CreditCard className="h-5 w-5 text-gray-400" />
               <div>
                 <p className="text-sm text-gray-500">Cédula / RIF</p>
-                <p className="font-medium">{cliente.cedula_rif || 'No registrado'}</p>
+                <p className="font-medium">
+                  {cliente.cedula_rif || "No registrado"}
+                </p>
               </div>
             </div>
 
@@ -114,7 +158,9 @@ export function PerfilClientePage() {
               <Phone className="h-5 w-5 text-gray-400" />
               <div>
                 <p className="text-sm text-gray-500">Teléfono</p>
-                <p className="font-medium">{cliente.telefono || 'No registrado'}</p>
+                <p className="font-medium">
+                  {cliente.telefono || "No registrado"}
+                </p>
               </div>
             </div>
 
@@ -122,7 +168,9 @@ export function PerfilClientePage() {
               <Mail className="h-5 w-5 text-gray-400" />
               <div>
                 <p className="text-sm text-gray-500">Email</p>
-                <p className="font-medium">{cliente.email || 'No registrado'}</p>
+                <p className="font-medium">
+                  {cliente.email || "No registrado"}
+                </p>
               </div>
             </div>
 
@@ -130,7 +178,9 @@ export function PerfilClientePage() {
               <MapPin className="h-5 w-5 text-gray-400 mt-0.5" />
               <div>
                 <p className="text-sm text-gray-500">Dirección</p>
-                <p className="font-medium">{cliente.direccion || 'No registrada'}</p>
+                <p className="font-medium">
+                  {cliente.direccion || "No registrada"}
+                </p>
               </div>
             </div>
 
@@ -139,12 +189,16 @@ export function PerfilClientePage() {
                 {cliente.activo ? (
                   <>
                     <CheckCircle className="h-5 w-5 text-green-500" />
-                    <span className="font-medium text-green-700">Cliente Activo</span>
+                    <span className="font-medium text-green-700">
+                      Cliente Activo
+                    </span>
                   </>
                 ) : (
                   <>
                     <XCircle className="h-5 w-5 text-gray-500" />
-                    <span className="font-medium text-gray-700">Cliente Inactivo</span>
+                    <span className="font-medium text-gray-700">
+                      Cliente Inactivo
+                    </span>
                   </>
                 )}
               </div>
@@ -176,7 +230,12 @@ export function PerfilClientePage() {
                 </div>
                 <div>
                   <p className="text-sm text-gray-500">Monto Total</p>
-                  <p className="text-2xl font-bold">${montoTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+                  <p className="text-2xl font-bold">
+                    $
+                    {montoTotal.toLocaleString(undefined, {
+                      minimumFractionDigits: 2,
+                    })}
+                  </p>
                 </div>
               </div>
             </CardContent>
@@ -204,7 +263,12 @@ export function PerfilClientePage() {
                 </div>
                 <div>
                   <p className="text-sm text-gray-500">Monto Completado</p>
-                  <p className="text-2xl font-bold">${montoCompletado.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+                  <p className="text-2xl font-bold">
+                    $
+                    {montoCompletado.toLocaleString(undefined, {
+                      minimumFractionDigits: 2,
+                    })}
+                  </p>
                 </div>
               </div>
             </CardContent>
@@ -223,7 +287,11 @@ export function PerfilClientePage() {
                   </div>
                 </div>
                 {ventasPendientes > 0 && (
-                  <Button onClick={() => navigate('/ventas')} variant="secondary" className="gap-2">
+                  <Button
+                    onClick={() => navigate("/ventas")}
+                    variant="secondary"
+                    className="gap-2"
+                  >
                     <ExternalLink className="h-4 w-4" />
                     Ver Ventas
                   </Button>
@@ -263,20 +331,29 @@ export function PerfilClientePage() {
                 <TableBody>
                   {cliente.ventas?.map((venta: Venta) => (
                     <TableRow key={venta.id_venta} className="hover:bg-gray-50">
-                      <TableCell className="font-medium">#{venta.id_venta}</TableCell>
+                      <TableCell className="font-medium">
+                        #{venta.id_venta}
+                      </TableCell>
                       <TableCell>
-                        {new Date(venta.fecha).toLocaleDateString('es-ES', {
-                          year: 'numeric',
-                          month: 'long',
-                          day: 'numeric'
+                        {new Date(venta.fecha).toLocaleDateString("es-ES", {
+                          year: "numeric",
+                          month: "long",
+                          day: "numeric",
                         })}
                       </TableCell>
-                      <TableCell>{venta.detalles?.length || 0} productos</TableCell>
+                      <TableCell>
+                        {venta.detalles?.length || 0} productos
+                      </TableCell>
                       <TableCell className="font-medium">
-                        ${venta.total.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                        $
+                        {venta.total.toLocaleString(undefined, {
+                          minimumFractionDigits: 2,
+                        })}
                       </TableCell>
                       <TableCell>
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getEstadoBadge(venta.estado)}`}>
+                        <span
+                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getEstadoBadge(venta.estado)}`}
+                        >
                           {venta.estado}
                         </span>
                       </TableCell>

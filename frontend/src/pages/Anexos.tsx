@@ -1,8 +1,22 @@
-import { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { anexosService, conveniosService, dependenciasService, productosService, monedaService } from '../services/api';
-import { Plus, Edit, Trash2, Search, Save, ArrowLeft, Package } from 'lucide-react';
-import toast from 'react-hot-toast';
+import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import {
+  anexosService,
+  conveniosService,
+  dependenciasService,
+  productosService,
+  monedaService,
+} from "../services/api";
+import {
+  Plus,
+  Edit,
+  Trash2,
+  Search,
+  Save,
+  ArrowLeft,
+  Package,
+} from "lucide-react";
+import toast from "react-hot-toast";
 
 interface Anexo {
   id_anexo: number;
@@ -30,11 +44,11 @@ interface AnexoProducto {
 }
 
 import {
-  Button, 
-  Input, 
-  Label, 
-  Card, 
-  CardContent, 
+  Button,
+  Input,
+  Label,
+  Card,
+  CardContent,
   CardHeader,
   Table,
   TableHeader,
@@ -42,111 +56,111 @@ import {
   TableRow,
   TableHead,
   TableCell,
-  ConfirmModal
-} from '../components/ui';
+  ConfirmModal,
+} from "../components/ui";
 
 export function AnexosPage() {
   const queryClient = useQueryClient();
-  const [view, setView] = useState<'list' | 'form'>('list');
+  const [view, setView] = useState<"list" | "form">("list");
   const [editingAnexo, setEditingAnexo] = useState<Anexo | null>(null);
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
     title: string;
     message: string;
     onConfirm: () => void;
-    type: 'danger' | 'warning' | 'info';
+    type: "danger" | "warning" | "info";
   }>({
     isOpen: false,
-    title: '',
-    message: '',
+    title: "",
+    message: "",
     onConfirm: () => {},
-    type: 'danger'
+    type: "danger",
   });
 
   const [formData, setFormData] = useState({
     id_convenio: 0,
     id_moneda: undefined as number | undefined,
-    nombre_anexo: '',
-    fecha: '',
+    nombre_anexo: "",
+    fecha: "",
     id_dependencia: null as number | null | undefined,
     comision: 0,
-    productos: [] as AnexoProducto[]
+    productos: [] as AnexoProducto[],
   });
   const [newProduct, setNewProduct] = useState({
     id_producto: 0,
     cantidad: 1,
-    precio_compra: 0
+    precio_compra: 0,
   });
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState("");
 
   const { data: anexos = [], isLoading } = useQuery({
-    queryKey: ['anexos'],
+    queryKey: ["anexos"],
     queryFn: () => anexosService.getAnexos(),
   });
 
   const { data: convenios = [] } = useQuery({
-    queryKey: ['convenios'],
+    queryKey: ["convenios"],
     queryFn: () => conveniosService.getConvenios(),
   });
 
   const { data: dependencias = [] } = useQuery({
-    queryKey: ['dependencias'],
+    queryKey: ["dependencias"],
     queryFn: () => dependenciasService.getDependencias(),
   });
 
   const { data: productos = [] } = useQuery({
-    queryKey: ['productos'],
+    queryKey: ["productos"],
     queryFn: () => productosService.getProductos(),
   });
 
   const { data: monedas = [] } = useQuery({
-    queryKey: ['monedas'],
+    queryKey: ["monedas"],
     queryFn: () => monedaService.getMonedas(),
   });
 
   const createMutation = useMutation({
     mutationFn: (data: Partial<Anexo>) => anexosService.createAnexo(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['anexos'] });
-      toast.success('Anexo creado');
-      setView('list');
+      queryClient.invalidateQueries({ queryKey: ["anexos"] });
+      toast.success("Anexo creado");
+      setView("list");
       resetForm();
     },
-    onError: () => toast.error('Error al crear anexo'),
+    onError: () => toast.error("Error al crear anexo"),
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: number; data: Partial<Anexo> }) => 
+    mutationFn: ({ id, data }: { id: number; data: Partial<Anexo> }) =>
       anexosService.updateAnexo(id, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['anexos'] });
-      toast.success('Anexo actualizado');
-      setView('list');
+      queryClient.invalidateQueries({ queryKey: ["anexos"] });
+      toast.success("Anexo actualizado");
+      setView("list");
       resetForm();
     },
-    onError: () => toast.error('Error al actualizar anexo'),
+    onError: () => toast.error("Error al actualizar anexo"),
   });
 
   const deleteMutation = useMutation({
     mutationFn: (id: number) => anexosService.deleteAnexo(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['anexos'] });
-      toast.success('Anexo eliminado');
-      setConfirmModal(prev => ({ ...prev, isOpen: false }));
+      queryClient.invalidateQueries({ queryKey: ["anexos"] });
+      toast.success("Anexo eliminado");
+      setConfirmModal((prev) => ({ ...prev, isOpen: false }));
     },
-    onError: () => toast.error('Error al eliminar anexo'),
+    onError: () => toast.error("Error al eliminar anexo"),
   });
 
   const resetForm = () => {
     setFormData({
       id_convenio: 0,
       id_moneda: undefined,
-      nombre_anexo: '',
-      fecha: '',
+      nombre_anexo: "",
+      fecha: "",
       id_dependencia: undefined,
       comision: 0,
-      productos: []
+      productos: [],
     });
     setNewProduct({ id_producto: 0, cantidad: 1, precio_compra: 0 });
     setFormErrors({});
@@ -154,14 +168,23 @@ export function AnexosPage() {
   };
 
   const addProduct = () => {
-    if (!newProduct.id_producto || !newProduct.cantidad || !newProduct.precio_compra) {
-      toast.error('Complete todos los campos del producto');
+    if (
+      !newProduct.id_producto ||
+      !newProduct.cantidad ||
+      !newProduct.precio_compra
+    ) {
+      toast.error("Complete todos los campos del producto");
       return;
     }
-    const producto = productos.find(p => p.id_producto === newProduct.id_producto);
+    const producto = productos.find(
+      (p) => p.id_producto === newProduct.id_producto,
+    );
     setFormData({
       ...formData,
-      productos: [...formData.productos, { ...newProduct, nombre_producto: producto?.nombre }]
+      productos: [
+        ...formData.productos,
+        { ...newProduct, nombre_producto: producto?.nombre },
+      ],
     });
     setNewProduct({ id_producto: 0, cantidad: 1, precio_compra: 0 });
   };
@@ -169,13 +192,13 @@ export function AnexosPage() {
   const removeProduct = (index: number) => {
     setFormData({
       ...formData,
-      productos: formData.productos.filter((_, i) => i !== index)
+      productos: formData.productos.filter((_, i) => i !== index),
     });
   };
 
   const handleNew = () => {
     resetForm();
-    setView('form');
+    setView("form");
   };
 
   const handleEdit = (anexo: Anexo) => {
@@ -187,30 +210,31 @@ export function AnexosPage() {
       fecha: anexo.fecha,
       id_dependencia: anexo.id_dependencia ?? null,
       comision: anexo.comision || 0,
-      productos: []
+      productos: [],
     });
-    setView('form');
+    setView("form");
   };
 
   const handleDelete = (anexo: Anexo) => {
     setConfirmModal({
       isOpen: true,
-      title: 'Eliminar Anexo',
+      title: "Eliminar Anexo",
       message: `¿Está seguro de eliminar el anexo "${anexo.nombre_anexo}"?`,
       onConfirm: () => deleteMutation.mutate(anexo.id_anexo),
-      type: 'danger'
+      type: "danger",
     });
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const errors: Record<string, string> = {};
-    
-    if (!formData.id_convenio) errors.id_convenio = 'Seleccione un convenio';
-    if (!formData.nombre_anexo) errors.nombre_anexo = 'Ingrese el nombre';
-    if (!formData.fecha) errors.fecha = 'Ingrese la fecha';
-    if (!formData.productos || formData.productos.length === 0) errors.productos = 'Agregue al menos un producto';
-    
+
+    if (!formData.id_convenio) errors.id_convenio = "Seleccione un convenio";
+    if (!formData.nombre_anexo) errors.nombre_anexo = "Ingrese el nombre";
+    if (!formData.fecha) errors.fecha = "Ingrese la fecha";
+    if (!formData.productos || formData.productos.length === 0)
+      errors.productos = "Agregue al menos un producto";
+
     if (Object.keys(errors).length > 0) {
       setFormErrors(errors);
       return;
@@ -218,11 +242,11 @@ export function AnexosPage() {
 
     const payload = {
       ...formData,
-      productos: formData.productos.map(p => ({
+      productos: formData.productos.map((p) => ({
         id_producto: p.id_producto,
         cantidad: p.cantidad,
-        precio_compra: p.precio_compra
-      }))
+        precio_compra: p.precio_compra,
+      })),
     };
 
     if (editingAnexo) {
@@ -232,7 +256,7 @@ export function AnexosPage() {
     }
   };
 
-  const filteredAnexos = anexos.filter(a => {
+  const filteredAnexos = anexos.filter((a) => {
     if (!searchTerm) return true;
     const term = searchTerm.toLowerCase();
     return (
@@ -242,18 +266,18 @@ export function AnexosPage() {
     );
   });
 
-  if (view === 'form') {
+  if (view === "form") {
     return (
       <div className="max-w-2xl mx-auto">
         <div className="flex items-center gap-4 mb-6">
           <button
-            onClick={() => setView('list')}
+            onClick={() => setView("list")}
             className="p-2 hover:bg-slate-50 rounded-lg"
           >
             <ArrowLeft className="h-5 w-5" />
           </button>
-          <h1 className="text-2xl font-bold text-gray-900">
-            {editingAnexo ? 'Editar' : 'Nuevo'} Anexo
+          <h1 className="text-xl font-bold text-gray-900">
+            {editingAnexo ? "Editar" : "Nuevo"} Anexo
           </h1>
         </div>
 
@@ -263,8 +287,13 @@ export function AnexosPage() {
               <div>
                 <Label>Convenio *</Label>
                 <select
-                  value={formData.id_convenio || ''}
-                  onChange={(e) => setFormData({ ...formData, id_convenio: parseInt(e.target.value) || 0 })}
+                  value={formData.id_convenio || ""}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      id_convenio: parseInt(e.target.value) || 0,
+                    })
+                  }
                   className="w-full mt-1 px-3 py-2 border rounded-lg"
                 >
                   <option value="">Seleccione un convenio</option>
@@ -274,14 +303,25 @@ export function AnexosPage() {
                     </option>
                   ))}
                 </select>
-                {formErrors.id_convenio && <p className="text-red-500 text-sm mt-1">{formErrors.id_convenio}</p>}
+                {formErrors.id_convenio && (
+                  <p className="text-red-500 text-sm mt-1">
+                    {formErrors.id_convenio}
+                  </p>
+                )}
               </div>
 
               <div>
                 <Label>Moneda</Label>
                 <select
-                  value={formData.id_moneda || ''}
-                  onChange={(e) => setFormData({ ...formData, id_moneda: e.target.value ? parseInt(e.target.value) : undefined })}
+                  value={formData.id_moneda || ""}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      id_moneda: e.target.value
+                        ? parseInt(e.target.value)
+                        : undefined,
+                    })
+                  }
                   className="w-full mt-1 px-3 py-2 border rounded-lg"
                 >
                   <option value="">Seleccione una moneda</option>
@@ -297,10 +337,16 @@ export function AnexosPage() {
                 <Label>Nombre del Anexo *</Label>
                 <Input
                   value={formData.nombre_anexo}
-                  onChange={(e) => setFormData({ ...formData, nombre_anexo: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, nombre_anexo: e.target.value })
+                  }
                   placeholder="Nombre del anexo"
                 />
-                {formErrors.nombre_anexo && <p className="text-red-500 text-sm mt-1">{formErrors.nombre_anexo}</p>}
+                {formErrors.nombre_anexo && (
+                  <p className="text-red-500 text-sm mt-1">
+                    {formErrors.nombre_anexo}
+                  </p>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-4">
@@ -309,9 +355,15 @@ export function AnexosPage() {
                   <Input
                     type="date"
                     value={formData.fecha}
-                    onChange={(e) => setFormData({ ...formData, fecha: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, fecha: e.target.value })
+                    }
                   />
-                  {formErrors.fecha && <p className="text-red-500 text-sm mt-1">{formErrors.fecha}</p>}
+                  {formErrors.fecha && (
+                    <p className="text-red-500 text-sm mt-1">
+                      {formErrors.fecha}
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -319,8 +371,15 @@ export function AnexosPage() {
                 <div>
                   <Label>Dependencia</Label>
                   <select
-                    value={formData.id_dependencia ?? ''}
-                    onChange={(e) => setFormData({ ...formData, id_dependencia: e.target.value ? parseInt(e.target.value) : undefined })}
+                    value={formData.id_dependencia ?? ""}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        id_dependencia: e.target.value
+                          ? parseInt(e.target.value)
+                          : undefined,
+                      })
+                    }
                     className="w-full mt-1 px-3 py-2 border rounded-lg"
                   >
                     <option value="">Seleccione dependencia</option>
@@ -337,7 +396,12 @@ export function AnexosPage() {
                     type="number"
                     step="0.01"
                     value={formData.comision}
-                    onChange={(e) => setFormData({ ...formData, comision: parseFloat(e.target.value) || 0 })}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        comision: parseFloat(e.target.value) || 0,
+                      })
+                    }
                     placeholder="0.00"
                   />
                 </div>
@@ -348,15 +412,22 @@ export function AnexosPage() {
                   <Package className="h-4 w-4" />
                   Productos del Anexo *
                 </Label>
-                
+
                 {formErrors.productos && (
-                  <p className="text-red-500 text-sm mb-2">{formErrors.productos}</p>
+                  <p className="text-red-500 text-sm mb-2">
+                    {formErrors.productos}
+                  </p>
                 )}
 
                 <div className="grid grid-cols-4 gap-2 mb-3">
                   <select
-                    value={newProduct.id_producto || ''}
-                    onChange={(e) => setNewProduct({ ...newProduct, id_producto: parseInt(e.target.value) || 0 })}
+                    value={newProduct.id_producto || ""}
+                    onChange={(e) =>
+                      setNewProduct({
+                        ...newProduct,
+                        id_producto: parseInt(e.target.value) || 0,
+                      })
+                    }
                     className="px-3 py-2 border rounded-lg"
                   >
                     <option value="">Producto</option>
@@ -370,14 +441,24 @@ export function AnexosPage() {
                     type="number"
                     min="1"
                     value={newProduct.cantidad}
-                    onChange={(e) => setNewProduct({ ...newProduct, cantidad: parseInt(e.target.value) || 0 })}
+                    onChange={(e) =>
+                      setNewProduct({
+                        ...newProduct,
+                        cantidad: parseInt(e.target.value) || 0,
+                      })
+                    }
                     placeholder="Cantidad"
                   />
                   <Input
                     type="number"
                     step="0.01"
                     value={newProduct.precio_compra}
-                    onChange={(e) => setNewProduct({ ...newProduct, precio_compra: parseFloat(e.target.value) || 0 })}
+                    onChange={(e) =>
+                      setNewProduct({
+                        ...newProduct,
+                        precio_compra: parseFloat(e.target.value) || 0,
+                      })
+                    }
                     placeholder="Precio compra"
                   />
                   <Button type="button" onClick={addProduct} variant="outline">
@@ -399,7 +480,10 @@ export function AnexosPage() {
                       <TableBody>
                         {formData.productos.map((prod, index) => (
                           <TableRow key={index}>
-                            <TableCell>{prod.nombre_producto || `Producto ${prod.id_producto}`}</TableCell>
+                            <TableCell>
+                              {prod.nombre_producto ||
+                                `Producto ${prod.id_producto}`}
+                            </TableCell>
                             <TableCell>{prod.cantidad}</TableCell>
                             <TableCell>{prod.precio_compra}</TableCell>
                             <TableCell>
@@ -422,9 +506,13 @@ export function AnexosPage() {
               <div className="flex gap-3 pt-4">
                 <Button type="submit">
                   <Save className="h-4 w-4 mr-2" />
-                  {editingAnexo ? 'Actualizar' : 'Crear'}
+                  {editingAnexo ? "Actualizar" : "Crear"}
                 </Button>
-                <Button type="button" variant="outline" onClick={() => setView('list')}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setView("list")}
+                >
                   Cancelar
                 </Button>
               </div>
@@ -438,9 +526,11 @@ export function AnexosPage() {
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Anexos</h1>
-          <p className="text-gray-500 mt-1">Gestión de anexos ({filteredAnexos.length} registrados)</p>
+        <div className="flex items-baseline">
+          <h1 className="text-xl font-bold text-gray-900">Anexos</h1>
+          <p className="text-sm text-gray-500 ml-3 hidden sm:block">
+            Gestión de anexos ({filteredAnexos.length} registrados)
+          </p>
         </div>
         <Button onClick={handleNew}>
           <Plus className="h-4 w-4 mr-2" />
@@ -465,7 +555,9 @@ export function AnexosPage() {
           {isLoading ? (
             <p className="text-center py-8 text-gray-500">Cargando...</p>
           ) : filteredAnexos.length === 0 ? (
-            <p className="text-center py-8 text-gray-500">No hay anexos registrados</p>
+            <p className="text-center py-8 text-gray-500">
+              No hay anexos registrados
+            </p>
           ) : (
             <Table>
               <TableHeader>
@@ -481,11 +573,17 @@ export function AnexosPage() {
               <TableBody>
                 {filteredAnexos.map((anexo) => (
                   <TableRow key={anexo.id_anexo}>
-                    <TableCell>{anexo.anexo_convenio?.nombre_convenio || 'Sin convenio'}</TableCell>
-                    <TableCell className="font-medium">{anexo.codigo_anexo || '-'}</TableCell>
+                    <TableCell>
+                      {anexo.anexo_convenio?.nombre_convenio || "Sin convenio"}
+                    </TableCell>
+                    <TableCell className="font-medium">
+                      {anexo.codigo_anexo || "-"}
+                    </TableCell>
                     <TableCell>{anexo.nombre_anexo}</TableCell>
                     <TableCell>{anexo.fecha}</TableCell>
-                    <TableCell>{anexo.comision ? `${anexo.comision}%` : '-'}</TableCell>
+                    <TableCell>
+                      {anexo.comision ? `${anexo.comision}%` : "-"}
+                    </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
                         <button
@@ -516,7 +614,7 @@ export function AnexosPage() {
         message={confirmModal.message}
         type={confirmModal.type}
         onConfirm={confirmModal.onConfirm}
-        onClose={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+        onClose={() => setConfirmModal((prev) => ({ ...prev, isOpen: false }))}
       />
     </div>
   );

@@ -1,22 +1,48 @@
-import { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ventasService, clientesService, productosService } from '../services/api';
-import type { Venta, VentaCreate, VentaUpdate, DetalleVentaCreate, DetalleVenta } from '../types/ventas';
-import type { Productos } from '../types/index';
-import { 
-  Plus, Edit, Trash2, Eye, Ban, CheckCircle, 
-  User, Package, AlertCircle, PlusCircle,
-  MinusCircle, ShoppingCart, Search, X,
-  ArrowLeft, Save, RefreshCw, Wallet, Calendar, DollarSign
-} from 'lucide-react';
-import toast from 'react-hot-toast';
-import { 
-  Button, 
-  Input, 
-  Label, 
-  Card, 
-  CardContent, 
-  CardHeader, 
+import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import {
+  ventasService,
+  clientesService,
+  productosService,
+} from "../services/api";
+import type {
+  Venta,
+  VentaCreate,
+  VentaUpdate,
+  DetalleVentaCreate,
+  DetalleVenta,
+} from "../types/ventas";
+import type { Productos } from "../types/index";
+import {
+  Plus,
+  Edit,
+  Trash2,
+  Eye,
+  Ban,
+  CheckCircle,
+  User,
+  Package,
+  AlertCircle,
+  PlusCircle,
+  MinusCircle,
+  ShoppingCart,
+  Search,
+  X,
+  ArrowLeft,
+  Save,
+  RefreshCw,
+  Wallet,
+  Calendar,
+  DollarSign,
+} from "lucide-react";
+import toast from "react-hot-toast";
+import {
+  Button,
+  Input,
+  Label,
+  Card,
+  CardContent,
+  CardHeader,
   CardTitle,
   Table,
   TableHeader,
@@ -24,27 +50,27 @@ import {
   TableRow,
   TableHead,
   TableCell,
-  ConfirmModal
-} from '../components/ui';
+  ConfirmModal,
+} from "../components/ui";
 
 export function VentasPage() {
   const queryClient = useQueryClient();
-  const [view, setView] = useState<'list' | 'form' | 'detail'>('list');
+  const [view, setView] = useState<"list" | "form" | "detail">("list");
   const [selectedVenta, setSelectedVenta] = useState<Venta | null>(null);
   const [editingVenta, setEditingVenta] = useState<Venta | null>(null);
-  const [filterEstado, setFilterEstado] = useState<string>('');
+  const [filterEstado, setFilterEstado] = useState<string>("");
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
     title: string;
     message: string;
     onConfirm: () => void;
-    type: 'danger' | 'warning' | 'info';
+    type: "danger" | "warning" | "info";
   }>({
     isOpen: false,
-    title: '',
-    message: '',
+    title: "",
+    message: "",
     onConfirm: () => {},
-    type: 'danger'
+    type: "danger",
   });
 
   // Form state
@@ -55,31 +81,40 @@ export function VentasPage() {
     detalles: DetalleVentaCreate[];
   }>({
     id_cliente: 0,
-    fecha: new Date().toISOString().split('T')[0],
-    observacion: '',
-    detalles: []
+    fecha: new Date().toISOString().split("T")[0],
+    observacion: "",
+    detalles: [],
   });
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
-  
+
   // Search states for dropdowns
-  const [clienteSearch, setClienteSearch] = useState('');
-  const [productoSearch, setProductoSearch] = useState<{[key: number]: string}>({});
+  const [clienteSearch, setClienteSearch] = useState("");
+  const [productoSearch, setProductoSearch] = useState<{
+    [key: number]: string;
+  }>({});
   const [showClienteDropdown, setShowClienteDropdown] = useState(false);
-  const [showProductoDropdown, setShowProductoDropdown] = useState<{[key: number]: boolean}>({});
+  const [showProductoDropdown, setShowProductoDropdown] = useState<{
+    [key: number]: boolean;
+  }>({});
 
   // Queries
-  const { data: ventas = [], isLoading, isError, error } = useQuery({
-    queryKey: ['ventas'],
+  const {
+    data: ventas = [],
+    isLoading,
+    isError,
+    error,
+  } = useQuery({
+    queryKey: ["ventas"],
     queryFn: () => ventasService.getVentas(),
   });
 
   const { data: clientes = [] } = useQuery({
-    queryKey: ['clientes'],
+    queryKey: ["clientes"],
     queryFn: () => clientesService.getClientes(),
   });
 
   const { data: productos = [] } = useQuery<Productos[]>({
-    queryKey: ['productos-ventas'],
+    queryKey: ["productos-ventas"],
     queryFn: () => productosService.getProductos(),
   });
 
@@ -87,92 +122,102 @@ export function VentasPage() {
   const createMutation = useMutation({
     mutationFn: ventasService.createVenta,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['ventas'] });
-      toast.success('Venta creada correctamente');
-      setView('list');
+      queryClient.invalidateQueries({ queryKey: ["ventas"] });
+      toast.success("Venta creada correctamente");
+      setView("list");
       resetForm();
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : 'Error al crear venta');
-    }
+      toast.error(
+        error instanceof Error ? error.message : "Error al crear venta",
+      );
+    },
   });
 
   const updateMutation = useMutation({
     mutationFn: ({ id, data }: { id: number; data: VentaUpdate }) =>
       ventasService.updateVenta(id, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['ventas'] });
-      toast.success('Venta actualizada correctamente');
-      setView('list');
+      queryClient.invalidateQueries({ queryKey: ["ventas"] });
+      toast.success("Venta actualizada correctamente");
+      setView("list");
       setEditingVenta(null);
       resetForm();
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : 'Error al actualizar venta');
-    }
+      toast.error(
+        error instanceof Error ? error.message : "Error al actualizar venta",
+      );
+    },
   });
 
   const anularMutation = useMutation({
     mutationFn: ventasService.anularVenta,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['ventas'] });
-      toast.success('Venta anulada correctamente');
+      queryClient.invalidateQueries({ queryKey: ["ventas"] });
+      toast.success("Venta anulada correctamente");
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : 'Error al anular venta');
-    }
+      toast.error(
+        error instanceof Error ? error.message : "Error al anular venta",
+      );
+    },
   });
 
   const confirmarMutation = useMutation({
     mutationFn: ventasService.confirmarVenta,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['ventas'] });
-      toast.success('Venta confirmada correctamente');
+      queryClient.invalidateQueries({ queryKey: ["ventas"] });
+      toast.success("Venta confirmada correctamente");
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : 'Error al confirmar venta');
-    }
+      toast.error(
+        error instanceof Error ? error.message : "Error al confirmar venta",
+      );
+    },
   });
 
   const deleteMutation = useMutation({
     mutationFn: ventasService.deleteVenta,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['ventas'] });
-      toast.success('Venta eliminada correctamente');
+      queryClient.invalidateQueries({ queryKey: ["ventas"] });
+      toast.success("Venta eliminada correctamente");
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : 'Error al eliminar venta');
-    }
+      toast.error(
+        error instanceof Error ? error.message : "Error al eliminar venta",
+      );
+    },
   });
 
   // Validation
   const validateForm = (): boolean => {
     const errors: Record<string, string> = {};
-    
+
     if (!formData.id_cliente || formData.id_cliente === 0) {
-      errors.id_cliente = 'Debe seleccionar un cliente';
+      errors.id_cliente = "Debe seleccionar un cliente";
     }
-    
+
     if (!formData.fecha) {
-      errors.fecha = 'La fecha es requerida';
+      errors.fecha = "La fecha es requerida";
     }
-    
+
     if (formData.detalles.length === 0) {
-      errors.detalles = 'Debe agregar al menos un producto';
+      errors.detalles = "Debe agregar al menos un producto";
     } else {
       formData.detalles.forEach((detalle, index) => {
         if (!detalle.id_producto) {
-          errors[`detalle_${index}_producto`] = 'Seleccione un producto';
+          errors[`detalle_${index}_producto`] = "Seleccione un producto";
         }
         if (!detalle.cantidad || detalle.cantidad <= 0) {
-          errors[`detalle_${index}_cantidad`] = 'Cantidad debe ser mayor a 0';
+          errors[`detalle_${index}_cantidad`] = "Cantidad debe ser mayor a 0";
         }
         if (!detalle.precio_unitario || detalle.precio_unitario <= 0) {
-          errors[`detalle_${index}_precio`] = 'Precio debe ser mayor a 0';
+          errors[`detalle_${index}_precio`] = "Precio debe ser mayor a 0";
         }
       });
     }
-    
+
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -181,7 +226,7 @@ export function VentasPage() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!validateForm()) {
-      toast.error('Por favor corrija los errores del formulario');
+      toast.error("Por favor corrija los errores del formulario");
       return;
     }
 
@@ -189,7 +234,7 @@ export function VentasPage() {
       id_cliente: formData.id_cliente,
       fecha: formData.fecha,
       observacion: formData.observacion || undefined,
-      detalles: formData.detalles
+      detalles: formData.detalles,
     };
 
     if (editingVenta) {
@@ -205,32 +250,39 @@ export function VentasPage() {
   };
 
   const handleAddDetalle = () => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      detalles: [...prev.detalles, { id_producto: 0, cantidad: 1, precio_unitario: 0 }]
+      detalles: [
+        ...prev.detalles,
+        { id_producto: 0, cantidad: 1, precio_unitario: 0 },
+      ],
     }));
   };
 
   const handleRemoveDetalle = (index: number) => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      detalles: prev.detalles.filter((_, i) => i !== index)
+      detalles: prev.detalles.filter((_, i) => i !== index),
     }));
   };
 
-  const handleDetalleChange = (index: number, field: keyof DetalleVentaCreate, value: any) => {
-    setFormData(prev => {
+  const handleDetalleChange = (
+    index: number,
+    field: keyof DetalleVentaCreate,
+    value: any,
+  ) => {
+    setFormData((prev) => {
       const newDetalles = [...prev.detalles];
       newDetalles[index] = { ...newDetalles[index], [field]: value };
-      
+
       // Si cambia el producto, actualizar el precio
-      if (field === 'id_producto') {
-        const producto = productos.find(p => p.id_producto === value);
+      if (field === "id_producto") {
+        const producto = productos.find((p) => p.id_producto === value);
         if (producto) {
           newDetalles[index].precio_unitario = producto.precio_venta;
         }
       }
-      
+
       return { ...prev, detalles: newDetalles };
     });
   };
@@ -238,9 +290,9 @@ export function VentasPage() {
   const resetForm = () => {
     setFormData({
       id_cliente: 0,
-      fecha: new Date().toISOString().split('T')[0],
-      observacion: '',
-      detalles: []
+      fecha: new Date().toISOString().split("T")[0],
+      observacion: "",
+      detalles: [],
     });
     setFormErrors({});
   };
@@ -248,60 +300,72 @@ export function VentasPage() {
   const handleAnular = (venta: Venta) => {
     setConfirmModal({
       isOpen: true,
-      title: '¿Anular venta?',
+      title: "¿Anular venta?",
       message: `¿Está seguro que desea anular la venta #${venta.id_venta}? Esta acción no se puede deshacer.`,
       onConfirm: () => anularMutation.mutate(venta.id_venta),
-      type: 'warning'
+      type: "warning",
     });
   };
 
   const handleEliminar = (venta: Venta) => {
     setConfirmModal({
       isOpen: true,
-      title: '¿Eliminar venta?',
+      title: "¿Eliminar venta?",
       message: `¿Está seguro que desea eliminar permanentemente la venta #${venta.id_venta}? Esta acción no se puede deshacer.`,
       onConfirm: () => deleteMutation.mutate(venta.id_venta),
-      type: 'danger'
+      type: "danger",
     });
   };
 
   const calcularTotal = () => {
-    return formData.detalles.reduce((sum, d) => sum + (d.cantidad * d.precio_unitario), 0);
+    return formData.detalles.reduce(
+      (sum, d) => sum + d.cantidad * d.precio_unitario,
+      0,
+    );
   };
 
-  const filteredVentas = ventas.filter(v => 
-    filterEstado ? v.estado === filterEstado : true
+  const filteredVentas = ventas.filter((v) =>
+    filterEstado ? v.estado === filterEstado : true,
   );
 
   const getEstadoBadge = (estado: string) => {
     const styles = {
-      PENDIENTE: 'bg-yellow-100 text-yellow-800',
-      COMPLETADA: 'bg-green-100 text-green-800',
-      ANULADA: 'bg-red-100 text-red-800'
+      PENDIENTE: "bg-yellow-100 text-yellow-800",
+      COMPLETADA: "bg-green-100 text-green-800",
+      ANULADA: "bg-red-100 text-red-800",
     };
-    return styles[estado as keyof typeof styles] || 'bg-slate-50 text-gray-800';
+    return styles[estado as keyof typeof styles] || "bg-slate-50 text-gray-800";
   };
 
   // VISTA: DETALLE
-  if (view === 'detail' && selectedVenta) {
+  if (view === "detail" && selectedVenta) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-4">
         <div className="flex justify-between items-start">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Detalle de Venta #{selectedVenta.id_venta}</h1>
-            <p className="text-gray-500 mt-1">
-              {new Date(selectedVenta.fecha).toLocaleDateString('es-ES', { 
-                weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' 
+          <div className="flex items-baseline">
+            <h1 className="text-xl font-bold text-gray-900">
+              Detalle de Venta #{selectedVenta.id_venta}
+            </h1>
+            <p className="text-sm text-gray-500 ml-3 hidden sm:block">
+              {new Date(selectedVenta.fecha).toLocaleDateString("es-ES", {
+                weekday: "long",
+                year: "numeric",
+                month: "long",
+                day: "numeric",
               })}
             </p>
           </div>
           <div className="flex gap-2">
-            <Button variant="secondary" onClick={() => setView('list')} className="gap-2">
+            <Button
+              variant="secondary"
+              onClick={() => setView("list")}
+              className="gap-2"
+            >
               <ArrowLeft className="h-4 w-4" />
               Volver
             </Button>
-            {selectedVenta.estado === 'PENDIENTE' && (
-              <Button 
+            {selectedVenta.estado === "PENDIENTE" && (
+              <Button
                 onClick={() => confirmarMutation.mutate(selectedVenta.id_venta)}
                 className="gap-2"
               >
@@ -333,20 +397,36 @@ export function VentasPage() {
                 <TableBody>
                   {selectedVenta.detalles.map((detalle: DetalleVenta) => (
                     <TableRow key={detalle.id_detalle}>
-                      <TableCell>{detalle.producto?.nombre || `Producto #${detalle.id_producto}`}</TableCell>
-                      <TableCell className="text-right">{detalle.cantidad}</TableCell>
+                      <TableCell>
+                        {detalle.producto?.nombre ||
+                          `Producto #${detalle.id_producto}`}
+                      </TableCell>
                       <TableCell className="text-right">
-                        ${detalle.precio_unitario.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                        {detalle.cantidad}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        $
+                        {detalle.precio_unitario.toLocaleString(undefined, {
+                          minimumFractionDigits: 2,
+                        })}
                       </TableCell>
                       <TableCell className="text-right font-medium">
-                        ${detalle.subtotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                        $
+                        {detalle.subtotal.toLocaleString(undefined, {
+                          minimumFractionDigits: 2,
+                        })}
                       </TableCell>
                     </TableRow>
                   ))}
                   <TableRow className="bg-gray-50 font-bold">
-                    <TableCell colSpan={3} className="text-right">TOTAL:</TableCell>
+                    <TableCell colSpan={3} className="text-right">
+                      TOTAL:
+                    </TableCell>
                     <TableCell className="text-right text-lg">
-                      ${selectedVenta.total.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                      $
+                      {selectedVenta.total.toLocaleString(undefined, {
+                        minimumFractionDigits: 2,
+                      })}
                     </TableCell>
                   </TableRow>
                 </TableBody>
@@ -354,7 +434,7 @@ export function VentasPage() {
             </CardContent>
           </Card>
 
-          <div className="space-y-6">
+          <div className="space-y-4">
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -363,12 +443,18 @@ export function VentasPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="font-medium text-lg">{selectedVenta.cliente?.nombre || 'Cliente no disponible'}</p>
+                <p className="font-medium text-lg">
+                  {selectedVenta.cliente?.nombre || "Cliente no disponible"}
+                </p>
                 {selectedVenta.cliente?.telefono && (
-                  <p className="text-gray-500 text-sm mt-1">{selectedVenta.cliente.telefono}</p>
+                  <p className="text-gray-500 text-sm mt-1">
+                    {selectedVenta.cliente.telefono}
+                  </p>
                 )}
                 {selectedVenta.cliente?.email && (
-                  <p className="text-gray-500 text-sm">{selectedVenta.cliente.email}</p>
+                  <p className="text-gray-500 text-sm">
+                    {selectedVenta.cliente.email}
+                  </p>
                 )}
               </CardContent>
             </Card>
@@ -383,13 +469,19 @@ export function VentasPage() {
               <CardContent className="space-y-3">
                 <div>
                   <p className="text-sm text-gray-500">Estado</p>
-                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getEstadoBadge(selectedVenta.estado)}`}>
+                  <span
+                    className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getEstadoBadge(selectedVenta.estado)}`}
+                  >
                     {selectedVenta.estado}
                   </span>
                 </div>
                 <div>
                   <p className="text-sm text-gray-500">Fecha de registro</p>
-                  <p className="font-medium">{new Date(selectedVenta.fecha_registro).toLocaleString('es-ES')}</p>
+                  <p className="font-medium">
+                    {new Date(selectedVenta.fecha_registro).toLocaleString(
+                      "es-ES",
+                    )}
+                  </p>
                 </div>
                 {selectedVenta.observacion && (
                   <div>
@@ -406,24 +498,28 @@ export function VentasPage() {
   }
 
   // VISTA: FORMULARIO
-  if (view === 'form') {
+  if (view === "form") {
     return (
-      <div className="space-y-6">
+      <div className="space-y-4">
         <div className="flex justify-between items-center">
-          <h1 className="text-2xl font-bold text-gray-900">
-            {editingVenta ? 'Editar Venta' : 'Nueva Venta'}
+          <h1 className="text-xl font-bold text-gray-900">
+            {editingVenta ? "Editar Venta" : "Nueva Venta"}
           </h1>
-          <Button variant="secondary" onClick={() => {
-            setView('list');
-            setEditingVenta(null);
-            resetForm();
-          }} className="gap-2">
+          <Button
+            variant="secondary"
+            onClick={() => {
+              setView("list");
+              setEditingVenta(null);
+              resetForm();
+            }}
+            className="gap-2"
+          >
             <ArrowLeft className="h-4 w-4" />
             Volver a la lista
           </Button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-4">
           <Card className="p-6">
             <CardHeader className="pb-4">
               <CardTitle className="text-lg">Información General</CardTitle>
@@ -436,7 +532,14 @@ export function VentasPage() {
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                     <input
                       type="text"
-                      value={clienteSearch || (formData.id_cliente ? clientes.find(c => c.id_cliente === formData.id_cliente)?.nombre : '')}
+                      value={
+                        clienteSearch ||
+                        (formData.id_cliente
+                          ? clientes.find(
+                              (c) => c.id_cliente === formData.id_cliente,
+                            )?.nombre
+                          : "")
+                      }
                       onChange={(e) => {
                         setClienteSearch(e.target.value);
                         setShowClienteDropdown(true);
@@ -447,13 +550,15 @@ export function VentasPage() {
                       onFocus={() => setShowClienteDropdown(true)}
                       placeholder="Buscar cliente..."
                       className={`w-full pl-9 pr-8 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none ${
-                        formErrors.id_cliente ? 'border-red-500' : 'border-gray-300'
+                        formErrors.id_cliente
+                          ? "border-red-500"
+                          : "border-gray-300"
                       }`}
                     />
                     {clienteSearch && (
                       <button
                         onClick={() => {
-                          setClienteSearch('');
+                          setClienteSearch("");
                           setFormData({ ...formData, id_cliente: 0 });
                         }}
                         className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
@@ -465,39 +570,59 @@ export function VentasPage() {
                   {showClienteDropdown && (
                     <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-48 overflow-y-auto">
                       {clientes
-                        .filter(c =>
-                          !clienteSearch ||
-                          c.nombre.toLowerCase().includes(clienteSearch.toLowerCase()) ||
-                          (c.cedula_rif && c.cedula_rif.toLowerCase().includes(clienteSearch.toLowerCase()))
+                        .filter(
+                          (c) =>
+                            !clienteSearch ||
+                            c.nombre
+                              .toLowerCase()
+                              .includes(clienteSearch.toLowerCase()) ||
+                            (c.cedula_rif &&
+                              c.cedula_rif
+                                .toLowerCase()
+                                .includes(clienteSearch.toLowerCase())),
                         )
                         .slice(0, 10)
                         .map((cliente) => (
                           <div
                             key={cliente.id_cliente}
                             onClick={() => {
-                              setFormData({ ...formData, id_cliente: cliente.id_cliente });
-                              setClienteSearch('');
+                              setFormData({
+                                ...formData,
+                                id_cliente: cliente.id_cliente,
+                              });
+                              setClienteSearch("");
                               setShowClienteDropdown(false);
                             }}
                             className="px-3 py-2 hover:bg-slate-50 cursor-pointer border-b border-gray-100 last:border-0"
                           >
-                            <div className="font-medium">{cliente.nombre || 'Cliente sin nombre'}</div>
+                            <div className="font-medium">
+                              {cliente.nombre || "Cliente sin nombre"}
+                            </div>
                             {cliente.cedula_rif && (
-                              <div className="text-xs text-gray-500">{cliente.cedula_rif}</div>
+                              <div className="text-xs text-gray-500">
+                                {cliente.cedula_rif}
+                              </div>
                             )}
                           </div>
                         ))}
-                      {clientes.filter(c =>
-                        !clienteSearch ||
-                        (c.nombre || '').toLowerCase().includes(clienteSearch.toLowerCase())
+                      {clientes.filter(
+                        (c) =>
+                          !clienteSearch ||
+                          (c.nombre || "")
+                            .toLowerCase()
+                            .includes(clienteSearch.toLowerCase()),
                       ).length === 0 && (
-                        <div className="px-3 py-2 text-gray-500 text-sm">No se encontraron clientes</div>
+                        <div className="px-3 py-2 text-gray-500 text-sm">
+                          No se encontraron clientes
+                        </div>
                       )}
                     </div>
                   )}
                 </div>
                 {formErrors.id_cliente && (
-                  <p className="text-xs text-red-500 mt-1">{formErrors.id_cliente}</p>
+                  <p className="text-xs text-red-500 mt-1">
+                    {formErrors.id_cliente}
+                  </p>
                 )}
               </div>
 
@@ -506,11 +631,15 @@ export function VentasPage() {
                 <Input
                   type="date"
                   value={formData.fecha}
-                  onChange={(e) => setFormData({ ...formData, fecha: e.target.value })}
-                  className={`mt-1 ${formErrors.fecha ? 'border-red-500' : ''}`}
+                  onChange={(e) =>
+                    setFormData({ ...formData, fecha: e.target.value })
+                  }
+                  className={`mt-1 ${formErrors.fecha ? "border-red-500" : ""}`}
                 />
                 {formErrors.fecha && (
-                  <p className="text-red-500 text-sm mt-2">{formErrors.fecha}</p>
+                  <p className="text-red-500 text-sm mt-2">
+                    {formErrors.fecha}
+                  </p>
                 )}
               </div>
 
@@ -518,7 +647,9 @@ export function VentasPage() {
                 <Label>Observaciones</Label>
                 <textarea
                   value={formData.observacion}
-                  onChange={(e) => setFormData({ ...formData, observacion: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, observacion: e.target.value })
+                  }
                   rows={2}
                   className="w-full px-3 py-2 mt-1 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all resize-none"
                   placeholder="Notas adicionales sobre la venta..."
@@ -533,7 +664,12 @@ export function VentasPage() {
                 <ShoppingCart className="h-5 w-5" />
                 Productos
               </CardTitle>
-              <Button type="button" onClick={handleAddDetalle} variant="secondary" className="gap-2">
+              <Button
+                type="button"
+                onClick={handleAddDetalle}
+                variant="secondary"
+                className="gap-2"
+              >
                 <PlusCircle className="h-4 w-4" />
                 Agregar
               </Button>
@@ -543,14 +679,21 @@ export function VentasPage() {
                 <div className="text-center py-8 text-gray-500">
                   <Package className="h-12 w-12 mx-auto mb-3 text-gray-300" />
                   <p className="text-base mb-3">No hay productos agregados</p>
-                  <Button type="button" onClick={handleAddDetalle} variant="secondary">
+                  <Button
+                    type="button"
+                    onClick={handleAddDetalle}
+                    variant="secondary"
+                  >
                     Agregar Producto
                   </Button>
                 </div>
               ) : (
                 <div className="space-y-3 max-h-[400px] overflow-y-auto">
                   {formData.detalles.map((detalle, index) => (
-                    <div key={index} className="grid grid-cols-12 gap-3 items-center p-3 bg-gray-50 rounded-lg">
+                    <div
+                      key={index}
+                      className="grid grid-cols-12 gap-3 items-center p-3 bg-gray-50 rounded-lg"
+                    >
                       <div className="col-span-5">
                         <Label className="text-xs">Producto</Label>
                         <div className="relative mt-1">
@@ -558,23 +701,45 @@ export function VentasPage() {
                             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                             <input
                               type="text"
-                              value={productoSearch[index] || (detalle.id_producto ? productos.find(p => p.id_producto === detalle.id_producto)?.nombre : '')}
+                              value={
+                                productoSearch[index] ||
+                                (detalle.id_producto
+                                  ? productos.find(
+                                      (p) =>
+                                        p.id_producto === detalle.id_producto,
+                                    )?.nombre
+                                  : "")
+                              }
                               onChange={(e) => {
-                                setProductoSearch({ ...productoSearch, [index]: e.target.value });
-                                setShowProductoDropdown({ ...showProductoDropdown, [index]: true });
+                                setProductoSearch({
+                                  ...productoSearch,
+                                  [index]: e.target.value,
+                                });
+                                setShowProductoDropdown({
+                                  ...showProductoDropdown,
+                                  [index]: true,
+                                });
                                 if (detalle.id_producto) {
-                                  handleDetalleChange(index, 'id_producto', 0);
+                                  handleDetalleChange(index, "id_producto", 0);
                                 }
                               }}
-                              onFocus={() => setShowProductoDropdown({ ...showProductoDropdown, [index]: true })}
+                              onFocus={() =>
+                                setShowProductoDropdown({
+                                  ...showProductoDropdown,
+                                  [index]: true,
+                                })
+                              }
                               placeholder="Buscar..."
                               className="w-full pl-9 pr-8 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
                             />
                             {productoSearch[index] && (
                               <button
                                 onClick={() => {
-                                  setProductoSearch({ ...productoSearch, [index]: '' });
-                                  handleDetalleChange(index, 'id_producto', 0);
+                                  setProductoSearch({
+                                    ...productoSearch,
+                                    [index]: "",
+                                  });
+                                  handleDetalleChange(index, "id_producto", 0);
                                 }}
                                 className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
                               >
@@ -585,36 +750,64 @@ export function VentasPage() {
                           {showProductoDropdown[index] && (
                             <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-48 overflow-y-auto">
                               {productos
-                                .filter(p =>
-                                  !productoSearch[index] ||
-                                  p.nombre.toLowerCase().includes(productoSearch[index].toLowerCase())
+                                .filter(
+                                  (p) =>
+                                    !productoSearch[index] ||
+                                    p.nombre
+                                      .toLowerCase()
+                                      .includes(
+                                        productoSearch[index].toLowerCase(),
+                                      ),
                                 )
                                 .slice(0, 8)
                                 .map((p) => (
                                   <div
                                     key={p.id_producto}
                                     onClick={() => {
-                                      handleDetalleChange(index, 'id_producto', p.id_producto);
-                                      setProductoSearch({ ...productoSearch, [index]: '' });
-                                      setShowProductoDropdown({ ...showProductoDropdown, [index]: false });
+                                      handleDetalleChange(
+                                        index,
+                                        "id_producto",
+                                        p.id_producto,
+                                      );
+                                      setProductoSearch({
+                                        ...productoSearch,
+                                        [index]: "",
+                                      });
+                                      setShowProductoDropdown({
+                                        ...showProductoDropdown,
+                                        [index]: false,
+                                      });
                                     }}
                                     className="px-3 py-2 hover:bg-slate-50 cursor-pointer border-b border-gray-100 last:border-0"
                                   >
-                                    <div className="font-medium text-sm truncate">{p.nombre}</div>
-                                    <div className="text-xs text-gray-500">Stock: {p.stock} | ${p.precio_venta}</div>
+                                    <div className="font-medium text-sm truncate">
+                                      {p.nombre}
+                                    </div>
+                                    <div className="text-xs text-gray-500">
+                                      Stock: {p.stock} | ${p.precio_venta}
+                                    </div>
                                   </div>
                                 ))}
-                              {productos.filter(p =>
-                                !productoSearch[index] ||
-                                p.nombre.toLowerCase().includes(productoSearch[index].toLowerCase())
+                              {productos.filter(
+                                (p) =>
+                                  !productoSearch[index] ||
+                                  p.nombre
+                                    .toLowerCase()
+                                    .includes(
+                                      productoSearch[index].toLowerCase(),
+                                    ),
                               ).length === 0 && (
-                                <div className="px-3 py-2 text-gray-500 text-sm">No se encontraron productos</div>
+                                <div className="px-3 py-2 text-gray-500 text-sm">
+                                  No se encontraron productos
+                                </div>
                               )}
                             </div>
                           )}
                         </div>
                         {formErrors[`detalle_${index}_producto`] && (
-                          <p className="text-xs text-red-500 mt-1">{formErrors[`detalle_${index}_producto`]}</p>
+                          <p className="text-xs text-red-500 mt-1">
+                            {formErrors[`detalle_${index}_producto`]}
+                          </p>
                         )}
                       </div>
 
@@ -624,25 +817,41 @@ export function VentasPage() {
                           type="number"
                           min={1}
                           value={detalle.cantidad}
-                          onChange={(e) => handleDetalleChange(index, 'cantidad', parseInt(e.target.value) || 0)}
-                          className={`mt-1 ${formErrors[`detalle_${index}_cantidad`] ? 'border-red-500' : ''}`}
+                          onChange={(e) =>
+                            handleDetalleChange(
+                              index,
+                              "cantidad",
+                              parseInt(e.target.value) || 0,
+                            )
+                          }
+                          className={`mt-1 ${formErrors[`detalle_${index}_cantidad`] ? "border-red-500" : ""}`}
                         />
                         {formErrors[`detalle_${index}_cantidad`] && (
-                          <p className="text-xs text-red-500 mt-1">{formErrors[`detalle_${index}_cantidad`]}</p>
+                          <p className="text-xs text-red-500 mt-1">
+                            {formErrors[`detalle_${index}_cantidad`]}
+                          </p>
                         )}
                       </div>
 
                       <div className="col-span-2">
                         <Label className="text-xs">Precio</Label>
                         <div className="px-3 py-2 mt-1 bg-slate-50 rounded text-sm font-medium text-gray-700">
-                          ${detalle.precio_unitario.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                          $
+                          {detalle.precio_unitario.toLocaleString(undefined, {
+                            minimumFractionDigits: 2,
+                          })}
                         </div>
                       </div>
 
                       <div className="col-span-2">
                         <Label className="text-xs">Subtotal</Label>
                         <div className="px-3 py-2 mt-1 bg-blue-50 rounded text-sm font-semibold text-blue-700">
-                          ${(detalle.cantidad * detalle.precio_unitario).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                          $
+                          {(
+                            detalle.cantidad * detalle.precio_unitario
+                          ).toLocaleString(undefined, {
+                            minimumFractionDigits: 2,
+                          })}
                         </div>
                       </div>
 
@@ -665,27 +874,40 @@ export function VentasPage() {
                       {formData.detalles.length} producto(s)
                     </div>
                     <div className="text-xl font-bold text-blue-600">
-                      Total: ${calcularTotal().toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                      Total: $
+                      {calcularTotal().toLocaleString(undefined, {
+                        minimumFractionDigits: 2,
+                      })}
                     </div>
                   </div>
                 </div>
               )}
               {formErrors.detalles && (
-                <p className="text-red-500 text-sm mt-4">{formErrors.detalles}</p>
+                <p className="text-red-500 text-sm mt-4">
+                  {formErrors.detalles}
+                </p>
               )}
             </CardContent>
           </Card>
 
           <div className="flex gap-4 pt-4 border-t">
-            <Button type="submit" className="w-32 gap-2" disabled={createMutation.isPending || updateMutation.isPending}>
+            <Button
+              type="submit"
+              className="w-32 gap-2"
+              disabled={createMutation.isPending || updateMutation.isPending}
+            >
               <Save className="h-4 w-4" />
-              {createMutation.isPending || updateMutation.isPending ? 'Guardando...' : (editingVenta ? 'Actualizar' : 'Guardar')}
+              {createMutation.isPending || updateMutation.isPending
+                ? "Guardando..."
+                : editingVenta
+                  ? "Actualizar"
+                  : "Guardar"}
             </Button>
             <Button
               type="button"
               variant="secondary"
               onClick={() => {
-                setView('list');
+                setView("list");
                 setEditingVenta(null);
                 resetForm();
               }}
@@ -715,8 +937,14 @@ export function VentasPage() {
       <div className="flex items-center justify-center h-64">
         <div className="text-red-500 text-center">
           <p className="font-bold text-lg mb-2">Error al cargar ventas</p>
-          <p>{error instanceof Error ? error.message : 'Error desconocido'}</p>
-          <Button onClick={() => queryClient.invalidateQueries({ queryKey: ['ventas'] })} className="mt-4 gap-2" variant="secondary">
+          <p>{error instanceof Error ? error.message : "Error desconocido"}</p>
+          <Button
+            onClick={() =>
+              queryClient.invalidateQueries({ queryKey: ["ventas"] })
+            }
+            className="mt-4 gap-2"
+            variant="secondary"
+          >
             <RefreshCw className="h-4 w-4" />
             Reintentar
           </Button>
@@ -726,22 +954,24 @@ export function VentasPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div className="flex items-center gap-4">
-          <div className="p-3 bg-gradient-to-br from-indigo-500 to-blue-600 rounded-md shadow-lg animate-bounce-subtle">
-            <ShoppingCart className="h-8 w-8 text-white" />
+    <div className="space-y-4">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-gradient-to-br from-indigo-500 to-blue-600 rounded shadow-lg animate-bounce-subtle">
+            <ShoppingCart className="h-5 w-5 text-white" />
           </div>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Ventas</h1>
-            <p className="text-gray-500 mt-1">Gestión de ventas ({filteredVentas.length} registros)</p>
+          <div className="flex items-baseline">
+            <h1 className="text-xl font-bold text-gray-900">Ventas</h1>
+            <p className="text-sm text-gray-500 ml-3 hidden sm:block">
+              Gestión de ventas ({filteredVentas.length} registros)
+            </p>
           </div>
         </div>
         <Button
           onClick={() => {
             resetForm();
             setEditingVenta(null);
-            setView('form');
+            setView("form");
           }}
           className="gap-2 bg-gradient-to-r from-indigo-500 to-blue-600 hover:from-indigo-600 hover:to-blue-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300"
         >
@@ -779,28 +1009,41 @@ export function VentasPage() {
             <TableBody>
               {filteredVentas.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-12 text-gray-500">
-                    {filterEstado ? 'No se encontraron ventas con este estado' : 'No se encontraron ventas'}
+                  <TableCell
+                    colSpan={6}
+                    className="text-center py-12 text-gray-500"
+                  >
+                    {filterEstado
+                      ? "No se encontraron ventas con este estado"
+                      : "No se encontraron ventas"}
                   </TableCell>
                 </TableRow>
               ) : (
                 filteredVentas.map((venta) => (
-                  <TableRow key={venta.id_venta} className="hover:bg-gray-50/50 transition-colors">
+                  <TableRow
+                    key={venta.id_venta}
+                    className="hover:bg-gray-50/50 transition-colors"
+                  >
                     <TableCell>
                       <div className="flex items-center gap-3">
                         <div className="p-2 bg-indigo-50 rounded-lg text-indigo-600">
                           <ShoppingCart className="h-4 w-4" />
                         </div>
                         <div>
-                          <span className="font-medium text-gray-900 block">#{venta.id_venta}</span>
-                          <span className="text-xs text-gray-500 block">{new Date(venta.fecha).toLocaleDateString('es-ES')}</span>
+                          <span className="font-medium text-gray-900 block">
+                            #{venta.id_venta}
+                          </span>
+                          <span className="text-xs text-gray-500 block">
+                            {new Date(venta.fecha).toLocaleDateString("es-ES")}
+                          </span>
                         </div>
                       </div>
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
                         <User className="h-4 w-4 text-gray-400" />
-                        {venta.cliente?.nombre || `Cliente #${venta.id_cliente}`}
+                        {venta.cliente?.nombre ||
+                          `Cliente #${venta.id_cliente}`}
                       </div>
                     </TableCell>
                     <TableCell>
@@ -810,10 +1053,15 @@ export function VentasPage() {
                       </div>
                     </TableCell>
                     <TableCell className="font-medium text-gray-900">
-                      ${venta.total.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                      $
+                      {venta.total.toLocaleString(undefined, {
+                        minimumFractionDigits: 2,
+                      })}
                     </TableCell>
                     <TableCell>
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getEstadoBadge(venta.estado)}`}>
+                      <span
+                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getEstadoBadge(venta.estado)}`}
+                      >
                         {venta.estado}
                       </span>
                     </TableCell>
@@ -824,15 +1072,15 @@ export function VentasPage() {
                           size="icon"
                           onClick={() => {
                             setSelectedVenta(venta);
-                            setView('detail');
+                            setView("detail");
                           }}
                           className="text-blue-600 hover:text-blue-800 hover:bg-blue-50 h-8 w-8"
                           title="Ver detalle"
                         >
                           <Eye className="h-4 w-4" />
                         </Button>
-                        
-                        {venta.estado === 'PENDIENTE' && (
+
+                        {venta.estado === "PENDIENTE" && (
                           <Button
                             variant="ghost"
                             size="icon"
@@ -840,15 +1088,17 @@ export function VentasPage() {
                               setEditingVenta(venta);
                               setFormData({
                                 id_cliente: venta.id_cliente,
-                                fecha: venta.fecha.split('T')[0],
-                                observacion: venta.observacion || '',
-                                detalles: venta.detalles.map((d: DetalleVenta) => ({
-                                  id_producto: d.id_producto,
-                                  cantidad: d.cantidad,
-                                  precio_unitario: d.precio_unitario
-                                }))
+                                fecha: venta.fecha.split("T")[0],
+                                observacion: venta.observacion || "",
+                                detalles: venta.detalles.map(
+                                  (d: DetalleVenta) => ({
+                                    id_producto: d.id_producto,
+                                    cantidad: d.cantidad,
+                                    precio_unitario: d.precio_unitario,
+                                  }),
+                                ),
                               });
-                              setView('form');
+                              setView("form");
                             }}
                             className="text-green-600 hover:text-green-800 hover:bg-green-50 h-8 w-8"
                             title="Editar"
@@ -857,7 +1107,7 @@ export function VentasPage() {
                           </Button>
                         )}
 
-                        {venta.estado !== 'ANULADA' && (
+                        {venta.estado !== "ANULADA" && (
                           <Button
                             variant="ghost"
                             size="icon"

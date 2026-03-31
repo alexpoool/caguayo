@@ -1,11 +1,11 @@
-import { useState, useEffect, useRef } from 'react';
-import type { Productos, ProductosCreate } from '../types/index';
-import { useProductos } from '../hooks/useProductos';
-import { ProductForm } from '../components/productos/ProductForm';
-import { ProductListView } from '../components/productos/ProductListView';
+import { useState, useEffect, useRef } from "react";
+import type { Productos, ProductosCreate } from "../types/index";
+import { useProductos } from "../hooks/useProductos";
+import { ProductForm } from "../components/productos/ProductForm";
+import { ProductListView } from "../components/productos/ProductListView";
 
 export function ProductosPage() {
-  const [view, setView] = useState<'list' | 'form'>('list');
+  const [view, setView] = useState<"list" | "form">("list");
   const [editingProduct, setEditingProduct] = useState<Productos | null>(null);
   const loadMoreRef = useRef<HTMLDivElement>(null);
 
@@ -21,7 +21,7 @@ export function ProductosPage() {
     hasMore,
     loadMore,
     searchTerm,
-    setSearch
+    setSearch,
   } = useProductos();
 
   // Scroll infinito con IntersectionObserver
@@ -34,7 +34,7 @@ export function ProductosPage() {
           loadMore();
         }
       },
-      { threshold: 0.1 }
+      { threshold: 0.1 },
     );
 
     if (loadMoreRef.current) {
@@ -47,37 +47,40 @@ export function ProductosPage() {
   const handleCreate = (data: ProductosCreate) => {
     createProduct(data, {
       onSuccess: () => {
-        setView('list');
-      }
+        setView("list");
+      },
     }); // Note: This runs alongside the hook's onSuccess
   };
 
   const handleUpdate = (data: ProductosCreate) => {
     if (editingProduct) {
-      updateProduct({ id: editingProduct.id_producto, data }, {
-        onSuccess: () => {
-          setView('list');
-          setEditingProduct(null);
-        }
-      });
+      updateProduct(
+        { id: editingProduct.id_producto, data },
+        {
+          onSuccess: () => {
+            setView("list");
+            setEditingProduct(null);
+          },
+        },
+      );
     }
   };
 
   const handleEdit = (product: Productos) => {
     setEditingProduct(product);
-    setView('form');
+    setView("form");
   };
 
   const handleDelete = (id: number) => {
-      deleteProduct(id);
+    deleteProduct(id);
   };
 
   const handleCancel = () => {
-    setView('list');
+    setView("list");
     setEditingProduct(null);
   };
 
-  if (view === 'form') {
+  if (view === "form") {
     return (
       <ProductForm
         initialData={editingProduct}
@@ -97,7 +100,7 @@ export function ProductosPage() {
       onDelete={handleDelete}
       onCreateNew={() => {
         setEditingProduct(null);
-        setView('form');
+        setView("form");
       }}
       isLoading={isLoading}
       isFetchingMore={isFetchingMore}

@@ -1,18 +1,24 @@
-import { useState, useRef, useEffect } from 'react';
-import { createPortal } from 'react-dom';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   movimientosService,
   productosService,
   monedaService,
   dependenciasService,
-} from '../../services/api';
-import type {
-  MovimientoCreate
-} from '../../types/index';
-import type { FacturaWithDetails } from '../../types/contrato';
-import { generarCodigoMovimiento } from '../../utils/codigos';
-import { Button, Card, CardContent, CardHeader, CardTitle, Input, Label } from '../../components/ui';
+} from "../../services/api";
+import type { MovimientoCreate } from "../../types/index";
+import type { FacturaWithDetails } from "../../types/contrato";
+import { generarCodigoMovimiento } from "../../utils/codigos";
+import {
+  Button,
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  Input,
+  Label,
+} from "../../components/ui";
 import {
   Truck,
   AlertCircle,
@@ -35,9 +41,9 @@ import {
   MapPin,
   ClipboardList,
   ArrowRight,
-  ArrowLeft
-} from 'lucide-react';
-import toast from 'react-hot-toast';
+  ArrowLeft,
+} from "lucide-react";
+import toast from "react-hot-toast";
 
 interface MovimientoFormData extends MovimientoCreate {}
 
@@ -65,7 +71,7 @@ function SearchableSelect<T extends Record<string, any>>({
   onSearchChange,
   options,
   isLoading,
-  placeholder = 'Buscar...',
+  placeholder = "Buscar...",
   disabled = false,
   required = false,
   getOptionLabel,
@@ -73,20 +79,24 @@ function SearchableSelect<T extends Record<string, any>>({
   getOptionDisplay,
   idField,
   label,
-  icon
+  icon,
 }: SearchableSelectProps<T>) {
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState("");
   const [isOpen, setIsOpen] = useState(false);
-  const [dropdownPosition, setDropdownPosition] = useState<{ top: number; left: number; width: number } | null>(null);
+  const [dropdownPosition, setDropdownPosition] = useState<{
+    top: number;
+    left: number;
+    width: number;
+  } | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const searchTimeoutRef = useRef<number | null>(null);
 
-  const selectedItem = options.find(item => item[idField] === value);
+  const selectedItem = options.find((item) => item[idField] === value);
 
   // Filtrar opciones localmente según el término de búsqueda
-  const filteredOptions = options.filter(item => {
+  const filteredOptions = options.filter((item) => {
     const label = getOptionLabel(item).toLowerCase();
     return label.includes(searchTerm.toLowerCase());
   });
@@ -99,7 +109,7 @@ function SearchableSelect<T extends Record<string, any>>({
       setDropdownPosition({
         top: rect.bottom + scrollY + 4,
         left: rect.left,
-        width: rect.width
+        width: rect.width,
       });
     }
   }, [isOpen]);
@@ -113,27 +123,27 @@ function SearchableSelect<T extends Record<string, any>>({
         setDropdownPosition({
           top: rect.bottom + scrollY + 4,
           left: rect.left,
-          width: rect.width
+          width: rect.width,
         });
       }
     }
 
-    window.addEventListener('resize', handleResize);
-    window.addEventListener('scroll', handleResize, true);
+    window.addEventListener("resize", handleResize);
+    window.addEventListener("scroll", handleResize, true);
     return () => {
-      window.removeEventListener('resize', handleResize);
-      window.removeEventListener('scroll', handleResize, true);
+      window.removeEventListener("resize", handleResize);
+      window.removeEventListener("scroll", handleResize, true);
     };
   }, [isOpen]);
 
   // Notificar cambios en el término de búsqueda con debounce
   const handleSearchChange = (value: string) => {
     setSearchTerm(value);
-    
+
     if (searchTimeoutRef.current) {
       clearTimeout(searchTimeoutRef.current);
     }
-    
+
     searchTimeoutRef.current = setTimeout(() => {
       onSearchChange?.(value);
     }, 300);
@@ -152,26 +162,26 @@ function SearchableSelect<T extends Record<string, any>>({
       const target = event.target as Node;
       const isInsideContainer = containerRef.current?.contains(target);
       const isInsideDropdown = dropdownRef.current?.contains(target);
-      
+
       if (!isInsideContainer && !isInsideDropdown) {
         setIsOpen(false);
       }
     }
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
   const handleSelect = (item: T) => {
     onChange(getOptionValue(item), item);
-    setSearchTerm('');
+    setSearchTerm("");
     setIsOpen(false);
   };
 
   const handleClear = (e: React.MouseEvent) => {
     e.stopPropagation();
     onChange(null, null);
-    setSearchTerm('');
+    setSearchTerm("");
     inputRef.current?.focus();
   };
 
@@ -208,7 +218,9 @@ function SearchableSelect<T extends Record<string, any>>({
           </div>
         ) : filteredOptions.length === 0 ? (
           <div className="p-4 text-center text-gray-500 text-sm">
-            {searchTerm ? 'No se encontraron resultados' : 'Escribe para buscar...'}
+            {searchTerm
+              ? "No se encontraron resultados"
+              : "Escribe para buscar..."}
           </div>
         ) : (
           <div className="py-1">
@@ -218,10 +230,14 @@ function SearchableSelect<T extends Record<string, any>>({
                 type="button"
                 onClick={() => handleSelect(item)}
                 className={`w-full px-4 py-2 text-left text-sm hover:bg-blue-50 transition-colors ${
-                  value === getOptionValue(item) ? 'bg-blue-50 text-blue-700 font-medium' : 'text-gray-700'
+                  value === getOptionValue(item)
+                    ? "bg-blue-50 text-blue-700 font-medium"
+                    : "text-gray-700"
                 }`}
               >
-                {getOptionDisplay ? getOptionDisplay(item) : getOptionLabel(item)}
+                {getOptionDisplay
+                  ? getOptionDisplay(item)
+                  : getOptionLabel(item)}
               </button>
             ))}
           </div>
@@ -245,8 +261,8 @@ function SearchableSelect<T extends Record<string, any>>({
         <div
           className={`flex items-center border rounded-lg transition-all duration-200 ${
             disabled
-              ? 'bg-slate-50 cursor-not-allowed border-gray-200'
-              : 'bg-white border-gray-300 hover:border-gray-400 focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500'
+              ? "bg-slate-50 cursor-not-allowed border-gray-200"
+              : "bg-white border-gray-300 hover:border-gray-400 focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500"
           }`}
           onClick={handleInputClick}
         >
@@ -254,10 +270,16 @@ function SearchableSelect<T extends Record<string, any>>({
           <input
             ref={inputRef}
             type="text"
-            value={isOpen ? searchTerm : selectedItem ? getOptionLabel(selectedItem) : ''}
+            value={
+              isOpen
+                ? searchTerm
+                : selectedItem
+                  ? getOptionLabel(selectedItem)
+                  : ""
+            }
             onChange={(e) => handleSearchChange(e.target.value)}
             onFocus={handleInputFocus}
-            placeholder={selectedItem ? '' : placeholder}
+            placeholder={selectedItem ? "" : placeholder}
             disabled={disabled}
             className="flex-1 px-3 py-2.5 bg-transparent outline-none text-sm"
             readOnly={!isOpen}
@@ -273,7 +295,7 @@ function SearchableSelect<T extends Record<string, any>>({
           )}
           <ChevronDown
             className={`h-4 w-4 text-gray-400 mr-3 transition-transform flex-shrink-0 ${
-              isOpen ? 'rotate-180' : ''
+              isOpen ? "rotate-180" : ""
             }`}
           />
         </div>
@@ -284,142 +306,156 @@ function SearchableSelect<T extends Record<string, any>>({
 }
 
 interface MovimientoRecepcionFormProps {
-  tipoMovimiento: 'RECEPCION' | 'MERMA' | 'DONACION' | 'DEVOLUCION';
+  tipoMovimiento: "RECEPCION" | "MERMA" | "DONACION" | "DEVOLUCION";
   onSubmit: (data: MovimientoCreate) => void;
   onCancel: () => void;
   isSubmitting?: boolean;
 }
 
-export function MovimientoRecepcionForm({ 
-  tipoMovimiento, 
-  onSubmit, 
+export function MovimientoRecepcionForm({
+  tipoMovimiento,
+  onSubmit,
   onCancel,
-  isSubmitting = false 
+  isSubmitting = false,
 }: MovimientoRecepcionFormProps) {
   const queryClient = useQueryClient();
   const [formData, setFormData] = useState<Partial<MovimientoFormData>>({
-    fecha: new Date().toISOString().split('T')[0],
-    estado: 'pendiente',
+    fecha: new Date().toISOString().split("T")[0],
+    estado: "pendiente",
   });
-  const [codigoGenerado, setCodigoGenerado] = useState<string>('');
+  const [codigoGenerado, setCodigoGenerado] = useState<string>("");
 
   const crearMutation = useMutation({
-    mutationFn: (data: MovimientoCreate) => movimientosService.createMovimiento(data),
+    mutationFn: (data: MovimientoCreate) =>
+      movimientosService.createMovimiento(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['movimientos-pendientes'] });
+      queryClient.invalidateQueries({ queryKey: ["movimientos-pendientes"] });
       toast.success(`${tipoMovimiento} creada exitosamente`);
       setFormData({
-        fecha: new Date().toISOString().split('T')[0],
-        estado: 'pendiente',
+        fecha: new Date().toISOString().split("T")[0],
+        estado: "pendiente",
       });
-      setCodigoGenerado('');
+      setCodigoGenerado("");
     },
     onError: (error: any) => {
-      toast.error(error?.message || `Error al crear ${tipoMovimiento.toLowerCase()}`);
+      toast.error(
+        error?.message || `Error al crear ${tipoMovimiento.toLowerCase()}`,
+      );
     },
   });
 
   const { data: monedas = [], isLoading: isLoadingMonedas } = useQuery({
-    queryKey: ['monedas'],
+    queryKey: ["monedas"],
     queryFn: () => monedaService.getMonedas(),
   });
 
-  const { data: dependencias = [], isLoading: isLoadingDependencias } = useQuery({
-    queryKey: ['dependencias'],
-    queryFn: () => dependenciasService.getDependencias(),
-  });
+  const { data: dependencias = [], isLoading: isLoadingDependencias } =
+    useQuery({
+      queryKey: ["dependencias"],
+      queryFn: () => dependenciasService.getDependencias(),
+    });
 
   const { data: tiposMovimiento = [] } = useQuery({
-    queryKey: ['tipos-movimiento'],
+    queryKey: ["tipos-movimiento"],
     queryFn: () => movimientosService.getTiposMovimiento(),
   });
 
   // Productos con stock (todos los movimientos)
   const { data: productos = [], isLoading: isLoadingProductos } = useQuery({
-    queryKey: ['productos-con-stock'],
+    queryKey: ["productos-con-stock"],
     queryFn: () => productosService.getProductosConStock(),
   });
 
   // Producto seleccionado para acceder a id_convenio e id_anexo
-  const selectedProduct = productos.find(p => Number(p.id_producto) === Number(formData.id_producto));
+  const selectedProduct = productos.find(
+    (p) => Number(p.id_producto) === Number(formData.id_producto),
+  );
 
   // Generar código automáticamente cuando se selecciona el producto
   useEffect(() => {
     if (formData.id_producto && selectedProduct) {
       const anio = new Date().getFullYear();
-      const tipoMap: Record<string, 'REC' | 'MER' | 'DON' | 'DEV'> = {
-        'RECEPCION': 'REC',
-        'MERMA': 'MER',
-        'DONACION': 'DON',
-        'DEVOLUCION': 'DEV',
+      const tipoMap: Record<string, "REC" | "MER" | "DON" | "DEV"> = {
+        RECEPCION: "REC",
+        MERMA: "MER",
+        DONACION: "DON",
+        DEVOLUCION: "DEV",
       };
       const idConvenio = selectedProduct.id_convenio || 0;
       const idAnexo = selectedProduct.id_anexo || 0;
       const codigo = generarCodigoMovimiento(
-        tipoMap[tipoMovimiento] || 'REC',
+        tipoMap[tipoMovimiento] || "REC",
         anio,
         idConvenio,
         idAnexo,
-        formData.id_producto
+        formData.id_producto,
       );
       setCodigoGenerado(codigo);
     } else {
-      setCodigoGenerado('');
+      setCodigoGenerado("");
     }
   }, [formData.id_producto, tipoMovimiento, selectedProduct]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    const tipoMov = tiposMovimiento.find(t => t.tipo === tipoMovimiento);
+    const tipoMov = tiposMovimiento.find((t) => t.tipo === tipoMovimiento);
     if (!tipoMov) {
-      toast.error('Tipo de movimiento no encontrado');
+      toast.error("Tipo de movimiento no encontrado");
       return;
     }
 
     // Validaciones comunes para todos los tipos
     if (!formData.id_producto) {
-      toast.error('Debe seleccionar un producto');
+      toast.error("Debe seleccionar un producto");
       return;
     }
     if (!formData.cantidad || formData.cantidad <= 0) {
-      toast.error('La cantidad debe ser mayor a 0');
+      toast.error("La cantidad debe ser mayor a 0");
       return;
     }
     if (!formData.id_dependencia) {
-      toast.error('Debe seleccionar una dependencia');
+      toast.error("Debe seleccionar una dependencia");
       return;
     }
-    if (!dependencias.some(d => d.id_dependencia === formData.id_dependencia)) {
-      toast.error('La dependencia seleccionada no está registrada en el sistema');
+    if (
+      !dependencias.some((d) => d.id_dependencia === formData.id_dependencia)
+    ) {
+      toast.error(
+        "La dependencia seleccionada no está registrada en el sistema",
+      );
       return;
     }
 
     // Validaciones específicas para salidas: verificar stock disponible
-    if (['MERMA', 'DONACION', 'DEVOLUCION'].includes(tipoMovimiento)) {
+    if (["MERMA", "DONACION", "DEVOLUCION"].includes(tipoMovimiento)) {
       const productoStock = selectedProduct?.cantidad || 0;
       if (productoStock <= 0) {
-        toast.error('No hay stock disponible para este producto. Debe crear primero una recepción.');
+        toast.error(
+          "No hay stock disponible para este producto. Debe crear primero una recepción.",
+        );
         return;
       }
       if (formData.cantidad > productoStock) {
-        toast.error(`La cantidad no puede exceder el stock disponible (${productoStock} unidades)`);
+        toast.error(
+          `La cantidad no puede exceder el stock disponible (${productoStock} unidades)`,
+        );
         return;
       }
     }
 
     // Validaciones específicas solo para RECEPCION
-    if (tipoMovimiento === 'RECEPCION') {
+    if (tipoMovimiento === "RECEPCION") {
       if (!formData.precio_compra || formData.precio_compra <= 0) {
-        toast.error('Debe ingresar un precio de compra válido');
+        toast.error("Debe ingresar un precio de compra válido");
         return;
       }
       if (!formData.precio_venta || formData.precio_venta <= 0) {
-        toast.error('Debe ingresar un precio de venta válido');
+        toast.error("Debe ingresar un precio de venta válido");
         return;
       }
       if (!formData.moneda_compra || !formData.moneda_venta) {
-        toast.error('Debe seleccionar las monedas');
+        toast.error("Debe seleccionar las monedas");
         return;
       }
     }
@@ -431,107 +467,109 @@ export function MovimientoRecepcionForm({
       cantidad: Number(formData.cantidad) || 0,
       fecha: formData.fecha || new Date().toISOString(),
       observacion: formData.observacion,
-      estado: formData.estado || 'pendiente',
+      estado: formData.estado || "pendiente",
       codigo: codigoGenerado,
       // Para RECEPCION incluir precios, para otros movimientos 0
-      ...(tipoMovimiento === 'RECEPCION' ? {
-        precio_compra: formData.precio_compra,
-        moneda_compra: formData.moneda_compra,
-        precio_venta: formData.precio_venta,
-        moneda_venta: formData.moneda_venta,
-      } : {
-        precio_compra: 0,
-        moneda_compra: undefined,
-        precio_venta: 0,
-        moneda_venta: undefined,
-      }),
+      ...(tipoMovimiento === "RECEPCION"
+        ? {
+            precio_compra: formData.precio_compra,
+            moneda_compra: formData.moneda_compra,
+            precio_venta: formData.precio_venta,
+            moneda_venta: formData.moneda_venta,
+          }
+        : {
+            precio_compra: 0,
+            moneda_compra: undefined,
+            precio_venta: 0,
+            moneda_venta: undefined,
+          }),
     };
 
-    console.log('Submitting movimiento:', movimientoData);
+    console.log("Submitting movimiento:", movimientoData);
     try {
       await crearMutation.mutateAsync(movimientoData);
       onSubmit(movimientoData);
     } catch (error) {
-      console.error('Error al crear movimiento:', error);
+      console.error("Error al crear movimiento:", error);
     }
   };
 
   const getTipoConfig = () => {
     switch (tipoMovimiento) {
-      case 'RECEPCION':
+      case "RECEPCION":
         return {
           icon: Truck,
-          gradient: 'from-green-500 to-emerald-600',
-          bgColor: 'bg-green-50',
-          borderColor: 'border-green-200',
-          textColor: 'text-green-700',
-          shadowColor: 'shadow-green-200',
-          impacto: 'Entrada',
+          gradient: "from-green-500 to-emerald-600",
+          bgColor: "bg-green-50",
+          borderColor: "border-green-200",
+          textColor: "text-green-700",
+          shadowColor: "shadow-green-200",
+          impacto: "Entrada",
           impactoIcon: TrendingUp,
-          impactoColor: 'text-green-600',
-          descripcion: 'Registro de entrada de nuevos productos al inventario',
-          sectionColor: 'border-l-green-500',
-          priceSectionColor: 'border-l-green-500'
+          impactoColor: "text-green-600",
+          descripcion: "Registro de entrada de nuevos productos al inventario",
+          sectionColor: "border-l-green-500",
+          priceSectionColor: "border-l-green-500",
         };
-      case 'MERMA':
+      case "MERMA":
         return {
           icon: AlertCircle,
-          gradient: 'from-red-500 to-rose-600',
-          bgColor: 'bg-red-50',
-          borderColor: 'border-red-200',
-          textColor: 'text-red-700',
-          shadowColor: 'shadow-red-200',
-          impacto: 'Salida',
+          gradient: "from-red-500 to-rose-600",
+          bgColor: "bg-red-50",
+          borderColor: "border-red-200",
+          textColor: "text-red-700",
+          shadowColor: "shadow-red-200",
+          impacto: "Salida",
           impactoIcon: TrendingDown,
-          impactoColor: 'text-red-600',
-          descripcion: 'Registro de pérdidas, deterioro o productos dañados',
-          sectionColor: 'border-l-red-500',
-          priceSectionColor: 'border-l-red-500'
+          impactoColor: "text-red-600",
+          descripcion: "Registro de pérdidas, deterioro o productos dañados",
+          sectionColor: "border-l-red-500",
+          priceSectionColor: "border-l-red-500",
         };
-      case 'DONACION':
+      case "DONACION":
         return {
           icon: Gift,
-          gradient: 'from-purple-500 to-violet-600',
-          bgColor: 'bg-purple-50',
-          borderColor: 'border-purple-200',
-          textColor: 'text-purple-700',
-          shadowColor: 'shadow-purple-200',
-          impacto: 'Salida',
+          gradient: "from-purple-500 to-violet-600",
+          bgColor: "bg-purple-50",
+          borderColor: "border-purple-200",
+          textColor: "text-purple-700",
+          shadowColor: "shadow-purple-200",
+          impacto: "Salida",
           impactoIcon: TrendingDown,
-          impactoColor: 'text-red-600',
-          descripcion: 'Registro de donaciones de productos',
-          sectionColor: 'border-l-purple-500',
-          priceSectionColor: 'border-l-purple-500'
+          impactoColor: "text-red-600",
+          descripcion: "Registro de donaciones de productos",
+          sectionColor: "border-l-purple-500",
+          priceSectionColor: "border-l-purple-500",
         };
-      case 'DEVOLUCION':
+      case "DEVOLUCION":
         return {
           icon: RotateCcw,
-          gradient: 'from-orange-500 to-amber-600',
-          bgColor: 'bg-orange-50',
-          borderColor: 'border-orange-200',
-          textColor: 'text-orange-700',
-          shadowColor: 'shadow-orange-200',
-          impacto: 'Salida',
+          gradient: "from-orange-500 to-amber-600",
+          bgColor: "bg-orange-50",
+          borderColor: "border-orange-200",
+          textColor: "text-orange-700",
+          shadowColor: "shadow-orange-200",
+          impacto: "Salida",
           impactoIcon: TrendingDown,
-          impactoColor: 'text-red-600',
-          descripcion: 'Registro de devoluciones a proveedores',
-          sectionColor: 'border-l-orange-500',
-          priceSectionColor: 'border-l-orange-500'
+          impactoColor: "text-red-600",
+          descripcion: "Registro de devoluciones a proveedores",
+          sectionColor: "border-l-orange-500",
+          priceSectionColor: "border-l-orange-500",
         };
       default:
         return {
           icon: Package,
-          gradient: 'from-gray-500 to-gray-600',
-          bgColor: 'bg-gray-50',
-          borderColor: 'border-gray-200',
-          textColor: 'text-gray-700',
-          shadowColor: 'shadow-gray-200',
-          impacto: '',
+          gradient: "from-gray-500 to-gray-600",
+          bgColor: "bg-gray-50",
+          borderColor: "border-gray-200",
+          textColor: "text-gray-700",
+          shadowColor: "shadow-gray-200",
+          impacto: "",
           impactoIcon: Package,
-          impactoColor: 'text-gray-600',
-          descripcion: '',
-          sectionColor: 'border-l-gray-500',
-          priceSectionColor: 'border-l-gray-500'
+          impactoColor: "text-gray-600",
+          descripcion: "",
+          sectionColor: "border-l-gray-500",
+          priceSectionColor: "border-l-gray-500",
         };
     }
   };
@@ -539,21 +577,28 @@ export function MovimientoRecepcionForm({
   const config = getTipoConfig();
   const Icon = config.icon;
   const ImpactoIcon = config.impactoIcon;
-  const mostrarPrecios = tipoMovimiento === 'RECEPCION';
-  const esSalida = ['MERMA', 'DONACION', 'DEVOLUCION'].includes(tipoMovimiento);
-  const sinStock = esSalida && (!selectedProduct || selectedProduct.cantidad <= 0);
+  const mostrarPrecios = tipoMovimiento === "RECEPCION";
+  const esSalida = ["MERMA", "DONACION", "DEVOLUCION"].includes(tipoMovimiento);
+  const sinStock =
+    esSalida && (!selectedProduct || selectedProduct.cantidad <= 0);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <div className={`p-3 rounded-md bg-gradient-to-br ${config.gradient} text-white shadow-lg animate-bounce-subtle`}>
+        <div className="flex items-center gap-3">
+          <div
+            className={`p-3 rounded-md bg-gradient-to-br ${config.gradient} text-white shadow-lg animate-bounce-subtle`}
+          >
             <Icon className="h-8 w-8" />
           </div>
           <div>
-            <h2 className="text-2xl font-bold text-gray-900">{tipoMovimiento}</h2>
-            <p className="text-gray-500 mt-1">{config.descripcion}</p>
+            <h2 className="text-2xl font-bold text-gray-900">
+              {tipoMovimiento}
+            </h2>
+            <p className="text-sm text-gray-500 ml-3 hidden sm:block">
+              {config.descripcion}
+            </p>
           </div>
         </div>
         <Button variant="outline" onClick={onCancel} className="gap-2">
@@ -563,7 +608,7 @@ export function MovimientoRecepcionForm({
       </div>
 
       <form onSubmit={handleSubmit}>
-        <div className="space-y-6">
+        <div className="space-y-4">
           {/* Sección de Producto y Cantidad */}
           <Card className="shadow-sm border-gray-200">
             <CardHeader className="border-b bg-gray-50/50">
@@ -581,7 +626,10 @@ export function MovimientoRecepcionForm({
                     icon={<Package className="h-4 w-4 text-blue-500" />}
                     value={Number(formData.id_producto) || null}
                     onChange={(value) => {
-                      setFormData({ ...formData, id_producto: value ? Number(value) : undefined });
+                      setFormData({
+                        ...formData,
+                        id_producto: value ? Number(value) : undefined,
+                      });
                     }}
                     options={productos}
                     isLoading={isLoadingProductos}
@@ -592,7 +640,9 @@ export function MovimientoRecepcionForm({
                       <div className="flex justify-between items-center">
                         <span>{item.nombre}</span>
                         <div className="flex flex-col items-end gap-0.5">
-                          <span className="text-gray-500 text-xs">Disponible: {item.cantidad || 0}</span>
+                          <span className="text-gray-500 text-xs">
+                            Disponible: {item.cantidad || 0}
+                          </span>
                           {(item as any).precio_compra && (
                             <span className="text-green-600 text-xs font-medium">
                               Precio: {(item as any).precio_compra}
@@ -607,7 +657,8 @@ export function MovimientoRecepcionForm({
                     <div className="mt-2 px-3 py-2 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2">
                       <AlertCircle className="h-4 w-4 text-red-500" />
                       <span className="text-sm text-red-700">
-                        No hay stock disponible. Solo se permiten recepciones para este producto.
+                        No hay stock disponible. Solo se permiten recepciones
+                        para este producto.
                       </span>
                     </div>
                   )}
@@ -619,8 +670,13 @@ export function MovimientoRecepcionForm({
                     min="1"
                     required
                     className="mt-1 focus:ring-2 focus:ring-blue-500 outline-none"
-                    value={formData.cantidad || ''}
-                    onChange={(e) => setFormData({ ...formData, cantidad: parseInt(e.target.value) || 0 })}
+                    value={formData.cantidad || ""}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        cantidad: parseInt(e.target.value) || 0,
+                      })
+                    }
                     placeholder="Cantidad"
                   />
                 </div>
@@ -644,8 +700,10 @@ export function MovimientoRecepcionForm({
                     type="date"
                     required
                     className="mt-1 focus:ring-2 focus:ring-blue-500 outline-none"
-                    value={formData.fecha || ''}
-                    onChange={(e) => setFormData({ ...formData, fecha: e.target.value })}
+                    value={formData.fecha || ""}
+                    onChange={(e) =>
+                      setFormData({ ...formData, fecha: e.target.value })
+                    }
                   />
                 </div>
                 <div>
@@ -654,7 +712,12 @@ export function MovimientoRecepcionForm({
                     required
                     icon={<MapPin className="h-4 w-4 text-red-500" />}
                     value={formData.id_dependencia || null}
-                    onChange={(value) => setFormData({ ...formData, id_dependencia: value || undefined })}
+                    onChange={(value) =>
+                      setFormData({
+                        ...formData,
+                        id_dependencia: value || undefined,
+                      })
+                    }
                     options={dependencias}
                     isLoading={isLoadingDependencias}
                     placeholder="Buscar dependencia..."
@@ -664,12 +727,16 @@ export function MovimientoRecepcionForm({
                   />
                 </div>
                 <div className="md:col-span-2">
-                  <Label className="text-sm font-medium">Código del Movimiento</Label>
-                  <div className={`mt-1 px-4 py-3 rounded-lg border-2 flex items-center gap-2 ${
-                    codigoGenerado
-                      ? 'bg-gradient-to-r from-green-50 to-emerald-50 border-green-300 text-green-800 font-mono font-bold shadow-sm'
-                      : 'bg-slate-50 border-gray-200 text-gray-400'
-                  }`}>
+                  <Label className="text-sm font-medium">
+                    Código del Movimiento
+                  </Label>
+                  <div
+                    className={`mt-1 px-4 py-3 rounded-lg border-2 flex items-center gap-2 ${
+                      codigoGenerado
+                        ? "bg-gradient-to-r from-green-50 to-emerald-50 border-green-300 text-green-800 font-mono font-bold shadow-sm"
+                        : "bg-slate-50 border-gray-200 text-gray-400"
+                    }`}
+                  >
                     {codigoGenerado ? (
                       <>
                         <CheckCircle2 className="h-5 w-5 text-green-600" />
@@ -699,27 +766,42 @@ export function MovimientoRecepcionForm({
               <CardContent className="p-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <Label className="text-sm font-medium">Precio de Compra *</Label>
+                    <Label className="text-sm font-medium">
+                      Precio de Compra *
+                    </Label>
                     <div className="flex gap-2 mt-1">
                       <Input
                         type="number"
                         step="0.01"
                         min="0.01"
                         required
-                        value={formData.precio_compra || ''}
-                        onChange={(e) => setFormData({ ...formData, precio_compra: parseFloat(e.target.value) || 0 })}
+                        value={formData.precio_compra || ""}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            precio_compra: parseFloat(e.target.value) || 0,
+                          })
+                        }
                         placeholder="0.00"
                         className="flex-1 focus:ring-2 focus:ring-green-500 outline-none"
                       />
                       <select
-                        value={formData.moneda_compra || ''}
-                        onChange={(e) => setFormData({ ...formData, moneda_compra: parseInt(e.target.value) || 0 })}
+                        value={formData.moneda_compra || ""}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            moneda_compra: parseInt(e.target.value) || 0,
+                          })
+                        }
                         disabled={isLoadingMonedas}
                         className="w-40 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none bg-white"
                       >
                         <option value="">Moneda</option>
                         {monedas.map((moneda) => (
-                          <option key={moneda.id_moneda} value={moneda.id_moneda}>
+                          <option
+                            key={moneda.id_moneda}
+                            value={moneda.id_moneda}
+                          >
                             {moneda.simbolo} - {moneda.denominacion}
                           </option>
                         ))}
@@ -727,27 +809,42 @@ export function MovimientoRecepcionForm({
                     </div>
                   </div>
                   <div>
-                    <Label className="text-sm font-medium">Precio de Venta *</Label>
+                    <Label className="text-sm font-medium">
+                      Precio de Venta *
+                    </Label>
                     <div className="flex gap-2 mt-1">
                       <Input
                         type="number"
                         step="0.01"
                         min="0.01"
                         required
-                        value={formData.precio_venta || ''}
-                        onChange={(e) => setFormData({ ...formData, precio_venta: parseFloat(e.target.value) || 0 })}
+                        value={formData.precio_venta || ""}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            precio_venta: parseFloat(e.target.value) || 0,
+                          })
+                        }
                         placeholder="0.00"
                         className="flex-1 focus:ring-2 focus:ring-green-500 outline-none"
                       />
                       <select
-                        value={formData.moneda_venta || ''}
-                        onChange={(e) => setFormData({ ...formData, moneda_venta: parseInt(e.target.value) || 0 })}
+                        value={formData.moneda_venta || ""}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            moneda_venta: parseInt(e.target.value) || 0,
+                          })
+                        }
                         disabled={isLoadingMonedas}
                         className="w-40 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none bg-white"
                       >
                         <option value="">Moneda</option>
                         {monedas.map((moneda) => (
-                          <option key={moneda.id_moneda} value={moneda.id_moneda}>
+                          <option
+                            key={moneda.id_moneda}
+                            value={moneda.id_moneda}
+                          >
                             {moneda.simbolo} - {moneda.denominacion}
                           </option>
                         ))}
@@ -769,8 +866,10 @@ export function MovimientoRecepcionForm({
             </CardHeader>
             <CardContent className="p-6">
               <textarea
-                value={formData.observacion || ''}
-                onChange={(e) => setFormData({ ...formData, observacion: e.target.value })}
+                value={formData.observacion || ""}
+                onChange={(e) =>
+                  setFormData({ ...formData, observacion: e.target.value })
+                }
                 rows={3}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none resize-none"
                 placeholder={`Describa detalles de la ${tipoMovimiento.toLowerCase()}...`}
@@ -786,7 +885,7 @@ export function MovimientoRecepcionForm({
               className={`gap-2 bg-gradient-to-r ${config.gradient} hover:opacity-90 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300`}
             >
               <Save className="h-4 w-4" />
-              {crearMutation.isPending ? 'Guardando...' : 'Guardar Movimiento'}
+              {crearMutation.isPending ? "Guardando..." : "Guardar Movimiento"}
             </Button>
             <Button
               type="button"

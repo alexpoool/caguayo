@@ -1,8 +1,8 @@
-import { useState } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
-import { movimientosService } from '../services/api';
-import { Input } from '../components/ui';
+import { useState } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { movimientosService } from "../services/api";
+import { Input } from "../components/ui";
 import {
   ArrowLeft,
   Search,
@@ -10,8 +10,8 @@ import {
   Building,
   Truck,
   FileText,
-  Hash
-} from 'lucide-react';
+  Hash,
+} from "lucide-react";
 
 interface RecepcionStock {
   id_movimiento: number;
@@ -35,10 +35,10 @@ interface RecepcionStock {
 export function RecepcionesPage() {
   const navigate = useNavigate();
   const location = useLocation();
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState("");
 
   const { data: recepciones = [], isLoading } = useQuery({
-    queryKey: ['recepciones-stock'],
+    queryKey: ["recepciones-stock"],
     queryFn: () => movimientosService.getRecepcionesStock(),
     staleTime: 0,
     refetchOnMount: true,
@@ -58,17 +58,17 @@ export function RecepcionesPage() {
   });
 
   const handleSelectRecepcion = (recepcion: RecepcionStock) => {
-    const returnTo = location.state?.returnTo || '/movimientos/ajuste';
+    const returnTo = location.state?.returnTo || "/movimientos/ajuste";
     navigate(returnTo, {
       state: {
         recepcionSeleccionada: recepcion,
-        from: '/movimientos/seleccionar-recepcion'
-      }
+        from: "/movimientos/seleccionar-recepcion",
+      },
     });
   };
 
   const handleGoBack = () => {
-    const returnTo = location.state?.returnTo || '/movimientos/ajuste';
+    const returnTo = location.state?.returnTo || "/movimientos/ajuste";
     navigate(returnTo);
   };
 
@@ -76,7 +76,7 @@ export function RecepcionesPage() {
     <div className="max-w-7xl mx-auto animate-fade-in-up">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
           <button
             onClick={handleGoBack}
             className="p-2 text-gray-400 hover:text-gray-600 hover:bg-slate-50 rounded-lg transition-colors"
@@ -84,11 +84,11 @@ export function RecepcionesPage() {
           >
             <ArrowLeft className="h-5 w-5" />
           </button>
-          <div>
-            <h1 className="text-3xl font-bold text-gray-800">
+          <div className="flex items-baseline">
+            <h1 className="text-xl font-bold text-gray-800">
               Seleccionar Recepción
             </h1>
-            <p className="text-gray-500 mt-1">
+            <p className="text-sm text-gray-500 ml-3 hidden sm:block">
               Elige una recepción para crear un ajuste
             </p>
           </div>
@@ -156,7 +156,10 @@ export function RecepcionesPage() {
             <tbody className="divide-y divide-gray-200">
               {isLoading ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center text-gray-500">
+                  <td
+                    colSpan={6}
+                    className="px-6 py-12 text-center text-gray-500"
+                  >
                     <div className="flex justify-center items-center gap-2">
                       <div className="animate-spin h-6 w-6 border-2 border-blue-500 border-t-transparent rounded-full"></div>
                       Cargando recepciones...
@@ -165,8 +168,13 @@ export function RecepcionesPage() {
                 </tr>
               ) : filteredRecepciones.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center text-gray-500">
-                    {searchTerm ? 'No se encontraron recepciones' : 'No hay recepciones disponibles'}
+                  <td
+                    colSpan={6}
+                    className="px-6 py-12 text-center text-gray-500"
+                  >
+                    {searchTerm
+                      ? "No se encontraron recepciones"
+                      : "No hay recepciones disponibles"}
                   </td>
                 </tr>
               ) : (
@@ -198,23 +206,26 @@ export function RecepcionesPage() {
                       <div className="flex items-center gap-2">
                         <Truck className="h-4 w-4 text-gray-400" />
                         <span className="text-sm text-gray-900">
-                          {recepcion.proveedor_nombre || 'Sin proveedor'}
+                          {recepcion.proveedor_nombre || "Sin proveedor"}
                         </span>
                       </div>
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">
                       <div className="flex flex-col">
                         {recepcion.convenio_nombre && (
-                          <span className="text-sm text-gray-900">{recepcion.convenio_nombre}</span>
+                          <span className="text-sm text-gray-900">
+                            {recepcion.convenio_nombre}
+                          </span>
                         )}
                         {recepcion.anexo_nombre && (
                           <span className="text-xs text-gray-500">
                             {recepcion.anexo_nombre} ({recepcion.anexo_numero})
                           </span>
                         )}
-                        {!recepcion.convenio_nombre && !recepcion.anexo_nombre && (
-                          <span className="text-sm text-gray-400">-</span>
-                        )}
+                        {!recepcion.convenio_nombre &&
+                          !recepcion.anexo_nombre && (
+                            <span className="text-sm text-gray-400">-</span>
+                          )}
                       </div>
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">

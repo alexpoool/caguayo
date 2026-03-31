@@ -1,5 +1,14 @@
 import React, { useState, useEffect } from "react";
-import { Form, Select, Button, Input, message, Row, Col, DatePicker } from "antd";
+import {
+  Form,
+  Select,
+  Button,
+  Input,
+  message,
+  Row,
+  Col,
+  DatePicker,
+} from "antd";
 import { FilePdfOutlined } from "@ant-design/icons";
 import { dependenciasService } from "../../services/administracion";
 import { Dependencia } from "../../types";
@@ -12,7 +21,7 @@ const ReporteMovimientosProducto: React.FC = () => {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
   const [dependencias, setDependencias] = useState<Dependencia[]>([]);
-  
+
   // Mock products list state until hookup with actual service
   const [productos, setProductos] = useState([
     { id: 1, nombre: "Producto Mock", codigo: "MOCK" },
@@ -43,7 +52,7 @@ const ReporteMovimientosProducto: React.FC = () => {
           headers: {
             Authorization: `Bearer ${token}`,
           },
-        }
+        },
       );
 
       if (!response.ok) {
@@ -96,9 +105,7 @@ const ReporteMovimientosProducto: React.FC = () => {
             <Form.Item
               name="id_producto"
               label="Producto"
-              rules={[
-                { required: true, message: "Seleccione un producto" },
-              ]}
+              rules={[{ required: true, message: "Seleccione un producto" }]}
             >
               <Select placeholder="Seleccionar producto">
                 {productos.map((p) => (

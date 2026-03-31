@@ -1,16 +1,31 @@
-import { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { monedaService } from '../services/api';
-import type { Moneda, MonedaCreate, MonedaUpdate } from '../types/moneda';
-import { Plus, Edit, Trash2, Coins, CircleDollarSign, Save, X, ArrowLeft, RefreshCw, Type, Text, Sparkles, AlertCircle, Wallet } from 'lucide-react';
-import toast from 'react-hot-toast';
-import { 
-  Button, 
-  Input, 
-  Label, 
-  Card, 
-  CardContent, 
-  CardHeader, 
+import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { monedaService } from "../services/api";
+import type { Moneda, MonedaCreate, MonedaUpdate } from "../types/moneda";
+import {
+  Plus,
+  Edit,
+  Trash2,
+  Coins,
+  CircleDollarSign,
+  Save,
+  X,
+  ArrowLeft,
+  RefreshCw,
+  Type,
+  Text,
+  Sparkles,
+  AlertCircle,
+  Wallet,
+} from "lucide-react";
+import toast from "react-hot-toast";
+import {
+  Button,
+  Input,
+  Label,
+  Card,
+  CardContent,
+  CardHeader,
   CardTitle,
   Table,
   TableHeader,
@@ -18,38 +33,43 @@ import {
   TableRow,
   TableHead,
   TableCell,
-  ConfirmModal
-} from '../components/ui';
+  ConfirmModal,
+} from "../components/ui";
 
 export function MonedasPage() {
   const queryClient = useQueryClient();
-  const [view, setView] = useState<'list' | 'form'>('list');
+  const [view, setView] = useState<"list" | "form">("list");
   const [editingMoneda, setEditingMoneda] = useState<Moneda | null>(null);
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
     title: string;
     message: string;
     onConfirm: () => void;
-    type: 'danger' | 'warning' | 'info';
+    type: "danger" | "warning" | "info";
   }>({
     isOpen: false,
-    title: '',
-    message: '',
+    title: "",
+    message: "",
     onConfirm: () => {},
-    type: 'danger'
+    type: "danger",
   });
 
   // Form state
   const [formData, setFormData] = useState<MonedaCreate>({
-    nombre: '',
-    denominacion: '',
-    simbolo: ''
+    nombre: "",
+    denominacion: "",
+    simbolo: "",
   });
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
   // Queries
-  const { data: monedas = [], isLoading, isError, error } = useQuery({
-    queryKey: ['monedas'],
+  const {
+    data: monedas = [],
+    isLoading,
+    isError,
+    error,
+  } = useQuery({
+    queryKey: ["monedas"],
     queryFn: () => monedaService.getMonedas(),
   });
 
@@ -57,64 +77,70 @@ export function MonedasPage() {
   const createMutation = useMutation({
     mutationFn: monedaService.createMoneda,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['monedas'] });
-      toast.success('Moneda creada correctamente');
-      setView('list');
+      queryClient.invalidateQueries({ queryKey: ["monedas"] });
+      toast.success("Moneda creada correctamente");
+      setView("list");
       resetForm();
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : 'Error al crear moneda');
-    }
+      toast.error(
+        error instanceof Error ? error.message : "Error al crear moneda",
+      );
+    },
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: number; data: MonedaUpdate }) => 
+    mutationFn: ({ id, data }: { id: number; data: MonedaUpdate }) =>
       monedaService.updateMoneda(id, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['monedas'] });
-      toast.success('Moneda actualizada correctamente');
-      setView('list');
+      queryClient.invalidateQueries({ queryKey: ["monedas"] });
+      toast.success("Moneda actualizada correctamente");
+      setView("list");
       setEditingMoneda(null);
       resetForm();
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : 'Error al actualizar moneda');
-    }
+      toast.error(
+        error instanceof Error ? error.message : "Error al actualizar moneda",
+      );
+    },
   });
 
   const deleteMutation = useMutation({
     mutationFn: monedaService.deleteMoneda,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['monedas'] });
-      toast.success('Moneda eliminada correctamente');
+      queryClient.invalidateQueries({ queryKey: ["monedas"] });
+      toast.success("Moneda eliminada correctamente");
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : 'Error al eliminar moneda');
-    }
+      toast.error(
+        error instanceof Error ? error.message : "Error al eliminar moneda",
+      );
+    },
   });
 
   // Validation
   const validateForm = (): boolean => {
     const errors: Record<string, string> = {};
-    
+
     if (!formData.nombre || formData.nombre.trim().length < 1) {
-      errors.nombre = 'El nombre es requerido';
+      errors.nombre = "El nombre es requerido";
     } else if (formData.nombre.length > 50) {
-      errors.nombre = 'El nombre no puede exceder 50 caracteres';
+      errors.nombre = "El nombre no puede exceder 50 caracteres";
     }
-    
+
     if (!formData.denominacion || formData.denominacion.trim().length < 1) {
-      errors.denominacion = 'La denominación es requerida';
+      errors.denominacion = "La denominación es requerida";
     } else if (formData.denominacion.length > 100) {
-      errors.denominacion = 'La denominación no puede exceder 100 caracteres';
+      errors.denominacion = "La denominación no puede exceder 100 caracteres";
     }
-    
+
     if (!formData.simbolo || formData.simbolo.trim().length < 1) {
-      errors.simbolo = 'El símbolo es requerido';
+      errors.simbolo = "El símbolo es requerido";
     } else if (formData.simbolo.length > 5) {
-      errors.simbolo = 'El símbolo no puede exceder 5 caracteres';
+      errors.simbolo = "El símbolo no puede exceder 5 caracteres";
     }
-    
+
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -123,7 +149,7 @@ export function MonedasPage() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!validateForm()) {
-      toast.error('Por favor corrija los errores del formulario');
+      toast.error("Por favor corrija los errores del formulario");
       return;
     }
 
@@ -143,9 +169,9 @@ export function MonedasPage() {
 
   const resetForm = () => {
     setFormData({
-      nombre: '',
-      denominacion: '',
-      simbolo: ''
+      nombre: "",
+      denominacion: "",
+      simbolo: "",
     });
     setFormErrors({});
   };
@@ -155,49 +181,51 @@ export function MonedasPage() {
     setFormData({
       nombre: moneda.nombre,
       denominacion: moneda.denominacion,
-      simbolo: moneda.simbolo
+      simbolo: moneda.simbolo,
     });
-    setView('form');
+    setView("form");
   };
 
   const handleEliminar = (moneda: Moneda) => {
     setConfirmModal({
       isOpen: true,
-      title: '¿Eliminar moneda?',
+      title: "¿Eliminar moneda?",
       message: `¿Está seguro que desea eliminar la moneda "${moneda.nombre}" (${moneda.simbolo})? Esta acción no se puede deshacer.`,
       onConfirm: () => deleteMutation.mutate(moneda.id_moneda),
-      type: 'danger'
+      type: "danger",
     });
   };
 
   // VISTA: FORMULARIO
-  if (view === 'form') {
+  if (view === "form") {
     return (
-      <div className="space-y-6 animate-fade-in-up">
+      <div className="space-y-4 animate-fade-in-up">
         {/* Header con icono animado */}
         <div className="flex justify-between items-center">
-          <div className="flex items-center gap-4">
-            <div className="p-3 bg-gradient-to-br from-yellow-500 to-amber-600 rounded-md shadow-lg animate-bounce-subtle">
-              <Coins className="h-8 w-8 text-white" />
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-gradient-to-br from-yellow-500 to-amber-600 rounded shadow-lg animate-bounce-subtle">
+              <Coins className="h-5 w-5 text-white" />
             </div>
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">
-                {editingMoneda ? 'Editar Moneda' : 'Nueva Moneda'}
+            <div className="flex items-baseline">
+              <h1 className="text-xl font-bold text-gray-900">
+                {editingMoneda ? "Editar Moneda" : "Nueva Moneda"}
               </h1>
               <p className="text-sm text-gray-500">
-                {editingMoneda ? 'Actualice la información de la moneda' : 'Complete los datos para crear una nueva moneda'}
+                {editingMoneda
+                  ? "Actualice la información de la moneda"
+                  : "Complete los datos para crear una nueva moneda"}
               </p>
             </div>
           </div>
           <div className="flex items-center gap-3">
             <Sparkles className="h-6 w-6 text-yellow-500 animate-pulse" />
-            <Button 
-              variant="secondary" 
+            <Button
+              variant="secondary"
               onClick={() => {
-                setView('list');
+                setView("list");
                 setEditingMoneda(null);
                 resetForm();
-              }} 
+              }}
               className="gap-2 hover:scale-105 transition-transform"
             >
               <ArrowLeft className="h-4 w-4" />
@@ -225,12 +253,16 @@ export function MonedasPage() {
                 <Input
                   type="text"
                   value={formData.nombre}
-                  onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
-                  className={`mt-1 transition-all duration-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${formErrors.nombre ? 'border-red-500' : ''}`}
+                  onChange={(e) =>
+                    setFormData({ ...formData, nombre: e.target.value })
+                  }
+                  className={`mt-1 transition-all duration-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${formErrors.nombre ? "border-red-500" : ""}`}
                   placeholder="Ej. Dólar"
                 />
                 {formErrors.nombre && (
-                  <p className="text-red-500 text-sm mt-1">{formErrors.nombre}</p>
+                  <p className="text-red-500 text-sm mt-1">
+                    {formErrors.nombre}
+                  </p>
                 )}
               </div>
 
@@ -242,12 +274,16 @@ export function MonedasPage() {
                 <Input
                   type="text"
                   value={formData.denominacion}
-                  onChange={(e) => setFormData({ ...formData, denominacion: e.target.value })}
-                  className={`mt-1 transition-all duration-200 focus:ring-2 focus:ring-green-500 focus:border-green-500 ${formErrors.denominacion ? 'border-red-500' : ''}`}
+                  onChange={(e) =>
+                    setFormData({ ...formData, denominacion: e.target.value })
+                  }
+                  className={`mt-1 transition-all duration-200 focus:ring-2 focus:ring-green-500 focus:border-green-500 ${formErrors.denominacion ? "border-red-500" : ""}`}
                   placeholder="Ej. Dólar estadounidense"
                 />
                 {formErrors.denominacion && (
-                  <p className="text-red-500 text-sm mt-1">{formErrors.denominacion}</p>
+                  <p className="text-red-500 text-sm mt-1">
+                    {formErrors.denominacion}
+                  </p>
                 )}
               </div>
 
@@ -259,13 +295,17 @@ export function MonedasPage() {
                 <Input
                   type="text"
                   value={formData.simbolo}
-                  onChange={(e) => setFormData({ ...formData, simbolo: e.target.value })}
-                  className={`mt-1 transition-all duration-200 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 ${formErrors.simbolo ? 'border-red-500' : ''}`}
+                  onChange={(e) =>
+                    setFormData({ ...formData, simbolo: e.target.value })
+                  }
+                  className={`mt-1 transition-all duration-200 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 ${formErrors.simbolo ? "border-red-500" : ""}`}
                   placeholder="Ej. $"
                   maxLength={5}
                 />
                 {formErrors.simbolo && (
-                  <p className="text-red-500 text-sm mt-1">{formErrors.simbolo}</p>
+                  <p className="text-red-500 text-sm mt-1">
+                    {formErrors.simbolo}
+                  </p>
                 )}
               </div>
 
@@ -276,22 +316,25 @@ export function MonedasPage() {
               </div>
 
               <div className="flex gap-4 md:col-span-2 pt-4 border-t">
-                <Button 
-                  type="submit" 
+                <Button
+                  type="submit"
                   className="gap-2 bg-gradient-to-r from-yellow-500 to-amber-600 hover:from-yellow-600 hover:to-amber-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300"
-                  disabled={createMutation.isPending || updateMutation.isPending}
+                  disabled={
+                    createMutation.isPending || updateMutation.isPending
+                  }
                 >
                   <Save className="h-4 w-4" />
-                  {createMutation.isPending || updateMutation.isPending 
-                    ? 'Guardando...' 
-                    : (editingMoneda ? 'Actualizar' : 'Guardar')
-                  }
+                  {createMutation.isPending || updateMutation.isPending
+                    ? "Guardando..."
+                    : editingMoneda
+                      ? "Actualizar"
+                      : "Guardar"}
                 </Button>
                 <Button
                   type="button"
                   variant="secondary"
                   onClick={() => {
-                    setView('list');
+                    setView("list");
                     setEditingMoneda(null);
                     resetForm();
                   }}
@@ -325,10 +368,16 @@ export function MonedasPage() {
       <div className="flex items-center justify-center h-64">
         <div className="text-center bg-red-50 border border-red-200 rounded-md p-4">
           <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-          <p className="font-bold text-lg mb-2 text-red-700">Error al cargar monedas</p>
-          <p className="text-red-600 mb-4">{error instanceof Error ? error.message : 'Error desconocido'}</p>
-          <Button 
-            onClick={() => queryClient.invalidateQueries({ queryKey: ['monedas'] })} 
+          <p className="font-bold text-lg mb-2 text-red-700">
+            Error al cargar monedas
+          </p>
+          <p className="text-red-600 mb-4">
+            {error instanceof Error ? error.message : "Error desconocido"}
+          </p>
+          <Button
+            onClick={() =>
+              queryClient.invalidateQueries({ queryKey: ["monedas"] })
+            }
             className="gap-2 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white"
           >
             <RefreshCw className="h-4 w-4" />
@@ -340,23 +389,25 @@ export function MonedasPage() {
   }
 
   return (
-    <div className="space-y-6 animate-fade-in-up">
+    <div className="space-y-4 animate-fade-in-up">
       {/* Header con icono animado */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div className="flex items-center gap-4">
-          <div className="p-3 bg-gradient-to-br from-yellow-500 to-amber-600 rounded-md shadow-lg animate-bounce-subtle">
-            <Coins className="h-8 w-8 text-white" />
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-gradient-to-br from-yellow-500 to-amber-600 rounded shadow-lg animate-bounce-subtle">
+            <Coins className="h-5 w-5 text-white" />
           </div>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Monedas</h1>
-            <p className="text-gray-500 mt-1">Gestión de monedas del sistema</p>
+          <div className="flex items-baseline">
+            <h1 className="text-xl font-bold text-gray-900">Monedas</h1>
+            <p className="text-sm text-gray-500 ml-3 hidden sm:block">
+              Gestión de monedas del sistema
+            </p>
           </div>
         </div>
         <Button
           onClick={() => {
             resetForm();
             setEditingMoneda(null);
-            setView('form');
+            setView("form");
           }}
           className="gap-2 bg-gradient-to-r from-yellow-500 to-amber-600 hover:from-yellow-600 hover:to-amber-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300"
         >
@@ -403,10 +454,14 @@ export function MonedasPage() {
                       <div className="p-4 bg-slate-50 rounded-full mb-4">
                         <Coins className="h-12 w-12 text-gray-300" />
                       </div>
-                      <p className="text-lg font-medium mb-2">No se encontraron monedas</p>
-                      <p className="text-sm mb-4">Comience creando una nueva moneda</p>
-                      <Button 
-                        onClick={() => setView('form')} 
+                      <p className="text-lg font-medium mb-2">
+                        No se encontraron monedas
+                      </p>
+                      <p className="text-sm mb-4">
+                        Comience creando una nueva moneda
+                      </p>
+                      <Button
+                        onClick={() => setView("form")}
                         className="gap-2 bg-gradient-to-r from-yellow-500 to-amber-600 hover:from-yellow-600 hover:to-amber-700 text-white"
                       >
                         <Plus className="h-4 w-4" />
@@ -417,14 +472,18 @@ export function MonedasPage() {
                 </TableRow>
               ) : (
                 monedas.map((moneda) => (
-                  <TableRow key={moneda.id_moneda} className="hover:bg-gray-50 transition-colors">
+                  <TableRow
+                    key={moneda.id_moneda}
+                    className="hover:bg-gray-50 transition-colors"
+                  >
                     <TableCell>
                       <span className="inline-flex items-center gap-1 px-2 py-1 bg-yellow-100 text-yellow-700 rounded text-sm font-medium">
-                        <Wallet className="h-3 w-3" />
-                        #{moneda.id_moneda}
+                        <Wallet className="h-3 w-3" />#{moneda.id_moneda}
                       </span>
                     </TableCell>
-                    <TableCell className="font-semibold">{moneda.nombre}</TableCell>
+                    <TableCell className="font-semibold">
+                      {moneda.nombre}
+                    </TableCell>
                     <TableCell>{moneda.denominacion}</TableCell>
                     <TableCell>
                       <span className="inline-flex items-center gap-1 px-2 py-1 bg-purple-100 text-purple-700 rounded text-sm font-bold">

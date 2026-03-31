@@ -1,29 +1,54 @@
-import { useState } from 'react';
-import { createPortal } from 'react-dom';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { 
-  Shield, ShieldCheck, Edit, Trash2, Save, X, Plus, Search, FileText, Check
-} from 'lucide-react';
-import toast from 'react-hot-toast';
+import { useState } from "react";
+import { createPortal } from "react-dom";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
-  Button, Input, Label, Card, CardContent, CardHeader, CardTitle,
-  ConfirmModal, Table, TableHeader, TableBody, TableRow, TableHead, TableCell
-} from '../components/ui';
-import { administracionService } from '../services/administracion';
-import type { Grupo, GrupoCreate, GrupoUpdate } from '../types/usuario';
+  Shield,
+  ShieldCheck,
+  Edit,
+  Trash2,
+  Save,
+  X,
+  Plus,
+  Search,
+  FileText,
+  Check,
+} from "lucide-react";
+import toast from "react-hot-toast";
+import {
+  Button,
+  Input,
+  Label,
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  ConfirmModal,
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from "../components/ui";
+import { administracionService } from "../services/administracion";
+import type { Grupo, GrupoCreate, GrupoUpdate } from "../types/usuario";
 
 export function GruposPage() {
   const queryClient = useQueryClient();
-  const [view, setView] = useState<'list' | 'form'>('list');
+  const [view, setView] = useState<"list" | "form">("list");
   const [editingGrupo, setEditingGrupo] = useState<Grupo | null>(null);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [grupoForm, setGrupoForm] = useState<GrupoCreate>({ nombre: '', descripcion: '', funcionalidades: [] });
+  const [searchTerm, setSearchTerm] = useState("");
+  const [grupoForm, setGrupoForm] = useState<GrupoCreate>({
+    nombre: "",
+    descripcion: "",
+    funcionalidades: [],
+  });
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
     title: string;
     message: string;
     onConfirm: () => void;
-  }>({ isOpen: false, title: '', message: '', onConfirm: () => {} });
+  }>({ isOpen: false, title: "", message: "", onConfirm: () => {} });
 
   const [detailModal, setDetailModal] = useState<{
     isOpen: boolean;
@@ -31,47 +56,50 @@ export function GruposPage() {
   }>({ isOpen: false, grupo: null });
 
   const { data: grupos = [] } = useQuery({
-    queryKey: ['grupos'],
+    queryKey: ["grupos"],
     queryFn: () => administracionService.getGrupos(),
   });
 
   const { data: funcionalidades = [] } = useQuery({
-    queryKey: ['funcionalidades'],
+    queryKey: ["funcionalidades"],
     queryFn: () => administracionService.getFuncionalidades(),
   });
 
   const { data: usuarios = [] } = useQuery({
-    queryKey: ['usuarios'],
+    queryKey: ["usuarios"],
     queryFn: () => administracionService.getUsuarios(),
   });
 
   const filteredGrupos = searchTerm.trim()
-    ? grupos.filter(g => 
-        g.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (g.descripcion?.toLowerCase() || '').includes(searchTerm.toLowerCase())
+    ? grupos.filter(
+        (g) =>
+          g.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          (g.descripcion?.toLowerCase() || "").includes(
+            searchTerm.toLowerCase(),
+          ),
       )
     : grupos;
 
   const getUsuariosCountByGrupo = (grupoId: number) => {
-    return usuarios.filter(u => u.id_grupo === grupoId).length;
+    return usuarios.filter((u) => u.id_grupo === grupoId).length;
   };
 
   const createGrupo = useMutation({
     mutationFn: administracionService.createGrupo,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['grupos'] });
-      toast.success('Grupo creado exitosamente');
+      queryClient.invalidateQueries({ queryKey: ["grupos"] });
+      toast.success("Grupo creado exitosamente");
       resetGrupoForm();
     },
-    onError: () => toast.error('Error al crear grupo'),
+    onError: () => toast.error("Error al crear grupo"),
   });
 
   const updateGrupo = useMutation({
     mutationFn: ({ id, data }: { id: number; data: GrupoUpdate }) =>
       administracionService.updateGrupo(id, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['grupos'] });
-      toast.success('Grupo actualizado');
+      queryClient.invalidateQueries({ queryKey: ["grupos"] });
+      toast.success("Grupo actualizado");
       setEditingGrupo(null);
       resetGrupoForm();
     },
@@ -80,26 +108,36 @@ export function GruposPage() {
   const deleteGrupo = useMutation({
     mutationFn: administracionService.deleteGrupo,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['grupos'] });
-      toast.success('Grupo eliminado');
+      queryClient.invalidateQueries({ queryKey: ["grupos"] });
+      toast.success("Grupo eliminado");
     },
   });
 
-  const resetGrupoForm = () => setGrupoForm({ nombre: '', descripcion: '', funcionalidades: [] });
+  const resetGrupoForm = () =>
+    setGrupoForm({ nombre: "", descripcion: "", funcionalidades: [] });
 
-  const handleFuncionalidadChange = (funcionalidadId: number, checked: boolean) => {
+  const handleFuncionalidadChange = (
+    funcionalidadId: number,
+    checked: boolean,
+  ) => {
     const current = grupoForm.funcionalidades || [];
     if (checked) {
-      setGrupoForm({ ...grupoForm, funcionalidades: [...current, funcionalidadId] });
+      setGrupoForm({
+        ...grupoForm,
+        funcionalidades: [...current, funcionalidadId],
+      });
     } else {
-      setGrupoForm({ ...grupoForm, funcionalidades: current.filter(id => id !== funcionalidadId) });
+      setGrupoForm({
+        ...grupoForm,
+        funcionalidades: current.filter((id) => id !== funcionalidadId),
+      });
     }
   };
 
   const handleGrupoSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!grupoForm.nombre) {
-      toast.error('El nombre es requerido');
+      toast.error("El nombre es requerido");
       return;
     }
     if (editingGrupo) {
@@ -113,10 +151,11 @@ export function GruposPage() {
     const usuariosCount = getUsuariosCountByGrupo(grupo.id_grupo);
     setConfirmModal({
       isOpen: true,
-      title: 'Eliminar Grupo',
-      message: usuariosCount > 0 
-        ? `El grupo "${grupo.nombre}" tiene ${usuariosCount} usuario(s) asignado(s). ¿Está seguro de eliminarlo?`
-        : `¿Está seguro de eliminar el grupo "${grupo.nombre}"?`,
+      title: "Eliminar Grupo",
+      message:
+        usuariosCount > 0
+          ? `El grupo "${grupo.nombre}" tiene ${usuariosCount} usuario(s) asignado(s). ¿Está seguro de eliminarlo?`
+          : `¿Está seguro de eliminar el grupo "${grupo.nombre}"?`,
       onConfirm: () => {
         deleteGrupo.mutate(grupo.id_grupo);
         setConfirmModal({ ...confirmModal, isOpen: false });
@@ -127,26 +166,26 @@ export function GruposPage() {
   const handleEdit = (grupo: Grupo) => {
     setEditingGrupo(grupo);
     const funcs = grupo.funcionalidades;
-    const funcIds = Array.isArray(funcs) 
-      ? funcs.map(f => typeof f === 'number' ? f : f.id_funcionalidad)
+    const funcIds = Array.isArray(funcs)
+      ? funcs.map((f) => (typeof f === "number" ? f : f.id_funcionalidad))
       : [];
     setGrupoForm({
       nombre: grupo.nombre,
       descripcion: grupo.descripcion,
-      funcionalidades: funcIds
+      funcionalidades: funcIds,
     });
-    setView('form');
+    setView("form");
   };
 
   const handleCancel = () => {
-    setView('list');
+    setView("list");
     setEditingGrupo(null);
     resetGrupoForm();
   };
 
-  if (view === 'form') {
+  if (view === "form") {
     return (
-      <div className="space-y-6 animate-fade-in-up">
+      <div className="space-y-4 animate-fade-in-up">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Button variant="secondary" onClick={handleCancel}>
@@ -154,15 +193,17 @@ export function GruposPage() {
               Cancelar
             </Button>
             <div className="flex items-center gap-3">
-              <div className="p-3 bg-gradient-to-br from-purple-500 to-purple-600 rounded-md shadow-lg">
-                <Shield className="h-8 w-8 text-white" />
+              <div className="p-2 bg-gradient-to-br from-purple-500 to-purple-600 rounded shadow-lg">
+                <Shield className="h-5 w-5 text-white" />
               </div>
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900">
-                  {editingGrupo ? 'Editar Grupo' : 'Nuevo Grupo'}
+              <div className="flex items-baseline">
+                <h1 className="text-xl font-bold text-gray-900">
+                  {editingGrupo ? "Editar Grupo" : "Nuevo Grupo"}
                 </h1>
                 <p className="text-sm text-gray-500">
-                  {editingGrupo ? 'Modifique los datos del grupo' : 'Complete los datos del nuevo grupo'}
+                  {editingGrupo
+                    ? "Modifique los datos del grupo"
+                    : "Complete los datos del nuevo grupo"}
                 </p>
               </div>
             </div>
@@ -179,7 +220,7 @@ export function GruposPage() {
             </div>
           </CardHeader>
           <CardContent className="pt-6">
-            <form onSubmit={handleGrupoSubmit} className="space-y-6">
+            <form onSubmit={handleGrupoSubmit} className="space-y-4">
               <div className="space-y-2">
                 <Label className="flex items-center gap-2 text-gray-700">
                   <Shield className="h-5 w-5 text-purple-500" />
@@ -187,7 +228,9 @@ export function GruposPage() {
                 </Label>
                 <Input
                   value={grupoForm.nombre}
-                  onChange={(e) => setGrupoForm({ ...grupoForm, nombre: e.target.value })}
+                  onChange={(e) =>
+                    setGrupoForm({ ...grupoForm, nombre: e.target.value })
+                  }
                   placeholder="Nombre del grupo"
                   className="transition-all duration-200 focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
                 />
@@ -198,8 +241,10 @@ export function GruposPage() {
                   Descripción
                 </Label>
                 <Input
-                  value={grupoForm.descripcion || ''}
-                  onChange={(e) => setGrupoForm({ ...grupoForm, descripcion: e.target.value })}
+                  value={grupoForm.descripcion || ""}
+                  onChange={(e) =>
+                    setGrupoForm({ ...grupoForm, descripcion: e.target.value })
+                  }
                   placeholder="Descripción opcional"
                   className="transition-all duration-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
@@ -214,42 +259,59 @@ export function GruposPage() {
                     <label
                       key={func.id_funcionalidad}
                       className={`flex items-center gap-2 p-2 rounded-lg border cursor-pointer transition-all duration-200 ${
-                        grupoForm.funcionalidades?.includes(func.id_funcionalidad)
-                          ? 'border-green-500 bg-green-50 text-green-700'
-                          : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                        grupoForm.funcionalidades?.includes(
+                          func.id_funcionalidad,
+                        )
+                          ? "border-green-500 bg-green-50 text-green-700"
+                          : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"
                       }`}
                     >
                       <input
                         type="checkbox"
-                        checked={grupoForm.funcionalidades?.includes(func.id_funcionalidad) || false}
-                        onChange={(e) => handleFuncionalidadChange(func.id_funcionalidad, e.target.checked)}
+                        checked={
+                          grupoForm.funcionalidades?.includes(
+                            func.id_funcionalidad,
+                          ) || false
+                        }
+                        onChange={(e) =>
+                          handleFuncionalidadChange(
+                            func.id_funcionalidad,
+                            e.target.checked,
+                          )
+                        }
                         className="sr-only"
                       />
-                      <div className={`w-4 h-4 rounded border flex items-center justify-center ${
-                        grupoForm.funcionalidades?.includes(func.id_funcionalidad)
-                          ? 'bg-green-500 border-green-500'
-                          : 'border-gray-300'
-                      }`}>
-                        {grupoForm.funcionalidades?.includes(func.id_funcionalidad) && (
-                          <Check className="w-3 h-3 text-white" />
-                        )}
+                      <div
+                        className={`w-4 h-4 rounded border flex items-center justify-center ${
+                          grupoForm.funcionalidades?.includes(
+                            func.id_funcionalidad,
+                          )
+                            ? "bg-green-500 border-green-500"
+                            : "border-gray-300"
+                        }`}
+                      >
+                        {grupoForm.funcionalidades?.includes(
+                          func.id_funcionalidad,
+                        ) && <Check className="w-3 h-3 text-white" />}
                       </div>
-                      <span className="text-sm font-medium capitalize">{func.nombre}</span>
+                      <span className="text-sm font-medium capitalize">
+                        {func.nombre}
+                      </span>
                     </label>
                   ))}
                 </div>
               </div>
               <div className="flex gap-3 pt-2">
-                <Button 
-                  type="submit" 
+                <Button
+                  type="submit"
                   className="gap-2 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300"
                 >
                   <Save className="h-4 w-4" />
-                  {editingGrupo ? 'Actualizar' : 'Guardar'}
+                  {editingGrupo ? "Actualizar" : "Guardar"}
                 </Button>
-                <Button 
-                  type="button" 
-                  variant="secondary" 
+                <Button
+                  type="button"
+                  variant="secondary"
                   onClick={handleCancel}
                   className="hover:bg-gray-200 transition-colors"
                 >
@@ -265,23 +327,25 @@ export function GruposPage() {
   }
 
   const content = (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div className="flex items-center gap-4">
-          <div className="p-3 bg-gradient-to-br from-purple-500 to-purple-600 rounded-md shadow-lg animate-bounce-subtle">
-            <Shield className="h-8 w-8 text-white" />
+    <div className="space-y-4">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-gradient-to-br from-purple-500 to-purple-600 rounded shadow-lg animate-bounce-subtle">
+            <Shield className="h-5 w-5 text-white" />
           </div>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Grupos</h1>
-            <p className="text-gray-500 mt-1">
-              {filteredGrupos.length === grupos.length 
+          <div className="flex items-baseline">
+            <h1 className="text-xl font-bold text-gray-900">Grupos</h1>
+            <p className="text-sm text-gray-500 ml-3 hidden sm:block">
+              {filteredGrupos.length === grupos.length
                 ? `Gestión de grupos (${grupos.length} grupos)`
-                : `Mostrando ${filteredGrupos.length} de ${grupos.length} grupos`
-              }
+                : `Mostrando ${filteredGrupos.length} de ${grupos.length} grupos`}
             </p>
           </div>
         </div>
-        <Button onClick={() => setView('form')} className="gap-2 bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300">
+        <Button
+          onClick={() => setView("form")}
+          className="gap-2 bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300"
+        >
           <Plus className="h-4 w-4" />
           Nuevo Grupo
         </Button>
@@ -315,14 +379,19 @@ export function GruposPage() {
             <TableBody>
               {filteredGrupos.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center py-12 text-gray-500">
-                    {searchTerm ? 'No se encontraron grupos que coincidan con la búsqueda' : 'No hay grupos'}
+                  <TableCell
+                    colSpan={5}
+                    className="text-center py-12 text-gray-500"
+                  >
+                    {searchTerm
+                      ? "No se encontraron grupos que coincidan con la búsqueda"
+                      : "No hay grupos"}
                   </TableCell>
                 </TableRow>
               ) : (
                 filteredGrupos.map((grupo) => (
-                  <TableRow 
-                    key={grupo.id_grupo} 
+                  <TableRow
+                    key={grupo.id_grupo}
                     className="hover:bg-gray-50/50 transition-colors cursor-pointer"
                     onClick={() => setDetailModal({ isOpen: true, grupo })}
                   >
@@ -337,11 +406,16 @@ export function GruposPage() {
                         {grupo.nombre}
                       </div>
                     </TableCell>
-                    <TableCell>{grupo.descripcion || '-'}</TableCell>
+                    <TableCell>{grupo.descripcion || "-"}</TableCell>
                     <TableCell>
-                      <span className="text-sm">{getUsuariosCountByGrupo(grupo.id_grupo)} usuario(s)</span>
+                      <span className="text-sm">
+                        {getUsuariosCountByGrupo(grupo.id_grupo)} usuario(s)
+                      </span>
                     </TableCell>
-                    <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                    <TableCell
+                      className="text-right"
+                      onClick={(e) => e.stopPropagation()}
+                    >
                       <div className="flex justify-end gap-2">
                         <Button
                           variant="ghost"
@@ -380,68 +454,94 @@ export function GruposPage() {
     </div>
   );
 
-  const ModalDetalle = () => createPortal(
-    detailModal.isOpen && detailModal.grupo && (
-      <div className="fixed inset-0 z-[100] bg-black/50 flex items-center justify-center p-4">
-        <div className="bg-white rounded-lg shadow-xl max-w-lg w-full">
-          <div className="flex items-center justify-between p-4 border-b">
-            <h2 className="text-lg font-semibold">Detalles del Grupo</h2>
-            <Button variant="ghost" size="icon" onClick={() => setDetailModal({ ...detailModal, isOpen: false })}>
-              <X className="h-5 w-5" />
-            </Button>
-          </div>
-          <div className="p-6 space-y-4">
-            <div className="flex items-center gap-4 mb-6">
-              <div className="w-16 h-16 rounded-full bg-gradient-to-br from-purple-400 to-purple-600 flex items-center justify-center text-white">
-                <Shield className="h-8 w-8" />
+  const ModalDetalle = () =>
+    createPortal(
+      detailModal.isOpen && detailModal.grupo && (
+        <div className="fixed inset-0 z-[100] bg-black/50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-lg w-full">
+            <div className="flex items-center justify-between p-4 border-b">
+              <h2 className="text-lg font-semibold">Detalles del Grupo</h2>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() =>
+                  setDetailModal({ ...detailModal, isOpen: false })
+                }
+              >
+                <X className="h-5 w-5" />
+              </Button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div className="flex items-center gap-4 mb-6">
+                <div className="w-16 h-16 rounded-full bg-gradient-to-br from-purple-400 to-purple-600 flex items-center justify-center text-white">
+                  <Shield className="h-8 w-8" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold">
+                    {detailModal.grupo.nombre}
+                  </h3>
+                  <p className="text-gray-500">
+                    ID: {detailModal.grupo.id_grupo}
+                  </p>
+                </div>
               </div>
               <div>
-                <h3 className="text-xl font-bold">{detailModal.grupo.nombre}</h3>
-                <p className="text-gray-500">ID: {detailModal.grupo.id_grupo}</p>
+                <Label className="text-gray-600">Descripción</Label>
+                <div className="font-medium">
+                  {detailModal.grupo.descripcion || "Sin descripción"}
+                </div>
+              </div>
+              <div>
+                <Label className="text-gray-600">Usuarios asignados</Label>
+                <div className="font-medium">
+                  {getUsuariosCountByGrupo(detailModal.grupo.id_grupo)}{" "}
+                  usuario(s)
+                </div>
+              </div>
+              <div>
+                <Label className="text-gray-600">Funcionalidades</Label>
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {detailModal.grupo.funcionalidades &&
+                  detailModal.grupo.funcionalidades.length > 0 ? (
+                    detailModal.grupo.funcionalidades.map((func) => {
+                      const f =
+                        typeof func === "number" ? func : func.id_funcionalidad;
+                      return (
+                        <span
+                          key={f}
+                          className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-medium"
+                        >
+                          {typeof func === "number"
+                            ? funcionalidades.find(
+                                (fn) => fn.id_funcionalidad === func,
+                              )?.nombre || "Desconocido"
+                            : func.nombre}
+                        </span>
+                      );
+                    })
+                  ) : (
+                    <span className="text-gray-400">
+                      Sin funcionalidades asignadas
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
-            <div>
-              <Label className="text-gray-600">Descripción</Label>
-              <div className="font-medium">{detailModal.grupo.descripcion || 'Sin descripción'}</div>
+            <div className="flex justify-end p-4 border-t gap-2">
+              <Button
+                variant="secondary"
+                onClick={() =>
+                  setDetailModal({ ...detailModal, isOpen: false })
+                }
+              >
+                Cerrar
+              </Button>
             </div>
-            <div>
-              <Label className="text-gray-600">Usuarios asignados</Label>
-              <div className="font-medium">{getUsuariosCountByGrupo(detailModal.grupo.id_grupo)} usuario(s)</div>
-            </div>
-            <div>
-              <Label className="text-gray-600">Funcionalidades</Label>
-              <div className="flex flex-wrap gap-2 mt-2">
-                {detailModal.grupo.funcionalidades && detailModal.grupo.funcionalidades.length > 0 ? (
-                  detailModal.grupo.funcionalidades.map((func) => {
-                    const f = typeof func === 'number' ? func : func.id_funcionalidad;
-                    return (
-                      <span
-                        key={f}
-                        className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-medium"
-                      >
-                        {typeof func === 'number' 
-                          ? funcionalidades.find(fn => fn.id_funcionalidad === func)?.nombre || 'Desconocido'
-                          : func.nombre
-                        }
-                      </span>
-                    );
-                  })
-                ) : (
-                  <span className="text-gray-400">Sin funcionalidades asignadas</span>
-                )}
-              </div>
-            </div>
-          </div>
-          <div className="flex justify-end p-4 border-t gap-2">
-            <Button variant="secondary" onClick={() => setDetailModal({ ...detailModal, isOpen: false })}>
-              Cerrar
-            </Button>
           </div>
         </div>
-      </div>
-    ),
-    document.body
-  );
+      ),
+      document.body,
+    );
 
   return (
     <>

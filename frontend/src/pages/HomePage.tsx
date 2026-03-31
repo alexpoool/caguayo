@@ -1,5 +1,12 @@
-import { useAuth } from '../context/AuthContext';
-import { User, Building2, CreditCard, Shield, Database, MapPin } from 'lucide-react';
+import { useAuth } from "../context/AuthContext";
+import {
+  User,
+  Building2,
+  CreditCard,
+  Shield,
+  Database,
+  MapPin,
+} from "lucide-react";
 
 export function HomePage() {
   const { user, baseDatos } = useAuth();
@@ -41,7 +48,9 @@ export function HomePage() {
             <Shield className="h-5 w-5 text-gray-400 flex-shrink-0" />
             <div>
               <p className="text-xs text-gray-500">Grupo</p>
-              <p className="text-sm font-medium text-gray-900">{user?.grupo?.nombre}</p>
+              <p className="text-sm font-medium text-gray-900">
+                {user?.grupo?.nombre}
+              </p>
             </div>
           </div>
 
@@ -49,7 +58,9 @@ export function HomePage() {
             <MapPin className="h-5 w-5 text-gray-400 flex-shrink-0" />
             <div>
               <p className="text-xs text-gray-500">Dependencia</p>
-              <p className="text-sm font-medium text-gray-900">{user?.dependencia?.nombre}</p>
+              <p className="text-sm font-medium text-gray-900">
+                {user?.dependencia?.nombre}
+              </p>
             </div>
           </div>
 
@@ -79,7 +90,9 @@ export function HomePage() {
             <Building2 className="h-5 w-5 text-blue-600" />
           </div>
           <div>
-            <h2 className="font-semibold text-gray-900">{user?.dependencia?.nombre}</h2>
+            <h2 className="font-semibold text-gray-900">
+              {user?.dependencia?.nombre}
+            </h2>
             <p className="text-gray-400 text-sm">Información de la empresa</p>
           </div>
         </div>
@@ -89,7 +102,9 @@ export function HomePage() {
             <Building2 className="h-5 w-5 text-gray-400 flex-shrink-0" />
             <div>
               <p className="text-xs text-gray-500">Nombre</p>
-              <p className="text-sm font-medium text-gray-900">{user?.dependencia?.nombre}</p>
+              <p className="text-sm font-medium text-gray-900">
+                {user?.dependencia?.nombre}
+              </p>
             </div>
           </div>
 
@@ -97,7 +112,9 @@ export function HomePage() {
             <MapPin className="h-5 w-5 text-gray-400 flex-shrink-0" />
             <div>
               <p className="text-xs text-gray-500">Email</p>
-              <p className="text-sm font-medium text-gray-900">{user?.dependencia?.email || '-'}</p>
+              <p className="text-sm font-medium text-gray-900">
+                {user?.dependencia?.email || "-"}
+              </p>
             </div>
           </div>
 
@@ -105,7 +122,9 @@ export function HomePage() {
             <Database className="h-5 w-5 text-gray-400 flex-shrink-0" />
             <div>
               <p className="text-xs text-gray-500">Base de Datos</p>
-              <p className="text-sm font-medium text-gray-900">{user?.dependencia?.base_datos}</p>
+              <p className="text-sm font-medium text-gray-900">
+                {user?.dependencia?.base_datos}
+              </p>
             </div>
           </div>
 

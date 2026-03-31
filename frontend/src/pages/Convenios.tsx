@@ -1,8 +1,21 @@
-import { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { conveniosService, clientesService, configuracionService } from '../services/api';
-import { Plus, Edit, Trash2, Search, Save, ArrowLeft, Building, Eye } from 'lucide-react';
-import toast from 'react-hot-toast';
+import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import {
+  conveniosService,
+  clientesService,
+  configuracionService,
+} from "../services/api";
+import {
+  Plus,
+  Edit,
+  Trash2,
+  Search,
+  Save,
+  ArrowLeft,
+  Building,
+  Eye,
+} from "lucide-react";
+import toast from "react-hot-toast";
 
 interface ClienteSimple {
   id_cliente: number;
@@ -27,12 +40,12 @@ interface Convenio {
   tipo_convenio?: TipoConvenio;
 }
 
-import { 
-  Button, 
-  Input, 
-  Label, 
-  Card, 
-  CardContent, 
+import {
+  Button,
+  Input,
+  Label,
+  Card,
+  CardContent,
   CardHeader,
   Table,
   TableHeader,
@@ -40,12 +53,12 @@ import {
   TableRow,
   TableHead,
   TableCell,
-  ConfirmModal
-} from '../components/ui';
+  ConfirmModal,
+} from "../components/ui";
 
 export function ConveniosPage() {
   const queryClient = useQueryClient();
-  const [view, setView] = useState<'list' | 'form' | 'detail'>('list');
+  const [view, setView] = useState<"list" | "form" | "detail">("list");
   const [editingConvenio, setEditingConvenio] = useState<Convenio | null>(null);
   const [viewingConvenio, setViewingConvenio] = useState<Convenio | null>(null);
   const [confirmModal, setConfirmModal] = useState<{
@@ -53,80 +66,81 @@ export function ConveniosPage() {
     title: string;
     message: string;
     onConfirm: () => void;
-    type: 'danger' | 'warning' | 'info';
+    type: "danger" | "warning" | "info";
   }>({
     isOpen: false,
-    title: '',
-    message: '',
+    title: "",
+    message: "",
     onConfirm: () => {},
-    type: 'danger'
+    type: "danger",
   });
 
   const [formData, setFormData] = useState({
     id_cliente: 0,
-    nombre_convenio: '',
-    fecha: '',
-    vigencia: '',
-    id_tipo_convenio: 0
+    nombre_convenio: "",
+    fecha: "",
+    vigencia: "",
+    id_tipo_convenio: 0,
   });
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState("");
 
   const { data: convenios = [], isLoading } = useQuery({
-    queryKey: ['convenios'],
+    queryKey: ["convenios"],
     queryFn: () => conveniosService.getConvenios(),
   });
 
   const { data: clientes = [] } = useQuery({
-    queryKey: ['clientes'],
+    queryKey: ["clientes"],
     queryFn: () => clientesService.getClientes(),
   });
 
   const { data: tiposConvenio = [] } = useQuery({
-    queryKey: ['tiposConvenio'],
+    queryKey: ["tiposConvenio"],
     queryFn: () => configuracionService.getTiposConvenio(),
   });
 
   const createMutation = useMutation({
-    mutationFn: (data: Partial<Convenio>) => conveniosService.createConvenio(data),
+    mutationFn: (data: Partial<Convenio>) =>
+      conveniosService.createConvenio(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['convenios'] });
-      toast.success('Convenio creado');
-      setView('list');
+      queryClient.invalidateQueries({ queryKey: ["convenios"] });
+      toast.success("Convenio creado");
+      setView("list");
       resetForm();
     },
-    onError: () => toast.error('Error al crear convenio'),
+    onError: () => toast.error("Error al crear convenio"),
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: number; data: Partial<Convenio> }) => 
+    mutationFn: ({ id, data }: { id: number; data: Partial<Convenio> }) =>
       conveniosService.updateConvenio(id, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['convenios'] });
-      toast.success('Convenio actualizado');
-      setView('list');
+      queryClient.invalidateQueries({ queryKey: ["convenios"] });
+      toast.success("Convenio actualizado");
+      setView("list");
       resetForm();
     },
-    onError: () => toast.error('Error al actualizar convenio'),
+    onError: () => toast.error("Error al actualizar convenio"),
   });
 
   const deleteMutation = useMutation({
     mutationFn: (id: number) => conveniosService.deleteConvenio(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['convenios'] });
-      toast.success('Convenio eliminado');
-      setConfirmModal(prev => ({ ...prev, isOpen: false }));
+      queryClient.invalidateQueries({ queryKey: ["convenios"] });
+      toast.success("Convenio eliminado");
+      setConfirmModal((prev) => ({ ...prev, isOpen: false }));
     },
-    onError: () => toast.error('Error al eliminar convenio'),
+    onError: () => toast.error("Error al eliminar convenio"),
   });
 
   const resetForm = () => {
     setFormData({
       id_cliente: 0,
-      nombre_convenio: '',
-      fecha: '',
-      vigencia: '',
-      id_tipo_convenio: 0
+      nombre_convenio: "",
+      fecha: "",
+      vigencia: "",
+      id_tipo_convenio: 0,
     });
     setFormErrors({});
     setEditingConvenio(null);
@@ -134,54 +148,58 @@ export function ConveniosPage() {
 
   const handleNew = () => {
     resetForm();
-    setView('form');
+    setView("form");
   };
 
   const handleEdit = (convenio: Convenio) => {
     setEditingConvenio(convenio);
     setFormData({
-      id_cliente:convenio.id_cliente,
-      nombre_convenio:convenio.nombre_convenio,
-      fecha:convenio.fecha,
-      vigencia:convenio.vigencia,
-      id_tipo_convenio:convenio.id_tipo_convenio
+      id_cliente: convenio.id_cliente,
+      nombre_convenio: convenio.nombre_convenio,
+      fecha: convenio.fecha,
+      vigencia: convenio.vigencia,
+      id_tipo_convenio: convenio.id_tipo_convenio,
     });
-    setView('form');
+    setView("form");
   };
 
   const handleDelete = (convenio: Convenio) => {
     setConfirmModal({
       isOpen: true,
-      title: 'Eliminar Convenio',
+      title: "Eliminar Convenio",
       message: `¿Está seguro de eliminar el convenio "${convenio.nombre_convenio}"?`,
       onConfirm: () => deleteMutation.mutate(convenio.id_convenio),
-      type: 'danger'
+      type: "danger",
     });
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const errors: Record<string, string> = {};
-    
-    if (!formData.id_cliente) errors.id_cliente = 'Seleccione un cliente';
-    if (!formData.id_tipo_convenio) errors.id_tipo_convenio = 'Seleccione un tipo de convenio';
-    if (!formData.nombre_convenio) errors.nombre_convenio = 'Ingrese el nombre';
-    if (!formData.fecha) errors.fecha = 'Ingrese la fecha';
-    if (!formData.vigencia) errors.vigencia = 'Ingrese la vigencia';
-    
+
+    if (!formData.id_cliente) errors.id_cliente = "Seleccione un cliente";
+    if (!formData.id_tipo_convenio)
+      errors.id_tipo_convenio = "Seleccione un tipo de convenio";
+    if (!formData.nombre_convenio) errors.nombre_convenio = "Ingrese el nombre";
+    if (!formData.fecha) errors.fecha = "Ingrese la fecha";
+    if (!formData.vigencia) errors.vigencia = "Ingrese la vigencia";
+
     if (Object.keys(errors).length > 0) {
       setFormErrors(errors);
       return;
     }
 
     if (editingConvenio) {
-      updateMutation.mutate({ id: editingConvenio.id_convenio, data: formData });
+      updateMutation.mutate({
+        id: editingConvenio.id_convenio,
+        data: formData,
+      });
     } else {
       createMutation.mutate(formData);
     }
   };
 
-  const filteredConvenios = convenios.filter(c => {
+  const filteredConvenios = convenios.filter((c) => {
     if (!searchTerm) return true;
     const term = searchTerm.toLowerCase();
     return (
@@ -190,18 +208,18 @@ export function ConveniosPage() {
     );
   });
 
-  if (view === 'form') {
+  if (view === "form") {
     return (
       <div className="max-w-2xl mx-auto">
         <div className="flex items-center gap-4 mb-6">
           <button
-            onClick={() => setView('list')}
+            onClick={() => setView("list")}
             className="p-2 hover:bg-slate-50 rounded-lg"
           >
             <ArrowLeft className="h-5 w-5" />
           </button>
-          <h1 className="text-2xl font-bold text-gray-900">
-            {editingConvenio ? 'Editar' : 'Nuevo'} Convenio
+          <h1 className="text-xl font-bold text-gray-900">
+            {editingConvenio ? "Editar" : "Nuevo"} Convenio
           </h1>
         </div>
 
@@ -211,8 +229,13 @@ export function ConveniosPage() {
               <div>
                 <Label>Cliente *</Label>
                 <select
-                  value={formData.id_cliente || ''}
-                  onChange={(e) => setFormData({ ...formData, id_cliente: parseInt(e.target.value) || 0 })}
+                  value={formData.id_cliente || ""}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      id_cliente: parseInt(e.target.value) || 0,
+                    })
+                  }
                   className="w-full mt-1 px-3 py-2 border rounded-lg"
                 >
                   <option value="">Seleccione un cliente</option>
@@ -222,34 +245,59 @@ export function ConveniosPage() {
                     </option>
                   ))}
                 </select>
-                {formErrors.id_cliente && <p className="text-red-500 text-sm mt-1">{formErrors.id_cliente}</p>}
+                {formErrors.id_cliente && (
+                  <p className="text-red-500 text-sm mt-1">
+                    {formErrors.id_cliente}
+                  </p>
+                )}
               </div>
 
               <div>
                 <Label>Tipo de Convenio *</Label>
                 <select
-                  value={formData.id_tipo_convenio || ''}
-                  onChange={(e) => setFormData({ ...formData, id_tipo_convenio: parseInt(e.target.value) || 0 })}
+                  value={formData.id_tipo_convenio || ""}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      id_tipo_convenio: parseInt(e.target.value) || 0,
+                    })
+                  }
                   className="w-full mt-1 px-3 py-2 border rounded-lg"
                 >
                   <option value="">Seleccione un tipo</option>
                   {tiposConvenio.map((tc) => (
-                    <option key={tc.id_tipo_convenio} value={tc.id_tipo_convenio}>
+                    <option
+                      key={tc.id_tipo_convenio}
+                      value={tc.id_tipo_convenio}
+                    >
                       {tc.nombre}
                     </option>
                   ))}
                 </select>
-                {formErrors.id_tipo_convenio && <p className="text-red-500 text-sm mt-1">{formErrors.id_tipo_convenio}</p>}
+                {formErrors.id_tipo_convenio && (
+                  <p className="text-red-500 text-sm mt-1">
+                    {formErrors.id_tipo_convenio}
+                  </p>
+                )}
               </div>
 
               <div>
                 <Label>Nombre del Convenio *</Label>
                 <Input
                   value={formData.nombre_convenio}
-                  onChange={(e) => setFormData({ ...formData, nombre_convenio: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      nombre_convenio: e.target.value,
+                    })
+                  }
                   placeholder="Nombre del contrato/convenio"
                 />
-                {formErrors.nombre_convenio && <p className="text-red-500 text-sm mt-1">{formErrors.nombre_convenio}</p>}
+                {formErrors.nombre_convenio && (
+                  <p className="text-red-500 text-sm mt-1">
+                    {formErrors.nombre_convenio}
+                  </p>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-4">
@@ -258,27 +306,43 @@ export function ConveniosPage() {
                   <Input
                     type="date"
                     value={formData.fecha}
-                    onChange={(e) => setFormData({ ...formData, fecha: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, fecha: e.target.value })
+                    }
                   />
-                  {formErrors.fecha && <p className="text-red-500 text-sm mt-1">{formErrors.fecha}</p>}
+                  {formErrors.fecha && (
+                    <p className="text-red-500 text-sm mt-1">
+                      {formErrors.fecha}
+                    </p>
+                  )}
                 </div>
                 <div>
                   <Label>Vigencia *</Label>
                   <Input
                     type="date"
                     value={formData.vigencia}
-                    onChange={(e) => setFormData({ ...formData, vigencia: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, vigencia: e.target.value })
+                    }
                   />
-                  {formErrors.vigencia && <p className="text-red-500 text-sm mt-1">{formErrors.vigencia}</p>}
+                  {formErrors.vigencia && (
+                    <p className="text-red-500 text-sm mt-1">
+                      {formErrors.vigencia}
+                    </p>
+                  )}
                 </div>
               </div>
 
               <div className="flex gap-3 pt-4">
                 <Button type="submit">
                   <Save className="h-4 w-4 mr-2" />
-                  {editingConvenio ? 'Actualizar' : 'Crear'}
+                  {editingConvenio ? "Actualizar" : "Crear"}
                 </Button>
-                <Button type="button" variant="outline" onClick={() => setView('list')}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setView("list")}
+                >
                   Cancelar
                 </Button>
               </div>
@@ -290,39 +354,82 @@ export function ConveniosPage() {
   }
 
   // VISTA: DETALLE
-  if (view === 'detail' && viewingConvenio) {
+  if (view === "detail" && viewingConvenio) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-4">
         <div className="flex items-center gap-4 mb-6">
           <button
-            onClick={() => { setView('list'); setViewingConvenio(null); }}
+            onClick={() => {
+              setView("list");
+              setViewingConvenio(null);
+            }}
             className="p-2 hover:bg-slate-50 rounded-lg"
           >
             <ArrowLeft className="h-5 w-5" />
           </button>
-          <h1 className="text-2xl font-bold text-gray-900">Detalle del Convenio</h1>
+          <h1 className="text-xl font-bold text-gray-900">
+            Detalle del Convenio
+          </h1>
         </div>
 
         <Card>
           <CardHeader>
             <CardContent className="pt-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div><Label>Código</Label><p className="font-medium">{viewingConvenio.codigo_convenio || 'N/A'}</p></div>
-                <div><Label>Nombre</Label><p className="font-medium">{viewingConvenio.nombre_convenio}</p></div>
-                <div><Label>Cliente</Label><p className="font-medium">{viewingConvenio.cliente?.nombre || 'N/A'}</p></div>
-                <div><Label>Tipo de Convenio</Label><p className="font-medium">{viewingConvenio.tipo_convenio?.nombre || 'N/A'}</p></div>
-                <div><Label>Fecha</Label><p className="font-medium">{viewingConvenio.fecha}</p></div>
-                <div><Label>Vigencia</Label><p className="font-medium">{viewingConvenio.vigencia}</p></div>
+                <div>
+                  <Label>Código</Label>
+                  <p className="font-medium">
+                    {viewingConvenio.codigo_convenio || "N/A"}
+                  </p>
+                </div>
+                <div>
+                  <Label>Nombre</Label>
+                  <p className="font-medium">
+                    {viewingConvenio.nombre_convenio}
+                  </p>
+                </div>
+                <div>
+                  <Label>Cliente</Label>
+                  <p className="font-medium">
+                    {viewingConvenio.cliente?.nombre || "N/A"}
+                  </p>
+                </div>
+                <div>
+                  <Label>Tipo de Convenio</Label>
+                  <p className="font-medium">
+                    {viewingConvenio.tipo_convenio?.nombre || "N/A"}
+                  </p>
+                </div>
+                <div>
+                  <Label>Fecha</Label>
+                  <p className="font-medium">{viewingConvenio.fecha}</p>
+                </div>
+                <div>
+                  <Label>Vigencia</Label>
+                  <p className="font-medium">{viewingConvenio.vigencia}</p>
+                </div>
               </div>
             </CardContent>
           </CardHeader>
         </Card>
 
         <div className="flex gap-3">
-          <Button onClick={() => { setEditingConvenio(viewingConvenio); setView('form'); }}>
-            <Edit className="h-4 w-4 mr-2" />Editar
+          <Button
+            onClick={() => {
+              setEditingConvenio(viewingConvenio);
+              setView("form");
+            }}
+          >
+            <Edit className="h-4 w-4 mr-2" />
+            Editar
           </Button>
-          <Button variant="outline" onClick={() => { setView('list'); setViewingConvenio(null); }}>
+          <Button
+            variant="outline"
+            onClick={() => {
+              setView("list");
+              setViewingConvenio(null);
+            }}
+          >
             Cancelar
           </Button>
         </div>
@@ -333,9 +440,11 @@ export function ConveniosPage() {
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Convenios</h1>
-          <p className="text-gray-500 mt-1">Gestión de convenios ({filteredConvenios.length} registrados)</p>
+        <div className="flex items-baseline">
+          <h1 className="text-xl font-bold text-gray-900">Convenios</h1>
+          <p className="text-sm text-gray-500 ml-3 hidden sm:block">
+            Gestión de convenios ({filteredConvenios.length} registrados)
+          </p>
         </div>
         <Button onClick={handleNew}>
           <Plus className="h-4 w-4 mr-2" />
@@ -360,7 +469,9 @@ export function ConveniosPage() {
           {isLoading ? (
             <p className="text-center py-8 text-gray-500">Cargando...</p>
           ) : filteredConvenios.length === 0 ? (
-            <p className="text-center py-8 text-gray-500">No hay convenios registrados</p>
+            <p className="text-center py-8 text-gray-500">
+              No hay convenios registrados
+            </p>
           ) : (
             <Table>
               <TableHeader>
@@ -376,20 +487,27 @@ export function ConveniosPage() {
               <TableBody>
                 {filteredConvenios.map((convenio) => (
                   <TableRow key={convenio.id_convenio}>
-                    <TableCell className="font-medium">{convenio.codigo_convenio || '-'}</TableCell>
+                    <TableCell className="font-medium">
+                      {convenio.codigo_convenio || "-"}
+                    </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
                         <Building className="h-4 w-4 text-gray-400" />
-                        <span>{convenio.cliente?.nombre || 'Sin cliente'}</span>
+                        <span>{convenio.cliente?.nombre || "Sin cliente"}</span>
                       </div>
                     </TableCell>
-                    <TableCell className="font-medium">{convenio.nombre_convenio}</TableCell>
+                    <TableCell className="font-medium">
+                      {convenio.nombre_convenio}
+                    </TableCell>
                     <TableCell>{convenio.fecha}</TableCell>
                     <TableCell>{convenio.vigencia}</TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
                         <button
-                          onClick={() => { setViewingConvenio(convenio); setView('detail'); }}
+                          onClick={() => {
+                            setViewingConvenio(convenio);
+                            setView("detail");
+                          }}
                           className="p-1 hover:bg-slate-50 rounded"
                         >
                           <Eye className="h-4 w-4 text-green-600" />
@@ -422,7 +540,7 @@ export function ConveniosPage() {
         message={confirmModal.message}
         type={confirmModal.type}
         onConfirm={confirmModal.onConfirm}
-        onClose={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+        onClose={() => setConfirmModal((prev) => ({ ...prev, isOpen: false }))}
       />
     </div>
   );
