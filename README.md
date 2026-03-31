@@ -1,4 +1,4 @@
-# Caguayo - Sistema de Gestión de Inventario
+# Caguayo 
 
 Aplicación web desarrollada con un stack moderno de Python y TypeScript.
 
