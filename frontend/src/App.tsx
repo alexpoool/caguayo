@@ -31,6 +31,7 @@ import {
   FilePlus,
   Receipt,
   DollarSign,
+  LogOut,
 } from "lucide-react";
 
 import { WelcomePage } from "./pages/Welcome";
@@ -510,56 +511,6 @@ function App() {
                   className="w-8 h-8 rounded-full object-cover border border-slate-200"
                 />
               </button>
-
-              
-                  <div
-                    className="fixed inset-0 z-40"
-                    onClick={() => setShowAccountModal(false)}
-                  ></div>
-
-                  <div className="absolute right-0 mt-2 w-56 bg-white rounded-md shadow-lg border border-slate-200 z-50 animate-fade-in-up">
-                    <div className="p-3 border-b border-slate-100 flex items-center gap-3">
-                      <img
-                        src="/default.jpg"
-                        alt="avatar"
-                        className="w-10 h-10 rounded-full object-cover"
-                      />
-                      <div className="overflow-hidden">
-                        <div className="text-sm font-semibold truncate">
-                          {user
-                            ? `${user.nombre} ${user.primer_apellido}`
-                            : "Usuario"}
-                        </div>
-                        <div className="text-xs text-slate-500 truncate">
-                          {user?.alias || "Cuenta de usuario"}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="p-2">
-                      <button
-                        className="w-full text-left px-3 py-2 text-sm rounded-md text-slate-700 hover:bg-slate-50 transition-colors"
-                        onClick={() => {
-                          setShowAccountModal(false);
-                          setModuloActivo("administracion");
-                          navigate("/perfil");
-                        }}
-                      >
-                        Ver perfil
-                      </button>
-                      <button
-                        className="w-full text-left px-3 py-2 text-sm rounded-md text-red-600 hover:bg-red-50 transition-colors mt-1"
-                        onClick={() => {
-                          setShowAccountModal(false);
-                          setShowLogoutConfirm(true);
-                        }}
-                      >
-                        Salir del sistema
-                      </button>
-                    </div>
-                  </div>
-                </>
-              )}
             </div>
           </div>
 
@@ -952,7 +903,6 @@ function App() {
         </div>
       </div>
 
-      
       {showAccountModal && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm px-4"
@@ -971,9 +921,11 @@ function App() {
               <h3 className="text-lg font-bold text-slate-800">
                 {user ? `${user.nombre} ${user.primer_apellido}` : "Usuario"}
               </h3>
-              <p className="text-sm text-slate-500">{user?.alias || "Cuenta de usuario"}</p>
+              <p className="text-sm text-slate-500">
+                {user?.alias || "Cuenta de usuario"}
+              </p>
             </div>
-            
+
             <div className="p-4 space-y-2">
               <button
                 className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-md bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 hover:text-blue-600 transition-colors font-medium shadow-sm"
@@ -986,7 +938,7 @@ function App() {
                 <Settings className="w-4 h-4" />
                 Configurar Perfil
               </button>
-              
+
               <button
                 className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-md bg-red-50 text-red-600 hover:bg-red-100 transition-colors font-medium"
                 onClick={() => {
@@ -999,18 +951,17 @@ function App() {
               </button>
             </div>
             <div className="p-3 bg-slate-50 border-t border-slate-100">
-                <button
-                  className="w-full px-4 py-2 rounded-mdtext-sm text-slate-500 hover:text-slate-700 transition-colors"
-                  onClick={() => setShowAccountModal(false)}
-                >
-                  Cancelar
-                </button>
+              <button
+                className="w-full px-4 py-2 rounded-mdtext-sm text-slate-500 hover:text-slate-700 transition-colors"
+                onClick={() => setShowAccountModal(false)}
+              >
+                Cancelar
+              </button>
             </div>
           </div>
         </div>
       )}
 
-      
       {showAccountModal && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm px-4"
@@ -1029,9 +980,11 @@ function App() {
               <h3 className="text-lg font-bold text-slate-800">
                 {user ? `${user.nombre} ${user.primer_apellido}` : "Usuario"}
               </h3>
-              <p className="text-sm text-slate-500">{user?.alias || "Cuenta de usuario"}</p>
+              <p className="text-sm text-slate-500">
+                {user?.alias || "Cuenta de usuario"}
+              </p>
             </div>
-            
+
             <div className="p-4 space-y-2">
               <button
                 className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-md bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 hover:text-blue-600 transition-colors font-medium shadow-sm"
@@ -1044,7 +997,7 @@ function App() {
                 <Settings className="w-4 h-4" />
                 Configurar Perfil
               </button>
-              
+
               <button
                 className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-md bg-red-50 text-red-600 hover:bg-red-100 transition-colors font-medium"
                 onClick={() => {
@@ -1057,12 +1010,12 @@ function App() {
               </button>
             </div>
             <div className="p-3 bg-slate-50 border-t border-slate-100">
-                <button
-                  className="w-full px-4 py-2 rounded-mdtext-sm text-slate-500 hover:text-slate-700 transition-colors"
-                  onClick={() => setShowAccountModal(false)}
-                >
-                  Cancelar
-                </button>
+              <button
+                className="w-full px-4 py-2 rounded-mdtext-sm text-slate-500 hover:text-slate-700 transition-colors"
+                onClick={() => setShowAccountModal(false)}
+              >
+                Cancelar
+              </button>
             </div>
           </div>
         </div>
