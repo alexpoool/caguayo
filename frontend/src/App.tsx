@@ -31,7 +31,6 @@ import {
   FilePlus,
   Receipt,
   DollarSign,
-  TrendingUp,
 } from "lucide-react";
 
 import { WelcomePage } from "./pages/Welcome";
@@ -317,9 +316,9 @@ function App() {
               className={`p-1 rounded-full hover:bg-slate-800 transition-colors ${slimSidebar ? "" : "ml-2"}`}
             >
               {slimSidebar ? (
-                <ChevronRight className="w-6 h-6" />
+                <ChevronRight className="w-5 h-5" />
               ) : (
-                <ChevronLeft className="w-6 h-6" />
+                <ChevronLeft className="w-5 h-5" />
               )}
             </button>
           </div>
@@ -340,13 +339,13 @@ function App() {
                       to="/movimientos/pendientes"
                       onClick={handleLinkClick}
                     >
-                      <Clock className="w-6 h-6" />
+                      <Clock className="w-5 h-5" />
                       Pendientes
                     </NavLink>
                   </li>
                   <li>
                     <NavLink to="/productos" onClick={handleLinkClick}>
-                      <Boxes className="w-6 h-6" />
+                      <Boxes className="w-5 h-5" />
                       Productos
                     </NavLink>
                   </li>
@@ -356,7 +355,7 @@ function App() {
                 <ul className={`space-y-1 ${slimSidebar ? "px-0" : "px-3"}`}>
                   <li>
                     <NavLink to="/configuracion" onClick={handleLinkClick}>
-                      <Settings className="w-6 h-6" />
+                      <Settings className="w-5 h-5" />
                       Configuración
                     </NavLink>
                   </li>
@@ -366,19 +365,19 @@ function App() {
                 <ul className={`space-y-1 ${slimSidebar ? "px-0" : "px-3"}`}>
                   <li>
                     <NavLink to="/compra/clientes" onClick={handleLinkClick}>
-                      <UserCircle className="w-6 h-6" />
+                      <UserCircle className="w-5 h-5" />
                       Proveedores
                     </NavLink>
                   </li>
                   <li>
                     <NavLink to="/compra/convenios" onClick={handleLinkClick}>
-                      <FileText className="w-6 h-6" />
+                      <FileText className="w-5 h-5" />
                       Convenios
                     </NavLink>
                   </li>
                   <li>
                     <NavLink to="/compra/anexos" onClick={handleLinkClick}>
-                      <Boxes className="w-6 h-6" />
+                      <Boxes className="w-5 h-5" />
                       Anexos
                     </NavLink>
                   </li>
@@ -387,7 +386,7 @@ function App() {
                       to="/compra/liquidaciones"
                       onClick={handleLinkClick}
                     >
-                      <Coins className="w-6 h-6" />
+                      <Coins className="w-5 h-5" />
                       Liquidaciones
                     </NavLink>
                   </li>
@@ -396,7 +395,7 @@ function App() {
                       to="/compra/productos-liquidacion"
                       onClick={handleLinkClick}
                     >
-                      <Coins className="w-6 h-6" />
+                      <Coins className="w-5 h-5" />
                       Productos en Liquidación
                     </NavLink>
                   </li>
@@ -406,31 +405,31 @@ function App() {
                 <ul className={`space-y-1 ${slimSidebar ? "px-0" : "px-3"}`}>
                   <li>
                     <NavLink to="/clientes" onClick={handleLinkClick}>
-                      <UserCircle className="w-6 h-6" />
+                      <UserCircle className="w-5 h-5" />
                       Clientes
                     </NavLink>
                   </li>
                   <li>
                     <NavLink to="/ventas/contratos" onClick={handleLinkClick}>
-                      <FilePlus className="w-6 h-6" />
+                      <FilePlus className="w-5 h-5" />
                       Contrato
                     </NavLink>
                   </li>
                   <li>
                     <NavLink to="/ventas/suplementos" onClick={handleLinkClick}>
-                      <FileText className="w-6 h-6" />
+                      <FileText className="w-5 h-5" />
                       Suplemento
                     </NavLink>
                   </li>
                   <li>
                     <NavLink to="/ventas/facturas" onClick={handleLinkClick}>
-                      <Receipt className="w-6 h-6" />
+                      <Receipt className="w-5 h-5" />
                       Factura
                     </NavLink>
                   </li>
                   <li>
                     <NavLink to="/ventas/efectivo" onClick={handleLinkClick}>
-                      <DollarSign className="w-6 h-6" />
+                      <DollarSign className="w-5 h-5" />
                       Efectivo
                     </NavLink>
                   </li>
@@ -443,7 +442,7 @@ function App() {
                       to="/reportes/proveedores"
                       onClick={handleLinkClick}
                     >
-                      <BarChart3 className="w-6 h-6" />
+                      <BarChart3 className="w-5 h-5" />
                       Proveedores
                     </NavLink>
                   </li>
@@ -452,7 +451,7 @@ function App() {
                       to="/reportes/existencias"
                       onClick={handleLinkClick}
                     >
-                      <Package className="w-6 h-6" />
+                      <Package className="w-5 h-5" />
                       Existencias
                     </NavLink>
                   </li>
@@ -461,7 +460,7 @@ function App() {
                       to="/reportes/movimientos-dependencia"
                       onClick={handleLinkClick}
                     >
-                      <ArrowRightLeft className="w-6 h-6" />
+                      <ArrowRightLeft className="w-5 h-5" />
                       Mov. Dependencia
                     </NavLink>
                   </li>
@@ -470,7 +469,7 @@ function App() {
                       to="/reportes/movimientos-producto"
                       onClick={handleLinkClick}
                     >
-                      <ArrowRightLeft className="w-6 h-6" />
+                      <ArrowRightLeft className="w-5 h-5" />
                       Mov. Producto
                     </NavLink>
                   </li>
@@ -489,7 +488,7 @@ function App() {
               className="p-2 rounded-lg hover:bg-slate-50 transition-all duration-300 ease-out hover:scale-110 active:scale-95 group"
               title="Inicio"
             >
-              <Home className="w-6 h-6 text-gray-700 group-hover:text-blue-600 transition-colors" />
+              <Home className="w-5 h-5 text-gray-700 group-hover:text-blue-600 transition-colors" />
             </Link>
             <Link
               to="/administracion"
@@ -497,14 +496,14 @@ function App() {
               className="p-2 rounded-lg hover:bg-slate-50 transition-all duration-300 ease-out hover:scale-110 active:scale-95 group"
               title="Administración"
             >
-              <Settings className="w-6 h-6 text-gray-700 group-hover:text-blue-600 transition-colors" />
+              <Settings className="w-5 h-5 text-gray-700 group-hover:text-blue-600 transition-colors" />
             </Link>
             <button
               onClick={() => setShowAccountModal(true)}
               className="p-2 rounded-lg hover:bg-slate-50 transition-all duration-300 ease-out hover:scale-110 active:scale-95 group"
               title="Cuenta"
             >
-              <UserCircle className="w-6 h-6 text-gray-700 group-hover:text-blue-600 transition-colors" />
+              <UserCircle className="w-5 h-5 text-gray-700 group-hover:text-blue-600 transition-colors" />
             </button>
           </div>
 
@@ -535,7 +534,7 @@ function App() {
         <div
           className={`${isHomePage ? "col-start-1 col-end-3" : "col-start-2 col-end-3"} row-start-2 row-end-3 min-w-0 flex flex-col overflow-hidden`}
         >
-          <main className="flex-1 overflow-auto bg-gray-50 p-4">
+          <main className="flex-1 overflow-auto bg-slate-50 p-4"><div className="max-w-7xl mx-auto">
             <div className="animate-fade-in-up animation-fill-both">
               <Routes>
                 <Route path="/" element={<HomePage />} />
@@ -891,7 +890,7 @@ function App() {
                 />
               </Routes>
             </div>
-          </main>
+          </div></main>
         </div>
       </div>
       {showAccountModal && (

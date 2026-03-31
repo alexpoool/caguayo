@@ -41,23 +41,30 @@ class LiquidacionService:
         if not productos_db:
             raise ValueError("No se encontraron productos para liquidar")
 
+        # N+1 Fix: Load all associated products at once
+        id_productos = list({p.id_producto for p in productos_db})
+        productos_stmt = select(Productos).where(Productos.id_producto.in_(id_productos))
+        productos_results = await db.exec(productos_stmt)
+        productos_map = {p.id_producto: p for p in productos_results.all()}
+
         importe = Decimal("0.00")
         for prod in productos_db:
-            producto_stmt = select(Productos).where(
-                Productos.id_producto == prod.id_producto
-            )
-            producto_result = await db.exec(producto_stmt)
-            producto = producto_result.first()
-
+            producto = productos_map.get(prod.id_producto)
             if producto:
                 importe += producto.precio_venta * prod.cantidad
 
-        devengado = data.devengado or Decimal("0.00")
-        tributario = data.tributario or Decimal("0.00")
-        comision_bancaria = data.comision_bancaria or Decimal("0.00")
-        gasto_empresa = data.gasto_empresa or Decimal("0.00")
-
-        neto_pagar = importe - tributario - comision_bancaria - gasto_empresa
+        # Usar Value Object para la lógica financiera
+        from src.domain.liquidacion_calc import CalculadoraLiquidacion, ValoresDescuento
+        
+        calc = CalculadoraLiquidacion(
+            importe_base=importe,
+            descuentos=ValoresDescuento(
+                devengado=data.devengado or Decimal("0.00"),
+                tributario=data.tributario or Decimal("0.00"),
+                comision_bancaria=data.comision_bancaria or Decimal("0.00"),
+                gasto_empresa=data.gasto_empresa or Decimal("0.00")
+            )
+        )
 
         codigo = await LiquidacionService.generate_codigo_liquidacion(db)
 
@@ -70,12 +77,12 @@ class LiquidacionService:
             liquidada=False,
             fecha_emision=data.fecha_emision or date.today(),
             observaciones=data.observaciones,
-            devengado=devengado,
-            tributario=tributario,
-            comision_bancaria=comision_bancaria,
-            gasto_empresa=gasto_empresa,
-            importe=importe,
-            neto_pagar=neto_pagar,
+            devengado=calc.descuentos.devengado,
+            tributario=calc.descuentos.tributario,
+            comision_bancaria=calc.descuentos.comision_bancaria,
+            gasto_empresa=calc.descuentos.gasto_empresa,
+            importe=calc.importe_base,
+            neto_pagar=calc.neto_pagar,
             tipo_pago=data.tipo_pago,
         )
         db.add(db_liquidacion)
@@ -234,12 +241,17 @@ class LiquidacionService:
         if data.gasto_empresa is not None:
             db_liquidacion.gasto_empresa = data.gasto_empresa
 
-        db_liquidacion.neto_pagar = (
-            db_liquidacion.importe
-            - db_liquidacion.tributario
-            - db_liquidacion.comision_bancaria
-            - db_liquidacion.gasto_empresa
+        from src.domain.liquidacion_calc import CalculadoraLiquidacion, ValoresDescuento
+        calc = CalculadoraLiquidacion(
+            importe_base=db_liquidacion.importe,
+            descuentos=ValoresDescuento(
+                devengado=db_liquidacion.devengado,
+                tributario=db_liquidacion.tributario,
+                comision_bancaria=db_liquidacion.comision_bancaria,
+                gasto_empresa=db_liquidacion.gasto_empresa,
+            )
         )
+        db_liquidacion.neto_pagar = calc.neto_pagar
 
         if data.observaciones:
             db_liquidacion.observaciones = data.observacion

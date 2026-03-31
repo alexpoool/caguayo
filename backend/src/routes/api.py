@@ -81,5 +81,6 @@ async def api_info():
             "suplementos": "/api/v1/suplementos",
             "ventas_efectivo": "/api/v1/ventas-efectivo",
             "productos_en_liquidacion": "/api/v1/productos-en-liquidacion",
+            "reportes": "/api/v1/reportes",
         },
     }

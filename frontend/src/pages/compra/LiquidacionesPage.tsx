@@ -662,7 +662,7 @@ export function LiquidacionesPage() {
             <div className="px-6 py-2 border-b flex justify-between items-center">
               <h2 className="text-xl font-bold">Detalle de Liquidación</h2>
               <button onClick={() => { setShowDetailModal(false); setSelectedLiquidacion(null); }} className="text-gray-400 hover:text-gray-600">
-                <XCircle className="w-6 h-6" />
+                <XCircle className="w-5 h-5" />
               </button>
             </div>
             

@@ -644,7 +644,7 @@ export function Dashboard() {
                   {stats.top_productos.slice(0, 5).map((producto, index) => (
                     <div key={producto.id_producto} className="flex items-center justify-between py-2 border-b border-gray-100 last:border-0">
                       <div className="flex items-center gap-3">
-                        <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
+                        <span className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold ${
                           index === 0 ? 'bg-yellow-100 text-yellow-700' :
                           index === 1 ? 'bg-gray-200 text-gray-700' :
                           index === 2 ? 'bg-orange-100 text-orange-700' :
