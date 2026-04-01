@@ -41,10 +41,4 @@ coverage/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-<<<<<<< HEAD
-=======
 
-# Temp files
-modulos.txt
-mejoras-al-frontend.md
->>>>>>> leo

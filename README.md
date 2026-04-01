@@ -339,13 +339,6 @@ cd frontend
 pnpm build
 ```
 
-## 🤝 Contribución
-
-1. Crear una rama para tu feature: `git checkout -b feature/nueva-funcionalidad`
-2. Commitear tus cambios: `git commit -m 'Agrega nueva funcionalidad'`
-3. Push a la rama: `git push origin feature/nueva-funcionalidad`
-4. Crear un Pull Request
-
 ## 📄 Licencia
 
 Este proyecto es propiedad de Caguayo. Todos los derechos reservados.
