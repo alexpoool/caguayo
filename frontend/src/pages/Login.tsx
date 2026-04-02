@@ -152,9 +152,6 @@ export function LoginPage() {
           <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent">
             Caguayo
           </h1>
-          <p className="text-slate-500 mt-2 text-sm tracking-wide uppercase">
-            Sistema de Inventario
-          </p>
           <div className="mx-auto mt-4 w-12 h-1 bg-gradient-to-r from-blue-400 to-blue-600 rounded-full" />
         </div>
 
