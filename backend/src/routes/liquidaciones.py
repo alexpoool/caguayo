@@ -65,7 +65,7 @@ async def listar_liquidaciones_por_cliente(
 
 @router.get(
     "/productos-pendientes/cliente/{cliente_id}",
-    response_model=List[ProductosEnLiquidacionRead],
+    response_model=List[dict],
 )
 async def listar_productos_pendientes_por_cliente(
     cliente_id: int,

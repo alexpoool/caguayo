@@ -231,6 +231,19 @@ caguayo/
 | **Factura** | Facturas de contratos |
 | **FacturaProducto** | Relación factura-productos |
 
+### Gestión de Servicios
+| Entidad | Descripción |
+|---------|-------------|
+| **Servicio** | Catálogo de servicios con precio y unidad de medida |
+| **SolicitudServicio** | Cabecera de solicitud con representante del cliente |
+| **Etapa** | Etapas de una solicitud (1:N con solicitud) |
+| **TareaEtapa** | Tareas por etapa con override de servicio (N:N etapa-servicio) |
+| **PersonaEtapa** | Personas naturales asignadas a etapas con cobro |
+| **FacturaServicio** | Facturas asociadas a etapas |
+| **ItemFacturaServicio** | Items específicos de cada factura de servicio |
+| **PagoFacturaServicio** | Pagos recibidos por facturas de servicio |
+| **PersonaLiquidacion** | Liquidación final a personas naturales |
+
 ### Administración
 | Entidad | Descripción |
 |---------|-------------|

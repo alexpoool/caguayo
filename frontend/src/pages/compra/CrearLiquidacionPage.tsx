@@ -1,43 +1,25 @@
-import { useState, useEffect, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
-import {
-  Button,
-  Input,
-  Label,
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "../../components/ui";
-import {
-  clientesService,
-  anexosService,
-  monedaService,
-  liquidacionService,
-} from "../../services/api";
-import type {
-  Cliente,
-  Anexo,
-  Moneda,
-  LiquidacionCreate,
-} from "../../services/api";
-import { Plus, Save, ArrowLeft, CheckCircle, Package } from "lucide-react";
-import toast from "react-hot-toast";
+import { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Button, Input, Label, Card, CardContent, CardHeader, CardTitle } from '../../components/ui';
+import { clientesService, anexosService, monedaService, liquidacionService } from '../../services/api';
+import type { Cliente, Anexo, Moneda, LiquidacionCreate } from '../../services/api';
+import { Plus, Save, ArrowLeft, CheckCircle, Package } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 export function CrearLiquidacionPage() {
   const navigate = useNavigate();
-
+  
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [anexos, setAnexos] = useState<Anexo[]>([]);
   const [monedas, setMonedas] = useState<Moneda[]>([]);
   const [itemsAnexo, setItemsAnexo] = useState<any[]>([]);
-
+  
   const [filtroCliente, setFiltroCliente] = useState<number | null>(null);
   const [filtroAnexo, setFiltroAnexo] = useState<number | null>(null);
   const [selectedProductos, setSelectedProductos] = useState<number[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingProductos, setIsLoadingProductos] = useState(false);
-
+  
   const [formData, setFormData] = useState<LiquidacionCreate>({
     id_cliente: 0,
     id_convenio: undefined,
@@ -47,10 +29,16 @@ export function CrearLiquidacionPage() {
     tributario: 0,
     comision_bancaria: 0,
     gasto_empresa: 0,
-    tipo_pago: "TRANSFERENCIA",
-    observaciones: "",
-    producto_ids: [],
+    tipo_pago: 'TRANSFERENCIA',
+    observaciones: '',
+    producto_ids: []
   });
+
+  const [convenioInfo, setConvenioInfo] = useState<{
+    tipoConvenio: string;
+    codigo: string;
+    moneda: string;
+  } | null>(null);
 
   useEffect(() => {
     loadInitialData();
@@ -69,21 +57,21 @@ export function CrearLiquidacionPage() {
       const [clientesData, anexosData, monedasData] = await Promise.all([
         clientesService.getClientes(0, 1000),
         anexosService.getAnexos(undefined, undefined, 0, 1000),
-        monedaService.getMonedas(),
+        monedaService.getMonedas()
       ]);
-
+      
       setClientes(clientesData);
       setAnexos(anexosData);
       setMonedas(monedasData);
     } catch (error) {
-      console.error("Error cargando datos:", error);
+      console.error('Error cargando datos:', error);
     }
   };
 
   const anexosFiltrados = useMemo(() => {
     if (!filtroCliente) return anexos;
     // Filtrar anexos cuyo convenio pertenezca al cliente seleccionado
-    return anexos.filter((a) => {
+    return anexos.filter(a => {
       const convenio = (a as any).convenios;
       return convenio && convenio.id_cliente === filtroCliente;
     });
@@ -91,17 +79,17 @@ export function CrearLiquidacionPage() {
 
   const loadItemsAnexo = async () => {
     if (!filtroCliente) return;
-
+    
     setIsLoadingProductos(true);
     try {
       const data = await liquidacionService.getItemsAnexoConEstado(
-        filtroCliente,
-        filtroAnexo || undefined,
+        filtroCliente, 
+        filtroAnexo || undefined
       );
       setItemsAnexo(data);
       setSelectedProductos([]);
     } catch (error) {
-      console.error("Error cargando productos:", error);
+      console.error('Error cargando productos:', error);
     } finally {
       setIsLoadingProductos(false);
     }
@@ -110,85 +98,101 @@ export function CrearLiquidacionPage() {
   const handleClienteChange = (clienteId: number) => {
     setFiltroCliente(clienteId);
     setFiltroAnexo(null);
-    setFormData((prev) => ({
+    setFormData(prev => ({
       ...prev,
       id_cliente: clienteId,
       id_anexo: undefined,
-      producto_ids: [],
+      producto_ids: []
     }));
     setSelectedProductos([]);
+    setConvenioInfo(null);
   };
 
   const handleAnexoChange = (anexoId: number | null) => {
     setFiltroAnexo(anexoId);
-    setFormData((prev) => ({
+    setFormData(prev => ({
       ...prev,
       id_anexo: anexoId || undefined,
-      producto_ids: [],
+      producto_ids: []
     }));
     setSelectedProductos([]);
+    
+    if (anexoId) {
+      const anexo = anexos.find(a => a.id_anexo === anexoId);
+      if (anexo) {
+        const conv = (anexo as any).convenios;
+        setConvenioInfo({
+          tipoConvenio: conv?.tipo_convenio?.nombre || '',
+          codigo: conv?.codigo || '',
+          moneda: conv?.id_moneda ? monedas.find(m => m.id_moneda === conv.id_moneda)?.nombre || '' : ''
+        });
+      }
+    } else {
+      setConvenioInfo(null);
+    }
   };
 
   const handleProductoSelect = (productoId: number) => {
-    setSelectedProductos((prev) => {
+    setSelectedProductos(prev => {
       if (prev.includes(productoId)) {
-        return prev.filter((id) => id !== productoId);
+        return prev.filter(id => id !== productoId);
       }
       return [...prev, productoId];
     });
-    setFormData((prev) => ({
+    setFormData(prev => ({
       ...prev,
       producto_ids: prev.producto_ids.includes(productoId)
-        ? prev.producto_ids.filter((id) => id !== productoId)
-        : [...prev.producto_ids, productoId],
+        ? prev.producto_ids.filter(id => id !== productoId)
+        : [...prev.producto_ids, productoId]
     }));
   };
 
   const handleSelectAll = () => {
-    const aLiquidar = itemsAnexo.filter(
-      (item: any) =>
-        item.estado === "A LIQUIDAR" && item.id_producto_en_liquidacion,
-    );
-    const allIds = aLiquidar.map(
-      (item: any) => item.id_producto_en_liquidacion,
-    );
+    const aLiquidar = itemsAnexo.filter((item: any) => item.estado === 'A LIQUIDAR' && item.id_producto_en_liquidacion);
+    const allIds = aLiquidar.map((item: any) => item.id_producto_en_liquidacion);
     setSelectedProductos(allIds);
-    setFormData((prev) => ({ ...prev, producto_ids: allIds }));
+    setFormData(prev => ({ ...prev, producto_ids: allIds }));
   };
 
   const handleDeselectAll = () => {
     setSelectedProductos([]);
-    setFormData((prev) => ({ ...prev, producto_ids: [] }));
+    setFormData(prev => ({ ...prev, producto_ids: [] }));
   };
 
   const calculateImporte = () => {
     return itemsAnexo
-      .filter(
-        (item: any) =>
-          item.estado === "A LIQUIDAR" &&
-          selectedProductos.includes(item.id_producto_en_liquidacion),
-      )
+      .filter((item: any) => item.estado === 'A LIQUIDAR' && selectedProductos.includes(item.id_producto_en_liquidacion))
       .reduce((sum: number, item: any) => {
-        return sum + item.precio_venta * item.cantidad;
+        return sum + (item.precio_venta * item.cantidad);
       }, 0);
   };
 
   const calculateNetoPagar = () => {
     const importe = calculateImporte();
-    const tributario = Number(formData.tributario) || 0;
+    const gasto_empresa = Number(formData.gasto_empresa) || 0;
     const comision = Number(formData.comision_bancaria) || 0;
-    const gasto = Number(formData.gasto_empresa) || 0;
-    return importe - tributario - comision - gasto;
+    const tributario = Number(formData.tributario) || 0;
+    
+    const devengado = importe - (importe * gasto_empresa / 100) - (importe * comision / 100);
+    const neto = devengado - (devengado * tributario / 100);
+    return neto;
+  };
+
+  const calculateDevengado = () => {
+    const importe = calculateImporte();
+    const gasto_empresa = Number(formData.gasto_empresa) || 0;
+    const comision = Number(formData.comision_bancaria) || 0;
+    return importe - (importe * gasto_empresa / 100) - (importe * comision / 100);
   };
 
   const handleSave = async () => {
     if (!filtroCliente) {
-      toast.error("Seleccione un proveedor");
+      toast.error('Seleccione un proveedor');
       return;
     }
 
     if (selectedProductos.length === 0) {
-      toast.error("Seleccione al menos un producto");
+      toast.error('Seleccione al menos un producto');
       return;
     }
 
@@ -197,17 +201,15 @@ export function CrearLiquidacionPage() {
       const dataToSend = {
         ...formData,
         id_cliente: filtroCliente,
-        producto_ids: selectedProductos,
+        producto_ids: selectedProductos
       };
-
+      
       await liquidacionService.createLiquidacion(dataToSend);
-      toast.success("Liquidación creada correctamente");
-      navigate("/compra/liquidaciones");
+      toast.success('Liquidación creada correctamente');
+      navigate('/compra/liquidaciones');
     } catch (error: any) {
-      console.error("Error:", error);
-      toast.error(
-        error?.response?.data?.detail || "Error al crear liquidación",
-      );
+      console.error('Error:', error);
+      toast.error(error?.response?.data?.detail || 'Error al crear liquidación');
     } finally {
       setIsLoading(false);
     }
@@ -215,16 +217,13 @@ export function CrearLiquidacionPage() {
 
   const getClienteNombre = (clienteId: number) => {
     const cliente = clientes.find((c: Cliente) => c.id_cliente === clienteId);
-    return cliente?.nombre || "";
+    return cliente?.nombre || '';
   };
 
   return (
     <div className="p-6">
       <div className="mb-6">
-        <Button
-          variant="ghost"
-          onClick={() => navigate("/compra/liquidaciones")}
-        >
+        <Button variant="ghost" onClick={() => navigate('/compra/liquidaciones')}>
           <ArrowLeft className="w-4 h-4 mr-2" />
           Volver a Liquidaciones
         </Button>
@@ -234,16 +233,33 @@ export function CrearLiquidacionPage() {
         <CardHeader>
           <CardTitle>Nueva Liquidación</CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="grid gap-4 md:grid-cols-2">
+        <CardContent className="relative">
+          
+          {convenioInfo && (
+            <div className="absolute top-6 right-6 bg-gray-50 border border-gray-300 p-3 text-xs rounded shadow-sm z-10" style={{ right: '24px', top: '24px' }}>
+              <div className="font-bold text-gray-700 mb-2 border-b pb-1">LIQUIDACIÓN</div>
+              <div className="mb-1">
+                <span className="text-gray-500">Concepto:</span>
+                <div className="font-medium">{convenioInfo.tipoConvenio}</div>
+              </div>
+              <div className="mb-1">
+                <span className="text-gray-500">Número:</span>
+                <div className="font-medium">{convenioInfo.codigo}</div>
+              </div>
+              <div>
+                <span className="text-gray-500">Moneda:</span>
+                <div className="font-medium">{convenioInfo.moneda}</div>
+              </div>
+            </div>
+          )}
+
+          <div className="grid gap-6 md:grid-cols-2">
             <div>
               <Label>Proveedor *</Label>
-              <select
+              <select 
                 className="w-full p-2 border rounded"
-                value={filtroCliente || ""}
-                onChange={(e: any) =>
-                  handleClienteChange(Number(e.target.value))
-                }
+                value={filtroCliente || ''}
+                onChange={(e: any) => handleClienteChange(Number(e.target.value))}
               >
                 <option value="">Seleccionar proveedor</option>
                 {clientes.map((cliente: Cliente) => (
@@ -253,17 +269,13 @@ export function CrearLiquidacionPage() {
                 ))}
               </select>
             </div>
-
+            
             <div>
               <Label>Anexo</Label>
-              <select
+              <select 
                 className="w-full p-2 border rounded"
-                value={filtroAnexo || ""}
-                onChange={(e: any) =>
-                  handleAnexoChange(
-                    e.target.value ? Number(e.target.value) : null,
-                  )
-                }
+                value={filtroAnexo || ''}
+                onChange={(e: any) => handleAnexoChange(e.target.value ? Number(e.target.value) : null)}
                 disabled={!filtroCliente}
               >
                 <option value="">Todos los anexos</option>
@@ -274,18 +286,13 @@ export function CrearLiquidacionPage() {
                 ))}
               </select>
             </div>
-
+            
             <div>
               <Label>Moneda *</Label>
-              <select
+              <select 
                 className="w-full p-2 border rounded"
                 value={formData.id_moneda}
-                onChange={(e: any) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    id_moneda: Number(e.target.value),
-                  }))
-                }
+                onChange={(e: any) => setFormData(prev => ({ ...prev, id_moneda: Number(e.target.value) }))}
               >
                 {monedas.map((moneda: Moneda) => (
                   <option key={moneda.id_moneda} value={moneda.id_moneda}>
@@ -294,18 +301,13 @@ export function CrearLiquidacionPage() {
                 ))}
               </select>
             </div>
-
+            
             <div>
               <Label>Tipo de Pago</Label>
-              <select
+              <select 
                 className="w-full p-2 border rounded"
                 value={formData.tipo_pago}
-                onChange={(e: any) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    tipo_pago: e.target.value,
-                  }))
-                }
+                onChange={(e: any) => setFormData(prev => ({ ...prev, tipo_pago: e.target.value }))}
               >
                 <option value="TRANSFERENCIA">Transferencia</option>
                 <option value="EFECTIVO">Efectivo</option>
@@ -313,9 +315,9 @@ export function CrearLiquidacionPage() {
                 <option value="OTRO">Otro</option>
               </select>
             </div>
-          </div>
+            </div>
 
-          {filtroCliente && (
+            {filtroCliente && (
             <div className="mt-6">
               <div className="flex justify-between items-center mb-3">
                 <Label className="text-base">Productos Pendientes</Label>
@@ -337,13 +339,11 @@ export function CrearLiquidacionPage() {
                   </button>
                 </div>
               </div>
-
+              
               {isLoadingProductos ? (
-                <p className="text-gray-500 py-2">Cargando productos...</p>
+                <p className="text-gray-500 py-4">Cargando productos...</p>
               ) : itemsAnexo.length === 0 ? (
-                <p className="text-gray-500 py-2">
-                  No hay productos en los anexos de este proveedor
-                </p>
+                <p className="text-gray-500 py-4">No hay productos en los anexos de este proveedor</p>
               ) : (
                 <div className="border rounded-lg max-h-80 overflow-y-auto">
                   <table className="w-full text-sm">
@@ -352,7 +352,8 @@ export function CrearLiquidacionPage() {
                         <th className="px-3 py-2 text-left w-10"></th>
                         <th className="px-3 py-2 text-left">Anexo</th>
                         <th className="px-3 py-2 text-left">Producto</th>
-                        <th className="px-3 py-2 text-right">Cantidad</th>
+                        <th className="px-3 py-2 text-right">A Liquidar</th>
+                        <th className="px-3 py-2 text-right">Por Liquidar</th>
                         <th className="px-3 py-2 text-right">Precio Venta</th>
                         <th className="px-3 py-2 text-right">Total</th>
                         <th className="px-3 py-2 text-center">Estado</th>
@@ -360,67 +361,40 @@ export function CrearLiquidacionPage() {
                     </thead>
                     <tbody className="divide-y">
                       {itemsAnexo.map((item: any) => {
-                        const isALiquidar = item.estado === "A LIQUIDAR";
-                        const isLiquidado = item.estado === "LIQUIDADO";
-                        const isSelected =
-                          isALiquidar &&
-                          item.id_producto_en_liquidacion &&
-                          selectedProductos.includes(
-                            item.id_producto_en_liquidacion,
-                          );
+                        const isALiquidar = item.estado === 'A LIQUIDAR';
+                        const isLiquidado = item.estado === 'LIQUIDADO';
+                        const isSelected = isALiquidar && item.id_producto_en_liquidacion && selectedProductos.includes(item.id_producto_en_liquidacion);
                         return (
-                          <tr
-                            key={item.id_item_anexo}
-                            className={`hover:bg-gray-50 ${!isALiquidar ? "opacity-60" : ""}`}
-                          >
+                           <tr key={`${item.id_item_anexo}-${item.id_producto_en_liquidacion || 'none'}`} className={`hover:bg-gray-50 ${!isALiquidar ? 'opacity-60' : ''}`}>
                             <td className="px-3 py-2">
-                              {isALiquidar &&
-                              item.id_producto_en_liquidacion ? (
+                               {isALiquidar && item.id_producto_en_liquidacion ? (
                                 <input
                                   type="checkbox"
                                   checked={isSelected}
-                                  onChange={() =>
-                                    handleProductoSelect(
-                                      item.id_producto_en_liquidacion,
-                                    )
-                                  }
+                                  onChange={() => handleProductoSelect(item.id_producto_en_liquidacion)}
                                   className="rounded"
                                 />
                               ) : (
                                 <span className="text-gray-300">-</span>
                               )}
                             </td>
-                            <td className="px-3 py-2 text-gray-600">
-                              {item.nombre_anexo}
-                            </td>
-                            <td className="px-3 py-2">
-                              {item.producto_nombre ||
-                                `Producto ${item.id_producto}`}
-                            </td>
+                            <td className="px-3 py-2 text-gray-600">{item.nombre_anexo}</td>
+                            <td className="px-3 py-2">{item.producto_nombre || `Producto ${item.id_producto}`}</td>
+                            <td className="px-3 py-2 text-right">{item.cantidad}</td>
                             <td className="px-3 py-2 text-right">
-                              {item.cantidad}
+                              {(item.cantidad_original || 0) - (item.cantidad_liquidada || 0)}
                             </td>
-                            <td className="px-3 py-2 text-right">
-                              ${Number(item.precio_venta).toFixed(2)}
-                            </td>
+                            <td className="px-3 py-2 text-right">${Number(item.precio_venta).toFixed(2)}</td>
                             <td className="px-3 py-2 text-right font-medium">
                               ${(item.precio_venta * item.cantidad).toFixed(2)}
                             </td>
                             <td className="px-3 py-2 text-center">
-                              <span
-                                className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${
-                                  isLiquidado
-                                    ? "bg-green-100 text-green-800"
-                                    : isALiquidar
-                                      ? "bg-blue-100 text-blue-800"
-                                      : "bg-gray-100 text-gray-600"
-                                }`}
-                              >
-                                {isLiquidado
-                                  ? "Liquidado"
-                                  : isALiquidar
-                                    ? "A Liquidar"
-                                    : "En Consignación"}
+                              <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${
+                                isLiquidado ? 'bg-green-100 text-green-800' :
+                                isALiquidar ? 'bg-blue-100 text-blue-800' :
+                                'bg-gray-100 text-gray-600'
+                              }`}>
+                                {isLiquidado ? 'Liquidado' : isALiquidar ? 'A Liquidar' : 'En Consignación'}
                               </span>
                             </td>
                           </tr>
@@ -440,12 +414,7 @@ export function CrearLiquidacionPage() {
                 type="number"
                 step="0.01"
                 value={formData.tributario}
-                onChange={(e: any) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    tributario: Number(e.target.value),
-                  }))
-                }
+                onChange={(e: any) => setFormData(prev => ({ ...prev, tributario: Number(e.target.value) }))}
               />
             </div>
             <div>
@@ -454,72 +423,61 @@ export function CrearLiquidacionPage() {
                 type="number"
                 step="0.01"
                 value={formData.comision_bancaria}
-                onChange={(e: any) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    comision_bancaria: Number(e.target.value),
-                  }))
-                }
+                onChange={(e: any) => setFormData(prev => ({ ...prev, comision_bancaria: Number(e.target.value) }))}
               />
             </div>
             <div>
-              <Label>Gasto Empresa</Label>
+              <Label>Gasto Empresa (%)</Label>
               <Input
                 type="number"
                 step="0.01"
                 value={formData.gasto_empresa}
-                onChange={(e: any) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    gasto_empresa: Number(e.target.value),
-                  }))
-                }
-              />
-            </div>
-            <div>
-              <Label>Devengado (%)</Label>
-              <Input
-                type="number"
-                step="0.01"
-                value={formData.devengado}
-                onChange={(e: any) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    devengado: Number(e.target.value),
-                  }))
-                }
+                onChange={(e: any) => setFormData(prev => ({ ...prev, gasto_empresa: Number(e.target.value) }))}
               />
             </div>
           </div>
 
           <div className="bg-gray-50 rounded-lg p-4 mt-6">
-            <div className="flex justify-between items-center mb-2">
-              <span className="text-gray-600">Importe Total:</span>
-              <span className="text-xl font-bold">
-                {calculateImporte().toLocaleString()}
-              </span>
+            {/* Sección 1: Devengado */}
+            <div className="mb-4 pb-4 border-b border-gray-300">
+              <h4 className="text-sm font-semibold text-gray-700 mb-3">Cálculo del Devengado</h4>
+              <div className="space-y-2">
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Importe Total:</span>
+                  <span className="font-medium">{calculateImporte().toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between text-red-600">
+                  <span>Gasto Empresa ({Number(formData.gasto_empresa || 0)}%):</span>
+                  <span>- {(calculateImporte() * (Number(formData.gasto_empresa) || 0) / 100).toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between text-red-600">
+                  <span>Comisión ({Number(formData.comision_bancaria || 0)}%):</span>
+                  <span>- {(calculateImporte() * (Number(formData.comision_bancaria) || 0) / 100).toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between pt-2 border-t border-gray-300">
+                  <span className="font-semibold text-gray-800">Devengado:</span>
+                  <span className="font-bold text-blue-600 text-lg">{calculateDevengado().toLocaleString()}</span>
+                </div>
+              </div>
             </div>
-            <div className="flex justify-between items-center mb-2">
-              <span className="text-gray-600">Tributario:</span>
-              <span>- {Number(formData.tributario || 0).toLocaleString()}</span>
-            </div>
-            <div className="flex justify-between items-center mb-2">
-              <span className="text-gray-600">Comisión:</span>
-              <span>
-                - {Number(formData.comision_bancaria || 0).toLocaleString()}
-              </span>
-            </div>
-            <div className="flex justify-between items-center mb-2">
-              <span className="text-gray-600">Gasto Empresa:</span>
-              <span>
-                - {Number(formData.gasto_empresa || 0).toLocaleString()}
-              </span>
-            </div>
-            <div className="border-t pt-2 flex justify-between items-center">
-              <span className="font-medium">Neto a Pagar:</span>
-              <span className="text-2xl font-bold text-green-600">
-                {calculateNetoPagar().toLocaleString()}
-              </span>
+
+            {/* Sección 2: Neto a Pagar */}
+            <div>
+              <h4 className="text-sm font-semibold text-gray-700 mb-3">Cálculo del Neto a Pagar</h4>
+              <div className="space-y-2">
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Devengado:</span>
+                  <span className="font-medium">{calculateDevengado().toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between text-red-600">
+                  <span>Tributario ({Number(formData.tributario || 0)}%):</span>
+                  <span>- {(calculateDevengado() * (Number(formData.tributario) || 0) / 100).toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between pt-2 border-t border-gray-300">
+                  <span className="font-semibold text-gray-800">Neto a Pagar:</span>
+                  <span className="font-bold text-green-600 text-xl">{calculateNetoPagar().toLocaleString()}</span>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -527,12 +485,7 @@ export function CrearLiquidacionPage() {
             <Label>Observaciones</Label>
             <textarea
               value={formData.observaciones}
-              onChange={(e: any) =>
-                setFormData((prev) => ({
-                  ...prev,
-                  observaciones: e.target.value,
-                }))
-              }
+              onChange={(e: any) => setFormData(prev => ({ ...prev, observaciones: e.target.value }))}
               rows={3}
               className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
             />
@@ -541,12 +494,9 @@ export function CrearLiquidacionPage() {
           <div className="flex gap-2 mt-6">
             <Button onClick={handleSave} disabled={isLoading}>
               <Save className="w-4 h-4 mr-2" />
-              {isLoading ? "Guardando..." : "Guardar Liquidación"}
+              {isLoading ? 'Guardando...' : 'Guardar Liquidación'}
             </Button>
-            <Button
-              variant="outline"
-              onClick={() => navigate("/compra/liquidaciones")}
-            >
+            <Button variant="outline" onClick={() => navigate('/compra/liquidaciones')}>
               Cancelar
             </Button>
           </div>

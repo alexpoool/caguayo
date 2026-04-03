@@ -28,6 +28,16 @@ from .ventas_operaciones import (
 from .productos_en_liquidacion import router as productos_en_liquidacion_router
 from .liquidaciones import router as liquidaciones_router
 from .pagos import router as pagos_router
+from .servicios import (
+    servicios_router,
+    solicitudes_router,
+    etapas_router,
+    tareas_etapa_router,
+    persona_etapa_router,
+    facturas_servicio_router,
+    pagos_factura_servicio_router,
+    persona_liquidacion_router,
+)
 
 api_router = APIRouter(prefix="/api/v1")
 
@@ -58,6 +68,14 @@ api_router.include_router(ventas_efectivo_router)
 api_router.include_router(productos_en_liquidacion_router)
 api_router.include_router(liquidaciones_router)
 api_router.include_router(pagos_router)
+api_router.include_router(servicios_router)
+api_router.include_router(solicitudes_router)
+api_router.include_router(etapas_router)
+api_router.include_router(tareas_etapa_router)
+api_router.include_router(persona_etapa_router)
+api_router.include_router(facturas_servicio_router)
+api_router.include_router(pagos_factura_servicio_router)
+api_router.include_router(persona_liquidacion_router)
 
 @api_router.get("/")
 async def api_info():
@@ -82,5 +100,13 @@ async def api_info():
             "ventas_efectivo": "/api/v1/ventas-efectivo",
             "productos_en_liquidacion": "/api/v1/productos-en-liquidacion",
             "pagos": "/api/v1/pagos",
+            "servicios": "/api/v1/servicios",
+            "solicitudes_servicio": "/api/v1/solicitudes-servicio",
+            "etapas": "/api/v1/etapas",
+            "tareas_etapa": "/api/v1/tareas-etapa",
+            "persona_etapa": "/api/v1/persona-etapa",
+            "facturas_servicio": "/api/v1/facturas-servicio",
+            "pagos_factura_servicio": "/api/v1/pagos-factura-servicio",
+            "persona_liquidacion": "/api/v1/persona-liquidacion",
         },
     }

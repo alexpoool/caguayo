@@ -116,6 +116,8 @@ async def search_by_alias(
             host=dependencia.host,
             puerto=dependencia.puerto,
             email=dependencia.email,
+            telefono=dependencia.telefono,
+            direccion=dependencia.direccion,
         )
         if dependencia
         else None,
@@ -236,14 +238,11 @@ async def login(db: AsyncSession, login_data: LoginRequest) -> Optional[LoginRes
                 base_datos=dependencia.base_datos,
                 host=dependencia.host,
                 puerto=dependencia.puerto,
+                email=dependencia.email,
+                telefono=dependencia.telefono,
+                direccion=dependencia.direccion,
             )
             if dependencia
-            else None,
-            grupo=GrupoInfo(
-                id_grupo=grupo.id_grupo,
-                nombre=grupo.nombre,
-            )
-            if grupo
             else None,
         ),
         funcionalidades=funcionalidades,
@@ -302,6 +301,8 @@ async def get_current_user(db: AsyncSession, token: str) -> Optional[UsuarioInfo
             host=dependencia.host,
             puerto=dependencia.puerto,
             email=dependencia.email,
+            telefono=dependencia.telefono,
+            direccion=dependencia.direccion,
         )
         if dependencia
         else None,
@@ -431,6 +432,8 @@ async def update_perfil(
             host=dependencia.host,
             puerto=dependencia.puerto,
             email=dependencia.email,
+            telefono=dependencia.telefono,
+            direccion=dependencia.direccion,
         )
         if dependencia
         else None,
@@ -461,6 +464,8 @@ async def get_all_bases_datos_by_alias(
             host=d.host,
             puerto=d.puerto,
             email=d.email,
+            telefono=d.telefono,
+            direccion=d.direccion,
         )
         for d in dependencias_con_db
     ]
@@ -596,6 +601,8 @@ async def register(
                 base_datos=dependencia_central.base_datos or "",
                 host=dependencia_central.host or "localhost",
                 puerto=dependencia_central.puerto or 5432,
+                telefono=dependencia_central.telefono,
+                direccion=dependencia_central.direccion,
             )
             if dependencia_central
             else None,

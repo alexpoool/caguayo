@@ -31,6 +31,8 @@ class ProductosEnLiquidacionRead(ProductosEnLiquidacionBase):
     fecha_liquidacion: Optional[datetime] = None
     producto: Optional["ProductoSimpleRead"] = None
     moneda: Optional["MonedaRead"] = None
+    cantidad_original: Optional[int] = None
+    cantidad_liquidada: Optional[int] = None
 
 
 class ProductosEnLiquidacionUpdate(SQLModel):
