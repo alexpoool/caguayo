@@ -79,14 +79,6 @@ export function ProductosEnLiquidacionPage() {
     } catch (error: any) { toast.error(error.message || 'Error'); }
   };
 
-  const handleLiquidar = async (id: number) => {
-    try {
-      await productosEnLiquidacionService.liquidarProducto(id);
-      toast.success('Marcado como liquidado');
-      loadProductos();
-    } catch (error: any) { toast.error(error.message || 'Error'); }
-  };
-
   const resetForm = () => { setFormData({}); setEditingId(null); };
 
   const openForm = (item?: ProductosEnLiquidacion) => {
@@ -138,17 +130,22 @@ export function ProductosEnLiquidacionPage() {
             </p>
           </div>
         </div>
-        <div className="flex gap-2">
-          <Button variant={filterType === 'pendientes' ? 'primary' : 'outline'} size="sm" onClick={() => setFilterType('pendientes')}>
-            Pendientes
-          </Button>
-          <Button variant={filterType === 'liquidadas' ? 'primary' : 'outline'} size="sm" onClick={() => setFilterType('liquidadas')}>
-            Liquidadas
-          </Button>
-          <Button variant={filterType === 'all' ? 'primary' : 'outline'} size="sm" onClick={() => setFilterType('all')}>
-            Todas
-          </Button>
-        </div>
+      </div>
+
+      <div className="flex gap-4 border-b">
+        {(['pendientes', 'liquidadas', 'all'] as FilterType[]).map((tab) => (
+          <button
+            key={tab}
+            onClick={() => setFilterType(tab)}
+            className={`px-4 py-2 font-medium transition-colors ${
+              filterType === tab
+                ? 'text-lime-600 border-b-2 border-lime-600'
+                : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            {tab === 'all' ? 'Todas' : tab.charAt(0).toUpperCase() + tab.slice(1)}
+          </button>
+        ))}
       </div>
 
       <div className="flex gap-2">
@@ -249,17 +246,6 @@ export function ProductosEnLiquidacionPage() {
                     </TableCell>
                     <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                       <div className="flex justify-end gap-2">
-                        {!item.liquidada && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleLiquidar(item.id_producto_en_liquidacion)}
-                            className="text-green-600 hover:text-green-800 hover:bg-green-50 h-8 w-8"
-                            title="Marcar como liquidada"
-                          >
-                            <Check className="h-4 w-4" />
-                          </Button>
-                        )}
                         <Button
                           variant="ghost"
                           size="icon"

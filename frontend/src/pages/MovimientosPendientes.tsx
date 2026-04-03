@@ -104,7 +104,7 @@ export function MovimientosPendientesPage() {
 
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState('');
-  const [tipoFiltro, setTipoFiltro] = useState<string>('todos');
+  const [tipoFiltro, setTipoFiltro] = useState<string>('');
 
   const { data: movimientosPendientes = [], isLoading: isLoadingPendientes } = useQuery({
     queryKey: ['movimientos-pendientes'],
@@ -181,9 +181,6 @@ export function MovimientosPendientesPage() {
 
   const filteredPendientes = useMemo(() => {
     let result = movimientosPendientes;
-    if (tipoFiltro !== 'todos') {
-      result = result.filter((m: any) => m.tipo_movimiento?.tipo === tipoFiltro);
-    }
     if (searchTerm) {
       const search = searchTerm.toLowerCase();
       result = result.filter((m: any) =>
@@ -303,6 +300,20 @@ export function MovimientosPendientesPage() {
           badgeBg: 'bg-indigo-100',
           buttonBg: 'hover:bg-indigo-50',
         };
+      case 'compra':
+        return {
+          icon: Truck,
+          gradient: 'from-emerald-500 to-teal-600',
+          bgColor: 'bg-emerald-50',
+          borderColor: 'border-emerald-200',
+          textColor: 'text-emerald-700',
+          impacto: 'Entrada',
+          impactoIcon: TrendingUp,
+          impactoColor: 'text-emerald-600',
+          descripcion: 'Registro de compras de productos',
+          badgeBg: 'bg-emerald-100',
+          buttonBg: 'hover:bg-emerald-50',
+        };
       default:
         return {
           icon: Package,
@@ -343,31 +354,15 @@ export function MovimientosPendientesPage() {
             </div>
           </div>
 
-          <div className="flex flex-col sm:flex-row gap-3">
-            <div className="relative flex-1 max-w-md">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Buscar por producto, código..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent text-sm"
-              />
-            </div>
-            <select
-              value={tipoFiltro}
-              onChange={(e) => setTipoFiltro(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none bg-white text-sm"
-            >
-              <option value="todos">Todos los tipos</option>
-              <option value="RECEPCION">Recepción</option>
-              <option value="venta">Venta</option>
-              <option value="MERMA">Merma</option>
-              <option value="DONACION">Donación</option>
-              <option value="DEVOLUCION">Devolución</option>
-              <option value="AJUSTE_AGREGAR">Ajuste +</option>
-              <option value="AJUSTE_QUITAR">Ajuste -</option>
-            </select>
+          <div className="relative w-full max-w-md mb-4">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Buscar por producto, código..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent text-sm"
+            />
           </div>
 
           {isLoadingPendientes ? (
@@ -382,10 +377,10 @@ export function MovimientosPendientesPage() {
                 <PackageCheck className="h-12 w-12 text-amber-600" />
               </div>
               <h3 className="text-xl font-bold text-gray-900 mb-2">
-                {searchTerm || tipoFiltro !== 'todos' ? 'Sin resultados' : '¡Todo al día!'}
+                {searchTerm || tipoFiltro !== '' ? 'Sin resultados' : '¡Todo al día!'}
               </h3>
               <p className="text-gray-500 max-w-md mx-auto">
-                {searchTerm || tipoFiltro !== 'todos'
+                {searchTerm || tipoFiltro !== ''
                   ? 'No se encontraron movimientos con los filtros aplicados'
                   : 'No hay movimientos pendientes de confirmación. El inventario está actualizado.'}
               </p>
@@ -444,7 +439,7 @@ export function MovimientosPendientesPage() {
                             {config.impacto}
                           </span>
                           <span className={`ml-2 font-semibold text-sm ${config.textColor}`}>
-                            {mov.tipo_movimiento?.tipo || 'Movimiento'}
+                            {mov.tipo_movimiento?.tipo?.toUpperCase() || 'MOVIMIENTO'}
                           </span>
                         </TableCell>
                         <TableCell>
@@ -599,7 +594,7 @@ export function MovimientosPendientesPage() {
                       </div>
                       <div>
                         <h3 className="text-2xl font-bold text-gray-900">
-                          {detailModal.movimiento?.tipo_movimiento?.tipo}
+                          {detailModal.movimiento?.tipo_movimiento?.tipo?.toUpperCase()}
                         </h3>
                         <p className="text-sm text-gray-500">
                           Movimiento {detailModal.movimiento?.id_movimiento}

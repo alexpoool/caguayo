@@ -1,4 +1,5 @@
 from sqlmodel import select, func
+from sqlalchemy import or_
 from sqlalchemy.orm import selectinload
 from sqlmodel.ext.asyncio.session import AsyncSession
 from typing import List, Optional, Type, TypeVar
@@ -143,36 +144,124 @@ class ProductosEnLiquidacionRepository(CRUDBase[ProductosEnLiquidacion, dict, di
 
     async def get_pendientes_by_cliente_y_anexo(
         self, db: AsyncSession, cliente_id: int, anexo_id: Optional[int] = None
-    ) -> List[ProductosEnLiquidacion]:
+    ) -> List[dict]:
         from src.models.anexo import Anexo
         from src.models.convenio import Convenio
+        from src.models.item_anexo import ItemAnexo
+        from src.models.item_venta_efectivo import ItemVentaEfectivo
+        from src.models.item_factura import ItemFactura
+        from src.models.producto import Productos
+
+        base_joins = (
+            select(
+                ProductosEnLiquidacion,
+                Productos.nombre.label("producto_nombre"),
+                func.coalesce(
+                    ItemAnexo.cantidad,
+                    ItemVentaEfectivo.cantidad,
+                    ItemFactura.cantidad,
+                ).label("cantidad_original"),
+            )
+            .join(
+                Productos, ProductosEnLiquidacion.id_producto == Productos.id_producto
+            )
+            .outerjoin(
+                ItemAnexo,
+                (ProductosEnLiquidacion.id_anexo == ItemAnexo.id_anexo)
+                & (ProductosEnLiquidacion.id_producto == ItemAnexo.id_producto),
+            )
+            .outerjoin(
+                ItemVentaEfectivo,
+                (
+                    ProductosEnLiquidacion.id_venta_efectivo
+                    == ItemVentaEfectivo.id_venta_efectivo
+                )
+                & (ProductosEnLiquidacion.id_producto == ItemVentaEfectivo.id_producto),
+            )
+            .outerjoin(
+                ItemFactura,
+                (ProductosEnLiquidacion.id_factura == ItemFactura.id_factura)
+                & (ProductosEnLiquidacion.id_producto == ItemFactura.id_producto),
+            )
+        )
 
         if anexo_id:
             statement = (
-                select(ProductosEnLiquidacion)
-                .join(Anexo, ProductosEnLiquidacion.id_anexo == Anexo.id_anexo)
-                .join(Convenio, Anexo.id_convenio == Convenio.id_convenio)
+                base_joins.outerjoin(
+                    Anexo, ProductosEnLiquidacion.id_anexo == Anexo.id_anexo
+                )
+                .outerjoin(Convenio, Anexo.id_convenio == Convenio.id_convenio)
                 .where(
                     ProductosEnLiquidacion.liquidada == False,
                     ProductosEnLiquidacion.id_anexo == anexo_id,
-                    Convenio.id_cliente == cliente_id,
+                    or_(
+                        Convenio.id_cliente == cliente_id,
+                        ProductosEnLiquidacion.id_venta_efectivo.isnot(None),
+                    ),
                 )
-                .order_by(ProductosEnLiquidacion.fecha.desc())
             )
         else:
             statement = (
-                select(ProductosEnLiquidacion)
-                .join(Anexo, ProductosEnLiquidacion.id_anexo == Anexo.id_anexo)
-                .join(Convenio, Anexo.id_convenio == Convenio.id_convenio)
+                base_joins.outerjoin(
+                    Anexo, ProductosEnLiquidacion.id_anexo == Anexo.id_anexo
+                )
+                .outerjoin(Convenio, Anexo.id_convenio == Convenio.id_convenio)
                 .where(
                     ProductosEnLiquidacion.liquidada == False,
-                    Convenio.id_cliente == cliente_id,
+                    or_(
+                        Convenio.id_cliente == cliente_id,
+                        ProductosEnLiquidacion.id_venta_efectivo.isnot(None),
+                    ),
                 )
-                .order_by(ProductosEnLiquidacion.fecha.desc())
             )
 
+        statement = statement.order_by(ProductosEnLiquidacion.fecha.desc())
+
         result = await db.exec(statement)
-        return result.all()
+        rows = result.all()
+
+        items = []
+        for row in rows:
+            from src.dto.productos_en_liquidacion_dto import ProductosEnLiquidacionRead
+
+            pel = row[0]
+            producto_nombre = row[1]
+            cantidad_original = row[2]
+
+            cantidad_liquidada = 0
+            if pel.id_anexo is not None:
+                cantidad_stmt = select(
+                    func.coalesce(func.sum(ProductosEnLiquidacion.cantidad), 0)
+                ).where(
+                    ProductosEnLiquidacion.id_producto == pel.id_producto,
+                    ProductosEnLiquidacion.id_anexo == pel.id_anexo,
+                    ProductosEnLiquidacion.liquidada == True,
+                )
+            elif pel.id_venta_efectivo is not None:
+                cantidad_stmt = select(
+                    func.coalesce(func.sum(ProductosEnLiquidacion.cantidad), 0)
+                ).where(
+                    ProductosEnLiquidacion.id_producto == pel.id_producto,
+                    ProductosEnLiquidacion.id_venta_efectivo == pel.id_venta_efectivo,
+                    ProductosEnLiquidacion.liquidada == True,
+                )
+            else:
+                cantidad_stmt = None
+
+            if cantidad_stmt:
+                cantidad_result = await db.exec(cantidad_stmt)
+                cantidad_liquidada = cantidad_result.one() or 0
+
+            items.append(
+                {
+                    **ProductosEnLiquidacionRead.model_validate(pel).model_dump(),
+                    "producto_nombre": producto_nombre,
+                    "cantidad_original": cantidad_original,
+                    "cantidad_liquidada": cantidad_liquidada,
+                }
+            )
+
+        return items
 
     async def get_by_ids(
         self, db: AsyncSession, ids: List[int]
@@ -197,7 +286,7 @@ class ProductosEnLiquidacionRepository(CRUDBase[ProductosEnLiquidacion, dict, di
                 ItemAnexo.id_item_anexo,
                 ItemAnexo.id_producto,
                 ItemAnexo.id_anexo,
-                ItemAnexo.cantidad,
+                ItemAnexo.cantidad.label("cantidad_item_anexo"),
                 ItemAnexo.precio_compra,
                 ItemAnexo.precio_venta,
                 ItemAnexo.id_moneda,
@@ -206,14 +295,22 @@ class ProductosEnLiquidacionRepository(CRUDBase[ProductosEnLiquidacion, dict, di
                 Productos.codigo.label("producto_codigo"),
                 ProductosEnLiquidacion.id_producto_en_liquidacion,
                 ProductosEnLiquidacion.liquidada,
+                ProductosEnLiquidacion.id_venta_efectivo,
+                ProductosEnLiquidacion.cantidad.label("cantidad_liquidacion"),
             )
+            .distinct()
             .join(Anexo, ItemAnexo.id_anexo == Anexo.id_anexo)
             .join(Convenio, Anexo.id_convenio == Convenio.id_convenio)
             .join(Productos, ItemAnexo.id_producto == Productos.id_producto)
             .outerjoin(
                 ProductosEnLiquidacion,
                 (ItemAnexo.id_producto == ProductosEnLiquidacion.id_producto)
-                & (ItemAnexo.id_anexo == ProductosEnLiquidacion.id_anexo),
+                & (
+                    or_(
+                        ItemAnexo.id_anexo == ProductosEnLiquidacion.id_anexo,
+                        ProductosEnLiquidacion.id_venta_efectivo.isnot(None),
+                    )
+                ),
             )
             .where(Convenio.id_cliente == cliente_id)
             .order_by(Anexo.nombre_anexo, Productos.nombre)
@@ -226,12 +323,13 @@ class ProductosEnLiquidacionRepository(CRUDBase[ProductosEnLiquidacion, dict, di
         rows = result.all()
 
         items = []
+
         for row in rows:
             (
                 id_item_anexo,
                 id_producto,
                 id_anexo,
-                cantidad,
+                cantidad_item_anexo,
                 precio_compra,
                 precio_venta,
                 id_moneda,
@@ -240,10 +338,59 @@ class ProductosEnLiquidacionRepository(CRUDBase[ProductosEnLiquidacion, dict, di
                 producto_codigo,
                 id_pel,
                 liquidada,
+                id_venta_efectivo,
+                cantidad_liquidacion,
             ) = row
 
+            cantidad_original = int(cantidad_item_anexo) if cantidad_item_anexo else 0
+
+            cantidad_pendiente = 0
+            cantidad_liquidada = 0
+
+            if id_pel is not None:
+                pel_stmt = select(
+                    func.coalesce(func.sum(ProductosEnLiquidacion.cantidad), 0).label(
+                        "total"
+                    ),
+                    func.coalesce(
+                        func.sum(
+                            func.case(
+                                (
+                                    ProductosEnLiquidacion.liquidada == False,
+                                    ProductosEnLiquidacion.cantidad,
+                                ),
+                                else_=0,
+                            )
+                        ),
+                        0,
+                    ).label("pendiente"),
+                ).where(ProductosEnLiquidacion.id_producto == id_producto)
+
+                if id_anexo:
+                    pel_stmt = pel_stmt.where(
+                        ProductosEnLiquidacion.id_anexo == id_anexo
+                    )
+                elif id_venta_efectivo:
+                    pel_stmt = pel_stmt.where(
+                        ProductosEnLiquidacion.id_venta_efectivo == id_venta_efectivo
+                    )
+
+                pel_result = await db.exec(pel_stmt)
+                pel_row = pel_result.one()
+
+                cantidad_liquidada = int(pel_row.total) if pel_row.total else 0
+                cantidad_pendiente = int(pel_row.pendiente) if pel_row.pendiente else 0
+
+            por_liquidar = max(0, cantidad_original - cantidad_liquidada)
+
+            if cantidad_pendiente > por_liquidar:
+                cantidad_pendiente = por_liquidar
+
             if id_pel is None:
-                estado = "EN_CONSIGNACION"
+                if id_venta_efectivo is not None:
+                    estado = "A LIQUIDAR"
+                else:
+                    estado = "EN_CONSIGNACION"
             elif liquidada:
                 estado = "LIQUIDADO"
             else:
@@ -254,7 +401,9 @@ class ProductosEnLiquidacionRepository(CRUDBase[ProductosEnLiquidacion, dict, di
                     "id_item_anexo": id_item_anexo,
                     "id_producto": id_producto,
                     "id_anexo": id_anexo,
-                    "cantidad": cantidad,
+                    "cantidad": cantidad_pendiente,
+                    "cantidad_original": cantidad_original,
+                    "cantidad_liquidada": cantidad_liquidada,
                     "precio_compra": float(precio_compra),
                     "precio_venta": float(precio_venta),
                     "id_moneda": id_moneda,
@@ -263,6 +412,7 @@ class ProductosEnLiquidacionRepository(CRUDBase[ProductosEnLiquidacion, dict, di
                     "producto_codigo": producto_codigo,
                     "id_producto_en_liquidacion": id_pel,
                     "estado": estado,
+                    "id_venta_efectivo": id_venta_efectivo,
                 }
             )
 

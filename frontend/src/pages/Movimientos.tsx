@@ -290,43 +290,6 @@ export function MovimientosPage() {
             Gestión de movimientos de inventario ({movimientos.length} registros)
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <Button
-            onClick={() => handleTipoSelect('RECEPCION')}
-            className="gap-2 shadow-sm bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white"
-          >
-            <Truck className="h-4 w-4" />
-            Recepción
-          </Button>
-          <Button
-            onClick={() => handleTipoSelect('MERMA')}
-            className="gap-2 shadow-sm bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700 text-white"
-          >
-            <AlertCircle className="h-4 w-4" />
-            Merma
-          </Button>
-          <Button
-            onClick={() => handleTipoSelect('DONACION')}
-            className="gap-2 shadow-sm bg-gradient-to-r from-purple-500 to-violet-600 hover:from-purple-600 hover:to-violet-700 text-white"
-          >
-            <Gift className="h-4 w-4" />
-            Donación
-          </Button>
-          <Button
-            onClick={() => handleTipoSelect('DEVOLUCION')}
-            className="gap-2 shadow-sm bg-gradient-to-r from-orange-500 to-amber-600 hover:from-orange-600 hover:to-amber-700 text-white"
-          >
-            <RotateCcw className="h-4 w-4" />
-            Devolución
-          </Button>
-          <Button
-            onClick={() => handleTipoSelect('AJUSTE')}
-            className="gap-2 shadow-sm bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white"
-          >
-            <ArrowRightLeft className="h-4 w-4" />
-            Ajuste
-          </Button>
-        </div>
       </div>
 
       <div className="flex flex-wrap gap-2 items-center">
@@ -339,6 +302,43 @@ export function MovimientosPage() {
             onChange={(e) => setSearch(e.target.value)}
             className="pl-10"
           />
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Button
+            onClick={() => handleTipoSelect('RECEPCION')}
+            className="gap-1 text-green-600 bg-transparent hover:bg-green-100"
+          >
+            <Truck className="h-4 w-4" />
+            Recepción
+          </Button>
+          <Button
+            onClick={() => handleTipoSelect('MERMA')}
+            className="gap-1 text-red-600 bg-transparent hover:bg-red-100"
+          >
+            <AlertCircle className="h-4 w-4" />
+            Merma
+          </Button>
+          <Button
+            onClick={() => handleTipoSelect('DONACION')}
+            className="gap-1 text-purple-600 bg-transparent hover:bg-purple-100"
+          >
+            <Gift className="h-4 w-4" />
+            Donación
+          </Button>
+          <Button
+            onClick={() => handleTipoSelect('DEVOLUCION')}
+            className="gap-1 text-orange-600 bg-transparent hover:bg-orange-100"
+          >
+            <RotateCcw className="h-4 w-4" />
+            Devolución
+          </Button>
+          <Button
+            onClick={() => handleTipoSelect('AJUSTE')}
+            className="gap-1 text-blue-600 bg-transparent hover:bg-blue-100"
+          >
+            <ArrowRightLeft className="h-4 w-4" />
+            Ajuste
+          </Button>
         </div>
       </div>
 
@@ -421,7 +421,7 @@ export function MovimientosPage() {
                               {config.impacto}
                             </span>
                             <span className={`ml-2 font-semibold text-sm ${config.textColor}`}>
-                              {mov.tipo_movimiento?.tipo || 'Movimiento'}
+                              {mov.tipo_movimiento?.tipo?.toUpperCase() || 'MOVIMIENTO'}
                             </span>
                           </TableCell>
                           <TableCell>
@@ -535,7 +535,7 @@ export function MovimientosPage() {
                       </div>
                       <div>
                         <h3 className="text-2xl font-bold text-gray-900">
-                          {detailModal.movimiento?.tipo_movimiento?.tipo}
+                          {detailModal.movimiento?.tipo_movimiento?.tipo?.toUpperCase()}
                         </h3>
                         <p className="text-sm text-gray-500">
                           Movimiento #{detailModal.movimiento?.id_movimiento}

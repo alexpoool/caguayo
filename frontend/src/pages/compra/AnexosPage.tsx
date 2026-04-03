@@ -12,6 +12,7 @@ type View = 'list' | 'form' | 'detail';
 export function CompraAnexosPage() {
   const [searchParams] = useSearchParams();
   const initialConvenioId = searchParams.get('convenio');
+  const contratoParam = searchParams.get('contrato');
   
   const [view, setView] = useState<View>('list');
   const [anexos, setAnexos] = useState<any[]>([]);
@@ -24,7 +25,7 @@ export function CompraAnexosPage() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [formData, setFormData] = useState<Record<string, any>>({});
   const [selectedConvenio, setSelectedConvenio] = useState<number | null>(initialConvenioId ? Number(initialConvenioId) : null);
-  const [filtroCliente, setFiltroCliente] = useState<number | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
   const [selectedProducts, setSelectedProducts] = useState<{id_producto: number; cantidad: number; precio_venta: number}[]>([]);
   const [productSearch, setProductSearch] = useState('');
   const [detailModal, setDetailModal] = useState<{ isOpen: boolean; item: any | null }>({ isOpen: false, item: null });
@@ -168,11 +169,6 @@ export function CompraAnexosPage() {
     return clientes.find(cli => cli.id_cliente === convenio.id_cliente) || null;
   };
 
-  const conveniosFiltrados = useMemo(() => {
-    if (!filtroCliente) return convenios;
-    return convenios.filter(c => c.id_cliente === filtroCliente);
-  }, [convenios, filtroCliente]);
-
   const productosFiltrados = useMemo(() => {
     if (!productSearch.trim()) return [];
     const search = productSearch.toLowerCase();
@@ -184,15 +180,18 @@ export function CompraAnexosPage() {
 
   const filteredAnexos = useMemo(() => {
     let result = anexos;
-    if (filtroCliente) {
-      const conveniosIds = conveniosFiltrados.map(c => c.id_convenio);
-      result = result.filter(a => conveniosIds.includes(a.id_convenio));
+    if (contratoParam) {
+      result = result.filter(a => a.convenios?.id_cliente === Number(contratoParam));
     }
-    if (selectedConvenio) {
-      result = result.filter(a => a.id_convenio === selectedConvenio);
+    if (searchTerm.trim()) {
+      const term = searchTerm.toLowerCase();
+      result = result.filter(a => 
+        a.codigo_anexo?.toLowerCase().includes(term) ||
+        a.nombre_anexo?.toLowerCase().includes(term)
+      );
     }
     return result;
-  }, [anexos, filtroCliente, selectedConvenio, conveniosFiltrados]);
+  }, [anexos, searchTerm, contratoParam]);
 
   const renderList = () => (
     <div className="space-y-6">
@@ -206,35 +205,24 @@ export function CompraAnexosPage() {
             <p className="text-gray-500 mt-1">Gestión de anexos por convenio</p>
           </div>
         </div>
-        <div className="flex gap-2">
-          <select
-            className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-fuchsia-500 outline-none bg-white text-sm"
-            value={filtroCliente || ''}
-            onChange={(e) => {
-              setFiltroCliente(Number(e.target.value) || null);
-              setSelectedConvenio(null);
-            }}
-          >
-            <option value="">Todos los clientes</option>
-            {clientes.map(c => <option key={c.id_cliente} value={c.id_cliente}>{c.nombre}</option>)}
-          </select>
-          <select
-            className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-fuchsia-500 outline-none bg-white text-sm"
-            value={selectedConvenio || ''}
-            onChange={(e) => setSelectedConvenio(Number(e.target.value) || null)}
-          >
-            <option value="">Todos los convenios</option>
-            {conveniosFiltrados.map(c => <option key={c.id_convenio} value={c.id_convenio}>{c.codigo_convenio} - {c.nombre_convenio}</option>)}
-          </select>
-          <Button
-            onClick={() => openForm()}
-            disabled={!selectedConvenio && !filtroCliente}
-            className="gap-2 bg-gradient-to-r from-fuchsia-500 to-pink-600 hover:from-fuchsia-600 hover:to-pink-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300 disabled:opacity-50 disabled:transform-none"
-          >
-            <Plus className="h-4 w-4" />
-            Nuevo Anexo
-          </Button>
-        </div>
+        <Button
+          onClick={() => openForm()}
+          disabled={convenios.length === 0}
+          className="gap-2 bg-gradient-to-r from-fuchsia-500 to-pink-600 hover:from-fuchsia-600 hover:to-pink-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300 disabled:opacity-50 disabled:transform-none"
+        >
+          <Plus className="h-4 w-4" />
+          Nuevo Anexo
+        </Button>
+      </div>
+
+      <div className="relative max-w-md">
+        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+        <Input
+            placeholder="Buscar por código o nombre..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="pl-10"
+        />
       </div>
 
       <Card className="overflow-hidden shadow-sm border-gray-200">
@@ -274,7 +262,7 @@ export function CompraAnexosPage() {
               {filteredAnexos.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={6} className="text-center py-12 text-gray-500">
-                    {filtroCliente ? 'No hay anexos para este cliente' : 'No hay anexos registrados'}
+                    No hay anexos registrados
                   </TableCell>
                 </TableRow>
               ) : (

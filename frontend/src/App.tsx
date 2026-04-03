@@ -21,7 +21,15 @@ import {
   FileText,
   FilePlus,
   Receipt,
-  DollarSign
+  DollarSign,
+  Wrench,
+  ClipboardList,
+  Layers,
+  ListChecks,
+  Users,
+  List,
+  CreditCard,
+  Calculator
 } from 'lucide-react';
 
 import { WelcomePage } from './pages/Welcome';
@@ -43,6 +51,7 @@ import { AdministracionHome } from './pages/home/AdministracionHome';
 import { VentaHome } from './pages/home/VentaHome';
 import { CompraHome } from './pages/home/CompraHome';
 import { ReportesHome } from './pages/home/ReportesHome';
+import { ProyectosHome } from './pages/home/ProyectosHome';
 import { CompraConveniosPage } from './pages/compra/ConveniosPage';
 import { CompraAnexosPage } from './pages/compra/AnexosPage';
 import { ProductosEnLiquidacionPage } from './pages/compra/ProductosEnLiquidacionPage';
@@ -52,8 +61,16 @@ import { ContratosPage } from './pages/ventas/ContratosPage';
 import { SuplementosPage } from './pages/ventas/SuplementosPage';
 import { FacturasPage } from './pages/ventas/FacturasPage';
 import { VentasEfectivoPage } from './pages/ventas/VentasEfectivoPage';
+import { ServiciosPage } from './pages/proyecto/ServiciosPage';
+import { SolicitudesPage } from './pages/proyecto/SolicitudesPage';
+import { EtapasPage } from './pages/proyecto/EtapasPage';
+import { TareasEtapaPage } from './pages/proyecto/TareasEtapaPage';
+import { CreadoresPage } from './pages/proyecto/CreadoresPage';
+import { FacturasServicioPage } from './pages/proyecto/FacturasServicioPage';
+import { PagosFacturaServicioPage } from './pages/proyecto/PagosFacturaServicioPage';
+import { LiquidacionesPage as ProyectoLiquidacionesPage } from './pages/proyecto/LiquidacionesPage';
 
-type Modulo = 'administracion' | 'venta' | 'compra' | 'inventario' | 'reportes' | 'home';
+type Modulo = 'administracion' | 'venta' | 'compra' | 'inventario' | 'reportes' | 'home' | 'proyecto';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -70,6 +87,7 @@ const rutasPorModulo: Record<Modulo, string[]> = {
   administracion: ['/administracion', '/perfil'],
   venta: ['/venta', '/ventas', '/clientes', '/ventas/operaciones', '/ventas/contratos', '/ventas/suplementos', '/ventas/facturas', '/ventas/efectivo'],
   compra: ['/compra', '/compra/clientes', '/compra/convenios', '/compra/anexos', '/compra/liquidaciones', '/compra/productos-liquidacion'],
+  proyecto: ['/proyecto', '/proyectos', '/proyectos/servicios', '/proyectos/solicitudes', '/proyectos/etapas', '/proyectos/tareas-etapa', '/proyectos/creadores', '/proyectos/facturas-servicio', '/proyectos/pagos-factura-servicio', '/proyectos/liquidaciones'],
   reportes: ['/reportes'],
   home: ['/'],
 };
@@ -205,6 +223,7 @@ function App() {
   const modulos: { id: Modulo; label: string; icon: React.ElementType }[] = [
     { id: 'venta', label: 'Venta', icon: Briefcase },
     { id: 'compra', label: 'Compra', icon: UserCircle },
+    { id: 'proyecto', label: 'Proyectos', icon: Wrench },
     { id: 'inventario', label: 'Inventario', icon: Boxes },
     { id: 'reportes', label: 'Reportes', icon: BarChart3 },
   ];
@@ -330,6 +349,40 @@ function App() {
                     </li>
                   </ul>
                 )}
+                {moduloActivo === 'proyecto' && (
+                  <ul className="space-y-1 px-3">
+                    <li>
+                      <NavLink to="/proyectos/servicios" onClick={handleLinkClick}>
+                        <Wrench className="w-6 h-6" />
+                        Servicios
+                      </NavLink>
+                    </li>
+                    <li>
+                      <NavLink to="/proyectos/solicitudes" onClick={handleLinkClick}>
+                        <ClipboardList className="w-6 h-6" />
+                        Solicitudes
+                      </NavLink>
+                    </li>
+                    <li>
+                      <NavLink to="/proyectos/creadores" onClick={handleLinkClick}>
+                        <Users className="w-6 h-6" />
+                        Creadores
+                      </NavLink>
+                    </li>
+                    <li>
+                      <NavLink to="/proyectos/facturas-servicio" onClick={handleLinkClick}>
+                        <Receipt className="w-6 h-6" />
+                        Facturas
+                      </NavLink>
+                    </li>
+                    <li>
+                      <NavLink to="/proyectos/liquidaciones" onClick={handleLinkClick}>
+                        <Calculator className="w-6 h-6" />
+                        Liquidaciones
+                      </NavLink>
+                    </li>
+                  </ul>
+                )}
               </>
           </nav>
         </aside>
@@ -361,7 +414,7 @@ function App() {
           </div>
 
           <div className="flex items-center gap-6">
-            {['compra', 'venta', 'inventario', 'reportes'].map((moduloId) => {
+            {['compra', 'venta', 'proyecto', 'inventario', 'reportes'].map((moduloId) => {
               const modulo = modulos.find(m => m.id === moduloId);
               if (!modulo) return null;
               const isActive = moduloActivo === modulo.id;
@@ -512,6 +565,80 @@ function App() {
                   element={
                     <ProtectedRoute moduloActivo={moduloActivo} currentPath="/ventas/efectivo">
                       <VentasEfectivoPage />
+                    </ProtectedRoute>
+                  } 
+                />
+                
+                {/* Rutas de Proyectos - protegidas */}
+                <Route 
+                  path="/proyecto" 
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/proyecto">
+                      <ProyectosHome />
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route 
+                  path="/proyectos/servicios" 
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/proyectos/servicios">
+                      <ServiciosPage />
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route 
+                  path="/proyectos/solicitudes" 
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/proyectos/solicitudes">
+                      <SolicitudesPage />
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route 
+                  path="/proyectos/etapas" 
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/proyectos/etapas">
+                      <EtapasPage />
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route 
+                  path="/proyectos/tareas-etapa" 
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/proyectos/tareas-etapa">
+                      <TareasEtapaPage />
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route 
+                  path="/proyectos/creadores" 
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/proyectos/creadores">
+                      <CreadoresPage />
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route 
+                  path="/proyectos/facturas-servicio" 
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/proyectos/facturas-servicio">
+                      <FacturasServicioPage />
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route 
+                  path="/proyectos/pagos-factura-servicio" 
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/proyectos/pagos-factura-servicio">
+                      <PagosFacturaServicioPage />
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route 
+                  path="/proyectos/liquidaciones" 
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/proyectos/liquidaciones">
+                      <ProyectoLiquidacionesPage />
                     </ProtectedRoute>
                   } 
                 />

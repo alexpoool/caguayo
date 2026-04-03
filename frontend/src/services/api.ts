@@ -60,6 +60,16 @@ import type {
   Pago,
   PagoCreate,
 } from '../types/pago';
+import type {
+  Servicio, ServicioCreate, ServicioUpdate,
+  SolicitudServicio, SolicitudServicioCreate, SolicitudServicioUpdate,
+  Etapa, EtapaCreate, EtapaUpdate,
+  TareaEtapa, TareaEtapaCreate, TareaEtapaUpdate,
+  PersonaEtapa, PersonaEtapaCreate,
+  FacturaServicio, FacturaServicioCreate, FacturaServicioUpdate,
+  PagoFacturaServicio, PagoFacturaServicioCreate,
+  PersonaLiquidacion, PersonaLiquidacionCreate, PersonaLiquidacionUpdate,
+} from '../types/servicio';
 
 export const productosService = {
   async getProductos(skip = 0, limit = 100, search?: string): Promise<Productos[]> {
@@ -571,6 +581,141 @@ export const pagosService = {
   }
 };
 
+export const serviciosProyectoService = {
+  async getServicios(skip = 0, limit = 100): Promise<Servicio[]> {
+    return apiClient.get<Servicio[]>(`/servicios?skip=${skip}&limit=${limit}`);
+  },
+  async createServicio(data: ServicioCreate): Promise<Servicio> {
+    return apiClient.post<Servicio>('/servicios', data);
+  },
+  async updateServicio(id: number, data: ServicioUpdate): Promise<Servicio> {
+    return apiClient.put<Servicio>(`/servicios/${id}`, data);
+  },
+  async deleteServicio(id: number): Promise<void> {
+    return apiClient.delete<void>(`/servicios/${id}`);
+  }
+};
+
+export const solicitudesService = {
+  async getSolicitudes(skip = 0, limit = 100): Promise<SolicitudServicio[]> {
+    return apiClient.get<SolicitudServicio[]>(`/solicitudes-servicio?skip=${skip}&limit=${limit}`);
+  },
+  async getSolicitud(id: number): Promise<SolicitudServicio> {
+    return apiClient.get<SolicitudServicio>(`/solicitudes-servicio/${id}`);
+  },
+  async getSolicitudesByCliente(clienteId: number): Promise<SolicitudServicio[]> {
+    return apiClient.get<SolicitudServicio[]>(`/solicitudes-servicio/cliente/${clienteId}`);
+  },
+  async getSolicitudesByContrato(contratoId: number): Promise<SolicitudServicio[]> {
+    return apiClient.get<SolicitudServicio[]>(`/solicitudes-servicio/contrato/${contratoId}`);
+  },
+  async createSolicitud(data: SolicitudServicioCreate): Promise<SolicitudServicio> {
+    return apiClient.post<SolicitudServicio>('/solicitudes-servicio', data);
+  },
+  async updateSolicitud(id: number, data: SolicitudServicioUpdate): Promise<SolicitudServicio> {
+    return apiClient.put<SolicitudServicio>(`/solicitudes-servicio/${id}`, data);
+  },
+  async deleteSolicitud(id: number): Promise<void> {
+    return apiClient.delete<void>(`/solicitudes-servicio/${id}`);
+  }
+};
+
+export const etapasProyectoService = {
+  async getEtapasBySolicitud(solicitudId: number): Promise<Etapa[]> {
+    return apiClient.get<Etapa[]>(`/etapas/solicitud/${solicitudId}`);
+  },
+  async getEtapa(id: number): Promise<Etapa> {
+    return apiClient.get<Etapa>(`/etapas/${id}`);
+  },
+  async createEtapa(data: EtapaCreate): Promise<Etapa> {
+    return apiClient.post<Etapa>('/etapas', data);
+  },
+  async updateEtapa(id: number, data: EtapaUpdate): Promise<Etapa> {
+    return apiClient.put<Etapa>(`/etapas/${id}`, data);
+  },
+  async deleteEtapa(id: number): Promise<void> {
+    return apiClient.delete<void>(`/etapas/${id}`);
+  }
+};
+
+export const tareasEtapaService = {
+  async getTareasByEtapa(etapaId: number): Promise<TareaEtapa[]> {
+    return apiClient.get<TareaEtapa[]>(`/tareas-etapa/etapa/${etapaId}`);
+  },
+  async createTareaEtapa(data: TareaEtapaCreate): Promise<TareaEtapa> {
+    return apiClient.post<TareaEtapa>('/tareas-etapa', data);
+  },
+  async updateTareaEtapa(id: number, data: TareaEtapaUpdate): Promise<TareaEtapa> {
+    return apiClient.put<TareaEtapa>(`/tareas-etapa/${id}`, data);
+  },
+  async deleteTareaEtapa(id: number): Promise<void> {
+    return apiClient.delete<void>(`/tareas-etapa/${id}`);
+  }
+};
+
+export const personaEtapaService = {
+  async getPersonasByEtapa(etapaId: number): Promise<PersonaEtapa[]> {
+    return apiClient.get<PersonaEtapa[]>(`/persona-etapa/etapa/${etapaId}`);
+  },
+  async createPersonaEtapa(data: PersonaEtapaCreate): Promise<PersonaEtapa> {
+    return apiClient.post<PersonaEtapa>('/persona-etapa', data);
+  },
+  async deletePersonaEtapa(etapaId: number, personaId: number): Promise<void> {
+    return apiClient.delete<void>(`/persona-etapa/${etapaId}/${personaId}`);
+  }
+};
+
+export const facturasServicioService = {
+  async getFacturasServicio(skip = 0, limit = 100): Promise<FacturaServicio[]> {
+    return apiClient.get<FacturaServicio[]>(`/facturas-servicio?skip=${skip}&limit=${limit}`);
+  },
+  async getFacturaServicio(id: number): Promise<FacturaServicio> {
+    return apiClient.get<FacturaServicio>(`/facturas-servicio/${id}`);
+  },
+  async getFacturasByEtapa(etapaId: number): Promise<FacturaServicio[]> {
+    return apiClient.get<FacturaServicio[]>(`/facturas-servicio/etapa/${etapaId}`);
+  },
+  async createFacturaServicio(data: FacturaServicioCreate): Promise<FacturaServicio> {
+    return apiClient.post<FacturaServicio>('/facturas-servicio', data);
+  },
+  async updateFacturaServicio(id: number, data: FacturaServicioUpdate): Promise<FacturaServicio> {
+    return apiClient.put<FacturaServicio>(`/facturas-servicio/${id}`, data);
+  },
+  async deleteFacturaServicio(id: number): Promise<void> {
+    return apiClient.delete<void>(`/facturas-servicio/${id}`);
+  }
+};
+
+export const pagosFacturaServicioService = {
+  async getPagosByFactura(facturaId: number): Promise<PagoFacturaServicio[]> {
+    return apiClient.get<PagoFacturaServicio[]>(`/pagos-factura-servicio/factura/${facturaId}`);
+  },
+  async createPago(data: PagoFacturaServicioCreate): Promise<PagoFacturaServicio> {
+    return apiClient.post<PagoFacturaServicio>('/pagos-factura-servicio', data);
+  },
+  async deletePago(id: number): Promise<void> {
+    return apiClient.delete<void>(`/pagos-factura-servicio/${id}`);
+  }
+};
+
+export const personaLiquidacionService = {
+  async getLiquidaciones(skip = 0, limit = 100): Promise<PersonaLiquidacion[]> {
+    return apiClient.get<PersonaLiquidacion[]>(`/persona-liquidacion?skip=${skip}&limit=${limit}`);
+  },
+  async getLiquidacion(id: number): Promise<PersonaLiquidacion> {
+    return apiClient.get<PersonaLiquidacion>(`/persona-liquidacion/${id}`);
+  },
+  async createLiquidacion(data: PersonaLiquidacionCreate): Promise<PersonaLiquidacion> {
+    return apiClient.post<PersonaLiquidacion>('/persona-liquidacion', data);
+  },
+  async updateLiquidacion(id: number, data: PersonaLiquidacionUpdate): Promise<PersonaLiquidacion> {
+    return apiClient.put<PersonaLiquidacion>(`/persona-liquidacion/${id}`, data);
+  },
+  async deleteLiquidacion(id: number): Promise<void> {
+    return apiClient.delete<void>(`/persona-liquidacion/${id}`);
+  }
+};
+
 export const ventasEfectivoService = {
   async getVentasEfectivo(skip = 0, limit = 100): Promise<VentaEfectivoWithDetails[]> {
     return apiClient.get<VentaEfectivoWithDetails[]>(`/ventas-efectivo?skip=${skip}&limit=${limit}`);
@@ -635,6 +780,9 @@ export interface ProductosEnLiquidacion {
   fecha_liquidacion?: string;
   producto?: any;
   moneda?: any;
+  producto_nombre?: string;
+  cantidad_original?: number;
+  cantidad_liquidada?: number;
 }
 
 export interface ProductosEnLiquidacionCreate {
@@ -802,4 +950,26 @@ export type {
   Cuenta,
   TipoEntidad,
   TipoMovimiento,
+  Servicio,
+  ServicioCreate,
+  ServicioUpdate,
+  SolicitudServicio,
+  SolicitudServicioCreate,
+  SolicitudServicioUpdate,
+  Etapa,
+  EtapaCreate,
+  EtapaUpdate,
+  TareaEtapa,
+  TareaEtapaCreate,
+  TareaEtapaUpdate,
+  PersonaEtapa,
+  PersonaEtapaCreate,
+  FacturaServicio,
+  FacturaServicioCreate,
+  FacturaServicioUpdate,
+  PagoFacturaServicio,
+  PagoFacturaServicioCreate,
+  PersonaLiquidacion,
+  PersonaLiquidacionCreate,
+  PersonaLiquidacionUpdate,
 };

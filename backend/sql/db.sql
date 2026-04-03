@@ -891,7 +891,12 @@ INSERT INTO funcionalidad (nombre) VALUES
 ('contratos'),
 ('suplementos'),
 ('facturas'),
-('efectivo');
+('efectivo'),
+('servicios'),
+('solicitudes'),
+('creadores'),
+('facturas_servicio'),
+('liquidaciones_servicio');
 
 -- Asignar todas las funcionalidades al grupo ADMINISTRADOR
 INSERT INTO grupo_funcionalidad (id_grupo, id_funcionalidad)
@@ -911,3 +916,143 @@ VALUES (1, 'Caguayo', 'Vista Alegre', '+53 7 1234567', 'info@caguayo.cu', 'https
 INSERT INTO usuarios (ci, nombre, primer_apellido, segundo_apellido, alias, contrasenia, id_grupo, id_dependencia)
 VALUES 
 ('00000000000', 'Administrador', 'Sistema', 'Caguayo', 'admin', '$2b$12$21cZipaElHLRaXOxScHGjOPbMVXpvxn2aSwQus/P4/Vs0z0bouTb2', 1, 1);
+
+
+-- =====================================================
+-- TABLAS DE GESTIÓN DE SERVICIOS
+-- =====================================================
+
+-- Catálogo de Servicios
+CREATE TABLE servicios (
+    id_servicio SERIAL PRIMARY KEY,
+    codigo_servicio VARCHAR(50) UNIQUE,
+    concepto TEXT,
+    unidad_medida VARCHAR(20),
+    precio NUMERIC(15,2) DEFAULT 0.00,
+    id_moneda INTEGER REFERENCES moneda(id_moneda),
+    observaciones TEXT
+);
+
+-- Solicitud de Servicio
+CREATE TABLE solicitud_servicio (
+    id_solicitud_servicio SERIAL PRIMARY KEY,
+    id_cliente INTEGER REFERENCES clientes(id_cliente),
+    id_contrato INTEGER REFERENCES contrato(id_contrato),
+    id_suplemento INTEGER REFERENCES suplemento(id_suplemento),
+    codigo_solicitud VARCHAR(50),
+    numero VARCHAR(50),
+    nombres_rep VARCHAR(100),
+    apellido1_rep VARCHAR(100),
+    apellido2_rep VARCHAR(100),
+    ci_rep VARCHAR(20),
+    telefono_rep VARCHAR(20),
+    cargo VARCHAR(100),
+    descripcion TEXT,
+    fecha_solicitud DATE DEFAULT CURRENT_DATE,
+    fecha_entrega DATE,
+    estado VARCHAR(50),
+    observaciones TEXT,
+    material_asumido_x BOOLEAN DEFAULT FALSE,
+    id_usuario INTEGER,
+    aprobado BOOLEAN DEFAULT FALSE
+);
+
+-- Etapas de la Solicitud
+CREATE TABLE etapas (
+    id_etapa SERIAL PRIMARY KEY,
+    id_solicitud_servicio INTEGER NOT NULL REFERENCES solicitud_servicio(id_solicitud_servicio) ON DELETE CASCADE,
+    numero_etapa INTEGER,
+    nombre_etapa VARCHAR(150),
+    fecha_entrega DATE,
+    fecha_pago DATE,
+    descripcion TEXT,
+    valor NUMERIC(15,2) DEFAULT 0.00,
+    id_moneda INTEGER REFERENCES moneda(id_moneda),
+    pagada BOOLEAN DEFAULT FALSE
+);
+
+-- Tareas por Etapa (N:N etapa <-> servicio)
+CREATE TABLE tareas_etapa (
+    id_tarea_etapa SERIAL PRIMARY KEY,
+    id_etapa INTEGER NOT NULL REFERENCES etapas(id_etapa) ON DELETE CASCADE,
+    id_servicio INTEGER REFERENCES servicios(id_servicio),
+    codigo_extendido VARCHAR(100),
+    concepto_modificado TEXT,
+    unidad_medida VARCHAR(20),
+    cantidad NUMERIC(12,2) DEFAULT 0.00,
+    precio_ajustado NUMERIC(15,2) DEFAULT 0.00,
+    id_moneda INTEGER REFERENCES moneda(id_moneda),
+    observaciones_ajustadas TEXT
+);
+
+-- Personas Naturales asignadas a Etapas
+CREATE TABLE persona_etapa (
+    id_etapa INTEGER NOT NULL REFERENCES etapas(id_etapa) ON DELETE CASCADE,
+    id_persona INTEGER NOT NULL REFERENCES clientes_persona_natural(id_cliente),
+    cobro NUMERIC(15,2) DEFAULT 0.00,
+    id_moneda INTEGER REFERENCES moneda(id_moneda),
+    liquidada BOOLEAN DEFAULT FALSE,
+    pago_completado BOOLEAN DEFAULT FALSE,
+    PRIMARY KEY (id_etapa, id_persona)
+);
+
+-- Facturas asociadas a Etapas
+CREATE TABLE factura_servicio (
+    id_factura_servicio SERIAL PRIMARY KEY,
+    id_etapa INTEGER REFERENCES etapas(id_etapa),
+    alcance VARCHAR(20),
+    codigo_factura VARCHAR(50),
+    numero VARCHAR(50),
+    id_moneda INTEGER REFERENCES moneda(id_moneda),
+    fecha DATE,
+    descripcion TEXT,
+    cantidad NUMERIC(12,2) DEFAULT 0.00,
+    precio NUMERIC(15,2) DEFAULT 0.00,
+    observaciones TEXT,
+    id_usuario INTEGER
+);
+
+-- Items de Factura de Servicio
+CREATE TABLE items_factura_servicio (
+    id_item_factura_servicio SERIAL PRIMARY KEY,
+    id_factura_servicio INTEGER NOT NULL REFERENCES factura_servicio(id_factura_servicio) ON DELETE CASCADE,
+    codigo_extendido VARCHAR(100),
+    concepto TEXT,
+    unidad_medida VARCHAR(20),
+    cantidad NUMERIC(12,2) DEFAULT 0.00,
+    precio NUMERIC(15,2) DEFAULT 0.00
+);
+
+-- Pagos de Facturas de Servicio
+CREATE TABLE pago_factura_servicio (
+    id_pago_factura_servicio SERIAL PRIMARY KEY,
+    id_factura_servicio INTEGER REFERENCES factura_servicio(id_factura_servicio),
+    monto NUMERIC(15,2) DEFAULT 0.00,
+    id_moneda INTEGER REFERENCES moneda(id_moneda),
+    fecha DATE,
+    doc_traza VARCHAR(100),
+    doc_factura VARCHAR(100)
+);
+
+-- Liquidación a Personas Naturales
+CREATE TABLE persona_liquidacion (
+    id_liquidacion SERIAL PRIMARY KEY,
+    numero VARCHAR(50),
+    id_etapa INTEGER REFERENCES etapas(id_etapa),
+    id_persona INTEGER REFERENCES clientes_persona_natural(id_cliente),
+    fecha_emision DATE DEFAULT CURRENT_DATE,
+    fecha_liquidacion DATE,
+    descripcion TEXT,
+    id_moneda INTEGER REFERENCES moneda(id_moneda),
+    importe NUMERIC(15,2) DEFAULT 0.00,
+    porciento_gestion NUMERIC(5,2) DEFAULT 0.00,
+    porciento_empresa NUMERIC(5,2) DEFAULT 0.00,
+    devengado NUMERIC(15,2) DEFAULT 0.00,
+    tributario NUMERIC(15,2) DEFAULT 0.00,
+    comision_bancaria NUMERIC(15,2) DEFAULT 0.00,
+    neto_pagar NUMERIC(15,2) DEFAULT 0.00,
+    id_tipo_concepto INTEGER,
+    doc_pago_liquidacion VARCHAR(100),
+    gasto_empresa NUMERIC(15,2) DEFAULT 0.00,
+    observacion TEXT
+);

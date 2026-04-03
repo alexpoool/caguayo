@@ -9,10 +9,13 @@ import type { Dependencia } from '../../types/dependencia';
 import type { Pago, PagoCreate } from '../../types/pago';
 import { Plus, Save, Trash2, Edit, X, ArrowLeft, Search, Receipt, DollarSign, Calendar, CreditCard } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { useSearchParams } from 'react-router-dom';
 
 type View = 'list' | 'form';
 
 export function FacturasPage() {
+  const [searchParams] = useSearchParams();
+  const contratoParam = searchParams.get('contrato');
   const [view, setView] = useState<View>('list');
   
   const [facturas, setFacturas] = useState<FacturaWithDetails[]>([]);
@@ -22,7 +25,7 @@ export function FacturasPage() {
   const [dependencias, setDependencias] = useState<Dependencia[]>([]);
   
   const [editingId, setEditingId] = useState<number | null>(null);
-  const [selectedContratoId, setSelectedContratoId] = useState<number | null>(null);
+  const [selectedContratoId, setSelectedContratoId] = useState<number | null>(contratoParam ? Number(contratoParam) : null);
   const [formData, setFormData] = useState<Record<string, any>>({});
   const [selectedProducts, setSelectedProducts] = useState<{id_producto: number; cantidad: number; precio_venta: number}[]>([]);
   const [productSearch, setProductSearch] = useState('');
@@ -72,8 +75,8 @@ export function FacturasPage() {
 
   const loadFacturas = async () => {
     try {
-      if (selectedContratoId) {
-        const data = await facturasService.getFacturasByContrato(selectedContratoId);
+      if (contratoParam) {
+        const data = await facturasService.getFacturasByContrato(Number(contratoParam));
         setFacturas(data);
       } else {
         const data = await facturasService.getFacturas();
@@ -84,7 +87,15 @@ export function FacturasPage() {
 
   useEffect(() => { 
     if (view === 'list') loadFacturas(); 
-  }, [view, selectedContratoId]);
+  }, [view, contratoParam]);
+
+  const filteredFacturas = useMemo(() => {
+    if (!searchTerm) return facturas;
+    const term = searchTerm.toLowerCase();
+    return facturas.filter(f =>
+      f.codigo_factura?.toLowerCase().includes(term)
+    );
+  }, [facturas, searchTerm]);
 
   const handleSave = async () => {
     try {
@@ -293,20 +304,23 @@ export function FacturasPage() {
             <p className="text-gray-500 mt-1">Gestión de facturas de contratos</p>
           </div>
         </div>
-        <div className="flex gap-2">
-          <select className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 outline-none" value={selectedContratoId || ''} onChange={(e: any) => setSelectedContratoId(Number(e.target.value) || null)}>
-            <option value="">Todos los contratos</option>
-            {contratos.map(c => <option key={c.id_contrato} value={c.id_contrato}>{c.nombre}</option>)}
-          </select>
-          <Button
-            onClick={() => openForm()}
-            disabled={!selectedContratoId}
-            className="gap-2 bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300 disabled:opacity-50 disabled:transform-none"
-          >
-            <Plus className="h-4 w-4" />
-            Nueva Factura
-          </Button>
-        </div>
+        <Button
+          onClick={() => openForm()}
+          className="gap-2 bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300"
+        >
+          <Plus className="h-4 w-4" />
+          Nueva Factura
+        </Button>
+      </div>
+
+      <div className="relative max-w-md">
+        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+        <Input
+          placeholder="Buscar por código..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="pl-10"
+        />
       </div>
 
       <Card className="overflow-hidden shadow-sm border-gray-200">
@@ -355,7 +369,7 @@ export function FacturasPage() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  facturas.map((item) => (
+                  filteredFacturas.map((item) => (
                     <TableRow key={item.id_factura} className="hover:bg-gray-50/50 transition-colors cursor-pointer" onClick={() => setDetailModal({ isOpen: true, item })}>
                       <TableCell>
                         <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-violet-50 text-violet-700 rounded text-sm font-mono font-medium">

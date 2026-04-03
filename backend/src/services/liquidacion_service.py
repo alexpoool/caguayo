@@ -50,14 +50,19 @@ class LiquidacionService:
             producto = producto_result.first()
 
             if producto:
-                importe += producto.precio_venta * prod.cantidad
+                importe += prod.precio * prod.cantidad
 
         devengado = data.devengado or Decimal("0.00")
         tributario = data.tributario or Decimal("0.00")
         comision_bancaria = data.comision_bancaria or Decimal("0.00")
         gasto_empresa = data.gasto_empresa or Decimal("0.00")
 
-        neto_pagar = importe - tributario - comision_bancaria - gasto_empresa
+        devengado_calculado = (
+            importe
+            - (importe * gasto_empresa / 100)
+            - (importe * comision_bancaria / 100)
+        )
+        neto_pagar = devengado_calculado - (devengado_calculado * tributario / 100)
 
         codigo = await LiquidacionService.generate_codigo_liquidacion(db)
 
@@ -70,7 +75,7 @@ class LiquidacionService:
             liquidada=False,
             fecha_emision=data.fecha_emision or date.today(),
             observaciones=data.observaciones,
-            devengado=devengado,
+            devengado=devengado_calculado,
             tributario=tributario,
             comision_bancaria=comision_bancaria,
             gasto_empresa=gasto_empresa,
@@ -98,6 +103,26 @@ class LiquidacionService:
             db, productos_ids
         )
 
+        productos_en_liquidacion_list = []
+        for p in productos_response:
+            productos_en_liquidacion_list.append(
+                ProductosEnLiquidacionRead(
+                    id_producto_en_liquidacion=p.id_producto_en_liquidacion,
+                    codigo=p.codigo,
+                    id_producto=p.id_producto,
+                    cantidad=p.cantidad,
+                    precio=p.precio,
+                    id_moneda=p.id_moneda,
+                    tipo_compra=p.tipo_compra,
+                    id_factura=p.id_factura,
+                    id_venta_efectivo=p.id_venta_efectivo,
+                    id_anexo=p.id_anexo,
+                    liquidada=p.liquidada,
+                    fecha=p.fecha,
+                    fecha_liquidacion=p.fecha_liquidacion,
+                )
+            )
+
         return LiquidacionRead(
             id_liquidacion=db_liquidacion.id_liquidacion,
             codigo=db_liquidacion.codigo,
@@ -116,9 +141,7 @@ class LiquidacionService:
             importe=db_liquidacion.importe,
             neto_pagar=db_liquidacion.neto_pagar,
             tipo_pago=db_liquidacion.tipo_pago,
-            productos_en_liquidacion=[
-                ProductosEnLiquidacionRead.model_validate(p) for p in productos_response
-            ],
+            productos_en_liquidacion=productos_en_liquidacion_list,
         )
 
     @staticmethod
@@ -172,13 +195,10 @@ class LiquidacionService:
     @staticmethod
     async def get_productos_pendientes_by_cliente(
         db: AsyncSession, cliente_id: int, anexo_id: Optional[int] = None
-    ) -> List[ProductosEnLiquidacionRead]:
-        productos = (
-            await productos_en_liquidacion_repo.get_pendientes_by_cliente_y_anexo(
-                db, cliente_id, anexo_id
-            )
+    ) -> List[dict]:
+        return await productos_en_liquidacion_repo.get_pendientes_by_cliente_y_anexo(
+            db, cliente_id, anexo_id
         )
-        return [ProductosEnLiquidacionRead.model_validate(p) for p in productos]
 
     @staticmethod
     async def get_items_anexo_con_estado(
@@ -236,9 +256,16 @@ class LiquidacionService:
 
         db_liquidacion.neto_pagar = (
             db_liquidacion.importe
-            - db_liquidacion.tributario
-            - db_liquidacion.comision_bancaria
-            - db_liquidacion.gasto_empresa
+            - (db_liquidacion.importe * db_liquidacion.gasto_empresa / 100)
+            - (db_liquidacion.importe * db_liquidacion.comision_bancaria / 100)
+        )
+        db_liquidacion.neto_pagar = db_liquidacion.neto_pagar - (
+            db_liquidacion.neto_pagar * db_liquidacion.tributario / 100
+        )
+        db_liquidacion.devengado = (
+            db_liquidacion.importe
+            - (db_liquidacion.importe * db_liquidacion.gasto_empresa / 100)
+            - (db_liquidacion.importe * db_liquidacion.comision_bancaria / 100)
         )
 
         if data.observaciones:

@@ -152,14 +152,6 @@ export function CompraConveniosPage() {
       </div>
 
       <div className="flex gap-2">
-        <select
-          className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sky-500 outline-none bg-white text-sm"
-          value={filtroCliente || ''}
-          onChange={(e) => setFiltroCliente(Number(e.target.value) || null)}
-        >
-          <option value="">Todos los proveedores</option>
-          {clientes.map(c => <option key={c.id_cliente} value={c.id_cliente}>{c.nombre}</option>)}
-        </select>
         <div className="flex-1 relative max-w-md">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
           <Input
@@ -245,7 +237,7 @@ export function CompraConveniosPage() {
                         className="gap-1.5 text-sky-600 border-sky-200 hover:bg-sky-50 hover:border-sky-300 hover:text-sky-700"
                       >
                         <Boxes className="h-3.5 w-3.5" />
-                        Ver Anexos
+                        Anexos
                       </Button>
                     </TableCell>
                     <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>

@@ -1,11 +1,11 @@
 import { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { Button, Input, Label, Card, CardContent, CardHeader, CardTitle, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, ConfirmModal } from '../../components/ui';
-import { contratosService, clientesService, monedaService } from '../../services/api';
+import { contratosService, clientesService, monedaService, solicitudesService } from '../../services/api';
 import type { Cliente } from '../../types/ventas';
 import type { Moneda } from '../../types/moneda';
 import type { ContratoWithDetails, ContratoCreate } from '../../types/contrato';
-import { Plus, Save, Trash2, Edit, ArrowLeft, Search, FileText, User, DollarSign, Calendar, Tag, X, Eye, Layers } from 'lucide-react';
+import { Plus, Save, Trash2, Edit, ArrowLeft, Search, FileText, User, DollarSign, Calendar, Tag, X, Eye, Layers, Receipt } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
@@ -15,7 +15,8 @@ export function ContratosPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const initialClienteId = searchParams.get('cliente');
-  const [view, setView] = useState<View>('list');
+  const solicitudParam = searchParams.get('solicitud');
+  const [view, setView] = useState<View>(searchParams.get('solicitud') ? 'form' : 'list');
   
   const [contratos, setContratos] = useState<ContratoWithDetails[]>([]);
   const [clientes, setClientes] = useState<Cliente[]>([]);
@@ -77,8 +78,21 @@ export function ContratosPage() {
         proforma: formData.proforma,
         documento_final: formData.documento_final
       };
-      editingId ? await contratosService.updateContrato(editingId, data) : await contratosService.createContrato(data);
-      toast.success(editingId ? 'Actualizado' : 'Creado');
+      if (editingId) {
+        await contratosService.updateContrato(editingId, data);
+        toast.success('Actualizado');
+      } else {
+        const nuevoContrato = await contratosService.createContrato(data);
+        if (solicitudParam) {
+          try {
+            await solicitudesService.updateSolicitud(Number(solicitudParam), {
+              id_contrato: nuevoContrato.id_contrato,
+              id_cliente: Number(formData.id_cliente) || 0
+            });
+          } catch (e) { console.error('Error updating solicitud:', e); }
+        }
+        toast.success('Creado');
+      }
       setView('list');
       resetForm();
       loadContratos();
@@ -123,9 +137,6 @@ export function ContratosPage() {
 
   const filteredContratos = useMemo(() => {
     let result = contratos;
-    if (filtroCliente) {
-      result = result.filter(c => c.id_cliente === filtroCliente);
-    }
     if (searchTerm) {
       result = result.filter(c => 
         c.nombre?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -134,7 +145,7 @@ export function ContratosPage() {
       );
     }
     return result;
-  }, [contratos, filtroCliente, searchTerm]);
+  }, [contratos, searchTerm]);
 
   const renderList = () => (
     <div className="space-y-6">
@@ -163,14 +174,6 @@ export function ContratosPage() {
       </div>
 
       <div className="flex gap-2">
-        <select
-          className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 outline-none bg-white text-sm"
-          value={filtroCliente || ''}
-          onChange={(e) => setFiltroCliente(Number(e.target.value) || null)}
-        >
-          <option value="">Todos los clientes</option>
-          {clientes.map(c => <option key={c.id_cliente} value={c.id_cliente}>{c.nombre}</option>)}
-        </select>
         <div className="flex-1 relative max-w-md">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
           <Input
@@ -207,11 +210,10 @@ export function ContratosPage() {
                 </TableHead>
                 <TableHead>
                   <div className="flex items-center gap-2">
-                    <DollarSign className="h-4 w-4 text-rose-600" />
-                    Monto
+                    <Receipt className="h-4 w-4 text-rose-600" />
+                    Facturas
                   </div>
                 </TableHead>
-                <TableHead>Estado</TableHead>
                 <TableHead>Suplementos</TableHead>
                 <TableHead className="text-right">Acciones</TableHead>
               </TableRow>
@@ -219,7 +221,7 @@ export function ContratosPage() {
             <TableBody>
               {filteredContratos.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-12 text-gray-500">
+                  <TableCell colSpan={5} className="text-center py-12 text-gray-500">
                     {searchTerm ? 'No se encontraron contratos que coincidan con la búsqueda' : 'No hay contratos'}
                   </TableCell>
                 </TableRow>
@@ -241,18 +243,16 @@ export function ContratosPage() {
                         {item.cliente?.nombre || 'N/A'}
                       </div>
                     </TableCell>
-                    <TableCell className="font-medium text-gray-900">
-                      ${Number(item.monto).toFixed(2)}
-                    </TableCell>
-                    <TableCell>
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        item.estado?.nombre === 'ACTIVO' ? 'bg-green-100 text-green-800' :
-                        item.estado?.nombre === 'CANCELADO' ? 'bg-red-100 text-red-800' :
-                        item.estado?.nombre === 'FINALIZADO' ? 'bg-blue-100 text-blue-800' :
-                        'bg-yellow-100 text-yellow-800'
-                      }`}>
-                        {item.estado?.nombre || 'N/A'}
-                      </span>
+                    <TableCell onClick={(e) => e.stopPropagation()}>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => navigate(`/ventas/facturas?contrato=${item.id_contrato}`)}
+                        className="gap-1 text-rose-600 border-rose-200 hover:bg-rose-50 hover:text-rose-700"
+                      >
+                        <Receipt className="h-3.5 w-3.5" />
+                        Ver
+                      </Button>
                     </TableCell>
                     <TableCell onClick={(e) => e.stopPropagation()}>
                       <Button
@@ -301,6 +301,11 @@ export function ContratosPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
+          {solicitudParam && (
+            <Button variant="outline" onClick={() => navigate('/proyectos/solicitudes')} className="gap-2">
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+          )}
           <div className="p-3 bg-gradient-to-br from-rose-500 to-pink-600 rounded-xl shadow-lg animate-bounce-subtle">
             <FileText className="h-8 w-8 text-white" />
           </div>

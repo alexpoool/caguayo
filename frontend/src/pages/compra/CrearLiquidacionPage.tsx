@@ -34,6 +34,12 @@ export function CrearLiquidacionPage() {
     producto_ids: []
   });
 
+  const [convenioInfo, setConvenioInfo] = useState<{
+    tipoConvenio: string;
+    codigo: string;
+    moneda: string;
+  } | null>(null);
+
   useEffect(() => {
     loadInitialData();
   }, []);
@@ -99,6 +105,7 @@ export function CrearLiquidacionPage() {
       producto_ids: []
     }));
     setSelectedProductos([]);
+    setConvenioInfo(null);
   };
 
   const handleAnexoChange = (anexoId: number | null) => {
@@ -109,6 +116,20 @@ export function CrearLiquidacionPage() {
       producto_ids: []
     }));
     setSelectedProductos([]);
+    
+    if (anexoId) {
+      const anexo = anexos.find(a => a.id_anexo === anexoId);
+      if (anexo) {
+        const conv = (anexo as any).convenios;
+        setConvenioInfo({
+          tipoConvenio: conv?.tipo_convenio?.nombre || '',
+          codigo: conv?.codigo || '',
+          moneda: conv?.id_moneda ? monedas.find(m => m.id_moneda === conv.id_moneda)?.nombre || '' : ''
+        });
+      }
+    } else {
+      setConvenioInfo(null);
+    }
   };
 
   const handleProductoSelect = (productoId: number) => {
@@ -148,10 +169,20 @@ export function CrearLiquidacionPage() {
 
   const calculateNetoPagar = () => {
     const importe = calculateImporte();
-    const tributario = Number(formData.tributario) || 0;
+    const gasto_empresa = Number(formData.gasto_empresa) || 0;
     const comision = Number(formData.comision_bancaria) || 0;
-    const gasto = Number(formData.gasto_empresa) || 0;
-    return importe - tributario - comision - gasto;
+    const tributario = Number(formData.tributario) || 0;
+    
+    const devengado = importe - (importe * gasto_empresa / 100) - (importe * comision / 100);
+    const neto = devengado - (devengado * tributario / 100);
+    return neto;
+  };
+
+  const calculateDevengado = () => {
+    const importe = calculateImporte();
+    const gasto_empresa = Number(formData.gasto_empresa) || 0;
+    const comision = Number(formData.comision_bancaria) || 0;
+    return importe - (importe * gasto_empresa / 100) - (importe * comision / 100);
   };
 
   const handleSave = async () => {
@@ -202,7 +233,26 @@ export function CrearLiquidacionPage() {
         <CardHeader>
           <CardTitle>Nueva Liquidación</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="relative">
+          
+          {convenioInfo && (
+            <div className="absolute top-6 right-6 bg-gray-50 border border-gray-300 p-3 text-xs rounded shadow-sm z-10" style={{ right: '24px', top: '24px' }}>
+              <div className="font-bold text-gray-700 mb-2 border-b pb-1">LIQUIDACIÓN</div>
+              <div className="mb-1">
+                <span className="text-gray-500">Concepto:</span>
+                <div className="font-medium">{convenioInfo.tipoConvenio}</div>
+              </div>
+              <div className="mb-1">
+                <span className="text-gray-500">Número:</span>
+                <div className="font-medium">{convenioInfo.codigo}</div>
+              </div>
+              <div>
+                <span className="text-gray-500">Moneda:</span>
+                <div className="font-medium">{convenioInfo.moneda}</div>
+              </div>
+            </div>
+          )}
+
           <div className="grid gap-6 md:grid-cols-2">
             <div>
               <Label>Proveedor *</Label>
@@ -265,9 +315,9 @@ export function CrearLiquidacionPage() {
                 <option value="OTRO">Otro</option>
               </select>
             </div>
-          </div>
+            </div>
 
-          {filtroCliente && (
+            {filtroCliente && (
             <div className="mt-6">
               <div className="flex justify-between items-center mb-3">
                 <Label className="text-base">Productos Pendientes</Label>
@@ -302,7 +352,8 @@ export function CrearLiquidacionPage() {
                         <th className="px-3 py-2 text-left w-10"></th>
                         <th className="px-3 py-2 text-left">Anexo</th>
                         <th className="px-3 py-2 text-left">Producto</th>
-                        <th className="px-3 py-2 text-right">Cantidad</th>
+                        <th className="px-3 py-2 text-right">A Liquidar</th>
+                        <th className="px-3 py-2 text-right">Por Liquidar</th>
                         <th className="px-3 py-2 text-right">Precio Venta</th>
                         <th className="px-3 py-2 text-right">Total</th>
                         <th className="px-3 py-2 text-center">Estado</th>
@@ -314,7 +365,7 @@ export function CrearLiquidacionPage() {
                         const isLiquidado = item.estado === 'LIQUIDADO';
                         const isSelected = isALiquidar && item.id_producto_en_liquidacion && selectedProductos.includes(item.id_producto_en_liquidacion);
                         return (
-                           <tr key={item.id_item_anexo} className={`hover:bg-gray-50 ${!isALiquidar ? 'opacity-60' : ''}`}>
+                           <tr key={`${item.id_item_anexo}-${item.id_producto_en_liquidacion || 'none'}`} className={`hover:bg-gray-50 ${!isALiquidar ? 'opacity-60' : ''}`}>
                             <td className="px-3 py-2">
                                {isALiquidar && item.id_producto_en_liquidacion ? (
                                 <input
@@ -330,6 +381,9 @@ export function CrearLiquidacionPage() {
                             <td className="px-3 py-2 text-gray-600">{item.nombre_anexo}</td>
                             <td className="px-3 py-2">{item.producto_nombre || `Producto ${item.id_producto}`}</td>
                             <td className="px-3 py-2 text-right">{item.cantidad}</td>
+                            <td className="px-3 py-2 text-right">
+                              {(item.cantidad_original || 0) - (item.cantidad_liquidada || 0)}
+                            </td>
                             <td className="px-3 py-2 text-right">${Number(item.precio_venta).toFixed(2)}</td>
                             <td className="px-3 py-2 text-right font-medium">
                               ${(item.precio_venta * item.cantidad).toFixed(2)}
@@ -373,7 +427,7 @@ export function CrearLiquidacionPage() {
               />
             </div>
             <div>
-              <Label>Gasto Empresa</Label>
+              <Label>Gasto Empresa (%)</Label>
               <Input
                 type="number"
                 step="0.01"
@@ -381,37 +435,49 @@ export function CrearLiquidacionPage() {
                 onChange={(e: any) => setFormData(prev => ({ ...prev, gasto_empresa: Number(e.target.value) }))}
               />
             </div>
-            <div>
-              <Label>Devengado (%)</Label>
-              <Input
-                type="number"
-                step="0.01"
-                value={formData.devengado}
-                onChange={(e: any) => setFormData(prev => ({ ...prev, devengado: Number(e.target.value) }))}
-              />
-            </div>
           </div>
 
           <div className="bg-gray-50 rounded-lg p-4 mt-6">
-            <div className="flex justify-between items-center mb-2">
-              <span className="text-gray-600">Importe Total:</span>
-              <span className="text-xl font-bold">{calculateImporte().toLocaleString()}</span>
+            {/* Sección 1: Devengado */}
+            <div className="mb-4 pb-4 border-b border-gray-300">
+              <h4 className="text-sm font-semibold text-gray-700 mb-3">Cálculo del Devengado</h4>
+              <div className="space-y-2">
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Importe Total:</span>
+                  <span className="font-medium">{calculateImporte().toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between text-red-600">
+                  <span>Gasto Empresa ({Number(formData.gasto_empresa || 0)}%):</span>
+                  <span>- {(calculateImporte() * (Number(formData.gasto_empresa) || 0) / 100).toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between text-red-600">
+                  <span>Comisión ({Number(formData.comision_bancaria || 0)}%):</span>
+                  <span>- {(calculateImporte() * (Number(formData.comision_bancaria) || 0) / 100).toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between pt-2 border-t border-gray-300">
+                  <span className="font-semibold text-gray-800">Devengado:</span>
+                  <span className="font-bold text-blue-600 text-lg">{calculateDevengado().toLocaleString()}</span>
+                </div>
+              </div>
             </div>
-            <div className="flex justify-between items-center mb-2">
-              <span className="text-gray-600">Tributario:</span>
-              <span>- {Number(formData.tributario || 0).toLocaleString()}</span>
-            </div>
-            <div className="flex justify-between items-center mb-2">
-              <span className="text-gray-600">Comisión:</span>
-              <span>- {Number(formData.comision_bancaria || 0).toLocaleString()}</span>
-            </div>
-            <div className="flex justify-between items-center mb-2">
-              <span className="text-gray-600">Gasto Empresa:</span>
-              <span>- {Number(formData.gasto_empresa || 0).toLocaleString()}</span>
-            </div>
-            <div className="border-t pt-2 flex justify-between items-center">
-              <span className="font-medium">Neto a Pagar:</span>
-              <span className="text-2xl font-bold text-green-600">{calculateNetoPagar().toLocaleString()}</span>
+
+            {/* Sección 2: Neto a Pagar */}
+            <div>
+              <h4 className="text-sm font-semibold text-gray-700 mb-3">Cálculo del Neto a Pagar</h4>
+              <div className="space-y-2">
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Devengado:</span>
+                  <span className="font-medium">{calculateDevengado().toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between text-red-600">
+                  <span>Tributario ({Number(formData.tributario || 0)}%):</span>
+                  <span>- {(calculateDevengado() * (Number(formData.tributario) || 0) / 100).toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between pt-2 border-t border-gray-300">
+                  <span className="font-semibold text-gray-800">Neto a Pagar:</span>
+                  <span className="font-bold text-green-600 text-xl">{calculateNetoPagar().toLocaleString()}</span>
+                </div>
+              </div>
             </div>
           </div>
 

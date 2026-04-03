@@ -53,8 +53,8 @@ export function SuplementosPage() {
 
   const loadSuplementos = async () => {
     try {
-      if (selectedContratoId) {
-        const data = await suplementosService.getSuplementosByContrato(selectedContratoId);
+      if (initialContratoId) {
+        const data = await suplementosService.getSuplementosByContrato(Number(initialContratoId));
         setSuplementos(data);
       } else {
         const data = await suplementosService.getSuplementos();
@@ -65,7 +65,14 @@ export function SuplementosPage() {
 
   useEffect(() => { 
     if (view === 'list') loadSuplementos(); 
-  }, [view, selectedContratoId]);
+  }, [view, initialContratoId]);
+
+  const filteredSuplementos = suplementos.filter(s => {
+    if (!searchTerm) return true;
+    const term = searchTerm.toLowerCase();
+    return s.codigo?.toLowerCase().includes(term) || 
+           s.nombre?.toLowerCase().includes(term);
+  });
 
   const handleSave = async () => {
     try {
@@ -127,20 +134,24 @@ export function SuplementosPage() {
             <p className="text-gray-500 mt-1">Gestión de suplementos de contratos</p>
           </div>
         </div>
-        <div className="flex gap-2">
-          <select className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none" value={selectedContratoId || ''} onChange={(e: any) => setSelectedContratoId(Number(e.target.value) || null)}>
-            <option value="">Todos los contratos</option>
-            {contratos.map(c => <option key={c.id_contrato} value={c.id_contrato}>{c.nombre}</option>)}
-          </select>
-          <Button
-            onClick={() => openForm()}
-            disabled={!selectedContratoId}
-            className="gap-2 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300 disabled:opacity-50 disabled:transform-none"
-          >
-            <Plus className="h-4 w-4" />
-            Nuevo Suplemento
-          </Button>
-        </div>
+        <Button
+          onClick={() => openForm()}
+          disabled={contratos.length === 0}
+          className="gap-2 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300 disabled:opacity-50 disabled:transform-none"
+        >
+          <Plus className="h-4 w-4" />
+          Nuevo Suplemento
+        </Button>
+      </div>
+
+      <div className="relative max-w-md">
+        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+        <Input
+          placeholder="Buscar por código o nombre..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="pl-10"
+        />
       </div>
 
       <Card className="overflow-hidden shadow-sm border-gray-200">
@@ -184,7 +195,7 @@ export function SuplementosPage() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  suplementos.map((item) => (
+                  filteredSuplementos.map((item) => (
                     <TableRow key={item.id_suplemento} className="hover:bg-gray-50/50 transition-colors cursor-pointer" onClick={() => setDetailModal({ isOpen: true, item })}>
                       <TableCell>
                         <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-amber-50 text-amber-700 rounded text-sm font-mono font-medium">
