@@ -176,6 +176,7 @@ class PersonaLiquidacion(SQLModel, table=True):
     fecha_liquidacion: Optional[date] = None
     descripcion: Optional[str] = None
     id_moneda: Optional[int] = Field(default=None, foreign_key="moneda.id_moneda")
+    tipo_pago: str = Field(default="TRANSFERENCIA", max_length=50)
     importe: Decimal = Field(default=Decimal("0.00"))
     porciento_gestion: Decimal = Field(default=Decimal("0.00"))
     porciento_empresa: Decimal = Field(default=Decimal("0.00"))

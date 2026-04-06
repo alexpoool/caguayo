@@ -50,22 +50,11 @@ export function CreadoresPage() {
 
   const loadInitialData = async () => {
     try {
-      const [clientesRes, monedasRes] = await Promise.all([
-        clientesService.getClientes(0, 1000),
+      const [personasRes, monedasRes] = await Promise.all([
+        clientesService.getPersonasNaturales(),
         monedaService.getMonedas(0, 100)
       ]);
-      const naturales: ClienteNatural[] = clientesRes
-        .filter((c: any) => c.tipo_persona === 'NATURAL')
-        .map((c: any) => ({
-          id_cliente: c.id_cliente,
-          nombre: c.nombre,
-          primer_apellido: c.primer_apellido || '',
-          segundo_apellido: c.segundo_apellido,
-          carnet_identidad: c.cedula_rif || '',
-          es_trabajador: false,
-          en_baja: false
-        }));
-      setPersonasNaturales(naturales);
+      setPersonasNaturales(personasRes);
       setMonedas(monedasRes);
       if (etapaParam) {
         const etapaData = await etapasProyectoService.getEtapa(Number(etapaParam));

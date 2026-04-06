@@ -1,5 +1,6 @@
-from datetime import datetime
+from datetime import datetime, date
 from sqlmodel.ext.asyncio.session import AsyncSession
+from sqlmodel import select
 from typing import List, Optional
 from src.models.servicio import (
     Servicio,
@@ -32,8 +33,11 @@ from src.dto.servicio_dto import (
     PagoFacturaServicioCreate,
     PagoFacturaServicioRead,
     PersonaLiquidacionCreate,
+    PersonaLiquidacionCreateInput,
     PersonaLiquidacionRead,
     PersonaLiquidacionUpdate,
+    PersonaLiquidacionUpdateInput,
+    PersonaLiquidacionConfirmar,
 )
 from src.repository.servicio_repo import (
     servicio_repo,
@@ -183,8 +187,8 @@ class TareaEtapaService:
             etapa = await etapa_repo.get(db, data.id_etapa)
             if etapa:
                 codigo_sol = (
-                    etapa.codigo_solicitud or f"SOL-{etapa.id_solicitud_servicio}"
-                )
+                    etapa.solicitud.codigo_solicitud if etapa.solicitud else None
+                ) or f"SOL-{etapa.id_solicitud_servicio}"
                 codigo_eta = f"ETAPA-{etapa.numero_etapa}"
                 codigo_serv = f"SERV-{data.id_servicio}" if data.id_servicio else "SERV"
                 data.codigo_extendido = f"TE-{codigo_sol}-{codigo_eta}-{codigo_serv}"
@@ -310,9 +314,43 @@ class PagoFacturaServicioService:
 class PersonaLiquidacionService:
     @staticmethod
     async def create(
-        db: AsyncSession, data: PersonaLiquidacionCreate
+        db: AsyncSession, data: PersonaLiquidacionCreateInput
     ) -> PersonaLiquidacionRead:
-        if not data.numero:
+        importe = 0
+        statement = select(PersonaEtapa).where(
+            PersonaEtapa.id_etapa == data.id_etapa,
+            PersonaEtapa.id_persona == data.id_persona,
+        )
+        result = await db.exec(statement)
+        persona_etapa = result.first()
+        if persona_etapa:
+            importe = float(persona_etapa.cobro) if persona_etapa.cobro else 0
+
+        devengado = float(data.gasto_empresa or 0) - float(data.comision_bancaria or 0)
+        tributario = float(data.tributario or 0)
+        neto_pagar = devengado * (100 - tributario) / 100 if devengado > 0 else 0
+
+        from decimal import Decimal
+
+        liquidacion_data = PersonaLiquidacionCreate(
+            numero=data.numero,
+            id_etapa=data.id_etapa,
+            id_persona=data.id_persona,
+            fecha_emision=data.fecha_emision,
+            fecha_liquidacion=data.fecha_liquidacion,
+            descripcion=data.descripcion,
+            id_moneda=data.id_moneda,
+            importe=Decimal(str(importe)),
+            devengado=Decimal(str(devengado)),
+            tributario=Decimal(str(tributario)),
+            comision_bancaria=data.comision_bancaria,
+            neto_pagar=Decimal(str(neto_pagar)),
+            gasto_empresa=data.gasto_empresa,
+            doc_pago_liquidacion=data.doc_pago_liquidacion,
+            observacion=data.observacion,
+        )
+
+        if not liquidacion_data.numero:
             year = datetime.now().year
             last = await persona_liquidacion_repo.get_last_by_year(db, year)
             if last and last.numero:
@@ -323,9 +361,9 @@ class PersonaLiquidacionService:
                     new_num = 1
             else:
                 new_num = 1
-            data.numero = f"LIQ-{year}-{new_num:04d}"
+            liquidacion_data.numero = f"LIQ-{year}-{new_num:04d}"
 
-        l = await persona_liquidacion_repo.create(db, obj_in=data)
+        l = await persona_liquidacion_repo.create(db, obj_in=liquidacion_data)
         return PersonaLiquidacionRead(**l.model_dump())
 
     @staticmethod
@@ -342,13 +380,101 @@ class PersonaLiquidacionService:
 
     @staticmethod
     async def update(
-        db: AsyncSession, id: int, data: PersonaLiquidacionUpdate
+        db: AsyncSession, id: int, data: PersonaLiquidacionUpdateInput
     ) -> PersonaLiquidacionRead:
         l = await persona_liquidacion_repo.get(db, id)
         if not l:
             return None
-        updated = await persona_liquidacion_repo.update(db, db_obj=l, obj_in=data)
+
+        gasto_empresa = (
+            float(data.gasto_empresa)
+            if data.gasto_empresa is not None
+            else float(l.gasto_empresa or 0)
+        )
+        comision_bancaria = (
+            float(data.comision_bancaria)
+            if data.comision_bancaria is not None
+            else float(l.comision_bancaria or 0)
+        )
+        tributario = (
+            float(data.tributario)
+            if data.tributario is not None
+            else float(l.tributario or 0)
+        )
+
+        devengado = gasto_empresa - comision_bancaria
+        neto_pagar = devengado * (100 - tributario) / 100 if devengado > 0 else 0
+
+        from decimal import Decimal
+
+        update_data = PersonaLiquidacionUpdate(
+            numero=data.numero,
+            id_etapa=data.id_etapa,
+            id_persona=data.id_persona,
+            fecha_emision=data.fecha_emision,
+            fecha_liquidacion=data.fecha_liquidacion,
+            descripcion=data.descripcion,
+            id_moneda=data.id_moneda,
+            devengado=Decimal(str(devengado))
+            if data.gasto_empresa is not None or data.comision_bancaria is not None
+            else None,
+            tributario=data.tributario,
+            comision_bancaria=data.comision_bancaria,
+            neto_pagar=Decimal(str(neto_pagar))
+            if data.gasto_empresa is not None
+            or data.comision_bancaria is not None
+            or data.tributario is not None
+            else None,
+            gasto_empresa=data.gasto_empresa,
+            doc_pago_liquidacion=data.doc_pago_liquidacion,
+            observacion=data.observacion,
+        )
+
+        updated = await persona_liquidacion_repo.update(
+            db, db_obj=l, obj_in=update_data
+        )
         return PersonaLiquidacionRead(**updated.model_dump())
+
+    @staticmethod
+    async def confirmar(
+        db: AsyncSession, liquidacion_id: int, data: "PersonaLiquidacionConfirmar"
+    ) -> Optional[PersonaLiquidacionRead]:
+        from datetime import date
+        from decimal import Decimal
+
+        l = await persona_liquidacion_repo.get(db, liquidacion_id)
+        if not l:
+            return None
+
+        if l.fecha_liquidacion:
+            raise ValueError("La liquidación ya está confirmada")
+
+        if data.devengado is not None:
+            l.devengado = data.devengado
+        if data.tributario is not None:
+            l.tributario = data.tributario
+        if data.comision_bancaria is not None:
+            l.comision_bancaria = data.comision_bancaria
+        if data.gasto_empresa is not None:
+            l.gasto_empresa = data.gasto_empresa
+
+        devengado = float(l.gasto_empresa or 0) - float(l.comision_bancaria or 0)
+        tributario = float(l.tributario or 0)
+        l.neto_pagar = (
+            Decimal(str(devengado * (100 - tributario) / 100))
+            if devengado > 0
+            else Decimal("0")
+        )
+
+        l.fecha_liquidacion = date.today()
+
+        if data.observaciones:
+            l.observacion = data.observaciones
+
+        db.add(l)
+        await db.commit()
+        await db.refresh(l)
+        return PersonaLiquidacionRead(**l.model_dump())
 
     @staticmethod
     async def delete(db: AsyncSession, id: int) -> bool:

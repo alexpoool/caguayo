@@ -147,7 +147,7 @@ export function PagosFacturaServicioPage() {
     <div className="bg-gradient-to-r from-teal-50 to-cyan-50 rounded-xl p-4 border border-teal-100 mb-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <Button variant="outline" size="sm" onClick={() => navigate('/proyecto/facturas-servicio')} className="gap-1">
+          <Button variant="outline" size="sm" onClick={() => navigate('/proyectos/facturas-servicio')} className="gap-1">
             <ArrowLeft className="h-4 w-4" />
             Volver a Facturas
           </Button>

@@ -249,6 +249,7 @@ class PersonaLiquidacionBase(SQLModel):
     fecha_liquidacion: Optional[date] = None
     descripcion: Optional[str] = None
     id_moneda: Optional[int] = None
+    tipo_pago: str = "TRANSFERENCIA"
     importe: Decimal = Decimal("0.00")
     porciento_gestion: Decimal = Decimal("0.00")
     porciento_empresa: Decimal = Decimal("0.00")
@@ -262,8 +263,40 @@ class PersonaLiquidacionBase(SQLModel):
     observacion: Optional[str] = None
 
 
+class PersonaLiquidacionCreateInput(SQLModel):
+    numero: Optional[str] = None
+    id_etapa: int
+    id_persona: int
+    fecha_emision: date
+    fecha_liquidacion: Optional[date] = None
+    descripcion: Optional[str] = None
+    id_moneda: Optional[int] = None
+    tipo_pago: str = "TRANSFERENCIA"
+    tributario: Decimal = Decimal("0.00")
+    gasto_empresa: Decimal = Decimal("0.00")
+    comision_bancaria: Decimal = Decimal("0.00")
+    doc_pago_liquidacion: Optional[str] = None
+    observacion: Optional[str] = None
+
+
 class PersonaLiquidacionCreate(PersonaLiquidacionBase):
     pass
+
+
+class PersonaLiquidacionUpdateInput(SQLModel):
+    numero: Optional[str] = None
+    id_etapa: Optional[int] = None
+    id_persona: Optional[int] = None
+    fecha_emision: Optional[date] = None
+    fecha_liquidacion: Optional[date] = None
+    descripcion: Optional[str] = None
+    id_moneda: Optional[int] = None
+    tipo_pago: Optional[str] = None
+    tributario: Optional[Decimal] = None
+    gasto_empresa: Optional[Decimal] = None
+    comision_bancaria: Optional[Decimal] = None
+    doc_pago_liquidacion: Optional[str] = None
+    observacion: Optional[str] = None
 
 
 class PersonaLiquidacionRead(PersonaLiquidacionBase):
@@ -278,6 +311,7 @@ class PersonaLiquidacionUpdate(SQLModel):
     fecha_liquidacion: Optional[date] = None
     descripcion: Optional[str] = None
     id_moneda: Optional[int] = None
+    tipo_pago: Optional[str] = None
     importe: Optional[Decimal] = None
     porciento_gestion: Optional[Decimal] = None
     porciento_empresa: Optional[Decimal] = None
@@ -289,3 +323,11 @@ class PersonaLiquidacionUpdate(SQLModel):
     doc_pago_liquidacion: Optional[str] = None
     gasto_empresa: Optional[Decimal] = None
     observacion: Optional[str] = None
+
+
+class PersonaLiquidacionConfirmar(SQLModel):
+    devengado: Optional[Decimal] = None
+    tributario: Optional[Decimal] = None
+    comision_bancaria: Optional[Decimal] = None
+    gasto_empresa: Optional[Decimal] = None
+    observaciones: Optional[str] = None

@@ -29,7 +29,8 @@ import {
   Users,
   List,
   CreditCard,
-  Calculator
+  Calculator,
+  Package
 } from 'lucide-react';
 
 import { WelcomePage } from './pages/Welcome';
@@ -52,6 +53,10 @@ import { VentaHome } from './pages/home/VentaHome';
 import { CompraHome } from './pages/home/CompraHome';
 import { ReportesHome } from './pages/home/ReportesHome';
 import { ProyectosHome } from './pages/home/ProyectosHome';
+import ReporteExistencias from './pages/reportes/ReporteExistencias';
+import ReporteMovimientosDependencia from './pages/reportes/ReporteMovimientosDependencia';
+import ReporteMovimientosProducto from './pages/reportes/ReporteMovimientosProducto';
+import ReporteProveedores from './pages/reportes/ReporteProveedores';
 import { CompraConveniosPage } from './pages/compra/ConveniosPage';
 import { CompraAnexosPage } from './pages/compra/AnexosPage';
 import { ProductosEnLiquidacionPage } from './pages/compra/ProductosEnLiquidacionPage';
@@ -88,7 +93,7 @@ const rutasPorModulo: Record<Modulo, string[]> = {
   venta: ['/venta', '/ventas', '/clientes', '/ventas/operaciones', '/ventas/contratos', '/ventas/suplementos', '/ventas/facturas', '/ventas/efectivo'],
   compra: ['/compra', '/compra/clientes', '/compra/convenios', '/compra/anexos', '/compra/liquidaciones', '/compra/productos-liquidacion'],
   proyecto: ['/proyecto', '/proyectos', '/proyectos/servicios', '/proyectos/solicitudes', '/proyectos/etapas', '/proyectos/tareas-etapa', '/proyectos/creadores', '/proyectos/facturas-servicio', '/proyectos/pagos-factura-servicio', '/proyectos/liquidaciones'],
-  reportes: ['/reportes'],
+  reportes: ['/reportes', '/reportes/existencias', '/reportes/movimientos-dependencia', '/reportes/movimientos-producto', '/reportes/proveedores'],
   home: ['/'],
 };
 
@@ -379,6 +384,34 @@ function App() {
                       <NavLink to="/proyectos/liquidaciones" onClick={handleLinkClick}>
                         <Calculator className="w-6 h-6" />
                         Liquidaciones
+                      </NavLink>
+                    </li>
+                  </ul>
+                )}
+                {moduloActivo === 'reportes' && (
+                  <ul className="space-y-1 px-3">
+                    <li>
+                      <NavLink to="/reportes/existencias" onClick={handleLinkClick}>
+                        <Boxes className="w-6 h-6" />
+                        Existencias
+                      </NavLink>
+                    </li>
+                    <li>
+                      <NavLink to="/reportes/movimientos-dependencia" onClick={handleLinkClick}>
+                        <ArrowLeftRight className="w-6 h-6" />
+                        Mov. Dependencia
+                      </NavLink>
+                    </li>
+                    <li>
+                      <NavLink to="/reportes/movimientos-producto" onClick={handleLinkClick}>
+                        <Package className="w-6 h-6" />
+                        Mov. Producto
+                      </NavLink>
+                    </li>
+                    <li>
+                      <NavLink to="/reportes/proveedores" onClick={handleLinkClick}>
+                        <UserCircle className="w-6 h-6" />
+                        Proveedores
                       </NavLink>
                     </li>
                   </ul>
@@ -733,6 +766,38 @@ function App() {
                   element={
                     <ProtectedRoute moduloActivo={moduloActivo} currentPath="/reportes">
                       <ReportesHome />
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route 
+                  path="/reportes/existencias" 
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/reportes">
+                      <ReporteExistencias />
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route 
+                  path="/reportes/movimientos-dependencia" 
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/reportes">
+                      <ReporteMovimientosDependencia />
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route 
+                  path="/reportes/movimientos-producto" 
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/reportes">
+                      <ReporteMovimientosProducto />
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route 
+                  path="/reportes/proveedores" 
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/reportes">
+                      <ReporteProveedores />
                     </ProtectedRoute>
                   } 
                 />

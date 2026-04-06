@@ -1,9 +1,13 @@
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlmodel.ext.asyncio.session import AsyncSession
+from sqlmodel import select
+from sqlalchemy.orm import selectinload
 from src.database.connection import get_session
 from src.services.cliente_service import ClienteService
 from src.dto import ClienteCreate, ClienteRead, ClienteUpdate
+from src.models.cliente_natural import ClienteNatural
+from src.models.cliente import Cliente
 
 router = APIRouter(prefix="/clientes", tags=["clientes"], redirect_slashes=False)
 
@@ -41,6 +45,37 @@ async def buscar_clientes(
         cliente = await ClienteService.get_cliente_by_cedula(db, cedula_rif)
         return [cliente] if cliente else []
     return await ClienteService.get_clientes(db)
+
+
+@router.get("/naturales")
+async def listar_clientes_naturales(
+    db: AsyncSession = Depends(get_session),
+):
+    """Listar clientes persona natural con datos de la tabla clientes_persona_natural."""
+    stmt = (
+        select(
+            ClienteNatural.id_cliente,
+            ClienteNatural.nombre,
+            ClienteNatural.primer_apellido,
+            ClienteNatural.segundo_apellido,
+            ClienteNatural.carnet_identidad,
+        )
+        .join(Cliente, ClienteNatural.id_cliente == Cliente.id_cliente)
+        .where(Cliente.tipo_persona == "NATURAL")
+        .order_by(ClienteNatural.nombre, ClienteNatural.primer_apellido)
+    )
+    result = await db.exec(stmt)
+    rows = result.all()
+    return [
+        {
+            "id_cliente": row.id_cliente,
+            "nombre": row.nombre,
+            "primer_apellido": row.primer_apellido,
+            "segundo_apellido": row.segundo_apellido,
+            "carnet_identidad": row.carnet_identidad,
+        }
+        for row in rows
+    ]
 
 
 @router.get("/{cliente_id}", response_model=ClienteRead)

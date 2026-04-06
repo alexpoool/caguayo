@@ -66,7 +66,7 @@ class LiquidacionUpdate(SQLModel):
 
 
 class LiquidacionConfirmar(SQLModel):
-    tipo_pago: str
+    tipo_pago: Optional[str] = None
     devengado: Optional[Decimal] = None
     tributario: Optional[Decimal] = None
     comision_bancaria: Optional[Decimal] = None

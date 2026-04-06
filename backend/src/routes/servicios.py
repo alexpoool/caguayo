@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel.ext.asyncio.session import AsyncSession
+from sqlmodel import select
 from typing import List
 from src.database.connection import get_session
 from src.services.servicio_service import (
@@ -33,9 +34,13 @@ from src.dto.servicio_dto import (
     PagoFacturaServicioCreate,
     PagoFacturaServicioRead,
     PersonaLiquidacionCreate,
+    PersonaLiquidacionCreateInput,
     PersonaLiquidacionRead,
     PersonaLiquidacionUpdate,
+    PersonaLiquidacionUpdateInput,
+    PersonaLiquidacionConfirmar,
 )
+from src.models.servicio import PersonaEtapa
 
 
 # ==========================================
@@ -373,19 +378,41 @@ async def get_liquidacion(id: int, db: AsyncSession = Depends(get_session)):
     "", response_model=PersonaLiquidacionRead, status_code=201
 )
 async def create_liquidacion(
-    data: PersonaLiquidacionCreate, db: AsyncSession = Depends(get_session)
+    data: PersonaLiquidacionCreateInput, db: AsyncSession = Depends(get_session)
 ):
     return await PersonaLiquidacionService.create(db, data)
 
 
 @persona_liquidacion_router.put("/{id}", response_model=PersonaLiquidacionRead)
 async def update_liquidacion(
-    id: int, data: PersonaLiquidacionUpdate, db: AsyncSession = Depends(get_session)
+    id: int,
+    data: PersonaLiquidacionUpdateInput,
+    db: AsyncSession = Depends(get_session),
 ):
     result = await PersonaLiquidacionService.update(db, id, data)
     if not result:
         raise HTTPException(status_code=404, detail="Liquidación no encontrada")
     return result
+
+
+@persona_liquidacion_router.post(
+    "/{id}/confirmar", response_model=PersonaLiquidacionRead
+)
+async def confirmar_liquidacion(
+    id: int,
+    data: PersonaLiquidacionConfirmar,
+    db: AsyncSession = Depends(get_session),
+):
+    """Confirmar una liquidación de persona (marcar como liquidada)."""
+    try:
+        result = await PersonaLiquidacionService.confirmar(db, id, data)
+        if not result:
+            raise HTTPException(status_code=404, detail="Liquidación no encontrada")
+        return result
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @persona_liquidacion_router.delete("/{id}", status_code=204)

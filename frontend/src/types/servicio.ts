@@ -251,6 +251,7 @@ export interface PersonaLiquidacion {
   fecha_liquidacion?: string;
   descripcion?: string;
   id_moneda?: number;
+  tipo_pago?: string;
   importe: number;
   porciento_gestion: number;
   porciento_empresa: number;
@@ -305,3 +306,35 @@ export interface PersonaLiquidacionUpdate {
   gasto_empresa?: number;
   observacion?: string;
 }
+
+export type PersonaLiquidacionInput = {
+  numero?: string;
+  id_etapa: number;
+  id_persona: number;
+  fecha_emision: string;
+  fecha_liquidacion?: string;
+  descripcion?: string;
+  id_moneda?: number;
+  tipo_pago?: string;
+  tributario?: number;
+  gasto_empresa?: number;
+  comision_bancaria?: number;
+  doc_pago_liquidacion?: string;
+  observacion?: string;
+};
+
+export type PersonaLiquidacionInputUpdate = {
+  numero?: string;
+  id_etapa?: number;
+  id_persona?: number;
+  fecha_emision?: string;
+  fecha_liquidacion?: string;
+  descripcion?: string;
+  id_moneda?: number;
+  tipo_pago?: string;
+  tributario?: number;
+  gasto_empresa?: number;
+  comision_bancaria?: number;
+  doc_pago_liquidacion?: string;
+  observacion?: string;
+};

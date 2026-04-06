@@ -177,14 +177,14 @@ export function LoginPage() {
                     disabled={loadingConexiones}
                     className={`w-full pl-10 pr-10 py-3 border-2 rounded-xl focus:ring-2 focus:border-transparent bg-white transition-all duration-200 ${getSelectBorderClass()}`}
                   >
-                    <option value="">
+                    <option key="empty-option" value="">
                       {loadingConexiones
                         ? "Cargando..."
                         : "Seleccione una base de datos"}
                     </option>
                     {conexiones.map((conn) => (
                       <option
-                        key={conn.id_conexion}
+                        key={`conn-${conn.id_conexion}`}
                         value={conn.nombre_database}
                       >
                         {conn.nombre_database}

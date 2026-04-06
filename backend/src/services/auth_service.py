@@ -1,6 +1,7 @@
 import os
 from datetime import datetime, timedelta
 from typing import Optional, List
+from sqlalchemy import text
 from jose import JWTError, jwt
 import bcrypt
 from sqlmodel import select

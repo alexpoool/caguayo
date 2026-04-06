@@ -69,6 +69,7 @@ import type {
   FacturaServicio, FacturaServicioCreate, FacturaServicioUpdate,
   PagoFacturaServicio, PagoFacturaServicioCreate,
   PersonaLiquidacion, PersonaLiquidacionCreate, PersonaLiquidacionUpdate,
+  PersonaLiquidacionInput, PersonaLiquidacionInputUpdate,
 } from '../types/servicio';
 
 export const productosService = {
@@ -225,6 +226,10 @@ export const clientesService = {
 
   async buscarClienteByCedula(cedulaRif: string): Promise<Cliente[]> {
     return apiClient.get<Cliente[]>(`/clientes/search?cedula_rif=${encodeURIComponent(cedulaRif)}`);
+  },
+
+  async getPersonasNaturales(): Promise<ClienteNatural[]> {
+    return apiClient.get<ClienteNatural[]>('/clientes/naturales');
   }
 };
 
@@ -705,14 +710,23 @@ export const personaLiquidacionService = {
   async getLiquidacion(id: number): Promise<PersonaLiquidacion> {
     return apiClient.get<PersonaLiquidacion>(`/persona-liquidacion/${id}`);
   },
-  async createLiquidacion(data: PersonaLiquidacionCreate): Promise<PersonaLiquidacion> {
+  async createLiquidacion(data: PersonaLiquidacionInput): Promise<PersonaLiquidacion> {
     return apiClient.post<PersonaLiquidacion>('/persona-liquidacion', data);
   },
-  async updateLiquidacion(id: number, data: PersonaLiquidacionUpdate): Promise<PersonaLiquidacion> {
+  async updateLiquidacion(id: number, data: PersonaLiquidacionInputUpdate): Promise<PersonaLiquidacion> {
     return apiClient.put<PersonaLiquidacion>(`/persona-liquidacion/${id}`, data);
   },
   async deleteLiquidacion(id: number): Promise<void> {
     return apiClient.delete<void>(`/persona-liquidacion/${id}`);
+  },
+  async confirmarLiquidacion(id: number, data: {
+    devengado?: number;
+    tributario?: number;
+    comision_bancaria?: number;
+    gasto_empresa?: number;
+    observaciones?: string;
+  }): Promise<PersonaLiquidacion> {
+    return apiClient.post<PersonaLiquidacion>(`/persona-liquidacion/${id}/confirmar`, data);
   }
 };
 
@@ -868,7 +882,7 @@ export interface LiquidacionCreate {
 }
 
 export interface LiquidacionConfirmar {
-  tipo_pago: string;
+  tipo_pago?: string;
   devengado?: number;
   tributario?: number;
   comision_bancaria?: number;

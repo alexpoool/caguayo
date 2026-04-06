@@ -10,7 +10,7 @@ interface ConfirmModalProps {
   message: string;
   confirmText?: string;
   cancelText?: string;
-  type?: 'danger' | 'warning' | 'info';
+  type?: 'danger' | 'warning' | 'info' | 'success';
 }
 
 export function ConfirmModal({
@@ -38,6 +38,11 @@ export function ConfirmModal({
       icon: 'text-blue-600',
       bg: 'bg-blue-50',
       button: 'bg-blue-600 hover:bg-blue-700',
+    },
+    success: {
+      icon: 'text-green-600',
+      bg: 'bg-green-50',
+      button: 'bg-green-600 hover:bg-green-700',
     },
   };
 

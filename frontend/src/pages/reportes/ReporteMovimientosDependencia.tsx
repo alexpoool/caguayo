@@ -1,41 +1,36 @@
 import React, { useState, useEffect } from "react";
-import {
-  Form,
-  Select,
-  Button,
-  Input,
-  message,
-  Row,
-  Col,
-  DatePicker,
-} from "antd";
-import { FilePdfOutlined } from "@ant-design/icons";
+import { toast } from "react-hot-toast";
 import { dependenciasService } from "../../services/administracion";
-import { Dependencia } from "../../types";
+import { Dependencia } from "../../types/dependencia";
 import { authHelpers } from "../../lib/api";
 
-const { Option } = Select;
-const { RangePicker } = DatePicker;
-
 const ReporteMovimientosDependencia: React.FC = () => {
-  const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
   const [dependencias, setDependencias] = useState<Dependencia[]>([]);
+  const [idDependencia, setIdDependencia] = useState<number | null>(null);
+  const [fechaInicio, setFechaInicio] = useState("");
+  const [fechaFin, setFechaFin] = useState("");
+  const [aprobadoPorNombre, setAprobadoPorNombre] = useState("");
+  const [aprobadoPorCargo, setAprobadoPorCargo] = useState("");
 
   useEffect(() => {
     dependenciasService.getDependencias().then(setDependencias);
   }, []);
 
-  const handleFormSubmit = async (values: any) => {
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!idDependencia || !fechaInicio || !fechaFin) {
+      toast.error("Complete todos los campos requeridos");
+      return;
+    }
     setLoading(true);
     try {
-      const [fechaInicio, fechaFin] = values.fechas || [];
       const params = new URLSearchParams({
-        id_dependencia: values.id_dependencia.toString(),
-        fecha_inicio: fechaInicio ? fechaInicio.format("YYYY-MM-DD") : "",
-        fecha_fin: fechaFin ? fechaFin.format("YYYY-MM-DD") : "",
-        aprobado_por_nombre: values.aprobado_por_nombre || "",
-        aprobado_por_cargo: values.aprobado_por_cargo || "",
+        id_dependencia: idDependencia.toString(),
+        fecha_inicio: fechaInicio,
+        fecha_fin: fechaFin,
+        aprobado_por_nombre: aprobadoPorNombre || "",
+        aprobado_por_cargo: aprobadoPorCargo || "",
       });
 
       const token = authHelpers.getToken() || "";
@@ -46,7 +41,7 @@ const ReporteMovimientosDependencia: React.FC = () => {
           headers: {
             Authorization: `Bearer ${token}`,
           },
-        },
+        }
       );
 
       if (!response.ok) {
@@ -57,83 +52,105 @@ const ReporteMovimientosDependencia: React.FC = () => {
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `movimientos_dependencia_${values.id_dependencia}.pdf`;
+      a.download = `movimientos_dependencia_${idDependencia}.pdf`;
       document.body.appendChild(a);
       a.click();
 
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
 
-      message.success("Reporte generado exitosamente");
+      toast.success("Reporte generado exitosamente");
     } catch (error) {
       console.error(error);
-      message.error("Hubo un error al generar el reporte.");
+      toast.error("Hubo un error al generar el reporte.");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div style={{ padding: 24, background: "#fff", minHeight: 400 }}>
-      <h2>Generar Reporte: Movimientos por Dependencia</h2>
-      <Form layout="vertical" form={form} onFinish={handleFormSubmit}>
-        <Row gutter={16}>
-          <Col span={12}>
-            <Form.Item
-              name="id_dependencia"
-              label="Dependencia"
-              rules={[
-                { required: true, message: "Seleccione una dependencia" },
-              ]}
+    <div className="bg-white rounded-lg shadow p-6">
+      <h2 className="text-lg font-semibold text-gray-800 mb-4">Generar Reporte: Movimientos por Dependencia</h2>
+      <form onSubmit={handleSubmit}>
+        <div className="grid grid-cols-2 gap-4 mb-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Dependencia *
+            </label>
+            <select
+              value={idDependencia || ""}
+              onChange={(e) => setIdDependencia(e.target.value ? Number(e.target.value) : null)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              required
             >
-              <Select placeholder="Seleccionar dependencia">
-                {dependencias.map((d: any) => (
-                  <Option key={d.id_dependencia} value={d.id_dependencia}>
-                    {d.nombre}
-                  </Option>
-                ))}
-              </Select>
-            </Form.Item>
-          </Col>
-          <Col span={12}>
-            <Form.Item
-              name="fechas"
-              label="Rango de Fechas"
-              rules={[
-                { required: true, message: "Seleccione un rango de fechas" },
-              ]}
-            >
-              <RangePicker format="YYYY-MM-DD" style={{ width: "100%" }} />
-            </Form.Item>
-          </Col>
-        </Row>
+              <option value="">Seleccionar dependencia</option>
+              {dependencias.map((d) => (
+                <option key={d.id_dependencia} value={d.id_dependencia}>
+                  {d.nombre}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Rango de Fechas *
+            </label>
+            <div className="flex gap-2">
+              <input
+                type="date"
+                value={fechaInicio}
+                onChange={(e) => setFechaInicio(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                required
+              />
+              <input
+                type="date"
+                value={fechaFin}
+                onChange={(e) => setFechaFin(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                required
+              />
+            </div>
+          </div>
+        </div>
 
-        <h3 style={{ marginTop: 24 }}>Firmas e Información Adicional</h3>
+        <h3 className="text-md font-medium text-gray-800 mt-6 mb-3">Firmas e Información Adicional</h3>
 
-        <Row gutter={16}>
-          <Col span={12}>
-            <Form.Item name="aprobado_por_nombre" label="Aprobado Por (Nombre)">
-              <Input placeholder="Ej. Juan Pérez" />
-            </Form.Item>
-          </Col>
-          <Col span={12}>
-            <Form.Item name="aprobado_por_cargo" label="Cargo del Aprobador">
-              <Input placeholder="Ej. Director General" />
-            </Form.Item>
-          </Col>
-        </Row>
+        <div className="grid grid-cols-2 gap-4 mb-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Aprobado Por (Nombre)
+            </label>
+            <input
+              type="text"
+              value={aprobadoPorNombre}
+              onChange={(e) => setAprobadoPorNombre(e.target.value)}
+              placeholder="Ej. Juan Pérez"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Cargo del Aprobador
+            </label>
+            <input
+              type="text"
+              value={aprobadoPorCargo}
+              onChange={(e) => setAprobadoPorCargo(e.target.value)}
+              placeholder="Ej. Director General"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            />
+          </div>
+        </div>
 
-        <Form.Item>
-          <Button
-            type="primary"
-            htmlType="submit"
-            loading={loading}
-            icon={<FilePdfOutlined />}
-          >
-            Generar PDF
-          </Button>
-        </Form.Item>
-      </Form>
+        <button
+          type="submit"
+          disabled={loading}
+          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+        >
+          {loading ? "Generando..." : "Generar PDF"}
+        </button>
+      </form>
     </div>
   );
 };

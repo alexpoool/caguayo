@@ -1,5 +1,6 @@
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
+from sqlalchemy.orm import selectinload
 from typing import List, Optional
 from src.models.servicio import (
     Servicio,
@@ -85,6 +86,15 @@ solicitud_servicio_repo = SolicitudServicioRepository(SolicitudServicio)
 # ETAPAS
 # ==========================================
 class EtapaRepository(CRUDBase[Etapa, EtapaCreate, EtapaUpdate]):
+    async def get(self, db: AsyncSession, id: int) -> Optional[Etapa]:
+        statement = (
+            select(Etapa)
+            .options(selectinload(Etapa.solicitud))
+            .where(Etapa.id_etapa == id)
+        )
+        result = await db.exec(statement)
+        return result.first()
+
     async def get_by_solicitud(
         self, db: AsyncSession, id_solicitud: int
     ) -> List[Etapa]:
