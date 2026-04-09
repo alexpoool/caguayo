@@ -1,11 +1,11 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Button, Input, Label, Card, CardContent, CardHeader, CardTitle, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, ConfirmModal } from '../../components/ui';
-import { personaEtapaService, etapasProyectoService, clientesService, monedaService, solicitudesService } from '../../services/api';
-import type { PersonaEtapa, PersonaEtapaCreate, Etapa } from '../../types/servicio';
+import { personaEtapaService, etapasProyectoService, clientesService, monedaService, solicitudesService, personaLiquidacionService } from '../../services/api';
+import type { PersonaEtapa, PersonaEtapaCreate, Etapa, SolicitudServicio, PersonaLiquidacion } from '../../types/servicio';
 import type { ClienteNatural } from '../../types/ventas';
 import type { Moneda } from '../../types/moneda';
-import { Plus, Save, Trash2, ArrowLeft, Search, Users, X, DollarSign, Eye, ListFilter } from 'lucide-react';
+import { Plus, Save, Trash2, ArrowLeft, Search, Users, X, DollarSign, Eye, ListFilter, FileText, Check } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
@@ -27,11 +27,22 @@ export function CreadoresPage() {
   const [etapas, setEtapas] = useState<Etapa[]>([]);
   const [monedas, setMonedas] = useState<Moneda[]>([]);
   const [currentEtapa, setCurrentEtapa] = useState<Etapa | null>(null);
+  const [solicitudes, setSolicitudes] = useState<SolicitudServicio[]>([]);
+  const [etapasSolicitud, setEtapasSolicitud] = useState<Etapa[]>([]);
+  const [busquedaPersona, setBusquedaPersona] = useState('');
+  const [personaSeleccionada, setPersonaSeleccionada] = useState<ClienteNatural | null>(null);
+  const [busquedaSolicitud, setBusquedaSolicitud] = useState('');
+  const [solicitudSeleccionada, setSolicitudSeleccionada] = useState<SolicitudServicio | null>(null);
+  const [showDropdownPersona, setShowDropdownPersona] = useState(false);
+  const [showDropdownSolicitud, setShowDropdownSolicitud] = useState(false);
+  const dropdownPersonaRef = useRef<HTMLDivElement>(null);
+  const dropdownSolicitudRef = useRef<HTMLDivElement>(null);
 
   const [formData, setFormData] = useState<Record<string, any>>({});
   const [searchTerm, setSearchTerm] = useState('');
   const [filtroEtapa, setFiltroEtapa] = useState<number | null>(etapaParam ? Number(etapaParam) : null);
   const [detailModal, setDetailModal] = useState<{ isOpen: boolean; item: PersonaEtapaWithDetails | null }>({ isOpen: false, item: null });
+  const [liquidacionesModal, setLiquidacionesModal] = useState<{ isOpen: boolean; persona: PersonaEtapaWithDetails | null; liquidaciones: PersonaLiquidacion[] }>({ isOpen: false, persona: null, liquidaciones: [] });
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
     title: string;
@@ -50,12 +61,14 @@ export function CreadoresPage() {
 
   const loadInitialData = async () => {
     try {
-      const [personasRes, monedasRes] = await Promise.all([
+      const [personasRes, monedasRes, solicitudesRes] = await Promise.all([
         clientesService.getPersonasNaturales(),
-        monedaService.getMonedas(0, 100)
+        monedaService.getMonedas(0, 100),
+        solicitudesService.getSolicitudes(0, 1000)
       ]);
       setPersonasNaturales(personasRes);
       setMonedas(monedasRes);
+      setSolicitudes(solicitudesRes);
       if (etapaParam) {
         const etapaData = await etapasProyectoService.getEtapa(Number(etapaParam));
         setCurrentEtapa(etapaData);
@@ -122,7 +135,16 @@ export function CreadoresPage() {
     });
   };
 
-  const resetForm = () => { setFormData({}); };
+  const resetForm = () => {
+    setFormData({});
+    setPersonaSeleccionada(null);
+    setBusquedaPersona('');
+    setSolicitudSeleccionada(null);
+    setBusquedaSolicitud('');
+    setEtapasSolicitud([]);
+    setShowDropdownPersona(false);
+    setShowDropdownSolicitud(false);
+  };
 
   const openForm = () => {
     resetForm();
@@ -150,14 +172,80 @@ export function CreadoresPage() {
   };
 
   const filteredPersonas = useMemo(() => {
-    if (!searchTerm) return personasEtapa;
-    return personasEtapa.filter(p => {
+    const uniqueMap = new Map<number, PersonaEtapaWithDetails>();
+    personasEtapa.forEach(p => {
+      if (!uniqueMap.has(p.id_persona)) {
+        uniqueMap.set(p.id_persona, p);
+      }
+    });
+    const uniquePersonas = Array.from(uniqueMap.values());
+    
+    if (!searchTerm) return uniquePersonas;
+    return uniquePersonas.filter(p => {
       const name = getPersonaName(p.id_persona);
       const ci = getPersonaCI(p.id_persona);
       return name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         ci.toLowerCase().includes(searchTerm.toLowerCase());
     });
   }, [personasEtapa, searchTerm, personasNaturales]);
+
+  const personasFiltradas = useMemo(() => {
+    if (!busquedaPersona) return personasNaturales;
+    const term = busquedaPersona.toLowerCase();
+    return personasNaturales.filter(p =>
+      p.nombre.toLowerCase().includes(term) ||
+      (p.primer_apellido || '').toLowerCase().includes(term) ||
+      (p.segundo_apellido || '').toLowerCase().includes(term) ||
+      (p.carnet_identidad || '').toLowerCase().includes(term)
+    );
+  }, [personasNaturales, busquedaPersona]);
+
+  const solicitudesFiltradas = useMemo(() => {
+    if (!busquedaSolicitud) return solicitudes;
+    const term = busquedaSolicitud.toLowerCase();
+    return solicitudes.filter(s =>
+      (s.numero || '').toLowerCase().includes(term) ||
+      (s.codigo_solicitud || '').toLowerCase().includes(term) ||
+      (s.nombres_rep || '').toLowerCase().includes(term) ||
+      (s.apellido1_rep || '').toLowerCase().includes(term) ||
+      (s.ci_rep || '').toLowerCase().includes(term) ||
+      (s.descripcion || '').toLowerCase().includes(term)
+    );
+  }, [solicitudes, busquedaSolicitud]);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (dropdownPersonaRef.current && !dropdownPersonaRef.current.contains(e.target as Node)) {
+        setShowDropdownPersona(false);
+      }
+      if (dropdownSolicitudRef.current && !dropdownSolicitudRef.current.contains(e.target as Node)) {
+        setShowDropdownSolicitud(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const handleSeleccionarPersona = (p: ClienteNatural) => {
+    setPersonaSeleccionada(p);
+    setBusquedaPersona(`${p.nombre} ${p.primer_apellido || ''} ${p.segundo_apellido || ''} - ${p.carnet_identidad || ''}`.trim());
+    setShowDropdownPersona(false);
+    setFormData(prev => ({ ...prev, id_persona: p.id_cliente }));
+  };
+
+  const handleSeleccionarSolicitud = async (s: SolicitudServicio) => {
+    setSolicitudSeleccionada(s);
+    setBusquedaSolicitud(s.numero || s.codigo_solicitud || '');
+    setShowDropdownSolicitud(false);
+    setFormData(prev => ({ ...prev, id_etapa: '' }));
+    setEtapasSolicitud([]);
+    try {
+      const etapas = await etapasProyectoService.getEtapasBySolicitud(s.id_solicitud_servicio);
+      setEtapasSolicitud(etapas);
+    } catch (error) {
+      setEtapasSolicitud([]);
+    }
+  };
 
   const renderList = () => (
     <div className="space-y-6">
@@ -262,15 +350,35 @@ export function CreadoresPage() {
                         )}
                       </TableCell>
                       <TableCell onClick={(e) => e.stopPropagation()}>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => navigate(`/proyectos/liquidaciones?persona=${item.id_persona}`)}
-                          className="gap-1 text-teal-600 border-teal-200 hover:bg-teal-50 hover:text-teal-700"
-                        >
-                          <Eye className="h-3.5 w-3.5" />
-                          Ver
-                        </Button>
+                        {item.liquidada ? (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={async () => {
+                              try {
+                                const liqs = await personaLiquidacionService.getLiquidacionesByPersona(item.id_persona);
+                                setLiquidacionesModal({ isOpen: true, persona: item, liquidaciones: liqs });
+                              } catch (error) {
+                                console.error('Error loading liquidaciones:', error);
+                                toast.error('Error al cargar liquidaciones');
+                              }
+                            }}
+                            className="gap-1 text-blue-600 border-blue-200 hover:bg-blue-50 hover:text-blue-700"
+                          >
+                            <Eye className="h-3.5 w-3.5" />
+                            Ver
+                          </Button>
+                        ) : (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => navigate(`/proyectos/liquidaciones?solicitud=${currentEtapa?.id_solicitud_servicio}&etapa=${item.id_etapa}&persona=${item.id_persona}`)}
+                            className="gap-1 text-green-600 border-green-200 hover:bg-green-50 hover:text-green-700"
+                          >
+                            <DollarSign className="h-3.5 w-3.5" />
+                            Liquidar
+                          </Button>
+                        )}
                       </TableCell>
                       <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                         <div className="flex justify-end gap-2">
@@ -323,27 +431,92 @@ export function CreadoresPage() {
         </CardHeader>
         <CardContent className="p-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
+            <div ref={dropdownPersonaRef} className="relative">
               <Label className="text-sm font-medium">Persona *</Label>
-              <select className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white" value={formData.id_persona || ''} onChange={(e: any) => setFormData({ ...formData, id_persona: e.target.value })}>
-                <option value="">Seleccionar persona</option>
-                {personasNaturales.map(p => (
-                  <option key={p.id_cliente} value={p.id_cliente}>
-                    {`${p.nombre} ${p.primer_apellido} ${p.segundo_apellido || ''} - ${p.carnet_identidad}`.trim()}
-                  </option>
-                ))}
-              </select>
+              <div className="relative mt-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Buscar persona..."
+                  value={busquedaPersona}
+                  onChange={(e) => { setBusquedaPersona(e.target.value); setShowDropdownPersona(true); setPersonaSeleccionada(null); }}
+                  onFocus={() => setShowDropdownPersona(true)}
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white"
+                />
+              </div>
+              {showDropdownPersona && personasFiltradas.length > 0 && (
+                <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-auto">
+                  {personasFiltradas.map(p => (
+                    <button
+                      key={p.id_cliente}
+                      type="button"
+                      onClick={() => handleSeleccionarPersona(p)}
+                      className="w-full text-left px-4 py-2 hover:bg-teal-50 transition-colors border-b border-gray-100 last:border-b-0"
+                    >
+                      <span className="font-medium text-gray-900">{p.nombre}</span>
+                      <span className="text-gray-600"> {p.primer_apellido} {p.segundo_apellido || ''}</span>
+                      {p.carnet_identidad && <span className="text-gray-400 text-sm ml-2">- {p.carnet_identidad}</span>}
+                    </button>
+                  ))}
+                </div>
+              )}
+              {showDropdownPersona && personasFiltradas.length === 0 && busquedaPersona && (
+                <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg p-4 text-center text-gray-500">
+                  No se encontraron resultados
+                </div>
+              )}
             </div>
             {!etapaParam && (
-              <div>
-                <Label className="text-sm font-medium">Etapa *</Label>
-                <select className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white" value={formData.id_etapa || ''} onChange={(e: any) => setFormData({ ...formData, id_etapa: e.target.value })}>
-                  <option value="">Seleccionar etapa</option>
-                  {etapas.map(e => (
-                    <option key={e.id_etapa} value={e.id_etapa}>{e.nombre_etapa || `Etapa #${e.numero_etapa}`}</option>
-                  ))}
-                </select>
-              </div>
+              <>
+                <div ref={dropdownSolicitudRef} className="relative">
+                  <Label className="text-sm font-medium">Solicitud *</Label>
+                  <div className="relative mt-1">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <input
+                      type="text"
+                      placeholder="Buscar solicitud..."
+                      value={busquedaSolicitud}
+                      onChange={(e) => { setBusquedaSolicitud(e.target.value); setShowDropdownSolicitud(true); setSolicitudSeleccionada(null); }}
+                      onFocus={() => setShowDropdownSolicitud(true)}
+                      className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white"
+                    />
+                  </div>
+                  {showDropdownSolicitud && solicitudesFiltradas.length > 0 && (
+                    <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-auto">
+                      {solicitudesFiltradas.map(s => (
+                        <button
+                          key={s.id_solicitud_servicio}
+                          type="button"
+                          onClick={() => handleSeleccionarSolicitud(s)}
+                          className="w-full text-left px-4 py-2 hover:bg-teal-50 transition-colors border-b border-gray-100 last:border-b-0"
+                        >
+                          <span className="font-medium text-gray-900">{s.numero || s.codigo_solicitud}</span>
+                          {s.descripcion && <span className="text-gray-500 text-sm ml-2">- {s.descripcion}</span>}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {showDropdownSolicitud && solicitudesFiltradas.length === 0 && busquedaSolicitud && (
+                    <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg p-4 text-center text-gray-500">
+                      No se encontraron resultados
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <Label className="text-sm font-medium">Etapa *</Label>
+                  <select
+                    className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white"
+                    value={formData.id_etapa || ''}
+                    onChange={(e: any) => setFormData({ ...formData, id_etapa: e.target.value })}
+                    disabled={!solicitudSeleccionada}
+                  >
+                    <option value="">Seleccionar etapa</option>
+                    {etapasSolicitud.map(e => (
+                      <option key={e.id_etapa} value={e.id_etapa}>{e.nombre_etapa || `Etapa #${e.numero_etapa}`}</option>
+                    ))}
+                  </select>
+                </div>
+              </>
             )}
             <div>
               <Label className="text-sm font-medium">Cobro</Label>
@@ -440,6 +613,87 @@ export function CreadoresPage() {
                 Ver Liquidaciones
               </Button>
               <button onClick={() => setDetailModal({ isOpen: false, item: null })} className="px-6 py-3 text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors font-medium">Cerrar</button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {liquidacionesModal.isOpen && liquidacionesModal.persona && createPortal(
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-auto">
+            <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="p-3 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-lg">
+                    <FileText className="h-7 w-7" />
+                  </div>
+                  <div>
+                    <h3 className="text-2xl font-bold text-gray-900">Liquidaciones</h3>
+                    <p className="text-sm text-gray-500">Historial de liquidaciones del creador</p>
+                  </div>
+                </div>
+                <button onClick={() => setLiquidacionesModal({ isOpen: false, persona: null, liquidaciones: [] })} className="p-2 hover:bg-gray-200 rounded-full">
+                  <X className="h-6 w-6 text-gray-500" />
+                </button>
+              </div>
+            </div>
+            <div className="p-6 space-y-4">
+              {liquidacionesModal.liquidaciones.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">
+                  <DollarSign className="h-12 w-12 mx-auto mb-3 text-gray-300" />
+                  <p>No hay liquidaciones registradas</p>
+                </div>
+              ) : (
+                liquidacionesModal.liquidaciones.map((liq) => (
+                  <div key={liq.id_liquidacion} className="bg-gray-50 rounded-xl p-4 border border-gray-200">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      <div>
+                        <p className="text-xs text-gray-500 uppercase">Número</p>
+                        <p className="font-semibold text-gray-900">{liq.numero || `LIQ-${liq.id_liquidacion}`}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500 uppercase">Fecha</p>
+                        <p className="font-semibold text-gray-900">{liq.fecha_emision || 'N/A'}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500 uppercase">Devengado</p>
+                        <p className="font-semibold text-gray-900">{Number(liq.devengado || 0).toLocaleString()}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500 uppercase">Neto a Pagar</p>
+                        <p className="font-bold text-green-600">{Number(liq.neto_pagar || 0).toLocaleString()}</p>
+                      </div>
+                    </div>
+                    <div className="mt-3 pt-3 border-t border-gray-200 flex justify-between items-center">
+                      <div>
+                        {liq.confirmado ? (
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Confirmada</span>
+                        ) : (
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">Pendiente</span>
+                        )}
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setLiquidacionesModal({ isOpen: false, persona: null, liquidaciones: [] });
+                          navigate(`/proyectos/liquidaciones?id=${liq.id_liquidacion}`);
+                        }}
+                        className="text-blue-600 border-blue-200 hover:bg-blue-50"
+                      >
+                        <Eye className="h-3.5 w-3.5 mr-1" />
+                        Ver Detalle
+                      </Button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+            <div className="p-6 border-t border-gray-200 bg-gray-50 flex justify-end">
+              <button onClick={() => setLiquidacionesModal({ isOpen: false, persona: null, liquidaciones: [] })} className="px-6 py-3 text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors font-medium">
+                Cerrar
+              </button>
             </div>
           </div>
         </div>,

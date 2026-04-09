@@ -193,6 +193,7 @@ export interface FacturaServicio {
   descripcion?: string;
   cantidad: number;
   precio: number;
+  monto: number;
   observaciones?: string;
   id_usuario?: number;
 }
@@ -204,8 +205,22 @@ export interface FacturaServicioCreate {
   id_moneda?: number;
   fecha?: string;
   descripcion?: string;
+  cantidad: number;
+  precio: number;
+  observaciones?: string;
+  id_usuario?: number;
+}
+
+export interface FacturaServicioUpdate {
+  id_etapa?: number;
+  alcance?: string;
+  codigo_factura?: string;
+  id_moneda?: number;
+  fecha?: string;
+  descripcion?: string;
   cantidad?: number;
   precio?: number;
+  monto?: number;
   observaciones?: string;
   id_usuario?: number;
 }
@@ -253,16 +268,20 @@ export interface PersonaLiquidacion {
   id_moneda?: number;
   tipo_pago?: string;
   importe: number;
+  porcentaje_caguayo: number;
+  importe_caguayo: number;
   porciento_gestion: number;
   porciento_empresa: number;
   devengado: number;
   tributario: number;
+  tributario_monto: number;
   comision_bancaria: number;
   neto_pagar: number;
   id_tipo_concepto?: number;
   doc_pago_liquidacion?: string;
   gasto_empresa: number;
   observacion?: string;
+  confirmado: boolean;
 }
 
 export interface PersonaLiquidacionCreate {
@@ -274,10 +293,13 @@ export interface PersonaLiquidacionCreate {
   descripcion?: string;
   id_moneda?: number;
   importe?: number;
+  porcentaje_caguayo?: number;
+  importe_caguayo?: number;
   porciento_gestion?: number;
   porciento_empresa?: number;
   devengado?: number;
   tributario?: number;
+  tributario_monto?: number;
   comision_bancaria?: number;
   neto_pagar?: number;
   id_tipo_concepto?: number;
@@ -294,11 +316,15 @@ export interface PersonaLiquidacionUpdate {
   fecha_liquidacion?: string;
   descripcion?: string;
   id_moneda?: number;
+  tipo_pago?: string;
   importe?: number;
+  porcentaje_caguayo?: number;
+  importe_caguayo?: number;
   porciento_gestion?: number;
   porciento_empresa?: number;
   devengado?: number;
   tributario?: number;
+  tributario_monto?: number;
   comision_bancaria?: number;
   neto_pagar?: number;
   id_tipo_concepto?: number;
@@ -316,6 +342,7 @@ export type PersonaLiquidacionInput = {
   descripcion?: string;
   id_moneda?: number;
   tipo_pago?: string;
+  porcentaje_caguayo?: number;
   tributario?: number;
   gasto_empresa?: number;
   comision_bancaria?: number;
@@ -332,9 +359,36 @@ export type PersonaLiquidacionInputUpdate = {
   descripcion?: string;
   id_moneda?: number;
   tipo_pago?: string;
+  porcentaje_caguayo?: number;
   tributario?: number;
   gasto_empresa?: number;
   comision_bancaria?: number;
   doc_pago_liquidacion?: string;
   observacion?: string;
 };
+
+export interface PagoDetalle {
+  id_pago_factura_servicio: number;
+  monto: number;
+  fecha?: string;
+  doc_traza?: string;
+  doc_factura?: string;
+}
+
+export interface FacturaPagoValidacion {
+  id_factura_servicio?: number;
+  codigo_factura?: string;
+  monto: number;
+  monto_pagado: number;
+  saldo: number;
+  esta_pagada: boolean;
+  pagos: PagoDetalle[];
+}
+
+export interface PersonaLiquidacionValidacion {
+  puede_liquidar: boolean;
+  id_etapa: number;
+  id_persona: number;
+  factura?: FacturaPagoValidacion;
+  mensaje?: string;
+}

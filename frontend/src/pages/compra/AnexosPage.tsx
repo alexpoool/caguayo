@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { Button, Input, Label, Card, CardContent, CardHeader, CardTitle, Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../../components/ui';
 import { anexosService, conveniosService, productosService, monedaService, dependenciasService, clientesService } from '../../services/api';
 import type { Productos } from '../../types';
-import { Plus, Save, Trash2, Edit, X, Boxes, ArrowLeft, Package, DollarSign, Tag, Eye, User, Search } from 'lucide-react';
+import { Plus, Save, Trash2, Edit, X, Boxes, ArrowLeft, Package, DollarSign, Tag, Eye, User, Search, AlertTriangle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useSearchParams } from 'react-router-dom';
 
@@ -41,7 +41,7 @@ export function CompraAnexosPage() {
         monedaService.getMonedas(0, 100),
         dependenciasService.getDependencias(undefined, 0, 1000)
       ]);
-      setConvenios(conv.filter((c: any) => new Date(c.vigencia) >= new Date()));
+      setConvenios(conv);
       setClientes(cli);
       setProductos(prod);
       setMonedas(mon);
@@ -51,6 +51,15 @@ export function CompraAnexosPage() {
 
   useEffect(() => { if (view === 'list') loadAnexos(); }, [view]);
 
+  const conveniosVigentes = useMemo(() => 
+    convenios.filter(c => new Date(c.vigencia) >= new Date()),
+    [convenios]
+  );
+
+  const convenioActivoId = initialConvenioId ? Number(initialConvenioId) : (formData.id_convenio ? Number(formData.id_convenio) : null);
+  const convenioSeleccionado = convenios.find(c => c.id_convenio === convenioActivoId);
+  const convenioVencido = convenioSeleccionado ? new Date(convenioSeleccionado.vigencia) < new Date() : false;
+
   const loadAnexos = async () => {
     try {
       const data = await anexosService.getAnexos();
@@ -59,9 +68,13 @@ export function CompraAnexosPage() {
   };
 
   const handleSave = async () => {
+    if (!selectedConvenio || isNaN(Number(selectedConvenio))) {
+      toast.error('Debe seleccionar un convenio');
+      return;
+    }
     try {
       const data = {
-        id_convenio: selectedConvenio!,
+        id_convenio: Number(selectedConvenio),
         nombre_anexo: formData.nombre_anexo,
         fecha: formData.fecha,
         id_dependencia: formData.id_dependencia ? Number(formData.id_dependencia) : undefined,
@@ -108,6 +121,7 @@ export function CompraAnexosPage() {
       setEditingId(item.id_anexo);
       setSelectedConvenio(item.id_convenio);
       setFormData({
+        id_convenio: item.id_convenio,
         nombre_anexo: item.nombre_anexo,
         fecha: item.fecha,
         id_dependencia: item.id_dependencia,
@@ -115,7 +129,7 @@ export function CompraAnexosPage() {
         comision: item.comision,
         codigo_anexo: item.codigo_anexo,
       });
-      setSelectedProducts(item.items?.map((p: any) => ({
+      setSelectedProducts(item.items_anexo?.map((p: any) => ({
         id_producto: p.id_producto,
         cantidad: p.cantidad,
         precio_venta: p.precio_venta || p.precio_compra || 0
@@ -180,6 +194,9 @@ export function CompraAnexosPage() {
 
   const filteredAnexos = useMemo(() => {
     let result = anexos;
+    if (initialConvenioId) {
+      result = result.filter(a => a.id_convenio === Number(initialConvenioId));
+    }
     if (contratoParam) {
       result = result.filter(a => a.convenios?.id_cliente === Number(contratoParam));
     }
@@ -191,7 +208,7 @@ export function CompraAnexosPage() {
       );
     }
     return result;
-  }, [anexos, searchTerm, contratoParam]);
+  }, [anexos, searchTerm, contratoParam, initialConvenioId]);
 
   const renderList = () => (
     <div className="space-y-6">
@@ -283,7 +300,7 @@ export function CompraAnexosPage() {
                         </span>
                       </TableCell>
                       <TableCell className="text-gray-500">{item.comision ? `${item.comision}%` : '-'}</TableCell>
-                      <TableCell className="text-gray-500">{item.items?.length || 0}</TableCell>
+                      <TableCell className="text-gray-500">{item.items_anexo?.length || 0}</TableCell>
                       <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                         <div className="flex justify-end gap-2">
                           <Button variant="ghost" size="icon" onClick={() => openForm(item)} className="text-blue-600 hover:text-blue-800 hover:bg-blue-50 h-8 w-8" title="Editar">
@@ -317,6 +334,29 @@ export function CompraAnexosPage() {
       </CardHeader>
       <CardContent>
         <div className="grid gap-4 md:grid-cols-2">
+          <div className="md:col-span-2">
+            <Label>Convenio</Label>
+            {initialConvenioId ? (
+              <div className={`mt-1 px-3 py-2 border rounded-lg flex items-center justify-between ${convenioVencido ? 'bg-red-50 border-red-300 text-red-700' : 'bg-gray-100 border-gray-300 text-gray-700'}`}>
+                <span>{convenios.find(c => c.id_convenio === Number(initialConvenioId))?.nombre_convenio || `Convenio #${initialConvenioId}`}</span>
+                {convenioVencido && (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-red-200 text-red-800 rounded-full text-xs font-medium">
+                    <AlertTriangle className="h-3 w-3" />
+                    Vencido
+                  </span>
+                )}
+              </div>
+            ) : (
+              <select className="w-full p-2 border rounded" value={formData.id_convenio || ''} onChange={(e: any) => setFormData({...formData, id_convenio: e.target.value})}>
+                <option value="">Seleccionar</option>
+                {conveniosVigentes.map(c => <option key={c.id_convenio} value={c.id_convenio}>{c.nombre_convenio}</option>)}
+              </select>
+            )}
+            {convenioVencido && (
+              <p className="text-red-600 text-sm mt-1">No se pueden crear anexos para convenios vencidos</p>
+            )}
+          </div>
+          
           <div className="md:col-span-2"><Label>Nombre del Anexo *</Label><Input value={formData.nombre_anexo || ''} onChange={(e: any) => setFormData({...formData, nombre_anexo: e.target.value})} /></div>
           
           <div><Label>Fecha *</Label><Input type="date" value={formData.fecha || ''} onChange={(e: any) => setFormData({...formData, fecha: e.target.value})} /></div>
@@ -422,7 +462,7 @@ export function CompraAnexosPage() {
         </div>
         
         <div className="flex gap-2 mt-6">
-          <Button onClick={handleSave}><Save className="w-4 h-4 mr-2" />Guardar</Button>
+          <Button onClick={handleSave} disabled={convenioVencido}><Save className="w-4 h-4 mr-2" />Guardar</Button>
           <Button variant="outline" onClick={() => { setView('list'); resetForm(); }}>Cancelar</Button>
         </div>
       </CardContent>
@@ -466,23 +506,51 @@ export function CompraAnexosPage() {
                 </div>
                 <div className="bg-gray-50 p-4 rounded-xl">
                   <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Productos</p>
-                  <p className="font-bold text-gray-900 text-xl">{detailModal.item.items?.length || 0}</p>
+                  <p className="font-bold text-gray-900 text-xl">{detailModal.item.items_anexo?.length || 0}</p>
                 </div>
                 <div className="bg-gray-50 p-4 rounded-xl">
                   <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Dependencia</p>
                   <p className="font-bold text-gray-900">{getDependenciaNombre(detailModal.item.id_dependencia)}</p>
                 </div>
               </div>
-              {detailModal.item.items && detailModal.item.items.length > 0 && (
+              {detailModal.item.items_anexo && detailModal.item.items_anexo.length > 0 && (
                 <div className="bg-gray-50 p-4 rounded-xl">
-                  <p className="text-xs text-gray-500 uppercase tracking-wider mb-2">Detalle de Productos</p>
-                  <div className="space-y-1">
-                    {detailModal.item.items.map((p: any, idx: number) => (
-                      <div key={idx} className="flex justify-between text-sm">
-                        <span className="text-gray-700">{getProductoNombre(p.id_producto)}</span>
-                        <span className="text-gray-500">{p.cantidad} x ${Number(p.precio_venta || 0).toFixed(2)}</span>
-                      </div>
-                    ))}
+                  <p className="text-xs text-gray-500 uppercase tracking-wider mb-3">Detalle de Productos</p>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-gray-200">
+                          <th className="text-left py-2 text-xs text-gray-500 font-medium">Código</th>
+                          <th className="text-left py-2 text-xs text-gray-500 font-medium">Producto</th>
+                          <th className="text-right py-2 text-xs text-gray-500 font-medium">Cant.</th>
+                          <th className="text-right py-2 text-xs text-gray-500 font-medium">P. Unit.</th>
+                          <th className="text-right py-2 text-xs text-gray-500 font-medium">Total</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {detailModal.item.items_anexo.map((p: any, idx: number) => {
+                          const prod = productos.find(pr => pr.id_producto === p.id_producto);
+                          const total = p.cantidad * (p.precio_venta || 0);
+                          return (
+                            <tr key={idx} className="border-b border-gray-100 last:border-0">
+                              <td className="py-2 text-gray-500 font-mono text-xs">{prod?.codigo || '-'}</td>
+                              <td className="py-2 text-gray-700">{prod?.nombre || `Producto ${p.id_producto}`}</td>
+                              <td className="py-2 text-gray-500 text-right">{p.cantidad}</td>
+                              <td className="py-2 text-gray-500 text-right">${Number(p.precio_venta || 0).toFixed(2)}</td>
+                              <td className="py-2 text-gray-900 font-medium text-right">${total.toFixed(2)}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                      <tfoot>
+                        <tr>
+                          <td colSpan={4} className="py-2 text-right text-sm font-bold text-gray-900">Total:</td>
+                          <td className="py-2 text-right text-sm font-bold text-green-600">
+                            ${detailModal.item.items_anexo.reduce((t: number, p: any) => t + (p.cantidad * (p.precio_venta || 0)), 0).toFixed(2)}
+                          </td>
+                        </tr>
+                      </tfoot>
+                    </table>
                   </div>
                 </div>
               )}

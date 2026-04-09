@@ -24,6 +24,11 @@ class ProductosEnLiquidacionCreate(ProductosEnLiquidacionBase):
     pass
 
 
+class AnexoSimpleRead(SQLModel):
+    id_anexo: int
+    nombre_anexo: str
+
+
 class ProductosEnLiquidacionRead(ProductosEnLiquidacionBase):
     id_producto_en_liquidacion: int
     codigo: str
@@ -33,6 +38,7 @@ class ProductosEnLiquidacionRead(ProductosEnLiquidacionBase):
     moneda: Optional["MonedaRead"] = None
     cantidad_original: Optional[int] = None
     cantidad_liquidada: Optional[int] = None
+    anexo: Optional["AnexoSimpleRead"] = None
 
 
 class ProductosEnLiquidacionUpdate(SQLModel):
@@ -47,4 +53,5 @@ class ProductosEnLiquidacionUpdate(SQLModel):
 from .productos_dto import ProductoSimpleRead
 from .monedas_dto import MonedaRead
 
+AnexoSimpleRead.model_rebuild()
 ProductosEnLiquidacionRead.model_rebuild()

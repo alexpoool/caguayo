@@ -153,6 +153,7 @@ class AnexoRead(AnexoBase):
     id_anexo: int
     numero_anexo: Optional[str] = None
     convenios: Optional[ConvenioRead] = None
+    items_anexo: Optional[List[ItemAnexoRead]] = None
 
 
 class AnexoUpdate(SQLModel):

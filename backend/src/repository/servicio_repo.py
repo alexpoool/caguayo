@@ -184,6 +184,30 @@ class FacturaServicioRepository(
         results = await db.exec(statement)
         return results.one_or_none()
 
+    async def get_with_pagos(
+        self, db: AsyncSession, id_factura: int
+    ) -> Optional[FacturaServicio]:
+        statement = (
+            select(FacturaServicio)
+            .options(selectinload(FacturaServicio.pagos))
+            .where(FacturaServicio.id_factura_servicio == id_factura)
+        )
+        results = await db.exec(statement)
+        return results.one_or_none()
+
+    async def get_by_etapa_with_pagos(
+        self, db: AsyncSession, id_etapa: int
+    ) -> Optional[FacturaServicio]:
+        statement = (
+            select(FacturaServicio)
+            .options(selectinload(FacturaServicio.pagos))
+            .where(FacturaServicio.id_etapa == id_etapa)
+            .order_by(FacturaServicio.id_factura_servicio.desc())
+            .limit(1)
+        )
+        results = await db.exec(statement)
+        return results.one_or_none()
+
 
 factura_servicio_repo = FacturaServicioRepository(FacturaServicio)
 
@@ -250,6 +274,31 @@ class PersonaLiquidacionRepository(
         )
         results = await db.exec(statement)
         return results.one_or_none()
+
+    async def get_by_etapa_persona(
+        self, db: AsyncSession, id_etapa: int, id_persona: int
+    ) -> List[PersonaLiquidacion]:
+        statement = (
+            select(PersonaLiquidacion)
+            .where(
+                PersonaLiquidacion.id_etapa == id_etapa,
+                PersonaLiquidacion.id_persona == id_persona,
+            )
+            .order_by(PersonaLiquidacion.id_liquidacion.desc())
+        )
+        results = await db.exec(statement)
+        return results.all()
+
+    async def get_by_persona(
+        self, db: AsyncSession, id_persona: int
+    ) -> List[PersonaLiquidacion]:
+        statement = (
+            select(PersonaLiquidacion)
+            .where(PersonaLiquidacion.id_persona == id_persona)
+            .order_by(PersonaLiquidacion.id_liquidacion.desc())
+        )
+        results = await db.exec(statement)
+        return results.all()
 
 
 persona_liquidacion_repo = PersonaLiquidacionRepository(PersonaLiquidacion)

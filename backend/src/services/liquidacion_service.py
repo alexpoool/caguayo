@@ -41,6 +41,43 @@ class LiquidacionService:
         if not productos_db:
             raise ValueError("No se encontraron productos para liquidar")
 
+        # Validar que las cantidades a liquidar no excedan las cantidades originales
+        # para productos de CONSIGNACION
+        for prod in productos_db:
+            if prod.id_anexo:
+                # Obtener cantidad original del item_anexo
+                from src.models.item_anexo import ItemAnexo
+                from src.models.anexo import Anexo
+                from src.models.convenio import Convenio
+                from src.models.tipo_convenio import TipoConvenio
+                from sqlalchemy import and_
+
+                item_stmt = (
+                    select(ItemAnexo.cantidad)
+                    .join(Anexo, ItemAnexo.id_anexo == Anexo.id_anexo)
+                    .join(Convenio, Anexo.id_convenio == Convenio.id_convenio)
+                    .join(
+                        TipoConvenio,
+                        TipoConvenio.id_tipo_convenio == Convenio.id_tipo_convenio,
+                    )
+                    .where(
+                        and_(
+                            ItemAnexo.id_producto == prod.id_producto,
+                            ItemAnexo.id_anexo == prod.id_anexo,
+                            TipoConvenio.nombre
+                            != "COMPRA VENTA",  # Solo validar para CONSIGNACION
+                        )
+                    )
+                )
+                result_item = await db.exec(item_stmt)
+                cantidad_original = result_item.scalar_one_or_none()
+
+                if cantidad_original is not None and prod.cantidad > cantidad_original:
+                    raise ValueError(
+                        f"La cantidad a liquidar ({prod.cantidad}) no puede exceder "
+                        f"la cantidad original ({cantidad_original}) del producto en el anexo"
+                    )
+
         importe = Decimal("0.00")
         for prod in productos_db:
             producto_stmt = select(Productos).where(
@@ -56,13 +93,13 @@ class LiquidacionService:
         tributario = data.tributario or Decimal("0.00")
         comision_bancaria = data.comision_bancaria or Decimal("0.00")
         gasto_empresa = data.gasto_empresa or Decimal("0.00")
+        porcentaje_caguayo = data.porcentaje_caguayo or Decimal("10.00")
 
-        devengado_calculado = (
-            importe
-            - (importe * gasto_empresa / 100)
-            - (importe * comision_bancaria / 100)
-        )
-        neto_pagar = devengado_calculado - (devengado_calculado * tributario / 100)
+        importe_caguayo = importe * (porcentaje_caguayo / 100)
+        devengado_calculado = importe - importe_caguayo
+        tributario_monto = devengado_calculado * (tributario / 100)
+        subtotal = devengado_calculado - tributario_monto
+        neto_pagar = subtotal - gasto_empresa - comision_bancaria
 
         codigo = await LiquidacionService.generate_codigo_liquidacion(db)
 
@@ -105,6 +142,20 @@ class LiquidacionService:
 
         productos_en_liquidacion_list = []
         for p in productos_response:
+            # Obtener información del anexo
+            anexo_info = None
+            if p.id_anexo:
+                from src.models.anexo import Anexo
+
+                anexo_stmt = select(Anexo).where(Anexo.id_anexo == p.id_anexo)
+                anexo_result = await db.exec(anexo_stmt)
+                anexo = anexo_result.first()
+                if anexo:
+                    anexo_info = {
+                        "id_anexo": anexo.id_anexo,
+                        "nombre_anexo": anexo.nombre_anexo,
+                    }
+
             productos_en_liquidacion_list.append(
                 ProductosEnLiquidacionRead(
                     id_producto_en_liquidacion=p.id_producto_en_liquidacion,
@@ -120,6 +171,7 @@ class LiquidacionService:
                     liquidada=p.liquidada,
                     fecha=p.fecha,
                     fecha_liquidacion=p.fecha_liquidacion,
+                    anexo=anexo_info,
                 )
             )
 
@@ -152,8 +204,6 @@ class LiquidacionService:
         if not db_liquidacion:
             return None
 
-        productos = await productos_en_liquidacion_repo.get_by_ids(db, [])
-
         return LiquidacionRead.model_validate(db_liquidacion)
 
     @staticmethod
@@ -169,7 +219,7 @@ class LiquidacionService:
     async def get_liquidaciones_pendientes(
         db: AsyncSession, skip: int = 0, limit: int = 100
     ) -> List[LiquidacionRead]:
-        db_liquidaciones = await liquidacion_repo.get_pendientes(
+        db_liquidaciones = await liquidacion_repo.get_pendientes_with_relations(
             db, skip=skip, limit=limit
         )
         return [LiquidacionRead.model_validate(l) for l in db_liquidaciones]
@@ -178,7 +228,7 @@ class LiquidacionService:
     async def get_liquidaciones_liquidadas(
         db: AsyncSession, skip: int = 0, limit: int = 100
     ) -> List[LiquidacionRead]:
-        db_liquidaciones = await liquidacion_repo.get_liquidadas(
+        db_liquidaciones = await liquidacion_repo.get_liquidadas_with_relations(
             db, skip=skip, limit=limit
         )
         return [LiquidacionRead.model_validate(l) for l in db_liquidaciones]
@@ -187,7 +237,7 @@ class LiquidacionService:
     async def get_liquidaciones_by_cliente(
         db: AsyncSession, cliente_id: int, skip: int = 0, limit: int = 100
     ) -> List[LiquidacionRead]:
-        db_liquidaciones = await liquidacion_repo.get_by_cliente(
+        db_liquidaciones = await liquidacion_repo.get_by_cliente_with_relations(
             db, cliente_id, skip=skip, limit=limit
         )
         return [LiquidacionRead.model_validate(l) for l in db_liquidaciones]

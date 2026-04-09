@@ -67,10 +67,11 @@ export function useClientesLogic() {
   });
   const [searchTerm, setSearchTerm] = useState("");
 
-  // Queries
+  // Queries - el backend filtra por tipo_relacion según la vista
+  const tipoRelacionFilter = isProveedorView ? "PROVEEDOR,AMBAS" : "CLIENTE,AMBAS";
   const { data: clientes = [] } = useQuery({
-    queryKey: ["clientes"],
-    queryFn: () => clientesService.getClientes(),
+    queryKey: ["clientes", isProveedorView],
+    queryFn: () => clientesService.getClientes(0, 10000, tipoRelacionFilter),
   });
 
   const { data: tiposEntidad = [] } = useQuery({

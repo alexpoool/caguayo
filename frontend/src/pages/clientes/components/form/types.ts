@@ -8,4 +8,6 @@ export interface NuevaCuenta {
   sucursal: number;
   id_moneda?: number;
   numero_cuenta: string;
+  tipo_cuenta?: string;
+  principal?: boolean;
 }

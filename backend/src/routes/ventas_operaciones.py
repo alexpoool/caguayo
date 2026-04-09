@@ -45,12 +45,13 @@ async def crear_contrato(
 @contratos_router.get("", response_model=List[ContratoReadWithDetails])
 async def obtener_contratos(
     skip: int = 0,
-    limit: int = 100,
+    limit: int = 10000,
+    id_cliente: int = None,
     db: AsyncSession = Depends(get_session),
 ):
-    """Obtener todos los contratos."""
+    """Obtener todos los contratos, opcionalmente filtrados por id_cliente."""
     try:
-        return await ContratoService.get_all(db, skip, limit)
+        return await ContratoService.get_all(db, skip, limit, id_cliente)
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"Error al obtener contratos: {str(e)}"

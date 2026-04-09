@@ -15,11 +15,16 @@ router = APIRouter(prefix="/clientes", tags=["clientes"], redirect_slashes=False
 @router.get("", response_model=List[ClienteRead])
 async def listar_clientes(
     skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=1000),
+    limit: int = Query(10000, ge=1, le=100000),
+    tipo_relacion: Optional[str] = Query(
+        None, description="Filtrar por tipo_relacion (CLIENTE, PROVEEDOR, AMBAS)"
+    ),
     db: AsyncSession = Depends(get_session),
 ):
-    """Listar todos los clientes con paginación."""
-    return await ClienteService.get_clientes(db, skip=skip, limit=limit)
+    """Listar todos los clientes con paginación y opcionalmente filtrar por tipo_relacion."""
+    return await ClienteService.get_clientes(
+        db, skip=skip, limit=limit, tipo_relacion=tipo_relacion
+    )
 
 
 @router.post("", response_model=ClienteRead, status_code=201)
@@ -51,18 +56,21 @@ async def buscar_clientes(
 async def listar_clientes_naturales(
     db: AsyncSession = Depends(get_session),
 ):
-    """Listar clientes persona natural con datos de la tabla clientes_persona_natural."""
+    """Listar clientes persona natural con tipo_relacion CLIENTE o AMBAS."""
     stmt = (
         select(
-            ClienteNatural.id_cliente,
-            ClienteNatural.nombre,
+            Cliente.id_cliente,
+            Cliente.nombre,
             ClienteNatural.primer_apellido,
             ClienteNatural.segundo_apellido,
             ClienteNatural.carnet_identidad,
         )
-        .join(Cliente, ClienteNatural.id_cliente == Cliente.id_cliente)
-        .where(Cliente.tipo_persona == "NATURAL")
-        .order_by(ClienteNatural.nombre, ClienteNatural.primer_apellido)
+        .outerjoin(ClienteNatural, ClienteNatural.id_cliente == Cliente.id_cliente)
+        .where(
+            Cliente.tipo_persona == "NATURAL",
+            Cliente.tipo_relacion.in_(["CLIENTE", "AMBAS"]),
+        )
+        .order_by(Cliente.nombre, ClienteNatural.primer_apellido)
     )
     result = await db.exec(stmt)
     rows = result.all()
@@ -70,9 +78,9 @@ async def listar_clientes_naturales(
         {
             "id_cliente": row.id_cliente,
             "nombre": row.nombre,
-            "primer_apellido": row.primer_apellido,
-            "segundo_apellido": row.segundo_apellido,
-            "carnet_identidad": row.carnet_identidad,
+            "primer_apellido": row.primer_apellido or "",
+            "segundo_apellido": row.segundo_apellido or "",
+            "carnet_identidad": row.carnet_identidad or "",
         }
         for row in rows
     ]

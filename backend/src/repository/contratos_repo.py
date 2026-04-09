@@ -48,13 +48,19 @@ from src.dto.convenios_dto import ItemAnexoCreate
 
 class ContratoRepository(CRUDBase[Contrato, ContratoCreate, ContratoUpdate]):
     async def get_all_with_details(
-        self, db: AsyncSession, skip: int = 0, limit: int = 100
+        self,
+        db: AsyncSession,
+        skip: int = 0,
+        limit: int = 10000,
+        id_cliente: int = None,
     ) -> List[Contrato]:
+        statement = select(Contrato)
+
+        if id_cliente is not None:
+            statement = statement.where(Contrato.id_cliente == id_cliente)
+
         statement = (
-            select(Contrato)
-            .offset(skip)
-            .limit(limit)
-            .order_by(Contrato.id_contrato.desc())
+            statement.offset(skip).limit(limit).order_by(Contrato.id_contrato.desc())
         )
         results = await db.exec(statement)
         return results.all()

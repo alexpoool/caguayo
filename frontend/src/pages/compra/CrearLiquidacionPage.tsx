@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Button, Input, Label, Card, CardContent, CardHeader, CardTitle } from '../../components/ui';
 import { clientesService, anexosService, monedaService, liquidacionService } from '../../services/api';
 import type { Cliente, Anexo, Moneda, LiquidacionCreate } from '../../services/api';
@@ -8,13 +8,15 @@ import toast from 'react-hot-toast';
 
 export function CrearLiquidacionPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const initialProveedorId = searchParams.get('proveedor');
   
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [anexos, setAnexos] = useState<Anexo[]>([]);
   const [monedas, setMonedas] = useState<Moneda[]>([]);
   const [itemsAnexo, setItemsAnexo] = useState<any[]>([]);
   
-  const [filtroCliente, setFiltroCliente] = useState<number | null>(null);
+  const [filtroCliente, setFiltroCliente] = useState<number | null>(initialProveedorId ? Number(initialProveedorId) : null);
   const [filtroAnexo, setFiltroAnexo] = useState<number | null>(null);
   const [selectedProductos, setSelectedProductos] = useState<number[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -26,9 +28,10 @@ export function CrearLiquidacionPage() {
     id_anexo: undefined,
     id_moneda: 1,
     devengado: 0,
-    tributario: 0,
+    tributario: 5,
     comision_bancaria: 0,
     gasto_empresa: 0,
+    porcentaje_caguayo: 10,
     tipo_pago: 'TRANSFERENCIA',
     observaciones: '',
     producto_ids: []
@@ -95,6 +98,27 @@ export function CrearLiquidacionPage() {
     }
   };
 
+  // Agrupar productos por anexo
+  const itemsPorAnexo = useMemo(() => {
+    const grupos: Record<number, any> = {};
+    
+    itemsAnexo.forEach(item => {
+      const key = item.id_anexo || 0;
+      if (!grupos[key]) {
+        grupos[key] = {
+          id_anexo: item.id_anexo,
+          nombre_anexo: item.nombre_anexo,
+          es_compra_venta: item.es_compra_venta,
+          origen: item.origen,
+          productos: []
+        };
+      }
+      grupos[key].productos.push(item);
+    });
+    
+    return Object.values(grupos);
+  }, [itemsAnexo]);
+
   const handleClienteChange = (clienteId: number) => {
     setFiltroCliente(clienteId);
     setFiltroAnexo(null);
@@ -132,31 +156,84 @@ export function CrearLiquidacionPage() {
     }
   };
 
-  const handleProductoSelect = (productoId: number) => {
+  const handleProductoSelect = (pelIds: number[]) => {
     setSelectedProductos(prev => {
-      if (prev.includes(productoId)) {
-        return prev.filter(id => id !== productoId);
-      }
-      return [...prev, productoId];
+      // Agregar todos los IDs de pel_ids que no estén ya seleccionados
+      const nuevosIds = pelIds.filter(id => !prev.includes(id));
+      return [...prev, ...nuevosIds];
+    });
+    setFormData(prev => {
+      const nuevosIds = pelIds.filter(id => !prev.producto_ids.includes(id));
+      return { ...prev, producto_ids: [...prev.producto_ids, ...nuevosIds] };
+    });
+  };
+
+  const handleProductoDeselect = (pelIds: number[]) => {
+    setSelectedProductos(prev => {
+      return prev.filter(id => !pelIds.includes(id));
     });
     setFormData(prev => ({
       ...prev,
-      producto_ids: prev.producto_ids.includes(productoId)
-        ? prev.producto_ids.filter(id => id !== productoId)
-        : [...prev.producto_ids, productoId]
+      producto_ids: prev.producto_ids.filter(id => !pelIds.includes(id))
     }));
   };
 
   const handleSelectAll = () => {
-    const aLiquidar = itemsAnexo.filter((item: any) => item.estado === 'A LIQUIDAR' && item.id_producto_en_liquidacion);
-    const allIds = aLiquidar.map((item: any) => item.id_producto_en_liquidacion);
-    setSelectedProductos(allIds);
-    setFormData(prev => ({ ...prev, producto_ids: allIds }));
+    // Recolectar todos los pel_ids de todos los productos
+    const allPelIds: number[] = [];
+    itemsAnexo.forEach((item: any) => {
+      if (item.estado === 'A LIQUIDAR' && item.pel_ids && item.pel_ids.length > 0) {
+        allPelIds.push(...item.pel_ids);
+      } else if (item.estado === 'A LIQUIDAR' && item.id_producto_en_liquidacion) {
+        allPelIds.push(item.id_producto_en_liquidacion);
+      }
+    });
+    // Eliminar duplicados
+    const uniqueIds = [...new Set(allPelIds)];
+    setSelectedProductos(uniqueIds);
+    setFormData(prev => ({ ...prev, producto_ids: uniqueIds }));
   };
 
   const handleDeselectAll = () => {
     setSelectedProductos([]);
     setFormData(prev => ({ ...prev, producto_ids: [] }));
+  };
+
+  const handleSelectAllAnexo = (idAnexo: number) => {
+    const productosDelAnexo = itemsAnexo.filter(
+      (item: any) => item.id_anexo === idAnexo && item.estado === 'A LIQUIDAR'
+    );
+    
+    // Recolectar todos los pel_ids de los productos de este anexo
+    const pelIdsDelAnexo: number[] = [];
+    productosDelAnexo.forEach((item: any) => {
+      if (item.pel_ids && item.pel_ids.length > 0) {
+        pelIdsDelAnexo.push(...item.pel_ids);
+      } else if (item.id_producto_en_liquidacion) {
+        pelIdsDelAnexo.push(item.id_producto_en_liquidacion);
+      }
+    });
+    
+    // Agregar estos IDs manteniendo los existentes de otros anexos
+    setSelectedProductos(prev => {
+      const otrosIds = prev.filter(id => {
+        const item = itemsAnexo.find((i: any) => 
+          (i.pel_ids && i.pel_ids.includes(id)) || i.id_producto_en_liquidacion === id
+        );
+        return !item || item.id_anexo !== idAnexo;
+      });
+      return [...otrosIds, ...pelIdsDelAnexo];
+    });
+    
+    setFormData(prev => {
+      const otrosIds = prev.producto_ids.filter(id => {
+        const item = itemsAnexo.find((i: any) => 
+          (i.pel_ids && i.pel_ids.includes(id)) || i.id_producto_en_liquidacion === id
+        );
+        return !item || item.id_anexo !== idAnexo;
+      });
+      return { ...prev, producto_ids: [...otrosIds, ...pelIdsDelAnexo] };
+    });
   };
 
   const calculateImporte = () => {
@@ -167,22 +244,37 @@ export function CrearLiquidacionPage() {
       }, 0);
   };
 
-  const calculateNetoPagar = () => {
+  const calculateImporteCaguayo = () => {
     const importe = calculateImporte();
-    const gasto_empresa = Number(formData.gasto_empresa) || 0;
-    const comision = Number(formData.comision_bancaria) || 0;
-    const tributario = Number(formData.tributario) || 0;
-    
-    const devengado = importe - (importe * gasto_empresa / 100) - (importe * comision / 100);
-    const neto = devengado - (devengado * tributario / 100);
-    return neto;
+    const porcentaje = Number(formData.porcentaje_caguayo) || 10;
+    return importe * (porcentaje / 100);
   };
 
   const calculateDevengado = () => {
     const importe = calculateImporte();
+    const importe_caguayo = calculateImporteCaguayo();
+    return importe - importe_caguayo;
+  };
+
+  const calculateTributarioMonto = () => {
+    const devengado = calculateDevengado();
+    const tributario = Number(formData.tributario) || 0;
+    return devengado * (tributario / 100);
+  };
+
+  const calculateSubtotal = () => {
+    const devengado = calculateDevengado();
+    const tributario_monto = calculateTributarioMonto();
+    return devengado - tributario_monto;
+  };
+
+  const calculateNetoPagar = () => {
+    const devengado = calculateDevengado();
+    const tributario_monto = calculateTributarioMonto();
+    const subtotal = devengado - tributario_monto;
     const gasto_empresa = Number(formData.gasto_empresa) || 0;
     const comision = Number(formData.comision_bancaria) || 0;
-    return importe - (importe * gasto_empresa / 100) - (importe * comision / 100);
+    return subtotal - gasto_empresa - comision;
   };
 
   const handleSave = async () => {
@@ -256,18 +348,24 @@ export function CrearLiquidacionPage() {
           <div className="grid gap-6 md:grid-cols-2">
             <div>
               <Label>Proveedor *</Label>
-              <select 
-                className="w-full p-2 border rounded"
-                value={filtroCliente || ''}
-                onChange={(e: any) => handleClienteChange(Number(e.target.value))}
-              >
-                <option value="">Seleccionar proveedor</option>
-                {clientes.map((cliente: Cliente) => (
-                  <option key={cliente.id_cliente} value={cliente.id_cliente}>
-                    {cliente.nombre}
-                  </option>
-                ))}
-              </select>
+              {filtroCliente ? (
+                <div className="w-full p-2 border rounded bg-gray-50 text-gray-700 font-medium">
+                  {clientes.find((c: Cliente) => c.id_cliente === filtroCliente)?.nombre || 'Proveedor'}
+                </div>
+              ) : (
+                <select 
+                  className="w-full p-2 border rounded"
+                  value={filtroCliente || ''}
+                  onChange={(e: any) => handleClienteChange(Number(e.target.value))}
+                >
+                  <option value="">Seleccionar proveedor</option>
+                  {clientes.map((cliente: Cliente) => (
+                    <option key={cliente.id_cliente} value={cliente.id_cliente}>
+                      {cliente.nombre}
+                    </option>
+                  ))}
+                </select>
+              )}
             </div>
             
             <div>
@@ -320,7 +418,7 @@ export function CrearLiquidacionPage() {
             {filtroCliente && (
             <div className="mt-6">
               <div className="flex justify-between items-center mb-3">
-                <Label className="text-base">Productos Pendientes</Label>
+                <Label className="text-base">Productos por Anexo</Label>
                 <div className="flex gap-2">
                   <button
                     type="button"
@@ -345,69 +443,121 @@ export function CrearLiquidacionPage() {
               ) : itemsAnexo.length === 0 ? (
                 <p className="text-gray-500 py-4">No hay productos en los anexos de este proveedor</p>
               ) : (
-                <div className="border rounded-lg max-h-80 overflow-y-auto">
-                  <table className="w-full text-sm">
-                    <thead className="bg-gray-50 sticky top-0">
-                      <tr>
-                        <th className="px-3 py-2 text-left w-10"></th>
-                        <th className="px-3 py-2 text-left">Anexo</th>
-                        <th className="px-3 py-2 text-left">Producto</th>
-                        <th className="px-3 py-2 text-right">A Liquidar</th>
-                        <th className="px-3 py-2 text-right">Por Liquidar</th>
-                        <th className="px-3 py-2 text-right">Precio Venta</th>
-                        <th className="px-3 py-2 text-right">Total</th>
-                        <th className="px-3 py-2 text-center">Estado</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y">
-                      {itemsAnexo.map((item: any) => {
-                        const isALiquidar = item.estado === 'A LIQUIDAR';
-                        const isLiquidado = item.estado === 'LIQUIDADO';
-                        const isSelected = isALiquidar && item.id_producto_en_liquidacion && selectedProductos.includes(item.id_producto_en_liquidacion);
-                        return (
-                           <tr key={`${item.id_item_anexo}-${item.id_producto_en_liquidacion || 'none'}`} className={`hover:bg-gray-50 ${!isALiquidar ? 'opacity-60' : ''}`}>
-                            <td className="px-3 py-2">
-                               {isALiquidar && item.id_producto_en_liquidacion ? (
-                                <input
-                                  type="checkbox"
-                                  checked={isSelected}
-                                  onChange={() => handleProductoSelect(item.id_producto_en_liquidacion)}
-                                  className="rounded"
-                                />
-                              ) : (
-                                <span className="text-gray-300">-</span>
-                              )}
-                            </td>
-                            <td className="px-3 py-2 text-gray-600">{item.nombre_anexo}</td>
-                            <td className="px-3 py-2">{item.producto_nombre || `Producto ${item.id_producto}`}</td>
-                            <td className="px-3 py-2 text-right">{item.cantidad}</td>
-                            <td className="px-3 py-2 text-right">
-                              {(item.cantidad_original || 0) - (item.cantidad_liquidada || 0)}
-                            </td>
-                            <td className="px-3 py-2 text-right">${Number(item.precio_venta).toFixed(2)}</td>
-                            <td className="px-3 py-2 text-right font-medium">
-                              ${(item.precio_venta * item.cantidad).toFixed(2)}
-                            </td>
-                            <td className="px-3 py-2 text-center">
-                              <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${
-                                isLiquidado ? 'bg-green-100 text-green-800' :
-                                isALiquidar ? 'bg-blue-100 text-blue-800' :
-                                'bg-gray-100 text-gray-600'
-                              }`}>
-                                {isLiquidado ? 'Liquidado' : isALiquidar ? 'A Liquidar' : 'En Consignación'}
+                <div className="space-y-4 max-h-96 overflow-y-auto">
+                  {itemsPorAnexo.map((grupo: any) => {
+                    const productosALiquidar = grupo.productos.filter((p: any) => p.estado === 'A LIQUIDAR');
+                    const seleccionadosDelAnexo = selectedProductos.filter(id => {
+                      const producto = grupo.productos.find((p: any) => p.id_producto_en_liquidacion === id);
+                      return !!producto;
+                    });
+                    const todosSeleccionados = productosALiquidar.length > 0 && 
+                      productosALiquidar.length === seleccionadosDelAnexo.length;
+                    
+                    return (
+                      <div key={grupo.id_anexo} className="border rounded-lg overflow-hidden">
+                        {/* Header del anexo */}
+                        <div className="bg-gray-100 px-4 py-2 flex justify-between items-center">
+                          <div className="font-medium text-gray-800">
+                            {grupo.nombre_anexo || 'Sin nombre'}
+                            {grupo.es_compra_venta && (
+                              <span className="ml-2 text-xs text-yellow-700 bg-yellow-100 px-2 py-0.5 rounded">
+                                COMPRA VENTA
                               </span>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
+                            )}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleSelectAllAnexo(grupo.id_anexo)}
+                            className="text-sm text-blue-600 hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
+                            disabled={productosALiquidar.length === 0}
+                          >
+                            {todosSeleccionados ? 'Deseleccionar' : 'Seleccionar todos'}
+                          </button>
+                        </div>
+                        
+                        {/* Tabla de productos del anexo */}
+                        <table className="w-full text-sm">
+                          <thead className="bg-gray-50">
+                            <tr>
+                              <th className="px-3 py-2 text-left w-10"></th>
+                              <th className="px-3 py-2 text-left">Producto</th>
+                              <th className="px-3 py-2 text-right">A Liquidar</th>
+                              <th className="px-3 py-2 text-right">Por Liquidar</th>
+                              <th className="px-3 py-2 text-right">Precio</th>
+                              <th className="px-3 py-2 text-right">Total</th>
+                              <th className="px-3 py-2 text-center">Estado</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y">
+                            {grupo.productos.map((item: any) => {
+                              const isALiquidar = item.estado === 'A LIQUIDAR';
+                              const isLiquidado = item.estado === 'LIQUIDADO';
+                              const isCompraVenta = item.es_compra_venta === true;
+                              const isConsignacion = item.origen === 'CONSIGNACION';
+                              const pelIds = item.pel_ids && item.pel_ids.length > 0 ? item.pel_ids : (item.id_producto_en_liquidacion ? [item.id_producto_en_liquidacion] : []);
+                              const isSelected = isALiquidar && pelIds.length > 0 && pelIds.some((id: number) => selectedProductos.includes(id));
+                              const toggleSelect = () => {
+                                if (isSelected) {
+                                  handleProductoDeselect(pelIds);
+                                } else {
+                                  handleProductoSelect(pelIds);
+                                }
+                              };
+                              return (
+                                <tr key={`${item.id_item_anexo}-${item.id_anexo}-${item.id_producto_en_liquidacion || 'none'}`} className={`hover:bg-gray-50 ${!isALiquidar ? 'opacity-60' : ''} ${isCompraVenta ? 'bg-yellow-50' : ''}`}>
+                                  <td className="px-3 py-2">
+                                    {isALiquidar && pelIds.length > 0 ? (
+                                      <input
+                                        type="checkbox"
+                                        checked={isSelected}
+                                        onChange={toggleSelect}
+                                        className="rounded"
+                                      />
+                                    ) : (
+                                      <span className="text-gray-300">-</span>
+                                    )}
+                                  </td>
+                                  <td className="px-3 py-2">{item.producto_nombre || `Producto ${item.id_producto}`}</td>
+                                  <td className="px-3 py-2 text-right">{item.cantidad}</td>
+                                  <td className="px-3 py-2 text-right">
+                                    {isConsignacion ? (item.por_liquidar !== undefined ? item.por_liquidar : (item.cantidad_original || 0) - (item.cantidad_liquidada || 0)) : '-'}
+                                  </td>
+                                  <td className="px-3 py-2 text-right">${Number(item.precio_venta).toFixed(2)}</td>
+                                  <td className="px-3 py-2 text-right font-medium">
+                                    ${(item.precio_venta * item.cantidad).toFixed(2)}
+                                  </td>
+                                  <td className="px-3 py-2 text-center">
+                                    <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${
+                                      isLiquidado ? 'bg-green-100 text-green-800' :
+                                      isALiquidar ? 'bg-blue-100 text-blue-800' :
+                                      'bg-gray-100 text-gray-600'
+                                    }`}>
+                                      {isLiquidado ? 'Liquidado' : isALiquidar ? 'A Liquidar' : 'En Consignación'}
+                                    </span>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>
           )}
 
-          <div className="grid gap-4 md:grid-cols-4 mt-6">
+          <div className="grid gap-4 md:grid-cols-5 mt-6">
+            <div>
+              <Label>Caguayo (%)</Label>
+              <Input
+                type="number"
+                step="0.01"
+                value={formData.porcentaje_caguayo}
+                onChange={(e: any) => setFormData(prev => ({ ...prev, porcentaje_caguayo: Number(e.target.value) }))}
+              />
+            </div>
             <div>
               <Label>Tributario (%)</Label>
               <Input
@@ -418,7 +568,7 @@ export function CrearLiquidacionPage() {
               />
             </div>
             <div>
-              <Label>Comisión Bancaria (%)</Label>
+              <Label>Comisión Bancaria</Label>
               <Input
                 type="number"
                 step="0.01"
@@ -427,7 +577,7 @@ export function CrearLiquidacionPage() {
               />
             </div>
             <div>
-              <Label>Gasto Empresa (%)</Label>
+              <Label>Gasto Empresa</Label>
               <Input
                 type="number"
                 step="0.01"
@@ -438,44 +588,41 @@ export function CrearLiquidacionPage() {
           </div>
 
           <div className="bg-gray-50 rounded-lg p-4 mt-6">
-            {/* Sección 1: Devengado */}
-            <div className="mb-4 pb-4 border-b border-gray-300">
-              <h4 className="text-sm font-semibold text-gray-700 mb-3">Cálculo del Devengado</h4>
-              <div className="space-y-2">
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Importe Total:</span>
-                  <span className="font-medium">{calculateImporte().toLocaleString()}</span>
-                </div>
-                <div className="flex justify-between text-red-600">
-                  <span>Gasto Empresa ({Number(formData.gasto_empresa || 0)}%):</span>
-                  <span>- {(calculateImporte() * (Number(formData.gasto_empresa) || 0) / 100).toLocaleString()}</span>
-                </div>
-                <div className="flex justify-between text-red-600">
-                  <span>Comisión ({Number(formData.comision_bancaria || 0)}%):</span>
-                  <span>- {(calculateImporte() * (Number(formData.comision_bancaria) || 0) / 100).toLocaleString()}</span>
-                </div>
-                <div className="flex justify-between pt-2 border-t border-gray-300">
-                  <span className="font-semibold text-gray-800">Devengado:</span>
-                  <span className="font-bold text-blue-600 text-lg">{calculateDevengado().toLocaleString()}</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Sección 2: Neto a Pagar */}
+            {/* Sección: Cálculos */}
             <div>
-              <h4 className="text-sm font-semibold text-gray-700 mb-3">Cálculo del Neto a Pagar</h4>
-              <div className="space-y-2">
+              <h4 className="text-sm font-semibold text-gray-700 mb-3">Cálculos</h4>
+              <div className="space-y-1">
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Devengado:</span>
-                  <span className="font-medium">{calculateDevengado().toLocaleString()}</span>
+                  <span className="text-base font-bold text-gray-800">IMPORTE:</span>
+                  <span className="text-base font-bold text-gray-800">{calculateImporte().toLocaleString()}</span>
                 </div>
-                <div className="flex justify-between text-red-600">
-                  <span>Tributario ({Number(formData.tributario || 0)}%):</span>
-                  <span>- {(calculateDevengado() * (Number(formData.tributario) || 0) / 100).toLocaleString()}</span>
+                <div className="flex justify-between pl-4">
+                  <span className="text-sm text-gray-500">Importe Caguayo ({Number(formData.porcentaje_caguayo || 10)}%):</span>
+                  <span className="text-sm text-gray-500">- {calculateImporteCaguayo().toLocaleString()}</span>
                 </div>
-                <div className="flex justify-between pt-2 border-t border-gray-300">
-                  <span className="font-semibold text-gray-800">Neto a Pagar:</span>
-                  <span className="font-bold text-green-600 text-xl">{calculateNetoPagar().toLocaleString()}</span>
+                <div className="flex justify-between border-b border-gray-200 pb-1">
+                  <span className="text-base font-semibold text-red-600">DEVENGADO:</span>
+                  <span className="text-base font-semibold text-red-600">{calculateDevengado().toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between pl-4">
+                  <span className="text-sm text-gray-500">Tributario ({Number(formData.tributario || 0)}%):</span>
+                  <span className="text-sm text-gray-500">- {calculateTributarioMonto().toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between border-b border-gray-200 pb-1">
+                  <span className="text-base font-semibold text-gray-700">SUBTOTAL:</span>
+                  <span className="text-base font-semibold text-gray-700">{calculateSubtotal().toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between pl-4">
+                  <span className="text-sm text-gray-500">Gasto Empresa:</span>
+                  <span className="text-sm text-gray-500">- {Number(formData.gasto_empresa || 0).toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between pl-4">
+                  <span className="text-sm text-gray-500">Comisión:</span>
+                  <span className="text-sm text-gray-500">- {Number(formData.comision_bancaria || 0).toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between border-t-2 border-gray-300 pt-2 mt-1">
+                  <span className="text-lg font-bold text-gray-800">NETO A PAGAR:</span>
+                  <span className="text-lg font-bold text-green-600">{calculateNetoPagar().toLocaleString()}</span>
                 </div>
               </div>
             </div>

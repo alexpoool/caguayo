@@ -1,4 +1,5 @@
-import { useState, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { createPortal } from 'react-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
@@ -25,11 +26,11 @@ import {
   monedaService, 
   clientesService, 
   etapasProyectoService, 
-  contratosService, 
   solicitudesService, 
-  personaEtapaService 
+  personaEtapaService,
+  facturasServicioService
 } from '../../services/api';
-import type { PersonaLiquidacionInput, PersonaLiquidacionInputUpdate } from '../../types/servicio';
+import type { PersonaLiquidacionInput, PersonaLiquidacionInputUpdate, FacturaPagoValidacion, PersonaLiquidacionValidacion } from '../../types/servicio';
 import type { 
   PersonaLiquidacion,
   PersonaEtapa,
@@ -39,29 +40,37 @@ import type {
   Cliente
 } from '../../services/api';
 
-interface ContratoWithDetails {
-  id_contrato: number;
-  nombre?: string;
-  codigo?: string;
-  id_cliente: number;
-  cliente?: { nombre: string };
-}
-
 type View = 'list' | 'form';
 type TabType = 'todas' | 'pendientes' | 'liquidadas';
 
 export function LiquidacionesPage() {
   const queryClient = useQueryClient();
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
 
   const [view, setView] = useState<View>('list');
   const [activeTab, setActiveTab] = useState<TabType>('todas');
   const [editingId, setEditingId] = useState<number | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   
-  const [selectedContrato, setSelectedContrato] = useState<number | null>(null);
-  const [selectedSolicitud, setSelectedSolicitud] = useState<number | null>(null);
-  const [selectedEtapa, setSelectedEtapa] = useState<number | null>(null);
-  const [selectedPersona, setSelectedPersona] = useState<number | null>(null);
+  const idParam = searchParams.get('id');
+  const solicitudParam = searchParams.get('solicitud');
+  const etapaParam = searchParams.get('etapa');
+  const personaParam = searchParams.get('persona');
+  
+  const [filtroPersona, setFiltroPersona] = useState<number | null>(
+    personaParam ? Number(personaParam) : null
+  );
+  
+  const [selectedSolicitud, setSelectedSolicitud] = useState<number | null>(
+    solicitudParam ? Number(solicitudParam) : null
+  );
+  const [selectedEtapa, setSelectedEtapa] = useState<number | null>(
+    etapaParam ? Number(etapaParam) : null
+  );
+  const [selectedPersona, setSelectedPersona] = useState<number | null>(
+    personaParam ? Number(personaParam) : null
+  );
   const [personasEtapa, setPersonasEtapa] = useState<Cliente[]>([]);
   
   const [detailModal, setDetailModal] = useState<{ isOpen: boolean; item: PersonaLiquidacion | null }>({ isOpen: false, item: null });
@@ -71,6 +80,8 @@ export function LiquidacionesPage() {
     observaciones: ''
   });
   
+  const [validacionModal, setValidacionModal] = useState<{ isOpen: boolean; validacion: PersonaLiquidacionValidacion | null }>({ isOpen: false, validacion: null });
+  
   const [formData, setFormData] = useState({
     fecha_emision: new Date().toISOString().split('T')[0],
     fecha_liquidacion: '',
@@ -78,7 +89,8 @@ export function LiquidacionesPage() {
     id_moneda: 1,
     tipo_pago: 'TRANSFERENCIA',
     importe: 0,
-    tributario: 0,
+    porcentaje_caguayo: 10,
+    tributario: 5,
     comision_bancaria: 0,
     gasto_empresa: 0,
     doc_pago_liquidacion: '',
@@ -100,15 +112,9 @@ export function LiquidacionesPage() {
     queryFn: () => clientesService.getClientes(0, 1000)
   });
 
-  const { data: contratos = [] } = useQuery({
-    queryKey: ['contratos'],
-    queryFn: () => contratosService.getContratos(0, 1000)
-  });
-
   const { data: solicitudes = [] } = useQuery({
-    queryKey: ['solicitudes', selectedContrato],
-    queryFn: () => selectedContrato ? solicitudesService.getSolicitudesByContrato(selectedContrato) : Promise.resolve([]),
-    enabled: !!selectedContrato
+    queryKey: ['solicitudes'],
+    queryFn: () => solicitudesService.getSolicitudes(0, 1000)
   });
 
   const { data: etapas = [] } = useQuery({
@@ -116,6 +122,56 @@ export function LiquidacionesPage() {
     queryFn: () => selectedSolicitud ? etapasProyectoService.getEtapasBySolicitud(selectedSolicitud) : Promise.resolve([]),
     enabled: !!selectedSolicitud
   });
+
+  useEffect(() => {
+    if (idParam && Number(idParam) > 0) {
+      personaLiquidacionService.getLiquidacion(Number(idParam)).then((liq) => {
+        if (liq) {
+          openForm(liq);
+        }
+      }).catch(console.error);
+    } else if (solicitudParam && etapaParam && personaParam) {
+      setView('form');
+    }
+  }, [idParam, solicitudParam, etapaParam, personaParam]);
+
+  useEffect(() => {
+    if (solicitudParam && Number(solicitudParam) > 0) {
+      etapasProyectoService.getEtapasBySolicitud(Number(solicitudParam)).then((ets) => {
+        if (ets.length > 0 && etapaParam) {
+          setSelectedEtapa(Number(etapaParam));
+        }
+      }).catch(console.error);
+    }
+  }, [solicitudParam, etapaParam]);
+
+  useEffect(() => {
+    if (selectedEtapa) {
+      personaEtapaService.getPersonasByEtapa(selectedEtapa).then(async (pes) => {
+        const personasDetails = await Promise.all(
+          pes.map(async (pe: PersonaEtapa) => {
+            try {
+              return await clientesService.getCliente(pe.id_persona);
+            } catch {
+              return null;
+            }
+          })
+        );
+        const filtered = personasDetails.filter((p): p is Cliente => p !== null);
+        setPersonasEtapa(filtered);
+        
+        if (personaParam && Number(personaParam) > 0) {
+          setSelectedPersona(Number(personaParam));
+        }
+      }).catch(console.error);
+    }
+  }, [selectedEtapa]);
+
+  useEffect(() => {
+    if (selectedPersona && selectedEtapa && personaParam) {
+      loadPersonaEtapaCobro(selectedEtapa, selectedPersona);
+    }
+  }, [selectedPersona]);
 
   const createMutation = useMutation({
     mutationFn: (data: PersonaLiquidacionInput) => personaLiquidacionService.createLiquidacion(data),
@@ -156,7 +212,7 @@ export function LiquidacionesPage() {
   });
 
   const confirmarMutation = useMutation({
-    mutationFn: ({ id, data }: { id: number; data: { devengado?: number; tributario?: number; comision_bancaria?: number; gasto_empresa?: number; observaciones?: string } }) => 
+    mutationFn: ({ id, data }: { id: number; data: { devengado?: number; tributario?: number; comision_bancaria?: number; gasto_empresa?: number; observaciones?: string; porcentaje_caguayo?: number } }) => 
       personaLiquidacionService.confirmarLiquidacion(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['persona-liquidaciones'] });
@@ -174,15 +230,31 @@ export function LiquidacionesPage() {
     setConfirmData({ observaciones: '' });
   };
 
-  const handleConfirmarSubmit = () => {
+  const handleConfirmarSubmit = async () => {
     if (!confirmModal.item) return;
     const item = confirmModal.item;
+
+    if (item.id_etapa && item.id_persona) {
+      try {
+        const validacion = await personaLiquidacionService.validarLiquidar(item.id_etapa, item.id_persona);
+        
+        if (!validacion.puede_liquidar) {
+          setConfirmModal({ isOpen: false, item: null });
+          setValidacionModal({ isOpen: true, validacion });
+          return;
+        }
+      } catch (error) {
+        console.error('Error validando liquidación:', error);
+      }
+    }
+
     const devengado = (item.gasto_empresa || 0) - (item.comision_bancaria || 0);
     confirmarMutation.mutate({
       id: item.id_liquidacion,
       data: {
         devengado,
-        tributario: item.tributario || 0,
+        porcentaje_caguayo: item.porcentaje_caguayo || 10,
+        tributario: item.tributario || 5,
         comision_bancaria: item.comision_bancaria || 0,
         gasto_empresa: item.gasto_empresa || 0,
         observaciones: confirmData.observaciones || undefined
@@ -198,30 +270,49 @@ export function LiquidacionesPage() {
       id_moneda: 1,
       tipo_pago: 'TRANSFERENCIA',
       importe: 0,
-      tributario: 0,
+      porcentaje_caguayo: 10,
+      tributario: 5,
       comision_bancaria: 0,
       gasto_empresa: 0,
       doc_pago_liquidacion: '',
       observacion: ''
     });
     setEditingId(null);
-    setSelectedContrato(null);
     setSelectedSolicitud(null);
     setSelectedEtapa(null);
     setSelectedPersona(null);
     setPersonasEtapa([]);
   };
 
+  const calculateImporteCaguayo = () => {
+    const importe = Number(formData.importe) || 0;
+    const porcentaje = Number(formData.porcentaje_caguayo) || 0;
+    return importe * (porcentaje / 100);
+  };
+
   const calculateDevengado = () => {
-    const gasto_empresa = Number(formData.gasto_empresa) || 0;
-    const comision = Number(formData.comision_bancaria) || 0;
-    return gasto_empresa - comision;
+    const importe = Number(formData.importe) || 0;
+    const importe_caguayo = calculateImporteCaguayo();
+    return importe - importe_caguayo;
+  };
+
+  const calculateTributarioMonto = () => {
+    const devengado = calculateDevengado();
+    const tributario = Number(formData.tributario) || 0;
+    return devengado * (tributario / 100);
+  };
+
+  const calculateSubtotal = () => {
+    const devengado = calculateDevengado();
+    const tributario_monto = calculateTributarioMonto();
+    return devengado - tributario_monto;
   };
 
   const calculateNetoPagar = () => {
-    const devengado = calculateDevengado();
-    const tributario = Number(formData.tributario) || 0;
-    return devengado * (100 - tributario) / 100;
+    const subtotal = calculateSubtotal();
+    const gasto_empresa = Number(formData.gasto_empresa) || 0;
+    const comision = Number(formData.comision_bancaria) || 0;
+    return subtotal - gasto_empresa - comision;
   };
 
   const loadPersonaEtapaCobro = async (idEtapa: number, idPersona: number) => {
@@ -239,13 +330,6 @@ export function LiquidacionesPage() {
     }
   };
 
-  const handleContratoChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const contratoId = Number(e.target.value);
-    setSelectedContrato(contratoId || null);
-    setSelectedSolicitud(null);
-    setSelectedEtapa(null);
-  };
-
   const handleSolicitudChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const solicitudId = Number(e.target.value);
     setSelectedSolicitud(solicitudId || null);
@@ -255,12 +339,30 @@ export function LiquidacionesPage() {
   const handleEtapaChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
     const etapaId = Number(e.target.value);
     setSelectedEtapa(etapaId || null);
-    setSelectedPersona(null);
-    setFormData(prev => ({ ...prev, importe: 0 }));
-    setPersonasEtapa([]);
+    if (!personaParam) {
+      setSelectedPersona(null);
+      setFormData(prev => ({ ...prev, importe: 0 }));
+      setPersonasEtapa([]);
+    }
 
     if (etapaId) {
       try {
+        const validacion = await facturasServicioService.validarPagoEtapa(etapaId);
+        
+        if (validacion.id_factura_servicio && !validacion.esta_pagada) {
+          setValidacionModal({ 
+            isOpen: true, 
+            validacion: {
+              puede_liquidar: false,
+              id_etapa: etapaId,
+              id_persona: 0,
+              factura: validacion,
+              mensaje: `Factura no pagada. Saldo pendiente: ${validacion.saldo}`
+            }
+          });
+          return;
+        }
+
         const personasDeEtapa = await personaEtapaService.getPersonasByEtapa(etapaId);
         const personasDetails = await Promise.all(
           personasDeEtapa.map(async (pe: PersonaEtapa) => {
@@ -299,7 +401,8 @@ export function LiquidacionesPage() {
         id_moneda: item.id_moneda || 1,
         tipo_pago: item.tipo_pago || 'TRANSFERENCIA',
         importe: item.importe || 0,
-        tributario: item.tributario || 0,
+        porcentaje_caguayo: item.porcentaje_caguayo || 10,
+        tributario: item.tributario || 5,
         comision_bancaria: item.comision_bancaria || 0,
         gasto_empresa: item.gasto_empresa || 0,
         doc_pago_liquidacion: item.doc_pago_liquidacion || '',
@@ -315,26 +418,38 @@ export function LiquidacionesPage() {
     setView('form');
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
+    if (!selectedEtapa || !selectedPersona) {
+      toast.error('Debe seleccionar una etapa y una persona');
+      return;
+    }
+
+    try {
+      const validacion = await personaLiquidacionService.validarLiquidar(selectedEtapa, selectedPersona);
+      
+      if (!validacion.puede_liquidar) {
+        setValidacionModal({ isOpen: true, validacion });
+        return;
+      }
+    } catch (error) {
+      console.error('Error validando liquidación:', error);
+    }
+
     const baseData = {
-      id_etapa: selectedEtapa || 0,
-      id_persona: selectedPersona || 0,
+      id_etapa: selectedEtapa,
+      id_persona: selectedPersona,
       fecha_emision: formData.fecha_emision || new Date().toISOString().split('T')[0],
       fecha_liquidacion: formData.fecha_liquidacion || undefined,
       descripcion: formData.descripcion || undefined,
       id_moneda: formData.id_moneda || 1,
       tipo_pago: formData.tipo_pago,
-      tributario: Number(formData.tributario) || 0,
+      porcentaje_caguayo: Number(formData.porcentaje_caguayo) || 10,
+      tributario: Number(formData.tributario) || 5,
       comision_bancaria: Number(formData.comision_bancaria) || 0,
       gasto_empresa: Number(formData.gasto_empresa) || 0,
       doc_pago_liquidacion: formData.doc_pago_liquidacion || undefined,
       observacion: formData.observacion || undefined
     };
-
-    if (!selectedEtapa || !selectedPersona) {
-      toast.error('Debe seleccionar una etapa y una persona');
-      return;
-    }
 
     if (editingId) {
       updateMutation.mutate({ id: editingId, data: baseData });
@@ -358,10 +473,14 @@ export function LiquidacionesPage() {
   const filteredLiquidaciones = useMemo(() => {
     let result = liquidaciones;
     
+    if (filtroPersona) {
+      result = result.filter((l: PersonaLiquidacion) => l.id_persona === filtroPersona);
+    }
+    
     if (activeTab === 'pendientes') {
-      result = result.filter((l: PersonaLiquidacion) => !l.fecha_liquidacion);
+      result = result.filter((l: PersonaLiquidacion) => !l.confirmado);
     } else if (activeTab === 'liquidadas') {
-      result = result.filter((l: PersonaLiquidacion) => l.fecha_liquidacion);
+      result = result.filter((l: PersonaLiquidacion) => l.confirmado);
     }
     
     if (searchTerm) {
@@ -375,7 +494,7 @@ export function LiquidacionesPage() {
     }
     
     return result;
-  }, [liquidaciones, activeTab, searchTerm, personas]);
+  }, [liquidaciones, activeTab, searchTerm, filtroPersona, personas]);
 
   return (
     <div className="space-y-6">
@@ -383,6 +502,12 @@ export function LiquidacionesPage() {
         <>
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div className="flex items-center gap-4">
+              {filtroPersona && (
+                <Button variant="outline" onClick={() => navigate('/proyectos/creadores')} className="gap-2">
+                  <ArrowLeft className="h-4 w-4" />
+                  Volver a Creadores
+                </Button>
+              )}
               <div className="p-3 bg-gradient-to-br from-teal-500 to-cyan-600 rounded-xl shadow-lg">
                 <ScrollText className="h-8 w-8 text-white" />
               </div>
@@ -495,14 +620,14 @@ export function LiquidacionesPage() {
                         </TableCell>
                         <TableCell>
                           <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                            liquidacion.fecha_liquidacion ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+                            liquidacion.confirmado ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
                           }`}>
-                            {liquidacion.fecha_liquidacion ? 'Liquidada' : 'Pendiente'}
+                            {liquidacion.confirmado ? 'Confirmada' : 'Pendiente'}
                           </span>
                         </TableCell>
                         <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                           <div className="flex justify-end gap-1">
-                            {!liquidacion.fecha_liquidacion && (
+                            {!liquidacion.confirmado && (
                               <Button
                                 variant="ghost"
                                 size="icon"
@@ -575,28 +700,11 @@ export function LiquidacionesPage() {
             <CardContent className="p-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <Label>Contrato</Label>
-                  <select
-                    value={selectedContrato || ''}
-                    onChange={handleContratoChange}
-                    className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white"
-                  >
-                    <option value="">Seleccionar contrato</option>
-                    {contratos.map((contrato: ContratoWithDetails) => (
-                      <option key={contrato.id_contrato} value={contrato.id_contrato}>
-                        {contrato.nombre || contrato.codigo || `#${contrato.id_contrato}`} - {contrato.cliente?.nombre || `Cliente #${contrato.id_cliente}`}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                
-                <div>
                   <Label>Solicitud</Label>
                   <select
                     value={selectedSolicitud || ''}
                     onChange={handleSolicitudChange}
                     className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white"
-                    disabled={!selectedContrato}
                   >
                     <option value="">Seleccionar solicitud</option>
                     {solicitudes.map((solicitud: SolicitudServicio) => (
@@ -710,7 +818,17 @@ export function LiquidacionesPage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="p-6">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                <div>
+                  <Label>% Caguayo</Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    value={formData.porcentaje_caguayo}
+                    onChange={(e) => setFormData(prev => ({ ...prev, porcentaje_caguayo: Number(e.target.value) }))}
+                    className="mt-1"
+                  />
+                </div>
                 <div>
                   <Label>Tributario (%)</Label>
                   <Input
@@ -750,33 +868,35 @@ export function LiquidacionesPage() {
 
               <div className="bg-gray-50 rounded-lg p-4 mt-6">
                 <div className="mb-4 pb-4 border-b border-gray-300">
-                  <h4 className="text-sm font-semibold text-gray-700 mb-3">Cálculo del Devengado</h4>
+                  <h4 className="text-sm font-semibold text-gray-700 mb-3">Cálculos</h4>
                   <div className="space-y-2">
                     <div className="flex justify-between">
-                      <span className="text-gray-600">Gasto Empresa:</span>
-                      <span className="font-medium">{Number(formData.gasto_empresa || 0).toLocaleString()}</span>
+                      <span className="text-gray-600">Importe:</span>
+                      <span className="font-medium">{Number(formData.importe || 0).toLocaleString()}</span>
                     </div>
                     <div className="flex justify-between text-red-600">
-                      <span>Comisión Bancaria:</span>
-                      <span>- {Number(formData.comision_bancaria || 0).toLocaleString()}</span>
+                      <span>Importe Caguayo ({formData.porcentaje_caguayo || 10}%):</span>
+                      <span>- {calculateImporteCaguayo().toLocaleString()}</span>
                     </div>
                     <div className="flex justify-between pt-2 border-t border-gray-300">
                       <span className="font-semibold text-gray-800">Devengado:</span>
                       <span className="font-bold text-blue-600 text-lg">{calculateDevengado().toLocaleString()}</span>
                     </div>
-                  </div>
-                </div>
-
-                <div>
-                  <h4 className="text-sm font-semibold text-gray-700 mb-3">Cálculo del Neto a Pagar</h4>
-                  <div className="space-y-2">
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Devengado:</span>
-                      <span className="font-medium">{calculateDevengado().toLocaleString()}</span>
+                    <div className="flex justify-between text-red-600">
+                      <span>Tributario ({Number(formData.tributario) || 5}%):</span>
+                      <span>- {calculateTributarioMonto().toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between pt-2 border-t border-gray-300">
+                      <span className="font-semibold text-gray-800">Subtotal:</span>
+                      <span className="font-bold text-purple-600 text-lg">{calculateSubtotal().toLocaleString()}</span>
                     </div>
                     <div className="flex justify-between text-red-600">
-                      <span>Tributario ({Number(formData.tributario || 0)}%):</span>
-                      <span>- {(calculateDevengado() * (Number(formData.tributario) || 0) / 100).toLocaleString()}</span>
+                      <span>Gasto Empresa:</span>
+                      <span>- {Number(formData.gasto_empresa || 0).toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between text-red-600">
+                      <span>Comisión:</span>
+                      <span>- {Number(formData.comision_bancaria || 0).toLocaleString()}</span>
                     </div>
                     <div className="flex justify-between pt-2 border-t border-gray-300">
                       <span className="font-semibold text-gray-800">Neto a Pagar:</span>
@@ -852,8 +972,12 @@ export function LiquidacionesPage() {
                   <p className="font-bold text-gray-900">{detailModal.item.fecha_emision}</p>
                 </div>
                 <div className="bg-gray-50 p-4 rounded-xl">
-                  <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Fecha Liquidación</p>
-                  <p className="font-bold text-gray-900">{detailModal.item.fecha_liquidacion || 'Pendiente'}</p>
+                  <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Estado</p>
+                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                    detailModal.item.confirmado ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+                  }`}>
+                    {detailModal.item.confirmado ? 'Confirmada' : 'Pendiente'}
+                  </span>
                 </div>
                 <div className="bg-gray-50 p-4 rounded-xl">
                   <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Etapa</p>
@@ -960,6 +1084,112 @@ export function LiquidacionesPage() {
                 className="px-6 py-3 text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors font-medium"
               >
                 Cancelar
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {validacionModal.isOpen && validacionModal.validacion && createPortal(
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-auto">
+            <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-red-50 to-orange-50">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="p-3 rounded-xl bg-gradient-to-br from-red-500 to-orange-600 text-white shadow-lg">
+                    <XCircle className="h-7 w-7" />
+                  </div>
+                  <div>
+                    <h3 className="text-2xl font-bold text-gray-900">No se puede liquidar</h3>
+                    <p className="text-sm text-gray-500">Factura no pagada</p>
+                  </div>
+                </div>
+                <button onClick={() => setValidacionModal({ isOpen: false, validacion: null })} className="p-2 hover:bg-gray-200 rounded-full">
+                  <XCircle className="h-6 w-6 text-gray-500" />
+                </button>
+              </div>
+            </div>
+            <div className="p-6 space-y-4">
+              {validacionModal.validacion.factura && (
+                <>
+                  <div className="bg-gray-50 rounded-xl p-4">
+                    <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                      <FileText className="h-4 w-4 text-gray-600" />
+                      Datos de la Factura
+                    </h4>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <p className="text-xs text-gray-500 uppercase">Código</p>
+                        <p className="font-semibold text-gray-900">{validacionModal.validacion.factura.codigo_factura || 'N/A'}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500 uppercase">Estado</p>
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                          Pendiente de pago
+                        </span>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500 uppercase">Monto Total</p>
+                        <p className="font-semibold text-gray-900">{Number(validacionModal.validacion.factura.monto || 0).toLocaleString()}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500 uppercase">Monto Pagado</p>
+                        <p className="font-semibold text-green-600">{Number(validacionModal.validacion.factura.monto_pagado || 0).toLocaleString()}</p>
+                      </div>
+                      <div className="col-span-2">
+                        <p className="text-xs text-gray-500 uppercase">Saldo Pendiente</p>
+                        <p className="font-bold text-red-600 text-xl">{Number(validacionModal.validacion.factura.saldo || 0).toLocaleString()}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {validacionModal.validacion.factura.pagos && validacionModal.validacion.factura.pagos.length > 0 && (
+                    <div className="bg-gray-50 rounded-xl p-4">
+                      <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                        <DollarSign className="h-4 w-4 text-gray-600" />
+                        Pagos Realizados
+                      </h4>
+                      <div className="space-y-2">
+                        {validacionModal.validacion.factura.pagos.map((pago: any) => (
+                          <div key={pago.id_pago_factura_servicio} className="flex justify-between items-center p-2 bg-white rounded-lg border">
+                            <div>
+                              <p className="text-sm font-medium text-gray-900">{pago.fecha || 'Sin fecha'}</p>
+                              <p className="text-xs text-gray-500">{pago.doc_traza || 'Sin documento'}</p>
+                            </div>
+                            <p className="font-semibold text-green-600">{Number(pago.monto || 0).toLocaleString()}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {(!validacionModal.validacion.factura.pagos || validacionModal.validacion.factura.pagos.length === 0) && (
+                    <div className="bg-yellow-50 rounded-xl p-4 border border-yellow-200">
+                      <p className="text-sm text-yellow-800">No hay pagos registrados para esta factura.</p>
+                    </div>
+                  )}
+                </>
+              )}
+
+              <div className="bg-red-50 rounded-xl p-4 border border-red-200">
+                <p className="text-sm text-red-800 font-medium">
+                  {validacionModal.validacion?.mensaje || 'La factura de esta etapa no ha sido pagada completamente.'}
+                </p>
+              </div>
+            </div>
+            <div className="p-6 border-t border-gray-200 bg-gray-50 flex justify-between gap-3">
+              <button
+                onClick={() => navigate(`/proyectos/facturas-servicio?etapa=${validacionModal.validacion?.id_etapa}`)}
+                className="px-6 py-3 text-white bg-gradient-to-r from-purple-500 to-indigo-600 rounded-xl hover:from-purple-600 hover:to-indigo-700 transition-colors font-medium"
+              >
+                Ir a Pagar Factura
+              </button>
+              <button
+                onClick={() => setValidacionModal({ isOpen: false, validacion: null })}
+                className="px-6 py-3 text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors font-medium"
+              >
+                Cerrar
               </button>
             </div>
           </div>

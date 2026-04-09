@@ -1,9 +1,9 @@
 import { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { Button, Input, Label, Card, CardContent, CardHeader, CardTitle, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, ConfirmModal } from '../../components/ui';
-import { solicitudesService, contratosService, clientesService, monedaService } from '../../services/api';
+import { solicitudesService, contratosService, clientesService, monedaService, suplementosService } from '../../services/api';
 import type { SolicitudServicio, SolicitudServicioCreate, SolicitudServicioUpdate } from '../../types/servicio';
-import type { ContratoWithDetails, ContratoCreate } from '../../types/contrato';
+import type { ContratoWithDetails, ContratoCreate, SuplementoWithDetails, SuplementoCreate } from '../../types/contrato';
 import type { Cliente } from '../../types/ventas';
 import type { Moneda } from '../../types/moneda';
 import { Plus, Save, Trash2, Edit, ArrowLeft, Search, ClipboardList, Tag, X, Layers, CheckCircle, CheckSquare, FileText, User, DollarSign, Calendar } from 'lucide-react';
@@ -41,11 +41,12 @@ export function SolicitudesPage() {
   const [aprobarModal, setAprobarModal] = useState<{
     isOpen: boolean;
     solicitud: SolicitudServicio | null;
-    modo: 'seleccionar' | 'crear';
+    modo: 'seleccionar' | 'crear' | 'seleccionar-suplemento' | 'crear-suplemento';
     contratos: ContratoWithDetails[];
     loadingContratos: boolean;
   }>({ isOpen: false, solicitud: null, modo: 'seleccionar', contratos: [], loadingContratos: false });
 
+  const [suplementosPorContrato, setSuplementosPorContrato] = useState<{ [key: number]: SuplementoWithDetails[] }>({});
   const [formContrato, setFormContrato] = useState<Record<string, any>>({});
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [monedas, setMonedas] = useState<Moneda[]>([]);
@@ -167,7 +168,7 @@ export function SolicitudesPage() {
           loadSolicitudes();
         } catch (error: any) { toast.error(error.message || 'Error'); }
       },
-      type: 'success'
+      type: 'info'
     });
   };
 
@@ -190,12 +191,22 @@ export function SolicitudesPage() {
       contratos: [],
       loadingContratos: true
     });
+    setSuplementosPorContrato({});
     try {
       const data = await contratosService.getContratos(0, 1000);
       setAprobarModal(prev => ({ ...prev, contratos: data, loadingContratos: false }));
     } catch (error: any) {
       toast.error('Error al cargar contratos');
       setAprobarModal(prev => ({ ...prev, isOpen: false, loadingContratos: false }));
+    }
+  };
+
+  const cargarSuplementosPorContrato = async (contratoId: number) => {
+    try {
+      const data = await suplementosService.getSuplementosByContrato(contratoId);
+      setSuplementosPorContrato(prev => ({ ...prev, [contratoId]: data }));
+    } catch (error: any) {
+      console.error('Error al cargar suplementos:', error);
     }
   };
 
@@ -219,7 +230,7 @@ export function SolicitudesPage() {
           proforma: formContrato.proforma,
           documento_final: formContrato.documento_final
         };
-        const nuevoContrato = await contratosService.createContrato(data);
+          const nuevoContrato = await contratosService.createContrato(data);
         await solicitudesService.updateSolicitud(aprobarModal.solicitud.id_solicitud_servicio, {
           aprobado: true,
           id_contrato: nuevoContrato.id_contrato,
@@ -227,6 +238,51 @@ export function SolicitudesPage() {
           estado: 'EN PROCESO'
         });
         toast.success('Solicitud aprobada con nuevo contrato');
+      } else if (aprobarModal.modo === 'crear-suplemento') {
+        if (!formContrato.id_contrato_suplemento) {
+          toast.error('Debe seleccionar un contrato');
+          return;
+        }
+        const data: SuplementoCreate = {
+          id_contrato: Number(formContrato.id_contrato_suplemento),
+          nombre: formContrato.nombre_suplemento || `Suplemento-${Date.now()}`,
+          id_estado: Number(formContrato.id_estado_suplemento) || 1,
+          fecha: formContrato.fecha_suplemento || new Date().toISOString().split('T')[0],
+          documento: formContrato.documento_suplemento,
+          monto: formContrato.monto_suplemento ? Number(formContrato.monto_suplemento) : 0
+        };
+        const nuevoSuplemento = await suplementosService.createSuplemento(data);
+        const contratoDelSuplemento = aprobarModal.contratos.find(c => c.id_contrato === Number(formContrato.id_contrato_suplemento));
+        await solicitudesService.updateSolicitud(aprobarModal.solicitud.id_solicitud_servicio, {
+          aprobado: true,
+          id_contrato: Number(formContrato.id_contrato_suplemento),
+          id_suplemento: nuevoSuplemento.id_suplemento,
+          id_cliente: contratoDelSuplemento?.id_cliente,
+          estado: 'EN PROCESO'
+        });
+        toast.success('Solicitud aprobada con nuevo suplemento');
+      } else if (aprobarModal.modo === 'seleccionar-suplemento') {
+        if (!formContrato.id_suplemento_seleccionado) {
+          toast.error('Debe seleccionar un suplemento');
+          return;
+        }
+        const suplementoId = Number(formContrato.id_suplemento_seleccionado);
+        const contratoId = Number(formContrato.id_contrato_suple);
+        const suplementos = suplementosPorContrato[contratoId] || [];
+        const suplementoSeleccionado = suplementos.find(s => s.id_suplemento === suplementoId);
+        if (!suplementoSeleccionado) {
+          toast.error('Suplemento no encontrado');
+          return;
+        }
+        const contratoDelSuplemento = aprobarModal.contratos.find(c => c.id_contrato === contratoId);
+        await solicitudesService.updateSolicitud(aprobarModal.solicitud.id_solicitud_servicio, {
+          aprobado: true,
+          id_contrato: contratoId,
+          id_suplemento: suplementoId,
+          id_cliente: contratoDelSuplemento?.id_cliente,
+          estado: 'EN PROCESO'
+        });
+        toast.success('Solicitud aprobada con suplemento');
       } else {
         const contratoSeleccionado = aprobarModal.contratos.find(c => c.id_contrato === Number(formContrato.id_contrato_seleccionado));
         if (!contratoSeleccionado) {
@@ -243,6 +299,7 @@ export function SolicitudesPage() {
       }
       setAprobarModal({ isOpen: false, solicitud: null, modo: 'seleccionar', contratos: [], loadingContratos: false });
       setFormContrato({});
+      setSuplementosPorContrato({});
       loadSolicitudes();
     } catch (error: any) {
       toast.error(error.message || 'Error al aprobar');
@@ -744,20 +801,34 @@ export function SolicitudesPage() {
               </div>
             </div>
             <div className="p-6">
-              <div className="flex gap-3 mb-6">
+              <div className="flex gap-3 mb-6 flex-wrap">
                 <button
                   onClick={() => setAprobarModal(prev => ({ ...prev, modo: 'seleccionar' }))}
                   className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-colors ${aprobarModal.modo === 'seleccionar' ? 'bg-teal-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
                 >
                   <FileText className="h-4 w-4" />
-                  Seleccionar
+                  Contrato
                 </button>
                 <button
                   onClick={() => setAprobarModal(prev => ({ ...prev, modo: 'crear' }))}
                   className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-colors ${aprobarModal.modo === 'crear' ? 'bg-teal-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
                 >
                   <Plus className="h-4 w-4" />
-                  Nuevo
+                  Nuevo Contrato
+                </button>
+                <button
+                  onClick={() => setAprobarModal(prev => ({ ...prev, modo: 'seleccionar-suplemento' }))}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-colors ${aprobarModal.modo === 'seleccionar-suplemento' ? 'bg-amber-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                >
+                  <Layers className="h-4 w-4" />
+                  Suplemento
+                </button>
+                <button
+                  onClick={() => setAprobarModal(prev => ({ ...prev, modo: 'crear-suplemento' }))}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-colors ${aprobarModal.modo === 'crear-suplemento' ? 'bg-amber-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                >
+                  <Plus className="h-4 w-4" />
+                  Nuevo Suplemento
                 </button>
               </div>
 
@@ -785,7 +856,7 @@ export function SolicitudesPage() {
                     </div>
                   )}
                 </div>
-              ) : (
+              ) : aprobarModal.modo === 'crear' ? (
                 <div className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="md:col-span-2">
@@ -877,10 +948,120 @@ export function SolicitudesPage() {
                     </div>
                   </div>
                 </div>
-              )}
+              ) : aprobarModal.modo === 'seleccionar-suplemento' ? (
+                <div className="space-y-4">
+                  <div>
+                    <Label className="text-sm font-medium">Seleccionar Contrato</Label>
+                    <select
+                      className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none bg-white"
+                      value={formContrato.id_contrato_suple || ''}
+                      onChange={(e: any) => {
+                        setFormContrato({ ...formContrato, id_contrato_suple: e.target.value, id_suplemento_seleccionado: '' });
+                        if (e.target.value) {
+                          cargarSuplementosPorContrato(Number(e.target.value));
+                        }
+                      }}
+                    >
+                      <option value="">Seleccionar...</option>
+                      {aprobarModal.contratos.map(c => (
+                        <option key={c.id_contrato} value={c.id_contrato}>
+                          {c.nombre || c.codigo || `Contrato #${c.id_contrato}`} - {c.cliente?.nombre || 'Sin cliente'}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  {formContrato.id_contrato_suple && (
+                    <div>
+                      <Label className="text-sm font-medium">Seleccionar Suplemento</Label>
+                      <select
+                        className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none bg-white"
+                        value={formContrato.id_suplemento_seleccionado || ''}
+                        onChange={(e: any) => setFormContrato({ ...formContrato, id_suplemento_seleccionado: e.target.value })}
+                      >
+                        <option value="">Seleccionar...</option>
+                        {(suplementosPorContrato[Number(formContrato.id_contrato_suple)] || []).map(s => (
+                          <option key={s.id_suplemento} value={s.id_suplemento}>
+                            {s.nombre || s.codigo || `Suplemento #${s.id_suplemento}`} - ${Number(s.monto || 0).toFixed(2)}
+                          </option>
+                        ))}
+                      </select>
+                      {(suplementosPorContrato[Number(formContrato.id_contrato_suple)] || []).length === 0 && (
+                        <p className="text-sm text-gray-500 mt-2">No hay suplementos para este contrato</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ) : aprobarModal.modo === 'crear-suplemento' ? (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="md:col-span-2">
+                      <Label className="text-sm font-medium">Contrato *</Label>
+                      <select
+                        className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none bg-white"
+                        value={formContrato.id_contrato_suplemento || ''}
+                        onChange={(e: any) => setFormContrato({ ...formContrato, id_contrato_suplemento: e.target.value })}
+                      >
+                        <option value="">Seleccionar contrato</option>
+                        {aprobarModal.contratos.map(c => (
+                          <option key={c.id_contrato} value={c.id_contrato}>
+                            {c.nombre || c.codigo || `Contrato #${c.id_contrato}`} - {c.cliente?.nombre || 'Sin cliente'}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="md:col-span-2">
+                      <Label className="text-sm font-medium">Nombre del Suplemento</Label>
+                      <Input
+                        value={formContrato.nombre_suplemento || ''}
+                        onChange={(e: any) => setFormContrato({ ...formContrato, nombre_suplemento: e.target.value })}
+                        className="mt-1"
+                        placeholder="Nombre del suplemento"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-sm font-medium">Estado</Label>
+                      <select
+                        className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none bg-white"
+                        value={formContrato.id_estado_suplemento || ''}
+                        onChange={(e: any) => setFormContrato({ ...formContrato, id_estado_suplemento: e.target.value })}
+                      >
+                        {estadosContrato.map(e => <option key={e.id} value={e.id}>{e.nombre}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <Label className="text-sm font-medium">Monto</Label>
+                      <Input
+                        type="number"
+                        value={formContrato.monto_suplemento || ''}
+                        onChange={(e: any) => setFormContrato({ ...formContrato, monto_suplemento: e.target.value })}
+                        className="mt-1"
+                        placeholder="0.00"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-sm font-medium">Fecha</Label>
+                      <Input
+                        type="date"
+                        value={formContrato.fecha_suplemento || ''}
+                        onChange={(e: any) => setFormContrato({ ...formContrato, fecha_suplemento: e.target.value })}
+                        className="mt-1"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-sm font-medium">Documento</Label>
+                      <Input
+                        value={formContrato.documento_suplemento || ''}
+                        onChange={(e: any) => setFormContrato({ ...formContrato, documento_suplemento: e.target.value })}
+                        className="mt-1"
+                        placeholder="Número de documento"
+                      />
+                    </div>
+                  </div>
+                </div>
+              ) : null}
             </div>
             <div className="p-6 border-t border-gray-200 bg-gray-50 flex justify-end gap-3">
-              <button onClick={() => { setAprobarModal({ isOpen: false, solicitud: null, modo: 'seleccionar', contratos: [], loadingContratos: false }); setFormContrato({}); }} className="px-6 py-3 text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors font-medium">Cancelar</button>
+              <button onClick={() => { setAprobarModal({ isOpen: false, solicitud: null, modo: 'seleccionar', contratos: [], loadingContratos: false }); setFormContrato({}); setSuplementosPorContrato({}); }} className="px-6 py-3 text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors font-medium">Cancelar</button>
               <button onClick={confirmarAprobacion} className="px-6 py-3 text-white bg-gradient-to-r from-green-500 to-emerald-600 rounded-xl hover:from-green-600 hover:to-emerald-700 transition-colors font-medium">Confirmar Aprobación</button>
             </div>
           </div>

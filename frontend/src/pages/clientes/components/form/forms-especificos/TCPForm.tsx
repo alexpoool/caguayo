@@ -4,16 +4,19 @@ import { Label } from "../../../../../components/ui"
 import { Input } from "../../../../../components/ui"
 
 export interface DatosTCPFormProps {
-  datosTCPForm: any;
-  setDatosTCPForm: React.Dispatch<React.SetStateAction<any>>;
-  formErrors: any;
+  datos: any;
+  setDatos: React.Dispatch<React.SetStateAction<any>>;
+  formErrors?: any;
 }
 
 export const TCPForm: React.FC<DatosTCPFormProps> = ({
-  datosTCPForm,
-  setDatosTCPForm,
+  datos,
+  setDatos,
   formErrors,
 }) => {
+  const data = datos || {};
+  const errors = formErrors || {};
+  
   return (
     <Card className="mb-6 shadow-sm border-gray-200">
       <CardHeader className="border-b bg-gray-50/50">
@@ -23,23 +26,23 @@ export const TCPForm: React.FC<DatosTCPFormProps> = ({
         <div className="md:col-span-2">
           <Label>Nombre del Líder *</Label>
           <Input
-            value={datosTCPForm.nombre || ""}
+            value={data.nombre || ""}
             onChange={(e) =>
-              setDatosTCPForm({ ...datosTCPForm, nombre: e.target.value })
+              setDatos({ ...data, nombre: e.target.value })
             }
-            className={formErrors.tcp_nombre ? "border-red-500" : ""}
+            className={errors.tcp_nombre ? "border-red-500" : ""}
           />
-          {formErrors.tcp_nombre && (
-            <p className="text-red-500 text-sm">{formErrors.tcp_nombre}</p>
+          {errors.tcp_nombre && (
+            <p className="text-red-500 text-sm">{errors.tcp_nombre}</p>
           )}
         </div>
         <div>
           <Label>Primer Apellido</Label>
           <Input
-            value={datosTCPForm.primer_apellido || ""}
+            value={data.primer_apellido || ""}
             onChange={(e) =>
-              setDatosTCPForm({
-                ...datosTCPForm,
+              setDatos({
+                ...data,
                 primer_apellido: e.target.value,
               })
             }
@@ -48,10 +51,10 @@ export const TCPForm: React.FC<DatosTCPFormProps> = ({
         <div>
           <Label>Segundo Apellido</Label>
           <Input
-            value={datosTCPForm.segundo_apellido || ""}
+            value={data.segundo_apellido || ""}
             onChange={(e) =>
-              setDatosTCPForm({
-                ...datosTCPForm,
+              setDatos({
+                ...data,
                 segundo_apellido: e.target.value,
               })
             }
@@ -60,10 +63,10 @@ export const TCPForm: React.FC<DatosTCPFormProps> = ({
         <div className="md:col-span-2">
           <Label>Dirección</Label>
           <Input
-            value={datosTCPForm.direccion || ""}
+            value={data.direccion || ""}
             onChange={(e) =>
-              setDatosTCPForm({
-                ...datosTCPForm,
+              setDatos({
+                ...data,
                 direccion: e.target.value,
               })
             }
@@ -72,10 +75,10 @@ export const TCPForm: React.FC<DatosTCPFormProps> = ({
         <div>
           <Label># de Registro del Proyecto</Label>
           <Input
-            value={datosTCPForm.numero_registro_proyecto || ""}
+            value={data.numero_registro_proyecto || ""}
             onChange={(e) =>
-              setDatosTCPForm({
-                ...datosTCPForm,
+              setDatos({
+                ...data,
                 numero_registro_proyecto: e.target.value,
               })
             }
@@ -85,10 +88,10 @@ export const TCPForm: React.FC<DatosTCPFormProps> = ({
           <Label>Fecha de Aprobación</Label>
           <Input
             type="date"
-            value={datosTCPForm.fecha_aprobacion || ""}
+            value={data.fecha_aprobacion || ""}
             onChange={(e) =>
-              setDatosTCPForm({
-                ...datosTCPForm,
+              setDatos({
+                ...data,
                 fecha_aprobacion: e.target.value,
               })
             }

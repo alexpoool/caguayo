@@ -1,5 +1,6 @@
 export interface Productos {
   id_producto: number;
+  codigo?: string;
   id_subcategoria: number;
   nombre: string;
   descripcion?: string;
@@ -8,6 +9,8 @@ export interface Productos {
   moneda_venta: number;
   precio_venta: number;
   precio_minimo: number;
+  cantidad?: number;
+  stock?: number;
   subcategoria?: {
     id_subcategoria: number;
     nombre: string;

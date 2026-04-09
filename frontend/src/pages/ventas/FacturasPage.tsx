@@ -202,8 +202,10 @@ export function FacturasPage() {
         observaciones: item.observaciones,
         fecha: item.fecha,
         id_dependencia: item.id_dependencia || '',
-        id_moneda: item.id_moneda || ''
+        id_moneda: item.id_moneda || '',
+        id_contrato: item.id_contrato || ''
       });
+      setSelectedContratoId(item.id_contrato || selectedContratoId);
       setSelectedProducts(item.items?.map((p: any) => ({ id_producto: p.id_producto, cantidad: p.cantidad, precio_venta: p.precio_venta || 0 })) || []);
     } else { resetForm(); }
     setView('form');
@@ -450,6 +452,26 @@ export function FacturasPage() {
             <div>
               <Label className="text-sm font-medium">Fecha</Label>
               <Input type="date" value={formData.fecha || ''} onChange={(e: any) => setFormData({...formData, fecha: e.target.value})} className="mt-1" />
+            </div>
+            <div>
+              <Label className="text-sm font-medium">Contrato</Label>
+              {selectedContratoId ? (
+                <div className="mt-1 px-3 py-2 bg-gray-100 border border-gray-300 rounded-lg text-gray-700">
+                  {contratos.find(c => c.id_contrato === selectedContratoId)?.nombre || `Contrato #${selectedContratoId}`}
+                </div>
+              ) : (
+                <select 
+                  className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 outline-none bg-white" 
+                  value={formData.id_contrato || ''} 
+                  onChange={(e: any) => {
+                    setFormData({...formData, id_contrato: e.target.value});
+                    setSelectedContratoId(e.target.value ? Number(e.target.value) : null);
+                  }}
+                >
+                  <option value="">Seleccionar contrato</option>
+                  {contratos.map(c => <option key={c.id_contrato} value={c.id_contrato}>{c.codigo ? `${c.codigo} - ` : ''}{c.nombre}</option>)}
+                </select>
+              )}
             </div>
             <div>
               <Label className="text-sm font-medium">Descripción</Label>

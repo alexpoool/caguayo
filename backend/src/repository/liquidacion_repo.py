@@ -2,6 +2,7 @@ from sqlmodel import select, func
 from sqlmodel.ext.asyncio.session import AsyncSession
 from typing import List, Optional, Type, TypeVar
 from datetime import datetime
+from sqlalchemy.orm import selectinload
 from src.repository.base import CRUDBase
 from src.models.liquidacion import Liquidacion
 from src.models.productos_en_liquidacion import ProductosEnLiquidacion
@@ -39,14 +40,66 @@ class LiquidacionRepository(CRUDBase[Liquidacion, dict, dict]):
     async def get_with_relations(
         self, db: AsyncSession, id: int
     ) -> Optional[Liquidacion]:
-        statement = select(Liquidacion).where(Liquidacion.id_liquidacion == id)
+        statement = (
+            select(Liquidacion)
+            .where(Liquidacion.id_liquidacion == id)
+            .options(
+                selectinload(Liquidacion.productos_en_liquidacion).selectinload(
+                    ProductosEnLiquidacion.producto
+                ),
+                selectinload(Liquidacion.productos_en_liquidacion).selectinload(
+                    ProductosEnLiquidacion.anexo
+                ),
+                selectinload(Liquidacion.productos_en_liquidacion).selectinload(
+                    ProductosEnLiquidacion.moneda
+                ),
+            )
+        )
         result = await db.exec(statement)
         return result.first()
 
     async def get_multi_with_relations(
         self, db: AsyncSession, skip: int = 0, limit: int = 100
     ) -> List[Liquidacion]:
-        statement = select(Liquidacion).offset(skip).limit(limit)
+        statement = (
+            select(Liquidacion)
+            .options(
+                selectinload(Liquidacion.productos_en_liquidacion).selectinload(
+                    ProductosEnLiquidacion.producto
+                ),
+                selectinload(Liquidacion.productos_en_liquidacion).selectinload(
+                    ProductosEnLiquidacion.anexo
+                ),
+                selectinload(Liquidacion.productos_en_liquidacion).selectinload(
+                    ProductosEnLiquidacion.moneda
+                ),
+            )
+            .offset(skip)
+            .limit(limit)
+        )
+        result = await db.exec(statement)
+        return result.all()
+
+    async def get_by_cliente_with_relations(
+        self, db: AsyncSession, cliente_id: int, skip: int = 0, limit: int = 100
+    ) -> List[Liquidacion]:
+        statement = (
+            select(Liquidacion)
+            .where(Liquidacion.id_cliente == cliente_id)
+            .options(
+                selectinload(Liquidacion.productos_en_liquidacion).selectinload(
+                    ProductosEnLiquidacion.producto
+                ),
+                selectinload(Liquidacion.productos_en_liquidacion).selectinload(
+                    ProductosEnLiquidacion.anexo
+                ),
+                selectinload(Liquidacion.productos_en_liquidacion).selectinload(
+                    ProductosEnLiquidacion.moneda
+                ),
+            )
+            .offset(skip)
+            .limit(limit)
+        )
         result = await db.exec(statement)
         return result.all()
 
@@ -62,12 +115,58 @@ class LiquidacionRepository(CRUDBase[Liquidacion, dict, dict]):
         result = await db.exec(statement)
         return result.all()
 
+    async def get_pendientes_with_relations(
+        self, db: AsyncSession, skip: int = 0, limit: int = 100
+    ) -> List[Liquidacion]:
+        statement = (
+            select(Liquidacion)
+            .where(Liquidacion.liquidada == False)
+            .options(
+                selectinload(Liquidacion.productos_en_liquidacion).selectinload(
+                    ProductosEnLiquidacion.producto
+                ),
+                selectinload(Liquidacion.productos_en_liquidacion).selectinload(
+                    ProductosEnLiquidacion.anexo
+                ),
+                selectinload(Liquidacion.productos_en_liquidacion).selectinload(
+                    ProductosEnLiquidacion.moneda
+                ),
+            )
+            .offset(skip)
+            .limit(limit)
+        )
+        result = await db.exec(statement)
+        return result.all()
+
     async def get_liquidadas(
         self, db: AsyncSession, skip: int = 0, limit: int = 100
     ) -> List[Liquidacion]:
         statement = (
             select(Liquidacion)
             .where(Liquidacion.liquidada == True)
+            .offset(skip)
+            .limit(limit)
+        )
+        result = await db.exec(statement)
+        return result.all()
+
+    async def get_liquidadas_with_relations(
+        self, db: AsyncSession, skip: int = 0, limit: int = 100
+    ) -> List[Liquidacion]:
+        statement = (
+            select(Liquidacion)
+            .where(Liquidacion.liquidada == True)
+            .options(
+                selectinload(Liquidacion.productos_en_liquidacion).selectinload(
+                    ProductosEnLiquidacion.producto
+                ),
+                selectinload(Liquidacion.productos_en_liquidacion).selectinload(
+                    ProductosEnLiquidacion.anexo
+                ),
+                selectinload(Liquidacion.productos_en_liquidacion).selectinload(
+                    ProductosEnLiquidacion.moneda
+                ),
+            )
             .offset(skip)
             .limit(limit)
         )

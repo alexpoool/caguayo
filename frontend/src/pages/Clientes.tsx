@@ -79,19 +79,6 @@ export function ClientesPage() {
         <ClienteForm
           isProveedorView={isProveedorView}
           editingCliente={editingCliente}
-          tipoPersona={tipoPersona}
-          setTipoPersona={setTipoPersona}
-          datosNatural={datosNatural}
-          setDatosNatural={setDatosNatural}
-          datosJuridica={datosJuridica}
-          setDatosJuridica={setDatosJuridica}
-          datosTCP={datosTCP}
-          setDatosTCP={setDatosTCP}
-          cuentasCliente={cuentasCliente}
-          setCuentasCliente={setCuentasCliente}
-          tiposEntidad={tiposEntidad}
-          monedas={monedas}
-          provincias={provincias}
           onCancel={() => {
             resetForm();
             setView("list");
@@ -103,6 +90,9 @@ export function ClientesPage() {
               await createMutation.mutateAsync(data);
             }
           }}
+          provincias={provincias}
+          tiposEntidad={tiposEntidad}
+          monedas={monedas}
         />
       )}
 

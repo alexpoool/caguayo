@@ -70,6 +70,7 @@ import type {
   PagoFacturaServicio, PagoFacturaServicioCreate,
   PersonaLiquidacion, PersonaLiquidacionCreate, PersonaLiquidacionUpdate,
   PersonaLiquidacionInput, PersonaLiquidacionInputUpdate,
+  FacturaPagoValidacion, PersonaLiquidacionValidacion,
 } from '../types/servicio';
 
 export const productosService = {
@@ -196,8 +197,15 @@ export const ventasService = {
 };
 
 export const clientesService = {
-  async getClientes(skip = 0, limit = 100): Promise<Cliente[]> {
-    return apiClient.get<Cliente[]>(`/clientes?skip=${skip}&limit=${limit}`);
+  async getClientes(skip = 0, limit = 10000, tipoRelacion?: string): Promise<Cliente[]> {
+    const params = new URLSearchParams({
+      skip: String(skip),
+      limit: String(limit),
+    });
+    if (tipoRelacion) {
+      params.append("tipo_relacion", tipoRelacion);
+    }
+    return apiClient.get<Cliente[]>(`/clientes?${params.toString()}`);
   },
 
   async getCliente(id: number): Promise<Cliente> {
@@ -495,8 +503,15 @@ export const dependenciasService = {
 };
 
 export const contratosService = {
-  async getContratos(skip = 0, limit = 100): Promise<ContratoWithDetails[]> {
-    return apiClient.get<ContratoWithDetails[]>(`/contratos?skip=${skip}&limit=${limit}`);
+  async getContratos(skip = 0, limit = 10000, idCliente?: number): Promise<ContratoWithDetails[]> {
+    const params = new URLSearchParams({
+      skip: String(skip),
+      limit: String(limit),
+    });
+    if (idCliente) {
+      params.append("id_cliente", String(idCliente));
+    }
+    return apiClient.get<ContratoWithDetails[]>(`/contratos?${params.toString()}`);
   },
 
   async getContrato(id: number): Promise<ContratoWithDetails> {
@@ -688,6 +703,9 @@ export const facturasServicioService = {
   },
   async deleteFacturaServicio(id: number): Promise<void> {
     return apiClient.delete<void>(`/facturas-servicio/${id}`);
+  },
+  async validarPagoEtapa(etapaId: number): Promise<FacturaPagoValidacion> {
+    return apiClient.get<FacturaPagoValidacion>(`/facturas-servicio/etapa/${etapaId}/validar-pago`);
   }
 };
 
@@ -727,6 +745,15 @@ export const personaLiquidacionService = {
     observaciones?: string;
   }): Promise<PersonaLiquidacion> {
     return apiClient.post<PersonaLiquidacion>(`/persona-liquidacion/${id}/confirmar`, data);
+  },
+  async validarLiquidar(idEtapa: number, idPersona: number): Promise<PersonaLiquidacionValidacion> {
+    return apiClient.get<PersonaLiquidacionValidacion>(`/persona-liquidacion/validar/${idEtapa}/${idPersona}`);
+  },
+  async getLiquidacionesByEtapaPersona(idEtapa: number, idPersona: number): Promise<PersonaLiquidacion[]> {
+    return apiClient.get<PersonaLiquidacion[]>(`/persona-liquidacion/etapa/${idEtapa}/persona/${idPersona}`);
+  },
+  async getLiquidacionesByPersona(idPersona: number): Promise<PersonaLiquidacion[]> {
+    return apiClient.get<PersonaLiquidacion[]>(`/persona-liquidacion/persona/${idPersona}`);
   }
 };
 
@@ -861,10 +888,15 @@ export interface Liquidacion {
   gasto_empresa: number;
   importe: number;
   neto_pagar: number;
+  porcentaje_caguayo: number;
+  importe_caguayo: number;
+  tributario_monto: number;
   tipo_pago: string;
   cliente?: any;
   moneda?: any;
   productos_en_liquidacion?: ProductosEnLiquidacion[];
+  convenio?: any;
+  anexo?: any;
 }
 
 export interface LiquidacionCreate {
@@ -879,6 +911,7 @@ export interface LiquidacionCreate {
   tipo_pago?: string;
   observaciones?: string;
   producto_ids: number[];
+  porcentaje_caguayo?: number;
 }
 
 export interface LiquidacionConfirmar {
@@ -888,6 +921,7 @@ export interface LiquidacionConfirmar {
   comision_bancaria?: number;
   gasto_empresa?: number;
   observaciones?: string;
+  porcentaje_caguayo?: number;
 }
 
 export const liquidacionService = {

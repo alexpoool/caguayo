@@ -68,6 +68,7 @@ export interface ContratoWithDetails extends Contrato {
   tipo_contrato?: TipoContrato;
   moneda?: Moneda;
   cliente?: ClienteSimple;
+  solicitudes?: any[];
 }
 
 export interface ContratoCreate {

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "../../../../components/ui"
 import { Card, CardHeader, CardTitle, CardContent } from "../../../../components/ui"
 import { Label } from "../../../../components/ui"
@@ -18,68 +18,187 @@ import { NaturalForm } from "./forms-especificos/NaturalForm";
 import { JuridicaForm } from "./forms-especificos/JuridicaForm";
 import { TCPForm } from "./forms-especificos/TCPForm";
 import { CuentasBancariasForm } from "./CuentasBancariasForm";
+import type { ClienteNatural, ClienteJuridica, ClienteTCP } from "../../../../types/ventas";
+import { dependenciasService } from "../../../../services/administracion";
 
 export interface ClienteFormProps {
   editingCliente: any | null;
   isProveedorView: boolean;
-  setView: (view: "list" | "form" | "detail") => void;
-  resetForm: () => void;
-  handleSubmit: (e: React.FormEvent) => void;
-  tipoPersona: TipoPersona;
-  setTipoPersona: (val: TipoPersona) => void;
-  formData: any;
-  setFormData: React.Dispatch<React.SetStateAction<any>>;
-  formErrors: any;
-  provincias: any[];
-  municipios: any[];
-  handleProvinciaChange: (id?: number) => void;
-  // Natural
-  datosNaturalForm: any;
-  setDatosNaturalForm: React.Dispatch<React.SetStateAction<any>>;
-  // Juridica
-  datosJuridicaForm: any;
-  setDatosJuridicaForm: React.Dispatch<React.SetStateAction<any>>;
-  tiposEntidad: any[];
-  // TCP
-  datosTCPForm: any;
-  setDatosTCPForm: React.Dispatch<React.SetStateAction<any>>;
-  // Cuentas
-  nuevaCuenta: NuevaCuenta;
-  setNuevaCuenta: React.Dispatch<React.SetStateAction<NuevaCuenta>>;
-  monedas: any[];
-  cuentas: any[];
-  addCuenta: () => void;
-  removeCuenta: (index: number) => void;
+  onCancel: () => void;
+  onSubmit: (data: any) => void;
+  provincias?: any[];
+  tiposEntidad?: any[];
+  monedas?: any[];
 }
 
 export const ClienteForm: React.FC<ClienteFormProps> = ({
   editingCliente,
   isProveedorView,
-  setView,
-  resetForm,
-  handleSubmit,
-  tipoPersona,
-  setTipoPersona,
-  formData,
-  setFormData,
-  formErrors,
-  provincias,
-  municipios,
-  handleProvinciaChange,
-  datosNaturalForm,
-  setDatosNaturalForm,
-  datosJuridicaForm,
-  setDatosJuridicaForm,
-  tiposEntidad,
-  datosTCPForm,
-  setDatosTCPForm,
-  nuevaCuenta,
-  setNuevaCuenta,
-  monedas,
-  cuentas,
-  addCuenta,
-  removeCuenta,
+  onCancel,
+  onSubmit,
+  provincias = [],
+  tiposEntidad = [],
+  monedas = [],
 }) => {
+  const [localProvincias, setLocalProvincias] = useState<any[]>(provincias || []);
+  const [localTiposEntidad, setLocalTiposEntidad] = useState<any[]>(tiposEntidad || []);
+  const [localMonedas, setLocalMonedas] = useState<any[]>(monedas || []);
+  
+  useEffect(() => {
+    if (provincias && Array.isArray(provincias) && provincias.length > 0) {
+      setLocalProvincias(provincias);
+    }
+  }, [provincias]);
+  
+  useEffect(() => {
+    if (tiposEntidad && Array.isArray(tiposEntidad) && tiposEntidad.length > 0) {
+      setLocalTiposEntidad(tiposEntidad);
+    }
+  }, [tiposEntidad]);
+  
+  useEffect(() => {
+    if (monedas && Array.isArray(monedas) && monedas.length > 0) {
+      setLocalMonedas(monedas);
+    }
+  }, [monedas]);
+  
+  const [tipoPersona, setTipoPersona] = useState<TipoPersona>(
+    editingCliente?.tipo_persona || "NATURAL"
+  );
+  
+  const [formData, setFormData] = useState<any>({
+    tipo_persona: editingCliente?.tipo_persona || "NATURAL",
+    tipo_relacion: editingCliente?.tipo_relacion || (isProveedorView ? "PROVEEDOR" : "CLIENTE"),
+    nombre: editingCliente?.nombre || "",
+    cedula_rif: editingCliente?.cedula_rif || "",
+    email: editingCliente?.email || "",
+    telefono: editingCliente?.telefono || "",
+    direccion: editingCliente?.direccion || "",
+    fax: editingCliente?.fax || "",
+    web: editingCliente?.web || "",
+    codigo_postal: editingCliente?.codigo_postal || "",
+    estado: editingCliente?.estado || "ACTIVO",
+    numero_cliente: editingCliente?.numero_cliente || "",
+    id_provincia: editingCliente?.id_provincia || undefined,
+    id_municipio: editingCliente?.id_municipio || undefined,
+  });
+
+  const [municipios, setMunicipios] = useState<any[]>([]);
+  const [loadingMunicipios, setLoadingMunicipios] = useState(false);
+
+  const handleProvinciaChange = async (provinciaId: number | undefined) => {
+    setFormData((prev: any) => ({
+      ...prev,
+      id_provincia: provinciaId,
+      id_municipio: undefined,
+    }));
+    
+    if (provinciaId) {
+      setLoadingMunicipios(true);
+      try {
+        const data = await dependenciasService.getMunicipios(provinciaId);
+        setMunicipios(data);
+      } catch (error) {
+        console.error('Error loading municipios:', error);
+        setMunicipios([]);
+      } finally {
+        setLoadingMunicipios(false);
+      }
+    } else {
+      setMunicipios([]);
+    }
+  };
+
+  useEffect(() => {
+    if (formData.id_provincia) {
+      handleProvinciaChange(formData.id_provincia);
+    }
+  }, []);
+
+  const [datosNatural, setDatosNatural] = useState<ClienteNatural | null>(
+    editingCliente?.cliente_natural || null
+  );
+  const [datosJuridica, setDatosJuridica] = useState<ClienteJuridica | null>(
+    editingCliente?.cliente_juridica || null
+  );
+  const [datosTCP, setDatosTCP] = useState<ClienteTCP | null>(
+    editingCliente?.cliente_tcp || null
+  );
+
+  const [nuevaCuenta, setNuevaCuenta] = useState<NuevaCuenta>({
+    titular: "",
+    banco: "",
+    sucursal: 0,
+    id_moneda: 1,
+    numero_cuenta: "",
+    tipo_cuenta: "CORRIENTE",
+    principal: false,
+  });
+  const [cuentas, setCuentas] = useState<any[]>(
+    editingCliente?.cuentas || []
+  );
+
+  useEffect(() => {
+    if (editingCliente) {
+      setFormData({
+        tipo_persona: editingCliente.tipo_persona || "NATURAL",
+        tipo_relacion: editingCliente.tipo_relacion || (isProveedorView ? "PROVEEDOR" : "CLIENTE"),
+        nombre: editingCliente.nombre || "",
+        cedula_rif: editingCliente.cedula_rif || "",
+        email: editingCliente.email || "",
+        telefono: editingCliente.telefono || "",
+        direccion: editingCliente.direccion || "",
+        fax: editingCliente.fax || "",
+        web: editingCliente.web || "",
+        codigo_postal: editingCliente.codigo_postal || "",
+        estado: editingCliente.estado || "ACTIVO",
+        numero_cliente: editingCliente.numero_cliente || "",
+        id_provincia: editingCliente.id_provincia || undefined,
+        id_municipio: editingCliente.id_municipio || undefined,
+      });
+      setTipoPersona(editingCliente.tipo_persona || "NATURAL");
+      setDatosNatural(editingCliente.cliente_natural || null);
+      setDatosJuridica(editingCliente.cliente_juridica || null);
+      setDatosTCP(editingCliente.cliente_tcp || null);
+      setCuentas(editingCliente.cuentas || []);
+    }
+  }, [editingCliente]);
+
+  const handleTipoPersonaChange = (tipo: TipoPersona) => {
+    setTipoPersona(tipo);
+    setFormData((prev: any) => ({ ...prev, tipo_persona: tipo }));
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onSubmit({
+      ...formData,
+      cliente_natural: tipoPersona === "NATURAL" ? datosNatural : undefined,
+      cliente_juridica: tipoPersona === "JURIDICA" ? datosJuridica : undefined,
+      cliente_tcp: tipoPersona === "TCP" ? datosTCP : undefined,
+      cuentas: cuentas,
+    });
+  };
+
+  const addCuenta = () => {
+    if (nuevaCuenta.numero_cuenta && nuevaCuenta.banco) {
+      setCuentas([...cuentas, { ...nuevaCuenta, id_cuenta: Date.now() }]);
+      setNuevaCuenta({
+        titular: "",
+        banco: "",
+        sucursal: 0,
+        id_moneda: 1,
+        numero_cuenta: "",
+        tipo_cuenta: "CORRIENTE",
+        principal: false,
+      });
+    }
+  };
+
+  const removeCuenta = (index: number) => {
+    setCuentas(cuentas.filter((_, i) => i !== index));
+  };
+
   return (
     <>
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 relative z-10">
@@ -101,11 +220,7 @@ export const ClienteForm: React.FC<ClienteFormProps> = ({
         </div>
         <Button
           variant="outline"
-          onClick={() => {
-            setView("list");
-            setFormData?.((prevForm: any) => ({ ...prevForm })); // keep this as side effect just in case, but real reset below
-            resetForm();
-          }}
+          onClick={onCancel}
           className="gap-2"
         >
           <ArrowLeft className="h-4 w-4" />
@@ -150,11 +265,7 @@ export const ClienteForm: React.FC<ClienteFormProps> = ({
                     name="tipoPersona"
                     value={tipo.value}
                     checked={tipoPersona === tipo.value}
-                    onChange={(e) => {
-                      const newValue = e.target.value as TipoPersona;
-                      setTipoPersona(newValue);
-                      setFormData({ ...formData, tipo_persona: newValue });
-                    }}
+                    onChange={() => handleTipoPersonaChange(tipo.value)}
                     className="w-4 h-4"
                   />
                   <tipo.icon className="h-4 w-4" />
@@ -175,106 +286,99 @@ export const ClienteForm: React.FC<ClienteFormProps> = ({
           </CardHeader>
           <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
             <div>
-              <Label>Numero de cliente</Label>
+              <Label>Numero de cliente (max 20)</Label>
               <Input
                 value={formData.numero_cliente || ""}
                 onChange={(e) =>
-                  setFormData({ ...formData, numero_cliente: e.target.value })
+                  setFormData({ ...formData, numero_cliente: e.target.value.slice(0, 20) })
                 }
-                placeholder="Ingresado por usuario"
+                maxLength={20}
               />
             </div>
-            <div className="md:col-span-2">
-              <Label>
-                {tipoPersona === "NATURAL"
-                  ? "Nombre Artistico"
-                  : "Nombre de la Empresa"}{" "}
-                *
-              </Label>
+            <div>
+              <Label>Nombre / Razón Social *</Label>
               <Input
                 value={formData.nombre || ""}
                 onChange={(e) =>
-                  setFormData({ ...formData, nombre: e.target.value })
+                  setFormData({ ...formData, nombre: e.target.value.toUpperCase().slice(0, 200) })
                 }
-                className={formErrors.nombre ? "border-red-500" : ""}
+                required
+                maxLength={200}
               />
-              {formErrors.nombre && (
-                <p className="text-red-500 text-sm">{formErrors.nombre}</p>
-              )}
             </div>
             <div>
-              <Label>Cédula / RIF</Label>
+              <Label>Cédula / RIF * (max 20)</Label>
               <Input
                 value={formData.cedula_rif || ""}
                 onChange={(e) =>
-                  setFormData({ ...formData, cedula_rif: e.target.value })
+                  setFormData({ ...formData, cedula_rif: e.target.value.toUpperCase().slice(0, 20) })
                 }
-                placeholder="V-12345678"
+                required
+                maxLength={20}
               />
             </div>
             <div>
-              <Label>Teléfono</Label>
+              <Label>Teléfono (max 20)</Label>
               <Input
                 value={formData.telefono || ""}
                 onChange={(e) =>
-                  setFormData({ ...formData, telefono: e.target.value })
+                  setFormData({ ...formData, telefono: e.target.value.slice(0, 20) })
                 }
+                maxLength={20}
               />
             </div>
             <div>
-              <Label>Email</Label>
+              <Label>Correo (max 100)</Label>
               <Input
                 type="email"
                 value={formData.email || ""}
                 onChange={(e) =>
-                  setFormData({ ...formData, email: e.target.value })
+                  setFormData({ ...formData, email: e.target.value.toLowerCase().slice(0, 100) })
                 }
+                maxLength={100}
               />
             </div>
             <div>
-              <Label>Fax</Label>
+              <Label>Fax (max 20)</Label>
               <Input
                 value={formData.fax || ""}
                 onChange={(e) =>
-                  setFormData({ ...formData, fax: e.target.value })
+                  setFormData({ ...formData, fax: e.target.value.slice(0, 20) })
                 }
+                maxLength={20}
               />
             </div>
             <div>
-              <Label>Web</Label>
+              <Label>Web (max 100)</Label>
               <Input
                 value={formData.web || ""}
                 onChange={(e) =>
-                  setFormData({ ...formData, web: e.target.value })
+                  setFormData({ ...formData, web: e.target.value.slice(0, 100) })
                 }
-                placeholder="https://..."
+                maxLength={100}
               />
             </div>
             <div>
-              <Label>Código Postal</Label>
+              <Label>Código Postal (max 10)</Label>
               <Input
                 value={formData.codigo_postal || ""}
                 onChange={(e) =>
-                  setFormData({ ...formData, codigo_postal: e.target.value })
+                  setFormData({ ...formData, codigo_postal: e.target.value.slice(0, 10) })
                 }
+                maxLength={10}
               />
             </div>
             <div>
-              <Label className="flex items-center gap-2">
-                <Globe className="h-4 w-4" />
-                Provincia
-              </Label>
+              <Label>Provincia</Label>
               <select
                 value={formData.id_provincia || ""}
                 onChange={(e) =>
-                  handleProvinciaChange(
-                    e.target.value ? parseInt(e.target.value) : undefined,
-                  )
+                  handleProvinciaChange(e.target.value ? parseInt(e.target.value) : undefined)
                 }
                 className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white"
               >
                 <option value="">Seleccione provincia</option>
-                {provincias.map((p: any) => (
+                {localProvincias.map((p: any) => (
                   <option key={p.id_provincia} value={p.id_provincia}>
                     {p.nombre}
                   </option>
@@ -282,27 +386,20 @@ export const ClienteForm: React.FC<ClienteFormProps> = ({
               </select>
             </div>
             <div>
-              <Label className="flex items-center gap-2">
-                <MapPin className="h-4 w-4" />
-                Municipio
-              </Label>
+              <Label>Municipio</Label>
               <select
                 value={formData.id_municipio || ""}
                 onChange={(e) =>
                   setFormData({
                     ...formData,
-                    id_municipio: e.target.value
-                      ? parseInt(e.target.value)
-                      : undefined,
+                    id_municipio: e.target.value ? parseInt(e.target.value) : undefined,
                   })
                 }
-                disabled={!formData.id_provincia}
+                disabled={!formData.id_provincia || loadingMunicipios}
                 className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white disabled:bg-slate-50 disabled:cursor-not-allowed"
               >
                 <option value="">
-                  {formData.id_provincia
-                    ? "Seleccione municipio"
-                    : "Primero seleccione provincia"}
+                  {loadingMunicipios ? "Cargando..." : (formData.id_provincia ? "Seleccione municipio" : "Primero seleccione provincia")}
                 </option>
                 {municipios.map((m: any) => (
                   <option key={m.id_municipio} value={m.id_municipio}>
@@ -328,7 +425,7 @@ export const ClienteForm: React.FC<ClienteFormProps> = ({
                 onChange={(e) =>
                   setFormData({
                     ...formData,
-                    tipo_relacion: e.target.value as TipoRelacion,
+                    tipo_relacion: e.target.value,
                   })
                 }
                 className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white"
@@ -347,7 +444,7 @@ export const ClienteForm: React.FC<ClienteFormProps> = ({
                   onChange={(e) =>
                     setFormData({
                       ...formData,
-                      estado: e.target.value as EstadoCliente,
+                      estado: e.target.value,
                     })
                   }
                   className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white"
@@ -357,44 +454,29 @@ export const ClienteForm: React.FC<ClienteFormProps> = ({
                 </select>
               </div>
             )}
-            {editingCliente && (
-              <div className="flex items-center gap-2 mt-6">
-                <input
-                  type="checkbox"
-                  aria-label="Cliente activo"
-                  checked={formData.activo || false}
-                  onChange={(e) =>
-                    setFormData({ ...formData, activo: e.target.checked })
-                  }
-                  className="w-4 h-4"
-                />
-                <Label className="mb-0">Cliente activo</Label>
-              </div>
-            )}
           </CardContent>
         </Card>
 
         {/* Datos según tipo de persona */}
         {tipoPersona === "NATURAL" && (
           <NaturalForm
-            datosNaturalForm={datosNaturalForm}
-            setDatosNaturalForm={setDatosNaturalForm}
+            datos={datosNatural}
+            setDatos={setDatosNatural}
           />
         )}
 
         {tipoPersona === "JURIDICA" && (
           <JuridicaForm
-            datosJuridicaForm={datosJuridicaForm}
-            setDatosJuridicaForm={setDatosJuridicaForm}
-            tiposEntidad={tiposEntidad}
+            datos={datosJuridica}
+            setDatos={setDatosJuridica}
+            tiposEntidad={localTiposEntidad}
           />
         )}
 
         {tipoPersona === "TCP" && (
           <TCPForm
-            datosTCPForm={datosTCPForm}
-            setDatosTCPForm={setDatosTCPForm}
-            formErrors={formErrors}
+            datos={datosTCP}
+            setDatos={setDatosTCP}
           />
         )}
 
@@ -402,7 +484,7 @@ export const ClienteForm: React.FC<ClienteFormProps> = ({
         <CuentasBancariasForm
           nuevaCuenta={nuevaCuenta}
           setNuevaCuenta={setNuevaCuenta}
-          monedas={monedas}
+          monedas={localMonedas}
           cuentas={cuentas}
           addCuenta={addCuenta}
           removeCuenta={removeCuenta}
@@ -419,10 +501,7 @@ export const ClienteForm: React.FC<ClienteFormProps> = ({
           <Button
             type="button"
             variant="outline"
-            onClick={() => {
-              setView("list");
-              resetForm();
-            }}
+            onClick={onCancel}
           >
             Cancelar
           </Button>

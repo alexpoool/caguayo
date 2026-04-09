@@ -38,6 +38,7 @@ async def listar_anexos(
         statement = select(Anexo).options(
             selectinload(Anexo.convenios).selectinload(Convenio.cliente),
             selectinload(Anexo.convenios).selectinload(Convenio.tipo_convenio),
+            selectinload(Anexo.items_anexo),
         )
         if convenio_id:
             statement = statement.where(Anexo.id_convenio == convenio_id)
@@ -64,7 +65,13 @@ async def obtener_anexo(
     db: AsyncSession = Depends(get_session),
 ):
     """Obtener un anexo por ID."""
-    statement = select(Anexo).where(Anexo.id_anexo == anexo_id)
+    statement = (
+        select(Anexo)
+        .where(Anexo.id_anexo == anexo_id)
+        .options(
+            selectinload(Anexo.items_anexo),
+        )
+    )
     results = await db.exec(statement)
     anexo = results.first()
     if not anexo:

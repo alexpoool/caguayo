@@ -24,27 +24,35 @@ class ConexionTestRequest(BaseModel):
 
 @router.get("", response_model=List[ConexionResponse])
 async def get_conexiones():
-    """Obtiene todas las bases de datos de PostgreSQL usando usuario lector"""
+    """Obtiene todas las conexiones registradas en la tabla conexion_database"""
     try:
         conn = psycopg2.connect(
-            host=os.getenv("LECTOR_HOST", "localhost"),
-            port=int(os.getenv("LECTOR_PORT", 5432)),
-            user=os.getenv("LECTOR_USER", "usuariolector"),
-            password=os.getenv("LECTOR_PASSWORD", "usuariolector123"),
-            database="postgres",
+            host=os.getenv("ADMIN_DB_HOST", "localhost"),
+            port=int(os.getenv("ADMIN_DB_PORT", 5432)),
+            user=os.getenv("ADMIN_DB_USER", "postgres"),
+            password=os.getenv("ADMIN_DB_PASSWORD", "1234"),
+            database="caguayo_inventario",
             client_encoding="utf8",
         )
         cur = conn.cursor()
         cur.execute(
-            "SELECT datname FROM pg_database WHERE datistemplate = false AND datname NOT IN ('postgres', 'template0', 'template1')"
+            "SELECT id_conexion, nombre_database, host, puerto FROM conexion_database ORDER BY id_conexion"
         )
-        databases = [row[0] for row in cur.fetchall()]
+        rows = cur.fetchall()
         cur.close()
         conn.close()
 
-        return [ConexionResponse(nombre_database=db) for db in databases]
+        return [
+            ConexionResponse(
+                id_conexion=row[0],
+                nombre_database=row[1],
+                host=row[2],
+                puerto=row[3],
+            )
+            for row in rows
+        ]
     except Exception as e:
-        print(f"Error getting databases: {e}")
+        print(f"Error getting conexiones: {e}")
         return []
 
 

@@ -4,14 +4,16 @@ import { Label } from "../../../../../components/ui"
 import { Input } from "../../../../../components/ui"
 
 export interface DatosNaturalFormProps {
-  datosNaturalForm: any;
-  setDatosNaturalForm: React.Dispatch<React.SetStateAction<any>>;
+  datos: any;
+  setDatos: React.Dispatch<React.SetStateAction<any>>;
 }
 
 export const NaturalForm: React.FC<DatosNaturalFormProps> = ({
-  datosNaturalForm,
-  setDatosNaturalForm,
+  datos,
+  setDatos,
 }) => {
+  const data = datos || {};
+  
   return (
     <Card className="mb-6 shadow-sm border-gray-200">
       <CardHeader className="border-b bg-gray-50/50">
@@ -21,10 +23,10 @@ export const NaturalForm: React.FC<DatosNaturalFormProps> = ({
         <div>
           <Label>Nombre</Label>
           <Input
-            value={datosNaturalForm.nombre || ""}
+            value={data.nombre || ""}
             onChange={(e) =>
-              setDatosNaturalForm({
-                ...datosNaturalForm,
+              setDatos({
+                ...data,
                 nombre: e.target.value,
               })
             }
@@ -33,10 +35,10 @@ export const NaturalForm: React.FC<DatosNaturalFormProps> = ({
         <div>
           <Label>Primer Apellido</Label>
           <Input
-            value={datosNaturalForm.primer_apellido || ""}
+            value={data.primer_apellido || ""}
             onChange={(e) =>
-              setDatosNaturalForm({
-                ...datosNaturalForm,
+              setDatos({
+                ...data,
                 primer_apellido: e.target.value,
               })
             }
@@ -45,10 +47,10 @@ export const NaturalForm: React.FC<DatosNaturalFormProps> = ({
         <div>
           <Label>Segundo Apellido</Label>
           <Input
-            value={datosNaturalForm.segundo_apellido || ""}
+            value={data.segundo_apellido || ""}
             onChange={(e) =>
-              setDatosNaturalForm({
-                ...datosNaturalForm,
+              setDatos({
+                ...data,
                 segundo_apellido: e.target.value,
               })
             }
@@ -57,10 +59,10 @@ export const NaturalForm: React.FC<DatosNaturalFormProps> = ({
         <div>
           <Label>Carnet de Identidad</Label>
           <Input
-            value={datosNaturalForm.carnet_identidad || ""}
+            value={data.carnet_identidad || ""}
             onChange={(e) =>
-              setDatosNaturalForm({
-                ...datosNaturalForm,
+              setDatos({
+                ...data,
                 carnet_identidad: e.target.value,
               })
             }
@@ -69,10 +71,10 @@ export const NaturalForm: React.FC<DatosNaturalFormProps> = ({
         <div>
           <Label>Código Expediente</Label>
           <Input
-            value={datosNaturalForm.codigo_expediente || ""}
+            value={data.codigo_expediente || ""}
             onChange={(e) =>
-              setDatosNaturalForm({
-                ...datosNaturalForm,
+              setDatos({
+                ...data,
                 codigo_expediente: e.target.value,
               })
             }
@@ -81,10 +83,10 @@ export const NaturalForm: React.FC<DatosNaturalFormProps> = ({
         <div>
           <Label># de Registro</Label>
           <Input
-            value={datosNaturalForm.numero_registro || ""}
+            value={data.numero_registro || ""}
             onChange={(e) =>
-              setDatosNaturalForm({
-                ...datosNaturalForm,
+              setDatos({
+                ...data,
                 numero_registro: e.target.value,
               })
             }
@@ -93,10 +95,10 @@ export const NaturalForm: React.FC<DatosNaturalFormProps> = ({
         <div>
           <Label>Catálogo</Label>
           <Input
-            value={datosNaturalForm.catalogo || ""}
+            value={data.catalogo || ""}
             onChange={(e) =>
-              setDatosNaturalForm({
-                ...datosNaturalForm,
+              setDatos({
+                ...data,
                 catalogo: e.target.value,
               })
             }
@@ -106,25 +108,25 @@ export const NaturalForm: React.FC<DatosNaturalFormProps> = ({
           <input
             type="checkbox"
             aria-label="Es trabajador"
-            checked={datosNaturalForm.es_trabajador || false}
+            checked={data.es_trabajador || false}
             onChange={(e) =>
-              setDatosNaturalForm({
-                ...datosNaturalForm,
+              setDatos({
+                ...data,
                 es_trabajador: e.target.checked,
               })
             }
           />
           <Label className="mb-0">¿Es trabajador?</Label>
         </div>
-        {datosNaturalForm.es_trabajador && (
+        {data.es_trabajador && (
           <>
             <div>
               <Label>Ocupación</Label>
               <Input
-                value={datosNaturalForm.ocupacion || ""}
+                value={data.ocupacion || ""}
                 onChange={(e) =>
-                  setDatosNaturalForm({
-                    ...datosNaturalForm,
+                  setDatos({
+                    ...data,
                     ocupacion: e.target.value,
                   })
                 }
@@ -133,10 +135,10 @@ export const NaturalForm: React.FC<DatosNaturalFormProps> = ({
             <div>
               <Label>Centro de Trabajo</Label>
               <Input
-                value={datosNaturalForm.centro_trabajo || ""}
+                value={data.centro_trabajo || ""}
                 onChange={(e) =>
-                  setDatosNaturalForm({
-                    ...datosNaturalForm,
+                  setDatos({
+                    ...data,
                     centro_trabajo: e.target.value,
                   })
                 }
@@ -146,10 +148,10 @@ export const NaturalForm: React.FC<DatosNaturalFormProps> = ({
               <Label>Correo Trabajo</Label>
               <Input
                 type="email"
-                value={datosNaturalForm.correo_trabajo || ""}
+                value={data.correo_trabajo || ""}
                 onChange={(e) =>
-                  setDatosNaturalForm({
-                    ...datosNaturalForm,
+                  setDatos({
+                    ...data,
                     correo_trabajo: e.target.value,
                   })
                 }
@@ -158,10 +160,10 @@ export const NaturalForm: React.FC<DatosNaturalFormProps> = ({
             <div>
               <Label>Dirección Trabajo</Label>
               <Input
-                value={datosNaturalForm.direccion_trabajo || ""}
+                value={data.direccion_trabajo || ""}
                 onChange={(e) =>
-                  setDatosNaturalForm({
-                    ...datosNaturalForm,
+                  setDatos({
+                    ...data,
                     direccion_trabajo: e.target.value,
                   })
                 }
@@ -170,10 +172,10 @@ export const NaturalForm: React.FC<DatosNaturalFormProps> = ({
             <div>
               <Label>Teléfono Trabajo</Label>
               <Input
-                value={datosNaturalForm.telefono_trabajo || ""}
+                value={data.telefono_trabajo || ""}
                 onChange={(e) =>
-                  setDatosNaturalForm({
-                    ...datosNaturalForm,
+                  setDatos({
+                    ...data,
                     telefono_trabajo: e.target.value,
                   })
                 }
@@ -183,10 +185,10 @@ export const NaturalForm: React.FC<DatosNaturalFormProps> = ({
               <Label>Vigencia</Label>
               <Input
                 type="date"
-                value={datosNaturalForm.vigencia || ""}
+                value={data.vigencia || ""}
                 onChange={(e) =>
-                  setDatosNaturalForm({
-                    ...datosNaturalForm,
+                  setDatos({
+                    ...data,
                     vigencia: e.target.value,
                   })
                 }
@@ -198,25 +200,25 @@ export const NaturalForm: React.FC<DatosNaturalFormProps> = ({
           <input
             type="checkbox"
             aria-label="En baja"
-            checked={datosNaturalForm.en_baja || false}
+            checked={data.en_baja || false}
             onChange={(e) =>
-              setDatosNaturalForm({
-                ...datosNaturalForm,
+              setDatos({
+                ...data,
                 en_baja: e.target.checked,
               })
             }
           />
           <Label className="mb-0">¿En baja?</Label>
         </div>
-        {datosNaturalForm.en_baja && (
+        {data.en_baja && (
           <div>
             <Label>Fecha de Baja</Label>
             <Input
               type="date"
-              value={datosNaturalForm.fecha_baja || ""}
+              value={data.fecha_baja || ""}
               onChange={(e) =>
-                setDatosNaturalForm({
-                  ...datosNaturalForm,
+                setDatos({
+                  ...data,
                   fecha_baja: e.target.value,
                 })
               }

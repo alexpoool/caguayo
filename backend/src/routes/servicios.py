@@ -39,6 +39,8 @@ from src.dto.servicio_dto import (
     PersonaLiquidacionUpdate,
     PersonaLiquidacionUpdateInput,
     PersonaLiquidacionConfirmar,
+    FacturaPagoValidacion,
+    PersonaLiquidacionValidacion,
 )
 from src.models.servicio import PersonaEtapa
 
@@ -294,6 +296,15 @@ async def get_facturas_by_etapa(etapa_id: int, db: AsyncSession = Depends(get_se
     return await FacturaServicioService.get_by_etapa(db, etapa_id)
 
 
+@facturas_servicio_router.get(
+    "/etapa/{etapa_id}/validar-pago", response_model=FacturaPagoValidacion
+)
+async def validar_pago_factura_etapa(
+    etapa_id: int, db: AsyncSession = Depends(get_session)
+):
+    return await FacturaServicioService.validar_pago_etapa(db, etapa_id)
+
+
 @facturas_servicio_router.post("", response_model=FacturaServicioRead, status_code=201)
 async def create_factura_servicio(
     data: FacturaServicioCreate, db: AsyncSession = Depends(get_session)
@@ -419,3 +430,37 @@ async def confirmar_liquidacion(
 async def delete_liquidacion(id: int, db: AsyncSession = Depends(get_session)):
     if not await PersonaLiquidacionService.delete(db, id):
         raise HTTPException(status_code=404, detail="Liquidación no encontrada")
+
+
+@persona_liquidacion_router.get(
+    "/validar/{id_etapa}/{id_persona}", response_model=PersonaLiquidacionValidacion
+)
+async def validar_liquidar_persona(
+    id_etapa: int, id_persona: int, db: AsyncSession = Depends(get_session)
+):
+    """Valida si se puede liquidar a una persona en una etapa (verifica que la factura esté pagada)."""
+    return await PersonaLiquidacionService.validar_liquidar(db, id_etapa, id_persona)
+
+
+@persona_liquidacion_router.get(
+    "/etapa/{id_etapa}/persona/{id_persona}",
+    response_model=List[PersonaLiquidacionRead],
+)
+async def get_liquidaciones_by_etapa_persona(
+    id_etapa: int, id_persona: int, db: AsyncSession = Depends(get_session)
+):
+    """Obtiene las liquidaciones de una persona en una etapa."""
+    return await PersonaLiquidacionService.get_by_etapa_persona(
+        db, id_etapa, id_persona
+    )
+
+
+@persona_liquidacion_router.get(
+    "/persona/{id_persona}",
+    response_model=List[PersonaLiquidacionRead],
+)
+async def get_liquidaciones_by_persona(
+    id_persona: int, db: AsyncSession = Depends(get_session)
+):
+    """Obtiene todas las liquidaciones de una persona."""
+    return await PersonaLiquidacionService.get_by_persona(db, id_persona)

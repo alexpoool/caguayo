@@ -1,10 +1,9 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Button, Input, Label, Card, CardContent, CardHeader, CardTitle, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, ConfirmModal } from '../../components/ui';
-import { facturasServicioService, etapasProyectoService, monedaService, contratosService, solicitudesService } from '../../services/api';
+import { facturasServicioService, etapasProyectoService, monedaService, solicitudesService } from '../../services/api';
 import type { FacturaServicio, FacturaServicioCreate, FacturaServicioUpdate, Etapa } from '../../types/servicio';
 import type { Moneda } from '../../types/moneda';
-import type { ContratoWithDetails } from '../../types/contrato';
 import { Plus, Save, Trash2, Edit, ArrowLeft, Search, Receipt, X, Eye, DollarSign, Hash, Calendar, FileText, Check, ChevronDown } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -93,16 +92,16 @@ export function FacturasServicioPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const etapaParam = searchParams.get('etapa');
-  const contratoParam = searchParams.get('contrato');
+  const solicitudParam = searchParams.get('solicitud');
   const [view, setView] = useState<View>('list');
 
   const [facturas, setFacturas] = useState<FacturaServicio[]>([]);
-  const [contratos, setContratos] = useState<ContratoWithDetails[]>([]);
+  const [solicitudes, setSolicitudes] = useState<any[]>([]);
   const [etapas, setEtapas] = useState<Etapa[]>([]);
   const [monedas, setMonedas] = useState<Moneda[]>([]);
   const [currentEtapa, setCurrentEtapa] = useState<Etapa | null>(null);
 
-  const [selectedContratoId, setSelectedContratoId] = useState<number | null>(contratoParam ? Number(contratoParam) : null);
+  const [selectedSolicitudId, setSelectedSolicitudId] = useState<number | null>(solicitudParam ? Number(solicitudParam) : null);
   const [selectedEtapaId, setSelectedEtapaId] = useState<number | null>(etapaParam ? Number(etapaParam) : null);
 
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -127,19 +126,19 @@ export function FacturasServicioPage() {
   useEffect(() => { loadInitialData(); }, []);
 
   useEffect(() => {
-    if (contratoParam && contratos.length > 0) {
-      loadEtapasByContrato(Number(contratoParam));
+    if (solicitudParam) {
+      loadEtapasBySolicitud(Number(solicitudParam));
     }
-  }, [contratoParam, contratos]);
+  }, [solicitudParam]);
 
   const loadInitialData = async () => {
     try {
-      const [monedasRes, contratosRes] = await Promise.all([
+      const [monedasRes, solicitudesRes] = await Promise.all([
         monedaService.getMonedas(0, 100),
-        contratosService.getContratos(0, 1000)
+        solicitudesService.getSolicitudes(0, 1000)
       ]);
       setMonedas(monedasRes);
-      setContratos(contratosRes);
+      setSolicitudes(solicitudesRes);
       if (etapaParam) {
         const etapaData = await etapasProyectoService.getEtapa(Number(etapaParam));
         setCurrentEtapa(etapaData);
@@ -147,15 +146,10 @@ export function FacturasServicioPage() {
     } catch (error) { console.error('Error:', error); }
   };
 
-  const loadEtapasByContrato = async (contratoId: number) => {
+  const loadEtapasBySolicitud = async (solicitudId: number) => {
     try {
-      const solicitudes = await solicitudesService.getSolicitudesByContrato(contratoId);
-      const allEtapas: Etapa[] = [];
-      for (const sol of solicitudes) {
-        const etapasData = await etapasProyectoService.getEtapasBySolicitud(sol.id_solicitud_servicio).catch(() => []);
-        allEtapas.push(...etapasData);
-      }
-      setEtapas(allEtapas);
+      const etapasData = await etapasProyectoService.getEtapasBySolicitud(solicitudId);
+      setEtapas(etapasData);
     } catch (error) { console.error('Error:', error); setEtapas([]); }
   };
 
@@ -164,24 +158,12 @@ export function FacturasServicioPage() {
       if (filtroEtapa) {
         const data = await facturasServicioService.getFacturasByEtapa(filtroEtapa);
         setFacturas(data);
-      } else if (contratoParam) {
-        const contratosData = await contratosService.getContratos(0, 1000);
-        const contrato = contratosData.find((c: ContratoWithDetails) => c.id_contrato === Number(contratoParam));
-        if (contrato?.solicitudes) {
-          const etapaIds: number[] = [];
-          for (const sol of contrato.solicitudes) {
-            if (sol.etapas) {
-              for (const etapa of sol.etapas) {
-                if (etapa.id_etapa) etapaIds.push(etapa.id_etapa);
-              }
-            }
-          }
-          const todasLasFacturas = await facturasServicioService.getFacturasServicio(0, 1000);
-          const filtradas = todasLasFacturas.filter((f: FacturaServicio) => f.id_etapa && etapaIds.includes(f.id_etapa));
-          setFacturas(filtradas);
-        } else {
-          setFacturas([]);
-        }
+      } else if (solicitudParam) {
+        const etapasData = await etapasProyectoService.getEtapasBySolicitud(Number(solicitudParam));
+        const etapaIds = etapasData.map((e: Etapa) => e.id_etapa).filter(Boolean);
+        const todasLasFacturas = await facturasServicioService.getFacturasServicio(0, 1000);
+        const filtradas = todasLasFacturas.filter((f: FacturaServicio) => f.id_etapa && etapaIds.includes(f.id_etapa));
+        setFacturas(filtradas);
       } else {
         const data = await facturasServicioService.getFacturasServicio(0, 1000);
         setFacturas(data);
@@ -189,7 +171,7 @@ export function FacturasServicioPage() {
     } catch (error) { console.error('Error:', error); }
   };
 
-  useEffect(() => { if (view === 'list') loadFacturas(); }, [view, filtroEtapa, contratoParam]);
+  useEffect(() => { if (view === 'list') loadFacturas(); }, [view, filtroEtapa, solicitudParam]);
 
   const handleSave = async () => {
     try {
@@ -201,7 +183,6 @@ export function FacturasServicioPage() {
           id_moneda: formData.id_moneda ? Number(formData.id_moneda) : undefined,
           fecha: formData.fecha,
           descripcion: formData.descripcion,
-          cantidad: formData.cantidad ? Number(formData.cantidad) : undefined,
           precio: formData.precio ? Number(formData.precio) : undefined,
           observaciones: formData.observaciones
         };
@@ -214,7 +195,7 @@ export function FacturasServicioPage() {
           id_moneda: formData.id_moneda ? Number(formData.id_moneda) : undefined,
           fecha: formData.fecha || new Date().toISOString().split('T')[0],
           descripcion: formData.descripcion,
-          cantidad: formData.cantidad ? Number(formData.cantidad) : 0,
+          cantidad: formData.cantidad ? Number(formData.cantidad) : 1,
           precio: formData.precio ? Number(formData.precio) : 0,
           observaciones: formData.observaciones
         };
@@ -247,7 +228,7 @@ export function FacturasServicioPage() {
     setFormData({});
     setEditingId(null);
     if (!etapaParam) {
-      setSelectedContratoId(null);
+      setSelectedSolicitudId(null);
       setSelectedEtapaId(null);
     }
   };
@@ -261,7 +242,6 @@ export function FacturasServicioPage() {
         id_moneda: item.id_moneda,
         fecha: item.fecha,
         descripcion: item.descripcion,
-        cantidad: item.cantidad,
         precio: item.precio,
         observaciones: item.observaciones
       });
@@ -275,10 +255,10 @@ export function FacturasServicioPage() {
     setView('form');
   };
 
-  const handleSelectContrato = (id: number | null) => {
-    setSelectedContratoId(id);
+  const handleSelectSolicitud = (id: number | null) => {
+    setSelectedSolicitudId(id);
     setSelectedEtapaId(null);
-    if (id) loadEtapasByContrato(id);
+    if (id) loadEtapasBySolicitud(id);
   };
 
   const handleSelectEtapa = (id: number | null) => {
@@ -302,7 +282,7 @@ export function FacturasServicioPage() {
   const getEtapaName = (id?: number) => {
     if (!id) return 'N/A';
     const e = etapas.find(et => et.id_etapa === id);
-    return e?.nombre_etapa || `Etapa #${e.numero_etapa}`;
+    return e?.nombre_etapa || `Etapa #${e?.numero_etapa || 'N/A'}`;
   };
 
   const renderList = () => (
@@ -394,7 +374,7 @@ export function FacturasServicioPage() {
                       </span>
                     </TableCell>
                     <TableCell className="font-medium text-gray-900">
-                      {getMonedaSymbol(item.id_moneda)} {(Number(item.precio) * Number(item.cantidad)).toFixed(2)}
+                      {getMonedaSymbol(item.id_moneda)} {Number(item.monto || 0).toFixed(2)}
                     </TableCell>
                     <TableCell className="text-gray-700">
                       {item.fecha || 'N/A'}
@@ -472,23 +452,23 @@ export function FacturasServicioPage() {
             {!etapaParam && (
               <>
                 <SearchSelect
-                  label="Contrato"
-                  placeholder="Buscar contrato..."
-                  items={contratos}
-                  selectedId={selectedContratoId}
-                  getLabel={(c) => c.nombre || `Contrato #${c.id_contrato}`}
-                  getId={(c) => c.id_contrato}
-                  onSelect={handleSelectContrato}
+                  label="Solicitud de Servicio"
+                  placeholder="Buscar solicitud..."
+                  items={solicitudes}
+                  selectedId={selectedSolicitudId}
+                  getLabel={(s) => s.codigo_solicitud || `Solicitud #${s.id_solicitud_servicio}`}
+                  getId={(s) => s.id_solicitud_servicio}
+                  onSelect={handleSelectSolicitud}
                 />
                 <SearchSelect
                   label="Etapa"
-                  placeholder={selectedContratoId ? 'Buscar etapa...' : 'Primero seleccione un contrato'}
+                  placeholder={selectedSolicitudId ? 'Buscar etapa...' : 'Primero seleccione una solicitud'}
                   items={etapas}
                   selectedId={selectedEtapaId}
                   getLabel={(e) => e.nombre_etapa || `Etapa #${e.numero_etapa}`}
                   getId={(e) => e.id_etapa}
                   onSelect={handleSelectEtapa}
-                  disabled={!selectedContratoId}
+                  disabled={!selectedSolicitudId}
                 />
               </>
             )}
@@ -513,10 +493,6 @@ export function FacturasServicioPage() {
             <div className="md:col-span-2">
               <Label className="text-sm font-medium">Descripción</Label>
               <Input value={formData.descripcion || ''} onChange={(e: any) => setFormData({ ...formData, descripcion: e.target.value })} className="mt-1" placeholder="Descripción de la factura" />
-            </div>
-            <div>
-              <Label className="text-sm font-medium">Cantidad</Label>
-              <Input type="number" value={formData.cantidad || ''} onChange={(e: any) => setFormData({ ...formData, cantidad: e.target.value })} className="mt-1" placeholder="0" />
             </div>
             <div>
               <Label className="text-sm font-medium">Precio</Label>
@@ -576,7 +552,7 @@ export function FacturasServicioPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-4 rounded-xl border border-green-100">
                   <p className="text-xs text-green-600 uppercase tracking-wider mb-1">Monto Total</p>
-                  <p className="font-bold text-green-900 text-xl">{getMonedaSymbol(detailModal.item.id_moneda)} {(Number(detailModal.item.precio) * Number(detailModal.item.cantidad)).toFixed(2)}</p>
+                  <p className="font-bold text-green-900 text-xl">{getMonedaSymbol(detailModal.item.id_moneda)} {Number(detailModal.item.monto || 0).toFixed(2)}</p>
                 </div>
                 <div className="bg-gray-50 p-4 rounded-xl">
                   <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Alcance</p>
@@ -587,10 +563,6 @@ export function FacturasServicioPage() {
                 <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-4 rounded-xl border border-blue-100">
                   <p className="text-xs text-blue-600 uppercase tracking-wider mb-1">Precio</p>
                   <p className="font-bold text-gray-900">{getMonedaSymbol(detailModal.item.id_moneda)} {Number(detailModal.item.precio).toFixed(2)}</p>
-                </div>
-                <div className="bg-gradient-to-br from-purple-50 to-pink-50 p-4 rounded-xl border border-purple-100">
-                  <p className="text-xs text-purple-600 uppercase tracking-wider mb-1">Cantidad</p>
-                  <p className="font-bold text-gray-900 text-xl">{detailModal.item.cantidad}</p>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">

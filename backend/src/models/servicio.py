@@ -113,7 +113,7 @@ class PersonaEtapa(SQLModel, table=True):
     )
     id_persona: int = Field(
         sa_column=Column(
-            ForeignKey("clientes_persona_natural.id_cliente"),
+            ForeignKey("clientes.id_cliente"),
             nullable=False,
             primary_key=True,
         )
@@ -138,6 +138,7 @@ class FacturaServicio(SQLModel, table=True):
     descripcion: Optional[str] = None
     cantidad: Decimal = Field(default=Decimal("0.00"))
     precio: Decimal = Field(default=Decimal("0.00"))
+    monto: Decimal = Field(default=Decimal("0.00"))
     observaciones: Optional[str] = None
     id_usuario: Optional[int] = None
 
@@ -169,22 +170,24 @@ class PersonaLiquidacion(SQLModel, table=True):
     id_liquidacion: Optional[int] = Field(default=None, primary_key=True)
     numero: Optional[str] = Field(default=None, max_length=50)
     id_etapa: Optional[int] = Field(default=None, foreign_key="etapas.id_etapa")
-    id_persona: Optional[int] = Field(
-        default=None, foreign_key="clientes_persona_natural.id_cliente"
-    )
+    id_persona: Optional[int] = Field(default=None, foreign_key="clientes.id_cliente")
     fecha_emision: date = Field(default=date.today())
     fecha_liquidacion: Optional[date] = None
     descripcion: Optional[str] = None
     id_moneda: Optional[int] = Field(default=None, foreign_key="moneda.id_moneda")
     tipo_pago: str = Field(default="TRANSFERENCIA", max_length=50)
     importe: Decimal = Field(default=Decimal("0.00"))
+    porcentaje_caguayo: Decimal = Field(default=Decimal("10.00"))
+    importe_caguayo: Decimal = Field(default=Decimal("0.00"))
     porciento_gestion: Decimal = Field(default=Decimal("0.00"))
     porciento_empresa: Decimal = Field(default=Decimal("0.00"))
     devengado: Decimal = Field(default=Decimal("0.00"))
-    tributario: Decimal = Field(default=Decimal("0.00"))
+    tributario: Decimal = Field(default=Decimal("5.00"))
+    tributario_monto: Decimal = Field(default=Decimal("0.00"))
     comision_bancaria: Decimal = Field(default=Decimal("0.00"))
     neto_pagar: Decimal = Field(default=Decimal("0.00"))
     id_tipo_concepto: Optional[int] = None
     doc_pago_liquidacion: Optional[str] = Field(default=None, max_length=100)
     gasto_empresa: Decimal = Field(default=Decimal("0.00"))
     observacion: Optional[str] = None
+    confirmado: bool = Field(default=False)

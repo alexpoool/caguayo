@@ -4,16 +4,18 @@ import { Label } from "../../../../../components/ui"
 import { Input } from "../../../../../components/ui"
 
 export interface DatosJuridicaFormProps {
-  datosJuridicaForm: any;
-  setDatosJuridicaForm: React.Dispatch<React.SetStateAction<any>>;
+  datos: any;
+  setDatos: React.Dispatch<React.SetStateAction<any>>;
   tiposEntidad: any[];
 }
 
 export const JuridicaForm: React.FC<DatosJuridicaFormProps> = ({
-  datosJuridicaForm,
-  setDatosJuridicaForm,
+  datos,
+  setDatos,
   tiposEntidad,
 }) => {
+  const data = datos || {};
+  
   return (
     <Card className="mb-6 shadow-sm border-gray-200">
       <CardHeader className="border-b bg-gray-50/50">
@@ -23,10 +25,10 @@ export const JuridicaForm: React.FC<DatosJuridicaFormProps> = ({
         <div>
           <Label>Código REUP</Label>
           <Input
-            value={datosJuridicaForm.codigo_reup || ""}
+            value={data.codigo_reup || ""}
             onChange={(e) =>
-              setDatosJuridicaForm({
-                ...datosJuridicaForm,
+              setDatos({
+                ...data,
                 codigo_reup: e.target.value,
               })
             }
@@ -37,10 +39,10 @@ export const JuridicaForm: React.FC<DatosJuridicaFormProps> = ({
           <Label>Tipo de Entidad</Label>
           <select
             aria-label="Tipo de Entidad"
-            value={datosJuridicaForm.id_tipo_entidad || ""}
+            value={data.id_tipo_entidad || ""}
             onChange={(e) =>
-              setDatosJuridicaForm({
-                ...datosJuridicaForm,
+              setDatos({
+                ...data,
                 id_tipo_entidad: e.target.value
                   ? parseInt(e.target.value)
                   : undefined,

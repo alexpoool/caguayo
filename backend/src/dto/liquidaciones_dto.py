@@ -24,7 +24,11 @@ class LiquidacionBase(SQLModel):
     gasto_empresa: Decimal = Decimal("0.00")
     importe: Decimal = Decimal("0.00")
     neto_pagar: Decimal = Decimal("0.00")
+    porcentaje_caguayo: Decimal = Decimal("10.00")
+    importe_caguayo: Decimal = Decimal("0.00")
+    tributario_monto: Decimal = Decimal("0.00")
     tipo_pago: str = "TRANSFERENCIA"
+    productos_en_liquidacion: Optional[List["ProductosEnLiquidacionRead"]] = None
 
 
 class LiquidacionCreate(SQLModel):
@@ -38,6 +42,7 @@ class LiquidacionCreate(SQLModel):
     tributario: Optional[Decimal] = None
     comision_bancaria: Optional[Decimal] = None
     gasto_empresa: Optional[Decimal] = None
+    porcentaje_caguayo: Optional[Decimal] = Decimal("10.00")
     tipo_pago: str = "TRANSFERENCIA"
     producto_ids: List[int] = []
 

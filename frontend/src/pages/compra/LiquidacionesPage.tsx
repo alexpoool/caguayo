@@ -49,7 +49,7 @@ export function LiquidacionesPage() {
   const [selectedLiquidacion, setSelectedLiquidacion] = useState<Liquidacion | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [detailModal, setDetailModal] = useState<{ isOpen: boolean; item: Liquidacion | null }>({ isOpen: false, item: null });
-  const [printModal, setPrintModal] = useState<{ isOpen: boolean; liquidacion: Liquidacion | null; autorizado_por: string; cargo_autorizado: string; revisado_por: string; artist_name: string }>({ isOpen: false, liquidacion: null, autorizado_por: '', cargo_autorizado: '', revisado_por: '', artist_name: '' });
+  const [printModal, setPrintModal] = useState<{ isOpen: boolean; liquidacion: Liquidacion | null; autorizado_por: string; cargo_autorizado: string; revisado_por: string }>({ isOpen: false, liquidacion: null, autorizado_por: '', cargo_autorizado: '', revisado_por: '' });
   
   const [filtroCliente, setFiltroCliente] = useState<number | null>(initialProveedorId ? Number(initialProveedorId) : null);
   const [filtroAnexo, setFiltroAnexo] = useState<number | null>(null);
@@ -70,8 +70,11 @@ export function LiquidacionesPage() {
   });
 
   const { data: liquidaciones = [], isLoading } = useQuery({
-    queryKey: ['liquidaciones', activeTab],
+    queryKey: ['liquidaciones', activeTab, filtroCliente],
     queryFn: async () => {
+      if (filtroCliente) {
+        return liquidacionService.getLiquidacionesByCliente(filtroCliente);
+      }
       if (activeTab === 'pendientes') {
         return liquidacionService.getLiquidacionesPendientes();
       } else if (activeTab === 'liquidadas') {
@@ -245,7 +248,7 @@ export function LiquidacionesPage() {
     return anexo?.nombre_anexo || 'N/A';
   };
 
-  const generateLiquidacionHTML = (liquidacion: Liquidacion, autorizadoPor: string, cargoAutorizado: string, revisadoPor: string, artistName: string = '') => {
+  const generateLiquidacionHTML = (liquidacion: Liquidacion, autorizadoPor: string, cargoAutorizado: string, revisadoPor: string) => {
     const cliente = clientes.find((c: Cliente) => c.id_cliente === liquidacion.id_cliente);
     const user = authService.getUser();
     const confectionadoPor = user ? `${user.nombre || ''} ${user.primer_apellido || ''}`.trim() : '';
@@ -272,95 +275,129 @@ export function LiquidacionesPage() {
     const moneda = liquidacion.moneda?.nombre || '';
 
     const numeroAnexo = liquidacion.anexo?.numero_anexo || '';
-    const infoConvenioAnexo = codigoConvenio || numeroAnexo 
-      ? `<tr style="background:#f3f0e6;"><td colspan="5"><strong>CONVENIO No. ${codigoConvenio || '---'} - ANEXO No. ${numeroAnexo || '---'}</strong></td></tr>` 
+    const infoConvenioFila = codigoConvenio 
+      ? `<tr style="background:#f3f0e6;"><td colspan="5"><strong>CONVENIO: ${codigoConvenio}</strong></td></tr>` 
       : '';
 
-    const productosRows = liquidacion.productos_en_liquidacion?.map((p: any) => `
-      <tr>
-        <td>${p.codigo || 'N/A'}</td>
-        <td>${p.producto?.nombre || p.producto?.codigo_producto || 'Producto'}</td>
-        <td class="cantidad">${p.cantidad || 0}</td>
-        <td class="precio">${Number(p.precio || 0).toFixed(2)}</td>
-        <td class="devengado-col">${Number(p.precio * p.cantidad || 0).toFixed(2)}</td>
-      </tr>
-    `).join('') || '';
+    // Agrupar productos por id_anexo
+    const productosPorAnexo: Record<number, any[]> = {};
+    liquidacion.productos_en_liquidacion?.forEach((p: any) => {
+      const idAnexo = p.id_anexo || 0;
+      if (!productosPorAnexo[idAnexo]) {
+        productosPorAnexo[idAnexo] = [];
+      }
+      productosPorAnexo[idAnexo].push(p);
+    });
+
+    // Generar filas con separadores y totales por anexo
+    const productosRows = Object.entries(productosPorAnexo).map(([idAnexo, productos]) => {
+      const nombreAnexo = productos[0]?.anexo?.nombre_anexo || `Anexo ${idAnexo}`;
+      const totalAnexo = productos.reduce((sum, p) => sum + Number(p.precio * p.cantidad || 0), 0);
+      const filasProductos = productos.map((p: any) => `
+        <tr>
+          <td>${p.codigo || 'N/A'}</td>
+          <td>${p.producto?.nombre || 'Producto'}</td>
+          <td class="cantidad">${p.cantidad || 0}</td>
+          <td class="precio">${Number(p.precio || 0).toFixed(2)}</td>
+          <td class="devengado-col">${Number(p.precio * p.cantidad || 0).toFixed(2)}</td>
+        </tr>
+      `).join('');
+      
+      return `
+        <tr style="background:#f3f0e6; font-weight:bold;">
+          <td colspan="5">ANEXO: ${nombreAnexo} - Total: ${totalAnexo.toFixed(2)}</td>
+        </tr>
+        ${filasProductos}
+      `;
+    }).join('');
 
     const subtotalDevengado = Number(liquidacion.devengado || 0).toFixed(2);
-    const valorTributario = Number(liquidacion.devengado * liquidacion.tributario / 100 || 0).toFixed(2);
-    const subtotal = Number(liquidacion.devengado - (liquidacion.devengado * liquidacion.tributario / 100) || 0).toFixed(2);
-    const valorEmpresa = Number(liquidacion.importe * liquidacion.gasto_empresa / 100 || 0).toFixed(2);
+    const importeCaguayo = Number(liquidacion.importe_caguayo || (liquidacion.importe * (liquidacion.porcentaje_caguayo || 10) / 100)).toFixed(2);
+    const valorTributario = Number(liquidacion.tributario_monto || (liquidacion.devengado * liquidacion.tributario / 100) || 0).toFixed(2);
+    const subtotal = Number(liquidacion.devengado - (liquidacion.tributario_monto || liquidacion.devengado * liquidacion.tributario / 100) || 0).toFixed(2);
+    const valorEmpresa = Number(liquidacion.gasto_empresa || 0).toFixed(2);
+    const valorComision = Number(liquidacion.comision_bancaria || 0).toFixed(2);
     const netoCobrar = Number(liquidacion.neto_pagar || 0).toFixed(2);
-    const devengadoTotal = Number(liquidacion.importe - (liquidacion.importe * liquidacion.gasto_empresa / 100) - (liquidacion.importe * liquidacion.comision_bancaria / 100) || 0).toFixed(2);
+    const devengadoTotal = Number(liquidacion.importe - (liquidacion.importe_caguayo || liquidacion.importe * (liquidacion.porcentaje_caguayo || 10) / 100) || 0).toFixed(2);
 
     const fechaEmision = liquidacion.fecha_emision ? new Date(liquidacion.fecha_emision).toLocaleDateString('es-ES') : 'N/A';
     const fechaLiquidacion = liquidacion.fecha_liquidacion ? new Date(liquidacion.fecha_liquidacion).toLocaleDateString('es-ES') : 'N/A';
 
     const notaDocumento = codigoConvenio || numeroAnexo 
-      ? `Documento generado según Convenio No. ${codigoConvenio || '---'} - Anexo No. ${numeroAnexo || '---'} · TCP válido como comprobante de pago.`
-      : 'TCP válido como comprobante de pago.';
+      ? `Documento generado según Convenio No. ${codigoConvenio || '---'} - Anexo No. ${numeroAnexo || '---'} · Liquidación válida como comprobante de pago.`
+      : 'Liquidación válida como comprobante de pago.';
 
     return `<!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-    <title>TCP - Comprobante de Pago | ${liquidacion.codigo}</title>
+    <title>Liquidación | ${liquidacion.codigo}</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { background: #dbdbdb; display: flex; justify-content: center; align-items: center; min-height: 100vh; font-family: 'Courier New', 'Monaco', monospace; padding: 30px 20px; }
         .documento { max-width: 880px; width: 100%; background: white; box-shadow: 0 12px 28px rgba(0, 0, 0, 0.2); padding: 1.8rem 2rem 2rem 2rem; border-radius: 4px; }
         .texto { font-family: 'Courier New', 'Monaco', monospace; font-size: 13px; line-height: 1.4; color: #111; }
-        .header-tcp { border-bottom: 2px solid #000; margin-bottom: 1.2rem; padding-bottom: 0.6rem; }
-        .tcp-title { font-size: 26px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; }
+        .header-tcp { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #000; margin-bottom: 1.2rem; padding-bottom: 0.6rem; gap: 20px; }
+        .header-logo { display: flex; align-items: center; gap: 10px; min-width: 120px; }
+        .header-logo img { width: 180px; height: 180px; object-fit: contain; }
+        .header-center { text-align: center; flex: 1; }
+        .tcp-title { font-size: 26px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; color: #1a5c1a; }
         .nombre-titular { font-size: 15px; font-weight: bold; margin-top: 6px; }
         .direccion-contacto { font-size: 11.5px; margin-top: 6px; line-height: 1.35; }
         .telefonos { font-size: 12px; font-weight: 500; margin-top: 4px; }
         .email { font-size: 12px; color: #1a1a1a; }
+        .header-box { border: 2px solid #1a5c1a; background: #f0f7f0; padding: 10px 15px; min-width: 180px; border-radius: 4px; }
+        .header-box-title { font-size: 14px; font-weight: 800; text-transform: uppercase; color: #1a5c1a; margin-bottom: 6px; border-bottom: 1px solid #1a5c1a; padding-bottom: 4px; }
+        .header-box-row { font-size: 11px; margin-bottom: 3px; }
+        .header-box-row strong { font-weight: 700; }
         .fila-fechas { display: flex; justify-content: space-between; margin: 18px 0 12px 0; border-bottom: 1px dashed #aaa; padding-bottom: 12px; }
         .bloque-fecha { font-weight: 600; font-size: 13px; }
         .info-cliente { display: flex; flex-wrap: wrap; justify-content: space-between; background: #f9f9f0; padding: 12px; border: 1px solid #ccc; margin-bottom: 20px; font-size: 12.5px; }
+        .cliente-header { font-size: 14px; font-weight: 800; text-transform: uppercase; margin-bottom: 8px; color: #1a5c1a; width: 100%; text-align: center; }
         .cliente-item { min-width: 180px; margin-bottom: 6px; }
         .cliente-item strong { font-weight: 800; }
-        .tabla-productos { width: 100%; border-collapse: collapse; margin: 18px 0 14px 0; font-size: 12.5px; }
+        .tabla-wrapper { display: flex; gap: 20px; align-items: flex-start; margin: 18px 0 14px 0; }
+        .tabla-productos { flex: 1; width: 100%; border-collapse: collapse; font-size: 12.5px; }
         .tabla-productos th, .tabla-productos td { border: 1px solid #222; padding: 8px 6px; vertical-align: top; }
         .tabla-productos th { background-color: #eae7db; font-weight: 700; text-align: center; }
         .tabla-productos td { text-align: left; }
         .cantidad, .precio, .devengado-col { text-align: right; }
-        .devengado-subtotal { font-weight: bold; background-color: #f4f1e6; }
+        .devengado-fila { font-weight: bold; background-color: #f4f1e6; }
         .resumen-derecha { display: flex; justify-content: flex-end; margin-top: 8px; margin-bottom: 20px; }
         .cuadro-totales { width: 280px; border: 1px solid #111; background: #fefcf5; padding: 12px 15px; font-size: 13px; font-family: monospace; }
         .linea-total { display: flex; justify-content: space-between; margin-bottom: 6px; }
         .total-final { font-weight: 800; font-size: 15px; border-top: 1px solid #000; margin-top: 8px; padding-top: 6px; }
         .devengado-total-row { font-weight: bold; border-top: 1px solid #333; margin-top: 6px; padding-top: 4px; }
-        .firmas { display: flex; flex-wrap: wrap; justify-content: space-between; margin-top: 32px; margin-bottom: 16px; gap: 20px; }
-        .bloque-firma { width: 220px; border-top: 1px dotted #222; padding-top: 8px; font-size: 11px; text-align: left; }
+        .firmas { display: flex; flex-direction: column; gap: 20px; margin-top: 32px; margin-bottom: 16px; }
+        .fila-firmas { display: flex; justify-content: space-between; gap: 20px; }
+        .bloque-firma { flex: 1; border-top: 1px dotted #222; padding-top: 8px; font-size: 11px; text-align: left; }
         .bloque-firma p { margin: 2px 0; }
         .cargo { font-size: 10px; color: #2c2c2c; }
         .nota-revisado { margin-top: 18px; font-size: 10px; text-align: right; border-top: 1px solid #ddd; padding-top: 8px; font-style: italic; }
-        .info-convenio { display: flex; justify-content: flex-end; gap: 20px; background: #f5f5f5; padding: 8px 12px; border: 1px solid #ccc; margin-bottom: 15px; font-size: 11px; }
-        .info-convenio-item { display: flex; gap: 5px; }
-        .info-convenio-item strong { font-weight: 700; }
-        @media (max-width: 650px) { .documento { padding: 1rem; } .tabla-productos th, .tabla-productos td { padding: 5px 3px; font-size: 11px; } .cuadro-totales { width: 100%; } .firmas { flex-direction: column; gap: 20px; } .info-cliente { flex-direction: column; } }
+        @media (max-width: 650px) { .documento { padding: 1rem; } .tabla-productos th, .tabla-productos td { padding: 5px 3px; font-size: 11px; } .cuadro-totales { width: 100%; } .firmas { flex-direction: column; gap: 20px; } .fila-firmas { flex-direction: column; gap: 20px; } .info-cliente { flex-direction: column; } .header-tcp { flex-direction: column; } .header-box { width: 100%; margin-top: 15px; } .tabla-wrapper { flex-direction: column; } }
     </style>
 </head>
 <body>
 <div class="documento texto">
     <div class="header-tcp">
-        <div class="tcp-title">TCP</div>
-        <div class="nombre-titular">${empresaNombre}</div>
-        <div class="direccion-contacto">${empresaDireccion}</div>
-        <div class="telefonos">Tel: ${empresaTelefono}</div>
-        <div class="email">${empresaEmail}</div>
+        <div class="header-logo">
+            <img src="/favicon.ico" alt="Logo CAGUAYO S.A." />
+        </div>
+        <div class="header-center">
+            <div class="tcp-title">CAGUAYO S.A.</div>
+            <div class="nombre-titular">${empresaNombre}</div>
+            <div class="direccion-contacto">${empresaDireccion}</div>
+            <div class="telefonos">Tel: ${empresaTelefono}</div>
+            <div class="email">${empresaEmail}</div>
+        </div>
+        <div class="header-box">
+            <div class="header-box-title">Liquidación</div>
+            <div class="header-box-row"><strong>Concepto:</strong> ${tipoConvenio || 'N/A'}</div>
+            <div class="header-box-row"><strong>Número:</strong> ${codigoConvenio || 'N/A'}</div>
+            <div class="header-box-row"><strong>Moneda:</strong> ${moneda || 'N/A'}</div>
+        </div>
     </div>
-
-    ${(tipoConvenio || codigoConvenio || moneda) ? `
-    <div class="info-convenio">
-        ${tipoConvenio ? `<div class="info-convenio-item"><strong>Concepto:</strong> ${tipoConvenio}</div>` : ''}
-        ${codigoConvenio ? `<div class="info-convenio-item"><strong>Número:</strong> ${codigoConvenio}</div>` : ''}
-        ${moneda ? `<div class="info-convenio-item"><strong>Moneda:</strong> ${moneda}</div>` : ''}
-    </div>
-    ` : ''}
 
     <div class="fila-fechas">
         <span class="bloque-fecha"><strong>Fecha Emisión:</strong> ${fechaEmision}</span>
@@ -368,6 +405,7 @@ export function LiquidacionesPage() {
     </div>
 
     <div class="info-cliente">
+        <div class="cliente-header">Cliente</div>
         <div class="cliente-item"><strong>Nombre:</strong> ${nombreProveedor}</div>
         <div class="cliente-item"><strong>Código:</strong> ${codigoProveedor}</div>
         <div class="cliente-item"><strong>Cuenta:</strong> Localidad: ${localidadProveedor}</div>
@@ -378,55 +416,62 @@ export function LiquidacionesPage() {
 
     <div style="margin: 8px 0 6px 0; font-weight: bold; font-size: 14px;">Pago por la compra de los siguientes productos:</div>
 
-    <table class="tabla-productos">
-        <thead>
-            <tr>
-                <th>Código</th>
-                <th>Descripción</th>
-                <th>Cantidad</th>
-                <th>Precio</th>
-                <th>Devengado</th>
-            </tr>
-        </thead>
-        <tbody>
-            ${infoConvenioAnexo}
-            ${productosRows}
-            <tr class="devengado-subtotal">
-                <td colspan="4" style="text-align: right; font-weight: bold;">Devengado subtotal</td>
-                <td class="devengado-col" style="font-weight: bold;">${subtotalDevengado}</td>
-            </tr>
-        </tbody>
-    </table>
+    <div class="tabla-wrapper">
+        <table class="tabla-productos">
+            <thead>
+                <tr>
+                    <th>Código</th>
+                    <th>Descripción</th>
+                    <th>Cantidad</th>
+                    <th>Precio</th>
+                    <th>Devengado</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${infoConvenioFila}
+                ${productosRows}
+                <tr class="devengado-fila">
+                    <td colspan="4" style="text-align: right;">Devengado</td>
+                    <td class="devengado-col">${subtotalDevengado}</td>
+                </tr>
+            </tbody>
+        </table>
 
-    <div class="resumen-derecha">
         <div class="cuadro-totales">
-            <div class="linea-total"><span>Devengado:</span><span>${subtotalDevengado}</span></div>
-            <div class="linea-total"><span>Tributario(${Number(liquidacion.tributario || 0)}%):</span><span>${valorTributario}</span></div>
-            <div class="linea-total"><span>Subtotal:</span><span>${subtotal}</span></div>
-            <div class="linea-total"><span>Empresa:</span><span>${valorEmpresa}</span></div>
-            <div class="linea-total total-final"><span>Neto a Cobrar:</span><span>${netoCobrar}</span></div>
+            <div class="linea-total"><span>IMPORTE:</span><span>${Number(liquidacion.importe || 0).toFixed(2)}</span></div>
+            <div class="linea-total" style="color: #666;"><span>&nbsp;&nbsp;(-) Importe Caguayo(${Number(liquidacion.porcentaje_caguayo || 10)}%):</span><span>-${importeCaguayo}</span></div>
+            <div class="linea-total" style="font-weight: bold; border-bottom: 1px solid #333; padding-bottom: 4px;"><span>DEVENGADO:</span><span>${subtotalDevengado}</span></div>
+            <div class="linea-total" style="color: #666;"><span>&nbsp;&nbsp;(-) Tributario(${Number(liquidacion.tributario || 5)}%):</span><span>-${valorTributario}</span></div>
+            <div class="linea-total" style="font-weight: bold; border-bottom: 1px solid #333; padding-bottom: 4px;"><span>SUBTOTAL:</span><span>${subtotal}</span></div>
+            <div class="linea-total" style="color: #666;"><span>&nbsp;&nbsp;(-) Gasto Empresa:</span><span>-${valorEmpresa}</span></div>
+            <div class="linea-total" style="color: #666;"><span>&nbsp;&nbsp;(-) Comisión:</span><span>-${valorComision}</span></div>
+            <div class="linea-total total-final"><span>NETO A COBRAR:</span><span>${netoCobrar}</span></div>
             <div class="devengado-total-row linea-total" style="margin-top: 12px;"><span><strong>DEVENGADO TOTAL</strong></span><span><strong>${devengadoTotal}</strong></span></div>
         </div>
     </div>
 
     <div class="firmas">
-        <div class="bloque-firma">
-            <p><strong>Confeccionado por:</strong></p>
-            <p>${confectionadoPor}</p>
-            <p class="cargo">Cargo: </p>
+        <div class="fila-firmas">
+            <div class="bloque-firma">
+                <p><strong>Confeccionado por:</strong></p>
+                <p>${confectionadoPor}</p>
+                <p class="cargo">Cargo: </p>
+            </div>
+            <div class="bloque-firma">
+                <p><strong>Autorizado por:</strong></p>
+                <p>${autorizadoPor || '___'}</p>
+                <p class="cargo">Cargo: ${cargoAutorizado || '_________________'}</p>
+            </div>
         </div>
-        <div class="bloque-firma">
-            <p><strong>Autorizado por:</strong></p>
-            <p>${autorizadoPor || '___'}</p>
-            <p class="cargo">Cargo: ${cargoAutorizado || '_________________'}</p>
-        </div>
-        <div class="bloque-firma">
-            <p><strong>Artista:</strong></p>
-            <p>${artistName || nombreProveedor}</p>
-        </div>
-        <div class="bloque-firma">
-            <p><strong>Revisado por:</strong></p>
-            <p>${revisadoPor || '___'}</p>
+        <div class="fila-firmas">
+            <div class="bloque-firma">
+                <p><strong>Artista:</strong></p>
+                <p>${nombreProveedor}</p>
+            </div>
+            <div class="bloque-firma">
+                <p><strong>Revisado por:</strong></p>
+                <p>${revisadoPor || '___'}</p>
+            </div>
         </div>
     </div>
 
@@ -440,18 +485,18 @@ export function LiquidacionesPage() {
 
   const handlePrint = () => {
     if (!printModal.liquidacion) return;
-    const html = generateLiquidacionHTML(printModal.liquidacion, printModal.autorizado_por, printModal.cargo_autorizado || '', printModal.revisado_por, printModal.artist_name || '');
+    const html = generateLiquidacionHTML(printModal.liquidacion, printModal.autorizado_por, printModal.cargo_autorizado || '', printModal.revisado_por);
     const printWindow = window.open('', '_blank');
     if (printWindow) {
       printWindow.document.write(html);
       printWindow.document.close();
       printWindow.print();
     }
-    setPrintModal({ isOpen: false, liquidacion: null, autorizado_por: '', cargo_autorizado: '', revisado_por: '', artist_name: '' });
+    setPrintModal({ isOpen: false, liquidacion: null, autorizado_por: '', cargo_autorizado: '', revisado_por: '' });
   };
 
   const handleViewDocument = (liquidacion: Liquidacion) => {
-    const html = generateLiquidacionHTML(liquidacion, '', '', '', '');
+    const html = generateLiquidacionHTML(liquidacion, '', '', '');
     const printWindow = window.open('', '_blank');
     if (printWindow) {
       printWindow.document.write(html);
@@ -481,7 +526,12 @@ export function LiquidacionesPage() {
           </div>
         </div>
         <Button
-          onClick={() => navigate('/compra/liquidaciones/crear')}
+          onClick={() => {
+            const url = filtroCliente 
+              ? `/compra/liquidaciones/crear?proveedor=${filtroCliente}`
+              : '/compra/liquidaciones/crear';
+            navigate(url);
+          }}
           className="gap-2 bg-gradient-to-r from-lime-500 to-green-600 hover:from-lime-600 hover:to-green-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300"
         >
           <Plus className="h-4 w-4" />
@@ -604,7 +654,7 @@ export function LiquidacionesPage() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => setPrintModal({ isOpen: true, liquidacion: liquidacion, autorizado_por: '', cargo_autorizado: '', revisado_por: '', artist_name: '' })}
+                          onClick={() => setPrintModal({ isOpen: true, liquidacion: liquidacion, autorizado_por: '', cargo_autorizado: '', revisado_por: '' })}
                           className="text-gray-600 hover:text-gray-800 hover:bg-gray-50 h-8 w-8"
                           title="Imprimir"
                         >
@@ -649,18 +699,24 @@ export function LiquidacionesPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                 <div>
                   <Label>Proveedor *</Label>
-                  <select
-                    value={filtroCliente || ''}
-                    onChange={(e) => handleClienteChange(Number(e.target.value))}
-                    className="w-full p-2 border rounded"
-                  >
-                    <option value="">Seleccionar proveedor</option>
-                    {clientes.map((cliente: Cliente) => (
-                      <option key={cliente.id_cliente} value={cliente.id_cliente}>
-                        {cliente.nombre}
-                      </option>
-                    ))}
-                  </select>
+                  {filtroCliente ? (
+                    <div className="w-full p-2 border rounded bg-gray-50 text-gray-700 font-medium">
+                      {clientes.find((c: Cliente) => c.id_cliente === filtroCliente)?.nombre || 'Proveedor'}
+                    </div>
+                  ) : (
+                    <select
+                      value={filtroCliente || ''}
+                      onChange={(e) => handleClienteChange(Number(e.target.value))}
+                      className="w-full p-2 border rounded"
+                    >
+                      <option value="">Seleccionar proveedor</option>
+                      {clientes.map((cliente: Cliente) => (
+                        <option key={cliente.id_cliente} value={cliente.id_cliente}>
+                          {cliente.nombre}
+                        </option>
+                      ))}
+                    </select>
+                  )}
                 </div>
                 
                 <div>
@@ -1050,14 +1106,14 @@ export function LiquidacionesPage() {
             </div>
             <div className="p-6 border-t border-gray-200 bg-gray-50 flex justify-end gap-3">
               <button 
-                onClick={() => handleViewDocument(detailModal.item)}
+                onClick={() => detailModal.item && handleViewDocument(detailModal.item)}
                 className="px-4 py-2 text-blue-700 bg-white border border-blue-300 rounded-xl hover:bg-blue-50 transition-colors font-medium flex items-center gap-2"
               >
                 <Eye className="h-4 w-4" />
                 Ver documento
               </button>
               <button 
-                onClick={() => setPrintModal({ isOpen: true, liquidacion: detailModal.item, autorizado_por: '', cargo_autorizado: '', revisado_por: '', artist_name: '' })} 
+                onClick={() => setPrintModal({ isOpen: true, liquidacion: detailModal.item, autorizado_por: '', cargo_autorizado: '', revisado_por: '' })} 
                 className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors font-medium flex items-center gap-2"
               >
                 <Printer className="h-4 w-4" />
@@ -1081,22 +1137,6 @@ export function LiquidacionesPage() {
               <p className="text-sm text-gray-500 mt-2">Complete los datos para la impresión</p>
             </div>
             <div className="p-6 space-y-4">
-              <div>
-                <Label className="text-sm font-medium">Confeccionado por</Label>
-                <Input 
-                  value={(() => { const user = authService.getUser(); return user ? `${user.nombre || ''} ${user.primer_apellido || ''}`.trim() : ''; })()} 
-                  className="mt-1"
-                />
-              </div>
-              <div>
-                <Label className="text-sm font-medium">Artista / Beneficiario</Label>
-                <Input 
-                  value={printModal.artist_name}
-                  onChange={(e) => setPrintModal({ ...printModal, artist_name: e.target.value })}
-                  placeholder="Nombre del artista o beneficiario"
-                  className="mt-1"
-                />
-              </div>
               <div>
                 <Label className="text-sm font-medium">Autorizado por</Label>
                 <Input 
@@ -1127,7 +1167,7 @@ export function LiquidacionesPage() {
             </div>
             <div className="p-6 border-t border-gray-200 flex justify-end gap-3">
               <button 
-                onClick={() => setPrintModal({ isOpen: false, liquidacion: null, autorizado_por: '', cargo_autorizado: '', revisado_por: '', artist_name: '' })} 
+                onClick={() => setPrintModal({ isOpen: false, liquidacion: null, autorizado_por: '', cargo_autorizado: '', revisado_por: '' })} 
                 className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 font-medium"
               >
                 Cancelar

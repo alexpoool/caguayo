@@ -211,9 +211,11 @@ class ContratoService:
 
     @staticmethod
     async def get_all(
-        db: AsyncSession, skip: int = 0, limit: int = 100
+        db: AsyncSession, skip: int = 0, limit: int = 10000, id_cliente: int = None
     ) -> List[ContratoReadWithDetails]:
-        contratos = await contrato_repo.get_all_with_details(db, skip, limit)
+        contratos = await contrato_repo.get_all_with_details(
+            db, skip, limit, id_cliente
+        )
         result = []
         for contrato in contratos:
             result.append(await map_contrato_to_read(db, contrato))
@@ -348,7 +350,13 @@ class FacturaService:
                 db, "factura", "fecha", anio
             )
 
+        total_monto = sum(
+            Decimal(str(item["cantidad"])) * Decimal(str(item["precio_venta"]))
+            for item in items_data
+        )
+
         data.codigo_factura = data_dict["codigo_factura"]
+        data.monto = total_monto
         factura = await factura_repo.create(db, data)
 
         contrato = await db.get(Contrato, factura.id_contrato)
@@ -431,7 +439,19 @@ class FacturaService:
     async def update(
         db: AsyncSession, id: int, data: FacturaUpdate
     ) -> FacturaReadWithDetails:
-        factura = await factura_repo.update(db, id, data)
+        data_dict = data.model_dump(exclude_none=True)
+
+        if "items" in data_dict:
+            items_data = data_dict.pop("items", [])
+            if items_data:
+                await item_factura_repo.create_items(db, id, items_data)
+                total_monto = sum(
+                    Decimal(str(item["cantidad"])) * Decimal(str(item["precio_venta"]))
+                    for item in items_data
+                )
+                data_dict["monto"] = total_monto
+
+        factura = await factura_repo.update(db, id, data_dict)
         if not factura:
             return None
         return await map_factura_to_read(db, factura)

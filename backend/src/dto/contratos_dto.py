@@ -157,6 +157,7 @@ class FacturaBase(SQLModel):
 class FacturaCreate(FacturaBase):
     id_moneda: Optional[int] = None
     items: Optional[List[ItemFacturaCreate]] = None
+    monto: Optional[Decimal] = None
 
 
 class FacturaRead(FacturaBase):
@@ -175,6 +176,9 @@ class FacturaUpdate(SQLModel):
     fecha: Optional[date] = None
     monto: Optional[Decimal] = None
     pago_actual: Optional[Decimal] = None
+    id_dependencia: Optional[int] = None
+    id_moneda: Optional[int] = None
+    items: Optional[List[ItemFacturaCreate]] = None
 
 
 class ItemVentaEfectivoBase(SQLModel):

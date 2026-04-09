@@ -193,6 +193,7 @@ class FacturaServicioBase(SQLModel):
     descripcion: Optional[str] = None
     cantidad: Decimal = Decimal("0.00")
     precio: Decimal = Decimal("0.00")
+    monto: Decimal = Decimal("0.00")
     observaciones: Optional[str] = None
     id_usuario: Optional[int] = None
 
@@ -214,6 +215,7 @@ class FacturaServicioUpdate(SQLModel):
     descripcion: Optional[str] = None
     cantidad: Optional[Decimal] = None
     precio: Optional[Decimal] = None
+    monto: Optional[Decimal] = None
     observaciones: Optional[str] = None
     id_usuario: Optional[int] = None
 
@@ -251,16 +253,20 @@ class PersonaLiquidacionBase(SQLModel):
     id_moneda: Optional[int] = None
     tipo_pago: str = "TRANSFERENCIA"
     importe: Decimal = Decimal("0.00")
+    porcentaje_caguayo: Decimal = Decimal("10.00")
+    importe_caguayo: Decimal = Decimal("0.00")
     porciento_gestion: Decimal = Decimal("0.00")
     porciento_empresa: Decimal = Decimal("0.00")
     devengado: Decimal = Decimal("0.00")
-    tributario: Decimal = Decimal("0.00")
+    tributario: Decimal = Decimal("5.00")
+    tributario_monto: Decimal = Decimal("0.00")
     comision_bancaria: Decimal = Decimal("0.00")
     neto_pagar: Decimal = Decimal("0.00")
     id_tipo_concepto: Optional[int] = None
     doc_pago_liquidacion: Optional[str] = None
     gasto_empresa: Decimal = Decimal("0.00")
     observacion: Optional[str] = None
+    confirmado: bool = False
 
 
 class PersonaLiquidacionCreateInput(SQLModel):
@@ -272,9 +278,10 @@ class PersonaLiquidacionCreateInput(SQLModel):
     descripcion: Optional[str] = None
     id_moneda: Optional[int] = None
     tipo_pago: str = "TRANSFERENCIA"
-    tributario: Decimal = Decimal("0.00")
-    gasto_empresa: Decimal = Decimal("0.00")
-    comision_bancaria: Decimal = Decimal("0.00")
+    porcentaje_caguayo: float = 10.0
+    tributario: float = 5.0
+    gasto_empresa: float = 0.0
+    comision_bancaria: float = 0.0
     doc_pago_liquidacion: Optional[str] = None
     observacion: Optional[str] = None
 
@@ -292,9 +299,10 @@ class PersonaLiquidacionUpdateInput(SQLModel):
     descripcion: Optional[str] = None
     id_moneda: Optional[int] = None
     tipo_pago: Optional[str] = None
-    tributario: Optional[Decimal] = None
-    gasto_empresa: Optional[Decimal] = None
-    comision_bancaria: Optional[Decimal] = None
+    porcentaje_caguayo: Optional[float] = None
+    tributario: Optional[float] = None
+    gasto_empresa: Optional[float] = None
+    comision_bancaria: Optional[float] = None
     doc_pago_liquidacion: Optional[str] = None
     observacion: Optional[str] = None
 
@@ -313,10 +321,13 @@ class PersonaLiquidacionUpdate(SQLModel):
     id_moneda: Optional[int] = None
     tipo_pago: Optional[str] = None
     importe: Optional[Decimal] = None
+    porcentaje_caguayo: Optional[Decimal] = None
+    importe_caguayo: Optional[Decimal] = None
     porciento_gestion: Optional[Decimal] = None
     porciento_empresa: Optional[Decimal] = None
     devengado: Optional[Decimal] = None
     tributario: Optional[Decimal] = None
+    tributario_monto: Optional[Decimal] = None
     comision_bancaria: Optional[Decimal] = None
     neto_pagar: Optional[Decimal] = None
     id_tipo_concepto: Optional[int] = None
@@ -326,8 +337,38 @@ class PersonaLiquidacionUpdate(SQLModel):
 
 
 class PersonaLiquidacionConfirmar(SQLModel):
-    devengado: Optional[Decimal] = None
-    tributario: Optional[Decimal] = None
-    comision_bancaria: Optional[Decimal] = None
-    gasto_empresa: Optional[Decimal] = None
+    devengado: Optional[float] = None
+    porcentaje_caguayo: Optional[float] = None
+    tributario: Optional[float] = None
+    comision_bancaria: Optional[float] = None
+    gasto_empresa: Optional[float] = None
     observaciones: Optional[str] = None
+
+
+# ==========================================
+# VALIDACION PAGO FACTURA PARA LIQUIDACION
+# ==========================================
+class PagoDetalleRead(SQLModel):
+    id_pago_factura_servicio: int
+    monto: Decimal
+    fecha: Optional[date] = None
+    doc_traza: Optional[str] = None
+    doc_factura: Optional[str] = None
+
+
+class FacturaPagoValidacion(SQLModel):
+    id_factura_servicio: Optional[int] = None
+    codigo_factura: Optional[str] = None
+    monto: Decimal = Decimal("0.00")
+    monto_pagado: Decimal = Decimal("0.00")
+    saldo: Decimal = Decimal("0.00")
+    esta_pagada: bool = False
+    pagos: List[PagoDetalleRead] = []
+
+
+class PersonaLiquidacionValidacion(SQLModel):
+    puede_liquidar: bool
+    id_etapa: int
+    id_persona: int
+    factura: Optional[FacturaPagoValidacion] = None
+    mensaje: Optional[str] = None

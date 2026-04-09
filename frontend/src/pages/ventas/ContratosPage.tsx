@@ -21,7 +21,6 @@ export function ContratosPage() {
   const [contratos, setContratos] = useState<ContratoWithDetails[]>([]);
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [monedas, setMonedas] = useState<Moneda[]>([]);
-  const [estados, setEstados] = useState<{id: number, nombre: string}[]>([]);
   const [tiposContrato, setTiposContrato] = useState<{id: number, nombre: string}[]>([]);
   
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -53,24 +52,26 @@ export function ContratosPage() {
       ]);
       setClientes(clientesRes);
       setMonedas(monedasRes);
-      setEstados([{ id: 1, nombre: 'ACTIVO' }, { id: 2, nombre: 'CANCELADO' }, { id: 3, nombre: 'FINALIZADO' }, { id: 4, nombre: 'PENDIENTE' }]);
       setTiposContrato([{ id: 1, nombre: 'SERVICIO' }, { id: 2, nombre: 'OBRA' }, { id: 3, nombre: 'MANTENIMIENTO' }, { id: 4, nombre: 'ALQUILER' }, { id: 5, nombre: 'COMPRA' }]);
     } catch (error) { console.error('Error:', error); }
   };
 
   const loadContratos = async () => {
-    try { const data = await contratosService.getContratos(); setContratos(data); } 
+    try { 
+      const data = await contratosService.getContratos(0, 10000, filtroCliente || undefined); 
+      setContratos(data); 
+    } 
     catch (error) { console.error('Error:', error); }
   };
 
-  useEffect(() => { if (view === 'list') loadContratos(); }, [view]);
+  useEffect(() => { if (view === 'list') loadContratos(); }, [view, filtroCliente]);
 
   const handleSave = async () => {
     try {
       const data: ContratoCreate = { 
         nombre: formData.nombre || '',
         id_cliente: Number(formData.id_cliente) || 0, 
-        id_estado: Number(formData.id_estado) || 1, 
+        id_estado: 1, 
         id_tipo_contrato: Number(formData.id_tipo_contrato) || 1, 
         id_moneda: Number(formData.id_moneda) || 1,
         fecha: formData.fecha || new Date().toISOString().split('T')[0],
@@ -124,14 +125,18 @@ export function ContratosPage() {
         nombre: item.nombre, 
         proforma: item.proforma, 
         id_cliente: item.id_cliente, 
-        id_estado: item.id_estado, 
+        id_tipo_contrato: item.id_tipo_contrato, 
         fecha: item.fecha, 
         vigencia: item.vigencia, 
-        id_tipo_contrato: item.id_tipo_contrato, 
         id_moneda: item.id_moneda, 
         documento_final: item.documento_final 
       });
-    } else { resetForm(); }
+    } else { 
+      resetForm();
+      if (initialClienteId) {
+        setFormData({ id_cliente: Number(initialClienteId) });
+      }
+    }
     setView('form');
   };
 
@@ -335,20 +340,20 @@ export function ContratosPage() {
             </div>
             <div>
               <Label className="text-sm font-medium">Cliente *</Label>
-              <select className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 outline-none bg-white" value={formData.id_cliente || ''} onChange={(e: any) => setFormData({...formData, id_cliente: e.target.value})}>
-                <option value="">Seleccionar cliente</option>
-                {clientes.map(c => <option key={c.id_cliente} value={c.id_cliente}>{c.nombre}</option>)}
-              </select>
+              {initialClienteId ? (
+                <div className="mt-1 px-3 py-2 bg-gray-100 border border-gray-300 rounded-lg text-gray-700">
+                  {clientes.find(c => c.id_cliente === Number(initialClienteId))?.nombre || `Cliente #${initialClienteId}`}
+                </div>
+              ) : (
+                <select className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 outline-none bg-white" value={formData.id_cliente || ''} onChange={(e: any) => setFormData({...formData, id_cliente: e.target.value})}>
+                  <option value="">Seleccionar cliente</option>
+                  {clientes.map(c => <option key={c.id_cliente} value={c.id_cliente}>{c.nombre}</option>)}
+                </select>
+              )}
             </div>
             <div>
               <Label className="text-sm font-medium">Proforma</Label>
               <Input value={formData.proforma || ''} onChange={(e: any) => setFormData({...formData, proforma: e.target.value})} className="mt-1" placeholder="Número de proforma" />
-            </div>
-            <div>
-              <Label className="text-sm font-medium">Estado</Label>
-              <select className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 outline-none bg-white" value={formData.id_estado || ''} onChange={(e: any) => setFormData({...formData, id_estado: e.target.value})}>
-                {estados.map(e => <option key={e.id} value={e.id}>{e.nombre}</option>)}
-              </select>
             </div>
             <div>
               <Label className="text-sm font-medium">Tipo</Label>
