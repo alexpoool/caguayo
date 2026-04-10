@@ -150,13 +150,13 @@ export const administracionService = {
 };
 
 export const dependenciasService = {
-  getDependencias: async (): Promise<Dependencia[]> => {
-    return await apiClient.get('/dependencias');
+  getDependencias: async (options?: RequestInit): Promise<Dependencia[]> => {
+    return await apiClient.get('/dependencias', undefined, options);
   },
 
   getDependenciasJerarquia: async (padreId?: number): Promise<Dependencia[]> => {
     const params = padreId !== undefined ? { padre_id: padreId } : {};
-    return await apiClient.get('/dependencias/jerarquia', { params });
+    return await apiClient.get('/dependencias/jerarquia', params);
   },
 
   getDependencia: async (id: number): Promise<Dependencia> => {
@@ -191,8 +191,8 @@ export const dependenciasService = {
     await apiClient.delete(`/configuracion/tipos-dependencia/${id}`);
   },
 
-  getProvincias: async (): Promise<Provincia[]> => {
-    return await apiClient.get('/dependencias/ubicaciones/provincias');
+  getProvincias: async (options?: RequestInit): Promise<Provincia[]> => {
+    return await apiClient.get('/dependencias/ubicaciones/provincias', undefined, options);
   },
 
   getMunicipios: async (provinciaId?: number): Promise<Municipio[]> => {

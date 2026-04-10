@@ -172,4 +172,4 @@ const ReporteProveedores: React.FC = () => {
   );
 };
 
-export default ReporteProveedores;
+export { ReporteProveedores };

@@ -130,4 +130,4 @@ const ReporteExistencias: React.FC = () => {
   );
 };
 
-export default ReporteExistencias;
+export { ReporteExistencias };

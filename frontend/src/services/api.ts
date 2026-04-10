@@ -74,12 +74,12 @@ import type {
 } from '../types/servicio';
 
 export const productosService = {
-  async getProductos(skip = 0, limit = 100, search?: string): Promise<Productos[]> {
+  async getProductos(skip = 0, limit = 100, search?: string, options?: RequestInit): Promise<Productos[]> {
     let url = `/productos?skip=${skip}&limit=${limit}`;
     if (search && search.trim()) {
       url += `&search=${encodeURIComponent(search.trim())}`;
     }
-    return apiClient.get<Productos[]>(url);
+    return apiClient.get<Productos[]>(url, undefined, options);
   },
 
   async getProducto(id: number): Promise<Productos> {
@@ -197,15 +197,9 @@ export const ventasService = {
 };
 
 export const clientesService = {
-  async getClientes(skip = 0, limit = 10000, tipoRelacion?: string): Promise<Cliente[]> {
-    const params = new URLSearchParams({
-      skip: String(skip),
-      limit: String(limit),
-    });
-    if (tipoRelacion) {
-      params.append("tipo_relacion", tipoRelacion);
-    }
-    return apiClient.get<Cliente[]>(`/clientes?${params.toString()}`);
+
+  async getClientes(skip = 0, limit = 100, options?: RequestInit): Promise<Cliente[]> {
+    return apiClient.get<Cliente[]>(`/clientes?skip=${skip}&limit=${limit}`, undefined, options);
   },
 
   async getCliente(id: number): Promise<Cliente> {
@@ -338,8 +332,8 @@ export const subcategoriasService = {
 };
 
 export const monedaService = {
-  async getMonedas(skip = 0, limit = 100): Promise<Moneda[]> {
-    return apiClient.get<Moneda[]>(`/monedas?skip=${skip}&limit=${limit}`);
+  async getMonedas(skip = 0, limit = 100, options?: RequestInit): Promise<Moneda[]> {
+    return apiClient.get<Moneda[]>(`/monedas?skip=${skip}&limit=${limit}`, undefined, options);
   },
 
   async getMoneda(id: number): Promise<Moneda> {
@@ -427,13 +421,13 @@ export const movimientosService = {
 };
 
 export const conveniosService = {
-  async getConvenios(clienteId?: number, search?: string, skip = 0, limit = 100): Promise<Convenio[]> {
+  async getConvenios(clienteId?: number, search?: string, skip = 0, limit = 100, options?: RequestInit): Promise<Convenio[]> {
     const params = new URLSearchParams();
     if (clienteId) params.append('cliente_id', clienteId.toString());
     if (search) params.append('search', search);
     params.append('skip', skip.toString());
     params.append('limit', limit.toString());
-    return apiClient.get<Convenio[]>(`/convenios?${params.toString()}`);
+    return apiClient.get<Convenio[]>(`/convenios?${params.toString()}`, undefined, options);
   },
 
   async getConvenio(id: number): Promise<Convenio> {
@@ -462,13 +456,13 @@ export const conveniosService = {
 };
 
 export const anexosService = {
-  async getAnexos(convenioId?: number, search?: string, skip = 0, limit = 100): Promise<Anexo[]> {
+  async getAnexos(convenioId?: number, search?: string, skip = 0, limit = 100, options?: RequestInit): Promise<Anexo[]> {
     const params = new URLSearchParams();
     if (convenioId) params.append('convenio_id',convenioId.toString());
     if (search) params.append('search', search);
     params.append('skip', skip.toString());
     params.append('limit', limit.toString());
-    return apiClient.get<Anexo[]>(`/anexos?${params.toString()}`);
+    return apiClient.get<Anexo[]>(`/anexos?${params.toString()}`, undefined, options);
   },
 
   async getAnexo(id: number): Promise<Anexo> {
@@ -489,12 +483,12 @@ export const anexosService = {
 };
 
 export const dependenciasService = {
-  async getDependencias(search?: string, skip = 0, limit = 100): Promise<Dependencia[]> {
+  async getDependencias(search?: string, skip = 0, limit = 100, options?: RequestInit): Promise<Dependencia[]> {
     const params = new URLSearchParams();
     if (search) params.append('search', search);
     params.append('skip', skip.toString());
     params.append('limit', limit.toString());
-    return apiClient.get<Dependencia[]>(`/dependencias?${params.toString()}`);
+    return apiClient.get<Dependencia[]>(`/dependencias?${params.toString()}`, undefined, options);
   },
 
   async getDependencia(id: number): Promise<Dependencia> {
@@ -503,15 +497,9 @@ export const dependenciasService = {
 };
 
 export const contratosService = {
-  async getContratos(skip = 0, limit = 10000, idCliente?: number): Promise<ContratoWithDetails[]> {
-    const params = new URLSearchParams({
-      skip: String(skip),
-      limit: String(limit),
-    });
-    if (idCliente) {
-      params.append("id_cliente", String(idCliente));
-    }
-    return apiClient.get<ContratoWithDetails[]>(`/contratos?${params.toString()}`);
+
+  async getContratos(skip = 0, limit = 100, options?: RequestInit): Promise<ContratoWithDetails[]> {
+    return apiClient.get<ContratoWithDetails[]>(`/contratos?skip=${skip}&limit=${limit}`, undefined, options);
   },
 
   async getContrato(id: number): Promise<ContratoWithDetails> {
@@ -558,12 +546,12 @@ export const suplementosService = {
 };
 
 export const facturasService = {
-  async getFacturas(skip = 0, limit = 100): Promise<FacturaWithDetails[]> {
-    return apiClient.get<FacturaWithDetails[]>(`/facturas?skip=${skip}&limit=${limit}`);
+  async getFacturas(skip = 0, limit = 100, options?: RequestInit): Promise<FacturaWithDetails[]> {
+    return apiClient.get<FacturaWithDetails[]>(`/facturas?skip=${skip}&limit=${limit}`, undefined, options);
   },
 
-  async getFacturasByContrato(contratoId: number): Promise<FacturaWithDetails[]> {
-    return apiClient.get<FacturaWithDetails[]>(`/facturas/contrato/${contratoId}`);
+  async getFacturasByContrato(contratoId: number, options?: RequestInit): Promise<FacturaWithDetails[]> {
+    return apiClient.get<FacturaWithDetails[]>(`/facturas/contrato/${contratoId}`, undefined, options);
   },
 
   async getProductosByFactura(facturaId: number): Promise<ProductoConCantidad[]> {
@@ -758,8 +746,8 @@ export const personaLiquidacionService = {
 };
 
 export const ventasEfectivoService = {
-  async getVentasEfectivo(skip = 0, limit = 100): Promise<VentaEfectivoWithDetails[]> {
-    return apiClient.get<VentaEfectivoWithDetails[]>(`/ventas-efectivo?skip=${skip}&limit=${limit}`);
+  async getVentasEfectivo(skip = 0, limit = 100, signal?: AbortSignal): Promise<VentaEfectivoWithDetails[]> {
+    return apiClient.get<VentaEfectivoWithDetails[]>(`/ventas-efectivo?skip=${skip}&limit=${limit}`, undefined, { signal });
   },
 
   async getVentaEfectivo(id: number): Promise<VentaEfectivoWithDetails> {
@@ -782,8 +770,8 @@ export const ventasEfectivoService = {
 export const configuracionService = configService;
 
 export const provinciaService = {
-  async getProvincias(): Promise<any[]> {
-    return apiClient.get<any[]>('/dependencias/ubicaciones/provincias');
+  async getProvincias(options?: RequestInit): Promise<any[]> {
+    return apiClient.get<any[]>('/dependencias/ubicaciones/provincias', undefined, options);
   }
 };
 
@@ -794,8 +782,8 @@ export const municipioService = {
 };
 
 export const tipoConvenioService = {
-  async getTiposConvenio(): Promise<any[]> {
-    return apiClient.get<any[]>('/configuracion/tipos-convenios');
+  async getTiposConvenio(options?: RequestInit): Promise<any[]> {
+    return apiClient.get<any[]>('/configuracion/tipos-convenios', undefined, options);
   }
 };
 

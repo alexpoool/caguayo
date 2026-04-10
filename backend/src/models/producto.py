@@ -28,6 +28,23 @@ class Productos(SQLModel, table=True):
     precio_venta: Decimal
     precio_minimo: Decimal
 
+    # Reposición de Stock
+    stock_minimo: Optional[int] = Field(
+        default=0, description="Stock de seguridad mínimo permitido"
+    )
+    punto_pedido: Optional[int] = Field(
+        default=0,
+        description="Nivel de stock en el que se debe realizar un nuevo pedido (ROP)",
+    )
+    lead_time_dias: Optional[int] = Field(
+        default=0, description="Tiempo de entrega del proveedor en días"
+    )
+    clasificacion_abc: Optional[str] = Field(
+        default=None,
+        max_length=1,
+        description="Clasificación ABC del producto (A, B o C)",
+    )
+
     # Relaciones
     subcategoria: "Subcategorias" = Relationship(back_populates="productos")
     moneda_compra_rel: "Moneda" = Relationship(

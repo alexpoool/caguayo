@@ -1,152 +1,232 @@
-import { useState, useEffect, useMemo } from 'react';
-import { createPortal } from 'react-dom';
-import { Button, Input, Label, Card, CardContent, CardHeader, CardTitle, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, ConfirmModal } from '../../components/ui';
-import { contratosService, clientesService, monedaService, solicitudesService } from '../../services/api';
-import type { Cliente } from '../../types/ventas';
-import type { Moneda } from '../../types/moneda';
-import type { ContratoWithDetails, ContratoCreate } from '../../types/contrato';
-import { Plus, Save, Trash2, Edit, ArrowLeft, Search, FileText, User, DollarSign, Calendar, Tag, X, Eye, Layers, Receipt } from 'lucide-react';
-import toast from 'react-hot-toast';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useState, useEffect, useMemo } from "react";
+import { createPortal } from "react-dom";
+import {
+  Button,
+  Input,
+  Label,
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+  ConfirmModal,
+} from "../../components/ui";
+import {
+  contratosService,
+  clientesService,
+  monedaService,
+  solicitudesService,
+} from "../../services/api";
+import type { Cliente } from "../../types/ventas";
+import type { Moneda } from "../../types/moneda";
+import type { ContratoWithDetails, ContratoCreate } from "../../types/contrato";
+import {
+  Plus,
+  Save,
+  Trash2,
+  Edit,
+  ArrowLeft,
+  Search,
+  FileText,
+  User,
+  DollarSign,
+  Calendar,
+  Tag,
+  X,
+  Eye,
+  Layers,
+  Receipt,
+} from "lucide-react";
+import toast from "react-hot-toast";
+import { useNavigate, useSearchParams } from "react-router-dom";
 
-type View = 'list' | 'form';
+type View = "list" | "form";
 
 export function ContratosPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const initialClienteId = searchParams.get('cliente');
-  const solicitudParam = searchParams.get('solicitud');
-  const [view, setView] = useState<View>(searchParams.get('solicitud') ? 'form' : 'list');
-  
+  const initialClienteId = searchParams.get("cliente");
+  const solicitudParam = searchParams.get("solicitud");
+  const [view, setView] = useState<View>(
+    searchParams.get("solicitud") ? "form" : "list",
+  );
+
   const [contratos, setContratos] = useState<ContratoWithDetails[]>([]);
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [monedas, setMonedas] = useState<Moneda[]>([]);
-  const [tiposContrato, setTiposContrato] = useState<{id: number, nombre: string}[]>([]);
-  
+
+  const [estados, setEstados] = useState<{ id: number; nombre: string }[]>([]);
+  const [tiposContrato, setTiposContrato] = useState<
+    { id: number; nombre: string }[]
+  >([]);
+
   const [editingId, setEditingId] = useState<number | null>(null);
   const [formData, setFormData] = useState<Record<string, any>>({});
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filtroCliente, setFiltroCliente] = useState<number | null>(initialClienteId ? Number(initialClienteId) : null);
-  const [detailModal, setDetailModal] = useState<{ isOpen: boolean; item: ContratoWithDetails | null }>({ isOpen: false, item: null });
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filtroCliente, setFiltroCliente] = useState<number | null>(
+    initialClienteId ? Number(initialClienteId) : null,
+  );
+  const [detailModal, setDetailModal] = useState<{
+    isOpen: boolean;
+    item: ContratoWithDetails | null;
+  }>({ isOpen: false, item: null });
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
     title: string;
     message: string;
     onConfirm: () => void;
-    type: 'danger' | 'warning' | 'info';
+    type: "danger" | "warning" | "info";
   }>({
     isOpen: false,
-    title: '',
-    message: '',
+    title: "",
+    message: "",
     onConfirm: () => {},
-    type: 'danger'
+    type: "danger",
   });
 
-  useEffect(() => { loadInitialData(); }, []);
+  useEffect(() => {
+    const controller = new AbortController();
+    loadInitialData(controller.signal);
+    return () => controller.abort();
+  }, []);
 
-  const loadInitialData = async () => {
+  const loadInitialData = async (signal?: AbortSignal) => {
     try {
       const [clientesRes, monedasRes] = await Promise.all([
-        clientesService.getClientes(0, 1000),
-        monedaService.getMonedas(0, 100)
+        clientesService.getClientes(0, 1000, { signal }),
+        monedaService.getMonedas(0, 100, { signal }),
       ]);
       setClientes(clientesRes);
       setMonedas(monedasRes);
-      setTiposContrato([{ id: 1, nombre: 'SERVICIO' }, { id: 2, nombre: 'OBRA' }, { id: 3, nombre: 'MANTENIMIENTO' }, { id: 4, nombre: 'ALQUILER' }, { id: 5, nombre: 'COMPRA' }]);
-    } catch (error) { console.error('Error:', error); }
+
+      setEstados([
+        { id: 1, nombre: "ACTIVO" },
+        { id: 2, nombre: "CANCELADO" },
+        { id: 3, nombre: "FINALIZADO" },
+        { id: 4, nombre: "PENDIENTE" },
+      ]);
+      setTiposContrato([
+        { id: 1, nombre: "SERVICIO" },
+        { id: 2, nombre: "OBRA" },
+        { id: 3, nombre: "MANTENIMIENTO" },
+        { id: 4, nombre: "ALQUILER" },
+        { id: 5, nombre: "COMPRA" },
+      ]);
+    } catch (error: any) {
+      if (error.name !== "AbortError") console.error("Error:", error);
+    }
   };
 
-  const loadContratos = async () => {
-    try { 
-      const data = await contratosService.getContratos(0, 10000, filtroCliente || undefined); 
-      setContratos(data); 
-    } 
-    catch (error) { console.error('Error:', error); }
+  const loadContratos = async (signal?: AbortSignal) => {
+    try {
+      const data = await contratosService.getContratos(0, 100, { signal });
+      setContratos(data);
+    } catch (error: any) {
+      if (error.name !== "AbortError") console.error("Error:", error);
+    }
   };
 
-  useEffect(() => { if (view === 'list') loadContratos(); }, [view, filtroCliente]);
+  useEffect(() => {
+    const controller = new AbortController();
+    if (view === "list") loadContratos(controller.signal);
+    return () => controller.abort();
+  }, [view]);
 
   const handleSave = async () => {
     try {
-      const data: ContratoCreate = { 
-        nombre: formData.nombre || '',
-        id_cliente: Number(formData.id_cliente) || 0, 
-        id_estado: 1, 
-        id_tipo_contrato: Number(formData.id_tipo_contrato) || 1, 
+      const data: ContratoCreate = {
+        nombre: formData.nombre || "",
+        id_cliente: Number(formData.id_cliente) || 0,
+        id_estado: Number(formData.id_estado) || 1,
+        id_tipo_contrato: Number(formData.id_tipo_contrato) || 1,
         id_moneda: Number(formData.id_moneda) || 1,
-        fecha: formData.fecha || new Date().toISOString().split('T')[0],
-        vigencia: formData.vigencia || new Date().toISOString().split('T')[0],
+        fecha: formData.fecha || new Date().toISOString().split("T")[0],
+        vigencia: formData.vigencia || new Date().toISOString().split("T")[0],
         proforma: formData.proforma,
-        documento_final: formData.documento_final
+        documento_final: formData.documento_final,
       };
       if (editingId) {
         await contratosService.updateContrato(editingId, data);
-        toast.success('Actualizado');
+        toast.success("Actualizado");
       } else {
         const nuevoContrato = await contratosService.createContrato(data);
         if (solicitudParam) {
           try {
             await solicitudesService.updateSolicitud(Number(solicitudParam), {
               id_contrato: nuevoContrato.id_contrato,
-              id_cliente: Number(formData.id_cliente) || 0
+              id_cliente: Number(formData.id_cliente) || 0,
             });
-          } catch (e) { console.error('Error updating solicitud:', e); }
+          } catch (e) {
+            console.error("Error updating solicitud:", e);
+          }
         }
-        toast.success('Creado');
+        toast.success("Creado");
       }
-      setView('list');
+      setView("list");
       resetForm();
       loadContratos();
-    } catch (error: any) { toast.error(error.message || 'Error'); }
+    } catch (error: any) {
+      toast.error(error.message || "Error");
+    }
   };
 
   const handleDelete = async (id: number, nombre: string) => {
     setConfirmModal({
       isOpen: true,
-      title: '¿Eliminar contrato?',
+      title: "¿Eliminar contrato?",
       message: `¿Está seguro de eliminar el contrato "${nombre}"?`,
       onConfirm: async () => {
         try {
           await contratosService.deleteContrato(id);
-          toast.success('Eliminado');
+          toast.success("Eliminado");
           loadContratos();
-        } catch (error: any) { toast.error(error.message || 'Error'); }
+        } catch (error: any) {
+          toast.error(error.message || "Error");
+        }
       },
-      type: 'danger'
+      type: "danger",
     });
   };
 
-  const resetForm = () => { setFormData({}); setEditingId(null); };
+  const resetForm = () => {
+    setFormData({});
+    setEditingId(null);
+  };
 
   const openForm = (item?: ContratoWithDetails) => {
     if (item) {
       setEditingId(item.id_contrato);
-      setFormData({ 
-        nombre: item.nombre, 
-        proforma: item.proforma, 
-        id_cliente: item.id_cliente, 
-        id_tipo_contrato: item.id_tipo_contrato, 
-        fecha: item.fecha, 
-        vigencia: item.vigencia, 
-        id_moneda: item.id_moneda, 
-        documento_final: item.documento_final 
+
+      setFormData({
+        nombre: item.nombre,
+        proforma: item.proforma,
+        id_cliente: item.id_cliente,
+        id_estado: item.id_estado,
+        fecha: item.fecha,
+        vigencia: item.vigencia,
+        id_tipo_contrato: item.id_tipo_contrato,
+        id_moneda: item.id_moneda,
+        documento_final: item.documento_final,
       });
-    } else { 
+    } else {
       resetForm();
-      if (initialClienteId) {
-        setFormData({ id_cliente: Number(initialClienteId) });
-      }
     }
-    setView('form');
+    setView("form");
   };
 
   const filteredContratos = useMemo(() => {
     let result = contratos;
     if (searchTerm) {
-      result = result.filter(c => 
-        c.nombre?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        c.cliente?.nombre?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        c.estado?.nombre?.toLowerCase().includes(searchTerm.toLowerCase())
+      result = result.filter(
+        (c) =>
+          c.nombre?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          c.cliente?.nombre?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          c.estado?.nombre?.toLowerCase().includes(searchTerm.toLowerCase()),
       );
     }
     return result;
@@ -162,10 +242,9 @@ export function ContratosPage() {
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Contratos</h1>
             <p className="text-gray-500 mt-1">
-              {filteredContratos.length === contratos.length 
+              {filteredContratos.length === contratos.length
                 ? `Gestión de contratos (${contratos.length} items)`
-                : `Mostrando ${filteredContratos.length} de ${contratos.length} contratos`
-              }
+                : `Mostrando ${filteredContratos.length} de ${contratos.length} contratos`}
             </p>
           </div>
         </div>
@@ -226,33 +305,48 @@ export function ContratosPage() {
             <TableBody>
               {filteredContratos.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center py-12 text-gray-500">
-                    {searchTerm ? 'No se encontraron contratos que coincidan con la búsqueda' : 'No hay contratos'}
+                  <TableCell
+                    colSpan={5}
+                    className="text-center py-12 text-gray-500"
+                  >
+                    {searchTerm
+                      ? "No se encontraron contratos que coincidan con la búsqueda"
+                      : "No hay contratos"}
                   </TableCell>
                 </TableRow>
               ) : (
                 filteredContratos.map((item) => (
-                  <TableRow key={item.id_contrato} className="hover:bg-gray-50/50 transition-colors cursor-pointer" onClick={() => setDetailModal({ isOpen: true, item })}>
+                  <TableRow
+                    key={item.id_contrato}
+                    className="hover:bg-gray-50/50 transition-colors cursor-pointer"
+                    onClick={() => setDetailModal({ isOpen: true, item })}
+                  >
                     <TableCell>
                       <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-rose-50 text-rose-700 rounded text-sm font-mono font-medium">
                         <Tag className="h-3 w-3" />
-                        {item.codigo || 'N/A'}
+                        {item.codigo || "N/A"}
                       </span>
                     </TableCell>
                     <TableCell>
-                      <span className="font-medium text-gray-900">{item.nombre}</span>
+                      <span className="font-medium text-gray-900">
+                        {item.nombre}
+                      </span>
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
                         <User className="h-4 w-4 text-gray-400" />
-                        {item.cliente?.nombre || 'N/A'}
+                        {item.cliente?.nombre || "N/A"}
                       </div>
                     </TableCell>
                     <TableCell onClick={(e) => e.stopPropagation()}>
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => navigate(`/ventas/facturas?contrato=${item.id_contrato}`)}
+                        onClick={() =>
+                          navigate(
+                            `/ventas/facturas?contrato=${item.id_contrato}`,
+                          )
+                        }
                         className="gap-1 text-rose-600 border-rose-200 hover:bg-rose-50 hover:text-rose-700"
                       >
                         <Receipt className="h-3.5 w-3.5" />
@@ -263,14 +357,21 @@ export function ContratosPage() {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => navigate(`/ventas/suplementos?contrato=${item.id_contrato}`)}
+                        onClick={() =>
+                          navigate(
+                            `/ventas/suplementos?contrato=${item.id_contrato}`,
+                          )
+                        }
                         className="gap-1 text-amber-600 border-amber-200 hover:bg-amber-50 hover:text-amber-700"
                       >
                         <Layers className="h-3.5 w-3.5" />
                         Suplemento
                       </Button>
                     </TableCell>
-                    <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                    <TableCell
+                      className="text-right"
+                      onClick={(e) => e.stopPropagation()}
+                    >
                       <div className="flex justify-end gap-2">
                         <Button
                           variant="ghost"
@@ -284,7 +385,9 @@ export function ContratosPage() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => handleDelete(item.id_contrato, item.nombre)}
+                          onClick={() =>
+                            handleDelete(item.id_contrato, item.nombre)
+                          }
                           className="text-red-600 hover:text-red-800 hover:bg-red-50 h-8 w-8"
                           title="Eliminar"
                         >
@@ -307,7 +410,11 @@ export function ContratosPage() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           {solicitudParam && (
-            <Button variant="outline" onClick={() => navigate('/proyectos/solicitudes')} className="gap-2">
+            <Button
+              variant="outline"
+              onClick={() => navigate("/proyectos/solicitudes")}
+              className="gap-2"
+            >
               <ArrowLeft className="h-4 w-4" />
             </Button>
           )}
@@ -315,11 +422,22 @@ export function ContratosPage() {
             <FileText className="h-8 w-8 text-white" />
           </div>
           <div>
-            <h2 className="text-2xl font-bold text-gray-900">{editingId ? 'Editar Contrato' : 'Nuevo Contrato'}</h2>
-            <p className="text-gray-500 mt-1">Complete los datos del contrato</p>
+            <h2 className="text-2xl font-bold text-gray-900">
+              {editingId ? "Editar Contrato" : "Nuevo Contrato"}
+            </h2>
+            <p className="text-gray-500 mt-1">
+              Complete los datos del contrato
+            </p>
           </div>
         </div>
-        <Button variant="outline" onClick={() => { setView('list'); resetForm(); }} className="gap-2">
+        <Button
+          variant="outline"
+          onClick={() => {
+            setView("list");
+            resetForm();
+          }}
+          className="gap-2"
+        >
           <ArrowLeft className="h-4 w-4" />
           Volver
         </Button>
@@ -336,57 +454,145 @@ export function ContratosPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="md:col-span-2">
               <Label className="text-sm font-medium">Nombre *</Label>
-              <Input value={formData.nombre || ''} onChange={(e: any) => setFormData({...formData, nombre: e.target.value})} className="mt-1" placeholder="Nombre del contrato" />
+              <Input
+                value={formData.nombre || ""}
+                onChange={(e: any) =>
+                  setFormData({ ...formData, nombre: e.target.value })
+                }
+                className="mt-1"
+                placeholder="Nombre del contrato"
+              />
             </div>
             <div>
               <Label className="text-sm font-medium">Cliente *</Label>
-              {initialClienteId ? (
-                <div className="mt-1 px-3 py-2 bg-gray-100 border border-gray-300 rounded-lg text-gray-700">
-                  {clientes.find(c => c.id_cliente === Number(initialClienteId))?.nombre || `Cliente #${initialClienteId}`}
-                </div>
-              ) : (
-                <select className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 outline-none bg-white" value={formData.id_cliente || ''} onChange={(e: any) => setFormData({...formData, id_cliente: e.target.value})}>
-                  <option value="">Seleccionar cliente</option>
-                  {clientes.map(c => <option key={c.id_cliente} value={c.id_cliente}>{c.nombre}</option>)}
-                </select>
-              )}
+
+              <select
+                className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 outline-none bg-white"
+                value={formData.id_cliente || ""}
+                onChange={(e: any) =>
+                  setFormData({ ...formData, id_cliente: e.target.value })
+                }
+              >
+                <option value="">Seleccionar cliente</option>
+                {clientes.map((c) => (
+                  <option key={c.id_cliente} value={c.id_cliente}>
+                    {c.nombre}
+                  </option>
+                ))}
+              </select>
             </div>
             <div>
               <Label className="text-sm font-medium">Proforma</Label>
-              <Input value={formData.proforma || ''} onChange={(e: any) => setFormData({...formData, proforma: e.target.value})} className="mt-1" placeholder="Número de proforma" />
+              <Input
+                value={formData.proforma || ""}
+                onChange={(e: any) =>
+                  setFormData({ ...formData, proforma: e.target.value })
+                }
+                className="mt-1"
+                placeholder="Número de proforma"
+              />
+            </div>
+            <div>
+
+              <Label className="text-sm font-medium">Estado</Label>
+              <select
+                className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 outline-none bg-white"
+                value={formData.id_estado || ""}
+                onChange={(e: any) =>
+                  setFormData({ ...formData, id_estado: e.target.value })
+                }
+              >
+                {estados.map((e) => (
+                  <option key={e.id} value={e.id}>
+                    {e.nombre}
+                  </option>
+                ))}
+              </select>
             </div>
             <div>
               <Label className="text-sm font-medium">Tipo</Label>
-              <select className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 outline-none bg-white" value={formData.id_tipo_contrato || ''} onChange={(e: any) => setFormData({...formData, id_tipo_contrato: e.target.value})}>
-                {tiposContrato.map(t => <option key={t.id} value={t.id}>{t.nombre}</option>)}
+              <select
+                className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 outline-none bg-white"
+                value={formData.id_tipo_contrato || ""}
+                onChange={(e: any) =>
+                  setFormData({ ...formData, id_tipo_contrato: e.target.value })
+                }
+              >
+                {tiposContrato.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.nombre}
+                  </option>
+                ))}
               </select>
             </div>
             <div>
               <Label className="text-sm font-medium">Fecha</Label>
-              <Input type="date" value={formData.fecha || ''} onChange={(e: any) => setFormData({...formData, fecha: e.target.value})} className="mt-1" />
+              <Input
+                type="date"
+                value={formData.fecha || ""}
+                onChange={(e: any) =>
+                  setFormData({ ...formData, fecha: e.target.value })
+                }
+                className="mt-1"
+              />
             </div>
             <div>
               <Label className="text-sm font-medium">Vigencia</Label>
-              <Input type="date" value={formData.vigencia || ''} onChange={(e: any) => setFormData({...formData, vigencia: e.target.value})} className="mt-1" />
+              <Input
+                type="date"
+                value={formData.vigencia || ""}
+                onChange={(e: any) =>
+                  setFormData({ ...formData, vigencia: e.target.value })
+                }
+                className="mt-1"
+              />
             </div>
             <div>
               <Label className="text-sm font-medium">Moneda</Label>
-              <select className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 outline-none bg-white" value={formData.id_moneda || ''} onChange={(e: any) => setFormData({...formData, id_moneda: e.target.value})}>
+              <select
+                className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 outline-none bg-white"
+                value={formData.id_moneda || ""}
+                onChange={(e: any) =>
+                  setFormData({ ...formData, id_moneda: e.target.value })
+                }
+              >
                 <option value="">Seleccionar moneda</option>
-                {monedas.map(m => <option key={m.id_moneda} value={m.id_moneda}>{m.nombre}</option>)}
+                {monedas.map((m) => (
+                  <option key={m.id_moneda} value={m.id_moneda}>
+                    {m.nombre}
+                  </option>
+                ))}
               </select>
             </div>
             <div>
               <Label className="text-sm font-medium">Documento Final</Label>
-              <Input value={formData.documento_final || ''} onChange={(e: any) => setFormData({...formData, documento_final: e.target.value})} className="mt-1" placeholder="Número de documento" />
+              <Input
+                value={formData.documento_final || ""}
+                onChange={(e: any) =>
+                  setFormData({ ...formData, documento_final: e.target.value })
+                }
+                className="mt-1"
+                placeholder="Número de documento"
+              />
             </div>
           </div>
           <div className="flex gap-3 mt-8 pt-6 border-t">
-            <Button onClick={handleSave} className="gap-2 bg-gradient-to-r from-rose-500 to-pink-600 hover:from-rose-600 hover:to-pink-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300">
+            <Button
+              onClick={handleSave}
+              className="gap-2 bg-gradient-to-r from-rose-500 to-pink-600 hover:from-rose-600 hover:to-pink-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300"
+            >
               <Save className="h-4 w-4" />
-              {editingId ? 'Actualizar' : 'Guardar'}
+              {editingId ? "Actualizar" : "Guardar"}
             </Button>
-            <Button variant="outline" onClick={() => { setView('list'); resetForm(); }}>Cancelar</Button>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setView("list");
+                resetForm();
+              }}
+            >
+              Cancelar
+            </Button>
           </div>
         </CardContent>
       </Card>
@@ -395,8 +601,8 @@ export function ContratosPage() {
 
   return (
     <div className="p-6">
-      {view === 'list' && renderList()}
-      {view === 'form' && renderForm()}
+      {view === "list" && renderList()}
+      {view === "form" && renderForm()}
 
       <ConfirmModal
         isOpen={confirmModal.isOpen}
@@ -407,75 +613,120 @@ export function ContratosPage() {
         onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
       />
 
-      {detailModal.isOpen && detailModal.item && createPortal(
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 animate-fade-in">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-auto animate-scale-in">
-            <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-rose-50 to-pink-50">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <div className="p-3 rounded-xl bg-gradient-to-br from-rose-500 to-pink-600 text-white shadow-lg">
-                    <FileText className="h-7 w-7" />
+      {detailModal.isOpen &&
+        detailModal.item &&
+        createPortal(
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 animate-fade-in">
+            <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-auto animate-scale-in">
+              <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-rose-50 to-pink-50">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="p-3 rounded-xl bg-gradient-to-br from-rose-500 to-pink-600 text-white shadow-lg">
+                      <FileText className="h-7 w-7" />
+                    </div>
+                    <div>
+                      <h3 className="text-2xl font-bold text-gray-900">
+                        {detailModal.item.nombre}
+                      </h3>
+                      <p className="text-sm text-gray-500 font-mono">
+                        {detailModal.item.codigo || "Sin código"}
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="text-2xl font-bold text-gray-900">{detailModal.item.nombre}</h3>
-                    <p className="text-sm text-gray-500 font-mono">{detailModal.item.codigo || 'Sin código'}</p>
+                  <button
+                    onClick={() =>
+                      setDetailModal({ isOpen: false, item: null })
+                    }
+                    className="p-2 hover:bg-gray-200 rounded-full transition-colors"
+                  >
+                    <X className="h-6 w-6 text-gray-500" />
+                  </button>
+                </div>
+              </div>
+              <div className="p-6 space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-4 rounded-xl border border-blue-100">
+                    <p className="text-xs text-blue-600 uppercase tracking-wider mb-1">
+                      Cliente
+                    </p>
+                    <p className="font-bold text-gray-900">
+                      {detailModal.item.cliente?.nombre || "N/A"}
+                    </p>
+                  </div>
+                  <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-4 rounded-xl border border-green-100">
+                    <p className="text-xs text-green-600 uppercase tracking-wider mb-1">
+                      Monto
+                    </p>
+                    <p className="font-bold text-green-900 text-xl">
+                      ${Number(detailModal.item.monto).toFixed(2)}
+                    </p>
+                  </div>
+                  <div className="bg-gray-50 p-4 rounded-xl">
+                    <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">
+                      Tipo
+                    </p>
+                    <p className="font-bold text-gray-900">
+                      {detailModal.item.tipo_contrato?.nombre || "N/A"}
+                    </p>
+                  </div>
+                  <div className="bg-gray-50 p-4 rounded-xl">
+                    <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">
+                      Estado
+                    </p>
+                    <span
+                      className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                        detailModal.item.estado?.nombre === "ACTIVO"
+                          ? "bg-green-100 text-green-800"
+                          : detailModal.item.estado?.nombre === "CANCELADO"
+                            ? "bg-red-100 text-red-800"
+                            : detailModal.item.estado?.nombre === "FINALIZADO"
+                              ? "bg-blue-100 text-blue-800"
+                              : "bg-yellow-100 text-yellow-800"
+                      }`}
+                    >
+                      {detailModal.item.estado?.nombre || "N/A"}
+                    </span>
                   </div>
                 </div>
-                <button onClick={() => setDetailModal({ isOpen: false, item: null })} className="p-2 hover:bg-gray-200 rounded-full transition-colors">
-                  <X className="h-6 w-6 text-gray-500" />
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="bg-gradient-to-br from-purple-50 to-pink-50 p-4 rounded-xl border border-purple-100">
+                    <p className="text-xs text-purple-600 uppercase tracking-wider mb-1">
+                      Fecha
+                    </p>
+                    <p className="font-bold text-gray-900">
+                      {detailModal.item.fecha || "N/A"}
+                    </p>
+                  </div>
+                  <div className="bg-gradient-to-br from-orange-50 to-amber-50 p-4 rounded-xl border border-orange-100">
+                    <p className="text-xs text-orange-600 uppercase tracking-wider mb-1">
+                      Vigencia
+                    </p>
+                    <p className="font-bold text-gray-900">
+                      {detailModal.item.vigencia || "N/A"}
+                    </p>
+                  </div>
+                </div>
+                {detailModal.item.proforma && (
+                  <div className="bg-gray-50 p-4 rounded-xl">
+                    <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">
+                      Proforma
+                    </p>
+                    <p className="text-gray-700">{detailModal.item.proforma}</p>
+                  </div>
+                )}
+              </div>
+              <div className="p-6 border-t border-gray-200 bg-gray-50 flex justify-end">
+                <button
+                  onClick={() => setDetailModal({ isOpen: false, item: null })}
+                  className="px-6 py-3 text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors font-medium"
+                >
+                  Cerrar
                 </button>
               </div>
             </div>
-            <div className="p-6 space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-4 rounded-xl border border-blue-100">
-                  <p className="text-xs text-blue-600 uppercase tracking-wider mb-1">Cliente</p>
-                  <p className="font-bold text-gray-900">{detailModal.item.cliente?.nombre || 'N/A'}</p>
-                </div>
-                <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-4 rounded-xl border border-green-100">
-                  <p className="text-xs text-green-600 uppercase tracking-wider mb-1">Monto</p>
-                  <p className="font-bold text-green-900 text-xl">${Number(detailModal.item.monto).toFixed(2)}</p>
-                </div>
-                <div className="bg-gray-50 p-4 rounded-xl">
-                  <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Tipo</p>
-                  <p className="font-bold text-gray-900">{detailModal.item.tipo_contrato?.nombre || 'N/A'}</p>
-                </div>
-                <div className="bg-gray-50 p-4 rounded-xl">
-                  <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Estado</p>
-                  <span className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                    detailModal.item.estado?.nombre === 'ACTIVO' ? 'bg-green-100 text-green-800' :
-                    detailModal.item.estado?.nombre === 'CANCELADO' ? 'bg-red-100 text-red-800' :
-                    detailModal.item.estado?.nombre === 'FINALIZADO' ? 'bg-blue-100 text-blue-800' :
-                    'bg-yellow-100 text-yellow-800'
-                  }`}>
-                    {detailModal.item.estado?.nombre || 'N/A'}
-                  </span>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="bg-gradient-to-br from-purple-50 to-pink-50 p-4 rounded-xl border border-purple-100">
-                  <p className="text-xs text-purple-600 uppercase tracking-wider mb-1">Fecha</p>
-                  <p className="font-bold text-gray-900">{detailModal.item.fecha || 'N/A'}</p>
-                </div>
-                <div className="bg-gradient-to-br from-orange-50 to-amber-50 p-4 rounded-xl border border-orange-100">
-                  <p className="text-xs text-orange-600 uppercase tracking-wider mb-1">Vigencia</p>
-                  <p className="font-bold text-gray-900">{detailModal.item.vigencia || 'N/A'}</p>
-                </div>
-              </div>
-              {detailModal.item.proforma && (
-                <div className="bg-gray-50 p-4 rounded-xl">
-                  <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Proforma</p>
-                  <p className="text-gray-700">{detailModal.item.proforma}</p>
-                </div>
-              )}
-            </div>
-            <div className="p-6 border-t border-gray-200 bg-gray-50 flex justify-end">
-              <button onClick={() => setDetailModal({ isOpen: false, item: null })} className="px-6 py-3 text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors font-medium">Cerrar</button>
-            </div>
-          </div>
-        </div>,
-        document.body
-      )}
+          </div>,
+          document.body,
+        )}
     </div>
   );
 }

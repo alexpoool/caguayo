@@ -88,9 +88,7 @@ class Factura(SQLModel, table=True):
     )
 
     contrato: "Contrato" = Relationship(back_populates="facturas")
-    items_factura: List["ItemFactura"] = Relationship(
-        back_populates="factura"
-    )
+    items_factura: List["ItemFactura"] = Relationship(back_populates="factura")
 
 
 class VentaEfectivo(SQLModel, table=True):

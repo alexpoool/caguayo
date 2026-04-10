@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { Button, Input } from "../components/ui";
+import { Modal } from "../components/ui/Modal";
 import {
   Loader2,
   Database,
@@ -9,6 +10,8 @@ import {
   Lock,
   CheckCircle,
   XCircle,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { apiClient } from "../lib/api";
@@ -33,6 +36,9 @@ export function LoginPage() {
   const [loadingConexiones, setLoadingConexiones] = useState(true);
   const [loadingLogin, setLoadingLogin] = useState(false);
   const [conexionStatus, setConexionStatus] = useState<ConexionStatus>("idle");
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
 
   // Comentado temporalmente para permitir ir al login manually aunque estemos "logeados"
   // useEffect(() => {
@@ -95,24 +101,28 @@ export function LoginPage() {
 
   const handleLogin = async () => {
     if (!baseDatos) {
-      toast.error("Seleccione una base de datos");
+      setErrorMessage("Seleccione una base de datos");
+      setShowErrorModal(true);
       return;
     }
 
     if (conexionStatus === "error") {
-      toast.error(
+      setErrorMessage(
         "No puede iniciar sesión, la base de datos no está disponible",
       );
+      setShowErrorModal(true);
       return;
     }
 
     if (!alias.trim()) {
-      toast.error("Ingrese su alias");
+      setErrorMessage("Ingrese su alias");
+      setShowErrorModal(true);
       return;
     }
 
     if (!contrasenia.trim()) {
-      toast.error("Ingrese su contraseña");
+      setErrorMessage("Ingrese su contraseña");
+      setShowErrorModal(true);
       return;
     }
 
@@ -122,7 +132,8 @@ export function LoginPage() {
       toast.success("Bienvenido");
       navigate("/");
     } catch (error: any) {
-      toast.error(error.message || "Credenciales inválidas");
+      setErrorMessage(error.message || "Credenciales inválidas");
+      setShowErrorModal(true);
     } finally {
       setLoadingLogin(false);
     }
@@ -242,14 +253,26 @@ export function LoginPage() {
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-blue-400" />
                   <Input
-                    type="password"
+                    type={showPassword ? "text" : "password"}
                     placeholder="Ingrese su contraseña"
                     value={contrasenia}
                     onChange={(e) => setContrasenia(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && handleLogin()}
-                    className="pl-10 border-slate-200 focus:ring-blue-500 focus:border-blue-500 rounded-xl transition-all duration-200"
+                    className="pl-10 pr-10 border-slate-200 focus:ring-blue-500 focus:border-blue-500 rounded-xl transition-all duration-200"
                     disabled={!baseDatos}
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none"
+                    disabled={!baseDatos}
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-5 w-5" />
+                    ) : (
+                      <Eye className="h-5 w-5" />
+                    )}
+                  </button>
                 </div>
               </div>
 
@@ -274,6 +297,25 @@ export function LoginPage() {
           © {new Date().getFullYear()} Caguayo. Todos los derechos reservados.
         </p>
       </div>
+
+      <Modal
+        isOpen={showErrorModal}
+        onClose={() => setShowErrorModal(false)}
+        className="max-w-sm"
+      >
+        <div className="p-6 text-center">
+          <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 mb-4">
+            <XCircle className="h-6 w-6 text-red-600" />
+          </div>
+          <h3 className="text-lg font-medium text-gray-900 mb-2">
+            Error de Autenticación
+          </h3>
+          <p className="text-sm text-gray-500 mb-6">{errorMessage}</p>
+          <Button onClick={() => setShowErrorModal(false)} className="w-full">
+            Aceptar
+          </Button>
+        </div>
+      </Modal>
     </div>
   );
 }

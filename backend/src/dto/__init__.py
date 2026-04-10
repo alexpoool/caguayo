@@ -290,7 +290,6 @@ __all__ = [
     "ConvenioBase",
     "ConvenioCreate",
     "ConvenioRead",
-    
     "ConvenioSimpleRead",
     "AnexoBase",
     "AnexoCreate",
@@ -382,4 +381,9 @@ __all__ = [
     "ProductosEnLiquidacionRead",
     "ProductosEnLiquidacionUpdate",
 ]
-VentaRead.model_rebuild(_types_namespace={"ClienteRead": ClienteRead, "ClienteReadWithVentas": ClienteReadWithVentas})
+VentaRead.model_rebuild(
+    _types_namespace={
+        "ClienteRead": ClienteRead,
+        "ClienteReadWithVentas": ClienteReadWithVentas,
+    }
+)

@@ -15,6 +15,10 @@ class ProductosBase(SQLModel):
     moneda_venta: int
     precio_venta: Decimal
     precio_minimo: Decimal
+    stock_minimo: Optional[int] = 0
+    punto_pedido: Optional[int] = 0
+    lead_time_dias: Optional[int] = 0
+    clasificacion_abc: Optional[str] = None
 
 
 class ProductosCreate(ProductosBase):
@@ -42,6 +46,10 @@ class ProductosUpdate(SQLModel):
     moneda_venta: Optional[int] = None
     precio_venta: Optional[Decimal] = None
     precio_minimo: Optional[Decimal] = None
+    stock_minimo: Optional[int] = None
+    punto_pedido: Optional[int] = None
+    lead_time_dias: Optional[int] = None
+    clasificacion_abc: Optional[str] = None
 
 
 # DTOs simplificados para Productos en Ventas (sin relaciones lazy)

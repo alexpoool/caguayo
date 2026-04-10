@@ -108,11 +108,15 @@ class ClienteService:
         limit: int = 10000,
         tipo_relacion: Optional[str] = None,
     ) -> List[ClienteRead]:
-        from sqlalchemy import or_
 
-        statement = select(Cliente).options(
-            selectinload(Cliente.provincia),
-            selectinload(Cliente.municipio),
+        db_clientes = await cliente_repo.get_multi(
+            db,
+            skip=skip,
+            limit=limit,
+            load_options=[
+                selectinload(Cliente.provincia),
+                selectinload(Cliente.municipio),
+            ],
         )
 
         if tipo_relacion:

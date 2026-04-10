@@ -33,19 +33,11 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export { AuthContext };
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<UsuarioInfo | null>({
-    id_usuario: 1,
-    alias: "admin",
-    nombre: "Administrador",
-    apellidos: "Sistema",
-    email: "admin@caguayo.cu",
-    rol: "administrador",
-    dependencia: { id_dependencia: 1, nombre: "Dependencia Principal" },
-  } as any);
+  const [user, setUser] = useState<UsuarioInfo | null>(null);
   const [funcionalidades, setFuncionalidades] = useState<FuncionalidadInfo[]>(
     [],
   );
-  const [baseDatos, setBaseDatos] = useState<string | null>("caguayo");
+  const [baseDatos, setBaseDatos] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
   const refreshUser = async () => {

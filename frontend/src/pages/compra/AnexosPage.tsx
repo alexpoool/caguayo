@@ -30,41 +30,49 @@ export function CompraAnexosPage() {
   const [productSearch, setProductSearch] = useState('');
   const [detailModal, setDetailModal] = useState<{ isOpen: boolean; item: any | null }>({ isOpen: false, item: null });
 
-  useEffect(() => { loadInitialData(); }, []);
+  useEffect(() => { 
+    const controller = new AbortController();
+    loadInitialData(controller.signal); 
+    return () => controller.abort();
+  }, []);
 
-  const loadInitialData = async () => {
+  const loadInitialData = async (signal?: AbortSignal) => {
     try {
       const [conv, cli, prod, mon, dep] = await Promise.all([
-        conveniosService.getConvenios(),
-        clientesService.getClientes(0, 1000),
-        productosService.getProductos(0, 1000),
-        monedaService.getMonedas(0, 100),
-        dependenciasService.getDependencias(undefined, 0, 1000)
+        conveniosService.getConvenios(undefined, undefined, 0, 100, { signal }),
+        clientesService.getClientes(0, 1000, { signal }),
+        productosService.getProductos(0, 1000, undefined, { signal }),
+        monedaService.getMonedas(0, 100, { signal }),
+        dependenciasService.getDependencias(undefined, 0, 1000, { signal })
       ]);
       setConvenios(conv);
       setClientes(cli);
       setProductos(prod);
       setMonedas(mon);
       setDependencias(dep);
-    } catch (error) { console.error('Error:', error); }
+    } catch (error: any) { 
+      if (error.name !== 'AbortError') {
+        console.error('Error:', error); 
+      }
+    }
   };
 
-  useEffect(() => { if (view === 'list') loadAnexos(); }, [view]);
+  useEffect(() => { 
+    const controller = new AbortController();
+    if (view === 'list') {
+      loadAnexos(controller.signal); 
+    }
+    return () => controller.abort();
+  }, [view]);
 
-  const conveniosVigentes = useMemo(() => 
-    convenios.filter(c => new Date(c.vigencia) >= new Date()),
-    [convenios]
-  );
 
-  const convenioActivoId = initialConvenioId ? Number(initialConvenioId) : (formData.id_convenio ? Number(formData.id_convenio) : null);
-  const convenioSeleccionado = convenios.find(c => c.id_convenio === convenioActivoId);
-  const convenioVencido = convenioSeleccionado ? new Date(convenioSeleccionado.vigencia) < new Date() : false;
-
-  const loadAnexos = async () => {
+  const loadAnexos = async (signal?: AbortSignal) => {
     try {
-      const data = await anexosService.getAnexos();
+      const data = await anexosService.getAnexos(undefined, undefined, 0, 100, { signal });
       setAnexos(data);
-    } catch (error) { console.error('Error:', error); }
+    } catch (error: any) { 
+      if (error.name !== 'AbortError') console.error('Error:', error); 
+    }
   };
 
   const handleSave = async () => {

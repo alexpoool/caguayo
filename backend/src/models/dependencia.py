@@ -49,9 +49,7 @@ class Dependencia(SQLModel, table=True):
         sa_relationship_kwargs={"remote_side": "Dependencia.id_dependencia"},
     )
     subdependencias: List["Dependencia"] = Relationship(back_populates="padre")
-    cuentas: List["Cuenta"] = Relationship(
-        back_populates="dependencia"
-    )
+    cuentas: List["Cuenta"] = Relationship(back_populates="dependencia")
     provincia: Optional["Provincia"] = Relationship(back_populates="dependencias")
     municipio: Optional["Municipio"] = Relationship(back_populates="dependencias")
     usuarios: List["Usuario"] = Relationship(back_populates="dependencia")

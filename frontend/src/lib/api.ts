@@ -71,7 +71,7 @@ class ApiClient {
     }
   }
 
-  async get<T>(endpoint: string, params?: Record<string, any>): Promise<T> {
+  async get<T>(endpoint: string, params?: Record<string, any>, options: RequestInit = {}): Promise<T> {
     let url = endpoint;
     if (params && Object.keys(params).length > 0) {
       const queryParams = new URLSearchParams();
@@ -80,35 +80,39 @@ class ApiClient {
           queryParams.append(key, String(value));
         }
       });
-      url += `?${queryParams.toString()}`;
+      url += (url.includes('?') ? '&' : '?') + queryParams.toString();
     }
-    return this.request<T>(url);
+    return this.request<T>(url, { method: 'GET', ...options });
   }
 
-  async post<T>(endpoint: string, data: any): Promise<T> {
+  async post<T>(endpoint: string, data: any, options: RequestInit = {}): Promise<T> {
     return this.request<T>(endpoint, {
       method: 'POST',
       body: JSON.stringify(data),
+      ...options,
     });
   }
 
-  async put<T>(endpoint: string, data: any): Promise<T> {
+  async put<T>(endpoint: string, data: any, options: RequestInit = {}): Promise<T> {
     return this.request<T>(endpoint, {
       method: 'PUT',
       body: JSON.stringify(data),
+      ...options,
     });
   }
 
-  async patch<T>(endpoint: string, data: any): Promise<T> {
+  async patch<T>(endpoint: string, data: any, options: RequestInit = {}): Promise<T> {
     return this.request<T>(endpoint, {
       method: 'PATCH',
       body: JSON.stringify(data),
+      ...options,
     });
   }
 
-  async delete<T>(endpoint: string): Promise<T> {
+  async delete<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     return this.request<T>(endpoint, {
       method: 'DELETE',
+      ...options,
     });
   }
 }

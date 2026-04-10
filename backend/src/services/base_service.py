@@ -27,7 +27,9 @@ class GenericService(Generic[ModelType, CreateDTOType, UpdateDTOType, ReadDTOTyp
         return self.read_schema.model_validate(db_obj)
 
     async def get(self, db: AsyncSession, id: int) -> ReadDTOType:
-        db_obj = await self.repository.get(db, id=id, load_options=self.default_load_options)
+        db_obj = await self.repository.get(
+            db, id=id, load_options=self.default_load_options
+        )
         if not db_obj:
             raise HTTPException(
                 status_code=404, detail=f"{self.model_name} no encontrado"
@@ -43,7 +45,9 @@ class GenericService(Generic[ModelType, CreateDTOType, UpdateDTOType, ReadDTOTyp
         return [self._to_read_dto(obj) for obj in db_objs]
 
     async def get_all(self, db: AsyncSession) -> List[ReadDTOType]:
-        db_objs = await self.repository.get_all(db, load_options=self.default_load_options)
+        db_objs = await self.repository.get_all(
+            db, load_options=self.default_load_options
+        )
         return [self._to_read_dto(obj) for obj in db_objs]
 
     async def create(self, db: AsyncSession, obj_in: CreateDTOType) -> ReadDTOType:
@@ -51,8 +55,12 @@ class GenericService(Generic[ModelType, CreateDTOType, UpdateDTOType, ReadDTOTyp
         # To return with properly loaded relations if needed:
         if self.default_load_options:
             # Re-fetch with relations
-            primary_key_val = getattr(db_obj, db_obj.__table__.primary_key.columns.keys()[0])
-            db_obj = await self.repository.get(db, id=primary_key_val, load_options=self.default_load_options)
+            primary_key_val = getattr(
+                db_obj, db_obj.__table__.primary_key.columns.keys()[0]
+            )
+            db_obj = await self.repository.get(
+                db, id=primary_key_val, load_options=self.default_load_options
+            )
         return self._to_read_dto(db_obj)
 
     async def update(
@@ -65,7 +73,9 @@ class GenericService(Generic[ModelType, CreateDTOType, UpdateDTOType, ReadDTOTyp
             )
         updated_obj = await self.repository.update(db, db_obj=db_obj, obj_in=obj_in)
         if self.default_load_options:
-             updated_obj = await self.repository.get(db, id=id, load_options=self.default_load_options)
+            updated_obj = await self.repository.get(
+                db, id=id, load_options=self.default_load_options
+            )
         return self._to_read_dto(updated_obj)
 
     async def delete(self, db: AsyncSession, id: int) -> None:

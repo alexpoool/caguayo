@@ -79,35 +79,58 @@ export function VentasEfectivoPage() {
   });
 
   useEffect(() => {
+    const controller = new AbortController();
+
+    const loadInitialData = async () => {
+      try {
+        const [productosRes, depsRes, monedasRes] = await Promise.all([
+          productosService.getProductos(0, 1000, undefined, {
+            signal: controller.signal,
+          }),
+          dependenciasService.getDependencias(undefined, 0, 1000, {
+            signal: controller.signal,
+          }),
+          monedaService.getMonedas(0, 100, { signal: controller.signal }),
+        ]);
+        setProductos(productosRes);
+        setDependencias(depsRes);
+        setMonedas(monedasRes);
+      } catch (error: any) {
+        if (error.name !== "AbortError") {
+          console.error("Error:", error);
+        }
+      }
+    };
+
     loadInitialData();
+
+    return () => {
+      controller.abort();
+    };
   }, []);
 
-  const loadInitialData = async () => {
+  const loadVentasEfectivo = async (signal?: AbortSignal) => {
     try {
-      const [productosRes, depsRes, monedasRes] = await Promise.all([
-        productosService.getProductos(0, 1000),
-        dependenciasService.getDependencias(undefined, 0, 1000),
-        monedaService.getMonedas(0, 100),
-      ]);
-      setProductos(productosRes);
-      setDependencias(depsRes);
-      setMonedas(monedasRes);
-    } catch (error) {
-      console.error("Error:", error);
-    }
-  };
-
-  const loadVentasEfectivo = async () => {
-    try {
-      const data = await ventasEfectivoService.getVentasEfectivo();
+      const data = await ventasEfectivoService.getVentasEfectivo(
+        0,
+        100,
+        signal,
+      );
       setVentasEfectivo(data);
-    } catch (error) {
-      console.error("Error:", error);
+    } catch (error: any) {
+      if (error.name !== "AbortError") {
+        console.error("Error:", error);
+      }
     }
   };
 
   useEffect(() => {
-    if (view === "list") loadVentasEfectivo();
+    const controller = new AbortController();
+    if (view === "list") loadVentasEfectivo(controller.signal);
+
+    return () => {
+      controller.abort();
+    };
   }, [view]);
 
   const handleSave = async () => {

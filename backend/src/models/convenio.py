@@ -24,12 +24,6 @@ class Convenio(SQLModel, table=True):
     id_tipo_convenio: int = Field(foreign_key="tipo_convenio.id_tipo_convenio")
     codigo: Optional[str] = Field(default=None, max_length=50)
 
-    cliente: Optional["Cliente"] = Relationship(
-        back_populates="convenios"
-    )
-    tipo_convenio: Optional["TipoConvenio"] = Relationship(
-        back_populates="convenios"
-    )
-    anexos: List["Anexo"] = Relationship(
-        back_populates="convenios"
-    )
+    cliente: Optional["Cliente"] = Relationship(back_populates="convenios")
+    tipo_convenio: Optional["TipoConvenio"] = Relationship(back_populates="convenios")
+    anexos: List["Anexo"] = Relationship(back_populates="convenios")

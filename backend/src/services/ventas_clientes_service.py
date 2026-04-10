@@ -25,16 +25,17 @@ class VentasService:
     @staticmethod
     async def create_venta(db: AsyncSession, venta: VentaCreate) -> VentaRead:
         from src.domain.ventas_calc import CalculadoraVentas, DetalleCalculo
+
         calc = CalculadoraVentas(
             detalles=[
                 DetalleCalculo(
-                    cantidad=Decimal(str(d.cantidad)),
-                    precio_unitario=d.precio_unitario
-                ) for d in venta.detalles
+                    cantidad=Decimal(str(d.cantidad)), precio_unitario=d.precio_unitario
+                )
+                for d in venta.detalles
             ]
         )
         total = calc.total
-        
+
         # update the subtotal loop
         for d, calc_detail in zip(venta.detalles, calc.detalles):
             d.subtotal = calc_detail.subtotal
@@ -71,19 +72,41 @@ class VentasService:
         await db.commit()
 
         # Recargar la venta con todas las relaciones
-        db_venta = await ventas_repo.get(db, id=db_venta.id_venta, load_options=[selectinload(Ventas.cliente), selectinload(Ventas.detalles).selectinload(DetalleVenta.producto)])
+        db_venta = await ventas_repo.get(
+            db,
+            id=db_venta.id_venta,
+            load_options=[
+                selectinload(Ventas.cliente),
+                selectinload(Ventas.detalles).selectinload(DetalleVenta.producto),
+            ],
+        )
         return VentaRead.model_validate(db_venta)
 
     @staticmethod
     async def get_venta(db: AsyncSession, venta_id: int) -> Optional[VentaRead]:
-        db_venta = await ventas_repo.get(db, id=venta_id, load_options=[selectinload(Ventas.cliente), selectinload(Ventas.detalles).selectinload(DetalleVenta.producto)])
+        db_venta = await ventas_repo.get(
+            db,
+            id=venta_id,
+            load_options=[
+                selectinload(Ventas.cliente),
+                selectinload(Ventas.detalles).selectinload(DetalleVenta.producto),
+            ],
+        )
         return VentaRead.model_validate(db_venta) if db_venta else None
 
     @staticmethod
     async def get_ventas(
         db: AsyncSession, skip: int = 0, limit: int = 100
     ) -> List[VentaRead]:
-        db_ventas = await ventas_repo.get_multi(db, skip=skip, limit=limit, load_options=[selectinload(Ventas.cliente), selectinload(Ventas.detalles).selectinload(DetalleVenta.producto)])
+        db_ventas = await ventas_repo.get_multi(
+            db,
+            skip=skip,
+            limit=limit,
+            load_options=[
+                selectinload(Ventas.cliente),
+                selectinload(Ventas.detalles).selectinload(DetalleVenta.producto),
+            ],
+        )
         return [VentaRead.model_validate(v) for v in db_ventas]
 
     @staticmethod
@@ -138,12 +161,26 @@ class VentasService:
         await db.refresh(db_venta)
 
         # Recargar con relaciones
-        db_venta = await ventas_repo.get(db, id=db_venta.id_venta, load_options=[selectinload(Ventas.cliente), selectinload(Ventas.detalles).selectinload(DetalleVenta.producto)])
+        db_venta = await ventas_repo.get(
+            db,
+            id=db_venta.id_venta,
+            load_options=[
+                selectinload(Ventas.cliente),
+                selectinload(Ventas.detalles).selectinload(DetalleVenta.producto),
+            ],
+        )
         return VentaRead.model_validate(db_venta)
 
     @staticmethod
     async def anular_venta(db: AsyncSession, venta_id: int) -> Optional[VentaRead]:
-        db_venta = await ventas_repo.get(db, id=venta_id, load_options=[selectinload(Ventas.cliente), selectinload(Ventas.detalles).selectinload(DetalleVenta.producto)])
+        db_venta = await ventas_repo.get(
+            db,
+            id=venta_id,
+            load_options=[
+                selectinload(Ventas.cliente),
+                selectinload(Ventas.detalles).selectinload(DetalleVenta.producto),
+            ],
+        )
         if not db_venta:
             return None
 
@@ -163,12 +200,26 @@ class VentasService:
         await db.refresh(db_venta)
 
         # Recargar con relaciones
-        db_venta = await ventas_repo.get(db, id=db_venta.id_venta, load_options=[selectinload(Ventas.cliente), selectinload(Ventas.detalles).selectinload(DetalleVenta.producto)])
+        db_venta = await ventas_repo.get(
+            db,
+            id=db_venta.id_venta,
+            load_options=[
+                selectinload(Ventas.cliente),
+                selectinload(Ventas.detalles).selectinload(DetalleVenta.producto),
+            ],
+        )
         return VentaRead.model_validate(db_venta)
 
     @staticmethod
     async def delete_venta(db: AsyncSession, venta_id: int) -> bool:
-        db_venta = await ventas_repo.get(db, id=venta_id, load_options=[selectinload(Ventas.cliente), selectinload(Ventas.detalles).selectinload(DetalleVenta.producto)])
+        db_venta = await ventas_repo.get(
+            db,
+            id=venta_id,
+            load_options=[
+                selectinload(Ventas.cliente),
+                selectinload(Ventas.detalles).selectinload(DetalleVenta.producto),
+            ],
+        )
         if not db_venta:
             return False
 

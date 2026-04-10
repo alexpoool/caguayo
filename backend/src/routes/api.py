@@ -78,12 +78,14 @@ api_router.include_router(persona_etapa_router)
 api_router.include_router(facturas_servicio_router)
 api_router.include_router(pagos_factura_servicio_router)
 api_router.include_router(persona_liquidacion_router)
+api_router.include_router(reportes_router)
+
 
 
 @api_router.get("/")
 async def api_info():
     return {
-        "message": "API de Inventario v1.0",
+        "message": "API de Caguayo v1.0",
         "endpoints": {
             "productos": "/api/v1/productos",
             "categorias": "/api/v1/categorias",
@@ -111,5 +113,6 @@ async def api_info():
             "facturas_servicio": "/api/v1/facturas-servicio",
             "pagos_factura_servicio": "/api/v1/pagos-factura-servicio",
             "persona_liquidacion": "/api/v1/persona-liquidacion",
+            "reportes": "/api/v1/reportes",
         },
     }

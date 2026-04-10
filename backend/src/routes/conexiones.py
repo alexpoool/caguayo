@@ -4,7 +4,27 @@ from fastapi import APIRouter, HTTPException
 from typing import List
 from pydantic import BaseModel
 
+from sqlalchemy.engine import make_url
+
 router = APIRouter(prefix="/conexiones", tags=["conexiones"])
+
+
+def get_db_credentials():
+    url_str = os.getenv("DATABASE_URL")
+    if url_str:
+        url = make_url(url_str)
+        return {
+            "host": url.host or "localhost",
+            "port": url.port or 5432,
+            "user": url.username or "postgres",
+            "password": url.password or "",
+        }
+    return {
+        "host": os.getenv("LECTOR_HOST", "localhost"),
+        "port": int(os.getenv("LECTOR_PORT", 5432)),
+        "user": os.getenv("LECTOR_USER", "usuariolector"),
+        "password": os.getenv("LECTOR_PASSWORD", "usuariolector123"),
+    }
 
 
 class ConexionResponse(BaseModel):
@@ -26,12 +46,14 @@ class ConexionTestRequest(BaseModel):
 async def get_conexiones():
     """Obtiene todas las conexiones registradas en la tabla conexion_database"""
     try:
+        creds = get_db_credentials()
         conn = psycopg2.connect(
-            host=os.getenv("ADMIN_DB_HOST", "localhost"),
-            port=int(os.getenv("ADMIN_DB_PORT", 5432)),
-            user=os.getenv("ADMIN_DB_USER", "postgres"),
-            password=os.getenv("ADMIN_DB_PASSWORD", "1234"),
-            database="caguayo_inventario",
+
+            host=creds["host"],
+            port=creds["port"],
+            user=creds["user"],
+            password=creds["password"],
+            database="postgres",
             client_encoding="utf8",
         )
         cur = conn.cursor()
@@ -60,11 +82,12 @@ async def get_conexiones():
 async def test_conexion(data: ConexionTestRequest):
     """Prueba la conexión a una base de datos específica"""
     try:
+        creds = get_db_credentials()
         conn = psycopg2.connect(
-            host=data.host,
-            port=data.puerto,
-            user=os.getenv("LECTOR_USER", "usuariolector"),
-            password=os.getenv("LECTOR_PASSWORD", "usuariolector123"),
+            host=data.host or creds["host"],
+            port=data.puerto or creds["port"],
+            user=creds["user"],
+            password=creds["password"],
             database=data.nombre_database,
             client_encoding="utf8",
         )
@@ -86,11 +109,12 @@ class DependenciaResponse(BaseModel):
 async def get_dependencias_por_db(db_name: str):
     """Obtiene las dependencias de una base de datos específica"""
     try:
+        creds = get_db_credentials()
         conn = psycopg2.connect(
-            host=os.getenv("ADMIN_DB_HOST", "localhost"),
-            port=int(os.getenv("ADMIN_DB_PORT", 5432)),
-            user=os.getenv("ADMIN_DB_USER", "postgres"),
-            password=os.getenv("ADMIN_DB_PASSWORD", "1234"),
+            host=creds["host"],
+            port=creds["port"],
+            user=creds["user"],
+            password=creds["password"],
             database=db_name,
             client_encoding="utf8",
         )

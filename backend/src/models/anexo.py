@@ -27,9 +27,5 @@ class Anexo(SQLModel, table=True):
         default=None, foreign_key="productos.id_producto"
     )
 
-    convenios: Optional["Convenio"] = Relationship(
-        back_populates="anexos"
-    )
-    items_anexo: List["ItemAnexo"] = Relationship(
-        back_populates="anexo"
-    )
+    convenios: Optional["Convenio"] = Relationship(back_populates="anexos")
+    items_anexo: List["ItemAnexo"] = Relationship(back_populates="anexo")

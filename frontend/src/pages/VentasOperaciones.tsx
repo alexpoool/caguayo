@@ -79,21 +79,28 @@ export function VentasOperacionesPage() {
   const [formData, setFormData] = useState<Record<string, any>>({});
 
   useEffect(() => {
-    loadInitialData();
+    const controller = new AbortController();
+    loadInitialData(controller.signal);
+    return () => controller.abort();
   }, []);
+
   useEffect(() => {
-    if (tab === "contratos") loadContratos();
-    else if (tab === "suplementos" && selectedContratoId) loadSuplementos();
-    else if (tab === "facturas" && selectedContratoId) loadFacturas();
-    else if (tab === "efectivo") loadVentasEfectivo();
+    const controller = new AbortController();
+    if (tab === "contratos") loadContratos(controller.signal);
+    else if (tab === "suplementos" && selectedContratoId)
+      loadSuplementos(controller.signal);
+    else if (tab === "facturas" && selectedContratoId)
+      loadFacturas(controller.signal);
+    else if (tab === "efectivo") loadVentasEfectivo(controller.signal);
+    return () => controller.abort();
   }, [tab, selectedContratoId]);
 
-  const loadInitialData = async () => {
+  const loadInitialData = async (signal?: AbortSignal) => {
     try {
       const [clientesRes, monedasRes, depsRes] = await Promise.all([
-        clientesService.getClientes(0, 1000),
-        monedaService.getMonedas(0, 100),
-        dependenciasService.getDependencias(undefined, 0, 1000),
+        clientesService.getClientes(0, 1000, { signal }),
+        monedaService.getMonedas(0, 100, { signal }),
+        dependenciasService.getDependencias(undefined, 0, 1000, { signal }),
       ]);
       setClientes(clientesRes);
       setMonedas(monedasRes);
@@ -111,12 +118,12 @@ export function VentasOperacionesPage() {
         { id: 4, nombre: "ALQUILER" },
         { id: 5, nombre: "COMPRA" },
       ]);
-    } catch (error) {
-      console.error("Error:", error);
+    } catch (error: any) {
+      if (error.name !== "AbortError") console.error("Error:", error);
     }
   };
 
-  const loadContratos = async () => {
+  const loadContratos = async (signal?: AbortSignal) => {
     try {
       const data = await contratosService.getContratos();
       setContratos(data);
@@ -125,7 +132,7 @@ export function VentasOperacionesPage() {
     }
   };
 
-  const loadSuplementos = async () => {
+  const loadSuplementos = async (signal?: AbortSignal) => {
     if (!selectedContratoId) return;
     try {
       const data =
@@ -136,7 +143,7 @@ export function VentasOperacionesPage() {
     }
   };
 
-  const loadFacturas = async () => {
+  const loadFacturas = async (signal?: AbortSignal) => {
     if (!selectedContratoId) return;
     try {
       const data =
@@ -147,7 +154,7 @@ export function VentasOperacionesPage() {
     }
   };
 
-  const loadVentasEfectivo = async () => {
+  const loadVentasEfectivo = async (signal?: AbortSignal) => {
     try {
       const data = await ventasEfectivoService.getVentasEfectivo();
       setVentasEfectivo(data);

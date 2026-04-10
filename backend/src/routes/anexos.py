@@ -18,7 +18,7 @@ from src.models import (
     TipoConvenio,
 )
 from src.dto.convenios_dto import AnexoRead, AnexoCreate, ItemAnexoCreate
-from src.utils import generar_codigo_con_padre
+from src.utils.codigos_entidad import generar_codigo_con_padre
 from src.dto import DependenciaRead
 from sqlmodel import select, func
 

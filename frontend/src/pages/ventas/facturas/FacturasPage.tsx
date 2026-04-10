@@ -1,24 +1,30 @@
-import { useEffect, useState } from 'react';
-import { contratosService, productosService, monedaService, dependenciasService, pagosService } from '../../../services/api';
-import type { ContratoWithDetails } from '../../../types/contrato';
-import type { Productos } from '../../../types';
-import type { Dependencia } from '../../../types/dependencia';
-import type { Pago } from '../../../types/pago';
-import toast from 'react-hot-toast';
+import { useEffect, useState } from "react";
+import {
+  contratosService,
+  productosService,
+  monedaService,
+  dependenciasService,
+  pagosService,
+} from "../../../services/api";
+import type { ContratoWithDetails } from "../../../types/contrato";
+import type { Productos } from "../../../types";
+import type { Dependencia } from "../../../types/dependencia";
+import type { Pago } from "../../../types/pago";
+import toast from "react-hot-toast";
 
 // Componentes nuevos
-import { FacturasListView } from './components/FacturasListView';
-import { FacturaForm } from './components/FacturaForm';
-import { FacturaDetailModal } from './components/modals/FacturaDetailModal';
-import { PagoModal } from './components/modals/PagoModal';
-import { ConfirmDeleteModal } from './components/modals/ConfirmDeleteModal';
+import { FacturasListView } from "./components/FacturasListView";
+import { FacturaForm } from "./components/FacturaForm";
+import { FacturaDetailModal } from "./components/modals/FacturaDetailModal";
+import { PagoModal } from "./components/modals/PagoModal";
+import { ConfirmDeleteModal } from "./components/modals/ConfirmDeleteModal";
 
 // Hooks personalizados
-import { useFacturas } from './hooks/useFacturas';
-import { usePagos } from './hooks/usePagos';
-import { useProductSelection } from './hooks/useProductSelection';
+import { useFacturas } from "./hooks/useFacturas";
+import { usePagos } from "./hooks/usePagos";
+import { useProductSelection } from "./hooks/useProductSelection";
 
-type View = 'list' | 'form';
+type View = "list" | "form";
 
 /**
  * FacturasPage - Componente principal orquestador
@@ -26,7 +32,7 @@ type View = 'list' | 'form';
  */
 export function FacturasPage() {
   // Vista actual (list o form)
-  const [view, setView] = useState<View>('list');
+  const [view, setView] = useState<View>("list");
 
   // Datos maestros
   const [contratos, setContratos] = useState<ContratoWithDetails[]>([]);
@@ -35,7 +41,10 @@ export function FacturasPage() {
   const [dependencias, setDependencias] = useState<Dependencia[]>([]);
 
   // Modales
-  const [detailModal, setDetailModal] = useState<{ isOpen: boolean; item: any | null }>({
+  const [detailModal, setDetailModal] = useState<{
+    isOpen: boolean;
+    item: any | null;
+  }>({
     isOpen: false,
     item: null,
   });
@@ -44,13 +53,13 @@ export function FacturasPage() {
     title: string;
     message: string;
     onConfirm: () => void;
-    type: 'danger' | 'warning' | 'info' | 'success';
+    type: "danger" | "warning" | "info" | "success";
   }>({
     isOpen: false,
-    title: '',
-    message: '',
+    title: "",
+    message: "",
     onConfirm: () => {},
-    type: 'danger',
+    type: "danger",
   });
   const [pagoModalOpen, setPagoModalOpen] = useState(false);
   const [pagoModalFactura, setPagoModalFactura] = useState<any | null>(null);
@@ -63,27 +72,32 @@ export function FacturasPage() {
   /**
    * Cargar datos iniciales (contratos, productos, monedas, dependencias)
    */
-  const loadInitialData = async () => {
+  const loadInitialData = async (signal?: AbortSignal) => {
     try {
-      const [contratosRes, productosRes, monedasRes, depsRes] = await Promise.all([
-        contratosService.getContratos(0, 1000),
-        productosService.getProductos(0, 1000),
-        monedaService.getMonedas(0, 100),
-        dependenciasService.getDependencias(undefined, 0, 1000),
-      ]);
+      const [contratosRes, productosRes, monedasRes, depsRes] =
+        await Promise.all([
+          contratosService.getContratos(0, 1000, { signal }),
+          productosService.getProductos(0, 1000, undefined, { signal }),
+          monedaService.getMonedas(0, 100, { signal }),
+          dependenciasService.getDependencias(undefined, 0, 1000, { signal }),
+        ]);
       setContratos(contratosRes);
       setProductos(productosRes);
       setMonedas(monedasRes);
       setDependencias(depsRes);
-    } catch (error) {
-      console.error('Error loading initial data:', error);
-      toast.error('Error al cargar datos iniciales');
+    } catch (error: any) {
+      if (error.name !== "AbortError") {
+        console.error("Error loading initial data:", error);
+        toast.error("Error al cargar datos iniciales");
+      }
     }
   };
 
   // Cargar datos iniciales y facturas cuando cambian
   useEffect(() => {
-    loadInitialData();
+    const controller = new AbortController();
+    loadInitialData(controller.signal);
+    return () => controller.abort();
   }, []);
 
   useEffect(() => {
@@ -93,16 +107,19 @@ export function FacturasPage() {
   /**
    * Obtener productos filtrados según búsqueda
    */
-  const productosFiltrados = productSelectionHook.getProductosFiltrados(productos);
+  const productosFiltrados =
+    productSelectionHook.getProductosFiltrados(productos);
 
   /**
    * Manejar guardado de factura
    */
   const handleSaveFactura = async () => {
-    const result = await facturasHook.handleSave(productSelectionHook.selectedProducts);
+    const result = await facturasHook.handleSave(
+      productSelectionHook.selectedProducts,
+    );
     if (result.success) {
       toast.success(result.message);
-      setView('list');
+      setView("list");
     } else {
       toast.error(result.message);
     }
@@ -114,9 +131,9 @@ export function FacturasPage() {
   const handleDeleteFactura = (id: number, codigo: string) => {
     setConfirmModal({
       isOpen: true,
-      title: '¿Eliminar factura?',
+      title: "¿Eliminar factura?",
       message: `¿Está seguro de eliminar la factura "${codigo}"?`,
-      type: 'danger',
+      type: "danger",
       onConfirm: async () => {
         const result = await facturasHook.handleDelete(id);
         if (result.success) {
@@ -144,7 +161,9 @@ export function FacturasPage() {
    */
   const handleCreatePago = async () => {
     if (!pagoModalFactura) return;
-    const result = await pagosHook.handleCreatePago(pagoModalFactura.id_factura);
+    const result = await pagosHook.handleCreatePago(
+      pagoModalFactura.id_factura,
+    );
     if (result.success) {
       toast.success(result.message);
       facturasHook.loadFacturas();
@@ -158,7 +177,10 @@ export function FacturasPage() {
    */
   const handleDeletePago = async (pago: Pago) => {
     if (!pagoModalFactura) return;
-    const result = await pagosHook.handleDeletePago(pago, pagoModalFactura.id_factura);
+    const result = await pagosHook.handleDeletePago(
+      pago,
+      pagoModalFactura.id_factura,
+    );
     if (result.success) {
       toast.success(result.message);
       facturasHook.loadFacturas();
@@ -178,20 +200,20 @@ export function FacturasPage() {
       facturasHook.resetForm();
       productSelectionHook.resetSelection();
     }
-    setView('form');
+    setView("form");
   };
 
   /**
    * Cerrar formulario
    */
   const handleCancelForm = () => {
-    setView('list');
+    setView("list");
     facturasHook.resetForm();
     productSelectionHook.resetSelection();
   };
 
   // Render según vista actual
-  if (view === 'list') {
+  if (view === "list") {
     return (
       <div className="p-6">
         <FacturasListView
@@ -244,7 +266,7 @@ export function FacturasPage() {
   }
 
   // Vista de formulario
-  if (view === 'form') {
+  if (view === "form") {
     return (
       <div className="p-6">
         <FacturaForm
@@ -257,7 +279,9 @@ export function FacturasPage() {
           dependencias={dependencias}
           monedas={monedas}
           productos={productos}
-          onFormDataChange={(data: Record<string, any>) => facturasHook.setFormData(data)}
+          onFormDataChange={(data: Record<string, any>) =>
+            facturasHook.setFormData(data)
+          }
           onProductSearchChange={(search: string) =>
             productSelectionHook.setProductSearch(search)
           }

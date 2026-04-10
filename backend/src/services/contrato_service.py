@@ -59,7 +59,7 @@ from src.dto import (
     ItemFacturaCreate,
     ItemVentaEfectivoCreate,
 )
-from src.utils import generar_codigo_anio, generar_codigo_con_padre
+from src.utils.codigos_entidad import generar_codigo_anio, generar_codigo_con_padre
 from src.services.productos_en_liquidacion_service import (
     agregar_desde_factura,
     agregar_desde_venta_efectivo,

@@ -1,0 +1,117 @@
+import React, { useState, useEffect } from "react";
+import { Form, Select, Button, Input, message, Row, Col } from "antd";
+import { FilePdfOutlined } from "@ant-design/icons";
+import { dependenciasService } from "../../services/administracion";
+import { Dependencia } from "../../types";
+import { authHelpers } from "../../lib/api";
+
+const { Option } = Select;
+
+const ReporteExistencias: React.FC = () => {
+  const [form] = Form.useForm();
+  const [loading, setLoading] = useState(false);
+  const [dependencias, setDependencias] = useState<Dependencia[]>([]);
+
+  useEffect(() => {
+    dependenciasService.getDependencias().then(setDependencias);
+  }, []);
+
+  const handleFormSubmit = async (values: any) => {
+    setLoading(true);
+    try {
+      const params = new URLSearchParams({
+        id_dependencia: values.id_dependencia.toString(),
+        aprobado_por_nombre: values.aprobado_por_nombre || "",
+        aprobado_por_cargo: values.aprobado_por_cargo || "",
+      });
+
+      const token = authHelpers.getToken() || "";
+      const response = await fetch(
+        `http://localhost:8000/api/v1/reportes/existencias?${params.toString()}`,
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        },
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to generate report");
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `existencias_dependencia_${values.id_dependencia}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+
+      message.success("Reporte generado exitosamente");
+    } catch (error) {
+      console.error(error);
+      message.error("Hubo un error al generar el reporte.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div style={{ padding: 24, background: "#fff", minHeight: 400 }}>
+      <h2>Generar Reporte: Existencias</h2>
+      <Form layout="vertical" form={form} onFinish={handleFormSubmit}>
+        <Row gutter={16}>
+          <Col span={12}>
+            <Form.Item
+              name="id_dependencia"
+              label="Dependencia"
+              rules={[
+                { required: true, message: "Seleccione una dependencia" },
+              ]}
+            >
+              <Select placeholder="Seleccionar dependencia">
+                {dependencias.map((d: any) => (
+                  <Option key={d.id_dependencia} value={d.id_dependencia}>
+                    {d.nombre}
+                  </Option>
+                ))}
+              </Select>
+            </Form.Item>
+          </Col>
+        </Row>
+
+        <h3 style={{ marginTop: 24 }}>Firmas e Información Adicional</h3>
+
+        <Row gutter={16}>
+          <Col span={12}>
+            <Form.Item name="aprobado_por_nombre" label="Aprobado Por (Nombre)">
+              <Input placeholder="Ej. Juan Pérez" />
+            </Form.Item>
+          </Col>
+          <Col span={12}>
+            <Form.Item name="aprobado_por_cargo" label="Cargo del Aprobador">
+              <Input placeholder="Ej. Director General" />
+            </Form.Item>
+          </Col>
+        </Row>
+
+        <Form.Item>
+          <Button
+            type="primary"
+            htmlType="submit"
+            loading={loading}
+            icon={<FilePdfOutlined />}
+          >
+            Generar PDF
+          </Button>
+        </Form.Item>
+      </Form>
+    </div>
+  );
+};
+
+export { ReporteExistencias };

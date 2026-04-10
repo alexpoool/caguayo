@@ -34,6 +34,10 @@ export interface Productos {
   precio_minimo: number;
   cantidad?: number;
   stock?: number;
+  stock_minimo?: number;
+  punto_pedido?: number;
+  lead_time_dias?: number;
+  clasificacion_abc?: string;
   subcategoria?: Subcategorias;
   moneda_compra_rel?: Moneda;
   moneda_venta_rel?: Moneda;
@@ -198,6 +202,10 @@ export interface ProductosCreate {
   moneda_venta: number;
   precio_venta: number;
   precio_minimo: number;
+  stock_minimo?: number;
+  punto_pedido?: number;
+  lead_time_dias?: number;
+  clasificacion_abc?: string;
 }
 
 // Producto con cantidad disponible (para movimientos)
@@ -222,6 +230,10 @@ export interface ProductosUpdate {
   moneda_venta?: number;
   precio_venta?: number;
   precio_minimo?: number;
+  stock_minimo?: number;
+  punto_pedido?: number;
+  lead_time_dias?: number;
+  clasificacion_abc?: string;
 }
 
 // Tipo para origen de recepción

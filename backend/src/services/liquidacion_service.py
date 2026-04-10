@@ -79,14 +79,17 @@ class LiquidacionService:
                     )
 
         importe = Decimal("0.00")
-        for prod in productos_db:
-            producto_stmt = select(Productos).where(
-                Productos.id_producto == prod.id_producto
-            )
-            producto_result = await db.exec(producto_stmt)
-            producto = producto_result.first()
 
-            if producto:
+        # Batch fetching productos to avoid N+1
+        producto_ids_en_db = [p.id_producto for p in productos_db]
+        producto_stmt = select(Productos).where(
+            Productos.id_producto.in_(producto_ids_en_db)
+        )
+        producto_result = await db.exec(producto_stmt)
+        valid_productos_ids = {p.id_producto for p in producto_result.all()}
+
+        for prod in productos_db:
+            if prod.id_producto in valid_productos_ids:
                 importe += prod.precio * prod.cantidad
 
         devengado = data.devengado or Decimal("0.00")

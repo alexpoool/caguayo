@@ -56,37 +56,49 @@ export function FacturasPage() {
     referencia: ''
   });
 
-  useEffect(() => { loadInitialData(); }, []);
+  useEffect(() => { 
+    const controller = new AbortController();
+    loadInitialData(controller.signal); 
+    return () => controller.abort();
+  }, []);
 
-  const loadInitialData = async () => {
+  const loadInitialData = async (signal?: AbortSignal) => {
     try {
       const [contratosRes, productosRes, monedasRes, depsRes] = await Promise.all([
-        contratosService.getContratos(0, 1000),
-        productosService.getProductos(0, 1000),
-        monedaService.getMonedas(0, 100),
-        dependenciasService.getDependencias(undefined, 0, 1000)
+        contratosService.getContratos(0, 1000, { signal }),
+        productosService.getProductos(0, 1000, undefined, { signal }),
+        monedaService.getMonedas(0, 100, { signal }),
+        dependenciasService.getDependencias(undefined, 0, 1000, { signal })
       ]);
       setContratos(contratosRes);
       setProductos(productosRes);
       setMonedas(monedasRes);
       setDependencias(depsRes);
-    } catch (error) { console.error('Error:', error); }
+    } catch (error: any) { 
+      if (error.name !== 'AbortError') console.error('Error:', error); 
+    }
   };
 
-  const loadFacturas = async () => {
+  const loadFacturas = async (signal?: AbortSignal) => {
     try {
       if (contratoParam) {
-        const data = await facturasService.getFacturasByContrato(Number(contratoParam));
+        const data = await facturasService.getFacturasByContrato(Number(contratoParam), { signal });
         setFacturas(data);
       } else {
-        const data = await facturasService.getFacturas();
+        const data = await facturasService.getFacturas(0, 100, { signal });
         setFacturas(data);
       }
-    } catch (error) { console.error('Error:', error); }
+    } catch (error: any) { 
+      if (error.name !== 'AbortError') console.error('Error:', error); 
+    }
   };
 
   useEffect(() => { 
-    if (view === 'list') loadFacturas(); 
+    const controller = new AbortController();
+    if (view === 'list') {
+      loadFacturas(controller.signal);
+    }
+    return () => controller.abort();
   }, [view, contratoParam]);
 
   const filteredFacturas = useMemo(() => {

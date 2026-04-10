@@ -155,4 +155,4 @@ const ReporteMovimientosDependencia: React.FC = () => {
   );
 };
 
-export default ReporteMovimientosDependencia;
+export { ReporteMovimientosDependencia };

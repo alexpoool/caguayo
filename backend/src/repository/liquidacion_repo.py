@@ -1,4 +1,5 @@
 from sqlmodel import select, func
+from sqlalchemy.orm import selectinload
 from sqlmodel.ext.asyncio.session import AsyncSession
 from typing import List, Optional, Type, TypeVar
 from datetime import datetime
@@ -44,15 +45,11 @@ class LiquidacionRepository(CRUDBase[Liquidacion, dict, dict]):
             select(Liquidacion)
             .where(Liquidacion.id_liquidacion == id)
             .options(
-                selectinload(Liquidacion.productos_en_liquidacion).selectinload(
-                    ProductosEnLiquidacion.producto
-                ),
-                selectinload(Liquidacion.productos_en_liquidacion).selectinload(
-                    ProductosEnLiquidacion.anexo
-                ),
-                selectinload(Liquidacion.productos_en_liquidacion).selectinload(
-                    ProductosEnLiquidacion.moneda
-                ),
+
+                selectinload(Liquidacion.cliente),
+                selectinload(Liquidacion.moneda),
+                selectinload(Liquidacion.anexo),
+                selectinload(Liquidacion.productos_en_liquidacion),
             )
         )
         result = await db.exec(statement)
@@ -64,38 +61,11 @@ class LiquidacionRepository(CRUDBase[Liquidacion, dict, dict]):
         statement = (
             select(Liquidacion)
             .options(
-                selectinload(Liquidacion.productos_en_liquidacion).selectinload(
-                    ProductosEnLiquidacion.producto
-                ),
-                selectinload(Liquidacion.productos_en_liquidacion).selectinload(
-                    ProductosEnLiquidacion.anexo
-                ),
-                selectinload(Liquidacion.productos_en_liquidacion).selectinload(
-                    ProductosEnLiquidacion.moneda
-                ),
-            )
-            .offset(skip)
-            .limit(limit)
-        )
-        result = await db.exec(statement)
-        return result.all()
 
-    async def get_by_cliente_with_relations(
-        self, db: AsyncSession, cliente_id: int, skip: int = 0, limit: int = 100
-    ) -> List[Liquidacion]:
-        statement = (
-            select(Liquidacion)
-            .where(Liquidacion.id_cliente == cliente_id)
-            .options(
-                selectinload(Liquidacion.productos_en_liquidacion).selectinload(
-                    ProductosEnLiquidacion.producto
-                ),
-                selectinload(Liquidacion.productos_en_liquidacion).selectinload(
-                    ProductosEnLiquidacion.anexo
-                ),
-                selectinload(Liquidacion.productos_en_liquidacion).selectinload(
-                    ProductosEnLiquidacion.moneda
-                ),
+                selectinload(Liquidacion.cliente),
+                selectinload(Liquidacion.moneda),
+                selectinload(Liquidacion.anexo),
+                selectinload(Liquidacion.productos_en_liquidacion),
             )
             .offset(skip)
             .limit(limit)

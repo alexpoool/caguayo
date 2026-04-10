@@ -4,9 +4,8 @@ import {
   DollarSign,
   Download,
   TrendingUp,
-  Boxes,
-  ArrowLeftRight,
-  UserCircle,
+
+  AlertCircle
 } from "lucide-react";
 import { Link } from "react-router-dom";
 
@@ -75,8 +74,39 @@ export function ReportesHome() {
                   <p className="text-xs text-gray-600 mt-1">{reporte.descripcion}</p>
                 </div>
               </div>
+
+            </div>
+
+            <div className="flex items-start gap-2 p-3 bg-blue-50 rounded-lg">
+              <Package className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
+              <div className="flex flex-col w-full">
+                <h3 className="font-bold text-sm text-gray-800">Inventario</h3>
+                <p className="text-xs text-gray-600 mt-0.5">
+                  Stock actual, y movimientos.
+                </p>
+              </div>
+            </div>
+
+            <Link to="/reportes/alertas-stock" className="flex items-start gap-2 p-3 bg-orange-50 rounded-lg hover:bg-orange-100 transition-colors">
+              <AlertCircle className="h-4 w-4 text-orange-600 mt-0.5 flex-shrink-0" />
+              <div className="flex flex-col w-full text-left">
+                <h3 className="font-bold text-sm text-gray-800">Alertas de Stock</h3>
+                <p className="text-xs text-gray-600 mt-0.5">
+                  Ver productos en alerta, filtrar y exportar a PDF.
+                </p>
+              </div>
             </Link>
-          ))}
+
+            <div className="flex items-start gap-2 p-3 bg-purple-50 rounded-lg">
+              <Download className="h-4 w-4 text-purple-600 mt-0.5 flex-shrink-0" />
+              <div>
+                <h3 className="font-bold text-sm text-gray-800">Exportar</h3>
+                <p className="text-xs text-gray-600 mt-0.5">
+                  PDF, Excel y CSV.
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>

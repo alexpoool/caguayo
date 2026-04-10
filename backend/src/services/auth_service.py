@@ -139,13 +139,14 @@ async def login(db: AsyncSession, login_data: LoginRequest) -> Optional[LoginRes
     conexion = results.first()
 
     # 2. Si no hay conexión en la BD central, usar valores por defecto
-    host = conexion.host if conexion else "localhost"
-    puerto = conexion.puerto if conexion else 5432
-    usuario_db = conexion.usuario if conexion else "postgres"
-    contrasenia_db = conexion.contrasenia if conexion else "1234"
+    host = conexion.host if conexion else os.getenv("ADMIN_DB_HOST", "localhost")
+    puerto = conexion.puerto if conexion else int(os.getenv("ADMIN_DB_PORT", 5432))
+    usuario_db = conexion.usuario if conexion else os.getenv("ADMIN_DB_USER", "postgres")
+    contrasenia_db = conexion.contrasenia if conexion else os.getenv("ADMIN_DB_PASSWORD", "1234")
 
     # 3. Conectarse a la base de datos seleccionada
     from sqlmodel import Session, create_engine
+    from sqlalchemy import text
 
     engine = create_engine(
         "postgresql://",
@@ -484,13 +485,14 @@ async def register(
     results = await db.exec(statement)
     conexion = results.first()
 
-    host = conexion.host if conexion else "localhost"
-    puerto = conexion.puerto if conexion else 5432
-    usuario_db = conexion.usuario if conexion else "postgres"
-    contrasenia_db = conexion.contrasenia if conexion else "1234"
+    host = getattr(conexion, "host", None) or os.getenv("ADMIN_DB_HOST", "localhost")
+    puerto = getattr(conexion, "puerto", None) or int(os.getenv("ADMIN_DB_PORT", 5432))
+    usuario_db = getattr(conexion, "usuario", None) or os.getenv("ADMIN_DB_USER", "postgres")
+    contrasenia_db = getattr(conexion, "contrasenia", None) or os.getenv("ADMIN_DB_PASSWORD", "1234")
 
     # 2. Conectarse a la base de datos seleccionada
     from sqlmodel import Session, create_engine
+    from sqlalchemy import text
 
     engine = create_engine(
         "postgresql://",

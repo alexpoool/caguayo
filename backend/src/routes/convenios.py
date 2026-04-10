@@ -6,7 +6,7 @@ from sqlmodel import select, func
 
 from src.database.connection import get_session
 from src.models import Cliente, Cliente as ClienteModel, Convenio
-from src.utils import generar_codigo_anio
+from src.utils.codigos_entidad import generar_codigo_anio
 
 router = APIRouter(prefix="/convenios", tags=["convenios"], redirect_slashes=False)
 

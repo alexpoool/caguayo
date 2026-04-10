@@ -1,24 +1,33 @@
 import React, { useState, useEffect } from "react";
-import { toast } from "react-hot-toast";
-import { dependenciasService, productosService } from "../../services/api";
-import { Dependencia } from "../../types/dependencia";
+
+import {
+  Form,
+  Select,
+  Button,
+  Input,
+  message,
+  Row,
+  Col,
+  DatePicker,
+} from "antd";
+import { FilePdfOutlined } from "@ant-design/icons";
+import { dependenciasService } from "../../services/administracion";
+import { Dependencia, Productos } from "../../types";
 import { authHelpers } from "../../lib/api";
-import type { Productos } from "../../types/index";
+import { productosService } from "../../services/api";
+
+const { Option } = Select;
+const { RangePicker } = DatePicker;
 
 const ReporteMovimientosProducto: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [dependencias, setDependencias] = useState<Dependencia[]>([]);
   const [productos, setProductos] = useState<Productos[]>([]);
-  const [idDependencia, setIdDependencia] = useState<number | null>(null);
-  const [idProducto, setIdProducto] = useState<number | null>(null);
-  const [fechaInicio, setFechaInicio] = useState("");
-  const [fechaFin, setFechaFin] = useState("");
-  const [aprobadoPorNombre, setAprobadoPorNombre] = useState("");
-  const [aprobadoPorCargo, setAprobadoPorCargo] = useState("");
+
 
   useEffect(() => {
     dependenciasService.getDependencias().then(setDependencias);
-    productosService.getProductos(0, 1000).then(setProductos).catch(console.error);
+    productosService.getProductos(0, 1000).then(setProductos);
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -110,36 +119,28 @@ const ReporteMovimientosProducto: React.FC = () => {
               required
               disabled={!idDependencia}
             >
-              <option value="">Seleccionar producto</option>
-              {productos.map((p) => (
-                <option key={p.id_producto} value={p.id_producto}>
-                  {p.codigo || `#${p.id_producto}`} - {p.nombre}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Rango de Fechas *
-            </label>
-            <div className="flex gap-2">
-              <input
-                type="date"
-                value={fechaInicio}
-                onChange={(e) => setFechaInicio(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                required
-              />
-              <input
-                type="date"
-                value={fechaFin}
-                onChange={(e) => setFechaFin(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                required
-              />
-            </div>
-          </div>
-        </div>
+
+              <Select placeholder="Seleccionar producto">
+                {productos.map((p: any) => (
+                  <Option key={p.id_producto} value={p.id_producto}>
+                    {p.codigo} - {p.nombre}
+                  </Option>
+                ))}
+              </Select>
+            </Form.Item>
+          </Col>
+          <Col span={8}>
+            <Form.Item
+              name="fechas"
+              label="Rango de Fechas"
+              rules={[
+                { required: true, message: "Seleccione un rango de fechas" },
+              ]}
+            >
+              <RangePicker format="YYYY-MM-DD" style={{ width: "100%" }} />
+            </Form.Item>
+          </Col>
+        </Row>
 
         <h3 className="text-md font-medium text-gray-800 mt-6 mb-3">Firmas e Información Adicional</h3>
 
@@ -182,4 +183,4 @@ const ReporteMovimientosProducto: React.FC = () => {
   );
 };
 
-export default ReporteMovimientosProducto;
+export { ReporteMovimientosProducto };
