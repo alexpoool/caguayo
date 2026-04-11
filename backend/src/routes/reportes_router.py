@@ -94,7 +94,7 @@ async def obtener_reporte_proveedores_dependencia(
             pdf_buffer,
             media_type="application/pdf",
             headers={
-                "Content-Disposition": f"attachment; filename=proveedores_{id_dependencia}.pdf"
+                "Content-Disposition": f"attachment; filename=proveedores_dependencia_{id_dependencia}.pdf"
             },
         )
     except HTTPException:
@@ -132,7 +132,7 @@ async def obtener_reporte_existencias(
             pdf_buffer,
             media_type="application/pdf",
             headers={
-                "Content-Disposition": f"attachment; filename=existencias_{id_dependencia}.pdf"
+                "Content-Disposition": f"attachment; filename=existencias_dependencia_{id_dependencia}.pdf"
             },
         )
     except HTTPException:
@@ -189,12 +189,11 @@ async def obtener_reporte_movimientos_dependencia(
             aprobado_por_cargo,
         )
 
+        filename = f"movimientos_dependencia_{id_dependencia}_{fecha_inicio}_al_{fecha_fin}.pdf"
         return StreamingResponse(
             pdf_buffer,
             media_type="application/pdf",
-            headers={
-                "Content-Disposition": f"attachment; filename=movimientos_dependencia_{id_dependencia}.pdf"
-            },
+            headers={"Content-Disposition": f"attachment; filename={filename}"},
         )
     except HTTPException:
         raise
@@ -241,12 +240,13 @@ async def obtener_reporte_movimientos_producto(
             aprobado_por_cargo,
         )
 
+        filename = (
+            f"movimientos_producto_{id_producto}_{fecha_inicio}_al_{fecha_fin}.pdf"
+        )
         return StreamingResponse(
             pdf_buffer,
             media_type="application/pdf",
-            headers={
-                "Content-Disposition": f"attachment; filename=movimientos_producto_{id_producto}.pdf"
-            },
+            headers={"Content-Disposition": f"attachment; filename={filename}"},
         )
     except HTTPException:
         raise

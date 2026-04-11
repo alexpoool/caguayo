@@ -115,44 +115,60 @@ def generar_pdf_proveedores_dependencia(
     if not proveedores:
         elements.append(Paragraph("No se encontraron proveedores.", styles["Normal"]))
     else:
+        # Agrupamos por provincia
+        from itertools import groupby
+
+        proveedores_sorted = sorted(
+            proveedores,
+            key=lambda x: x.get("provincia", "Sin Provincia") or "Sin Provincia",
+        )
+
         headers = [
             "CI",
             "NIT",
             "NOMBRE Y APELLIDOS",
             "DIRECCIÓN",
             "MUNICIPIO",
-            "PROVINCIA",
             "VIGENCIA",
         ]
-        data = [headers]
-        for p in proveedores:
-            data.append(
-                [
-                    p.get("ci", ""),
-                    p.get("nit", ""),
-                    p.get("nombre", ""),
-                    p.get("direccion", ""),
-                    p.get("municipio", ""),
-                    p.get("provincia", ""),
-                    _fmt_fecha(p.get("vigencia")),
-                ]
-            )
 
-        table = Table(data, repeatRows=1)
-        table.setStyle(
-            TableStyle(
-                [
-                    ("BACKGROUND", (0, 0), (-1, 0), colors.lightgrey),
-                    ("TEXTCOLOR", (0, 0), (-1, 0), colors.black),
-                    ("ALIGN", (0, 0), (-1, -1), "CENTER"),
-                    ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-                    ("BOTTOMPADDING", (0, 0), (-1, 0), 12),
-                    ("BACKGROUND", (0, 1), (-1, -1), colors.white),
-                    ("GRID", (0, 0), (-1, -1), 1, colors.black),
-                ]
+        for provincia, group in groupby(
+            proveedores_sorted,
+            key=lambda x: x.get("provincia", "Sin Provincia") or "Sin Provincia",
+        ):
+            elements.append(
+                Paragraph(f"<b>Provincia: {provincia}</b>", styles["Heading3"])
             )
-        )
-        elements.append(table)
+            elements.append(Spacer(1, 10))
+            data = [headers]
+            for p in group:
+                data.append(
+                    [
+                        p.get("ci", ""),
+                        p.get("nit", ""),
+                        p.get("nombre", ""),
+                        p.get("direccion", ""),
+                        p.get("municipio", ""),
+                        _fmt_fecha(p.get("vigencia")),
+                    ]
+                )
+
+            table = Table(data, repeatRows=1)
+            table.setStyle(
+                TableStyle(
+                    [
+                        ("BACKGROUND", (0, 0), (-1, 0), colors.lightgrey),
+                        ("TEXTCOLOR", (0, 0), (-1, 0), colors.black),
+                        ("ALIGN", (0, 0), (-1, -1), "LEFT"),
+                        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                        ("BOTTOMPADDING", (0, 0), (-1, 0), 12),
+                        ("BACKGROUND", (0, 1), (-1, -1), colors.white),
+                        ("GRID", (0, 0), (-1, -1), 0.5, colors.black),
+                    ]
+                )
+            )
+            elements.append(table)
+            elements.append(Spacer(1, 20))
 
     elements.append(Spacer(1, 40))
 
@@ -219,11 +235,14 @@ def generar_pdf_existencias(
                 [
                     ("BACKGROUND", (0, 0), (-1, 0), colors.lightgrey),
                     ("TEXTCOLOR", (0, 0), (-1, 0), colors.black),
-                    ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+                    ("ALIGN", (0, 0), (0, -1), "LEFT"),  # Código a la izquierda
+                    ("ALIGN", (1, 0), (1, -1), "LEFT"),  # Descripción a la izquierda
+                    ("ALIGN", (2, 0), (2, -1), "RIGHT"),  # Cantidad a la derecha
+                    ("ALIGN", (0, 0), (-1, 0), "CENTER"),  # Cabeceras centradas
                     ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
                     ("BOTTOMPADDING", (0, 0), (-1, 0), 12),
                     ("BACKGROUND", (0, 1), (-1, -1), colors.white),
-                    ("GRID", (0, 0), (-1, -1), 1, colors.black),
+                    ("GRID", (0, 0), (-1, -1), 0.5, colors.black),
                 ]
             )
         )
@@ -292,13 +311,22 @@ def generar_pdf_movimientos_dependencia(
             "SALDO FINAL",
         ]
         data = [headers]
-        for m in movimientos:
+        row_styles = []
+        for i, m in enumerate(movimientos, start=1):
+            tipo = str(m.get("tipo", ""))
+            if "entrada" in tipo.lower():
+                # Color de texto verde oscuro para entradas
+                row_styles.append(("TEXTCOLOR", (3, i), (5, i), colors.darkgreen))
+            elif "salida" in tipo.lower():
+                # Color de texto rojo para salidas
+                row_styles.append(("TEXTCOLOR", (3, i), (5, i), colors.darkred))
+
             data.append(
                 [
                     _fmt_fecha(m.get("fecha")),
                     str(m.get("codigo", "")),
                     str(m.get("saldo_inicial", "")),
-                    str(m.get("tipo", "")),
+                    tipo,
                     str(m.get("descripcion", "")),
                     str(m.get("cantidad", "")),
                     str(m.get("saldo_final", "")),
@@ -306,19 +334,20 @@ def generar_pdf_movimientos_dependencia(
             )
 
         table = Table(data, repeatRows=1)
-        table.setStyle(
-            TableStyle(
-                [
-                    ("BACKGROUND", (0, 0), (-1, 0), colors.lightgrey),
-                    ("TEXTCOLOR", (0, 0), (-1, 0), colors.black),
-                    ("ALIGN", (0, 0), (-1, -1), "CENTER"),
-                    ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-                    ("BOTTOMPADDING", (0, 0), (-1, 0), 12),
-                    ("BACKGROUND", (0, 1), (-1, -1), colors.white),
-                    ("GRID", (0, 0), (-1, -1), 1, colors.black),
-                ]
-            )
-        )
+        base_style = [
+            ("BACKGROUND", (0, 0), (-1, 0), colors.lightgrey),
+            ("TEXTCOLOR", (0, 0), (-1, 0), colors.black),
+            ("ALIGN", (0, 0), (1, -1), "LEFT"),  # Fecha, Código a la izq
+            ("ALIGN", (2, 0), (2, -1), "RIGHT"),  # Saldo Inicial a la der
+            ("ALIGN", (3, 0), (4, -1), "LEFT"),  # Tipo, Descripcion a la izq
+            ("ALIGN", (5, 0), (6, -1), "RIGHT"),  # Cantidad, Saldo Final a la der
+            ("ALIGN", (0, 0), (-1, 0), "CENTER"),  # Cabeceras centradas
+            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+            ("BOTTOMPADDING", (0, 0), (-1, 0), 12),
+            ("BACKGROUND", (0, 1), (-1, -1), colors.white),
+            ("GRID", (0, 0), (-1, -1), 0.5, colors.black),
+        ]
+        table.setStyle(TableStyle(base_style + row_styles))
         elements.append(table)
 
     elements.append(Spacer(1, 40))
@@ -388,12 +417,21 @@ def generar_pdf_movimientos_producto(
             "SALDO FINAL",
         ]
         data = [headers]
-        for m in movimientos:
+        row_styles = []
+        for i, m in enumerate(movimientos, start=1):
+            tipo = str(m.get("tipo", ""))
+            if "entrada" in tipo.lower():
+                # Color de texto verde oscuro para entradas
+                row_styles.append(("TEXTCOLOR", (2, i), (4, i), colors.darkgreen))
+            elif "salida" in tipo.lower():
+                # Color de texto rojo para salidas
+                row_styles.append(("TEXTCOLOR", (2, i), (4, i), colors.darkred))
+
             data.append(
                 [
                     _fmt_fecha(m.get("fecha")),
                     str(m.get("saldo_inicial", "")),
-                    str(m.get("tipo", "")),
+                    tipo,
                     str(m.get("descripcion", "")),
                     str(m.get("cantidad", "")),
                     str(m.get("saldo_final", "")),
@@ -401,19 +439,20 @@ def generar_pdf_movimientos_producto(
             )
 
         table = Table(data, repeatRows=1)
-        table.setStyle(
-            TableStyle(
-                [
-                    ("BACKGROUND", (0, 0), (-1, 0), colors.lightgrey),
-                    ("TEXTCOLOR", (0, 0), (-1, 0), colors.black),
-                    ("ALIGN", (0, 0), (-1, -1), "CENTER"),
-                    ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-                    ("BOTTOMPADDING", (0, 0), (-1, 0), 12),
-                    ("BACKGROUND", (0, 1), (-1, -1), colors.white),
-                    ("GRID", (0, 0), (-1, -1), 1, colors.black),
-                ]
-            )
-        )
+        base_style = [
+            ("BACKGROUND", (0, 0), (-1, 0), colors.lightgrey),
+            ("TEXTCOLOR", (0, 0), (-1, 0), colors.black),
+            ("ALIGN", (0, 0), (0, -1), "LEFT"),  # Fecha a la izq
+            ("ALIGN", (1, 0), (1, -1), "RIGHT"),  # Saldo Inicial a la der
+            ("ALIGN", (2, 0), (3, -1), "LEFT"),  # Tipo, Descripcion a la izq
+            ("ALIGN", (4, 0), (5, -1), "RIGHT"),  # Cantidad, Saldo Final a la der
+            ("ALIGN", (0, 0), (-1, 0), "CENTER"),  # Cabeceras centradas
+            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+            ("BOTTOMPADDING", (0, 0), (-1, 0), 12),
+            ("BACKGROUND", (0, 1), (-1, -1), colors.white),
+            ("GRID", (0, 0), (-1, -1), 0.5, colors.black),
+        ]
+        table.setStyle(TableStyle(base_style + row_styles))
         elements.append(table)
 
     elements.append(Spacer(1, 40))
@@ -644,9 +683,23 @@ def generar_pdf_alertas_reposicion(
                 [
                     ("BACKGROUND", (0, 0), (-1, 0), colors.lightgrey),
                     ("TEXTCOLOR", (0, 0), (-1, 0), colors.black),
-                    ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+                    (
+                        "ALIGN",
+                        (0, 0),
+                        (2, -1),
+                        "LEFT",
+                    ),  # CÓDIGO, PRODUCTO, CAT a la izq
+                    ("ALIGN", (3, 0), (3, -1), "CENTER"),  # ABC centrado
+                    (
+                        "ALIGN",
+                        (4, 0),
+                        (8, -1),
+                        "RIGHT",
+                    ),  # STOCK, ROP, MIN, DIAS, DIF a la der
+                    ("ALIGN", (0, 0), (-1, 0), "CENTER"),  # Cabeceras centradas
                     ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-                    ("BOTTOMPADDING", (0, 0), (-1, 0), 6),
+                    ("BOTTOMPADDING", (0, 0), (-1, 0), 12),
+                    ("BACKGROUND", (0, 1), (-1, -1), colors.white),
                     ("GRID", (0, 0), (-1, -1), 0.5, colors.black),
                     ("TEXTCOLOR", (-1, 1), (-1, -1), colors.red),
                 ]
