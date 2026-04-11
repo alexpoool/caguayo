@@ -81,6 +81,7 @@ export interface DashboardStats {
   }>;
 }
 
-export interface Dependencia{
-  
+export interface Dependencia {
+  id_dependencia: number;
+  nombre: string;
 };

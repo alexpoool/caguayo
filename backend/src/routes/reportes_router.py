@@ -14,7 +14,6 @@ from src.services.reportes_service import (
     get_existencias,
     get_movimientos_dependencia,
     get_movimientos_producto,
-
     get_liquidacion_report_data,
     get_alertas_reposicion,
     ModoCodigoMovimiento,
@@ -26,13 +25,11 @@ from src.utils.pdf_generator import (
     generar_pdf_existencias,
     generar_pdf_movimientos_dependencia,
     generar_pdf_movimientos_producto,
-
     generar_pdf_liquidacion,
     generar_pdf_alertas_reposicion,
 )
 
 router = APIRouter(prefix="/reportes", tags=["Reportes"])
-
 
 
 async def _get_usuario_y_cargo(
@@ -66,7 +63,6 @@ async def obtener_reporte_proveedores_dependencia(
     id_provincia: int = Query(None, description="Filtrar por provincia (opcional)"),
     aprobado_por_nombre: str = Query("", description="Nombre de quien aprueba"),
     aprobado_por_cargo: str = Query("", description="Cargo de quien aprueba"),
-
     authorization: str | None = Header(None, alias="Authorization"),
     db: AsyncSession = Depends(get_session),
     db_auth: AsyncSession = Depends(get_auth_session),
@@ -112,7 +108,6 @@ async def obtener_reporte_existencias(
     id_dependencia: int = Query(..., description="ID de la Dependencia"),
     aprobado_por_nombre: str = Query("", description="Nombre de quien aprueba"),
     aprobado_por_cargo: str = Query("", description="Cargo de quien aprueba"),
-
     authorization: str | None = Header(None, alias="Authorization"),
     db: AsyncSession = Depends(get_session),
     db_auth: AsyncSession = Depends(get_auth_session),
@@ -157,7 +152,6 @@ async def obtener_reporte_movimientos_dependencia(
     ),
     aprobado_por_nombre: str = Query("", description="Nombre de quien aprueba"),
     aprobado_por_cargo: str = Query("", description="Cargo de quien aprueba"),
-
     authorization: str | None = Header(None, alias="Authorization"),
     db: AsyncSession = Depends(get_session),
     db_auth: AsyncSession = Depends(get_auth_session),
@@ -216,7 +210,6 @@ async def obtener_reporte_movimientos_producto(
     fecha_fin: date = Query(..., description="Fecha Fin"),
     aprobado_por_nombre: str = Query("", description="Nombre de quien aprueba"),
     aprobado_por_cargo: str = Query("", description="Cargo de quien aprueba"),
-
     authorization: str | None = Header(None, alias="Authorization"),
     db: AsyncSession = Depends(get_session),
     db_auth: AsyncSession = Depends(get_auth_session),
@@ -231,7 +224,6 @@ async def obtener_reporte_movimientos_producto(
         movimientos, dependencia_info, producto_info = await get_movimientos_producto(
             db, id_dependencia, id_producto, fecha_inicio, fecha_fin
         )
-
 
         usuario_actual, usuario_cargo = await _get_usuario_y_cargo(
             authorization, db_auth
@@ -260,7 +252,6 @@ async def obtener_reporte_movimientos_producto(
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
 
 
 @router.get("/liquidacion/{id_liquidacion}")
@@ -302,6 +293,7 @@ async def obtener_reporte_liquidacion(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
 @router.get("/alertas-reposicion")
 async def obtener_datos_alertas_reposicion(
     db: AsyncSession = Depends(get_session),
@@ -313,6 +305,7 @@ async def obtener_datos_alertas_reposicion(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
 @router.get("/alertas-reposicion/pdf")
 async def obtener_pdf_alertas_reposicion(
     aprobado_por_nombre: str = Query("", description="Nombre de quien aprueba"),
@@ -322,14 +315,17 @@ async def obtener_pdf_alertas_reposicion(
     db_auth: AsyncSession = Depends(get_auth_session),
 ):
     try:
-        usuario_actual, _ = await _get_usuario_y_cargo(authorization, db_auth)
+        usuario_actual, usuario_cargo = await _get_usuario_y_cargo(
+            authorization, db_auth
+        )
         data = await get_alertas_reposicion(db)
 
         pdf_buffer = generar_pdf_alertas_reposicion(
-            data,
-            usuario_actual,
-            aprobado_por_nombre,
-            aprobado_por_cargo,
+            data=data,
+            usuario=usuario_actual,
+            usuario_cargo=usuario_cargo,
+            aprobado_por_nombre=aprobado_por_nombre,
+            aprobado_por_cargo=aprobado_por_cargo,
         )
 
         filename = "alertas_reposicion_stock.pdf"

@@ -5,7 +5,8 @@ import uvicorn
 from dotenv import load_dotenv
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse
+import pathlib
 from src.routes import api_router
 from src.database.connection import set_current_db
 from src.models import (
@@ -93,6 +94,12 @@ app.add_middleware(
 )
 
 app.include_router(api_router)
+
+
+@app.get("/favicon.ico", include_in_schema=False)
+async def favicon():
+    favicon_path = pathlib.Path(__file__).parent.parent / "frontend" / "public" / "favicon.ico"
+    return FileResponse(favicon_path)
 
 
 @app.middleware("http")

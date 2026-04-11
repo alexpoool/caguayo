@@ -15,6 +15,7 @@ import { dependenciasService } from "../../services/administracion";
 import { Dependencia, Productos } from "../../types";
 import { authHelpers } from "../../lib/api";
 import { productosService } from "../../services/api";
+import toast from "react-hot-toast";
 
 const { Option } = Select;
 const { RangePicker } = DatePicker;
@@ -24,6 +25,12 @@ const ReporteMovimientosProducto: React.FC = () => {
   const [dependencias, setDependencias] = useState<Dependencia[]>([]);
   const [productos, setProductos] = useState<Productos[]>([]);
 
+  const [idDependencia, setIdDependencia] = useState<number | null>(null);
+  const [idProducto, setIdProducto] = useState<number | null>(null);
+  const [fechaInicio, setFechaInicio] = useState<string>("");
+  const [fechaFin, setFechaFin] = useState<string>("");
+  const [aprobadoPorNombre, setAprobadoPorNombre] = useState<string>("");
+  const [aprobadoPorCargo, setAprobadoPorCargo] = useState<string>("");
 
   useEffect(() => {
     dependenciasService.getDependencias().then(setDependencias);
@@ -55,7 +62,7 @@ const ReporteMovimientosProducto: React.FC = () => {
           headers: {
             Authorization: `Bearer ${token}`,
           },
-        }
+        },
       );
 
       if (!response.ok) {
@@ -84,7 +91,9 @@ const ReporteMovimientosProducto: React.FC = () => {
 
   return (
     <div className="bg-white rounded-lg shadow p-6">
-      <h2 className="text-lg font-semibold text-gray-800 mb-4">Generar Reporte: Movimientos por Producto</h2>
+      <h2 className="text-lg font-semibold text-gray-800 mb-4">
+        Generar Reporte: Movimientos por Producto
+      </h2>
       <form onSubmit={handleSubmit}>
         <div className="grid grid-cols-3 gap-4 mb-4">
           <div>
@@ -94,7 +103,9 @@ const ReporteMovimientosProducto: React.FC = () => {
             <select
               value={idDependencia || ""}
               onChange={(e) => {
-                setIdDependencia(e.target.value ? Number(e.target.value) : null);
+                setIdDependencia(
+                  e.target.value ? Number(e.target.value) : null,
+                );
                 setIdProducto(null);
               }}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -114,35 +125,39 @@ const ReporteMovimientosProducto: React.FC = () => {
             </label>
             <select
               value={idProducto || ""}
-              onChange={(e) => setIdProducto(e.target.value ? Number(e.target.value) : null)}
+              onChange={(e) =>
+                setIdProducto(e.target.value ? Number(e.target.value) : null)
+              }
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               required
               disabled={!idDependencia}
             >
+              <option value="">Seleccionar producto</option>
+              {productos.map((p: any) => (
+                <option key={p.id_producto} value={p.id_producto}>
+                  {p.codigo} - {p.nombre}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Rango de Fechas *
+            </label>
+            <RangePicker
+              format="YYYY-MM-DD"
+              style={{ width: "100%", height: "42px" }}
+              onChange={(dates, dateStrings) => {
+                setFechaInicio(dateStrings[0]);
+                setFechaFin(dateStrings[1]);
+              }}
+            />
+          </div>
+        </div>
 
-              <Select placeholder="Seleccionar producto">
-                {productos.map((p: any) => (
-                  <Option key={p.id_producto} value={p.id_producto}>
-                    {p.codigo} - {p.nombre}
-                  </Option>
-                ))}
-              </Select>
-            </Form.Item>
-          </Col>
-          <Col span={8}>
-            <Form.Item
-              name="fechas"
-              label="Rango de Fechas"
-              rules={[
-                { required: true, message: "Seleccione un rango de fechas" },
-              ]}
-            >
-              <RangePicker format="YYYY-MM-DD" style={{ width: "100%" }} />
-            </Form.Item>
-          </Col>
-        </Row>
-
-        <h3 className="text-md font-medium text-gray-800 mt-6 mb-3">Firmas e Información Adicional</h3>
+        <h3 className="text-md font-medium text-gray-800 mt-6 mb-3">
+          Firmas e Información Adicional
+        </h3>
 
         <div className="grid grid-cols-2 gap-4 mb-4">
           <div>

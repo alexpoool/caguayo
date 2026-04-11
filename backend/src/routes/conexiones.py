@@ -18,12 +18,14 @@ def get_db_credentials():
             "port": url.port or 5432,
             "user": url.username or "postgres",
             "password": url.password or "",
+            "database": url.database or "caguayo",
         }
     return {
         "host": os.getenv("LECTOR_HOST", "localhost"),
         "port": int(os.getenv("LECTOR_PORT", 5432)),
         "user": os.getenv("LECTOR_USER", "usuariolector"),
         "password": os.getenv("LECTOR_PASSWORD", "usuariolector123"),
+        "database": "caguayo",
     }
 
 
@@ -48,12 +50,11 @@ async def get_conexiones():
     try:
         creds = get_db_credentials()
         conn = psycopg2.connect(
-
             host=creds["host"],
             port=creds["port"],
             user=creds["user"],
             password=creds["password"],
-            database="postgres",
+            database=creds["database"],
             client_encoding="utf8",
         )
         cur = conn.cursor()

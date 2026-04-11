@@ -89,14 +89,6 @@ async def get_proveedores_por_dependencia(
         .where(Cliente.tipo_relacion.in_(["PROVEEDOR", "AMBAS"]))
         .where(Cliente.tipo_persona == tipo_entidad)
     )
-    dependencia = result.scalar_one_or_none()
-    dependencia_info = (
-        {"nombre": dependencia.nombre, "direccion": dependencia.direccion}
-        if dependencia
-        else {}
-    )
-
-    query = select(Cliente).filter(Cliente.tipo_relacion.in_(["PROVEEDOR", "AMBAS"]))
 
     if id_provincia is not None:
         base_stmt = base_stmt.where(Cliente.id_provincia == id_provincia)

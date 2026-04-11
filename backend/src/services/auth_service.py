@@ -2,6 +2,7 @@ import os
 from datetime import datetime, timedelta
 from typing import Optional, List
 from sqlalchemy import text
+
 from jose import JWTError, jwt
 import bcrypt
 from sqlmodel import select
@@ -141,12 +142,15 @@ async def login(db: AsyncSession, login_data: LoginRequest) -> Optional[LoginRes
     # 2. Si no hay conexión en la BD central, usar valores por defecto
     host = conexion.host if conexion else os.getenv("ADMIN_DB_HOST", "localhost")
     puerto = conexion.puerto if conexion else int(os.getenv("ADMIN_DB_PORT", 5432))
-    usuario_db = conexion.usuario if conexion else os.getenv("ADMIN_DB_USER", "postgres")
-    contrasenia_db = conexion.contrasenia if conexion else os.getenv("ADMIN_DB_PASSWORD", "1234")
+    usuario_db = (
+        conexion.usuario if conexion else os.getenv("ADMIN_DB_USER", "postgres")
+    )
+    contrasenia_db = (
+        conexion.contrasenia if conexion else os.getenv("ADMIN_DB_PASSWORD", "1234")
+    )
 
     # 3. Conectarse a la base de datos seleccionada
     from sqlmodel import Session, create_engine
-    from sqlalchemy import text
 
     engine = create_engine(
         "postgresql://",
@@ -172,6 +176,8 @@ async def login(db: AsyncSession, login_data: LoginRequest) -> Optional[LoginRes
 
         # 4. Verificar contraseña
         if not verify_password(login_data.contrasenia, usuario.contrasenia):
+            print("Password mismatch para", login_data.alias)
+            print("Hash en DB:", usuario.contrasenia)
             return None
 
         # 5. Obtener la dependencia desde la BD central
@@ -245,6 +251,12 @@ async def login(db: AsyncSession, login_data: LoginRequest) -> Optional[LoginRes
                 direccion=dependencia.direccion,
             )
             if dependencia
+            else None,
+            grupo=GrupoInfo(
+                id_grupo=grupo.id_grupo,
+                nombre=grupo.nombre,
+            )
+            if grupo
             else None,
         ),
         funcionalidades=funcionalidades,
@@ -487,12 +499,15 @@ async def register(
 
     host = getattr(conexion, "host", None) or os.getenv("ADMIN_DB_HOST", "localhost")
     puerto = getattr(conexion, "puerto", None) or int(os.getenv("ADMIN_DB_PORT", 5432))
-    usuario_db = getattr(conexion, "usuario", None) or os.getenv("ADMIN_DB_USER", "postgres")
-    contrasenia_db = getattr(conexion, "contrasenia", None) or os.getenv("ADMIN_DB_PASSWORD", "1234")
+    usuario_db = getattr(conexion, "usuario", None) or os.getenv(
+        "ADMIN_DB_USER", "postgres"
+    )
+    contrasenia_db = getattr(conexion, "contrasenia", None) or os.getenv(
+        "ADMIN_DB_PASSWORD", "1234"
+    )
 
     # 2. Conectarse a la base de datos seleccionada
     from sqlmodel import Session, create_engine
-    from sqlalchemy import text
 
     engine = create_engine(
         "postgresql://",

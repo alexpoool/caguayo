@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { toast } from "react-hot-toast";
+import { DatePicker } from "antd";
 import { dependenciasService } from "../../services/administracion";
 import { Dependencia } from "../../types/dependencia";
 import { authHelpers } from "../../lib/api";
+
+const { RangePicker } = DatePicker;
 
 const ReporteMovimientosDependencia: React.FC = () => {
   const [loading, setLoading] = useState(false);
@@ -41,7 +44,7 @@ const ReporteMovimientosDependencia: React.FC = () => {
           headers: {
             Authorization: `Bearer ${token}`,
           },
-        }
+        },
       );
 
       if (!response.ok) {
@@ -70,7 +73,9 @@ const ReporteMovimientosDependencia: React.FC = () => {
 
   return (
     <div className="bg-white rounded-lg shadow p-6">
-      <h2 className="text-lg font-semibold text-gray-800 mb-4">Generar Reporte: Movimientos por Dependencia</h2>
+      <h2 className="text-lg font-semibold text-gray-800 mb-4">
+        Generar Reporte: Movimientos por Dependencia
+      </h2>
       <form onSubmit={handleSubmit}>
         <div className="grid grid-cols-2 gap-4 mb-4">
           <div>
@@ -79,7 +84,9 @@ const ReporteMovimientosDependencia: React.FC = () => {
             </label>
             <select
               value={idDependencia || ""}
-              onChange={(e) => setIdDependencia(e.target.value ? Number(e.target.value) : null)}
+              onChange={(e) =>
+                setIdDependencia(e.target.value ? Number(e.target.value) : null)
+              }
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               required
             >
@@ -95,26 +102,20 @@ const ReporteMovimientosDependencia: React.FC = () => {
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Rango de Fechas *
             </label>
-            <div className="flex gap-2">
-              <input
-                type="date"
-                value={fechaInicio}
-                onChange={(e) => setFechaInicio(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                required
-              />
-              <input
-                type="date"
-                value={fechaFin}
-                onChange={(e) => setFechaFin(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                required
-              />
-            </div>
+            <RangePicker
+              format="YYYY-MM-DD"
+              style={{ width: "100%", height: "42px" }}
+              onChange={(dates, dateStrings) => {
+                setFechaInicio(dateStrings[0]);
+                setFechaFin(dateStrings[1]);
+              }}
+            />
           </div>
         </div>
 
-        <h3 className="text-md font-medium text-gray-800 mt-6 mb-3">Firmas e Información Adicional</h3>
+        <h3 className="text-md font-medium text-gray-800 mt-6 mb-3">
+          Firmas e Información Adicional
+        </h3>
 
         <div className="grid grid-cols-2 gap-4 mb-4">
           <div>

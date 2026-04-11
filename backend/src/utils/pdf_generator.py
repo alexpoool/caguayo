@@ -573,6 +573,9 @@ def generar_pdf_liquidacion(
 def generar_pdf_alertas_reposicion(
     data: Dict[str, Any],
     usuario: Any = None,
+    usuario_cargo: str = "",
+    aprobado_por_nombre: str = "",
+    aprobado_por_cargo: str = "",
 ) -> BytesIO:
     buffer = BytesIO()
     doc = SimpleDocTemplate(
@@ -651,11 +654,14 @@ def generar_pdf_alertas_reposicion(
         )
         elements.append(table)
 
-    # Reusing footer logic (assumes _build_footer returns list of blocks)
-    # The current code doesn't seem to have a _build_footer, we will build one inline:
     elements.append(Spacer(1, 30))
-    firma = f"Elaborado por: {usuario.nombre if usuario and hasattr(usuario, 'nombre') else 'Sistema'}"
-    elements.append(Paragraph(f"<b>{firma}</b>", styles["Normal"]))
+    firma_table = _build_firmas(
+        usuario_nombre=usuario.nombre if usuario and hasattr(usuario, "nombre") else "",
+        usuario_cargo=usuario_cargo,
+        aprobado_por_nombre=aprobado_por_nombre,
+        aprobado_por_cargo=aprobado_por_cargo,
+    )
+    elements.append(firma_table)
 
     doc.build(elements)
     buffer.seek(0)
