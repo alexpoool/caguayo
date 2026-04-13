@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, Header, HTTPException
 from jose import jwt
 from sqlmodel.ext.asyncio.session import AsyncSession
 
+from src.core.config import settings
 from src.database.connection import get_auth_session, get_session
 from src.dto.auth_dto import (
     DependenciaInfo,
@@ -19,7 +20,7 @@ from src.services import auth_service
 
 router = APIRouter(prefix="/auth", tags=["autenticacion"])
 
-SECRET_KEY = os.getenv("SECRET_KEY", "caguayo-secret-key-change-in-production")
+SECRET_KEY = settings.SECRET_KEY
 
 
 @router.post("/login", response_model=LoginResponse)
@@ -84,7 +85,7 @@ async def get_current_user(
 
     funcionalidades = await auth_service.get_funcionalidades_by_token(db, token)
 
-    payload = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
+    payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
     base_datos = payload.get("base_datos", "")
 
     return LoginResponse(

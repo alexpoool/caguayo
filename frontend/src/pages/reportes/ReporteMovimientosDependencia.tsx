@@ -1,3 +1,4 @@
+import { API_BASE_URL } from "../../lib/api";
 import React, { useState, useEffect } from "react";
 import { toast } from "react-hot-toast";
 import { CopyX, FileText, Download, RotateCw } from "lucide-react";
@@ -52,7 +53,7 @@ const ReporteMovimientosDependencia: React.FC = () => {
 
       const token = authHelpers.getToken() || "";
       const response = await fetch(
-        `http://localhost:8000/api/v1/reportes/movimientos-dependencia/preview?${params.toString()}`,
+        `${API_BASE_URL}/reportes/movimientos-dependencia/preview?${params.toString()}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -102,7 +103,7 @@ const ReporteMovimientosDependencia: React.FC = () => {
 
       const token = authHelpers.getToken() || "";
       const response = await fetch(
-        `http://localhost:8000/api/v1/reportes/movimientos-dependencia?${params.toString()}`,
+        `${API_BASE_URL}/reportes/movimientos-dependencia?${params.toString()}`,
         {
           method: "GET",
           headers: {

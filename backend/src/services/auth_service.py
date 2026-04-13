@@ -1,37 +1,38 @@
 import os
 from datetime import datetime, timedelta
-from typing import Optional, List
-from sqlalchemy import text
+from typing import List, Optional
 
-from jose import JWTError, jwt
 import bcrypt
+from jose import JWTError, jwt
+from sqlalchemy import text
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from src.models import (
-    Usuario,
-    Dependencia,
-    Grupo,
-    Funcionalidad,
-    GrupoFuncionalidad,
-    Sesion,
-    ConexionDatabase,
-)
+from src.core.config import settings
 from src.dto.auth_dto import (
+    AliasSearchResponse,
+    DependenciaInfo,
+    FuncionalidadInfo,
+    GrupoInfo,
     LoginRequest,
     LoginResponse,
-    RegisterRequest,
-    AliasSearchResponse,
-    UsuarioInfo,
-    DependenciaInfo,
-    GrupoInfo,
-    FuncionalidadInfo,
-    PerfilUpdateRequest,
     PerfilResponse,
+    PerfilUpdateRequest,
+    RegisterRequest,
+    UsuarioInfo,
+)
+from src.models import (
+    ConexionDatabase,
+    Dependencia,
+    Funcionalidad,
+    Grupo,
+    GrupoFuncionalidad,
+    Sesion,
+    Usuario,
 )
 
-SECRET_KEY = os.getenv("SECRET_KEY", "caguayo-secret-key-change-in-production")
-ALGORITHM = "HS256"
+SECRET_KEY = settings.SECRET_KEY
+ALGORITHM = settings.ALGORITHM
 ACCESS_TOKEN_EXPIRE_HOURS = 24
 
 

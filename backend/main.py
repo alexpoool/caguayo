@@ -117,11 +117,11 @@ async def database_middleware(request: Request, call_next):
         if auth.startswith("Bearer "):
             token = auth.replace("Bearer ", "")
             from jose import jwt
+            from src.core.config import settings
 
-            SECRET_KEY = os.getenv(
-                "SECRET_KEY", "caguayo-secret-key-change-in-production"
+            payload = jwt.decode(
+                token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
             )
-            payload = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
             base_datos = payload.get("base_datos")
             if base_datos:
                 set_current_db(base_datos)

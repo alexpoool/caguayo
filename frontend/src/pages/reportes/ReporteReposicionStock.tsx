@@ -1,3 +1,4 @@
+import { API_BASE_URL } from "../../lib/api";
 import React, { useState, useEffect } from "react";
 import { toast } from "react-hot-toast";
 import { CopyX, FileText, Download, RotateCw } from "lucide-react";
@@ -28,7 +29,7 @@ const ReporteReposicionStock: React.FC = () => {
     try {
       const token = authHelpers.getToken() || "";
       const response = await fetch(
-        `http://localhost:8000/api/v1/reportes/alertas-reposicion`,
+        `${API_BASE_URL}/reportes/alertas-reposicion`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -62,7 +63,7 @@ const ReporteReposicionStock: React.FC = () => {
 
       const token = authHelpers.getToken() || "";
       const response = await fetch(
-        `http://localhost:8000/api/v1/reportes/alertas-reposicion/pdf?${params.toString()}`,
+        `${API_BASE_URL}/reportes/alertas-reposicion/pdf?${params.toString()}`,
         {
           method: "GET",
           headers: {
