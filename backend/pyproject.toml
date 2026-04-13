@@ -18,4 +18,5 @@ dependencies = [
     "reportlab>=4.0.0",
     "ruff>=0.15.9",
     "async-lru>=2.3.0",
+    "pillow>=12.2.0",
 ]

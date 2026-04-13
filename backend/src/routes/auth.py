@@ -1,20 +1,21 @@
-from typing import List
 import os
-from fastapi import APIRouter, Depends, HTTPException, Header
-from sqlmodel.ext.asyncio.session import AsyncSession
-from jose import jwt
+from typing import List
 
-from src.database.connection import get_session, get_auth_session
-from src.services import auth_service
+from fastapi import APIRouter, Depends, Header, HTTPException
+from jose import jwt
+from sqlmodel.ext.asyncio.session import AsyncSession
+
+from src.database.connection import get_auth_session, get_session
 from src.dto.auth_dto import (
+    DependenciaInfo,
+    FuncionalidadInfo,
     LoginRequest,
     LoginResponse,
-    RegisterRequest,
-    PerfilUpdateRequest,
     PerfilResponse,
-    FuncionalidadInfo,
-    DependenciaInfo,
+    PerfilUpdateRequest,
+    RegisterRequest,
 )
+from src.services import auth_service
 
 router = APIRouter(prefix="/auth", tags=["autenticacion"])
 

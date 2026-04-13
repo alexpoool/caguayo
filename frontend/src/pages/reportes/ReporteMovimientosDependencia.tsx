@@ -1,18 +1,32 @@
 import React, { useState, useEffect } from "react";
 import { toast } from "react-hot-toast";
-import { DatePicker } from "antd";
+import { CopyX, FileText, Download, RotateCw } from "lucide-react";
 import { dependenciasService } from "../../services/administracion";
 import { Dependencia } from "../../types/dependencia";
 import { authHelpers } from "../../lib/api";
 
-const { RangePicker } = DatePicker;
+interface MovimientoDependencia {
+  movimiento: string;
+  producto_codigo: string;
+  producto_nombre: string;
+  tipo: string;
+  fecha: string;
+  estado: string;
+  cantidad: number;
+}
 
 const ReporteMovimientosDependencia: React.FC = () => {
-  const [loading, setLoading] = useState(false);
+  const [loadingDatos, setLoadingDatos] = useState(false);
+  const [loadingPdf, setLoadingPdf] = useState(false);
+  const [data, setData] = useState<MovimientoDependencia[]>([]);
+  const [totalMovimientos, setTotalMovimientos] = useState(0);
+
   const [dependencias, setDependencias] = useState<Dependencia[]>([]);
   const [idDependencia, setIdDependencia] = useState<number | null>(null);
   const [fechaInicio, setFechaInicio] = useState("");
   const [fechaFin, setFechaFin] = useState("");
+  const [modoCodigo, setModoCodigo] = useState("corto");
+
   const [aprobadoPorNombre, setAprobadoPorNombre] = useState("");
   const [aprobadoPorCargo, setAprobadoPorCargo] = useState("");
 
@@ -20,18 +34,68 @@ const ReporteMovimientosDependencia: React.FC = () => {
     dependenciasService.getDependencias().then(setDependencias);
   }, []);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!idDependencia || !fechaInicio || !fechaFin) {
-      toast.error("Complete todos los campos requeridos");
+  const isValidToSearch = Boolean(idDependencia && fechaInicio && fechaFin);
+
+  const fetchPreviewData = async () => {
+    if (!isValidToSearch) {
+      toast.error("Complete dependencia, fecha inicio y fecha fin");
       return;
     }
-    setLoading(true);
+    setLoadingDatos(true);
     try {
       const params = new URLSearchParams({
-        id_dependencia: idDependencia.toString(),
+        id_dependencia: idDependencia!.toString(),
         fecha_inicio: fechaInicio,
         fecha_fin: fechaFin,
+        modo_codigo: modoCodigo,
+      });
+
+      const token = authHelpers.getToken() || "";
+      const response = await fetch(
+        `http://localhost:8000/api/v1/reportes/movimientos-dependencia/preview?${params.toString()}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        },
+      );
+      if (!response.ok) throw new Error("Error al obtener la vista previa");
+      const result = await response.json();
+
+      const movimientosList = result.movimientos || [];
+      setData(movimientosList);
+      setTotalMovimientos(movimientosList.length);
+    } catch (error) {
+      console.error(error);
+      toast.error("Hubo un error al cargar los movimientos.");
+      setData([]);
+    } finally {
+      setLoadingDatos(false);
+    }
+  };
+
+  useEffect(() => {
+    if (isValidToSearch) {
+      fetchPreviewData();
+    } else {
+      setData([]);
+      setTotalMovimientos(0);
+    }
+  }, [idDependencia, fechaInicio, fechaFin, modoCodigo]);
+
+  const handleExportPdf = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!isValidToSearch) {
+      toast.error("Complete los filtros requeridos");
+      return;
+    }
+    setLoadingPdf(true);
+    try {
+      const params = new URLSearchParams({
+        id_dependencia: idDependencia!.toString(),
+        fecha_inicio: fechaInicio,
+        fecha_fin: fechaFin,
+        modo_codigo: modoCodigo,
         aprobado_por_nombre: aprobadoPorNombre || "",
         aprobado_por_cargo: aprobadoPorCargo || "",
       });
@@ -55,31 +119,35 @@ const ReporteMovimientosDependencia: React.FC = () => {
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `movimientos_dependencia_${idDependencia}.pdf`;
+      a.download = `movimientos_dependencia_${idDependencia}_${fechaInicio}_${fechaFin}.pdf`;
       document.body.appendChild(a);
       a.click();
-
       window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
+      a.remove();
 
-      toast.success("Reporte generado exitosamente");
+      toast.success("Reporte exportado exitosamente");
     } catch (error) {
       console.error(error);
-      toast.error("Hubo un error al generar el reporte.");
+      toast.error("Hubo un error al exportar el reporte.");
     } finally {
-      setLoading(false);
+      setLoadingPdf(false);
     }
   };
 
   return (
     <div className="bg-white rounded-lg shadow p-6">
-      <h2 className="text-lg font-semibold text-gray-800 mb-4">
-        Generar Reporte: Movimientos por Dependencia
-      </h2>
-      <form onSubmit={handleSubmit}>
-        <div className="grid grid-cols-2 gap-4 mb-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+      <div className="mb-6 border-b pb-6">
+        <h2 className="text-xl font-semibold text-gray-800">
+          Reporte: Movimientos de Dependencia
+        </h2>
+        <p className="text-sm text-gray-500 mt-1 mb-4">
+          Consulte el historial completo de entradas y salidas de la
+          dependencia.
+        </p>
+
+        <div className="flex flex-wrap gap-4 items-end">
+          <div className="flex-grow min-w-[200px]">
+            <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
               Dependencia *
             </label>
             <select
@@ -87,10 +155,9 @@ const ReporteMovimientosDependencia: React.FC = () => {
               onChange={(e) =>
                 setIdDependencia(e.target.value ? Number(e.target.value) : null)
               }
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              required
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm"
             >
-              <option value="">Seleccionar dependencia</option>
+              <option value="">Seleccionar dependencia...</option>
               {dependencias.map((d) => (
                 <option key={d.id_dependencia} value={d.id_dependencia}>
                   {d.nombre}
@@ -98,60 +165,230 @@ const ReporteMovimientosDependencia: React.FC = () => {
               ))}
             </select>
           </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Rango de Fechas *
+
+          <div className="w-1/5 min-w-[140px]">
+            <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
+              Fecha Inicio *
             </label>
-            <RangePicker
-              format="YYYY-MM-DD"
-              style={{ width: "100%", height: "42px" }}
-              onChange={(dates, dateStrings) => {
-                setFechaInicio(dateStrings[0]);
-                setFechaFin(dateStrings[1]);
-              }}
+            <input
+              type="date"
+              value={fechaInicio}
+              onChange={(e) => setFechaInicio(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm"
             />
           </div>
-        </div>
 
-        <h3 className="text-md font-medium text-gray-800 mt-6 mb-3">
-          Firmas e Información Adicional
+          <div className="w-1/5 min-w-[140px]">
+            <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
+              Fecha Fin *
+            </label>
+            <input
+              type="date"
+              value={fechaFin}
+              onChange={(e) => setFechaFin(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm"
+            />
+          </div>
+
+          <div className="w-1/5 min-w-[140px]">
+            <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
+              Modo Código
+            </label>
+            <select
+              value={modoCodigo}
+              onChange={(e) => setModoCodigo(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm"
+            >
+              <option value="corto">Corto (Producto)</option>
+              <option value="extenso">Extenso (Movimiento)</option>
+            </select>
+          </div>
+
+          <button
+            type="button"
+            onClick={fetchPreviewData}
+            disabled={loadingDatos || !isValidToSearch}
+            className="flex items-center px-4 py-2 bg-gray-100 text-gray-700 font-medium rounded-lg hover:bg-gray-200 disabled:opacity-50 transition-colors shrink-0"
+          >
+            <RotateCw
+              className={`w-4 h-4 mr-2 ${loadingDatos ? "animate-spin" : ""}`}
+            />
+            Actualizar
+          </button>
+        </div>
+      </div>
+
+      <div className="overflow-x-auto border rounded-xl mb-8">
+        <table className="min-w-full divide-y divide-gray-200">
+          <thead className="bg-gray-50">
+            <tr>
+              <th className="px-6 py-3 text-left leading-4 text-xs font-bold text-gray-500 uppercase tracking-wider">
+                Fecha
+              </th>
+              <th className="px-6 py-3 text-left leading-4 text-xs font-bold text-gray-500 uppercase tracking-wider">
+                Cód Mov
+              </th>
+              <th className="px-6 py-3 text-left leading-4 text-xs font-bold text-gray-500 uppercase tracking-wider">
+                Producto
+              </th>
+              <th className="px-6 py-3 text-center leading-4 text-xs font-bold text-gray-500 uppercase tracking-wider">
+                Tipo
+              </th>
+              <th className="px-6 py-3 text-center leading-4 text-xs font-bold text-gray-500 uppercase tracking-wider">
+                Estado
+              </th>
+              <th className="px-6 py-3 text-right leading-4 text-xs font-bold text-gray-500 uppercase tracking-wider">
+                Cantidad
+              </th>
+            </tr>
+          </thead>
+          <tbody className="bg-white divide-y divide-gray-200">
+            {!isValidToSearch ? (
+              <tr>
+                <td
+                  colSpan={6}
+                  className="px-6 py-12 text-center text-gray-500"
+                >
+                  <div className="flex flex-col items-center justify-center">
+                    <FileText className="h-10 w-10 text-gray-300 mb-3" />
+                    <span className="text-gray-500 font-medium">
+                      Complete los filtros
+                    </span>
+                    <span className="text-gray-400 text-sm">
+                      Seleccione dependencia y un rango de fechas.
+                    </span>
+                  </div>
+                </td>
+              </tr>
+            ) : loadingDatos ? (
+              <tr>
+                <td
+                  colSpan={6}
+                  className="px-6 py-12 text-center text-gray-500"
+                >
+                  <div className="flex flex-col items-center justify-center">
+                    <RotateCw className="h-8 w-8 text-indigo-400 mb-3 animate-spin" />
+                    <span>Cargando movimientos...</span>
+                  </div>
+                </td>
+              </tr>
+            ) : data.length > 0 ? (
+              data.map((item, idx) => (
+                <tr key={idx} className="hover:bg-gray-50 transition-colors">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {new Date(item.fecha).toLocaleDateString()}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                    {item.movimiento}
+                  </td>
+                  <td className="px-6 py-4 text-sm text-gray-900">
+                    <span className="text-gray-500 font-mono text-xs mr-2">
+                      {item.producto_codigo}
+                    </span>
+                    {item.producto_nombre}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-center">
+                    <span
+                      className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${item.tipo.includes("IN") || item.tipo.includes("RECEpcion") ? "bg-green-100 text-green-800" : "bg-orange-100 text-orange-800"}`}
+                    >
+                      {item.tipo}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-center">
+                    <span
+                      className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${item.estado.toLowerCase() === "confirmado" ? "bg-blue-100 text-blue-800" : "bg-gray-100 text-gray-800"}`}
+                    >
+                      {item.estado}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900 font-bold">
+                    {item.cantidad}
+                  </td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td
+                  colSpan={6}
+                  className="px-6 py-12 text-center text-gray-500"
+                >
+                  <div className="flex flex-col items-center justify-center">
+                    <CopyX className="h-10 w-10 text-gray-300 mb-3" />
+                    <span className="text-gray-500 font-medium">
+                      Sin movimientos
+                    </span>
+                    <span className="text-gray-400 text-sm">
+                      No hubieron operaciones en las fechas indicadas.
+                    </span>
+                  </div>
+                </td>
+              </tr>
+            )}
+          </tbody>
+          <tfoot className="bg-gray-50 border-t-2 border-gray-200">
+            <tr>
+              <td
+                colSpan={5}
+                className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-800 text-right"
+              >
+                Total Operaciones en el Período
+              </td>
+              <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-800 text-right">
+                {totalMovimientos}
+              </td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+
+      <div className="border-t border-gray-200 pt-6">
+        <h3 className="text-lg font-semibold text-gray-800 flex items-center mb-4">
+          <FileText className="w-5 h-5 mr-2 text-indigo-600" />
+          Opciones de Exportación
         </h3>
-
-        <div className="grid grid-cols-2 gap-4 mb-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Aprobado Por (Nombre)
-            </label>
-            <input
-              type="text"
-              value={aprobadoPorNombre}
-              onChange={(e) => setAprobadoPorNombre(e.target.value)}
-              placeholder="Ej. Juan Pérez"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Cargo del Aprobador
-            </label>
-            <input
-              type="text"
-              value={aprobadoPorCargo}
-              onChange={(e) => setAprobadoPorCargo(e.target.value)}
-              placeholder="Ej. Director General"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            />
-          </div>
-        </div>
-
-        <button
-          type="submit"
-          disabled={loading}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+        <form
+          onSubmit={handleExportPdf}
+          className="bg-gray-50 p-5 rounded-lg border border-gray-200"
         >
-          {loading ? "Generando..." : "Generar PDF"}
-        </button>
-      </form>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Aprobado Por (Nombre)
+              </label>
+              <input
+                type="text"
+                value={aprobadoPorNombre}
+                onChange={(e) => setAprobadoPorNombre(e.target.value)}
+                placeholder="Ej. Juan Pérez"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Cargo del Aprobador
+              </label>
+              <input
+                type="text"
+                value={aprobadoPorCargo}
+                onChange={(e) => setAprobadoPorCargo(e.target.value)}
+                placeholder="Ej. Director General"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm"
+              />
+            </div>
+          </div>
+
+          <div className="flex justify-end mt-4">
+            <button
+              type="submit"
+              disabled={loadingPdf || data.length === 0 || !isValidToSearch}
+              className="flex items-center px-6 py-2.5 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 focus:ring-4 focus:ring-indigo-100 disabled:bg-gray-400 disabled:cursor-not-allowed transition-all shadow-sm"
+            >
+              <Download className="w-5 h-5 mr-2" />
+              {loadingPdf ? "Generando Archivo..." : "Descargar Reporte PDF"}
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 };

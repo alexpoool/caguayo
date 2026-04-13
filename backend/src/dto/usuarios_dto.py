@@ -1,5 +1,6 @@
+from typing import List, Optional
+
 from sqlmodel import SQLModel
-from typing import Optional, List
 
 
 class GrupoSimpleRead(SQLModel):

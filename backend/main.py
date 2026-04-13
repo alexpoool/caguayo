@@ -1,36 +1,38 @@
-import os
-import sys
 import logging
+import os
+import pathlib
+import sys
+
 import uvicorn
 from dotenv import load_dotenv
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, FileResponse
-import pathlib
-from src.routes import api_router
+from fastapi.responses import FileResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 from src.database.connection import set_current_db
 from src.models import (
     Anexo,
     Categorias,
+    Cuenta,
     Dependencia,
+    EstadoContrato,
+    Grupo,
     Liquidacion,
     Moneda,
     Movimiento,
+    Municipio,
     Productos,
+    ProductosEnLiquidacion,
+    Provincia,
     Subcategorias,
+    TipoContrato,
     TipoDependencia,
     TipoMovimiento,
     Transaccion,
-    Ventas,
-    Provincia,
-    Municipio,
-    Cuenta,
-    Grupo,
     Usuario,
-    TipoContrato,
-    EstadoContrato,
-    ProductosEnLiquidacion,
+    Ventas,
 )
+from src.routes import api_router
 
 logging.basicConfig(
     level=logging.INFO,
@@ -93,12 +95,17 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+os.makedirs("uploads", exist_ok=True)
+app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
+
 app.include_router(api_router)
 
 
 @app.get("/favicon.ico", include_in_schema=False)
 async def favicon():
-    favicon_path = pathlib.Path(__file__).parent.parent / "frontend" / "public" / "favicon.ico"
+    favicon_path = (
+        pathlib.Path(__file__).parent.parent / "frontend" / "public" / "favicon.ico"
+    )
     return FileResponse(favicon_path)
 
 

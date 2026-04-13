@@ -1,4 +1,5 @@
 import { useAuth } from "../context/AuthContext";
+import { Link } from "react-router-dom";
 import {
   User,
   Building2,
@@ -6,13 +7,72 @@ import {
   Shield,
   Database,
   MapPin,
+  Boxes,
+  UserCircle,
+  Briefcase,
+  Wrench,
+  BarChart3,
+  ChevronRight,
 } from "lucide-react";
 
 export function HomePage() {
   const { user, baseDatos } = useAuth();
 
+  const modulos = [
+    {
+      id: "inventario",
+      path: "/movimientos",
+      label: "Inventario",
+      icon: Boxes,
+      desc: "Gestión de stock, almacén y artículos",
+      color: "text-blue-600",
+      bg: "bg-blue-50",
+      hover: "hover:border-blue-300",
+    },
+    {
+      id: "compra",
+      path: "/compra/clientes",
+      label: "Compras",
+      icon: UserCircle,
+      desc: "Proveedores, convenios y anexos",
+      color: "text-emerald-600",
+      bg: "bg-emerald-50",
+      hover: "hover:border-emerald-300",
+    },
+    {
+      id: "venta",
+      path: "/clientes",
+      label: "Ventas",
+      icon: Briefcase,
+      desc: "Clientes, contratos y facturas",
+      color: "text-purple-600",
+      bg: "bg-purple-50",
+      hover: "hover:border-purple-300",
+    },
+    {
+      id: "proyecto",
+      path: "/proyectos/servicios",
+      label: "Proyectos",
+      icon: Wrench,
+      desc: "Servicios, etapas y liquidaciones",
+      color: "text-orange-600",
+      bg: "bg-orange-50",
+      hover: "hover:border-orange-300",
+    },
+    {
+      id: "reportes",
+      path: "/reportes/alertas-stock",
+      label: "Reportes",
+      icon: BarChart3,
+      desc: "Estadísticas, alertas y existencias",
+      color: "text-rose-600",
+      bg: "bg-rose-50",
+      hover: "hover:border-rose-300",
+    },
+  ];
+
   return (
-    <div className="h-full w-full grid grid-cols-[1fr_2fr_1fr] gap-4 p-4">
+    <div className="h-full w-full grid grid-cols-1 lg:grid-cols-[1fr_2fr_1fr] gap-6 p-6 overflow-y-auto">
       {/* Columna izquierda - Info del usuario */}
       <div className="bg-white rounded-md shadow-sm overflow-hidden">
         <div className="p-4 flex items-center gap-3 border-b border-gray-100">
@@ -74,13 +134,41 @@ export function HomePage() {
         </div>
       </div>
 
-      {/* Columna centro - Imagen */}
-      <div className="flex items-center justify-center">
-        <img
-          src="/home.jpeg"
-          alt="Caguayo Home"
-          className="max-w-full max-h-full object-contain rounded-lg"
-        />
+      {/* Columna centro - Módulos */}
+      <div className="flex flex-col gap-6">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-800">
+            Bienvenido a Caguayo
+          </h1>
+          <p className="text-gray-500 mt-1">
+            Selecciona un módulo para comenzar a trabajar
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {modulos.map((mod) => (
+            <Link
+              key={mod.id}
+              to={mod.path}
+              className={`flex flex-col bg-white p-5 rounded-xl shadow-sm border border-gray-100 transition-all duration-300 hover:shadow-md ${mod.hover} group`}
+            >
+              <div className="flex items-start justify-between mb-4">
+                <div
+                  className={`w-12 h-12 rounded-lg flex items-center justify-center ${mod.bg}`}
+                >
+                  <mod.icon className={`h-6 w-6 ${mod.color}`} />
+                </div>
+                <ChevronRight className="w-5 h-5 text-gray-300 group-hover:text-gray-600 transition-colors" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-gray-800 mb-1">
+                  {mod.label}
+                </h3>
+                <p className="text-sm text-gray-500 line-clamp-2">{mod.desc}</p>
+              </div>
+            </Link>
+          ))}
+        </div>
       </div>
 
       {/* Columna derecha - Info de la empresa */}

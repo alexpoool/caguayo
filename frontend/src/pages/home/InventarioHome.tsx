@@ -1,10 +1,46 @@
 import { Boxes, Truck, ArrowRightLeft, Clock, Package } from "lucide-react";
+import { Link } from "react-router-dom";
 
 export function InventarioHome() {
+  const inventario = [
+    {
+      titulo: "Recepciones",
+      descripcion: "Ingreso de productos al sistema",
+      icono: Truck,
+      ruta: "/movimientos/seleccionar-recepcion",
+      color: "bg-blue-50 hover:bg-blue-100",
+      iconColor: "text-blue-600",
+    },
+    {
+      titulo: "Ajustes",
+      descripcion: "Transferir productos entre dependencias",
+      icono: ArrowRightLeft,
+      ruta: "/movimientos/ajuste",
+      color: "bg-indigo-50 hover:bg-indigo-100",
+      iconColor: "text-indigo-600",
+    },
+    {
+      titulo: "Pendientes",
+      descripcion: "Movimientos que requieren confirmación",
+      icono: Clock,
+      ruta: "/movimientos/pendientes",
+      color: "bg-orange-50 hover:bg-orange-100",
+      iconColor: "text-orange-600",
+    },
+    {
+      titulo: "Productos",
+      descripcion: "Catálogo de productos y stock actual",
+      icono: Package,
+      ruta: "/productos",
+      color: "bg-purple-50 hover:bg-purple-100",
+      iconColor: "text-purple-600",
+    },
+  ];
+
   return (
     <div className="h-[calc(100vh-8rem)] overflow-hidden flex flex-col items-center justify-center p-4">
-      <div className="w-full max-w-3xl">
-        <div className="text-center mb-4">
+      <div className="w-full max-w-4xl">
+        <div className="text-center mb-6">
           <div className="inline-flex p-3 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-md mb-3">
             <Boxes className="h-8 w-8" />
           </div>
@@ -16,59 +52,26 @@ export function InventarioHome() {
           </p>
         </div>
 
-        <div className="bg-white rounded-md shadow-lg p-4">
-          <p className="text-sm text-gray-700 mb-4">
-            El módulo de Inventario permite gestionar todos los movimientos de
-            productos dentro del sistema. Controla las entradas de productos
-            mediante recepciones, realiza ajustes para transferir productos
-            entre dependencias, y mantiene el seguimiento de movimientos
-            pendientes de confirmación.
-          </p>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div className="flex items-start gap-2 p-3 bg-blue-50 rounded-lg">
-              <Truck className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
-              <div>
-                <h3 className="font-bold text-sm text-gray-800">Recepciones</h3>
-                <p className="text-xs text-gray-600 mt-0.5">
-                  Registro de productos que ingresan al sistema. Cada recepción
-                  aumenta el stock en la dependencia destino.
-                </p>
+        <div className="grid grid-cols-2 gap-4">
+          {inventario.map((item) => (
+            <Link
+              key={item.ruta}
+              to={item.ruta}
+              className={`block p-4 rounded-lg ${item.color} transition-colors`}
+            >
+              <div className="flex items-start gap-3">
+                <item.icono className={`h-6 w-6 ${item.iconColor} mt-0.5`} />
+                <div>
+                  <h3 className="font-bold text-sm text-gray-800">
+                    {item.titulo}
+                  </h3>
+                  <p className="text-xs text-gray-600 mt-1">
+                    {item.descripcion}
+                  </p>
+                </div>
               </div>
-            </div>
-
-            <div className="flex items-start gap-2 p-3 bg-indigo-50 rounded-lg">
-              <ArrowRightLeft className="h-4 w-4 text-indigo-600 mt-0.5 flex-shrink-0" />
-              <div>
-                <h3 className="font-bold text-sm text-gray-800">Ajustes</h3>
-                <p className="text-xs text-gray-600 mt-0.5">
-                  Transferir productos entre dependencias. Genera dos
-                  movimientos: salida y entrada.
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-start gap-2 p-3 bg-orange-50 rounded-lg">
-              <Clock className="h-4 w-4 text-orange-600 mt-0.5 flex-shrink-0" />
-              <div>
-                <h3 className="font-bold text-sm text-gray-800">Pendientes</h3>
-                <p className="text-xs text-gray-600 mt-0.5">
-                  Movimientos que requieren confirmación para afectar el
-                  inventario.
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-start gap-2 p-3 bg-purple-50 rounded-lg">
-              <Package className="h-4 w-4 text-purple-600 mt-0.5 flex-shrink-0" />
-              <div>
-                <h3 className="font-bold text-sm text-gray-800">Productos</h3>
-                <p className="text-xs text-gray-600 mt-0.5">
-                  Catálogo de productos con precios, categorías y stock actual.
-                </p>
-              </div>
-            </div>
-          </div>
+            </Link>
+          ))}
         </div>
       </div>
     </div>

@@ -37,8 +37,10 @@ import {
   List,
   CreditCard,
   Calculator,
-
   AlertCircle,
+  Search,
+  Bell,
+  HelpCircle,
 } from "lucide-react";
 
 import { WelcomePage } from "./pages/Welcome";
@@ -62,7 +64,7 @@ import { CompraHome } from "./pages/home/CompraHome";
 import { ReportesHome } from "./pages/home/ReportesHome";
 
 import { ReporteExistencias } from "./pages/reportes/ReporteExistencias";
-import { AlertasStock } from "./pages/reportes/AlertasStock";
+import ReporteReposicionStock from "./pages/reportes/ReporteReposicionStock";
 import { ReporteMovimientosDependencia } from "./pages/reportes/ReporteMovimientosDependencia";
 import { ReporteMovimientosProducto } from "./pages/reportes/ReporteMovimientosProducto";
 import { ReporteProveedores } from "./pages/reportes/ReporteProveedores";
@@ -106,7 +108,6 @@ const queryClient = new QueryClient({
 });
 
 const rutasPorModulo: Record<Modulo, string[]> = {
-
   inventario: [
     "/inventario",
     "/movimientos",
@@ -312,11 +313,12 @@ function App() {
   };
 
   const modulos: { id: Modulo; label: string; icon: React.ElementType }[] = [
-    { id: "venta", label: "Venta", icon: Briefcase },
-    { id: "compra", label: "Compra", icon: UserCircle },
-    { id: "proyecto", label: "Proyectos", icon: Wrench },
     { id: "inventario", label: "Inventario", icon: Boxes },
+    { id: "compra", label: "Compra", icon: UserCircle },
+    { id: "venta", label: "Venta", icon: Briefcase },
+    { id: "proyecto", label: "Proyectos", icon: Wrench },
     { id: "reportes", label: "Reportes", icon: BarChart3 },
+    { id: "administracion", label: "Administración", icon: Settings },
   ];
 
   function handleToggleSlim(_event: React.MouseEvent<HTMLButtonElement>): void {
@@ -325,10 +327,10 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <div
-        className={`grid ${isHomePage ? "grid-cols-[0_1fr]" : slimSidebar ? "grid-cols-[4.5rem_1fr]" : "grid-cols-[16rem_1fr]"} grid-rows-[auto_1fr] h-screen bg-gray-50`}
+        className={`grid ${slimSidebar ? "grid-cols-[4.5rem_1fr]" : "grid-cols-[16rem_1fr]"} grid-rows-[auto_1fr] h-screen bg-gray-50`}
       >
         <aside
-          className={`row-span-2 col-start-1 col-end-2 h-full bg-slate-900 text-white flex flex-col shadow-xl min-h-screen transition-all duration-300 ${isHomePage ? "hidden" : slimSidebar ? "w-[4.5rem]" : "w-64"}`}
+          className={`row-span-2 col-start-1 col-end-2 h-full bg-slate-900 text-white flex flex-col shadow-xl min-h-screen transition-all duration-300 ${slimSidebar ? "w-[4.5rem]" : "w-64"}`}
         >
           <div
             className={`flex items-center ${slimSidebar ? "justify-center px-0" : "px-6"} py-4 border-b border-slate-800`}
@@ -353,275 +355,479 @@ function App() {
           <nav
             className={`flex-1 overflow-y-auto py-4 ${slimSidebar ? "px-1" : ""}`}
           >
-            <>
-              {moduloActivo === "inventario" && (
-                <ul className={`space-y-1 ${slimSidebar ? "px-0" : "px-3"}`}>
-                  <li>
-                    <NavLink to="/movimientos" onClick={handleLinkClick} exact>
-                      <ArrowLeftRight className="w-5 h-5" />
-                      Movimientos
-                    </NavLink>
-                  </li>
-                  <li>
-                    <NavLink
-                      to="/movimientos/pendientes"
-                      onClick={handleLinkClick}
-                    >
-                      <Clock className="w-6 h-6" />
-                      Pendientes
-                    </NavLink>
-                  </li>
-                  <li>
-                    <NavLink to="/productos" onClick={handleLinkClick}>
-                      <Boxes className="w-6 h-6" />
-                      Productos
-                    </NavLink>
-                  </li>
-                </ul>
-              )}
+            <div className="space-y-2 px-2">
+              {modulos.map((modulo) => {
+                const isActive = moduloActivo === modulo.id;
 
-              {moduloActivo === "administracion" && (
-                <ul className="space-y-1 px-3">
-                  <li>
-                    <NavLink to="/configuracion" onClick={handleLinkClick}>
-                      <Settings className="w-6 h-6" />
-                      Configuración
-                    </NavLink>
-                  </li>
-                </ul>
-              )}
-              {moduloActivo === "compra" && (
-                <ul className="space-y-1 px-3">
-                  <li>
-                    <NavLink to="/compra/clientes" onClick={handleLinkClick}>
-                      <UserCircle className="w-6 h-6" />
-                      Proveedores
-                    </NavLink>
-                  </li>
-                  <li>
-                    <NavLink to="/compra/convenios" onClick={handleLinkClick}>
-                      <FileText className="w-6 h-6" />
-                      Convenios
-                    </NavLink>
-                  </li>
-                  <li>
-                    <NavLink to="/compra/anexos" onClick={handleLinkClick}>
-                      <Boxes className="w-6 h-6" />
-                      Anexos
-                    </NavLink>
-                  </li>
-                  <li>
-                    <NavLink
-                      to="/compra/liquidaciones"
-                      onClick={handleLinkClick}
+                return (
+                  <div key={modulo.id}>
+                    <button
+                      onClick={() => {
+                        setModuloActivo(isActive ? "home" : modulo.id);
+                      }}
+                      className={`w-full flex items-center justify-between ${slimSidebar ? "justify-center px-0" : "px-3"} py-3 rounded-lg transition-colors ${isActive ? "bg-slate-800 text-white" : "text-slate-400 hover:bg-slate-800 hover:text-white"}`}
+                      title={slimSidebar ? modulo.label : undefined}
                     >
-                      <Coins className="w-6 h-6" />
-                      Liquidaciones
-                    </NavLink>
-                  </li>
-                  <li>
-                    <NavLink
-                      to="/compra/productos-liquidacion"
-                      onClick={handleLinkClick}
-                    >
-                      <Coins className="w-6 h-6" />
-                      Productos en Liquidación
-                    </NavLink>
-                  </li>
-                </ul>
-              )}
-              {moduloActivo === "venta" && (
-                <ul className="space-y-1 px-3">
-                  <li>
-                    <NavLink to="/clientes" onClick={handleLinkClick}>
-                      <UserCircle className="w-6 h-6" />
-                      Clientes
-                    </NavLink>
-                  </li>
-                  <li>
-                    <NavLink to="/ventas/contratos" onClick={handleLinkClick}>
-                      <FilePlus className="w-6 h-6" />
-                      Contrato
-                    </NavLink>
-                  </li>
-                  <li>
-                    <NavLink to="/ventas/suplementos" onClick={handleLinkClick}>
-                      <FileText className="w-6 h-6" />
-                      Suplemento
-                    </NavLink>
-                  </li>
-                  <li>
-                    <NavLink to="/ventas/facturas" onClick={handleLinkClick}>
-                      <Receipt className="w-6 h-6" />
-                      Factura
-                    </NavLink>
-                  </li>
-                  <li>
-                    <NavLink to="/ventas/efectivo" onClick={handleLinkClick}>
-                      <DollarSign className="w-6 h-6" />
-                      Efectivo
-                    </NavLink>
-                  </li>
-                </ul>
-              )}
-              {moduloActivo === "proyecto" && (
-                <ul className="space-y-1 px-3">
-                  <li>
-                    <NavLink
-                      to="/proyectos/servicios"
-                      onClick={handleLinkClick}
-                    >
-                      <Wrench className="w-6 h-6" />
-                      Servicios
-                    </NavLink>
-                  </li>
-                  <li>
-                    <NavLink
-                      to="/proyectos/solicitudes"
-                      onClick={handleLinkClick}
-                    >
-                      <ClipboardList className="w-6 h-6" />
-                      Solicitudes
-                    </NavLink>
-                  </li>
-                  <li>
-                    <NavLink
-                      to="/proyectos/creadores"
-                      onClick={handleLinkClick}
-                    >
-                      <Users className="w-6 h-6" />
-                      Creadores
-                    </NavLink>
-                  </li>
-                  <li>
-                    <NavLink
-                      to="/proyectos/facturas-servicio"
-                      onClick={handleLinkClick}
-                    >
-                      <Receipt className="w-6 h-6" />
-                      Facturas
-                    </NavLink>
-                  </li>
-                  <li>
-                    <NavLink
-                      to="/proyectos/liquidaciones"
-                      onClick={handleLinkClick}
-                    >
-                      <Calculator className="w-6 h-6" />
-                      Liquidaciones
-                    </NavLink>
-                  </li>
-                </ul>
-              )}
-              {moduloActivo === "reportes" && (
-                <ul className="space-y-1 px-3">
-                  <li>
-                    <NavLink
-                      to="/reportes/alertas-stock"
-                      onClick={handleLinkClick}
-                    >
-                      <AlertCircle className="w-6 h-6" />
-                      Alertas de Stock
-                    </NavLink>
-                  </li>
-                  <li>
-                    <NavLink
-                      to="/reportes/existencias"
-                      onClick={handleLinkClick}
-                    >
-                      <BarChart3 className="w-6 h-6" />
-                      Existencias
-                    </NavLink>
-                  </li>
-                  <li>
-                    <NavLink
-                      to="/reportes/movimientos-producto"
-                      onClick={handleLinkClick}
-                    >
-                      <ArrowLeftRight className="w-6 h-6" />
-                      Mov. Producto
-                    </NavLink>
-                  </li>
-                  <li>
-                    <NavLink
-                      to="/reportes/movimientos-dependencia"
-                      onClick={handleLinkClick}
-                    >
-                      <ArrowLeftRight className="w-6 h-6" />
-                      Mov. Dependencia
-                    </NavLink>
-                  </li>
-                  <li>
-                    <NavLink
-                      to="/reportes/proveedores-dependencia"
-                      onClick={handleLinkClick}
-                    >
-                      <UserCircle className="w-6 h-6" />
-                      Proveedores
-                    </NavLink>
-                  </li>
-                </ul>
-              )}
-            </>
+                      <div className="flex items-center gap-3">
+                        <modulo.icon
+                          className={`w-5 h-5 ${isActive ? "text-blue-400" : ""}`}
+                        />
+                        {!slimSidebar && (
+                          <span
+                            className={`font-semibold text-xs uppercase tracking-wider ${isActive ? "text-blue-400" : ""}`}
+                          >
+                            {modulo.label}
+                          </span>
+                        )}
+                      </div>
+                      {!slimSidebar && (
+                        <ChevronRight
+                          className={`w-4 h-4 transition-transform duration-300 ${isActive ? "rotate-90 text-blue-400" : ""}`}
+                        />
+                      )}
+                    </button>
+
+                    {isActive && (
+                      <div
+                        className={`mt-2 overflow-hidden transition-all duration-300 ${slimSidebar ? "px-0" : "px-3"}`}
+                      >
+                        <ul className="space-y-1">
+                          {modulo.id === "inventario" && (
+                            <>
+                              <li>
+                                <NavLink
+                                  to="/movimientos"
+                                  onClick={handleLinkClick}
+                                  exact
+                                >
+                                  <ArrowLeftRight className="w-4 h-4" />
+                                  Movimientos
+                                </NavLink>
+                              </li>
+                              <li>
+                                <NavLink
+                                  to="/movimientos/pendientes"
+                                  onClick={handleLinkClick}
+                                >
+                                  <Clock className="w-4 h-4" />
+                                  Pendientes
+                                </NavLink>
+                              </li>
+                              <li>
+                                <NavLink
+                                  to="/productos"
+                                  onClick={handleLinkClick}
+                                >
+                                  <Boxes className="w-4 h-4" />
+                                  Productos
+                                </NavLink>
+                              </li>
+                            </>
+                          )}
+                          {modulo.id === "compra" && (
+                            <>
+                              <li>
+                                <NavLink
+                                  to="/compra/clientes"
+                                  onClick={handleLinkClick}
+                                >
+                                  <UserCircle className="w-4 h-4" />
+                                  Proveedores
+                                </NavLink>
+                              </li>
+                              <li>
+                                <NavLink
+                                  to="/compra/convenios"
+                                  onClick={handleLinkClick}
+                                >
+                                  <FileText className="w-4 h-4" />
+                                  Convenios
+                                </NavLink>
+                              </li>
+                              <li>
+                                <NavLink
+                                  to="/compra/anexos"
+                                  onClick={handleLinkClick}
+                                >
+                                  <Boxes className="w-4 h-4" />
+                                  Anexos
+                                </NavLink>
+                              </li>
+                              <li>
+                                <NavLink
+                                  to="/compra/liquidaciones"
+                                  onClick={handleLinkClick}
+                                >
+                                  <Coins className="w-4 h-4" />
+                                  Liquidaciones
+                                </NavLink>
+                              </li>
+                              <li>
+                                <NavLink
+                                  to="/compra/productos-liquidacion"
+                                  onClick={handleLinkClick}
+                                >
+                                  <Coins className="w-4 h-4" />
+                                  Productos Liq.
+                                </NavLink>
+                              </li>
+                            </>
+                          )}
+                          {modulo.id === "venta" && (
+                            <>
+                              <li>
+                                <NavLink
+                                  to="/clientes"
+                                  onClick={handleLinkClick}
+                                >
+                                  <UserCircle className="w-4 h-4" />
+                                  Clientes
+                                </NavLink>
+                              </li>
+                              <li>
+                                <NavLink
+                                  to="/ventas/contratos"
+                                  onClick={handleLinkClick}
+                                >
+                                  <FilePlus className="w-4 h-4" />
+                                  Contrato
+                                </NavLink>
+                              </li>
+                              <li>
+                                <NavLink
+                                  to="/ventas/suplementos"
+                                  onClick={handleLinkClick}
+                                >
+                                  <FileText className="w-4 h-4" />
+                                  Suplemento
+                                </NavLink>
+                              </li>
+                              <li>
+                                <NavLink
+                                  to="/ventas/facturas"
+                                  onClick={handleLinkClick}
+                                >
+                                  <Receipt className="w-4 h-4" />
+                                  Factura
+                                </NavLink>
+                              </li>
+                              <li>
+                                <NavLink
+                                  to="/ventas/efectivo"
+                                  onClick={handleLinkClick}
+                                >
+                                  <DollarSign className="w-4 h-4" />
+                                  Efectivo
+                                </NavLink>
+                              </li>
+                            </>
+                          )}
+                          {modulo.id === "proyecto" && (
+                            <>
+                              <li>
+                                <NavLink
+                                  to="/proyectos/servicios"
+                                  onClick={handleLinkClick}
+                                >
+                                  <Wrench className="w-4 h-4" />
+                                  Servicios
+                                </NavLink>
+                              </li>
+                              <li>
+                                <NavLink
+                                  to="/proyectos/solicitudes"
+                                  onClick={handleLinkClick}
+                                >
+                                  <ClipboardList className="w-4 h-4" />
+                                  Solicitudes
+                                </NavLink>
+                              </li>
+                              <li>
+                                <NavLink
+                                  to="/proyectos/creadores"
+                                  onClick={handleLinkClick}
+                                >
+                                  <Users className="w-4 h-4" />
+                                  Creadores
+                                </NavLink>
+                              </li>
+                              <li>
+                                <NavLink
+                                  to="/proyectos/facturas-servicio"
+                                  onClick={handleLinkClick}
+                                >
+                                  <Receipt className="w-4 h-4" />
+                                  Facturas
+                                </NavLink>
+                              </li>
+                              <li>
+                                <NavLink
+                                  to="/proyectos/liquidaciones"
+                                  onClick={handleLinkClick}
+                                >
+                                  <Calculator className="w-4 h-4" />
+                                  Liquidaciones
+                                </NavLink>
+                              </li>
+                            </>
+                          )}
+                          {modulo.id === "reportes" && (
+                            <>
+                              <li>
+                                <NavLink
+                                  to="/reportes/alertas-stock"
+                                  onClick={handleLinkClick}
+                                >
+                                  <AlertCircle className="w-4 h-4" />
+                                  Alertas Stock
+                                </NavLink>
+                              </li>
+                              <li>
+                                <NavLink
+                                  to="/reportes/existencias"
+                                  onClick={handleLinkClick}
+                                >
+                                  <BarChart3 className="w-4 h-4" />
+                                  Existencias
+                                </NavLink>
+                              </li>
+                              <li>
+                                <NavLink
+                                  to="/reportes/movimientos-producto"
+                                  onClick={handleLinkClick}
+                                >
+                                  <ArrowLeftRight className="w-4 h-4" />
+                                  Mov. Producto
+                                </NavLink>
+                              </li>
+                              <li>
+                                <NavLink
+                                  to="/reportes/movimientos-dependencia"
+                                  onClick={handleLinkClick}
+                                >
+                                  <ArrowLeftRight className="w-4 h-4" />
+                                  Mov. Dependencia
+                                </NavLink>
+                              </li>
+                              <li>
+                                <NavLink
+                                  to="/reportes/proveedores-dependencia"
+                                  onClick={handleLinkClick}
+                                >
+                                  <UserCircle className="w-4 h-4" />
+                                  Proveedores
+                                </NavLink>
+                              </li>
+                            </>
+                          )}
+                          {modulo.id === "administracion" && (
+                            <>
+                              <li>
+                                <NavLink
+                                  to="/administracion"
+                                  onClick={handleLinkClick}
+                                  exact
+                                >
+                                  <Settings className="w-4 h-4" />
+                                  Administración
+                                </NavLink>
+                              </li>
+                              <li>
+                                <NavLink
+                                  to="/configuracion"
+                                  onClick={handleLinkClick}
+                                >
+                                  <Wrench className="w-4 h-4" />
+                                  Configuración
+                                </NavLink>
+                              </li>
+                              <li>
+                                <NavLink to="/perfil" onClick={handleLinkClick}>
+                                  <UserCircle className="w-4 h-4" />
+                                  Perfil
+                                </NavLink>
+                              </li>
+                            </>
+                          )}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           </nav>
         </aside>
         <header
-          className={`${isHomePage ? "col-start-1 col-end-3" : "col-start-2 col-end-3"} row-start-1 row-end-2 sticky top-0 z-40 bg-white shadow-sm border-b border-gray-200 px-6 py-4 h-16 flex items-center justify-between`}
+          className={`col-start-2 col-end-3 row-start-1 row-end-2 sticky top-0 z-40 bg-white shadow-sm border-b border-gray-200 px-6 h-16 flex items-center justify-between transition-all duration-300`}
         >
-          <div className="flex items-center gap-2">
+          {/* Izquierda: Módulos de Navegación Rápida */}
+          <div className="flex items-center gap-2 overflow-x-auto hide-scrollbar">
             <Link
               to="/"
               onClick={() => setModuloActivo("home")}
-              className="p-2 rounded-lg hover:bg-gray-100 transition-all duration-300 ease-out hover:scale-110 active:scale-95 group"
+              className="p-2 rounded-lg hover:bg-gray-100 transition-all duration-300 ease-out hover:scale-110 active:scale-95 group mr-1 md:mr-2"
               title="Inicio"
             >
-              <Home className="w-6 h-6 text-gray-700 group-hover:text-blue-600 transition-colors" />
+              <Home className="w-5 h-5 text-gray-700 group-hover:text-blue-600 transition-colors" />
             </Link>
-            <Link
-              to="/administracion"
-              onClick={() => setModuloActivo("administracion")}
-              className="p-2 rounded-lg hover:bg-gray-100 transition-all duration-300 ease-out hover:scale-110 active:scale-95 group"
-              title="Administración"
-            >
-              <Settings className="w-6 h-6 text-gray-700 group-hover:text-blue-600 transition-colors" />
-            </Link>
-            <button
-              onClick={() => setShowAccountModal(true)}
-              className="p-2 rounded-lg hover:bg-gray-100 transition-all duration-300 ease-out hover:scale-110 active:scale-95 group"
-              title="Cuenta"
-            >
-              <UserCircle className="w-6 h-6 text-gray-700 group-hover:text-blue-600 transition-colors" />
-            </button>
+
+            <div className="h-6 w-px bg-gray-300 mx-1 md:mx-2 hidden sm:block"></div>
+
+            <div className="flex items-center text-sm hide-scrollbar whitespace-nowrap">
+              <Link
+                to="/"
+                onClick={() => setModuloActivo("home")}
+                className="hover:text-blue-600 transition-colors text-gray-500"
+              >
+                Inicio
+              </Link>
+
+              {location.pathname !== "/" &&
+                location.pathname
+                  .split("/")
+                  .filter(Boolean)
+                  .map((pathSegment, idx, arr) => {
+                    const routeTo = `/${arr.slice(0, idx + 1).join("/")}`;
+                    const isLast = idx === arr.length - 1;
+                    return (
+                      <React.Fragment key={routeTo}>
+                        <ChevronRight className="w-4 h-4 text-gray-400 mx-1 shrink-0" />
+                        <Link
+                          to={routeTo}
+                          className={`capitalize hover:text-blue-600 transition-colors ${
+                            isLast
+                              ? "font-semibold text-gray-800"
+                              : "text-gray-500"
+                          }`}
+                        >
+                          {pathSegment.replace(/-/g, " ")}
+                        </Link>
+                      </React.Fragment>
+                    );
+                  })}
+            </div>
           </div>
 
-          <div className="flex items-center gap-6">
-            {["compra", "venta", "proyecto", "inventario", "reportes"].map(
-              (moduloId) => {
-                const modulo = modulos.find((m) => m.id === moduloId);
-                if (!modulo) return null;
-                const isActive = moduloActivo === modulo.id;
-                return (
-                  <button
-                    key={modulo.id}
-                    onClick={() => handleModuloClick(modulo.id)}
-                    className={`text-sm font-medium transition-all duration-300 ease-out hover:-translate-y-0.5 pb-1
-                    ${
-                      isActive
-                        ? "text-blue-900 font-semibold border-b-2 border-blue-600"
-                        : "text-blue-600 hover:text-blue-800"
-                    }
-                  `}
-                  >
-                    {modulo.label}
-                  </button>
-                );
-              },
-            )}
+          {/* Centro: Buscador global (Oculto en móvil) */}
+          <div className="flex-1 justify-center hidden xl:flex px-8 max-w-2xl mx-auto">
+            <div className="relative w-full">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <Search className="h-4 w-4 text-gray-400" />
+              </div>
+              <input
+                type="text"
+                placeholder="Buscar en el sistema (Ctrl+K)..."
+                className="block w-full pl-10 pr-3 py-1.5 border border-gray-300 rounded-full leading-5 bg-gray-50 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:bg-white sm:text-sm transition-all duration-300"
+              />
+            </div>
           </div>
-          <div className="animate-fade-in-up animation-fill-both"></div>
+
+          {/* Derecha: Utilidades y perfil */}
+          <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+            <div className="hidden lg:flex items-center gap-1 mr-1">
+              <button
+                className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-all"
+                title="Ayuda"
+              >
+                <HelpCircle className="w-5 h-5" />
+              </button>
+              <button
+                className="p-2 relative text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-all"
+                title="Notificaciones"
+              >
+                <Bell className="w-5 h-5" />
+                <span className="absolute top-1.5 right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[9px] font-bold text-white border-2 border-white">
+                  3
+                </span>
+              </button>
+              <Link
+                to="/administracion"
+                onClick={() => setModuloActivo("administracion")}
+                className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-all group"
+                title="Administración"
+              >
+                <Settings className="w-5 h-5 group-hover:rotate-45 transition-transform duration-300" />
+              </Link>
+            </div>
+
+            <div className="h-6 w-px bg-gray-300 mx-1 hidden lg:block"></div>
+
+            <div className="relative">
+              <button
+                onClick={() => setShowAccountModal(!showAccountModal)}
+                className="flex items-center gap-3 pl-2 pr-1 py-1 rounded-full hover:bg-gray-100 transition-all duration-300 border border-transparent hover:border-gray-200"
+                title="Cuenta de Usuario"
+              >
+                <div className="hidden md:flex flex-col items-end">
+                  <span className="text-sm font-semibold text-gray-700 leading-none mb-1">
+                    {user?.nombre || "Usuario"}
+                  </span>
+                  <span className="text-[10px] text-gray-500 uppercase font-medium leading-none tracking-wider">
+                    {user?.grupo?.nombre || "Operador"}
+                  </span>
+                </div>
+                <div className="h-8 w-8 rounded-full bg-gradient-to-tr from-blue-600 to-blue-400 flex items-center justify-center text-white font-bold text-xs shadow-sm">
+                  {user?.nombre?.substring(0, 2).toUpperCase() || "AG"}
+                </div>
+              </button>
+
+              {showAccountModal && (
+                <>
+                  <div
+                    className="fixed inset-0 z-40"
+                    onClick={() => setShowAccountModal(false)}
+                  />
+                  <div className="absolute right-0 top-full mt-2 w-72 bg-white rounded-xl shadow-xl border border-gray-100 z-50 p-4 transform transition-all origin-top-right animate-fade-in-up">
+                    <div className="flex items-center gap-3">
+                      <img
+                        src="/default.jpg"
+                        alt="avatar"
+                        className="w-12 h-12 rounded-full object-cover"
+                      />
+                      <div>
+                        <div className="text-sm font-semibold">
+                          {user
+                            ? `${user.nombre} ${user.primer_apellido}`
+                            : "Usuario"}
+                        </div>
+                        <div className="text-xs text-slate-400">
+                          {user?.alias || "Cuenta de usuario"}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="mt-4 border-t border-gray-100 pt-4 space-y-2">
+                      <button
+                        className="w-full text-left px-4 py-2 rounded-md hover:bg-gray-50 text-gray-700 transition-colors text-sm font-medium"
+                        onClick={() => {
+                          setShowAccountModal(false);
+                          setModuloActivo("administracion");
+                          navigate("/perfil");
+                        }}
+                      >
+                        Ver perfil
+                      </button>
+
+                      <button
+                        className="w-full text-left px-4 py-2 rounded-md hover:bg-red-50 text-red-600 transition-colors text-sm font-medium"
+                        onClick={async () => {
+                          setShowAccountModal(false);
+                          await logout();
+                          navigate("/login", { replace: true });
+                        }}
+                      >
+                        Salir del sistema
+                      </button>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
         </header>
         <div
-          className={`${isHomePage ? "col-start-1 col-end-3" : "col-start-2 col-end-3"} row-start-2 row-end-3 min-w-0 flex flex-col overflow-hidden`}
+          className={`col-start-2 col-end-3 row-start-2 row-end-3 min-w-0 flex flex-col overflow-hidden transition-all duration-300`}
         >
           <main className="flex-1 overflow-auto bg-gray-50 p-8">
             <div className="animate-fade-in-up animation-fill-both">
@@ -1029,7 +1235,7 @@ function App() {
                       moduloActivo={moduloActivo}
                       currentPath="/reportes/alertas-stock"
                     >
-                      <AlertasStock />
+                      <ReporteReposicionStock />
                     </ProtectedRoute>
                   }
                 />
@@ -1093,61 +1299,6 @@ function App() {
           </main>
         </div>
       </div>
-      {showAccountModal && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4"
-          onClick={() => {
-            setShowLogoutConfirm(false);
-            setShowAccountModal(false);
-          }}
-        >
-          <div
-            className="bg-white rounded-xl shadow-2xl w-full max-w-sm p-6 transform transition-all animate-fade-in-up"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center gap-3">
-              <img
-                src="/default.jpg"
-                alt="avatar"
-                className="w-12 h-12 rounded-full object-cover"
-              />
-              <div>
-                <div className="text-sm font-semibold">
-                  {user ? `${user.nombre} ${user.primer_apellido}` : "Usuario"}
-                </div>
-                <div className="text-xs text-slate-400">
-                  {user?.alias || "Cuenta de usuario"}
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-4 border-t border-gray-100 pt-4 space-y-2">
-              <button
-                className="w-full text-left px-4 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700 transition-colors"
-                onClick={() => {
-                  setShowAccountModal(false);
-                  setModuloActivo("administracion");
-                  navigate("/perfil");
-                }}
-              >
-                Ver perfil
-              </button>
-
-              {/* TODO: Implementar la acción de 'Salir del sistema' aquí (por ejemplo llamar a la API y limpiar estado). */}
-              <button
-                className="w-full text-left px-4 py-2 rounded-md border border-red-200 text-red-600 bg-red-50 hover:bg-red-100 transition-colors"
-                onClick={async () => {
-                  setShowAccountModal(false);
-                  await logout();
-                  navigate("/login", { replace: true });
-                }}
-              >
-                Salir del sistema
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {showLogoutConfirm && (
         <div

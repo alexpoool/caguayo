@@ -1,32 +1,32 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, Header
-
-from sqlmodel.ext.asyncio.session import AsyncSession
-from fastapi.responses import StreamingResponse
 from datetime import date
 from typing import cast
 
-from src.database.connection import get_session, get_auth_session
+from fastapi import APIRouter, Depends, Header, HTTPException, Query
+from fastapi.responses import StreamingResponse
+from sqlmodel.ext.asyncio.session import AsyncSession
+
+from src.database.connection import get_auth_session, get_session
 from src.services import auth_service
+from src.services.auth_service import get_current_user
 
 # Add your auth dependency as needed, for now generating dummy user
 from src.services.reportes_service import (
-    get_proveedores_por_dependencia,
-    get_existencias,
-    get_movimientos_dependencia,
-    get_movimientos_producto,
-    get_liquidacion_report_data,
-    get_alertas_reposicion,
     ModoCodigoMovimiento,
     TipoEntidadReporte,
+    get_alertas_reposicion,
+    get_existencias,
+    get_liquidacion_report_data,
+    get_movimientos_dependencia,
+    get_movimientos_producto,
+    get_proveedores_por_dependencia,
 )
-from src.services.auth_service import get_current_user
 from src.utils.pdf_generator import (
-    generar_pdf_proveedores_dependencia,
+    generar_pdf_alertas_reposicion,
     generar_pdf_existencias,
+    generar_pdf_liquidacion,
     generar_pdf_movimientos_dependencia,
     generar_pdf_movimientos_producto,
-    generar_pdf_liquidacion,
-    generar_pdf_alertas_reposicion,
+    generar_pdf_proveedores_dependencia,
 )
 
 router = APIRouter(prefix="/reportes", tags=["Reportes"])
@@ -52,6 +52,25 @@ async def _get_usuario_y_cargo(
     )
     cargo = usuario.grupo.nombre if usuario.grupo else ""
     return (nombre or usuario.alias), cargo
+
+
+@router.get("/proveedores-dependencia/preview")
+async def obtener_datos_proveedores_dependencia(
+    id_dependencia: int = Query(..., description="ID de la Dependencia"),
+    tipo_entidad: str = Query(
+        ..., description="Tipo de Entidad (NATURAL, TCP, JURIDICA)"
+    ),
+    id_provincia: int = Query(None, description="Filtrar por provincia (opcional)"),
+    authorization: str | None = Header(None, alias="Authorization"),
+    db: AsyncSession = Depends(get_session),
+):
+    try:
+        proveedores, dependencia_info = await get_proveedores_dependencia(
+            db, id_dependencia, tipo_entidad, id_provincia
+        )
+        return {"proveedores": proveedores, "dependencia": dependencia_info}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/proveedores-dependencia")
@@ -103,6 +122,19 @@ async def obtener_reporte_proveedores_dependencia(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.get("/existencias/preview")
+async def obtener_datos_existencias(
+    id_dependencia: int = Query(..., description="ID de la Dependencia"),
+    authorization: str | None = Header(None, alias="Authorization"),
+    db: AsyncSession = Depends(get_session),
+):
+    try:
+        existencias, dependencia_info = await get_existencias(db, id_dependencia)
+        return {"existencias": existencias, "dependencia": dependencia_info}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.get("/existencias")
 async def obtener_reporte_existencias(
     id_dependencia: int = Query(..., description="ID de la Dependencia"),
@@ -137,6 +169,27 @@ async def obtener_reporte_existencias(
         )
     except HTTPException:
         raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/movimientos-dependencia/preview")
+async def obtener_datos_movimientos_dependencia(
+    id_dependencia: int = Query(..., description="ID de la Dependencia"),
+    fecha_inicio: date = Query(..., description="Fecha Inicio"),
+    fecha_fin: date = Query(..., description="Fecha Fin"),
+    modo_codigo: str = Query(
+        "corto",
+        description="Modo de código: corto (productos.codigo) o extenso (movimiento.codigo)",
+    ),
+    authorization: str | None = Header(None, alias="Authorization"),
+    db: AsyncSession = Depends(get_session),
+):
+    try:
+        movimientos, dependencia_info = await get_movimientos_dependencia(
+            db, id_dependencia, fecha_inicio, fecha_fin, modo_codigo
+        )
+        return {"movimientos": movimientos, "dependencia": dependencia_info}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -197,6 +250,28 @@ async def obtener_reporte_movimientos_dependencia(
         )
     except HTTPException:
         raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/movimientos-producto/preview")
+async def obtener_datos_movimientos_producto(
+    id_dependencia: int = Query(..., description="ID de la Dependencia"),
+    id_producto: int = Query(..., description="ID del Producto"),
+    fecha_inicio: date = Query(..., description="Fecha Inicio"),
+    fecha_fin: date = Query(..., description="Fecha Fin"),
+    authorization: str | None = Header(None, alias="Authorization"),
+    db: AsyncSession = Depends(get_session),
+):
+    try:
+        movimientos, dependencia_info, producto = await get_movimientos_producto(
+            db, id_dependencia, id_producto, fecha_inicio, fecha_fin
+        )
+        return {
+            "movimientos": movimientos,
+            "dependencia": dependencia_info,
+            "producto": producto,
+        }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
