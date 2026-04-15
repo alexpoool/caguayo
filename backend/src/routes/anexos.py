@@ -153,6 +153,7 @@ async def crear_anexo(
                 precio_compra=producto.precio_compra,
                 precio_venta=item["precio_venta"],
                 id_moneda=item["id_moneda"],
+                codigo=f"{datos.id_convenio}.{db_anexo.id_anexo}",
             )
             db.add(db_item)
             await db.flush()

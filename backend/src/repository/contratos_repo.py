@@ -1,5 +1,6 @@
 from sqlmodel import select, and_
 from sqlmodel.ext.asyncio.session import AsyncSession
+from sqlalchemy.orm import selectinload
 from typing import List, Optional, Any, Union
 from decimal import Decimal
 
@@ -177,6 +178,7 @@ class FacturaRepository(CRUDBase[Factura, FacturaCreate, FacturaUpdate]):
     ) -> List[Factura]:
         statement = (
             select(Factura)
+            .options(selectinload(Factura.items_factura))
             .offset(skip)
             .limit(limit)
             .order_by(Factura.id_factura.desc())
@@ -187,7 +189,13 @@ class FacturaRepository(CRUDBase[Factura, FacturaCreate, FacturaUpdate]):
     async def get_by_id_with_details(
         self, db: AsyncSession, id_factura: int
     ) -> Optional[Factura]:
-        return await db.get(Factura, id_factura)
+        statement = (
+            select(Factura)
+            .options(selectinload(Factura.items_factura))
+            .where(Factura.id_factura == id_factura)
+        )
+        results = await db.exec(statement)
+        return results.first()
 
     async def get_by_contrato(
         self, db: AsyncSession, id_contrato: int
@@ -246,6 +254,7 @@ class VentaEfectivoRepository(
     ) -> List[VentaEfectivo]:
         statement = (
             select(VentaEfectivo)
+            .options(selectinload(VentaEfectivo.items_venta_efectivo))
             .offset(skip)
             .limit(limit)
             .order_by(VentaEfectivo.id_venta_efectivo.desc())
@@ -256,7 +265,13 @@ class VentaEfectivoRepository(
     async def get_by_id_with_details(
         self, db: AsyncSession, id_venta_efectivo: int
     ) -> Optional[VentaEfectivo]:
-        return await db.get(VentaEfectivo, id_venta_efectivo)
+        statement = (
+            select(VentaEfectivo)
+            .options(selectinload(VentaEfectivo.items_venta_efectivo))
+            .where(VentaEfectivo.id_venta_efectivo == id_venta_efectivo)
+        )
+        results = await db.exec(statement)
+        return results.first()
 
     async def create(
         self, db: AsyncSession, venta_data: VentaEfectivoCreate, codigo: str = None
@@ -353,6 +368,7 @@ class ItemFacturaRepository(CRUDBase[ItemFactura, ItemFacturaCreate, dict]):
                     "precio_compra": producto.precio_compra,
                     "precio_venta": item["precio_venta"],
                     "id_moneda": item["id_moneda"],
+                    "codigo": f"1.{id_factura}",
                 }
                 db_item = ItemFactura(**item_dict)
                 db.add(db_item)
@@ -390,6 +406,7 @@ class ItemVentaEfectivoRepository(
                     "precio_compra": producto.precio_compra,
                     "precio_venta": item["precio_venta"],
                     "id_moneda": item["id_moneda"],
+                    "codigo": f"0.{id_venta_efectivo}",
                 }
                 db_item = ItemVentaEfectivo(**item_dict)
                 db.add(db_item)

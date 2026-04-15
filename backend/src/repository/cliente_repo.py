@@ -87,7 +87,6 @@ class CuentaRepository(CRUDBase[Cuenta, CuentaCreate, CuentaUpdate]):
         statement = (
             select(self.model)
             .options(
-                selectinload(Cuenta.tipo_cuenta),
                 selectinload(Cuenta.moneda),
             )
             .where(self.model.id_cliente == id_cliente)

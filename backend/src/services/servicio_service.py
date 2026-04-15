@@ -142,6 +142,12 @@ class SolicitudServicioService:
                 f"No se puede cambiar a '{new_estado}' porque la solicitud no está en estado 'EN PROCESO'"
             )
 
+        aprobado = getattr(data, "aprobado", None)
+        id_contrato = getattr(data, "id_contrato", None)
+        if aprobado and id_contrato and not s.codigo_proyecto:
+            anno = datetime.now().year - 2000
+            data.codigo_proyecto = f"PROY-{anno:02d}-{id}"
+
         updated = await solicitud_servicio_repo.update(db, db_obj=s, obj_in=data)
         return SolicitudServicioRead(**updated.model_dump())
 

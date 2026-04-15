@@ -359,7 +359,24 @@ export function CompraAnexosPage() {
           
           <div className="md:col-span-2"><Label>Nombre del Anexo *</Label><Input value={formData.nombre_anexo || ''} onChange={(e: any) => setFormData({...formData, nombre_anexo: e.target.value})} /></div>
           
-          <div><Label>Fecha *</Label><Input type="date" value={formData.fecha || ''} onChange={(e: any) => setFormData({...formData, fecha: e.target.value})} /></div>
+          <div>
+            <Label>Fecha *</Label>
+            <div className="flex gap-2">
+              <input 
+                type="date" 
+                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-fuchsia-500 focus:border-fuchsia-500 outline-none transition-colors" 
+                value={formData.fecha || ''} 
+                onChange={(e: any) => setFormData({...formData, fecha: e.target.value})} 
+              />
+              <button 
+                type="button" 
+                onClick={() => setFormData({...formData, fecha: new Date().toISOString().split('T')[0]})} 
+                className="px-3 py-2 bg-fuchsia-600 text-white rounded-lg hover:bg-fuchsia-700 transition-colors text-sm font-medium whitespace-nowrap"
+              >
+                Hoy
+              </button>
+            </div>
+          </div>
           
           <div><Label>Dependencia</Label>
             <select className="w-full p-2 border rounded" value={formData.id_dependencia || ''} onChange={(e: any) => setFormData({...formData, id_dependencia: e.target.value})}>

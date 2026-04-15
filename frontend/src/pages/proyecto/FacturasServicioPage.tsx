@@ -250,6 +250,13 @@ export function FacturasServicioPage() {
       resetForm();
       if (etapaParam) {
         setSelectedEtapaId(Number(etapaParam));
+        if (currentEtapa) {
+          setFormData(prev => ({
+            ...prev,
+            id_moneda: currentEtapa.id_moneda,
+            descripcion: currentEtapa.descripcion || ''
+          }));
+        }
       }
     }
     setView('form');

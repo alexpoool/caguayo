@@ -41,6 +41,7 @@ class SolicitudServicio(SQLModel, table=True):
     material_asumido_x: bool = Field(default=False)
     id_usuario: Optional[int] = None
     aprobado: bool = Field(default=False)
+    codigo_proyecto: Optional[str] = Field(default=None, max_length=50)
 
     etapas: List["Etapa"] = Relationship(
         back_populates="solicitud", sa_relationship_kwargs={"lazy": "selectin"}

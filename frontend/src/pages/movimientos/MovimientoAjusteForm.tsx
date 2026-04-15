@@ -7,6 +7,7 @@ import {
   dependenciasService,
 } from "../../services/api";
 import { authService } from "../../services/auth";
+import { apiClient } from "../../lib/api";
 import {
   Button,
   Card,
@@ -41,6 +42,7 @@ interface Destino {
   id: number;
   id_dependencia: number | null;
   cantidad: number;
+  nombre_database?: string;
 }
 
 interface SearchableSelectProps<T> {
@@ -276,11 +278,31 @@ export function MovimientoAjusteForm() {
       queryFn: () => dependenciasService.getDependencias(),
     });
 
+  // Obtener lista de bases de datos
+  const { data: basesDatos = [] } = useQuery({
+    queryKey: ["basesDatos"],
+    queryFn: async () => {
+      const dbs = await apiClient.get<{nombre_database: string}[]>('/conexiones');
+      const dbActual = usuario?.dependencia?.base_datos || 'caguayo_inventario';
+      return dbs.filter((db) => db.nombre_database !== dbActual);
+    },
+  });
+
+  // Obtener dependencias de otra base de datos
+  const getDependenciasDB = async (nombreDB: string) => {
+    try {
+      const deps = await apiClient.get<{id_dependencia: number; nombre: string}[]>(`/conexiones/${nombreDB}/dependencias`);
+      return deps;
+    } catch {
+      return [];
+    }
+  };
+
   const crearAjusteMutation = useMutation({
     mutationFn: (data: {
       id_producto?: number;
       id_dependencia_origen?: number;
-      destinos: { id_dependencia: number; cantidad: number }[];
+      destinos: { id_dependencia: number; cantidad: number; nombre_database?: string }[];
       observacion?: string;
       codigo?: string;
     }) => movimientosService.crearAjuste(data),
@@ -339,11 +361,19 @@ export function MovimientoAjusteForm() {
 
   const handleDestinoChange = (
     id: number,
-    field: "id_dependencia" | "cantidad",
-    value: number | null,
+    field: "id_dependencia" | "cantidad" | "nombre_database",
+    value: any,
   ) => {
     setDestinos(
-      destinos.map((d) => (d.id === id ? { ...d, [field]: value ?? 0 } : d)),
+      destinos.map((d) => {
+        if (d.id === id) {
+          if (field === "nombre_database") {
+            return { ...d, [field]: value };
+          }
+          return { ...d, [field]: value ?? 0 };
+        }
+        return d;
+      }),
     );
   };
 
@@ -374,6 +404,7 @@ export function MovimientoAjusteForm() {
       .map((d) => ({
         id_dependencia: d.id_dependencia as number,
         cantidad: d.cantidad,
+        nombre_database: d.nombre_database,
       }));
 
     if (destinosValidos.length === 0) {
@@ -552,11 +583,36 @@ export function MovimientoAjusteForm() {
             </CardHeader>
             <CardContent className="p-6">
               <div className="space-y-4">
-                {destinos.map((destino) => (
+                {destinos.map((destino) => {
+                  const depsMostrar = destino.nombre_database 
+                    ? [] // Se cargará dinámicamente
+                    : dependencias.filter((d) => !dependenciaOrigen || d.id_dependencia !== dependenciaOrigen.id);
+                  
+                  return (
                   <div
                     key={destino.id}
                     className="flex items-start gap-4 p-4 bg-gray-50 rounded-lg"
                   >
+                    <div className="w-40">
+                      <Label className="text-sm font-medium">Base de Datos</Label>
+                      <select
+                        className="w-full border rounded-md px-2 py-2 mt-1 bg-white"
+                        value={destino.nombre_database || ""}
+                        onChange={(e) => {
+                          const nuevaDB = e.target.value;
+                          handleDestinoChange(destino.id, "nombre_database", nuevaDB);
+                          handleDestinoChange(destino.id, "id_dependencia", null);
+                          handleDestinoChange(destino.id, "cantidad", 0);
+                        }}
+                      >
+                        <option value="">Seleccionar DB...</option>
+                        {basesDatos.map((db) => (
+                          <option key={db.nombre_database} value={db.nombre_database}>
+                            {db.nombre_database}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
                     <div className="flex-1">
                       <SearchableSelect
                         label="Dependencia"
@@ -570,11 +626,7 @@ export function MovimientoAjusteForm() {
                             value,
                           )
                         }
-                        options={dependencias.filter(
-                          (d) =>
-                            !dependenciaOrigen ||
-                            d.id_dependencia !== dependenciaOrigen.id,
-                        )}
+                        options={depsMostrar}
                         isLoading={isLoadingDependencias}
                         placeholder="Buscar dependencia..."
                         getOptionLabel={(item) => item.nombre}
@@ -610,7 +662,8 @@ export function MovimientoAjusteForm() {
                       </button>
                     )}
                   </div>
-                ))}
+                );
+                })}
               </div>
 
               <div className="mt-4">

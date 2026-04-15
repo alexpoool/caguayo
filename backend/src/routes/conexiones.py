@@ -24,30 +24,25 @@ class ConexionTestRequest(BaseModel):
 
 @router.get("", response_model=List[ConexionResponse])
 async def get_conexiones():
-    """Obtiene todas las conexiones registradas en la tabla conexion_database"""
+    """Obtiene todas las bases de datos del servidor PostgreSQL"""
     try:
         conn = psycopg2.connect(
             host=os.getenv("ADMIN_DB_HOST", "localhost"),
             port=int(os.getenv("ADMIN_DB_PORT", 5432)),
             user=os.getenv("ADMIN_DB_USER", "postgres"),
             password=os.getenv("ADMIN_DB_PASSWORD", "1234"),
-            database="caguayo_inventario",
+            database="postgres",
             client_encoding="utf8",
         )
         cur = conn.cursor()
-        cur.execute(
-            "SELECT id_conexion, nombre_database, host, puerto FROM conexion_database ORDER BY id_conexion"
-        )
+        cur.execute("SELECT nombre_database FROM v_databases ORDER BY nombre_database")
         rows = cur.fetchall()
         cur.close()
         conn.close()
 
         return [
             ConexionResponse(
-                id_conexion=row[0],
-                nombre_database=row[1],
-                host=row[2],
-                puerto=row[3],
+                nombre_database=row[0],
             )
             for row in rows
         ]

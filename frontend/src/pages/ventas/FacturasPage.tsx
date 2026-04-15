@@ -451,7 +451,21 @@ export function FacturasPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <Label className="text-sm font-medium">Fecha</Label>
-              <Input type="date" value={formData.fecha || ''} onChange={(e: any) => setFormData({...formData, fecha: e.target.value})} className="mt-1" />
+              <div className="flex gap-2">
+                <input 
+                  type="date" 
+                  className="flex-1 mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-violet-500 outline-none transition-colors" 
+                  value={formData.fecha || ''} 
+                  onChange={(e: any) => setFormData({...formData, fecha: e.target.value})} 
+                />
+                <button 
+                  type="button" 
+                  onClick={() => setFormData({...formData, fecha: new Date().toISOString().split('T')[0]})} 
+                  className="mt-1 px-3 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition-colors text-sm font-medium whitespace-nowrap"
+                >
+                  Hoy
+                </button>
+              </div>
             </div>
             <div>
               <Label className="text-sm font-medium">Contrato</Label>
@@ -567,6 +581,53 @@ export function FacturasPage() {
                 <div className="bg-gray-50 p-4 rounded-xl">
                   <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Observaciones</p>
                   <p className="text-gray-700">{detailModal.item.observaciones}</p>
+                </div>
+              )}
+              {detailModal.item.items && detailModal.item.items.length > 0 && (
+                <div className="bg-gray-50 p-4 rounded-xl border">
+                  <p className="text-xs text-gray-500 uppercase tracking-wider mb-2">
+                    Productos ({detailModal.item.items.length})
+                  </p>
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="text-left text-xs text-gray-500">
+                        <th className="pb-1">Código</th>
+                        <th className="pb-1">Producto</th>
+                        <th className="pb-1 text-right">Cant.</th>
+                        <th className="pb-1 text-right">Precio</th>
+                        <th className="pb-1 text-right">Total</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y">
+                      {detailModal.item.items.map((p: any, idx: number) => (
+                        <tr key={idx}>
+                          <td className="py-1 text-gray-500 font-mono text-xs">
+                            {p.codigo || '-'}
+                          </td>
+                          <td className="py-1 text-gray-700">
+                            {p.producto?.nombre || `Producto ${p.id_producto}`}
+                          </td>
+                          <td className="py-1 text-right text-gray-500">
+                            {p.cantidad}
+                          </td>
+                          <td className="py-1 text-right text-gray-500">
+                            ${Number(p.precio_venta || 0).toFixed(2)}
+                          </td>
+                          <td className="py-1 text-right font-medium">
+                            ${Number((p.precio_venta || 0) * p.cantidad).toFixed(2)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot>
+                      <tr className="font-medium">
+                        <td colSpan={4} className="pt-2 text-right text-gray-600">Total:</td>
+                        <td className="pt-2 text-right text-gray-900">
+                          ${detailModal.item.items.reduce((t: number, p: any) => t + Number((p.precio_venta || 0) * p.cantidad), 0).toFixed(2)}
+                        </td>
+                      </tr>
+                    </tfoot>
+                  </table>
                 </div>
               )}
             </div>

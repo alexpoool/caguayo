@@ -2,11 +2,13 @@ from typing import List, Optional
 from datetime import datetime
 from decimal import Decimal
 from sqlmodel.ext.asyncio.session import AsyncSession
+from sqlmodel import select
 
 from src.repository.productos_en_liquidacion_repo import (
     productos_en_liquidacion_repo,
 )
 from src.models.productos_en_liquidacion import ProductosEnLiquidacion
+from src.models.item_anexo import ItemAnexo
 from src.dto.productos_en_liquidacion_dto import (
     ProductosEnLiquidacionCreate,
     ProductosEnLiquidacionRead,
@@ -174,12 +176,29 @@ class ProductosEnLiquidacionService:
 productos_en_liquidacion_service = ProductosEnLiquidacionService()
 
 
+async def get_codigo_from_item_anexo(
+    db: AsyncSession, id_producto: int
+) -> Optional[str]:
+    """Obtiene el código más antiguo de item_anexo para un producto específico."""
+    statement = (
+        select(ItemAnexo)
+        .where(ItemAnexo.id_producto == id_producto)
+        .order_by(ItemAnexo.id_item_anexo.asc())
+        .limit(1)
+    )
+    result = await db.exec(statement)
+    item = result.first()
+    return item.codigo if item else None
+
+
 async def agregar_desde_factura(
     db: AsyncSession, id_factura: int, productos: List[dict]
 ) -> None:
     """Agrega productos desde una factura a la tabla de productos_en_liquidacion."""
     for prod in productos:
-        codigo = await productos_en_liquidacion_service.generate_codigo(db)
+        codigo = await get_codigo_from_item_anexo(db, prod["id_producto"])
+        if not codigo:
+            codigo = await productos_en_liquidacion_service.generate_codigo(db)
         db_producto = ProductosEnLiquidacion(
             codigo=codigo,
             id_producto=prod["id_producto"],
@@ -188,6 +207,28 @@ async def agregar_desde_factura(
             id_moneda=prod.get("id_moneda", 1),
             tipo_compra="FACTURA",
             id_factura=id_factura,
+            liquidada=False,
+        )
+        db.add(db_producto)
+    await db.commit()
+
+
+async def agregar_desde_venta_efectivo(
+    db: AsyncSession, id_venta_efectivo: int, productos: List[dict]
+) -> None:
+    """Agrega productos desde una venta en efectivo a la tabla de productos_en_liquidacion."""
+    for prod in productos:
+        codigo = await get_codigo_from_item_anexo(db, prod["id_producto"])
+        if not codigo:
+            codigo = await productos_en_liquidacion_service.generate_codigo(db)
+        db_producto = ProductosEnLiquidacion(
+            codigo=codigo,
+            id_producto=prod["id_producto"],
+            cantidad=prod["cantidad"],
+            precio=Decimal(str(prod.get("precio_venta", prod.get("precio", 0)))),
+            id_moneda=prod.get("id_moneda", 1),
+            tipo_compra="VENTA_EFECTIVO",
+            id_venta_efectivo=id_venta_efectivo,
             liquidada=False,
         )
         db.add(db_producto)

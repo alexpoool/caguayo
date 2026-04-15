@@ -48,6 +48,7 @@ export function UsuariosPage() {
     nombre: "",
     primer_apellido: "",
     segundo_apellido: "",
+    cargo: "",
     id_grupo: 0,
   });
   const [confirmModal, setConfirmModal] = useState<{
@@ -134,6 +135,7 @@ export function UsuariosPage() {
       nombre: "",
       primer_apellido: "",
       segundo_apellido: "",
+      cargo: "",
       id_grupo: 0,
     });
 
@@ -143,6 +145,7 @@ export function UsuariosPage() {
       !usuarioForm.ci ||
       !usuarioForm.nombre ||
       !usuarioForm.primer_apellido ||
+      !usuarioForm.cargo ||
       !usuarioForm.id_grupo
     ) {
       toast.error("Todos los campos requeridos deben completarse");
@@ -286,6 +289,23 @@ export function UsuariosPage() {
                 />
               </div>
               <div className="space-y-2">
+                <Label className="flex items-center gap-2 text-gray-700">
+                  <User className="h-5 w-5 text-cyan-500" />
+                  Cargo *
+                </Label>
+                <Input
+                  value={usuarioForm.cargo}
+                  onChange={(e) =>
+                    setUsuarioForm({
+                      ...usuarioForm,
+                      cargo: e.target.value,
+                    })
+                  }
+                  placeholder="Cargo del usuario"
+                  className="transition-all duration-200 focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
+                />
+              </div>
+              <div className="space-y-2">
                 <Label
                   htmlFor="id_grupo"
                   className="flex items-center gap-2 text-gray-700"
@@ -413,7 +433,7 @@ export function UsuariosPage() {
               <TableRow>
                 <TableHead>Nombre</TableHead>
                 <TableHead>CI</TableHead>
-                <TableHead>Alias</TableHead>
+                <TableHead>Cargo</TableHead>
                 <TableHead>Grupo</TableHead>
                 <TableHead>Dependencia</TableHead>
                 <TableHead className="text-right">Acciones</TableHead>
@@ -423,7 +443,7 @@ export function UsuariosPage() {
               {filteredUsuarios.length === 0 ? (
                 <TableRow>
                   <TableCell
-                    colSpan={6}
+                    colSpan={7}
                     className="text-center py-12 text-gray-500"
                   >
                     {searchTerm
@@ -452,7 +472,7 @@ export function UsuariosPage() {
                         {usuario.ci}
                       </span>
                     </TableCell>
-                    <TableCell>{usuario.alias}</TableCell>
+                    <TableCell>{usuario.cargo}</TableCell>
                     <TableCell>
                       <span className="inline-flex items-center gap-1 px-2 py-1 bg-purple-100 text-purple-700 rounded text-xs font-medium">
                         <Shield className="h-3 w-3" />
@@ -654,6 +674,10 @@ export function UsuariosPage() {
                 <div>
                   <Label className="text-gray-600">C.I</Label>
                   <div className="font-medium">{detailModal.usuario.ci}</div>
+                </div>
+                <div>
+                  <Label className="text-gray-600">Cargo</Label>
+                  <div className="font-medium">{detailModal.usuario.cargo}</div>
                 </div>
                 <div>
                   <Label className="text-gray-600">Grupo</Label>

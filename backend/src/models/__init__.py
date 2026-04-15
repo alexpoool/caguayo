@@ -26,7 +26,6 @@ from .contrato import (
     VentaEfectivo,
 )
 from .cuenta import Cuenta
-from .tipo_cuenta import TipoCuenta
 from .tipo_entidad import TipoEntidad
 from .usuarios import Grupo, Usuario
 from .funcionalidades import Funcionalidad, GrupoFuncionalidad

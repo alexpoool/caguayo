@@ -187,16 +187,16 @@ async def login(db: AsyncSession, login_data: LoginRequest) -> Optional[LoginRes
         if usuario.id_grupo:
             grupo = await db.get(Grupo, usuario.id_grupo)
 
-        # 7. Obtener funcionalidades del grupo
+        # 7. Obtener funcionalidades del grupo (desde la BD del usuario)
         statement = select(GrupoFuncionalidad).where(
             GrupoFuncionalidad.id_grupo == usuario.id_grupo
         )
-        results = await db.exec(statement)
+        results = db_target.exec(statement)
         grupo_funcionalidades = results.all()
 
         funcionalidades = []
         for gf in grupo_funcionalidades:
-            func = await db.get(Funcionalidad, gf.id_funcionalidad)
+            func = db_target.get(Funcionalidad, gf.id_funcionalidad)
             if func:
                 funcionalidades.append(
                     FuncionalidadInfo(
@@ -531,6 +531,7 @@ async def register(
             nombre=register_data.nombre,
             primer_apellido=register_data.primer_apellido,
             segundo_apellido=register_data.segundo_apellido,
+            cargo=register_data.cargo,
             alias=register_data.alias,
             contrasenia=hashed_password,
             id_grupo=id_grupo,

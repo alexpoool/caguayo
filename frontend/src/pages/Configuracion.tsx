@@ -89,7 +89,6 @@ const configSubTabs: { id: ConfigSubTabType; label: string }[] = [
   { id: "tipo-proveedores", label: "Tipos de Proveedores" },
   { id: "tipo-convenios", label: "Tipos de Convenio" },
   { id: "tipo-dependencia", label: "Tipos de Dependencia" },
-  { id: "tipo-cuenta", label: "Tipos de Cuenta" },
 ];
 
 interface ConfigCardProps {
@@ -281,13 +280,14 @@ export function ConfiguracionPage() {
     queryFn: () => dependenciasService.getTiposDependencia(),
   });
 
-  const {
+const {
     data: tiposCuenta = [],
     isLoading: loadingTiposCuenta,
     refetch: refetchTiposCuenta,
   } = useQuery({
     queryKey: ["tiposCuenta"],
-    queryFn: () => configuracionService.getTiposCuenta(),
+    queryFn: () => Promise.resolve([]),
+    staleTime: 1000 * 60 * 5,
   });
 
   const isAnyLoading =
@@ -472,34 +472,24 @@ export function ConfiguracionPage() {
 
   // Mutations para tipos de cuenta
   const createTipoCuenta = useMutation({
-    mutationFn: configuracionService.createTipoCuenta,
+    mutationFn: () => Promise.resolve(),
     onSuccess: () => {
-      console.log("Tipo cuenta creado, invalidando queries...");
-      queryClient.invalidateQueries({ queryKey: ["tiposCuenta"] });
-      refetchTiposCuenta();
       toast.success("Tipo de cuenta creado");
       closeModal();
     },
   });
 
   const updateTipoCuenta = useMutation({
-    mutationFn: ({ id, data }: { id: number; data: any }) =>
-      configuracionService.updateTipoCuenta(id, data),
+    mutationFn: () => Promise.resolve(),
     onSuccess: () => {
-      console.log("Tipo cuenta actualizado, invalidando queries...");
-      queryClient.invalidateQueries({ queryKey: ["tiposCuenta"] });
-      refetchTiposCuenta();
       toast.success("Tipo de cuenta actualizado");
       closeModal();
     },
   });
 
   const deleteTipoCuenta = useMutation({
-    mutationFn: configuracionService.deleteTipoCuenta,
+    mutationFn: () => Promise.resolve(),
     onSuccess: () => {
-      console.log("Tipo cuenta eliminado, invalidando queries...");
-      queryClient.invalidateQueries({ queryKey: ["tiposCuenta"] });
-      refetchTiposCuenta();
       toast.success("Tipo de cuenta eliminado");
     },
   });
@@ -705,16 +695,6 @@ export function ConfiguracionPage() {
           createTipoDependencia.mutate(formData);
         }
         break;
-      case "tipo-cuenta":
-        if (editingItem) {
-          updateTipoCuenta.mutate({
-            id: editingItem.id_tipo_cuenta,
-            data: formData,
-          });
-        } else {
-          createTipoCuenta.mutate(formData);
-        }
-        break;
     }
   };
 
@@ -748,7 +728,6 @@ export function ConfiguracionPage() {
         deleteTipoDependencia.mutate(item.id_tipo_dependencia);
         break;
       case "tipo-cuenta":
-        deleteTipoCuenta.mutate(item.id_tipo_cuenta);
         break;
     }
     setConfirmDelete({ isOpen: false, type: null, item: null });

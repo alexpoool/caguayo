@@ -1,6 +1,8 @@
+import { useEffect } from 'react';
 import { Save, ArrowLeft } from 'lucide-react';
 import { Button, Label, Input, Card, CardHeader, CardTitle, CardContent } from '../../../../components/ui';
 import { ProductSelector } from './ProductSelector';
+import { authHelpers } from '../../../../lib/api';
 import type { Dependencia } from '../../../../types/dependencia';
 import type { SelectedProduct } from '../hooks/useProductSelection';
 import type { Productos } from '../../../../types';
@@ -44,6 +46,14 @@ export function FacturaForm({
   onSave,
   onCancel,
 }: FacturaFormProps) {
+  const currentUser = authHelpers.getUser();
+
+  useEffect(() => {
+    if (!editingId && currentUser?.dependencia && !formData.id_dependencia) {
+      onFormDataChange({ ...formData, id_dependencia: currentUser.dependencia.id_dependencia });
+    }
+  }, []);
+
   return (
     <div className="space-y-6">
       {/* Header */}

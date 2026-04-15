@@ -1,10 +1,12 @@
 from typing import List, Optional, cast
 import logging
+import os
 from datetime import datetime
 from decimal import Decimal
 from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlmodel import select, func
 from sqlalchemy.orm import selectinload
+import psycopg2
 from src.repository import movimiento_repo
 from src.models import (
     Movimiento,
@@ -745,3 +747,85 @@ class MovimientoService:
         await db.commit()
 
         return movimientos_creados
+
+    @staticmethod
+    def crear_movimiento_en_otra_db(
+        nombre_database: str,
+        movimiento_data: dict,
+    ) -> dict:
+        """Crear un movimiento en otra base de datos.
+
+        Args:
+            nombre_database: Nombre de la base de datos destino
+            movimiento_data: Datos del movimiento a crear
+
+        Returns:
+            Dictionary con los datos del movimiento creado
+        """
+        try:
+            conn = psycopg2.connect(
+                host=os.getenv("ADMIN_DB_HOST", "localhost"),
+                port=int(os.getenv("ADMIN_DB_PORT", 5432)),
+                user=os.getenv("ADMIN_DB_USER", "postgres"),
+                password=os.getenv("ADMIN_DB_PASSWORD", "1234"),
+                database=nombre_database,
+                client_encoding="utf8",
+            )
+            conn.autocommit = True
+            cur = conn.cursor()
+
+            # Obtener tipo de movimiento AJUSTE_AGREGAR
+            cur.execute(
+                "SELECT id_tipo_movimiento FROM tipo_movimiento WHERE tipo = 'AJUSTE_AGREGAR' LIMIT 1"
+            )
+            result = cur.fetchone()
+            if not result:
+                cur.close()
+                conn.close()
+                raise ValueError(
+                    f"Tipo de movimiento AJUSTE_AGREGAR no encontrado en {nombre_database}"
+                )
+            id_tipo_movimiento = result[0]
+
+            # Insertar movimiento
+            cur.execute(
+                """INSERT INTO movimiento (
+                    id_tipo_movimiento, id_dependencia, id_producto, cantidad,
+                    fecha, observacion, id_cliente, precio_compra, moneda_compra,
+                    precio_venta, moneda_venta, id_convenio, estado, codigo
+                ) VALUES (
+                    %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
+                ) RETURNING id_movimiento
+            """,
+                (
+                    id_tipo_movimiento,
+                    movimiento_data.get("id_dependencia"),
+                    movimiento_data.get("id_producto"),
+                    movimiento_data.get("cantidad"),
+                    datetime.utcnow().isoformat(),
+                    movimiento_data.get("observacion"),
+                    movimiento_data.get("id_cliente"),
+                    movimiento_data.get("precio_compra"),
+                    movimiento_data.get("moneda_compra"),
+                    movimiento_data.get("precio_venta"),
+                    movimiento_data.get("moneda_venta"),
+                    movimiento_data.get("id_convenio"),
+                    "pendiente",
+                    movimiento_data.get("codigo"),
+                ),
+            )
+
+            id_movimiento = cur.fetchone()[0] if cur.fetchone() else None
+            cur.close()
+            conn.close()
+
+            return {
+                "id_movimiento": id_movimiento,
+                "tipo": "AJUSTE_AGREGAR",
+                "cantidad": movimiento_data.get("cantidad"),
+                "id_dependencia": movimiento_data.get("id_dependencia"),
+                "nombre_database": nombre_database,
+            }
+        except Exception as e:
+            logger.error(f"Error al crear movimiento en {nombre_database}: {e}")
+            raise

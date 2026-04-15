@@ -504,15 +504,6 @@ export function ConveniosPage() {
                     <TableCell>
                       <div className="flex items-center gap-2">
                         <button
-                          onClick={() => {
-                            setViewingConvenio(convenio);
-                            setView("detail");
-                          }}
-                          className="p-1 hover:bg-slate-50 rounded"
-                        >
-                          <Eye className="h-4 w-4 text-green-600" />
-                        </button>
-                        <button
                           onClick={() => handleEdit(convenio)}
                           className="p-1 hover:bg-slate-50 rounded"
                         >

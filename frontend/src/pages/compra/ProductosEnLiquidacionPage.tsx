@@ -167,12 +167,6 @@ export function ProductosEnLiquidacionPage() {
               <TableRow>
                 <TableHead>
                   <div className="flex items-center gap-2">
-                    <Tag className="h-4 w-4 text-red-600" />
-                    Código
-                  </div>
-                </TableHead>
-                <TableHead>
-                  <div className="flex items-center gap-2">
                     <Package className="h-4 w-4 text-red-600" />
                     Producto
                   </div>
@@ -206,19 +200,13 @@ export function ProductosEnLiquidacionPage() {
                 </TableRow>
               ) : filteredProductos.length === 0 ? (
                 <TableRow>
-                    <TableCell colSpan={8} className="text-center py-12 text-gray-500">
+                    <TableCell colSpan={7} className="text-center py-12 text-gray-500">
                     {searchTerm ? 'No se encontraron productos que coincidan con la búsqueda' : 'No hay productos'}
                   </TableCell>
                 </TableRow>
               ) : (
                 filteredProductos.map((item) => (
                   <TableRow key={item.id_producto_en_liquidacion} className="hover:bg-gray-50/50 transition-colors cursor-pointer" onClick={() => setDetailModal({ isOpen: true, item })}>
-                    <TableCell>
-                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-red-50 text-red-700 rounded text-sm font-mono font-medium">
-                        <Tag className="h-3 w-3" />
-                        {item.codigo}
-                      </span>
-                    </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
                         <Package className="h-4 w-4 text-blue-500" />

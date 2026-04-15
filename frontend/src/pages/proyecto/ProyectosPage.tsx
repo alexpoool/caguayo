@@ -12,7 +12,9 @@ import { useNavigate } from 'react-router-dom';
 
 type View = 'list' | 'form';
 
-export function SolicitudesPage() {
+type EstadoFiltro = 'EN PROCESO' | 'TERMINADA' | 'CANCELADA' | 'TODAS';
+
+export function ProyectosPage() {
   const navigate = useNavigate();
   const [view, setView] = useState<View>('list');
 
@@ -21,6 +23,7 @@ export function SolicitudesPage() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [formData, setFormData] = useState<Record<string, any>>({});
   const [searchTerm, setSearchTerm] = useState('');
+  const [estadoFiltro, setEstadoFiltro] = useState<EstadoFiltro>('EN PROCESO');
   const [detailModal, setDetailModal] = useState<{ isOpen: boolean; item: SolicitudServicio | null }>({ isOpen: false, item: null });
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
@@ -354,15 +357,13 @@ export function SolicitudesPage() {
   };
 
   const filteredSolicitudes = useMemo(() => {
-    const filtered = solicitudes.filter(s =>
-      ['PENDIENTE', 'EN NEGOCIACION'].includes(s.estado || '')
-    );
+    const filtered = estadoFiltro === 'TODAS' ? solicitudes : solicitudes.filter(s => s.estado === estadoFiltro);
     if (!searchTerm) return filtered;
     return filtered.filter(s =>
-      s.codigo_solicitud?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      s.codigo_proyecto?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       s.descripcion?.toLowerCase().includes(searchTerm.toLowerCase())
     );
-  }, [solicitudes, searchTerm]);
+  }, [solicitudes, searchTerm, estadoFiltro]);
 
   const renderList = () => (
     <div className="space-y-6">
@@ -372,22 +373,28 @@ export function SolicitudesPage() {
             <ClipboardList className="h-8 w-8 text-white" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Solicitudes de Servicio</h1>
+            <h1 className="text-2xl font-bold text-gray-900">Proyectos </h1>
             <p className="text-gray-500 mt-1">
-              {filteredSolicitudes.length === solicitudes.length
-                ? `Gestión de solicitudes (${solicitudes.length} items)`
-                : `Mostrando ${filteredSolicitudes.length} de ${solicitudes.length} solicitudes`
-              }
+              {filteredSolicitudes.length} proyecto{filteredSolicitudes.length !== 1 ? 's' : ''}
             </p>
           </div>
         </div>
-        <Button
-          onClick={() => openForm()}
-          className="gap-2 bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300"
-        >
-          <Plus className="h-4 w-4" />
-          Nueva Solicitud
-        </Button>
+      </div>
+
+      <div className="flex gap-2 mb-4">
+        {(['EN PROCESO', 'TERMINADA', 'CANCELADA', 'TODAS'] as EstadoFiltro[]).map((estado) => (
+          <button
+            key={estado}
+            onClick={() => setEstadoFiltro(estado)}
+            className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${
+              estadoFiltro === estado
+                ? 'bg-teal-600 text-white'
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            }`}
+          >
+            {estado}
+          </button>
+        ))}
       </div>
 
       <div className="flex gap-2">
@@ -415,7 +422,8 @@ export function SolicitudesPage() {
                 </TableHead>
                 <TableHead>Fecha</TableHead>
                 <TableHead>Estado</TableHead>
-                <TableHead>Representante</TableHead>
+                <TableHead>Contrato</TableHead>
+                <TableHead>Etapas</TableHead>
                 <TableHead className="text-right">Acciones</TableHead>
               </TableRow>
             </TableHeader>
@@ -432,7 +440,7 @@ export function SolicitudesPage() {
                     <TableCell>
                       <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-teal-50 text-teal-700 rounded text-sm font-mono font-medium">
                         <Tag className="h-3 w-3" />
-                        {item.codigo_solicitud || 'N/A'}
+                        {item.codigo_proyecto || 'N/A'}
                       </span>
                     </TableCell>
 <TableCell>{item.fecha_solicitud || 'N/A'}</TableCell>
@@ -451,10 +459,41 @@ export function SolicitudesPage() {
                         <span className="text-gray-400 text-xs">—</span>
                       )}
                     </TableCell>
-                    <TableCell>
-                      {item.nombres_rep || item.apellido1_rep 
-                        ? `${item.nombres_rep || ''} ${item.apellido1_rep || ''}`.trim() 
-                        : <span className="text-gray-400">—</span>}
+<TableCell onClick={(e) => e.stopPropagation()}>
+{item.id_contrato ? (
+                        item.id_suplemento ? (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => item.id_suplemento && openSuplementoModal(item.id_suplemento)}
+                            className="gap-1 text-amber-600 border-amber-200 hover:bg-amber-50 hover:text-amber-700"
+                          >
+                            <FilePlus className="h-3.5 w-3.5" />
+                            Suplemento
+                          </Button>
+                        ) : (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => item.id_contrato && openContratoModal(item.id_contrato)}
+                            className="gap-1 text-blue-600 border-blue-200 hover:bg-blue-50 hover:text-blue-700"
+                          >
+                            <FileText className="h-3.5 w-3.5" />
+                            Contrato
+                          </Button>
+                        )
+                      ) : null}
+                    </TableCell>
+                    <TableCell onClick={(e) => e.stopPropagation()}>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => navigate(`/proyectos/etapas?solicitud=${item.id_solicitud_servicio}`)}
+                        className="gap-1 text-teal-600 border-teal-200 hover:bg-teal-50 hover:text-teal-700"
+                      >
+                        <Layers className="h-3.5 w-3.5" />
+                        Etapas
+                      </Button>
                     </TableCell>
                     <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                       <div className="flex justify-end gap-2">
@@ -489,10 +528,43 @@ export function SolicitudesPage() {
                         >
                           <Edit className="h-4 w-4" />
                         </Button>
+                        {item.estado === 'EN PROCESO' && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleCancelarSolicitud(item)}
+                            className="text-red-600 hover:text-red-800 hover:bg-red-50 h-8 w-8"
+                            title="Cancelar"
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        )}
+                        {item.estado === 'EN PROCESO' && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleTerminarSolicitud(item)}
+                            className="text-green-600 hover:text-green-800 hover:bg-green-50 h-8 w-8"
+                            title="Terminar"
+                          >
+                            <CheckSquare className="h-4 w-4" />
+                          </Button>
+                        )}
+                        {item.estado === 'TERMINADA' && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            disabled
+                            className="text-gray-400 cursor-not-allowed h-8 w-8"
+                            title="Terminada"
+                          >
+                            <CheckSquare className="h-4 w-4" />
+                          </Button>
+                        )}
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => handleDelete(item.id_solicitud_servicio, item.codigo_solicitud || 'N/A')}
+                          onClick={() => handleDelete(item.id_solicitud_servicio, item.codigo_proyecto || 'N/A')}
                           className="text-red-600 hover:text-red-800 hover:bg-red-50 h-8 w-8"
                           title="Eliminar"
                         >
@@ -642,8 +714,8 @@ export function SolicitudesPage() {
                     <ClipboardList className="h-7 w-7" />
                   </div>
                   <div>
-                    <h3 className="text-2xl font-bold text-gray-900">{detailModal.item.codigo_solicitud || 'Sin código'}</h3>
-                    <p className="text-sm text-gray-500 font-mono">{detailModal.item.codigo_solicitud || 'Sin código'}</p>
+                    <h3 className="text-2xl font-bold text-gray-900">{detailModal.item.codigo_proyecto || 'Sin código'}</h3>
+                    <p className="text-sm text-gray-500 font-mono">{detailModal.item.codigo_proyecto || 'Sin código'}</p>
                   </div>
                 </div>
                 <button onClick={() => setDetailModal({ isOpen: false, item: null })} className="p-2 hover:bg-gray-200 rounded-full transition-colors">
@@ -726,9 +798,9 @@ export function SolicitudesPage() {
                   <div className="p-3 rounded-xl bg-gradient-to-br from-teal-500 to-cyan-600 text-white shadow-lg">
                     <FileText className="h-7 w-7" />
                   </div>
-                  <div>
+                    <div>
                     <h3 className="text-xl font-bold text-gray-900">Detalle del Contrato</h3>
-                    <p className="text-sm text-gray-500">{contratoModal.item?.nombre || 'Cargando...'}</p>
+                    <p className="text-sm text-gray-500">{contratoModal.item?.codigo || 'Cargando...'} - {contratoModal.item?.nombre || ''}</p>
                   </div>
                 </div>
                 <button onClick={() => setContratoModal({ isOpen: false, item: null, loading: false })} className="p-2 hover:bg-gray-200 rounded-full transition-colors">
@@ -785,9 +857,9 @@ export function SolicitudesPage() {
                   <div className="p-3 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 text-white shadow-lg">
                     <FilePlus className="h-7 w-7" />
                   </div>
-                  <div>
+                    <div>
                     <h3 className="text-xl font-bold text-gray-900">Detalle del Suplemento</h3>
-                    <p className="text-sm text-gray-500">{suplementoModal.item?.nombre || 'Cargando...'}</p>
+                    <p className="text-sm text-gray-500">{suplementoModal.item?.codigo || 'Cargando...'} - {suplementoModal.item?.nombre || ''}</p>
                   </div>
                 </div>
                 <button onClick={() => setSuplementoModal({ isOpen: false, item: null, loading: false })} className="p-2 hover:bg-gray-200 rounded-full transition-colors">

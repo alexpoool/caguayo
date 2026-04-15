@@ -77,7 +77,7 @@ export function HomePage() {
       {/* Columna centro - Imagen */}
       <div className="flex items-center justify-center">
         <img
-          src="/home.jpeg"
+          src="/home.png"
           alt="Caguayo Home"
           className="max-w-full max-h-full object-contain rounded-lg"
         />

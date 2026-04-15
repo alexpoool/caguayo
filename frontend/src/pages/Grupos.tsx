@@ -33,6 +33,57 @@ import {
 import { administracionService } from "../services/administracion";
 import type { Grupo, GrupoCreate, GrupoUpdate } from "../types/usuario";
 
+interface Modulo {
+  nombre: string;
+  funcionalidades: string[];
+}
+
+const MODULOS: Modulo[] = [
+  {
+    nombre: "Compra",
+    funcionalidades: [
+      "proveedores",
+      "convenios",
+      "anexos",
+      "productos_liquidacion",
+      "liquidaciones",
+    ],
+  },
+  {
+    nombre: "Venta",
+    funcionalidades: [
+      "clientes",
+      "contratos",
+      "suplementos",
+      "facturas",
+      "venta_efectivo",
+    ],
+  },
+  {
+    nombre: "Proyectos",
+    funcionalidades: [
+      "servicios",
+      "solicitudes",
+      "realizadores",
+      "proyectos",
+      "facturas_servicio",
+      "liquidaciones_servicio",
+    ],
+  },
+  {
+    nombre: "Inventario",
+    funcionalidades: ["movimientos", "pendientes", "producto"],
+  },
+  {
+    nombre: "Administración",
+    funcionalidades: ["usuarios", "grupos", "monedas", "dependencias", "configuracion"],
+  },
+  {
+    nombre: "Reportes",
+    funcionalidades: [],
+  },
+];
+
 export function GruposPage() {
   const queryClient = useQueryClient();
   const [view, setView] = useState<"list" | "form">("list");
@@ -131,6 +182,22 @@ export function GruposPage() {
         ...grupoForm,
         funcionalidades: current.filter((id) => id !== funcionalidadId),
       });
+    }
+  };
+
+  const handleModuloChange = (modulo: Modulo, checked: boolean) => {
+    const funcsDelModulo = funcionalidades
+      .filter((f) => modulo.funcionalidades.includes(f.nombre))
+      .map((f) => f.id_funcionalidad);
+    const current = grupoForm.funcionalidades || [];
+    if (checked) {
+      const newFuncionalidades = [...new Set([...current, ...funcsDelModulo])];
+      setGrupoForm({ ...grupoForm, funcionalidades: newFuncionalidades });
+    } else {
+      const newFuncionalidades = current.filter(
+        (id) => !funcsDelModulo.includes(id)
+      );
+      setGrupoForm({ ...grupoForm, funcionalidades: newFuncionalidades });
     }
   };
 
@@ -249,57 +316,113 @@ export function GruposPage() {
                   className="transition-all duration-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
-              <div className="space-y-2">
+              <div className="space-y-3">
                 <Label className="flex items-center gap-2 text-gray-700">
                   <Check className="h-5 w-5 text-green-500" />
-                  Funcionalidades
+                  Funcionalidades por Módulo
                 </Label>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-2">
-                  {funcionalidades.map((func) => (
-                    <label
-                      key={func.id_funcionalidad}
-                      className={`flex items-center gap-2 p-2 rounded-lg border cursor-pointer transition-all duration-200 ${
-                        grupoForm.funcionalidades?.includes(
-                          func.id_funcionalidad,
-                        )
-                          ? "border-green-500 bg-green-50 text-green-700"
-                          : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"
-                      }`}
+                {MODULOS.map((modulo) => {
+                  const funcsDelModulo = funcionalidades.filter((f) =>
+                    modulo.funcionalidades.includes(f.nombre)
+                  );
+                  const todasSeleccionadas = funcsDelModulo.every((f) =>
+                    grupoForm.funcionalidades?.includes(f.id_funcionalidad)
+                  );
+                  const algunasSeleccionadas = funcsDelModulo.some((f) =>
+                    grupoForm.funcionalidades?.includes(f.id_funcionalidad)
+                  );
+                  return (
+                    <div
+                      key={modulo.nombre}
+                      className="border rounded-lg overflow-hidden"
                     >
-                      <input
-                        type="checkbox"
-                        checked={
-                          grupoForm.funcionalidades?.includes(
-                            func.id_funcionalidad,
-                          ) || false
-                        }
-                        onChange={(e) =>
-                          handleFuncionalidadChange(
-                            func.id_funcionalidad,
-                            e.target.checked,
-                          )
-                        }
-                        className="sr-only"
-                      />
-                      <div
-                        className={`w-4 h-4 rounded border flex items-center justify-center ${
-                          grupoForm.funcionalidades?.includes(
-                            func.id_funcionalidad,
-                          )
-                            ? "bg-green-500 border-green-500"
-                            : "border-gray-300"
+                      <label
+                        className={`flex items-center gap-3 p-3 cursor-pointer transition-colors ${
+                          todasSeleccionadas
+                            ? "bg-green-50 border-green-500"
+                            : "bg-gray-50 hover:bg-gray-100"
                         }`}
                       >
-                        {grupoForm.funcionalidades?.includes(
-                          func.id_funcionalidad,
-                        ) && <Check className="w-3 h-3 text-white" />}
+                        <input
+                          type="checkbox"
+                          checked={todasSeleccionadas}
+                          onChange={(e) =>
+                            handleModuloChange(modulo, e.target.checked)
+                          }
+                          className="sr-only"
+                        />
+                        <div
+                          className={`w-5 h-5 rounded border flex items-center justify-center ${
+                            todasSeleccionadas
+                              ? "bg-green-500 border-green-500"
+                              : algunasSeleccionadas
+                                ? "bg-green-100 border-green-500"
+                                : "border-gray-300"
+                          }`}
+                        >
+                          {todasSeleccionadas && (
+                            <Check className="w-3 h-3 text-white" />
+                          )}
+                          {algunasSeleccionadas && !todasSeleccionadas && (
+                            <div className="w-2 h-2 rounded-full bg-green-500" />
+                          )}
+                        </div>
+                        <span className="font-semibold text-gray-800 flex-1">
+                          {modulo.nombre}
+                        </span>
+                        <span className="text-xs text-gray-500">
+                          ({funcsDelModulo.length})
+                        </span>
+                      </label>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 p-3 bg-white">
+                        {funcsDelModulo.map((func) => (
+                          <label
+                            key={func.id_funcionalidad}
+                            className={`flex items-center gap-2 p-2 rounded border cursor-pointer transition-all duration-200 ${
+                              grupoForm.funcionalidades?.includes(
+                                func.id_funcionalidad,
+                              )
+                                ? "border-green-500 bg-green-50 text-green-700"
+                                : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"
+                            }`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={
+                                grupoForm.funcionalidades?.includes(
+                                  func.id_funcionalidad,
+                                ) || false
+                              }
+                              onChange={(e) =>
+                                handleFuncionalidadChange(
+                                  func.id_funcionalidad,
+                                  e.target.checked,
+                                )
+                              }
+                              className="sr-only"
+                            />
+                            <div
+                              className={`w-4 h-4 rounded border flex items-center justify-center ${
+                                grupoForm.funcionalidades?.includes(
+                                  func.id_funcionalidad,
+                                )
+                                  ? "bg-green-500 border-green-500"
+                                  : "border-gray-300"
+                              }`}
+                            >
+                              {grupoForm.funcionalidades?.includes(
+                                func.id_funcionalidad,
+                              ) && <Check className="w-3 h-3 text-white" />}
+                            </div>
+                            <span className="text-sm font-medium capitalize">
+                              {func.nombre.replace(/_/g, " ")}
+                            </span>
+                          </label>
+                        ))}
                       </div>
-                      <span className="text-sm font-medium capitalize">
-                        {func.nombre}
-                      </span>
-                    </label>
-                  ))}
-                </div>
+                    </div>
+                  );
+                })}
               </div>
               <div className="flex gap-3 pt-2">
                 <Button

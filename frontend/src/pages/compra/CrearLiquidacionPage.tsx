@@ -444,8 +444,13 @@ export function CrearLiquidacionPage() {
                 <p className="text-gray-500 py-4">No hay productos en los anexos de este proveedor</p>
               ) : (
                 <div className="space-y-4 max-h-96 overflow-y-auto">
-                  {itemsPorAnexo.map((grupo: any) => {
-                    const productosALiquidar = grupo.productos.filter((p: any) => p.estado === 'A LIQUIDAR');
+                  {itemsPorAnexo.filter((grupo: any) => {
+                    const productosActivos = grupo.productos.filter(
+                      (p: any) => p.estado !== 'LIQUIDADO'
+                    );
+                    return productosActivos.length > 0;
+                  }).map((grupo: any) => {
+                    const productosALiquidar = grupo.productos.filter((p: any) => p.estado !== 'LIQUIDADO');
                     const seleccionadosDelAnexo = selectedProductos.filter(id => {
                       const producto = grupo.productos.find((p: any) => p.id_producto_en_liquidacion === id);
                       return !!producto;
@@ -481,21 +486,17 @@ export function CrearLiquidacionPage() {
                             <tr>
                               <th className="px-3 py-2 text-left w-10"></th>
                               <th className="px-3 py-2 text-left">Producto</th>
-                              <th className="px-3 py-2 text-right">A Liquidar</th>
-                              <th className="px-3 py-2 text-right">Por Liquidar</th>
                               <th className="px-3 py-2 text-right">Precio</th>
                               <th className="px-3 py-2 text-right">Total</th>
                               <th className="px-3 py-2 text-center">Estado</th>
                             </tr>
                           </thead>
                           <tbody className="divide-y">
-                            {grupo.productos.map((item: any) => {
+                            {grupo.productos.filter((item: any) => item.estado !== 'LIQUIDADO').map((item: any) => {
                               const isALiquidar = item.estado === 'A LIQUIDAR';
-                              const isLiquidado = item.estado === 'LIQUIDADO';
-                              const isCompraVenta = item.es_compra_venta === true;
-                              const isConsignacion = item.origen === 'CONSIGNACION';
+                              const isConsignacion = item.estado === 'EN CONSIGNACION';
                               const pelIds = item.pel_ids && item.pel_ids.length > 0 ? item.pel_ids : (item.id_producto_en_liquidacion ? [item.id_producto_en_liquidacion] : []);
-                              const isSelected = isALiquidar && pelIds.length > 0 && pelIds.some((id: number) => selectedProductos.includes(id));
+                              const isSelected = pelIds.length > 0 && pelIds.some((id: number) => selectedProductos.includes(id));
                               const toggleSelect = () => {
                                 if (isSelected) {
                                   handleProductoDeselect(pelIds);
@@ -504,35 +505,25 @@ export function CrearLiquidacionPage() {
                                 }
                               };
                               return (
-                                <tr key={`${item.id_item_anexo}-${item.id_anexo}-${item.id_producto_en_liquidacion || 'none'}`} className={`hover:bg-gray-50 ${!isALiquidar ? 'opacity-60' : ''} ${isCompraVenta ? 'bg-yellow-50' : ''}`}>
+                                <tr key={`${item.id_item_anexo}-${item.id_anexo}-${item.id_producto_en_liquidacion || 'none'}`} className="hover:bg-gray-50">
                                   <td className="px-3 py-2">
-                                    {isALiquidar && pelIds.length > 0 ? (
-                                      <input
-                                        type="checkbox"
-                                        checked={isSelected}
-                                        onChange={toggleSelect}
-                                        className="rounded"
-                                      />
-                                    ) : (
-                                      <span className="text-gray-300">-</span>
-                                    )}
+                                    <input
+                                      type="checkbox"
+                                      checked={isSelected}
+                                      onChange={toggleSelect}
+                                      className="rounded"
+                                    />
                                   </td>
                                   <td className="px-3 py-2">{item.producto_nombre || `Producto ${item.id_producto}`}</td>
-                                  <td className="px-3 py-2 text-right">{item.cantidad}</td>
-                                  <td className="px-3 py-2 text-right">
-                                    {isConsignacion ? (item.por_liquidar !== undefined ? item.por_liquidar : (item.cantidad_original || 0) - (item.cantidad_liquidada || 0)) : '-'}
-                                  </td>
                                   <td className="px-3 py-2 text-right">${Number(item.precio_venta).toFixed(2)}</td>
                                   <td className="px-3 py-2 text-right font-medium">
                                     ${(item.precio_venta * item.cantidad).toFixed(2)}
                                   </td>
                                   <td className="px-3 py-2 text-center">
                                     <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${
-                                      isLiquidado ? 'bg-green-100 text-green-800' :
-                                      isALiquidar ? 'bg-blue-100 text-blue-800' :
-                                      'bg-gray-100 text-gray-600'
+                                      isConsignacion ? 'bg-gray-100 text-gray-600' : 'bg-blue-100 text-blue-800'
                                     }`}>
-                                      {isLiquidado ? 'Liquidado' : isALiquidar ? 'A Liquidar' : 'En Consignación'}
+                                      {isConsignacion ? 'En Consignación' : 'A Liquidar'}
                                     </span>
                                   </td>
                                 </tr>

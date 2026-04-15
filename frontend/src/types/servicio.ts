@@ -47,6 +47,7 @@ export interface SolicitudServicio {
   material_asumido_x: boolean;
   id_usuario?: number;
   aprobado: boolean;
+  codigo_proyecto?: string;
 }
 
 export interface SolicitudServicioCreate {
@@ -69,29 +70,10 @@ export interface SolicitudServicioCreate {
   material_asumido_x?: boolean;
   id_usuario?: number;
   aprobado?: boolean;
+  codigo_proyecto?: string;
 }
 
-export interface SolicitudServicioUpdate {
-  id_cliente?: number;
-  id_contrato?: number;
-  id_suplemento?: number;
-  codigo_solicitud?: string;
-  numero?: string;
-  nombres_rep?: string;
-  apellido1_rep?: string;
-  apellido2_rep?: string;
-  ci_rep?: string;
-  telefono_rep?: string;
-  cargo?: string;
-  descripcion?: string;
-  fecha_solicitud?: string;
-  fecha_entrega?: string;
-  estado?: string;
-  observaciones?: string;
-  material_asumido_x?: boolean;
-  id_usuario?: number;
-  aprobado?: boolean;
-}
+export interface SolicitudServicioUpdate extends Partial<SolicitudServicioCreate> {}
 
 export interface Etapa {
   id_etapa: number;

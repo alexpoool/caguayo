@@ -1,5 +1,6 @@
 import os
 from typing import List
+import psycopg2
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -64,7 +65,9 @@ class DatabaseService:
     @staticmethod
     def crear_base_datos(base_datos: str) -> List[str]:
         sql_path = os.path.join(
-            os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "sql", "db.sql"
+            os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
+            "sql",
+            "init.sql",
         )
 
         with open(sql_path, "r", encoding="utf-8") as f:

@@ -292,9 +292,43 @@ export function CompraConveniosPage() {
         </div>
         
         <div className="grid gap-4 md:grid-cols-2">
-          <div><Label>Fecha *</Label><Input type="date" value={formData.fecha || ''} onChange={(e: any) => setFormData({...formData, fecha: e.target.value})} /></div>
+          <div>
+            <Label>Fecha *</Label>
+            <div className="flex gap-2">
+              <input 
+                type="date" 
+                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-sky-500 outline-none transition-colors" 
+                value={formData.fecha || ''} 
+                onChange={(e: any) => setFormData({...formData, fecha: e.target.value})} 
+              />
+              <button 
+                type="button" 
+                onClick={() => setFormData({...formData, fecha: new Date().toISOString().split('T')[0]})} 
+                className="px-3 py-2 bg-sky-600 text-white rounded-lg hover:bg-sky-700 transition-colors text-sm font-medium whitespace-nowrap"
+              >
+                Hoy
+              </button>
+            </div>
+          </div>
           
-          <div><Label>Vigencia *</Label><Input type="date" value={formData.vigencia || ''} onChange={(e: any) => setFormData({...formData, vigencia: e.target.value})} /></div>
+          <div>
+            <Label>Vigencia *</Label>
+            <div className="flex gap-2">
+              <input 
+                type="date" 
+                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-sky-500 outline-none transition-colors" 
+                value={formData.vigencia || ''} 
+                onChange={(e: any) => setFormData({...formData, vigencia: e.target.value})} 
+              />
+              <button 
+                type="button" 
+                onClick={() => setFormData({...formData, vigencia: new Date().toISOString().split('T')[0]})} 
+                className="px-3 py-2 bg-sky-600 text-white rounded-lg hover:bg-sky-700 transition-colors text-sm font-medium whitespace-nowrap"
+              >
+                Hoy
+              </button>
+            </div>
+          </div>
         </div>
         
         <div className="flex gap-2 mt-6">

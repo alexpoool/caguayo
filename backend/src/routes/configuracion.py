@@ -9,7 +9,6 @@ from src.services.proveedor_convenio_service import (
     TipoProveedorService,
 )
 from src.services.tipo_dependencia_service import tipo_dependencia_service
-from src.services.tipo_cuenta_service import tipo_cuenta_service
 from src.dto import (
     TipoContratoCreate,
     TipoContratoRead,
@@ -29,9 +28,6 @@ from src.dto import (
     TipoDependenciaCreate,
     TipoDependenciaRead,
     TipoDependenciaUpdate,
-    TipoCuentaCreate,
-    TipoCuentaRead,
-    TipoCuentaUpdate,
 )
 
 router = APIRouter(
@@ -341,54 +337,3 @@ async def eliminar_tipo_dependencia(
     success = await tipo_dependencia_service.delete(db, tipo_id)
     if not success:
         raise HTTPException(status_code=404, detail="Tipo de dependencia no encontrado")
-
-
-# Endpoints para Tipos de Cuenta
-@router.get("/tipos-cuenta", response_model=List[TipoCuentaRead])
-async def listar_tipos_cuenta(
-    skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=1000),
-    db: AsyncSession = Depends(get_session),
-):
-    return await tipo_cuenta_service.get_all(db, skip=skip, limit=limit)
-
-
-@router.post("/tipos-cuenta", response_model=TipoCuentaRead, status_code=201)
-async def crear_tipo_cuenta(
-    data: TipoCuentaCreate,
-    db: AsyncSession = Depends(get_session),
-):
-    return await tipo_cuenta_service.create(db, data)
-
-
-@router.get("/tipos-cuenta/{tipo_id}", response_model=TipoCuentaRead)
-async def obtener_tipo_cuenta(
-    tipo_id: int,
-    db: AsyncSession = Depends(get_session),
-):
-    result = await tipo_cuenta_service.get(db, tipo_id)
-    if not result:
-        raise HTTPException(status_code=404, detail="Tipo de cuenta no encontrado")
-    return result
-
-
-@router.put("/tipos-cuenta/{tipo_id}", response_model=TipoCuentaRead)
-async def actualizar_tipo_cuenta(
-    tipo_id: int,
-    data: TipoCuentaUpdate,
-    db: AsyncSession = Depends(get_session),
-):
-    result = await tipo_cuenta_service.update(db, tipo_id, data)
-    if not result:
-        raise HTTPException(status_code=404, detail="Tipo de cuenta no encontrado")
-    return result
-
-
-@router.delete("/tipos-cuenta/{tipo_id}", status_code=204)
-async def eliminar_tipo_cuenta(
-    tipo_id: int,
-    db: AsyncSession = Depends(get_session),
-):
-    success = await tipo_cuenta_service.delete(db, tipo_id)
-    if not success:
-        raise HTTPException(status_code=404, detail="Tipo de cuenta no encontrado")

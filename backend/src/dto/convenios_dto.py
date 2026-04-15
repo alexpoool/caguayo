@@ -133,6 +133,7 @@ class ItemAnexoBase(SQLModel):
     cantidad: int
     precio_venta: Decimal
     id_moneda: int
+    codigo: Optional[str] = None
 
 
 class ItemAnexoCreate(ItemAnexoBase):
@@ -143,6 +144,7 @@ class ItemAnexoRead(ItemAnexoBase):
     id_item_anexo: int
     id_anexo: int
     precio_compra: Decimal
+    codigo: Optional[str] = None
 
 
 class AnexoCreate(AnexoBase):

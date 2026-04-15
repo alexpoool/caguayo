@@ -73,10 +73,10 @@ export interface ClienteWithVentas extends Cliente {
 }
 
 export interface ClienteCreate {
-  numero_cliente: string;
+  numero_cliente?: string;
   nombre: string;
   tipo_persona: 'NATURAL' | 'JURIDICA' | 'TCP';
-  cedula_rif: string;
+  cedula_rif?: string;
   telefono?: string;
   email?: string;
   fax?: string;
@@ -84,10 +84,10 @@ export interface ClienteCreate {
   id_provincia?: number;
   id_municipio?: number;
   codigo_postal?: string;
-  direccion: string;
-  tipo_relacion: 'CLIENTE' | 'PROVEEDOR' | 'AMBAS';
-  estado: 'ACTIVO' | 'INACTIVO';
-  fecha_registro: string;
+  direccion?: string;
+  tipo_relacion?: 'CLIENTE' | 'PROVEEDOR' | 'AMBAS';
+  estado?: 'ACTIVO' | 'INACTIVO';
+  fecha_registro?: string;
   activo?: boolean;
 }
 

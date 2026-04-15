@@ -81,12 +81,6 @@ from .cuentas_dto import (
     CuentaRead,
     CuentaUpdate,
 )
-from .tipo_cuenta_dto import (
-    TipoCuentaBase,
-    TipoCuentaCreate,
-    TipoCuentaRead,
-    TipoCuentaUpdate,
-)
 from .dependencias_dto import (
     TipoDependenciaBase,
     TipoDependenciaCreate,
@@ -290,7 +284,6 @@ __all__ = [
     "ConvenioBase",
     "ConvenioCreate",
     "ConvenioRead",
-    
     "ConvenioSimpleRead",
     "AnexoBase",
     "AnexoCreate",
@@ -350,10 +343,6 @@ __all__ = [
     "CuentaCreate",
     "CuentaRead",
     "CuentaUpdate",
-    "TipoCuentaBase",
-    "TipoCuentaCreate",
-    "TipoCuentaRead",
-    "TipoCuentaUpdate",
     "GrupoBase",
     "GrupoCreate",
     "GrupoRead",
@@ -382,4 +371,9 @@ __all__ = [
     "ProductosEnLiquidacionRead",
     "ProductosEnLiquidacionUpdate",
 ]
-VentaRead.model_rebuild(_types_namespace={"ClienteRead": ClienteRead, "ClienteReadWithVentas": ClienteReadWithVentas})
+VentaRead.model_rebuild(
+    _types_namespace={
+        "ClienteRead": ClienteRead,
+        "ClienteReadWithVentas": ClienteReadWithVentas,
+    }
+)

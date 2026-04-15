@@ -636,15 +636,6 @@ export function LiquidacionesPage() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => { setSelectedLiquidacion(liquidacion); setShowDetailModal(true); }}
-                          className="text-blue-600 hover:text-blue-800 hover:bg-blue-50 h-8 w-8"
-                          title="Ver detalle"
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
                           onClick={() => handleViewDocument(liquidacion)}
                           className="text-blue-600 hover:text-blue-800 hover:bg-blue-50 h-8 w-8"
                           title="Ver documento"

@@ -85,7 +85,7 @@ async def listar_dependencias(
         selectinload(Dependencia.tipo_dependencia),
         selectinload(Dependencia.provincia),
         selectinload(Dependencia.municipio),
-        selectinload(Dependencia.cuentas).selectinload(Cuenta.tipo_cuenta),
+        selectinload(Dependencia.cuentas),
     )
     if search:
         statement = statement.where(
@@ -106,7 +106,7 @@ async def listar_dependencias_jerarquia(
         selectinload(Dependencia.tipo_dependencia),
         selectinload(Dependencia.provincia),
         selectinload(Dependencia.municipio),
-        selectinload(Dependencia.cuentas).selectinload(Cuenta.tipo_cuenta),
+        selectinload(Dependencia.cuentas),
     )
     if padre_id:
         statement = statement.where(Dependencia.codigo_padre == padre_id)
@@ -149,7 +149,7 @@ async def crear_dependencia(
             selectinload(Dependencia.tipo_dependencia),
             selectinload(Dependencia.provincia),
             selectinload(Dependencia.municipio),
-            selectinload(Dependencia.cuentas).selectinload(Cuenta.tipo_cuenta),
+            selectinload(Dependencia.cuentas),
             selectinload(Dependencia.padre),
         )
     )
@@ -183,7 +183,7 @@ async def obtener_dependencia(
             selectinload(Dependencia.tipo_dependencia),
             selectinload(Dependencia.provincia),
             selectinload(Dependencia.municipio),
-            selectinload(Dependencia.cuentas).selectinload(Cuenta.tipo_cuenta),
+            selectinload(Dependencia.cuentas),
         )
     )
     results = await db.exec(statement)
@@ -224,13 +224,11 @@ async def actualizar_dependencia(
             selectinload(Dependencia.tipo_dependencia),
             selectinload(Dependencia.provincia),
             selectinload(Dependencia.municipio),
-            selectinload(Dependencia.cuentas).selectinload(Cuenta.tipo_cuenta),
+            selectinload(Dependencia.cuentas),
             selectinload(Dependencia.padre).selectinload(Dependencia.tipo_dependencia),
             selectinload(Dependencia.padre).selectinload(Dependencia.provincia),
             selectinload(Dependencia.padre).selectinload(Dependencia.municipio),
-            selectinload(Dependencia.padre)
-            .selectinload(Dependencia.cuentas)
-            .selectinload(Cuenta.tipo_cuenta),
+            selectinload(Dependencia.padre).selectinload(Dependencia.cuentas),
             selectinload(Dependencia.padre).selectinload(Dependencia.padre),
         )
     )

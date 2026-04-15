@@ -55,6 +55,7 @@ class SolicitudServicioBase(SQLModel):
     material_asumido_x: bool = False
     id_usuario: Optional[int] = None
     aprobado: bool = False
+    codigo_proyecto: Optional[str] = None
 
 
 class SolicitudServicioCreate(SolicitudServicioBase):
@@ -84,6 +85,7 @@ class SolicitudServicioUpdate(SQLModel):
     material_asumido_x: Optional[bool] = None
     id_usuario: Optional[int] = None
     aprobado: Optional[bool] = None
+    codigo_proyecto: Optional[str] = None
 
 
 # ==========================================

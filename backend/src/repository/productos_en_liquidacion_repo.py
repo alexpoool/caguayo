@@ -25,6 +25,11 @@ class ProductosEnLiquidacionRepository(CRUDBase[ProductosEnLiquidacion, dict, di
     ) -> List[ProductosEnLiquidacion]:
         statement = (
             select(ProductosEnLiquidacion)
+            .options(
+                selectinload(ProductosEnLiquidacion.producto),
+                selectinload(ProductosEnLiquidacion.moneda),
+                selectinload(ProductosEnLiquidacion.anexo),
+            )
             .order_by(ProductosEnLiquidacion.fecha.desc())
             .offset(skip)
             .limit(limit)
@@ -41,6 +46,7 @@ class ProductosEnLiquidacionRepository(CRUDBase[ProductosEnLiquidacion, dict, di
             .options(
                 selectinload(ProductosEnLiquidacion.producto),
                 selectinload(ProductosEnLiquidacion.moneda),
+                selectinload(ProductosEnLiquidacion.anexo),
             )
             .order_by(ProductosEnLiquidacion.fecha.desc())
             .offset(skip)
@@ -58,6 +64,7 @@ class ProductosEnLiquidacionRepository(CRUDBase[ProductosEnLiquidacion, dict, di
             .options(
                 selectinload(ProductosEnLiquidacion.producto),
                 selectinload(ProductosEnLiquidacion.moneda),
+                selectinload(ProductosEnLiquidacion.anexo),
             )
             .order_by(ProductosEnLiquidacion.fecha_liquidacion.desc())
             .offset(skip)

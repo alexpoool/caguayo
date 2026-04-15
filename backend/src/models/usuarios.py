@@ -25,6 +25,7 @@ class Usuario(SQLModel, table=True):
     nombre: str = Field(max_length=100)
     primer_apellido: str = Field(max_length=100)
     segundo_apellido: Optional[str] = Field(default=None, max_length=100)
+    cargo: str = Field(max_length=200)
     alias: str = Field(max_length=50, unique=True)
     contrasenia: str = Field(max_length=255)
     id_grupo: int = Field(foreign_key="grupo.id_grupo")

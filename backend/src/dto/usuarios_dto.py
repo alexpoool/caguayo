@@ -38,6 +38,7 @@ class UsuarioBase(SQLModel):
     nombre: str
     primer_apellido: str
     segundo_apellido: Optional[str] = None
+    cargo: str
     id_grupo: int
     id_dependencia: Optional[int] = None
 
@@ -58,6 +59,7 @@ class UsuarioRead(SQLModel):
     nombre: str
     primer_apellido: str
     segundo_apellido: Optional[str] = None
+    cargo: str
     alias: str
     id_grupo: int
     id_dependencia: Optional[int] = None
@@ -71,5 +73,6 @@ class UsuarioUpdate(SQLModel):
     nombre: Optional[str] = None
     primer_apellido: Optional[str] = None
     segundo_apellido: Optional[str] = None
+    cargo: Optional[str] = None
     id_grupo: Optional[int] = None
     id_dependencia: Optional[int] = None

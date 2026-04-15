@@ -86,16 +86,32 @@ export const TCPForm: React.FC<DatosTCPFormProps> = ({
         </div>
         <div>
           <Label>Fecha de Aprobación</Label>
-          <Input
-            type="date"
-            value={data.fecha_aprobacion || ""}
-            onChange={(e) =>
-              setDatos({
-                ...data,
-                fecha_aprobacion: e.target.value,
-              })
-            }
-          />
+          <div className="flex gap-2">
+            <input
+              type="date"
+              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-violet-500 outline-none transition-colors"
+              value={data.fecha_aprobacion || ""}
+              onChange={(e) =>
+                setDatos({
+                  ...data,
+                  fecha_aprobacion: e.target.value,
+                })
+              }
+            />
+            <button
+              type="button"
+              onClick={() => {
+                const today = new Date().toISOString().split('T')[0];
+                setDatos({
+                  ...data,
+                  fecha_aprobacion: today,
+                });
+              }}
+              className="px-3 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition-colors text-sm font-medium whitespace-nowrap"
+            >
+              Hoy
+            </button>
+          </div>
         </div>
       </CardContent>
     </Card>

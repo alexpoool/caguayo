@@ -131,6 +131,7 @@ class ItemFacturaBase(SQLModel):
     cantidad: int
     precio_venta: Decimal
     id_moneda: int
+    codigo: Optional[str] = None
 
 
 class ItemFacturaCreate(ItemFacturaBase):
@@ -141,6 +142,7 @@ class ItemFacturaRead(ItemFacturaBase):
     id_item_factura: int
     id_factura: int
     precio_compra: Decimal
+    codigo: Optional[str] = None
 
 
 class FacturaBase(SQLModel):
@@ -186,6 +188,7 @@ class ItemVentaEfectivoBase(SQLModel):
     cantidad: int
     precio_venta: Decimal
     id_moneda: int
+    codigo: Optional[str] = None
 
 
 class ItemVentaEfectivoCreate(ItemVentaEfectivoBase):
@@ -196,6 +199,7 @@ class ItemVentaEfectivoRead(ItemVentaEfectivoBase):
     id_item_venta_efectivo: int
     id_venta_efectivo: int
     precio_compra: Decimal
+    codigo: Optional[str] = None
 
 
 class VentaEfectivoBase(SQLModel):

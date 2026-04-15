@@ -7,7 +7,6 @@ import type { Grupo, GrupoCreate, GrupoUpdate, Funcionalidad, Usuario, UsuarioCr
 import type { TipoDependencia, TipoDependenciaCreate, TipoDependenciaUpdate, Dependencia, DependenciaConCuentasCreate, DependenciaUpdate } from '../types/dependencia';
 import type { Provincia, Municipio } from '../types/ubicacion';
 import type { Moneda } from '../types/moneda';
-import type { TipoCuenta, TipoCuentaCreate, TipoCuentaUpdate } from '../types/tipo_cuenta';
 
 export const configuracionService = {
   getTiposContrato: async (): Promise<TipoContrato[]> => {
@@ -72,22 +71,6 @@ export const configuracionService = {
 
   deleteTipoConvenio: async (id: number): Promise<void> => {
     await apiClient.delete(`/configuracion/tipos-convenios/${id}`);
-  },
-
-  getTiposCuenta: async (): Promise<TipoCuenta[]> => {
-    return await apiClient.get('/configuracion/tipos-cuenta');
-  },
-
-  createTipoCuenta: async (data: TipoCuentaCreate): Promise<TipoCuenta> => {
-    return await apiClient.post('/configuracion/tipos-cuenta', data);
-  },
-
-  updateTipoCuenta: async (id: number, data: TipoCuentaUpdate): Promise<TipoCuenta> => {
-    return await apiClient.put(`/configuracion/tipos-cuenta/${id}`, data);
-  },
-
-  deleteTipoCuenta: async (id: number): Promise<void> => {
-    await apiClient.delete(`/configuracion/tipos-cuenta/${id}`);
   },
 };
 

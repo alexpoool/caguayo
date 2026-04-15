@@ -1067,19 +1067,6 @@ export function VentasPage() {
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => {
-                            setSelectedVenta(venta);
-                            setView("detail");
-                          }}
-                          className="text-blue-600 hover:text-blue-800 hover:bg-blue-50 h-8 w-8"
-                          title="Ver detalle"
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Button>
-
                         {venta.estado === "PENDIENTE" && (
                           <Button
                             variant="ghost"

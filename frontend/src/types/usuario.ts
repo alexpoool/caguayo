@@ -35,6 +35,7 @@ export interface Usuario {
   nombre: string;
   primer_apellido: string;
   segundo_apellido?: string;
+  cargo: string;
   alias: string;
   id_grupo: number;
   id_dependencia?: number;
@@ -49,6 +50,7 @@ export interface UsuarioCreate {
   nombre: string;
   primer_apellido: string;
   segundo_apellido?: string;
+  cargo: string;
   id_grupo: number;
   id_dependencia?: number;
 }
@@ -58,6 +60,7 @@ export interface UsuarioUpdate {
   nombre?: string;
   primer_apellido?: string;
   segundo_apellido?: string;
+  cargo?: string;
   id_grupo?: number;
   id_dependencia?: number;
 }

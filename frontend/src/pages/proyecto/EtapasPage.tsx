@@ -149,9 +149,9 @@ export function EtapasPage() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div className="flex items-center gap-4">
-          <Button variant="outline" onClick={() => navigate('/proyectos/solicitudes')} className="gap-2">
+          <Button variant="outline" onClick={() => navigate('/proyectos/proyectos')} className="gap-2">
             <ArrowLeft className="h-4 w-4" />
-            Solicitudes
+            Proyectos
           </Button>
           <div className="p-3 bg-gradient-to-br from-teal-500 to-cyan-600 rounded-xl shadow-lg animate-bounce-subtle">
             <Layers className="h-8 w-8 text-white" />
@@ -180,7 +180,7 @@ export function EtapasPage() {
               <Tag className="h-5 w-5 text-teal-600" />
               <div>
                 <p className="text-sm text-teal-700 font-medium">Solicitud seleccionada</p>
-                <p className="text-lg font-bold text-teal-900">{solicitudInfo?.codigo_solicitud || 'N/A'} — {solicitudInfo?.numero || 'N/A'}</p>
+                <p className="text-lg font-bold text-teal-900">{solicitudInfo?.codigo_solicitud}</p>
               </div>
             </div>
           </CardContent>
@@ -219,7 +219,7 @@ export function EtapasPage() {
                 </TableHead>
                 <TableHead>Pagada</TableHead>
                 <TableHead>Facturas</TableHead>
-                <TableHead>Creadores</TableHead>
+                <TableHead>Realizadores</TableHead>
                 <TableHead>Tareas</TableHead>
                 <TableHead className="text-right">Acciones</TableHead>
               </TableRow>
@@ -269,11 +269,11 @@ export function EtapasPage() {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => navigate(`/proyectos/creadores?etapa=${item.id_etapa}`)}
+                        onClick={() => navigate(`/proyectos/realizadores?etapa=${item.id_etapa}`)}
                         className="gap-1 text-blue-600 border-blue-200 hover:bg-blue-50 hover:text-blue-700"
                       >
                         <Users className="h-3.5 w-3.5" />
-                        Creadores
+                        Realizadores
                       </Button>
                     </TableCell>
                     <TableCell onClick={(e) => e.stopPropagation()}>
@@ -352,11 +352,39 @@ export function EtapasPage() {
             </div>
             <div>
               <Label className="text-sm font-medium">Fecha Entrega</Label>
-              <Input type="date" value={formData.fecha_entrega || ''} onChange={(e: any) => setFormData({...formData, fecha_entrega: e.target.value})} className="mt-1" />
+              <div className="flex gap-2">
+                <input 
+                  type="date" 
+                  className="flex-1 mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition-colors" 
+                  value={formData.fecha_entrega || ''} 
+                  onChange={(e: any) => setFormData({...formData, fecha_entrega: e.target.value})} 
+                />
+                <button 
+                  type="button" 
+                  onClick={() => setFormData({...formData, fecha_entrega: new Date().toISOString().split('T')[0]})} 
+                  className="mt-1 px-3 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors text-sm font-medium whitespace-nowrap"
+                >
+                  Hoy
+                </button>
+              </div>
             </div>
             <div>
               <Label className="text-sm font-medium">Fecha Pago</Label>
-              <Input type="date" value={formData.fecha_pago || ''} onChange={(e: any) => setFormData({...formData, fecha_pago: e.target.value})} className="mt-1" />
+              <div className="flex gap-2">
+                <input 
+                  type="date" 
+                  className="flex-1 mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition-colors" 
+                  value={formData.fecha_pago || ''} 
+                  onChange={(e: any) => setFormData({...formData, fecha_pago: e.target.value})} 
+                />
+                <button 
+                  type="button" 
+                  onClick={() => setFormData({...formData, fecha_pago: new Date().toISOString().split('T')[0]})} 
+                  className="mt-1 px-3 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors text-sm font-medium whitespace-nowrap"
+                >
+                  Hoy
+                </button>
+              </div>
             </div>
             <div>
               <Label className="text-sm font-medium">Valor</Label>
@@ -461,7 +489,7 @@ export function EtapasPage() {
             </div>
             <div className="p-6 border-t border-gray-200 bg-gray-50 flex justify-end gap-3 flex-wrap">
               <button onClick={() => navigate(`/proyectos/facturas-servicio?etapa=${detailModal.item!.id_etapa}`)} className="px-4 py-2 text-white bg-purple-600 rounded-xl hover:bg-purple-700 transition-colors font-medium text-sm">Facturas</button>
-              <button onClick={() => navigate(`/proyectos/creadores?etapa=${detailModal.item!.id_etapa}`)} className="px-4 py-2 text-white bg-blue-600 rounded-xl hover:bg-blue-700 transition-colors font-medium text-sm">Creadores</button>
+              <button onClick={() => navigate(`/proyectos/realizadores?etapa=${detailModal.item!.id_etapa}`)} className="px-4 py-2 text-white bg-blue-600 rounded-xl hover:bg-blue-700 transition-colors font-medium text-sm">Realizadores</button>
               <button onClick={() => navigate(`/proyectos/tareas-etapa?etapa=${detailModal.item!.id_etapa}`)} className="px-4 py-2 text-white bg-amber-600 rounded-xl hover:bg-amber-700 transition-colors font-medium text-sm">Tareas</button>
               <button onClick={() => setDetailModal({ isOpen: false, item: null })} className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors font-medium text-sm">Cerrar</button>
             </div>

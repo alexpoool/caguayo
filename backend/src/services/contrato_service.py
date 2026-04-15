@@ -335,6 +335,7 @@ async def map_factura_to_read(
         fecha=factura.fecha,
         monto=factura.monto,
         pago_actual=factura.pago_actual,
+        items=factura.items_factura,
     )
 
 
@@ -486,6 +487,7 @@ async def map_venta_efectivo_to_read(
         )
         if dependencia
         else None,
+        items=venta.items_venta_efectivo,
     )
 
 

@@ -1,10 +1,12 @@
 from typing import List
 import logging
+import os
+import psycopg2
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlmodel import select
 from src.database.connection import get_session
-from src.services.movimiento_service import MovimientoService
+from src.services.movimiento_service import MovimientoService, Movimiento
 from src.models import TipoMovimiento
 from src.dto import (
     MovimientoCreate,
@@ -135,13 +137,75 @@ async def crear_ajuste(
     Recibe:
     - id_movimiento_origen: ID del movimiento de recepción original
     - destinos: Lista de dependencias destino con sus cantidades
+    - destinos[].nombre_database: (opcional) base de datos para destinos en otra DB
 
     Crea:
     - 1 movimiento AJUSTE_QUITAR (factor -1) en la dependencia origen
     - N movimientos AJUSTE_AGREGAR (factor +1) en cada dependencia destino
     """
     try:
-        result = await MovimientoService.crear_ajuste(db, ajuste)
+        import os
+        import psycopg2
+
+        # Obtener DB actual del usuario
+        db_name_actual = os.getenv("AUTH_DATABASE", "caguayo_inventario")
+
+        # Separar destinos en DB actual vs otras DBs
+        destinos_misma_db = []
+        destinos_otra_db = []
+
+        for d in ajuste.destinos:
+            if d.nombre_database and d.nombre_database != db_name_actual:
+                destinos_otra_db.append(d)
+            else:
+                destinos_misma_db.append(d)
+
+        # Separar destinos vacíos para no crear en DB actual
+        destinos_para_servicio = []
+        for d in ajuste.destinos:
+            if not d.nombre_database or d.nombre_database == db_name_actual:
+                # Crear en DB actual (solo si no especifica otra DB)
+                d.nombre_database = None  # Limpiar para que no pase al servicio
+                destinos_para_servicio.append(d)
+
+        # Crear ajuste solo con destinos de DB actual
+        ajuste_servicio = AjusteCreate(
+            id_movimiento_origen=ajuste.id_movimiento_origen,
+            id_producto=ajuste.id_producto,
+            id_dependencia_origen=ajuste.id_dependencia_origen,
+            destinos=[d for d in destinos_para_servicio],
+            fecha=ajuste.fecha,
+            observacion=ajuste.observacion,
+            codigo=ajuste.codigo,
+        )
+        result = await MovimientoService.crear_ajuste(db, ajuste_servicio)
+
+        # Si hay destinos en otras DBs, crear movimientos directamente
+        for destino in destinos_otra_db:
+            if destino.nombre_database and result and len(result) > 0:
+                try:
+                    origen_data = {
+                        "id_dependencia": destino.id_dependencia,
+                        "id_producto": ajuste.id_producto,
+                        "cantidad": destino.cantidad,
+                        "observacion": ajuste.observacion,
+                        "codigo": ajuste.codigo or "",
+                    }
+                    mov_creado = MovimientoService.crear_movimiento_en_otra_db(
+                        destino.nombre_database,
+                        origen_data,
+                    )
+                    logger.info(
+                        f"Movimiento creado en {destino.nombre_database}: {mov_creado}"
+                    )
+                except Exception as e:
+                    logger.error(f"Error al crear en {destino.nombre_database}: {e}")
+                    logger.info(
+                        f"Movimiento creado en {destino.nombre_database}: {mov_creado}"
+                    )
+                except Exception as e:
+                    logger.error(f"Error al crear en {destino.nombre_database}: {e}")
+
         return result
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))

@@ -56,7 +56,6 @@ import {
 } from "../services/administracion";
 import type { Dependencia, DependenciaCreate } from "../types/dependencia";
 import type { CuentaCreate } from "../types/cuenta";
-import type { TipoCuenta } from "../types/tipo_cuenta";
 
 interface ArbolDependenciaProps {
   dependencias: Dependencia[];
@@ -162,7 +161,6 @@ export function DependenciasPage() {
     banco: "",
     sucursal: undefined,
     direccion: "",
-    id_tipo_cuenta: 0,
   });
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
@@ -203,9 +201,10 @@ export function DependenciasPage() {
 
   const [copiedTable, setCopiedTable] = useState<string | null>(null);
 
-  const { data: tiposCuenta = [] } = useQuery<TipoCuenta[]>({
+const { data: tiposCuenta = [] } = useQuery({
     queryKey: ["tiposCuenta"],
-    queryFn: () => configuracionService.getTiposCuenta(),
+    queryFn: () => Promise.resolve([]),
+    staleTime: 1000 * 60 * 5,
   });
 
   const { data: dependencias = [] } = useQuery({
@@ -345,7 +344,6 @@ export function DependenciasPage() {
       banco: "",
       sucursal: undefined,
       direccion: "",
-      id_tipo_cuenta: 0,
     });
     setSelectedPadre(null);
   };
@@ -413,7 +411,6 @@ export function DependenciasPage() {
           banco: c.banco,
           sucursal: c.sucursal,
           direccion: c.direccion,
-          id_tipo_cuenta: c.id_tipo_cuenta,
         })),
       );
     } else {
@@ -486,7 +483,7 @@ export function DependenciasPage() {
       !cuentaForm.titular ||
       !cuentaForm.banco ||
       !cuentaForm.direccion ||
-      !cuentaForm.id_tipo_cuenta
+      !cuentaForm.titular
     ) {
       toast.error("Todos los campos de la cuenta son requeridos");
       return;
@@ -511,7 +508,6 @@ export function DependenciasPage() {
       banco: "",
       sucursal: undefined,
       direccion: "",
-      id_tipo_cuenta: 0,
     });
   };
 
@@ -526,12 +522,11 @@ export function DependenciasPage() {
     if (editingCuentaIndex === index) {
       setEditingCuentaIndex(null);
       setCuentaForm({
-        titular: "",
-        banco: "",
-        sucursal: undefined,
-        direccion: "",
-        id_tipo_cuenta: 0,
-      });
+titular: "",
+      banco: "",
+      sucursal: undefined,
+      direccion: "",
+    });
     }
     toast.success("Cuenta eliminada");
   };
@@ -939,29 +934,6 @@ export function DependenciasPage() {
                   className="transition-all duration-200 focus:ring-2 focus:ring-red-500 focus:border-red-500"
                 />
               </div>
-              <div className="space-y-2">
-                <Label className="flex items-center gap-2 text-gray-700">
-                  <CreditCard className="h-5 w-5 text-indigo-500" />
-                  Tipo de Cuenta *
-                </Label>
-                <select
-                  className="w-full border rounded-md px-3 py-2 transition-all duration-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                  value={cuentaForm.id_tipo_cuenta}
-                  onChange={(e) =>
-                    setCuentaForm({
-                      ...cuentaForm,
-                      id_tipo_cuenta: parseInt(e.target.value),
-                    })
-                  }
-                >
-                  <option value={0}>Seleccione tipo de cuenta</option>
-                  {tiposCuenta.map((tc) => (
-                    <option key={tc.id_tipo_cuenta} value={tc.id_tipo_cuenta}>
-                      {tc.nombre}
-                    </option>
-                  ))}
-                </select>
-              </div>
               <div className="col-span-2 flex items-end gap-3">
                 <Button
                   type="button"
@@ -994,7 +966,6 @@ export function DependenciasPage() {
                         banco: "",
                         sucursal: undefined,
                         direccion: "",
-                        id_tipo_cuenta: 0,
                       });
                     }}
                     className="hover:bg-gray-200 transition-colors"
@@ -1033,10 +1004,6 @@ export function DependenciasPage() {
                   </TableHeader>
                   <TableBody>
                     {cuentas.map((cuenta, index) => {
-                      const tipoCuenta = tiposCuenta.find(
-                        (tc: TipoCuenta) =>
-                          tc.id_tipo_cuenta === cuenta.id_tipo_cuenta,
-                      );
                       return (
                         <TableRow
                           key={index}
@@ -1049,7 +1016,7 @@ export function DependenciasPage() {
                           <TableCell>
                             <span className="inline-flex items-center gap-1 px-2 py-1 bg-indigo-100 text-indigo-700 rounded-full text-sm">
                               <CreditCard className="h-3 w-3" />
-                              {tipoCuenta?.nombre || "-"}
+                              -
                             </span>
                           </TableCell>
                           <TableCell className="text-right">
@@ -1650,11 +1617,6 @@ export function DependenciasPage() {
                             <TableBody>
                               {dependenciaDetalle.cuentas.map(
                                 (cuenta, index) => {
-                                  const tipoCuenta = tiposCuenta.find(
-                                    (tc) =>
-                                      tc.id_tipo_cuenta ===
-                                      cuenta.id_tipo_cuenta,
-                                  );
                                   return (
                                     <TableRow
                                       key={index}
@@ -1667,7 +1629,7 @@ export function DependenciasPage() {
                                       <TableCell>
                                         <span className="inline-flex items-center gap-1 px-2 py-1 bg-indigo-100 text-indigo-700 rounded-full text-xs">
                                           <CreditCard className="h-3 w-3" />
-                                          {tipoCuenta?.nombre || "-"}
+                                          -
                                         </span>
                                       </TableCell>
                                       <TableCell className="text-right">
@@ -1805,20 +1767,6 @@ export function DependenciasPage() {
                   <p className="font-semibold text-gray-900">
                     {cuentaDetailModal.cuenta.direccion}
                   </p>
-                </div>
-                <div className="bg-gradient-to-br from-indigo-50 to-blue-50 rounded-md p-4 space-y-1">
-                  <Label className="flex items-center gap-2 text-indigo-600 text-sm font-medium">
-                    <CreditCard className="h-4 w-4" />
-                    Tipo de Cuenta
-                  </Label>
-                  <span className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-100 text-indigo-800 rounded-full text-sm font-bold">
-                    <CreditCard className="h-4 w-4" />
-                    {tiposCuenta.find(
-                      (tc) =>
-                        tc.id_tipo_cuenta ===
-                        cuentaDetailModal.cuenta!.id_tipo_cuenta,
-                    )?.nombre || "-"}
-                  </span>
                 </div>
               </div>
             </div>

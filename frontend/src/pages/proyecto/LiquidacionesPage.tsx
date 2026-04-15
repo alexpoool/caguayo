@@ -503,9 +503,9 @@ export function LiquidacionesPage() {
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div className="flex items-center gap-4">
               {filtroPersona && (
-                <Button variant="outline" onClick={() => navigate('/proyectos/creadores')} className="gap-2">
+                <Button variant="outline" onClick={() => navigate('/proyectos/realizadores')} className="gap-2">
                   <ArrowLeft className="h-4 w-4" />
-                  Volver a Creadores
+                  Volver a Realizadores
                 </Button>
               )}
               <div className="p-3 bg-gradient-to-br from-teal-500 to-cyan-600 rounded-xl shadow-lg">
@@ -513,7 +513,7 @@ export function LiquidacionesPage() {
               </div>
               <div>
                 <h1 className="text-2xl font-bold text-gray-900">Liquidaciones</h1>
-                <p className="text-gray-500 mt-1">Gestión de liquidaciones a creadores</p>
+                <p className="text-gray-500 mt-1">Gestión de liquidaciones a realizadores</p>
               </div>
             </div>
             <Button

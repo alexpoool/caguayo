@@ -37,6 +37,7 @@ export function RegisterPage() {
   const [nombre, setNombre] = useState("");
   const [primerApellido, setPrimerApellido] = useState("");
   const [segundoApellido, setSegundoApellido] = useState("");
+  const [cargo, setCargo] = useState("");
   const [alias, setAlias] = useState("");
   const [contrasenia, setContrasenia] = useState("");
   const [confirmarContrasenia, setConfirmarContrasenia] = useState("");
@@ -135,7 +136,7 @@ export function RegisterPage() {
       return;
     }
 
-    if (!ci.trim() || !nombre.trim() || !primerApellido.trim()) {
+    if (!ci.trim() || !nombre.trim() || !primerApellido.trim() || !cargo.trim()) {
       toast.error("Complete los datos personales");
       return;
     }
@@ -172,6 +173,7 @@ export function RegisterPage() {
         nombre: nombre.trim(),
         primer_apellido: primerApellido.trim(),
         segundo_apellido: segundoApellido.trim() || null,
+        cargo: cargo.trim(),
         alias: alias.trim(),
         contrasenia,
         base_datos: baseDatos,
@@ -306,8 +308,8 @@ export function RegisterPage() {
                 </div>
               </div>
 
-              {/* Fila 2: CI + Nombre + Apellido 1 + Apellido 2 */}
-              <div className="grid grid-cols-4 gap-4">
+              {/* Fila 2: CI + Nombre + Apellido 1 */}
+              <div className="grid grid-cols-3 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Carnet de Identidad
@@ -346,7 +348,10 @@ export function RegisterPage() {
                     disabled={!idDependencia}
                   />
                 </div>
+              </div>
 
+              {/* Fila 2b: Segundo Apellido + Cargo */}
+              <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Segundo Apellido
@@ -356,6 +361,19 @@ export function RegisterPage() {
                     placeholder="Segundo apellido"
                     value={segundoApellido}
                     onChange={(e) => setSegundoApellido(e.target.value)}
+                    disabled={!idDependencia}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Cargo
+                  </label>
+                  <Input
+                    type="text"
+                    placeholder="Cargo del usuario"
+                    value={cargo}
+                    onChange={(e) => setCargo(e.target.value)}
                     disabled={!idDependencia}
                   />
                 </div>

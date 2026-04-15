@@ -14,6 +14,7 @@ class RegisterRequest(BaseModel):
     nombre: str
     primer_apellido: str
     segundo_apellido: str | None = None
+    cargo: str
     alias: str
     contrasenia: str
     base_datos: str

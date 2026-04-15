@@ -97,7 +97,7 @@ GRANT SELECT ON ALL TABLES IN SCHEMA public TO usuariolector;
 5. Ejecutar el script de base de datos:
    ```bash
    # Ejecutar el schema completo
-   psql -U postgres -d caguayo_inventario -f sql/db.sql
+   psql -U postgres -d caguayo_inventario -f sql/init.sql
    ```
 
 6. Iniciar servidor de desarrollo:
@@ -254,7 +254,7 @@ caguayo/
 | **Grupo** | Grupos de usuarios para permisos |
 | **Funcionalidad** | Funcionalidades del sistema |
 | **GrupoFuncionalidad** | Relación grupo-funcionalidades |
-| **Usuario** | Usuarios del sistema con autenticación |
+| **Usuario** | Usuarios del sistema con autenticación y cargo |
 | **Sesion** | Control de sesiones de usuarios |
 | **ConexionDatabase** | Conexiones a otras bases de datos |
 
@@ -322,6 +322,34 @@ pg_dump -U postgres -d caguayo_inventario --schema-only > schema_actual.sql
 # 3. Aplicar los cambios directamente a la base de datos
 psql -U postgres -d caguayo_inventario -f sql/db.sql
 ```
+
+## 🗄️ Vistas de Base de Datos
+
+El sistema utiliza vistas en PostgreSQL para optimizar consultas.
+
+### v_databases
+
+Vista que lista todas las bases de datos disponibles en el servidor PostgreSQL (excepto templates).
+
+**Creación:**
+```sql
+CREATE OR REPLACE VIEW v_databases AS 
+SELECT datname as nombre_database 
+FROM pg_database 
+WHERE datistemplate = false 
+ORDER BY datname;
+```
+
+**Uso en el backend:**
+```python
+# En backend/src/routes/conexiones.py
+cur.execute("SELECT nombre_database FROM v_databases ORDER BY nombre_database")
+```
+
+**Propósito:**
+- Lista todas las bases de datos del servidor para el selector en el login
+- Evita lógica en Python para listar DBs
+- Mantiene la consulta en PostgreSQL optimizando rendimiento
 
 ## 🔒 Seguridad
 

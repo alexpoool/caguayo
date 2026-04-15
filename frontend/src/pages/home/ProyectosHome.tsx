@@ -37,7 +37,7 @@ export function ProyectosHome() {
             <div className="flex items-start gap-2 p-3 bg-purple-50 rounded-lg">
               <Users className="h-4 w-4 text-purple-600 mt-0.5 flex-shrink-0" />
               <div>
-                <h3 className="font-bold text-sm text-gray-800">Creadores</h3>
+                <h3 className="font-bold text-sm text-gray-800">Realizadores</h3>
                 <p className="text-xs text-gray-600 mt-0.5">Personas naturales asignadas a etapas de proyectos.</p>
               </div>
             </div>
@@ -54,7 +54,7 @@ export function ProyectosHome() {
               <Calculator className="h-4 w-4 text-green-600 mt-0.5 flex-shrink-0" />
               <div>
                 <h3 className="font-bold text-sm text-gray-800">Liquidaciones</h3>
-                <p className="text-xs text-gray-600 mt-0.5">Liquidación final a creadores con cálculos financieros automáticos.</p>
+                <p className="text-xs text-gray-600 mt-0.5">Liquidación final a realizadores con cálculos financieros automáticos.</p>
               </div>
             </div>
           </div>

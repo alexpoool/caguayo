@@ -59,13 +59,6 @@ CREATE TABLE estado_contrato (
     descripcion TEXT
 );
 
--- Tipos de Cuenta
-CREATE TABLE tipo_cuenta (
-    id_tipo_cuenta SERIAL PRIMARY KEY,
-    nombre VARCHAR(50) NOT NULL UNIQUE,
-    descripcion TEXT
-);
-
 -- Tipos de Entidad (para personas jurídicas)
 CREATE TABLE tipo_entidad (
     id_tipo_entidad SERIAL PRIMARY KEY,
@@ -242,6 +235,7 @@ CREATE TABLE usuarios (
     nombre VARCHAR(100) NOT NULL,
     primer_apellido VARCHAR(100) NOT NULL,
     segundo_apellido VARCHAR(100),
+    cargo VARCHAR(200) NOT NULL DEFAULT '',
     alias VARCHAR(50) NOT NULL UNIQUE,
     contrasenia VARCHAR(255) NOT NULL,
     id_grupo INTEGER NOT NULL REFERENCES grupo(id_grupo) ON DELETE CASCADE,
@@ -273,7 +267,6 @@ CREATE TABLE cuenta (
     id_cuenta SERIAL PRIMARY KEY,
     id_cliente INTEGER REFERENCES clientes(id_cliente) ON DELETE CASCADE,
     id_dependencia INTEGER REFERENCES dependencia(id_dependencia) ON DELETE SET NULL,
-    id_tipo_cuenta INTEGER REFERENCES tipo_cuenta(id_tipo_cuenta) ON DELETE SET NULL,
     id_moneda INTEGER REFERENCES moneda(id_moneda) ON DELETE SET NULL,
     titular VARCHAR(150) NOT NULL,
     banco VARCHAR(100) NOT NULL,
@@ -545,7 +538,6 @@ CREATE INDEX idx_dependencia_tipo ON dependencia(id_tipo_dependencia);
 CREATE INDEX idx_usuarios_grupo ON usuarios(id_grupo);
 CREATE INDEX idx_usuarios_dependencia ON usuarios(id_dependencia);
 CREATE INDEX idx_cuenta_dependencia ON cuenta(id_dependencia);
-CREATE INDEX idx_cuenta_tipo ON cuenta(id_tipo_cuenta);
 CREATE INDEX idx_cuenta_cliente ON cuenta(id_cliente);
 CREATE INDEX idx_anexo_dependencia ON anexo(id_dependencia);
 CREATE INDEX idx_item_anexo_anexo ON item_anexo(id_anexo);
@@ -572,11 +564,7 @@ CREATE INDEX idx_item_venta_efectivo_producto ON item_venta_efectivo(id_producto
 -- Monedas
 INSERT INTO moneda (nombre, denominacion, simbolo) VALUES 
 ('Dólar Americano', 'Dólar Estadounidense', 'USD'),
-('Euro', 'Euro de la Unión Europea', 'EUR'),
-('Peso Mexicano', 'Peso Mexicano', 'MXN'),
-('Peso Colombiano', 'Peso Colombiano', 'COP'),
-('Peso Cubano', 'Peso Cubano', 'CUP'),
-('BRICS', 'Alinza BRICS', 'BRICS');
+('Euro', 'Euro de la Unión Europea', 'EUR');
 
 -- Tipos de Contrato
 INSERT INTO tipo_contrato (nombre, descripcion) VALUES 
@@ -625,13 +613,6 @@ INSERT INTO tipo_proveedor (nombre, descripcion) VALUES
 ('Internacional', 'Proveedor internacional'),
 ('Persona Natural', 'Persona física como proveedor'),
 ('Persona Jurídica', 'Empresa o entidad jurídica como proveedor');
-
--- Tipos de Cuenta
-INSERT INTO tipo_cuenta (nombre, descripcion) VALUES 
-('Corriente', 'Cuenta corriente'),
-('Ahorros', 'Cuenta de ahorros'),
-('Moneda Nacional', 'Cuenta en moneda nacional'),
-('Moneda Extranjera', 'Cuenta en moneda extranjera');
 
 -- Categorías
 INSERT INTO categorias (nombre, descripcion) VALUES 
@@ -894,7 +875,8 @@ INSERT INTO funcionalidad (nombre) VALUES
 ('efectivo'),
 ('servicios'),
 ('solicitudes'),
-('creadores'),
+('realizadores'),
+('proyectos'),
 ('facturas_servicio'),
 ('liquidaciones_servicio');
 
@@ -910,12 +892,12 @@ INSERT INTO tipo_dependencia (nombre, descripcion) VALUES
 
 -- Dependencia matriz (oficina principal)
 INSERT INTO dependencia (id_tipo_dependencia, nombre, direccion, telefono, email, web, id_provincia, id_municipio, descripcion)
-VALUES (1, 'Caguayo', 'Vista Alegre', '+53 7 1234567', 'info@caguayo.cu', 'https://caguayo.cu', 14, 14, 'Oficina principal de Caguayo');
+VALUES (1, 'Caguayo S.A', 'Vista Alegre', '+53 7 1234567', 'info@caguayo.cu', 'https://caguayo.cu', 14, 14, 'Oficina principal de Caguayo');
 
 -- Usuario superadministrador (contraseña: Admin123@)
 INSERT INTO usuarios (ci, nombre, primer_apellido, segundo_apellido, alias, contrasenia, id_grupo, id_dependencia)
 VALUES 
-('00000000000', 'Administrador', 'Sistema', 'Caguayo', 'admin', '$2b$12$21cZipaElHLRaXOxScHGjOPbMVXpvxn2aSwQus/P4/Vs0z0bouTb2', 1, 1);
+('00000000000', 'Administrador', 'Principal', 'Sistema', 'admin', '$2b$12$21cZipaElHLRaXOxScHGjOPbMVXpvxn2aSwQus/P4/Vs0z0bouTb2', 1, 1);
 
 
 -- =====================================================
@@ -954,7 +936,8 @@ CREATE TABLE solicitud_servicio (
     observaciones TEXT,
     material_asumido_x BOOLEAN DEFAULT FALSE,
     id_usuario INTEGER,
-    aprobado BOOLEAN DEFAULT FALSE
+    aprobado BOOLEAN DEFAULT FALSE,
+    codigo_proyecto VARCHAR(50)
 );
 
 -- Etapas de la Solicitud

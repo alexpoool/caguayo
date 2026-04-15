@@ -68,9 +68,10 @@ import { FacturasPage } from './pages/ventas/FacturasPage';
 import { VentasEfectivoPage } from './pages/ventas/VentasEfectivoPage';
 import { ServiciosPage } from './pages/proyecto/ServiciosPage';
 import { SolicitudesPage } from './pages/proyecto/SolicitudesPage';
+import { ProyectosPage } from './pages/proyecto/ProyectosPage';
 import { EtapasPage } from './pages/proyecto/EtapasPage';
 import { TareasEtapaPage } from './pages/proyecto/TareasEtapaPage';
-import { CreadoresPage } from './pages/proyecto/CreadoresPage';
+import { RealizadoresPage } from './pages/proyecto/RealizadoresPage';
 import { FacturasServicioPage } from './pages/proyecto/FacturasServicioPage';
 import { PagosFacturaServicioPage } from './pages/proyecto/PagosFacturaServicioPage';
 import { LiquidacionesPage as ProyectoLiquidacionesPage } from './pages/proyecto/LiquidacionesPage';
@@ -92,7 +93,7 @@ const rutasPorModulo: Record<Modulo, string[]> = {
   administracion: ['/administracion', '/perfil'],
   venta: ['/venta', '/ventas', '/clientes', '/ventas/operaciones', '/ventas/contratos', '/ventas/suplementos', '/ventas/facturas', '/ventas/efectivo'],
   compra: ['/compra', '/compra/clientes', '/compra/convenios', '/compra/anexos', '/compra/liquidaciones', '/compra/productos-liquidacion'],
-  proyecto: ['/proyecto', '/proyectos', '/proyectos/servicios', '/proyectos/solicitudes', '/proyectos/etapas', '/proyectos/tareas-etapa', '/proyectos/creadores', '/proyectos/facturas-servicio', '/proyectos/pagos-factura-servicio', '/proyectos/liquidaciones'],
+  proyecto: ['/proyecto', '/proyectos', '/proyectos/servicios', '/proyectos/solicitudes', '/proyectos/proyectos', '/proyectos/etapas', '/proyectos/tareas-etapa', '/proyectos/realizadores', '/proyectos/facturas-servicio', '/proyectos/pagos-factura-servicio', '/proyectos/liquidaciones'],
   reportes: ['/reportes', '/reportes/existencias', '/reportes/movimientos-dependencia', '/reportes/movimientos-producto', '/reportes/proveedores'],
   home: ['/'],
 };
@@ -120,7 +121,7 @@ function ProtectedRoute({
 }
 
 function App() {
-  const { isAuthenticated, isLoading, user, logout } = useAuth();
+  const { isAuthenticated, isLoading, user, logout, hasFuncionalidad } = useAuth();
   const [moduloActivo, setModuloActivo] = useState<Modulo>('inventario');
   const [slimSidebar, setSlimSidebar] = useState(false);
   const [showAccountModal, setShowAccountModal] = useState(false);
@@ -256,136 +257,182 @@ function App() {
               <>
                 {moduloActivo === 'inventario' && (
               <ul className={`space-y-1 ${slimSidebar ? 'px-0' : 'px-3'}`}>
+                {hasFuncionalidad('movimientos') && (
                 <li>
                   <NavLink to="/movimientos" onClick={handleLinkClick} exact>
                     <ArrowLeftRight className="w-5 h-5" />
                     Movimientos
                   </NavLink>
                 </li>
+                )}
+                {hasFuncionalidad('pendientes') && (
                 <li>
                   <NavLink to="/movimientos/pendientes" onClick={handleLinkClick}>
                     <Clock className="w-6 h-6" />
                     Pendientes
                   </NavLink>
                 </li>
+                )}
+                {hasFuncionalidad('producto') && (
                 <li>
                   <NavLink to="/productos" onClick={handleLinkClick}>
                     <Boxes className="w-6 h-6" />
                     Productos
                   </NavLink>
                 </li>
+                )}
               </ul>
               )}
-              {moduloActivo === 'administracion' && (
+{moduloActivo === 'administracion' && (
               <ul className="space-y-1 px-3">
+                {hasFuncionalidad('configuracion') && (
                 <li>
                   <NavLink to="/configuracion" onClick={handleLinkClick}>
                     <Settings className="w-6 h-6" />
                     Configuración
                   </NavLink>
                 </li>
-              </ul>
                 )}
+              </ul>
+              )}
                 {moduloActivo === 'compra' && (
                   <ul className="space-y-1 px-3">
+                    {hasFuncionalidad('proveedores') && (
                     <li>
                       <NavLink to="/compra/clientes" onClick={handleLinkClick}>
                         <UserCircle className="w-6 h-6" />
                         Proveedores
                       </NavLink>
                     </li>
+                    )}
+                    {hasFuncionalidad('convenios') && (
                     <li>
                       <NavLink to="/compra/convenios" onClick={handleLinkClick}>
                         <FileText className="w-6 h-6" />
                         Convenios
                       </NavLink>
                     </li>
+                    )}
+                    {hasFuncionalidad('anexos') && (
                     <li>
                       <NavLink to="/compra/anexos" onClick={handleLinkClick}>
                         <Boxes className="w-6 h-6" />
                         Anexos
                       </NavLink>
                     </li>
+                    )}
+                    {hasFuncionalidad('liquidaciones') && (
                     <li>
                       <NavLink to="/compra/liquidaciones" onClick={handleLinkClick}>
                         <Coins className="w-6 h-6" />
                         Liquidaciones
                       </NavLink>
                     </li>
+                    )}
+                    {hasFuncionalidad('productos_liquidacion') && (
                     <li>
                       <NavLink to="/compra/productos-liquidacion" onClick={handleLinkClick}>
                         <Coins className="w-6 h-6" />
                         Productos en Liquidación
                       </NavLink>
                     </li>
+                    )}
                   </ul>
                 )}
                 {moduloActivo === 'venta' && (
                   <ul className="space-y-1 px-3">
+                    {hasFuncionalidad('clientes') && (
                     <li>
                       <NavLink to="/clientes" onClick={handleLinkClick}>
                         <UserCircle className="w-6 h-6" />
                         Clientes
                       </NavLink>
                     </li>
+                    )}
+                    {hasFuncionalidad('contratos') && (
                     <li>
                       <NavLink to="/ventas/contratos" onClick={handleLinkClick}>
                         <FilePlus className="w-6 h-6" />
                         Contrato
                       </NavLink>
                     </li>
+                    )}
+                    {hasFuncionalidad('suplementos') && (
                     <li>
                       <NavLink to="/ventas/suplementos" onClick={handleLinkClick}>
                         <FileText className="w-6 h-6" />
                         Suplemento
                       </NavLink>
                     </li>
+                    )}
+                    {hasFuncionalidad('facturas') && (
                     <li>
                       <NavLink to="/ventas/facturas" onClick={handleLinkClick}>
                         <Receipt className="w-6 h-6" />
                         Factura
                       </NavLink>
                     </li>
+                    )}
+                    {hasFuncionalidad('venta_efectivo') && (
                     <li>
                       <NavLink to="/ventas/efectivo" onClick={handleLinkClick}>
                         <DollarSign className="w-6 h-6" />
                         Efectivo
                       </NavLink>
                     </li>
+                    )}
                   </ul>
                 )}
                 {moduloActivo === 'proyecto' && (
                   <ul className="space-y-1 px-3">
+                    {hasFuncionalidad('servicios') && (
                     <li>
                       <NavLink to="/proyectos/servicios" onClick={handleLinkClick}>
                         <Wrench className="w-6 h-6" />
                         Servicios
                       </NavLink>
                     </li>
+                    )}
+                    {hasFuncionalidad('solicitudes') && (
                     <li>
                       <NavLink to="/proyectos/solicitudes" onClick={handleLinkClick}>
                         <ClipboardList className="w-6 h-6" />
                         Solicitudes
                       </NavLink>
                     </li>
+                    )}
+                    {hasFuncionalidad('proyectos') && (
                     <li>
-                      <NavLink to="/proyectos/creadores" onClick={handleLinkClick}>
-                        <Users className="w-6 h-6" />
-                        Creadores
+                      <NavLink to="/proyectos/proyectos" onClick={handleLinkClick}>
+                        <Layers className="w-6 h-6" />
+                        Proyectos
                       </NavLink>
                     </li>
+                    )}
+                    {hasFuncionalidad('realizadores') && (
+                    <li>
+                      <NavLink to="/proyectos/realizadores" onClick={handleLinkClick}>
+                        <Users className="w-6 h-6" />
+                        Realizadores
+                      </NavLink>
+                    </li>
+                    )}
+                    {hasFuncionalidad('facturas_servicio') && (
                     <li>
                       <NavLink to="/proyectos/facturas-servicio" onClick={handleLinkClick}>
                         <Receipt className="w-6 h-6" />
                         Facturas
                       </NavLink>
                     </li>
+                    )}
+                    {hasFuncionalidad('liquidaciones_servicio') && (
                     <li>
                       <NavLink to="/proyectos/liquidaciones" onClick={handleLinkClick}>
                         <Calculator className="w-6 h-6" />
                         Liquidaciones
                       </NavLink>
                     </li>
+                    )}
                   </ul>
                 )}
                 {moduloActivo === 'reportes' && (
@@ -419,7 +466,39 @@ function App() {
               </>
           </nav>
         </aside>
-        <header className={`${isHomePage ? 'col-start-1 col-end-3' : 'col-start-2 col-end-3'} row-start-1 row-end-2 sticky top-0 z-40 bg-white shadow-sm border-b border-gray-200 px-6 py-4 h-16 flex items-center justify-between`}>
+<header className={`${isHomePage ? 'col-start-1 col-end-3' : 'col-start-2 col-end-3'} row-start-1 row-end-2 sticky top-0 z-40 bg-white shadow-sm border-b border-gray-200 px-6 py-4 h-16 flex items-center justify-between`}>
+          <div className="flex items-center gap-6">
+            <div className="flex items-center gap-3 border-r border-gray-200 pr-6">
+              <img src="/default.jpg" alt="avatar" className="w-8 h-8 rounded-full object-cover" />
+              <div>
+                <div className="text-sm font-semibold">{user ? `${user.nombre} ${user.primer_apellido}` : 'Usuario'}</div>
+                <div className="text-xs text-slate-400">{user?.alias || 'Cuenta de usuario'}</div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-6">
+              {['compra', 'venta', 'proyecto', 'inventario', 'reportes'].map((moduloId) => {
+                const modulo = modulos.find(m => m.id === moduloId);
+                if (!modulo) return null;
+                const isActive = moduloActivo === modulo.id;
+                return (
+                  <button
+                    key={modulo.id}
+                    onClick={() => handleModuloClick(modulo.id)}
+                    className={`text-sm font-medium transition-all duration-300 ease-out hover:-translate-y-0.5 pb-1
+                      ${isActive
+                        ? 'text-blue-900 font-semibold border-b-2 border-blue-600'
+                        : 'text-blue-600 hover:text-blue-800'
+                      }
+                    `}
+                  >
+                    {modulo.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
           <div className="flex items-center gap-2">
             <Link
               to="/"
@@ -445,30 +524,6 @@ function App() {
               <UserCircle className="w-6 h-6 text-gray-700 group-hover:text-blue-600 transition-colors" />
             </button>
           </div>
-
-          <div className="flex items-center gap-6">
-            {['compra', 'venta', 'proyecto', 'inventario', 'reportes'].map((moduloId) => {
-              const modulo = modulos.find(m => m.id === moduloId);
-              if (!modulo) return null;
-              const isActive = moduloActivo === modulo.id;
-              return (
-                <button
-                  key={modulo.id}
-                  onClick={() => handleModuloClick(modulo.id)}
-                  className={`text-sm font-medium transition-all duration-300 ease-out hover:-translate-y-0.5 pb-1
-                    ${isActive
-                      ? 'text-blue-900 font-semibold border-b-2 border-blue-600'
-                      : 'text-blue-600 hover:text-blue-800'
-                    }
-                  `}
-                >
-                  {modulo.label}
-                </button>
-              );
-            })}
-          </div>
-            <div className="animate-fade-in-up animation-fill-both">
-            </div>
         </header>
         <div className={`${isHomePage ? 'col-start-1 col-end-3' : 'col-start-2 col-end-3'} row-start-2 row-end-3 min-w-0 flex flex-col overflow-hidden`}>
           <main className="flex-1 overflow-auto bg-gray-50 p-8">
@@ -628,6 +683,14 @@ function App() {
                   } 
                 />
                 <Route 
+                  path="/proyectos/proyectos" 
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/proyectos/proyectos">
+                      <ProyectosPage />
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route 
                   path="/proyectos/etapas" 
                   element={
                     <ProtectedRoute moduloActivo={moduloActivo} currentPath="/proyectos/etapas">
@@ -644,10 +707,10 @@ function App() {
                   } 
                 />
                 <Route 
-                  path="/proyectos/creadores" 
+                  path="/proyectos/realizadores" 
                   element={
-                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/proyectos/creadores">
-                      <CreadoresPage />
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/proyectos/realizadores">
+                      <RealizadoresPage />
                     </ProtectedRoute>
                   } 
                 />

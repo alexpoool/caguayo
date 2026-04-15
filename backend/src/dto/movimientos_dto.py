@@ -87,6 +87,7 @@ class MovimientoUpdate(SQLModel):
 class DestinoAjuste(SQLModel):
     id_dependencia: int
     cantidad: int
+    nombre_database: Optional[str] = None
 
 
 class AjusteCreate(SQLModel):
