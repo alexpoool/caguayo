@@ -1,8 +1,11 @@
 import os
-import psycopg2
-from fastapi import APIRouter, HTTPException
+from dotenv import load_dotenv
 from typing import List
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
+import psycopg2
+
+load_dotenv()
 
 router = APIRouter(prefix="/conexiones", tags=["conexiones"])
 

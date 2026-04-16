@@ -273,7 +273,7 @@ function App() {
                   </NavLink>
                 </li>
                 )}
-                {hasFuncionalidad('producto') && (
+                {hasFuncionalidad('productos') && (
                 <li>
                   <NavLink to="/productos" onClick={handleLinkClick}>
                     <Boxes className="w-6 h-6" />

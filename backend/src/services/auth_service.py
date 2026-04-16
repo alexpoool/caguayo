@@ -1,4 +1,8 @@
 import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
 from datetime import datetime, timedelta
 from typing import Optional, List
 from sqlalchemy import text
@@ -138,11 +142,17 @@ async def login(db: AsyncSession, login_data: LoginRequest) -> Optional[LoginRes
     results = await db.exec(statement)
     conexion = results.first()
 
-    # 2. Si no hay conexión en la BD central, usar valores por defecto
-    host = conexion.host if conexion else "localhost"
-    puerto = conexion.puerto if conexion else 5432
-    usuario_db = conexion.usuario if conexion else "postgres"
-    contrasenia_db = conexion.contrasenia if conexion else "1234"
+    # 2. Si no hay conexión en la BD central, usar valores por defecto del .env
+    host = conexion.host if conexion else os.getenv("ADMIN_DB_HOST", "localhost")
+    puerto = conexion.puerto if conexion else int(os.getenv("ADMIN_DB_PORT", 5432))
+    usuario_db = (
+        conexion.usuario if conexion else os.getenv("ADMIN_DB_USER", "postgres")
+    )
+    contrasenia_db = (
+        conexion.contrasenia
+        if conexion
+        else os.getenv("ADMIN_DB_PASSWORD", "debianpostgres")
+    )
 
     # 3. Conectarse a la base de datos seleccionada
     from sqlmodel import Session, create_engine

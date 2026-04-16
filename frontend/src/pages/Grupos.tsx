@@ -72,7 +72,7 @@ const MODULOS: Modulo[] = [
   },
   {
     nombre: "Inventario",
-    funcionalidades: ["movimientos", "pendientes", "producto"],
+    funcionalidades: ["movimientos", "pendientes", "productos"],
   },
   {
     nombre: "Administración",

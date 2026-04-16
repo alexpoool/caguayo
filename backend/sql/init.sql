@@ -4,6 +4,16 @@
 -- Organización: Primero tablas, luego inserciones de datos
 
 -- =====================================================
+-- VISTAS
+-- =====================================================
+
+CREATE OR REPLACE VIEW v_databases AS 
+SELECT datname as nombre_database 
+FROM pg_database 
+WHERE datistemplate = false 
+ORDER BY datname;
+
+-- =====================================================
 -- TABLAS DE CATÁLOGO
 -- =====================================================
 
@@ -891,8 +901,8 @@ INSERT INTO tipo_dependencia (nombre, descripcion) VALUES
 ('ALMACEN', 'Almacén de productos');
 
 -- Dependencia matriz (oficina principal)
-INSERT INTO dependencia (id_tipo_dependencia, nombre, direccion, telefono, email, web, id_provincia, id_municipio, descripcion)
-VALUES (1, 'Caguayo S.A', 'Vista Alegre', '+53 7 1234567', 'info@caguayo.cu', 'https://caguayo.cu', 14, 14, 'Oficina principal de Caguayo');
+INSERT INTO dependencia (id_tipo_dependencia, nombre, direccion, telefono, email, web, id_provincia, id_municipio, base_datos, descripcion)
+VALUES (1, 'Caguayo S.A', 'Vista Alegre', '+53 7 1234567', 'info@caguayo.cu', 'https://caguayo.cu', 14, 14, 'caguayosa', 'Oficina principal de Caguayo');
 
 -- Usuario superadministrador (contraseña: Admin123@)
 INSERT INTO usuarios (ci, nombre, primer_apellido, segundo_apellido, alias, contrasenia, id_grupo, id_dependencia)
