@@ -48,12 +48,15 @@ CREATE TABLE tipo_movimiento (
     factor INTEGER NOT NULL CHECK (factor IN (1, -1))
 );
 
--- Tipos de Dependencia
-CREATE TABLE tipo_dependencia (
-    id_tipo_dependencia SERIAL PRIMARY KEY,
-    nombre VARCHAR(20) NOT NULL UNIQUE,
-    descripcion TEXT
-);
+-- =====================================================
+-- NOTA: Las siguientes tablas se crean como foreign tables via replication.sql
+-- NO crear como tablas locales para evitar conflictos
+-- =====================================================
+-- CREATE TABLE tipo_dependencia (
+--     id_tipo_dependencia SERIAL PRIMARY KEY,
+--     nombre VARCHAR(20) NOT NULL UNIQUE,
+--     descripcion TEXT
+-- );
 
 -- Tipos de Contrato
 CREATE TABLE tipo_contrato (
@@ -212,23 +215,26 @@ CREATE TABLE grupo_funcionalidad (
     PRIMARY KEY (id_grupo, id_funcionalidad)
 );
 
--- Dependencias (Almacenes/Sucursales)
-CREATE TABLE dependencia (
-    id_dependencia SERIAL PRIMARY KEY,
-    id_tipo_dependencia INTEGER NOT NULL REFERENCES tipo_dependencia(id_tipo_dependencia) ON DELETE CASCADE,
-    codigo_padre INTEGER REFERENCES dependencia(id_dependencia) ON DELETE SET NULL,
-    nombre VARCHAR(100) NOT NULL,
-    direccion VARCHAR(255) NOT NULL,
-    telefono VARCHAR(20) NOT NULL,
-    email VARCHAR(100),
-    web VARCHAR(100),
-    id_provincia INTEGER REFERENCES provincia(id_provincia) ON DELETE SET NULL,
-    id_municipio INTEGER REFERENCES municipio(id_municipio) ON DELETE SET NULL,
-    base_datos VARCHAR(100),
-    host VARCHAR(100) DEFAULT 'localhost',
-    puerto INTEGER DEFAULT 5432,
-    descripcion TEXT
-);
+-- =====================================================
+-- NOTA: La tabla dependencia se crea como foreign table via replication.sql
+-- NO crear como tabla local para evitar conflictos
+-- =====================================================
+-- CREATE TABLE dependencia (
+--     id_dependencia SERIAL PRIMARY KEY,
+--     id_tipo_dependencia INTEGER NOT NULL REFERENCES tipo_dependencia(id_tipo_dependencia) ON DELETE CASCADE,
+--     codigo_padre INTEGER REFERENCES dependencia(id_dependencia) ON DELETE SET NULL,
+--     nombre VARCHAR(100) NOT NULL,
+--     direccion VARCHAR(255) NOT NULL,
+--     telefono VARCHAR(20) NOT NULL,
+--     email VARCHAR(100),
+--     web VARCHAR(100),
+--     id_provincia INTEGER REFERENCES provincia(id_provincia) ON DELETE SET NULL,
+--     id_municipio INTEGER REFERENCES municipio(id_municipio) ON DELETE SET NULL,
+--     base_datos VARCHAR(100),
+--     host VARCHAR(100) DEFAULT 'localhost',
+--     puerto INTEGER DEFAULT 5432,
+--     descripcion TEXT
+-- );
 
 -- Datos Generales de Dependencia
 CREATE TABLE datos_generales_dependencia (
@@ -1049,3 +1055,108 @@ CREATE TABLE persona_liquidacion (
     gasto_empresa NUMERIC(15,2) DEFAULT 0.00,
     observacion TEXT
 );
+
+-- =====================================================
+-- TABLAS PARA REPLICACIÓN VÍA DBLINK
+-- =====================================================
+-- Estas tablas se crean en la BD central y se replican a las BDs de dependencias via dblink
+
+-- Cuentas bancarias de dependencias (sin id_cliente)
+CREATE TABLE IF NOT EXISTS cuenta_dependencias (
+    id_cuenta SERIAL PRIMARY KEY,
+    id_dependencia INTEGER NOT NULL REFERENCES dependencia(id_dependencia),
+    id_moneda INTEGER REFERENCES moneda(id_moneda),
+    titular VARCHAR(150) NOT NULL,
+    banco VARCHAR(100) NOT NULL,
+    sucursal INTEGER,
+    numero_cuenta VARCHAR(50) NOT NULL,
+    direccion VARCHAR(255) NOT NULL
+);
+
+-- =====================================================
+-- FUNCIONES DBLINK PARA REPLICACIÓN
+-- =====================================================
+
+-- Función para crear el server dblink hacia la BD central
+CREATE OR REPLACE FUNCTION crear_dblink_central()
+RETURNS VOID AS $$
+BEGIN
+    -- Crear extensión dblink si no existe
+    CREATE EXTENSION IF NOT EXISTS dblink;
+    
+    -- Crear server hacia la BD central (caguayosa)
+    CREATE SERVER IF NOT EXISTS servidor_central
+    FOREIGN DATA WRAPPER postgres_fdw
+    OPTIONS (
+        host 'localhost',
+        dbname 'caguayosa',
+        port '5432'
+    );
+    
+    -- Crear user mapping si no existe
+    CREATE USER MAPPING IF NOT EXISTS FOR CURRENT_USER
+    SERVER servidor_central
+    OPTIONS (user 'postgres', password 'debianpostgres');
+END;
+$$ LANGUAGE plpgsql;
+
+-- Función para crear foreign tables hacia la BD central
+CREATE OR REPLACE FUNCTION crear_foreign_tables_dependencias()
+RETURNS VOID AS $$
+BEGIN
+    -- Tabla tipo_dependencia
+    DROP FOREIGN TABLE IF EXISTS tipo_dependencia;
+    CREATE FOREIGN TABLE tipo_dependencia (
+        id_tipo_dependencia INTEGER,
+        nombre VARCHAR(20),
+        descripcion TEXT
+    ) SERVER servidor_central
+    OPTIONS (table_name 'tipo_dependencia');
+    
+    -- Tabla dependencia
+    DROP FOREIGN TABLE IF EXISTS dependencia;
+    CREATE FOREIGN TABLE dependencia (
+        id_dependencia INTEGER,
+        id_tipo_dependencia INTEGER,
+        codigo_padre INTEGER,
+        nombre VARCHAR(100),
+        direccion VARCHAR(255),
+        telefono VARCHAR(20),
+        email VARCHAR(100),
+        web VARCHAR(100),
+        base_datos VARCHAR(100),
+        host VARCHAR(100),
+        puerto INTEGER,
+        id_provincia INTEGER,
+        id_municipio INTEGER,
+        descripcion TEXT
+    ) SERVER servidor_central
+    OPTIONS (table_name 'dependencia');
+    
+    -- Tabla cuenta_dependencias
+    DROP FOREIGN TABLE IF EXISTS cuenta_dependencias;
+    CREATE FOREIGN TABLE cuenta_dependencias (
+        id_cuenta INTEGER,
+        id_dependencia INTEGER,
+        id_moneda INTEGER,
+        titular VARCHAR(150),
+        banco VARCHAR(100),
+        sucursal INTEGER,
+        numero_cuenta VARCHAR(50),
+        direccion VARCHAR(255)
+    ) SERVER servidor_central
+    OPTIONS (table_name 'cuenta_dependencias');
+END;
+$$ LANGUAGE plpgsql;
+
+-- Función completa para configurar dblink en una dependencia
+CREATE OR REPLACE FUNCTION configurar_replicacion_central()
+RETURNS VOID AS $$
+BEGIN
+    PERFORM crear_dblink_central();
+    PERFORM crear_foreign_tables_dependencias();
+END;
+$$ LANGUAGE plpgsql;
+
+-- Ejecutar configuración de dblink automáticamente al crear la BD
+SELECT configurar_replicacion_central();

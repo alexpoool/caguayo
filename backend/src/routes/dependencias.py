@@ -4,7 +4,14 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlalchemy import text
 from sqlalchemy.orm import selectinload
 from src.database.connection import get_session
-from src.models import Dependencia, TipoDependencia, Provincia, Municipio, Cuenta
+from src.models import (
+    Dependencia,
+    TipoDependencia,
+    Provincia,
+    Municipio,
+    Cuenta,
+    CuentaDependencia,
+)
 from src.dto import (
     DependenciaCreate,
     DependenciaConCuentasCreate,
@@ -16,8 +23,12 @@ from src.dto import (
     ProvinciaRead,
     MunicipioRead,
     CuentaCreate,
+    CuentaDependenciaCreate,
+    CuentaDependenciaRead,
+    CuentaDependenciaUpdate,
 )
 from src.services.cuenta_service import cuenta_service
+from src.services.cuenta_dependencia_service import cuenta_dependencia_service
 from src.services.database_service import DatabaseService
 from src.repository.base import CRUDBase
 from sqlmodel import select, func
@@ -84,7 +95,7 @@ async def listar_dependencias(
     statement = select(Dependencia).options(
         selectinload(Dependencia.tipo_dependencia),
         selectinload(Dependencia.provincia),
-        selectinload(Dependencia.municipio),
+        selectinload(Dependencia.municipio).selectinload(Municipio.provincia),
         selectinload(Dependencia.cuentas),
     )
     if search:
@@ -142,6 +153,37 @@ async def crear_dependencia(
             )
             await cuenta_service.create(db, cuenta_create)
 
+    # Primero crear la BD si existe base_datos
+    if data.dependencia.base_datos:
+        try:
+            tablas = DatabaseService.crear_base_datos(data.dependencia.base_datos)
+        except Exception as e:
+            # Si falla la creación de la BD, eliminamos la dependencia creada
+            await dependencia_repo.remove(db, id=db_obj.id_dependencia)
+            raise HTTPException(
+                status_code=500,
+                detail=f"Error al crear la base de datos: {str(e)}",
+            )
+        # Retornar solo los datos básicos para evitar error de serialización
+        return DependenciaRead(
+            id_dependencia=db_obj.id_dependencia,
+            id_tipo_dependencia=db_obj.id_tipo_dependencia,
+            codigo_padre=db_obj.codigo_padre,
+            nombre=db_obj.nombre,
+            direccion=db_obj.direccion,
+            telefono=db_obj.telefono,
+            email=db_obj.email,
+            web=db_obj.web,
+            base_datos=db_obj.base_datos,
+            host=db_obj.host,
+            puerto=db_obj.puerto,
+            id_provincia=db_obj.id_provincia,
+            id_municipio=db_obj.id_municipio,
+            descripcion=db_obj.descripcion,
+            tablas_creadas=tablas,
+        )
+
+    # Si no tiene base_datos, cargar con relaciones normalmente
     statement = (
         select(Dependencia)
         .where(Dependencia.id_dependencia == db_obj.id_dependencia)
@@ -157,16 +199,6 @@ async def crear_dependencia(
     db_obj = results.first()
 
     response = DependenciaRead.model_validate(db_obj)
-
-    if data.dependencia.base_datos:
-        try:
-            tablas = DatabaseService.crear_base_datos(data.dependencia.base_datos)
-            response.tablas_creadas = tablas
-        except Exception as e:
-            raise HTTPException(
-                status_code=500,
-                detail=f"Dependencia creada, pero error al crear la base de datos: {str(e)}",
-            )
 
     return response
 
@@ -320,3 +352,103 @@ async def listar_municipios(
     results = await db.exec(statement)
     municipios = results.all()
     return [MunicipioRead.model_validate(m) for m in municipios]
+
+
+# =====================================================
+# Endpoints para cuenta_dependencias (replicación dblink)
+# =====================================================
+
+
+@router.get("/cuentas", response_model=List[CuentaDependenciaRead])
+async def listar_cuentas_dependencias(
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=1000),
+    db: AsyncSession = Depends(get_session),
+):
+    """Listar cuentas bancarias de dependencias (desde BD central)."""
+    return await cuenta_dependencia_service.get_all(db, skip=skip, limit=limit)
+
+
+@router.get("/cuentas/{cuenta_id}", response_model=CuentaDependenciaRead)
+async def obtener_cuenta_dependencia(
+    cuenta_id: int,
+    db: AsyncSession = Depends(get_session),
+):
+    """Obtener una cuenta de dependencia por ID."""
+    cuenta = await cuenta_dependencia_service.get(db, cuenta_id)
+    if not cuenta:
+        raise HTTPException(
+            status_code=404, detail="Cuenta de dependencia no encontrada"
+        )
+    return cuenta
+
+
+@router.get(
+    "/cuentas/dependencia/{id_dependencia}",
+    response_model=List[CuentaDependenciaRead],
+)
+async def obtener_cuentas_por_dependencia(
+    id_dependencia: int,
+    db: AsyncSession = Depends(get_session),
+):
+    """Obtener cuentas por ID de dependencia."""
+    from sqlmodel import select
+
+    statement = select(CuentaDependencia).where(
+        CuentaDependencia.id_dependencia == id_dependencia
+    )
+    results = await db.exec(statement)
+    return results.all()
+
+
+@router.post("/cuentas", response_model=CuentaDependenciaRead, status_code=201)
+async def crear_cuenta_dependencia(
+    cuenta: CuentaDependenciaCreate,
+    db: AsyncSession = Depends(get_session),
+):
+    """Crear una cuenta de dependencia (se guarda en BD central)."""
+    try:
+        return await cuenta_dependencia_service.create(db, cuenta)
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Error al crear cuenta de dependencia: {str(e)}"
+        )
+
+
+@router.put("/cuentas/{cuenta_id}", response_model=CuentaDependenciaRead)
+async def actualizar_cuenta_dependencia(
+    cuenta_id: int,
+    update_data: CuentaDependenciaUpdate,
+    db: AsyncSession = Depends(get_session),
+):
+    """Actualizar una cuenta de dependencia."""
+    try:
+        cuenta = await cuenta_dependencia_service.update(db, cuenta_id, update_data)
+        if not cuenta:
+            raise HTTPException(
+                status_code=404, detail="Cuenta de dependencia no encontrada"
+            )
+        return cuenta
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error al actualizar cuenta de dependencia: {str(e)}",
+        )
+
+
+@router.delete("/cuentas/{cuenta_id}", status_code=204)
+async def eliminar_cuenta_dependencia(
+    cuenta_id: int,
+    db: AsyncSession = Depends(get_session),
+):
+    """Eliminar una cuenta de dependencia."""
+    try:
+        success = await cuenta_dependencia_service.delete(db, cuenta_id)
+        if not success:
+            raise HTTPException(
+                status_code=404, detail="Cuenta de dependencia no encontrada"
+            )
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Error al eliminar cuenta de dependencia: {str(e)}"
+        )

@@ -3,6 +3,7 @@ from typing import Optional, List, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from .cuenta import Cuenta
+    from .cuenta_dependencia import CuentaDependencia
     from .usuarios import Usuario
     from .movimiento import Movimiento
     from .cliente import Cliente
@@ -49,7 +50,8 @@ class Dependencia(SQLModel, table=True):
         sa_relationship_kwargs={"remote_side": "Dependencia.id_dependencia"},
     )
     subdependencias: List["Dependencia"] = Relationship(back_populates="padre")
-    cuentas: List["Cuenta"] = Relationship(
+    cuentas: List["Cuenta"] = Relationship(back_populates="dependencia")
+    cuentas_dependencias: List["CuentaDependencia"] = Relationship(
         back_populates="dependencia"
     )
     provincia: Optional["Provincia"] = Relationship(back_populates="dependencias")

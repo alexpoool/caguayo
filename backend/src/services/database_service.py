@@ -107,6 +107,36 @@ class DatabaseService:
         conn.autocommit = True
         cur = conn.cursor()
 
+        # Crear extensión postgres_fdw necesaria para dblink
+        try:
+            cur.execute("CREATE EXTENSION IF NOT EXISTS postgres_fdw;")
+            print("[DB SERVICE] Extension postgres_fdw created", flush=True)
+        except Exception as e:
+            print(
+                f"[DB SERVICE] Error creating postgres_fdw extension: {e}", flush=True
+            )
+
+        # Crear servidor y user mapping hacia la BD central
+        try:
+            cur.execute("DROP SERVER IF EXISTS servidor_central CASCADE;")
+            cur.execute("""
+                CREATE SERVER servidor_central
+                FOREIGN DATA WRAPPER postgres_fdw
+                OPTIONS (
+                    host 'localhost',
+                    dbname 'caguayosa',
+                    port '5432'
+                );
+            """)
+            cur.execute("""
+                CREATE USER MAPPING IF NOT EXISTS FOR CURRENT_USER
+                SERVER servidor_central
+                OPTIONS (user 'postgres', password 'debianpostgres');
+            """)
+            print("[DB SERVICE] Server and user mapping created", flush=True)
+        except Exception as e:
+            print(f"[DB SERVICE] Error creating server: {e}", flush=True)
+
         statements = DatabaseService._split_sql_statements(schema_sql)
         print(
             f"[DB SERVICE] Found {len(statements)} SQL statements to execute",
@@ -136,6 +166,71 @@ class DatabaseService:
             f"[DB SERVICE] Executed: {success_count} success, {error_count} errors",
             flush=True,
         )
+
+        # Ejecutar replication.sql usando subprocess (psql) para evitar problemas con psycopg2
+        replication_sql_path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
+            "sql",
+            "replication.sql",
+        )
+
+        print("[DB SERVICE] === START REPLICATION ===", flush=True)
+        print(f"[DB SERVICE] replication_sql_path: {replication_sql_path}", flush=True)
+        print("[DB SERVICE] Executing replication.sql via psql...", flush=True)
+
+        import subprocess
+
+        db_user = os.getenv("ADMIN_DB_USER", "postgres")
+        db_password = os.getenv("ADMIN_DB_PASSWORD", "postgres")
+
+        env = os.environ.copy()
+        env["PGPASSWORD"] = db_password
+
+        try:
+            result = subprocess.run(
+                [
+                    "psql",
+                    "-U",
+                    db_user,
+                    "-h",
+                    "localhost",
+                    "-d",
+                    base_datos,
+                    "-f",
+                    replication_sql_path,
+                ],
+                env=env,
+                capture_output=True,
+                text=True,
+                timeout=30,
+            )
+            print(f"[DB SERVICE] psql return code: {result.returncode}", flush=True)
+            if result.stdout:
+                print(f"[DB SERVICE] psql stdout: {result.stdout[:500]}", flush=True)
+            if result.stderr:
+                print(f"[DB SERVICE] psql stderr: {result.stderr[:500]}", flush=True)
+        except Exception as e:
+            print(f"[DB SERVICE] Error executing psql: {e}", flush=True)
+
+        print("[DB SERVICE] === END REPLICATION ===", flush=True)
+
+        # Verificar que se crearon las foreign tables
+        try:
+            cur.execute("""
+                SELECT c.relname, c.relkind 
+                FROM pg_class c 
+                JOIN pg_namespace n ON c.relnamespace = n.oid 
+                WHERE n.nspname = 'public' 
+                AND c.relname IN ('tipo_dependencia', 'dependencia', 'cuenta_dependencias')
+            """)
+            resultados = cur.fetchall()
+            print(
+                "[DB SERVICE] Final verification - Tables after replication:",
+                resultados,
+                flush=True,
+            )
+        except Exception as e:
+            print(f"[DB SERVICE] Error verifying tables: {e}", flush=True)
 
         cur.close()
         conn.close()
