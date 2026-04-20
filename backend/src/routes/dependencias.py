@@ -90,22 +90,25 @@ async def listar_dependencias(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=1000),
     search: str = Query(None, description="Buscar por nombre"),
-    db: AsyncSession = Depends(get_session),
+    todas: bool = Query(False, description="Retornar todas las dependencias del sistema"),
 ):
-    statement = select(Dependencia).options(
-        selectinload(Dependencia.tipo_dependencia),
-        selectinload(Dependencia.provincia),
-        selectinload(Dependencia.municipio).selectinload(Municipio.provincia),
-        selectinload(Dependencia.cuentas),
-    )
-    if search:
-        statement = statement.where(
-            func.lower(Dependencia.nombre).contains(func.lower(search))
+    from src.database.connection import get_auth_session
+    
+    async for db in get_auth_session("caguayosa"):
+        statement = select(Dependencia).options(
+            selectinload(Dependencia.tipo_dependencia),
+            selectinload(Dependencia.provincia),
+            selectinload(Dependencia.municipio).selectinload(Municipio.provincia),
+            selectinload(Dependencia.cuentas),
         )
-    statement = statement.offset(skip).limit(limit)
-    results = await db.exec(statement)
-    dependencias = results.all()
-    return [DependenciaRead.model_validate(d) for d in dependencias]
+        if search:
+            statement = statement.where(
+                func.lower(Dependencia.nombre).contains(func.lower(search))
+            )
+        statement = statement.offset(skip).limit(limit)
+        results = await db.exec(statement)
+        dependencias = results.all()
+        return [DependenciaRead.model_validate(d) for d in dependencias]
 
 
 @router.get("/jerarquia", response_model=List[DependenciaRead])
@@ -133,6 +136,15 @@ async def crear_dependencia(
     data: DependenciaConCuentasCreate,
     db: AsyncSession = Depends(get_session),
 ):
+    from src.database.connection import _current_db, AUTH_DATABASE
+    
+    current_db = _current_db.get()
+    if current_db != AUTH_DATABASE:
+        raise HTTPException(
+            status_code=403,
+            detail="no_se_puede_crear_dependencia_desde_sucursal",
+        )
+    
     if data.dependencia.codigo_padre:
         tiene_ciclo = await validar_ciclo_dependencia(
             db, 0, data.dependencia.codigo_padre
@@ -145,13 +157,41 @@ async def crear_dependencia(
 
     db_obj = await dependencia_repo.create(db, obj_in=data.dependencia)
 
+    from src.services.replicacion_service import ReplicacionService
+    ReplicacionService.replicar_dependencia({
+        "id_dependencia": db_obj.id_dependencia,
+        "id_tipo_dependencia": db_obj.id_tipo_dependencia,
+        "codigo_padre": db_obj.codigo_padre,
+        "nombre": db_obj.nombre,
+        "direccion": db_obj.direccion,
+        "telefono": db_obj.telefono,
+        "email": db_obj.email,
+        "web": db_obj.web,
+        "base_datos": db_obj.base_datos,
+        "host": db_obj.host,
+        "puerto": db_obj.puerto,
+        "id_provincia": db_obj.id_provincia,
+        "id_municipio": db_obj.id_municipio,
+        "descripcion": db_obj.descripcion,
+    }, "INSERT")
+
     if data.cuentas:
         for cuenta_data in data.cuentas:
             cuenta_create = CuentaCreate(
                 id_dependencia=db_obj.id_dependencia,
                 **cuenta_data.model_dump(exclude={"id_dependencia"}),
             )
-            await cuenta_service.create(db, cuenta_create)
+            cuenta_obj = await cuenta_service.create(db, cuenta_create)
+            ReplicacionService.replicar_cuenta_dependencia({
+                "id_cuenta": cuenta_obj.id_cuenta,
+                "id_dependencia": cuenta_obj.id_dependencia,
+                "id_moneda": cuenta_obj.id_moneda,
+                "titular": cuenta_obj.titular,
+                "banco": cuenta_obj.banco,
+                "sucursal": cuenta_obj.sucursal,
+                "numero_cuenta": cuenta_obj.numero_cuenta,
+                "direccion": cuenta_obj.direccion,
+            }, "INSERT")
 
     # Primero crear la BD si existe base_datos
     if data.dependencia.base_datos:

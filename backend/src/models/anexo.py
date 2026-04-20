@@ -13,7 +13,11 @@ if TYPE_CHECKING:
 class Anexo(SQLModel, table=True):
     __tablename__ = "anexo"
 
-    id_anexo: Optional[int] = Field(default=None, primary_key=True)
+    id_anexo: Optional[int] = Field(
+        default=None, 
+        primary_key=True,
+        sa_column_kwargs={"autoincrement": True}
+    )
     id_convenio: int = Field(foreign_key="convenio.id_convenio")
     id_moneda: Optional[int] = Field(default=None, foreign_key="moneda.id_moneda")
     nombre_anexo: str = Field(max_length=200)

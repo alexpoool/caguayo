@@ -9,7 +9,11 @@ if TYPE_CHECKING:
 class Grupo(SQLModel, table=True):
     __tablename__ = "grupo"
 
-    id_grupo: Optional[int] = Field(default=None, primary_key=True)
+    id_grupo: Optional[int] = Field(
+        default=None, 
+        primary_key=True,
+        sa_column_kwargs={"autoincrement": True}
+    )
     nombre: str = Field(max_length=100, unique=True)
     descripcion: Optional[str] = None
 
@@ -20,7 +24,11 @@ class Grupo(SQLModel, table=True):
 class Usuario(SQLModel, table=True):
     __tablename__ = "usuarios"
 
-    id_usuario: Optional[int] = Field(default=None, primary_key=True)
+    id_usuario: Optional[int] = Field(
+        default=None, 
+        primary_key=True,
+        sa_column_kwargs={"autoincrement": True}
+    )
     ci: str = Field(max_length=20, unique=True)
     nombre: str = Field(max_length=100)
     primer_apellido: str = Field(max_length=100)

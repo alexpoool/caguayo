@@ -42,9 +42,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     rol: "administrador",
     dependencia: { id_dependencia: 1, nombre: "Dependencia Principal" },
   } as any);
-  const [funcionalidades, setFuncionalidades] = useState<FuncionalidadInfo[]>(
-    [],
-  );
+  const [funcionalidades, setFuncionalidades] = useState<FuncionalidadInfo[]>([]);
   const [baseDatos, setBaseDatos] = useState<string | null>("caguayo");
   const [isLoading, setIsLoading] = useState(false);
 

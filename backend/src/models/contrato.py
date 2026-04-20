@@ -15,7 +15,11 @@ if TYPE_CHECKING:
 class TipoContrato(SQLModel, table=True):
     __tablename__ = "tipo_contrato"
 
-    id_tipo_contrato: Optional[int] = Field(default=None, primary_key=True)
+    id_tipo_contrato: Optional[int] = Field(
+        default=None, 
+        primary_key=True,
+        sa_column_kwargs={"autoincrement": True}
+    )
     nombre: str = Field(max_length=100, unique=True)
     descripcion: Optional[str] = None
 
@@ -23,7 +27,11 @@ class TipoContrato(SQLModel, table=True):
 class EstadoContrato(SQLModel, table=True):
     __tablename__ = "estado_contrato"
 
-    id_estado_contrato: Optional[int] = Field(default=None, primary_key=True)
+    id_estado_contrato: Optional[int] = Field(
+        default=None, 
+        primary_key=True,
+        sa_column_kwargs={"autoincrement": True}
+    )
     nombre: str = Field(max_length=100, unique=True)
     descripcion: Optional[str] = None
 
@@ -31,7 +39,11 @@ class EstadoContrato(SQLModel, table=True):
 class Contrato(SQLModel, table=True):
     __tablename__ = "contrato"
 
-    id_contrato: Optional[int] = Field(default=None, primary_key=True)
+    id_contrato: Optional[int] = Field(
+        default=None, 
+        primary_key=True,
+        sa_column_kwargs={"autoincrement": True}
+    )
     id_cliente: int = Field(
         sa_column=Column(
             ForeignKey("clientes.id_cliente", ondelete="CASCADE"), nullable=False
@@ -59,7 +71,11 @@ class Contrato(SQLModel, table=True):
 class Suplemento(SQLModel, table=True):
     __tablename__ = "suplemento"
 
-    id_suplemento: Optional[int] = Field(default=None, primary_key=True)
+    id_suplemento: Optional[int] = Field(
+        default=None, 
+        primary_key=True,
+        sa_column_kwargs={"autoincrement": True}
+    )
     id_contrato: int = Field(foreign_key="contrato.id_contrato")
     nombre: str = Field(max_length=200)
     id_estado: int = Field(foreign_key="estado_contrato.id_estado_contrato")
@@ -75,7 +91,11 @@ class Suplemento(SQLModel, table=True):
 class Factura(SQLModel, table=True):
     __tablename__ = "factura"
 
-    id_factura: Optional[int] = Field(default=None, primary_key=True)
+    id_factura: Optional[int] = Field(
+        default=None, 
+        primary_key=True,
+        sa_column_kwargs={"autoincrement": True}
+    )
     id_contrato: int = Field(foreign_key="contrato.id_contrato")
     codigo_factura: str = Field(max_length=50, unique=True)
     descripcion: Optional[str] = None
@@ -96,7 +116,11 @@ class Factura(SQLModel, table=True):
 class VentaEfectivo(SQLModel, table=True):
     __tablename__ = "venta_efectivo"
 
-    id_venta_efectivo: Optional[int] = Field(default=None, primary_key=True)
+    id_venta_efectivo: Optional[int] = Field(
+        default=None, 
+        primary_key=True,
+        sa_column_kwargs={"autoincrement": True}
+    )
     slip: str = Field(max_length=100)
     fecha: date = Field(default=date.today())
     id_dependencia: int = Field(foreign_key="dependencia.id_dependencia")

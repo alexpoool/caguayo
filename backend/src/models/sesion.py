@@ -9,7 +9,11 @@ if TYPE_CHECKING:
 class Sesion(SQLModel, table=True):
     __tablename__ = "sesion"
 
-    id_sesion: Optional[int] = Field(default=None, primary_key=True)
+    id_sesion: Optional[int] = Field(
+        default=None, 
+        primary_key=True,
+        sa_column_kwargs={"autoincrement": True}
+    )
     id_usuario: int = Field(foreign_key="usuarios.id_usuario")
     token: str = Field(max_length=500, unique=True)
     base_datos: str = Field(max_length=100)

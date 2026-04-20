@@ -10,7 +10,11 @@ if TYPE_CHECKING:
 class AnexoProducto(SQLModel, table=True):
     __tablename__ = "anexo_producto"
 
-    id_anexo_producto: Optional[int] = Field(default=None, primary_key=True)
+    id_anexo_producto: Optional[int] = Field(
+        default=None, 
+        primary_key=True,
+        sa_column_kwargs={"autoincrement": True}
+    )
     id_anexo: int = Field(foreign_key="anexo.id_anexo")
     id_producto: int = Field(foreign_key="productos.id_producto")
     cantidad: int

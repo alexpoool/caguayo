@@ -16,6 +16,10 @@ ORDER BY datname;
 -- =====================================================
 -- TABLAS DE CATÁLOGO
 -- =====================================================
+-- MONEDAS - TABLA LOCAL EN TODAS LAS BDs
+-- Se replica desde Central hacia Dependencias via PULL
+-- Las dependencias tienen copia local para FKs funcione
+-- =====================================================
 
 -- Monedas
 CREATE TABLE moneda (
@@ -49,14 +53,17 @@ CREATE TABLE tipo_movimiento (
 );
 
 -- =====================================================
--- NOTA: Las siguientes tablas se crean como foreign tables via replication.sql
--- NO crear como tablas locales para evitar conflictos
+-- TIPOS DE DEPENDENCIA - TABLA LOCAL EN TODAS LAS BDs
+-- Se replica desde Central hacia Dependencias via PULL
+-- Las dependencias tienen copia local para FKs funcione
 -- =====================================================
--- CREATE TABLE tipo_dependencia (
---     id_tipo_dependencia SERIAL PRIMARY KEY,
---     nombre VARCHAR(20) NOT NULL UNIQUE,
---     descripcion TEXT
--- );
+
+-- Tipos de Dependencia
+CREATE TABLE tipo_dependencia (
+    id_tipo_dependencia SERIAL PRIMARY KEY,
+    nombre VARCHAR(20) NOT NULL UNIQUE,
+    descripcion TEXT
+);
 
 -- Tipos de Contrato
 CREATE TABLE tipo_contrato (
@@ -216,25 +223,28 @@ CREATE TABLE grupo_funcionalidad (
 );
 
 -- =====================================================
--- NOTA: La tabla dependencia se crea como foreign table via replication.sql
--- NO crear como tabla local para evitar conflictos
+-- DEPENDENCIAS - TABLA LOCAL EN TODAS LAS BDs
+-- Se replica desde Central hacia Dependencias via PULL
+-- Las dependencias tienen copia local para FKs funcione
 -- =====================================================
--- CREATE TABLE dependencia (
---     id_dependencia SERIAL PRIMARY KEY,
---     id_tipo_dependencia INTEGER NOT NULL REFERENCES tipo_dependencia(id_tipo_dependencia) ON DELETE CASCADE,
---     codigo_padre INTEGER REFERENCES dependencia(id_dependencia) ON DELETE SET NULL,
---     nombre VARCHAR(100) NOT NULL,
---     direccion VARCHAR(255) NOT NULL,
---     telefono VARCHAR(20) NOT NULL,
---     email VARCHAR(100),
---     web VARCHAR(100),
---     id_provincia INTEGER REFERENCES provincia(id_provincia) ON DELETE SET NULL,
---     id_municipio INTEGER REFERENCES municipio(id_municipio) ON DELETE SET NULL,
---     base_datos VARCHAR(100),
---     host VARCHAR(100) DEFAULT 'localhost',
---     puerto INTEGER DEFAULT 5432,
---     descripcion TEXT
--- );
+
+-- Dependencias
+CREATE TABLE dependencia (
+    id_dependencia SERIAL PRIMARY KEY,
+    id_tipo_dependencia INTEGER NOT NULL REFERENCES tipo_dependencia(id_tipo_dependencia) ON DELETE CASCADE,
+    codigo_padre INTEGER REFERENCES dependencia(id_dependencia) ON DELETE SET NULL,
+    nombre VARCHAR(100) NOT NULL,
+    direccion VARCHAR(255) NOT NULL,
+    telefono VARCHAR(20) NOT NULL,
+    email VARCHAR(100),
+    web VARCHAR(100),
+    id_provincia INTEGER REFERENCES provincia(id_provincia) ON DELETE SET NULL,
+    id_municipio INTEGER REFERENCES municipio(id_municipio) ON DELETE SET NULL,
+    base_datos VARCHAR(100),
+    host VARCHAR(100) DEFAULT 'localhost',
+    puerto INTEGER DEFAULT 5432,
+    descripcion TEXT
+);
 
 -- Datos Generales de Dependencia
 CREATE TABLE datos_generales_dependencia (
@@ -325,13 +335,13 @@ CREATE TABLE convenio (
 
 -- Anexos
 CREATE TABLE anexo (
-    id_anexo SERIAL PRIMARY KEY,
-    id_convenio INTEGER NOT NULL REFERENCES convenio(id_convenio) ON DELETE CASCADE,
+id_anexo SERIAL PRIMARY KEY,
+    id_convenio INTEGER NOT NULL REFERENCES anexo(id_anexo) ON DELETE CASCADE,
     id_moneda INTEGER REFERENCES moneda(id_moneda) ON DELETE SET NULL,
     nombre_anexo VARCHAR(200) NOT NULL,
     fecha DATE NOT NULL,
     codigo_anexo VARCHAR(50),
-    id_dependencia INTEGER REFERENCES dependencia(id_dependencia) ON DELETE SET NULL,
+    id_dependencia INTEGER,  -- Sin FK hacia foreign table dependencia
     comision NUMERIC(10, 2)
 );
 
@@ -434,7 +444,7 @@ CREATE TABLE venta_efectivo (
     id_venta_efectivo SERIAL PRIMARY KEY,
     slip VARCHAR(100) NOT NULL,
     fecha DATE NOT NULL DEFAULT CURRENT_DATE,
-    id_dependencia INTEGER NOT NULL REFERENCES dependencia(id_dependencia) ON DELETE CASCADE,
+    id_dependencia INTEGER NOT NULL,  -- Sin FK hacia foreign table dependencia
     cajero VARCHAR(100) NOT NULL,
     monto NUMERIC(15, 2) NOT NULL DEFAULT 0.00
 );
@@ -506,7 +516,7 @@ CREATE TABLE transaccion (
 CREATE TABLE movimiento (
     id_movimiento SERIAL PRIMARY KEY,
     id_tipo_movimiento INTEGER NOT NULL REFERENCES tipo_movimiento(id_tipo_movimiento) ON DELETE CASCADE,
-    id_dependencia INTEGER NOT NULL REFERENCES dependencia(id_dependencia) ON DELETE CASCADE,
+    id_dependencia INTEGER NOT NULL,  -- Sin FK hacia foreign table dependencia
     id_anexo INTEGER REFERENCES anexo(id_anexo) ON DELETE CASCADE,
     id_producto INTEGER NOT NULL REFERENCES productos(id_producto) ON DELETE CASCADE,
     cantidad INTEGER NOT NULL,
@@ -515,7 +525,7 @@ CREATE TABLE movimiento (
     id_liquidacion INTEGER REFERENCES liquidacion(id_liquidacion) ON DELETE CASCADE,
     estado VARCHAR(20) DEFAULT 'pendiente',
     codigo VARCHAR(100),
-    id_convenio INTEGER REFERENCES convenio(id_convenio) ON DELETE CASCADE,
+    id_convenio INTEGER REFERENCES anexo(id_convenio) ON DELETE CASCADE,
     id_cliente INTEGER REFERENCES clientes(id_cliente) ON DELETE SET NULL,
     precio_compra NUMERIC(15, 4),
     moneda_compra INTEGER REFERENCES moneda(id_moneda) ON DELETE CASCADE,
@@ -1057,15 +1067,15 @@ CREATE TABLE persona_liquidacion (
 );
 
 -- =====================================================
--- TABLAS PARA REPLICACIÓN VÍA DBLINK
+-- CUENTAS DE DEPENDENCIAS - TABLA LOCAL EN TODAS LAS BDs
+-- Se replica desde Central hacia Dependencias via PULL
+-- Las dependencias tienen copia local para FKs funcione
 -- =====================================================
--- Estas tablas se crean en la BD central y se replican a las BDs de dependencias via dblink
 
--- Cuentas bancarias de dependencias (sin id_cliente)
-CREATE TABLE IF NOT EXISTS cuenta_dependencias (
+CREATE TABLE cuenta_dependencias (
     id_cuenta SERIAL PRIMARY KEY,
-    id_dependencia INTEGER NOT NULL REFERENCES dependencia(id_dependencia),
-    id_moneda INTEGER REFERENCES moneda(id_moneda),
+    id_dependencia INTEGER NOT NULL REFERENCES dependencia(id_dependencia) ON DELETE CASCADE,
+    id_moneda INTEGER REFERENCES moneda(id_moneda) ON DELETE SET NULL,
     titular VARCHAR(150) NOT NULL,
     banco VARCHAR(100) NOT NULL,
     sucursal INTEGER,
@@ -1073,90 +1083,3 @@ CREATE TABLE IF NOT EXISTS cuenta_dependencias (
     direccion VARCHAR(255) NOT NULL
 );
 
--- =====================================================
--- FUNCIONES DBLINK PARA REPLICACIÓN
--- =====================================================
-
--- Función para crear el server dblink hacia la BD central
-CREATE OR REPLACE FUNCTION crear_dblink_central()
-RETURNS VOID AS $$
-BEGIN
-    -- Crear extensión dblink si no existe
-    CREATE EXTENSION IF NOT EXISTS dblink;
-    
-    -- Crear server hacia la BD central (caguayosa)
-    CREATE SERVER IF NOT EXISTS servidor_central
-    FOREIGN DATA WRAPPER postgres_fdw
-    OPTIONS (
-        host 'localhost',
-        dbname 'caguayosa',
-        port '5432'
-    );
-    
-    -- Crear user mapping si no existe
-    CREATE USER MAPPING IF NOT EXISTS FOR CURRENT_USER
-    SERVER servidor_central
-    OPTIONS (user 'postgres', password 'debianpostgres');
-END;
-$$ LANGUAGE plpgsql;
-
--- Función para crear foreign tables hacia la BD central
-CREATE OR REPLACE FUNCTION crear_foreign_tables_dependencias()
-RETURNS VOID AS $$
-BEGIN
-    -- Tabla tipo_dependencia
-    DROP FOREIGN TABLE IF EXISTS tipo_dependencia;
-    CREATE FOREIGN TABLE tipo_dependencia (
-        id_tipo_dependencia INTEGER,
-        nombre VARCHAR(20),
-        descripcion TEXT
-    ) SERVER servidor_central
-    OPTIONS (table_name 'tipo_dependencia');
-    
-    -- Tabla dependencia
-    DROP FOREIGN TABLE IF EXISTS dependencia;
-    CREATE FOREIGN TABLE dependencia (
-        id_dependencia INTEGER,
-        id_tipo_dependencia INTEGER,
-        codigo_padre INTEGER,
-        nombre VARCHAR(100),
-        direccion VARCHAR(255),
-        telefono VARCHAR(20),
-        email VARCHAR(100),
-        web VARCHAR(100),
-        base_datos VARCHAR(100),
-        host VARCHAR(100),
-        puerto INTEGER,
-        id_provincia INTEGER,
-        id_municipio INTEGER,
-        descripcion TEXT
-    ) SERVER servidor_central
-    OPTIONS (table_name 'dependencia');
-    
-    -- Tabla cuenta_dependencias
-    DROP FOREIGN TABLE IF EXISTS cuenta_dependencias;
-    CREATE FOREIGN TABLE cuenta_dependencias (
-        id_cuenta INTEGER,
-        id_dependencia INTEGER,
-        id_moneda INTEGER,
-        titular VARCHAR(150),
-        banco VARCHAR(100),
-        sucursal INTEGER,
-        numero_cuenta VARCHAR(50),
-        direccion VARCHAR(255)
-    ) SERVER servidor_central
-    OPTIONS (table_name 'cuenta_dependencias');
-END;
-$$ LANGUAGE plpgsql;
-
--- Función completa para configurar dblink en una dependencia
-CREATE OR REPLACE FUNCTION configurar_replicacion_central()
-RETURNS VOID AS $$
-BEGIN
-    PERFORM crear_dblink_central();
-    PERFORM crear_foreign_tables_dependencias();
-END;
-$$ LANGUAGE plpgsql;
-
--- Ejecutar configuración de dblink automáticamente al crear la BD
-SELECT configurar_replicacion_central();

@@ -21,7 +21,11 @@ class TipoCompra(str, Enum):
 class ProductosEnLiquidacion(SQLModel, table=True):
     __tablename__ = "productos_en_liquidacion"
 
-    id_producto_en_liquidacion: Optional[int] = Field(default=None, primary_key=True)
+    id_producto_en_liquidacion: Optional[int] = Field(
+        default=None, 
+        primary_key=True,
+        sa_column_kwargs={"autoincrement": True}
+    )
     codigo: str = Field(max_length=50, unique=True)
 
     id_producto: int = Field(foreign_key="productos.id_producto")

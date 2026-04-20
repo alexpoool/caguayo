@@ -8,7 +8,11 @@ if TYPE_CHECKING:
 class EspecialidadesArtisticas(SQLModel, table=True):
     __tablename__ = "especialidades_artisticas"
 
-    id_especialidad: Optional[int] = Field(default=None, primary_key=True)
+    id_especialidad: Optional[int] = Field(
+        default=None, 
+        primary_key=True,
+        sa_column_kwargs={"autoincrement": True}
+    )
     nombre: str = Field(max_length=100, unique=True)
     descripcion: Optional[str] = None
     categoria: Optional[str] = Field(default=None, max_length=50)

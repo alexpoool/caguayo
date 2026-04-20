@@ -8,7 +8,11 @@ from sqlalchemy import Column, ForeignKey
 class Servicio(SQLModel, table=True):
     __tablename__ = "servicios"
 
-    id_servicio: Optional[int] = Field(default=None, primary_key=True)
+    id_servicio: Optional[int] = Field(
+        default=None, 
+        primary_key=True,
+        sa_column_kwargs={"autoincrement": True}
+    )
     codigo_servicio: Optional[str] = Field(default=None, max_length=50, unique=True)
     concepto: Optional[str] = None
     unidad_medida: Optional[str] = Field(default=None, max_length=20)
@@ -20,7 +24,11 @@ class Servicio(SQLModel, table=True):
 class SolicitudServicio(SQLModel, table=True):
     __tablename__ = "solicitud_servicio"
 
-    id_solicitud_servicio: Optional[int] = Field(default=None, primary_key=True)
+    id_solicitud_servicio: Optional[int] = Field(
+        default=None, 
+        primary_key=True,
+        sa_column_kwargs={"autoincrement": True}
+    )
     id_cliente: Optional[int] = Field(default=None, foreign_key="clientes.id_cliente")
     id_contrato: Optional[int] = Field(default=None, foreign_key="contrato.id_contrato")
     id_suplemento: Optional[int] = Field(
@@ -51,7 +59,11 @@ class SolicitudServicio(SQLModel, table=True):
 class Etapa(SQLModel, table=True):
     __tablename__ = "etapas"
 
-    id_etapa: Optional[int] = Field(default=None, primary_key=True)
+    id_etapa: Optional[int] = Field(
+        default=None, 
+        primary_key=True,
+        sa_column_kwargs={"autoincrement": True}
+    )
     id_solicitud_servicio: int = Field(
         sa_column=Column(
             ForeignKey("solicitud_servicio.id_solicitud_servicio", ondelete="CASCADE"),
@@ -82,7 +94,11 @@ class Etapa(SQLModel, table=True):
 class TareaEtapa(SQLModel, table=True):
     __tablename__ = "tareas_etapa"
 
-    id_tarea_etapa: Optional[int] = Field(default=None, primary_key=True)
+    id_tarea_etapa: Optional[int] = Field(
+        default=None, 
+        primary_key=True,
+        sa_column_kwargs={"autoincrement": True}
+    )
     id_etapa: int = Field(
         sa_column=Column(
             ForeignKey("etapas.id_etapa", ondelete="CASCADE"), nullable=False
@@ -130,7 +146,11 @@ class PersonaEtapa(SQLModel, table=True):
 class FacturaServicio(SQLModel, table=True):
     __tablename__ = "factura_servicio"
 
-    id_factura_servicio: Optional[int] = Field(default=None, primary_key=True)
+    id_factura_servicio: Optional[int] = Field(
+        default=None, 
+        primary_key=True,
+        sa_column_kwargs={"autoincrement": True}
+    )
     id_etapa: Optional[int] = Field(default=None, foreign_key="etapas.id_etapa")
     alcance: Optional[str] = Field(default=None, max_length=20)
     codigo_factura: Optional[str] = Field(default=None, max_length=50)
@@ -152,7 +172,11 @@ class FacturaServicio(SQLModel, table=True):
 class PagoFacturaServicio(SQLModel, table=True):
     __tablename__ = "pago_factura_servicio"
 
-    id_pago_factura_servicio: Optional[int] = Field(default=None, primary_key=True)
+    id_pago_factura_servicio: Optional[int] = Field(
+        default=None, 
+        primary_key=True,
+        sa_column_kwargs={"autoincrement": True}
+    )
     id_factura_servicio: Optional[int] = Field(
         default=None, foreign_key="factura_servicio.id_factura_servicio"
     )
@@ -168,7 +192,11 @@ class PagoFacturaServicio(SQLModel, table=True):
 class PersonaLiquidacion(SQLModel, table=True):
     __tablename__ = "persona_liquidacion"
 
-    id_liquidacion: Optional[int] = Field(default=None, primary_key=True)
+    id_liquidacion: Optional[int] = Field(
+        default=None, 
+        primary_key=True,
+        sa_column_kwargs={"autoincrement": True}
+    )
     numero: Optional[str] = Field(default=None, max_length=50)
     id_etapa: Optional[int] = Field(default=None, foreign_key="etapas.id_etapa")
     id_persona: Optional[int] = Field(default=None, foreign_key="clientes.id_cliente")

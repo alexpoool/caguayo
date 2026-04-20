@@ -83,7 +83,7 @@ export function UsuariosPage() {
 
   const { data: dependencias = [] } = useQuery({
     queryKey: ["dependencias"],
-    queryFn: () => dependenciasService.getDependencias(),
+    queryFn: () => dependenciasService.getDependencias(true),
   });
 
   const filteredUsuarios = searchTerm.trim()

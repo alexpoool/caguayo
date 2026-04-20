@@ -12,7 +12,11 @@ if TYPE_CHECKING:
 class Convenio(SQLModel, table=True):
     __tablename__ = "convenio"
 
-    id_convenio: Optional[int] = Field(default=None, primary_key=True)
+    id_convenio: Optional[int] = Field(
+        default=None, 
+        primary_key=True,
+        sa_column_kwargs={"autoincrement": True}
+    )
     id_cliente: int = Field(
         sa_column=Column(
             ForeignKey("clientes.id_cliente", ondelete="CASCADE"), nullable=False
