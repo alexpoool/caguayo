@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { Button, Input, Label, Card, CardContent, CardHeader, CardTitle, Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../../components/ui';
 import { anexosService, conveniosService, productosService, monedaService, dependenciasService, clientesService } from '../../services/api';
+import { useDependenciasFiltradas } from '../../hooks/useDependenciasFiltradas';
 import type { Productos } from '../../types';
 import { Plus, Save, Trash2, Edit, X, Boxes, ArrowLeft, Package, DollarSign, Tag, Eye, User, Search, AlertTriangle } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -20,7 +21,7 @@ export function CompraAnexosPage() {
   const [clientes, setClientes] = useState<any[]>([]);
   const [productos, setProductos] = useState<Productos[]>([]);
   const [monedas, setMonedas] = useState<any[]>([]);
-  const [dependencias, setDependencias] = useState<any[]>([]);
+  const { data: dependenciasFiltradas = [], isLoading: isLoadingDependencias } = useDependenciasFiltradas();
   
   const [editingId, setEditingId] = useState<number | null>(null);
   const [formData, setFormData] = useState<Record<string, any>>({});
@@ -34,18 +35,19 @@ export function CompraAnexosPage() {
 
   const loadInitialData = async () => {
     try {
-      const [conv, cli, prod, mon, dep] = await Promise.all([
+      const [conv, cli, prod, mon] = await Promise.all([
         conveniosService.getConvenios(),
         clientesService.getClientes(0, 1000),
         productosService.getProductos(0, 1000),
         monedaService.getMonedas(0, 100),
-        dependenciasService.getDependencias(undefined, 0, 1000)
       ]);
       setConvenios(conv);
       setClientes(cli);
       setProductos(prod);
       setMonedas(mon);
-      setDependencias(dep);
+      if (dependenciasFiltradas.length > 0 && !formData.id_dependencia) {
+        setFormData({ ...formData, id_dependencia: dependenciasFiltradas[0].id_dependencia.toString() });
+      }
     } catch (error) { console.error('Error:', error); }
   };
 
@@ -167,7 +169,7 @@ export function CompraAnexosPage() {
 
   const getDependenciaNombre = (id?: number) => {
     if (!id) return '-';
-    const dep = dependencias.find(d => d.id_dependencia === id);
+    const dep = dependenciasFiltradas.find(d => d.id_dependencia === id);
     return dep?.nombre || `Dependencia ${id}`;
   };
 
@@ -380,8 +382,8 @@ export function CompraAnexosPage() {
           
           <div><Label>Dependencia</Label>
             <select className="w-full p-2 border rounded" value={formData.id_dependencia || ''} onChange={(e: any) => setFormData({...formData, id_dependencia: e.target.value})}>
-              <option value="">Seleccionar</option>
-              {dependencias.map(d => <option key={d.id_dependencia} value={d.id_dependencia}>{d.nombre}</option>)}
+              <option value="">{isLoadingDependencias ? 'Cargando...' : 'Seleccionar'}</option>
+              {!isLoadingDependencias && dependenciasFiltradas.map(d => <option key={d.id_dependencia} value={d.id_dependencia}>{d.nombre}</option>)}
             </select>
           </div>
           

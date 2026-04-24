@@ -7,6 +7,7 @@ import {
   monedaService,
   dependenciasService,
 } from "../../services/api";
+import { useDependenciasFiltradas } from "../../hooks/useDependenciasFiltradas";
 import type { MovimientoCreate } from "../../types/index";
 import type { FacturaWithDetails } from "../../types/contrato";
 import { generarCodigoMovimiento } from "../../utils/codigos";
@@ -350,10 +351,7 @@ export function MovimientoRecepcionForm({
   });
 
   const { data: dependencias = [], isLoading: isLoadingDependencias } =
-    useQuery({
-      queryKey: ["dependencias"],
-      queryFn: () => dependenciasService.getDependencias(),
-    });
+    useDependenciasFiltradas();
 
   const { data: tiposMovimiento = [] } = useQuery({
     queryKey: ["tipos-movimiento"],

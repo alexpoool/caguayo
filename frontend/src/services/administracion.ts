@@ -139,8 +139,8 @@ export const dependenciasService = {
   },
 
   getDependenciasJerarquia: async (padreId?: number): Promise<Dependencia[]> => {
-    const params = padreId !== undefined ? { padre_id: padreId } : {};
-    return await apiClient.get('/dependencias/jerarquia', { params });
+    const params = padreId !== undefined ? { padre_id: String(padreId) } : {};
+    return await apiClient.get('/dependencias/jerarquia', params);
   },
 
   getDependencia: async (id: number): Promise<Dependencia> => {

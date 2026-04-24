@@ -115,13 +115,21 @@ class ClienteService:
             selectinload(Cliente.municipio),
         )
 
+        # Person type filters (NATURAL, TCP, JURIDICA)
+        person_types = {"NATURAL", "TCP", "JURIDICA"}
+        
         if tipo_relacion:
             # Support comma-separated values (e.g., "PROVEEDOR,AMBAS")
             tipos = [t.strip() for t in tipo_relacion.split(",") if t.strip()]
-            if len(tipos) == 1:
-                statement = statement.where(Cliente.tipo_relacion == tipos[0])
-            elif len(tipos) > 1:
-                statement = statement.where(Cliente.tipo_relacion.in_(tipos))
+            # Check if filtering by person type (NATURAL, TCP, JURIDICA)
+            if tipos and set(tipos).issubset(person_types):
+                statement = statement.where(Cliente.tipo_persona.in_(tipos))
+            else:
+                # Filter by relation type (CLIENTE, PROVEEDOR, AMBAS)
+                if len(tipos) == 1:
+                    statement = statement.where(Cliente.tipo_relacion == tipos[0])
+                elif len(tipos) > 1:
+                    statement = statement.where(Cliente.tipo_relacion.in_(tipos))
 
         statement = statement.offset(skip).limit(limit)
         results = await db.exec(statement)

@@ -172,6 +172,7 @@ class UsuarioService:
             "cargo": data.cargo,
             "id_grupo": data.id_grupo,
             "id_dependencia": data.id_dependencia,
+            "tipo_persona": data.tipo_persona,
             "alias": alias,
             "contrasenia": contrasenia,
         }

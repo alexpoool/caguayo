@@ -8,6 +8,7 @@ import {
 } from "../../services/api";
 import { authService } from "../../services/auth";
 import { apiClient } from "../../lib/api";
+import { useDependenciasFiltradas } from "../../hooks/useDependenciasFiltradas";
 import {
   Button,
   Card,
@@ -273,10 +274,7 @@ export function MovimientoAjusteForm() {
   });
 
   const { data: dependencias = [], isLoading: isLoadingDependencias } =
-    useQuery({
-      queryKey: ["dependencias"],
-      queryFn: () => dependenciasService.getDependencias(),
-    });
+    useDependenciasFiltradas();
 
   // Obtener lista de bases de datos
   const { data: basesDatos = [] } = useQuery({
