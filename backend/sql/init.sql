@@ -898,7 +898,7 @@ INSERT INTO funcionalidad (nombre) VALUES
 ('contratos'),
 ('suplementos'),
 ('facturas'),
-('efectivo'),
+('venta_efectivo'),
 ('servicios'),
 ('solicitudes'),
 ('realizadores'),

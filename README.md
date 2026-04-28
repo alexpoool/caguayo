@@ -94,16 +94,18 @@ GRANT SELECT ON ALL TABLES IN SCHEMA public TO usuariolector;
    uv sync
    ```
 
-5. Ejecutar el script de base de datos:
-   ```bash
-   # Ejecutar el schema completo
-   psql -U postgres -d caguayo_inventario -f sql/init.sql
-   ```
-
-6. Iniciar servidor de desarrollo:
+5. Iniciar el servidor de desarrollo:
    ```bash
    uv run uvicorn main:app --reload
    ```
+
+### Inicializar la base de datos
+
+Si es la primera vez que ejecutas el proyecto, necesitas crear las tablas:
+
+```bash
+psql -h localhost -U postgres -d caguayosa -f backend/sql/init.sql
+```
 
 ### 4. Configurar Frontend
 
