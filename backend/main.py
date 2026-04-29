@@ -70,7 +70,7 @@ app = FastAPI(
 )
 
 default_origins = [
-    "http://localhost:3000",
+    "http://10.0.0.15:5173",
     "http://127.0.0.1:3000",
     "http://localhost:5173",
     "http://127.0.0.1:5173",
@@ -128,4 +128,6 @@ async def health_check():
 
 
 if __name__ == "__main__":
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+    host = os.getenv("BACKEND_HOST")
+    port = int(os.getenv("BACKEND_PORT", "8000"))
+    uvicorn.run("main:app", host=host, port=port, reload=True)
