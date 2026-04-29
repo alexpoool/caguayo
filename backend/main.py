@@ -117,15 +117,6 @@ async def database_middleware(request: Request, call_next):
     return response
 
 
-@app.exception_handler(Exception)
-async def global_exception_handler(request: Request, exc: Exception):
-    return JSONResponse(
-        status_code=500,
-        content={"detail": str(exc)},
-        headers={"Access-Control-Allow-Origin": "*"},
-    )
-
-
 @app.get("/")
 async def root():
     return {"message": "API de Caguayo funcionando"}
