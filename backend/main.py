@@ -37,7 +37,7 @@ logging.basicConfig(
     handlers=[logging.StreamHandler(sys.stdout)],
 )
 
-load_dotenv()
+load_dotenv(override=True)
 
 __all_models__ = [
     Anexo,
@@ -69,20 +69,9 @@ app = FastAPI(
     redirect_slashes=False,
 )
 
-default_origins = [
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-]
-
-cors_origins_str = os.getenv("CORS_ORIGINS", "")
-if cors_origins_str:
-    cors_origins = [
-        origin.strip() for origin in cors_origins_str.split(",") if origin.strip()
-    ]
-else:
-    cors_origins = default_origins
+cors_origins_str = os.getenv("CORS_ORIGINS", "http://localhost:5173")
+cors_origins = [origin.strip() for origin in cors_origins_str.split(",") if origin.strip()]
+logging.info(f"CORS_ORIGINS loaded: {cors_origins}")
 
 app.add_middleware(
     CORSMiddleware,
@@ -128,4 +117,6 @@ async def health_check():
 
 
 if __name__ == "__main__":
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+    host = os.getenv("BACKEND_HOST", "0.0.0.2")
+    port = int(os.getenv("BACKEND_PORT", "8000"))
+    uvicorn.run("main:app", host=host, port=port, reload=True)
