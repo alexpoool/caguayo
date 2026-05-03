@@ -1,13 +1,30 @@
 from typing import List, Optional
+import asyncio
 from datetime import datetime, timedelta
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi.responses import StreamingResponse
+import asyncio
+from src.services.log_sse import broadcast_log, sse_events
 from sqlmodel.ext.asyncio.session import AsyncSession
-from sqlalchemy import func, desc
+from sqlalchemy import func, desc, or_, and_
 from src.database.connection import get_session
 from src.models.log import LogEntry
 from pydantic import BaseModel
 
 router = APIRouter(prefix="/logs", tags=["logs"])
+
+
+@router.get("/stream")
+async def stream_logs():
+    """SSE endpoint for real-time log streaming"""
+    return StreamingResponse(
+        sse_events(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+        },
+    )
 
 
 class LogEntryResponse(BaseModel):
@@ -31,6 +48,17 @@ class LogStatsResponse(BaseModel):
     por_nivel: dict
     por_tipo: dict
     ultimos_errores: List[LogEntryResponse]
+
+
+class LogCreateRequest(BaseModel):
+    nivel: str = "INFO"
+    tipo: str = "FRONTEND"
+    mensaje: str = "Frontend log"
+    detalle: Optional[str] = None
+    ip: Optional[str] = None
+    navegador: Optional[str] = None
+    usuario_id: Optional[int] = None
+    usuario_nombre: Optional[str] = None
 
 
 @router.get("", response_model=List[LogEntryResponse])
@@ -70,7 +98,16 @@ async def get_logs(
         statement = statement.where(LogEntry.tipo == tipo.upper())
     
     if busqueda:
-        statement = statement.where(LogEntry.mensaje.ilike(f"%{busqueda}%"))
+        from sqlalchemy import or_
+        search_term = f"%{busqueda}%"
+        statement = statement.where(
+            or_(
+                LogEntry.mensaje.ilike(search_term),
+                LogEntry.nivel.ilike(search_term),
+                LogEntry.tipo.ilike(search_term),
+                LogEntry.usuario_nombre.ilike(search_term)
+            )
+        )
     
     statement = statement.limit(limit).offset(offset)
     results = await db.exec(statement)
@@ -134,17 +171,33 @@ async def get_log_stats(
 
 @router.post("")
 async def create_log(
-    nivel: str = "INFO",
-    tipo: str = "FRONTEND",
-    mensaje: str = "...",
-    detalle: Optional[str] = None,
-    ip: Optional[str] = None,
-    navegador: Optional[str] = None,
-    usuario_id: Optional[int] = None,
-    usuario_nombre: Optional[str] = None,
+    log_data: LogCreateRequest,
     db: AsyncSession = Depends(get_session),
+    request: Request = None,
 ):
     """Crea un log desde el frontend"""
+    nivel = log_data.nivel
+    tipo = log_data.tipo
+    mensaje = log_data.mensaje
+    detalle = log_data.detalle
+    ip = log_data.ip
+    navegador = log_data.navegador
+    usuario_id = log_data.usuario_id
+    usuario_nombre = log_data.usuario_nombre
+    
+    if request and not usuario_id:
+        from src.services.auth_service import decode_token
+        auth_header = request.headers.get("authorization")
+        if auth_header and auth_header.startswith("Bearer "):
+            token = auth_header.replace("Bearer ", "")
+            payload = decode_token(token)
+            if payload:
+                try:
+                    usuario_id = int(payload.get("sub"))
+                except:
+                    pass
+                usuario_nombre = payload.get("nombre")
+    
     log_data = {
         "nivel": nivel,
         "tipo": tipo,
@@ -159,5 +212,23 @@ async def create_log(
     db_obj = LogEntry(**log_data)
     db.add(db_obj)
     await db.commit()
+    await db.refresh(db_obj)
+    
+    broadcast_data = {
+        "id": db_obj.id,
+        "timestamp": db_obj.timestamp.isoformat(),
+        "nivel": db_obj.nivel,
+        "tipo": db_obj.tipo,
+        "mensaje": db_obj.mensaje,
+        "detalle": db_obj.detalle,
+        "ip": db_obj.ip,
+        "navegador": db_obj.navegador,
+        "usuario_id": db_obj.usuario_id,
+        "usuario_nombre": db_obj.usuario_nombre,
+        "endpoint": db_obj.endpoint,
+        "method": db_obj.method,
+        "status_code": db_obj.status_code,
+    }
+    await broadcast_log(broadcast_data)
     
     return {"success": True}

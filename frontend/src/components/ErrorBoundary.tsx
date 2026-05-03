@@ -1,4 +1,5 @@
 import { Component, ReactNode } from 'react';
+import { apiClient } from '../lib/api';
 
 interface Props {
   children: ReactNode;
@@ -25,18 +26,12 @@ export class ErrorBoundary extends Component<Props, State> {
     
     const errorDetails = error.stack || error.message || String(error);
     
-    fetch('/api/v1/logs', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        nivel: 'ERROR',
-        tipo: 'FRONTEND',
-        mensaje: `React Error: ${error.message}`,
-        detalle: errorDetails.substring(0, 2000),
-        navegador: navigator.userAgent.substring(0, 100),
-      }),
+    apiClient.post('/logs', {
+      nivel: 'ERROR',
+      tipo: 'FRONTEND',
+      mensaje: `React Error: ${error.message}`,
+      detalle: errorDetails.substring(0, 2000),
+      navegador: navigator.userAgent.substring(0, 100),
     }).catch(console.error);
   }
 

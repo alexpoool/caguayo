@@ -219,6 +219,7 @@ async def login(db: AsyncSession, login_data: LoginRequest) -> Optional[LoginRes
     token_data = {
         "sub": str(usuario.id_usuario),
         "alias": usuario.alias,
+        "nombre": f"{usuario.nombre} {usuario.primer_apellido}",
         "base_datos": login_data.base_datos,
     }
     token = create_access_token(token_data)
@@ -592,6 +593,7 @@ async def register(
     token_data = {
         "sub": str(usuario.id_usuario),
         "alias": usuario.alias,
+        "nombre": f"{usuario.nombre} {usuario.primer_apellido}",
         "base_datos": register_data.base_datos,
     }
     token = create_access_token(token_data)
