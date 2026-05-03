@@ -35,11 +35,13 @@ import {
   TableCell,
 } from "../components/ui";
 import { administracionService } from "../services/administracion";
-import { dependenciasService } from "../services/administracion";
+import { useAuth } from "../context/AuthContext";
+import { useDependenciasFiltradas } from "../hooks/useDependenciasFiltradas";
 import type { Usuario, UsuarioCreate } from "../types/usuario";
 
 export function UsuariosPage() {
   const queryClient = useQueryClient();
+  const { user } = useAuth();
   const [view, setView] = useState<"list" | "form">("list");
   const [editingUsuario, setEditingUsuario] = useState<Usuario | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
@@ -50,6 +52,7 @@ export function UsuariosPage() {
     segundo_apellido: "",
     cargo: "",
     id_grupo: 0,
+    tipo_persona: "NATURAL",
   });
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
@@ -81,10 +84,8 @@ export function UsuariosPage() {
     queryFn: () => administracionService.getUsuarios(),
   });
 
-  const { data: dependencias = [] } = useQuery({
-    queryKey: ["dependencias"],
-    queryFn: () => dependenciasService.getDependencias(),
-  });
+  const { data: dependencias = [], isLoading: isLoadingDependencias } =
+    useDependenciasFiltradas();
 
   const filteredUsuarios = searchTerm.trim()
     ? usuarios.filter(
@@ -137,6 +138,7 @@ export function UsuariosPage() {
       segundo_apellido: "",
       cargo: "",
       id_grupo: 0,
+      tipo_persona: "NATURAL",
     });
 
   const handleUsuarioSubmit = (e: React.FormEvent) => {
@@ -175,7 +177,16 @@ export function UsuariosPage() {
 
   const handleEdit = (usuario: Usuario) => {
     setEditingUsuario(usuario);
-    setUsuarioForm(usuario);
+    setUsuarioForm({
+      ci: usuario.ci,
+      nombre: usuario.nombre,
+      primer_apellido: usuario.primer_apellido,
+      segundo_apellido: usuario.segundo_apellido || "",
+      cargo: usuario.cargo,
+      id_grupo: usuario.id_grupo,
+      id_dependencia: usuario.id_dependencia,
+      tipo_persona: "NATURAL",
+    });
     setView("form");
   };
 
@@ -356,11 +367,15 @@ export function UsuariosPage() {
                   }
                 >
                   <option value="">Sin dependencia</option>
-                  {dependencias.map((d) => (
-                    <option key={d.id_dependencia} value={d.id_dependencia}>
-                      {d.nombre}
-                    </option>
-                  ))}
+                  {isLoadingDependencias ? (
+                    <option disabled>Cargando...</option>
+                  ) : (
+                    dependencias.map((d) => (
+                      <option key={d.id_dependencia} value={d.id_dependencia}>
+                        {d.nombre}
+                      </option>
+                    ))
+                  )}
                 </select>
               </div>
               <div className="col-span-2 flex gap-3 pt-2">

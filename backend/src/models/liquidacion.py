@@ -23,7 +23,11 @@ class TipoPago(str, Enum):
 class Liquidacion(SQLModel, table=True):
     __tablename__ = "liquidacion"
 
-    id_liquidacion: Optional[int] = Field(default=None, primary_key=True)
+    id_liquidacion: Optional[int] = Field(
+        default=None, 
+        primary_key=True,
+        sa_column_kwargs={"autoincrement": True}
+    )
     codigo: str = Field(max_length=50, unique=True)
 
     id_cliente: int = Field(foreign_key="clientes.id_cliente")

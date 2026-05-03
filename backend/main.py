@@ -70,7 +70,7 @@ app = FastAPI(
 )
 
 default_origins = [
-    "http://localhost:3000",
+    "http://10.0.0.15:5173",
     "http://127.0.0.1:3000",
     "http://localhost:5173",
     "http://127.0.0.1:5173",
@@ -117,15 +117,6 @@ async def database_middleware(request: Request, call_next):
     return response
 
 
-@app.exception_handler(Exception)
-async def global_exception_handler(request: Request, exc: Exception):
-    return JSONResponse(
-        status_code=500,
-        content={"detail": str(exc)},
-        headers={"Access-Control-Allow-Origin": "*"},
-    )
-
-
 @app.get("/")
 async def root():
     return {"message": "API de Caguayo funcionando"}
@@ -137,4 +128,6 @@ async def health_check():
 
 
 if __name__ == "__main__":
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+    host = os.getenv("BACKEND_HOST")
+    port = int(os.getenv("BACKEND_PORT", "8000"))
+    uvicorn.run("main:app", host=host, port=port, reload=True)

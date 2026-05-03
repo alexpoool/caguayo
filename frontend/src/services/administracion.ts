@@ -133,13 +133,14 @@ export const administracionService = {
 };
 
 export const dependenciasService = {
-  getDependencias: async (): Promise<Dependencia[]> => {
-    return await apiClient.get('/dependencias');
+  getDependencias: async (todas: boolean = false): Promise<Dependencia[]> => {
+    const params = todas ? { todas: "true" } : {};
+    return await apiClient.get('/dependencias', { params });
   },
 
   getDependenciasJerarquia: async (padreId?: number): Promise<Dependencia[]> => {
-    const params = padreId !== undefined ? { padre_id: padreId } : {};
-    return await apiClient.get('/dependencias/jerarquia', { params });
+    const params = padreId !== undefined ? { padre_id: String(padreId) } : {};
+    return await apiClient.get('/dependencias/jerarquia', params);
   },
 
   getDependencia: async (id: number): Promise<Dependencia> => {

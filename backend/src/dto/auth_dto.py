@@ -50,6 +50,7 @@ class UsuarioInfo(BaseModel):
     primer_apellido: str
     segundo_apellido: Optional[str] = None
     alias: str
+    cargo: Optional[str] = None
     dependencia: Optional[DependenciaInfo] = None
     grupo: Optional[GrupoInfo] = None
 
@@ -91,6 +92,7 @@ class PerfilResponse(BaseModel):
     primer_apellido: str
     segundo_apellido: Optional[str] = None
     alias: str
+    cargo: Optional[str] = None
     grupo: GrupoInfo
     dependencia: Optional[DependenciaInfo] = None
 

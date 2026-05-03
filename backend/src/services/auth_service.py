@@ -243,6 +243,7 @@ async def login(db: AsyncSession, login_data: LoginRequest) -> Optional[LoginRes
             primer_apellido=usuario.primer_apellido,
             segundo_apellido=usuario.segundo_apellido,
             alias=usuario.alias,
+            cargo=usuario.cargo,
             dependencia=DependenciaInfo(
                 id_dependencia=dependencia.id_dependencia,
                 nombre=dependencia.nombre,
@@ -254,6 +255,12 @@ async def login(db: AsyncSession, login_data: LoginRequest) -> Optional[LoginRes
                 direccion=dependencia.direccion,
             )
             if dependencia
+            else None,
+            grupo=GrupoInfo(
+                id_grupo=grupo.id_grupo,
+                nombre=grupo.nombre,
+            )
+            if grupo
             else None,
         ),
         funcionalidades=funcionalidades,
@@ -305,6 +312,7 @@ async def get_current_user(db: AsyncSession, token: str) -> Optional[UsuarioInfo
         primer_apellido=usuario.primer_apellido,
         segundo_apellido=usuario.segundo_apellido,
         alias=usuario.alias,
+        cargo=usuario.cargo,
         dependencia=DependenciaInfo(
             id_dependencia=dependencia.id_dependencia,
             nombre=dependencia.nombre,
@@ -430,6 +438,7 @@ async def update_perfil(
         primer_apellido=usuario.primer_apellido,
         segundo_apellido=usuario.segundo_apellido,
         alias=usuario.alias,
+        cargo=usuario.cargo,
         grupo=GrupoInfo(
             id_grupo=grupo.id_grupo,
             nombre=grupo.nombre,

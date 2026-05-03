@@ -107,6 +107,36 @@ class DatabaseService:
         conn.autocommit = True
         cur = conn.cursor()
 
+        # Crear extensión postgres_fdw necesaria para dblink
+        try:
+            cur.execute("CREATE EXTENSION IF NOT EXISTS postgres_fdw;")
+            print("[DB SERVICE] Extension postgres_fdw created", flush=True)
+        except Exception as e:
+            print(
+                f"[DB SERVICE] Error creating postgres_fdw extension: {e}", flush=True
+            )
+
+        # Crear servidor y user mapping hacia la BD central
+        try:
+            cur.execute("DROP SERVER IF EXISTS servidor_central CASCADE;")
+            cur.execute("""
+                CREATE SERVER servidor_central
+                FOREIGN DATA WRAPPER postgres_fdw
+                OPTIONS (
+                    host 'localhost',
+                    dbname 'caguayosa',
+                    port '5432'
+                );
+            """)
+            cur.execute("""
+                CREATE USER MAPPING IF NOT EXISTS FOR CURRENT_USER
+                SERVER servidor_central
+                OPTIONS (user 'postgres', password 'debianpostgres');
+            """)
+            print("[DB SERVICE] Server and user mapping created", flush=True)
+        except Exception as e:
+            print(f"[DB SERVICE] Error creating server: {e}", flush=True)
+
         statements = DatabaseService._split_sql_statements(schema_sql)
         print(
             f"[DB SERVICE] Found {len(statements)} SQL statements to execute",
@@ -137,6 +167,32 @@ class DatabaseService:
             flush=True,
         )
 
+        # La replicación PULL ya está incluida en init.sql
+        # No requiere ejecución adicional
+        print(
+            "[DB SERVICE] Replication PULL included in init.sql",
+            flush=True,
+        )
+
+        # Verificar que se crearon las tablas locales
+        try:
+            cur.execute("""
+                SELECT c.relname, c.relkind
+                FROM pg_class c
+                JOIN pg_namespace n ON c.relnamespace = n.oid
+                WHERE n.nspname = 'public'
+                AND c.relkind = 'r'
+                AND c.relname IN ('tipo_dependencia', 'dependencia', 'cuenta_dependencias', 'moneda', 'usuarios')
+            """)
+            resultados = cur.fetchall()
+            print(
+                "[DB SERVICE] Final verification - Local tables created:",
+                resultados,
+                flush=True,
+            )
+        except Exception as e:
+            print(f"[DB SERVICE] Error verifying tables: {e}", flush=True)
+
         cur.close()
         conn.close()
 
@@ -163,6 +219,100 @@ class DatabaseService:
         conn.close()
         print(f"[DB SERVICE] Tables in {base_datos}: {tablas}", flush=True)
         return tablas
+
+    @staticmethod
+    def replicar_datos_desde_central(base_datos: str) -> None:
+        print(f"[DB SERVICE] Replicating data from central to {base_datos}", flush=True)
+        
+        central_conn = psycopg2.connect(
+            host=os.getenv("ADMIN_DB_HOST", "localhost"),
+            port=int(os.getenv("ADMIN_DB_PORT", 5432)),
+            user=os.getenv("ADMIN_DB_USER", "postgres"),
+            password=os.getenv("ADMIN_DB_PASSWORD", "postgres"),
+            database="caguayosa",
+            client_encoding="utf8",
+        )
+        central_conn.autocommit = True
+        central_cur = central_conn.cursor()
+        
+        local_conn = psycopg2.connect(
+            host=os.getenv("ADMIN_DB_HOST", "localhost"),
+            port=int(os.getenv("ADMIN_DB_PORT", 5432)),
+            user=os.getenv("ADMIN_DB_USER", "postgres"),
+            password=os.getenv("ADMIN_DB_PASSWORD", "postgres"),
+            database=base_datos,
+            client_encoding="utf8",
+        )
+        local_conn.autocommit = True
+        local_cur = local_conn.cursor()
+        
+        try:
+            central_cur.execute("SELECT id_moneda, nombre, denominacion, simbolo FROM moneda ORDER BY id_moneda")
+            monedas = central_cur.fetchall()
+            
+            local_cur.execute("DELETE FROM moneda")
+            for m in monedas:
+                local_cur.execute(
+                    "INSERT INTO moneda (id_moneda, nombre, denominacion, simbolo) VALUES (%s, %s, %s, %s)",
+                    m
+                )
+            print(f"[DB SERVICE] Replicated {len(monedas)} monedas", flush=True)
+            
+            central_cur.execute("SELECT id_tipo_dependencia, nombre, descripcion FROM tipo_dependencia ORDER BY id_tipo_dependencia")
+            tipos = central_cur.fetchall()
+            
+            local_cur.execute("DELETE FROM tipo_dependencia")
+            for t in tipos:
+                local_cur.execute(
+                    "INSERT INTO tipo_dependencia (id_tipo_dependencia, nombre, descripcion) VALUES (%s, %s, %s)",
+                    t
+                )
+            print(f"[DB SERVICE] Replicated {len(tipos)} tipo_dependencia", flush=True)
+            
+            central_cur.execute("""
+                SELECT id_dependencia, id_tipo_dependencia, codigo_padre, nombre, direccion, telefono, 
+                       email, web, id_provincia, id_municipio, descripcion
+                FROM dependencia 
+                WHERE id_dependencia = 1
+            """)
+            deps = central_cur.fetchall()
+            
+            local_cur.execute("DELETE FROM dependencia WHERE id_dependencia = 1")
+            for d in deps:
+                local_cur.execute("""
+                    INSERT INTO dependencia (id_dependencia, id_tipo_dependencia, codigo_padre, nombre, 
+                                          direccion, telefono, email, web, id_provincia, id_municipio, descripcion)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                """, d)
+            print(f"[DB SERVICE] Replicated {len(deps)} dependencias (root)", flush=True)
+            
+            central_cur.execute("""
+                SELECT id_cuenta, id_dependencia, id_moneda, titular, banco, sucursal, numero_cuenta, direccion
+                FROM cuenta_dependencias
+                WHERE id_dependencia = 1
+            """)
+            cuentas = central_cur.fetchall()
+            
+            local_cur.execute("DELETE FROM cuenta_dependencias WHERE id_dependencia = 1")
+            for c in cuentas:
+                local_cur.execute("""
+                    INSERT INTO cuenta_dependencias (id_cuenta, id_dependencia, id_moneda, titular, banco, 
+                                                  sucursal, numero_cuenta, direccion)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                """, c)
+            print(f"[DB SERVICE] Replicated {len(cuentas)} cuenta_dependencias", flush=True)
+            
+            local_conn.commit()
+            print(f"[DB SERVICE] Data replication completed for {base_datos}", flush=True)
+            
+        except Exception as e:
+            print(f"[DB SERVICE] Error replicating data: {e}", flush=True)
+            raise
+        finally:
+            central_cur.close()
+            central_conn.close()
+            local_cur.close()
+            local_conn.close()
 
     @staticmethod
     def eliminar_base_datos(base_datos: str) -> bool:

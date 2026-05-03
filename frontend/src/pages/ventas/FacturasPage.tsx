@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { Button, Input, Label, Card, CardContent, CardHeader, CardTitle, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, ConfirmModal } from '../../components/ui';
 import { facturasService, contratosService, productosService, monedaService, dependenciasService, pagosService } from '../../services/api';
+import { useDependenciasFiltradas } from '../../hooks/useDependenciasFiltradas';
 import type { ContratoWithDetails } from '../../types/contrato';
 import type { Productos } from '../../types';
 import type { FacturaWithDetails } from '../../types/contrato';
@@ -22,7 +23,7 @@ export function FacturasPage() {
   const [contratos, setContratos] = useState<ContratoWithDetails[]>([]);
   const [productos, setProductos] = useState<Productos[]>([]);
   const [monedas, setMonedas] = useState<any[]>([]);
-  const [dependencias, setDependencias] = useState<Dependencia[]>([]);
+  const { data: dependenciasFiltradas = [], isLoading: isLoadingDependencias } = useDependenciasFiltradas();
   
   const [editingId, setEditingId] = useState<number | null>(null);
   const [selectedContratoId, setSelectedContratoId] = useState<number | null>(contratoParam ? Number(contratoParam) : null);
@@ -60,16 +61,12 @@ export function FacturasPage() {
 
   const loadInitialData = async () => {
     try {
-      const [contratosRes, productosRes, monedasRes, depsRes] = await Promise.all([
-        contratosService.getContratos(0, 1000),
-        productosService.getProductos(0, 1000),
-        monedaService.getMonedas(0, 100),
-        dependenciasService.getDependencias(undefined, 0, 1000)
-      ]);
-      setContratos(contratosRes);
-      setProductos(productosRes);
-      setMonedas(monedasRes);
-      setDependencias(depsRes);
+      const r1 = await contratosService.getContratos(0, 1000);
+      const r2 = await productosService.getProductos(0, 1000);
+      const r3 = await monedaService.getMonedas(0, 100);
+      setContratos(r1);
+      setProductos(r2);
+      setMonedas(r3);
     } catch (error) { console.error('Error:', error); }
   };
 
@@ -494,8 +491,8 @@ export function FacturasPage() {
             <div>
               <Label className="text-sm font-medium">Dependencia</Label>
               <select className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 outline-none bg-white" value={formData.id_dependencia || ''} onChange={(e: any) => setFormData({...formData, id_dependencia: e.target.value})}>
-                <option value="">Seleccionar dependencia</option>
-                {dependencias.map(d => <option key={d.id_dependencia} value={d.id_dependencia}>{d.nombre}</option>)}
+                <option value="">{isLoadingDependencias ? 'Cargando...' : 'Seleccionar dependencia'}</option>
+                {!isLoadingDependencias && dependenciasFiltradas.map(d => <option key={d.id_dependencia} value={d.id_dependencia}>{d.nombre}</option>)}
               </select>
             </div>
             <div>

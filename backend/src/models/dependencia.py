@@ -3,6 +3,7 @@ from typing import Optional, List, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from .cuenta import Cuenta
+    from .cuenta_dependencia import CuentaDependencia
     from .usuarios import Usuario
     from .movimiento import Movimiento
     from .cliente import Cliente
@@ -12,7 +13,11 @@ if TYPE_CHECKING:
 class TipoDependencia(SQLModel, table=True):
     __tablename__ = "tipo_dependencia"
 
-    id_tipo_dependencia: Optional[int] = Field(default=None, primary_key=True)
+    id_tipo_dependencia: Optional[int] = Field(
+        default=None, 
+        primary_key=True,
+        sa_column_kwargs={"autoincrement": True}
+    )
     nombre: str = Field(max_length=20, unique=True)
     descripcion: Optional[str] = None
 
@@ -22,7 +27,11 @@ class TipoDependencia(SQLModel, table=True):
 class Dependencia(SQLModel, table=True):
     __tablename__ = "dependencia"
 
-    id_dependencia: Optional[int] = Field(default=None, primary_key=True)
+    id_dependencia: Optional[int] = Field(
+        default=None, 
+        primary_key=True,
+        sa_column_kwargs={"autoincrement": True}
+    )
     id_tipo_dependencia: int = Field(foreign_key="tipo_dependencia.id_tipo_dependencia")
     codigo_padre: Optional[int] = Field(
         default=None, foreign_key="dependencia.id_dependencia"
@@ -49,7 +58,8 @@ class Dependencia(SQLModel, table=True):
         sa_relationship_kwargs={"remote_side": "Dependencia.id_dependencia"},
     )
     subdependencias: List["Dependencia"] = Relationship(back_populates="padre")
-    cuentas: List["Cuenta"] = Relationship(
+    cuentas: List["Cuenta"] = Relationship(back_populates="dependencia")
+    cuentas_dependencias: List["CuentaDependencia"] = Relationship(
         back_populates="dependencia"
     )
     provincia: Optional["Provincia"] = Relationship(back_populates="dependencias")
@@ -62,7 +72,11 @@ class Dependencia(SQLModel, table=True):
 class Provincia(SQLModel, table=True):
     __tablename__ = "provincia"
 
-    id_provincia: Optional[int] = Field(default=None, primary_key=True)
+    id_provincia: Optional[int] = Field(
+        default=None, 
+        primary_key=True,
+        sa_column_kwargs={"autoincrement": True}
+    )
     nombre: str = Field(max_length=100, unique=True)
 
     municipios: List["Municipio"] = Relationship(back_populates="provincia")
@@ -73,7 +87,11 @@ class Provincia(SQLModel, table=True):
 class Municipio(SQLModel, table=True):
     __tablename__ = "municipio"
 
-    id_municipio: Optional[int] = Field(default=None, primary_key=True)
+    id_municipio: Optional[int] = Field(
+        default=None, 
+        primary_key=True,
+        sa_column_kwargs={"autoincrement": True}
+    )
     id_provincia: int = Field(foreign_key="provincia.id_provincia")
     nombre: str = Field(max_length=100)
 

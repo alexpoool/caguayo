@@ -6,6 +6,7 @@ if TYPE_CHECKING:
     from .venta import Ventas
     from .movimiento import Movimiento
     from .cuenta import Cuenta
+    from .cuenta_dependencia import CuentaDependencia
     from .item_anexo import ItemAnexo
     from .item_factura import ItemFactura
     from .item_venta_efectivo import ItemVentaEfectivo
@@ -14,7 +15,11 @@ if TYPE_CHECKING:
 class Moneda(SQLModel, table=True):
     __tablename__ = "moneda"
 
-    id_moneda: Optional[int] = Field(default=None, primary_key=True)
+    id_moneda: Optional[int] = Field(
+        default=None, 
+        primary_key=True,
+        sa_column_kwargs={"autoincrement": True}
+    )
     nombre: str = Field(max_length=50, unique=True)
     denominacion: str = Field(max_length=100)
     simbolo: str = Field(max_length=5, unique=True)
@@ -38,6 +43,9 @@ class Moneda(SQLModel, table=True):
         sa_relationship_kwargs={"foreign_keys": "Movimiento.moneda_venta"},
     )
     cuentas: List["Cuenta"] = Relationship(back_populates="moneda")
+    cuentas_dependencias: List["CuentaDependencia"] = Relationship(
+        back_populates="moneda"
+    )
     items_anexo: List["ItemAnexo"] = Relationship(back_populates="moneda")
     items_factura: List["ItemFactura"] = Relationship(back_populates="moneda")
     items_venta_efectivo: List["ItemVentaEfectivo"] = Relationship(

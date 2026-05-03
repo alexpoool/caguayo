@@ -94,16 +94,18 @@ GRANT SELECT ON ALL TABLES IN SCHEMA public TO usuariolector;
    uv sync
    ```
 
-5. Ejecutar el script de base de datos:
-   ```bash
-   # Ejecutar el schema completo
-   psql -U postgres -d caguayo_inventario -f sql/init.sql
-   ```
-
-6. Iniciar servidor de desarrollo:
+5. Iniciar el servidor de desarrollo:
    ```bash
    uv run uvicorn main:app --reload
    ```
+
+### Inicializar la base de datos
+
+Si es la primera vez que ejecutas el proyecto, necesitas crear las tablas:
+
+```bash
+psql -h localhost -U postgres -d caguayosa -f backend/sql/init.sql
+```
 
 ### 4. Configurar Frontend
 
@@ -379,6 +381,174 @@ uv run uvicorn main:app --host 0.0.0.0 --port 8000
 cd frontend
 pnpm build
 ```
+
+## 🔄 Sistema de Replicación Multi-BD
+
+El sistema utiliza una arquitectura **Central (caguayosa) + Push automático** desde el backend Python.
+
+### Arquitectura
+
+```
+┌─────────────────────────────────────────────────┐
+│           CENTRAL (caguayosa) - MAESTRA          │
+├─────────────────────────────────────────────────┤
+│ - Tablas: moneda, tipo_dependencia,           │
+│   dependencia, cuenta_dependencias           │
+│ - Todas las INSERT/UPDATE/DELETE             │
+└─────────────────────────────────────────────────┘
+              │ (Push automático)
+              ▼
+┌─────────────────────────────────────────────────┐
+│         DEPENDENCIAS (N BDs)                 │
+├─────────────────────────────────────────────────┤
+│ - Tablas espejo (solo lectura)               │
+│ - Se actualizan automáticamente            │
+└─────────────────────────────────────────────────┘
+```
+
+### Cómo funciona
+
+1. Frontend envía petición al backend
+2. Backend inserta/actualiza en **caguayosa** (MAESTRA)
+3. Backend Python ejecuta `ReplicacionService`
+4. ReplicService hace push a todas las sucursales
+
+### Tablas replicadas
+
+| Tabla | Descripción |
+|-------|-----------|
+| moneda | Divisas (USD, EUR, CUP, etc.) |
+| tipo_dependencia | Tipos (SUCURSAL, ALMACEN) |
+| dependencia | Árbol de dependencias |
+| cuenta_dependencias | Cuentas bancarias |
+
+### Componentes del sistema
+
+| Componente | Descripción | Ubicación |
+|-----------|-------------|-----------|
+| `ReplicacionService` | Push automático en Python | `backend/src/services/` |
+| `init.sql` | Schema completo | `backend/sql/` |
+
+### Configuración
+
+No se requiere configuración adicional de PostgreSQL. El backend Python maneja la replicación automáticamente.
+
+### Verificar replicación
+
+```bash
+# Verificar tablas en una dependencia
+psql -U postgres -d mi_dependencia -c "\dt" | grep -E "moneda|tipo_dependencia|dependencia|usuarios"
+
+# Los datos se replican automáticamente al crear/modificar desde caguayosa
+```
+
+#### 2. Crear base de datos Central
+
+```bash
+# Conectarse a PostgreSQL
+psql -U postgres -h localhost
+
+# Crear base de datos
+CREATE DATABASE caguayosa;
+
+# Ejecutar init.sql
+psql -U postgres -d caguayosa -f sql/init.sql
+
+# Ejecutar replication_central.sql (para triggers)
+psql -U postgres -d caguayosa -f sql/replication_central.sql
+```
+
+#### 3. Crear dependencias desde el frontend
+
+Cuando creas una dependencia desde el frontend:
+
+1. Se crea el registro en `caguayosa.dependencia`
+2. Se crea la nueva base de datos
+3. Se ejecuta `init.sql` (54 tablas locales)
+4. Se ejecuta `replication_pull.sql` (funciones PULL)
+5. Se ejecuta `pull_all_from_central()` (datos iniciales)
+
+**Todo es automático** - no necesitas ejecutar nada manualmente.
+
+#### 4. Configurar replicación automática
+
+**Opción A: Cron del sistema (RECOMENDADO)**
+
+```bash
+# Agregar al cron del sistema
+sudo nano /etc/cron.d/replication-pull
+
+# Contenido:
+*/1 * * * * postgres /home/alexpool/code/caguayo/scripts/replication-pull.sh >> /var/log/replication-pull.log 2>&1
+```
+
+El script detecta automáticamente todas las bases de datos (excepto caguayosa y postgres) y replica hacia cada una.
+
+**Opción B: pg_cron (dentro de PostgreSQL)**
+
+En cada dependencia:
+
+```sql
+-- Crear job que ejecuta replication cada minuto
+SELECT cron.schedule(
+    'replication-pull',
+    '* * * * *',
+    $$SELECT pull_all_from_central()$$
+);
+```
+
+### Verificación del sistema
+
+```bash
+# Verificar que las tablas existen
+psql -U postgres -d mi_dependencia -c "\dt" | grep -E "moneda|tipo_dependencia|dependencia|usuarios"
+
+# Verificar datos replicados
+psql -U postgres -d mi_dependencia -c "SELECT * FROM moneda"
+
+# Verificar funciones PULL
+psql -U postgres -d mi_dependencia -c "SELECT proname FROM pg_proc WHERE proname LIKE 'pull%'"
+```
+
+### Solución de problemas
+
+#### La dependencia no tiene datos replicados
+
+Si una dependencia no tiene datos replicados, ejecutar manualmente:
+
+```bash
+psql -U postgres -d nombre_dependencia -f sql/replication_pull.sql
+psql -U postgres -d nombre_dependencia -c "SELECT pull_all_from_central();"
+```
+
+#### Error "dblink no existe"
+
+Asegurarse de que la extensión dblink está instalada:
+
+```bash
+psql -U postgres -d nombre_dependencia -c "CREATE EXTENSION IF NOT EXISTS dblink;"
+```
+
+#### Verificar replicación automática
+
+```bash
+# Ver logs de cron
+tail -f /var/log/replication-pull.log
+
+# Ver última ejecución
+cat /var/log/replication-pull.log | tail -20
+```
+
+### Credenciales por defecto
+
+| Campo | Valor | Notas |
+|-------|-------|-------|
+| CI | 00000000000 | |
+| Alias | admin | Usuario superadministrador |
+| Contraseña | Admin123@ | Cambiar en primer inicio |
+| Grupo | ADMINISTRADOR | Acceso total |
+
+---
 
 ## 📄 Licencia
 

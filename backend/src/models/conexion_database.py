@@ -8,7 +8,11 @@ if TYPE_CHECKING:
 class ConexionDatabase(SQLModel, table=True):
     __tablename__ = "conexion_database"
 
-    id_conexion: Optional[int] = Field(default=None, primary_key=True)
+    id_conexion: Optional[int] = Field(
+        default=None, 
+        primary_key=True,
+        sa_column_kwargs={"autoincrement": True}
+    )
     host: str = Field(default="localhost", max_length=100)
     puerto: int = Field(default=5432)
     usuario: Optional[str] = Field(default=None, max_length=100)

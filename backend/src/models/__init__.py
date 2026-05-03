@@ -36,6 +36,7 @@ from .productos_en_liquidacion import ProductosEnLiquidacion, TipoCompra
 from .item_anexo import ItemAnexo
 from .item_factura import ItemFactura
 from .item_venta_efectivo import ItemVentaEfectivo
+from .cuenta_dependencia import CuentaDependencia
 
 __all__ = [
     "Moneda",
@@ -83,4 +84,5 @@ __all__ = [
     "ItemAnexo",
     "ItemFactura",
     "ItemVentaEfectivo",
+    "CuentaDependencia",
 ]

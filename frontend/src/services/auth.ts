@@ -23,6 +23,7 @@ export interface UsuarioInfo {
   primer_apellido: string;
   segundo_apellido?: string;
   alias: string;
+  cargo?: string;
   dependencia?: DependenciaInfo;
   grupo?: GrupoInfo;
 }

@@ -8,7 +8,11 @@ if TYPE_CHECKING:
 class Transaccion(SQLModel, table=True):
     __tablename__ = "transaccion"
 
-    id_transaccion: Optional[int] = Field(default=None, primary_key=True)
+    id_transaccion: Optional[int] = Field(
+        default=None, 
+        primary_key=True,
+        sa_column_kwargs={"autoincrement": True}
+    )
 
     # Relaciones
     pass

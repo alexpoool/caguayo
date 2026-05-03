@@ -5,6 +5,10 @@ from typing import Optional
 class TipoCliente(SQLModel, table=True):
     __tablename__ = "tipo_cliente"
 
-    id_tipo_cliente: Optional[int] = Field(default=None, primary_key=True)
+    id_tipo_cliente: Optional[int] = Field(
+        default=None, 
+        primary_key=True,
+        sa_column_kwargs={"autoincrement": True}
+    )
     nombre: str = Field(max_length=100)
     descripcion: Optional[str] = None

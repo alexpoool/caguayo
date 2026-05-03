@@ -32,3 +32,32 @@ class CuentaUpdate(SQLModel):
     sucursal: Optional[int] = None
     numero_cuenta: Optional[str] = None
     direccion: Optional[str] = None
+
+
+class CuentaDependenciaBase(SQLModel):
+    id_dependencia: int
+    id_moneda: Optional[int] = None
+    titular: str
+    banco: str
+    sucursal: Optional[int] = None
+    numero_cuenta: str
+    direccion: str
+
+
+class CuentaDependenciaCreate(CuentaDependenciaBase):
+    pass
+
+
+class CuentaDependenciaRead(CuentaDependenciaBase):
+    id_cuenta: Optional[int] = None
+    moneda: Optional[MonedaRead] = None
+
+
+class CuentaDependenciaUpdate(SQLModel):
+    id_dependencia: Optional[int] = None
+    id_moneda: Optional[int] = None
+    titular: Optional[str] = None
+    banco: Optional[str] = None
+    sucursal: Optional[int] = None
+    numero_cuenta: Optional[str] = None
+    direccion: Optional[str] = None

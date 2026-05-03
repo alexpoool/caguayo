@@ -80,6 +80,10 @@ from .cuentas_dto import (
     CuentaCreate,
     CuentaRead,
     CuentaUpdate,
+    CuentaDependenciaBase,
+    CuentaDependenciaCreate,
+    CuentaDependenciaRead,
+    CuentaDependenciaUpdate,
 )
 from .dependencias_dto import (
     TipoDependenciaBase,
@@ -343,6 +347,10 @@ __all__ = [
     "CuentaCreate",
     "CuentaRead",
     "CuentaUpdate",
+    "CuentaDependenciaBase",
+    "CuentaDependenciaCreate",
+    "CuentaDependenciaRead",
+    "CuentaDependenciaUpdate",
     "GrupoBase",
     "GrupoCreate",
     "GrupoRead",

@@ -18,6 +18,7 @@ import {
   monedaService,
   dependenciasService,
 } from "../services/api";
+import { useDependenciasFiltradas } from "../hooks/useDependenciasFiltradas";
 import type { Cliente } from "../types/ventas";
 import type { Moneda } from "../types/moneda";
 import type { Dependencia } from "../types/dependencia";
@@ -66,7 +67,7 @@ export function VentasOperacionesPage() {
 
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [monedas, setMonedas] = useState<Moneda[]>([]);
-  const [dependencias, setDependencias] = useState<Dependencia[]>([]);
+  const { data: depsFiltradas = [], isLoading: isLoadingDeps } = useDependenciasFiltradas();
   const [estados, setEstados] = useState<{ id: number; nombre: string }[]>([]);
   const [tiposContrato, setTiposContrato] = useState<
     { id: number; nombre: string }[]
@@ -88,16 +89,14 @@ export function VentasOperacionesPage() {
     else if (tab === "efectivo") loadVentasEfectivo();
   }, [tab, selectedContratoId]);
 
-  const loadInitialData = async () => {
+const loadInitialData = async () => {
     try {
-      const [clientesRes, monedasRes, depsRes] = await Promise.all([
+      const [clientesRes, monedasRes] = await Promise.all([
         clientesService.getClientes(0, 1000),
         monedaService.getMonedas(0, 100),
-        dependenciasService.getDependencias(undefined, 0, 1000),
       ]);
       setClientes(clientesRes);
       setMonedas(monedasRes);
-      setDependencias(depsRes);
       setEstados([
         { id: 1, nombre: "ACTIVO" },
         { id: 2, nombre: "CANCELADO" },
@@ -770,8 +769,8 @@ export function VentasOperacionesPage() {
                     setFormData({ ...formData, id_dependencia: e.target.value })
                   }
                 >
-                  <option value="">Seleccionar</option>
-                  {dependencias.map((d) => (
+                  <option value="">{isLoadingDeps ? 'Cargando...' : 'Seleccionar'}</option>
+                  {!isLoadingDeps && depsFiltradas.map((d) => (
                     <option key={d.id_dependencia} value={d.id_dependencia}>
                       {d.nombre}
                     </option>

@@ -16,6 +16,10 @@ ORDER BY datname;
 -- =====================================================
 -- TABLAS DE CATÁLOGO
 -- =====================================================
+-- MONEDAS - TABLA LOCAL EN TODAS LAS BDs
+-- Se replica desde Central hacia Dependencias via PULL
+-- Las dependencias tienen copia local para FKs funcione
+-- =====================================================
 
 -- Monedas
 CREATE TABLE moneda (
@@ -47,6 +51,12 @@ CREATE TABLE tipo_movimiento (
     tipo VARCHAR(20) NOT NULL UNIQUE,
     factor INTEGER NOT NULL CHECK (factor IN (1, -1))
 );
+
+-- =====================================================
+-- TIPOS DE DEPENDENCIA - TABLA LOCAL EN TODAS LAS BDs
+-- Se replica desde Central hacia Dependencias via PULL
+-- Las dependencias tienen copia local para FKs funcione
+-- =====================================================
 
 -- Tipos de Dependencia
 CREATE TABLE tipo_dependencia (
@@ -212,7 +222,13 @@ CREATE TABLE grupo_funcionalidad (
     PRIMARY KEY (id_grupo, id_funcionalidad)
 );
 
--- Dependencias (Almacenes/Sucursales)
+-- =====================================================
+-- DEPENDENCIAS - TABLA LOCAL EN TODAS LAS BDs
+-- Se replica desde Central hacia Dependencias via PULL
+-- Las dependencias tienen copia local para FKs funcione
+-- =====================================================
+
+-- Dependencias
 CREATE TABLE dependencia (
     id_dependencia SERIAL PRIMARY KEY,
     id_tipo_dependencia INTEGER NOT NULL REFERENCES tipo_dependencia(id_tipo_dependencia) ON DELETE CASCADE,
@@ -319,13 +335,13 @@ CREATE TABLE convenio (
 
 -- Anexos
 CREATE TABLE anexo (
-    id_anexo SERIAL PRIMARY KEY,
-    id_convenio INTEGER NOT NULL REFERENCES convenio(id_convenio) ON DELETE CASCADE,
+id_anexo SERIAL PRIMARY KEY,
+    id_convenio INTEGER NOT NULL REFERENCES anexo(id_anexo) ON DELETE CASCADE,
     id_moneda INTEGER REFERENCES moneda(id_moneda) ON DELETE SET NULL,
     nombre_anexo VARCHAR(200) NOT NULL,
     fecha DATE NOT NULL,
     codigo_anexo VARCHAR(50),
-    id_dependencia INTEGER REFERENCES dependencia(id_dependencia) ON DELETE SET NULL,
+    id_dependencia INTEGER,  -- Sin FK hacia foreign table dependencia
     comision NUMERIC(10, 2)
 );
 
@@ -428,7 +444,7 @@ CREATE TABLE venta_efectivo (
     id_venta_efectivo SERIAL PRIMARY KEY,
     slip VARCHAR(100) NOT NULL,
     fecha DATE NOT NULL DEFAULT CURRENT_DATE,
-    id_dependencia INTEGER NOT NULL REFERENCES dependencia(id_dependencia) ON DELETE CASCADE,
+    id_dependencia INTEGER NOT NULL,  -- Sin FK hacia foreign table dependencia
     cajero VARCHAR(100) NOT NULL,
     monto NUMERIC(15, 2) NOT NULL DEFAULT 0.00
 );
@@ -500,7 +516,7 @@ CREATE TABLE transaccion (
 CREATE TABLE movimiento (
     id_movimiento SERIAL PRIMARY KEY,
     id_tipo_movimiento INTEGER NOT NULL REFERENCES tipo_movimiento(id_tipo_movimiento) ON DELETE CASCADE,
-    id_dependencia INTEGER NOT NULL REFERENCES dependencia(id_dependencia) ON DELETE CASCADE,
+    id_dependencia INTEGER NOT NULL,  -- Sin FK hacia foreign table dependencia
     id_anexo INTEGER REFERENCES anexo(id_anexo) ON DELETE CASCADE,
     id_producto INTEGER NOT NULL REFERENCES productos(id_producto) ON DELETE CASCADE,
     cantidad INTEGER NOT NULL,
@@ -509,7 +525,7 @@ CREATE TABLE movimiento (
     id_liquidacion INTEGER REFERENCES liquidacion(id_liquidacion) ON DELETE CASCADE,
     estado VARCHAR(20) DEFAULT 'pendiente',
     codigo VARCHAR(100),
-    id_convenio INTEGER REFERENCES convenio(id_convenio) ON DELETE CASCADE,
+    id_convenio INTEGER REFERENCES anexo(id_convenio) ON DELETE CASCADE,
     id_cliente INTEGER REFERENCES clientes(id_cliente) ON DELETE SET NULL,
     precio_compra NUMERIC(15, 4),
     moneda_compra INTEGER REFERENCES moneda(id_moneda) ON DELETE CASCADE,
@@ -882,7 +898,7 @@ INSERT INTO funcionalidad (nombre) VALUES
 ('contratos'),
 ('suplementos'),
 ('facturas'),
-('efectivo'),
+('venta_efectivo'),
 ('servicios'),
 ('solicitudes'),
 ('realizadores'),
@@ -1049,3 +1065,21 @@ CREATE TABLE persona_liquidacion (
     gasto_empresa NUMERIC(15,2) DEFAULT 0.00,
     observacion TEXT
 );
+
+-- =====================================================
+-- CUENTAS DE DEPENDENCIAS - TABLA LOCAL EN TODAS LAS BDs
+-- Se replica desde Central hacia Dependencias via PULL
+-- Las dependencias tienen copia local para FKs funcione
+-- =====================================================
+
+CREATE TABLE cuenta_dependencias (
+    id_cuenta SERIAL PRIMARY KEY,
+    id_dependencia INTEGER NOT NULL REFERENCES dependencia(id_dependencia) ON DELETE CASCADE,
+    id_moneda INTEGER REFERENCES moneda(id_moneda) ON DELETE SET NULL,
+    titular VARCHAR(150) NOT NULL,
+    banco VARCHAR(100) NOT NULL,
+    sucursal INTEGER,
+    numero_cuenta VARCHAR(50) NOT NULL,
+    direccion VARCHAR(255) NOT NULL
+);
+

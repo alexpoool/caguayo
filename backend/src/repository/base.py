@@ -1,6 +1,7 @@
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 from typing import List, Optional, Type, TypeVar, Generic, Any
+from sqlalchemy import text
 
 ModelType = TypeVar("ModelType")
 CreateSchemaType = TypeVar("CreateSchemaType")
@@ -35,15 +36,36 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         return list(results.all())
 
     async def create(self, db: AsyncSession, *, obj_in: CreateSchemaType, commit: bool = True) -> ModelType:
-        obj_data = obj_in.model_dump()
-        db_obj = self.model(**obj_data)
-        db.add(db_obj)
-        if commit:
-            await db.commit()
-            await db.refresh(db_obj)
-        else:
-            await db.flush()
-        return db_obj
+        try:
+            obj_data = obj_in.model_dump(exclude_none=True)
+            
+            # Generar ID manualmente para tablas con sequence
+            table_name = self.model.__tablename__
+            sequence_map = {
+                'dependencia': 'dependencia_id_dependencia_seq',
+                'cuenta': 'cuenta_id_cuenta_seq',
+                'cuenta_dependencias': 'cuenta_dependencias_id_cuenta_seq',
+            }
+            
+            seq_name = sequence_map.get(table_name)
+            if seq_name:
+                result = await db.exec(text(f"SELECT nextval('{seq_name}')"))
+                next_id = result.scalar_one()
+                pk_field = f"id_{table_name}"
+                if pk_field in obj_data:
+                    obj_data[pk_field] = next_id
+            
+            db_obj = self.model(**obj_data)
+            db.add(db_obj)
+            if commit:
+                await db.commit()
+                await db.refresh(db_obj)
+            else:
+                await db.flush()
+            return db_obj
+        except Exception as e:
+            await db.rollback()
+            raise
 
     async def update(
         self, db: AsyncSession, *, db_obj: ModelType, obj_in: UpdateSchemaType, commit: bool = True

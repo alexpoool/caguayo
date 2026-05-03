@@ -281,9 +281,13 @@ const { data: tiposCuenta = [] } = useQuery({
     },
     onError: (error: any) => {
       console.log("Create dependencia error:", error);
-      toast.error(
-        error?.message || error?.detail || "Error al crear dependencia",
-      );
+      if (error?.message === "no_se_puede_crear_dependencia_desde_sucursal") {
+        toast.error("Debe estar en la base de datos central para crear dependencias");
+      } else {
+        toast.error(
+          error?.message || error?.detail || "Error al crear dependencia",
+        );
+      }
     },
   });
 

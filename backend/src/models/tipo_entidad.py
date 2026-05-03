@@ -8,7 +8,11 @@ if TYPE_CHECKING:
 class TipoEntidad(SQLModel, table=True):
     __tablename__ = "tipo_entidad"
 
-    id_tipo_entidad: Optional[int] = Field(default=None, primary_key=True)
+    id_tipo_entidad: Optional[int] = Field(
+        default=None, 
+        primary_key=True,
+        sa_column_kwargs={"autoincrement": True}
+    )
     nombre: str = Field(max_length=100, unique=True)
     descripcion: Optional[str] = Field(default=None)
 

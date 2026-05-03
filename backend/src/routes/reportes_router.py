@@ -1,22 +1,23 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, Header
-from sqlalchemy.ext.asyncio import AsyncSession
-from fastapi.responses import StreamingResponse
 from datetime import date
 from typing import Optional
 
-from src.database.connection import get_session, get_auth_session
+from fastapi import APIRouter, Depends, Header, HTTPException, Query
+from fastapi.responses import StreamingResponse
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from src.database.connection import get_auth_session, get_session
+from src.services.auth_service import get_current_user
 from src.services.reportes_service import (
-    get_proveedores_por_dependencia,
     get_existencias,
     get_movimientos_dependencia,
     get_movimientos_producto,
+    get_proveedores_por_dependencia,
 )
-from src.services.auth_service import get_current_user
 from src.utils.pdf_generator import (
-    generar_pdf_proveedores_dependencia,
     generar_pdf_existencias,
     generar_pdf_movimientos_dependencia,
     generar_pdf_movimientos_producto,
+    generar_pdf_proveedores_dependencia,
 )
 
 router = APIRouter(prefix="/reportes", tags=["Reportes"])
@@ -224,5 +225,135 @@ async def obtener_reporte_movimientos_producto(
                 "Content-Disposition": f"attachment; filename=movimientos_producto_{id_producto}.pdf"
             },
         )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ---------------------------------------------------------------------------
+# Preview endpoints – return raw JSON (no PDF, no approval params needed)
+# ---------------------------------------------------------------------------
+
+
+@router.get("/existencias/preview")
+async def preview_existencias(
+    id_dependencia: int = Query(..., description="ID de la Dependencia"),
+    db: AsyncSession = Depends(get_session),
+):
+    try:
+        existencias, dependencia_info = await get_existencias(db, id_dependencia)
+
+        total_cantidad = sum(float(item["cantidad"]) for item in existencias)
+
+        return {
+            "dependencia": dependencia_info,
+            "items": existencias,
+            "total_items": len(existencias),
+            "total_cantidad": total_cantidad,
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/movimientos-dependencia/preview")
+async def preview_movimientos_dependencia(
+    id_dependencia: int = Query(..., description="ID de la Dependencia"),
+    fecha_inicio: date = Query(..., description="Fecha Inicio"),
+    fecha_fin: date = Query(..., description="Fecha Fin"),
+    db: AsyncSession = Depends(get_session),
+):
+    try:
+        movimientos, dependencia_info = await get_movimientos_dependencia(
+            db, id_dependencia, fecha_inicio, fecha_fin
+        )
+
+        items = [
+            {
+                **r,
+                "fecha": r["fecha"].isoformat()
+                if hasattr(r["fecha"], "isoformat")
+                else str(r["fecha"]),
+            }
+            for r in movimientos
+        ]
+
+        total_entradas = sum(
+            float(r["cantidad"]) for r in movimientos if r["tipo"] == "Entrada"
+        )
+        total_salidas = sum(
+            float(r["cantidad"]) for r in movimientos if r["tipo"] == "Salida"
+        )
+
+        return {
+            "dependencia": dependencia_info,
+            "items": items,
+            "total_items": len(items),
+            "total_entradas": total_entradas,
+            "total_salidas": total_salidas,
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/movimientos-producto/preview")
+async def preview_movimientos_producto(
+    id_dependencia: int = Query(..., description="ID de la Dependencia"),
+    id_producto: int = Query(..., description="ID del Producto"),
+    fecha_inicio: date = Query(..., description="Fecha Inicio"),
+    fecha_fin: date = Query(..., description="Fecha Fin"),
+    db: AsyncSession = Depends(get_session),
+):
+    try:
+        movimientos, dependencia_info, producto_info = await get_movimientos_producto(
+            db, id_dependencia, id_producto, fecha_inicio, fecha_fin
+        )
+
+        items = [
+            {
+                **r,
+                "fecha": r["fecha"].isoformat()
+                if hasattr(r["fecha"], "isoformat")
+                else str(r["fecha"]),
+            }
+            for r in movimientos
+        ]
+
+        total_entradas = sum(
+            float(r["cantidad"]) for r in movimientos if r["tipo"] == "Entrada"
+        )
+        total_salidas = sum(
+            float(r["cantidad"]) for r in movimientos if r["tipo"] == "Salida"
+        )
+
+        return {
+            "dependencia": dependencia_info,
+            "producto": producto_info,
+            "items": items,
+            "total_items": len(items),
+            "total_entradas": total_entradas,
+            "total_salidas": total_salidas,
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/proveedores-dependencia/preview")
+async def preview_proveedores_dependencia(
+    id_dependencia: int = Query(..., description="ID de la Dependencia"),
+    tipo_entidad: str = Query(
+        ..., description="Tipo de Entidad (NATURAL, TCP, JURIDICA)"
+    ),
+    id_provincia: int = Query(None, description="Filtrar por provincia (opcional)"),
+    db: AsyncSession = Depends(get_session),
+):
+    try:
+        proveedores, dependencia_info = await get_proveedores_por_dependencia(
+            db, id_dependencia, tipo_entidad, id_provincia
+        )
+
+        return {
+            "dependencia": dependencia_info,
+            "items": proveedores,
+            "total_items": len(proveedores),
+        }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

@@ -105,7 +105,13 @@ export function PerfilPage() {
               <p className="text-blue-100">@{user.alias}</p>
               <div className="flex items-center gap-2 mt-2">
                 <BadgeCheck className="h-4 w-4 text-blue-200" />
-                <span className="text-sm text-blue-100">{user.grupo?.nombre}</span>
+                <span className="text-sm text-blue-100">{user.grupo?.nombre || 'Sin grupo'}</span>
+                {user.cargo && (
+                  <>
+                    <span className="text-blue-200">•</span>
+                    <span className="text-sm text-blue-100">{user.cargo}</span>
+                  </>
+                )}
               </div>
             </div>
           </div>
@@ -130,13 +136,17 @@ export function PerfilPage() {
                 </div>
                 <div className="bg-gray-50 rounded-xl p-4">
                   <p className="text-sm text-gray-500 mb-1">Grupo</p>
-                  <p className="font-semibold text-gray-900 text-lg">{user.grupo?.nombre}</p>
+                  <p className="font-semibold text-gray-900 text-lg">{user.grupo?.nombre || 'Sin grupo'}</p>
+                </div>
+                <div className="bg-gray-50 rounded-xl p-4">
+                  <p className="text-sm text-gray-500 mb-1">Cargo</p>
+                  <p className="font-semibold text-gray-900 text-lg">{user.cargo || 'Sin cargo'}</p>
                 </div>
                 <div className="bg-gray-50 rounded-xl p-4">
                   <p className="text-sm text-gray-500 mb-1">Dependencia</p>
                   <p className="font-semibold text-gray-900 text-lg flex items-center gap-2">
                     <Building2 className="h-4 w-4 text-blue-500" />
-                    {user.dependencia?.nombre}
+                    {user.dependencia?.nombre || 'Sin dependencia'}
                   </p>
                 </div>
                 <div className="bg-gray-50 rounded-xl p-4">

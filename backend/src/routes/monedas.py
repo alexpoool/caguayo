@@ -20,7 +20,15 @@ async def crear_moneda(
     moneda: MonedaCreate,
     db: AsyncSession = Depends(get_session),
 ):
-    return await moneda_service.create(db, moneda)
+    moneda_obj = await moneda_service.create(db, moneda)
+    from src.services.replicacion_service import ReplicacionService
+    ReplicacionService.replicar_moneda({
+        "id_moneda": moneda_obj.id_moneda,
+        "nombre": moneda_obj.nombre,
+        "denominacion": moneda_obj.denominacion,
+        "simbolo": moneda_obj.simbolo,
+    }, "INSERT")
+    return moneda_obj
 
 @router.get("/{moneda_id}", response_model=MonedaRead)
 async def obtener_moneda(

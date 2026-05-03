@@ -8,7 +8,11 @@ if TYPE_CHECKING:
 class Funcionalidad(SQLModel, table=True):
     __tablename__ = "funcionalidad"
 
-    id_funcionalidad: Optional[int] = Field(default=None, primary_key=True)
+    id_funcionalidad: Optional[int] = Field(
+        default=None, 
+        primary_key=True,
+        sa_column_kwargs={"autoincrement": True}
+    )
     nombre: str = Field(max_length=100, unique=True)
 
     grupos: List["GrupoFuncionalidad"] = Relationship(back_populates="funcionalidad")
