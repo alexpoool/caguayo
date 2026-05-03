@@ -37,7 +37,7 @@ logging.basicConfig(
     handlers=[logging.StreamHandler(sys.stdout)],
 )
 
-load_dotenv()
+load_dotenv(override=True)
 
 __all_models__ = [
     Anexo,
@@ -84,6 +84,8 @@ if cors_origins_str:
 else:
     cors_origins = default_origins
 
+logging.info(f"CORS_ORIGINS loaded: {cors_origins}")
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=cors_origins,
@@ -128,6 +130,6 @@ async def health_check():
 
 
 if __name__ == "__main__":
-    host = os.getenv("BACKEND_HOST")
+    host = os.getenv("BACKEND_HOST", "0.0.0.0")
     port = int(os.getenv("BACKEND_PORT", "8000"))
     uvicorn.run("main:app", host=host, port=port, reload=True)
