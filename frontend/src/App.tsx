@@ -30,13 +30,15 @@ import {
   List,
   CreditCard,
   Calculator,
-  Package
+  Package,
+  Terminal
 } from 'lucide-react';
 
 import { WelcomePage } from './pages/Welcome';
 import { LoginPage } from './pages/Login';
 import { RegisterPage } from './pages/Register';
 import { HomePage } from './pages/HomePage';
+import { LoggerPage } from './pages/Logger';
 import { PerfilPage } from './pages/Perfil';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ProductosPage } from './pages/Productos';
@@ -956,16 +958,19 @@ function App() {
 
 function AppWrapper() {
   return (
-    <Router>
-      <Toaster position="top-right" />
-      <AuthProvider>
-        <Routes>
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/register" element={<RegisterPage />} />
-          <Route path="/*" element={<App />} />
-        </Routes>
-      </AuthProvider>
-    </Router>
+    <QueryClientProvider client={queryClient}>
+      <Router>
+        <Toaster position="top-right" />
+        <AuthProvider>
+          <Routes>
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/register" element={<RegisterPage />} />
+            <Route path="/logger" element={<LoggerPage />} />
+            <Route path="/*" element={<App />} />
+          </Routes>
+        </AuthProvider>
+      </Router>
+    </QueryClientProvider>
   );
 }
 

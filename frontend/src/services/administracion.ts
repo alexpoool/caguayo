@@ -4,7 +4,7 @@ import type { EstadoContrato, EstadoContratoCreate, EstadoContratoUpdate } from 
 import type { TipoProveedor, TipoProveedorCreate, TipoProveedorUpdate, TipoConvenio, TipoConvenioCreate, TipoConvenioUpdate } from '../types/index';
 import type { Cuenta, CuentaCreate, CuentaUpdate } from '../types/cuenta';
 import type { Grupo, GrupoCreate, GrupoUpdate, Funcionalidad, Usuario, UsuarioCreate, UsuarioUpdate } from '../types/usuario';
-import type { TipoDependencia, TipoDependenciaCreate, TipoDependenciaUpdate, Dependencia, DependenciaConCuentasCreate, DependenciaUpdate } from '../types/dependencia';
+import type { TipoDependencia, TipoDependenciaCreate, TipoDependenciaUpdate, Dependencia, DependenciaConCuentasCreate, DependenciaUpdate, ConexionDatabase } from '../types/dependencia';
 import type { Provincia, Municipio } from '../types/ubicacion';
 import type { Moneda } from '../types/moneda';
 
@@ -182,5 +182,9 @@ export const dependenciasService = {
   getMunicipios: async (provinciaId?: number): Promise<Municipio[]> => {
     const params = provinciaId !== undefined ? { provincia_id: provinciaId } : {};
     return await apiClient.get('/dependencias/ubicaciones/municipios', params);
+  },
+
+  getBasesDeDatos: async (): Promise<ConexionDatabase[]> => {
+    return await apiClient.get('/conexiones');
   },
 };

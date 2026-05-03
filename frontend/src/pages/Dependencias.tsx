@@ -54,7 +54,7 @@ import {
   dependenciasService,
   configuracionService,
 } from "../services/administracion";
-import type { Dependencia, DependenciaCreate } from "../types/dependencia";
+import type { Dependencia, DependenciaCreate, DependenciaConCuentasCreate } from "../types/dependencia";
 import type { CuentaCreate } from "../types/cuenta";
 
 interface ArbolDependenciaProps {
@@ -228,6 +228,13 @@ const { data: tiposCuenta = [] } = useQuery({
     enabled: !!formData.id_provincia,
   });
 
+  const [idConexionExistente, setIdConexionExistente] = useState<string | null>(null);
+
+  const { data: basesDeDatos = [] } = useQuery({
+    queryKey: ["bases-de-datos"],
+    queryFn: () => dependenciasService.getBasesDeDatos(),
+  });
+
   // Refetch municipios when provincia changes
   useEffect(() => {
     if (formData.id_provincia) {
@@ -350,6 +357,7 @@ const { data: tiposCuenta = [] } = useQuery({
       direccion: "",
     });
     setSelectedPadre(null);
+    setIdConexionExistente(null);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -384,9 +392,12 @@ const { data: tiposCuenta = [] } = useQuery({
         telefono: telefonoConPrefijo,
         codigo_padre: formData.codigo_padre,
       };
-      const data = {
+      
+      // Si seleccionó una BD existente, usar id_conexion_existente
+      const data: DependenciaConCuentasCreate = {
         dependencia: dependenciaData,
         cuentas: cuentas.length > 0 ? cuentas : undefined,
+        id_conexion_existente: idConexionExistente ? idConexionExistente : undefined,
       };
       createDependencia.mutate(data);
     }
@@ -426,6 +437,7 @@ const { data: tiposCuenta = [] } = useQuery({
       );
       setSelectedPadre(padre || null);
     }
+    setIdConexionExistente(null);
     setView("form");
   };
 
@@ -644,14 +656,41 @@ titular: "",
                   <Building className="h-5 w-5 text-green-500" />
                   Base de Datos
                 </Label>
-                <Input
-                  value={formData.base_datos}
-                  onChange={(e) =>
-                    setFormData({ ...formData, base_datos: e.target.value })
-                  }
-                  placeholder="Nombre de la base de datos"
-                  className="transition-all duration-200 focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                />
+                <select
+                  className="w-full border rounded-md px-3 py-2 transition-all duration-200 focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                  value={idConexionExistente ? idConexionExistente : (formData.base_datos ? "__nueva__" : "")}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    if (value === "__nueva__") {
+                      setIdConexionExistente(null);
+                    } else if (value) {
+                      setIdConexionExistente(value);
+                      setFormData({ ...formData, base_datos: "" });
+                    } else {
+                      setIdConexionExistente(null);
+                    }
+                  }}
+                >
+                  <option value="">Sin base de datos</option>
+                  {basesDeDatos.map((bd) => (
+                    <option key={bd.nombre_database} value={bd.nombre_database}>
+                      {bd.nombre_database}
+                    </option>
+                  ))}
+                  <option value="__nueva__">+ Crear nueva base de datos</option>
+                </select>
+                
+                {/* Input para nueva base de datos - visible si選擇Crear nueva o no hay selección */}
+                {(idConexionExistente === null) && (
+                  <Input
+                    value={formData.base_datos}
+                    onChange={(e) =>
+                      setFormData({ ...formData, base_datos: e.target.value })
+                    }
+                    placeholder="Nombre de la nueva base de datos"
+                    className="mt-2 transition-all duration-200 focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                  />
+                )}
               </div>
 
               {/* Padre */}

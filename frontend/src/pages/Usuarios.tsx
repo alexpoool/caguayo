@@ -34,9 +34,8 @@ import {
   TableHead,
   TableCell,
 } from "../components/ui";
-import { administracionService } from "../services/administracion";
+import { administracionService, dependenciasService } from "../services/administracion";
 import { useAuth } from "../context/AuthContext";
-import { useDependenciasFiltradas } from "../hooks/useDependenciasFiltradas";
 import type { Usuario, UsuarioCreate } from "../types/usuario";
 
 export function UsuariosPage() {
@@ -52,7 +51,6 @@ export function UsuariosPage() {
     segundo_apellido: "",
     cargo: "",
     id_grupo: 0,
-    tipo_persona: "NATURAL",
   });
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
@@ -84,8 +82,10 @@ export function UsuariosPage() {
     queryFn: () => administracionService.getUsuarios(),
   });
 
-  const { data: dependencias = [], isLoading: isLoadingDependencias } =
-    useDependenciasFiltradas();
+  const { data: todasLasDependencias = [], isLoading: isDependenciasLoading } = useQuery({
+    queryKey: ["dependencias", "todas"],
+    queryFn: () => dependenciasService.getDependencias(true),
+  });
 
   const filteredUsuarios = searchTerm.trim()
     ? usuarios.filter(
@@ -138,7 +138,6 @@ export function UsuariosPage() {
       segundo_apellido: "",
       cargo: "",
       id_grupo: 0,
-      tipo_persona: "NATURAL",
     });
 
   const handleUsuarioSubmit = (e: React.FormEvent) => {
@@ -185,7 +184,6 @@ export function UsuariosPage() {
       cargo: usuario.cargo,
       id_grupo: usuario.id_grupo,
       id_dependencia: usuario.id_dependencia,
-      tipo_persona: "NATURAL",
     });
     setView("form");
   };
@@ -367,10 +365,10 @@ export function UsuariosPage() {
                   }
                 >
                   <option value="">Sin dependencia</option>
-                  {isLoadingDependencias ? (
+                  {isDependenciasLoading ? (
                     <option disabled>Cargando...</option>
                   ) : (
-                    dependencias.map((d) => (
+                    todasLasDependencias.map((d) => (
                       <option key={d.id_dependencia} value={d.id_dependencia}>
                         {d.nombre}
                       </option>

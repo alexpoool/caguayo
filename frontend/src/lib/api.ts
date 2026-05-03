@@ -9,6 +9,36 @@ class ApiClient {
     return localStorage.getItem(TOKEN_KEY);
   }
 
+  private async logApiCall(endpoint: string, method: string, status: number, duration: number) {
+    if (endpoint.startsWith('/logs') || endpoint.startsWith('/auth/')) return;
+    
+    try {
+      const token = localStorage.getItem('auth_token');
+      const userStr = localStorage.getItem('auth_user');
+      const user = userStr ? JSON.parse(userStr) : null;
+      
+      await fetch(`${API_BASE_URL}/logs`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          nivel: status >= 500 ? 'ERROR' : 'INFO',
+          tipo: 'REQUEST',
+          mensaje: `${method} ${endpoint} - ${status}`,
+          detalle: JSON.stringify({ duration_ms: Math.round(duration * 1000) }),
+          endpoint,
+          method,
+          status_code: status,
+          navegador: navigator.userAgent.substring(0, 100),
+          usuario_id: user?.id_usuario,
+          usuario_nombre: user?.nombre,
+        }),
+      });
+    } catch {}
+  }
+
   private async request<T>(
     endpoint: string,
     options: RequestInit = {}
@@ -28,9 +58,11 @@ class ApiClient {
     };
 
     try {
-      console.log(`API Request: ${options.method || 'GET'} ${url}`, options.body ? JSON.parse(options.body as string) : null);
+      const startTime = Date.now();
       const response = await fetch(url, config);
-      console.log(`API Response: ${response.status} ${response.statusText}`);
+      const duration = (Date.now() - startTime) / 1000;
+      
+      this.logApiCall(endpoint, options.method || 'GET', response.status, duration);
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));

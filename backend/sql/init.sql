@@ -1083,3 +1083,24 @@ CREATE TABLE cuenta_dependencias (
     direccion VARCHAR(255) NOT NULL
 );
 
+-- =====================================================
+-- TABLA DE LOGS DEL SISTEMA
+-- Sistema de logging centralizado para auditoría
+-- =====================================================
+
+CREATE TABLE IF NOT EXISTS log (
+    id SERIAL PRIMARY KEY,
+    timestamp TIMESTAMP NOT NULL DEFAULT NOW(),
+    nivel VARCHAR(20) NOT NULL,
+    tipo VARCHAR(20) NOT NULL,
+    mensaje VARCHAR(500) NOT NULL,
+    detalle VARCHAR(2000),
+    ip VARCHAR(50),
+    usuario_id INTEGER,
+    endpoint VARCHAR(200),
+    method VARCHAR(10),
+    status_code INTEGER,
+    usuario_nombre VARCHAR(100),
+    navegador VARCHAR(100)
+);
+

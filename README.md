@@ -428,6 +428,48 @@ El sistema utiliza una arquitectura **Central (caguayosa) + Push automático** d
 |-----------|-------------|-----------|
 | `ReplicacionService` | Push automático en Python | `backend/src/services/` |
 | `init.sql` | Schema completo | `backend/sql/` |
+| `log` | Tabla de auditoría y logs | `backend/src/models/log.py` |
+
+### Sistema de Logging
+
+El sistema incluye una tabla `log` para auditoría:
+
+- **Backend**: `backend/src/models/log.py` - Modelo de la tabla
+- **Middleware**: `backend/src/middleware/logging.py` - Captura requests HTTP
+- **Frontend**: `frontend/src/pages/Logger.tsx` - Visor de logs en `/logger`
+
+#### Endpoint de logs
+
+```bash
+# Lists todos los logs
+GET /api/v1/logs
+
+# Obtiene estadísticas
+GET /api/v1/logs/stats
+
+# Crea un log (desde frontend)
+POST /api/v1/logs
+```
+
+#### Tabla log
+
+La tabla se crea automáticamente en `init.sql` con estos campos:
+
+| Campo | Tipo | Descripción |
+|-------|------|-------------|
+| id | SERIAL | PK |
+| timestamp | TIMESTAMP | Fecha/hora |
+| nivel | VARCHAR(20) | DEBUG, INFO, WARNING, ERROR |
+| tipo | VARCHAR(20) | REQUEST, ERROR, BUSINESS, ACTION, FRONTEND |
+| mensaje | VARCHAR(500) | Mensaje principal |
+| detalle | VARCHAR(2000) | Detalles adicionales |
+| ip | VARCHAR(50) | IP del cliente |
+| usuario_id | INTEGER | ID del usuario |
+| endpoint | VARCHAR(200) | Endpoint solicitado |
+| method | VARCHAR(10) | Método HTTP |
+| status_code | INTEGER | Código de respuesta |
+| usuario_nombre | VARCHAR(100) | Nombre del usuario |
+| navegador | VARCHAR(100) | User-Agent del navegador |
 
 ### Configuración
 

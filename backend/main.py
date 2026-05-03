@@ -8,6 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from src.routes import api_router
 from src.database.connection import set_current_db
+from src.middleware.logging import LoggingMiddleware
 from src.models import (
     Anexo,
     Categorias,
@@ -81,6 +82,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.add_middleware(LoggingMiddleware)
+
 app.include_router(api_router)
 
 
@@ -117,6 +120,6 @@ async def health_check():
 
 
 if __name__ == "__main__":
-    host = os.getenv("BACKEND_HOST", "0.0.0.2")
+    host = os.getenv("BACKEND_HOST", "0.0.0.0")
     port = int(os.getenv("BACKEND_PORT", "8000"))
     uvicorn.run("main:app", host=host, port=port, reload=True)
