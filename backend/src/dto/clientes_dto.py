@@ -43,7 +43,6 @@ class ClienteBase(SQLModel):
     numero_cliente: Optional[str] = None
     nombre: Optional[str] = None
     tipo_persona: str = "NATURAL"
-    cedula_rif: Optional[str] = None
     telefono: Optional[str] = None
     email: Optional[str] = None
     fax: Optional[str] = None
@@ -76,7 +75,6 @@ class ClienteUpdate(SQLModel):
     numero_cliente: Optional[str] = None
     nombre: Optional[str] = None
     tipo_persona: Optional[str] = None
-    cedula_rif: Optional[str] = None
     telefono: Optional[str] = None
     email: Optional[str] = None
     fax: Optional[str] = None
@@ -95,7 +93,6 @@ class ClienteSimpleRead(SQLModel):
     id_cliente: int
     numero_cliente: Optional[str] = None
     nombre: Optional[str] = None
-    cedula_rif: Optional[str] = None
     tipo_persona: Optional[str] = None
     estado: Optional[str] = None
     activo: Optional[bool] = None

@@ -6,6 +6,7 @@ import { authHelpers } from '../../../../lib/api';
 import type { Dependencia } from '../../../../types/dependencia';
 import type { SelectedProduct } from '../hooks/useProductSelection';
 import type { Productos } from '../../../../types';
+import type { ContratoWithDetails } from '../../../../types/contrato';
 
 interface FacturaFormProps {
   editingId: number | null;
@@ -17,12 +18,15 @@ interface FacturaFormProps {
   dependencias: Dependencia[];
   monedas: any[];
   productos: Productos[];
+  selectedContratoId: number | null;
+  contratos: ContratoWithDetails[];
   onFormDataChange: (data: Record<string, any>) => void;
   onProductSearchChange: (search: string) => void;
   onAddProduct: (id: number) => void;
   onUpdateCantidad: (id: number, cantidad: number) => void;
   onUpdatePrecio: (id: number, precio: number) => void;
   onRemoveProduct: (id: number) => void;
+  onSelectedContratoChange: (id: number | null) => void;
   onSave: () => void;
   onCancel: () => void;
 }
@@ -37,12 +41,15 @@ export function FacturaForm({
   dependencias,
   monedas,
   productos,
+  selectedContratoId,
+  contratos,
   onFormDataChange,
   onProductSearchChange,
   onAddProduct,
   onUpdateCantidad,
   onUpdatePrecio,
   onRemoveProduct,
+  onSelectedContratoChange,
   onSave,
   onCancel,
 }: FacturaFormProps) {
@@ -79,6 +86,30 @@ export function FacturaForm({
         <CardContent className="p-6">
           {/* Grid de campos */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Contrato */}
+            <div>
+              <Label htmlFor="contrato" className="text-sm font-medium">
+                Contrato
+              </Label>
+              <select
+                id="contrato"
+                className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 outline-none bg-white"
+                value={selectedContratoId || ''}
+                onChange={(e: any) => {
+                  const value = e.target.value;
+                  onSelectedContratoChange(value ? Number(value) : null);
+                  onFormDataChange({ ...formData, id_contrato: value ? Number(value) : null });
+                }}
+              >
+                <option value="">Seleccionar contrato</option>
+                {contratos.map((c) => (
+                  <option key={c.id_contrato} value={c.id_contrato}>
+                    {c.codigo || c.id_contrato} - {c.nombre} ({c.cliente?.nombre || 'Sin cliente'})
+                  </option>
+                ))}
+              </select>
+            </div>
+
             {/* Fecha */}
             <div>
               <Label htmlFor="fecha" className="text-sm font-medium">

@@ -91,24 +91,22 @@ async def listar_dependencias(
     limit: int = Query(100, ge=1, le=1000),
     search: str = Query(None, description="Buscar por nombre"),
     todas: bool = Query(False, description="Retornar todas las dependencias del sistema"),
+    db: AsyncSession = Depends(get_session),
 ):
-    from src.database.connection import get_auth_session
-    
-    async for db in get_auth_session("caguayosa"):
-        statement = select(Dependencia).options(
-            selectinload(Dependencia.tipo_dependencia),
-            selectinload(Dependencia.provincia),
-            selectinload(Dependencia.municipio).selectinload(Municipio.provincia),
-            selectinload(Dependencia.cuentas),
+    statement = select(Dependencia).options(
+        selectinload(Dependencia.tipo_dependencia),
+        selectinload(Dependencia.provincia),
+        selectinload(Dependencia.municipio).selectinload(Municipio.provincia),
+        selectinload(Dependencia.cuentas),
+    )
+    if search:
+        statement = statement.where(
+            func.lower(Dependencia.nombre).contains(func.lower(search))
         )
-        if search:
-            statement = statement.where(
-                func.lower(Dependencia.nombre).contains(func.lower(search))
-            )
-        statement = statement.offset(skip).limit(limit)
-        results = await db.exec(statement)
-        dependencias = results.all()
-        return [DependenciaRead.model_validate(d) for d in dependencias]
+    statement = statement.offset(skip).limit(limit)
+    results = await db.exec(statement)
+    dependencias = results.all()
+    return [DependenciaRead.model_validate(d) for d in dependencias]
 
 
 @router.get("/jerarquia", response_model=List[DependenciaRead])
@@ -262,7 +260,30 @@ async def obtener_dependencia(
     db_obj = results.first()
     if not db_obj:
         raise HTTPException(status_code=404, detail="Dependencia no encontrada")
-    return DependenciaRead.model_validate(db_obj)
+    
+    # Construir respuesta manualmente para evitar ошибas de validación con relaciones lazy-loaded
+    response = DependenciaRead(
+        id_dependencia=db_obj.id_dependencia,
+        id_tipo_dependencia=db_obj.id_tipo_dependencia,
+        codigo_padre=db_obj.codigo_padre,
+        nombre=db_obj.nombre,
+        direccion=db_obj.direccion,
+        telefono=db_obj.telefono,
+        email=db_obj.email,
+        web=db_obj.web,
+        base_datos=db_obj.base_datos,
+        host=db_obj.host,
+        puerto=db_obj.puerto,
+        id_provincia=db_obj.id_provincia,
+        id_municipio=db_obj.id_municipio,
+        descripcion=db_obj.descripcion,
+        tipo_dependencia=None,
+        provincia=None,
+        municipio=None,
+        cuentas=[],
+        tablas_creadas=db_obj.tablas_creadas,
+    )
+    return response
 
 
 @router.put("/{dependencia_id}", response_model=DependenciaRead)

@@ -24,13 +24,6 @@ from src.dto import CuentaCreate, CuentaUpdate
 
 
 class ClienteRepository(CRUDBase[Cliente, ClienteCreate, ClienteUpdate]):
-    async def get_by_cedula(
-        self, db: AsyncSession, cedula_rif: str
-    ) -> Optional[Cliente]:
-        statement = select(self.model).where(self.model.cedula_rif == cedula_rif)
-        results = await db.exec(statement)
-        return results.first()
-
     async def get_by_numero(
         self, db: AsyncSession, numero_cliente: str
     ) -> Optional[Cliente]:

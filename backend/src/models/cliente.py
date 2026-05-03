@@ -26,7 +26,6 @@ class Cliente(SQLModel, table=True):
     numero_cliente: str = Field(max_length=20)
     nombre: str = Field(max_length=200)
     tipo_persona: str = Field(sa_column=Column(String(20)))  # NATURAL, JURIDICA, TCP
-    cedula_rif: str = Field(max_length=20, unique=True)
     telefono: Optional[str] = Field(default=None, max_length=20)
     email: Optional[str] = Field(default=None, max_length=100)
     fax: Optional[str] = Field(default=None, max_length=20)

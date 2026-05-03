@@ -64,7 +64,7 @@ import { LiquidacionesPage } from './pages/compra/LiquidacionesPage';
 import { CrearLiquidacionPage } from './pages/compra/CrearLiquidacionPage';
 import { ContratosPage } from './pages/ventas/ContratosPage';
 import { SuplementosPage } from './pages/ventas/SuplementosPage';
-import { FacturasPage } from './pages/ventas/FacturasPage';
+import { FacturasPage } from './pages/ventas/facturas/FacturasPage';
 import { VentasEfectivoPage } from './pages/ventas/VentasEfectivoPage';
 import { ServiciosPage } from './pages/proyecto/ServiciosPage';
 import { SolicitudesPage } from './pages/proyecto/SolicitudesPage';

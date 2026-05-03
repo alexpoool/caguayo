@@ -1,4 +1,4 @@
-import { Receipt, DollarSign, Calendar, CreditCard, Edit, Trash2 } from 'lucide-react';
+import { Receipt, DollarSign, Calendar, CreditCard, Edit, Trash2, Eye, Printer } from 'lucide-react';
 import { Button, Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../../../../components/ui';
 import type { FacturaWithDetails } from '../../../../types/contrato';
 
@@ -8,6 +8,8 @@ interface FacturasTableProps {
   onDelete: (id: number, codigo: string) => void;
   onViewDetails: (factura: FacturaWithDetails) => void;
   onOpenPagos: (factura: FacturaWithDetails) => void;
+  onViewDocument: (factura: FacturaWithDetails) => void;
+  onPrintDocument: (factura: FacturaWithDetails) => void;
 }
 
 export function FacturasTable({
@@ -16,7 +18,15 @@ export function FacturasTable({
   onDelete,
   onViewDetails,
   onOpenPagos,
+  onViewDocument,
+  onPrintDocument,
 }: FacturasTableProps) {
+  console.log('[FacturasTable] Render:', {
+    facturasCount: facturas.length,
+    hasOnViewDocument: typeof onViewDocument,
+    hasOnPrintDocument: typeof onPrintDocument,
+    hasOnEdit: typeof onEdit,
+  });
   return (
     <div className="overflow-x-auto">
       <Table>
@@ -110,6 +120,31 @@ export function FacturasTable({
                         <CreditCard className="h-4 w-4" />
                       </Button>
                     )}
+
+                    {/* Botón Visualizar documento */}
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => onViewDocument?.(item)}
+                      className="text-purple-600 hover:text-purple-800 hover:bg-purple-50 h-8 w-8 transition-colors"
+                      title="Visualizar documento"
+                    >
+                      <Eye className="h-4 w-4" />
+                    </Button>
+
+                    {/* Botón Imprimir documento */}
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => {
+                        onViewDocument?.(item);
+                        onPrintDocument?.(item);
+                      }}
+                      className="text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 h-8 w-8 transition-colors"
+                      title="Imprimir documento"
+                    >
+                      <Printer className="h-4 w-4" />
+                    </Button>
 
                     {/* Botón Editar */}
                     <Button

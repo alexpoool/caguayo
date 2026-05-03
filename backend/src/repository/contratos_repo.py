@@ -202,6 +202,7 @@ class FacturaRepository(CRUDBase[Factura, FacturaCreate, FacturaUpdate]):
     ) -> List[Factura]:
         statement = (
             select(Factura)
+            .options(selectinload(Factura.items_factura).selectinload(ItemFactura.producto))
             .where(Factura.id_contrato == id_contrato)
             .order_by(Factura.id_factura.desc())
         )
