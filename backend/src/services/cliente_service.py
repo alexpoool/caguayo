@@ -158,10 +158,10 @@ class ClienteService:
         return True
 
     @staticmethod
-    async def get_cliente_by_cedula(
-        db: AsyncSession, cedula_rif: str
+    async def get_cliente_by_numero(
+        db: AsyncSession, numero_cliente: str
     ) -> Optional[ClienteRead]:
-        db_cliente = await cliente_repo.get_by_cedula(db, cedula_rif=cedula_rif)
+        db_cliente = await cliente_repo.get_by_numero(db, numero_cliente=numero_cliente)
         return ClienteRead.model_validate(db_cliente) if db_cliente else None
 
 

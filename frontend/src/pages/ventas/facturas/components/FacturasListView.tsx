@@ -14,6 +14,8 @@ interface FacturasListViewProps {
   onDelete: (id: number, codigo: string) => void;
   onViewDetails: (factura: FacturaWithDetails) => void;
   onOpenPagos: (factura: FacturaWithDetails) => void;
+  onViewDocument: (factura: FacturaWithDetails) => void;
+  onPrintDocument: (factura: FacturaWithDetails) => void;
 }
 
 export function FacturasListView({
@@ -26,7 +28,14 @@ export function FacturasListView({
   onDelete,
   onViewDetails,
   onOpenPagos,
+  onViewDocument,
+  onPrintDocument,
 }: FacturasListViewProps) {
+  console.log('[FacturasListView] Render:', {
+    facturasCount: facturas.length,
+    hasOnViewDocument: typeof onViewDocument,
+    hasOnPrintDocument: typeof onPrintDocument,
+  });
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -102,6 +111,8 @@ export function FacturasListView({
             onDelete={onDelete}
             onViewDetails={onViewDetails}
             onOpenPagos={onOpenPagos}
+            onViewDocument={onViewDocument}
+            onPrintDocument={onPrintDocument}
           />
         </CardContent>
       </Card>

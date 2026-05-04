@@ -1,6 +1,8 @@
 import { createPortal } from 'react-dom';
-import { X, Receipt, DollarSign, Calendar } from 'lucide-react';
+import { X, Receipt, DollarSign, Calendar, Printer } from 'lucide-react';
 import type { FacturaWithDetails } from '../../../../../types/contrato';
+import { contratosService, dependenciasService, clientesService, cuentasService } from '../../../../../services/api';
+import { getFacturaDocument } from '../../FacturasPage';
 
 interface FacturaDetailModalProps {
   isOpen: boolean;
@@ -13,6 +15,8 @@ export function FacturaDetailModal({
   factura,
   onClose,
 }: FacturaDetailModalProps) {
+  console.log('[FacturaDetailModal] Render - isOpen:', isOpen, 'factura:', factura?.codigo_factura);
+  
   if (!isOpen || !factura) return null;
 
   return createPortal(
@@ -110,7 +114,40 @@ export function FacturaDetailModal({
         </div>
 
         {/* Footer */}
-        <div className="p-6 border-t border-gray-200 bg-gray-50 flex justify-end">
+        <div className="p-6 border-t border-gray-200 bg-gray-50 flex justify-end gap-3">
+          <button
+            onClick={async () => {
+              console.log('[FacturaDetailModal] Botón Imprimir clickeado');
+              if (!factura) return;
+              try {
+                console.log('[FacturaDetailModal] Cargando contratos...');
+                const contratos = await contratosService.getContratos(0, 1000);
+                console.log('[FacturaDetailModal] Contratos cargados:', contratos.length);
+                const dependencias = await dependenciasService.getDependencias(undefined, 0, 1000);
+                const contrato = contratos.find((c: any) => c.id_contrato === factura.id_contrato);
+                console.log('[FacturaDetailModal] Contrato encontrado:', contrato?.codigo);
+                const clienteId = contrato?.cliente?.id_cliente;
+                console.log('[FacturaDetailModal] Cliente ID:', clienteId);
+                const clienteCompleto = clienteId ? await clientesService.getCliente(Number(clienteId)) : null;
+                const clienteCuentas = clienteId ? await cuentasService.getCuentasByCliente(Number(clienteId)) : [];
+                console.log('[FacturaDetailModal] Generando documento...');
+                const html = getFacturaDocument(factura, contratos, dependencias, null, clienteCompleto, clienteCuentas);
+                console.log('[FacturaDetailModal] HTML generado, length:', html.length);
+                const printWindow = window.open('', '_blank');
+                if (printWindow) {
+                  printWindow.document.write(html);
+                  printWindow.document.close();
+                  printWindow.print();
+                }
+              } catch (error) {
+                console.error('[FacturaDetailModal] Error printing factura:', error);
+              }
+            }}
+            className="px-6 py-3 text-white bg-violet-600 hover:bg-violet-700 rounded-xl transition-colors font-medium flex items-center gap-2"
+          >
+            <Printer className="h-4 w-4" />
+            Imprimir
+          </button>
           <button
             onClick={onClose}
             className="px-6 py-3 text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors font-medium"

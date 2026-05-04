@@ -2,6 +2,7 @@ from sqlmodel import SQLModel
 from typing import Optional, List
 from datetime import date
 from decimal import Decimal
+from src.dto.productos_dto import ProductoSimpleRead
 
 
 class TipoContratoBase(SQLModel):
@@ -92,7 +93,7 @@ class MonedaRead(SQLModel):
 class ClienteSimpleRead(SQLModel):
     id_cliente: int
     nombre: str
-    cedula_rif: Optional[str] = None
+    numero_cliente: Optional[str] = None
 
 
 class SuplementoBase(SQLModel):
@@ -143,6 +144,7 @@ class ItemFacturaRead(ItemFacturaBase):
     id_factura: int
     precio_compra: Decimal
     codigo: Optional[str] = None
+    producto: Optional[ProductoSimpleRead] = None
 
 
 class FacturaBase(SQLModel):
@@ -167,7 +169,7 @@ class FacturaRead(FacturaBase):
 
 
 class FacturaReadWithDetails(FacturaRead):
-    pass
+    items: Optional[List[ItemFacturaRead]] = None
 
 
 class FacturaUpdate(SQLModel):
@@ -235,3 +237,8 @@ class VentaEfectivoUpdate(SQLModel):
 class DependenciaSimpleRead(SQLModel):
     id_dependencia: int
     nombre: str
+
+
+# Rebuild de modelos para resolver referencias circulares
+ItemFacturaRead.model_rebuild()
+FacturaReadWithDetails.model_rebuild()

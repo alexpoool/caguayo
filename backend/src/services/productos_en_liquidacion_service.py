@@ -195,10 +195,16 @@ async def agregar_desde_factura(
     db: AsyncSession, id_factura: int, productos: List[dict]
 ) -> None:
     """Agrega productos desde una factura a la tabla de productos_en_liquidacion."""
+    if not productos:
+        return
+    
+    anio = datetime.now().year
+    codigo_base = await productos_en_liquidacion_service.generate_codigo(db)
+    numero = int(codigo_base.split('.')[1])
+    
     for prod in productos:
-        codigo = await get_codigo_from_item_anexo(db, prod["id_producto"])
-        if not codigo:
-            codigo = await productos_en_liquidacion_service.generate_codigo(db)
+        codigo = f"{anio}.{numero}"
+        numero += 1
         db_producto = ProductosEnLiquidacion(
             codigo=codigo,
             id_producto=prod["id_producto"],
@@ -217,30 +223,16 @@ async def agregar_desde_venta_efectivo(
     db: AsyncSession, id_venta_efectivo: int, productos: List[dict]
 ) -> None:
     """Agrega productos desde una venta en efectivo a la tabla de productos_en_liquidacion."""
+    if not productos:
+        return
+    
+    anio = datetime.now().year
+    codigo_base = await productos_en_liquidacion_service.generate_codigo(db)
+    numero = int(codigo_base.split('.')[1])
+    
     for prod in productos:
-        codigo = await get_codigo_from_item_anexo(db, prod["id_producto"])
-        if not codigo:
-            codigo = await productos_en_liquidacion_service.generate_codigo(db)
-        db_producto = ProductosEnLiquidacion(
-            codigo=codigo,
-            id_producto=prod["id_producto"],
-            cantidad=prod["cantidad"],
-            precio=Decimal(str(prod.get("precio_venta", prod.get("precio", 0)))),
-            id_moneda=prod.get("id_moneda", 1),
-            tipo_compra="VENTA_EFECTIVO",
-            id_venta_efectivo=id_venta_efectivo,
-            liquidada=False,
-        )
-        db.add(db_producto)
-    await db.commit()
-
-
-async def agregar_desde_venta_efectivo(
-    db: AsyncSession, id_venta_efectivo: int, productos: List[dict]
-) -> None:
-    """Agrega productos desde una venta en efectivo a la tabla de productos_en_liquidacion."""
-    for prod in productos:
-        codigo = await productos_en_liquidacion_service.generate_codigo(db)
+        codigo = f"{anio}.{numero}"
+        numero += 1
         db_producto = ProductosEnLiquidacion(
             codigo=codigo,
             id_producto=prod["id_producto"],
@@ -259,8 +251,16 @@ async def agregar_desde_anexo(
     db: AsyncSession, id_anexo: int, productos: List[dict]
 ) -> None:
     """Agrega productos desde un anexo a la tabla de productos_en_liquidacion."""
+    if not productos:
+        return
+    
+    anio = datetime.now().year
+    codigo_base = await productos_en_liquidacion_service.generate_codigo(db)
+    numero = int(codigo_base.split('.')[1])
+    
     for prod in productos:
-        codigo = await productos_en_liquidacion_service.generate_codigo(db)
+        codigo = f"{anio}.{numero}"
+        numero += 1
         db_producto = ProductosEnLiquidacion(
             codigo=codigo,
             id_producto=prod["id_producto"],

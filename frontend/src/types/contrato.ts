@@ -45,6 +45,7 @@ export interface ClienteSimple {
 export interface ProductoSimple {
   id_producto: number;
   nombre: string;
+  descripcion?: string;
   precio_venta: number;
 }
 

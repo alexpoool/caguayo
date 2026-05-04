@@ -58,6 +58,8 @@ from src.dto import (
     DependenciaSimpleRead,
     ItemFacturaCreate,
     ItemVentaEfectivoCreate,
+    ItemFacturaRead,
+    ProductoSimpleRead,
 )
 from src.utils import generar_codigo_anio, generar_codigo_con_padre
 from src.services.productos_en_liquidacion_service import (
@@ -187,7 +189,7 @@ async def map_contrato_to_read(
         cliente=ClienteSimpleRead(
             id_cliente=cliente.id_cliente,
             nombre=cliente.nombre,
-            cedula_rif=cliente.cedula_rif,
+            numero_cliente=cliente.numero_cliente,
         )
         if cliente
         else None,
@@ -326,6 +328,32 @@ class SuplementoService:
 async def map_factura_to_read(
     db: AsyncSession, factura: Factura
 ) -> FacturaReadWithDetails:
+    # Mapear items con los datos del producto
+    items_con_producto = []
+    if factura.items_factura:
+        for item in factura.items_factura:
+            producto = await db.get(Productos, item.id_producto) if item.id_producto else None
+            item_read = ItemFacturaRead(
+                id_item_factura=item.id_item_factura,
+                id_factura=item.id_factura,
+                id_producto=item.id_producto,
+                cantidad=item.cantidad,
+                precio_venta=item.precio_venta,
+                precio_compra=item.precio_compra,
+                id_moneda=item.id_moneda,
+                codigo=item.codigo,
+                producto=ProductoSimpleRead(
+                    id_producto=producto.id_producto,
+                    codigo=producto.codigo,
+                    nombre=producto.nombre,
+                    descripcion=producto.descripcion,
+                    precio_venta=producto.precio_venta,
+                    precio_minimo=producto.precio_minimo,
+                    cantidad=0
+                ) if producto else None
+            )
+            items_con_producto.append(item_read)
+    
     return FacturaReadWithDetails(
         id_factura=factura.id_factura,
         id_contrato=factura.id_contrato,
@@ -335,7 +363,7 @@ async def map_factura_to_read(
         fecha=factura.fecha,
         monto=factura.monto,
         pago_actual=factura.pago_actual,
-        items=factura.items_factura,
+        items=items_con_producto,
     )
 
 
