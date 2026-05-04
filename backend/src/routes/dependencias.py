@@ -11,6 +11,7 @@ from src.models import (
     Municipio,
     Cuenta,
     CuentaDependencia,
+    ConexionDatabase,
 )
 from src.dto import (
     DependenciaCreate,
@@ -131,23 +132,77 @@ async def listar_dependencias_jerarquia(
     return [DependenciaRead.model_validate(d) for d in dependencias]
 
 
+@router.get("/bases-de-datos", tags=["bases-de-datos"])
+async def get_bases_de_datos(
+    db: AsyncSession = Depends(get_session),
+):
+    """Obtiene todas las bases de datos existentes de la tabla conexion_database"""
+    from sqlmodel import select
+    
+    statement = select(ConexionDatabase)
+    results = await db.exec(statement)
+    bases_de_datos = results.all()
+    
+    return [
+        {
+            "id_conexion": bd.id_conexion,
+            "nombre_database": bd.nombre_database,
+            "host": bd.host,
+            "puerto": bd.puerto,
+            "usuario": bd.usuario,
+        }
+        for bd in bases_de_datos
+    ]
+
+
 @router.post("", response_model=DependenciaRead, status_code=201)
 async def crear_dependencia(
     data: DependenciaConCuentasCreate,
     db: AsyncSession = Depends(get_session),
 ):
     from src.database.connection import _current_db, AUTH_DATABASE
+    from sqlmodel import select
     
     current_db = _current_db.get()
-    if current_db != AUTH_DATABASE:
-        raise HTTPException(
-            status_code=403,
-            detail="no_se_puede_crear_dependencia_desde_sucursal",
-        )
+    codigo_padre = data.dependencia.codigo_padre
     
-    if data.dependencia.codigo_padre:
+    # Si es dependencia raíz (sin padre), debe crearse desde BD central
+    if codigo_padre is None:
+        if current_db != AUTH_DATABASE:
+            raise HTTPException(
+                status_code=403,
+                detail="no_se_puede_crear_dependencia_desde_sucursal",
+            )
+    else:
+        # Es subdependencia → debe crearse desde la BD del padre
+        statement = select(Dependencia).where(Dependencia.id_dependencia == codigo_padre)
+        results = await db.exec(statement)
+        dependencia_padre = results.first()
+        
+        if not dependencia_padre:
+            raise HTTPException(
+                status_code=404,
+                detail="Dependencia padre no encontrada",
+            )
+        
+        # Obtener la base de datos del padre
+        base_datos_padre = dependencia_padre.base_datos
+        if base_datos_padre is None:
+            raise HTTPException(
+                status_code=400,
+                detail="La dependencia padre no tiene base de datos asignada",
+            )
+        
+        # Verificar que el usuario esté conectado a la BD del padre
+        if current_db != base_datos_padre:
+            raise HTTPException(
+                status_code=403,
+                detail=f"Debe estar conectado a la base de datos '{base_datos_padre}' para crear subdependencias",
+            )
+    
+    if codigo_padre:
         tiene_ciclo = await validar_ciclo_dependencia(
-            db, 0, data.dependencia.codigo_padre
+            db, 0, codigo_padre
         )
         if tiene_ciclo:
             raise HTTPException(
@@ -193,10 +248,18 @@ async def crear_dependencia(
                 "direccion": cuenta_obj.direccion,
             }, "INSERT")
 
-    # Primero crear la BD si existe base_datos
-    if data.dependencia.base_datos:
+    # Manejar base de datos: existente o nueva
+    tablas_creadas = None
+    
+    if data.id_conexion_existente:
+        # Usar una base de datos existente (el nombre viene directamente del frontend)
+        db_obj.base_datos = data.id_conexion_existente
+        db_obj = await dependencia_repo.update(db, db_obj=db_obj, obj_in=db_obj)
+        
+    elif data.dependencia.base_datos:
+        # Crear nueva base de datos
         try:
-            tablas = DatabaseService.crear_base_datos(data.dependencia.base_datos)
+            tablas_creadas = DatabaseService.crear_base_datos(data.dependencia.base_datos)
         except Exception as e:
             # Si falla la creación de la BD, eliminamos la dependencia creada
             await dependencia_repo.remove(db, id=db_obj.id_dependencia)
@@ -220,7 +283,7 @@ async def crear_dependencia(
             id_provincia=db_obj.id_provincia,
             id_municipio=db_obj.id_municipio,
             descripcion=db_obj.descripcion,
-            tablas_creadas=tablas,
+            tablas_creadas=tablas_creadas,
         )
 
     # Si no tiene base_datos, cargar con relaciones normalmente
@@ -248,14 +311,17 @@ async def obtener_dependencia(
     dependencia_id: int,
     db: AsyncSession = Depends(get_session),
 ):
+    from sqlalchemy.orm import selectinload
+    
     statement = (
         select(Dependencia)
         .where(Dependencia.id_dependencia == dependencia_id)
         .options(
             selectinload(Dependencia.tipo_dependencia),
             selectinload(Dependencia.provincia),
-            selectinload(Dependencia.municipio),
+            selectinload(Dependencia.municipio).selectinload(Municipio.provincia),
             selectinload(Dependencia.cuentas),
+            selectinload(Dependencia.padre),
         )
     )
     results = await db.exec(statement)

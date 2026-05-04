@@ -55,6 +55,15 @@ export interface DependenciaCreate {
 export interface DependenciaConCuentasCreate {
   dependencia: DependenciaCreate;
   cuentas?: CuentaCreate[];
+  id_conexion_existente?: string;
+}
+
+export interface ConexionDatabase {
+  id_conexion: number | null;
+  nombre_database: string;
+  host: string;
+  puerto: number;
+  usuario?: string;
 }
 
 export interface DependenciaUpdate {

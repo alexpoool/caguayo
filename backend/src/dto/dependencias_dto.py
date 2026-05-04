@@ -45,6 +45,7 @@ class DependenciaCreate(DependenciaBase):
 class DependenciaConCuentasCreate(SQLModel):
     dependencia: DependenciaCreate
     cuentas: Optional[List[CuentaCreate]] = None
+    id_conexion_existente: Optional[str] = None
 
 
 class DependenciaRead(SQLModel):

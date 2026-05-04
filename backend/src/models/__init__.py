@@ -37,6 +37,7 @@ from .item_anexo import ItemAnexo
 from .item_factura import ItemFactura
 from .item_venta_efectivo import ItemVentaEfectivo
 from .cuenta_dependencia import CuentaDependencia
+from .log import LogEntry
 
 __all__ = [
     "Moneda",
@@ -85,4 +86,5 @@ __all__ = [
     "ItemFactura",
     "ItemVentaEfectivo",
     "CuentaDependencia",
+    "LogEntry",
 ]

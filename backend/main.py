@@ -8,6 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from src.routes import api_router
 from src.database.connection import set_current_db
+from src.middleware.logging import LoggingMiddleware
 from src.models import (
     Anexo,
     Categorias,
@@ -93,6 +94,8 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allow_headers=["*"],
 )
+
+app.add_middleware(LoggingMiddleware)
 
 app.include_router(api_router)
 
