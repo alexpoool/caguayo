@@ -1,5 +1,15 @@
 import { apiClient, authHelpers } from '../lib/api';
 
+export interface CuentaDependenciaInfo {
+  id_cuenta: number;
+  numero_cuenta: string;
+  sucursal?: number;
+  banco: string;
+  titular: string;
+  direccion: string;
+  id_moneda?: number;
+}
+
 export interface DependenciaInfo {
   id_dependencia: number;
   nombre: string;
@@ -9,6 +19,8 @@ export interface DependenciaInfo {
   email?: string;
   telefono?: string;
   direccion?: string;
+  web?: string;
+  cuentas_dependencias?: CuentaDependenciaInfo[];
 }
 
 export interface GrupoInfo {

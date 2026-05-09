@@ -159,6 +159,11 @@ class SolicitudServicioService:
 
 class EtapaService:
     @staticmethod
+    async def get_all(db: AsyncSession, skip: int = 0, limit: int = 10000) -> List[EtapaRead]:
+        items = await etapa_repo.get_multi(db, skip=skip, limit=limit)
+        return [EtapaRead(**i.model_dump()) for i in items]
+
+    @staticmethod
     async def create(db: AsyncSession, data: EtapaCreate) -> EtapaRead:
         if not data.numero_etapa:
             existentes = await etapa_repo.get_by_solicitud(

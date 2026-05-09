@@ -520,9 +520,12 @@ async def obtener_cuentas_por_dependencia(
 ):
     """Obtener cuentas por ID de dependencia."""
     from sqlmodel import select
+    from sqlalchemy.orm import selectinload
 
-    statement = select(CuentaDependencia).where(
-        CuentaDependencia.id_dependencia == id_dependencia
+    statement = (
+        select(CuentaDependencia)
+        .options(selectinload(CuentaDependencia.moneda))
+        .where(CuentaDependencia.id_dependencia == id_dependencia)
     )
     results = await db.exec(statement)
     return results.all()

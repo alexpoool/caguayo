@@ -20,7 +20,6 @@ class CuentaCreate(CuentaBase):
 
 class CuentaRead(CuentaBase):
     id_cuenta: Optional[int] = None
-    moneda: Optional[MonedaRead] = None
 
 
 class CuentaUpdate(SQLModel):

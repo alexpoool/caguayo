@@ -197,6 +197,7 @@ class FacturaServicioBase(SQLModel):
     precio: Decimal = Decimal("0.00")
     monto: Decimal = Decimal("0.00")
     observaciones: Optional[str] = None
+    cuenta_factura: Optional[str] = None
     id_usuario: Optional[int] = None
 
 
@@ -219,6 +220,7 @@ class FacturaServicioUpdate(SQLModel):
     precio: Optional[Decimal] = None
     monto: Optional[Decimal] = None
     observaciones: Optional[str] = None
+    cuenta_factura: Optional[str] = None
     id_usuario: Optional[int] = None
 
 

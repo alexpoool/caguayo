@@ -372,7 +372,8 @@ CREATE TABLE contrato (
     id_tipo_contrato INTEGER NOT NULL REFERENCES tipo_contrato(id_tipo_contrato) ON DELETE CASCADE,
     id_moneda INTEGER NOT NULL REFERENCES moneda(id_moneda) ON DELETE CASCADE,
     monto NUMERIC(15, 2) NOT NULL DEFAULT 0.00,
-    documento_final VARCHAR(255)
+    documento_final VARCHAR(255),
+    codigo VARCHAR(50)
 );
 
 
@@ -482,6 +483,9 @@ CREATE TABLE liquidacion (
     gasto_empresa NUMERIC(15, 2) DEFAULT 0.00,
     importe NUMERIC(15, 2) DEFAULT 0.00,
     neto_pagar NUMERIC(15, 2) DEFAULT 0.00,
+    porcentaje_caguayo NUMERIC(5, 2) DEFAULT 10.00,
+    importe_caguayo NUMERIC(15, 2) DEFAULT 0.00,
+    tributario_monto NUMERIC(15, 2) DEFAULT 0.00,
     tipo_pago VARCHAR(20) DEFAULT 'TRANSFERENCIA'
 );
 
@@ -997,7 +1001,7 @@ CREATE TABLE tareas_etapa (
 -- Personas Naturales asignadas a Etapas
 CREATE TABLE persona_etapa (
     id_etapa INTEGER NOT NULL REFERENCES etapas(id_etapa) ON DELETE CASCADE,
-    id_persona INTEGER NOT NULL REFERENCES clientes_persona_natural(id_cliente),
+    id_persona INTEGER NOT NULL REFERENCES clientes(id_cliente),
     cobro NUMERIC(15,2) DEFAULT 0.00,
     id_moneda INTEGER REFERENCES moneda(id_moneda),
     liquidada BOOLEAN DEFAULT FALSE,
@@ -1017,7 +1021,9 @@ CREATE TABLE factura_servicio (
     descripcion TEXT,
     cantidad NUMERIC(12,2) DEFAULT 0.00,
     precio NUMERIC(15,2) DEFAULT 0.00,
+    monto NUMERIC(15,4) DEFAULT 0.00,
     observaciones TEXT,
+    cuenta_factura VARCHAR(50),
     id_usuario INTEGER
 );
 
@@ -1048,22 +1054,27 @@ CREATE TABLE persona_liquidacion (
     id_liquidacion SERIAL PRIMARY KEY,
     numero VARCHAR(50),
     id_etapa INTEGER REFERENCES etapas(id_etapa),
-    id_persona INTEGER REFERENCES clientes_persona_natural(id_cliente),
+    id_persona INTEGER REFERENCES clientes(id_cliente),
     fecha_emision DATE DEFAULT CURRENT_DATE,
     fecha_liquidacion DATE,
     descripcion TEXT,
     id_moneda INTEGER REFERENCES moneda(id_moneda),
+    tipo_pago VARCHAR(50) DEFAULT 'TRANSFERENCIA',
     importe NUMERIC(15,2) DEFAULT 0.00,
+    porcentaje_caguayo NUMERIC(5,2) DEFAULT 10.00,
+    importe_caguayo NUMERIC(15,4) DEFAULT 0.00,
     porciento_gestion NUMERIC(5,2) DEFAULT 0.00,
     porciento_empresa NUMERIC(5,2) DEFAULT 0.00,
     devengado NUMERIC(15,2) DEFAULT 0.00,
     tributario NUMERIC(15,2) DEFAULT 0.00,
+    tributario_monto NUMERIC(15,4) DEFAULT 0.00,
     comision_bancaria NUMERIC(15,2) DEFAULT 0.00,
     neto_pagar NUMERIC(15,2) DEFAULT 0.00,
     id_tipo_concepto INTEGER,
     doc_pago_liquidacion VARCHAR(100),
     gasto_empresa NUMERIC(15,2) DEFAULT 0.00,
-    observacion TEXT
+    observacion TEXT,
+    confirmado BOOLEAN DEFAULT false
 );
 
 -- =====================================================
@@ -1076,6 +1087,7 @@ CREATE TABLE cuenta_dependencias (
     id_cuenta SERIAL PRIMARY KEY,
     id_dependencia INTEGER NOT NULL REFERENCES dependencia(id_dependencia) ON DELETE CASCADE,
     id_moneda INTEGER REFERENCES moneda(id_moneda) ON DELETE SET NULL,
+    tipo_cuenta VARCHAR(50) NOT NULL DEFAULT 'CUP',
     titular VARCHAR(150) NOT NULL,
     banco VARCHAR(100) NOT NULL,
     sucursal INTEGER,

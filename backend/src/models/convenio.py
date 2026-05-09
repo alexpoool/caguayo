@@ -26,7 +26,6 @@ class Convenio(SQLModel, table=True):
     fecha: date
     vigencia: date
     id_tipo_convenio: int = Field(foreign_key="tipo_convenio.id_tipo_convenio")
-    codigo: Optional[str] = Field(default=None, max_length=50)
 
     cliente: Optional["Cliente"] = Relationship(
         back_populates="convenios"

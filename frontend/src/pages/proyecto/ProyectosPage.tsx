@@ -217,6 +217,11 @@ export function ProyectosPage() {
   const confirmarAprobacion = async () => {
     if (!aprobarModal.solicitud) return;
     
+    if (!formContrato.id_moneda) {
+      toast.error('Debe seleccionar una moneda');
+      return;
+    }
+    
     try {
       if (aprobarModal.modo === 'crear') {
         if (!formContrato.id_cliente) {
@@ -228,7 +233,7 @@ export function ProyectosPage() {
           id_cliente: Number(formContrato.id_cliente),
           id_estado: Number(formContrato.id_estado) || 1,
           id_tipo_contrato: Number(formContrato.id_tipo_contrato) || 1,
-          id_moneda: Number(formContrato.id_moneda) || 1,
+          id_moneda: Number(formContrato.id_moneda) || undefined,
           fecha: formContrato.fecha || new Date().toISOString().split('T')[0],
           vigencia: formContrato.vigencia || new Date().toISOString().split('T')[0],
           proforma: formContrato.proforma,

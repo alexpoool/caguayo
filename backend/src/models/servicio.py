@@ -161,6 +161,7 @@ class FacturaServicio(SQLModel, table=True):
     precio: Decimal = Field(default=Decimal("0.00"))
     monto: Decimal = Field(default=Decimal("0.00"))
     observaciones: Optional[str] = None
+    cuenta_factura: Optional[str] = Field(default=None, max_length=50)
     id_usuario: Optional[int] = None
 
     etapa: "Etapa" = Relationship(back_populates="facturas")

@@ -177,6 +177,7 @@ export interface FacturaServicio {
   precio: number;
   monto: number;
   observaciones?: string;
+  cuenta_factura?: string;
   id_usuario?: number;
 }
 
@@ -190,6 +191,7 @@ export interface FacturaServicioCreate {
   cantidad: number;
   precio: number;
   observaciones?: string;
+  cuenta_factura?: string;
   id_usuario?: number;
 }
 

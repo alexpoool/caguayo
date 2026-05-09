@@ -23,6 +23,7 @@ class Cliente(SQLModel, table=True):
         primary_key=True,
         sa_column_kwargs={"autoincrement": True}
     )
+    cedula_rif: str = Field(max_length=20)
     numero_cliente: str = Field(max_length=20)
     nombre: str = Field(max_length=200)
     tipo_persona: str = Field(sa_column=Column(String(20)))  # NATURAL, JURIDICA, TCP

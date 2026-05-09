@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlmodel import select
 from typing import List
@@ -164,6 +164,15 @@ async def delete_solicitud(id: int, db: AsyncSession = Depends(get_session)):
 # ETAPAS
 # ==========================================
 etapas_router = APIRouter(prefix="/etapas", tags=["etapas"], redirect_slashes=False)
+
+
+@etapas_router.get("", response_model=List[EtapaRead])
+async def get_all_etapas(
+    skip: int = Query(0, ge=0),
+    limit: int = Query(10000, ge=1, le=100000),
+    db: AsyncSession = Depends(get_session)
+):
+    return await EtapaService.get_all(db, skip=skip, limit=limit)
 
 
 @etapas_router.get("/solicitud/{solicitud_id}", response_model=List[EtapaRead])

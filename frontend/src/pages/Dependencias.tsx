@@ -32,6 +32,7 @@ import {
   Database,
   Copy,
   Check,
+  Hash,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import {
@@ -54,6 +55,7 @@ import {
   dependenciasService,
   configuracionService,
 } from "../services/administracion";
+import { monedaService } from "../services/api";
 import type { Dependencia, DependenciaCreate, DependenciaConCuentasCreate } from "../types/dependencia";
 import type { CuentaCreate } from "../types/cuenta";
 
@@ -161,6 +163,8 @@ export function DependenciasPage() {
     banco: "",
     sucursal: undefined,
     direccion: "",
+    numero_cuenta: "",
+    id_moneda: undefined,
   });
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
@@ -233,6 +237,11 @@ const { data: tiposCuenta = [] } = useQuery({
   const { data: basesDeDatos = [] } = useQuery({
     queryKey: ["bases-de-datos"],
     queryFn: () => dependenciasService.getBasesDeDatos(),
+  });
+
+  const { data: monedas = [] } = useQuery({
+    queryKey: ["monedas"],
+    queryFn: () => monedaService.getMonedas(),
   });
 
   // Refetch municipios when provincia changes
@@ -426,6 +435,8 @@ const { data: tiposCuenta = [] } = useQuery({
           banco: c.banco,
           sucursal: c.sucursal,
           direccion: c.direccion,
+          numero_cuenta: c.numero_cuenta || "",
+          id_moneda: c.id_moneda,
         })),
       );
     } else {
@@ -499,7 +510,7 @@ const { data: tiposCuenta = [] } = useQuery({
       !cuentaForm.titular ||
       !cuentaForm.banco ||
       !cuentaForm.direccion ||
-      !cuentaForm.titular
+      !cuentaForm.numero_cuenta
     ) {
       toast.error("Todos los campos de la cuenta son requeridos");
       return;
@@ -524,6 +535,8 @@ const { data: tiposCuenta = [] } = useQuery({
       banco: "",
       sucursal: undefined,
       direccion: "",
+      numero_cuenta: "",
+      id_moneda: undefined,
     });
   };
 
@@ -532,17 +545,19 @@ const { data: tiposCuenta = [] } = useQuery({
     setEditingCuentaIndex(index);
   };
 
-  const handleDeleteCuenta = (index: number) => {
+const handleDeleteCuenta = (index: number) => {
     const newCuentas = cuentas.filter((_, i) => i !== index);
     setCuentas(newCuentas);
     if (editingCuentaIndex === index) {
       setEditingCuentaIndex(null);
       setCuentaForm({
-titular: "",
-      banco: "",
-      sucursal: undefined,
-      direccion: "",
-    });
+        titular: "",
+        banco: "",
+        sucursal: undefined,
+        direccion: "",
+        numero_cuenta: "",
+        id_moneda: undefined,
+      });
     }
     toast.success("Cuenta eliminada");
   };
@@ -975,6 +990,40 @@ titular: "",
                   }
                   placeholder="Dirección de la sucursal"
                   className="transition-all duration-200 focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2 text-gray-700">
+                  <CreditCard className="h-5 w-5 text-teal-500" />
+                  Moneda *
+                </Label>
+                <select
+                  value={cuentaForm.id_moneda || ""}
+                  onChange={(e) =>
+                    setCuentaForm({ ...cuentaForm, id_moneda: Number(e.target.value) || undefined })
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white"
+                >
+                  <option value="">Seleccionar moneda</option>
+                  {monedas.map((m) => (
+                    <option key={m.id_moneda} value={m.id_moneda}>
+                      {m.simbolo} - {m.nombre}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2 text-gray-700">
+                  <Hash className="h-5 w-5 text-indigo-500" />
+                  Número de Cuenta *
+                </Label>
+                <Input
+                  value={cuentaForm.numero_cuenta || ""}
+                  onChange={(e) =>
+                    setCuentaForm({ ...cuentaForm, numero_cuenta: e.target.value })
+                  }
+                  placeholder="Número de cuenta bancaria"
+                  className="transition-all duration-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                 />
               </div>
               <div className="col-span-2 flex items-end gap-3">

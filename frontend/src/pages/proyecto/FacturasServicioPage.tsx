@@ -1,12 +1,15 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
+import { useQuery } from '@tanstack/react-query';
 import { Button, Input, Label, Card, CardContent, CardHeader, CardTitle, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, ConfirmModal } from '../../components/ui';
-import { facturasServicioService, etapasProyectoService, monedaService, solicitudesService } from '../../services/api';
-import type { FacturaServicio, FacturaServicioCreate, FacturaServicioUpdate, Etapa } from '../../types/servicio';
+import { facturasServicioService, etapasProyectoService, monedaService, solicitudesService, tareasEtapaService, dependenciasService, cuentasService, clientesService } from '../../services/api';
+import type { FacturaServicio, FacturaServicioCreate, FacturaServicioUpdate, Etapa, TareaEtapa, SolicitudServicio } from '../../types/servicio';
+import type { Cliente } from '../../types/ventas';
 import type { Moneda } from '../../types/moneda';
-import { Plus, Save, Trash2, Edit, ArrowLeft, Search, Receipt, X, Eye, DollarSign, Hash, Calendar, FileText, Check, ChevronDown } from 'lucide-react';
+import { Plus, Save, Trash2, Edit, ArrowLeft, Search, Receipt, X, Eye, DollarSign, Hash, Calendar, FileText, Check, ChevronDown, Printer } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { authService } from '../../services/auth';
 
 type View = 'list' | 'form';
 
@@ -123,6 +126,27 @@ export function FacturasServicioPage() {
     type: 'danger'
   });
 
+  
+
+  const [cuentasDependencia, setCuentasDependencia] = useState<any[]>([]);
+  const user = authService.getUser();
+  const dependenciaId = user?.dependencia?.id_dependencia;
+
+  useEffect(() => {
+    if (dependenciaId) {
+      dependenciasService.getCuentasByDependencia(dependenciaId)
+        .then(setCuentasDependencia)
+        .catch(() => setCuentasDependencia([]));
+    }
+  }, [dependenciaId]);
+
+  
+
+  const { data: clientesData = [] } = useQuery({
+    queryKey: ['clientes-all'],
+    queryFn: () => clientesService.getClientes(0, 10000)
+  });
+
   useEffect(() => { loadInitialData(); }, []);
 
   useEffect(() => {
@@ -133,12 +157,14 @@ export function FacturasServicioPage() {
 
   const loadInitialData = async () => {
     try {
-      const [monedasRes, solicitudesRes] = await Promise.all([
+      const [monedasRes, solicitudesRes, etapasRes] = await Promise.all([
         monedaService.getMonedas(0, 100),
-        solicitudesService.getSolicitudes(0, 1000)
+        solicitudesService.getSolicitudes(0, 1000),
+        etapasProyectoService.getAllEtapas()
       ]);
       setMonedas(monedasRes);
       setSolicitudes(solicitudesRes);
+      setEtapas(etapasRes);
       if (etapaParam) {
         const etapaData = await etapasProyectoService.getEtapa(Number(etapaParam));
         setCurrentEtapa(etapaData);
@@ -184,7 +210,8 @@ export function FacturasServicioPage() {
           fecha: formData.fecha,
           descripcion: formData.descripcion,
           precio: formData.precio ? Number(formData.precio) : undefined,
-          observaciones: formData.observaciones
+          observaciones: formData.observaciones,
+          cuenta_factura: formData.cuenta_factura || undefined
         };
         await facturasServicioService.updateFacturaServicio(editingId, data);
       } else {
@@ -197,7 +224,8 @@ export function FacturasServicioPage() {
           descripcion: formData.descripcion,
           cantidad: formData.cantidad ? Number(formData.cantidad) : 1,
           precio: formData.precio ? Number(formData.precio) : 0,
-          observaciones: formData.observaciones
+          observaciones: formData.observaciones,
+          cuenta_factura: formData.cuenta_factura || undefined
         };
         await facturasServicioService.createFacturaServicio(data);
       }
@@ -243,7 +271,8 @@ export function FacturasServicioPage() {
         fecha: item.fecha,
         descripcion: item.descripcion,
         precio: item.precio,
-        observaciones: item.observaciones
+        observaciones: item.observaciones,
+        cuenta_factura: item.cuenta_factura || ''
       });
       if (item.id_etapa) setSelectedEtapaId(item.id_etapa);
     } else {
@@ -290,6 +319,339 @@ export function FacturasServicioPage() {
     if (!id) return 'N/A';
     const e = etapas.find(et => et.id_etapa === id);
     return e?.nombre_etapa || `Etapa #${e?.numero_etapa || 'N/A'}`;
+  };
+
+  const getFacturaServicioDocument = (
+    factura: FacturaServicio,
+    etapasData: Etapa[],
+    tareasData: TareaEtapa[],
+    solicitudesData: SolicitudServicio[],
+    autorizadoPor: string,
+    revisadoPor: string,
+    cuentaSeleccionada: any,
+    clientesData: Cliente[] = [],
+    cuentasClientesData: any[] = [],
+    monedasData: Moneda[] = []
+  ) => {
+    console.log('DEBUG getFacturaServicioDocument INPUT:', { factura, etapasData, solicitudesData, clientesData });
+    
+    const etapa = etapasData.find(e => e.id_etapa === factura.id_etapa);
+    console.log('DEBUG etapa:', etapa);
+    const solicitud = solicitudesData.find(s => s.id_solicitud_servicio === etapa?.id_solicitud_servicio);
+    console.log('DEBUG solicitud:', solicitud);
+    const moneda = monedas.find(m => m.id_moneda === factura.id_moneda);
+    
+    const user = authService.getUser();
+    const elaboradoPor = user ? `${user.nombre || ''} ${user.primer_apellido || ''}`.trim() : '';
+    const cargoUsuario = user?.cargo || '';
+    
+    const empresa = user?.dependencia;
+    const empresaNombre = empresa?.nombre || 'CAGUAYO S.A.';
+    const empresaDireccion = empresa?.direccion || '';
+    const empresaTelefono = empresa?.telefono || '';
+    const empresaWeb = empresa?.web || '';
+    const empresaEmail = empresa?.email || '';
+    
+    // Datos del cliente
+    const clienteId = solicitud?.id_cliente;
+    console.log('DEBUG clienteId:', clienteId);
+    const cliente = clientesData.find(c => Number(c.id_cliente) === Number(clienteId));
+    console.log('DEBUG cliente:', cliente);
+    const codigoProyecto = solicitud?.codigo_proyecto || 'N/A';
+    const nombreCliente = cliente?.nombre || 'N/A';
+    const codigoCliente = cliente?.numero_cliente || 'N/A';
+    const provinciaCliente = cliente?.provincia?.nombre || 'N/A';
+    const municipioCliente = cliente?.municipio?.nombre || 'N/A';
+    const direccionCliente = cliente?.direccion || 'N/A';
+    
+    // Cuentas del cliente
+    const cuentaCliente = cuentasClientesData && cuentasClientesData.length > 0 ? cuentasClientesData[0] : null;
+    
+    const nombreEtapa = etapa?.nombre_etapa || `Etapa #${etapa?.numero_etapa || 'N/A'}`;
+    const codigoSolicitud = solicitud?.codigo_solicitud || 'N/A';
+    const nombreMoneda = moneda?.nombre || '';
+    const simboloMoneda = moneda?.simbolo || '';
+    
+    const tareasEtapa = tareasData.filter(t => t.id_etapa === factura.id_etapa);
+    const tareasRows = tareasEtapa.map((tarea) => {
+      const importe = Number(tarea.cantidad || 0) * Number(tarea.precio_ajustado || 0);
+      return `
+        <tr>
+          <td>${tarea.concepto_modificado || 'N/A'}</td>
+          <td>${tarea.unidad_medida || '-'}</td>
+          <td class="cantidad">${tarea.cantidad || 0}</td>
+          <td class="precio">${Number(tarea.precio_ajustado || 0).toFixed(2)}</td>
+          <td class="importe">${importe.toFixed(2)}</td>
+        </tr>
+      `;
+    }).join('');
+    
+    const subtotalTareas = tareasEtapa.reduce((sum, t) => sum + (Number(t.cantidad || 0) * Number(t.precio_ajustado || 0)), 0);
+    const montoFactura = Number(factura.monto || 0);
+    
+    const fechaEmision = factura.fecha ? new Date(factura.fecha).toLocaleDateString('es-ES') : 'N/A';
+    
+    return `<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+  <title>Factura de Servicio | ${factura.codigo_factura || 'N/A'}</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #dbdbdb; display: flex; justify-content: center; align-items: center; min-height: 100vh; font-family: 'Courier New', 'Monaco', monospace; padding: 30px 20px; }
+    .documento { max-width: 880px; width: 100%; background: white; box-shadow: 0 12px 28px rgba(0, 0, 0, 0.2); padding: 1rem 1.5rem 1.5rem 1.5rem; border-radius: 4px; }
+    .texto { font-family: 'Courier New', 'Monaco', monospace; font-size: 13px; line-height: 1.4; color: #111; }
+    .header-tcp { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #000; margin-bottom: 0.6rem; padding-bottom: 0.4rem; gap: 15px; }
+    .header-logo { display: flex; align-items: center; gap: 10px; min-width: 120px; }
+    .header-logo img { width: 200px; height: 200px; object-fit: contain; filter: grayscale(100%) brightness(0); }
+    .header-center { text-align: center; flex: 1; }
+    .tcp-title { font-size: 26px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; color: black; }
+    .nombre-titular { font-size: 15px; font-weight: bold; margin-top: 6px; }
+    .direccion-contacto { font-size: 11.5px; margin-top: 6px; line-height: 1.35; }
+    .telefonos { font-size: 12px; font-weight: 500; margin-top: 4px; }
+    .web { font-size: 12px; font-weight: 500; margin-top: 4px; }
+    .email { font-size: 12px; color: black; }
+    .header-box { border: 2px solid black; background: white; padding: 10px 15px; min-width: 180px; border-radius: 4px; }
+    .header-box-title { font-size: 14px; font-weight: 800; text-transform: uppercase; color: black; margin-bottom: 6px; border-bottom: 1px solid black; padding-bottom: 4px; }
+    .header-box-row { font-size: 11px; margin-bottom: 3px; }
+    .header-box-row strong { font-weight: 700; }
+    .fila-fechas { display: flex; justify-content: space-between; margin: 18px 0 12px 0; border-bottom: 1px dashed #aaa; padding-bottom: 12px; }
+    .bloque-fecha { font-weight: 600; font-size: 13px; }
+    .info-pago { background: white; padding: 8px; border: 1px solid black; margin-bottom: 12px; font-size: 11.5px; }
+    .pago-titulo { font-size: 13px; font-weight: 800; text-transform: uppercase; text-align: center; color: black; margin-bottom: 8px; }
+    .pago-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 16px; }
+    .pago-izquierda, .pago-derecha { display: flex; flex-direction: column; gap: 4px; }
+    .info-cliente { background: white; padding: 8px; border: 1px solid black; margin-bottom: 12px; font-size: 11.5px; }
+    .cliente-titulo { font-size: 13px; font-weight: 800; text-transform: uppercase; text-align: center; color: black; margin-bottom: 8px; }
+    .cliente-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 16px; }
+    .cliente-izquierda, .cliente-derecha { display: flex; flex-direction: column; gap: 4px; }
+    .tabla-tareas { width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 16px; }
+    .tabla-tareas th, .tabla-tareas td { border: 1px solid #222; padding: 6px 4px; vertical-align: top; }
+    .tabla-tareas th { background-color: #cccccc; font-weight: 700; text-align: center; }
+    .tabla-tareas td:nth-child(1) { width: 5%; text-align: center; }
+    .tabla-tareas td:nth-child(2) { width: 45%; }
+    .tabla-tareas td:nth-child(3) { width: 10%; text-align: center; }
+    .tabla-tareas td:nth-child(4) { width: 10%; text-align: right; }
+    .tabla-tareas td:nth-child(5) { width: 15%; text-align: right; }
+    .tabla-tareas td:nth-child(6) { width: 15%; text-align: right; }
+    .totales { display: flex; justify-content: flex-end; margin-bottom: 20px; }
+    .cuadro-totales { width: 280px; border: 1px solid black; background: white; padding: 12px 15px; font-size: 13px; font-family: monospace; }
+    .linea-total { display: flex; justify-content: space-between; margin-bottom: 6px; }
+    .total-final { font-weight: 800; font-size: 15px; border-top: 1px solid #000; margin-top: 8px; padding-top: 6px; }
+    .firmas { display: flex; flex-direction: column; gap: 8px; margin-top: 16px; margin-bottom: 12px; }
+    .fila-firmas { display: flex; justify-content: space-between; gap: 20px; }
+    .bloque-firma { flex: 1; border-top: none; padding-top: 8px; font-size: 11px; text-align: left; }
+    .bloque-firma p { margin: 2px 0; }
+    .cargo { font-size: 10px; color: black; }
+    @media (max-width: 650px) { .documento { padding: 0.6rem; } .tabla-tareas th, .tabla-tareas td { padding: 3px 2px; font-size: 10px; } .firmas { flex-direction: column; gap: 6px; } .fila-firmas { flex-direction: column; gap: 10px; } .header-tcp { flex-direction: column; } .header-box { width: 100%; margin-top: 10px; } }
+  </style>
+</head>
+<body>
+  <div class="documento texto">
+    <div class="header-tcp">
+      <div class="header-logo">
+        <img src="/favicon.ico" alt="Logo CAGUAYO S.A." />
+      </div>
+      <div class="header-center">
+        <div class="tcp-title">CAGUAYO S.A.</div>
+        <div class="nombre-titular">${empresaNombre}</div>
+        <div class="direccion-contacto">${empresaDireccion}</div>
+        <div class="telefonos">Tel: ${empresaTelefono}</div>
+        ${empresaWeb ? `<div class="web">Web: ${empresaWeb}</div>` : ''}
+        ${empresaEmail ? `<div class="email">${empresaEmail}</div>` : ''}
+      </div>
+      <div class="header-box">
+        <div class="header-box-title">Factura de Servicio</div>
+        <div class="header-box-row"><strong>No.:</strong> ${factura.codigo_factura || 'N/A'}</div>
+        <div class="header-box-row"><strong>Fecha:</strong> ${fechaEmision}</div>
+        <div class="header-box-row"><strong>Moneda:</strong> ${nombreMoneda || 'N/A'}</div>
+      </div>
+    </div>
+
+    <div class="fila-fechas">
+      <span class="bloque-fecha"><strong>Fecha Emisión:</strong> ${fechaEmision}</span>
+    </div>
+
+    ${cuentaSeleccionada ? `
+    <div class="info-pago">
+      <div class="pago-titulo">PAGUESE A: ${empresaNombre}</div>
+      <div class="pago-grid">
+        <div class="pago-izquierda">
+          <div><strong>CUENTA:</strong> ${monedasData.find(m => m.id_moneda === cuentaSeleccionada.id_moneda)?.simbolo || 'N/A'}</div>
+          <div><strong>Cuenta:</strong> ${cuentaSeleccionada.numero_cuenta || 'N/A'}</div>
+          <div><strong>Sucursal:</strong> ${cuentaSeleccionada.sucursal || 'N/A'}</div>
+        </div>
+        <div class="pago-derecha">
+          <div><strong>Banco:</strong> ${cuentaSeleccionada.banco || 'N/A'}</div>
+          <div><strong>Titular:</strong> ${cuentaSeleccionada.titular || 'N/A'}</div>
+          <div><strong>Dirección:</strong> ${cuentaSeleccionada.direccion || 'N/A'}</div>
+        </div>
+      </div>
+    </div>
+    ` : ''}
+
+    <div class="info-cliente">
+      <div class="cliente-titulo">PROYECTO ${codigoProyecto} con el cliente</div>
+      <div class="cliente-grid">
+        <div class="cliente-izquierda">
+          <div><strong>Nombre:</strong> ${nombreCliente}</div>
+          <div><strong>Código:</strong> ${codigoCliente}</div>
+          <div><strong>NIT:</strong> ${cliente?.cedula_rif || ''}</div>
+          ${cuentaCliente ? `
+          <div><strong>CUENTA:</strong> ${monedasData.find(m => m.id_moneda === cuentaCliente.id_moneda)?.simbolo || 'N/A'}</div>
+          <div><strong>Cuenta:</strong> ${cuentaCliente.numero_cuenta || 'N/A'}</div>
+          <div><strong>Sucursal:</strong> ${cuentaCliente.sucursal || 'N/A'}</div>
+          ` : ''}
+        </div>
+        <div class="cliente-derecha">
+          <div><strong>Provincia:</strong> ${provinciaCliente}</div>
+          <div><strong>Municipio:</strong> ${municipioCliente}</div>
+          <div><strong>Dirección:</strong> ${direccionCliente}</div>
+          ${cuentaCliente ? `
+          <div><strong>Banco:</strong> ${cuentaCliente.banco || 'N/A'}</div>
+          <div><strong>Titular:</strong> ${cuentaCliente.titular || 'N/A'}</div>
+          ` : ''}
+        </div>
+      </div>
+    </div>
+
+    <div style="margin: 8px 0 6px 0; font-weight: bold; font-size: 14px;">${nombreEtapa}</div>
+
+    <table class="tabla-tareas">
+      <thead>
+        <tr>
+          <th>Descripción/Tarea</th>
+          <th>Und</th>
+          <th>Cantidad</th>
+          <th>Precio</th>
+          <th>Importe</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${tareasRows || '<tr><td colspan="5" style="text-align:center;">Sin tareas registradas</td></tr>'}
+      </tbody>
+    </table>
+
+    <div class="totales">
+      <div class="cuadro-totales">
+        <div class="linea-total total-final"><span>Total:</span><span>${simboloMoneda} ${subtotalTareas.toFixed(2)}</span></div>
+      </div>
+    </div>
+
+    <div class="firmas">
+      <div class="fila-firmas">
+        <div class="bloque-firma">
+          <p><strong>Confeccionado por:</strong></p>
+          <p>${elaboradoPor}</p>
+          <p class="cargo">${cargoUsuario}</p>
+          <div style="border-bottom: 1px solid #222; margin-top: 35px;"></div>
+          <p style="margin-top: 8px;">Firma</p>
+        </div>
+        <div class="bloque-firma">
+          <p><strong>Recibido por:</strong></p>
+          <p><strong>Nombre:</strong> </p>
+          <p><strong>Cargo:</strong> </p>
+          <p><strong>Fecha:</strong> </p>
+          <div style="border-bottom: 1px solid #222; margin-top: 35px;"></div>
+          <p style="margin-top: 8px;">Firma</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>`;
+  };
+
+  const handlePrintDirect = async (factura: FacturaServicio) => {
+    // Obtener las cuentas del cliente de la factura
+    const etapaFactura = etapas.find(e => e.id_etapa === factura.id_etapa);
+    const solicitudFactura = solicitudes.find(s => s.id_solicitud_servicio === etapaFactura?.id_solicitud_servicio);
+    const clienteId = solicitudFactura?.id_cliente;
+    
+    let cuentasCliente = [];
+    if (clienteId) {
+      try {
+        cuentasCliente = await cuentasService.getCuentasByClienteAll(clienteId);
+      } catch (e) {
+        console.error('Error loading cliente cuentas:', e);
+      }
+    }
+    
+    // Cargar las tareas de la etapa de la factura
+    let tareasEtapa = [];
+    if (factura.id_etapa) {
+      try {
+        tareasEtapa = await tareasEtapaService.getTareasByEtapa(factura.id_etapa);
+      } catch (e) {
+        console.error('Error loading tareas:', e);
+      }
+    }
+    
+    const cuentaFactura = factura.cuenta_factura ? cuentasDependencia.find(c => c.numero_cuenta === factura.cuenta_factura) : null;
+    const cuentaSel = cuentaFactura || cuentasDependencia[0] || null;
+    const html = getFacturaServicioDocument(
+      factura,
+      etapas,
+      tareasEtapa,
+      solicitudes,
+      '',
+      '',
+      cuentaSel || null,
+      clientesData,
+      cuentasCliente,
+      monedas
+    );
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+      printWindow.document.write(html);
+      printWindow.document.close();
+      printWindow.print();
+    }
+  };
+
+  const handleViewDocument = async (factura: FacturaServicio) => {
+    // Obtener las cuentas del cliente de la factura
+    const etapaFactura = etapas.find(e => e.id_etapa === factura.id_etapa);
+    const solicitudFactura = solicitudes.find(s => s.id_solicitud_servicio === etapaFactura?.id_solicitud_servicio);
+    const clienteId = solicitudFactura?.id_cliente;
+    
+    let cuentasCliente = [];
+    if (clienteId) {
+      try {
+        cuentasCliente = await cuentasService.getCuentasByClienteAll(clienteId);
+      } catch (e) {
+        console.error('Error loading cliente cuentas:', e);
+      }
+    }
+    
+    // Cargar las tareas de la etapa de la factura
+    let tareasEtapa = [];
+    if (factura.id_etapa) {
+      try {
+        tareasEtapa = await tareasEtapaService.getTareasByEtapa(factura.id_etapa);
+      } catch (e) {
+        console.error('Error loading tareas:', e);
+      }
+    }
+    
+    const cuentaFacturaPreview = factura.cuenta_factura ? cuentasDependencia.find(c => c.numero_cuenta === factura.cuenta_factura) : null;
+    const cuentaDefault = cuentaFacturaPreview || cuentasDependencia[0] || null;
+    
+    console.log('DEBUG handleViewDocument:', {
+      factura,
+      etapas,
+      solicitudes,
+      clientesData,
+      cuentaDefault
+    });
+    
+    const html = getFacturaServicioDocument(factura, etapas, tareasEtapa, solicitudes, '', '', cuentaDefault, clientesData, cuentasCliente, monedas);
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+      printWindow.document.write(html);
+      printWindow.document.close();
+    }
   };
 
   const renderList = () => (
@@ -402,6 +764,24 @@ export function FacturasServicioPage() {
                         <Button
                           variant="ghost"
                           size="icon"
+                          onClick={() => handleViewDocument(item)}
+                          className="text-blue-600 hover:text-blue-800 hover:bg-blue-50 h-8 w-8"
+                          title="Ver documento"
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handlePrintDirect(item)}
+                          className="text-gray-600 hover:text-gray-800 hover:bg-gray-50 h-8 w-8"
+                          title="Imprimir"
+                        >
+                          <Printer className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
                           onClick={() => openForm(item)}
                           className="text-blue-600 hover:text-blue-800 hover:bg-blue-50 h-8 w-8"
                           title="Editar"
@@ -487,10 +867,17 @@ export function FacturasServicioPage() {
               </select>
             </div>
             <div>
-              <Label className="text-sm font-medium">Moneda</Label>
-              <select className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white" value={formData.id_moneda || ''} onChange={(e: any) => setFormData({ ...formData, id_moneda: e.target.value })}>
-                <option value="">Seleccionar moneda</option>
-                {monedas.map(m => <option key={m.id_moneda} value={m.id_moneda}>{m.nombre}</option>)}
+              <Label className="text-sm font-medium">Cuenta</Label>
+              <select className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white" value={formData.cuenta_factura || ''} onChange={(e: any) => {
+                const selectedCuenta = cuentasDependencia.find(c => c.numero_cuenta === e.target.value);
+                setFormData({ 
+                  ...formData, 
+                  cuenta_factura: e.target.value,
+                  id_moneda: selectedCuenta?.id_moneda || null
+                });
+              }}>
+                <option value="">Seleccionar cuenta</option>
+                {cuentasDependencia.map(c => <option key={c.id_cuenta} value={c.numero_cuenta}>{c.numero_cuenta} - {c.banco} ({monedas.find(m => m.id_moneda === c.id_moneda)?.simbolo || 'N/A'})</option>)}
               </select>
             </div>
             <div>
@@ -606,6 +993,7 @@ export function FacturasServicioPage() {
         </div>,
         document.body
       )}
-    </div>
+
+      </div>
   );
 }

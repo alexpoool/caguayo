@@ -225,7 +225,7 @@ export function SolicitudesPage() {
           id_cliente: Number(formContrato.id_cliente),
           id_estado: Number(formContrato.id_estado) || 1,
           id_tipo_contrato: Number(formContrato.id_tipo_contrato) || 1,
-          id_moneda: Number(formContrato.id_moneda) || 1,
+          id_moneda: Number(formContrato.id_moneda) || 277,
           fecha: formContrato.fecha || new Date().toISOString().split('T')[0],
           vigencia: formContrato.vigencia || new Date().toISOString().split('T')[0],
           proforma: formContrato.proforma,
@@ -883,7 +883,16 @@ export function SolicitudesPage() {
                   {aprobarModal.loadingContratos ? (
                     <div className="text-center py-8 text-gray-500">Cargando contratos...</div>
                   ) : aprobarModal.contratos.length === 0 ? (
-                    <div className="text-center py-8 text-gray-500">No hay contratos disponibles</div>
+                    <div className="text-center py-8">
+                      <p className="text-gray-500 mb-4">No hay contratos disponibles</p>
+                      <button
+                        onClick={() => setAprobarModal(prev => ({ ...prev, modo: 'crear' }))}
+                        className="px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors font-medium text-sm inline-flex items-center gap-2"
+                      >
+                        <Plus className="h-4 w-4" />
+                        Crear Contrato
+                      </button>
+                    </div>
                   ) : (
                     <div>
                       <Label className="text-sm font-medium">Seleccionar Contrato</Label>

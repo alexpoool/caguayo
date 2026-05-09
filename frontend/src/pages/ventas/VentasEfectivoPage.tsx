@@ -119,7 +119,7 @@ const loadInitialData = async () => {
           id_producto: p.id_producto,
           cantidad: p.cantidad,
           precio_venta: p.precio_venta,
-          id_moneda: formData.id_moneda ? Number(formData.id_moneda) : 1,
+          id_moneda: formData.id_moneda ? Number(formData.id_moneda) : 277,
         })),
       };
       editingId

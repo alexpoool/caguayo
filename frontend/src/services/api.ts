@@ -1,5 +1,7 @@
 import { apiClient } from '../lib/api';
 import { configuracionService as configService } from './administracion';
+import { authHelpers } from '../lib/api';
+import type { CuentaDependenciaInfo } from './auth';
 import type {
   Productos, 
   ProductosCreate, 
@@ -298,6 +300,10 @@ export const clienteTCPService = {
 };
 
 export const cuentasService = {
+  async getCuentasByClienteAll(idCliente: number): Promise<Cuenta[]> {
+    return apiClient.get<Cuenta[]>(`/cuentas/by-cliente/${idCliente}`);
+  },
+
   async getCuentasByCliente(idCliente: number): Promise<Cuenta[]> {
     return apiClient.get<Cuenta[]>(`/cuentas/by-cliente/${idCliente}`);
   },
@@ -499,6 +505,10 @@ export const dependenciasService = {
 
   async getDependencia(id: number): Promise<Dependencia> {
     return apiClient.get<Dependencia>(`/dependencias/${id}`);
+  },
+
+  async getCuentasByDependencia(idDependencia: number): Promise<CuentaDependenciaInfo[]> {
+    return apiClient.get<CuentaDependenciaInfo[]>(`/dependencias/cuentas/dependencia/${idDependencia}`);
   }
 };
 
@@ -641,6 +651,9 @@ export const solicitudesService = {
 };
 
 export const etapasProyectoService = {
+  async getAllEtapas(): Promise<Etapa[]> {
+    return apiClient.get<Etapa[]>('/etapas');
+  },
   async getEtapasBySolicitud(solicitudId: number): Promise<Etapa[]> {
     return apiClient.get<Etapa[]>(`/etapas/solicitud/${solicitudId}`);
   },

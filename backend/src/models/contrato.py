@@ -81,8 +81,6 @@ class Suplemento(SQLModel, table=True):
     id_estado: int = Field(foreign_key="estado_contrato.id_estado_contrato")
     fecha: date = Field(default=date.today())
     monto: Decimal = Field(default=Decimal("0.00"))
-    documento: Optional[str] = Field(default=None, max_length=255)
-    codigo: Optional[str] = Field(default=None, max_length=50)
 
     contrato: "Contrato" = Relationship(back_populates="suplementos")
     estado: "EstadoContrato" = Relationship()
@@ -99,13 +97,9 @@ class Factura(SQLModel, table=True):
     id_contrato: int = Field(foreign_key="contrato.id_contrato")
     codigo_factura: str = Field(max_length=50, unique=True)
     descripcion: Optional[str] = None
-    observaciones: Optional[str] = None
     fecha: date = Field(default=date.today())
     monto: Decimal = Field(default=Decimal("0.00"))
     pago_actual: Decimal = Field(default=Decimal("0.00"))
-    id_dependencia: Optional[int] = Field(
-        default=None, foreign_key="dependencia.id_dependencia"
-    )
 
     contrato: "Contrato" = Relationship(back_populates="facturas")
     items_factura: List["ItemFactura"] = Relationship(
@@ -126,7 +120,6 @@ class VentaEfectivo(SQLModel, table=True):
     id_dependencia: int = Field(foreign_key="dependencia.id_dependencia")
     cajero: str = Field(max_length=100)
     monto: Decimal = Field(default=Decimal("0.00"))
-    codigo: Optional[str] = Field(default=None, max_length=50)
 
     dependencia: "Dependencia" = Relationship()
     items_venta_efectivo: List["ItemVentaEfectivo"] = Relationship(

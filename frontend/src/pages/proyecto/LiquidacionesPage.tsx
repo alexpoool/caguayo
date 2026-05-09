@@ -19,8 +19,11 @@ import {
   User,
   Calculator,
   ArrowLeft,
-  Save
+  Save,
+  Eye,
+  Printer
 } from 'lucide-react';
+import { authService } from '../../services/auth';
 import { 
   personaLiquidacionService, 
   monedaService, 
@@ -30,6 +33,8 @@ import {
   personaEtapaService,
   facturasServicioService
 } from '../../services/api';
+import { administracionService } from '../../services/administracion';
+import type { Usuario } from '../../types/usuario';
 import type { PersonaLiquidacionInput, PersonaLiquidacionInputUpdate, FacturaPagoValidacion, PersonaLiquidacionValidacion } from '../../types/servicio';
 import type { 
   PersonaLiquidacion,
@@ -77,23 +82,39 @@ export function LiquidacionesPage() {
   
   const [confirmModal, setConfirmModal] = useState<{ isOpen: boolean; item: PersonaLiquidacion | null }>({ isOpen: false, item: null });
   const [confirmData, setConfirmData] = useState({
-    observaciones: ''
+    observaciones: '',
+    doc_pago_liquidacion: ''
   });
   
   const [validacionModal, setValidacionModal] = useState<{ isOpen: boolean; validacion: PersonaLiquidacionValidacion | null }>({ isOpen: false, validacion: null });
+
+  const [printModal, setPrintModal] = useState<{ 
+    isOpen: boolean; 
+    liquidacion: PersonaLiquidacion | null; 
+    autorizado_por_id: number | null; 
+    autorizado_por: string; 
+    cargo_autorizado: string; 
+    revisado_por: string 
+  }>({ 
+    isOpen: false, 
+    liquidacion: null, 
+    autorizado_por_id: null,
+    autorizado_por: '', 
+    cargo_autorizado: '', 
+    revisado_por: '' 
+  });
   
   const [formData, setFormData] = useState({
     fecha_emision: new Date().toISOString().split('T')[0],
     fecha_liquidacion: '',
     descripcion: '',
-    id_moneda: 1,
+    id_moneda: 277,
     tipo_pago: 'TRANSFERENCIA',
     importe: 0,
     porcentaje_caguayo: 10,
     tributario: 5,
     comision_bancaria: 0,
     gasto_empresa: 0,
-    doc_pago_liquidacion: '',
     observacion: ''
   });
 
@@ -117,10 +138,15 @@ export function LiquidacionesPage() {
     queryFn: () => solicitudesService.getSolicitudes(0, 1000)
   });
 
+  const { data: usuarios = [] } = useQuery({
+    queryKey: ['usuarios'],
+    queryFn: () => administracionService.getUsuarios()
+  });
+
   const { data: etapas = [] } = useQuery({
     queryKey: ['etapas', selectedSolicitud],
-    queryFn: () => selectedSolicitud ? etapasProyectoService.getEtapasBySolicitud(selectedSolicitud) : Promise.resolve([]),
-    enabled: !!selectedSolicitud
+    queryFn: () => selectedSolicitud ? etapasProyectoService.getEtapasBySolicitud(selectedSolicitud) : etapasProyectoService.getEtapas(0, 1000),
+    enabled: true
   });
 
   useEffect(() => {
@@ -134,6 +160,13 @@ export function LiquidacionesPage() {
       setView('form');
     }
   }, [idParam, solicitudParam, etapaParam, personaParam]);
+
+  // Cargar todas las etapas al inicio
+  useEffect(() => {
+    etapasProyectoService.getAllEtapas().then((ets) => {
+      queryClient.setQueryData(['etapas-all'], ets);
+    }).catch(console.error);
+  }, []);
 
   useEffect(() => {
     if (solicitudParam && Number(solicitudParam) > 0) {
@@ -218,7 +251,7 @@ export function LiquidacionesPage() {
       queryClient.invalidateQueries({ queryKey: ['persona-liquidaciones'] });
       toast.success('Liquidación confirmada');
       setConfirmModal({ isOpen: false, item: null });
-      setConfirmData({ observaciones: '' });
+      setConfirmData({ observaciones: '', doc_pago_liquidacion: '' });
     },
     onError: (error: any) => {
       toast.error(error?.response?.data?.detail || 'Error al confirmar liquidación');
@@ -227,7 +260,7 @@ export function LiquidacionesPage() {
 
   const handleConfirmar = (item: PersonaLiquidacion) => {
     setConfirmModal({ isOpen: true, item });
-    setConfirmData({ observaciones: '' });
+    setConfirmData({ observaciones: '', doc_pago_liquidacion: '' });
   };
 
   const handleConfirmarSubmit = async () => {
@@ -257,7 +290,8 @@ export function LiquidacionesPage() {
         tributario: item.tributario || 5,
         comision_bancaria: item.comision_bancaria || 0,
         gasto_empresa: item.gasto_empresa || 0,
-        observaciones: confirmData.observaciones || undefined
+        observaciones: confirmData.observaciones || undefined,
+        doc_pago_liquidacion: confirmData.doc_pago_liquidacion || undefined
       }
     });
   };
@@ -267,7 +301,7 @@ export function LiquidacionesPage() {
       fecha_emision: new Date().toISOString().split('T')[0],
       fecha_liquidacion: '',
       descripcion: '',
-      id_moneda: 1,
+      id_moneda: 277,
       tipo_pago: 'TRANSFERENCIA',
       importe: 0,
       porcentaje_caguayo: 10,
@@ -424,6 +458,11 @@ export function LiquidacionesPage() {
       return;
     }
 
+    if (!formData.id_moneda) {
+      toast.error('Debe seleccionar una moneda');
+      return;
+    }
+
     try {
       const validacion = await personaLiquidacionService.validarLiquidar(selectedEtapa, selectedPersona);
       
@@ -441,13 +480,12 @@ export function LiquidacionesPage() {
       fecha_emision: formData.fecha_emision || new Date().toISOString().split('T')[0],
       fecha_liquidacion: formData.fecha_liquidacion || undefined,
       descripcion: formData.descripcion || undefined,
-      id_moneda: formData.id_moneda || 1,
+      id_moneda: formData.id_moneda || undefined,
       tipo_pago: formData.tipo_pago,
       porcentaje_caguayo: Number(formData.porcentaje_caguayo) || 10,
       tributario: Number(formData.tributario) || 5,
       comision_bancaria: Number(formData.comision_bancaria) || 0,
       gasto_empresa: Number(formData.gasto_empresa) || 0,
-      doc_pago_liquidacion: formData.doc_pago_liquidacion || undefined,
       observacion: formData.observacion || undefined
     };
 
@@ -468,6 +506,220 @@ export function LiquidacionesPage() {
     if (!id) return '';
     const moneda = monedas.find((m: Moneda) => m.id_moneda === id);
     return moneda ? moneda.simbolo : '';
+  };
+
+  const generatePersonaLiquidacionHTML = (liquidacion: PersonaLiquidacion, autorizadoPor: string, cargoAutorizado: string, revisadoPor: string) => {
+    const realizador = personas.find((p: Cliente) => p.id_cliente === liquidacion.id_persona);
+    const etapasAll = queryClient.getQueryData<Etapa[]>(['etapas-all']) || etapas;
+    const etapa = etapasAll.find((e: Etapa) => e.id_etapa === liquidacion.id_etapa);
+    const solicitud = solicitudes.find((s: SolicitudServicio) => s.id_solicitud_servicio === etapa?.id_solicitud_servicio);
+    const moneda = monedas.find((m: Moneda) => m.id_moneda === liquidacion.id_moneda);
+    
+    const user = authService.getUser();
+    const confectionadoPor = user ? `${user.nombre || ''} ${user.primer_apellido || ''}`.trim() : '';
+    const cargoUsuario = user?.cargo || '';
+    
+    const empresa = user?.dependencia;
+    const empresaNombre = empresa?.nombre || 'Empresa';
+    const empresaDireccion = empresa?.direccion || '';
+    const empresaTelefono = empresa?.telefono || '';
+    const empresaEmail = empresa?.email || '';
+    
+    const nombreRealizador = realizador?.nombre || 'N/A';
+    const codigoRealizador = realizador?.numero_cliente || 'N/A';
+    const cedulaRealizador = realizador?.cedula_rif || 'N/A';
+    const direccionRealizador = realizador?.direccion || '';
+    
+    const nombreEtapa = etapa?.nombre_etapa || `Etapa #${etapa?.numero_etapa || 'N/A'}`;
+    const descripcionEtapa = etapa?.descripcion || '';
+    const codigoSolicitud = solicitud?.codigo_solicitud || 'N/A';
+    const codigoProyecto = solicitud?.codigo_proyecto || 'N/A';
+    const nombreMoneda = moneda?.nombre || '';
+    
+    const descripcionLiquidacion = liquidacion?.descripcion || '';
+    const observacionLiquidacion = liquidacion?.observacion || '';
+    const docPagoLiquidacion = liquidacion?.doc_pago_liquidacion || '';
+    
+    const porcentajeCaguayo = Number(liquidacion.porcentaje_caguayo || 10);
+    const importeCaguayo = Number(liquidacion.importe_caguayo || (liquidacion.importe * porcentajeCaguayo / 100)).toFixed(2);
+    const devengado = Number(liquidacion.devengado || 0).toFixed(2);
+    const tributario = Number(liquidacion.tributario || 5);
+    const tributarioMonto = Number(liquidacion.tributario_monto || (Number(devengado) * tributario / 100)).toFixed(2);
+    const comisionBancaria = Number(liquidacion.comision_bancaria || 0).toFixed(2);
+    const gastoEmpresa = Number(liquidacion.gasto_empresa || 0).toFixed(2);
+    const netoPagar = Number(liquidacion.neto_pagar || 0).toFixed(2);
+    
+    const subtotal = (Number(devengado) - Number(tributarioMonto)).toFixed(2);
+    const importe = Number(liquidacion.importe || 0).toFixed(2);
+    
+    const fechaEmision = liquidacion.fecha_emision ? new Date(liquidacion.fecha_emision).toLocaleDateString('es-ES') : 'N/A';
+    const fechaLiquidacion = liquidacion.fecha_liquidacion ? new Date(liquidacion.fecha_liquidacion).toLocaleDateString('es-ES') : 'N/A';
+    
+    return `<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>Liquidación | ${liquidacion.numero}</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { background: #dbdbdb; display: flex; justify-content: center; align-items: center; min-height: 100vh; font-family: 'Courier New', 'Monaco', monospace; padding: 30px 20px; }
+        .documento { max-width: 880px; width: 100%; background: white; box-shadow: 0 12px 28px rgba(0, 0, 0, 0.2); padding: 1.8rem 2rem 2rem 2rem; border-radius: 4px; }
+        .texto { font-family: 'Courier New', 'Monaco', monospace; font-size: 13px; line-height: 1.4; color: #111; }
+        .header-tcp { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #000; margin-bottom: 1.2rem; padding-bottom: 0.6rem; gap: 20px; }
+        .header-logo { display: flex; align-items: center; gap: 10px; min-width: 120px; }
+        .header-logo img { width: 220px; height: 220px; object-fit: contain; }
+        .header-center { text-align: center; flex: 1; }
+        .tcp-title { font-size: 32px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; color: black; }
+        .nombre-titular { font-size: 18px; font-weight: bold; margin-top: 6px; }
+        .direccion-contacto { font-size: 14px; margin-top: 6px; line-height: 1.35; }
+        .telefonos { font-size: 15px; font-weight: 500; margin-top: 4px; }
+        .email { font-size: 14px; color: black; }
+        .header-box { border: 2px solid black; background: white; padding: 10px 15px; min-width: 220px; border-radius: 4px; }
+        .header-box-title { font-size: 14px; font-weight: 800; text-transform: uppercase; color: black; margin-bottom: 6px; border-bottom: 1px solid black; padding-bottom: 4px; }
+        .header-box-row { font-size: 11px; margin-bottom: 3px; }
+        .header-box-row strong { font-weight: 700; }
+        .header-box-row.total-final { font-weight: 800; font-size: 13px; border-top: 1px solid #000; margin-top: 6px; padding-top: 6px; }
+        .fila-fechas { display: flex; justify-content: space-between; margin: 18px 0 12px 0; border-bottom: 1px dashed #aaa; padding-bottom: 12px; }
+        .bloque-fecha { font-weight: 600; font-size: 13px; }
+        .info-cliente { display: flex; flex-wrap: wrap; justify-content: space-between; background: #f9f9f0; padding: 12px; border: 1px solid #ccc; margin-bottom: 20px; font-size: 12.5px; }
+        .cliente-header { font-size: 14px; font-weight: 800; text-transform: uppercase; margin-bottom: 8px; color: black; width: 100%; text-align: center; }
+        .cliente-item { min-width: 180px; margin-bottom: 6px; }
+        .cliente-item strong { font-weight: 800; }
+        .info-proyecto { display: flex; flex-wrap: wrap; justify-content: space-between; background: white; padding: 12px; border: 1px solid black; margin-bottom: 20px; font-size: 12.5px; }
+        .proyecto-header { font-size: 14px; font-weight: 800; text-transform: uppercase; margin-bottom: 8px; color: black; width: 100%; text-align: center; }
+        .proyecto-item { min-width: 180px; margin-bottom: 6px; }
+        .proyecto-item strong { font-weight: 800; }
+        .resumen-derecha { display: flex; justify-content: flex-end; margin-top: 8px; margin-bottom: 20px; }
+        .cuadro-totales { width: 280px; border: 1px solid #111; background: #fefcf5; padding: 12px 15px; font-size: 13px; font-family: monospace; }
+        .linea-total { display: flex; justify-content: space-between; margin-bottom: 6px; }
+        .total-final { font-weight: 800; font-size: 15px; border-top: 1px solid #000; margin-top: 8px; padding-top: 6px; }
+        .devengado-total-row { font-weight: bold; border-top: 1px solid #333; margin-top: 6px; padding-top: 4px; }
+        .firmas { display: flex; flex-direction: column; gap: 20px; margin-top: 32px; margin-bottom: 16px; }
+        .fila-nombres { display: flex; justify-content: space-between; gap: 20px; }
+        .fila-firmas { display: flex; justify-content: space-between; gap: 20px; }
+        .bloque-firma { flex: 1; padding-top: 8px; font-size: 11px; text-align: left; }
+        .bloque-firma p { margin: 2px 0; }
+        .cargo { font-size: 10px; color: #2c2c2c; }
+        .nota-revisado { margin-top: 18px; font-size: 10px; text-align: right; border-top: 1px solid #ddd; padding-top: 8px; font-style: italic; }
+        @media (max-width: 650px) { .documento { padding: 1rem; } .cuadro-totales { width: 100%; } .firmas { flex-direction: column; gap: 20px; } .fila-nombres { flex-direction: column; gap: 20px; } .fila-firmas { flex-direction: column; gap: 20px; } .info-cliente { flex-direction: column; } .header-tcp { flex-direction: column; } .header-box { width: 100%; margin-top: 15px; } .info-proyecto { flex-direction: column; } }
+    </style>
+</head>
+<body>
+<div class="documento texto">
+    <div class="header-tcp">
+        <div class="header-logo">
+            <img src="/favicon.ico" alt="Logo CAGUAYO S.A." style="filter: brightness(0);" />
+        </div>
+        <div class="header-center">
+            <div class="tcp-title">CAGUAYO S.A.</div>
+            <div class="nombre-titular">${empresaNombre}</div>
+            <div class="direccion-contacto">${empresaDireccion}</div>
+            <div class="telefonos">Tel: ${empresaTelefono}</div>
+            <div class="email">${empresaEmail}</div>
+        </div>
+        <div class="header-box">
+            <div class="header-box-title">Liquidación</div>
+            <div class="header-box-row"><strong>Número:</strong> ${liquidacion.numero || 'N/A'}</div>
+            <div class="header-box-row"><strong>Moneda:</strong> ${nombreMoneda || 'N/A'}</div>
+            <div class="header-box-row" style="border-top: 1px solid black; padding-top: 4px; margin-top: 4px;"><strong>IMPORTE:</strong> ${importe}</div>
+            <div class="header-box-row"><span style="color: #666;">Importe Caguayo(${porcentajeCaguayo}%):</span> -${importeCaguayo}</div>
+            <div class="header-box-row" style="font-weight: bold; border-bottom: 1px solid #333; padding-bottom: 4px;"><strong>DEVENGADO:</strong> ${devengado}</div>
+            <div class="header-box-row"><span style="color: #666;">Tributario(${tributario}%):</span> -${tributarioMonto}</div>
+            <div class="header-box-row" style="font-weight: bold; border-bottom: 1px solid #333; padding-bottom: 4px;"><strong>SUBTOTAL:</strong> ${subtotal}</div>
+            <div class="header-box-row"><span style="color: #666;">Gasto Empresa:</span> -${gastoEmpresa}</div>
+            <div class="header-box-row"><span style="color: #666;">Comisión:</span> -${comisionBancaria}</div>
+            <div class="header-box-row total-final"><strong>NETO A PAGAR:</strong> ${netoPagar}</div>
+        </div>
+    </div>
+
+    <div class="fila-fechas">
+        <span class="bloque-fecha"><strong>Fecha Emisión:</strong> ${fechaEmision}</span>
+        <span class="bloque-fecha"><strong>Fecha Liquidación:</strong> ${fechaLiquidacion}</span>
+        ${docPagoLiquidacion ? `<span class="bloque-fecha"><strong>Doc. Pago:</strong> ${docPagoLiquidacion}</span>` : ''}
+    </div>
+
+    <div class="info-cliente">
+        <div class="cliente-header">Realizador</div>
+        <div class="cliente-item"><strong>Nombre:</strong> ${nombreRealizador}</div>
+        <div class="cliente-item"><strong>Código:</strong> ${codigoRealizador}</div>
+        <div class="cliente-item"><strong>CI:</strong> ${cedulaRealizador}</div>
+        <div class="cliente-item"><strong>Dirección:</strong> ${direccionRealizador}</div>
+    </div>
+
+    <div class="info-proyecto">
+        <div style="width: 100%;">
+            <strong>Proyecto:</strong> ${codigoProyecto} <strong>Etapa:</strong> ${nombreEtapa}
+        </div>
+        ${descripcionEtapa ? `<div class="proyecto-item" style="width: 100%;"><strong>Descripción de Etapa:</strong> ${descripcionEtapa}</div>` : ''}
+        ${descripcionLiquidacion ? `<div class="proyecto-item" style="width: 100%;"><strong>Descripción:</strong> ${descripcionLiquidacion}</div>` : ''}
+        ${observacionLiquidacion ? `<div class="proyecto-item" style="width: 100%;"><strong>Observación:</strong> ${observacionLiquidacion}</div>` : ''}
+    </div>
+
+    
+
+    <div class="firmas">
+        <div class="fila-firmas" style="display: flex; justify-content: space-between; gap: 40px;">
+            <div class="bloque-firma" style="flex: 1;">
+                <p><strong>Confeccionado por:</strong></p>
+                <p>${confectionadoPor}</p>
+                <p class="cargo">${cargoUsuario}</p>
+                <div style="border-bottom: 1px solid #222; margin-top: 30px;"></div>
+                <p style="margin-top: 4px;">Firma</p>
+            </div>
+            <div class="bloque-firma" style="flex: 1;">
+                <p><strong>Realizador:</strong></p>
+                <p>${nombreRealizador}</p>
+                <div style="border-bottom: 1px solid #222; margin-top: 30px;"></div>
+                <p style="margin-top: 4px;">Firma</p>
+            </div>
+        </div>
+        <div class="fila-firmas" style="display: flex; justify-content: space-between; gap: 40px; margin-top: 30px;">
+            <div class="bloque-firma" style="flex: 1;">
+                <p><strong>Autorizado por:</strong></p>
+                <p>${autorizadoPor || ' '}</p>
+                <p class="cargo">${cargoAutorizado || ' '}</p>
+                <div style="border-bottom: 1px solid #222; margin-top: 30px;"></div>
+                <p style="margin-top: 4px;">Firma</p>
+            </div>
+            <div class="bloque-firma" style="flex: 1;">
+                <p><strong>Revisado por:</strong></p>
+                <p>${revisadoPor || ''}</p>
+                <p>Economia SA</p>
+                <div style="border-bottom: 1px solid #222; margin-top: 30px;"></div>
+                <p style="margin-top: 4px;">Firma</p>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>`;
+  };
+
+  const handlePrint = () => {
+    if (!printModal.liquidacion) return;
+    const html = generatePersonaLiquidacionHTML(
+      printModal.liquidacion, 
+      printModal.autorizado_por, 
+      printModal.cargo_autorizado || '', 
+      printModal.revisado_por
+    );
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+      printWindow.document.write(html);
+      printWindow.document.close();
+      printWindow.print();
+    }
+    setPrintModal({ isOpen: false, liquidacion: null, autorizado_por_id: null, autorizado_por: '', cargo_autorizado: '', revisado_por: '' });
+  };
+
+  const handleViewDocument = (liquidacion: PersonaLiquidacion) => {
+    const html = generatePersonaLiquidacionHTML(liquidacion, '', '', '');
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+      printWindow.document.write(html);
+      printWindow.document.close();
+    }
   };
 
   const filteredLiquidaciones = useMemo(() => {
@@ -638,6 +890,30 @@ export function LiquidacionesPage() {
                                 <Check className="h-4 w-4" />
                               </Button>
                             )}
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleViewDocument(liquidacion)}
+                              className="text-blue-600 hover:text-blue-800 hover:bg-blue-50 h-8 w-8"
+                              title="Ver documento"
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => setPrintModal({ 
+                                isOpen: true, 
+                                liquidacion: liquidacion, 
+                                autorizado_por: '', 
+                                cargo_autorizado: '', 
+                                revisado_por: '' 
+                              })}
+                              className="text-gray-600 hover:text-gray-800 hover:bg-gray-50 h-8 w-8"
+                              title="Imprimir"
+                            >
+                              <Printer className="h-4 w-4" />
+                            </Button>
                             <Button
                               variant="ghost"
                               size="icon"
@@ -907,13 +1183,6 @@ export function LiquidacionesPage() {
               </div>
 
               <div className="mt-6">
-                <Label>Doc Pago Liquidación</Label>
-                <Input
-                  value={formData.doc_pago_liquidacion}
-                  onChange={(e) => setFormData(prev => ({ ...prev, doc_pago_liquidacion: e.target.value }))}
-                  className="mt-1 mb-4"
-                  placeholder="Documento de pago"
-                />
                 <Label>Observación</Label>
                 <textarea
                   value={formData.observacion}
@@ -1040,7 +1309,7 @@ export function LiquidacionesPage() {
                     <p className="text-sm text-gray-500 font-mono">{confirmModal.item.numero || 'Sin código'}</p>
                   </div>
                 </div>
-                <button onClick={() => { setConfirmModal({ isOpen: false, item: null }); setConfirmData({ observaciones: '' }); }} className="p-2 hover:bg-gray-200 rounded-full">
+                <button onClick={() => { setConfirmModal({ isOpen: false, item: null }); setConfirmData({ observaciones: '', doc_pago_liquidacion: '' }); }} className="p-2 hover:bg-gray-200 rounded-full">
                   <XCircle className="h-6 w-6 text-gray-500" />
                 </button>
               </div>
@@ -1070,6 +1339,17 @@ export function LiquidacionesPage() {
                   placeholder="Observaciones adicionales (opcional)"
                 />
               </div>
+
+              <div>
+                <Label>Documento de Pago</Label>
+                <input
+                  type="text"
+                  value={confirmData.doc_pago_liquidacion}
+                  onChange={(e) => setConfirmData(prev => ({ ...prev, doc_pago_liquidacion: e.target.value }))}
+                  className="w-full mt-1 p-2 border rounded"
+                  placeholder="Número de documento de pago"
+                />
+              </div>
             </div>
             <div className="p-6 border-t border-gray-200 bg-gray-50 flex justify-end gap-3">
               <button
@@ -1080,7 +1360,7 @@ export function LiquidacionesPage() {
                 {confirmarMutation.isPending ? 'Confirmando...' : 'Confirmar'}
               </button>
               <button
-                onClick={() => { setConfirmModal({ isOpen: false, item: null }); setConfirmData({ observaciones: '' }); }}
+                onClick={() => { setConfirmModal({ isOpen: false, item: null }); setConfirmData({ observaciones: '', doc_pago_liquidacion: '' }); }}
                 className="px-6 py-3 text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors font-medium"
               >
                 Cancelar
@@ -1190,6 +1470,80 @@ export function LiquidacionesPage() {
                 className="px-6 py-3 text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors font-medium"
               >
                 Cerrar
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {printModal.isOpen && printModal.liquidacion && createPortal(
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 animate-fade-in">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full animate-scale-in">
+            <div className="p-6 border-b border-gray-200">
+              <div className="flex items-center gap-3">
+                <Printer className="h-6 w-6 text-gray-600" />
+                <h3 className="text-xl font-bold text-gray-900">Imprimir Liquidación</h3>
+              </div>
+              <p className="text-sm text-gray-500 mt-2">Complete los datos para la impresión</p>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <Label className="text-sm font-medium">Autorizado por</Label>
+                <select
+                  value={printModal.autorizado_por_id || ''}
+                  onChange={(e) => {
+                    const selectedId = e.target.value ? Number(e.target.value) : null;
+                    const selectedUsuario = usuarios.find((u: Usuario) => u.id_usuario === selectedId);
+                    setPrintModal({ 
+                      ...printModal, 
+                      autorizado_por_id: selectedId,
+                      autorizado_por: selectedUsuario ? `${selectedUsuario.nombre} ${selectedUsuario.primer_apellido}`.trim() : '',
+                      cargo_autorizado: selectedUsuario?.cargo || ''
+                    });
+                  }}
+                  className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white"
+                >
+                  <option value="">Seleccionar usuario</option>
+                  {usuarios.map((usuario: Usuario) => (
+                    <option key={usuario.id_usuario} value={usuario.id_usuario}>
+                      {usuario.nombre} {usuario.primer_apellido} {usuario.segundo_apellido || ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <Label className="text-sm font-medium">Cargo del autorizado</Label>
+                <Input 
+                  value={printModal.cargo_autorizado}
+                  onChange={(e) => setPrintModal({ ...printModal, cargo_autorizado: e.target.value })}
+                  placeholder="Cargo del autorizado"
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <Label className="text-sm font-medium">Revisado por</Label>
+                <Input 
+                  value={printModal.revisado_por}
+                  onChange={(e) => setPrintModal({ ...printModal, revisado_por: e.target.value })}
+                  placeholder="Nombre de quien revisa"
+                  className="mt-1"
+                />
+              </div>
+            </div>
+            <div className="p-6 border-t border-gray-200 flex justify-end gap-3">
+              <button 
+                onClick={() => setPrintModal({ isOpen: false, liquidacion: null, autorizado_por: '', cargo_autorizado: '', revisado_por: '' })} 
+                className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 font-medium"
+              >
+                Cancelar
+              </button>
+              <button 
+                onClick={handlePrint} 
+                className="px-4 py-2 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-lg hover:from-blue-600 hover:to-indigo-700 font-medium flex items-center gap-2"
+              >
+                <Printer className="h-4 w-4" />
+                Imprimir
               </button>
             </div>
           </div>

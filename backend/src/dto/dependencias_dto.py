@@ -1,7 +1,7 @@
 from sqlmodel import SQLModel
 from typing import Optional, List
 from .ubicaciones_dto import ProvinciaRead, MunicipioRead
-from .cuentas_dto import CuentaRead, CuentaCreate
+from .cuentas_dto import CuentaRead, CuentaCreate, CuentaDependenciaRead
 
 
 class TipoDependenciaBase(SQLModel):
@@ -67,6 +67,29 @@ class DependenciaRead(SQLModel):
     provincia: Optional[ProvinciaRead] = None
     municipio: Optional[MunicipioRead] = None
     cuentas: List[CuentaRead] = []
+    tablas_creadas: Optional[List[str]] = None
+
+
+class DependenciaConCuentasRead(SQLModel):
+    """DTO completo de Dependencia con todas sus cuentas bancarias"""
+    id_dependencia: int
+    id_tipo_dependencia: int
+    codigo_padre: Optional[int] = None
+    nombre: str
+    direccion: str
+    telefono: str
+    email: Optional[str] = None
+    web: Optional[str] = None
+    base_datos: Optional[str] = None
+    host: Optional[str] = None
+    puerto: Optional[int] = None
+    id_provincia: Optional[int] = None
+    id_municipio: Optional[int] = None
+    descripcion: Optional[str] = None
+    tipo_dependencia: Optional[TipoDependenciaRead] = None
+    provincia: Optional[ProvinciaRead] = None
+    municipio: Optional[MunicipioRead] = None
+    cuentas_dependencias: List[CuentaDependenciaRead] = []
     tablas_creadas: Optional[List[str]] = None
 
 

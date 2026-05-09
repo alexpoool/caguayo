@@ -4,6 +4,16 @@ from datetime import date, datetime
 from .ventas_dto import VentaRead
 
 
+class ProvinciaInfo(SQLModel):
+    id_provincia: int = 0
+    nombre: Optional[str] = None
+
+
+class MunicipioInfo(SQLModel):
+    id_municipio: int = 0
+    nombre: Optional[str] = None
+
+
 class ClienteNaturalData(SQLModel):
     nombre: Optional[str] = None
     primer_apellido: Optional[str] = None
@@ -41,6 +51,7 @@ class ClienteBase(SQLModel):
     model_config = {"populate_by_name": True}
 
     numero_cliente: Optional[str] = None
+    cedula_rif: Optional[str] = None
     nombre: Optional[str] = None
     tipo_persona: str = "NATURAL"
     telefono: Optional[str] = None
@@ -64,7 +75,11 @@ class ClienteCreate(ClienteBase):
 
 
 class ClienteRead(ClienteBase):
+    model_config = {"populate_by_name": True}
+
     id_cliente: int = 0
+    provincia: Optional[ProvinciaInfo] = None
+    municipio: Optional[MunicipioInfo] = None
 
 
 class ClienteReadWithVentas(ClienteRead):
