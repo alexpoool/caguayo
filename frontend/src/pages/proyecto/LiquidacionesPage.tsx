@@ -83,7 +83,8 @@ export function LiquidacionesPage() {
   const [confirmModal, setConfirmModal] = useState<{ isOpen: boolean; item: PersonaLiquidacion | null }>({ isOpen: false, item: null });
   const [confirmData, setConfirmData] = useState({
     observaciones: '',
-    doc_pago_liquidacion: ''
+    doc_pago_liquidacion: '',
+    porcentaje_caguayo: 10
   });
   
   const [validacionModal, setValidacionModal] = useState<{ isOpen: boolean; validacion: PersonaLiquidacionValidacion | null }>({ isOpen: false, validacion: null });
@@ -115,8 +116,13 @@ export function LiquidacionesPage() {
     tributario: 5,
     comision_bancaria: 0,
     gasto_empresa: 0,
+    doc_pago_liquidacion: '',
     observacion: ''
   });
+
+  const [selectedPago, setSelectedPago] = useState<number | null>(null);
+  const [pagosDisponibles, setPagosDisponibles] = useState<{id_pago_factura_servicio: number; monto: number; fecha: string; doc_traza?: string}[]>([]);
+  const [disponibleLiquidar, setDisponibleLiquidar] = useState<number>(0);
 
   const { data: liquidaciones = [], isLoading } = useQuery({
     queryKey: ['persona-liquidaciones', activeTab],
@@ -145,7 +151,7 @@ export function LiquidacionesPage() {
 
   const { data: etapas = [] } = useQuery({
     queryKey: ['etapas', selectedSolicitud],
-    queryFn: () => selectedSolicitud ? etapasProyectoService.getEtapasBySolicitud(selectedSolicitud) : etapasProyectoService.getEtapas(0, 1000),
+    queryFn: () => selectedSolicitud ? etapasProyectoService.getEtapasBySolicitud(selectedSolicitud) : etapasProyectoService.getAllEtapas(),
     enabled: true
   });
 
@@ -251,7 +257,7 @@ export function LiquidacionesPage() {
       queryClient.invalidateQueries({ queryKey: ['persona-liquidaciones'] });
       toast.success('Liquidación confirmada');
       setConfirmModal({ isOpen: false, item: null });
-      setConfirmData({ observaciones: '', doc_pago_liquidacion: '' });
+      setConfirmData({ observaciones: '', doc_pago_liquidacion: '', porcentaje_caguayo: 10 });
     },
     onError: (error: any) => {
       toast.error(error?.response?.data?.detail || 'Error al confirmar liquidación');
@@ -260,7 +266,7 @@ export function LiquidacionesPage() {
 
   const handleConfirmar = (item: PersonaLiquidacion) => {
     setConfirmModal({ isOpen: true, item });
-    setConfirmData({ observaciones: '', doc_pago_liquidacion: '' });
+    setConfirmData({ observaciones: '', doc_pago_liquidacion: '', porcentaje_caguayo: 10 });
   };
 
   const handleConfirmarSubmit = async () => {
@@ -281,18 +287,21 @@ export function LiquidacionesPage() {
       }
     }
 
-    const devengado = (item.gasto_empresa || 0) - (item.comision_bancaria || 0);
+    const porcentajeCaguayo = confirmData.porcentaje_caguayo || item.porcentaje_caguayo || 10;
+    const importeCaguayo = Number(item.importe) * (porcentajeCaguayo / 100);
+    const devengado = Number(item.importe) - importeCaguayo;
+    
     confirmarMutation.mutate({
       id: item.id_liquidacion,
       data: {
         devengado,
-        porcentaje_caguayo: item.porcentaje_caguayo || 10,
+        porcentaje_caguayo: porcentajeCaguayo,
         tributario: item.tributario || 5,
         comision_bancaria: item.comision_bancaria || 0,
         gasto_empresa: item.gasto_empresa || 0,
         observaciones: confirmData.observaciones || undefined,
         doc_pago_liquidacion: confirmData.doc_pago_liquidacion || undefined
-      }
+      } as any
     });
   };
 
@@ -316,6 +325,9 @@ export function LiquidacionesPage() {
     setSelectedEtapa(null);
     setSelectedPersona(null);
     setPersonasEtapa([]);
+    setSelectedPago(null);
+    setPagosDisponibles([]);
+    setDisponibleLiquidar(0);
   };
 
   const calculateImporteCaguayo = () => {
@@ -383,7 +395,7 @@ export function LiquidacionesPage() {
       try {
         const validacion = await facturasServicioService.validarPagoEtapa(etapaId);
         
-        if (validacion.id_factura_servicio && !validacion.esta_pagada) {
+        if (validacion.id_factura_servicio && (!validacion.monto_pagado || validacion.monto_pagado <= 0)) {
           setValidacionModal({ 
             isOpen: true, 
             validacion: {
@@ -391,7 +403,7 @@ export function LiquidacionesPage() {
               id_etapa: etapaId,
               id_persona: 0,
               factura: validacion,
-              mensaje: `Factura no pagada. Saldo pendiente: ${validacion.saldo}`
+              mensaje: `No hay pagos registrados para esta etapa. Saldo pendiente: ${validacion.saldo}`
             }
           });
           return;
@@ -417,11 +429,50 @@ export function LiquidacionesPage() {
   const handlePersonaChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const personaId = Number(e.target.value);
     setSelectedPersona(personaId || null);
+    setSelectedPago(null);
+    setPagosDisponibles([]);
+    setDisponibleLiquidar(0);
     
     if (personaId && selectedEtapa) {
       loadPersonaEtapaCobro(selectedEtapa, personaId);
+      cargarPagosYDisponible(selectedEtapa, personaId);
     } else {
       setFormData(prev => ({ ...prev, importe: 0 }));
+    }
+  };
+
+  const cargarPagosYDisponible = async (idEtapa: number, idPersona: number) => {
+    if (!idEtapa || !idPersona || idEtapa <= 0 || idPersona <= 0) {
+      setPagosDisponibles([]);
+      setDisponibleLiquidar(0);
+      return;
+    }
+    try {
+      const pagosData = await personaLiquidacionService.getPagosDisponibles(idEtapa);
+      setPagosDisponibles(pagosData);
+      
+      const disponibleData = await personaLiquidacionService.getDisponibleLiquidar(idEtapa, idPersona);
+      setDisponibleLiquidar(disponibleData.disponible);
+    } catch (error) {
+      console.error('Error cargando pagos y disponible:', error);
+    }
+  };
+
+  const handlePagoChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const pagoId = Number(e.target.value);
+    setSelectedPago(pagoId || null);
+    
+    if (pagoId) {
+      const pago = pagosDisponibles.find(p => p.id_pago_factura_servicio === pagoId);
+      if (pago) {
+        const montoPago = Number(pago.monto);
+        const importeAjustado = montoPago > disponibleLiquidar ? disponibleLiquidar : montoPago;
+        setFormData(prev => ({ ...prev, importe: importeAjustado }));
+      }
+    } else {
+      if (selectedEtapa && selectedPersona) {
+        loadPersonaEtapaCobro(selectedEtapa, selectedPersona);
+      }
     }
   };
 
@@ -445,6 +496,7 @@ export function LiquidacionesPage() {
       if (item.id_etapa && item.id_persona) {
         setSelectedEtapa(item.id_etapa);
         setSelectedPersona(item.id_persona);
+        cargarPagosYDisponible(item.id_etapa, item.id_persona);
       }
     } else {
       resetForm();
@@ -474,9 +526,10 @@ export function LiquidacionesPage() {
       console.error('Error validando liquidación:', error);
     }
 
-    const baseData = {
+    const baseData: any = {
       id_etapa: selectedEtapa,
       id_persona: selectedPersona,
+      id_pago: selectedPago || undefined,
       fecha_emision: formData.fecha_emision || new Date().toISOString().split('T')[0],
       fecha_liquidacion: formData.fecha_liquidacion || undefined,
       descripcion: formData.descripcion || undefined,
@@ -905,6 +958,7 @@ export function LiquidacionesPage() {
                               onClick={() => setPrintModal({ 
                                 isOpen: true, 
                                 liquidacion: liquidacion, 
+                                autorizado_por_id: null,
                                 autorizado_por: '', 
                                 cargo_autorizado: '', 
                                 revisado_por: '' 
@@ -1024,6 +1078,34 @@ export function LiquidacionesPage() {
                     ))}
                   </select>
                 </div>
+                
+                {selectedPersona && selectedEtapa && (
+                  <>
+                    <div>
+                      <Label>Pago de Factura</Label>
+                      <select
+                        value={selectedPago || ''}
+                        onChange={handlePagoChange}
+                        className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white"
+                      >
+                        <option value="">Sin especificar (usar cobro)</option>
+                        {pagosDisponibles.map((pago) => (
+                          <option key={pago.id_pago_factura_servicio} value={pago.id_pago_factura_servicio}>
+                            {pago.fecha} - {Number(pago.monto).toLocaleString()} {pago.doc_traza ? `(${pago.doc_traza})` : ''}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    
+                    {disponibleLiquidar > 0 && (
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                        <p className="text-sm text-blue-700">
+                          <strong>Disponible por liquidar:</strong> {Number(disponibleLiquidar).toLocaleString()}
+                        </p>
+                      </div>
+                    )}
+                  </>
+                )}
                 
                 <div>
                   <Label>Moneda</Label>
@@ -1309,7 +1391,7 @@ export function LiquidacionesPage() {
                     <p className="text-sm text-gray-500 font-mono">{confirmModal.item.numero || 'Sin código'}</p>
                   </div>
                 </div>
-                <button onClick={() => { setConfirmModal({ isOpen: false, item: null }); setConfirmData({ observaciones: '', doc_pago_liquidacion: '' }); }} className="p-2 hover:bg-gray-200 rounded-full">
+                <button onClick={() => { setConfirmModal({ isOpen: false, item: null }); setConfirmData({ observaciones: '', doc_pago_liquidacion: '', porcentaje_caguayo: 10 }); }} className="p-2 hover:bg-gray-200 rounded-full">
                   <XCircle className="h-6 w-6 text-gray-500" />
                 </button>
               </div>
@@ -1360,7 +1442,7 @@ export function LiquidacionesPage() {
                 {confirmarMutation.isPending ? 'Confirmando...' : 'Confirmar'}
               </button>
               <button
-                onClick={() => { setConfirmModal({ isOpen: false, item: null }); setConfirmData({ observaciones: '', doc_pago_liquidacion: '' }); }}
+                onClick={() => { setConfirmModal({ isOpen: false, item: null }); setConfirmData({ observaciones: '', doc_pago_liquidacion: '', porcentaje_caguayo: 10 }); }}
                 className="px-6 py-3 text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors font-medium"
               >
                 Cancelar
@@ -1454,7 +1536,7 @@ export function LiquidacionesPage() {
 
               <div className="bg-red-50 rounded-xl p-4 border border-red-200">
                 <p className="text-sm text-red-800 font-medium">
-                  {validacionModal.validacion?.mensaje || 'La factura de esta etapa no ha sido pagada completamente.'}
+                  {validacionModal.validacion?.mensaje || 'No hay pagos registrados para liquidar.'}
                 </p>
               </div>
             </div>
@@ -1533,7 +1615,7 @@ export function LiquidacionesPage() {
             </div>
             <div className="p-6 border-t border-gray-200 flex justify-end gap-3">
               <button 
-                onClick={() => setPrintModal({ isOpen: false, liquidacion: null, autorizado_por: '', cargo_autorizado: '', revisado_por: '' })} 
+                onClick={() => setPrintModal({ isOpen: false, liquidacion: null, autorizado_por_id: null, autorizado_por: '', cargo_autorizado: '', revisado_por: '' })} 
                 className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 font-medium"
               >
                 Cancelar

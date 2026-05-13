@@ -12,6 +12,7 @@ from src.services.servicio_service import (
     FacturaServicioService,
     PagoFacturaServicioService,
     PersonaLiquidacionService,
+    certificacion_service,
 )
 from src.dto.servicio_dto import (
     ServicioCreate,
@@ -41,6 +42,10 @@ from src.dto.servicio_dto import (
     PersonaLiquidacionConfirmar,
     FacturaPagoValidacion,
     PersonaLiquidacionValidacion,
+    PagoDetalleRead,
+    CertificacionCreate,
+    CertificacionRead,
+    CertificacionUpdate,
 )
 from src.models.servicio import PersonaEtapa
 
@@ -473,3 +478,77 @@ async def get_liquidaciones_by_persona(
 ):
     """Obtiene todas las liquidaciones de una persona."""
     return await PersonaLiquidacionService.get_by_persona(db, id_persona)
+
+
+@persona_liquidacion_router.get(
+    "/pagos/etapa/{id_etapa}",
+    response_model=List[PagoDetalleRead],
+)
+async def get_pagos_disponibles_etapa(
+    id_etapa: int, db: AsyncSession = Depends(get_session)
+):
+    """Obtiene los pagos disponibles de una etapa para liquidar."""
+    return await PersonaLiquidacionService.get_pagos_disponibles_etapa(db, id_etapa)
+
+
+@persona_liquidacion_router.get(
+    "/disponible",
+)
+async def get_disponible_liquidar(
+    id_etapa: int = Query(...),
+    id_persona: int = Query(...),
+    db: AsyncSession = Depends(get_session)
+):
+    """Obtiene el monto disponible para liquidar a una persona en una etapa."""
+    from decimal import Decimal
+    disponible = await PersonaLiquidacionService.get_disponible_liquidar(db, id_etapa, id_persona)
+    return {"disponible": float(disponible)}
+
+
+# ==========================================
+# CERTIFICACIONES
+# ==========================================
+certificaciones_router = APIRouter(prefix="/certificaciones", tags=["certificaciones"], redirect_slashes=False)
+
+
+@certificaciones_router.get("", response_model=List[CertificacionRead])
+async def get_certificaciones(
+    skip: int = 0, limit: int = 100, db: AsyncSession = Depends(get_session)
+):
+    return await certificacion_service.get_all(db)
+
+
+@certificaciones_router.get("/etapa/{id_etapa}", response_model=List[CertificacionRead])
+async def get_certificaciones_by_etapa(id_etapa: int, db: AsyncSession = Depends(get_session)):
+    return await certificacion_service.get_by_etapa(db, id_etapa)
+
+
+@certificaciones_router.get("/{id}", response_model=CertificacionRead)
+async def get_certificacion(id: int, db: AsyncSession = Depends(get_session)):
+    result = await certificacion_service.get_by_id(db, id)
+    if not result:
+        raise HTTPException(status_code=404, detail="Certificación no encontrada")
+    return result
+
+
+@certificaciones_router.post("", response_model=CertificacionRead, status_code=201)
+async def create_certificacion(
+    data: CertificacionCreate, db: AsyncSession = Depends(get_session)
+):
+    return await certificacion_service.create(db, data)
+
+
+@certificaciones_router.put("/{id}", response_model=CertificacionRead)
+async def update_certificacion(
+    id: int, data: CertificacionUpdate, db: AsyncSession = Depends(get_session)
+):
+    result = await certificacion_service.update(db, id, data)
+    if not result:
+        raise HTTPException(status_code=404, detail="Certificación no encontrada")
+    return result
+
+
+@certificaciones_router.delete("/{id}", status_code=204)
+async def delete_certificacion(id: int, db: AsyncSession = Depends(get_session)):
+    if not await certificacion_service.delete(db, id):
+        raise HTTPException(status_code=404, detail="Certificación no encontrada")

@@ -86,6 +86,7 @@ export interface Etapa {
   valor: number;
   id_moneda?: number;
   pagada: boolean;
+  tipo_etapa?: 'TAREAS' | 'CERTIFICACIONES';
 }
 
 export interface EtapaCreate {
@@ -98,6 +99,7 @@ export interface EtapaCreate {
   valor?: number;
   id_moneda?: number;
   pagada?: boolean;
+  tipo_etapa?: 'TAREAS' | 'CERTIFICACIONES';
 }
 
 export interface EtapaUpdate {
@@ -109,6 +111,7 @@ export interface EtapaUpdate {
   valor?: number;
   id_moneda?: number;
   pagada?: boolean;
+  tipo_etapa?: 'TAREAS' | 'CERTIFICACIONES';
 }
 
 export interface TareaEtapa {
@@ -206,6 +209,7 @@ export interface FacturaServicioUpdate {
   precio?: number;
   monto?: number;
   observaciones?: string;
+  cuenta_factura?: string;
   id_usuario?: number;
 }
 
@@ -219,6 +223,7 @@ export interface FacturaServicioUpdate {
   cantidad?: number;
   precio?: number;
   observaciones?: string;
+  cuenta_factura?: string;
   id_usuario?: number;
 }
 
@@ -266,6 +271,7 @@ export interface PersonaLiquidacion {
   gasto_empresa: number;
   observacion?: string;
   confirmado: boolean;
+  id_pago?: number;
 }
 
 export interface PersonaLiquidacionCreate {
@@ -321,6 +327,7 @@ export type PersonaLiquidacionInput = {
   numero?: string;
   id_etapa: number;
   id_persona: number;
+  id_pago?: number;
   fecha_emision: string;
   fecha_liquidacion?: string;
   descripcion?: string;
@@ -375,4 +382,53 @@ export interface PersonaLiquidacionValidacion {
   id_persona: number;
   factura?: FacturaPagoValidacion;
   mensaje?: string;
+}
+
+export interface Certificacion {
+  id_certificacion: number;
+  nombre: string;
+  id_etapa: number;
+  constructor?: string;
+  inversionista?: string;
+  obra?: string;
+  objeto_obra?: string;
+  actividad?: string;
+  descripcion?: string;
+  observaciones?: string;
+  fecha?: string;
+  precio_servicio: number;
+  gasto_caguayo: number;
+  a_cobrar: number;
+}
+
+export interface CertificacionCreate {
+  nombre: string;
+  id_etapa: number;
+  constructor?: string;
+  inversionista?: string;
+  obra?: string;
+  objeto_obra?: string;
+  actividad?: string;
+  descripcion?: string;
+  observaciones?: string;
+  fecha?: string;
+  precio_servicio?: number;
+  gasto_caguayo?: number;
+  a_cobrar?: number;
+}
+
+export interface CertificacionUpdate {
+  nombre?: string;
+  id_etapa?: string;
+  constructor?: string;
+  inversionista?: string;
+  obra?: string;
+  objeto_obra?: string;
+  actividad?: string;
+  descripcion?: string;
+  observaciones?: string;
+  fecha?: string;
+  precio_servicio?: number;
+  gasto_caguayo?: number;
+  a_cobrar?: number;
 }

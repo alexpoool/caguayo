@@ -12,6 +12,7 @@ from src.models.servicio import (
     FacturaServicio,
     PagoFacturaServicio,
     PersonaLiquidacion,
+    Certificacion,
 )
 from src.dto.servicio_dto import (
     ServicioCreate,
@@ -42,6 +43,9 @@ from src.dto.servicio_dto import (
     FacturaPagoValidacion,
     PersonaLiquidacionValidacion,
     PagoDetalleRead,
+    CertificacionCreate,
+    CertificacionRead,
+    CertificacionUpdate,
 )
 from src.repository.servicio_repo import (
     servicio_repo,
@@ -392,20 +396,26 @@ class PersonaLiquidacionService:
 
         if not validacion.puede_liquidar:
             raise ValueError(
-                validacion.mensaje or "No se puede liquidar: factura no pagada"
+                validacion.mensaje or "No se puede liquidar: no hay pagos registrados"
             )
 
         from decimal import Decimal
 
         importe = Decimal("0")
-        statement = select(PersonaEtapa).where(
-            PersonaEtapa.id_etapa == data.id_etapa,
-            PersonaEtapa.id_persona == data.id_persona,
-        )
-        result = await db.exec(statement)
-        persona_etapa = result.first()
-        if persona_etapa and persona_etapa.cobro:
-            importe = Decimal(str(persona_etapa.cobro))
+        
+        if data.id_pago:
+            pago = await pago_factura_servicio_repo.get(db, data.id_pago)
+            if pago and pago.monto:
+                importe = Decimal(str(pago.monto))
+        else:
+            statement = select(PersonaEtapa).where(
+                PersonaEtapa.id_etapa == data.id_etapa,
+                PersonaEtapa.id_persona == data.id_persona,
+            )
+            result = await db.exec(statement)
+            persona_etapa = result.first()
+            if persona_etapa and persona_etapa.cobro:
+                importe = Decimal(str(persona_etapa.cobro))
 
         porcentaje_caguayo = Decimal(str(data.porcentaje_caguayo or 10))
         importe_caguayo = importe * (porcentaje_caguayo / 100)
@@ -423,6 +433,7 @@ class PersonaLiquidacionService:
             numero=data.numero,
             id_etapa=data.id_etapa,
             id_persona=data.id_persona,
+            id_pago=data.id_pago,
             fecha_emision=data.fecha_emision,
             fecha_liquidacion=data.fecha_liquidacion,
             descripcion=data.descripcion,
@@ -555,8 +566,28 @@ class PersonaLiquidacionService:
 
         if not validacion.puede_liquidar:
             raise ValueError(
-                validacion.mensaje or "No se puede confirmar: factura no pagada"
+                validacion.mensaje or "No se puede confirmar: no hay pagos registrados"
             )
+
+        importe = l.importe or Decimal("0")
+        
+        total_liquidado = await persona_liquidacion_repo.get_total_liquidado_by_persona_etapa(
+            db, l.id_etapa, l.id_persona
+        )
+        
+        statement = select(PersonaEtapa).where(
+            PersonaEtapa.id_etapa == l.id_etapa,
+            PersonaEtapa.id_persona == l.id_persona,
+        )
+        result = await db.exec(statement)
+        persona_etapa = result.first()
+        
+        if persona_etapa and persona_etapa.cobro:
+            cobro = Decimal(str(persona_etapa.cobro))
+            disponible = cobro - total_liquidado
+            if importe > disponible:
+                importe = disponible
+                l.importe = importe
 
         if data.porcentaje_caguayo is not None:
             l.porcentaje_caguayo = Decimal(str(data.porcentaje_caguayo))
@@ -567,7 +598,6 @@ class PersonaLiquidacionService:
         if data.comision_bancaria is not None:
             l.comision_bancaria = Decimal(str(data.comision_bancaria))
 
-        importe = l.importe or Decimal("0")
         porcentaje_caguayo = l.porcentaje_caguayo or Decimal("10")
         l.importe_caguayo = importe * (porcentaje_caguayo / 100)
         l.devengado = importe - l.importe_caguayo
@@ -584,8 +614,43 @@ class PersonaLiquidacionService:
 
         if data.observaciones:
             l.observacion = data.observaciones
+        
+        if data.doc_pago_liquidacion:
+            l.doc_pago_liquidacion = data.doc_pago_liquidacion
 
         db.add(l)
+        
+        if l.id_etapa:
+            factura = await factura_servicio_repo.get_by_etapa_with_pagos(db, l.id_etapa)
+            if factura:
+                monto_pago = Decimal("0")
+                if l.id_pago:
+                    pago_obj = await pago_factura_servicio_repo.get(db, l.id_pago)
+                    if pago_obj and pago_obj.monto:
+                        monto_pago = Decimal(str(pago_obj.monto))
+                
+                liquidado_total = importe
+                if monto_pago > importe:
+                    excedente = monto_pago - importe
+                    liquidado_total = importe + excedente
+                
+                await factura_servicio_repo.actualizar_liquidado(
+                    db, factura.id_factura_servicio, liquidado_total
+                )
+            
+            if persona_etapa:
+                persona_etapa.liquidada = True
+                
+                total_liquidado_confirmado = await persona_liquidacion_repo.get_total_liquidado_by_persona_etapa(
+                    db, l.id_etapa, l.id_persona
+                )
+                cobro = Decimal(str(persona_etapa.cobro or 0))
+                
+                if total_liquidado_confirmado >= cobro:
+                    persona_etapa.pago_completado = True
+                
+                db.add(persona_etapa)
+
         await db.commit()
         await db.refresh(l)
         return PersonaLiquidacionRead(**l.model_dump())
@@ -606,9 +671,9 @@ class PersonaLiquidacionService:
         if not validacion_factura.id_factura_servicio:
             puede_liquidar = False
             mensaje = "No existe factura para esta etapa"
-        elif not validacion_factura.esta_pagada:
+        elif not validacion_factura.monto_pagado or validacion_factura.monto_pagado <= 0:
             puede_liquidar = False
-            mensaje = f"Factura no pagada. Saldo pendiente: {validacion_factura.saldo}"
+            mensaje = "No hay pagos registrados para esta etapa"
 
         return PersonaLiquidacionValidacion(
             puede_liquidar=puede_liquidar,
@@ -620,7 +685,40 @@ class PersonaLiquidacionService:
 
     @staticmethod
     async def delete(db: AsyncSession, id: int) -> bool:
+        from decimal import Decimal
+        
+        liquidacion = await persona_liquidacion_repo.get(db, id)
+        if not liquidacion:
+            return False
+        
+        id_etapa = liquidacion.id_etapa
+        id_persona = liquidacion.id_persona
+        
         obj = await persona_liquidacion_repo.remove(db, id=id)
+        
+        if id_etapa and id_persona:
+            total_liquidado = await persona_liquidacion_repo.get_total_liquidado_by_persona_etapa(
+                db, id_etapa, id_persona
+            )
+            
+            statement = select(PersonaEtapa).where(
+                PersonaEtapa.id_etapa == id_etapa,
+                PersonaEtapa.id_persona == id_persona,
+            )
+            result = await db.exec(statement)
+            persona_etapa = result.first()
+            
+            if persona_etapa:
+                if total_liquidado > 0:
+                    persona_etapa.liquidada = True
+                    cobro = Decimal(str(persona_etapa.cobro or 0))
+                    persona_etapa.pago_completado = total_liquidado >= cobro
+                else:
+                    persona_etapa.liquidada = False
+                    persona_etapa.pago_completado = False
+                db.add(persona_etapa)
+                await db.commit()
+        
         return obj is not None
 
     @staticmethod
@@ -638,3 +736,101 @@ class PersonaLiquidacionService:
     ) -> List[PersonaLiquidacionRead]:
         items = await persona_liquidacion_repo.get_by_persona(db, id_persona)
         return [PersonaLiquidacionRead(**i.model_dump()) for i in items]
+
+    @staticmethod
+    async def get_pagos_disponibles_etapa(
+        db: AsyncSession, id_etapa: int
+    ) -> List[PagoDetalleRead]:
+        pagos = await pago_factura_servicio_repo.get_by_etapa(db, id_etapa)
+        return [
+            PagoDetalleRead(
+                id_pago_factura_servicio=p.id_pago_factura_servicio,
+                monto=p.monto or Decimal("0"),
+                fecha=p.fecha,
+                doc_traza=p.doc_traza,
+            )
+            for p in pagos
+        ]
+
+    @staticmethod
+    async def get_disponible_liquidar(
+        db: AsyncSession, id_etapa: int, id_persona: int
+    ) -> Decimal:
+        statement = select(PersonaEtapa).where(
+            PersonaEtapa.id_etapa == id_etapa,
+            PersonaEtapa.id_persona == id_persona,
+        )
+        result = await db.exec(statement)
+        persona_etapa = result.first()
+        
+        if not persona_etapa or not persona_etapa.cobro:
+            return Decimal("0")
+        
+        cobro = Decimal(str(persona_etapa.cobro))
+        total_liquidado = await persona_liquidacion_repo.get_total_liquidado_by_persona_etapa(
+            db, id_etapa, id_persona
+        )
+        
+        disponible = cobro - total_liquidado
+        return disponible if disponible > 0 else Decimal("0")
+
+
+# ==========================================
+# CERTIFICACIONES SERVICE
+# ==========================================
+class CertificacionService:
+    async def create(self, db: AsyncSession, data: CertificacionCreate) -> CertificacionRead:
+        certificacion = Certificacion(**data.model_dump())
+        db.add(certificacion)
+        await db.commit()
+        await db.refresh(certificacion)
+        return CertificacionRead.model_validate(certificacion)
+
+    async def get_by_id(self, db: AsyncSession, id_certificacion: int) -> Optional[CertificacionRead]:
+        statement = select(Certificacion).where(Certificacion.id_certificacion == id_certificacion)
+        result = await db.exec(statement)
+        certificacion = result.first()
+        if certificacion:
+            return CertificacionRead.model_validate(certificacion)
+        return None
+
+    async def get_all(self, db: AsyncSession) -> List[CertificacionRead]:
+        statement = select(Certificacion).order_by(Certificacion.id_certificacion.desc())
+        result = await db.exec(statement)
+        return [CertificacionRead.model_validate(c) for c in result.all()]
+
+    async def get_by_etapa(self, db: AsyncSession, id_etapa: int) -> List[CertificacionRead]:
+        statement = select(Certificacion).where(Certificacion.id_etapa == id_etapa).order_by(Certificacion.id_certificacion.desc())
+        result = await db.exec(statement)
+        return [CertificacionRead.model_validate(c) for c in result.all()]
+
+    async def update(self, db: AsyncSession, id_certificacion: int, data: CertificacionUpdate) -> Optional[CertificacionRead]:
+        statement = select(Certificacion).where(Certificacion.id_certificacion == id_certificacion)
+        result = await db.exec(statement)
+        certificacion = result.first()
+        
+        if not certificacion:
+            return None
+        
+        update_data = data.model_dump(exclude_unset=True)
+        for key, value in update_data.items():
+            setattr(certificacion, key, value)
+        
+        await db.commit()
+        await db.refresh(certificacion)
+        return CertificacionRead.model_validate(certificacion)
+
+    async def delete(self, db: AsyncSession, id_certificacion: int) -> bool:
+        statement = select(Certificacion).where(Certificacion.id_certificacion == id_certificacion)
+        result = await db.exec(statement)
+        certificacion = result.first()
+        
+        if not certificacion:
+            return False
+        
+        await db.delete(certificacion)
+        await db.commit()
+        return True
+
+
+certificacion_service = CertificacionService()

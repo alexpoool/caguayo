@@ -6,7 +6,7 @@ import { authHelpers } from "../../lib/api";
 import type { Productos } from "../../types/index";
 import { useReportPreview } from "../../hooks/useReportPreview";
 import ReportPreviewPanel from "../../components/ui/ReportPreviewPanel";
-import type { Column, StatCard, ExportColumn } from "../../components/ui/ReportPreviewPanel";
+import type { Column, StatCard } from "../../components/ui/ReportPreviewPanel";
 import { Package, Download } from "lucide-react";
 
 // ---------------------------------------------------------------------------
@@ -34,17 +34,6 @@ interface MovimientosProductoPreviewData {
   total_entradas: number;
   total_salidas: number;
 }
-
-// ---------------------------------------------------------------------------
-// Export columns
-// ---------------------------------------------------------------------------
-
-const EXPORT_COLUMNS: ExportColumn<MovimientosProductoPreviewItem>[] = [
-  { header: "Fecha",     value: "fecha" },
-  { header: "Operación", value: "operacion" },
-  { header: "Tipo",      value: "tipo" },
-  { header: "Cantidad",  value: "cantidad" },
-];
 
 // ---------------------------------------------------------------------------
 // Column definitions
@@ -409,7 +398,6 @@ const ReporteMovimientosProducto: React.FC = () => {
           columns={COLUMNS}
           stats={stats}
           emptyMessage="No se encontraron movimientos para el producto en el rango de fechas seleccionado."
-          exportColumns={EXPORT_COLUMNS}
           exportFileName={`movimientos_prod_${idProducto ?? "prod"}_${fechaInicio}_${fechaFin}`}
         />
       </div>

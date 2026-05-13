@@ -5,7 +5,7 @@ import { Dependencia } from "../../types/dependencia";
 import { authHelpers } from "../../lib/api";
 import { useReportPreview } from "../../hooks/useReportPreview";
 import ReportPreviewPanel from "../../components/ui/ReportPreviewPanel";
-import type { Column, StatCard, ExportColumn } from "../../components/ui/ReportPreviewPanel";
+import type { Column, StatCard } from "../../components/ui/ReportPreviewPanel";
 import { ArrowLeftRight, Download, Building2 } from "lucide-react";
 
 // ---------------------------------------------------------------------------
@@ -33,18 +33,6 @@ interface MovimientosDependenciaPreviewData {
   total_entradas: number;
   total_salidas: number;
 }
-
-// ---------------------------------------------------------------------------
-// Export columns
-// ---------------------------------------------------------------------------
-
-const EXPORT_COLUMNS: ExportColumn<MovimientosDependenciaPreviewItem>[] = [
-  { header: "Fecha",     value: "fecha" },
-  { header: "Operación", value: "operacion" },
-  { header: "Producto",  value: "producto" },
-  { header: "Tipo",      value: "tipo" },
-  { header: "Cantidad",  value: "cantidad" },
-];
 
 // ---------------------------------------------------------------------------
 // Column definitions
@@ -375,7 +363,6 @@ const ReporteMovimientosDependencia: React.FC = () => {
           columns={COLUMNS}
           stats={stats}
           emptyMessage="No se encontraron movimientos para el período seleccionado"
-          exportColumns={EXPORT_COLUMNS}
           exportFileName={`movimientos_dep_${idDependencia ?? "dep"}_${fechaInicio}_${fechaFin}`}
         />
       </div>

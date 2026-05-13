@@ -734,6 +734,29 @@ export const pagosFacturaServicioService = {
   }
 };
 
+import type { Certificacion, CertificacionCreate, CertificacionUpdate } from '../types/servicio';
+
+export const certificacionesService = {
+  async getCertificaciones(skip = 0, limit = 100): Promise<Certificacion[]> {
+    return apiClient.get<Certificacion[]>(`/certificaciones?skip=${skip}&limit=${limit}`);
+  },
+  async getCertificacion(id: number): Promise<Certificacion> {
+    return apiClient.get<Certificacion>(`/certificaciones/${id}`);
+  },
+  async getCertificacionesByEtapa(idEtapa: number): Promise<Certificacion[]> {
+    return apiClient.get<Certificacion[]>(`/certificaciones/etapa/${idEtapa}`);
+  },
+  async createCertificacion(data: CertificacionCreate): Promise<Certificacion> {
+    return apiClient.post<Certificacion>('/certificaciones', data);
+  },
+  async updateCertificacion(id: number, data: CertificacionUpdate): Promise<Certificacion> {
+    return apiClient.put<Certificacion>(`/certificaciones/${id}`, data);
+  },
+  async deleteCertificacion(id: number): Promise<void> {
+    return apiClient.delete<void>(`/certificaciones/${id}`);
+  }
+};
+
 export const personaLiquidacionService = {
   async getLiquidaciones(skip = 0, limit = 100): Promise<PersonaLiquidacion[]> {
     return apiClient.get<PersonaLiquidacion[]>(`/persona-liquidacion?skip=${skip}&limit=${limit}`);
@@ -752,10 +775,12 @@ export const personaLiquidacionService = {
   },
   async confirmarLiquidacion(id: number, data: {
     devengado?: number;
+    porcentaje_caguayo?: number;
     tributario?: number;
     comision_bancaria?: number;
     gasto_empresa?: number;
     observaciones?: string;
+    doc_pago_liquidacion?: string;
   }): Promise<PersonaLiquidacion> {
     return apiClient.post<PersonaLiquidacion>(`/persona-liquidacion/${id}/confirmar`, data);
   },
@@ -767,6 +792,17 @@ export const personaLiquidacionService = {
   },
   async getLiquidacionesByPersona(idPersona: number): Promise<PersonaLiquidacion[]> {
     return apiClient.get<PersonaLiquidacion[]>(`/persona-liquidacion/persona/${idPersona}`);
+  },
+  async getPagosDisponibles(idEtapa: number): Promise<{
+    id_pago_factura_servicio: number;
+    monto: number;
+    fecha: string;
+    doc_traza?: string;
+  }[]> {
+    return apiClient.get<any[]>(`/persona-liquidacion/pagos/etapa/${idEtapa}`);
+  },
+  async getDisponibleLiquidar(idEtapa: number, idPersona: number): Promise<{ disponible: number }> {
+    return apiClient.get<{ disponible: number }>(`/persona-liquidacion/disponible?id_etapa=${idEtapa}&id_persona=${idPersona}`);
   }
 };
 

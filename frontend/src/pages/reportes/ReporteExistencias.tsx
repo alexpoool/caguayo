@@ -5,7 +5,7 @@ import { Dependencia } from "../../types/dependencia";
 import { authHelpers } from "../../lib/api";
 import { useReportPreview } from "../../hooks/useReportPreview";
 import ReportPreviewPanel from "../../components/ui/ReportPreviewPanel";
-import type { Column, StatCard, ExportColumn } from "../../components/ui/ReportPreviewPanel";
+import type { Column, StatCard } from "../../components/ui/ReportPreviewPanel";
 import { Boxes, Download, Building2 } from "lucide-react";
 
 // ---------------------------------------------------------------------------
@@ -34,12 +34,6 @@ interface ExistenciasPreviewData {
 // ---------------------------------------------------------------------------
 // Columns (defined outside the component to keep a stable reference)
 // ---------------------------------------------------------------------------
-
-const EXPORT_COLUMNS: ExportColumn<ExistenciasPreviewItem>[] = [
-  { header: "Código",      value: "codigo" },
-  { header: "Descripción", value: "descripcion" },
-  { header: "Cantidad",    value: "cantidad" },
-];
 
 const COLUMNS: Column<ExistenciasPreviewItem>[] = [
   {
@@ -294,7 +288,6 @@ const ReporteExistencias: React.FC = () => {
           columns={COLUMNS}
           stats={stats}
           emptyMessage="Esta dependencia no tiene productos registrados"
-          exportColumns={EXPORT_COLUMNS}
           exportFileName={`existencias_${idDependencia ?? "dependencia"}`}
         />
       </div>

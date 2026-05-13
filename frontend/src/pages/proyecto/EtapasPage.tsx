@@ -38,6 +38,11 @@ export function EtapasPage() {
     type: 'danger'
   });
 
+  const [tipoEtapaModal, setTipoEtapaModal] = useState<{
+    isOpen: boolean;
+    editingItem: Etapa | null;
+  }>({ isOpen: false, editingItem: null });
+
   useEffect(() => { loadInitialData(); }, []);
 
   useEffect(() => {
@@ -73,7 +78,8 @@ export function EtapasPage() {
           descripcion: formData.descripcion,
           valor: formData.valor ? Number(formData.valor) : undefined,
           id_moneda: formData.id_moneda ? Number(formData.id_moneda) : undefined,
-          pagada: formData.pagada === 'true' || formData.pagada === true
+          pagada: formData.pagada === 'true' || formData.pagada === true,
+          tipo_etapa: formData.tipo_etapa || 'TAREAS'
         };
         await etapasProyectoService.updateEtapa(editingId, data);
       } else {
@@ -85,7 +91,8 @@ export function EtapasPage() {
           descripcion: formData.descripcion,
           valor: formData.valor ? Number(formData.valor) : 0,
           id_moneda: formData.id_moneda ? Number(formData.id_moneda) : undefined,
-          pagada: formData.pagada === 'true' || formData.pagada === true
+          pagada: formData.pagada === 'true' || formData.pagada === true,
+          tipo_etapa: formData.tipo_etapa || 'TAREAS'
         };
         await etapasProyectoService.createEtapa(data);
       }
@@ -115,6 +122,29 @@ export function EtapasPage() {
   const resetForm = () => { setFormData({}); setEditingId(null); };
 
   const openForm = (item?: Etapa) => {
+    if (item?.tipo_etapa) {
+      setEditingId(item.id_etapa);
+      setFormData({
+        numero_etapa: item.numero_etapa,
+        nombre_etapa: item.nombre_etapa,
+        fecha_entrega: item.fecha_entrega,
+        fecha_pago: item.fecha_pago,
+        descripcion: item.descripcion,
+        valor: item.valor,
+        id_moneda: item.id_moneda,
+        pagada: item.pagada,
+        tipo_etapa: item.tipo_etapa
+      });
+      setView('form');
+    } else {
+      setTipoEtapaModal({ isOpen: true, editingItem: item || null });
+    }
+  };
+
+  const handleTipoEtapaSelect = (tipo: 'TAREAS' | 'CERTIFICACIONES') => {
+    const item = tipoEtapaModal.editingItem;
+    setTipoEtapaModal({ isOpen: false, editingItem: null });
+    
     if (item) {
       setEditingId(item.id_etapa);
       setFormData({
@@ -125,10 +155,18 @@ export function EtapasPage() {
         descripcion: item.descripcion,
         valor: item.valor,
         id_moneda: item.id_moneda,
-        pagada: item.pagada
+        pagada: item.pagada,
+        tipo_etapa: tipo
       });
-    } else { resetForm(); }
+    } else {
+      resetForm();
+      setFormData({ tipo_etapa: tipo });
+    }
     setView('form');
+  };
+
+  const handleTipoEtapaCancel = () => {
+    setTipoEtapaModal({ isOpen: false, editingItem: null });
   };
 
   const filteredEtapas = useMemo(() => {
@@ -220,7 +258,7 @@ export function EtapasPage() {
                 <TableHead>Pagada</TableHead>
                 <TableHead>Facturas</TableHead>
                 <TableHead>Realizadores</TableHead>
-                <TableHead>Tareas</TableHead>
+                <TableHead>Trabajo</TableHead>
                 <TableHead className="text-right">Acciones</TableHead>
               </TableRow>
             </TableHeader>
@@ -277,15 +315,27 @@ export function EtapasPage() {
                       </Button>
                     </TableCell>
                     <TableCell onClick={(e) => e.stopPropagation()}>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => navigate(`/proyectos/tareas-etapa?etapa=${item.id_etapa}`)}
-                        className="gap-1 text-amber-600 border-amber-200 hover:bg-amber-50 hover:text-amber-700"
-                      >
-                        <CheckSquare className="h-3.5 w-3.5" />
-                        Tareas
-                      </Button>
+                      {item.tipo_etapa === 'CERTIFICACIONES' ? (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => navigate(`/proyectos/certificaciones?etapa=${item.id_etapa}`)}
+                          className="gap-1 text-teal-600 border-teal-200 hover:bg-teal-50 hover:text-teal-700"
+                        >
+                          <FileText className="h-3.5 w-3.5" />
+                          Certificaciones
+                        </Button>
+                      ) : (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => navigate(`/proyectos/tareas-etapa?etapa=${item.id_etapa}`)}
+                          className="gap-1 text-amber-600 border-amber-200 hover:bg-amber-50 hover:text-amber-700"
+                        >
+                          <CheckSquare className="h-3.5 w-3.5" />
+                          Tareas
+                        </Button>
+                      )}
                     </TableCell>
                     <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                       <div className="flex justify-end gap-2">
@@ -346,6 +396,18 @@ export function EtapasPage() {
         </CardHeader>
         <CardContent className="p-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="md:col-span-2 bg-gray-50 p-4 rounded-lg border border-gray-200">
+              <div className="flex items-center gap-3">
+                <span className="text-sm font-medium text-gray-600">Tipo de etapa:</span>
+                <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                  formData.tipo_etapa === 'CERTIFICACIONES' 
+                    ? 'bg-teal-100 text-teal-800' 
+                    : 'bg-amber-100 text-amber-800'
+                }`}>
+                  {formData.tipo_etapa === 'CERTIFICACIONES' ? 'Certificaciones' : 'Tareas'}
+                </span>
+              </div>
+            </div>
             <div>
               <Label className="text-sm font-medium">Nombre Etapa</Label>
               <Input value={formData.nombre_etapa || ''} onChange={(e: any) => setFormData({...formData, nombre_etapa: e.target.value})} className="mt-1" placeholder="Nombre de la etapa" />
@@ -419,6 +481,60 @@ export function EtapasPage() {
       {view === 'list' && renderList()}
       {view === 'form' && renderForm()}
 
+      {tipoEtapaModal.isOpen && createPortal(
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 animate-fade-in">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full animate-scale-in">
+            <div className="p-6 border-b border-gray-200">
+              <h3 className="text-xl font-bold text-gray-900">
+                {tipoEtapaModal.editingItem ? 'Cambiar tipo de etapa' : '¿Qué tipo de trabajo tendrá esta etapa?'}
+              </h3>
+              <p className="text-sm text-gray-500 mt-1">
+                Selecciona el tipo de trabajo para continuar
+              </p>
+            </div>
+            <div className="p-6 space-y-4">
+              <button
+                onClick={() => handleTipoEtapaSelect('TAREAS')}
+                className="w-full p-4 border-2 border-gray-200 rounded-xl hover:border-amber-500 hover:bg-amber-50 transition-all text-left group"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="p-3 rounded-xl bg-amber-100 group-hover:bg-amber-200 transition-colors">
+                    <FileText className="h-6 w-6 text-amber-600" />
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-gray-900">Tareas</h4>
+                    <p className="text-sm text-gray-500">Servicios específicos con actividades</p>
+                  </div>
+                </div>
+              </button>
+              <button
+                onClick={() => handleTipoEtapaSelect('CERTIFICACIONES')}
+                className="w-full p-4 border-2 border-gray-200 rounded-xl hover:border-teal-500 hover:bg-teal-50 transition-all text-left group"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="p-3 rounded-xl bg-teal-100 group-hover:bg-teal-200 transition-colors">
+                    <FileText className="h-6 w-6 text-teal-600" />
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-gray-900">Certificaciones</h4>
+                    <p className="text-sm text-gray-500">Obra, inversión y certificación de pagos</p>
+                  </div>
+                </div>
+              </button>
+            </div>
+            <div className="p-4 border-t border-gray-200 flex justify-end">
+              <button
+                onClick={handleTipoEtapaCancel}
+                className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
       <ConfirmModal
         isOpen={confirmModal.isOpen}
         title={confirmModal.title}
@@ -438,7 +554,16 @@ export function EtapasPage() {
                     <Layers className="h-7 w-7" />
                   </div>
                   <div>
-                    <h3 className="text-2xl font-bold text-gray-900">{detailModal.item.nombre_etapa || `Etapa ${detailModal.item.numero_etapa || ''}`}</h3>
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-2xl font-bold text-gray-900">{detailModal.item.nombre_etapa || `Etapa ${detailModal.item.numero_etapa || ''}`}</h3>
+                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                        detailModal.item.tipo_etapa === 'CERTIFICACIONES' 
+                          ? 'bg-teal-100 text-teal-800' 
+                          : 'bg-amber-100 text-amber-800'
+                      }`}>
+                        {detailModal.item.tipo_etapa === 'CERTIFICACIONES' ? 'Certificaciones' : 'Tareas'}
+                      </span>
+                    </div>
                     <p className="text-sm text-gray-500">Nº {detailModal.item.numero_etapa || 'N/A'}</p>
                   </div>
                 </div>
@@ -490,7 +615,11 @@ export function EtapasPage() {
             <div className="p-6 border-t border-gray-200 bg-gray-50 flex justify-end gap-3 flex-wrap">
               <button onClick={() => navigate(`/proyectos/facturas-servicio?etapa=${detailModal.item!.id_etapa}`)} className="px-4 py-2 text-white bg-purple-600 rounded-xl hover:bg-purple-700 transition-colors font-medium text-sm">Facturas</button>
               <button onClick={() => navigate(`/proyectos/realizadores?etapa=${detailModal.item!.id_etapa}`)} className="px-4 py-2 text-white bg-blue-600 rounded-xl hover:bg-blue-700 transition-colors font-medium text-sm">Realizadores</button>
-              <button onClick={() => navigate(`/proyectos/tareas-etapa?etapa=${detailModal.item!.id_etapa}`)} className="px-4 py-2 text-white bg-amber-600 rounded-xl hover:bg-amber-700 transition-colors font-medium text-sm">Tareas</button>
+              {detailModal.item.tipo_etapa === 'CERTIFICACIONES' ? (
+                <button onClick={() => navigate(`/proyectos/certificaciones?etapa=${detailModal.item!.id_etapa}`)} className="px-4 py-2 text-white bg-teal-600 rounded-xl hover:bg-teal-700 transition-colors font-medium text-sm">Certificaciones</button>
+              ) : (
+                <button onClick={() => navigate(`/proyectos/tareas-etapa?etapa=${detailModal.item!.id_etapa}`)} className="px-4 py-2 text-white bg-amber-600 rounded-xl hover:bg-amber-700 transition-colors font-medium text-sm">Tareas</button>
+              )}
               <button onClick={() => setDetailModal({ isOpen: false, item: null })} className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors font-medium text-sm">Cerrar</button>
             </div>
           </div>

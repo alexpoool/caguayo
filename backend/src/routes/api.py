@@ -38,6 +38,7 @@ from .servicios import (
     facturas_servicio_router,
     pagos_factura_servicio_router,
     persona_liquidacion_router,
+    certificaciones_router,
 )
 from .logger import router as logger_router
 
@@ -79,6 +80,7 @@ api_router.include_router(persona_etapa_router)
 api_router.include_router(facturas_servicio_router)
 api_router.include_router(pagos_factura_servicio_router)
 api_router.include_router(persona_liquidacion_router)
+api_router.include_router(certificaciones_router)
 api_router.include_router(logger_router)
 
 

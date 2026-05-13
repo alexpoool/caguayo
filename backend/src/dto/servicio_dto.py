@@ -100,6 +100,7 @@ class EtapaBase(SQLModel):
     valor: Decimal = Decimal("0.00")
     id_moneda: Optional[int] = None
     pagada: bool = False
+    tipo_etapa: Optional[str] = "TAREAS"
 
 
 class EtapaCreate(EtapaBase):
@@ -120,6 +121,7 @@ class EtapaUpdate(SQLModel):
     valor: Optional[Decimal] = None
     id_moneda: Optional[int] = None
     pagada: Optional[bool] = None
+    tipo_etapa: Optional[str] = None
 
 
 # ==========================================
@@ -199,6 +201,7 @@ class FacturaServicioBase(SQLModel):
     observaciones: Optional[str] = None
     cuenta_factura: Optional[str] = None
     id_usuario: Optional[int] = None
+    liquidado: Decimal = Decimal("0.00")
 
 
 class FacturaServicioCreate(FacturaServicioBase):
@@ -271,12 +274,14 @@ class PersonaLiquidacionBase(SQLModel):
     gasto_empresa: Decimal = Decimal("0.00")
     observacion: Optional[str] = None
     confirmado: bool = False
+    id_pago: Optional[int] = None
 
 
 class PersonaLiquidacionCreateInput(SQLModel):
     numero: Optional[str] = None
     id_etapa: int
     id_persona: int
+    id_pago: Optional[int] = None
     fecha_emision: date
     fecha_liquidacion: Optional[date] = None
     descripcion: Optional[str] = None
@@ -298,6 +303,7 @@ class PersonaLiquidacionUpdateInput(SQLModel):
     numero: Optional[str] = None
     id_etapa: Optional[int] = None
     id_persona: Optional[int] = None
+    id_pago: Optional[int] = None
     fecha_emision: Optional[date] = None
     fecha_liquidacion: Optional[date] = None
     descripcion: Optional[str] = None
@@ -319,6 +325,7 @@ class PersonaLiquidacionUpdate(SQLModel):
     numero: Optional[str] = None
     id_etapa: Optional[int] = None
     id_persona: Optional[int] = None
+    id_pago: Optional[int] = None
     fecha_emision: Optional[date] = None
     fecha_liquidacion: Optional[date] = None
     descripcion: Optional[str] = None
@@ -347,6 +354,7 @@ class PersonaLiquidacionConfirmar(SQLModel):
     comision_bancaria: Optional[float] = None
     gasto_empresa: Optional[float] = None
     observaciones: Optional[str] = None
+    doc_pago_liquidacion: Optional[str] = None
 
 
 # ==========================================
@@ -376,3 +384,46 @@ class PersonaLiquidacionValidacion(SQLModel):
     id_persona: int
     factura: Optional[FacturaPagoValidacion] = None
     mensaje: Optional[str] = None
+
+
+# ==========================================
+# CERTIFICACIONES
+# ==========================================
+class CertificacionBase(SQLModel):
+    nombre: str
+    id_etapa: int
+    constructor: Optional[str] = None
+    inversionista: Optional[str] = None
+    obra: Optional[str] = None
+    objeto_obra: Optional[str] = None
+    actividad: Optional[str] = None
+    descripcion: Optional[str] = None
+    observaciones: Optional[str] = None
+    fecha: Optional[date] = None
+    precio_servicio: Decimal = Decimal("0.00")
+    gasto_caguayo: int = 0
+    a_cobrar: Decimal = Decimal("0.00")
+
+
+class CertificacionCreate(CertificacionBase):
+    pass
+
+
+class CertificacionRead(CertificacionBase):
+    id_certificacion: int
+
+
+class CertificacionUpdate(SQLModel):
+    nombre: Optional[str] = None
+    id_etapa: Optional[int] = None
+    constructor: Optional[str] = None
+    inversionista: Optional[str] = None
+    obra: Optional[str] = None
+    objeto_obra: Optional[str] = None
+    actividad: Optional[str] = None
+    descripcion: Optional[str] = None
+    observaciones: Optional[str] = None
+    fecha: Optional[date] = None
+    precio_servicio: Optional[Decimal] = None
+    gasto_caguayo: Optional[int] = None
+    a_cobrar: Optional[Decimal] = None

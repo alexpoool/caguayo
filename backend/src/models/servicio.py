@@ -78,6 +78,7 @@ class Etapa(SQLModel, table=True):
     valor: Decimal = Field(default=Decimal("0.00"))
     id_moneda: Optional[int] = Field(default=None, foreign_key="moneda.id_moneda")
     pagada: bool = Field(default=False)
+    tipo_etapa: Optional[str] = Field(default="TAREAS", max_length=20)
 
     solicitud: "SolicitudServicio" = Relationship(back_populates="etapas")
     tareas: List["TareaEtapa"] = Relationship(
@@ -87,6 +88,9 @@ class Etapa(SQLModel, table=True):
         back_populates="etapa", sa_relationship_kwargs={"lazy": "selectin"}
     )
     facturas: List["FacturaServicio"] = Relationship(
+        back_populates="etapa", sa_relationship_kwargs={"lazy": "selectin"}
+    )
+    certificaciones: List["Certificacion"] = Relationship(
         back_populates="etapa", sa_relationship_kwargs={"lazy": "selectin"}
     )
 
@@ -163,6 +167,7 @@ class FacturaServicio(SQLModel, table=True):
     observaciones: Optional[str] = None
     cuenta_factura: Optional[str] = Field(default=None, max_length=50)
     id_usuario: Optional[int] = None
+    liquidado: Decimal = Field(default=Decimal("0.00"))
 
     etapa: "Etapa" = Relationship(back_populates="facturas")
     pagos: List["PagoFacturaServicio"] = Relationship(
@@ -188,6 +193,9 @@ class PagoFacturaServicio(SQLModel, table=True):
     doc_factura: Optional[str] = Field(default=None, max_length=100)
 
     factura: "FacturaServicio" = Relationship(back_populates="pagos")
+    liquidaciones: List["PersonaLiquidacion"] = Relationship(
+        back_populates="pago", sa_relationship_kwargs={"lazy": "selectin"}
+    )
 
 
 class PersonaLiquidacion(SQLModel, table=True):
@@ -221,3 +229,36 @@ class PersonaLiquidacion(SQLModel, table=True):
     gasto_empresa: Decimal = Field(default=Decimal("0.00"))
     observacion: Optional[str] = None
     confirmado: bool = Field(default=False)
+    id_pago: Optional[int] = Field(default=None, foreign_key="pago_factura_servicio.id_pago_factura_servicio")
+
+    pago: Optional["PagoFacturaServicio"] = Relationship(back_populates="liquidaciones")
+
+
+class Certificacion(SQLModel, table=True):
+    __tablename__ = "certificacion"
+
+    id_certificacion: Optional[int] = Field(
+        default=None,
+        primary_key=True,
+        sa_column_kwargs={"autoincrement": True}
+    )
+    nombre: str = Field(max_length=255)
+    id_etapa: int = Field(
+        sa_column=Column(
+            ForeignKey("etapas.id_etapa", ondelete="CASCADE"),
+            nullable=False
+        )
+    )
+    constructor: Optional[str] = None
+    inversionista: Optional[str] = None
+    obra: Optional[str] = None
+    objeto_obra: Optional[str] = None
+    actividad: Optional[str] = None
+    descripcion: Optional[str] = None
+    observaciones: Optional[str] = None
+    fecha: Optional[date] = None
+    precio_servicio: Decimal = Field(default=Decimal("0.00"))
+    gasto_caguayo: int = Field(default=0)
+    a_cobrar: Decimal = Field(default=Decimal("0.00"))
+
+    etapa: "Etapa" = Relationship(back_populates="certificaciones")

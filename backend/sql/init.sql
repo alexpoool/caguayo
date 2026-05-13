@@ -981,7 +981,8 @@ CREATE TABLE etapas (
     descripcion TEXT,
     valor NUMERIC(15,2) DEFAULT 0.00,
     id_moneda INTEGER REFERENCES moneda(id_moneda),
-    pagada BOOLEAN DEFAULT FALSE
+    pagada BOOLEAN DEFAULT FALSE,
+    tipo_etapa VARCHAR(20) DEFAULT 'TAREAS'
 );
 
 -- Tareas por Etapa (N:N etapa <-> servicio)
@@ -1024,8 +1025,30 @@ CREATE TABLE factura_servicio (
     monto NUMERIC(15,4) DEFAULT 0.00,
     observaciones TEXT,
     cuenta_factura VARCHAR(50),
-    id_usuario INTEGER
+    id_usuario INTEGER,
+    liquidado NUMERIC(15,2) DEFAULT 0.00
 );
+
+-- Certificaciones de Etapas
+CREATE TABLE certificacion (
+    id_certificacion SERIAL PRIMARY KEY,
+    nombre VARCHAR(255) NOT NULL,
+    id_etapa INTEGER NOT NULL REFERENCES etapas(id_etapa) ON DELETE CASCADE,
+    constructor TEXT,
+    inversionista TEXT,
+    obra TEXT,
+    objeto_obra TEXT,
+    actividad TEXT,
+    descripcion TEXT,
+    observaciones TEXT,
+    fecha DATE,
+    precio_servicio NUMERIC(15,2),
+    gasto_caguayo INTEGER DEFAULT 0,
+    a_cobrar NUMERIC(15,2)
+);
+
+-- Índice para búsquedas por etapa
+CREATE INDEX idx_certificacion_etapa ON certificacion(id_etapa);
 
 -- Items de Factura de Servicio
 CREATE TABLE items_factura_servicio (
@@ -1074,7 +1097,8 @@ CREATE TABLE persona_liquidacion (
     doc_pago_liquidacion VARCHAR(100),
     gasto_empresa NUMERIC(15,2) DEFAULT 0.00,
     observacion TEXT,
-    confirmado BOOLEAN DEFAULT false
+    confirmado BOOLEAN DEFAULT false,
+    id_pago INTEGER REFERENCES pago_factura_servicio(id_pago_factura_servicio)
 );
 
 -- =====================================================

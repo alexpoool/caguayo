@@ -77,6 +77,7 @@ import { RealizadoresPage } from './pages/proyecto/RealizadoresPage';
 import { FacturasServicioPage } from './pages/proyecto/FacturasServicioPage';
 import { PagosFacturaServicioPage } from './pages/proyecto/PagosFacturaServicioPage';
 import { LiquidacionesPage as ProyectoLiquidacionesPage } from './pages/proyecto/LiquidacionesPage';
+import { CertificacionesPage } from './pages/proyecto/CertificacionesPage';
 
 type Modulo = 'administracion' | 'venta' | 'compra' | 'inventario' | 'reportes' | 'home' | 'proyecto';
 
@@ -737,6 +738,14 @@ function App() {
                   element={
                     <ProtectedRoute moduloActivo={moduloActivo} currentPath="/proyectos/liquidaciones">
                       <ProyectoLiquidacionesPage />
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route 
+                  path="/proyectos/certificaciones" 
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/proyectos/certificaciones">
+                      <CertificacionesPage />
                     </ProtectedRoute>
                   } 
                 />

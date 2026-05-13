@@ -96,6 +96,13 @@ export function RealizadoresPage() {
            personasJuridicas.find(p => p.id_cliente === idPersona);
   };
 
+  const getClienteNombre = (cliente: ClienteNatural | ClienteTCP | ClienteJuridica | undefined): string => {
+    if (!cliente) return 'N/A';
+    if ('nombre' in cliente) return cliente.nombre;
+    if ('codigo_reup' in cliente) return `Entidad ${cliente.codigo_reup}`;
+    return 'N/A';
+  };
+
   const loadInitialData = async () => {
     try {
       const [todosClientesRes, personasRes, monedasRes, solicitudesRes, tcpRes, juridicasRes] = await Promise.all([
@@ -108,8 +115,8 @@ export function RealizadoresPage() {
       ]);
       setTodosClientes(todosClientesRes);
       setPersonasNaturales(personasRes);
-      setPersonasTCP(tcpRes);
-      setPersonasJuridicas(juridicasRes);
+      setPersonasTCP(tcpRes as unknown as ClienteTCP[]);
+      setPersonasJuridicas(juridicasRes as unknown as ClienteJuridica[]);
       setMonedas(monedasRes);
       setSolicitudes(solicitudesRes);
       if (etapaParam) {
@@ -431,7 +438,7 @@ Nuevo Realizador
                   return (
                     <TableRow key={`${item.id_etapa}-${item.id_persona}`} className="hover:bg-gray-50/50 transition-colors cursor-pointer" onClick={() => setDetailModal({ isOpen: true, item })}>
                       <TableCell>
-                        <span className="font-medium text-gray-900">{persona?.nombre || 'N/A'}</span>
+                        <span className="font-medium text-gray-900">{getClienteNombre(persona)}</span>
                       </TableCell>
                       <TableCell>
                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${

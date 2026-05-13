@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Button, Input, Label, Card, CardContent, CardHeader, CardTitle, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, ConfirmModal } from '../../components/ui';
 import { facturasServicioService, etapasProyectoService, monedaService, solicitudesService, tareasEtapaService, dependenciasService, cuentasService, clientesService } from '../../services/api';
 import type { FacturaServicio, FacturaServicioCreate, FacturaServicioUpdate, Etapa, TareaEtapa, SolicitudServicio } from '../../types/servicio';
-import type { Cliente } from '../../types/ventas';
+import type { Cliente, Cuenta } from '../../types/ventas';
 import type { Moneda } from '../../types/moneda';
 import { Plus, Save, Trash2, Edit, ArrowLeft, Search, Receipt, X, Eye, DollarSign, Hash, Calendar, FileText, Check, ChevronDown, Printer } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -569,7 +569,7 @@ export function FacturasServicioPage() {
     const solicitudFactura = solicitudes.find(s => s.id_solicitud_servicio === etapaFactura?.id_solicitud_servicio);
     const clienteId = solicitudFactura?.id_cliente;
     
-    let cuentasCliente = [];
+    let cuentasCliente: Cuenta[] = [];
     if (clienteId) {
       try {
         cuentasCliente = await cuentasService.getCuentasByClienteAll(clienteId);
@@ -579,7 +579,7 @@ export function FacturasServicioPage() {
     }
     
     // Cargar las tareas de la etapa de la factura
-    let tareasEtapa = [];
+    let tareasEtapa: TareaEtapa[] = [];
     if (factura.id_etapa) {
       try {
         tareasEtapa = await tareasEtapaService.getTareasByEtapa(factura.id_etapa);
@@ -616,7 +616,7 @@ export function FacturasServicioPage() {
     const solicitudFactura = solicitudes.find(s => s.id_solicitud_servicio === etapaFactura?.id_solicitud_servicio);
     const clienteId = solicitudFactura?.id_cliente;
     
-    let cuentasCliente = [];
+    let cuentasCliente: Cuenta[] = [];
     if (clienteId) {
       try {
         cuentasCliente = await cuentasService.getCuentasByClienteAll(clienteId);
@@ -626,7 +626,7 @@ export function FacturasServicioPage() {
     }
     
     // Cargar las tareas de la etapa de la factura
-    let tareasEtapa = [];
+    let tareasEtapa: TareaEtapa[] = [];
     if (factura.id_etapa) {
       try {
         tareasEtapa = await tareasEtapaService.getTareasByEtapa(factura.id_etapa);

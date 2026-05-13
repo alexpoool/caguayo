@@ -276,6 +276,15 @@ caguayo/
 | **ItemFacturaServicio** | Items específicos de cada factura de servicio |
 | **PagoFacturaServicio** | Pagos recibidos por facturas de servicio |
 | **PersonaLiquidacion** | Liquidación final a personas naturales |
+| **Certificacion** | Certificaciones de etapas (constructor, inversionista, obra, etc.) |
+
+> **Nota sobre Liquidaciones de Realizadores:**
+> Las liquidaciones a realizadores (personas naturales) se realizan por cada **pago** recibido de la factura de la etapa. El flujo funciona así:
+> - Cada realizador tiene un **cobro** definido en `persona_etapa` (monto máximo a pagar)
+> - Cada pago de factura se puede dividir entre los realizadores según su cobro pendiente
+> - El campo `liquidado` en `factura_servicio` acumula el total liquidado (incluyendo excedente para Caguayo)
+> - Si un pago es mayor que el cobro disponible del realizador, se liquidará solo hasta el monto del cobro; la diferencia queda como excedente para Caguayo
+> - Fórmula: `pendiente = cobro - total_liquidado_confirmado`
 
 ### Administración
 | Entidad | Descripción |

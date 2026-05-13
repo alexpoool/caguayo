@@ -5,7 +5,7 @@ import { Dependencia } from "../../types/dependencia";
 import { authHelpers } from "../../lib/api";
 import { useReportPreview } from "../../hooks/useReportPreview";
 import ReportPreviewPanel from "../../components/ui/ReportPreviewPanel";
-import type { Column, StatCard, ExportColumn } from "../../components/ui/ReportPreviewPanel";
+import type { Column, StatCard } from "../../components/ui/ReportPreviewPanel";
 import { UserCircle, Download } from "lucide-react";
 
 // ---------------------------------------------------------------------------
@@ -103,8 +103,8 @@ const ReporteProveedores: React.FC = () => {
   } = useReportPreview<ProveedoresPreviewData>(previewUrl);
 
   // ── Export columns (depends on tipoEntidad) ────────────────────────────────
-  const exportColumns = useMemo<ExportColumn<ProveedorPreviewItem>[]>(() => {
-    const base: ExportColumn<ProveedorPreviewItem>[] = [
+  const exportColumns = useMemo(() => {
+    const base = [
       { header: "Nombre",    value: "nombre" },
       { header: "Dirección", value: "direccion" },
       { header: "Provincia", value: "provincia" },
@@ -409,7 +409,6 @@ const ReporteProveedores: React.FC = () => {
           columns={columns}
           stats={stats}
           emptyMessage="No se encontraron proveedores con los filtros seleccionados"
-          exportColumns={exportColumns}
           exportFileName={`proveedores_${idDependencia ?? "dep"}_${tipoEntidad.toLowerCase()}`}
         />
       </div>

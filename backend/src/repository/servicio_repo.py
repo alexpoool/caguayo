@@ -2,6 +2,7 @@ from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlalchemy.orm import selectinload
 from typing import List, Optional
+from decimal import Decimal
 from src.models.servicio import (
     Servicio,
     SolicitudServicio,
@@ -208,6 +209,16 @@ class FacturaServicioRepository(
         results = await db.exec(statement)
         return results.one_or_none()
 
+    async def actualizar_liquidado(
+        self, db: AsyncSession, id_factura: int, monto: Decimal
+    ) -> Optional[FacturaServicio]:
+        factura = await self.get(db, id_factura)
+        if factura:
+            factura.liquidado = (factura.liquidado or Decimal("0")) + monto
+            await db.commit()
+            await db.refresh(factura)
+        return factura
+
 
 factura_servicio_repo = FacturaServicioRepository(FacturaServicio)
 
@@ -224,6 +235,18 @@ class PagoFacturaServicioRepository(
         statement = (
             select(PagoFacturaServicio)
             .where(PagoFacturaServicio.id_factura_servicio == id_factura)
+            .order_by(PagoFacturaServicio.fecha.desc())
+        )
+        results = await db.exec(statement)
+        return results.all()
+
+    async def get_by_etapa(
+        self, db: AsyncSession, id_etapa: int
+    ) -> List[PagoFacturaServicio]:
+        statement = (
+            select(PagoFacturaServicio)
+            .join(FacturaServicio, FacturaServicio.id_factura_servicio == PagoFacturaServicio.id_factura_servicio)
+            .where(FacturaServicio.id_etapa == id_etapa)
             .order_by(PagoFacturaServicio.fecha.desc())
         )
         results = await db.exec(statement)
@@ -299,6 +322,21 @@ class PersonaLiquidacionRepository(
         )
         results = await db.exec(statement)
         return results.all()
+
+    async def get_total_liquidado_by_persona_etapa(
+        self, db: AsyncSession, id_etapa: int, id_persona: int
+    ) -> Decimal:
+        from sqlalchemy import func
+        statement = (
+            select(func.coalesce(func.sum(PersonaLiquidacion.importe), Decimal("0")))
+            .where(
+                PersonaLiquidacion.id_etapa == id_etapa,
+                PersonaLiquidacion.id_persona == id_persona,
+                PersonaLiquidacion.confirmado == True
+            )
+        )
+        result = await db.exec(statement)
+        return result.one() or Decimal("0")
 
 
 persona_liquidacion_repo = PersonaLiquidacionRepository(PersonaLiquidacion)

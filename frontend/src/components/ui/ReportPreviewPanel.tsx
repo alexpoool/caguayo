@@ -35,6 +35,7 @@ export interface ReportPreviewPanelProps<T> {
   columns: Column<T>[];
   stats?: StatCard[];
   emptyMessage?: string;
+  exportFileName?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -139,7 +140,31 @@ function ReportPreviewPanel<T extends object>({
   columns,
   stats,
   emptyMessage = "No se encontraron registros",
+  exportFileName,
 }: ReportPreviewPanelProps<T>) {
+  const handleExport = () => {
+    if (!data || data.length === 0) return;
+    const csvContent = [
+      columns.map(c => c.header).join(","),
+      ...data.map(row => 
+        columns.map(col => {
+          const value = typeof col.accessor === "function" 
+            ? col.accessor(row) 
+            : row[col.accessor as keyof T];
+          const cellValue = value === null || value === undefined ? "" : String(value).replace(/"/g, '""');
+          return `"${cellValue}"`;
+        }).join(",")
+      )
+    ].join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `${exportFileName || "export"}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
   // ── Panel header ──────────────────────────────────────────────────────────
   const header = (
     <div className="flex items-start justify-between mb-4">
@@ -154,10 +179,23 @@ function ReportPreviewPanel<T extends object>({
 
       {/* Live / stale indicator */}
       {data !== null && !loading && !error && (
-        <span className="inline-flex items-center gap-1.5 text-xs font-medium text-green-700 bg-green-50 border border-green-200 rounded-full px-2.5 py-0.5">
-          <span className="inline-block w-1.5 h-1.5 rounded-full bg-green-500" />
-          Vista previa
-        </span>
+        <div className="flex items-center gap-2">
+          {exportFileName && (
+            <button
+              onClick={handleExport}
+              className="inline-flex items-center gap-1 text-xs font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded-full px-2.5 py-0.5 hover:bg-blue-100 transition-colors"
+            >
+              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              </svg>
+              Exportar
+            </button>
+          )}
+          <span className="inline-flex items-center gap-1.5 text-xs font-medium text-green-700 bg-green-50 border border-green-200 rounded-full px-2.5 py-0.5">
+            <span className="inline-block w-1.5 h-1.5 rounded-full bg-green-500" />
+            Vista previa
+          </span>
+        </div>
       )}
     </div>
   );
