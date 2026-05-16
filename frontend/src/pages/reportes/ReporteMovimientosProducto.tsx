@@ -40,10 +40,10 @@ interface MovimientosProductoPreviewData {
 // ---------------------------------------------------------------------------
 
 const EXPORT_COLUMNS: ExportColumn<MovimientosProductoPreviewItem>[] = [
-  { header: "Fecha",     value: "fecha" },
-  { header: "Operación", value: "operacion" },
-  { header: "Tipo",      value: "tipo" },
-  { header: "Cantidad",  value: "cantidad" },
+  { header: "Fecha", accessor: "fecha" },
+  { header: "Operación", accessor: "operacion" },
+  { header: "Tipo", accessor: "tipo" },
+  { header: "Cantidad", accessor: "cantidad" },
 ];
 
 // ---------------------------------------------------------------------------

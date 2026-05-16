@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { Save, ArrowLeft } from 'lucide-react';
+import { Save, ArrowLeft, Receipt } from 'lucide-react';
 import { Button, Label, Input, Card, CardHeader, CardTitle, CardContent } from '../../../../components/ui';
 import { ProductSelector } from './ProductSelector';
 import { authHelpers } from '../../../../lib/api';
@@ -25,6 +25,7 @@ interface FacturaFormProps {
   onAddProduct: (id: number) => void;
   onUpdateCantidad: (id: number, cantidad: number) => void;
   onUpdatePrecio: (id: number, precio: number) => void;
+  onUpdatePrecioCompra?: (id: number, precio: number) => void;
   onRemoveProduct: (id: number) => void;
   onSelectedContratoChange: (id: number | null) => void;
   onSave: () => void;
@@ -48,6 +49,7 @@ export function FacturaForm({
   onAddProduct,
   onUpdateCantidad,
   onUpdatePrecio,
+  onUpdatePrecioCompra,
   onRemoveProduct,
   onSelectedContratoChange,
   onSave,
@@ -65,27 +67,34 @@ export function FacturaForm({
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <button
-            onClick={onCancel}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-          >
-            <ArrowLeft className="w-5 h-5 text-gray-600" />
-          </button>
-          <h2 className="text-2xl font-bold text-gray-900">
-            {editingId ? 'Editar Factura' : 'Nueva Factura'}
-          </h2>
+        <div className="flex items-center gap-4">
+          <div className="p-3 bg-gradient-to-br from-violet-500 to-purple-600 rounded-xl shadow-lg animate-bounce-subtle">
+            <Receipt className="h-8 w-8 text-white" />
+          </div>
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900">
+              {editingId ? 'Editar Factura' : 'Nueva Factura'}
+            </h2>
+            <p className="text-gray-500 mt-1">Complete los datos de la factura</p>
+          </div>
         </div>
+        <Button variant="outline" onClick={onCancel} className="gap-2">
+          <ArrowLeft className="h-4 w-4" />
+          Volver
+        </Button>
       </div>
 
       {/* Formulario */}
-      <Card>
+      <Card className="shadow-sm border-gray-200">
         <CardHeader className="border-b bg-gray-50/50">
-          <CardTitle className="text-lg">Información de la Factura</CardTitle>
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <Receipt className="h-5 w-5 text-violet-600" />
+            Información de la Factura
+          </CardTitle>
         </CardHeader>
         <CardContent className="p-6">
           {/* Grid de campos */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Contrato */}
             <div>
               <Label htmlFor="contrato" className="text-sm font-medium">
@@ -115,15 +124,24 @@ export function FacturaForm({
               <Label htmlFor="fecha" className="text-sm font-medium">
                 Fecha
               </Label>
-              <Input
-                id="fecha"
-                type="date"
-                value={formData.fecha || ''}
-                onChange={(e: any) =>
-                  onFormDataChange({ ...formData, fecha: e.target.value })
-                }
-                className="mt-1"
-              />
+              <div className="flex gap-2">
+                <input
+                  type="date"
+                  id="fecha"
+                  className="flex-1 mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-violet-500 outline-none transition-colors"
+                  value={formData.fecha || ''}
+                  onChange={(e: any) =>
+                    onFormDataChange({ ...formData, fecha: e.target.value })
+                  }
+                />
+                <button
+                  type="button"
+                  onClick={() => onFormDataChange({ ...formData, fecha: new Date().toISOString().split('T')[0] })}
+                  className="mt-1 px-3 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition-colors text-sm font-medium whitespace-nowrap"
+                >
+                  Hoy
+                </button>
+              </div>
             </div>
 
             {/* Código de factura */}
@@ -228,6 +246,7 @@ export function FacturaForm({
             onAddProduct={onAddProduct}
             onUpdateCantidad={onUpdateCantidad}
             onUpdatePrecio={onUpdatePrecio}
+            onUpdatePrecioCompra={onUpdatePrecioCompra}
             onRemoveProduct={onRemoveProduct}
             productos={productos}
             total={total}

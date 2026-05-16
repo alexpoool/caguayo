@@ -196,6 +196,7 @@ export interface ItemFacturaCreate {
   cantidad: number;
   precio_venta: number;
   id_moneda: number;
+  id_anexo?: number;
 }
 
 export interface Factura {

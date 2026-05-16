@@ -271,12 +271,30 @@ class ProductosEnLiquidacionRepository(CRUDBase[ProductosEnLiquidacion, dict, di
                 cantidad_result = await db.exec(cantidad_stmt)
                 cantidad_liquidada = cantidad_result.one() or 0
 
+            # Obtener info de factura pagada
+            from src.models.contrato import Factura
+            from src.repository.pago_repo import pago_repo
+
+            info_factura = None
+            if pel.id_factura and pel.tipo_compra == "FACTURA":
+                factura = await db.get(Factura, pel.id_factura)
+                if factura:
+                    total_pagado = await pago_repo.get_total_pagado(db, pel.id_factura)
+                    info_factura = {
+                        "id_factura": factura.id_factura,
+                        "codigo_factura": factura.codigo_factura,
+                        "monto": float(factura.monto),
+                        "pagado": float(total_pagado),
+                        "esta_pagada": total_pagado >= factura.monto
+                    }
+
             items.append(
                 {
                     **ProductosEnLiquidacionRead.model_validate(pel).model_dump(),
                     "producto_nombre": producto_nombre,
                     "cantidad_original": cantidad_original,
                     "cantidad_liquidada": cantidad_liquidada,
+                    "info_factura": info_factura,
                 }
             )
 
@@ -433,21 +451,18 @@ class ProductosEnLiquidacionRepository(CRUDBase[ProductosEnLiquidacion, dict, di
             result_pel_relacionados = await db.exec(pel_relacionados_stmt)
             pel_relacionados = result_pel_relacionados.all()
 
-            # Si no hay pel con id_anexo, buscar los que vienen de factura/venta efectivo
-            # asociados a este producto en este anexo
+            # Si no hay pel con id_anexo específico, buscar pel con id_anexo = NULL (facturas antiguas)
+            # Estos vienen de facturas creadas antes de vincular id_anexo
             if not pel_relacionados:
-                pel_relacionados_stmt = select(ProductosEnLiquidacion).where(
+                pel_fallback_stmt = select(ProductosEnLiquidacion).where(
                     and_(
                         ProductosEnLiquidacion.id_producto == id_producto,
-                        ProductosEnLiquidacion.id_anexo == None,
-                        or_(
-                            ProductosEnLiquidacion.id_factura != None,
-                            ProductosEnLiquidacion.id_venta_efectivo != None,
-                        ),
+                        ProductosEnLiquidacion.id_anexo.is_(None),
+                        ProductosEnLiquidacion.id_factura.isnot(None),
                     )
                 )
-                result_pel_relacionados = await db.exec(pel_relacionados_stmt)
-                pel_relacionados = result_pel_relacionados.all()
+                result_fallback = await db.exec(pel_fallback_stmt)
+                pel_relacionados = result_fallback.all()
 
             # Calcular cantidad pendiente (no liquidada)
             pel_pendiente = [p for p in pel_relacionados if not p.liquidada]
@@ -491,7 +506,7 @@ class ProductosEnLiquidacionRepository(CRUDBase[ProductosEnLiquidacion, dict, di
                     "cantidad": cantidad_a_mostrar,  # y (a liquidar)
                     "cantidad_original": cantidad_original,  # x
                     "cantidad_liquidada": cantidad_liquidada,  # z
-                    "por_liquidar": por_liquidar,  # x - z
+                    "por_liquidar": cantidad_pendiente,  # y - z (cantidad de compras no liquidadas)
                     "precio_compra": float(precio_compra),
                     "precio_venta": float(precio_venta),
                     "id_moneda": id_moneda,

@@ -1,6 +1,6 @@
 import { createPortal } from 'react-dom';
 import { X, Receipt, DollarSign, Calendar, Printer } from 'lucide-react';
-import type { FacturaWithDetails } from '../../../../../types/contrato';
+import type { FacturaWithDetails, ItemFactura } from '../../../../../types/contrato';
 import { contratosService, dependenciasService, clientesService, cuentasService } from '../../../../../services/api';
 import { getFacturaDocument } from '../../FacturasPage';
 
@@ -97,12 +97,12 @@ export function FacturaDetailModal({
                 Items
               </p>
               <div className="space-y-2">
-                {factura.items.map((item: any, idx: number) => (
+                {factura.items.map((item: ItemFactura, idx: number) => (
                   <div
                     key={idx}
                     className="flex justify-between text-sm bg-white p-2 rounded border border-gray-200"
                   >
-                    <span className="text-gray-700">{item.nombre || 'Producto'}</span>
+                    <span className="text-gray-700">{item.producto?.nombre || 'Producto'}</span>
                     <span className="font-medium">
                       {item.cantidad} x ${Number(item.precio_venta).toFixed(2)}
                     </span>

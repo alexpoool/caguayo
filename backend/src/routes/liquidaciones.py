@@ -179,3 +179,20 @@ async def eliminar_liquidacion(
         raise HTTPException(
             status_code=500, detail=f"Error al eliminar liquidación: {str(e)}"
         )
+
+
+@router.patch("/{liquidacion_id}/aprobar")
+async def aprobar_liquidacion(
+    liquidacion_id: int,
+    db: AsyncSession = Depends(get_session),
+):
+    """Aprobar una liquidación (marcar como liquidada)."""
+    try:
+        result = await liquidacion_service.aprobar(db, liquidacion_id)
+        if not result:
+            raise HTTPException(status_code=404, detail="Liquidación no encontrada")
+        return {"success": True, "message": "Liquidación aprobada correctamente"}
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Error al aprobar liquidación: {str(e)}"
+        )

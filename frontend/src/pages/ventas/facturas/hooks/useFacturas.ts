@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { facturasService } from '../../../../services/api';
+import { facturasService, existenciaService } from '../../../../services/api';
 import type { FacturaWithDetails } from '../../../../types/contrato';
 import { prepararFacturaParaAPI } from '../utils/facturasUtils';
 
@@ -33,6 +33,26 @@ export function useFacturas() {
   const handleSave = async (selectedProducts: any[]) => {
     try {
       const data = prepararFacturaParaAPI(formData, selectedProducts, selectedContratoId);
+      
+      // Validar stock antes de crear/actualizar
+      if (!editingId && selectedProducts.length > 0) {
+        const idDependencia = formData.id_dependencia;
+        
+        const validacion = await existenciaService.validarMultiple(
+          selectedProducts.map((p: any) => ({
+            id_producto: p.id_producto,
+            cantidad: p.cantidad
+          })),
+          idDependencia ? Number(idDependencia) : undefined
+        );
+        
+        if (!validacion.valido) {
+          const erroresMsg = validacion.errores
+            .map((e: any) => `• ${e.mensaje}`)
+            .join('\n');
+          return { success: false, message: `Stock insuficiente:\n${erroresMsg}` };
+        }
+      }
       
       if (editingId) {
         await facturasService.updateFactura(editingId, data);

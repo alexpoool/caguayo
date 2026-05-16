@@ -11,7 +11,7 @@ import sqlalchemy as sa
 
 # revision identifiers
 revision = 'add_log_table'
-down_revision = 'a9d239ce0765_initial_state'
+down_revision = 'a9d239ce0765'
 branch_labels = None
 depends_on = None
 

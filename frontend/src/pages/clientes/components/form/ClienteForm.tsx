@@ -26,6 +26,8 @@ export interface ClienteFormProps {
   isProveedorView: boolean;
   onCancel: () => void;
   onSubmit: (data: any) => void;
+  cuentasCliente?: any[];
+  setCuentasCliente?: (cuentas: any[]) => void;
   provincias?: any[];
   tiposEntidad?: any[];
   monedas?: any[];
@@ -36,6 +38,8 @@ export const ClienteForm: React.FC<ClienteFormProps> = ({
   isProveedorView,
   onCancel,
   onSubmit,
+  cuentasCliente = [],
+  setCuentasCliente,
   provincias = [],
   tiposEntidad = [],
   monedas = [],
@@ -140,6 +144,7 @@ export const ClienteForm: React.FC<ClienteFormProps> = ({
 
   useEffect(() => {
     if (editingCliente) {
+      console.log("[DEBUG] useEffect - editingCliente received:", JSON.stringify(editingCliente, null, 2));
       setFormData({
         tipo_persona: editingCliente.tipo_persona || "NATURAL",
         tipo_relacion: editingCliente.tipo_relacion || (isProveedorView ? "PROVEEDOR" : "CLIENTE"),
@@ -160,9 +165,11 @@ export const ClienteForm: React.FC<ClienteFormProps> = ({
       setDatosNatural(editingCliente.cliente_natural || null);
       setDatosJuridica(editingCliente.cliente_juridica || null);
       setDatosTCP(editingCliente.cliente_tcp || null);
-      setCuentas(editingCliente.cuentas || []);
+      const loadedCuentas = editingCliente.cuentas || cuentasCliente || [];
+      console.log("[DEBUG] useEffect - setting cuentas to:", JSON.stringify(loadedCuentas, null, 2));
+      setCuentas(loadedCuentas);
     }
-  }, [editingCliente]);
+  }, [editingCliente, cuentasCliente]);
 
   const handleTipoPersonaChange = (tipo: TipoPersona) => {
     setTipoPersona(tipo);
@@ -171,18 +178,27 @@ export const ClienteForm: React.FC<ClienteFormProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSubmit({
+    const payload = {
       ...formData,
       cliente_natural: tipoPersona === "NATURAL" ? datosNatural : undefined,
       cliente_juridica: tipoPersona === "JURIDICA" ? datosJuridica : undefined,
       cliente_tcp: tipoPersona === "TCP" ? datosTCP : undefined,
       cuentas: cuentas,
-    });
+    };
+    console.log("[DEBUG] handleSubmit - cuentas state:", JSON.stringify(cuentas, null, 2));
+    console.log("[DEBUG] handleSubmit - payload cuentas:", JSON.stringify(payload.cuentas, null, 2));
+    console.log("[DEBUG] handleSubmit - full payload:", JSON.stringify(payload, null, 2));
+    onSubmit(payload);
   };
 
   const addCuenta = () => {
     if (nuevaCuenta.numero_cuenta && nuevaCuenta.banco) {
-      setCuentas([...cuentas, { ...nuevaCuenta, id_cuenta: Date.now() }]);
+      const newCuenta = { ...nuevaCuenta, id_cuenta: Date.now() };
+      const newCuentas = [...cuentas, newCuenta];
+      setCuentas(newCuentas);
+      if (setCuentasCliente) {
+        setCuentasCliente(newCuentas);
+      }
       setNuevaCuenta({
         titular: "",
         banco: "",
@@ -196,7 +212,11 @@ export const ClienteForm: React.FC<ClienteFormProps> = ({
   };
 
   const removeCuenta = (index: number) => {
-    setCuentas(cuentas.filter((_, i) => i !== index));
+    const newCuentas = cuentas.filter((_, i) => i !== index);
+    setCuentas(newCuentas);
+    if (setCuentasCliente) {
+      setCuentasCliente(newCuentas);
+    }
   };
 
   return (

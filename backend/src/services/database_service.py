@@ -221,6 +221,69 @@ class DatabaseService:
         return tablas
 
     @staticmethod
+    def verificar_y_crear_tablas_faltantes(base_datos: str) -> List[str]:
+        """Verifica y crea tablas faltantes en la base de datos del tenant."""
+        import logging
+        logger = logging.getLogger(__name__)
+        
+        tablas_necesarias = {
+            'log': """
+                CREATE TABLE IF NOT EXISTS log (
+                    id SERIAL PRIMARY KEY,
+                    timestamp TIMESTAMP NOT NULL DEFAULT NOW(),
+                    nivel VARCHAR(20) NOT NULL,
+                    tipo VARCHAR(20) NOT NULL,
+                    mensaje VARCHAR(500) NOT NULL,
+                    detalle VARCHAR(2000),
+                    ip VARCHAR(50),
+                    usuario_id INTEGER,
+                    endpoint VARCHAR(200),
+                    method VARCHAR(10),
+                    status_code INTEGER,
+                    usuario_nombre VARCHAR(100),
+                    navegador VARCHAR(100)
+                )
+            """,
+        }
+        
+        tablas_creadas = []
+        
+        conn = psycopg2.connect(
+            host=os.getenv("ADMIN_DB_HOST", "localhost"),
+            port=int(os.getenv("ADMIN_DB_PORT", 5432)),
+            user=os.getenv("ADMIN_DB_USER", "postgres"),
+            password=os.getenv("ADMIN_DB_PASSWORD", "postgres"),
+            database=base_datos,
+            client_encoding="utf8",
+        )
+        conn.autocommit = True
+        cur = conn.cursor()
+        
+        for nombre_tabla, ddl in tablas_necesarias.items():
+            try:
+                cur.execute(f"SELECT 1 FROM {nombre_tabla} LIMIT 1")
+                logger.info(f"[DB SERVICE] Tabla {nombre_tabla} ya existe en {base_datos}")
+            except psycopg2.errors.UndefinedTable:
+                try:
+                    cur.execute(ddl)
+                    tablas_creadas.append(nombre_tabla)
+                    logger.info(f"[DB SERVICE] Tabla {nombre_tabla} creada en {base_datos}")
+                except Exception as e:
+                    logger.warning(f"[DB SERVICE] Error creando tabla {nombre_tabla}: {e}")
+            except Exception as e:
+                logger.warning(f"[DB SERVICE] Error verificando tabla {nombre_tabla}: {e}")
+        
+        cur.close()
+        conn.close()
+        
+        if tablas_creadas:
+            logger.info(f"[DB SERVICE] Tablas creadas en {base_datos}: {tablas_creadas}")
+        else:
+            logger.info(f"[DB SERVICE] No se crearon tablas nuevas en {base_datos}")
+        
+        return tablas_creadas
+
+    @staticmethod
     def replicar_datos_desde_central(base_datos: str) -> None:
         print(f"[DB SERVICE] Replicating data from central to {base_datos}", flush=True)
         

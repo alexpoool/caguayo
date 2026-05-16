@@ -7,6 +7,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlalchemy import select
 from src.repository.liquidacion_repo import liquidacion_repo
 from src.repository.productos_en_liquidacion_repo import productos_en_liquidacion_repo
+from src.services.existencia_service import ExistenciaService
 from src.models.liquidacion import Liquidacion, TipoPago
 from src.models.productos_en_liquidacion import ProductosEnLiquidacion
 from src.models.producto import Productos
@@ -36,10 +37,34 @@ class LiquidacionService:
     ) -> LiquidacionRead:
         productos_ids = data.producto_ids
 
+        # Normalizar valores opcionales
+        id_convenio = data.id_convenio if data.id_convenio not in (None, "", "undefined") else None
+        id_anexo = data.id_anexo if data.id_anexo not in (None, "", "undefined") else None
+
         productos_db = await productos_en_liquidacion_repo.get_by_ids(db, productos_ids)
 
         if not productos_db:
             raise ValueError("No se encontraron productos para liquidar")
+
+        # Validar que las facturas estén pagadas completamente
+        from src.models.contrato import Factura
+        from src.repository.pago_repo import pago_repo
+
+        facturas_validar = set()
+        for prod in productos_db:
+            if prod.id_factura and prod.tipo_compra == "FACTURA":
+                facturas_validar.add(prod.id_factura)
+
+        for id_factura in facturas_validar:
+            factura = await db.get(Factura, id_factura)
+            if factura:
+                total_pagado = await pago_repo.get_total_pagado(db, id_factura)
+                if total_pagado < factura.monto:
+                    pendiente = factura.monto - total_pagado
+                    raise ValueError(
+                        f"Factura {factura.codigo_factura} no está pagada completamente. "
+                        f"Pagado: {total_pagado}, Pendiente: {pendiente}"
+                    )
 
         # Validar que las cantidades a liquidar no excedan las cantidades originales
         # para productos de CONSIGNACION
@@ -78,16 +103,29 @@ class LiquidacionService:
                         f"la cantidad original ({cantidad_original}) del producto en el anexo"
                     )
 
+        # Validar existencias usando el servicio de existencias
+        productos_validar = [
+            {"id_producto": prod.id_producto, "cantidad": prod.cantidad}
+            for prod in productos_db
+        ]
+        
+        resultado_validacion = await ExistenciaService.validar_multiple(
+            db, productos_validar
+        )
+        
+        if not resultado_validacion["valido"]:
+            errores = resultado_validacion["errores"]
+            mensaje = "\n".join([
+                f"Producto {e['id_producto']}: {e['mensaje']}"
+                for e in errores
+            ])
+            raise ValueError(f"Stock insuficiente:\n{mensaje}")
+
         importe = Decimal("0.00")
         for prod in productos_db:
-            producto_stmt = select(Productos).where(
-                Productos.id_producto == prod.id_producto
-            )
-            producto_result = await db.exec(producto_stmt)
-            producto = producto_result.first()
-
+            producto = await db.get(Productos, prod.id_producto)
             if producto:
-                importe += prod.precio * prod.cantidad
+                importe += producto.precio_venta * prod.cantidad
 
         devengado = data.devengado or Decimal("0.00")
         tributario = data.tributario or Decimal("0.00")
@@ -106,8 +144,8 @@ class LiquidacionService:
         db_liquidacion = Liquidacion(
             codigo=codigo,
             id_cliente=data.id_cliente,
-            id_convenio=data.id_convenio,
-            id_anexo=data.id_anexo,
+            id_convenio=id_convenio,
+            id_anexo=id_anexo,
             id_moneda=data.id_moneda,
             liquidada=False,
             fecha_emision=data.fecha_emision or date.today(),
@@ -117,6 +155,8 @@ class LiquidacionService:
             comision_bancaria=comision_bancaria,
             gasto_empresa=gasto_empresa,
             importe=importe,
+            importe_caguayo=importe_caguayo,
+            tributario_monto=tributario_monto,
             neto_pagar=neto_pagar,
             tipo_pago=data.tipo_pago,
         )
@@ -131,6 +171,14 @@ class LiquidacionService:
             db.add(prod)
 
         await db.commit()
+
+        for prod in productos_db:
+            try:
+                await ExistenciaService.actualizar_existencia_producto(
+                    db, prod.id_producto, -prod.cantidad
+                )
+            except Exception as e:
+                pass
 
         db_liquidacion = await liquidacion_repo.get_with_relations(
             db, db_liquidacion.id_liquidacion
@@ -147,54 +195,62 @@ class LiquidacionService:
             if p.id_anexo:
                 from src.models.anexo import Anexo
 
-                anexo_stmt = select(Anexo).where(Anexo.id_anexo == p.id_anexo)
-                anexo_result = await db.exec(anexo_stmt)
-                anexo = anexo_result.first()
+                anexo = await db.get(Anexo, p.id_anexo)
                 if anexo:
                     anexo_info = {
                         "id_anexo": anexo.id_anexo,
                         "nombre_anexo": anexo.nombre_anexo,
                     }
 
-            productos_en_liquidacion_list.append(
-                ProductosEnLiquidacionRead(
-                    id_producto_en_liquidacion=p.id_producto_en_liquidacion,
-                    codigo=p.codigo,
-                    id_producto=p.id_producto,
-                    cantidad=p.cantidad,
-                    precio=p.precio,
-                    id_moneda=p.id_moneda,
-                    tipo_compra=p.tipo_compra,
-                    id_factura=p.id_factura,
-                    id_venta_efectivo=p.id_venta_efectivo,
-                    id_anexo=p.id_anexo,
-                    liquidada=p.liquidada,
-                    fecha=p.fecha,
-                    fecha_liquidacion=p.fecha_liquidacion,
-                    anexo=anexo_info,
-                )
+            pel_read = ProductosEnLiquidacionRead(
+                id_producto_en_liquidacion=p.id_producto_en_liquidacion,
+                codigo=p.codigo,
+                id_producto=p.id_producto,
+                cantidad=p.cantidad,
+                precio=p.precio,
+                id_moneda=p.id_moneda,
+                tipo_compra=p.tipo_compra,
+                id_factura=p.id_factura,
+                id_venta_efectivo=p.id_venta_efectivo,
+                id_anexo=p.id_anexo,
+                liquidada=p.liquidada,
+                fecha=p.fecha,
+                fecha_liquidacion=p.fecha_liquidacion,
+                anexo=anexo_info,
             )
+            productos_en_liquidacion_list.append(pel_read)
 
-        return LiquidacionRead(
-            id_liquidacion=db_liquidacion.id_liquidacion,
-            codigo=db_liquidacion.codigo,
-            id_cliente=db_liquidacion.id_cliente,
-            id_convenio=db_liquidacion.id_convenio,
-            id_anexo=db_liquidacion.id_anexo,
-            id_moneda=db_liquidacion.id_moneda,
-            liquidada=db_liquidacion.liquidada,
-            fecha_emision=db_liquidacion.fecha_emision,
-            fecha_liquidacion=db_liquidacion.fecha_liquidacion,
-            observaciones=db_liquidacion.observaciones,
-            devengado=db_liquidacion.devengado,
-            tributario=db_liquidacion.tributario,
-            comision_bancaria=db_liquidacion.comision_bancaria,
-            gasto_empresa=db_liquidacion.gasto_empresa,
-            importe=db_liquidacion.importe,
-            neto_pagar=db_liquidacion.neto_pagar,
-            tipo_pago=db_liquidacion.tipo_pago,
-            productos_en_liquidacion=productos_en_liquidacion_list,
-        )
+        try:
+            result = LiquidacionRead(
+                id_liquidacion=db_liquidacion.id_liquidacion,
+                codigo=db_liquidacion.codigo,
+                id_cliente=db_liquidacion.id_cliente,
+                id_convenio=db_liquidacion.id_convenio,
+                id_anexo=db_liquidacion.id_anexo,
+                id_moneda=db_liquidacion.id_moneda,
+                liquidada=db_liquidacion.liquidada,
+                fecha_emision=db_liquidacion.fecha_emision,
+                fecha_liquidacion=db_liquidacion.fecha_liquidacion,
+                observaciones=db_liquidacion.observaciones,
+                devengado=db_liquidacion.devengado,
+                tributario=db_liquidacion.tributario,
+                comision_bancaria=db_liquidacion.comision_bancaria,
+                gasto_empresa=db_liquidacion.gasto_empresa,
+                importe=db_liquidacion.importe,
+                importe_caguayo=db_liquidacion.importe_caguayo,
+                tributario_monto=db_liquidacion.tributario_monto,
+                porcentaje_caguayo=db_liquidacion.porcentaje_caguayo,
+                neto_pagar=db_liquidacion.neto_pagar,
+                tipo_pago=db_liquidacion.tipo_pago,
+                productos_en_liquidacion=productos_en_liquidacion_list,
+            )
+            return result
+        except Exception as serialization_error:
+            raise ValueError(
+                f"Error serializando respuesta: {serialization_error}, "
+                f"productos_en_liquidacion_list len={len(productos_en_liquidacion_list)}, "
+                f"db_liquidacion.id_liquidacion={db_liquidacion.id_liquidacion}"
+            )
 
     @staticmethod
     async def get_liquidacion(
@@ -291,35 +347,28 @@ class LiquidacionService:
         if db_liquidacion.liquidada:
             raise ValueError("La liquidación ya está confirmada")
 
+        # Validar que las facturas estén pagadas completamente
+        from src.models.contrato import Factura
+        from src.repository.pago_repo import pago_repo
+
+        for pel in db_liquidacion.productos_en_liquidacion:
+            if pel.id_factura and pel.tipo_compra == "FACTURA":
+                factura = await db.get(Factura, pel.id_factura)
+                if factura:
+                    total_pagado = await pago_repo.get_total_pagado(db, pel.id_factura)
+                    if total_pagado < factura.monto:
+                        pendiente = factura.monto - total_pagado
+                        raise ValueError(
+                            f"Factura {factura.codigo_factura} no está pagada completamente. "
+                            f"Pagado: {total_pagado}, Pendiente: {pendiente}"
+                        )
+
         db_liquidacion.liquidada = True
         db_liquidacion.fecha_liquidacion = date.today()
-        db_liquidacion.tipo_pago = data.tipo_pago or db_liquidacion.tipo_pago
-
-        if data.devengado is not None:
-            db_liquidacion.devengado = data.devengado
-        if data.tributario is not None:
-            db_liquidacion.tributario = data.tributario
-        if data.comision_bancaria is not None:
-            db_liquidacion.comision_bancaria = data.comision_bancaria
-        if data.gasto_empresa is not None:
-            db_liquidacion.gasto_empresa = data.gasto_empresa
-
-        db_liquidacion.neto_pagar = (
-            db_liquidacion.importe
-            - (db_liquidacion.importe * db_liquidacion.gasto_empresa / 100)
-            - (db_liquidacion.importe * db_liquidacion.comision_bancaria / 100)
-        )
-        db_liquidacion.neto_pagar = db_liquidacion.neto_pagar - (
-            db_liquidacion.neto_pagar * db_liquidacion.tributario / 100
-        )
-        db_liquidacion.devengado = (
-            db_liquidacion.importe
-            - (db_liquidacion.importe * db_liquidacion.gasto_empresa / 100)
-            - (db_liquidacion.importe * db_liquidacion.comision_bancaria / 100)
-        )
-
+        if data.tipo_pago:
+            db_liquidacion.tipo_pago = data.tipo_pago
         if data.observaciones:
-            db_liquidacion.observaciones = data.observacion
+            db_liquidacion.observaciones = data.observaciones
 
         await db.commit()
         await db.refresh(db_liquidacion)
@@ -342,6 +391,21 @@ class LiquidacionService:
             db.add(prod)
 
         await db.delete(db_liquidacion)
+        await db.commit()
+        return True
+
+    @staticmethod
+    async def aprobar(db: AsyncSession, liquidacion_id: int) -> bool:
+        """Aprobar una liquidación - marca como liquidada."""
+        from sqlalchemy import update
+        from src.models.liquidacion import Liquidacion
+        
+        stmt = (
+            update(Liquidacion)
+            .where(Liquidacion.id_liquidacion == liquidacion_id)
+            .values(liquidada=True)
+        )
+        await db.exec(stmt)
         await db.commit()
         return True
 

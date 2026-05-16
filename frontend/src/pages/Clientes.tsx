@@ -90,6 +90,8 @@ export function ClientesPage() {
               await createMutation.mutateAsync(data);
             }
           }}
+          cuentasCliente={cuentasCliente}
+          setCuentasCliente={setCuentasCliente}
           provincias={provincias}
           tiposEntidad={tiposEntidad}
           monedas={monedas}

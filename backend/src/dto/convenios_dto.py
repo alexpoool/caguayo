@@ -131,6 +131,7 @@ class AnexoBase(SQLModel):
 class ItemAnexoBase(SQLModel):
     id_producto: int
     cantidad: int
+    cantidad_vendida: int = 0
     precio_venta: Decimal
     id_moneda: int
     codigo: Optional[str] = None

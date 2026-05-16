@@ -66,6 +66,15 @@ class ClienteService:
                 tcp_data["id_cliente"] = db_cliente.id_cliente
                 db.add(ClienteTCP(**tcp_data))
 
+            # Crear cuentas asociadas si se proporcionaron
+            if cliente.cuentas:
+                from src.models.cuenta import Cuenta
+                for cuenta_data in cliente.cuentas:
+                    cuenta_dict = cuenta_data.model_dump()
+                    cuenta_dict["id_cliente"] = db_cliente.id_cliente
+                    db_cuenta = Cuenta(**cuenta_dict)
+                    db.add(db_cuenta)
+
             await db.flush()
 
         # The begin() context manager handles the commit()
@@ -81,6 +90,7 @@ class ClienteService:
                 selectinload(Cliente.cliente_tcp),
                 selectinload(Cliente.provincia),
                 selectinload(Cliente.municipio),
+                selectinload(Cliente.cuentas),
             ],
         )
         return ClienteRead.model_validate(db_cliente)
@@ -113,6 +123,10 @@ class ClienteService:
         statement = select(Cliente).options(
             selectinload(Cliente.provincia),
             selectinload(Cliente.municipio),
+            selectinload(Cliente.cuentas),
+            selectinload(Cliente.cliente_natural),
+            selectinload(Cliente.cliente_juridica),
+            selectinload(Cliente.cliente_tcp),
         )
 
         # Person type filters (NATURAL, TCP, JURIDICA)
@@ -141,11 +155,74 @@ class ClienteService:
     async def update_cliente(
         db: AsyncSession, cliente_id: int, cliente_update: ClienteUpdate
     ) -> Optional[ClienteRead]:
+        from src.models.cuenta import Cuenta
+        
+        print(f"[DEBUG] update_cliente: cliente_id={cliente_id}")
+        print(f"[DEBUG] update_cliente: cliente_update type={type(cliente_update)}")
+        
         db_cliente = await cliente_repo.get(db, id=cliente_id)
         if not db_cliente:
             return None
-        updated_cliente = await cliente_repo.update(
-            db, db_obj=db_cliente, obj_in=cliente_update
+        
+        # Detectar si es dict u objeto Pydantic
+        if isinstance(cliente_update, dict):
+            print(f"[DEBUG] update_cliente: Es dict, keys={list(cliente_update.keys())}")
+            cuentas_data = cliente_update.get("cuentas")
+            update_data = {
+                k: v for k, v in cliente_update.items() 
+                if k not in ("cuentas", "cliente_natural", "cliente_juridica", "cliente_tcp") 
+                and v is not None
+            }
+        else:
+            print(f"[DEBUG] update_cliente: Es Pydantic model, cuentas={cliente_update.cuentas}")
+            cuentas_data = cliente_update.cuentas
+            update_data = cliente_update.model_dump(
+                exclude={"cuentas", "cliente_natural", "cliente_juridica", "cliente_tcp"}, 
+                exclude_none=True
+            )
+        
+        print(f"[DEBUG] update_cliente: cuentas_data={cuentas_data}")
+        
+        # Update manual de campos (evitar usar repo.update con dict)
+        for field, value in update_data.items():
+            setattr(db_cliente, field, value)
+        await db.flush()
+        updated_cliente = db_cliente
+        
+        # Procesar cuentas si se proporcionaron (Opcion B: solo agregar, no eliminar)
+        if cuentas_data and len(cuentas_data) > 0:
+            print(f"[DEBUG] update_cliente: Creando {len(cuentas_data)} cuentas")
+            for cuenta_dict in cuentas_data:
+                if isinstance(cuenta_dict, dict):
+                    cuenta_dict_clean = {k: v for k, v in cuenta_dict.items() if v is not None}
+                else:
+                    cuenta_dict_clean = cuenta_dict.model_dump(exclude_none=True)
+                
+                if cuenta_dict_clean.get("id_cuenta"):
+                    del cuenta_dict_clean["id_cuenta"]
+                
+                cuenta_dict_clean["id_cliente"] = cliente_id
+                print(f"[DEBUG] update_cliente: Creando cuenta={cuenta_dict_clean}")
+                db.add(Cuenta(**cuenta_dict_clean))
+            
+            await db.flush()
+        else:
+            print(f"[DEBUG] update_cliente: No se procesan cuentas (vacias o None)")
+        
+        await db.refresh(updated_cliente)
+        
+        # Cargar relaciones para retornar
+        updated_cliente = await db.get(
+            Cliente,
+            updated_cliente.id_cliente,
+            options=[
+                selectinload(Cliente.cliente_natural),
+                selectinload(Cliente.cliente_juridica),
+                selectinload(Cliente.cliente_tcp),
+                selectinload(Cliente.provincia),
+                selectinload(Cliente.municipio),
+                selectinload(Cliente.cuentas),
+            ],
         )
         return ClienteRead.model_validate(updated_cliente)
 

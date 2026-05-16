@@ -29,6 +29,7 @@ export function CompraAnexosPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedProducts, setSelectedProducts] = useState<{id_producto: number; cantidad: number; precio_venta: number}[]>([]);
   const [productSearch, setProductSearch] = useState('');
+  const [isFocused, setIsFocused] = useState(false);
   const [detailModal, setDetailModal] = useState<{ isOpen: boolean; item: any | null }>({ isOpen: false, item: null });
 
   useEffect(() => { loadInitialData(); }, []);
@@ -405,21 +406,23 @@ export function CompraAnexosPage() {
               placeholder="Buscar producto para agregar..."
               value={productSearch}
               onChange={(e) => setProductSearch(e.target.value)}
+              onFocus={() => setIsFocused(true)}
+              onBlur={() => setTimeout(() => setIsFocused(false), 200)}
               className="pl-9"
             />
-            {productSearch.trim() && (
-              <div className="absolute z-10 w-full mt-1 bg-white border rounded-lg shadow-lg max-h-48 overflow-y-auto">
+            {isFocused && (
+              <div className="absolute z-10 w-full mt-1 bg-white border rounded-lg shadow-lg max-h-64 overflow-y-auto">
                 {productosFiltrados.length === 0 ? (
                   <div className="px-3 py-2 text-sm text-gray-500">No se encontraron productos</div>
                 ) : (
-                  productosFiltrados.map(p => (
+                  (productSearch.trim() ? productosFiltrados : productos.filter(p => !selectedProducts.some(sp => sp.id_producto === p.id_producto))).slice(0, 50).map(p => (
                     <button
                       key={p.id_producto}
-                      onClick={() => { addProduct(p); setProductSearch(''); }}
+                      onClick={() => { addProduct(p); setProductSearch(''); setIsFocused(false); }}
                       className="w-full px-3 py-2 text-left text-sm hover:bg-fuchsia-50 flex justify-between items-center"
                     >
-                      <span>{p.nombre}</span>
-                      <span className="text-gray-400 text-xs">${Number(p.precio_venta).toFixed(2)}</span>
+                      <span className="truncate flex-1">{p.nombre}</span>
+                      <span className="text-gray-400 text-xs ml-2">${Number(p.precio_venta).toFixed(2)}</span>
                     </button>
                   ))
                 )}
@@ -432,9 +435,9 @@ export function CompraAnexosPage() {
               <table className="w-full text-sm">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-3 py-2 text-left">Producto</th>
+                    <th className="px-3 py-2 text-left">Nombre</th>
                     <th className="px-3 py-2 text-left">Cantidad</th>
-                    <th className="px-3 py-2 text-left">Precio Venta</th>
+                    <th className="px-3 py-2 text-left">Precio</th>
                     <th className="px-3 py-2 text-left">Subtotal</th>
                     <th className="px-3 py-2"></th>
                   </tr>

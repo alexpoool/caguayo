@@ -11,7 +11,6 @@ import {
   Trash2, 
   CheckCircle, 
   Check,
-  XCircle,
   Filter,
   Eye,
   DollarSign,
@@ -148,6 +147,7 @@ export function LiquidacionesPage() {
       tributario: 0,
       comision_bancaria: 0,
       gasto_empresa: 0,
+      porcentaje_caguayo: 10,
       tipo_pago: 'TRANSFERENCIA',
       observaciones: '',
       producto_ids: []
@@ -163,6 +163,18 @@ export function LiquidacionesPage() {
     setFormData(prev => ({
       ...prev,
       id_cliente: clienteId,
+      id_anexo: undefined,
+      producto_ids: []
+    }));
+    setSelectedProductos([]);
+  };
+
+  const handleChangeProveedorClick = () => {
+    setFiltroCliente(null);
+    setFiltroAnexo(null);
+    setFormData(prev => ({
+      ...prev,
+      id_cliente: 0,
       id_anexo: undefined,
       producto_ids: []
     }));
@@ -213,22 +225,35 @@ export function LiquidacionesPage() {
       }, 0);
   };
 
-  const calculateNetoPagar = () => {
+  const calculateImporteCaguayo = () => {
     const importe = calculateImporte();
-    const gasto_empresa = Number(formData.gasto_empresa) || 0;
-    const comision = Number(formData.comision_bancaria) || 0;
-    const tributario = Number(formData.tributario) || 0;
-    
-    const devengado = importe - (importe * gasto_empresa / 100) - (importe * comision / 100);
-    const neto = devengado - (devengado * tributario / 100);
-    return neto;
+    const porcentaje = Number(formData.porcentaje_caguayo) || 10;
+    return importe * (porcentaje / 100);
   };
 
   const calculateDevengado = () => {
     const importe = calculateImporte();
+    const importe_caguayo = calculateImporteCaguayo();
+    return importe - importe_caguayo;
+  };
+
+  const calculateTributarioMonto = () => {
+    const devengado = calculateDevengado();
+    const tributario = Number(formData.tributario) || 0;
+    return devengado * (tributario / 100);
+  };
+
+  const calculateSubtotal = () => {
+    const devengado = calculateDevengado();
+    const tributario_monto = calculateTributarioMonto();
+    return devengado - tributario_monto;
+  };
+
+  const calculateNetoPagar = () => {
+    const subtotal = calculateSubtotal();
     const gasto_empresa = Number(formData.gasto_empresa) || 0;
     const comision = Number(formData.comision_bancaria) || 0;
-    return importe - (importe * gasto_empresa / 100) - (importe * comision / 100);
+    return subtotal - gasto_empresa - comision;
   };
 
   const filteredLiquidaciones = liquidaciones.filter((l: Liquidacion) => {
@@ -587,12 +612,6 @@ export function LiquidacionesPage() {
                 </TableHead>
                 <TableHead>
                   <div className="flex items-center gap-2">
-                    <FileText className="h-4 w-4 text-lime-600" />
-                    Anexo
-                  </div>
-                </TableHead>
-                <TableHead>
-                  <div className="flex items-center gap-2">
                     <DollarSign className="h-4 w-4 text-lime-600" />
                     Importe
                   </div>
@@ -605,11 +624,11 @@ export function LiquidacionesPage() {
             <TableBody>
               {isLoading ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8 text-gray-500">Cargando...</TableCell>
+                  <TableCell colSpan={6} className="text-center py-8 text-gray-500">Cargando...</TableCell>
                 </TableRow>
               ) : filteredLiquidaciones.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-12 text-gray-500">No hay liquidaciones</TableCell>
+                  <TableCell colSpan={6} className="text-center py-12 text-gray-500">No hay liquidaciones</TableCell>
                 </TableRow>
               ) : (
                 filteredLiquidaciones.map((liquidacion: Liquidacion) => (
@@ -621,7 +640,6 @@ export function LiquidacionesPage() {
                       </span>
                     </TableCell>
                     <TableCell>{getClienteNombre(liquidacion.id_cliente)}</TableCell>
-                    <TableCell className="text-gray-500">{liquidacion.id_anexo ? getAnexoInfo(liquidacion.id_anexo) : '-'}</TableCell>
                     <TableCell className="font-medium text-gray-900">{liquidacion.importe?.toLocaleString()}</TableCell>
                     <TableCell className="font-medium text-gray-900">{liquidacion.neto_pagar?.toLocaleString()}</TableCell>
                     <TableCell>
@@ -651,6 +669,28 @@ export function LiquidacionesPage() {
                         >
                           <Printer className="h-4 w-4" />
                         </Button>
+                        {/* Botón Aprobar - solo si está pendiente */}
+                        {!liquidacion.liquidada && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => {
+                              if (confirm('¿Aprobar liquidación?')) {
+                                liquidacionService.aprobarLiquidacion(liquidacion.id_liquidacion)
+                                  .then(() => {
+                                    toast.success('Liquidación aprobada correctamente');
+                                    queryClient.invalidateQueries({ queryKey: ['liquidaciones'] });
+                                  })
+                                  .catch((error: any) => toast.error(error.message || 'Error al aprobar liquidación'));
+                              }
+                            }}
+                            className="text-green-600 hover:text-green-800 hover:bg-green-50 h-8 w-8"
+                            title="Aprobar liquidación"
+                          >
+                            <CheckCircle className="h-4 w-4" />
+                          </Button>
+                        )}
+
                         <Button
                           variant="ghost"
                           size="icon"
@@ -681,7 +721,7 @@ export function LiquidacionesPage() {
               <div className="flex items-center gap-4">
                 <CardTitle>Nueva Liquidación</CardTitle>
                 <button onClick={() => { setShowModal(false); resetForm(); }} className="ml-auto text-gray-400 hover:text-gray-600">
-                  <XCircle className="w-5 h-5" />
+                  <X className="w-5 h-5" />
                 </button>
               </div>
             </CardHeader>
@@ -690,15 +730,16 @@ export function LiquidacionesPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                 <div>
                   <Label>Proveedor *</Label>
-                  {filtroCliente ? (
-                    <div className="w-full p-2 border rounded bg-gray-50 text-gray-700 font-medium">
-                      {clientes.find((c: Cliente) => c.id_cliente === filtroCliente)?.nombre || 'Proveedor'}
-                    </div>
-                  ) : (
+                  <div className="relative">
                     <select
                       value={filtroCliente || ''}
-                      onChange={(e) => handleClienteChange(Number(e.target.value))}
-                      className="w-full p-2 border rounded"
+                      onChange={(e) => {
+                        const value = Number(e.target.value);
+                        if (value) {
+                          handleClienteChange(value);
+                        }
+                      }}
+                      className="w-full p-2 border rounded pr-10"
                     >
                       <option value="">Seleccionar proveedor</option>
                       {clientes.map((cliente: Cliente) => (
@@ -707,7 +748,17 @@ export function LiquidacionesPage() {
                         </option>
                       ))}
                     </select>
-                  )}
+                    {filtroCliente && (
+                      <button
+                        type="button"
+                        onClick={handleChangeProveedorClick}
+                        className="absolute right-8 top-1/2 -translate-y-1/2 p-1 text-gray-500 hover:text-red-500 transition-colors"
+                        title="Cambiar proveedor"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
                 </div>
                 
                 <div>
@@ -826,7 +877,16 @@ export function LiquidacionesPage() {
                 </div>
               )}
 
-              <div className="grid gap-4 md:grid-cols-4 mb-6">
+              <div className="grid gap-4 md:grid-cols-5 mb-6">
+                <div>
+                  <Label>% Caguayo</Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    value={formData.porcentaje_caguayo}
+                    onChange={(e) => setFormData(prev => ({ ...prev, porcentaje_caguayo: Number(e.target.value) }))}
+                  />
+                </div>
                 <div>
                   <Label>Tributario (%)</Label>
                   <Input
@@ -837,7 +897,7 @@ export function LiquidacionesPage() {
                   />
                 </div>
                 <div>
-                  <Label>Comisión Bancaria (%)</Label>
+                  <Label>Comisión Bancaria</Label>
                   <Input
                     type="number"
                     step="0.01"
@@ -846,7 +906,7 @@ export function LiquidacionesPage() {
                   />
                 </div>
                 <div>
-                  <Label>Gasto Empresa (%)</Label>
+                  <Label>Gasto Empresa</Label>
                   <Input
                     type="number"
                     step="0.01"
@@ -856,46 +916,39 @@ export function LiquidacionesPage() {
                 </div>
               </div>
 
-              <div className="bg-gray-50 rounded-lg p-4 mb-6">
-                {/* Sección 1: Devengado */}
-                <div className="mb-4 pb-4 border-b border-gray-300">
-                  <h4 className="text-sm font-semibold text-gray-700 mb-3">Cálculo del Devengado</h4>
-                  <div className="space-y-2">
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Importe Total:</span>
-                      <span className="font-medium">{calculateImporte().toLocaleString()}</span>
-                    </div>
-                    <div className="flex justify-between text-red-600">
-                      <span>Gasto Empresa ({Number(formData.gasto_empresa || 0)}%):</span>
-                      <span>- {(calculateImporte() * (Number(formData.gasto_empresa) || 0) / 100).toLocaleString()}</span>
-                    </div>
-                    <div className="flex justify-between text-red-600">
-                      <span>Comisión ({Number(formData.comision_bancaria || 0)}%):</span>
-                      <span>- {(calculateImporte() * (Number(formData.comision_bancaria) || 0) / 100).toLocaleString()}</span>
-                    </div>
-                    <div className="flex justify-between pt-2 border-t border-gray-300">
-                      <span className="font-semibold text-gray-800">Devengado:</span>
-                      <span className="font-bold text-blue-600 text-lg">{calculateDevengado().toLocaleString()}</span>
-                    </div>
+<div className="bg-gray-50 rounded-lg p-4 mb-6">
+                <div className="space-y-1">
+                  <div className="flex justify-between">
+                    <span className="text-base font-bold text-gray-800">IMPORTE:</span>
+                    <span className="text-base font-bold text-gray-800">{calculateImporte().toLocaleString()}</span>
                   </div>
-                </div>
-
-                {/* Sección 2: Neto a Pagar */}
-                <div>
-                  <h4 className="text-sm font-semibold text-gray-700 mb-3">Cálculo del Neto a Pagar</h4>
-                  <div className="space-y-2">
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Devengado:</span>
-                      <span className="font-medium">{calculateDevengado().toLocaleString()}</span>
-                    </div>
-                    <div className="flex justify-between text-red-600">
-                      <span>Tributario ({Number(formData.tributario || 0)}%):</span>
-                      <span>- {(calculateDevengado() * (Number(formData.tributario) || 0) / 100).toLocaleString()}</span>
-                    </div>
-                    <div className="flex justify-between pt-2 border-t border-gray-300">
-                      <span className="font-semibold text-gray-800">Neto a Pagar:</span>
-                      <span className="font-bold text-green-600 text-xl">{calculateNetoPagar().toLocaleString()}</span>
-                    </div>
+                  <div className="flex justify-between pl-4">
+                    <span className="text-sm text-gray-500">Importe Caguayo ({Number(formData.porcentaje_caguayo || 10)}%):</span>
+                    <span className="text-sm text-gray-500">- {calculateImporteCaguayo().toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between border-b border-gray-200 pb-1">
+                    <span className="text-base font-semibold text-red-600">DEVENGADO:</span>
+                    <span className="text-base font-semibold text-red-600">{calculateDevengado().toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between pl-4">
+                    <span className="text-sm text-gray-500">Tributario ({Number(formData.tributario || 0)}%):</span>
+                    <span className="text-sm text-gray-500">- {calculateTributarioMonto().toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between border-b border-gray-200 pb-1">
+                    <span className="text-base font-semibold text-gray-700">SUBTOTAL:</span>
+                    <span className="text-base font-semibold text-gray-700">{calculateSubtotal().toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between pl-4">
+                    <span className="text-sm text-gray-500">Gasto Empresa:</span>
+                    <span className="text-sm text-gray-500">- {Number(formData.gasto_empresa || 0).toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between pl-4">
+                    <span className="text-sm text-gray-500">Comisión:</span>
+                    <span className="text-sm text-gray-500">- {Number(formData.comision_bancaria || 0).toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between border-t-2 border-gray-300 pt-2 mt-1">
+                    <span className="text-lg font-bold text-gray-800">NETO A PAGAR:</span>
+                    <span className="text-lg font-bold text-green-600">{calculateNetoPagar().toLocaleString()}</span>
                   </div>
                 </div>
               </div>
@@ -908,7 +961,7 @@ export function LiquidacionesPage() {
                   rows={3}
                   className="w-full p-2 border rounded resize-none"
                 />
-              </div>
+</div>
             </div>
 
             <div className="px-6 py-4 border-t bg-gray-50 flex justify-end gap-3">
@@ -941,7 +994,7 @@ export function LiquidacionesPage() {
             <div className="px-6 py-4 border-b flex justify-between items-center">
               <h2 className="text-xl font-bold">Detalle de Liquidación</h2>
               <button onClick={() => { setShowDetailModal(false); setSelectedLiquidacion(null); }} className="text-gray-400 hover:text-gray-600">
-                <XCircle className="w-6 h-6" />
+                <X className="w-6 h-6" />
               </button>
             </div>
             

@@ -37,8 +37,11 @@ async def crear_contrato(
     try:
         return await ContratoService.create(db, contrato)
     except Exception as e:
+        error_msg = str(e)
+        if "Input should be a valid integer" in error_msg:
+            raise HTTPException(status_code=400, detail=f"Error de validación: {error_msg}")
         raise HTTPException(
-            status_code=500, detail=f"Error al crear contrato: {str(e)}"
+            status_code=500, detail=f"Error al crear contrato: {error_msg}"
         )
 
 

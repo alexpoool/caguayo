@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
-import { createPortal } from 'react-dom';
-import { useSearchParams } from 'react-router-dom';
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
+import { useSearchParams } from "react-router-dom";
 import {
   contratosService,
   productosService,
@@ -10,79 +10,118 @@ import {
   facturasService,
   clientesService,
   cuentasService,
-} from '../../../services/api';
-import type { ContratoWithDetails, FacturaWithDetails as FacturaType, ItemFactura } from '../../../types/contrato';
-import type { Productos } from '../../../types';
-import type { Dependencia } from '../../../types/dependencia';
-import type { Cuenta } from '../../../types/cuenta';
-import type { Pago } from '../../../types/pago';
-import toast from 'react-hot-toast';
-import { useAuth } from '../../../context/AuthContext';
+} from "../../../services/api";
+import type {
+  ContratoWithDetails,
+  FacturaWithDetails as FacturaType,
+  ItemFactura,
+} from "../../../types/contrato";
+import type { Productos } from "../../../types";
+import type { Dependencia } from "../../../types/dependencia";
+import type { Cuenta } from "../../../types/cuenta";
+import type { Pago } from "../../../types/pago";
+import toast from "react-hot-toast";
+import { useAuth } from "../../../context/AuthContext";
 
 // Componentes nuevos
-import { FacturasListView } from './components/FacturasListView';
-import { FacturaForm } from './components/FacturaForm';
-import { FacturaDetailModal } from './components/modals/FacturaDetailModal';
-import { PagoModal } from './components/modals/PagoModal';
-import { ConfirmDeleteModal } from './components/modals/ConfirmDeleteModal';
+import { FacturasListView } from "./components/FacturasListView";
+import { FacturaForm } from "./components/FacturaForm";
+import { FacturaDetailModal } from "./components/modals/FacturaDetailModal";
+import { PagoModal } from "./components/modals/PagoModal";
+import { ConfirmDeleteModal } from "./components/modals/ConfirmDeleteModal";
 
 // Hooks personalizados
-import { useFacturas } from './hooks/useFacturas';
-import { usePagos } from './hooks/usePagos';
-import { useProductSelection } from './hooks/useProductSelection';
+import { useFacturas } from "./hooks/useFacturas";
+import { usePagos } from "./hooks/usePagos";
+import { useProductSelection } from "./hooks/useProductSelection";
 
-type View = 'list' | 'form';
+type View = "list" | "form";
 
-export function getFacturaDocument(factura: any, contratos: any[], dependencias: any[], user: any, clienteCompleto: any = null, clienteCuentas: any[] = [], autorizadoPor: string = '', revisadoPor: string = '') {
-  const contrato = contratos.find((c: any) => c.id_contrato === factura.id_contrato);
-  const dependencia = user?.dependencia || dependencias.find((d: any) => d.id_dependencia === factura.id_dependencia);
+export function getFacturaDocument(
+  factura: any,
+  contratos: any[],
+  dependencias: any[],
+  user: any,
+  clienteCompleto: any = null,
+  clienteCuentas: any[] = [],
+) {
+  const contrato = contratos.find(
+    (c: any) => c.id_contrato === factura.id_contrato,
+  );
+  const dependencia =
+    user?.dependencia ||
+    dependencias.find((d: any) => d.id_dependencia === factura.id_dependencia);
   const cliente = clienteCompleto || contrato?.cliente;
 
-  const empresaNombre = dependencia?.nombre || 'CAGUAYO S.A.';
-  const empresaDireccion = dependencia?.direccion || '';
-  const empresaTelefono = dependencia?.telefono || '';
-  const empresaEmail = dependencia?.email || '';
+  const empresaNombre = dependencia?.nombre || "CAGUAYO S.A.";
+  const empresaDireccion = dependencia?.direccion || "";
+  const empresaTelefono = dependencia?.telefono || "";
+  const empresaEmail = dependencia?.email || "";
 
-  const numeroContrato = contrato?.codigo || '';
-  const nombreCliente = cliente?.nombre || 'N/A';
-  const codigoCliente = cliente?.numero_cliente || '';
+  const numeroContrato = contrato?.codigo || "";
+  const nombreCliente = cliente?.nombre || "N/A";
+  const codigoCliente = cliente?.numero_cliente || "";
   const nitCliente = codigoCliente;
-  const direccionCliente = cliente?.direccion || '';
-  const provinciaCliente = cliente?.provincia?.nombre || '';
-  const municipioCliente = cliente?.municipio?.nombre || '';
-  const direccionCompleta = [direccionCliente, provinciaCliente, municipioCliente].filter(Boolean).join(', ');
+  const direccionCliente = cliente?.direccion || "";
+  const provinciaCliente = cliente?.provincia?.nombre || "";
+  const municipioCliente = cliente?.municipio?.nombre || "";
+  const direccionCompleta = [
+    direccionCliente,
+    provinciaCliente,
+    municipioCliente,
+  ]
+    .filter(Boolean)
+    .join(", ");
 
-  const cuentaCUP = clienteCuentas.find((c: any) => c.moneda?.nombre === 'CUP');
-  const cuentaNumero = cuentaCUP?.numero_cuenta || '';
-  const cuentaBanco = cuentaCUP?.banco || '';
-  const cuentaSucursal = cuentaCUP?.sucursal || '';
-  const cuentaDireccion = cuentaCUP?.direccion || '';
+  const cuentaPrimary = clienteCuentas.find((c: any) => c) || clienteCuentas[0];
+  const cuentaNumero = cuentaPrimary?.numero_cuenta || "";
+  const cuentaBanco = cuentaPrimary?.banco || "";
+  const cuentaSucursal = cuentaPrimary?.sucursal || "";
+  const cuentaDireccion = cuentaPrimary?.direccion || "";
+  const cuentaMoneda = cuentaPrimary?.moneda?.simbolo || "";
 
-  const moneda = contrato?.moneda?.nombre || '';
+  const moneda = contrato?.moneda?.nombre || "";
   const items = factura.items || [];
 
-  const itemsRows = items.map((item: any) => `
+  const itemsRows = items
+    .map(
+      (item: any) => `
     <tr>
-      <td>${item.producto?.codigo || 'N/A'}</td>
-      <td>${item.producto?.descripcion || item.producto?.nombre || 'Producto'}</td>
+      <td>${item.producto?.codigo || "N/A"}</td>
+      <td>${item.producto?.descripcion || item.producto?.nombre || "Producto"}</td>
       <td class="cantidad">${item.cantidad || 0}</td>
       <td class="precio">${Number(item.precio_venta || 0).toFixed(2)}</td>
       <td class="importe-col">${Number(item.precio_venta * item.cantidad || 0).toFixed(2)}</td>
     </tr>
-  `).join('');
+  `,
+    )
+    .join("");
 
-  const descripcionItems = items.length > 0
-    ? items.map((item: any) => item.producto?.nombre || item.producto?.descripcion || 'Producto').join(', ')
-    : '';
-  const descripcionGeneral = descripcionItems || 'Ver detalle de productos en tabla adjunta';
+  const descripcionItems =
+    items.length > 0
+      ? items
+          .map(
+            (item: any) =>
+              item.producto?.nombre || item.producto?.descripcion || "Producto",
+          )
+          .join(", ")
+      : "";
+  const descripcionGeneral =
+    descripcionItems || "Ver detalle de productos en tabla adjunta";
 
   const total = Number(factura.monto || 0).toFixed(2);
-  const fechaEmision = factura.fecha ? new Date(factura.fecha).toLocaleDateString('es-ES') : 'N/A';
+  const fechaEmision = factura.fecha
+    ? new Date(factura.fecha).toLocaleDateString("es-ES")
+    : "N/A";
 
-  const nombreUsuario = user ? [user.nombre, user.primer_apellido, user.segundo_apellido].filter(Boolean).join(' ').trim() : 'Sistema';
-  const cargoUsuario = user?.grupo?.nombre || 'Administrador';
-  const nombreAutorizado = autorizadoPor || '';
-  const nombreRevisado = revisadoPor || '';
+  const nombreUsuario = user
+    ? [user.nombre, user.primer_apellido, user.segundo_apellido]
+        .filter(Boolean)
+        .join(" ")
+        .trim()
+    : "Sistema";
+  const cargoUsuario = user?.grupo?.nombre || "Administrador";
+  
 
   return `<!DOCTYPE html>
 <html lang="es">
@@ -125,15 +164,17 @@ export function getFacturaDocument(factura: any, contratos: any[], dependencias:
     .tabla-productos th:nth-child(1), .tabla-productos td:nth-child(1) { width: 8%; }
     .tabla-productos th:nth-child(2), .tabla-productos td:nth-child(2) { width: 65%; }
     .tabla-productos th:nth-child(3), .tabla-productos td:nth-child(3) { width: 9%; text-align: right; }
-    .tabla-productos th:nth-child(4), .tabla-productos td:nth-child(4) { width: 9%; text-align: right; }
-    .tabla-productos th:nth-child(5), .tabla-productos td:nth-child(5) { width: 9%; text-align: right; }
+    .tabla-productos th:nth-child(4), .tabla-productos td:nth-child(4) { width: 15%; text-align: right; }
+    .tabla-productos th:nth-child(5), .tabla-productos td:nth-child(5) { width: 15%; text-align: right; }
     .tabla-productos th { background-color: #eae7db; font-weight: 700; text-align: center; }
     .cantidad, .precio, .importe-col { text-align: right; }
     .importe-fila { font-weight: bold; background-color: #f4f1e6; }
-    .firmas { display: flex; flex-direction: column; gap: 8px; margin-top: 16px; margin-bottom: 12px; }
-    .fila-firmas { display: flex; justify-content: space-between; gap: 20px; }
-    .bloque-firma { flex: 1; border-top: 1px dotted #222; padding-top: 8px; font-size: 11px; text-align: left; }
+    .firmas { margin-top: 28px; margin-bottom: 16px; }
+    .fila-firmas { display: flex; justify-content: space-between; gap: 40px; }
+    .bloque-firma { flex: 1; font-size: 11px; }
     .bloque-firma p { margin: 2px 0; }
+    .bloque-firma strong { font-size: 12px; }
+    .firma-linea { border-bottom: 1.5px solid #222; height: 40px; margin: 6px 0 4px 0; }
     .cargo { font-size: 10px; color: #2c2c2c; }
     @media (max-width: 650px) { .documento { padding: 0.6rem; } .tabla-productos th, .tabla-productos td { padding: 3px 2px; font-size: 10px; } .firmas { flex-direction: column; gap: 6px; } .fila-firmas { flex-direction: column; gap: 10px; } .info-cliente { flex-direction: column; } .info-pago { flex-direction: column; } .header-tcp { flex-direction: column; } .header-box { width: 100%; margin-top: 10px; } .tabla-wrapper { flex-direction: column; } }
   </style>
@@ -153,9 +194,9 @@ export function getFacturaDocument(factura: any, contratos: any[], dependencias:
       </div>
       <div class="header-box">
         <div class="header-box-title">Factura</div>
-        <div class="header-box-row"><strong>No.:</strong> ${factura.codigo_factura || 'N/A'}</div>
+        <div class="header-box-row"><strong>No.:</strong> ${factura.codigo_factura || "N/A"}</div>
         <div class="header-box-row"><strong>Fecha:</strong> ${fechaEmision}</div>
-        <div class="header-box-row"><strong>Moneda:</strong> ${moneda || 'N/A'}</div>
+        <div class="header-box-row"><strong>Moneda:</strong> ${moneda || "N/A"}</div>
       </div>
     </div>
 
@@ -172,7 +213,7 @@ export function getFacturaDocument(factura: any, contratos: any[], dependencias:
         <span class="campo"><strong>Sucursal:</strong> ${cuentaSucursal}</span>
         <span class="campo"><strong>Dirección:</strong> ${cuentaDireccion}</span>
       </div>
-      <div class="fila-cuenta"><strong>Número de cuenta:</strong> ${cuentaNumero} (${moneda})</div>
+      <div class="fila-cuenta"><strong>Número de cuenta:</strong> ${cuentaNumero} (${cuentaMoneda || moneda})</div>
     </div>
 
     <div class="descripcion-general">
@@ -204,22 +245,14 @@ export function getFacturaDocument(factura: any, contratos: any[], dependencias:
       <div class="fila-firmas">
         <div class="bloque-firma">
           <p><strong>Confeccionado por:</strong></p>
+          <div class="firma-linea"></div>
           <p>${nombreUsuario}</p>
           <p class="cargo">Cargo: ${cargoUsuario}</p>
         </div>
         <div class="bloque-firma">
-          <p><strong>Autorizado por:</strong></p>
-          <p>${nombreAutorizado}</p>
-        </div>
-      </div>
-      <div class="fila-firmas">
-        <div class="bloque-firma">
           <p><strong>Cliente:</strong></p>
+          <div class="firma-linea"></div>
           <p>${nombreCliente}</p>
-        </div>
-        <div class="bloque-firma">
-          <p><strong>Revisado por:</strong></p>
-          <p>${nombreRevisado}</p>
         </div>
       </div>
     </div>
@@ -235,10 +268,10 @@ export function getFacturaDocument(factura: any, contratos: any[], dependencias:
 export function FacturasPage() {
   const { user } = useAuth();
   const [searchParams] = useSearchParams();
-  const initialContratoId = searchParams.get('contrato');
+  const initialContratoId = searchParams.get("contrato");
 
   // Vista actual (list o form)
-  const [view, setView] = useState<View>('list');
+  const [view, setView] = useState<View>("list");
 
   // Datos maestros
   const [contratos, setContratos] = useState<ContratoWithDetails[]>([]);
@@ -247,7 +280,10 @@ export function FacturasPage() {
   const [dependencias, setDependencias] = useState<Dependencia[]>([]);
 
   // Modales
-  const [detailModal, setDetailModal] = useState<{ isOpen: boolean; item: any | null }>({
+  const [detailModal, setDetailModal] = useState<{
+    isOpen: boolean;
+    item: any | null;
+  }>({
     isOpen: false,
     item: null,
   });
@@ -256,13 +292,13 @@ export function FacturasPage() {
     title: string;
     message: string;
     onConfirm: () => void;
-    type: 'danger' | 'warning' | 'info' | 'success';
+    type: "danger" | "warning" | "info" | "success";
   }>({
     isOpen: false,
-    title: '',
-    message: '',
+    title: "",
+    message: "",
     onConfirm: () => {},
-    type: 'danger',
+    type: "danger",
   });
   const [pagoModalOpen, setPagoModalOpen] = useState(false);
   const [pagoModalFactura, setPagoModalFactura] = useState<any | null>(null);
@@ -277,19 +313,20 @@ export function FacturasPage() {
    */
   const loadInitialData = async () => {
     try {
-      const [contratosRes, productosRes, monedasRes, depsRes] = await Promise.all([
-        contratosService.getContratos(0, 1000),
-        productosService.getProductos(0, 1000),
-        monedaService.getMonedas(0, 100),
-        dependenciasService.getDependencias(undefined, 0, 1000),
-      ]);
+      const [contratosRes, productosRes, monedasRes, depsRes] =
+        await Promise.all([
+          contratosService.getContratos(0, 1000),
+          productosService.getProductos(0, 1000),
+          monedaService.getMonedas(0, 100),
+          dependenciasService.getDependencias(undefined, 0, 1000),
+        ]);
       setContratos(contratosRes);
       setProductos(productosRes);
       setMonedas(monedasRes);
       setDependencias(depsRes);
     } catch (error) {
-      console.error('Error loading initial data:', error);
-      toast.error('Error al cargar datos iniciales');
+      console.error("Error loading initial data:", error);
+      toast.error("Error al cargar datos iniciales");
     }
   };
 
@@ -305,16 +342,19 @@ export function FacturasPage() {
   /**
    * Obtener productos filtrados según búsqueda
    */
-  const productosFiltrados = productSelectionHook.getProductosFiltrados(productos);
+  const productosFiltrados =
+    productSelectionHook.getProductosFiltrados(productos);
 
   /**
    * Manejar guardado de factura
    */
   const handleSaveFactura = async () => {
-    const result = await facturasHook.handleSave(productSelectionHook.selectedProducts);
+    const result = await facturasHook.handleSave(
+      productSelectionHook.selectedProducts,
+    );
     if (result.success) {
       toast.success(result.message);
-      setView('list');
+      setView("list");
     } else {
       toast.error(result.message);
     }
@@ -326,9 +366,9 @@ export function FacturasPage() {
   const handleDeleteFactura = (id: number, codigo: string) => {
     setConfirmModal({
       isOpen: true,
-      title: '¿Eliminar factura?',
+      title: "¿Eliminar factura?",
       message: `¿Está seguro de eliminar la factura "${codigo}"?`,
-      type: 'danger',
+      type: "danger",
       onConfirm: async () => {
         const result = await facturasHook.handleDelete(id);
         if (result.success) {
@@ -356,7 +396,9 @@ export function FacturasPage() {
    */
   const handleCreatePago = async () => {
     if (!pagoModalFactura) return;
-    const result = await pagosHook.handleCreatePago(pagoModalFactura.id_factura);
+    const result = await pagosHook.handleCreatePago(
+      pagoModalFactura.id_factura,
+    );
     if (result.success) {
       toast.success(result.message);
       facturasHook.loadFacturas();
@@ -370,7 +412,10 @@ export function FacturasPage() {
    */
   const handleDeletePago = async (pago: Pago) => {
     if (!pagoModalFactura) return;
-    const result = await pagosHook.handleDeletePago(pago, pagoModalFactura.id_factura);
+    const result = await pagosHook.handleDeletePago(
+      pago,
+      pagoModalFactura.id_factura,
+    );
     if (result.success) {
       toast.success(result.message);
       facturasHook.loadFacturas();
@@ -379,55 +424,82 @@ export function FacturasPage() {
     }
   };
 
-/**
+  /**
    * Visualizar documento de factura
    */
   const handleViewDocument = async (factura: any) => {
-    console.log('[DEBUG] handleViewDocument - factura:', factura);
-    console.log('[DEBUG] handleViewDocument - id_contrato:', factura.id_contrato);
-    
+    console.log("[DEBUG] handleViewDocument - factura:", factura);
+    console.log(
+      "[DEBUG] handleViewDocument - id_contrato:",
+      factura.id_contrato,
+    );
+
     // Primero buscar en la lista local
-    let contrato = contratos.find((c: any) => c.id_contrato === factura.id_contrato);
-    console.log('[DEBUG] handleViewDocument - contrato encontrado en lista local:', contrato);
-    
+    let contrato = contratos.find(
+      (c: any) => c.id_contrato === factura.id_contrato,
+    );
+    console.log(
+      "[DEBUG] handleViewDocument - contrato encontrado en lista local:",
+      contrato,
+    );
+
     // Si no está en la lista local, cargar desde la API
     if (!contrato && factura.id_contrato) {
-      console.log('[DEBUG] handleViewDocument - Contrato no local, cargando desde API');
+      console.log(
+        "[DEBUG] handleViewDocument - Contrato no local, cargando desde API",
+      );
       try {
         contrato = await contratosService.getContrato(factura.id_contrato);
-        console.log('[DEBUG] handleViewDocument - contrato desde API:', contrato);
+        console.log(
+          "[DEBUG] handleViewDocument - contrato desde API:",
+          contrato,
+        );
       } catch (error) {
-        console.error('Error loading contrato:', error);
+        console.error("Error loading contrato:", error);
       }
     }
-    
-    console.log('[DEBUG] handleViewDocument - contrato.id_cliente:', contrato?.id_cliente);
-    console.log('[DEBUG] handleViewDocument - contrato.cliente:', contrato?.cliente);
-    
+
+    console.log(
+      "[DEBUG] handleViewDocument - contrato.id_cliente:",
+      contrato?.id_cliente,
+    );
+    console.log(
+      "[DEBUG] handleViewDocument - contrato.cliente:",
+      contrato?.cliente,
+    );
+
     let clienteCompleto: any = null;
     let clienteCuentas: any[] = [];
 
     // Obtener id_cliente del contrato o del objeto cliente anidado
     const idCliente = contrato?.id_cliente || contrato?.cliente?.id_cliente;
-    
+
     if (idCliente) {
-      console.log('[DEBUG] handleViewDocument - id_cliente:', idCliente);
+      console.log("[DEBUG] handleViewDocument - id_cliente:", idCliente);
       try {
         clienteCompleto = await clientesService.getCliente(idCliente);
-        console.log('[DEBUG] handleViewDocument - clienteCompleto:', clienteCompleto);
-        
+        console.log(
+          "[DEBUG] handleViewDocument - clienteCompleto:",
+          clienteCompleto,
+        );
+
         clienteCuentas = await cuentasService.getCuentasByCliente(idCliente);
-        console.log('[DEBUG] handleViewDocument - clienteCuentas:', clienteCuentas);
+        console.log(
+          "[DEBUG] handleViewDocument - clienteCuentas:",
+          clienteCuentas,
+        );
       } catch (error) {
-        console.error('Error loading client data:', error);
+        console.error("Error loading client data:", error);
       }
     } else if (contrato?.cliente) {
-      console.log('[DEBUG] handleViewDocument - Usando cliente del contrato directamente');
+      console.log(
+        "[DEBUG] handleViewDocument - Usando cliente del contrato directamente",
+      );
       clienteCompleto = contrato.cliente;
     }
 
-    console.log('[DEBUG] handleViewDocument - clienteFinal:', clienteCompleto);
-    console.log('[DEBUG] handleViewDocument - cuentasFinal:', clienteCuentas);
+    console.log("[DEBUG] handleViewDocument - clienteFinal:", clienteCompleto);
+    console.log("[DEBUG] handleViewDocument - cuentasFinal:", clienteCuentas);
 
     const html = getFacturaDocument(
       factura,
@@ -436,45 +508,47 @@ export function FacturasPage() {
       user,
       clienteCompleto,
       clienteCuentas,
-      '',
-      ''
+      "",
+      "",
     );
-    const printWindow = window.open('', '_blank');
+    const printWindow = window.open("", "_blank");
     if (printWindow) {
       printWindow.document.write(html);
       printWindow.document.close();
     }
   };
 
-/**
+  /**
    * Imprimir documento de factura
    */
   const handlePrintDocument = async (factura: any) => {
-    console.log('[FacturasPage] handlePrintDocument called');
-    
+    console.log("[FacturasPage] handlePrintDocument called");
+
     // Primero buscar en la lista local
-    let contrato = contratos.find((c: any) => c.id_contrato === factura.id_contrato);
-    
+    let contrato = contratos.find(
+      (c: any) => c.id_contrato === factura.id_contrato,
+    );
+
     // Si no está en la lista local, cargar desde la API
     if (!contrato && factura.id_contrato) {
       try {
         contrato = await contratosService.getContrato(factura.id_contrato);
       } catch (error) {
-        console.error('Error loading contrato:', error);
+        console.error("Error loading contrato:", error);
       }
     }
-    
+
     let clienteCompleto: any = null;
     let clienteCuentas: any[] = [];
 
     const idCliente = contrato?.id_cliente || contrato?.cliente?.id_cliente;
-    
+
     if (idCliente) {
       try {
         clienteCompleto = await clientesService.getCliente(idCliente);
         clienteCuentas = await cuentasService.getCuentasByCliente(idCliente);
       } catch (error) {
-        console.error('Error loading client data:', error);
+        console.error("Error loading client data:", error);
       }
     } else if (contrato?.cliente) {
       clienteCompleto = contrato.cliente;
@@ -487,10 +561,10 @@ export function FacturasPage() {
       user,
       clienteCompleto,
       clienteCuentas,
-      '',
-      ''
+      "",
+      "",
     );
-    const printWindow = window.open('', '_blank');
+    const printWindow = window.open("", "_blank");
     if (printWindow) {
       printWindow.document.write(html);
       printWindow.document.close();
@@ -498,7 +572,7 @@ export function FacturasPage() {
     }
   };
 
-/**
+  /**
    * Abrir formulario de edición
    */
   const handleOpenForm = (factura?: any) => {
@@ -513,23 +587,24 @@ export function FacturasPage() {
         facturasHook.setSelectedContratoId(Number(initialContratoId));
       }
     }
-    setView('form');
+    setView("form");
   };
 
   /**
    * Cerrar formulario
    */
   const handleCancelForm = () => {
-    setView('list');
+    setView("list");
     facturasHook.resetForm();
+    facturasHook.setSelectedContratoId(null);
     productSelectionHook.resetSelection();
   };
 
   // Render según vista actual
-  if (view === 'list') {
+  if (view === "list") {
     return (
       <div className="p-6">
-        <FacturasListView
+<FacturasListView
           facturas={facturasHook.facturas}
           contratos={contratos}
           selectedContratoId={facturasHook.selectedContratoId}
@@ -541,13 +616,10 @@ export function FacturasPage() {
           onDelete={(id: number, codigo: string) =>
             handleDeleteFactura(id, codigo)
           }
-          onViewDetails={(item: any) => {
-              console.log('[FacturasPage] onViewDetails called with item:', item?.codigo_factura);
-              setDetailModal({ isOpen: true, item });
-            }}
-          onOpenPagos={(factura: any) => handleOpenPagoModal(factura)}
-          onViewDocument={(factura: any) => handleViewDocument(factura)}
-          onPrintDocument={(factura: any) => handlePrintDocument(factura)}
+          onViewDetails={(factura: any) => setDetailModal({ isOpen: true, item: factura })}
+          onOpenPagos={handleOpenPagoModal}
+          onViewDocument={handleViewDocument}
+          onPrintDocument={handlePrintDocument}
         />
 
         {/* Modales */}
@@ -584,7 +656,7 @@ export function FacturasPage() {
   }
 
   // Vista de formulario
-  if (view === 'form') {
+  if (view === "form") {
     return (
       <div className="p-6">
         <FacturaForm
@@ -599,7 +671,9 @@ export function FacturasPage() {
           productos={productos}
           selectedContratoId={facturasHook.selectedContratoId}
           contratos={contratos}
-          onFormDataChange={(data: Record<string, any>) => facturasHook.setFormData(data)}
+          onFormDataChange={(data: Record<string, any>) =>
+            facturasHook.setFormData(data)
+          }
           onProductSearchChange={(search: string) =>
             productSelectionHook.setProductSearch(search)
           }
@@ -611,6 +685,9 @@ export function FacturasPage() {
           }
           onUpdatePrecio={(id: number, precio: number) =>
             productSelectionHook.updatePrecioVenta(id, precio)
+          }
+          onUpdatePrecioCompra={(id: number, precio: number) =>
+            productSelectionHook.updatePrecioCompra(id, precio)
           }
           onRemoveProduct={(id: number) =>
             productSelectionHook.removeProduct(id)

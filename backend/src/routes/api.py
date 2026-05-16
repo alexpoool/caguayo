@@ -40,6 +40,7 @@ from .servicios import (
     persona_liquidacion_router,
 )
 from .logger import router as logger_router
+from .existencias import existencias_router
 
 api_router = APIRouter(prefix="/api/v1")
 
@@ -80,6 +81,7 @@ api_router.include_router(facturas_servicio_router)
 api_router.include_router(pagos_factura_servicio_router)
 api_router.include_router(persona_liquidacion_router)
 api_router.include_router(logger_router)
+api_router.include_router(existencias_router)
 
 
 @api_router.get("/")

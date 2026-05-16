@@ -66,6 +66,10 @@ export interface Cliente {
   activo: boolean;
   provincia?: Provincia;
   municipio?: Municipio;
+  cuentas?: Cuenta[];
+  cliente_natural?: ClienteNatural;
+  cliente_juridica?: ClienteJuridica;
+  cliente_tcp?: ClienteTCP;
 }
 
 export interface ClienteWithVentas extends Cliente {
@@ -89,6 +93,15 @@ export interface ClienteCreate {
   estado?: 'ACTIVO' | 'INACTIVO';
   fecha_registro?: string;
   activo?: boolean;
+  cuentas?: Array<{
+    id_cliente?: number;
+    id_moneda?: number;
+    titular: string;
+    banco: string;
+    sucursal?: number;
+    numero_cuenta?: string;
+    direccion: string;
+  }>;
 }
 
 export interface ClienteUpdate {
@@ -108,6 +121,15 @@ export interface ClienteUpdate {
   estado?: 'ACTIVO' | 'INACTIVO';
   fecha_registro?: string;
   activo?: boolean;
+  cuentas?: Array<{
+    id_cliente?: number;
+    id_moneda?: number;
+    titular: string;
+    banco: string;
+    sucursal?: number;
+    numero_cuenta?: string;
+    direccion: string;
+  }>;
 }
 
 // Tipos para Persona Natural

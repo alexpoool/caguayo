@@ -36,9 +36,9 @@ interface ExistenciasPreviewData {
 // ---------------------------------------------------------------------------
 
 const EXPORT_COLUMNS: ExportColumn<ExistenciasPreviewItem>[] = [
-  { header: "Código",      value: "codigo" },
-  { header: "Descripción", value: "descripcion" },
-  { header: "Cantidad",    value: "cantidad" },
+  { header: "Código", accessor: "codigo" },
+  { header: "Descripción", accessor: "descripcion" },
+  { header: "Cantidad", accessor: "cantidad" },
 ];
 
 const COLUMNS: Column<ExistenciasPreviewItem>[] = [

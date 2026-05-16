@@ -213,6 +213,7 @@ async def agregar_desde_factura(
             id_moneda=prod.get("id_moneda", 1),
             tipo_compra="FACTURA",
             id_factura=id_factura,
+            id_anexo=prod.get("id_anexo"),
             liquidada=False,
         )
         db.add(db_producto)
@@ -265,7 +266,7 @@ async def agregar_desde_anexo(
             codigo=codigo,
             id_producto=prod["id_producto"],
             cantidad=prod["cantidad"],
-            precio=prod.get("precio", 0),
+            precio=Decimal(str(prod.get("precio_venta", prod.get("precio", 0)))),
             id_moneda=prod.get("id_moneda", 1),
             tipo_compra="ANEXO",
             id_anexo=id_anexo,

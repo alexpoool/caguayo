@@ -82,6 +82,11 @@ export function FacturasPage() {
     } catch (error) { console.error('Error:', error); }
   };
 
+  const getProductoNombre = (id: number) => {
+    const prod = productos.find(p => p.id_producto === id);
+    return prod?.nombre || 'N/A';
+  };
+
   useEffect(() => { 
     if (view === 'list') loadFacturas(); 
   }, [view, contratoParam]);
@@ -220,6 +225,7 @@ export function FacturasPage() {
   };
   const updateCantidad = (id: number, qty: number) => { setSelectedProducts(selectedProducts.map(p => p.id_producto === id ? { ...p, cantidad: qty } : p)); };
   const updatePrecioVenta = (id: number, precio: number) => { setSelectedProducts(selectedProducts.map(p => p.id_producto === id ? { ...p, precio_venta: precio } : p)); };
+  const updatePrecioCompra = (id: number, precio: number) => { setSelectedProducts(selectedProducts.map(p => p.id_producto === id ? { ...p, precio_compra: precio } : p)); };
   const removeProduct = (id: number) => { setSelectedProducts(selectedProducts.filter(p => p.id_producto !== id)); };
 
   const productosFiltrados = useMemo(() => {
@@ -232,6 +238,7 @@ export function FacturasPage() {
   }, [productos, productSearch, selectedProducts]);
 
   const renderProductSelector = () => {
+    const [isFocused, setIsFocused] = useState(false);
     const calcTotal = () => selectedProducts.reduce((t, p) => t + (p.cantidad * p.precio_venta), 0);
     
     return (
@@ -243,21 +250,23 @@ export function FacturasPage() {
             placeholder="Buscar producto para agregar..."
             value={productSearch}
             onChange={(e) => setProductSearch(e.target.value)}
+            onFocus={() => setIsFocused(true)}
+            onBlur={() => setTimeout(() => setIsFocused(false), 200)}
             className="pl-9"
           />
-          {productSearch.trim() && (
-            <div className="absolute z-10 w-full mt-1 bg-white border rounded-lg shadow-lg max-h-48 overflow-y-auto">
+          {isFocused && (
+            <div className="absolute z-10 w-full mt-1 bg-white border rounded-lg shadow-lg max-h-64 overflow-y-auto">
               {productosFiltrados.length === 0 ? (
                 <div className="px-3 py-2 text-sm text-gray-500">No se encontraron productos</div>
               ) : (
-                productosFiltrados.map(p => (
+                (productSearch.trim() ? productosFiltrados : productos.filter(p => !selectedProducts.some(sp => sp.id_producto === p.id_producto))).slice(0, 50).map(p => (
                   <button
                     key={p.id_producto}
-                    onClick={() => { addProduct(p.id_producto); setProductSearch(''); }}
+                    onClick={() => { addProduct(p.id_producto); setProductSearch(''); setIsFocused(false); }}
                     className="w-full px-3 py-2 text-left text-sm hover:bg-violet-50 flex justify-between items-center"
                   >
-                    <span>{p.nombre}</span>
-                    <span className="text-gray-400 text-xs">${Number(p.precio_venta).toFixed(2)}</span>
+                    <span className="truncate flex-1">{p.nombre}</span>
+                    <span className="text-gray-400 text-xs ml-2">${Number(p.precio_venta).toFixed(2)}</span>
                   </button>
                 ))
               )}
@@ -266,22 +275,52 @@ export function FacturasPage() {
         </div>
         {selectedProducts.length > 0 && (
           <div className="space-y-2">
-            <div className="flex items-center gap-2 p-2 bg-gray-100 rounded font-semibold text-sm">
-              <span className="flex-1">Producto</span>
-              <span className="w-20 text-center">Cantidad</span>
-              <span className="w-24 text-center">Precio</span>
-              <span className="w-20 text-right">Subtotal</span>
-              <span className="w-6"></span>
+            <div className="border rounded-lg overflow-hidden">
+              <table className="w-full text-sm">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-3 py-2 text-left">Nombre</th>
+                    <th className="px-3 py-2 text-left">Cantidad</th>
+                    <th className="px-3 py-2 text-left">Precio</th>
+                    <th className="px-3 py-2 text-left">Subtotal</th>
+                    <th className="px-3 py-2"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {selectedProducts.map(p => (
+                    <tr key={p.id_producto} className="border-t">
+                      <td className="px-3 py-2">{getProductoNombre(p.id_producto)}</td>
+                      <td className="px-3 py-2">
+                        <Input 
+                          type="number" 
+                          min="1" 
+                          value={p.cantidad} 
+                          onChange={(e: any) => updateCantidad(p.id_producto, Number(e.target.value))}
+                          className="w-20 h-8"
+                        />
+                      </td>
+                      <td className="px-3 py-2">
+                        <Input 
+                          type="number" 
+                          step="0.01" 
+                          value={p.precio_venta} 
+                          onChange={(e: any) => updatePrecioVenta(p.id_producto, Number(e.target.value))}
+                          className="w-24 h-8"
+                        />
+                      </td>
+                      <td className="px-3 py-2 text-gray-600">
+                        ${(p.cantidad * p.precio_venta).toFixed(2)}
+                      </td>
+                      <td className="px-3 py-2">
+                        <button onClick={() => removeProduct(p.id_producto)} className="text-red-500">
+                          <X className="w-4 h-4" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
-            {selectedProducts.map(p => { const pr = productos.find(pr => pr.id_producto === p.id_producto); return (
-              <div key={p.id_producto} className="flex items-center gap-2 p-2 bg-white rounded">
-                <span className="flex-1">{pr?.nombre}</span>
-                <Input type="number" min="1" value={p.cantidad} onChange={(e: any) => updateCantidad(p.id_producto, Number(e.target.value))} className="w-20" placeholder="Cantidad" />
-                <Input type="number" step="0.01" value={p.precio_venta} onChange={(e: any) => updatePrecioVenta(p.id_producto, Number(e.target.value))} className="w-24" placeholder="Precio" />
-                <span className="w-20 text-right text-gray-600">${(p.cantidad * p.precio_venta).toFixed(2)}</span>
-                <button onClick={() => removeProduct(p.id_producto)} className="text-red-500"><X className="w-4 h-4" /></button>
-              </div>
-            ); })}
             <div className="text-right font-bold text-lg mt-2 pt-2 border-t">
               Monto Total: ${calcTotal().toFixed(2)}
             </div>

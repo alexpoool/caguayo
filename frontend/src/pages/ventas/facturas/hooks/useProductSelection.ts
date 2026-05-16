@@ -6,6 +6,7 @@ export interface SelectedProduct {
   id_producto: number;
   cantidad: number;
   precio_venta: number;
+  precio_compra?: number;
 }
 
 export function useProductSelection() {
@@ -39,6 +40,7 @@ export function useProductSelection() {
           id_producto: id,
           cantidad: 1,
           precio_venta: producto ? Number(producto.precio_venta) : 0,
+          precio_compra: producto ? Number(producto.precio_compra) : 0,
         },
       ]);
     }
@@ -62,6 +64,17 @@ export function useProductSelection() {
     setSelectedProducts(
       selectedProducts.map((p) =>
         p.id_producto === id ? { ...p, precio_venta: precio } : p
+      )
+    );
+  };
+
+  /**
+   * Actualiza el precio de compra de un producto
+   */
+  const updatePrecioCompra = (id: number, precio: number) => {
+    setSelectedProducts(
+      selectedProducts.map((p) =>
+        p.id_producto === id ? { ...p, precio_compra: precio } : p
       )
     );
   };
@@ -99,6 +112,7 @@ export function useProductSelection() {
         id_producto: p.id_producto,
         cantidad: p.cantidad,
         precio_venta: p.precio_venta || 0,
+        precio_compra: p.precio_compra || 0,
       }))
     );
   };
@@ -112,6 +126,7 @@ export function useProductSelection() {
     addProduct,
     updateCantidad,
     updatePrecioVenta,
+    updatePrecioCompra,
     removeProduct,
     resetSelection,
     getTotal,

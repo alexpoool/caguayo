@@ -1,9 +1,9 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Button, Input, Label, Card, CardContent, CardHeader, CardTitle } from '../../components/ui';
-import { clientesService, anexosService, monedaService, liquidacionService } from '../../services/api';
+import { clientesService, anexosService, monedaService, liquidacionService, existenciaService } from '../../services/api';
 import type { Cliente, Anexo, Moneda, LiquidacionCreate } from '../../services/api';
-import { Plus, Save, ArrowLeft, CheckCircle, Package } from 'lucide-react';
+import { Plus, Save, ArrowLeft, CheckCircle, Package, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export function CrearLiquidacionPage() {
@@ -130,6 +130,20 @@ export function CrearLiquidacionPage() {
     }));
     setSelectedProductos([]);
     setConvenioInfo(null);
+  };
+
+  const handleChangeProveedorClick = () => {
+    setFiltroCliente(null);
+    setFiltroAnexo(null);
+    setFormData(prev => ({
+      ...prev,
+      id_cliente: 0,
+      id_anexo: undefined,
+      producto_ids: []
+    }));
+    setSelectedProductos([]);
+    setConvenioInfo(null);
+    setItemsAnexo([]);
   };
 
   const handleAnexoChange = (anexoId: number | null) => {
@@ -277,8 +291,33 @@ export function CrearLiquidacionPage() {
     return subtotal - gasto_empresa - comision;
   };
 
+  // Calcular datos de productos seleccionados para el resumen
+  const getResumenProductos = () => {
+    const productosSeleccionados = itemsAnexo.filter((item: any) => {
+      const pelIds = item.pel_ids && item.pel_ids.length > 0 
+        ? item.pel_ids 
+        : item.id_producto_en_liquidacion ? [item.id_producto_en_liquidacion] : [];
+      return pelIds.some((id: number) => selectedProductos.includes(id));
+    });
+
+    const totalCantidad = productosSeleccionados.reduce((sum: number, item: any) => sum + (item.cantidad || 0), 0);
+    const totalMonto = productosSeleccionados.reduce((sum: number, item: any) => 
+      sum + (Number(item.precio_venta) * (item.cantidad || 0)), 0);
+
+    return {
+      cantidadProductos: productosSeleccionados.length,
+      totalCantidad,
+      totalMonto,
+      productos: productosSeleccionados.map((item: any) => ({
+        nombre: item.producto_nombre || `Producto ${item.id_producto}`,
+        cantidad: item.cantidad || 0,
+        importe: Number(item.precio_venta) * (item.cantidad || 0)
+      }))
+    };
+  };
+
   const handleSave = async () => {
-    if (!filtroCliente) {
+if (!filtroCliente) {
       toast.error('Seleccione un proveedor');
       return;
     }
@@ -290,6 +329,29 @@ export function CrearLiquidacionPage() {
 
     setIsLoading(true);
     try {
+      // Validar existencias antes de crear
+      const productosValidar = itemsAnexo
+        .filter((item: any) => 
+          selectedProductos.includes(item.id_producto_en_liquidacion) ||
+          (item.pel_ids && item.pel_ids.some((id: number) => selectedProductos.includes(id)))
+        )
+        .map((item: any) => ({
+          id_producto: item.id_producto,
+          cantidad: item.cantidad
+        }));
+
+      if (productosValidar.length > 0) {
+        const validacion = await existenciaService.validarMultiple(productosValidar);
+        if (!validacion.valido) {
+          const erroresMsg = validacion.errores
+            .map((e: any) => `• ${e.mensaje}`)
+            .join('\n');
+          toast.error(`Stock insuficiente:\n${erroresMsg}`);
+          setIsLoading(false);
+          return;
+        }
+      }
+
       const dataToSend = {
         ...formData,
         id_cliente: filtroCliente,
@@ -297,12 +359,12 @@ export function CrearLiquidacionPage() {
       };
       
       await liquidacionService.createLiquidacion(dataToSend);
-      toast.success('Liquidación creada correctamente');
+      toast.success('Liquidación créée correctamente');
       navigate('/compra/liquidaciones');
     } catch (error: any) {
       console.error('Error:', error);
       toast.error(error?.response?.data?.detail || 'Error al crear liquidación');
-    } finally {
+} finally {
       setIsLoading(false);
     }
   };
@@ -348,15 +410,16 @@ export function CrearLiquidacionPage() {
           <div className="grid gap-6 md:grid-cols-2">
             <div>
               <Label>Proveedor *</Label>
-              {filtroCliente ? (
-                <div className="w-full p-2 border rounded bg-gray-50 text-gray-700 font-medium">
-                  {clientes.find((c: Cliente) => c.id_cliente === filtroCliente)?.nombre || 'Proveedor'}
-                </div>
-              ) : (
+              <div className="relative">
                 <select 
-                  className="w-full p-2 border rounded"
+                  className="w-full p-2 border rounded pr-10"
                   value={filtroCliente || ''}
-                  onChange={(e: any) => handleClienteChange(Number(e.target.value))}
+                  onChange={(e: any) => {
+                    const value = Number(e.target.value);
+                    if (value) {
+                      handleClienteChange(value);
+                    }
+                  }}
                 >
                   <option value="">Seleccionar proveedor</option>
                   {clientes.map((cliente: Cliente) => (
@@ -365,7 +428,17 @@ export function CrearLiquidacionPage() {
                     </option>
                   ))}
                 </select>
-              )}
+                {filtroCliente && (
+                  <button
+                    type="button"
+                    onClick={handleChangeProveedorClick}
+                    className="absolute right-8 top-1/2 -translate-y-1/2 p-1 text-gray-500 hover:text-red-500 transition-colors"
+                    title="Cambiar proveedor"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
             </div>
             
             <div>
@@ -486,6 +559,7 @@ export function CrearLiquidacionPage() {
                             <tr>
                               <th className="px-3 py-2 text-left w-10"></th>
                               <th className="px-3 py-2 text-left">Producto</th>
+                              <th className="px-3 py-2 text-right">Por Liquidar</th>
                               <th className="px-3 py-2 text-right">Precio</th>
                               <th className="px-3 py-2 text-right">Total</th>
                               <th className="px-3 py-2 text-center">Estado</th>
@@ -494,7 +568,7 @@ export function CrearLiquidacionPage() {
                           <tbody className="divide-y">
                             {grupo.productos.filter((item: any) => item.estado !== 'LIQUIDADO').map((item: any) => {
                               const isALiquidar = item.estado === 'A LIQUIDAR';
-                              const isConsignacion = item.estado === 'EN CONSIGNACION';
+                              const isConsignacion = item.estado === 'EN_CONSIGNACION';
                               const pelIds = item.pel_ids && item.pel_ids.length > 0 ? item.pel_ids : (item.id_producto_en_liquidacion ? [item.id_producto_en_liquidacion] : []);
                               const isSelected = pelIds.length > 0 && pelIds.some((id: number) => selectedProductos.includes(id));
                               const toggleSelect = () => {
@@ -515,6 +589,7 @@ export function CrearLiquidacionPage() {
                                     />
                                   </td>
                                   <td className="px-3 py-2">{item.producto_nombre || `Producto ${item.id_producto}`}</td>
+                                  <td className="px-3 py-2 text-right font-medium text-blue-600">{item.por_liquidar}</td>
                                   <td className="px-3 py-2 text-right">${Number(item.precio_venta).toFixed(2)}</td>
                                   <td className="px-3 py-2 text-right font-medium">
                                     ${(item.precio_venta * item.cantidad).toFixed(2)}
@@ -538,6 +613,46 @@ export function CrearLiquidacionPage() {
               )}
             </div>
           )}
+
+          {selectedProductos.length > 0 && (() => {
+            const resumen = getResumenProductos();
+            return (
+              <div className="mt-6 border rounded-lg bg-gray-50 p-4">
+                <h3 className="font-semibold text-gray-700 mb-3">Resumen de Liquidación</h3>
+                <div className="flex gap-4 mb-4 text-sm">
+                  <span><strong>{resumen.cantidadProductos}</strong> productos</span>
+                  <span>|</span>
+                  <span>Cantidad a liquidar: <strong>{resumen.totalCantidad}</strong> unidades</span>
+                  <span>|</span>
+                  <span>Total: <strong className="text-green-600">${resumen.totalMonto.toFixed(2)}</strong></span>
+                </div>
+                
+                <table className="min-w-full text-sm">
+                  <thead className="bg-gray-100">
+                    <tr>
+                      <th className="px-3 py-2 text-left">Producto</th>
+                      <th className="px-3 py-2 text-right">Cantidad</th>
+                      <th className="px-3 py-2 text-right">Importe</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    {resumen.productos.map((p, i) => (
+                      <tr key={i}>
+                        <td className="px-3 py-2">{p.nombre}</td>
+                        <td className="px-3 py-2 text-right">{p.cantidad}</td>
+                        <td className="px-3 py-2 text-right">${p.importe.toFixed(2)}</td>
+                      </tr>
+                    ))}
+                    <tr className="font-semibold bg-gray-50">
+                      <td className="px-3 py-2">TOTAL</td>
+                      <td className="px-3 py-2 text-right">{resumen.totalCantidad}</td>
+                      <td className="px-3 py-2 text-right">${resumen.totalMonto.toFixed(2)}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            );
+          })()}
 
           <div className="grid gap-4 md:grid-cols-5 mt-6">
             <div>
