@@ -88,10 +88,8 @@ class ClienteBase(SQLModel):
     model_config = {"populate_by_name": True}
 
     numero_cliente: Optional[str] = None
-    cedula_rif: Optional[str] = None
     nombre: Optional[str] = None
     tipo_persona: str = "NATURAL"
-    cedula_rif: Optional[str] = None
     telefono: Optional[str] = None
     email: Optional[str] = None
     fax: Optional[str] = None
