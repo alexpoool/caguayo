@@ -113,7 +113,7 @@ export function RealizadoresPage() {
         clientesService.getClientes(0, 10000, 'TCP'),
         clientesService.getClientes(0, 10000, 'JURIDICA')
       ]);
-      setTodosClientes(todosClientesRes);
+setTodosClientes(todosClientesRes);
       setPersonasNaturales(personasRes);
       setPersonasTCP(tcpRes as unknown as ClienteTCP[]);
       setPersonasJuridicas(juridicasRes as unknown as ClienteJuridica[]);
@@ -438,7 +438,12 @@ Nuevo Realizador
                   return (
                     <TableRow key={`${item.id_etapa}-${item.id_persona}`} className="hover:bg-gray-50/50 transition-colors cursor-pointer" onClick={() => setDetailModal({ isOpen: true, item })}>
                       <TableCell>
-                        <span className="font-medium text-gray-900">{getClienteNombre(persona)}</span>                      </TableCell>
+<<<<<<< HEAD
+                        <span className="font-medium text-gray-900">{getClienteNombre(persona)}</span>
+=======
+                        <span className="font-medium text-gray-900">{(persona as ClienteNatural | ClienteTCP)?.nombre || 'N/A'}</span>
+>>>>>>> Rama_Documentos
+                      </TableCell>
                       <TableCell>
                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                           getTipoPersona(item.id_persona) === 'natural' ? 'bg-blue-100 text-blue-800' :

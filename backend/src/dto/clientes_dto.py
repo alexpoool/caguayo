@@ -88,6 +88,7 @@ class ClienteBase(SQLModel):
     model_config = {"populate_by_name": True}
 
     numero_cliente: Optional[str] = None
+    cedula_rif: Optional[str] = None
     nombre: Optional[str] = None
     tipo_persona: str = "NATURAL"
     telefono: Optional[str] = None
@@ -115,15 +116,12 @@ class ClienteRead(ClienteBase):
     model_config = {"populate_by_name": True}
 
     id_cliente: int = 0
-<<<<<<< HEAD
     provincia: Optional[ProvinciaInfo] = None
     municipio: Optional[MunicipioInfo] = None
-=======
     cuentas: List[CuentaRead] = []
     cliente_natural: Optional[ClienteNaturalRead] = None
     cliente_juridica: Optional[ClienteJuridicaRead] = None
     cliente_tcp: Optional[ClienteTCPRead] = None
->>>>>>> Rama_Documentos
 
 
 class ClienteReadWithVentas(ClienteRead):
