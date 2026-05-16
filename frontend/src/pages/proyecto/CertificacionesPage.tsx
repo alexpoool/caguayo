@@ -52,14 +52,6 @@ export function CertificacionesPage() {
     loadData();
   }, []);
 
-  useEffect(() => {
-    const precio = Number(formData.precio_servicio) || 0;
-    const gasto = Number(formData.gasto_caguayo) || 10;
-    const gastoLimitado = Math.min(gasto, 100);
-    const aCobrar = precio + (precio * gastoLimitado / 100);
-    setFormData(prev => ({ ...prev, gasto_caguayo: gastoLimitado, a_cobrar: aCobrar }));
-  }, [formData.precio_servicio, formData.gasto_caguayo]);
-
   const loadData = async () => {
     try {
       const [certRes, etapasRes, solicRes] = await Promise.all([
@@ -87,12 +79,9 @@ export function CertificacionesPage() {
       obra: '',
       objeto_obra: '',
       actividad: '',
-      descripcion: '',
-      observaciones: '',
       fecha: new Date().toISOString().split('T')[0],
-      precio_servicio: 0,
-      gasto_caguayo: 10,
-      a_cobrar: 0
+      a_cobrar: 0,
+      impuesto_venta_onat: 0
     });
     setEditingId(null);
   };
@@ -111,12 +100,9 @@ export function CertificacionesPage() {
       obra: item.obra || '',
       objeto_obra: item.objeto_obra || '',
       actividad: item.actividad || '',
-      descripcion: item.descripcion || '',
-      observaciones: item.observaciones || '',
       fecha: item.fecha || '',
-      precio_servicio: item.precio_servicio,
-      gasto_caguayo: item.gasto_caguayo,
-      a_cobrar: item.a_cobrar
+      a_cobrar: item.a_cobrar,
+      impuesto_venta_onat: item.impuesto_venta_onat || 0
     });
     setEditingId(item.id_certificacion);
     setView('form');
@@ -132,12 +118,9 @@ export function CertificacionesPage() {
         obra: formData.obra || undefined,
         objeto_obra: formData.objeto_obra || undefined,
         actividad: formData.actividad || undefined,
-        descripcion: formData.descripcion || undefined,
-        observaciones: formData.observaciones || undefined,
         fecha: formData.fecha || undefined,
-        precio_servicio: Number(formData.precio_servicio) || 0,
-        gasto_caguayo: Number(formData.gasto_caguayo) || 0,
-        a_cobrar: Number(formData.a_cobrar) || 0
+        a_cobrar: Number(formData.a_cobrar) || 0,
+        impuesto_venta_onat: Number(formData.impuesto_venta_onat) || 0
       };
 
       if (editingId) {
@@ -219,31 +202,35 @@ export function CertificacionesPage() {
                 <Input value={formData.nombre || ''} onChange={e => setFormData({...formData, nombre: e.target.value})} placeholder="Nombre de la certificación" />
               </div>
 
-              <div>
-                <Label>Etapa *</Label>
-                <select 
-                  className="w-full px-3 py-2 border rounded-lg"
-                  value={formData.id_etapa || ''}
-                  onChange={e => setFormData({...formData, id_etapa: e.target.value})}
-                >
-                  <option value="">Seleccionar etapa</option>
-                  {etapas.map(e => (
-                    <option key={e.id_etapa} value={e.id_etapa}>{getEtapaNombre(e.id_etapa)}</option>
-                  ))}
-                </select>
-              </div>
+              {etapaIdParam ? (
+                <input type="hidden" name="id_etapa" value={etapaIdParam} />
+              ) : (
+                <div className="md:col-span-2">
+                  <Label>Etapa *</Label>
+                  <select 
+                    className="w-full px-3 py-2 border rounded-lg"
+                    value={formData.id_etapa || ''}
+                    onChange={e => setFormData({...formData, id_etapa: e.target.value})}
+                  >
+                    <option value="">Seleccionar etapa</option>
+                    {etapas.map(e => (
+                      <option key={e.id_etapa} value={e.id_etapa}>{getEtapaNombre(e.id_etapa)}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
 
-              <div>
+              <div className="md:col-span-2">
                 <Label>Fecha</Label>
                 <Input type="date" value={formData.fecha || ''} onChange={e => setFormData({...formData, fecha: e.target.value})} />
               </div>
 
-              <div>
+              <div className="md:col-span-2">
                 <Label>Constructor</Label>
                 <Input value={formData.nombre_constructor || ''} onChange={e => setFormData({...formData, nombre_constructor: e.target.value})} placeholder="Constructor" />
               </div>
 
-              <div>
+              <div className="md:col-span-2">
                 <Label>Inversionista</Label>
                 <Input value={formData.inversionista || ''} onChange={e => setFormData({...formData, inversionista: e.target.value})} placeholder="Inversionista" />
               </div>
@@ -269,41 +256,14 @@ export function CertificacionesPage() {
                 <Input value={formData.actividad || ''} onChange={e => setFormData({...formData, actividad: e.target.value})} placeholder="Actividad" />
               </div>
 
-              <div className="md:col-span-2">
-                <Label>Descripción</Label>
-                <textarea 
-                  className="w-full px-3 py-2 border rounded-lg"
-                  rows={2}
-                  value={formData.descripcion || ''}
-                  onChange={e => setFormData({...formData, descripcion: e.target.value})}
-                  placeholder="Descripción de la certificación"
-                />
-              </div>
-
-              <div className="md:col-span-2">
-                <Label>Observaciones</Label>
-                <textarea 
-                  className="w-full px-3 py-2 border rounded-lg"
-                  rows={2}
-                  value={formData.observaciones || ''}
-                  onChange={e => setFormData({...formData, observaciones: e.target.value})}
-                  placeholder="Observaciones adicionales"
-                />
+              <div>
+                <Label>A Cobrar ($)</Label>
+                <Input type="number" step="0.01" placeholder="0.00" value={formData.a_cobrar || ''} onChange={e => setFormData({...formData, a_cobrar: e.target.value})} />
               </div>
 
               <div>
-                <Label>Precio Servicio ($)</Label>
-                <Input type="number" placeholder="0.00" value={formData.precio_servicio || ''} onChange={e => setFormData({...formData, precio_servicio: e.target.value})} />
-              </div>
-
-              <div>
-                <Label>Gasto Caguayo (%)</Label>
-                <Input type="number" min={0} max={100} placeholder="10" value={formData.gasto_caguayo || ''} onChange={e => setFormData({...formData, gasto_caguayo: e.target.value})} />
-              </div>
-
-              <div className="bg-teal-50 p-4 rounded-lg border border-teal-200">
-                <Label className="text-teal-700 font-medium">A Cobrar ($)</Label>
-                <p className="text-2xl font-bold text-teal-800 mt-1">${Number(formData.a_cobrar || 0).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                <Label>Impuesto Venta ONAT ($)</Label>
+                <Input type="number" step="0.01" placeholder="0.00" value={formData.impuesto_venta_onat || ''} onChange={e => setFormData({...formData, impuesto_venta_onat: e.target.value})} />
               </div>
             </div>
 
@@ -370,7 +330,6 @@ export function CertificacionesPage() {
               <TableHead>Inversionista</TableHead>
               <TableHead>Obra</TableHead>
               <TableHead>Fecha</TableHead>
-              <TableHead className="text-right">Precio Servicio</TableHead>
               <TableHead className="text-right">A Cobrar</TableHead>
               <TableHead className="w-24">Acciones</TableHead>
             </TableRow>
@@ -378,7 +337,7 @@ export function CertificacionesPage() {
           <TableBody>
             {filteredCertificaciones.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={8} className="text-center py-8 text-gray-500">
+                <TableCell colSpan={7} className="text-center py-8 text-gray-500">
                   No hay certificaciones registradas
                 </TableCell>
               </TableRow>
@@ -390,7 +349,6 @@ export function CertificacionesPage() {
                   <TableCell>{cert.inversionista || '-'}</TableCell>
                   <TableCell>{cert.obra || '-'}</TableCell>
                   <TableCell>{cert.fecha ? new Date(cert.fecha).toLocaleDateString() : '-'}</TableCell>
-                  <TableCell className="text-right">${Number(cert.precio_servicio).toFixed(2)}</TableCell>
                   <TableCell className="text-right">${Number(cert.a_cobrar).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
                   <TableCell>
                     <div className="flex gap-1">
@@ -485,16 +443,12 @@ export function CertificacionesPage() {
                   <p className="text-xs text-amber-600 uppercase tracking-wider mb-1">Fecha</p>
                   <p className="font-bold text-gray-900 text-lg">{detailModal.item.fecha ? new Date(detailModal.item.fecha).toLocaleDateString() : 'N/A'}</p>
                 </div>
-                <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-4 rounded-xl border border-green-100">
-                  <p className="text-xs text-green-600 uppercase tracking-wider mb-1">Gasto Caguayo</p>
-                  <p className="font-bold text-gray-900 text-lg">{detailModal.item.gasto_caguayo}%</p>
+                <div className="bg-gradient-to-br from-indigo-50 to-blue-50 p-4 rounded-xl border border-indigo-100">
+                  <p className="text-xs text-indigo-600 uppercase tracking-wider mb-1">Impuesto Venta ONAT</p>
+                  <p className="font-bold text-gray-900 text-lg">${Number(detailModal.item.impuesto_venta_onat || 0).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
-                <div className="bg-gradient-to-br from-purple-50 to-pink-50 p-4 rounded-xl border border-purple-100">
-                  <p className="text-xs text-purple-600 uppercase tracking-wider mb-1">Precio Servicio</p>
-                  <p className="font-bold text-purple-900 text-xl">${Number(detailModal.item.precio_servicio).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
-                </div>
                 <div className="bg-gradient-to-br from-teal-50 to-cyan-50 p-4 rounded-xl border border-teal-100">
                   <p className="text-xs text-teal-600 uppercase tracking-wider mb-1">A Cobrar</p>
                   <p className="font-bold text-teal-900 text-xl">${Number(detailModal.item.a_cobrar).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>

@@ -118,6 +118,7 @@ class TareaEtapa(SQLModel, table=True):
     precio_ajustado: Decimal = Field(default=Decimal("0.00"))
     id_moneda: Optional[int] = Field(default=None, foreign_key="moneda.id_moneda")
     observaciones_ajustadas: Optional[str] = None
+    facturada: bool = Field(default=False)
 
     etapa: "Etapa" = Relationship(back_populates="tareas")
 
@@ -142,7 +143,7 @@ class PersonaEtapa(SQLModel, table=True):
     cobro: Decimal = Field(default=Decimal("0.00"))
     id_moneda: Optional[int] = Field(default=None, foreign_key="moneda.id_moneda")
     liquidada: bool = Field(default=False)
-    pago_completado: bool = Field(default=False)
+    por_cobrar: Decimal = Field(default=Decimal("0.00"))
 
     etapa: "Etapa" = Relationship(back_populates="personas")
 
@@ -156,22 +157,25 @@ class FacturaServicio(SQLModel, table=True):
         sa_column_kwargs={"autoincrement": True}
     )
     id_etapa: Optional[int] = Field(default=None, foreign_key="etapas.id_etapa")
+    id_certificacion: Optional[int] = Field(default=None, foreign_key="certificacion.id_certificacion")
     alcance: Optional[str] = Field(default=None, max_length=20)
     codigo_factura: Optional[str] = Field(default=None, max_length=50)
     id_moneda: Optional[int] = Field(default=None, foreign_key="moneda.id_moneda")
     fecha: Optional[date] = None
     descripcion: Optional[str] = None
-    cantidad: Decimal = Field(default=Decimal("0.00"))
-    precio: Decimal = Field(default=Decimal("0.00"))
-    monto: Decimal = Field(default=Decimal("0.00"))
+    importe: Decimal = Field(default=Decimal("0.00"))
+    pagado: Decimal = Field(default=Decimal("0.00"))
     observaciones: Optional[str] = None
     cuenta_factura: Optional[str] = Field(default=None, max_length=50)
     id_usuario: Optional[int] = None
-    liquidado: Decimal = Field(default=Decimal("0.00"))
 
     etapa: "Etapa" = Relationship(back_populates="facturas")
+    certificacion: Optional["Certificacion"] = Relationship(back_populates="facturas")
     pagos: List["PagoFacturaServicio"] = Relationship(
         back_populates="factura", sa_relationship_kwargs={"lazy": "selectin"}
+    )
+    items: List["ItemFacturaServicio"] = Relationship(
+        sa_relationship_kwargs={"foreign_keys": "[ItemFacturaServicio.id_factura_servicio]", "lazy": "selectin"}
     )
 
 
@@ -187,10 +191,10 @@ class PagoFacturaServicio(SQLModel, table=True):
         default=None, foreign_key="factura_servicio.id_factura_servicio"
     )
     monto: Decimal = Field(default=Decimal("0.00"))
+    monto_disponible: Decimal = Field(default=Decimal("0.00"))
     id_moneda: Optional[int] = Field(default=None, foreign_key="moneda.id_moneda")
     fecha: Optional[date] = None
     doc_traza: Optional[str] = Field(default=None, max_length=100)
-    doc_factura: Optional[str] = Field(default=None, max_length=100)
 
     factura: "FacturaServicio" = Relationship(back_populates="pagos")
     liquidaciones: List["PersonaLiquidacion"] = Relationship(
@@ -257,8 +261,42 @@ class Certificacion(SQLModel, table=True):
     descripcion: Optional[str] = None
     observaciones: Optional[str] = None
     fecha: Optional[date] = None
-    precio_servicio: Decimal = Field(default=Decimal("0.00"))
-    gasto_caguayo: int = Field(default=0)
     a_cobrar: Decimal = Field(default=Decimal("0.00"))
+    impuesto_venta_onat: Decimal = Field(default=Decimal("0.00"))
+    facturado: bool = Field(default=False)
 
     etapa: "Etapa" = Relationship(back_populates="certificaciones")
+    facturas: List["FacturaServicio"] = Relationship(
+        sa_relationship_kwargs={"foreign_keys": "[FacturaServicio.id_certificacion]", "lazy": "selectin"}
+    )
+
+
+class ItemFacturaServicio(SQLModel, table=True):
+    __tablename__ = "items_factura_servicio"
+
+    id_item_factura_servicio: Optional[int] = Field(
+        default=None,
+        primary_key=True,
+        sa_column_kwargs={"autoincrement": True}
+    )
+    id_factura_servicio: int = Field(
+        sa_column=Column(
+            ForeignKey("factura_servicio.id_factura_servicio", ondelete="CASCADE"),
+            nullable=False
+        )
+    )
+    id_tarea_etapa: int = Field(
+        sa_column=Column(
+            ForeignKey("tareas_etapa.id_tarea_etapa", ondelete="CASCADE"),
+            nullable=False
+        )
+    )
+    codigo_extendido: Optional[str] = Field(default=None, max_length=100)
+    concepto: Optional[str] = None
+    unidad_medida: Optional[str] = Field(default=None, max_length=20)
+    cantidad: Decimal = Field(default=Decimal("0.00"))
+    precio: Decimal = Field(default=Decimal("0.00"))
+
+    factura: "FacturaServicio" = Relationship(
+        sa_relationship_kwargs={"foreign_keys": "[ItemFacturaServicio.id_factura_servicio]"}
+    )

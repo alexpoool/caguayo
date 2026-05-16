@@ -2,6 +2,7 @@ from datetime import datetime, date
 from decimal import Decimal
 from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlmodel import select
+from sqlalchemy import text
 from typing import List, Optional
 from src.models.servicio import (
     Servicio,
@@ -13,6 +14,7 @@ from src.models.servicio import (
     PagoFacturaServicio,
     PersonaLiquidacion,
     Certificacion,
+    ItemFacturaServicio,
 )
 from src.dto.servicio_dto import (
     ServicioCreate,
@@ -46,6 +48,9 @@ from src.dto.servicio_dto import (
     CertificacionCreate,
     CertificacionRead,
     CertificacionUpdate,
+    ItemFacturaServicioCreate,
+    ItemFacturaServicioRead,
+    FacturaServicioWithItems,
 )
 from src.repository.servicio_repo import (
     servicio_repo,
@@ -56,6 +61,7 @@ from src.repository.servicio_repo import (
     factura_servicio_repo,
     pago_factura_servicio_repo,
     persona_liquidacion_repo,
+    item_factura_servicio_repo,
 )
 
 
@@ -242,6 +248,8 @@ class TareaEtapaService:
 class PersonaEtapaService:
     @staticmethod
     async def create(db: AsyncSession, data: PersonaEtapaCreate) -> PersonaEtapaRead:
+        if data.por_cobrar is None or data.por_cobrar == Decimal("0"):
+            data.por_cobrar = data.cobro
         pe = await persona_etapa_repo.create(db, obj_in=data)
         return PersonaEtapaRead(**pe.model_dump())
 
@@ -261,6 +269,33 @@ class FacturaServicioService:
     async def create(
         db: AsyncSession, data: FacturaServicioCreate
     ) -> FacturaServicioRead:
+        etapa = None
+        if data.id_etapa:
+            etapa = await etapa_repo.get(db, data.id_etapa)
+            if etapa and etapa.tipo_etapa == "CERTIFICACIONES":
+                stmt = select(Certificacion).where(Certificacion.id_etapa == etapa.id_etapa)
+                result = await db.exec(stmt)
+                existing_certs = result.all()
+                if not existing_certs:
+                    raise Exception("No hay certificaciones registradas para esta etapa")
+                if not data.id_certificacion:
+                    raise Exception("Para facturas de etapas de certificaciones debe seleccionar una certificación")
+            elif etapa:
+                tareas = await tarea_etapa_repo.get_by_etapa(db, etapa.id_etapa)
+                if not tareas:
+                    raise Exception("No hay tareas registradas para esta etapa")
+
+        if data.id_certificacion:
+            stmt = select(Certificacion).where(Certificacion.id_certificacion == data.id_certificacion)
+            result = await db.exec(stmt)
+            certificacion = result.first()
+
+            if not certificacion:
+                raise Exception("La certificación seleccionada no existe")
+
+            if certificacion.facturado:
+                raise Exception("La certificación ya está facturada")
+
         if not data.codigo_factura:
             year = datetime.now().year
             last = await factura_servicio_repo.get_last_by_year(db, year)
@@ -274,9 +309,65 @@ class FacturaServicioService:
                 new_num = 1
             data.codigo_factura = f"FAC-{year}-{new_num:04d}"
 
-        data.monto = (data.cantidad or Decimal("0")) * (data.precio or Decimal("0"))
+        tareas_seleccionadas = data.tareas_seleccionadas or []
+        data.tareas_seleccionadas = None
+        tarea_modifiers = data.tarea_modifiers or {}
+        data.tarea_modifiers = None
+
+        if data.id_certificacion:
+            data.importe = certificacion.a_cobrar
+        else:
+            importe_total = Decimal("0")
+            if tareas_seleccionadas:
+                for tarea_id in tareas_seleccionadas:
+                    tarea = await tarea_etapa_repo.get(db, tarea_id)
+                    if tarea:
+                        modifier = tarea_modifiers.get(str(tarea_id))
+                        if modifier:
+                            cant = Decimal(str(modifier.get("cantidad", 0)))
+                            prec = Decimal(str(modifier.get("precio", 0)))
+                        else:
+                            cant = tarea.cantidad or Decimal("0")
+                            prec = tarea.precio_ajustado or Decimal("0")
+                        importe_total += cant * prec
+            data.importe = importe_total
+
+        if etapa and data.importe > etapa.valor:
+            raise Exception(f"El importe de la factura ({data.importe:.2f}) no puede ser mayor al valor de la etapa ({etapa.valor:.2f})")
+
+        data.pagado = Decimal("0")
 
         f = await factura_servicio_repo.create(db, obj_in=data)
+        
+        await db.commit()
+        
+        result = await db.exec(text("SELECT MAX(id_factura_servicio) FROM factura_servicio"))
+        f_id = result.scalar_one_or_none()
+        
+        if f_id is None:
+            raise Exception("No se pudo obtener el ID de la factura creada")
+        
+        f = await factura_servicio_repo.get(db, f_id)
+
+        if tareas_seleccionadas:
+            for tarea_id in tareas_seleccionadas:
+                tarea = await tarea_etapa_repo.get(db, tarea_id)
+                if tarea:
+                    item_data = ItemFacturaServicioCreate(
+                        id_factura_servicio=f_id,
+                        id_tarea_etapa=tarea_id,
+                        codigo_extendido=tarea.codigo_extendido,
+                        concepto=tarea.concepto_modificado,
+                        unidad_medida=tarea.unidad_medida,
+                        cantidad=tarea.cantidad or Decimal("0"),
+                        precio=tarea.precio_ajustado or Decimal("0")
+                    )
+                    await item_factura_servicio_repo.create(db, obj_in=item_data)
+
+                    tarea.facturada = True
+
+            await db.commit()
+
         return FacturaServicioRead(**f.model_dump())
 
     @staticmethod
@@ -306,20 +397,94 @@ class FacturaServicioService:
         if not f:
             return None
 
-        if data.cantidad is not None and data.precio is not None:
-            data.monto = data.cantidad * data.precio
-        elif data.cantidad is not None and f.precio:
-            data.monto = data.cantidad * f.precio
-        elif data.precio is not None and f.cantidad:
-            data.monto = f.cantidad * data.precio
+        tareas_seleccionadas = data.tareas_seleccionadas
+        data.tareas_seleccionadas = None
+        tarea_modifiers = data.tarea_modifiers or {}
+        data.tarea_modifiers = None
+
+        if tareas_seleccionadas is not None:
+            existing_items = await item_factura_servicio_repo.get_by_factura(db, id)
+            for item in existing_items:
+                tarea = await tarea_etapa_repo.get(db, item.id_tarea_etapa)
+                if tarea:
+                    tarea.facturada = False
+                    await db.commit()
+                    await db.refresh(tarea)
+                await db.delete(item)
+            await db.commit()
+
+            importe_total = Decimal("0")
+            for tarea_id in tareas_seleccionadas:
+                tarea = await tarea_etapa_repo.get(db, tarea_id)
+                if tarea:
+                    modifier = tarea_modifiers.get(str(tarea_id))
+                    if modifier:
+                        cant = Decimal(str(modifier.get("cantidad", 0)))
+                        prec = Decimal(str(modifier.get("precio", 0)))
+                    else:
+                        cant = tarea.cantidad or Decimal("0")
+                        prec = tarea.precio_ajustado or Decimal("0")
+                    item_data = ItemFacturaServicioCreate(
+                        id_factura_servicio=id,
+                        id_tarea_etapa=tarea_id,
+                        codigo_extendido=tarea.codigo_extendido,
+                        concepto=tarea.concepto_modificado,
+                        unidad_medida=tarea.unidad_medida,
+                        cantidad=cant,
+                        precio=prec
+                    )
+                    await item_factura_servicio_repo.create(db, obj_in=item_data)
+
+                    tarea.facturada = True
+                    await db.commit()
+                    await db.refresh(tarea)
+
+                    importe_total += cant * prec
+
+            data.importe = importe_total
+
+            if f.id_etapa:
+                etapa = await etapa_repo.get(db, f.id_etapa)
+                if etapa and data.importe > etapa.valor:
+                    raise Exception(f"El importe de la factura ({data.importe:.2f}) no puede ser mayor al valor de la etapa ({etapa.valor:.2f})")
 
         updated = await factura_servicio_repo.update(db, db_obj=f, obj_in=data)
         return FacturaServicioRead(**updated.model_dump())
 
     @staticmethod
     async def delete(db: AsyncSession, id: int) -> bool:
+        existing_items = await item_factura_servicio_repo.get_by_factura(db, id)
+        for item in existing_items:
+            tarea = await tarea_etapa_repo.get(db, item.id_tarea_etapa)
+            if tarea:
+                tarea.facturada = False
+                await db.commit()
+                await db.refresh(tarea)
+            await db.delete(item)
+        await db.commit()
+
         obj = await factura_servicio_repo.remove(db, id=id)
         return obj is not None
+
+    @staticmethod
+    async def get_items(
+        db: AsyncSession, id_factura: int
+    ) -> List[ItemFacturaServicioRead]:
+        items = await item_factura_servicio_repo.get_by_factura(db, id_factura)
+        return [ItemFacturaServicioRead(**i.model_dump()) for i in items]
+
+    @staticmethod
+    async def get_with_items(
+        db: AsyncSession, id: int
+    ) -> Optional[FacturaServicioWithItems]:
+        f = await factura_servicio_repo.get(db, id)
+        if not f:
+            return None
+        items = await item_factura_servicio_repo.get_by_factura(db, id)
+        return FacturaServicioWithItems(
+            **f.model_dump(),
+            items=[ItemFacturaServicioRead(**i.model_dump()) for i in items]
+        )
 
     @staticmethod
     async def validar_pago_etapa(
@@ -331,24 +496,24 @@ class FacturaServicioService:
             return FacturaPagoValidacion(
                 id_factura_servicio=None,
                 codigo_factura=None,
-                monto=Decimal("0.00"),
-                monto_pagado=Decimal("0.00"),
+                importe=Decimal("0.00"),
+                pagado=Decimal("0.00"),
                 saldo=Decimal("0.00"),
                 esta_pagada=False,
                 pagos=[],
             )
 
-        monto_pagado = sum((pago.monto or Decimal("0")) for pago in factura.pagos)
-        monto = factura.monto or Decimal("0")
-        saldo = monto - monto_pagado
+        pagado = sum((pago.monto or Decimal("0")) for pago in factura.pagos)
+        importe = factura.importe or Decimal("0")
+        saldo = importe - pagado
 
         pagos_detalle = [
             PagoDetalleRead(
                 id_pago_factura_servicio=p.id_pago_factura_servicio,
                 monto=p.monto or Decimal("0"),
+                id_moneda=p.id_moneda,
                 fecha=p.fecha,
                 doc_traza=p.doc_traza,
-                doc_factura=p.doc_factura,
             )
             for p in factura.pagos
         ]
@@ -356,8 +521,8 @@ class FacturaServicioService:
         return FacturaPagoValidacion(
             id_factura_servicio=factura.id_factura_servicio,
             codigo_factura=factura.codigo_factura,
-            monto=monto,
-            monto_pagado=monto_pagado,
+            importe=importe,
+            pagado=pagado,
             saldo=saldo,
             esta_pagada=saldo <= 0,
             pagos=pagos_detalle,
@@ -369,7 +534,27 @@ class PagoFacturaServicioService:
     async def create(
         db: AsyncSession, data: PagoFacturaServicioCreate
     ) -> PagoFacturaServicioRead:
+        data.monto_disponible = data.monto
         p = await pago_factura_servicio_repo.create(db, obj_in=data)
+        
+        if data.id_factura_servicio:
+            await factura_servicio_repo.actualizar_pagado(
+                db, 
+                data.id_factura_servicio, 
+                data.monto or Decimal("0")
+            )
+            
+            factura = await factura_servicio_repo.get(db, data.id_factura_servicio)
+            if factura and factura.id_certificacion and factura.pagado >= factura.importe:
+                from src.models.servicio import Certificacion
+                stmt = select(Certificacion).where(Certificacion.id_certificacion == factura.id_certificacion)
+                result = await db.exec(stmt)
+                certificacion = result.first()
+                if certificacion:
+                    certificacion.facturado = True
+                    await db.commit()
+        
+        await db.commit()
         return PagoFacturaServicioRead(**p.model_dump())
 
     @staticmethod
@@ -381,7 +566,16 @@ class PagoFacturaServicioService:
 
     @staticmethod
     async def delete(db: AsyncSession, id: int) -> bool:
+        pago = await pago_factura_servicio_repo.get(db, id)
+        if pago and pago.id_factura_servicio:
+            await factura_servicio_repo.actualizar_pagado(
+                db,
+                pago.id_factura_servicio,
+                -(pago.monto or Decimal("0"))
+            )
+        
         obj = await pago_factura_servicio_repo.remove(db, id=id)
+        await db.commit()
         return obj is not None
 
 
@@ -403,9 +597,13 @@ class PersonaLiquidacionService:
 
         importe = Decimal("0")
         
-        if data.id_pago:
+        if data.importe is not None:
+            importe = Decimal(str(data.importe))
+        elif data.id_pago:
             pago = await pago_factura_servicio_repo.get(db, data.id_pago)
-            if pago and pago.monto:
+            if pago and pago.monto_disponible:
+                importe = Decimal(str(pago.monto_disponible))
+            elif pago and pago.monto:
                 importe = Decimal(str(pago.monto))
         else:
             statement = select(PersonaEtapa).where(
@@ -466,6 +664,14 @@ class PersonaLiquidacionService:
             liquidacion_data.numero = f"LIQ-{year}-{new_num:04d}"
 
         l = await persona_liquidacion_repo.create(db, obj_in=liquidacion_data)
+
+        if data.id_pago and importe > 0:
+            pago = await pago_factura_servicio_repo.get(db, data.id_pago)
+            if pago and pago.monto_disponible:
+                pago.monto_disponible = max(Decimal("0"), pago.monto_disponible - importe)
+                db.add(pago)
+                await db.commit()
+
         return PersonaLiquidacionRead(**l.model_dump())
 
     @staticmethod
@@ -490,7 +696,10 @@ class PersonaLiquidacionService:
         if not l:
             return None
 
-        importe = l.importe or Decimal("0")
+        old_importe = l.importe or Decimal("0")
+        old_id_pago = l.id_pago
+
+        importe = Decimal(str(data.importe)) if data.importe is not None else (l.importe or Decimal("0"))
 
         porcentaje_caguayo = (
             Decimal(str(data.porcentaje_caguayo))
@@ -524,6 +733,7 @@ class PersonaLiquidacionService:
             numero=data.numero,
             id_etapa=data.id_etapa,
             id_persona=data.id_persona,
+            importe=importe,
             fecha_emision=data.fecha_emision,
             fecha_liquidacion=data.fecha_liquidacion,
             descripcion=data.descripcion,
@@ -544,6 +754,37 @@ class PersonaLiquidacionService:
         updated = await persona_liquidacion_repo.update(
             db, db_obj=l, obj_in=update_data
         )
+
+        delta = importe - old_importe
+        if delta != 0:
+            if data.id_pago and data.id_pago == old_id_pago:
+                pago_obj = await pago_factura_servicio_repo.get(db, data.id_pago)
+                if pago_obj and pago_obj.monto_disponible is not None:
+                    if delta > 0:
+                        pago_obj.monto_disponible = max(Decimal("0"), pago_obj.monto_disponible - delta)
+                    else:
+                        pago_obj.monto_disponible = min(
+                            pago_obj.monto or Decimal("0"),
+                            pago_obj.monto_disponible + abs(delta)
+                        )
+                    db.add(pago_obj)
+
+            if updated.confirmado:
+                statement = select(PersonaEtapa).where(
+                    PersonaEtapa.id_etapa == updated.id_etapa,
+                    PersonaEtapa.id_persona == updated.id_persona,
+                )
+                result = await db.exec(statement)
+                persona_etapa = result.first()
+                if persona_etapa:
+                    total_liquidado = await persona_liquidacion_repo.get_total_liquidado_by_persona_etapa(
+                        db, updated.id_etapa, updated.id_persona
+                    )
+                    persona_etapa.por_cobrar = max(Decimal("0"), (persona_etapa.cobro or Decimal("0")) - total_liquidado)
+                    db.add(persona_etapa)
+
+            await db.commit()
+
         return PersonaLiquidacionRead(**updated.model_dump())
 
     @staticmethod
@@ -621,34 +862,10 @@ class PersonaLiquidacionService:
         db.add(l)
         
         if l.id_etapa:
-            factura = await factura_servicio_repo.get_by_etapa_with_pagos(db, l.id_etapa)
-            if factura:
-                monto_pago = Decimal("0")
-                if l.id_pago:
-                    pago_obj = await pago_factura_servicio_repo.get(db, l.id_pago)
-                    if pago_obj and pago_obj.monto:
-                        monto_pago = Decimal(str(pago_obj.monto))
-                
-                liquidado_total = importe
-                if monto_pago > importe:
-                    excedente = monto_pago - importe
-                    liquidado_total = importe + excedente
-                
-                await factura_servicio_repo.actualizar_liquidado(
-                    db, factura.id_factura_servicio, liquidado_total
-                )
-            
             if persona_etapa:
                 persona_etapa.liquidada = True
-                
-                total_liquidado_confirmado = await persona_liquidacion_repo.get_total_liquidado_by_persona_etapa(
-                    db, l.id_etapa, l.id_persona
-                )
-                cobro = Decimal(str(persona_etapa.cobro or 0))
-                
-                if total_liquidado_confirmado >= cobro:
-                    persona_etapa.pago_completado = True
-                
+                nuevo_total = total_liquidado + importe
+                persona_etapa.por_cobrar = max(Decimal("0"), (persona_etapa.cobro or Decimal("0")) - nuevo_total)
                 db.add(persona_etapa)
 
         await db.commit()
@@ -671,7 +888,7 @@ class PersonaLiquidacionService:
         if not validacion_factura.id_factura_servicio:
             puede_liquidar = False
             mensaje = "No existe factura para esta etapa"
-        elif not validacion_factura.monto_pagado or validacion_factura.monto_pagado <= 0:
+        elif not validacion_factura.pagado or validacion_factura.pagado <= 0:
             puede_liquidar = False
             mensaje = "No hay pagos registrados para esta etapa"
 
@@ -711,13 +928,21 @@ class PersonaLiquidacionService:
             if persona_etapa:
                 if total_liquidado > 0:
                     persona_etapa.liquidada = True
-                    cobro = Decimal(str(persona_etapa.cobro or 0))
-                    persona_etapa.pago_completado = total_liquidado >= cobro
                 else:
                     persona_etapa.liquidada = False
-                    persona_etapa.pago_completado = False
+                persona_etapa.por_cobrar = max(Decimal("0"), (persona_etapa.cobro or Decimal("0")) - total_liquidado)
                 db.add(persona_etapa)
                 await db.commit()
+
+            if liquidacion.id_pago and liquidacion.importe:
+                pago_obj = await pago_factura_servicio_repo.get(db, liquidacion.id_pago)
+                if pago_obj and pago_obj.monto_disponible is not None:
+                    pago_obj.monto_disponible = min(
+                        pago_obj.monto or Decimal("0"),
+                        pago_obj.monto_disponible + (liquidacion.importe or Decimal("0"))
+                    )
+                    db.add(pago_obj)
+                    await db.commit()
         
         return obj is not None
 
@@ -746,6 +971,8 @@ class PersonaLiquidacionService:
             PagoDetalleRead(
                 id_pago_factura_servicio=p.id_pago_factura_servicio,
                 monto=p.monto or Decimal("0"),
+                monto_disponible=p.monto_disponible or Decimal("0"),
+                id_moneda=p.id_moneda,
                 fecha=p.fecha,
                 doc_traza=p.doc_traza,
             )

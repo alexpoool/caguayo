@@ -1014,19 +1014,18 @@ CREATE TABLE persona_etapa (
 CREATE TABLE factura_servicio (
     id_factura_servicio SERIAL PRIMARY KEY,
     id_etapa INTEGER REFERENCES etapas(id_etapa),
+    id_certificacion INTEGER REFERENCES certificacion(id_certificacion),
     alcance VARCHAR(20),
     codigo_factura VARCHAR(50),
     numero VARCHAR(50),
     id_moneda INTEGER REFERENCES moneda(id_moneda),
     fecha DATE,
     descripcion TEXT,
-    cantidad NUMERIC(12,2) DEFAULT 0.00,
-    precio NUMERIC(15,2) DEFAULT 0.00,
-    monto NUMERIC(15,4) DEFAULT 0.00,
+    importe NUMERIC(15,4) DEFAULT 0.00,
+    pagado NUMERIC(15,2) DEFAULT 0.00,
     observaciones TEXT,
     cuenta_factura VARCHAR(50),
-    id_usuario INTEGER,
-    liquidado NUMERIC(15,2) DEFAULT 0.00
+    id_usuario INTEGER
 );
 
 -- Certificaciones de Etapas
@@ -1042,9 +1041,9 @@ CREATE TABLE certificacion (
     descripcion TEXT,
     observaciones TEXT,
     fecha DATE,
-    precio_servicio NUMERIC(15,2),
-    gasto_caguayo INTEGER DEFAULT 0,
-    a_cobrar NUMERIC(15,2)
+    a_cobrar NUMERIC(15,2),
+    impuesto_venta_onat NUMERIC(15,2) DEFAULT 0.00,
+    facturado BOOLEAN DEFAULT FALSE
 );
 
 -- Índice para búsquedas por etapa

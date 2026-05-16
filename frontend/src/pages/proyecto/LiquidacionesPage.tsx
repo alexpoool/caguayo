@@ -31,7 +31,8 @@ import {
   etapasProyectoService, 
   solicitudesService, 
   personaEtapaService,
-  facturasServicioService
+  facturasServicioService,
+  certificacionesService
 } from '../../services/api';
 import { administracionService } from '../../services/administracion';
 import type { Usuario } from '../../types/usuario';
@@ -82,7 +83,6 @@ export function LiquidacionesPage() {
   
   const [confirmModal, setConfirmModal] = useState<{ isOpen: boolean; item: PersonaLiquidacion | null }>({ isOpen: false, item: null });
   const [confirmData, setConfirmData] = useState({
-    observaciones: '',
     doc_pago_liquidacion: '',
     porcentaje_caguayo: 10
   });
@@ -121,8 +121,9 @@ export function LiquidacionesPage() {
   });
 
   const [selectedPago, setSelectedPago] = useState<number | null>(null);
-  const [pagosDisponibles, setPagosDisponibles] = useState<{id_pago_factura_servicio: number; monto: number; fecha: string; doc_traza?: string}[]>([]);
+  const [pagosDisponibles, setPagosDisponibles] = useState<{id_pago_factura_servicio: number; monto: number; monto_disponible: number; id_moneda?: number; fecha: string; doc_traza?: string}[]>([]);
   const [disponibleLiquidar, setDisponibleLiquidar] = useState<number>(0);
+  const [porCobrarPersona, setPorCobrarPersona] = useState<number>(0);
 
   const { data: liquidaciones = [], isLoading } = useQuery({
     queryKey: ['persona-liquidaciones', activeTab],
@@ -251,13 +252,13 @@ export function LiquidacionesPage() {
   });
 
   const confirmarMutation = useMutation({
-    mutationFn: ({ id, data }: { id: number; data: { devengado?: number; tributario?: number; comision_bancaria?: number; gasto_empresa?: number; observaciones?: string; porcentaje_caguayo?: number } }) => 
+    mutationFn: ({ id, data }: { id: number; data: { devengado?: number; tributario?: number; comision_bancaria?: number; gasto_empresa?: number; porcentaje_caguayo?: number } }) => 
       personaLiquidacionService.confirmarLiquidacion(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['persona-liquidaciones'] });
       toast.success('Liquidación confirmada');
       setConfirmModal({ isOpen: false, item: null });
-      setConfirmData({ observaciones: '', doc_pago_liquidacion: '', porcentaje_caguayo: 10 });
+      setConfirmData({ doc_pago_liquidacion: '', porcentaje_caguayo: 10 });
     },
     onError: (error: any) => {
       toast.error(error?.response?.data?.detail || 'Error al confirmar liquidación');
@@ -266,7 +267,7 @@ export function LiquidacionesPage() {
 
   const handleConfirmar = (item: PersonaLiquidacion) => {
     setConfirmModal({ isOpen: true, item });
-    setConfirmData({ observaciones: '', doc_pago_liquidacion: '', porcentaje_caguayo: 10 });
+    setConfirmData({ doc_pago_liquidacion: '', porcentaje_caguayo: 10 });
   };
 
   const handleConfirmarSubmit = async () => {
@@ -299,7 +300,6 @@ export function LiquidacionesPage() {
         tributario: item.tributario || 5,
         comision_bancaria: item.comision_bancaria || 0,
         gasto_empresa: item.gasto_empresa || 0,
-        observaciones: confirmData.observaciones || undefined,
         doc_pago_liquidacion: confirmData.doc_pago_liquidacion || undefined
       } as any
     });
@@ -328,6 +328,7 @@ export function LiquidacionesPage() {
     setSelectedPago(null);
     setPagosDisponibles([]);
     setDisponibleLiquidar(0);
+    setPorCobrarPersona(0);
   };
 
   const calculateImporteCaguayo = () => {
@@ -367,12 +368,15 @@ export function LiquidacionesPage() {
       const personaEtapa = personasEtapa.find((p: PersonaEtapa) => p.id_persona === idPersona);
       if (personaEtapa) {
         setFormData(prev => ({ ...prev, importe: personaEtapa.cobro || 0 }));
+        setPorCobrarPersona(Number(personaEtapa.por_cobrar) || 0);
       } else {
         setFormData(prev => ({ ...prev, importe: 0 }));
+        setPorCobrarPersona(0);
       }
     } catch (error) {
       console.error('Error loading persona etapa:', error);
       setFormData(prev => ({ ...prev, importe: 0 }));
+      setPorCobrarPersona(0);
     }
   };
 
@@ -395,7 +399,7 @@ export function LiquidacionesPage() {
       try {
         const validacion = await facturasServicioService.validarPagoEtapa(etapaId);
         
-        if (validacion.id_factura_servicio && (!validacion.monto_pagado || validacion.monto_pagado <= 0)) {
+        if (validacion.id_factura_servicio && (!validacion.pagado || validacion.pagado <= 0)) {
           setValidacionModal({ 
             isOpen: true, 
             validacion: {
@@ -450,28 +454,32 @@ export function LiquidacionesPage() {
     try {
       const pagosData = await personaLiquidacionService.getPagosDisponibles(idEtapa);
       setPagosDisponibles(pagosData);
-      
+      if (pagosData.length === 0) {
+        toast.error('No hay pagos disponibles para esta etapa. Debe registrar un pago en la factura antes de liquidar.');
+        return;
+      }
+      if (!selectedPago) {
+        handlePagoChange(pagosData[0].id_pago_factura_servicio);
+      }
+    } catch (error) {
+      console.error('Error cargando pagos disponibles:', error);
+      toast.error('Error al cargar pagos disponibles');
+    }
+    try {
       const disponibleData = await personaLiquidacionService.getDisponibleLiquidar(idEtapa, idPersona);
       setDisponibleLiquidar(disponibleData.disponible);
     } catch (error) {
-      console.error('Error cargando pagos y disponible:', error);
+      console.error('Error cargando disponible liquidar:', error);
     }
   };
 
-  const handlePagoChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const pagoId = Number(e.target.value);
+  const handlePagoChange = (pagoId: number | null) => {
     setSelectedPago(pagoId || null);
     
     if (pagoId) {
       const pago = pagosDisponibles.find(p => p.id_pago_factura_servicio === pagoId);
       if (pago) {
-        const montoPago = Number(pago.monto);
-        const importeAjustado = montoPago > disponibleLiquidar ? disponibleLiquidar : montoPago;
-        setFormData(prev => ({ ...prev, importe: importeAjustado }));
-      }
-    } else {
-      if (selectedEtapa && selectedPersona) {
-        loadPersonaEtapaCobro(selectedEtapa, selectedPersona);
+        setFormData(prev => ({ ...prev, importe: Number(pago.monto_disponible) }));
       }
     }
   };
@@ -496,6 +504,8 @@ export function LiquidacionesPage() {
       if (item.id_etapa && item.id_persona) {
         setSelectedEtapa(item.id_etapa);
         setSelectedPersona(item.id_persona);
+        setSelectedPago(item.id_pago ?? null);
+        loadPersonaEtapaCobro(item.id_etapa, item.id_persona);
         cargarPagosYDisponible(item.id_etapa, item.id_persona);
       }
     } else {
@@ -515,6 +525,11 @@ export function LiquidacionesPage() {
       return;
     }
 
+    if (pagosDisponibles.length === 0) {
+      toast.error('No hay pagos disponibles para liquidar. Debe registrar un pago en la factura.');
+      return;
+    }
+
     try {
       const validacion = await personaLiquidacionService.validarLiquidar(selectedEtapa, selectedPersona);
       
@@ -530,6 +545,7 @@ export function LiquidacionesPage() {
       id_etapa: selectedEtapa,
       id_persona: selectedPersona,
       id_pago: selectedPago || undefined,
+      importe: Number(formData.importe) || undefined,
       fecha_emision: formData.fecha_emision || new Date().toISOString().split('T')[0],
       fecha_liquidacion: formData.fecha_liquidacion || undefined,
       descripcion: formData.descripcion || undefined,
@@ -561,7 +577,7 @@ export function LiquidacionesPage() {
     return moneda ? moneda.simbolo : '';
   };
 
-  const generatePersonaLiquidacionHTML = (liquidacion: PersonaLiquidacion, autorizadoPor: string, cargoAutorizado: string, revisadoPor: string) => {
+  const generatePersonaLiquidacionHTML = (liquidacion: PersonaLiquidacion, autorizadoPor: string, cargoAutorizado: string, revisadoPor: string, nombreCertificacion?: string) => {
     const realizador = personas.find((p: Cliente) => p.id_cliente === liquidacion.id_persona);
     const etapasAll = queryClient.getQueryData<Etapa[]>(['etapas-all']) || etapas;
     const etapa = etapasAll.find((e: Etapa) => e.id_etapa === liquidacion.id_etapa);
@@ -587,6 +603,7 @@ export function LiquidacionesPage() {
     const descripcionEtapa = etapa?.descripcion || '';
     const codigoSolicitud = solicitud?.codigo_solicitud || 'N/A';
     const codigoProyecto = solicitud?.codigo_proyecto || 'N/A';
+    const nombreTituloEtapa = (nombreCertificacion && etapa?.tipo_etapa === 'CERTIFICACIONES') ? nombreCertificacion : nombreEtapa;
     const nombreMoneda = moneda?.nombre || '';
     
     const descripcionLiquidacion = liquidacion?.descripcion || '';
@@ -662,7 +679,7 @@ export function LiquidacionesPage() {
 <div class="documento texto">
     <div class="header-tcp">
         <div class="header-logo">
-            <img src="/favicon.ico" alt="Logo CAGUAYO S.A." style="filter: brightness(0);" />
+            <img src="/logo.png" alt="Logo CAGUAYO S.A." style="filter: brightness(0);" />
         </div>
         <div class="header-center">
             <div class="tcp-title">CAGUAYO S.A.</div>
@@ -701,12 +718,10 @@ export function LiquidacionesPage() {
     </div>
 
     <div class="info-proyecto">
-        <div style="width: 100%;">
-            <strong>Proyecto:</strong> ${codigoProyecto} <strong>Etapa:</strong> ${nombreEtapa}
-        </div>
-        ${descripcionEtapa ? `<div class="proyecto-item" style="width: 100%;"><strong>Descripción de Etapa:</strong> ${descripcionEtapa}</div>` : ''}
+        <div class="proyecto-header">Información de la Etapa</div>
+        <div class="proyecto-item" style="width: 100%;"><strong>Proyecto:</strong> ${codigoProyecto}, ${nombreTituloEtapa}</div>
         ${descripcionLiquidacion ? `<div class="proyecto-item" style="width: 100%;"><strong>Descripción:</strong> ${descripcionLiquidacion}</div>` : ''}
-        ${observacionLiquidacion ? `<div class="proyecto-item" style="width: 100%;"><strong>Observación:</strong> ${observacionLiquidacion}</div>` : ''}
+        ${observacionLiquidacion ? `<div class="proyecto-item" style="width: 100%;"><strong>Observaciones:</strong> ${observacionLiquidacion}</div>` : ''}
     </div>
 
     
@@ -723,6 +738,7 @@ export function LiquidacionesPage() {
             <div class="bloque-firma" style="flex: 1;">
                 <p><strong>Realizador:</strong></p>
                 <p>${nombreRealizador}</p>
+                <br>
                 <div style="border-bottom: 1px solid #222; margin-top: 30px;"></div>
                 <p style="margin-top: 4px;">Firma</p>
             </div>
@@ -732,6 +748,7 @@ export function LiquidacionesPage() {
                 <p><strong>Autorizado por:</strong></p>
                 <p>${autorizadoPor || ' '}</p>
                 <p class="cargo">${cargoAutorizado || ' '}</p>
+                <br>
                 <div style="border-bottom: 1px solid #222; margin-top: 30px;"></div>
                 <p style="margin-top: 4px;">Firma</p>
             </div>
@@ -749,13 +766,21 @@ export function LiquidacionesPage() {
 </html>`;
   };
 
-  const handlePrint = () => {
+  const handlePrint = async () => {
     if (!printModal.liquidacion) return;
+    let nombreCertificacion: string | undefined;
+    const etapasAll = queryClient.getQueryData<Etapa[]>(['etapas-all']) || etapas;
+    const etapa = etapasAll.find((e: Etapa) => e.id_etapa === printModal.liquidacion!.id_etapa);
+    if (etapa?.tipo_etapa === 'CERTIFICACIONES') {
+      const certs = await certificacionesService.getCertificacionesByEtapa(etapa.id_etapa);
+      if (certs.length > 0) nombreCertificacion = certs[0].nombre;
+    }
     const html = generatePersonaLiquidacionHTML(
       printModal.liquidacion, 
       printModal.autorizado_por, 
       printModal.cargo_autorizado || '', 
-      printModal.revisado_por
+      printModal.revisado_por,
+      nombreCertificacion
     );
     const printWindow = window.open('', '_blank');
     if (printWindow) {
@@ -766,8 +791,15 @@ export function LiquidacionesPage() {
     setPrintModal({ isOpen: false, liquidacion: null, autorizado_por_id: null, autorizado_por: '', cargo_autorizado: '', revisado_por: '' });
   };
 
-  const handleViewDocument = (liquidacion: PersonaLiquidacion) => {
-    const html = generatePersonaLiquidacionHTML(liquidacion, '', '', '');
+  const handleViewDocument = async (liquidacion: PersonaLiquidacion) => {
+    let nombreCertificacion: string | undefined;
+    const etapasAll = queryClient.getQueryData<Etapa[]>(['etapas-all']) || etapas;
+    const etapa = etapasAll.find((e: Etapa) => e.id_etapa === liquidacion.id_etapa);
+    if (etapa?.tipo_etapa === 'CERTIFICACIONES') {
+      const certs = await certificacionesService.getCertificacionesByEtapa(etapa.id_etapa);
+      if (certs.length > 0) nombreCertificacion = certs[0].nombre;
+    }
+    const html = generatePersonaLiquidacionHTML(liquidacion, '', '', '', nombreCertificacion);
     const printWindow = window.open('', '_blank');
     if (printWindow) {
       printWindow.document.write(html);
@@ -1062,7 +1094,7 @@ export function LiquidacionesPage() {
                   </select>
                 </div>
 
-                <div>
+                <div className="md:col-span-2">
                   <Label>Persona *</Label>
                   <select
                     value={selectedPersona || ''}
@@ -1078,35 +1110,68 @@ export function LiquidacionesPage() {
                     ))}
                   </select>
                 </div>
-                
-                {selectedPersona && selectedEtapa && (
-                  <>
-                    <div>
-                      <Label>Pago de Factura</Label>
-                      <select
-                        value={selectedPago || ''}
-                        onChange={handlePagoChange}
-                        className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white"
-                      >
-                        <option value="">Sin especificar (usar cobro)</option>
-                        {pagosDisponibles.map((pago) => (
-                          <option key={pago.id_pago_factura_servicio} value={pago.id_pago_factura_servicio}>
-                            {pago.fecha} - {Number(pago.monto).toLocaleString()} {pago.doc_traza ? `(${pago.doc_traza})` : ''}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    
-                    {disponibleLiquidar > 0 && (
-                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                        <p className="text-sm text-blue-700">
-                          <strong>Disponible por liquidar:</strong> {Number(disponibleLiquidar).toLocaleString()}
-                        </p>
+              </div>
+            </CardContent>
+          </Card>
+
+          {selectedPersona && selectedEtapa && (
+          <Card className="shadow-sm border-gray-200">
+            <CardHeader className="border-b bg-gray-50/50">
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <DollarSign className="h-5 w-5 text-teal-600" />
+                Pago
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-6">
+              <div>
+                <Label>Pago de Factura</Label>
+                {pagosDisponibles.length > 0 ? (
+                <div className="mt-1 space-y-2">
+                  {pagosDisponibles.map((pago) => (
+                    <label key={pago.id_pago_factura_servicio} className={`flex items-center gap-3 p-3 rounded-xl border-2 cursor-pointer transition-all ${
+                      selectedPago === pago.id_pago_factura_servicio
+                        ? 'border-teal-500 bg-teal-50 shadow-md'
+                        : 'border-gray-200 hover:border-teal-300 hover:bg-teal-50/50'
+                    }`}>
+                      <input
+                        type="radio"
+                        name="pago"
+                        checked={selectedPago === pago.id_pago_factura_servicio}
+                        onChange={() => handlePagoChange(pago.id_pago_factura_servicio)}
+                        className="h-4 w-4 text-teal-600 border-gray-300 focus:ring-teal-500"
+                      />
+                      <div className="flex-1 flex justify-between items-center">
+                        <span className="text-sm font-medium text-gray-900">{pago.fecha || 'S/N'}</span>
+                        <span className="text-sm font-bold text-teal-700">{Number(pago.monto_disponible).toLocaleString()} {getMonedaSimbolo(pago.id_moneda)}</span>
                       </div>
-                    )}
-                  </>
+                    </label>
+                  ))}
+                </div>
+                ) : (
+                  <p className="text-sm text-red-500 bg-red-50 p-3 rounded-lg mt-1">
+                    No hay pagos disponibles para esta etapa. Debe registrar un pago en la factura antes de liquidar.
+                  </p>
                 )}
-                
+                {disponibleLiquidar > 0 && (
+                  <div className="flex justify-between text-xs text-blue-600 mt-2 border-t pt-2">
+                    <span>Disponible del pago: <strong>{selectedPago ? Number(pagosDisponibles.find(p => p.id_pago_factura_servicio === selectedPago)?.monto_disponible || 0).toLocaleString() : '0'}</strong></span>
+                    <span>Por cobrar de la persona: <strong>{Number(porCobrarPersona).toLocaleString()}</strong></span>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+          )}
+
+          <Card className="shadow-sm border-gray-200">
+            <CardHeader className="border-b bg-gray-50/50">
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <FileText className="h-5 w-5 text-teal-600" />
+                Información de la Liquidación
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <Label>Moneda</Label>
                   <select
@@ -1165,63 +1230,71 @@ export function LiquidacionesPage() {
                   />
                 </div>
               </div>
-            </CardContent>
-          </Card>
 
-          <Card className="shadow-sm border-gray-200">
-            <CardHeader className="border-b bg-gray-50/50">
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <DollarSign className="h-5 w-5 text-teal-600" />
-                Información Financiera
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-6">
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                <div>
-                  <Label>% Caguayo</Label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    value={formData.porcentaje_caguayo}
-                    onChange={(e) => setFormData(prev => ({ ...prev, porcentaje_caguayo: Number(e.target.value) }))}
-                    className="mt-1"
-                  />
-                </div>
-                <div>
-                  <Label>Tributario (%)</Label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    value={formData.tributario}
-                    onChange={(e) => setFormData(prev => ({ ...prev, tributario: Number(e.target.value) }))}
-                    className="mt-1"
-                  />
-                </div>
-                <div>
-                  <Label>Comisión Bancaria</Label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    value={formData.comision_bancaria}
-                    onChange={(e) => setFormData(prev => ({ ...prev, comision_bancaria: Number(e.target.value) }))}
-                    className="mt-1"
-                  />
-                </div>
-                <div>
-                  <Label>Gasto Empresa</Label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    value={formData.gasto_empresa}
-                    onChange={(e) => setFormData(prev => ({ ...prev, gasto_empresa: Number(e.target.value) }))}
-                    className="mt-1"
-                  />
+              <div className="mt-6 pt-6 border-t">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                  <div>
+                    <Label>% Caguayo</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={formData.porcentaje_caguayo}
+                      onChange={(e) => setFormData(prev => ({ ...prev, porcentaje_caguayo: Number(e.target.value) }))}
+                      className="mt-1"
+                    />
+                  </div>
+                  <div>
+                    <Label>Tributario (%)</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={formData.tributario}
+                      onChange={(e) => setFormData(prev => ({ ...prev, tributario: Number(e.target.value) }))}
+                      className="mt-1"
+                    />
+                  </div>
+                  <div>
+                    <Label>Comisión Bancaria</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={formData.comision_bancaria || ''}
+                      onChange={(e) => setFormData(prev => ({ ...prev, comision_bancaria: e.target.value === '' ? 0 : Number(e.target.value) }))}
+                      className="mt-1"
+                      placeholder="0.00"
+                    />
+                  </div>
+                  <div>
+                    <Label>Gasto Empresa</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={formData.gasto_empresa || ''}
+                      onChange={(e) => setFormData(prev => ({ ...prev, gasto_empresa: e.target.value === '' ? 0 : Number(e.target.value) }))}
+                      className="mt-1"
+                      placeholder="0.00"
+                    />
+                  </div>
                 </div>
               </div>
 
               <div className="bg-teal-50 rounded-lg p-4 mt-6 border border-teal-100">
-                <p className="text-sm text-teal-600 font-medium mb-1">Importe (Cobro)</p>
-                <p className="text-2xl font-bold text-teal-700">{Number(formData.importe || 0).toLocaleString()}</p>
+                <Label className="text-sm text-teal-600 font-medium">Importe a Liquidar</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={formData.importe || ''}
+                  onChange={(e) => {
+                    const nuevoValor = e.target.value === '' ? 0 : Number(e.target.value);
+                    const pago = pagosDisponibles.find(p => p.id_pago_factura_servicio === selectedPago);
+                    if (pago && nuevoValor > Number(pago.monto_disponible)) {
+                      toast.error(`El pago fue solo de ${Number(pago.monto_disponible).toLocaleString()}`);
+                      return;
+                    }
+                    setFormData(prev => ({ ...prev, importe: nuevoValor }));
+                  }}
+                  className="mt-1 text-2xl font-bold text-teal-700"
+                />
               </div>
 
               <div className="bg-gray-50 rounded-lg p-4 mt-6">
@@ -1391,7 +1464,7 @@ export function LiquidacionesPage() {
                     <p className="text-sm text-gray-500 font-mono">{confirmModal.item.numero || 'Sin código'}</p>
                   </div>
                 </div>
-                <button onClick={() => { setConfirmModal({ isOpen: false, item: null }); setConfirmData({ observaciones: '', doc_pago_liquidacion: '', porcentaje_caguayo: 10 }); }} className="p-2 hover:bg-gray-200 rounded-full">
+                <button onClick={() => { setConfirmModal({ isOpen: false, item: null }); setConfirmData({ doc_pago_liquidacion: '', porcentaje_caguayo: 10 }); }} className="p-2 hover:bg-gray-200 rounded-full">
                   <XCircle className="h-6 w-6 text-gray-500" />
                 </button>
               </div>
@@ -1409,17 +1482,6 @@ export function LiquidacionesPage() {
                     <p className="font-semibold text-green-700">{getMonedaSimbolo(confirmModal.item.id_moneda)} {Number(confirmModal.item.neto_pagar || 0).toLocaleString()}</p>
                   </div>
                 </div>
-              </div>
-
-              <div>
-                <Label>Observaciones</Label>
-                <textarea
-                  value={confirmData.observaciones}
-                  onChange={(e) => setConfirmData(prev => ({ ...prev, observaciones: e.target.value }))}
-                  rows={3}
-                  className="w-full mt-1 p-2 border rounded resize-none"
-                  placeholder="Observaciones adicionales (opcional)"
-                />
               </div>
 
               <div>
@@ -1442,7 +1504,7 @@ export function LiquidacionesPage() {
                 {confirmarMutation.isPending ? 'Confirmando...' : 'Confirmar'}
               </button>
               <button
-                onClick={() => { setConfirmModal({ isOpen: false, item: null }); setConfirmData({ observaciones: '', doc_pago_liquidacion: '', porcentaje_caguayo: 10 }); }}
+                onClick={() => { setConfirmModal({ isOpen: false, item: null }); setConfirmData({ doc_pago_liquidacion: '', porcentaje_caguayo: 10 }); }}
                 className="px-6 py-3 text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors font-medium"
               >
                 Cancelar
@@ -1492,12 +1554,12 @@ export function LiquidacionesPage() {
                         </span>
                       </div>
                       <div>
-                        <p className="text-xs text-gray-500 uppercase">Monto Total</p>
-                        <p className="font-semibold text-gray-900">{Number(validacionModal.validacion.factura.monto || 0).toLocaleString()}</p>
+                        <p className="text-xs text-gray-500 uppercase">Importe Total</p>
+                        <p className="font-semibold text-gray-900">{Number(validacionModal.validacion.factura.importe || 0).toLocaleString()}</p>
                       </div>
                       <div>
-                        <p className="text-xs text-gray-500 uppercase">Monto Pagado</p>
-                        <p className="font-semibold text-green-600">{Number(validacionModal.validacion.factura.monto_pagado || 0).toLocaleString()}</p>
+                        <p className="text-xs text-gray-500 uppercase">Pagado</p>
+                        <p className="font-semibold text-green-600">{Number(validacionModal.validacion.factura.pagado || 0).toLocaleString()}</p>
                       </div>
                       <div className="col-span-2">
                         <p className="text-xs text-gray-500 uppercase">Saldo Pendiente</p>
@@ -1517,7 +1579,7 @@ export function LiquidacionesPage() {
                           <div key={pago.id_pago_factura_servicio} className="flex justify-between items-center p-2 bg-white rounded-lg border">
                             <div>
                               <p className="text-sm font-medium text-gray-900">{pago.fecha || 'Sin fecha'}</p>
-                              <p className="text-xs text-gray-500">{pago.doc_traza || 'Sin documento'}</p>
+                              <p className="text-xs text-gray-500">{getMonedaSimbolo(pago.id_moneda)}</p>
                             </div>
                             <p className="font-semibold text-green-600">{Number(pago.monto || 0).toLocaleString()}</p>
                           </div>

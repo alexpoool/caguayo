@@ -38,6 +38,8 @@ from src.dto.servicio_dto import (
     PersonaLiquidacionCreateInput,
     PersonaLiquidacionRead,
     PersonaLiquidacionUpdate,
+    ItemFacturaServicioRead,
+    FacturaServicioWithItems,
     PersonaLiquidacionUpdateInput,
     PersonaLiquidacionConfirmar,
     FacturaPagoValidacion,
@@ -342,6 +344,23 @@ async def delete_factura_servicio(id: int, db: AsyncSession = Depends(get_sessio
         raise HTTPException(status_code=404, detail="Factura no encontrada")
 
 
+@facturas_servicio_router.get("/{id}/items", response_model=List[ItemFacturaServicioRead])
+async def get_factura_servicio_items(
+    id: int, db: AsyncSession = Depends(get_session)
+):
+    return await FacturaServicioService.get_items(db, id)
+
+
+@facturas_servicio_router.get("/{id}/with-items", response_model=FacturaServicioWithItems)
+async def get_factura_servicio_with_items(
+    id: int, db: AsyncSession = Depends(get_session)
+):
+    result = await FacturaServicioService.get_with_items(db, id)
+    if not result:
+        raise HTTPException(status_code=404, detail="Factura no encontrada")
+    return result
+
+
 # ==========================================
 # PAGOS FACTURA SERVICIO
 # ==========================================
@@ -389,6 +408,65 @@ async def get_liquidaciones(
     skip: int = 0, limit: int = 100, db: AsyncSession = Depends(get_session)
 ):
     return await PersonaLiquidacionService.get_all(db, skip, limit)
+
+
+@persona_liquidacion_router.get(
+    "/pagos/etapa/{id_etapa}",
+    response_model=List[PagoDetalleRead],
+)
+async def get_pagos_disponibles_etapa(
+    id_etapa: int, db: AsyncSession = Depends(get_session)
+):
+    """Obtiene los pagos disponibles de una etapa para liquidar."""
+    return await PersonaLiquidacionService.get_pagos_disponibles_etapa(db, id_etapa)
+
+
+@persona_liquidacion_router.get(
+    "/disponible",
+)
+async def get_disponible_liquidar(
+    id_etapa: int = Query(...),
+    id_persona: int = Query(...),
+    db: AsyncSession = Depends(get_session)
+):
+    """Obtiene el monto disponible para liquidar a una persona en una etapa."""
+    from decimal import Decimal
+    disponible = await PersonaLiquidacionService.get_disponible_liquidar(db, id_etapa, id_persona)
+    return {"disponible": float(disponible)}
+
+
+@persona_liquidacion_router.get(
+    "/validar/{id_etapa}/{id_persona}", response_model=PersonaLiquidacionValidacion
+)
+async def validar_liquidar_persona(
+    id_etapa: int, id_persona: int, db: AsyncSession = Depends(get_session)
+):
+    """Valida si se puede liquidar a una persona en una etapa (verifica que la factura esté pagada)."""
+    return await PersonaLiquidacionService.validar_liquidar(db, id_etapa, id_persona)
+
+
+@persona_liquidacion_router.get(
+    "/etapa/{id_etapa}/persona/{id_persona}",
+    response_model=List[PersonaLiquidacionRead],
+)
+async def get_liquidaciones_by_etapa_persona(
+    id_etapa: int, id_persona: int, db: AsyncSession = Depends(get_session)
+):
+    """Obtiene las liquidaciones de una persona en una etapa."""
+    return await PersonaLiquidacionService.get_by_etapa_persona(
+        db, id_etapa, id_persona
+    )
+
+
+@persona_liquidacion_router.get(
+    "/persona/{id_persona}",
+    response_model=List[PersonaLiquidacionRead],
+)
+async def get_liquidaciones_by_persona(
+    id_persona: int, db: AsyncSession = Depends(get_session)
+):
+    """Obtiene todas las liquidaciones de una persona."""
+    return await PersonaLiquidacionService.get_by_persona(db, id_persona)
 
 
 @persona_liquidacion_router.get("/{id}", response_model=PersonaLiquidacionRead)
@@ -444,65 +522,6 @@ async def confirmar_liquidacion(
 async def delete_liquidacion(id: int, db: AsyncSession = Depends(get_session)):
     if not await PersonaLiquidacionService.delete(db, id):
         raise HTTPException(status_code=404, detail="Liquidación no encontrada")
-
-
-@persona_liquidacion_router.get(
-    "/validar/{id_etapa}/{id_persona}", response_model=PersonaLiquidacionValidacion
-)
-async def validar_liquidar_persona(
-    id_etapa: int, id_persona: int, db: AsyncSession = Depends(get_session)
-):
-    """Valida si se puede liquidar a una persona en una etapa (verifica que la factura esté pagada)."""
-    return await PersonaLiquidacionService.validar_liquidar(db, id_etapa, id_persona)
-
-
-@persona_liquidacion_router.get(
-    "/etapa/{id_etapa}/persona/{id_persona}",
-    response_model=List[PersonaLiquidacionRead],
-)
-async def get_liquidaciones_by_etapa_persona(
-    id_etapa: int, id_persona: int, db: AsyncSession = Depends(get_session)
-):
-    """Obtiene las liquidaciones de una persona en una etapa."""
-    return await PersonaLiquidacionService.get_by_etapa_persona(
-        db, id_etapa, id_persona
-    )
-
-
-@persona_liquidacion_router.get(
-    "/persona/{id_persona}",
-    response_model=List[PersonaLiquidacionRead],
-)
-async def get_liquidaciones_by_persona(
-    id_persona: int, db: AsyncSession = Depends(get_session)
-):
-    """Obtiene todas las liquidaciones de una persona."""
-    return await PersonaLiquidacionService.get_by_persona(db, id_persona)
-
-
-@persona_liquidacion_router.get(
-    "/pagos/etapa/{id_etapa}",
-    response_model=List[PagoDetalleRead],
-)
-async def get_pagos_disponibles_etapa(
-    id_etapa: int, db: AsyncSession = Depends(get_session)
-):
-    """Obtiene los pagos disponibles de una etapa para liquidar."""
-    return await PersonaLiquidacionService.get_pagos_disponibles_etapa(db, id_etapa)
-
-
-@persona_liquidacion_router.get(
-    "/disponible",
-)
-async def get_disponible_liquidar(
-    id_etapa: int = Query(...),
-    id_persona: int = Query(...),
-    db: AsyncSession = Depends(get_session)
-):
-    """Obtiene el monto disponible para liquidar a una persona en una etapa."""
-    from decimal import Decimal
-    disponible = await PersonaLiquidacionService.get_disponible_liquidar(db, id_etapa, id_persona)
-    return {"disponible": float(disponible)}
 
 
 # ==========================================

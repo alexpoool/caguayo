@@ -165,7 +165,7 @@ class PersonaEtapaBase(SQLModel):
     cobro: Decimal = Decimal("0.00")
     id_moneda: Optional[int] = None
     liquidada: bool = False
-    pago_completado: bool = False
+    por_cobrar: Decimal = Decimal("0.00")
 
 
 class PersonaEtapaCreate(PersonaEtapaBase):
@@ -182,7 +182,7 @@ class PersonaEtapaUpdate(SQLModel):
     cobro: Optional[Decimal] = None
     id_moneda: Optional[int] = None
     liquidada: Optional[bool] = None
-    pago_completado: Optional[bool] = None
+    por_cobrar: Optional[Decimal] = None
 
 
 # ==========================================
@@ -190,22 +190,22 @@ class PersonaEtapaUpdate(SQLModel):
 # ==========================================
 class FacturaServicioBase(SQLModel):
     id_etapa: Optional[int] = None
+    id_certificacion: Optional[int] = None
     alcance: Optional[str] = None
     codigo_factura: Optional[str] = None
     id_moneda: Optional[int] = None
     fecha: Optional[date] = None
     descripcion: Optional[str] = None
-    cantidad: Decimal = Decimal("0.00")
-    precio: Decimal = Decimal("0.00")
-    monto: Decimal = Decimal("0.00")
+    importe: Decimal = Decimal("0.00")
+    pagado: Decimal = Decimal("0.00")
     observaciones: Optional[str] = None
     cuenta_factura: Optional[str] = None
     id_usuario: Optional[int] = None
-    liquidado: Decimal = Decimal("0.00")
 
 
 class FacturaServicioCreate(FacturaServicioBase):
-    pass
+    tareas_seleccionadas: Optional[List[int]] = None
+    tarea_modifiers: Optional[dict] = None
 
 
 class FacturaServicioRead(FacturaServicioBase):
@@ -219,12 +219,39 @@ class FacturaServicioUpdate(SQLModel):
     id_moneda: Optional[int] = None
     fecha: Optional[date] = None
     descripcion: Optional[str] = None
-    cantidad: Optional[Decimal] = None
-    precio: Optional[Decimal] = None
-    monto: Optional[Decimal] = None
+    importe: Optional[Decimal] = None
+    pagado: Optional[Decimal] = None
     observaciones: Optional[str] = None
     cuenta_factura: Optional[str] = None
     id_usuario: Optional[int] = None
+    tareas_seleccionadas: Optional[List[int]] = None
+    tarea_modifiers: Optional[dict] = None
+
+
+# ==========================================
+# ITEM FACTURA SERVICIO
+# ==========================================
+class ItemFacturaServicioBase(SQLModel):
+    id_factura_servicio: int
+    id_tarea_etapa: int
+    codigo_extendido: Optional[str] = None
+    concepto: Optional[str] = None
+    unidad_medida: Optional[str] = None
+    cantidad: Decimal = Decimal("0.00")
+    precio: Decimal = Decimal("0.00")
+
+
+class ItemFacturaServicioCreate(ItemFacturaServicioBase):
+    pass
+
+
+class ItemFacturaServicioRead(ItemFacturaServicioBase):
+    id_item_factura_servicio: int
+    id_factura_servicio: int
+
+
+class FacturaServicioWithItems(FacturaServicioRead):
+    items: List[ItemFacturaServicioRead] = []
 
 
 # ==========================================
@@ -232,10 +259,10 @@ class FacturaServicioUpdate(SQLModel):
 # ==========================================
 class PagoFacturaServicioBase(SQLModel):
     monto: Decimal = Decimal("0.00")
+    monto_disponible: Decimal = Decimal("0.00")
     id_moneda: Optional[int] = None
     fecha: Optional[date] = None
     doc_traza: Optional[str] = None
-    doc_factura: Optional[str] = None
 
 
 class PagoFacturaServicioCreate(PagoFacturaServicioBase):
@@ -282,6 +309,7 @@ class PersonaLiquidacionCreateInput(SQLModel):
     id_etapa: int
     id_persona: int
     id_pago: Optional[int] = None
+    importe: Optional[Decimal] = None
     fecha_emision: date
     fecha_liquidacion: Optional[date] = None
     descripcion: Optional[str] = None
@@ -304,6 +332,7 @@ class PersonaLiquidacionUpdateInput(SQLModel):
     id_etapa: Optional[int] = None
     id_persona: Optional[int] = None
     id_pago: Optional[int] = None
+    importe: Optional[float] = None
     fecha_emision: Optional[date] = None
     fecha_liquidacion: Optional[date] = None
     descripcion: Optional[str] = None
@@ -363,16 +392,17 @@ class PersonaLiquidacionConfirmar(SQLModel):
 class PagoDetalleRead(SQLModel):
     id_pago_factura_servicio: int
     monto: Decimal
+    monto_disponible: Decimal = Decimal("0.00")
+    id_moneda: Optional[int] = None
     fecha: Optional[date] = None
     doc_traza: Optional[str] = None
-    doc_factura: Optional[str] = None
 
 
 class FacturaPagoValidacion(SQLModel):
     id_factura_servicio: Optional[int] = None
     codigo_factura: Optional[str] = None
-    monto: Decimal = Decimal("0.00")
-    monto_pagado: Decimal = Decimal("0.00")
+    importe: Decimal = Decimal("0.00")
+    pagado: Decimal = Decimal("0.00")
     saldo: Decimal = Decimal("0.00")
     esta_pagada: bool = False
     pagos: List[PagoDetalleRead] = []
@@ -400,9 +430,9 @@ class CertificacionBase(SQLModel):
     descripcion: Optional[str] = None
     observaciones: Optional[str] = None
     fecha: Optional[date] = None
-    precio_servicio: Decimal = Decimal("0.00")
-    gasto_caguayo: int = 0
     a_cobrar: Decimal = Decimal("0.00")
+    impuesto_venta_onat: Decimal = Decimal("0.00")
+    facturado: bool = False
 
 
 class CertificacionCreate(CertificacionBase):

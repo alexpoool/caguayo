@@ -407,7 +407,7 @@ export function LiquidacionesPage() {
 <div class="documento texto">
     <div class="header-tcp">
         <div class="header-logo">
-            <img src="/favicon.ico" alt="Logo CAGUAYO S.A." />
+            <img src="/logo.png" alt="Logo CAGUAYO S.A." />
         </div>
         <div class="header-center">
             <div class="tcp-title">CAGUAYO S.A.</div>

@@ -44,6 +44,8 @@ export function getFacturaDocument(
   user: any,
   clienteCompleto: any = null,
   clienteCuentas: any[] = [],
+  autorizadoPor: string = "",
+  revisadoPor: string = "",
 ) {
   const contrato = contratos.find(
     (c: any) => c.id_contrato === factura.id_contrato,
@@ -73,12 +75,13 @@ export function getFacturaDocument(
     .filter(Boolean)
     .join(", ");
 
-  const cuentaPrimary = clienteCuentas.find((c: any) => c) || clienteCuentas[0];
-  const cuentaNumero = cuentaPrimary?.numero_cuenta || "";
-  const cuentaBanco = cuentaPrimary?.banco || "";
-  const cuentaSucursal = cuentaPrimary?.sucursal || "";
-  const cuentaDireccion = cuentaPrimary?.direccion || "";
-  const cuentaMoneda = cuentaPrimary?.moneda?.simbolo || "";
+  const cuentaCUP = clienteCuentas.find(
+    (c: any) => c.moneda?.nombre === "CUP",
+  );
+  const cuentaNumero = cuentaCUP?.numero_cuenta || "";
+  const cuentaBanco = cuentaCUP?.banco || "";
+  const cuentaSucursal = cuentaCUP?.sucursal || "";
+  const cuentaDireccion = cuentaCUP?.direccion || "";
 
   const moneda = contrato?.moneda?.nombre || "";
   const items = factura.items || [];
@@ -121,7 +124,8 @@ export function getFacturaDocument(
         .trim()
     : "Sistema";
   const cargoUsuario = user?.grupo?.nombre || "Administrador";
-  
+  const nombreAutorizado = autorizadoPor || "";
+  const nombreRevisado = revisadoPor || "";
 
   return `<!DOCTYPE html>
 <html lang="es">
@@ -164,17 +168,15 @@ export function getFacturaDocument(
     .tabla-productos th:nth-child(1), .tabla-productos td:nth-child(1) { width: 8%; }
     .tabla-productos th:nth-child(2), .tabla-productos td:nth-child(2) { width: 65%; }
     .tabla-productos th:nth-child(3), .tabla-productos td:nth-child(3) { width: 9%; text-align: right; }
-    .tabla-productos th:nth-child(4), .tabla-productos td:nth-child(4) { width: 15%; text-align: right; }
-    .tabla-productos th:nth-child(5), .tabla-productos td:nth-child(5) { width: 15%; text-align: right; }
+    .tabla-productos th:nth-child(4), .tabla-productos td:nth-child(4) { width: 9%; text-align: right; }
+    .tabla-productos th:nth-child(5), .tabla-productos td:nth-child(5) { width: 9%; text-align: right; }
     .tabla-productos th { background-color: #eae7db; font-weight: 700; text-align: center; }
     .cantidad, .precio, .importe-col { text-align: right; }
     .importe-fila { font-weight: bold; background-color: #f4f1e6; }
-    .firmas { margin-top: 28px; margin-bottom: 16px; }
-    .fila-firmas { display: flex; justify-content: space-between; gap: 40px; }
-    .bloque-firma { flex: 1; font-size: 11px; }
+    .firmas { display: flex; flex-direction: column; gap: 8px; margin-top: 16px; margin-bottom: 12px; }
+    .fila-firmas { display: flex; justify-content: space-between; gap: 20px; }
+    .bloque-firma { flex: 1; border-top: 1px dotted #222; padding-top: 8px; font-size: 11px; text-align: left; }
     .bloque-firma p { margin: 2px 0; }
-    .bloque-firma strong { font-size: 12px; }
-    .firma-linea { border-bottom: 1.5px solid #222; height: 40px; margin: 6px 0 4px 0; }
     .cargo { font-size: 10px; color: #2c2c2c; }
     @media (max-width: 650px) { .documento { padding: 0.6rem; } .tabla-productos th, .tabla-productos td { padding: 3px 2px; font-size: 10px; } .firmas { flex-direction: column; gap: 6px; } .fila-firmas { flex-direction: column; gap: 10px; } .info-cliente { flex-direction: column; } .info-pago { flex-direction: column; } .header-tcp { flex-direction: column; } .header-box { width: 100%; margin-top: 10px; } .tabla-wrapper { flex-direction: column; } }
   </style>
@@ -183,7 +185,7 @@ export function getFacturaDocument(
   <div class="documento texto">
     <div class="header-tcp">
       <div class="header-logo">
-        <img src="/favicon.ico" alt="Logo CAGUAYO S.A." />
+        <img src="/logo.png" alt="Logo CAGUAYO S.A." />
       </div>
       <div class="header-center">
         <div class="tcp-title">CAGUAYO S.A.</div>
@@ -213,7 +215,7 @@ export function getFacturaDocument(
         <span class="campo"><strong>Sucursal:</strong> ${cuentaSucursal}</span>
         <span class="campo"><strong>Dirección:</strong> ${cuentaDireccion}</span>
       </div>
-      <div class="fila-cuenta"><strong>Número de cuenta:</strong> ${cuentaNumero} (${cuentaMoneda || moneda})</div>
+      <div class="fila-cuenta"><strong>Número de cuenta:</strong> ${cuentaNumero} (${moneda})</div>
     </div>
 
     <div class="descripcion-general">
@@ -245,14 +247,23 @@ export function getFacturaDocument(
       <div class="fila-firmas">
         <div class="bloque-firma">
           <p><strong>Confeccionado por:</strong></p>
-          <div class="firma-linea"></div>
           <p>${nombreUsuario}</p>
           <p class="cargo">Cargo: ${cargoUsuario}</p>
+          <br><br>
         </div>
         <div class="bloque-firma">
+          <p><strong>Autorizado por:</strong></p>
+          <p>${nombreAutorizado}</p>
+        </div>
+      </div>
+      <div class="fila-firmas">
+        <div class="bloque-firma">
           <p><strong>Cliente:</strong></p>
-          <div class="firma-linea"></div>
           <p>${nombreCliente}</p>
+        </div>
+        <div class="bloque-firma">
+          <p><strong>Revisado por:</strong></p>
+          <p>${nombreRevisado}</p>
         </div>
       </div>
     </div>

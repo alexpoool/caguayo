@@ -69,6 +69,7 @@ import type {
   TareaEtapa, TareaEtapaCreate, TareaEtapaUpdate,
   PersonaEtapa, PersonaEtapaCreate,
   FacturaServicio, FacturaServicioCreate, FacturaServicioUpdate,
+  ItemFacturaServicio,
   PagoFacturaServicio, PagoFacturaServicioCreate,
   PersonaLiquidacion, PersonaLiquidacionCreate, PersonaLiquidacionUpdate,
   PersonaLiquidacionInput, PersonaLiquidacionInputUpdate,
@@ -719,6 +720,12 @@ export const facturasServicioService = {
   },
   async validarPagoEtapa(etapaId: number): Promise<FacturaPagoValidacion> {
     return apiClient.get<FacturaPagoValidacion>(`/facturas-servicio/etapa/${etapaId}/validar-pago`);
+  },
+  async getItemsByFactura(facturaId: number): Promise<ItemFacturaServicio[]> {
+    return apiClient.get<ItemFacturaServicio[]>(`/facturas-servicio/${facturaId}/items`);
+  },
+  async getFacturaWithItems(facturaId: number): Promise<any> {
+    return apiClient.get<any>(`/facturas-servicio/${facturaId}/with-items`);
   }
 };
 
@@ -796,6 +803,8 @@ export const personaLiquidacionService = {
   async getPagosDisponibles(idEtapa: number): Promise<{
     id_pago_factura_servicio: number;
     monto: number;
+    monto_disponible: number;
+    id_moneda?: number;
     fecha: string;
     doc_traza?: string;
   }[]> {

@@ -87,8 +87,7 @@ export function PagosFacturaServicioPage() {
         monto: Number(formData.monto) || 0,
         id_moneda: formData.id_moneda ? Number(formData.id_moneda) : undefined,
         fecha: formData.fecha || undefined,
-        doc_traza: formData.doc_traza || undefined,
-        doc_factura: formData.doc_factura || undefined
+        doc_traza: formData.doc_traza || undefined
       };
       await pagosFacturaServicioService.createPago(data);
       toast.success('Pago creado');
@@ -138,7 +137,6 @@ export function PagosFacturaServicioPage() {
     const term = searchTerm.toLowerCase();
     return pagos.filter(p =>
       p.doc_traza?.toLowerCase().includes(term) ||
-      p.doc_factura?.toLowerCase().includes(term) ||
       p.fecha?.toLowerCase().includes(term)
     );
   }, [pagos, searchTerm]);
@@ -158,8 +156,8 @@ export function PagosFacturaServicioPage() {
                 <p className="font-bold text-gray-900">{factura.codigo_factura || `#${factura.id_factura_servicio}`}</p>
               </div>
               <div>
-                <span className="text-xs text-gray-500 uppercase tracking-wider">Monto</span>
-                <p className="font-bold text-gray-900">${Number(factura.precio * factura.cantidad).toFixed(2)}</p>
+                <span className="text-xs text-gray-500 uppercase tracking-wider">Importe</span>
+                <p className="font-bold text-gray-900">${Number(factura.importe).toFixed(2)}</p>
               </div>
               {factura.descripcion && (
                 <div>
@@ -238,13 +236,7 @@ export function PagosFacturaServicioPage() {
                 <TableHead>
                   <div className="flex items-center gap-2">
                     <FileText className="h-4 w-4 text-teal-600" />
-                    Doc Traza
-                  </div>
-                </TableHead>
-                <TableHead>
-                  <div className="flex items-center gap-2">
-                    <FileText className="h-4 w-4 text-teal-600" />
-                    Doc Factura
+                    Documento de traza
                   </div>
                 </TableHead>
                 <TableHead className="text-right">Acciones</TableHead>
@@ -253,7 +245,7 @@ export function PagosFacturaServicioPage() {
             <TableBody>
               {filteredPagos.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-12 text-gray-500">
+                  <TableCell colSpan={5} className="text-center py-12 text-gray-500">
                     {searchTerm ? 'No se encontraron pagos que coincidan con la búsqueda' : 'No hay pagos registrados'}
                   </TableCell>
                 </TableRow>
@@ -273,9 +265,6 @@ export function PagosFacturaServicioPage() {
                     <TableCell>{getMonedaNombre(pago.id_moneda)}</TableCell>
                     <TableCell>
                       <span className="font-mono text-sm">{pago.doc_traza || 'N/A'}</span>
-                    </TableCell>
-                    <TableCell>
-                      <span className="font-mono text-sm">{pago.doc_factura || 'N/A'}</span>
                     </TableCell>
                     <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                       <div className="flex justify-end gap-2">
@@ -370,21 +359,12 @@ export function PagosFacturaServicioPage() {
               />
             </div>
             <div>
-              <Label className="text-sm font-medium">Doc Traza</Label>
+              <Label className="text-sm font-medium">Documento de traza</Label>
               <Input
                 value={formData.doc_traza || ''}
                 onChange={(e: any) => setFormData({ ...formData, doc_traza: e.target.value })}
                 className="mt-1"
                 placeholder="Documento de traza"
-              />
-            </div>
-            <div className="md:col-span-2">
-              <Label className="text-sm font-medium">Doc Factura</Label>
-              <Input
-                value={formData.doc_factura || ''}
-                onChange={(e: any) => setFormData({ ...formData, doc_factura: e.target.value })}
-                className="mt-1"
-                placeholder="Documento de factura"
               />
             </div>
           </div>
@@ -449,15 +429,9 @@ export function PagosFacturaServicioPage() {
                 <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Fecha</p>
                 <p className="font-bold text-gray-900">{detailModal.item.fecha || 'N/A'}</p>
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="bg-gray-50 p-4 rounded-xl">
-                  <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Doc Traza</p>
-                  <p className="text-gray-700 font-mono">{detailModal.item.doc_traza || 'N/A'}</p>
-                </div>
-                <div className="bg-gray-50 p-4 rounded-xl">
-                  <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Doc Factura</p>
-                  <p className="text-gray-700 font-mono">{detailModal.item.doc_factura || 'N/A'}</p>
-                </div>
+              <div className="bg-gray-50 p-4 rounded-xl">
+                <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Documento de traza</p>
+                <p className="text-gray-700 font-mono">{detailModal.item.doc_traza || 'N/A'}</p>
               </div>
             </div>
             <div className="p-6 border-t border-gray-200 bg-gray-50 flex justify-end">

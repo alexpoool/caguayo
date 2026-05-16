@@ -737,12 +737,8 @@ Nuevo Realizador
                   )}
                 </div>
                 <div className="bg-gray-50 p-4 rounded-xl">
-                  <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Pago Completado</p>
-                  {detailModal.item.pago_completado ? (
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Sí</span>
-                  ) : (
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">No</span>
-                  )}
+                  <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Por Cobrar</p>
+                  <p className="font-bold text-gray-900">{getMonedaSymbol(detailModal.item.id_moneda) || ''} {Number(detailModal.item.por_cobrar || 0).toFixed(2)}</p>
                 </div>
               </div>
             </div>

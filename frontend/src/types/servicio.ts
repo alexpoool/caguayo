@@ -125,6 +125,7 @@ export interface TareaEtapa {
   precio_ajustado: number;
   id_moneda?: number;
   observaciones_ajustadas?: string;
+  facturada?: boolean;
 }
 
 export interface TareaEtapaCreate {
@@ -156,7 +157,7 @@ export interface PersonaEtapa {
   cobro: number;
   id_moneda?: number;
   liquidada: boolean;
-  pago_completado: boolean;
+  por_cobrar: number;
 }
 
 export interface PersonaEtapaCreate {
@@ -165,20 +166,20 @@ export interface PersonaEtapaCreate {
   cobro?: number;
   id_moneda?: number;
   liquidada?: boolean;
-  pago_completado?: boolean;
+  por_cobrar?: number;
 }
 
 export interface FacturaServicio {
   id_factura_servicio: number;
   id_etapa?: number;
+  id_certificacion?: number;
   alcance?: string;
   codigo_factura?: string;
   id_moneda?: number;
   fecha?: string;
   descripcion?: string;
-  cantidad: number;
-  precio: number;
-  monto: number;
+  importe: number;
+  pagado: number;
   observaciones?: string;
   cuenta_factura?: string;
   id_usuario?: number;
@@ -186,45 +187,47 @@ export interface FacturaServicio {
 
 export interface FacturaServicioCreate {
   id_etapa?: number;
+  id_certificacion?: number;
   alcance?: string;
   codigo_factura?: string;
   id_moneda?: number;
   fecha?: string;
   descripcion?: string;
+  importe?: number;
+  pagado?: number;
+  observaciones?: string;
+  cuenta_factura?: string;
+  id_usuario?: number;
+  tareas_seleccionadas?: number[];
+  tarea_modifiers?: Record<number, { cantidad: number; precio: number }>;
+}
+
+export interface FacturaServicioUpdate {
+  id_etapa?: number;
+  id_certificacion?: number;
+  alcance?: string;
+  codigo_factura?: string;
+  id_moneda?: number;
+  fecha?: string;
+  descripcion?: string;
+  importe?: number;
+  pagado?: number;
+  observaciones?: string;
+  cuenta_factura?: string;
+  id_usuario?: number;
+  tareas_seleccionadas?: number[];
+  tarea_modifiers?: Record<number, { cantidad: number; precio: number }>;
+}
+
+export interface ItemFacturaServicio {
+  id_item_factura_servicio: number;
+  id_factura_servicio: number;
+  id_tarea_etapa: number;
+  codigo_extendido?: string;
+  concepto?: string;
+  unidad_medida?: string;
   cantidad: number;
   precio: number;
-  observaciones?: string;
-  cuenta_factura?: string;
-  id_usuario?: number;
-}
-
-export interface FacturaServicioUpdate {
-  id_etapa?: number;
-  alcance?: string;
-  codigo_factura?: string;
-  id_moneda?: number;
-  fecha?: string;
-  descripcion?: string;
-  cantidad?: number;
-  precio?: number;
-  monto?: number;
-  observaciones?: string;
-  cuenta_factura?: string;
-  id_usuario?: number;
-}
-
-export interface FacturaServicioUpdate {
-  id_etapa?: number;
-  alcance?: string;
-  codigo_factura?: string;
-  id_moneda?: number;
-  fecha?: string;
-  descripcion?: string;
-  cantidad?: number;
-  precio?: number;
-  observaciones?: string;
-  cuenta_factura?: string;
-  id_usuario?: number;
 }
 
 export interface PagoFacturaServicio {
@@ -234,7 +237,6 @@ export interface PagoFacturaServicio {
   id_moneda?: number;
   fecha?: string;
   doc_traza?: string;
-  doc_factura?: string;
 }
 
 export interface PagoFacturaServicioCreate {
@@ -243,7 +245,6 @@ export interface PagoFacturaServicioCreate {
   id_moneda?: number;
   fecha?: string;
   doc_traza?: string;
-  doc_factura?: string;
 }
 
 export interface PersonaLiquidacion {
@@ -328,6 +329,7 @@ export type PersonaLiquidacionInput = {
   id_etapa: number;
   id_persona: number;
   id_pago?: number;
+  importe?: number;
   fecha_emision: string;
   fecha_liquidacion?: string;
   descripcion?: string;
@@ -345,6 +347,8 @@ export type PersonaLiquidacionInputUpdate = {
   numero?: string;
   id_etapa?: number;
   id_persona?: number;
+  id_pago?: number;
+  importe?: number;
   fecha_emision?: string;
   fecha_liquidacion?: string;
   descripcion?: string;
@@ -361,16 +365,16 @@ export type PersonaLiquidacionInputUpdate = {
 export interface PagoDetalle {
   id_pago_factura_servicio: number;
   monto: number;
+  monto_disponible: number;
   fecha?: string;
   doc_traza?: string;
-  doc_factura?: string;
 }
 
 export interface FacturaPagoValidacion {
   id_factura_servicio?: number;
   codigo_factura?: string;
-  monto: number;
-  monto_pagado: number;
+  importe: number;
+  pagado: number;
   saldo: number;
   esta_pagada: boolean;
   pagos: PagoDetalle[];
@@ -396,9 +400,9 @@ export interface Certificacion {
   descripcion?: string;
   observaciones?: string;
   fecha?: string;
-  precio_servicio: number;
-  gasto_caguayo: number;
   a_cobrar: number;
+  impuesto_venta_onat?: number;
+  facturado?: boolean;
 }
 
 export interface CertificacionCreate {
@@ -412,9 +416,9 @@ export interface CertificacionCreate {
   descripcion?: string;
   observaciones?: string;
   fecha?: string;
-  precio_servicio?: number;
-  gasto_caguayo?: number;
   a_cobrar?: number;
+  impuesto_venta_onat?: number;
+  facturado?: boolean;
 }
 
 export interface CertificacionUpdate {
@@ -428,7 +432,6 @@ export interface CertificacionUpdate {
   descripcion?: string;
   observaciones?: string;
   fecha?: string;
-  precio_servicio?: number;
-  gasto_caguayo?: number;
   a_cobrar?: number;
+  impuesto_venta_onat?: number;
 }

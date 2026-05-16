@@ -12,6 +12,7 @@ from src.models.servicio import (
     FacturaServicio,
     PagoFacturaServicio,
     PersonaLiquidacion,
+    ItemFacturaServicio,
 )
 from src.dto.servicio_dto import (
     ServicioCreate,
@@ -29,6 +30,7 @@ from src.dto.servicio_dto import (
     PagoFacturaServicioCreate,
     PersonaLiquidacionCreate,
     PersonaLiquidacionUpdate,
+    ItemFacturaServicioCreate,
 )
 from src.repository.base import CRUDBase
 
@@ -185,6 +187,16 @@ class FacturaServicioRepository(
         results = await db.exec(statement)
         return results.one_or_none()
 
+    async def get_by_codigo(
+        self, db: AsyncSession, codigo: str
+    ) -> Optional[FacturaServicio]:
+        statement = (
+            select(FacturaServicio)
+            .where(FacturaServicio.codigo_factura == codigo)
+        )
+        results = await db.exec(statement)
+        return results.one_or_none()
+
     async def get_with_pagos(
         self, db: AsyncSession, id_factura: int
     ) -> Optional[FacturaServicio]:
@@ -209,12 +221,12 @@ class FacturaServicioRepository(
         results = await db.exec(statement)
         return results.one_or_none()
 
-    async def actualizar_liquidado(
+    async def actualizar_pagado(
         self, db: AsyncSession, id_factura: int, monto: Decimal
     ) -> Optional[FacturaServicio]:
         factura = await self.get(db, id_factura)
         if factura:
-            factura.liquidado = (factura.liquidado or Decimal("0")) + monto
+            factura.pagado = (factura.pagado or Decimal("0")) + monto
             await db.commit()
             await db.refresh(factura)
         return factura
@@ -340,3 +352,48 @@ class PersonaLiquidacionRepository(
 
 
 persona_liquidacion_repo = PersonaLiquidacionRepository(PersonaLiquidacion)
+
+
+# ==========================================
+# ITEM FACTURA SERVICIO
+# ==========================================
+class ItemFacturaServicioRepository(
+    CRUDBase[ItemFacturaServicio, ItemFacturaServicioCreate, ItemFacturaServicio]
+):
+    async def get_by_factura(
+        self, db: AsyncSession, id_factura: int
+    ) -> List[ItemFacturaServicio]:
+        statement = (
+            select(ItemFacturaServicio)
+            .where(ItemFacturaServicio.id_factura_servicio == id_factura)
+            .order_by(ItemFacturaServicio.id_item_factura_servicio)
+        )
+        results = await db.exec(statement)
+        return results.all()
+
+    async def get_by_tarea(
+        self, db: AsyncSession, id_tarea_etapa: int
+    ) -> Optional[ItemFacturaServicio]:
+        statement = (
+            select(ItemFacturaServicio)
+            .where(ItemFacturaServicio.id_tarea_etapa == id_tarea_etapa)
+        )
+        results = await db.exec(statement)
+        return results.one_or_none()
+
+    async def delete_by_factura(
+        self, db: AsyncSession, id_factura: int
+    ) -> bool:
+        statement = (
+            select(ItemFacturaServicio)
+            .where(ItemFacturaServicio.id_factura_servicio == id_factura)
+        )
+        results = await db.exec(statement)
+        items = results.all()
+        for item in items:
+            await db.delete(item)
+        await db.commit()
+        return True
+
+
+item_factura_servicio_repo = ItemFacturaServicioRepository(ItemFacturaServicio)
