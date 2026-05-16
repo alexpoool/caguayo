@@ -186,6 +186,9 @@ class LoggingMiddleware(BaseHTTPMiddleware):
             response_detail or error_detail
         )
 
+        if status_code >= 500 and not error_detail:
+            return response
+
         log_data = {
             "nivel": "ERROR" if status_code >= 500 or error_detail else ("WARNING" if status_code >= 400 else "INFO"),
             "tipo": "REQUEST",
@@ -236,6 +239,10 @@ class LoggingMiddleware(BaseHTTPMiddleware):
                     logger.debug(f"Broadcast error: {be}")
                 break
         except Exception as e:
-            logger.error(f"Error saving log: {e}")
+            error_str = str(e)
+            if "no existe la relación" in error_str or "UndefinedTableError" in error_str or "log" in error_str:
+                logger.debug(f"Tabla log no existe en tenant, saltando logging: {e}")
+            else:
+                logger.error(f"Error saving log: {e}")
 
         return response

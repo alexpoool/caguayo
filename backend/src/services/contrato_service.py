@@ -16,6 +16,7 @@ from src.repository.contratos_repo import (
     item_factura_repo,
     item_venta_efectivo_repo,
 )
+from src.services.existencia_service import ExistenciaService
 from src.models import (
     TipoContrato,
     EstadoContrato,
@@ -395,6 +396,25 @@ class FacturaService:
         result_tipo = await db.exec(stmt_tipo_mov)
         tipo_mov = result_tipo.first()
 
+        # Validar existencias antes de crear factura
+        if items_data:
+            productos_validar = [
+                {"id_producto": item["id_producto"], "cantidad": item["cantidad"]}
+                for item in items_data
+            ]
+            
+            resultado_validacion = await ExistenciaService.validar_multiple(
+                db, productos_validar, id_dependencia
+            )
+            
+            if not resultado_validacion["valido"]:
+                errores = resultado_validacion["errores"]
+                mensaje = "\n".join([
+                    f"Producto {e['id_producto']}: {e['mensaje']}"
+                    for e in errores
+                ])
+                raise ValueError(f"Stock insuficiente:\n{mensaje}")
+
         if items_data and tipo_mov:
             await item_factura_repo.create_items(db, factura.id_factura, items_data)
 
@@ -432,10 +452,25 @@ class FacturaService:
 
         await agregar_desde_factura(db, factura.id_factura, items_data)
 
+        for item in items_data:
+            try:
+                await ExistenciaService.actualizar_existencia_producto(
+                    db, item["id_producto"], -item["cantidad"]
+                )
+                try:
+                    await ExistenciaService.registrar_venta_en_anexo(
+                        db, item["id_producto"], item["cantidad"]
+                    )
+                except Exception:
+                    pass
+            except Exception as e:
+                pass
+
         await db.commit()
         await db.refresh(factura)
 
-        return await map_factura_to_read(db, factura)
+        factura_con_detalles = await factura_repo.get_by_id_with_details(db, factura.id_factura)
+        return await map_factura_to_read(db, factura_con_detalles)
 
     @staticmethod
     async def get(db: AsyncSession, id: int) -> FacturaReadWithDetails:
@@ -573,6 +608,20 @@ class VentaEfectivoService:
                     db_movimiento.codigo = codigo
 
         await agregar_desde_venta_efectivo(db, venta.id_venta_efectivo, items_data)
+
+        for item in items_data:
+            try:
+                await ExistenciaService.actualizar_existencia_producto(
+                    db, item["id_producto"], -item["cantidad"]
+                )
+                try:
+                    await ExistenciaService.registrar_venta_en_anexo(
+                        db, item["id_producto"], item["cantidad"]
+                    )
+                except Exception:
+                    pass
+            except Exception as e:
+                pass
 
         await db.commit()
         await db.refresh(venta)

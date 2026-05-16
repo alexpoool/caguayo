@@ -347,7 +347,7 @@ async def obtener_dependencia(
         provincia=None,
         municipio=None,
         cuentas=[],
-        tablas_creadas=db_obj.tablas_creadas,
+        tablas_creadas=None,
     )
     return response
 

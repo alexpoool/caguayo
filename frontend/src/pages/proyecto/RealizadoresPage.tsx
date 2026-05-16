@@ -113,10 +113,18 @@ export function RealizadoresPage() {
         clientesService.getClientes(0, 10000, 'TCP'),
         clientesService.getClientes(0, 10000, 'JURIDICA')
       ]);
+<<<<<<< HEAD
       setTodosClientes(todosClientesRes);
       setPersonasNaturales(personasRes);
       setPersonasTCP(tcpRes as unknown as ClienteTCP[]);
       setPersonasJuridicas(juridicasRes as unknown as ClienteJuridica[]);
+=======
+setTodosClientes(todosClientesRes);
+      const tcpClientes = tcpRes as unknown as ClienteTCP[];
+      const juridicasClientes = juridicasRes as unknown as ClienteJuridica[];
+      setPersonasTCP(tcpClientes);
+      setPersonasJuridicas(juridicasClientes);
+>>>>>>> Rama_Documentos
       setMonedas(monedasRes);
       setSolicitudes(solicitudesRes);
       if (etapaParam) {
@@ -438,7 +446,11 @@ Nuevo Realizador
                   return (
                     <TableRow key={`${item.id_etapa}-${item.id_persona}`} className="hover:bg-gray-50/50 transition-colors cursor-pointer" onClick={() => setDetailModal({ isOpen: true, item })}>
                       <TableCell>
+<<<<<<< HEAD
                         <span className="font-medium text-gray-900">{getClienteNombre(persona)}</span>
+=======
+                        <span className="font-medium text-gray-900">{(persona as ClienteNatural | ClienteTCP)?.nombre || 'N/A'}</span>
+>>>>>>> Rama_Documentos
                       </TableCell>
                       <TableCell>
                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${

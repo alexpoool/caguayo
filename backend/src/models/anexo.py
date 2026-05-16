@@ -22,6 +22,7 @@ class Anexo(SQLModel, table=True):
     id_moneda: Optional[int] = Field(default=None, foreign_key="moneda.id_moneda")
     nombre_anexo: str = Field(max_length=200)
     fecha: date
+    codigo_anexo: Optional[str] = Field(default=None, max_length=50)
     id_dependencia: Optional[int] = None
     comision: Optional[Decimal] = Field(default=None, decimal_places=2, max_digits=10)
 

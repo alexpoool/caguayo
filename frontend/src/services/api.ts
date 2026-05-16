@@ -944,7 +944,7 @@ export interface Liquidacion {
   cliente?: any;
   moneda?: any;
   productos_en_liquidacion?: ProductosEnLiquidacion[];
-  convenio?: any;
+  conveniente?: any;
   anexo?: any;
 }
 
@@ -1025,6 +1025,10 @@ export const liquidacionService = {
   async deleteLiquidacion(id: number): Promise<void> {
     return apiClient.delete<void>(`/liquidaciones/${id}`);
   },
+
+  async aprobarLiquidacion(id: number): Promise<{ success: boolean; message: string }> {
+    return apiClient.patch<{ success: boolean; message: string }>(`/liquidaciones/${id}/aprobar`, {});
+  },
 };
 
 export type {
@@ -1069,4 +1073,52 @@ export type {
   PersonaLiquidacion,
   PersonaLiquidacionCreate,
   PersonaLiquidacionUpdate,
+};
+
+export const existenciaService = {
+  async getExistenciasPorAnexo(idAnexo: number): Promise<any[]> {
+    return apiClient.get<any[]>(`/existencias/anexo/${idAnexo}`);
+  },
+
+  async getExistenciasPorDependencia(idDependencia: number): Promise<any[]> {
+    return apiClient.get<any[]>(`/existencias/dependencia/${idDependencia}`);
+  },
+
+  async getExistenciasHibridas(idDependencia?: number, idAnexo?: number): Promise<any[]> {
+    const params = new URLSearchParams();
+    if (idDependencia) params.append('id_dependencia', idDependencia.toString());
+    if (idAnexo) params.append('id_anexo', idAnexo.toString());
+    const query = params.toString() ? `?${params.toString()}` : '';
+    return apiClient.get<any[]>(`/existencias/hibridas${query}`);
+  },
+
+  async getExistenciaProducto(idProducto: number, idDependencia?: number, idAnexo?: number): Promise<any> {
+    const params = new URLSearchParams();
+    if (idDependencia) params.append('id_dependencia', idDependencia.toString());
+    if (idAnexo) params.append('id_anexo', idAnexo.toString());
+    const query = params.toString() ? `?${params.toString()}` : '';
+    return apiClient.get<any>(`/existencias/producto/${idProducto}${query}`);
+  },
+
+  async validarDisponibilidad(idProducto: number, cantidad: number, idDependencia?: number, idAnexo?: number): Promise<any> {
+    return apiClient.post<any>('/existencias/validar', {
+      id_producto: idProducto,
+      cantidad,
+      id_dependencia: idDependencia,
+      id_anexo: idAnexo
+    });
+  },
+
+  async validarMultiple(productos: {id_producto: number, cantidad: number}[], idDependencia?: number, idAnexo?: number): Promise<any> {
+    return apiClient.post<any>('/existencias/validar-multiples', {
+      productos,
+      id_dependencia: idDependencia,
+      id_anexo: idAnexo
+    });
+  },
+
+  async getResumen(idDependencia?: number): Promise<any> {
+    const query = idDependencia ? `?id_dependencia=${idDependencia}` : '';
+    return apiClient.get<any>(`/existencias/resumen${query}`);
+  },
 };

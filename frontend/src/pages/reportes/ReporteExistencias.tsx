@@ -35,6 +35,19 @@ interface ExistenciasPreviewData {
 // Columns (defined outside the component to keep a stable reference)
 // ---------------------------------------------------------------------------
 
+// Export columns
+// ---------------------------------------------------------------------------
+
+const EXPORT_COLUMNS: ExportColumn<ExistenciasPreviewItem>[] = [
+  { header: "Código", accessor: "codigo" },
+  { header: "Descripción", accessor: "descripcion" },
+  { header: "Cantidad", accessor: "cantidad" },
+];
+
+// ---------------------------------------------------------------------------
+// Column definitions
+// ---------------------------------------------------------------------------
+
 const COLUMNS: Column<ExistenciasPreviewItem>[] = [
   {
     header: "Código",

@@ -19,7 +19,7 @@ class Cliente(SQLModel, table=True):
     __tablename__ = "clientes"
 
     id_cliente: Optional[int] = Field(
-        default=None, 
+        default=None,
         primary_key=True,
         sa_column_kwargs={"autoincrement": True}
     )
@@ -27,6 +27,7 @@ class Cliente(SQLModel, table=True):
     numero_cliente: str = Field(max_length=20)
     nombre: str = Field(max_length=200)
     tipo_persona: str = Field(sa_column=Column(String(20)))  # NATURAL, JURIDICA, TCP
+    cedula_rif: Optional[str] = Field(default=None, max_length=20)
     telefono: Optional[str] = Field(default=None, max_length=20)
     email: Optional[str] = Field(default=None, max_length=100)
     fax: Optional[str] = Field(default=None, max_length=20)

@@ -29,6 +29,14 @@ class AnexoSimpleRead(SQLModel):
     nombre_anexo: str
 
 
+class FacturaInfo(SQLModel):
+    id_factura: int
+    codigo_factura: str
+    monto: float
+    pagado: float
+    esta_pagada: bool
+
+
 class ProductosEnLiquidacionRead(ProductosEnLiquidacionBase):
     id_producto_en_liquidacion: int
     codigo: str
@@ -39,6 +47,7 @@ class ProductosEnLiquidacionRead(ProductosEnLiquidacionBase):
     cantidad_original: Optional[int] = None
     cantidad_liquidada: Optional[int] = None
     anexo: Optional["AnexoSimpleRead"] = None
+    info_factura: Optional[FacturaInfo] = None
 
 
 class ProductosEnLiquidacionUpdate(SQLModel):
@@ -54,4 +63,5 @@ from .productos_dto import ProductoSimpleRead
 from .monedas_dto import MonedaRead
 
 AnexoSimpleRead.model_rebuild()
+FacturaInfo.model_rebuild()
 ProductosEnLiquidacionRead.model_rebuild()

@@ -75,6 +75,10 @@ export function SuplementosPage() {
   });
 
   const handleSave = async () => {
+    if (!selectedContratoId) {
+      toast.error('Debe seleccionar un contrato');
+      return;
+    }
     try {
       const data = { 
         id_contrato: selectedContratoId, 
@@ -107,16 +111,18 @@ export function SuplementosPage() {
     });
   };
 
-  const resetForm = () => { setFormData({}); setEditingId(null); };
+  const resetForm = () => { setFormData({}); setEditingId(null); setSelectedContratoId(null); };
 
   const openForm = (item?: SuplementoWithDetails) => {
     if (item) {
       setEditingId(item.id_suplemento);
+      setSelectedContratoId(item.id_contrato);
       setFormData({ 
         nombre: item.nombre, 
         id_estado: item.id_estado, 
         fecha: item.fecha, 
-        documento: item.documento
+        documento: item.documento,
+        id_contrato: item.id_contrato
       });
     } else { resetForm(); }
     setView('form');
@@ -270,6 +276,23 @@ export function SuplementosPage() {
             <div className="md:col-span-2">
               <Label className="text-sm font-medium">Nombre *</Label>
               <Input value={formData.nombre || ''} onChange={(e: any) => setFormData({...formData, nombre: e.target.value})} className="mt-1" placeholder="Nombre del suplemento" />
+            </div>
+            <div className="md:col-span-2">
+              <Label className="text-sm font-medium">Contrato *</Label>
+              {selectedContratoId && editingId ? (
+                <div className="mt-1 px-3 py-2 bg-gray-100 border border-gray-300 rounded-lg text-gray-700">
+                  {contratos.find(c => c.id_contrato === Number(selectedContratoId))?.nombre || `Contrato #${selectedContratoId}`}
+                </div>
+              ) : (
+                <select 
+                  className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none bg-white"
+                  value={selectedContratoId || ''} 
+                  onChange={(e) => setSelectedContratoId(e.target.value ? Number(e.target.value) : null)}
+                >
+                  <option value="">Seleccionar contrato</option>
+                  {contratos.map(c => <option key={c.id_contrato} value={c.id_contrato}>{c.nombre}</option>)}
+                </select>
+              )}
             </div>
             <div>
               <Label className="text-sm font-medium">Estado</Label>

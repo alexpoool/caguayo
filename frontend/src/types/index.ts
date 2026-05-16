@@ -187,6 +187,16 @@ export interface DashboardStats {
   productos_stock_bajo: Productos[];
 }
 
+export interface ExistenciaHibridaResponse {
+  id_producto: number;
+  nombre_producto: string;
+  codigo?: string;
+  cantidad_entrada: number;
+  cantidad_salida: number;
+  existencia: number;
+  tipo: string;
+}
+
 // Tipos para crear/actualizar
 export interface ProductosCreate {
   codigo?: string;

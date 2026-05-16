@@ -268,49 +268,62 @@ const loadInitialData = async () => {
         )}
       </div>
       {selectedProducts.length > 0 && (
-        <div className="space-y-2">
-          {selectedProducts.map((p) => {
-            const pr = productos.find((pr) => pr.id_producto === p.id_producto);
-            return (
-              <div
-                key={p.id_producto}
-                className="flex items-center gap-2 p-2 bg-white rounded"
-              >
-                <span className="flex-1">{pr?.nombre}</span>
-                <Input
-                  type="number"
-                  min="1"
-                  value={p.cantidad}
-                  onChange={(e: any) =>
-                    updateCantidad(p.id_producto, Number(e.target.value))
-                  }
-                  className="w-20"
-                />
-                <Input
-                  type="number"
-                  step="0.01"
-                  value={p.precio_venta}
-                  onChange={(e: any) =>
-                    updatePrecioVenta(p.id_producto, Number(e.target.value))
-                  }
-                  className="w-24"
-                  placeholder="Precio"
-                />
-                <span className="w-24 text-right text-gray-600">
-                  ${(p.cantidad * p.precio_venta).toFixed(2)}
-                </span>
-                <button
-                  onClick={() => removeProduct(p.id_producto)}
-                  className="text-red-500"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-            );
-          })}
-          <div className="text-right font-bold">
-            Total: ${calcMonto().toFixed(2)}
-          </div>
+        <div className="border rounded-lg overflow-hidden">
+          <table className="w-full text-sm">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-3 py-2 text-left">Nombre</th>
+                <th className="px-3 py-2 text-left">Cantidad</th>
+                <th className="px-3 py-2 text-left">Precio</th>
+                <th className="px-3 py-2 text-left">Subtotal</th>
+                <th className="px-3 py-2"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {selectedProducts.map((p) => {
+                const pr = productos.find((pr) => pr.id_producto === p.id_producto);
+                return (
+                  <tr key={p.id_producto} className="border-t">
+                    <td className="px-3 py-2">{pr?.nombre}</td>
+                    <td className="px-3 py-2">
+                      <Input
+                        type="number"
+                        min="1"
+                        value={p.cantidad}
+                        onChange={(e: any) =>
+                          updateCantidad(p.id_producto, Number(e.target.value))
+                        }
+                        className="w-20 h-8"
+                      />
+                    </td>
+                    <td className="px-3 py-2">
+                      <Input
+                        type="number"
+                        step="0.01"
+                        value={p.precio_venta}
+                        onChange={(e: any) =>
+                          updatePrecioVenta(p.id_producto, Number(e.target.value))
+                        }
+                        className="w-24 h-8"
+                        placeholder="Precio"
+                      />
+                    </td>
+                    <td className="px-3 py-2 text-gray-600">
+                      ${(p.cantidad * p.precio_venta).toFixed(2)}
+                    </td>
+                    <td className="px-3 py-2">
+                      <button
+                        onClick={() => removeProduct(p.id_producto)}
+                        className="text-red-500"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       )}
     </div>
@@ -634,8 +647,8 @@ const loadInitialData = async () => {
         onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
       />
 
-      {detailModal.isOpen &&
-        detailModal.item &&
+      {(detailModal.isOpen &&
+        detailModal.item) &&
         createPortal(
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 animate-fade-in">
             <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-auto animate-scale-in">

@@ -136,10 +136,7 @@ export function FacturasTable({
                     <Button
                       variant="ghost"
                       size="icon"
-                      onClick={() => {
-                        onViewDocument?.(item);
-                        onPrintDocument?.(item);
-                      }}
+                      onClick={() => onPrintDocument?.(item)}
                       className="text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 h-8 w-8 transition-colors"
                       title="Imprimir documento"
                     >

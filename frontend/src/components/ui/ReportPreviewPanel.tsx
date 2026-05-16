@@ -35,7 +35,14 @@ export interface ReportPreviewPanelProps<T> {
   columns: Column<T>[];
   stats?: StatCard[];
   emptyMessage?: string;
+  exportColumns?: Column<T>[];
   exportFileName?: string;
+}
+
+export interface ExportColumn<T> {
+  header: string;
+  accessor: keyof T | ((row: T) => string | number);
+  value?: keyof T;
 }
 
 // ---------------------------------------------------------------------------

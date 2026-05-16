@@ -35,6 +35,18 @@ interface MovimientosDependenciaPreviewData {
 }
 
 // ---------------------------------------------------------------------------
+// Export columns
+// ---------------------------------------------------------------------------
+
+const EXPORT_COLUMNS: ExportColumn<MovimientosDependenciaPreviewItem>[] = [
+  { header: "Fecha", accessor: "fecha" },
+  { header: "Operación", accessor: "operacion" },
+  { header: "Producto", accessor: "producto" },
+  { header: "Tipo", accessor: "tipo" },
+  { header: "Cantidad", accessor: "cantidad" },
+];
+
+// ---------------------------------------------------------------------------
 // Column definitions
 // ---------------------------------------------------------------------------
 

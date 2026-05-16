@@ -135,7 +135,7 @@ class ItemFacturaBase(SQLModel):
 
 
 class ItemFacturaCreate(ItemFacturaBase):
-    pass
+    id_anexo: Optional[int] = None
 
 
 class ItemFacturaRead(ItemFacturaBase):

@@ -150,6 +150,7 @@ export function useClientesLogic() {
   const handleEdit = (cliente: Cliente) => {
     setEditingCliente(cliente);
     setTipoPersona(cliente.tipo_persona || "NATURAL");
+    setCuentasCliente(cliente.cuentas || []);
     setView("form");
   };
 

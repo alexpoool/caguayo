@@ -36,6 +36,17 @@ interface MovimientosProductoPreviewData {
 }
 
 // ---------------------------------------------------------------------------
+// Export columns
+// ---------------------------------------------------------------------------
+
+const EXPORT_COLUMNS: ExportColumn<MovimientosProductoPreviewItem>[] = [
+  { header: "Fecha", accessor: "fecha" },
+  { header: "Operación", accessor: "operacion" },
+  { header: "Tipo", accessor: "tipo" },
+  { header: "Cantidad", accessor: "cantidad" },
+];
+
+// ---------------------------------------------------------------------------
 // Column definitions
 // ---------------------------------------------------------------------------
 
