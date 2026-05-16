@@ -1,29 +1,19 @@
 import { useQuery } from '@tanstack/react-query';
-import { apiClient } from '@/lib/api';
-import type { ExistenciaHibridaResponse } from '@/types';
+import { existenciaService } from '../services/api';
 
-interface UseStockOptions {
-  idDependencia: number | null;
-  idAnexo?: number | null;
+export interface ExistenciaHibridaItem {
+  id_producto: number;
+  existencia: number;
 }
 
-export function useStock({ idDependencia, idAnexo }: UseStockOptions) {
-  return useQuery<
-    ExistenciaHibridaResponse[],
-    Error
-  >({
-    queryKey: ['stock', idDependencia, idAnexo],
+export function useStock({ idDependencia }: { idDependencia: number | null }) {
+  return useQuery({
+    queryKey: ['stock', idDependencia],
     queryFn: async () => {
-      const params = new URLSearchParams();
-      if (idDependencia) params.append('id_dependencia', idDependencia.toString());
-      if (idAnexo) params.append('id_anexo', idAnexo.toString());
-      
-      const data = await apiClient.get<ExistenciaHibridaResponse[]>(
-        `/existencias/hibridas?${params.toString()}`
-      );
-      
-      return data;
+      if (!idDependencia) return [];
+      const data = await existenciaService.getExistenciasHibridas(idDependencia);
+      return data as ExistenciaHibridaItem[];
     },
-    staleTime: 30000,
+    enabled: !!idDependencia,
   });
 }

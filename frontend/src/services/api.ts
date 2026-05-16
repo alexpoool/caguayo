@@ -953,7 +953,7 @@ export interface Liquidacion {
   cliente?: any;
   moneda?: any;
   productos_en_liquidacion?: ProductosEnLiquidacion[];
-  conveniente?: any;
+  convenio?: any;
   anexo?: any;
 }
 

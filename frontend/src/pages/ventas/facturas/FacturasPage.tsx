@@ -246,10 +246,10 @@ export function getFacturaDocument(
     <div class="firmas">
       <div class="fila-firmas">
         <div class="bloque-firma">
+          <br><br>
           <p><strong>Confeccionado por:</strong></p>
           <p>${nombreUsuario}</p>
           <p class="cargo">Cargo: ${cargoUsuario}</p>
-          <br><br>
         </div>
         <div class="bloque-firma">
           <p><strong>Autorizado por:</strong></p>

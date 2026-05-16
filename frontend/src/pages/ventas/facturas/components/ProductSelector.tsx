@@ -4,7 +4,6 @@ import { Input, Label } from '../../../../components/ui';
 import type { Productos } from '../../../../types';
 import type { SelectedProduct } from '../hooks/useProductSelection';
 import { useStock } from '../../../../hooks/useStock';
-import type { ExistenciaHibridaResponse } from '../../../../types/index';
 import { authHelpers } from '../../../../lib/api';
 
 interface ProductSelectorProps {

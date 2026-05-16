@@ -5,7 +5,7 @@ import { Dependencia } from "../../types/dependencia";
 import { authHelpers } from "../../lib/api";
 import { useReportPreview } from "../../hooks/useReportPreview";
 import ReportPreviewPanel from "../../components/ui/ReportPreviewPanel";
-import type { Column, StatCard } from "../../components/ui/ReportPreviewPanel";
+import type { Column, StatCard, ExportColumn } from "../../components/ui/ReportPreviewPanel";
 import { UserCircle, Download } from "lucide-react";
 
 // ---------------------------------------------------------------------------
@@ -103,21 +103,12 @@ const ReporteProveedores: React.FC = () => {
   } = useReportPreview<ProveedoresPreviewData>(previewUrl);
 
   // ── Export columns (depends on tipoEntidad) ────────────────────────────────
-<<<<<<< HEAD
-  const exportColumns = useMemo(() => {
-    const base = [
-      { header: "Nombre",    value: "nombre" },
-      { header: "Dirección", value: "direccion" },
-      { header: "Provincia", value: "provincia" },
-      { header: "Municipio", value: "municipio" },
-=======
   const exportColumns = useMemo<ExportColumn<ProveedorPreviewItem>[]>(() => {
     const base: ExportColumn<ProveedorPreviewItem>[] = [
       { header: "Nombre", accessor: "nombre" },
       { header: "Dirección", accessor: "direccion" },
       { header: "Provincia", accessor: "provincia" },
       { header: "Municipio", accessor: "municipio" },
->>>>>>> Rama_Documentos
     ];
     if (tipoEntidad === "NATURAL") {
       base.push({ header: "Carnet de Identidad", accessor: "carnet_identidad" });

@@ -5,7 +5,7 @@ import { Dependencia } from "../../types/dependencia";
 import { authHelpers } from "../../lib/api";
 import { useReportPreview } from "../../hooks/useReportPreview";
 import ReportPreviewPanel from "../../components/ui/ReportPreviewPanel";
-import type { Column, StatCard } from "../../components/ui/ReportPreviewPanel";
+import type { Column, StatCard, ExportColumn } from "../../components/ui/ReportPreviewPanel";
 import { Boxes, Download, Building2 } from "lucide-react";
 
 // ---------------------------------------------------------------------------

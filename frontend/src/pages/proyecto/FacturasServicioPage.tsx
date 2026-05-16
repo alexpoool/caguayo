@@ -533,8 +533,8 @@ export function FacturasServicioPage() {
     .documento { max-width: 880px; width: 100%; background: white; box-shadow: 0 12px 28px rgba(0, 0, 0, 0.2); padding: 1rem 1.5rem 1.5rem 1.5rem; border-radius: 4px; }
     .texto { font-family: 'Courier New', 'Monaco', monospace; font-size: 13px; line-height: 1.4; color: #111; }
     .header-tcp { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.3rem; padding-bottom: 0.2rem; gap: 15px; }
-    .header-logo { display: flex; align-items: center; gap: 10px; min-width: 220px; }
-    .header-logo img { width: 300px; height: 3000px; object-fit: contain; filter: grayscale(100%) brightness(0); }
+    .header-logo { display: flex; align-items: center; gap: 10px; min-width: 120px; }
+    .header-logo img { width: 220px; height: 220px; object-fit: contain; filter: grayscale(100%) brightness(0); }
     .header-center { text-align: center; flex: 1; }
     .tcp-title { font-size: 26px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; color: black; }
     .nombre-titular { font-size: 15px; font-weight: bold; margin-top: 6px; }
@@ -671,7 +671,7 @@ export function FacturasServicioPage() {
           <p><strong>Confeccionado por:</strong></p>
           <p>${elaboradoPor}</p>
           <p class="cargo">${cargoUsuario}</p>
-          <br>
+          <br><br>
           <div style="border-bottom: 1px solid #222; margin-top: 35px;"></div>
           <p style="margin-top: 8px;">Firma</p>
         </div>
@@ -680,6 +680,7 @@ export function FacturasServicioPage() {
           <p><strong>Nombre:</strong> </p>
           <p><strong>Cargo:</strong> </p>
           <p><strong>Fecha:</strong> </p>
+          <br>
           <div style="border-bottom: 1px solid #222; margin-top: 35px;"></div>
           <p style="margin-top: 8px;">Firma</p>
         </div>
@@ -895,8 +896,8 @@ export function FacturasServicioPage() {
         <div class="bloque-firma">
           <p><strong>Confeccionado por:</strong></p>
           <p>${elaboradoPor}</p>
-          <br>
           <p class="cargo">${cargoUsuario}</p>
+          <br><br>
           <div style="border-bottom: 1px solid #222; margin-top: 35px;"></div>
           <p style="margin-top: 8px;">Firma</p>
         </div>
@@ -905,6 +906,7 @@ export function FacturasServicioPage() {
           <p><strong>Nombre:</strong> </p>
           <p><strong>Cargo:</strong> </p>
           <p><strong>Fecha:</strong> </p>
+          <br>
           <div style="border-bottom: 1px solid #222; margin-top: 35px;"></div>
           <p style="margin-top: 8px;">Firma</p>
         </div>
