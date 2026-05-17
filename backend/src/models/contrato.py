@@ -81,6 +81,7 @@ class Suplemento(SQLModel, table=True):
     id_estado: int = Field(foreign_key="estado_contrato.id_estado_contrato")
     fecha: date = Field(default=date.today())
     monto: Decimal = Field(default=Decimal("0.00"))
+    documento: Optional[str] = Field(default=None, max_length=255)
 
     contrato: "Contrato" = Relationship(back_populates="suplementos")
     estado: "EstadoContrato" = Relationship()

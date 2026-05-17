@@ -38,6 +38,20 @@ from .item_factura import ItemFactura
 from .item_venta_efectivo import ItemVentaEfectivo
 from .cuenta_dependencia import CuentaDependencia
 from .log import LogEntry
+from .pago import Pago
+from .servicio import (
+    Servicio,
+    SolicitudServicio,
+    Etapa,
+    TareaEtapa,
+    PersonaEtapa,
+    FacturaServicio,
+    Certificacion,
+    ItemFacturaServicio,
+    PagoFacturaServicio,
+    PersonaLiquidacion,
+)
+from .datos_generales_dependencia import DatosGeneralesDependencia
 
 __all__ = [
     "Moneda",
@@ -71,7 +85,6 @@ __all__ = [
     "Factura",
     "VentaEfectivo",
     "Cuenta",
-    "TipoCuenta",
     "TipoEntidad",
     "Grupo",
     "Usuario",
@@ -87,4 +100,16 @@ __all__ = [
     "ItemVentaEfectivo",
     "CuentaDependencia",
     "LogEntry",
+    "Pago",
+    "Servicio",
+    "SolicitudServicio",
+    "Etapa",
+    "TareaEtapa",
+    "PersonaEtapa",
+    "FacturaServicio",
+    "Certificacion",
+    "ItemFacturaServicio",
+    "PagoFacturaServicio",
+    "PersonaLiquidacion",
+    "DatosGeneralesDependencia",
 ]

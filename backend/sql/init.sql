@@ -316,7 +316,8 @@ CREATE TABLE productos (
     precio_compra NUMERIC NOT NULL,
     moneda_venta INTEGER NOT NULL REFERENCES moneda(id_moneda) ON DELETE CASCADE,
     precio_venta NUMERIC NOT NULL,
-    precio_minimo NUMERIC NOT NULL
+    precio_minimo NUMERIC NOT NULL,
+    existencia INTEGER DEFAULT 0
 );
 
 -- =====================================================
@@ -336,7 +337,7 @@ CREATE TABLE convenio (
 -- Anexos
 CREATE TABLE anexo (
 id_anexo SERIAL PRIMARY KEY,
-    id_convenio INTEGER NOT NULL REFERENCES anexo(id_anexo) ON DELETE CASCADE,
+    id_convenio INTEGER NOT NULL REFERENCES convenio(id_convenio) ON DELETE CASCADE,
     id_moneda INTEGER REFERENCES moneda(id_moneda) ON DELETE SET NULL,
     nombre_anexo VARCHAR(200) NOT NULL,
     fecha DATE NOT NULL,
@@ -351,6 +352,7 @@ CREATE TABLE item_anexo (
     id_anexo INTEGER NOT NULL REFERENCES anexo(id_anexo) ON DELETE CASCADE,
     id_producto INTEGER NOT NULL REFERENCES productos(id_producto) ON DELETE CASCADE,
     cantidad INTEGER NOT NULL DEFAULT 1,
+    cantidad_vendida INTEGER DEFAULT 0,
     precio_compra NUMERIC(15, 4) NOT NULL,
     precio_venta NUMERIC(15, 4) NOT NULL,
     id_moneda INTEGER NOT NULL REFERENCES moneda(id_moneda) ON DELETE CASCADE
@@ -391,13 +393,14 @@ CREATE TABLE suplemento (
 
 
 
+
+
 -- Facturas
 CREATE TABLE factura (
     id_factura SERIAL PRIMARY KEY,
     id_contrato INTEGER NOT NULL REFERENCES contrato(id_contrato) ON DELETE CASCADE,
     codigo_factura VARCHAR(50) NOT NULL UNIQUE,
     descripcion TEXT,
-    observaciones TEXT,
     fecha DATE NOT NULL DEFAULT CURRENT_DATE,
     monto NUMERIC(15, 2) NOT NULL DEFAULT 0.00,
     pago_actual NUMERIC(15, 2) NOT NULL DEFAULT 0.00
@@ -529,7 +532,7 @@ CREATE TABLE movimiento (
     id_liquidacion INTEGER REFERENCES liquidacion(id_liquidacion) ON DELETE CASCADE,
     estado VARCHAR(20) DEFAULT 'pendiente',
     codigo VARCHAR(100),
-    id_convenio INTEGER REFERENCES anexo(id_convenio) ON DELETE CASCADE,
+    id_convenio INTEGER REFERENCES convenio(id_convenio) ON DELETE CASCADE,
     id_cliente INTEGER REFERENCES clientes(id_cliente) ON DELETE SET NULL,
     precio_compra NUMERIC(15, 4),
     moneda_compra INTEGER REFERENCES moneda(id_moneda) ON DELETE CASCADE,
@@ -952,7 +955,6 @@ CREATE TABLE solicitud_servicio (
     id_contrato INTEGER REFERENCES contrato(id_contrato),
     id_suplemento INTEGER REFERENCES suplemento(id_suplemento),
     codigo_solicitud VARCHAR(50),
-    numero VARCHAR(50),
     nombres_rep VARCHAR(100),
     apellido1_rep VARCHAR(100),
     apellido2_rep VARCHAR(100),
@@ -1006,7 +1008,7 @@ CREATE TABLE persona_etapa (
     cobro NUMERIC(15,2) DEFAULT 0.00,
     id_moneda INTEGER REFERENCES moneda(id_moneda),
     liquidada BOOLEAN DEFAULT FALSE,
-    pago_completado BOOLEAN DEFAULT FALSE,
+    por_cobrar NUMERIC(15, 2) DEFAULT 0.00,
     PRIMARY KEY (id_etapa, id_persona)
 );
 
@@ -1017,7 +1019,6 @@ CREATE TABLE factura_servicio (
     id_certificacion INTEGER REFERENCES certificacion(id_certificacion),
     alcance VARCHAR(20),
     codigo_factura VARCHAR(50),
-    numero VARCHAR(50),
     id_moneda INTEGER REFERENCES moneda(id_moneda),
     fecha DATE,
     descripcion TEXT,
@@ -1067,8 +1068,8 @@ CREATE TABLE pago_factura_servicio (
     monto NUMERIC(15,2) DEFAULT 0.00,
     id_moneda INTEGER REFERENCES moneda(id_moneda),
     fecha DATE,
-    doc_traza VARCHAR(100),
-    doc_factura VARCHAR(100)
+    monto_disponible NUMERIC(15, 2) DEFAULT 0.00,
+    doc_traza VARCHAR(100)
 );
 
 -- Liquidación a Personas Naturales
