@@ -31,6 +31,17 @@ export const CuentasBancariasForm: React.FC<CuentasBancariasFormProps> = ({
   addCuenta,
   removeCuenta,
 }) => {
+  const limpiarCuenta = () => {
+    setNuevaCuenta({
+      titular: "",
+      banco: "",
+      sucursal: 0,
+      id_moneda: 1,
+      numero_cuenta: "",
+      direccion: "",
+    });
+  };
+
   return (
     <Card className="mb-6 shadow-sm border-gray-200">
       <CardHeader className="border-b bg-gray-50/50">
@@ -40,66 +51,90 @@ export const CuentasBancariasForm: React.FC<CuentasBancariasFormProps> = ({
         </CardTitle>
       </CardHeader>
       <CardContent className="mt-4">
-        <div className="grid grid-cols-6 gap-2 mb-4">
-          <Input
-            placeholder="Titular"
-            aria-label="Titular cuenta"
-            value={nuevaCuenta.titular || ""}
-            onChange={(e) =>
-              setNuevaCuenta({ ...nuevaCuenta, titular: e.target.value })
-            }
-          />
-          <Input
-            placeholder="Banco"
-            aria-label="Banco cuenta"
-            value={nuevaCuenta.banco || ""}
-            onChange={(e) =>
-              setNuevaCuenta({ ...nuevaCuenta, banco: e.target.value })
-            }
-          />
-          <Input
-            placeholder="Sucursal"
-            aria-label="Sucursal cuenta"
-            type="number"
-            value={nuevaCuenta.sucursal || ""}
-            onChange={(e) =>
-              setNuevaCuenta({
-                ...nuevaCuenta,
-                sucursal: parseInt(e.target.value) || 0,
-              })
-            }
-          />
-          <select
-            aria-label="Moneda cuenta"
-            value={nuevaCuenta.id_moneda || ""}
-            onChange={(e) =>
-              setNuevaCuenta({
-                ...nuevaCuenta,
-                id_moneda: e.target.value
-                  ? parseInt(e.target.value)
-                  : undefined,
-              })
-            }
-            className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+        <div className="space-y-2 mb-4">
+          <div className="grid grid-cols-3 gap-2">
+            <Input
+              placeholder="Banco"
+              aria-label="Banco cuenta"
+              maxLength={17}
+              value={nuevaCuenta.banco || ""}
+              onChange={(e) =>
+                setNuevaCuenta({ ...nuevaCuenta, banco: e.target.value })
+              }
+            />
+            <Input
+              placeholder="Sucursal"
+              aria-label="Sucursal cuenta"
+              maxLength={8}
+              value={nuevaCuenta.sucursal || ""}
+              onChange={(e) =>
+                setNuevaCuenta({
+                  ...nuevaCuenta,
+                  sucursal: parseInt(e.target.value) || 0,
+                })
+              }
+            />
+            <Input
+              placeholder="Dirección"
+              aria-label="Direccion cuenta"
+              value={nuevaCuenta.direccion || ""}
+              onChange={(e) =>
+                setNuevaCuenta({ ...nuevaCuenta, direccion: e.target.value })
+              }
+            />
+          </div>
+          <div className="grid grid-cols-3 gap-2">
+            <Input
+              placeholder="N° Cuenta"
+              aria-label="Numero cuenta"
+              maxLength={17}
+              value={nuevaCuenta.numero_cuenta || ""}
+              onChange={(e) =>
+                setNuevaCuenta({
+                  ...nuevaCuenta,
+                  numero_cuenta: e.target.value,
+                })
+              }
+            />
+            <select
+              aria-label="Moneda cuenta"
+              value={nuevaCuenta.id_moneda || ""}
+              onChange={(e) =>
+                setNuevaCuenta({
+                  ...nuevaCuenta,
+                  id_moneda: e.target.value
+                    ? parseInt(e.target.value)
+                    : undefined,
+                })
+              }
+              className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <option value="">Moneda</option>
+              {monedas.map((m) => (
+                <option key={m.id_moneda} value={m.id_moneda}>
+                  {m.simbolo} - {m.nombre}
+                </option>
+              ))}
+            </select>
+            <Input
+              placeholder="Titular"
+              aria-label="Titular cuenta"
+              value={nuevaCuenta.titular || ""}
+              onChange={(e) =>
+                setNuevaCuenta({ ...nuevaCuenta, titular: e.target.value })
+              }
+            />
+          </div>
+        </div>
+        <div className="flex justify-end gap-2 mb-4">
+          <Button
+            type="button"
+            aria-label="Limpiar campos"
+            onClick={limpiarCuenta}
+            variant="outline"
           >
-            <option value="">Moneda</option>
-            {monedas.map((m) => (
-              <option key={m.id_moneda} value={m.id_moneda}>
-                {m.simbolo} - {m.nombre}
-              </option>
-            ))}
-          </select>
-          <Input
-            placeholder="# Cuenta"
-            aria-label="Numero cuenta"
-            value={nuevaCuenta.numero_cuenta || ""}
-            onChange={(e) =>
-              setNuevaCuenta({
-                ...nuevaCuenta,
-                numero_cuenta: e.target.value,
-              })
-            }
-          />
+            Limpiar
+          </Button>
           <Button
             type="button"
             aria-label="Agregar cuenta"

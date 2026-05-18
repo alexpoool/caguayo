@@ -48,10 +48,9 @@ import type { Provincia, Municipio } from './ubicacion';
 // Tipos para Cliente
 export interface Cliente {
   id_cliente: number;
-  numero_cliente: string;
   nombre: string;
   tipo_persona: 'NATURAL' | 'JURIDICA' | 'TCP';
-  cedula_rif: string;
+  nit: string;
   telefono?: string;
   email?: string;
   fax?: string;
@@ -77,10 +76,9 @@ export interface ClienteWithVentas extends Cliente {
 }
 
 export interface ClienteCreate {
-  numero_cliente?: string;
   nombre: string;
   tipo_persona: 'NATURAL' | 'JURIDICA' | 'TCP';
-  cedula_rif?: string;
+  nit?: string;
   telefono?: string;
   email?: string;
   fax?: string;
@@ -105,10 +103,9 @@ export interface ClienteCreate {
 }
 
 export interface ClienteUpdate {
-  numero_cliente?: string;
   nombre?: string;
   tipo_persona?: 'NATURAL' | 'JURIDICA' | 'TCP';
-  cedula_rif?: string;
+  nit?: string;
   telefono?: string;
   email?: string;
   fax?: string;

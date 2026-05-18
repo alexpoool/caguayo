@@ -358,14 +358,6 @@ def upgrade() -> None:
     op.drop_column("anexo", "id_producto")
     op.drop_column("anexo", "numero_anexo")
     op.add_column(
-        "clientes",
-        sa.Column(
-            "numero_cliente",
-            sqlmodel.sql.sqltypes.AutoString(length=20),
-            nullable=False,
-        ),
-    )
-    op.add_column(
         "clientes", sa.Column("tipo_persona", sa.String(length=20), nullable=True)
     )
     op.add_column(
@@ -901,7 +893,6 @@ def downgrade() -> None:
     op.drop_column("clientes", "web")
     op.drop_column("clientes", "fax")
     op.drop_column("clientes", "tipo_persona")
-    op.drop_column("clientes", "numero_cliente")
     op.add_column(
         "anexo",
         sa.Column(

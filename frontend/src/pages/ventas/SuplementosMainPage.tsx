@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { ConfirmModal } from "../../components/ui";
-import { suplementosService, contratosService } from "../../services/api";
+import { suplementosService, contratosService, configuracionService } from "../../services/api";
 import type {
   ContratoWithDetails,
   SuplementoWithDetails,
@@ -18,7 +18,7 @@ export function SuplementosMainPage() {
   const [view, setView] = useState<"list" | "form">("list");
   const [suplementos, setSuplementos] = useState<SuplementoWithDetails[]>([]);
   const [contratos, setContratos] = useState<ContratoWithDetails[]>([]);
-  const [estados, setEstados] = useState<{ id: number; nombre: string }[]>([]);
+  const [estados, setEstados] = useState<{ id_estado_contrato: number; nombre: string }[]>([]);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [selectedContratoId, setSelectedContratoId] = useState<number | null>(
     initialContratoId ? Number(initialContratoId) : null,
@@ -48,16 +48,12 @@ export function SuplementosMainPage() {
 
   const loadInitialData = async () => {
     try {
-      const [contratosRes] = await Promise.all([
+      const [contratosRes, estadosRes] = await Promise.all([
         contratosService.getContratos(0, 1000),
+        configuracionService.getEstadosContrato(),
       ]);
       setContratos(contratosRes);
-      setEstados([
-        { id: 1, nombre: "ACTIVO" },
-        { id: 2, nombre: "CANCELADO" },
-        { id: 3, nombre: "FINALIZADO" },
-        { id: 4, nombre: "PENDIENTE" },
-      ]);
+      setEstados(estadosRes);
     } catch (error) {
       console.error("Error:", error);
     }
@@ -87,7 +83,7 @@ export function SuplementosMainPage() {
       const data = {
         id_contrato: selectedContratoId,
         nombre: formData.nombre || "",
-        id_estado: Number(formData.id_estado) || 1,
+        id_estado: Number(formData.id_estado) || (estados.length > 0 ? estados[0].id_estado_contrato : 1),
         fecha: formData.fecha || new Date().toISOString().split("T")[0],
         documento: formData.documento,
       };

@@ -94,7 +94,6 @@ class MonedaRead(SQLModel):
 class ClienteSimpleRead(SQLModel):
     id_cliente: int
     nombre: str
-    numero_cliente: Optional[str] = None
 
 
 class SuplementoBase(SQLModel):

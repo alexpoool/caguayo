@@ -14,7 +14,7 @@ import { Layers, Save, ArrowLeft } from "lucide-react";
 interface SuplementosFormProps {
   formData: Record<string, any>;
   setFormData: (data: Record<string, any>) => void;
-  estados: { id: number; nombre: string }[];
+  estados: { id_estado_contrato: number; nombre: string }[];
   editingId: number | null;
   handleSave: () => void;
   setView: (view: "list" | "form") => void;
@@ -87,7 +87,7 @@ export const SuplementosForm: React.FC<SuplementosFormProps> = ({
               }
             >
               {estados.map((e) => (
-                <option key={e.id} value={e.id}>
+                <option key={e.id_estado_contrato} value={e.id_estado_contrato}>
                   {e.nombre}
                 </option>
               ))}

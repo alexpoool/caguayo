@@ -236,7 +236,7 @@ export const clientesService = {
   },
 
   async buscarClienteByCedula(cedulaRif: string): Promise<Cliente[]> {
-    return apiClient.get<Cliente[]>(`/clientes/search?cedula_rif=${encodeURIComponent(cedulaRif)}`);
+    return apiClient.get<Cliente[]>(`/clientes/search?nit=${encodeURIComponent(cedulaRif)}`);
   },
 
   async getPersonasNaturales(): Promise<ClienteNatural[]> {

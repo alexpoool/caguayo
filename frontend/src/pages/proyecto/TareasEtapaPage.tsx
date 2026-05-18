@@ -417,7 +417,7 @@ export function TareasEtapaPage() {
         </CardHeader>
         <CardContent className="p-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="flex gap-2 items-start">
+            <div className="flex gap-2 items-start md:col-span-2">
               <div ref={dropdownServicioRef} className="relative flex-1">
                 <Label className="text-sm font-medium">Servicio</Label>
                 <div className="relative mt-1">

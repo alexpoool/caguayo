@@ -30,7 +30,7 @@ export const ClienteDetailModal: React.FC<ClienteDetailModalProps> = ({
                   {cliente.nombre || "(Sin nombre)"}
                 </h3>
                 <p className="text-sm text-gray-500">
-                  Cliente #{cliente.numero_cliente || cliente.id_cliente}
+                  Cliente #{cliente.id_cliente}
                 </p>
               </div>
             </div>
@@ -49,7 +49,7 @@ export const ClienteDetailModal: React.FC<ClienteDetailModalProps> = ({
                 Cédula/RIF
               </p>
               <p className="font-bold text-gray-900">
-                {cliente.cedula_rif || "-"}
+                {cliente.nit || "-"}
               </p>
             </div>
             <div className="bg-gradient-to-br from-purple-50 to-pink-50 p-4 rounded-md border border-purple-100">

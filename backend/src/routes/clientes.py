@@ -42,13 +42,9 @@ async def crear_cliente(
 
 @router.get("/search", response_model=List[ClienteRead])
 async def buscar_clientes(
-    numero_cliente: Optional[str] = None,
     db: AsyncSession = Depends(get_session),
 ):
-    """Buscar clientes por número de cliente."""
-    if numero_cliente:
-        cliente = await ClienteService.get_cliente_by_numero(db, numero_cliente)
-        return [cliente] if cliente else []
+    """Buscar todos los clientes."""
     return await ClienteService.get_clientes(db)
 
 

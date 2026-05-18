@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Button, Input, Label, Card, CardContent, CardHeader, CardTitle, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, ConfirmModal } from '../../components/ui';
-import { suplementosService, contratosService } from '../../services/api';
+import { suplementosService, contratosService, configuracionService } from '../../services/api';
 import type { ContratoWithDetails } from '../../types/contrato';
 import type { SuplementoWithDetails } from '../../types/contrato';
 import { Plus, Save, Trash2, Edit, ArrowLeft, Search, Layers, FileText, DollarSign, Calendar, Tag, X } from 'lucide-react';
@@ -18,7 +18,7 @@ export function SuplementosPage() {
   
   const [suplementos, setSuplementos] = useState<SuplementoWithDetails[]>([]);
   const [contratos, setContratos] = useState<ContratoWithDetails[]>([]);
-  const [estados, setEstados] = useState<{id: number, nombre: string}[]>([]);
+  const [estados, setEstados] = useState<{id_estado_contrato: number, nombre: string}[]>([]);
   
   const [editingId, setEditingId] = useState<number | null>(null);
   const [selectedContratoId, setSelectedContratoId] = useState<number | null>(initialContratoId ? Number(initialContratoId) : null);
@@ -43,11 +43,12 @@ export function SuplementosPage() {
 
   const loadInitialData = async () => {
     try {
-      const [contratosRes] = await Promise.all([
-        contratosService.getContratos(0, 1000)
+      const [contratosRes, estadosRes] = await Promise.all([
+        contratosService.getContratos(0, 1000),
+        configuracionService.getEstadosContrato()
       ]);
       setContratos(contratosRes);
-      setEstados([{ id: 1, nombre: 'ACTIVO' }, { id: 2, nombre: 'CANCELADO' }, { id: 3, nombre: 'FINALIZADO' }, { id: 4, nombre: 'PENDIENTE' }]);
+      setEstados(estadosRes);
     } catch (error) { console.error('Error:', error); }
   };
 
@@ -83,7 +84,7 @@ export function SuplementosPage() {
       const data = { 
         id_contrato: selectedContratoId, 
         nombre: formData.nombre || '',
-        id_estado: Number(formData.id_estado) || 1, 
+        id_estado: Number(formData.id_estado) || (estados.length > 0 ? estados[0].id_estado_contrato : 1), 
         fecha: formData.fecha || new Date().toISOString().split('T')[0],
         documento: formData.documento
       };
@@ -111,7 +112,11 @@ export function SuplementosPage() {
     });
   };
 
-  const resetForm = () => { setFormData({}); setEditingId(null); setSelectedContratoId(null); };
+  const resetForm = () => {
+    setFormData({});
+    setEditingId(null);
+    setSelectedContratoId(initialContratoId ? Number(initialContratoId) : null);
+  };
 
   const openForm = (item?: SuplementoWithDetails) => {
     if (item) {
@@ -297,7 +302,7 @@ export function SuplementosPage() {
             <div>
               <Label className="text-sm font-medium">Estado</Label>
               <select className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none bg-white" value={formData.id_estado || ''} onChange={(e: any) => setFormData({...formData, id_estado: e.target.value})}>
-                {estados.map(e => <option key={e.id} value={e.id}>{e.nombre}</option>)}
+                {estados.map(e => <option key={e.id_estado_contrato} value={e.id_estado_contrato}>{e.nombre}</option>)}
               </select>
             </div>
             <div>

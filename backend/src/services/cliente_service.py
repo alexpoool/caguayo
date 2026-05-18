@@ -46,7 +46,7 @@ class ClienteService:
         async with db.begin():
             # Convert DTO to dict, excluding specific subtypes
             obj_data = cliente.model_dump(
-                exclude={"cliente_natural", "cliente_juridica", "cliente_tcp"}
+                exclude={"cliente_natural", "cliente_juridica", "cliente_tcp", "cuentas"}
             )
             db_cliente = Cliente(**obj_data)
             db.add(db_cliente)
@@ -77,22 +77,22 @@ class ClienteService:
 
             await db.flush()
 
-        # The begin() context manager handles the commit()
-        await db.refresh(db_cliente)
-
-        # Load relationships explicitly
-        db_cliente = await db.get(
-            Cliente,
-            db_cliente.id_cliente,
-            options=[
+        # Load relationships explicitly (populate_existing forces SA to
+        # ignore identity map and apply selectinload eagerly)
+        result = await db.exec(
+            select(Cliente)
+            .where(Cliente.id_cliente == db_cliente.id_cliente)
+            .options(
                 selectinload(Cliente.cliente_natural),
                 selectinload(Cliente.cliente_juridica),
                 selectinload(Cliente.cliente_tcp),
                 selectinload(Cliente.provincia),
                 selectinload(Cliente.municipio),
                 selectinload(Cliente.cuentas),
-            ],
+            )
+            .execution_options(populate_existing=True)
         )
+        db_cliente = result.one()
         return ClienteRead.model_validate(db_cliente)
 
     @staticmethod
@@ -187,43 +187,85 @@ class ClienteService:
         for field, value in update_data.items():
             setattr(db_cliente, field, value)
         await db.flush()
-        updated_cliente = db_cliente
         
-        # Procesar cuentas si se proporcionaron (Opcion B: solo agregar, no eliminar)
-        if cuentas_data and len(cuentas_data) > 0:
-            print(f"[DEBUG] update_cliente: Creando {len(cuentas_data)} cuentas")
+        # --- Procesar datos tipo-específicos ---
+        from src.models.cliente_natural import ClienteNatural
+        from src.models.cliente_juridica import ClienteJuridica
+        from src.models.cliente_tcp import ClienteTCP
+        
+        tipo = update_data.get("tipo_persona") or db_cliente.tipo_persona
+        
+        if isinstance(cliente_update, dict):
+            cliente_natural_data = cliente_update.get("cliente_natural")
+            cliente_juridica_data = cliente_update.get("cliente_juridica")
+            cliente_tcp_data = cliente_update.get("cliente_tcp")
+        else:
+            cliente_natural_data = cliente_update.cliente_natural
+            cliente_juridica_data = cliente_update.cliente_juridica
+            cliente_tcp_data = cliente_update.cliente_tcp
+        
+        # Limpiar todas las tablas tipo-específicas
+        await db.execute(text("DELETE FROM clientes_persona_natural WHERE id_cliente = :id"), {"id": cliente_id})
+        await db.execute(text("DELETE FROM clientes_persona_juridica WHERE id_cliente = :id"), {"id": cliente_id})
+        await db.execute(text("DELETE FROM cliente_tcp WHERE id_cliente = :id"), {"id": cliente_id})
+        
+        if tipo == "NATURAL" and cliente_natural_data:
+            nat_dict = cliente_natural_data if isinstance(cliente_natural_data, dict) else cliente_natural_data.model_dump()
+            nat_dict["id_cliente"] = cliente_id
+            db.add(ClienteNatural(**nat_dict))
+        elif tipo == "JURIDICA" and cliente_juridica_data:
+            jur_dict = cliente_juridica_data if isinstance(cliente_juridica_data, dict) else cliente_juridica_data.model_dump()
+            jur_dict["id_cliente"] = cliente_id
+            db.add(ClienteJuridica(**jur_dict))
+        elif tipo == "TCP" and cliente_tcp_data:
+            tcp_dict = cliente_tcp_data if isinstance(cliente_tcp_data, dict) else cliente_tcp_data.model_dump()
+            tcp_dict["id_cliente"] = cliente_id
+            db.add(ClienteTCP(**tcp_dict))
+        
+        await db.flush()
+        
+        # --- Procesar cuentas bancarias ---
+        print(f"[DEBUG] update_cliente: cuentas_data={cuentas_data}")
+        
+        if cuentas_data is not None:
+            # Eliminar cuentas existentes para evitar duplicados
+            existing_cuentas = await db.exec(select(Cuenta).where(Cuenta.id_cliente == cliente_id))
+            for c in existing_cuentas.all():
+                await db.delete(c)
+            
+            # Re-insertar todas las cuentas del payload
             for cuenta_dict in cuentas_data:
                 if isinstance(cuenta_dict, dict):
-                    cuenta_dict_clean = {k: v for k, v in cuenta_dict.items() if v is not None}
+                    cuenta_clean = {k: v for k, v in cuenta_dict.items() if v is not None}
                 else:
-                    cuenta_dict_clean = cuenta_dict.model_dump(exclude_none=True)
+                    cuenta_clean = cuenta_dict.model_dump(exclude_none=True)
                 
-                if cuenta_dict_clean.get("id_cuenta"):
-                    del cuenta_dict_clean["id_cuenta"]
-                
-                cuenta_dict_clean["id_cliente"] = cliente_id
-                print(f"[DEBUG] update_cliente: Creando cuenta={cuenta_dict_clean}")
-                db.add(Cuenta(**cuenta_dict_clean))
+                cuenta_clean = {
+                    k: v for k, v in cuenta_clean.items()
+                    if k in ("titular", "banco", "sucursal", "numero_cuenta", "direccion", "id_moneda", "id_cliente")
+                }
+                cuenta_clean["id_cliente"] = cliente_id
+                db.add(Cuenta(**cuenta_clean))
             
             await db.flush()
         else:
-            print(f"[DEBUG] update_cliente: No se procesan cuentas (vacias o None)")
-        
-        await db.refresh(updated_cliente)
+            print(f"[DEBUG] update_cliente: No se procesan cuentas (None)")
         
         # Cargar relaciones para retornar
-        updated_cliente = await db.get(
-            Cliente,
-            updated_cliente.id_cliente,
-            options=[
+        result = await db.exec(
+            select(Cliente)
+            .where(Cliente.id_cliente == cliente_id)
+            .options(
                 selectinload(Cliente.cliente_natural),
                 selectinload(Cliente.cliente_juridica),
                 selectinload(Cliente.cliente_tcp),
                 selectinload(Cliente.provincia),
                 selectinload(Cliente.municipio),
                 selectinload(Cliente.cuentas),
-            ],
+            )
+            .execution_options(populate_existing=True)
         )
+        updated_cliente = result.one()
         return ClienteRead.model_validate(updated_cliente)
 
     @staticmethod
@@ -233,14 +275,6 @@ class ClienteService:
         )
         await db.commit()
         return True
-
-    @staticmethod
-    async def get_cliente_by_numero(
-        db: AsyncSession, numero_cliente: str
-    ) -> Optional[ClienteRead]:
-        db_cliente = await cliente_repo.get_by_numero(db, numero_cliente=numero_cliente)
-        return ClienteRead.model_validate(db_cliente) if db_cliente else None
-
 
 class ClienteNaturalService:
     @staticmethod

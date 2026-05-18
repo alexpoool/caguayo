@@ -36,23 +36,25 @@ export function CompraAnexosPage() {
 
   const loadInitialData = async () => {
     try {
-      const [conv, cli, prod, mon] = await Promise.all([
+      const [conv, cli, mon] = await Promise.all([
         conveniosService.getConvenios(),
         clientesService.getClientes(0, 1000),
-        productosService.getProductos(0, 1000),
         monedaService.getMonedas(0, 100),
       ]);
       setConvenios(conv);
       setClientes(cli);
-      setProductos(prod);
       setMonedas(mon);
-      if (dependenciasFiltradas.length > 0 && !formData.id_dependencia) {
-        setFormData({ ...formData, id_dependencia: dependenciasFiltradas[0].id_dependencia.toString() });
-      }
     } catch (error) { console.error('Error:', error); }
+    try {
+      const prod = await productosService.getProductos(0, 1000);
+      setProductos(prod);
+    } catch (error) { console.error('Error loading productos:', error); }
+    if (dependenciasFiltradas.length > 0 && !formData.id_dependencia) {
+      setFormData({ ...formData, id_dependencia: dependenciasFiltradas[0].id_dependencia.toString() });
+    }
   };
 
-  useEffect(() => { if (view === 'list') loadAnexos(); }, [view]);
+  useEffect(() => { if (view === 'list') loadAnexos(); }, [view, initialConvenioId]);
 
   const conveniosVigentes = useMemo(() => 
     convenios.filter(c => new Date(c.vigencia) >= new Date()),
@@ -65,7 +67,7 @@ export function CompraAnexosPage() {
 
   const loadAnexos = async () => {
     try {
-      const data = await anexosService.getAnexos();
+      const data = await anexosService.getAnexos(initialConvenioId ? Number(initialConvenioId) : undefined);
       setAnexos(data);
     } catch (error) { console.error('Error:', error); }
   };

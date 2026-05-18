@@ -141,10 +141,9 @@ CREATE TABLE municipio (
 -- Clientes
 CREATE TABLE clientes (
     id_cliente SERIAL PRIMARY KEY,
-    numero_cliente VARCHAR(20) NOT NULL UNIQUE,
     nombre VARCHAR(200) NOT NULL,
     tipo_persona VARCHAR(20) NOT NULL CHECK (tipo_persona IN ('NATURAL', 'JURIDICA', 'TCP')),
-    cedula_rif VARCHAR(20) NOT NULL UNIQUE,
+    nit VARCHAR(20) NOT NULL UNIQUE,
     telefono VARCHAR(20),
     email VARCHAR(100),
     fax VARCHAR(20),
@@ -564,7 +563,7 @@ CREATE INDEX idx_ventas_estado ON ventas(estado);
 CREATE INDEX idx_ventas_fecha ON ventas(fecha);
 CREATE INDEX idx_detalle_venta_venta ON detalle_ventas(id_venta);
 CREATE INDEX idx_detalle_venta_producto ON detalle_ventas(id_producto);
-CREATE INDEX idx_clientes_cedula ON clientes(cedula_rif);
+CREATE INDEX idx_clientes_nit ON clientes(nit);
 CREATE INDEX idx_convenio_cliente ON clientes(id_cliente);
 CREATE INDEX idx_dependencia_padre ON dependencia(codigo_padre);
 CREATE INDEX idx_dependencia_tipo ON dependencia(id_tipo_dependencia);

@@ -144,11 +144,7 @@ export function ClientesList({
                           <span className="font-medium text-gray-900 block">
                             {cliente.nombre || "(Sin nombre)"}
                           </span>
-                          {cliente.numero_cliente && (
-                            <span className="text-xs text-gray-500 block">
-                              #{cliente.numero_cliente}
-                            </span>
-                          )}
+
                         </div>
                       </div>
                     </TableCell>
@@ -265,9 +261,7 @@ export function ClientesList({
                         {detailModal.cliente.nombre || "(Sin nombre)"}
                       </h3>
                       <p className="text-sm text-gray-500">
-                        Cliente #
-                        {detailModal.cliente.numero_cliente ||
-                          detailModal.cliente.id_cliente}
+                        Cliente #{detailModal.cliente.id_cliente}
                       </p>
                     </div>
                   </div>
@@ -288,7 +282,7 @@ export function ClientesList({
                       Cédula/RIF
                     </p>
                     <p className="font-bold text-gray-900">
-                      {detailModal.cliente.cedula_rif || "-"}
+                      {detailModal.cliente.nit || "-"}
                     </p>
                   </div>
                   <div className="bg-gradient-to-br from-purple-50 to-pink-50 p-4 rounded-md border border-purple-100">

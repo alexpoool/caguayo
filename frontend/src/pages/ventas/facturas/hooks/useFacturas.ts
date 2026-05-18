@@ -3,10 +3,12 @@ import { facturasService, existenciaService } from '../../../../services/api';
 import type { FacturaWithDetails } from '../../../../types/contrato';
 import { prepararFacturaParaAPI } from '../utils/facturasUtils';
 
-export function useFacturas() {
+export function useFacturas(initialContratoId?: string | null) {
   const [facturas, setFacturas] = useState<FacturaWithDetails[]>([]);
   const [editingId, setEditingId] = useState<number | null>(null);
-  const [selectedContratoId, setSelectedContratoId] = useState<number | null>(null);
+  const [selectedContratoId, setSelectedContratoId] = useState<number | null>(
+    initialContratoId ? Number(initialContratoId) : null
+  );
   const [formData, setFormData] = useState<Record<string, any>>({});
 
   /**

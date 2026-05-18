@@ -72,7 +72,7 @@ export function ClienteDetailView({
           <div>
             <Label># Cliente</Label>
             <p className="font-medium">
-              {viewingCliente.numero_cliente || "N/A"}
+              {"N/A"}
             </p>
           </div>
           <div>
@@ -81,7 +81,7 @@ export function ClienteDetailView({
           </div>
           <div>
             <Label>Cédula/RIF</Label>
-            <p className="font-medium">{viewingCliente.cedula_rif || "N/A"}</p>
+            <p className="font-medium">{viewingCliente.nit || "N/A"}</p>
           </div>
           <div>
             <Label>Tipo Persona</Label>

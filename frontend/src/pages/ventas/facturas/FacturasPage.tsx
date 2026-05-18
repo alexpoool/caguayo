@@ -62,8 +62,6 @@ export function getFacturaDocument(
 
   const numeroContrato = contrato?.codigo || "";
   const nombreCliente = cliente?.nombre || "N/A";
-  const codigoCliente = cliente?.numero_cliente || "";
-  const nitCliente = codigoCliente;
   const direccionCliente = cliente?.direccion || "";
   const provinciaCliente = cliente?.provincia?.nombre || "";
   const municipioCliente = cliente?.municipio?.nombre || "";
@@ -205,8 +203,7 @@ export function getFacturaDocument(
     <div class="info-cliente">
       <div class="contrato-titulo">CONTRATO Nº ${numeroContrato} <span></span> Cliente: ${nombreCliente}</div>
       <div class="fila-datos">
-        <span class="campo"><strong>Código:</strong> ${codigoCliente}</span>
-        <span class="campo"><strong>NIT/CI:</strong> ${nitCliente}</span>
+        <span class="campo"><strong>NIT/CI:</strong> ${cliente?.nit || ''}</span>
         <span class="campo"><strong>Dirección:</strong> ${direccionCompleta}</span>
       </div>
       <div class="fila-banco-titulo">BANCO:</div>
@@ -315,7 +312,7 @@ export function FacturasPage() {
   const [pagoModalFactura, setPagoModalFactura] = useState<any | null>(null);
 
   // Hooks personalizados
-  const facturasHook = useFacturas();
+  const facturasHook = useFacturas(initialContratoId);
   const pagosHook = usePagos();
   const productSelectionHook = useProductSelection();
 
@@ -607,7 +604,7 @@ export function FacturasPage() {
   const handleCancelForm = () => {
     setView("list");
     facturasHook.resetForm();
-    facturasHook.setSelectedContratoId(null);
+    facturasHook.setSelectedContratoId(initialContratoId ? Number(initialContratoId) : null);
     productSelectionHook.resetSelection();
   };
 

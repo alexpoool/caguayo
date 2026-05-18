@@ -394,9 +394,15 @@ export function LiquidacionesPage() {
     }
 
     if (etapaId) {
-      const etapaMoneda = (etapas as Etapa[]).find(et => et.id_etapa === etapaId)?.id_moneda;
-      if (etapaMoneda) {
-        setFormData(prev => ({ ...prev, id_moneda: etapaMoneda }));
+      const etapa = (etapas as Etapa[]).find(et => et.id_etapa === etapaId);
+      if (etapa) {
+        if (etapa.id_moneda) {
+          setFormData(prev => ({ ...prev, id_moneda: etapa.id_moneda }));
+        }
+        setFormData(prev => ({
+          ...prev,
+          descripcion: etapa.descripcion || ''
+        }));
       }
       try {
         const validacion = await facturasServicioService.validarPagoEtapa(etapaId);
@@ -602,8 +608,7 @@ export function LiquidacionesPage() {
     const empresaEmail = empresa?.email || '';
     
     const nombreRealizador = realizador?.nombre || 'N/A';
-    const codigoRealizador = realizador?.numero_cliente || 'N/A';
-    const cedulaRealizador = realizador?.cedula_rif || 'N/A';
+    const cedulaRealizador = realizador?.nit || 'N/A';
     const direccionRealizador = realizador?.direccion || '';
     
     const nombreEtapa = etapa?.nombre_etapa || `Etapa #${etapa?.numero_etapa || 'N/A'}`;
@@ -719,7 +724,6 @@ export function LiquidacionesPage() {
     <div class="info-cliente">
         <div class="cliente-header">Realizador</div>
         <div class="cliente-item"><strong>Nombre:</strong> ${nombreRealizador}</div>
-        <div class="cliente-item"><strong>Código:</strong> ${codigoRealizador}</div>
         <div class="cliente-item"><strong>CI:</strong> ${cedulaRealizador}</div>
         <div class="cliente-item"><strong>Dirección:</strong> ${direccionRealizador}</div>
     </div>

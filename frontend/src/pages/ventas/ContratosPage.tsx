@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { Button, Input, Label, Card, CardContent, CardHeader, CardTitle, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, ConfirmModal } from '../../components/ui';
-import { contratosService, clientesService, monedaService, solicitudesService } from '../../services/api';
+import { contratosService, clientesService, monedaService, solicitudesService, configuracionService } from '../../services/api';
 import type { Cliente } from '../../types/ventas';
 import type { Moneda } from '../../types/moneda';
 import type { ContratoWithDetails, ContratoCreate } from '../../types/contrato';
@@ -21,7 +21,8 @@ export function ContratosPage() {
   const [contratos, setContratos] = useState<ContratoWithDetails[]>([]);
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [monedas, setMonedas] = useState<Moneda[]>([]);
-  const [tiposContrato, setTiposContrato] = useState<{id: number, nombre: string}[]>([]);
+  const [tiposContrato, setTiposContrato] = useState<{id_tipo_contrato: number, nombre: string}[]>([]);
+  const [estados, setEstados] = useState<{id_estado_contrato: number, nombre: string}[]>([]);
   
   const [editingId, setEditingId] = useState<number | null>(null);
   const [formData, setFormData] = useState<Record<string, any>>({});
@@ -46,13 +47,16 @@ export function ContratosPage() {
 
   const loadInitialData = async () => {
     try {
-      const [clientesRes, monedasRes] = await Promise.all([
+      const [clientesRes, monedasRes, estadosRes, tiposRes] = await Promise.all([
         clientesService.getClientes(0, 1000),
-        monedaService.getMonedas(0, 100)
+        monedaService.getMonedas(0, 100),
+        configuracionService.getEstadosContrato(),
+        configuracionService.getTiposContrato()
       ]);
       setClientes(clientesRes);
       setMonedas(monedasRes);
-      setTiposContrato([{ id: 1, nombre: 'SERVICIO' }, { id: 2, nombre: 'OBRA' }, { id: 3, nombre: 'MANTENIMIENTO' }, { id: 4, nombre: 'ALQUILER' }, { id: 5, nombre: 'COMPRA' }]);
+      setEstados(estadosRes);
+      setTiposContrato(tiposRes);
     } catch (error) { console.error('Error:', error); }
   };
 
@@ -71,8 +75,8 @@ export function ContratosPage() {
       const data: ContratoCreate = { 
         nombre: formData.nombre || '',
         id_cliente: Number(formData.id_cliente) || 0, 
-        id_estado: 1, 
-        id_tipo_contrato: Number(formData.id_tipo_contrato) || 1, 
+        id_estado: estados.length > 0 ? estados[0].id_estado_contrato : 1, 
+        id_tipo_contrato: Number(formData.id_tipo_contrato) || (tiposContrato.length > 0 ? tiposContrato[0].id_tipo_contrato : 1), 
         id_moneda: Number(formData.id_moneda) || 1,
         fecha: formData.fecha || new Date().toISOString().split('T')[0],
         vigencia: formData.vigencia || new Date().toISOString().split('T')[0],
@@ -358,7 +362,7 @@ export function ContratosPage() {
             <div>
               <Label className="text-sm font-medium">Tipo</Label>
               <select className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 outline-none bg-white" value={formData.id_tipo_contrato || ''} onChange={(e: any) => setFormData({...formData, id_tipo_contrato: e.target.value})}>
-                {tiposContrato.map(t => <option key={t.id} value={t.id}>{t.nombre}</option>)}
+                {tiposContrato.map(t => <option key={t.id_tipo_contrato} value={t.id_tipo_contrato}>{t.nombre}</option>)}
               </select>
             </div>
             <div>

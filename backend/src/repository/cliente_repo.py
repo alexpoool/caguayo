@@ -24,14 +24,7 @@ from src.dto import CuentaCreate, CuentaUpdate
 
 
 class ClienteRepository(CRUDBase[Cliente, ClienteCreate, ClienteUpdate]):
-    async def get_by_numero(
-        self, db: AsyncSession, numero_cliente: str
-    ) -> Optional[Cliente]:
-        statement = select(self.model).where(
-            self.model.numero_cliente == numero_cliente
-        )
-        results = await db.exec(statement)
-        return results.first()
+    pass
 
 
 class ClienteNaturalRepository(

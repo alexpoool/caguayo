@@ -177,7 +177,7 @@ export function useClientesLogic() {
     return result.filter(
       (c) =>
         c.nombre?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        c.cedula_rif?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        c.nit?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         c.telefono?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         c.email?.toLowerCase().includes(searchTerm.toLowerCase())
     );

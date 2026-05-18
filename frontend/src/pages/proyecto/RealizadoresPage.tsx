@@ -244,8 +244,7 @@ setTodosClientes(todosClientesRes);
     const term = busquedaPersona.toLowerCase();
     return todosClientes.filter(c =>
       (c.nombre || '').toLowerCase().includes(term) ||
-      (c.numero_cliente || '').toLowerCase().includes(term) ||
-      (c.cedula_rif || '').toLowerCase().includes(term)
+      (c.nit || '').toLowerCase().includes(term)
     );
   }, [todosClientes, busquedaPersona]);
 
@@ -307,7 +306,7 @@ setTodosClientes(todosClientesRes);
         const data = await clientesService.createCliente({
           nombre: nuevoClienteData.nombre,
           tipo_persona: 'NATURAL',
-          cedula_rif: nuevoClienteData.carnet_identidad || '',
+          nit: nuevoClienteData.carnet_identidad || '',
           telefono: nuevoClienteData.telefono || '',
           email: nuevoClienteData.correo || '',
           direccion: '',
@@ -323,7 +322,7 @@ setTodosClientes(todosClientesRes);
         const data = await clientesService.createCliente({
           nombre: nuevoClienteData.nombre,
           tipo_persona: 'JURIDICA',
-          cedula_rif: nuevoClienteData.codigo_nit || nuevoClienteData.codigo_reup || '',
+          nit: nuevoClienteData.codigo_nit || nuevoClienteData.codigo_reup || '',
           telefono: nuevoClienteData.telefono || '',
           email: nuevoClienteData.correo || '',
           direccion: '',
@@ -339,7 +338,7 @@ setTodosClientes(todosClientesRes);
         const data = await clientesService.createCliente({
           nombre: nuevoClienteData.nombre,
           tipo_persona: 'TCP',
-          cedula_rif: nuevoClienteData.carnet_identidad || '',
+          nit: nuevoClienteData.carnet_identidad || '',
           telefono: nuevoClienteData.telefono || '',
           email: nuevoClienteData.correo || '',
           direccion: '',

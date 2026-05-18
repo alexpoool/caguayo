@@ -98,6 +98,7 @@ class Factura(SQLModel, table=True):
     id_contrato: int = Field(foreign_key="contrato.id_contrato")
     codigo_factura: str = Field(max_length=50, unique=True)
     descripcion: Optional[str] = None
+    observaciones: Optional[str] = None
     fecha: date = Field(default=date.today())
     monto: Decimal = Field(default=Decimal("0.00"))
     pago_actual: Decimal = Field(default=Decimal("0.00"))

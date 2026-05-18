@@ -149,7 +149,7 @@ export function PerfilClientePage() {
               <div>
                 <p className="text-sm text-gray-500">Cédula / RIF</p>
                 <p className="font-medium">
-                  {cliente.cedula_rif || "No registrado"}
+                  {cliente.nit || "No registrado"}
                 </p>
               </div>
             </div>

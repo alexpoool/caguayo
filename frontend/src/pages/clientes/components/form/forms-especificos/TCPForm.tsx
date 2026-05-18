@@ -24,7 +24,7 @@ export const TCPForm: React.FC<DatosTCPFormProps> = ({
       </CardHeader>
       <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
         <div className="md:col-span-2">
-          <Label>Nombre del Líder *</Label>
+          <Label>Titular</Label>
           <Input
             value={data.nombre || ""}
             onChange={(e) =>
@@ -73,7 +73,7 @@ export const TCPForm: React.FC<DatosTCPFormProps> = ({
           />
         </div>
         <div>
-          <Label># de Registro del Proyecto</Label>
+          <Label>Numero de Registro del Proyecto</Label>
           <Input
             value={data.numero_registro_proyecto || ""}
             onChange={(e) =>

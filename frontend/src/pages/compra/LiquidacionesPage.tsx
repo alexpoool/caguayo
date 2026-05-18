@@ -285,8 +285,7 @@ export function LiquidacionesPage() {
     const empresaEmail = empresa?.email || '';
     
     const nombreProveedor = cliente?.nombre || 'N/A';
-    const codigoProveedor = cliente?.numero_cliente || 'N/A';
-    const cedulaProveedor = cliente?.cedula_rif || 'N/A';
+    const cedulaProveedor = cliente?.nit || 'N/A';
     const direccionProveedor = cliente?.direccion || '';
     const provinciaProveedor = cliente?.provincia?.nombre || '';
     const municipioProveedor = cliente?.municipio?.nombre || '';
@@ -432,7 +431,6 @@ export function LiquidacionesPage() {
     <div class="info-cliente">
         <div class="cliente-header">Cliente</div>
         <div class="cliente-item"><strong>Nombre:</strong> ${nombreProveedor}</div>
-        <div class="cliente-item"><strong>Código:</strong> ${codigoProveedor}</div>
         <div class="cliente-item"><strong>Cuenta:</strong> Localidad: ${localidadProveedor}</div>
         <div class="cliente-item"><strong>Cl.:</strong> ${cedulaProveedor}</div>
         <div class="cliente-item"><strong>Registro:</strong> ${isNatural || isTCP ? '1' : 'N/A'}</div>

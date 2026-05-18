@@ -576,8 +576,8 @@ export function VentasPage() {
                             c.nombre
                               .toLowerCase()
                               .includes(clienteSearch.toLowerCase()) ||
-                            (c.cedula_rif &&
-                              c.cedula_rif
+                            (c.nit &&
+                              c.nit
                                 .toLowerCase()
                                 .includes(clienteSearch.toLowerCase())),
                         )
@@ -598,9 +598,9 @@ export function VentasPage() {
                             <div className="font-medium">
                               {cliente.nombre || "Cliente sin nombre"}
                             </div>
-                            {cliente.cedula_rif && (
+                            {cliente.nit && (
                               <div className="text-xs text-gray-500">
-                                {cliente.cedula_rif}
+                                {cliente.nit}
                               </div>
                             )}
                           </div>

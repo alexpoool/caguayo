@@ -14,12 +14,12 @@ class ProductosService:
         db: AsyncSession, producto: ProductosCreate
     ) -> ProductosRead:
         db_producto = await productos_repo.create(db, obj_in=producto)
-        return ProductosRead.from_orm(db_producto)
+        return ProductosRead.model_validate(db_producto)
 
     @staticmethod
     async def get_producto(db: AsyncSession, producto_id: int) -> ProductosRead:
         db_producto = await productos_repo.get(db, id=producto_id)
-        return ProductosRead.from_orm(db_producto) if db_producto else None
+        return ProductosRead.model_validate(db_producto) if db_producto else None
 
     @staticmethod
     async def get_productos(
@@ -28,7 +28,7 @@ class ProductosService:
         db_productos = await productos_repo.get_multi(
             db, skip=skip, limit=limit, search=search
         )
-        return [ProductosRead.from_orm(p) for p in db_productos]
+        return [ProductosRead.model_validate(p) for p in db_productos]
 
     @staticmethod
     async def update_producto(
@@ -39,7 +39,7 @@ class ProductosService:
             updated_producto = await productos_repo.update(
                 db, db_obj=db_producto, obj_in=producto
             )
-            return ProductosRead.from_orm(updated_producto)
+            return ProductosRead.model_validate(updated_producto)
         return None
 
     @staticmethod
@@ -50,7 +50,7 @@ class ProductosService:
     @staticmethod
     async def search_productos(db: AsyncSession, nombre: str) -> List[ProductosRead]:
         db_productos = await productos_repo.get_by_nombre(db, nombre=nombre)
-        return [ProductosRead.from_orm(p) for p in db_productos]
+        return [ProductosRead.model_validate(p) for p in db_productos]
 
     @staticmethod
     async def get_productos_by_anexo(
@@ -67,7 +67,7 @@ class ProductosService:
             producto = await ProductosService.get_producto(db, p_data["id_producto"])
             if producto:
                 # Agregar cantidad calculada
-                producto_dict = producto.dict()
+                producto_dict = producto.model_dump()
                 producto_dict["cantidad"] = p_data["cantidad"]
                 result.append(ProductosRead(**producto_dict))
         return result
@@ -85,7 +85,7 @@ class ProductosService:
             producto = await ProductosService.get_producto(db, p_data["id_producto"])
             if producto:
                 # Agregar cantidad calculada
-                producto_dict = producto.dict()
+                producto_dict = producto.model_dump()
                 producto_dict["cantidad"] = p_data["cantidad"]
                 result.append(ProductosRead(**producto_dict))
         return result

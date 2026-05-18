@@ -177,7 +177,7 @@ async def main():
         # 11. Clientes
         from src.models.cliente import Cliente
         for i in range(10):
-            session.add(Cliente(cedula_rif=f"V{10000000+i}", numero_cliente=f"CLI-{i+1:04d}", nombre=f"Cliente {i+1}", 
+            session.add(Cliente(nit=f"V{10000000+i}", nombre=f"Cliente {i+1}", 
                                 tipo_persona=["NATURAL", "JURIDICA", "TCP"][i%3], telefono=f"555000{i:04d}", 
                                 email=f"cli{i+1}@test.cu", id_provincia=prov_ids[i], id_municipio=mun_ids[i], 
                                 direccion=f"Direccion {i+1}", tipo_relacion="CLIENTE", estado="ACTIVO"))
@@ -188,7 +188,7 @@ async def main():
 
         # 11b. Proveedores
         for i in range(10):
-            session.add(Cliente(cedula_rif=f"J{20000000+i}", numero_cliente=f"PROV-{i+1:04d}", nombre=f"Proveedor {i+1}", 
+            session.add(Cliente(nit=f"J{20000000+i}", nombre=f"Proveedor {i+1}", 
                                 tipo_persona=["NATURAL", "JURIDICA", "TCP"][i%3], telefono=f"666000{i:04d}", 
                                 email=f"prov{i+1}@test.cu", id_provincia=prov_ids[i], id_municipio=mun_ids[i], 
                                 direccion=f"Direccion Prov {i+1}", tipo_relacion="PROVEEDOR", estado="ACTIVO"))

@@ -190,7 +190,6 @@ async def map_contrato_to_read(
         cliente=ClienteSimpleRead(
             id_cliente=cliente.id_cliente,
             nombre=cliente.nombre,
-            numero_cliente=cliente.numero_cliente,
         )
         if cliente
         else None,
@@ -255,7 +254,6 @@ async def map_suplemento_to_read(
         fecha=suplemento.fecha,
         monto=suplemento.monto,
         documento=suplemento.documento,
-        codigo=suplemento.codigo,
         estado=EstadoContratoRead(
             id_estado_contrato=estado.id_estado_contrato,
             nombre=estado.nombre,
@@ -342,7 +340,6 @@ async def map_factura_to_read(
                 precio_venta=item.precio_venta,
                 precio_compra=item.precio_compra,
                 id_moneda=item.id_moneda,
-                codigo=item.codigo,
                 producto=ProductoSimpleRead(
                     id_producto=producto.id_producto,
                     codigo=producto.codigo,
@@ -543,7 +540,6 @@ async def map_venta_efectivo_to_read(
         id_dependencia=venta.id_dependencia,
         cajero=venta.cajero,
         monto=venta.monto,
-        codigo=venta.codigo,
         dependencia=DependenciaSimpleRead(
             id_dependencia=dependencia.id_dependencia,
             nombre=dependencia.nombre,

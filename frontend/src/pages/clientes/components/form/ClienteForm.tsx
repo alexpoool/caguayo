@@ -47,34 +47,34 @@ export const ClienteForm: React.FC<ClienteFormProps> = ({
   const [localProvincias, setLocalProvincias] = useState<any[]>(provincias || []);
   const [localTiposEntidad, setLocalTiposEntidad] = useState<any[]>(tiposEntidad || []);
   const [localMonedas, setLocalMonedas] = useState<any[]>(monedas || []);
-  
+
   useEffect(() => {
     if (provincias && Array.isArray(provincias) && provincias.length > 0) {
       setLocalProvincias(provincias);
     }
   }, [provincias]);
-  
+
   useEffect(() => {
     if (tiposEntidad && Array.isArray(tiposEntidad) && tiposEntidad.length > 0) {
       setLocalTiposEntidad(tiposEntidad);
     }
   }, [tiposEntidad]);
-  
+
   useEffect(() => {
     if (monedas && Array.isArray(monedas) && monedas.length > 0) {
       setLocalMonedas(monedas);
     }
   }, [monedas]);
-  
+
   const [tipoPersona, setTipoPersona] = useState<TipoPersona>(
     editingCliente?.tipo_persona || "NATURAL"
   );
-  
+
   const [formData, setFormData] = useState<any>({
     tipo_persona: editingCliente?.tipo_persona || "NATURAL",
     tipo_relacion: editingCliente?.tipo_relacion || (isProveedorView ? "PROVEEDOR" : "CLIENTE"),
     nombre: editingCliente?.nombre || "",
-    cedula_rif: editingCliente?.cedula_rif || "",
+    nit: editingCliente?.nit || "",
     email: editingCliente?.email || "",
     telefono: editingCliente?.telefono || "",
     direccion: editingCliente?.direccion || "",
@@ -82,7 +82,6 @@ export const ClienteForm: React.FC<ClienteFormProps> = ({
     web: editingCliente?.web || "",
     codigo_postal: editingCliente?.codigo_postal || "",
     estado: editingCliente?.estado || "ACTIVO",
-    numero_cliente: editingCliente?.numero_cliente || "",
     id_provincia: editingCliente?.id_provincia || undefined,
     id_municipio: editingCliente?.id_municipio || undefined,
   });
@@ -96,7 +95,7 @@ export const ClienteForm: React.FC<ClienteFormProps> = ({
       id_provincia: provinciaId,
       id_municipio: undefined,
     }));
-    
+
     if (provinciaId) {
       setLoadingMunicipios(true);
       try {
@@ -135,6 +134,7 @@ export const ClienteForm: React.FC<ClienteFormProps> = ({
     sucursal: 0,
     id_moneda: 1,
     numero_cuenta: "",
+    direccion: "",
     tipo_cuenta: "CORRIENTE",
     principal: false,
   });
@@ -149,7 +149,7 @@ export const ClienteForm: React.FC<ClienteFormProps> = ({
         tipo_persona: editingCliente.tipo_persona || "NATURAL",
         tipo_relacion: editingCliente.tipo_relacion || (isProveedorView ? "PROVEEDOR" : "CLIENTE"),
         nombre: editingCliente.nombre || "",
-        cedula_rif: editingCliente.cedula_rif || "",
+        nit: editingCliente.nit || "",
         email: editingCliente.email || "",
         telefono: editingCliente.telefono || "",
         direccion: editingCliente.direccion || "",
@@ -157,7 +157,6 @@ export const ClienteForm: React.FC<ClienteFormProps> = ({
         web: editingCliente.web || "",
         codigo_postal: editingCliente.codigo_postal || "",
         estado: editingCliente.estado || "ACTIVO",
-        numero_cliente: editingCliente.numero_cliente || "",
         id_provincia: editingCliente.id_provincia || undefined,
         id_municipio: editingCliente.id_municipio || undefined,
       });
@@ -178,8 +177,9 @@ export const ClienteForm: React.FC<ClienteFormProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    const { fecha_registro, ...formDataSinFecha } = formData;
     const payload = {
-      ...formData,
+      ...formDataSinFecha,
       cliente_natural: tipoPersona === "NATURAL" ? datosNatural : undefined,
       cliente_juridica: tipoPersona === "JURIDICA" ? datosJuridica : undefined,
       cliente_tcp: tipoPersona === "TCP" ? datosTCP : undefined,
@@ -205,6 +205,7 @@ export const ClienteForm: React.FC<ClienteFormProps> = ({
         sucursal: 0,
         id_moneda: 1,
         numero_cuenta: "",
+        direccion: "",
         tipo_cuenta: "CORRIENTE",
         principal: false,
       });
@@ -262,7 +263,7 @@ export const ClienteForm: React.FC<ClienteFormProps> = ({
               {[
                 {
                   value: "NATURAL" as TipoPersona,
-                  label: "Persona Natural",
+                  label: "Creador",
                   icon: User,
                 },
                 {
@@ -306,16 +307,6 @@ export const ClienteForm: React.FC<ClienteFormProps> = ({
           </CardHeader>
           <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
             <div>
-              <Label>Numero de cliente (max 20)</Label>
-              <Input
-                value={formData.numero_cliente || ""}
-                onChange={(e) =>
-                  setFormData({ ...formData, numero_cliente: e.target.value.slice(0, 20) })
-                }
-                maxLength={20}
-              />
-            </div>
-            <div>
               <Label>Nombre / Razón Social *</Label>
               <Input
                 value={formData.nombre || ""}
@@ -327,18 +318,18 @@ export const ClienteForm: React.FC<ClienteFormProps> = ({
               />
             </div>
             <div>
-              <Label>Cédula / RIF * (max 20)</Label>
+              <Label>NIT</Label>
               <Input
-                value={formData.cedula_rif || ""}
+                value={formData.nit || ""}
                 onChange={(e) =>
-                  setFormData({ ...formData, cedula_rif: e.target.value.toUpperCase().slice(0, 20) })
+                  setFormData({ ...formData, nit: e.target.value.toUpperCase().slice(0, 20) })
                 }
                 required
                 maxLength={20}
               />
             </div>
             <div>
-              <Label>Teléfono (max 20)</Label>
+              <Label>Teléfono</Label>
               <Input
                 value={formData.telefono || ""}
                 onChange={(e) =>
@@ -348,7 +339,7 @@ export const ClienteForm: React.FC<ClienteFormProps> = ({
               />
             </div>
             <div>
-              <Label>Correo (max 100)</Label>
+              <Label>Correo</Label>
               <Input
                 type="email"
                 value={formData.email || ""}
@@ -359,7 +350,7 @@ export const ClienteForm: React.FC<ClienteFormProps> = ({
               />
             </div>
             <div>
-              <Label>Fax (max 20)</Label>
+              <Label>Fax</Label>
               <Input
                 value={formData.fax || ""}
                 onChange={(e) =>
@@ -369,7 +360,7 @@ export const ClienteForm: React.FC<ClienteFormProps> = ({
               />
             </div>
             <div>
-              <Label>Web (max 100)</Label>
+              <Label>Web</Label>
               <Input
                 value={formData.web || ""}
                 onChange={(e) =>
@@ -378,16 +369,15 @@ export const ClienteForm: React.FC<ClienteFormProps> = ({
                 maxLength={100}
               />
             </div>
-            <div>
-              <Label>Código Postal (max 10)</Label>
+             <div className="md:col-span-3">
+              <Label>Dirección</Label>
               <Input
-                value={formData.codigo_postal || ""}
+                value={formData.direccion || ""}
                 onChange={(e) =>
-                  setFormData({ ...formData, codigo_postal: e.target.value.slice(0, 10) })
+                  setFormData({ ...formData, direccion: e.target.value })
                 }
-                maxLength={10}
               />
-            </div>
+            </div>           
             <div>
               <Label>Provincia</Label>
               <select
@@ -428,13 +418,14 @@ export const ClienteForm: React.FC<ClienteFormProps> = ({
                 ))}
               </select>
             </div>
-            <div className="md:col-span-3">
-              <Label>Dirección</Label>
+             <div>
+              <Label>Código Postal</Label>
               <Input
-                value={formData.direccion || ""}
+                value={formData.codigo_postal || ""}
                 onChange={(e) =>
-                  setFormData({ ...formData, direccion: e.target.value })
+                  setFormData({ ...formData, codigo_postal: e.target.value.slice(0, 10) })
                 }
+                maxLength={10}
               />
             </div>
             <div>

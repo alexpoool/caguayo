@@ -27,7 +27,7 @@ export function CompraConveniosPage() {
   const [filtroCliente, setFiltroCliente] = useState<number | null>(initialProveedorId ? Number(initialProveedorId) : null);
 
   useEffect(() => { loadInitialData(); }, []);
-  useEffect(() => { if (view === 'list') loadConvenios(); }, [view]);
+  useEffect(() => { if (view === 'list') loadConvenios(); }, [view, filtroCliente]);
 
   const loadInitialData = async () => {
     try {
@@ -42,7 +42,7 @@ export function CompraConveniosPage() {
 
   const loadConvenios = async () => {
     try {
-      const data = await conveniosService.getConvenios();
+      const data = await conveniosService.getConvenios(filtroCliente ?? undefined);
       setConvenios(data);
     } catch (error) { console.error('Error:', error); }
   };
@@ -78,7 +78,15 @@ export function CompraConveniosPage() {
     } catch (error: any) { toast.error(error.message || 'Error'); }
   };
 
-  const resetForm = () => { setFormData({}); setEditingId(null); };
+  const resetForm = () => {
+    const today = new Date().toISOString().split('T')[0];
+    setFormData({
+      ...(initialProveedorId ? { id_cliente: Number(initialProveedorId) } : {}),
+      fecha: today,
+      vigencia: today,
+    });
+    setEditingId(null);
+  };
 
   const openForm = (item?: any) => {
     if (item) {
@@ -277,7 +285,7 @@ export function CompraConveniosPage() {
             <Label>Cliente *</Label>
             <select className="w-full p-2 border rounded" value={formData.id_cliente || ''} onChange={(e: any) => setFormData({...formData, id_cliente: e.target.value})}>
               <option value="">Seleccionar cliente</option>
-              {clientes.map(c => <option key={c.id_cliente} value={c.id_cliente}>{c.nombre} ({c.cedula_rif})</option>)}
+              {clientes.map(c => <option key={c.id_cliente} value={c.id_cliente}>{c.nombre} ({c.nit})</option>)}
             </select>
           </div>
           

@@ -39,7 +39,7 @@ export interface Moneda {
 export interface ClienteSimple {
   id_cliente: number;
   nombre: string;
-  cedula_rif: string;
+  nit: string;
 }
 
 export interface ProductoSimple {
