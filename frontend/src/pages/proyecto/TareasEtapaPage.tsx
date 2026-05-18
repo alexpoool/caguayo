@@ -1,10 +1,10 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Button, Input, Label, Card, CardContent, CardHeader, CardTitle, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, ConfirmModal } from '../../components/ui';
 import { tareasEtapaService, etapasProyectoService, serviciosProyectoService, monedaService } from '../../services/api';
-import type { TareaEtapa, TareaEtapaCreate, TareaEtapaUpdate, Etapa, Servicio } from '../../types/servicio';
+import type { TareaEtapa, TareaEtapaCreate, TareaEtapaUpdate, Etapa, Servicio, ServicioCreate } from '../../types/servicio';
 import type { Moneda } from '../../types/moneda';
-import { Plus, Save, Trash2, Edit, ArrowLeft, Search, ListChecks, X, Eye, DollarSign, Hash, FileText } from 'lucide-react';
+import { Plus, Save, Trash2, Edit, ArrowLeft, Search, ListChecks, X, Eye, DollarSign, Hash, FileText, Wrench } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
@@ -20,6 +20,14 @@ export function TareasEtapaPage() {
   const [etapa, setEtapa] = useState<Etapa | null>(null);
   const [servicios, setServicios] = useState<Servicio[]>([]);
   const [monedas, setMonedas] = useState<Moneda[]>([]);
+
+  const [busquedaServicio, setBusquedaServicio] = useState('');
+  const [servicioSeleccionado, setServicioSeleccionado] = useState<Servicio | null>(null);
+  const [showDropdownServicio, setShowDropdownServicio] = useState(false);
+  const [showNuevoServicioModal, setShowNuevoServicioModal] = useState(false);
+  const [servicioFormData, setServicioFormData] = useState<Record<string, any>>({});
+  const [guardandoServicio, setGuardandoServicio] = useState(false);
+  const dropdownServicioRef = useRef<HTMLDivElement>(null);
 
   const [editingId, setEditingId] = useState<number | null>(null);
   const [formData, setFormData] = useState<Record<string, any>>({});
@@ -65,6 +73,16 @@ export function TareasEtapaPage() {
   };
 
   useEffect(() => { if (view === 'list' && etapaParam) loadTareas(); }, [view, etapaParam]);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (dropdownServicioRef.current && !dropdownServicioRef.current.contains(e.target as Node)) {
+        setShowDropdownServicio(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const handleSave = async () => {
     try {
@@ -139,7 +157,13 @@ export function TareasEtapaPage() {
     }
   };
 
-  const resetForm = () => { setFormData({ unidad_medida: 'unidades', cantidad: 1 }); setEditingId(null); };
+  const resetForm = () => {
+    setFormData({ unidad_medida: 'unidades', cantidad: 1, id_moneda: etapa?.id_moneda || '' });
+    setEditingId(null);
+    setServicioSeleccionado(null);
+    setBusquedaServicio('');
+    setShowDropdownServicio(false);
+  };
 
   const openForm = (item?: TareaEtapa) => {
     if (item) {
@@ -154,6 +178,11 @@ export function TareasEtapaPage() {
         id_moneda: item.id_moneda,
         observaciones_ajustadas: item.observaciones_ajustadas
       });
+      const servicio = servicios.find(s => s.id_servicio === item.id_servicio);
+      if (servicio) {
+        setServicioSeleccionado(servicio);
+        setBusquedaServicio(servicio.concepto || servicio.codigo_servicio || '');
+      }
     } else { resetForm(); }
     setView('form');
   };
@@ -166,6 +195,48 @@ export function TareasEtapaPage() {
       t.observaciones_ajustadas?.toLowerCase().includes(searchTerm.toLowerCase())
     );
   }, [tareas, searchTerm]);
+
+  const serviciosFiltrados = useMemo(() => {
+    if (!busquedaServicio.trim()) return servicios;
+    const q = busquedaServicio.toLowerCase();
+    return servicios.filter(s =>
+      s.concepto?.toLowerCase().includes(q) ||
+      s.codigo_servicio?.toLowerCase().includes(q) ||
+      s.unidad_medida?.toLowerCase().includes(q)
+    );
+  }, [busquedaServicio, servicios]);
+
+  const handleSeleccionarServicio = (s: Servicio) => {
+    setServicioSeleccionado(s);
+    setBusquedaServicio(s.concepto || s.codigo_servicio || '');
+    setShowDropdownServicio(false);
+
+    if (editingId) {
+      setFormData(prev => ({ ...prev, id_servicio: s.id_servicio }));
+      return;
+    }
+
+    const numeroEtapa = etapa?.numero_etapa || 'X';
+    const codigoExtendido = `ETA${numeroEtapa}-SRV${s.id_servicio}-${s.codigo_servicio || ''}`;
+
+    setFormData(prev => ({
+      ...prev,
+      id_servicio: s.id_servicio,
+      codigo_extendido: codigoExtendido,
+      concepto_modificado: s.concepto || '',
+      unidad_medida: s.unidad_medida || 'unidades',
+      precio_ajustado: s.precio || 0,
+      id_moneda: s.id_moneda || '',
+      observaciones_ajustadas: s.observaciones || ''
+    }));
+  };
+
+  const resetServicioForm = () => {
+    setServicioFormData({});
+    setServicioSeleccionado(null);
+    setBusquedaServicio('');
+    setShowDropdownServicio(false);
+  };
 
   const getServicioName = (id?: number) => {
     if (!id) return 'N/A';
@@ -346,14 +417,62 @@ export function TareasEtapaPage() {
         </CardHeader>
         <CardContent className="p-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <Label className="text-sm font-medium">Servicio</Label>
-              <select className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white" value={formData.id_servicio || ''} onChange={(e: any) => handleServicioChange(Number(e.target.value))}>
-                <option value="">Seleccionar servicio</option>
-                {servicios.map(s => (
-                  <option key={s.id_servicio} value={s.id_servicio}>{s.concepto || s.codigo_servicio || `#${s.id_servicio}`}</option>
-                ))}
-              </select>
+            <div className="flex gap-2 items-start">
+              <div ref={dropdownServicioRef} className="relative flex-1">
+                <Label className="text-sm font-medium">Servicio</Label>
+                <div className="relative mt-1">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <input
+                    type="text"
+                    placeholder="Buscar servicio..."
+                    value={busquedaServicio}
+                    disabled={!!servicioSeleccionado}
+                    onChange={(e) => { setBusquedaServicio(e.target.value); setShowDropdownServicio(true); setServicioSeleccionado(null); }}
+                    onFocus={() => setShowDropdownServicio(true)}
+                    className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white disabled:bg-gray-100"
+                  />
+                  {servicioSeleccionado && (
+                    <button
+                      type="button"
+                      onClick={() => { setServicioSeleccionado(null); setBusquedaServicio(''); setFormData(prev => ({ ...prev, id_servicio: '' })); resetServicioForm(); }}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-red-500"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
+                {showDropdownServicio && serviciosFiltrados.length > 0 && (
+                  <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-auto">
+                    {serviciosFiltrados.map(s => (
+                      <button
+                        key={s.id_servicio}
+                        type="button"
+                        onClick={() => handleSeleccionarServicio(s)}
+                        className="w-full text-left px-4 py-2 hover:bg-teal-50 transition-colors border-b border-gray-100 last:border-b-0"
+                      >
+                        <span className="font-medium text-gray-900">{s.concepto || 'Sin concepto'}</span>
+                        <span className="text-gray-500 text-sm ml-2">{s.codigo_servicio}</span>
+                        {s.unidad_medida && <span className="text-gray-400 text-xs ml-2">({s.unidad_medida})</span>}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {showDropdownServicio && serviciosFiltrados.length === 0 && busquedaServicio && (
+                  <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg p-4 text-center text-gray-500">
+                    No se encontraron resultados
+                  </div>
+                )}
+              </div>
+              <div className="pt-7">
+                <button
+                  type="button"
+                  onClick={() => setShowNuevoServicioModal(true)}
+                  className="py-2 px-4 bg-teal-500 hover:bg-teal-600 text-white rounded-lg transition-colors font-medium flex items-center gap-2 whitespace-nowrap"
+                >
+                  <Plus className="h-4 w-4" />
+                  Nuevo Servicio
+                </button>
+              </div>
             </div>
             <div className="md:col-span-2">
               <Label className="text-sm font-medium">Concepto Modificado</Label>
@@ -460,6 +579,85 @@ export function TareasEtapaPage() {
             </div>
             <div className="p-6 border-t border-gray-200 bg-gray-50 flex justify-end">
               <button onClick={() => setDetailModal({ isOpen: false, item: null })} className="px-6 py-3 text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors font-medium">Cerrar</button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+      {showNuevoServicioModal && createPortal(
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 animate-fade-in">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-auto animate-scale-in">
+            <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-teal-50 to-cyan-50">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="p-3 rounded-xl bg-gradient-to-br from-teal-500 to-cyan-600 text-white shadow-lg">
+                    <Wrench className="h-7 w-7" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-gray-900">Nuevo Servicio</h3>
+                    <p className="text-sm text-gray-500">Crear nuevo servicio para asignar a la tarea</p>
+                  </div>
+                </div>
+                <button onClick={() => setShowNuevoServicioModal(false)} className="p-2 hover:bg-gray-200 rounded-full transition-colors">
+                  <X className="h-6 w-6 text-gray-500" />
+                </button>
+              </div>
+            </div>
+            <div className="p-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="md:col-span-2">
+                  <Label className="text-sm font-medium">Concepto</Label>
+                  <Input value={servicioFormData.concepto || ''} onChange={(e: any) => setServicioFormData({...servicioFormData, concepto: e.target.value})} className="mt-1" placeholder="Concepto del servicio" />
+                </div>
+                <div>
+                  <Label className="text-sm font-medium">Unidad de Medida</Label>
+                  <Input value={servicioFormData.unidad_medida || ''} onChange={(e: any) => setServicioFormData({...servicioFormData, unidad_medida: e.target.value})} className="mt-1" placeholder="Ej: Unidad, Metro, Hora" />
+                </div>
+                <div>
+                  <Label className="text-sm font-medium">Precio</Label>
+                  <Input type="number" step="0.01" value={servicioFormData.precio || ''} onChange={(e: any) => setServicioFormData({...servicioFormData, precio: e.target.value})} className="mt-1" placeholder="0.00" />
+                </div>
+                <div>
+                  <Label className="text-sm font-medium">Moneda</Label>
+                  <select className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white" value={servicioFormData.id_moneda || ''} onChange={(e: any) => setServicioFormData({...servicioFormData, id_moneda: e.target.value})}>
+                    <option value="">Seleccionar moneda</option>
+                    {monedas.map(m => <option key={m.id_moneda} value={m.id_moneda}>{m.nombre}</option>)}
+                  </select>
+                </div>
+                <div className="md:col-span-2">
+                  <Label className="text-sm font-medium">Observaciones</Label>
+                  <Input value={servicioFormData.observaciones || ''} onChange={(e: any) => setServicioFormData({...servicioFormData, observaciones: e.target.value})} className="mt-1" placeholder="Observaciones adicionales" />
+                </div>
+              </div>
+            </div>
+            <div className="p-6 border-t border-gray-200 bg-gray-50 flex justify-end gap-3">
+              <button
+                onClick={() => setShowNuevoServicioModal(false)}
+                className="px-6 py-3 text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors font-medium"
+              >
+                Cancelar
+              </button>
+              <button
+                disabled={guardandoServicio}
+                onClick={async () => {
+                  try {
+                    setGuardandoServicio(true);
+                    const nuevoServicio = await serviciosProyectoService.createServicio(servicioFormData as ServicioCreate);
+                    setServicios(prev => [...prev, nuevoServicio]);
+                    handleSeleccionarServicio(nuevoServicio);
+                    setShowNuevoServicioModal(false);
+                    setServicioFormData({});
+                    toast.success('Servicio creado');
+                  } catch (error: any) {
+                    toast.error(error.message || 'Error al crear servicio');
+                  } finally {
+                    setGuardandoServicio(false);
+                  }
+                }}
+                className="px-6 py-3 bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white rounded-xl hover:shadow-lg transition-all font-medium disabled:opacity-50"
+              >
+                {guardandoServicio ? 'Guardando...' : 'Guardar Servicio'}
+              </button>
             </div>
           </div>
         </div>,

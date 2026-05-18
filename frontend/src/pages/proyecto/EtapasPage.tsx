@@ -18,7 +18,7 @@ export function EtapasPage() {
 
   const [etapas, setEtapas] = useState<Etapa[]>([]);
   const [monedas, setMonedas] = useState<Moneda[]>([]);
-  const [solicitudInfo, setSolicitudInfo] = useState<{ codigo_solicitud?: string; numero?: string } | null>(null);
+  const [solicitudInfo, setSolicitudInfo] = useState<{ codigo_solicitud?: string; codigo_proyecto?: string; numero?: string } | null>(null);
 
   const [editingId, setEditingId] = useState<number | null>(null);
   const [formData, setFormData] = useState<Record<string, any>>({});
@@ -48,7 +48,7 @@ export function EtapasPage() {
   useEffect(() => {
     if (solicitudId) {
       solicitudesService.getSolicitud(Number(solicitudId))
-        .then(s => setSolicitudInfo({ codigo_solicitud: s.codigo_solicitud, numero: s.numero }))
+        .then(s => setSolicitudInfo({ codigo_solicitud: s.codigo_solicitud, codigo_proyecto: s.codigo_proyecto, numero: s.numero }))
         .catch(() => setSolicitudInfo(null));
     }
   }, [solicitudId]);
@@ -197,7 +197,7 @@ export function EtapasPage() {
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Etapas</h1>
             <p className="text-gray-500 mt-1">
-              {solicitudInfo ? `${solicitudInfo.codigo_solicitud || ''} ${solicitudInfo.numero || ''}`.trim() : 'Solicitud'} — {filteredEtapas.length} etapa{filteredEtapas.length !== 1 ? 's' : ''}
+              {solicitudInfo ? `${solicitudInfo.codigo_proyecto || solicitudInfo.codigo_solicitud || ''} ${solicitudInfo.numero || ''}`.trim() : 'Solicitud'} — {filteredEtapas.length} etapa{filteredEtapas.length !== 1 ? 's' : ''}
             </p>
           </div>
         </div>
@@ -217,8 +217,8 @@ export function EtapasPage() {
             <div className="flex items-center gap-3">
               <Tag className="h-5 w-5 text-teal-600" />
               <div>
-                <p className="text-sm text-teal-700 font-medium">Solicitud seleccionada</p>
-                <p className="text-lg font-bold text-teal-900">{solicitudInfo?.codigo_solicitud}</p>
+                <p className="text-sm text-teal-700 font-medium">Proyecto seleccionado</p>
+                <p className="text-lg font-bold text-teal-900">{solicitudInfo?.codigo_proyecto || solicitudInfo?.codigo_solicitud}</p>
               </div>
             </div>
           </CardContent>

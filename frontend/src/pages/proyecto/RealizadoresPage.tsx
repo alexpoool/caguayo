@@ -199,7 +199,7 @@ setTodosClientes(todosClientesRes);
   const openForm = () => {
     resetForm();
     if (etapaParam) {
-      setFormData({ id_etapa: Number(etapaParam) });
+      setFormData({ id_etapa: Number(etapaParam), id_moneda: currentEtapa?.id_moneda || '' });
     }
     setView('form');
   };

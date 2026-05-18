@@ -208,10 +208,11 @@ export function LiquidacionesPage() {
   }, [selectedEtapa]);
 
   useEffect(() => {
-    if (selectedPersona && selectedEtapa && personaParam) {
+    if (selectedPersona && selectedEtapa) {
       loadPersonaEtapaCobro(selectedEtapa, selectedPersona);
+      cargarPagosYDisponible(selectedEtapa, selectedPersona);
     }
-  }, [selectedPersona]);
+  }, [selectedPersona, selectedEtapa]);
 
   const createMutation = useMutation({
     mutationFn: (data: PersonaLiquidacionInput) => personaLiquidacionService.createLiquidacion(data),
@@ -367,15 +368,12 @@ export function LiquidacionesPage() {
       const personasEtapa = await personaEtapaService.getPersonasByEtapa(idEtapa);
       const personaEtapa = personasEtapa.find((p: PersonaEtapa) => p.id_persona === idPersona);
       if (personaEtapa) {
-        setFormData(prev => ({ ...prev, importe: personaEtapa.cobro || 0 }));
         setPorCobrarPersona(Number(personaEtapa.por_cobrar) || 0);
       } else {
-        setFormData(prev => ({ ...prev, importe: 0 }));
         setPorCobrarPersona(0);
       }
     } catch (error) {
       console.error('Error loading persona etapa:', error);
-      setFormData(prev => ({ ...prev, importe: 0 }));
       setPorCobrarPersona(0);
     }
   };
@@ -396,6 +394,10 @@ export function LiquidacionesPage() {
     }
 
     if (etapaId) {
+      const etapaMoneda = (etapas as Etapa[]).find(et => et.id_etapa === etapaId)?.id_moneda;
+      if (etapaMoneda) {
+        setFormData(prev => ({ ...prev, id_moneda: etapaMoneda }));
+      }
       try {
         const validacion = await facturasServicioService.validarPagoEtapa(etapaId);
         
@@ -452,24 +454,28 @@ export function LiquidacionesPage() {
       return;
     }
     try {
-      const pagosData = await personaLiquidacionService.getPagosDisponibles(idEtapa);
+      const [pagosData, disponibleData] = await Promise.all([
+        personaLiquidacionService.getPagosDisponibles(idEtapa),
+        personaLiquidacionService.getDisponibleLiquidar(idEtapa, idPersona),
+      ]);
+
       setPagosDisponibles(pagosData);
+      setDisponibleLiquidar(disponibleData.disponible);
+
       if (pagosData.length === 0) {
         toast.error('No hay pagos disponibles para esta etapa. Debe registrar un pago en la factura antes de liquidar.');
         return;
       }
+
       if (!selectedPago) {
-        handlePagoChange(pagosData[0].id_pago_factura_servicio);
+        const pago = pagosData[0];
+        setSelectedPago(pago.id_pago_factura_servicio);
+        const montoDisponible = Number(pago.monto_disponible);
+        setFormData(prev => ({ ...prev, importe: Math.min(montoDisponible, disponibleData.disponible || montoDisponible) }));
       }
     } catch (error) {
       console.error('Error cargando pagos disponibles:', error);
       toast.error('Error al cargar pagos disponibles');
-    }
-    try {
-      const disponibleData = await personaLiquidacionService.getDisponibleLiquidar(idEtapa, idPersona);
-      setDisponibleLiquidar(disponibleData.disponible);
-    } catch (error) {
-      console.error('Error cargando disponible liquidar:', error);
     }
   };
 
@@ -479,7 +485,8 @@ export function LiquidacionesPage() {
     if (pagoId) {
       const pago = pagosDisponibles.find(p => p.id_pago_factura_servicio === pagoId);
       if (pago) {
-        setFormData(prev => ({ ...prev, importe: Number(pago.monto_disponible) }));
+        const montoDisponible = Number(pago.monto_disponible);
+        setFormData(prev => ({ ...prev, importe: Math.min(montoDisponible, porCobrarPersona || montoDisponible) }));
       }
     }
   };
@@ -1287,8 +1294,12 @@ export function LiquidacionesPage() {
                   onChange={(e) => {
                     const nuevoValor = e.target.value === '' ? 0 : Number(e.target.value);
                     const pago = pagosDisponibles.find(p => p.id_pago_factura_servicio === selectedPago);
-                    if (pago && nuevoValor > Number(pago.monto_disponible)) {
-                      toast.error(`El pago fue solo de ${Number(pago.monto_disponible).toLocaleString()}`);
+                    const maxImporte = Math.min(
+                      pago ? Number(pago.monto_disponible) : Infinity,
+                      porCobrarPersona || Infinity
+                    );
+                    if (nuevoValor > maxImporte) {
+                      toast.error(`El importe máximo a liquidar es ${maxImporte.toLocaleString()}`);
                       return;
                     }
                     setFormData(prev => ({ ...prev, importe: nuevoValor }));

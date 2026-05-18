@@ -118,7 +118,7 @@ export function PagosFacturaServicioPage() {
   };
 
   const resetForm = () => {
-    setFormData({ fecha: new Date().toISOString().split('T')[0] });
+    setFormData({ fecha: new Date().toISOString().split('T')[0], id_moneda: factura?.id_moneda || '' });
   };
 
   const openForm = () => {

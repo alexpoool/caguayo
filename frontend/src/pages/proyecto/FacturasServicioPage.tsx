@@ -416,6 +416,12 @@ export function FacturasServicioPage() {
     setSelectedTareas([]);
     setSelectedCertificacion(null);
     setSelectedEtapaId(id);
+    if (id) {
+      const etapa = etapas.find(e => e.id_etapa === id);
+      if (etapa?.id_moneda) {
+        setFormData(prev => ({ ...prev, id_moneda: etapa.id_moneda }));
+      }
+    }
   };
 
   const filteredFacturas = useMemo(() => {
@@ -563,8 +569,7 @@ export function FacturasServicioPage() {
     .tabla-tareas td:nth-child(3) { width: 10%; text-align: center; }
     .tabla-tareas td:nth-child(4) { width: 15%; text-align: right; }
     .tabla-tareas td:nth-child(5) { width: 17%; text-align: right; }
-    .tabla-tareas .total-row td { border: none !important; padding: 0; }
-    .tabla-tareas .total-row td:last-child { font-weight: 800; font-size: 14px; padding: 4px 4px 6px !important; }
+    .tabla-tareas .total-row td { font-weight: 800; font-size: 14px; }
     .totales { display: flex; justify-content: flex-end; margin-bottom: 20px; }
     .cuadro-totales { width: 280px; border: 1px solid black; background: white; padding: 12px 15px; font-size: 13px; font-family: monospace; }
     .linea-total { display: flex; justify-content: space-between; margin-bottom: 6px; }
@@ -658,12 +663,13 @@ export function FacturasServicioPage() {
       <tbody>
         ${tareasRows || '<tr><td colspan="5" style="text-align:center;">Sin tareas registradas</td></tr>'}
         <tr class="total-row">
-          <td colspan="4" style="border: none;"></td>
-          <td class="importe">${simboloMoneda} ${subtotalTareas.toFixed(2)}</td>
+          <td colspan="3"></td>
+          <td><strong>Total</strong></td>
+          <td style="text-align: right;">${simboloMoneda} ${subtotalTareas.toFixed(2)}</td>
         </tr>
       </tbody>
     </table>
-    ${factura.observaciones?.trim() ? `<div style="margin: 8px 0 6px 0; font-size: 13px;"><strong>Observaciones:</strong> ${factura.observaciones}</div>` : ''}
+    ${factura.observaciones?.trim() ? `<br><div style="margin: 8px 0 6px 0; font-size: 13px;"><strong>Observaciones:</strong> ${factura.observaciones}</div>` : ''}
 
     <div class="firmas">
       <div class="fila-firmas">
@@ -785,8 +791,7 @@ export function FacturasServicioPage() {
     .tabla-totales th { background-color: #cccccc; font-weight: 700; text-align: center; }
     .tabla-totales td:nth-child(1) { width: 70%; }
     .tabla-totales td:nth-child(2) { width: 30%; text-align: right; }
-    .tabla-totales .total-row td { border: none !important; padding: 0; }
-    .tabla-totales .total-row td:last-child { font-weight: 800; font-size: 14px; padding: 4px 4px 6px !important; }
+    .tabla-totales .total-row td { font-weight: 800; font-size: 14px; }
     .totales { display: flex; justify-content: flex-end; margin-bottom: 20px; }
     .cuadro-totales { width: 280px; border: 1px solid black; background: white; padding: 12px 15px; font-size: 13px; font-family: monospace; }
     .linea-total { display: flex; justify-content: space-between; margin-bottom: 6px; }
@@ -884,12 +889,12 @@ export function FacturasServicioPage() {
           <td>${simboloMoneda} ${impuestoOnat.toFixed(2)}</td>
         </tr>
         <tr class="total-row">
-          <td style="border: none;"></td>
+          <td><strong>Total</strong></td>
           <td>${simboloMoneda} ${total.toFixed(2)}</td>
         </tr>
       </tbody>
     </table>
-    ${factura.observaciones?.trim() ? `<div style="margin: 8px 0 6px 0; font-size: 13px;"><strong>Observaciones:</strong> ${factura.observaciones}</div>` : ''}
+    ${factura.observaciones?.trim() ? `<br><div style="margin: 8px 0 6px 0; font-size: 13px;"><strong>Observaciones:</strong> ${factura.observaciones}</div>` : ''}
 
     <div class="firmas">
       <div class="fila-firmas">
