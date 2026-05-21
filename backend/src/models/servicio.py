@@ -175,7 +175,8 @@ class FacturaServicio(SQLModel, table=True):
         back_populates="factura", sa_relationship_kwargs={"lazy": "selectin"}
     )
     items: List["ItemFacturaServicio"] = Relationship(
-        sa_relationship_kwargs={"foreign_keys": "[ItemFacturaServicio.id_factura_servicio]", "lazy": "selectin"}
+        back_populates="factura",
+        sa_relationship_kwargs={"lazy": "selectin"}
     )
 
 
@@ -298,5 +299,6 @@ class ItemFacturaServicio(SQLModel, table=True):
     precio: Decimal = Field(default=Decimal("0.00"))
 
     factura: "FacturaServicio" = Relationship(
+        back_populates="items",
         sa_relationship_kwargs={"foreign_keys": "[ItemFacturaServicio.id_factura_servicio]"}
     )

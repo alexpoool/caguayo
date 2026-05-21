@@ -17,6 +17,7 @@ import {
   clientesService,
   monedaService,
   dependenciasService,
+  configuracionService,
 } from "../services/api";
 import { useDependenciasFiltradas } from "../hooks/useDependenciasFiltradas";
 import type { Cliente } from "../types/ventas";
@@ -68,7 +69,7 @@ export function VentasOperacionesPage() {
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [monedas, setMonedas] = useState<Moneda[]>([]);
   const { data: depsFiltradas = [], isLoading: isLoadingDeps } = useDependenciasFiltradas();
-  const [estados, setEstados] = useState<{ id: number; nombre: string }[]>([]);
+  const [estados, setEstados] = useState<{ id_estado_contrato: number; nombre: string }[]>([]);
   const [tiposContrato, setTiposContrato] = useState<
     { id: number; nombre: string }[]
   >([]);
@@ -97,12 +98,8 @@ const loadInitialData = async () => {
       ]);
       setClientes(clientesRes);
       setMonedas(monedasRes);
-      setEstados([
-        { id: 1, nombre: "ACTIVO" },
-        { id: 2, nombre: "CANCELADO" },
-        { id: 3, nombre: "FINALIZADO" },
-        { id: 4, nombre: "PENDIENTE" },
-      ]);
+      const estadosData = await configuracionService.getEstadosContrato();
+      setEstados(estadosData);
       setTiposContrato([
         { id: 1, nombre: "SERVICIO" },
         { id: 2, nombre: "OBRA" },
@@ -161,7 +158,7 @@ const loadInitialData = async () => {
         const data: ContratoCreate = {
           nombre: formData.nombre || "",
           id_cliente: Number(formData.id_cliente) || 0,
-          id_estado: Number(formData.id_estado) || 1,
+          id_estado: Number(formData.id_estado) || (estados[0]?.id_estado_contrato ?? 0),
           id_tipo_contrato: Number(formData.id_tipo_contrato) || 1,
           id_moneda: Number(formData.id_moneda) || 1,
           fecha: formData.fecha || new Date().toISOString().split("T")[0],
@@ -177,7 +174,7 @@ const loadInitialData = async () => {
         const data = {
           id_contrato: selectedContratoId!,
           nombre: formData.nombre || "",
-          id_estado: Number(formData.id_estado) || 1,
+          id_estado: Number(formData.id_estado) || (estados[0]?.id_estado_contrato ?? 0),
           fecha: formData.fecha || new Date().toISOString().split("T")[0],
           documento: formData.documento,
         };
@@ -545,7 +542,7 @@ const loadInitialData = async () => {
                     }
                   >
                     {estados.map((e) => (
-                      <option key={e.id} value={e.id}>
+                      <option key={e.id_estado_contrato} value={e.id_estado_contrato}>
                         {e.nombre}
                       </option>
                     ))}
@@ -646,7 +643,7 @@ const loadInitialData = async () => {
                     }
                   >
                     {estados.map((e) => (
-                      <option key={e.id} value={e.id}>
+                      <option key={e.id_estado_contrato} value={e.id_estado_contrato}>
                         {e.nombre}
                       </option>
                     ))}

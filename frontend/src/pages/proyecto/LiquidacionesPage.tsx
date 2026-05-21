@@ -634,6 +634,9 @@ export function LiquidacionesPage() {
     const subtotal = (Number(devengado) - Number(tributarioMonto)).toFixed(2);
     const importe = Number(liquidacion.importe || 0).toFixed(2);
     
+    if (!liquidacion.fecha_liquidacion && liquidacion.confirmado) {
+      liquidacion.fecha_liquidacion = new Date().toISOString().split('T')[0];
+    }
     const fechaEmision = liquidacion.fecha_emision ? new Date(liquidacion.fecha_emision).toLocaleDateString('es-ES') : 'N/A';
     const fechaLiquidacion = liquidacion.fecha_liquidacion ? new Date(liquidacion.fecha_liquidacion).toLocaleDateString('es-ES') : 'N/A';
     
@@ -646,18 +649,18 @@ export function LiquidacionesPage() {
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { background: #dbdbdb; display: flex; justify-content: center; align-items: center; min-height: 100vh; font-family: 'Courier New', 'Monaco', monospace; padding: 30px 20px; }
-        .documento { max-width: 880px; width: 100%; background: white; box-shadow: 0 12px 28px rgba(0, 0, 0, 0.2); padding: 1.8rem 2rem 2rem 2rem; border-radius: 4px; }
+        .documento { max-width: 880px; width: 100%; background: white; box-shadow: 0 12px 28px rgba(0, 0, 0, 0.2); padding: 1rem 1.5rem 1.5rem 1.5rem; border-radius: 4px; }
         .texto { font-family: 'Courier New', 'Monaco', monospace; font-size: 13px; line-height: 1.4; color: #111; }
-        .header-tcp { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #000; margin-bottom: 1.2rem; padding-bottom: 0.6rem; gap: 20px; }
+        .header-tcp { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.3rem; padding-bottom: 0.2rem; gap: 15px; }
         .header-logo { display: flex; align-items: center; gap: 10px; min-width: 120px; }
-        .header-logo img { width: 220px; height: 220px; object-fit: contain; }
+        .header-logo img { width: 160px; height: 160px; object-fit: contain; }
         .header-center { text-align: center; flex: 1; }
-        .tcp-title { font-size: 32px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; color: black; }
-        .nombre-titular { font-size: 18px; font-weight: bold; margin-top: 6px; }
-        .direccion-contacto { font-size: 14px; margin-top: 6px; line-height: 1.35; }
-        .telefonos { font-size: 15px; font-weight: 500; margin-top: 4px; }
-        .email { font-size: 14px; color: black; }
-        .header-box { border: 2px solid black; background: white; padding: 10px 15px; min-width: 220px; border-radius: 4px; }
+        .tcp-title { font-size: 26px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; color: black; }
+        .nombre-titular { font-size: 15px; font-weight: bold; margin-top: 6px; }
+        .direccion-contacto { font-size: 11.5px; margin-top: 6px; line-height: 1.35; }
+        .telefonos { font-size: 12px; font-weight: 500; margin-top: 4px; }
+        .email { font-size: 12px; color: black; }
+        .header-box { border: 2px solid black; background: white; padding: 10px 15px; min-width: 180px; border-radius: 4px; }
         .header-box-title { font-size: 14px; font-weight: 800; text-transform: uppercase; color: black; margin-bottom: 6px; border-bottom: 1px solid black; padding-bottom: 4px; }
         .header-box-row { font-size: 11px; margin-bottom: 3px; }
         .header-box-row strong { font-weight: 700; }
@@ -685,13 +688,18 @@ export function LiquidacionesPage() {
         .cargo { font-size: 10px; color: #2c2c2c; }
         .nota-revisado { margin-top: 18px; font-size: 10px; text-align: right; border-top: 1px solid #ddd; padding-top: 8px; font-style: italic; }
         @media (max-width: 650px) { .documento { padding: 1rem; } .cuadro-totales { width: 100%; } .firmas { flex-direction: column; gap: 20px; } .fila-nombres { flex-direction: column; gap: 20px; } .fila-firmas { flex-direction: column; gap: 20px; } .info-cliente { flex-direction: column; } .header-tcp { flex-direction: column; } .header-box { width: 100%; margin-top: 15px; } .info-proyecto { flex-direction: column; } }
+        @page { margin: 0; }
+        @media print {
+          body { background: white; display: block; padding: 0; min-height: auto; align-items: flex-start; }
+          .documento { max-width: none; box-shadow: none; border-radius: 0; padding: 0.5in; }
+        }
     </style>
 </head>
 <body>
 <div class="documento texto">
     <div class="header-tcp">
         <div class="header-logo">
-            <img src="/logo.png" alt="Logo CAGUAYO S.A." style="filter: brightness(0);" />
+            <img src="/logo-black.png" alt="Logo CAGUAYO S.A." />
         </div>
         <div class="header-center">
             <div class="tcp-title">CAGUAYO S.A.</div>
@@ -766,7 +774,7 @@ export function LiquidacionesPage() {
             <div class="bloque-firma" style="flex: 1;">
                 <p><strong>Revisado por:</strong></p>
                 <p>${revisadoPor || ''}</p>
-                <p>Economia SA</p>
+                <p>Economia SA</p>0
                 <div style="border-bottom: 1px solid #222; margin-top: 30px;"></div>
                 <p style="margin-top: 4px;">Firma</p>
             </div>
@@ -779,6 +787,12 @@ export function LiquidacionesPage() {
 
   const handlePrint = async () => {
     if (!printModal.liquidacion) return;
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      toast.error('Bloqueador de popups detectado. Permita ventanas emergentes para este sitio.');
+      return;
+    }
+
     let nombreCertificacion: string | undefined;
     const etapasAll = queryClient.getQueryData<Etapa[]>(['etapas-all']) || etapas;
     const etapa = etapasAll.find((e: Etapa) => e.id_etapa === printModal.liquidacion!.id_etapa);
@@ -793,16 +807,20 @@ export function LiquidacionesPage() {
       printModal.revisado_por,
       nombreCertificacion
     );
-    const printWindow = window.open('', '_blank');
-    if (printWindow) {
-      printWindow.document.write(html);
-      printWindow.document.close();
-      printWindow.print();
-    }
+    printWindow.document.open();
+    printWindow.document.write(html);
+    printWindow.document.close();
+    printWindow.print();
     setPrintModal({ isOpen: false, liquidacion: null, autorizado_por_id: null, autorizado_por: '', cargo_autorizado: '', revisado_por: '' });
   };
 
   const handleViewDocument = async (liquidacion: PersonaLiquidacion) => {
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      toast.error('Bloqueador de popups detectado. Permita ventanas emergentes para este sitio.');
+      return;
+    }
+
     let nombreCertificacion: string | undefined;
     const etapasAll = queryClient.getQueryData<Etapa[]>(['etapas-all']) || etapas;
     const etapa = etapasAll.find((e: Etapa) => e.id_etapa === liquidacion.id_etapa);
@@ -811,11 +829,9 @@ export function LiquidacionesPage() {
       if (certs.length > 0) nombreCertificacion = certs[0].nombre;
     }
     const html = generatePersonaLiquidacionHTML(liquidacion, '', '', '', nombreCertificacion);
-    const printWindow = window.open('', '_blank');
-    if (printWindow) {
-      printWindow.document.write(html);
-      printWindow.document.close();
-    }
+    printWindow.document.open();
+    printWindow.document.write(html);
+    printWindow.document.close();
   };
 
   const filteredLiquidaciones = useMemo(() => {
@@ -1405,10 +1421,14 @@ export function LiquidacionesPage() {
                   <p className="font-bold text-green-900 text-xl">{getMonedaSimbolo(detailModal.item.id_moneda)} {Number(detailModal.item.neto_pagar || 0).toLocaleString()}</p>
                 </div>
               </div>
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-4 gap-4">
                 <div className="bg-gray-50 p-4 rounded-xl">
                   <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Fecha Emisión</p>
                   <p className="font-bold text-gray-900">{detailModal.item.fecha_emision}</p>
+                </div>
+                <div className="bg-gray-50 p-4 rounded-xl">
+                  <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Fecha Liquidación</p>
+                  <p className="font-bold text-gray-900">{detailModal.item.fecha_liquidacion || '-'}</p>
                 </div>
                 <div className="bg-gray-50 p-4 rounded-xl">
                   <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Estado</p>

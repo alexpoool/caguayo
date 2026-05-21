@@ -3,7 +3,6 @@ from .productos import router as productos_router
 from .dashboard import router as dashboard_router
 from .categorias import router as categorias_router
 from .subcategorias import router as subcategorias_router
-from .ventas import router as ventas_router
 from .clientes import router as clientes_router
 from .monedas import router as monedas_router
 from .movimientos import router as movimientos_router
@@ -51,7 +50,6 @@ api_router.include_router(productos_router)
 api_router.include_router(dashboard_router)
 api_router.include_router(categorias_router)
 api_router.include_router(subcategorias_router)
-api_router.include_router(ventas_router)
 api_router.include_router(clientes_router)
 api_router.include_router(monedas_router)
 api_router.include_router(movimientos_router)
@@ -94,7 +92,6 @@ async def api_info():
             "productos": "/api/v1/productos",
             "categorias": "/api/v1/categorias",
             "subcategorias": "/api/v1/subcategorias",
-            "ventas": "/api/v1/ventas",
             "clientes": "/api/v1/clientes",
             "monedas": "/api/v1/monedas",
             "movimientos": "/api/v1/movimientos",

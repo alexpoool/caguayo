@@ -11,6 +11,7 @@ from src.services.existencia_service import ExistenciaService
 from src.models.liquidacion import Liquidacion, TipoPago
 from src.models.productos_en_liquidacion import ProductosEnLiquidacion
 from src.models.producto import Productos
+from src.models.movimiento import Movimiento
 from src.dto import (
     LiquidacionCreate,
     LiquidacionRead,
@@ -171,14 +172,6 @@ class LiquidacionService:
             db.add(prod)
 
         await db.commit()
-
-        for prod in productos_db:
-            try:
-                await ExistenciaService.actualizar_existencia_producto(
-                    db, prod.id_producto, -prod.cantidad
-                )
-            except Exception as e:
-                pass
 
         db_liquidacion = await liquidacion_repo.get_with_relations(
             db, db_liquidacion.id_liquidacion
@@ -382,13 +375,19 @@ class LiquidacionService:
         if not db_liquidacion:
             return False
 
-        productos = await productos_en_liquidacion_repo.get_by_ids(db, [])
-
-        for prod in productos:
+        for prod in db_liquidacion.productos_en_liquidacion:
             prod.id_liquidacion = None
             prod.liquidada = False
             prod.fecha_liquidacion = None
             db.add(prod)
+
+        # Cancelar movimientos asociados a la liquidación
+        stmt = select(Movimiento).where(Movimiento.id_liquidacion == liquidacion_id)
+        result = await db.exec(stmt)
+        for mov in result.all():
+            if mov.estado != "cancelado":
+                mov.estado = "cancelado"
+                db.add(mov)
 
         await db.delete(db_liquidacion)
         await db.commit()

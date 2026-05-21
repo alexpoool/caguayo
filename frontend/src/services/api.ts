@@ -24,8 +24,6 @@ import type {
 import type { DashboardStats, VentasTrends, MovimientosTrends } from '../types/dashboard';
 import type {
   Venta,
-  VentaCreate,
-  VentaUpdate,
   Cliente,
   ClienteCreate,
   ClienteUpdate,
@@ -161,43 +159,7 @@ export const dashboardService = {
   }
 };
 
-export const ventasService = {
-  async getVentas(skip = 0, limit = 100): Promise<Venta[]> {
-    return apiClient.get<Venta[]>(`/ventas?skip=${skip}&limit=${limit}`);
-  },
 
-  async getVenta(id: number): Promise<Venta> {
-    return apiClient.get<Venta>(`/ventas/${id}`);
-  },
-
-  async createVenta(data: VentaCreate): Promise<Venta> {
-    return apiClient.post<Venta>('/ventas', data);
-  },
-
-  async updateVenta(id: number, data: VentaUpdate): Promise<Venta> {
-    return apiClient.put<Venta>(`/ventas/${id}`, data);
-  },
-
-  async deleteVenta(id: number): Promise<void> {
-    return apiClient.delete<void>(`/ventas/${id}`);
-  },
-
-  async confirmarVenta(id: number): Promise<Venta> {
-    return apiClient.post<Venta>(`/ventas/${id}/confirmar`, {});
-  },
-
-  async anularVenta(id: number): Promise<Venta> {
-    return apiClient.post<Venta>(`/ventas/${id}/anular`, {});
-  },
-
-  async getVentasByCliente(clienteId: number, skip = 0, limit = 100): Promise<Venta[]> {
-    return apiClient.get<Venta[]>(`/ventas/cliente/${clienteId}?skip=${skip}&limit=${limit}`);
-  },
-
-  async getVentasMesActual(): Promise<Venta[]> {
-    return apiClient.get<Venta[]>('/ventas/stats/mes-actual');
-  }
-};
 
 export const clientesService = {
   async getClientes(skip = 0, limit = 10000, tipoRelacion?: string): Promise<Cliente[]> {

@@ -8,6 +8,8 @@ from sqlmodel import select, func
 from sqlalchemy.orm import selectinload
 import psycopg2
 from src.repository import movimiento_repo
+from src.repository.existencia_repo import ExistenciaRepository, existencia_repo
+from src.services.existencia_service import ExistenciaService
 from src.models import (
     Movimiento,
     TipoMovimiento,
@@ -113,6 +115,9 @@ class MovimientoService:
     ) -> MovimientoRead:
         """Confirmar un movimiento cambiando su estado a 'confirmado'.
 
+        Al confirmar, se aplican los cambios de stock en productos.existencia
+        y se registra la venta en item_anexo si el tipo es 'venta'.
+
         Args:
             db: Sesión de base de datos
             movimiento_id: ID del movimiento a confirmar
@@ -131,6 +136,58 @@ class MovimientoService:
         # Si ya está confirmado, recargar y devolver
         if db_movimiento.estado == "confirmado":
             return MovimientoRead.from_orm(db_movimiento)
+
+        # Validar stock suficiente para movimientos de salida
+        tipo = db_movimiento.tipo_movimiento
+        if tipo.factor < 0:
+            validacion = await existencia_repo.validar_disponibilidad(
+                db, db_movimiento.id_producto, db_movimiento.cantidad,
+                id_dependencia=db_movimiento.id_dependencia
+            )
+            if not validacion["disponible"]:
+                disponible_real = validacion.get("existencia", 0) - validacion.get("stock_comprometido", 0)
+                raise ValueError(
+                    f"Stock insuficiente para '{db_movimiento.producto.nombre}'. "
+                    f"Disponible: {disponible_real}, "
+                    f"Solicitado: {db_movimiento.cantidad}"
+                )
+
+        # Aplicar cambios de stock
+        cambio = db_movimiento.cantidad * tipo.factor
+        tiene_konsignacion = await ExistenciaService._producto_tiene_item_anexo(
+            db, db_movimiento.id_producto
+        )
+
+        # Para productos konsignación con tipo venta, el stock real se actualiza
+        # via registrar_venta_en_anexo (item_anexo.cantidad_vendida)
+        if not (tiene_konsignacion and tipo.tipo == "venta"):
+            await ExistenciaService.actualizar_existencia_producto(
+                db, db_movimiento.id_producto, cambio, commit=False
+            )
+
+        # Registrar venta en anexo si es tipo 'venta'
+        if tipo.tipo == "venta":
+            await ExistenciaService.registrar_venta_en_anexo(
+                db, db_movimiento.id_producto, db_movimiento.cantidad, commit=False
+            )
+
+        # Sincronizar productos.existencia con el stock real post-actualización
+        # Solo cuando se saltó actualizar_existencia_producto (konsignación + venta)
+        if tiene_konsignacion and tipo.tipo == "venta":
+            from sqlalchemy import text as _text
+            _sync = await db.exec(
+                _text("""
+                    SELECT COALESCE(SUM(ia.cantidad), 0) - COALESCE(SUM(ia.cantidad_vendida), 0)
+                    FROM item_anexo ia
+                    WHERE ia.id_producto = :id_producto
+                """),
+                params={"id_producto": db_movimiento.id_producto}
+            )
+            _existencia_sync = _sync.scalar() or 0
+            await db.exec(
+                _text("UPDATE productos SET existencia = :existencia WHERE id_producto = :id_producto"),
+                params={"id_producto": db_movimiento.id_producto, "existencia": _existencia_sync}
+            )
 
         # Cambiar el estado a confirmado
         db_movimiento.estado = "confirmado"

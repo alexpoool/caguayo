@@ -851,6 +851,7 @@ class PersonaLiquidacionService:
         comision = l.comision_bancaria or Decimal("0")
         l.neto_pagar = subtotal - gasto_empresa - comision
 
+        l.fecha_liquidacion = date.today()
         l.confirmado = True
 
         if data.observaciones:

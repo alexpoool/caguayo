@@ -218,7 +218,8 @@ class ExistenciaService:
     async def actualizar_existencia_producto(
         db: AsyncSession,
         id_producto: int,
-        cambio: int
+        cambio: int,
+        commit: bool = True
     ) -> int:
         """Actualiza la existencia de un producto sumando el cambio.
         
@@ -246,7 +247,10 @@ class ExistenciaService:
             text("UPDATE productos SET existencia = :existencia WHERE id_producto = :id_producto"),
             params={"id_producto": id_producto, "existencia": nueva_existencia}
         )
-        await db.commit()
+        if commit:
+            await db.commit()
+        else:
+            await db.flush()
         
         return nueva_existencia
     
@@ -277,7 +281,7 @@ class ExistenciaService:
                     id_producto,
                     COALESCE(SUM(cantidad), 0) as existencia_mov
                 FROM movimiento 
-                WHERE confirmada = true
+                WHERE estado = 'confirmado'
                 GROUP BY id_producto
             )
             UPDATE productos p SET existencia = COALESCE(k.existencia_konsignacion, 0) + COALESCE(m.existencia_mov, 0)
@@ -334,7 +338,8 @@ class ExistenciaService:
     async def registrar_venta_en_anexo(
         db: AsyncSession,
         id_producto: int,
-        cantidad: int
+        cantidad: int,
+        commit: bool = True
     ) -> List[Dict[str, Any]]:
         """Registra una venta en el item_anexo usando FIFO.
         
@@ -360,7 +365,7 @@ class ExistenciaService:
                 .limit(1)
             )
             result = await db.exec(stmt)
-            item = result.first()
+            item = result.scalars().first()
             
             if not item:
                 break
@@ -378,7 +383,10 @@ class ExistenciaService:
                 "vendido_en_esta": a_vender
             })
         
-        await db.commit()
+        if commit:
+            await db.commit()
+        else:
+            await db.flush()
         
         if cantidad_restante > 0:
             raise ValueError(

@@ -144,7 +144,10 @@ export function FacturasServicioPage() {
     if (dependenciaId) {
       dependenciasService.getCuentasByDependencia(dependenciaId)
         .then(setCuentasDependencia)
-        .catch(() => setCuentasDependencia([]));
+        .catch(() => {
+          setCuentasDependencia([]);
+          toast.error('Error al cargar cuentas de la dependencia');
+        });
     }
   }, [dependenciaId]);
 
@@ -293,7 +296,7 @@ export function FacturasServicioPage() {
         const data: FacturaServicioUpdate = {
           id_etapa: formData.id_etapa ? Number(formData.id_etapa) : undefined,
           id_certificacion: selectedCertificacion || undefined,
-          alcance: formData.alcance,
+          alcance: 'TOTAL',
           codigo_factura: formData.codigo_factura,
           id_moneda: formData.id_moneda ? Number(formData.id_moneda) : undefined,
           fecha: formData.fecha,
@@ -308,7 +311,7 @@ export function FacturasServicioPage() {
         const data: FacturaServicioCreate = {
           id_etapa: selectedEtapaId || (etapaParam ? Number(etapaParam) : undefined),
           id_certificacion: selectedCertificacion || undefined,
-          alcance: formData.alcance || 'TOTAL',
+          alcance: 'TOTAL',
           codigo_factura: formData.codigo_factura,
           id_moneda: formData.id_moneda ? Number(formData.id_moneda) : undefined,
           fecha: formData.fecha || new Date().toISOString().split('T')[0],
@@ -358,7 +361,6 @@ export function FacturasServicioPage() {
     if (item) {
       setEditingId(item.id_factura_servicio);
       setFormData({
-        alcance: item.alcance,
         codigo_factura: item.codigo_factura,
         id_moneda: item.id_moneda,
         fecha: item.fecha,
@@ -468,7 +470,8 @@ export function FacturasServicioPage() {
     clientesData: Cliente[] = [],
     cuentasClientesData: any[] = [],
     monedasData: Moneda[] = [],
-    contratoNombre: string = ''
+    contratoNombre: string = '',
+    certificacion?: Certificacion
   ) => {
     console.log('DEBUG getFacturaServicioDocument INPUT:', { factura, etapasData, solicitudesData, clientesData });
 
@@ -507,8 +510,8 @@ export function FacturasServicioPage() {
     const nombreMoneda = moneda?.nombre || '';
     const simboloMoneda = moneda?.simbolo || '';
 
-    const aCobrar = Number(certificacion.a_cobrar || 0);
-    const impuestoOnat = Number(certificacion.impuesto_venta_onat || 0);
+    const aCobrar = Number(certificacion?.a_cobrar || 0);
+    const impuestoOnat = Number(certificacion?.impuesto_venta_onat || 0);
     const total = aCobrar + impuestoOnat;
 
     const fechaEmision = factura.fecha ? new Date(factura.fecha).toLocaleDateString('es-ES') : 'N/A';
@@ -525,7 +528,7 @@ export function FacturasServicioPage() {
     .texto { font-family: 'Courier New', 'Monaco', monospace; font-size: 13px; line-height: 1.4; color: #111; }
     .header-tcp { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.3rem; padding-bottom: 0.2rem; gap: 15px; }
     .header-logo { display: flex; align-items: center; gap: 10px; min-width: 120px; }
-    .header-logo img { width: 160px; height: 160px; object-fit: contain; filter: grayscale(100%) brightness(0); }
+    .header-logo img { width: 160px; height: 160px; object-fit: contain; }
     .header-center { text-align: center; flex: 1; }
     .tcp-title { font-size: 26px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; color: black; }
     .nombre-titular { font-size: 15px; font-weight: bold; margin-top: 6px; }
@@ -568,13 +571,19 @@ export function FacturasServicioPage() {
     .bloque-firma p { margin: 2px 0; }
     .cargo { font-size: 10px; color: black; }
     @media (max-width: 650px) { .documento { padding: 0.6rem; } .tabla-totales th, .tabla-totales td { padding: 3px 2px; font-size: 10px; } .firmas { flex-direction: column; gap: 6px; } .fila-firmas { flex-direction: column; gap: 10px; } .header-tcp { flex-direction: column; } .header-box { width: 100%; margin-top: 10px; } }
+    @page { margin: 0; }
+    @media print {
+      body { background: white; display: block; padding: 0; min-height: auto; align-items: flex-start; }
+      .documento { max-width: none; box-shadow: none; border-radius: 0; padding: 0.5in; }
+      .tabla-totales th { background-color: #cccccc !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    }
   </style>
 </head>
 <body>
   <div class="documento texto">
     <div class="header-tcp">
       <div class="header-logo">
-        <img src="/logo.png" alt="Logo CAGUAYO S.A." />
+        <img src="/logo-black.png" alt="Logo CAGUAYO S.A." />
       </div>
       <div class="header-center">
         <div class="tcp-title">CAGUAYO S.A.</div>
@@ -687,7 +696,34 @@ export function FacturasServicioPage() {
 </html>`;
   };
 
+  const getCertificacionFacturaDocument = (
+    factura: FacturaServicio,
+    etapasData: Etapa[],
+    solicitudesData: SolicitudServicio[],
+    certificacion: Certificacion,
+    autorizadoPor: string,
+    revisadoPor: string,
+    cuentaSeleccionada: any,
+    clientesData: Cliente[] = [],
+    cuentasClientesData: any[] = [],
+    monedasData: Moneda[] = [],
+    contratoNombre: string = ''
+  ) => {
+    return getFacturaServicioDocument(
+      factura, etapasData, [], solicitudesData,
+      autorizadoPor, revisadoPor, cuentaSeleccionada,
+      clientesData, cuentasClientesData, monedasData,
+      contratoNombre, certificacion
+    );
+  };
+
   const handlePrintDirect = async (factura: FacturaServicio) => {
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      toast.error('Bloqueador de popups detectado. Permita ventanas emergentes para este sitio.');
+      return;
+    }
+
     const etapaFactura = etapas.find(e => e.id_etapa === factura.id_etapa);
     const solicitudFactura = solicitudes.find(s => s.id_solicitud_servicio === etapaFactura?.id_solicitud_servicio);
     const clienteId = solicitudFactura?.id_cliente;
@@ -720,12 +756,10 @@ export function FacturasServicioPage() {
         const html = getCertificacionFacturaDocument(
           factura, etapas, solicitudes, certificacion, '', '', cuentaSel || null, clientesData, cuentasCliente, monedas, contratoNombre
         );
-        const printWindow = window.open('', '_blank');
-        if (printWindow) {
-          printWindow.document.write(html);
-          printWindow.document.close();
-          printWindow.print();
-        }
+        printWindow.document.open();
+        printWindow.document.write(html);
+        printWindow.document.close();
+        printWindow.print();
         return;
       } catch (e) {
         console.error('Error loading certificacion:', e);
@@ -742,15 +776,19 @@ export function FacturasServicioPage() {
     const html = getFacturaServicioDocument(
       factura, etapas, itemsFactura, solicitudes, '', '', cuentaSel || null, clientesData, cuentasCliente, monedas, contratoNombre
     );
-    const printWindow = window.open('', '_blank');
-    if (printWindow) {
-      printWindow.document.write(html);
-      printWindow.document.close();
-      printWindow.print();
-    }
+    printWindow.document.open();
+    printWindow.document.write(html);
+    printWindow.document.close();
+    printWindow.print();
   };
 
   const handleViewDocument = async (factura: FacturaServicio) => {
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      toast.error('Bloqueador de popups detectado. Permita ventanas emergentes para este sitio.');
+      return;
+    }
+
     const etapaFactura = etapas.find(e => e.id_etapa === factura.id_etapa);
     const solicitudFactura = solicitudes.find(s => s.id_solicitud_servicio === etapaFactura?.id_solicitud_servicio);
     const clienteId = solicitudFactura?.id_cliente;
@@ -783,11 +821,9 @@ export function FacturasServicioPage() {
         const html = getCertificacionFacturaDocument(
           factura, etapas, solicitudes, certificacion, '', '', cuentaDefault, clientesData, cuentasCliente, monedas, contratoNombre
         );
-        const printWindow = window.open('', '_blank');
-        if (printWindow) {
-          printWindow.document.write(html);
-          printWindow.document.close();
-        }
+        printWindow.document.open();
+        printWindow.document.write(html);
+        printWindow.document.close();
         return;
       } catch (e) {
         console.error('Error loading certificacion:', e);
@@ -802,11 +838,9 @@ export function FacturasServicioPage() {
     }
 
     const html = getFacturaServicioDocument(factura, etapas, itemsFactura, solicitudes, '', '', cuentaDefault, clientesData, cuentasCliente, monedas, contratoNombre);
-    const printWindow = window.open('', '_blank');
-    if (printWindow) {
-      printWindow.document.write(html);
-      printWindow.document.close();
-    }
+    printWindow.document.open();
+    printWindow.document.write(html);
+    printWindow.document.close();
   };
 
   const renderList = () => (
@@ -1201,13 +1235,6 @@ export function FacturasServicioPage() {
           )}
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <Label className="text-sm font-medium">Alcance</Label>
-              <select className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white" value={formData.alcance || 'TOTAL'} onChange={(e: any) => setFormData({ ...formData, alcance: e.target.value })}>
-                <option value="TOTAL">TOTAL</option>
-                <option value="PARCIAL">PARCIAL</option>
-              </select>
-            </div>
             <div>
               <Label className="text-sm font-medium">Cuenta</Label>
               <select className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white" value={formData.cuenta_factura || ''} onChange={(e: any) => {

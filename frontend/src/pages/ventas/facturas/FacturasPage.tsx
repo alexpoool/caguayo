@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { useSearchParams } from "react-router-dom";
 import {
@@ -34,6 +34,7 @@ import { ConfirmDeleteModal } from "./components/modals/ConfirmDeleteModal";
 import { useFacturas } from "./hooks/useFacturas";
 import { usePagos } from "./hooks/usePagos";
 import { useProductSelection } from "./hooks/useProductSelection";
+import { useStock } from "../../../hooks/useStock";
 
 type View = "list" | "form";
 
@@ -316,6 +317,14 @@ export function FacturasPage() {
   const pagosHook = usePagos();
   const productSelectionHook = useProductSelection();
 
+  const currentDependenciaId = user?.dependencia?.id_dependencia ?? null;
+  const { data: stockData = [] } = useStock({ idDependencia: currentDependenciaId });
+  const stockMap = useMemo(() => {
+    const map = new Map<number, number>();
+    stockData.forEach((item: any) => map.set(item.id_producto, item.existencia));
+    return map;
+  }, [stockData]);
+
   /**
    * Cargar datos iniciales (contratos, productos, monedas, dependencias)
    */
@@ -357,6 +366,18 @@ export function FacturasPage() {
    * Manejar guardado de factura
    */
   const handleSaveFactura = async () => {
+    const stockErrors = productSelectionHook.selectedProducts.filter((p) => {
+      const stock = stockMap.get(p.id_producto) ?? 0;
+      return p.cantidad > stock;
+    });
+    if (stockErrors.length > 0) {
+      const names = stockErrors.map((p) => {
+        const pr = productos.find((pr) => pr.id_producto === p.id_producto);
+        return pr?.nombre || `ID ${p.id_producto}`;
+      });
+      toast.error(`Stock insuficiente para: ${names.join(", ")}`);
+      return;
+    }
     const result = await facturasHook.handleSave(
       productSelectionHook.selectedProducts,
     );
@@ -685,9 +706,15 @@ export function FacturasPage() {
           onProductSearchChange={(search: string) =>
             productSelectionHook.setProductSearch(search)
           }
-          onAddProduct={(id: number) =>
-            productSelectionHook.addProduct(id, productos)
-          }
+          onAddProduct={(id: number) => {
+            const stock = stockMap.get(id) ?? 0;
+            if (stock < 1) {
+              const pr = productos.find((p) => p.id_producto === id);
+              toast.error(`"${pr?.nombre}" no tiene stock disponible`);
+              return;
+            }
+            productSelectionHook.addProduct(id, productos);
+          }}
           onUpdateCantidad={(id: number, cant: number) =>
             productSelectionHook.updateCantidad(id, cant)
           }

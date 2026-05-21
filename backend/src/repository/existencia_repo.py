@@ -227,7 +227,12 @@ class ExistenciaRepository:
         id_dependencia: Optional[int] = None,
         id_anexo: Optional[int] = None
     ) -> Dict[str, Any]:
-        """Valida si hay suficiente existencia para una transacción."""
+        """Valida si hay suficiente existencia para una transacción.
+        
+        Considera:
+        - Stock físico (consignación o movimientos confirmados)
+        - Stock comprometido (movimientos pendientes de tipo salida)
+        """
         
         existencia = await self.get_existencia_producto(
             db, id_producto, id_dependencia, id_anexo
@@ -235,13 +240,33 @@ class ExistenciaRepository:
         
         existencia_total = existencia["existencia_total"]
         
+        # Stock comprometido: movimientos pendientes con factor negativo (salidas)
+        comprometido_query = text("""
+            SELECT COALESCE(SUM(m.cantidad), 0)
+            FROM movimiento m
+            JOIN tipo_movimiento tm ON m.id_tipo_movimiento = tm.id_tipo_movimiento
+            WHERE m.id_producto = :id_producto
+              AND m.estado = 'pendiente'
+              AND tm.factor < 0
+        """)
+        comprometido_params = {"id_producto": id_producto}
+        if id_dependencia:
+            comprometido_query = text(f"{comprometido_query.text} AND m.id_dependencia = :id_dependencia")
+            comprometido_params["id_dependencia"] = id_dependencia
+        
+        comp_result = await db.exec(comprometido_query, params=comprometido_params)
+        stock_comprometido = comp_result.scalar() or 0
+        
+        disponible = existencia_total - stock_comprometido
+        
         return {
             "id_producto": id_producto,
             "cantidad_solicitada": cantidad,
             "existencia": existencia_total,
-            "disponible": existencia_total >= cantidad,
-            "mensaje": "Disponibilidad OK" if existencia_total >= cantidad \
-                     else f"Insuficiente. Existencias: {existencia_total}"
+            "stock_comprometido": stock_comprometido,
+            "disponible": disponible >= cantidad,
+            "mensaje": "Disponibilidad OK" if disponible >= cantidad \
+                     else f"Insuficiente. Disponible: {disponible} (físico: {existencia_total}, comprometido: {stock_comprometido})"
         }
 
 

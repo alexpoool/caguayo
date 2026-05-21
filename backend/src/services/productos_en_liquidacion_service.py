@@ -9,6 +9,7 @@ from src.repository.productos_en_liquidacion_repo import (
 )
 from src.models.productos_en_liquidacion import ProductosEnLiquidacion
 from src.models.item_anexo import ItemAnexo
+from src.models.moneda import Moneda
 from src.dto.productos_en_liquidacion_dto import (
     ProductosEnLiquidacionCreate,
     ProductosEnLiquidacionRead,
@@ -191,6 +192,12 @@ async def get_codigo_from_item_anexo(
     return item.codigo if item else None
 
 
+async def _get_default_moneda(db: AsyncSession) -> int:
+    stmt = select(Moneda.id_moneda).limit(1)
+    result = await db.exec(stmt)
+    return result.first() or 277
+
+
 async def agregar_desde_factura(
     db: AsyncSession, id_factura: int, productos: List[dict]
 ) -> None:
@@ -210,14 +217,14 @@ async def agregar_desde_factura(
             id_producto=prod["id_producto"],
             cantidad=prod["cantidad"],
             precio=Decimal(str(prod.get("precio_venta", prod.get("precio", 0)))),
-            id_moneda=prod.get("id_moneda", 1),
+            id_moneda=prod.get("id_moneda", await _get_default_moneda(db)),
             tipo_compra="FACTURA",
             id_factura=id_factura,
             id_anexo=prod.get("id_anexo"),
             liquidada=False,
         )
         db.add(db_producto)
-    await db.commit()
+    await db.flush()
 
 
 async def agregar_desde_venta_efectivo(
@@ -239,13 +246,13 @@ async def agregar_desde_venta_efectivo(
             id_producto=prod["id_producto"],
             cantidad=prod["cantidad"],
             precio=Decimal(str(prod.get("precio_venta", prod.get("precio", 0)))),
-            id_moneda=prod.get("id_moneda", 1),
+            id_moneda=prod.get("id_moneda", await _get_default_moneda(db)),
             tipo_compra="VENTA_EFECTIVO",
             id_venta_efectivo=id_venta_efectivo,
             liquidada=False,
         )
         db.add(db_producto)
-    await db.commit()
+    await db.flush()
 
 
 async def agregar_desde_anexo(
@@ -267,7 +274,7 @@ async def agregar_desde_anexo(
             id_producto=prod["id_producto"],
             cantidad=prod["cantidad"],
             precio=Decimal(str(prod.get("precio_venta", prod.get("precio", 0)))),
-            id_moneda=prod.get("id_moneda", 1),
+            id_moneda=prod.get("id_moneda", await _get_default_moneda(db)),
             tipo_compra="ANEXO",
             id_anexo=id_anexo,
             liquidada=False,

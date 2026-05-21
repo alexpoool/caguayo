@@ -29,7 +29,7 @@ import {
   type LiquidacionCreate,
   type ProductosEnLiquidacion 
 } from '../../services/api';
-import { clientesService, type Cliente } from '../../services/api';
+import { clientesService, cuentasService, type Cliente } from '../../services/api';
 import { anexosService, type Anexo } from '../../services/api';
 import { monedaService, type Moneda } from '../../services/api';
 import { authService } from '../../services/auth';
@@ -273,7 +273,7 @@ export function LiquidacionesPage() {
     return anexo?.nombre_anexo || 'N/A';
   };
 
-  const generateLiquidacionHTML = (liquidacion: Liquidacion, autorizadoPor: string, cargoAutorizado: string, revisadoPor: string) => {
+  const generateLiquidacionHTML = (liquidacion: Liquidacion, autorizadoPor: string, cargoAutorizado: string, revisadoPor: string, cuentas: any[] = []) => {
     const cliente = clientes.find((c: Cliente) => c.id_cliente === liquidacion.id_cliente);
     const user = authService.getUser();
     const confectionadoPor = user ? `${user.nombre || ''} ${user.primer_apellido || ''}`.trim() : '';
@@ -286,13 +286,15 @@ export function LiquidacionesPage() {
     
     const nombreProveedor = cliente?.nombre || 'N/A';
     const cedulaProveedor = cliente?.nit || 'N/A';
-    const direccionProveedor = cliente?.direccion || '';
-    const provinciaProveedor = cliente?.provincia?.nombre || '';
-    const municipioProveedor = cliente?.municipio?.nombre || '';
-    const localidadProveedor = provinciaProveedor || municipioProveedor ? `${provinciaProveedor}, ${municipioProveedor}`.trim() : 'N/A';
 
     const isNatural = cliente?.tipo_persona === 'NATURAL';
     const isTCP = cliente?.tipo_persona === 'TCP';
+
+    const cuentasHTML = cuentas.length > 0
+      ? cuentas.map(c => `
+        <div>${c.banco || ''} ${c.numero_cuenta ? '- ' + c.numero_cuenta : ''}</div>
+      `).join('')
+      : '<div>No registrada</div>';
 
     const tipoConvenio = liquidacion.convenio?.tipo_convenio?.nombre || '';
     const codigoConvenio = liquidacion.convenio?.codigo || '';
@@ -377,9 +379,9 @@ export function LiquidacionesPage() {
         .header-box-row strong { font-weight: 700; }
         .fila-fechas { display: flex; justify-content: space-between; margin: 18px 0 12px 0; border-bottom: 1px dashed #aaa; padding-bottom: 12px; }
         .bloque-fecha { font-weight: 600; font-size: 13px; }
-        .info-cliente { display: flex; flex-wrap: wrap; justify-content: space-between; background: #f9f9f0; padding: 12px; border: 1px solid #ccc; margin-bottom: 20px; font-size: 12.5px; }
-        .cliente-header { font-size: 14px; font-weight: 800; text-transform: uppercase; margin-bottom: 8px; color: #1a5c1a; width: 100%; text-align: center; }
-        .cliente-item { min-width: 180px; margin-bottom: 6px; }
+        .info-cliente { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 16px; background: #f9f9f0; padding: 12px; border: 1px solid #ccc; margin-bottom: 20px; font-size: 12.5px; }
+        .cliente-header { font-size: 14px; font-weight: 800; text-transform: uppercase; margin-bottom: 6px; color: #1a5c1a; grid-column: 1 / -1; text-align: center; }
+        .cliente-item { }
         .cliente-item strong { font-weight: 800; }
         .tabla-wrapper { display: flex; gap: 20px; align-items: flex-start; margin: 18px 0 14px 0; }
         .tabla-productos { flex: 1; width: 100%; border-collapse: collapse; font-size: 12.5px; }
@@ -431,10 +433,9 @@ export function LiquidacionesPage() {
     <div class="info-cliente">
         <div class="cliente-header">Cliente</div>
         <div class="cliente-item"><strong>Nombre:</strong> ${nombreProveedor}</div>
-        <div class="cliente-item"><strong>Cuenta:</strong> Localidad: ${localidadProveedor}</div>
         <div class="cliente-item"><strong>Cl.:</strong> ${cedulaProveedor}</div>
+        <div class="cliente-item"><strong>Cuenta:</strong> ${cuentasHTML}</div>
         <div class="cliente-item"><strong>Registro:</strong> ${isNatural || isTCP ? '1' : 'N/A'}</div>
-        <div class="cliente-item"></div>
     </div>
 
     <div style="margin: 8px 0 6px 0; font-weight: bold; font-size: 14px;">Pago por la compra de los siguientes productos:</div>
@@ -506,9 +507,11 @@ export function LiquidacionesPage() {
 </html>`;
   };
 
-  const handlePrint = () => {
+  const handlePrint = async () => {
     if (!printModal.liquidacion) return;
-    const html = generateLiquidacionHTML(printModal.liquidacion, printModal.autorizado_por, printModal.cargo_autorizado || '', printModal.revisado_por);
+    const liquidacion = printModal.liquidacion;
+    const cuentas = liquidacion.id_cliente ? await cuentasService.getCuentasByCliente(liquidacion.id_cliente) : [];
+    const html = generateLiquidacionHTML(liquidacion, printModal.autorizado_por, printModal.cargo_autorizado || '', printModal.revisado_por, cuentas);
     const printWindow = window.open('', '_blank');
     if (printWindow) {
       printWindow.document.write(html);
@@ -518,8 +521,9 @@ export function LiquidacionesPage() {
     setPrintModal({ isOpen: false, liquidacion: null, autorizado_por: '', cargo_autorizado: '', revisado_por: '' });
   };
 
-  const handleViewDocument = (liquidacion: Liquidacion) => {
-    const html = generateLiquidacionHTML(liquidacion, '', '', '');
+  const handleViewDocument = async (liquidacion: Liquidacion) => {
+    const cuentas = liquidacion.id_cliente ? await cuentasService.getCuentasByCliente(liquidacion.id_cliente) : [];
+    const html = generateLiquidacionHTML(liquidacion, '', '', '', cuentas);
     const printWindow = window.open('', '_blank');
     if (printWindow) {
       printWindow.document.write(html);
@@ -1136,6 +1140,25 @@ export function LiquidacionesPage() {
                     {detailModal.item.comision_bancaria ? <div className="flex justify-between"><span>Comisión Bancaria (%)</span><span className="text-red-600">-{detailModal.item.comision_bancaria}%</span></div> : null}
                     {detailModal.item.devengado ? <div className="flex justify-between font-medium"><span>Devengado</span><span className="text-blue-600">{detailModal.item.devengado?.toLocaleString()}</span></div> : null}
                     {detailModal.item.tributario ? <div className="flex justify-between"><span>Tributario (%)</span><span className="text-red-600">-{detailModal.item.tributario}%</span></div> : null}
+                  </div>
+                </div>
+              )}
+              {detailModal.item.productos_en_liquidacion && detailModal.item.productos_en_liquidacion.length > 0 && (
+                <div className="bg-white p-4 rounded-xl border border-gray-200">
+                  <p className="text-xs text-gray-500 uppercase tracking-wider mb-3">Productos</p>
+                  <div className="divide-y divide-gray-100">
+                    {detailModal.item.productos_en_liquidacion.map((pel: any) => (
+                      <div key={pel.id_producto_en_liquidacion} className="py-2.5 flex justify-between items-center gap-4">
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-gray-900 truncate">{pel.producto?.nombre || `Producto ${pel.id_producto}`}</p>
+                          <p className="text-xs text-gray-500">{pel.codigo} · {pel.cantidad} × {Number(pel.precio).toLocaleString()}</p>
+                        </div>
+                        <div className="text-right flex-shrink-0">
+                          <p className="font-semibold text-gray-900">{(pel.cantidad * Number(pel.precio)).toLocaleString()}</p>
+                          <span className="inline-block text-[10px] px-1.5 py-0.5 rounded bg-gray-200 text-gray-700">{pel.tipo_compra}</span>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
               )}

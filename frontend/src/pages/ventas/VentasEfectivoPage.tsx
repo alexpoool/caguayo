@@ -21,8 +21,11 @@ import {
   productosService,
   dependenciasService,
   monedaService,
+  existenciaService,
 } from "../../services/api";
 import { useDependenciasFiltradas } from "../../hooks/useDependenciasFiltradas";
+import { useStock } from "../../hooks/useStock";
+import { authHelpers } from "../../lib/api";
 import type { Productos } from "../../types";
 import type { Dependencia } from "../../types/dependencia";
 import type { VentaEfectivoWithDetails } from "../../types/contrato";
@@ -53,6 +56,15 @@ export function VentasEfectivoPage() {
   const [productos, setProductos] = useState<Productos[]>([]);
   const { data: dependencias = [], isLoading: isLoadingDependencias } = useDependenciasFiltradas();
   const [monedas, setMonedas] = useState<any[]>([]);
+  const user = authHelpers.getUser() ?? {};
+  const currentDependenciaId = user.dependencia?.id_dependencia ?? null;
+  const { data: stockData = [] } = useStock({ idDependencia: currentDependenciaId });
+
+  const stockMap = useMemo(() => {
+    const map = new Map<number, number>();
+    stockData.forEach((item: any) => map.set(item.id_producto, item.existencia));
+    return map;
+  }, [stockData]);
 
   const [editingId, setEditingId] = useState<number | null>(null);
   const [formData, setFormData] = useState<Record<string, any>>({});
@@ -109,6 +121,37 @@ const loadInitialData = async () => {
 
   const handleSave = async () => {
     try {
+      const stockErrors = selectedProducts.filter((p) => {
+        const stock = stockMap.get(p.id_producto) ?? 0;
+        return p.cantidad > stock;
+      });
+      if (stockErrors.length > 0) {
+        const names = stockErrors.map((p) => {
+          const pr = productos.find((pr) => pr.id_producto === p.id_producto);
+          return pr?.nombre || `ID ${p.id_producto}`;
+        });
+        toast.error(`Stock insuficiente para: ${names.join(", ")}`);
+        return;
+      }
+
+      if (!editingId && selectedProducts.length > 0) {
+        const idDependencia = formData.id_dependencia;
+        const validacion = await existenciaService.validarMultiple(
+          selectedProducts.map((p) => ({
+            id_producto: p.id_producto,
+            cantidad: p.cantidad,
+          })),
+          idDependencia ? Number(idDependencia) : undefined
+        );
+        if (!validacion.valido) {
+          const erroresMsg = validacion.errores
+            .map((e: any) => `• ${e.mensaje}`)
+            .join('\n');
+          toast.error(`Stock insuficiente:\n${erroresMsg}`);
+          return;
+        }
+      }
+
       const data = {
         slip: formData.slip || "",
         fecha: formData.fecha || new Date().toISOString().split("T")[0],
@@ -187,6 +230,11 @@ const loadInitialData = async () => {
 
   const addProduct = (id: number) => {
     const producto = productos.find((p) => p.id_producto === id);
+    const stock = stockMap.get(id) ?? 0;
+    if (stock < 1) {
+      toast.error(`"${producto?.nombre}" no tiene stock disponible`);
+      return;
+    }
     if (!selectedProducts.find((p) => p.id_producto === id)) {
       setSelectedProducts([
         ...selectedProducts,
@@ -248,21 +296,29 @@ const loadInitialData = async () => {
                 No se encontraron productos
               </div>
             ) : (
-              productosFiltrados.map((p) => (
-                <button
-                  key={p.id_producto}
-                  onClick={() => {
-                    addProduct(p.id_producto);
-                    setProductSearch("");
-                  }}
-                  className="w-full px-3 py-2 text-left text-sm hover:bg-emerald-50 flex justify-between items-center"
-                >
-                  <span>{p.nombre}</span>
-                  <span className="text-gray-400 text-xs">
-                    ${Number(p.precio_venta).toFixed(2)}
-                  </span>
-                </button>
-              ))
+              productosFiltrados.map((p) => {
+                const stock = stockMap.get(p.id_producto) ?? 0;
+                const stockStatus = stock === 0 ? 'text-red-500' : stock < 5 ? 'text-yellow-500' : 'text-green-500';
+                const stockText = stock === 0 ? 'AGOTADO' : stock < 5 ? 'BAJO' : `${stock}`;
+                return (
+                  <button
+                    key={p.id_producto}
+                    onClick={() => {
+                      addProduct(p.id_producto);
+                      setProductSearch("");
+                    }}
+                    className="w-full px-3 py-2 text-left text-sm hover:bg-emerald-50 flex justify-between items-center"
+                  >
+                    <div className="flex-1 truncate">
+                      <span>{p.nombre}</span>
+                      <span className={`ml-2 text-xs ${stockStatus}`}>({stockText})</span>
+                    </div>
+                    <span className="text-gray-400 text-xs ml-2">
+                      ${Number(p.precio_venta).toFixed(2)}
+                    </span>
+                  </button>
+                );
+              })
             )}
           </div>
         )}
@@ -282,19 +338,47 @@ const loadInitialData = async () => {
             <tbody>
               {selectedProducts.map((p) => {
                 const pr = productos.find((pr) => pr.id_producto === p.id_producto);
+                const stock = stockMap.get(p.id_producto) ?? 0;
+                const stockError = p.cantidad > stock;
+                const stockStatus = stock === 0 ? 'text-red-500' : stock < 5 ? 'text-yellow-500' : 'text-green-500';
                 return (
                   <tr key={p.id_producto} className="border-t">
-                    <td className="px-3 py-2">{pr?.nombre}</td>
                     <td className="px-3 py-2">
-                      <Input
-                        type="number"
-                        min="1"
-                        value={p.cantidad}
-                        onChange={(e: any) =>
-                          updateCantidad(p.id_producto, Number(e.target.value))
-                        }
-                        className="w-20 h-8"
-                      />
+                      <div className="flex items-center gap-2">
+                        <span>{pr?.nombre}</span>
+                        {stockError && stock > 0 && (
+                          <span className="text-xs text-red-600">Stock: {stock}</span>
+                        )}
+                        {stock === 0 && (
+                          <span className="text-xs text-red-600 font-bold">AGOTADO</span>
+                        )}
+                        {!stockError && stock > 0 && (
+                          <span className={`text-xs font-medium ${stockStatus}`}>
+                            Stock: {stock}
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-3 py-2">
+                      <div className="flex items-center gap-2">
+                        <Input
+                          type="number"
+                          min="1"
+                          value={p.cantidad}
+                          onChange={(e: any) =>
+                            updateCantidad(p.id_producto, Number(e.target.value))
+                          }
+                          className={`w-20 h-8 ${stockError ? 'border-red-500 focus:ring-red-500' : ''}`}
+                          style={{
+                            backgroundColor: stock === 0 && stockError ? '#fef2f2' : undefined,
+                          }}
+                        />
+                        {stockError && (
+                          <span className="text-xs text-red-500 whitespace-nowrap">
+                            Excede stock
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-3 py-2">
                       <Input

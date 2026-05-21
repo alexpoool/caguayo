@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
+import { useQuery } from '@tanstack/react-query';
 import { Button, Input, Label, Card, CardContent, CardHeader, CardTitle, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, ConfirmModal } from '../../components/ui';
-import { solicitudesService, contratosService, clientesService, monedaService, suplementosService } from '../../services/api';
+import { solicitudesService, contratosService, clientesService, monedaService, suplementosService, configuracionService } from '../../services/api';
 import type { SolicitudServicio, SolicitudServicioCreate, SolicitudServicioUpdate } from '../../types/servicio';
 import type { ContratoWithDetails, ContratoCreate, SuplementoWithDetails, SuplementoCreate } from '../../types/contrato';
 import type { Cliente } from '../../types/ventas';
@@ -51,7 +52,10 @@ export function SolicitudesPage() {
   const [formContrato, setFormContrato] = useState<Record<string, any>>({});
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [monedas, setMonedas] = useState<Moneda[]>([]);
-  const estadosContrato = [{ id: 1, nombre: 'ACTIVO' }, { id: 2, nombre: 'CANCELADO' }, { id: 3, nombre: 'FINALIZADO' }, { id: 4, nombre: 'PENDIENTE' }];
+  const { data: estadosContrato = [] } = useQuery({
+    queryKey: ['estados-contrato'],
+    queryFn: () => configuracionService.getEstadosContrato(),
+  });
   const tiposContrato = [{ id: 1, nombre: 'SERVICIO' }, { id: 2, nombre: 'OBRA' }, { id: 3, nombre: 'MANTENIMIENTO' }, { id: 4, nombre: 'ALQUILER' }, { id: 5, nombre: 'COMPRA' }];
 
   const estados = ['PENDIENTE', 'EN NEGOCIACION', 'EN PROCESO', 'TERMINADA', 'CANCELADA'];
@@ -208,6 +212,7 @@ export function SolicitudesPage() {
       setSuplementosPorContrato(prev => ({ ...prev, [contratoId]: data }));
     } catch (error: any) {
       console.error('Error al cargar suplementos:', error);
+      toast.error('Error al cargar suplementos');
     }
   };
 
@@ -223,7 +228,7 @@ export function SolicitudesPage() {
         const data: ContratoCreate = {
           nombre: formContrato.nombre || `Contrato-${Date.now()}`,
           id_cliente: Number(formContrato.id_cliente),
-          id_estado: Number(formContrato.id_estado) || 1,
+          id_estado: Number(formContrato.id_estado) || (estadosContrato[0]?.id_estado_contrato ?? 0),
           id_tipo_contrato: Number(formContrato.id_tipo_contrato) || 1,
           id_moneda: Number(formContrato.id_moneda) || 277,
           fecha: formContrato.fecha || new Date().toISOString().split('T')[0],
@@ -247,7 +252,7 @@ export function SolicitudesPage() {
         const data: SuplementoCreate = {
           id_contrato: Number(formContrato.id_contrato_suplemento),
           nombre: formContrato.nombre_suplemento || `Suplemento-${Date.now()}`,
-          id_estado: Number(formContrato.id_estado_suplemento) || 1,
+          id_estado: Number(formContrato.id_estado_suplemento) || (estadosContrato[0]?.id_estado_contrato ?? 0),
           fecha: formContrato.fecha_suplemento || new Date().toISOString().split('T')[0],
           documento: formContrato.documento_suplemento,
           monto: formContrato.monto_suplemento ? Number(formContrato.monto_suplemento) : 0
@@ -951,7 +956,7 @@ export function SolicitudesPage() {
                         value={formContrato.id_estado || ''}
                         onChange={(e: any) => setFormContrato({ ...formContrato, id_estado: e.target.value })}
                       >
-                        {estadosContrato.map(e => <option key={e.id} value={e.id}>{e.nombre}</option>)}
+                        {estadosContrato.map(e => <option key={e.id_estado_contrato} value={e.id_estado_contrato}>{e.nombre}</option>)}
                       </select>
                     </div>
                     <div>
@@ -1080,7 +1085,7 @@ export function SolicitudesPage() {
                         value={formContrato.id_estado_suplemento || ''}
                         onChange={(e: any) => setFormContrato({ ...formContrato, id_estado_suplemento: e.target.value })}
                       >
-                        {estadosContrato.map(e => <option key={e.id} value={e.id}>{e.nombre}</option>)}
+                        {estadosContrato.map(e => <option key={e.id_estado_contrato} value={e.id_estado_contrato}>{e.nombre}</option>)}
                       </select>
                     </div>
                     <div>

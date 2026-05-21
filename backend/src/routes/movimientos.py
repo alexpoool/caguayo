@@ -260,7 +260,13 @@ async def confirmar_movimiento(
         movimiento = await MovimientoService.confirmar_movimiento(db, movimiento_id)
         return movimiento
     except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        detail = str(e)
+        if "no encontrado" in detail.lower():
+            raise HTTPException(status_code=404, detail=detail)
+        elif "stock insuficiente" in detail.lower():
+            raise HTTPException(status_code=400, detail=detail)
+        else:
+            raise HTTPException(status_code=400, detail=detail)
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"Error al confirmar movimiento: {str(e)}"

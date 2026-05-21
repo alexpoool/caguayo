@@ -288,6 +288,9 @@ class ProductosEnLiquidacionRepository(CRUDBase[ProductosEnLiquidacion, dict, di
                         "esta_pagada": total_pagado >= factura.monto
                     }
 
+            if info_factura and not info_factura["esta_pagada"]:
+                continue
+
             items.append(
                 {
                     **ProductosEnLiquidacionRead.model_validate(pel).model_dump(),
@@ -429,6 +432,19 @@ class ProductosEnLiquidacionRepository(CRUDBase[ProductosEnLiquidacion, dict, di
         result_pel = await db.exec(pel_stmt)
         rows_pel = result_pel.all()
 
+        # Determinar facturas impagas para filtrar productos de liquidación
+        from src.models.contrato import Factura
+        from src.repository.pago_repo import pago_repo
+
+        unpaid_factura_ids = set()
+        factura_ids = set(pel.id_factura for pel in rows_pel if pel.id_factura is not None)
+        for fid in factura_ids:
+            factura = await db.get(Factura, fid)
+            if factura:
+                total_pagado = await pago_repo.get_total_pagado(db, fid)
+                if total_pagado < factura.monto:
+                    unpaid_factura_ids.add(fid)
+
         # Paso 4: Procesar items de CONSIGNACION (los que tienen item_anexo)
         for row in rows_items:
             id_item_anexo = row[0]
@@ -450,6 +466,8 @@ class ProductosEnLiquidacionRepository(CRUDBase[ProductosEnLiquidacion, dict, di
             )
             result_pel_relacionados = await db.exec(pel_relacionados_stmt)
             pel_relacionados = result_pel_relacionados.all()
+            pel_relacionados = [p for p in pel_relacionados
+                                if not (p.id_factura and p.id_factura in unpaid_factura_ids)]
 
             # Si no hay pel con id_anexo específico, buscar pel con id_anexo = NULL (facturas antiguas)
             # Estos vienen de facturas creadas antes de vincular id_anexo
@@ -463,6 +481,8 @@ class ProductosEnLiquidacionRepository(CRUDBase[ProductosEnLiquidacion, dict, di
                 )
                 result_fallback = await db.exec(pel_fallback_stmt)
                 pel_relacionados = result_fallback.all()
+                pel_relacionados = [p for p in pel_relacionados
+                                    if not (p.id_factura and p.id_factura in unpaid_factura_ids)]
 
             # Calcular cantidad pendiente (no liquidada)
             pel_pendiente = [p for p in pel_relacionados if not p.liquidada]
@@ -528,7 +548,9 @@ class ProductosEnLiquidacionRepository(CRUDBase[ProductosEnLiquidacion, dict, di
         ]
 
         pel_compra_venta = [
-            pel for pel in rows_pel if pel.id_anexo in anexos_compra_venta_ids
+            pel for pel in rows_pel
+            if pel.id_anexo in anexos_compra_venta_ids
+            and not (pel.id_factura and pel.id_factura in unpaid_factura_ids)
         ]
 
         for pel in pel_compra_venta:

@@ -16,7 +16,6 @@ class CuentaDependencia(SQLModel, table=True):
     )
     id_dependencia: int = Field(foreign_key="dependencia.id_dependencia")
     id_moneda: Optional[int] = Field(default=None, foreign_key="moneda.id_moneda")
-    tipo_cuenta: str = Field(default="CUP", max_length=50)
     titular: str = Field(max_length=150)
     banco: str = Field(max_length=100)
     sucursal: Optional[int] = None

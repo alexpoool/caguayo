@@ -26,7 +26,7 @@ export function CrearLiquidacionPage() {
     id_cliente: 0,
     id_convenio: undefined,
     id_anexo: undefined,
-    id_moneda: 1,
+    id_moneda: 0,
     devengado: 0,
     tributario: 5,
     comision_bancaria: 0,
@@ -46,6 +46,12 @@ export function CrearLiquidacionPage() {
   useEffect(() => {
     loadInitialData();
   }, []);
+
+  useEffect(() => {
+    if (monedas.length > 0 && formData.id_moneda === 0) {
+      setFormData(prev => ({ ...prev, id_moneda: monedas[0].id_moneda }));
+    }
+  }, [monedas]);
 
   useEffect(() => {
     if (filtroCliente) {
@@ -324,6 +330,11 @@ if (!filtroCliente) {
 
     if (selectedProductos.length === 0) {
       toast.error('Seleccione al menos un producto');
+      return;
+    }
+
+    if (!formData.id_moneda || formData.id_moneda === 0) {
+      toast.error('Seleccione una moneda');
       return;
     }
 

@@ -124,12 +124,15 @@ export function ProductSelector({
                   <tr key={p.id_producto} className="border-t hover:bg-violet-50 transition-colors">
                     <td className="px-3 py-2 text-sm text-gray-700">
                       {pr?.nombre || `Producto #${p.id_producto}`}
-                      {/* Stock indicator */}
-                      {!tieneStockSuficiente && stock > 0 && (
-                        <span className="ml-2 text-xs text-red-600">Stock: {stock}</span>
-                      )}
-                      {!tieneStockSuficiente && stock === 0 && (
+                      {stock === 0 ? (
                         <span className="ml-2 text-xs text-red-600 font-bold">AGOTADO</span>
+                      ) : (
+                        <span className={`ml-2 text-xs font-medium ${stock >= 5 ? 'text-green-600' : 'text-yellow-600'}`}>
+                          Stock: {stock}
+                        </span>
+                      )}
+                      {stock > 0 && !tieneStockSuficiente && (
+                        <span className="ml-2 text-xs text-red-500">(excede)</span>
                       )}
                     </td>
                     <td className="px-3 py-2">

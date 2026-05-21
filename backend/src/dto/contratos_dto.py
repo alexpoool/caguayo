@@ -218,6 +218,7 @@ class VentaEfectivoRead(VentaEfectivoBase):
 
 class VentaEfectivoReadWithDetails(VentaEfectivoRead):
     dependencia: Optional["DependenciaSimpleRead"] = None
+    items: Optional[List[ItemVentaEfectivoRead]] = None
 
 
 class VentaEfectivoUpdate(SQLModel):

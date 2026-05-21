@@ -59,6 +59,7 @@ from src.dto import (
     DependenciaSimpleRead,
     ItemFacturaCreate,
     ItemVentaEfectivoCreate,
+    ItemVentaEfectivoRead,
     ItemFacturaRead,
     ProductoSimpleRead,
 )
@@ -449,20 +450,6 @@ class FacturaService:
 
         await agregar_desde_factura(db, factura.id_factura, items_data)
 
-        for item in items_data:
-            try:
-                await ExistenciaService.actualizar_existencia_producto(
-                    db, item["id_producto"], -item["cantidad"]
-                )
-                try:
-                    await ExistenciaService.registrar_venta_en_anexo(
-                        db, item["id_producto"], item["cantidad"]
-                    )
-                except Exception:
-                    pass
-            except Exception as e:
-                pass
-
         await db.commit()
         await db.refresh(factura)
 
@@ -522,6 +509,14 @@ class FacturaService:
         factura = await factura_repo.get(db, id)
         if not factura:
             return False
+        # Cancelar movimientos asociados
+        from sqlmodel import select
+        stmt = select(Movimiento).where(Movimiento.id_factura == id)
+        result = await db.exec(stmt)
+        for mov in result.all():
+            if mov.estado != "cancelado":
+                mov.estado = "cancelado"
+                db.add(mov)
         await factura_repo.remove(db, id=id)
         return True
 
@@ -532,6 +527,20 @@ async def map_venta_efectivo_to_read(
     from src.models import Dependencia
 
     dependencia = await db.get(Dependencia, venta.id_dependencia)
+
+    items_db = await item_venta_efectivo_repo.get_by_venta(db, venta.id_venta_efectivo)
+    items_read = [
+        ItemVentaEfectivoRead(
+            id_item_venta_efectivo=item.id_item_venta_efectivo,
+            id_venta_efectivo=item.id_venta_efectivo,
+            id_producto=item.id_producto,
+            cantidad=item.cantidad,
+            precio_venta=item.precio_venta,
+            precio_compra=item.precio_compra,
+            id_moneda=item.id_moneda,
+        )
+        for item in items_db
+    ] if items_db else []
 
     return VentaEfectivoReadWithDetails(
         id_venta_efectivo=venta.id_venta_efectivo,
@@ -546,7 +555,7 @@ async def map_venta_efectivo_to_read(
         )
         if dependencia
         else None,
-        items=venta.items_venta_efectivo,
+        items=items_read,
     )
 
 
@@ -605,20 +614,6 @@ class VentaEfectivoService:
 
         await agregar_desde_venta_efectivo(db, venta.id_venta_efectivo, items_data)
 
-        for item in items_data:
-            try:
-                await ExistenciaService.actualizar_existencia_producto(
-                    db, item["id_producto"], -item["cantidad"]
-                )
-                try:
-                    await ExistenciaService.registrar_venta_en_anexo(
-                        db, item["id_producto"], item["cantidad"]
-                    )
-                except Exception:
-                    pass
-            except Exception as e:
-                pass
-
         await db.commit()
         await db.refresh(venta)
 
@@ -655,5 +650,12 @@ class VentaEfectivoService:
         venta = await venta_efectivo_repo.get(db, id)
         if not venta:
             return False
+        # Cancelar movimientos asociados
+        stmt = select(Movimiento).where(Movimiento.id_venta_efectivo == id)
+        result = await db.exec(stmt)
+        for mov in result.all():
+            if mov.estado != "cancelado":
+                mov.estado = "cancelado"
+                db.add(mov)
         await venta_efectivo_repo.remove(db, id=id)
         return True
