@@ -650,14 +650,14 @@ export function LiquidacionesPage() {
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { background: #dbdbdb; display: flex; justify-content: center; align-items: center; min-height: 100vh; font-family: 'Courier New', 'Monaco', monospace; padding: 30px 20px; }
         .documento { max-width: 880px; width: 100%; background: white; box-shadow: 0 12px 28px rgba(0, 0, 0, 0.2); padding: 1rem 1.5rem 1.5rem 1.5rem; border-radius: 4px; }
-        .texto { font-family: 'Courier New', 'Monaco', monospace; font-size: 13px; line-height: 1.4; color: #111; }
-        .header-tcp { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.3rem; padding-bottom: 0.2rem; gap: 15px; }
+        .texto { font-family: 'Courier New', 'Monaco', monospace; font-size: 13px; line-height: 1.2; color: #111; }
+        .header-tcp { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0; gap: 15px; }
         .header-logo { display: flex; align-items: center; gap: 10px; min-width: 120px; }
         .header-logo img { width: 160px; height: 160px; object-fit: contain; }
         .header-center { text-align: center; flex: 1; }
         .tcp-title { font-size: 26px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; color: black; }
         .nombre-titular { font-size: 15px; font-weight: bold; margin-top: 6px; }
-        .direccion-contacto { font-size: 11.5px; margin-top: 6px; line-height: 1.35; }
+        .direccion-contacto { font-size: 11.5px; margin-top: 6px; line-height: 1.2; }
         .telefonos { font-size: 12px; font-weight: 500; margin-top: 4px; }
         .email { font-size: 12px; color: black; }
         .header-box { border: 2px solid black; background: white; padding: 10px 15px; min-width: 180px; border-radius: 4px; }
@@ -667,12 +667,7 @@ export function LiquidacionesPage() {
         .header-box-row.total-final { font-weight: 800; font-size: 13px; border-top: 1px solid #000; margin-top: 6px; padding-top: 6px; }
         .fila-fechas { display: flex; justify-content: space-between; margin: 18px 0 12px 0; border-bottom: 1px dashed #aaa; padding-bottom: 12px; }
         .bloque-fecha { font-weight: 600; font-size: 13px; }
-        .info-cliente { display: flex; flex-wrap: wrap; justify-content: space-between; background: #f9f9f0; padding: 12px; border: 1px solid #ccc; margin-bottom: 20px; font-size: 12.5px; }
-        .cliente-header { font-size: 14px; font-weight: 800; text-transform: uppercase; margin-bottom: 8px; color: black; width: 100%; text-align: center; }
-        .cliente-item { min-width: 180px; margin-bottom: 6px; }
-        .cliente-item strong { font-weight: 800; }
         .info-proyecto { display: flex; flex-wrap: wrap; justify-content: space-between; background: white; padding: 12px; border: 1px solid black; margin-bottom: 20px; font-size: 12.5px; }
-        .proyecto-header { font-size: 14px; font-weight: 800; text-transform: uppercase; margin-bottom: 8px; color: black; width: 100%; text-align: center; }
         .proyecto-item { min-width: 180px; margin-bottom: 6px; }
         .proyecto-item strong { font-weight: 800; }
         .resumen-derecha { display: flex; justify-content: flex-end; margin-top: 8px; margin-bottom: 20px; }
@@ -687,16 +682,19 @@ export function LiquidacionesPage() {
         .bloque-firma p { margin: 2px 0; }
         .cargo { font-size: 10px; color: #2c2c2c; }
         .nota-revisado { margin-top: 18px; font-size: 10px; text-align: right; border-top: 1px solid #ddd; padding-top: 8px; font-style: italic; }
-        @media (max-width: 650px) { .documento { padding: 1rem; } .cuadro-totales { width: 100%; } .firmas { flex-direction: column; gap: 20px; } .fila-nombres { flex-direction: column; gap: 20px; } .fila-firmas { flex-direction: column; gap: 20px; } .info-cliente { flex-direction: column; } .header-tcp { flex-direction: column; } .header-box { width: 100%; margin-top: 15px; } .info-proyecto { flex-direction: column; } }
+        @media (max-width: 650px) { .documento { padding: 1rem; } .cuadro-totales { width: 100%; } .firmas { flex-direction: column; gap: 20px; } .fila-nombres { flex-direction: column; gap: 20px; } .fila-firmas { flex-direction: column; gap: 20px; } .header-tcp { flex-direction: column; } .header-box { width: 100%; margin-top: 15px; } .info-proyecto { flex-direction: column; } }
         @page { margin: 0; }
         @media print {
           body { background: white; display: block; padding: 0; min-height: auto; align-items: flex-start; }
-          .documento { max-width: none; box-shadow: none; border-radius: 0; padding: 0.5in; }
+          .documento { max-width: none; box-shadow: none; border-radius: 0; padding: 1cm; padding-top: 240px; padding-bottom: 160px; }
+          .print-header { position: fixed; top: 0; left: 0; right: 0; z-index: 1000; background: white; padding: 0.3cm 1cm 0 1cm; }
+          .print-footer { position: fixed; bottom: 0; left: 0; right: 0; z-index: 1000; background: white; padding: 0 1cm 0.3cm 1cm; }
         }
     </style>
 </head>
 <body>
 <div class="documento texto">
+    <div class="print-header">
     <div class="header-tcp">
         <div class="header-logo">
             <img src="/logo-black.png" alt="Logo CAGUAYO S.A." />
@@ -722,6 +720,7 @@ export function LiquidacionesPage() {
             <div class="header-box-row total-final"><strong>NETO A PAGAR:</strong> ${netoPagar}</div>
         </div>
     </div>
+    </div>
 
     <div class="fila-fechas">
         <span class="bloque-fecha"><strong>Fecha Emisión:</strong> ${fechaEmision}</span>
@@ -729,15 +728,8 @@ export function LiquidacionesPage() {
         ${docPagoLiquidacion ? `<span class="bloque-fecha"><strong>Doc. Pago:</strong> ${docPagoLiquidacion}</span>` : ''}
     </div>
 
-    <div class="info-cliente">
-        <div class="cliente-header">Realizador</div>
-        <div class="cliente-item"><strong>Nombre:</strong> ${nombreRealizador}</div>
-        <div class="cliente-item"><strong>CI:</strong> ${cedulaRealizador}</div>
-        <div class="cliente-item"><strong>Dirección:</strong> ${direccionRealizador}</div>
-    </div>
-
     <div class="info-proyecto">
-        <div class="proyecto-header">Información de la Etapa</div>
+        <div class="proyecto-item" style="width:100%;"><strong>Realizador:</strong> ${nombreRealizador}, <strong>CI:</strong> ${cedulaRealizador}, <strong>Dirección:</strong> ${direccionRealizador}</div>
         <div class="proyecto-item" style="width: 100%;"><strong>Proyecto:</strong> ${codigoProyecto}, ${nombreTituloEtapa}</div>
         ${descripcionLiquidacion ? `<div class="proyecto-item" style="width: 100%;"><strong>Descripción:</strong> ${descripcionLiquidacion}</div>` : ''}
         ${observacionLiquidacion ? `<div class="proyecto-item" style="width: 100%;"><strong>Observaciones:</strong> ${observacionLiquidacion}</div>` : ''}
@@ -745,6 +737,7 @@ export function LiquidacionesPage() {
 
     
 
+    <div class="print-footer">
     <div class="firmas">
         <div class="fila-firmas" style="display: flex; justify-content: space-between; gap: 40px;">
             <div class="bloque-firma" style="flex: 1;">
@@ -774,11 +767,12 @@ export function LiquidacionesPage() {
             <div class="bloque-firma" style="flex: 1;">
                 <p><strong>Revisado por:</strong></p>
                 <p>${revisadoPor || ''}</p>
-                <p>Economia SA</p>0
+                <p>Economia SA</p>
                 <div style="border-bottom: 1px solid #222; margin-top: 30px;"></div>
                 <p style="margin-top: 4px;">Firma</p>
             </div>
         </div>
+    </div>
     </div>
 </div>
 </body>

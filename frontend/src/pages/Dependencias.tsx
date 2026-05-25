@@ -289,6 +289,7 @@ const { data: tiposCuenta = [] } = useQuery({
           dependencia: data,
           tablas: data.tablas_creadas,
         });
+        setView("list");
       } else {
         toast.success("Dependencia creada exitosamente");
         setView("list");
@@ -1531,7 +1532,7 @@ const handleDeleteCuenta = (index: number) => {
                   <div className="bg-amber-50 border border-amber-200 rounded-md p-4">
                     <p className="text-sm text-amber-800">
                       <strong>Nota:</strong> Guarde el nombre de la base de
-                      datos. La conexión se realizarÃ¡ usando las credenciales
+                      datos. La conexión se realizara usando las credenciales
                       configuradas en el servidor.
                     </p>
                   </div>

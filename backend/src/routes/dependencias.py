@@ -265,24 +265,23 @@ async def crear_dependencia(
                 status_code=500,
                 detail=f"Error al crear la base de datos: {str(e)}",
             )
-        # Retornar solo los datos básicos para evitar error de serialización
-        return DependenciaRead(
-            id_dependencia=db_obj.id_dependencia,
-            id_tipo_dependencia=db_obj.id_tipo_dependencia,
-            codigo_padre=db_obj.codigo_padre,
-            nombre=db_obj.nombre,
-            direccion=db_obj.direccion,
-            telefono=db_obj.telefono,
-            email=db_obj.email,
-            web=db_obj.web,
-            base_datos=db_obj.base_datos,
-            host=db_obj.host,
-            puerto=db_obj.puerto,
-            id_provincia=db_obj.id_provincia,
-            id_municipio=db_obj.id_municipio,
-            descripcion=db_obj.descripcion,
-            tablas_creadas=tablas_creadas,
+        # Retornar con relaciones cargadas para que tipo_dependencia, provincia, municipio, cuentas estén disponibles
+        statement = (
+            select(Dependencia)
+            .where(Dependencia.id_dependencia == db_obj.id_dependencia)
+            .options(
+                selectinload(Dependencia.tipo_dependencia),
+                selectinload(Dependencia.provincia),
+                selectinload(Dependencia.municipio),
+                selectinload(Dependencia.cuentas),
+                selectinload(Dependencia.padre),
+            )
         )
+        results = await db.exec(statement)
+        db_obj_full = results.first()
+        response = DependenciaRead.model_validate(db_obj_full)
+        response.tablas_creadas = tablas_creadas
+        return response
 
     # Si no tiene base_datos, cargar con relaciones normalmente
     statement = (
