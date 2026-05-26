@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
@@ -33,6 +33,7 @@ import {
   Copy,
   Check,
   Hash,
+  Search,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import {
@@ -233,6 +234,9 @@ const { data: tiposCuenta = [] } = useQuery({
   });
 
   const [idConexionExistente, setIdConexionExistente] = useState<string | null>(null);
+  const [busquedaBD, setBusquedaBD] = useState("");
+  const [showDropdownBD, setShowDropdownBD] = useState(false);
+  const dropdownBDRef = useRef<HTMLDivElement>(null);
 
   const { data: basesDeDatos = [] } = useQuery({
     queryKey: ["bases-de-datos"],
@@ -277,6 +281,21 @@ const { data: tiposCuenta = [] } = useQuery({
     formData.id_municipio,
     municipios,
   ]);
+
+  // Cerrar dropdown de BD al hacer clic fuera
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownBDRef.current && !dropdownBDRef.current.contains(event.target as Node)) {
+        setShowDropdownBD(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const basesDeDatosFiltradas = basesDeDatos.filter((bd) =>
+    bd.nombre_database.toLowerCase().includes(busquedaBD.toLowerCase()),
+  );
 
   const createDependencia = useMutation({
     mutationFn: dependenciasService.createDependencia,
@@ -368,6 +387,8 @@ const { data: tiposCuenta = [] } = useQuery({
     });
     setSelectedPadre(null);
     setIdConexionExistente(null);
+    setBusquedaBD("");
+    setShowDropdownBD(false);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -449,7 +470,13 @@ const { data: tiposCuenta = [] } = useQuery({
       );
       setSelectedPadre(padre || null);
     }
-    setIdConexionExistente(null);
+    if (dep.base_datos) {
+      setIdConexionExistente(dep.base_datos);
+      setBusquedaBD(dep.base_datos);
+    } else {
+      setIdConexionExistente(null);
+      setBusquedaBD("");
+    }
     setView("form");
   };
 
@@ -650,6 +677,15 @@ const handleDeleteCuenta = (index: number) => {
           </CardHeader>
           <CardContent className="pt-6">
             <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-4">
+              {/* ===== INFORMACIÓN GENERAL ===== */}
+              <div className="col-span-2">
+                <div className="flex items-center gap-2 pt-2 pb-3">
+                  <FileText className="h-4 w-4 text-blue-500" />
+                  <span className="text-sm font-semibold text-gray-600 uppercase tracking-wider">Información General</span>
+                  <div className="flex-1 border-t border-gray-200" />
+                </div>
+              </div>
+
               {/* Nombre */}
               <div className="space-y-2">
                 <Label className="flex items-center gap-2 text-gray-700">
@@ -666,50 +702,109 @@ const handleDeleteCuenta = (index: number) => {
                 />
               </div>
 
-              {/* Base de Datos */}
-              <div className="space-y-2">
+              {/* Descripción */}
+              <div className="col-span-2 space-y-2">
                 <Label className="flex items-center gap-2 text-gray-700">
-                  <Building className="h-5 w-5 text-green-500" />
-                  Base de Datos
+                  <FileText className="h-5 w-5 text-gray-500" />
+                  Descripción
                 </Label>
-                <select
-                  className="w-full border rounded-md px-3 py-2 transition-all duration-200 focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                  value={idConexionExistente ? idConexionExistente : (formData.base_datos ? "__nueva__" : "")}
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    if (value === "__nueva__") {
-                      setIdConexionExistente(null);
-                    } else if (value) {
-                      setIdConexionExistente(value);
-                      setFormData({ ...formData, base_datos: "" });
-                    } else {
-                      setIdConexionExistente(null);
-                    }
-                  }}
-                >
-                  <option value="">Sin base de datos</option>
-                  {basesDeDatos.map((bd) => (
-                    <option key={bd.nombre_database} value={bd.nombre_database}>
-                      {bd.nombre_database}
-                    </option>
-                  ))}
-                  <option value="__nueva__">+ Crear nueva base de datos</option>
-                </select>
-                
-                {/* Input para nueva base de datos - visible si選擇Crear nueva o no hay selección */}
-                {(idConexionExistente === null) && (
-                  <Input
-                    value={formData.base_datos}
-                    onChange={(e) =>
-                      setFormData({ ...formData, base_datos: e.target.value })
-                    }
-                    placeholder="Nombre de la nueva base de datos"
-                    className="mt-2 transition-all duration-200 focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                  />
-                )}
+                <textarea
+                  className="w-full border rounded-md px-3 py-2 transition-all duration-200 focus:ring-2 focus:ring-gray-500 focus:border-gray-500"
+                  value={formData.descripcion || ""}
+                  onChange={(e) =>
+                    setFormData({ ...formData, descripcion: e.target.value })
+                  }
+                  placeholder="Descripción de la dependencia (opcional)"
+                  rows={3}
+                />
               </div>
 
-              {/* Padre */}
+              {/* ===== CONFIGURACIÓN ===== */}
+              <div className="col-span-2">
+                <div className="flex items-center gap-2 pt-4 pb-3">
+                  <Database className="h-4 w-4 text-green-500" />
+                  <span className="text-sm font-semibold text-gray-600 uppercase tracking-wider">Configuración</span>
+                  <div className="flex-1 border-t border-gray-200" />
+                </div>
+              </div>
+
+              {/* Base de Datos (col-span-2) */}
+              <div className="col-span-2 space-y-2">
+                <Label className="flex items-center gap-2 text-gray-700">
+                  <Database className="h-5 w-5 text-green-500" />
+                  Base de Datos
+                </Label>
+                <div className="flex gap-2">
+                  <div ref={dropdownBDRef} className="relative flex-1">
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                      <input
+                        type="text"
+                        placeholder="Buscar base de datos existente..."
+                        value={busquedaBD}
+                        onChange={(e) => {
+                          setBusquedaBD(e.target.value);
+                          setShowDropdownBD(true);
+                          setIdConexionExistente(null);
+                        }}
+                        onFocus={() => setShowDropdownBD(true)}
+                        className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none bg-white"
+                      />
+                      {idConexionExistente && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIdConexionExistente(null);
+                            setBusquedaBD("");
+                          }}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-red-500"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      )}
+                    </div>
+                    {showDropdownBD && basesDeDatosFiltradas.length > 0 && (
+                      <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-auto">
+                        {basesDeDatosFiltradas.map((bd) => (
+                          <button
+                            key={bd.nombre_database}
+                            type="button"
+                            onClick={() => {
+                              setIdConexionExistente(bd.nombre_database);
+                              setBusquedaBD(bd.nombre_database);
+                              setShowDropdownBD(false);
+                              setFormData((prev) => ({ ...prev, base_datos: "" }));
+                            }}
+                            className="w-full text-left px-4 py-2 hover:bg-green-50 transition-colors border-b border-gray-100 last:border-b-0"
+                          >
+                            <span className="font-medium text-gray-900">{bd.nombre_database}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    {showDropdownBD && basesDeDatosFiltradas.length === 0 && busquedaBD && (
+                      <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg p-4 text-center text-gray-500">
+                        No se encontraron resultados
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    <input
+                      type="text"
+                      placeholder="Nombre de nueva BD..."
+                      value={!idConexionExistente ? formData.base_datos : ""}
+                      onChange={(e) => {
+                        setFormData((prev) => ({ ...prev, base_datos: e.target.value }));
+                        setIdConexionExistente(null);
+                        setBusquedaBD("");
+                      }}
+                      className="w-full pl-3 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none bg-white"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Dependencia Padre */}
               <div className="space-y-2">
                 <Label className="flex items-center gap-2 text-gray-700">
                   <Network className="h-5 w-5 text-green-500" />
@@ -743,7 +838,7 @@ const handleDeleteCuenta = (index: number) => {
                 )}
               </div>
 
-              {/* Tipo */}
+              {/* Tipo de Dependencia */}
               <div className="space-y-2">
                 <Label className="flex items-center gap-2 text-gray-700">
                   <Tag className="h-5 w-5 text-purple-500" />
@@ -771,22 +866,16 @@ const handleDeleteCuenta = (index: number) => {
                 </select>
               </div>
 
-              {/* Dirección y Teléfono */}
-              <div className="space-y-2">
-                <Label className="flex items-center gap-2 text-gray-700">
-                  <MapPin className="h-5 w-5 text-red-500" />
-                  Dirección *
-                </Label>
-                <Input
-                  value={formData.direccion}
-                  onChange={(e) =>
-                    setFormData({ ...formData, direccion: e.target.value })
-                  }
-                  placeholder="Dirección completa"
-                  className="transition-all duration-200 focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                />
+              {/* ===== CONTACTO & UBICACIÓN ===== */}
+              <div className="col-span-2">
+                <div className="flex items-center gap-2 pt-4 pb-3">
+                  <Phone className="h-4 w-4 text-green-500" />
+                  <span className="text-sm font-semibold text-gray-600 uppercase tracking-wider">Contacto &amp; Ubicación</span>
+                  <div className="flex-1 border-t border-gray-200" />
+                </div>
               </div>
 
+              {/* Teléfono */}
               <div className="space-y-2">
                 <Label className="flex items-center gap-2 text-gray-700">
                   <Phone className="h-5 w-5 text-green-500" />
@@ -802,38 +891,23 @@ const handleDeleteCuenta = (index: number) => {
                 />
               </div>
 
-              {/* Email y Web */}
+              {/* Dirección */}
               <div className="space-y-2">
                 <Label className="flex items-center gap-2 text-gray-700">
-                  <Mail className="h-5 w-5 text-blue-500" />
-                  Email
+                  <MapPin className="h-5 w-5 text-red-500" />
+                  Dirección *
                 </Label>
                 <Input
-                  value={formData.email || ""}
+                  value={formData.direccion}
                   onChange={(e) =>
-                    setFormData({ ...formData, email: e.target.value })
+                    setFormData({ ...formData, direccion: e.target.value })
                   }
-                  placeholder="Email (opcional)"
-                  className="transition-all duration-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="Dirección completa"
+                  className="transition-all duration-200 focus:ring-2 focus:ring-red-500 focus:border-red-500"
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label className="flex items-center gap-2 text-gray-700">
-                  <Globe className="h-5 w-5 text-indigo-500" />
-                  Web
-                </Label>
-                <Input
-                  value={formData.web || ""}
-                  onChange={(e) =>
-                    setFormData({ ...formData, web: e.target.value })
-                  }
-                  placeholder="Sitio web (opcional)"
-                  className="transition-all duration-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                />
-              </div>
-
-              {/* Provincia y Municipio */}
+              {/* Provincia */}
               <div className="space-y-2">
                 <Label className="flex items-center gap-2 text-gray-700">
                   <Map className="h-5 w-5 text-orange-500" />
@@ -867,6 +941,7 @@ const handleDeleteCuenta = (index: number) => {
                 </select>
               </div>
 
+              {/* Municipio */}
               <div className="space-y-2">
                 <Label className="flex items-center gap-2 text-gray-700">
                   <Locate className="h-5 w-5 text-pink-500" />
@@ -898,20 +973,35 @@ const handleDeleteCuenta = (index: number) => {
                 </select>
               </div>
 
-              {/* Descripción */}
-              <div className="col-span-2 space-y-2">
+              {/* Email */}
+              <div className="space-y-2">
                 <Label className="flex items-center gap-2 text-gray-700">
-                  <FileText className="h-5 w-5 text-gray-500" />
-                  Descripción
+                  <Mail className="h-5 w-5 text-blue-500" />
+                  Email
                 </Label>
-                <textarea
-                  className="w-full border rounded-md px-3 py-2 transition-all duration-200 focus:ring-2 focus:ring-gray-500 focus:border-gray-500"
-                  value={formData.descripcion || ""}
+                <Input
+                  value={formData.email || ""}
                   onChange={(e) =>
-                    setFormData({ ...formData, descripcion: e.target.value })
+                    setFormData({ ...formData, email: e.target.value })
                   }
-                  placeholder="Descripción de la dependencia (opcional)"
-                  rows={3}
+                  placeholder="Email (opcional)"
+                  className="transition-all duration-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+
+              {/* Web */}
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2 text-gray-700">
+                  <Globe className="h-5 w-5 text-indigo-500" />
+                  Web
+                </Label>
+                <Input
+                  value={formData.web || ""}
+                  onChange={(e) =>
+                    setFormData({ ...formData, web: e.target.value })
+                  }
+                  placeholder="Sitio web (opcional)"
+                  className="transition-all duration-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                 />
               </div>
             </form>
