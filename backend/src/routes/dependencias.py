@@ -1,3 +1,4 @@
+import os
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlmodel.ext.asyncio.session import AsyncSession
@@ -158,21 +159,11 @@ async def crear_dependencia(
     data: DependenciaConCuentasCreate,
     db: AsyncSession = Depends(get_session),
 ):
-    from src.database.connection import _current_db, AUTH_DATABASE
     from sqlmodel import select
     
-    current_db = _current_db.get()
     codigo_padre = data.dependencia.codigo_padre
     
-    # Si es dependencia raíz (sin padre), debe crearse desde BD central
-    if codigo_padre is None:
-        if current_db != AUTH_DATABASE:
-            raise HTTPException(
-                status_code=403,
-                detail="no_se_puede_crear_dependencia_desde_sucursal",
-            )
-    else:
-        # Es subdependencia → debe crearse desde la BD del padre
+    if codigo_padre is not None:
         statement = select(Dependencia).where(Dependencia.id_dependencia == codigo_padre)
         results = await db.exec(statement)
         dependencia_padre = results.first()
@@ -183,19 +174,10 @@ async def crear_dependencia(
                 detail="Dependencia padre no encontrada",
             )
         
-        # Obtener la base de datos del padre
-        base_datos_padre = dependencia_padre.base_datos
-        if base_datos_padre is None:
+        if dependencia_padre.base_datos is None:
             raise HTTPException(
                 status_code=400,
                 detail="La dependencia padre no tiene base de datos asignada",
-            )
-        
-        # Verificar que el usuario esté conectado a la BD del padre
-        if current_db != base_datos_padre:
-            raise HTTPException(
-                status_code=403,
-                detail=f"Debe estar conectado a la base de datos '{base_datos_padre}' para crear subdependencias",
             )
     
     if codigo_padre:
@@ -209,6 +191,48 @@ async def crear_dependencia(
             )
 
     db_obj = await dependencia_repo.create(db, obj_in=data.dependencia)
+
+    cuentas_creadas = []
+    if data.cuentas:
+        for cuenta_data in data.cuentas:
+            cuenta_create = CuentaCreate(
+                id_dependencia=db_obj.id_dependencia,
+                **cuenta_data.model_dump(exclude={"id_dependencia"}),
+            )
+            cuenta_obj = await cuenta_service.create(db, cuenta_create)
+
+            cuenta_dep_data = cuenta_data.model_dump(exclude={"id_cliente", "id_dependencia"})
+            cuenta_dep_obj = CuentaDependencia(
+                id_dependencia=db_obj.id_dependencia,
+                **cuenta_dep_data,
+            )
+            db.add(cuenta_dep_obj)
+            await db.commit()
+            await db.refresh(cuenta_dep_obj)
+
+            cuentas_creadas.append(cuenta_obj)
+
+    tablas_creadas = None
+
+    if data.id_conexion_existente:
+        db_obj.base_datos = data.id_conexion_existente
+        db_obj = await dependencia_repo.update(db, db_obj=db_obj, obj_in=db_obj)
+
+    elif data.dependencia.base_datos:
+        try:
+            tablas_creadas = DatabaseService.crear_base_datos(data.dependencia.base_datos, "new.sql")
+        except Exception as e:
+            await dependencia_repo.remove(db, id=db_obj.id_dependencia)
+            raise HTTPException(
+                status_code=500,
+                detail=f"Error al crear la base de datos: {str(e)}",
+            )
+
+        # Sincronizar datos de referencia desde caguayosa a la nueva BD
+        DatabaseService.replicar_datos_desde_central(data.dependencia.base_datos)
+
+        # Insertar usuario admin con id_dependencia apuntando a la nueva dependencia
+        DatabaseService.insertar_admin_en_db(data.dependencia.base_datos, db_obj.id_dependencia)
 
     from src.services.replicacion_service import ReplicacionService
     ReplicacionService.replicar_dependencia({
@@ -227,63 +251,32 @@ async def crear_dependencia(
         "id_municipio": db_obj.id_municipio,
         "descripcion": db_obj.descripcion,
     }, "INSERT")
+    for cuenta_obj in cuentas_creadas:
+        ReplicacionService.replicar_cuenta_dependencia({
+            "id_cuenta": cuenta_obj.id_cuenta,
+            "id_dependencia": cuenta_obj.id_dependencia,
+            "id_moneda": cuenta_obj.id_moneda,
+            "titular": cuenta_obj.titular,
+            "banco": cuenta_obj.banco,
+            "sucursal": cuenta_obj.sucursal,
+            "numero_cuenta": cuenta_obj.numero_cuenta,
+            "direccion": cuenta_obj.direccion,
+        }, "INSERT")
 
-    if data.cuentas:
-        for cuenta_data in data.cuentas:
-            cuenta_create = CuentaCreate(
-                id_dependencia=db_obj.id_dependencia,
-                **cuenta_data.model_dump(exclude={"id_dependencia"}),
-            )
-            cuenta_obj = await cuenta_service.create(db, cuenta_create)
-            ReplicacionService.replicar_cuenta_dependencia({
-                "id_cuenta": cuenta_obj.id_cuenta,
-                "id_dependencia": cuenta_obj.id_dependencia,
-                "id_moneda": cuenta_obj.id_moneda,
-                "titular": cuenta_obj.titular,
-                "banco": cuenta_obj.banco,
-                "sucursal": cuenta_obj.sucursal,
-                "numero_cuenta": cuenta_obj.numero_cuenta,
-                "direccion": cuenta_obj.direccion,
-            }, "INSERT")
-
-    # Manejar base de datos: existente o nueva
-    tablas_creadas = None
-    
-    if data.id_conexion_existente:
-        # Usar una base de datos existente (el nombre viene directamente del frontend)
-        db_obj.base_datos = data.id_conexion_existente
-        db_obj = await dependencia_repo.update(db, db_obj=db_obj, obj_in=db_obj)
-        
-    elif data.dependencia.base_datos:
-        # Crear nueva base de datos
-        try:
-            tablas_creadas = DatabaseService.crear_base_datos(data.dependencia.base_datos)
-        except Exception as e:
-            # Si falla la creación de la BD, eliminamos la dependencia creada
-            await dependencia_repo.remove(db, id=db_obj.id_dependencia)
-            raise HTTPException(
-                status_code=500,
-                detail=f"Error al crear la base de datos: {str(e)}",
-            )
-        # Retornar con relaciones cargadas para que tipo_dependencia, provincia, municipio, cuentas estén disponibles
-        statement = (
-            select(Dependencia)
-            .where(Dependencia.id_dependencia == db_obj.id_dependencia)
-            .options(
-                selectinload(Dependencia.tipo_dependencia),
-                selectinload(Dependencia.provincia),
-                selectinload(Dependencia.municipio),
-                selectinload(Dependencia.cuentas),
-                selectinload(Dependencia.padre),
-            )
+    # Registrar la nueva BD en conexion_database DESPUÉS del PUSH,
+    # para que el PUSH no replique duplicados a la BD recién creada
+    if data.dependencia.base_datos:
+        conexion = ConexionDatabase(
+            host="localhost",
+            puerto=5432,
+            nombre_database=data.dependencia.base_datos,
+            usuario=os.getenv("ADMIN_DB_USER", "postgres"),
+            contrasenia=os.getenv("ADMIN_DB_PASSWORD", "debianpostgres"),
         )
-        results = await db.exec(statement)
-        db_obj_full = results.first()
-        response = DependenciaRead.model_validate(db_obj_full)
-        response.tablas_creadas = tablas_creadas
-        return response
+        db.add(conexion)
+        await db.commit()
+        await db.refresh(conexion)
 
-    # Si no tiene base_datos, cargar con relaciones normalmente
     statement = (
         select(Dependencia)
         .where(Dependencia.id_dependencia == db_obj.id_dependencia)
@@ -296,10 +289,9 @@ async def crear_dependencia(
         )
     )
     results = await db.exec(statement)
-    db_obj = results.first()
-
-    response = DependenciaRead.model_validate(db_obj)
-
+    db_obj_full = results.first()
+    response = DependenciaRead.model_validate(db_obj_full)
+    response.tablas_creadas = tablas_creadas
     return response
 
 
@@ -326,28 +318,7 @@ async def obtener_dependencia(
     if not db_obj:
         raise HTTPException(status_code=404, detail="Dependencia no encontrada")
     
-    # Construir respuesta manualmente para evitar ошибas de validación con relaciones lazy-loaded
-    response = DependenciaRead(
-        id_dependencia=db_obj.id_dependencia,
-        id_tipo_dependencia=db_obj.id_tipo_dependencia,
-        codigo_padre=db_obj.codigo_padre,
-        nombre=db_obj.nombre,
-        direccion=db_obj.direccion,
-        telefono=db_obj.telefono,
-        email=db_obj.email,
-        web=db_obj.web,
-        base_datos=db_obj.base_datos,
-        host=db_obj.host,
-        puerto=db_obj.puerto,
-        id_provincia=db_obj.id_provincia,
-        id_municipio=db_obj.id_municipio,
-        descripcion=db_obj.descripcion,
-        tipo_dependencia=None,
-        provincia=None,
-        municipio=None,
-        cuentas=[],
-        tablas_creadas=None,
-    )
+    response = DependenciaRead.model_validate(db_obj)
     return response
 
 

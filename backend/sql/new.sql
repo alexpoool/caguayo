@@ -1,4 +1,10 @@
 -- =====================================================
+-- ESQUEMA DE BASE DE DATOS - CAGUAYO (NUEVA DEPENDENCIA)
+-- Schema only + provincias/municipios + grupos/funcionalidades
+-- Sin datos transaccionales ni seed de dependencia/moneda/tipo_dependencia
+-- =====================================================
+
+-- =====================================================
 -- ESQUEMA DE BASE DE DATOS - CAGUAYO
 -- =====================================================
 -- Organización: Primero tablas, luego inserciones de datos
@@ -590,71 +596,213 @@ CREATE INDEX idx_item_venta_efectivo_venta ON item_venta_efectivo(id_venta_efect
 CREATE INDEX idx_item_venta_efectivo_producto ON item_venta_efectivo(id_producto);
 
 -- =====================================================
--- DATOS INICIALES
+-- TABLAS DE GESTIÓN DE SERVICIOS
 -- =====================================================
 
--- Monedas
-INSERT INTO moneda (nombre, denominacion, simbolo) VALUES 
-('Dólar Americano', 'Dólar Estadounidense', 'USD'),
-('Euro', 'Euro de la Unión Europea', 'EUR');
+-- Catálogo de Servicios
+CREATE TABLE servicios (
+    id_servicio SERIAL PRIMARY KEY,
+    codigo_servicio VARCHAR(50) UNIQUE,
+    concepto TEXT,
+    unidad_medida VARCHAR(20),
+    precio NUMERIC(15,2) DEFAULT 0.00,
+    id_moneda INTEGER REFERENCES moneda(id_moneda),
+    observaciones TEXT
+);
 
--- Tipos de Contrato
-INSERT INTO tipo_contrato (nombre, descripcion) VALUES 
-('SERVICIO', 'Contrato de servicios'),
-('OBRA', 'Contrato de obra'),
-('MANTENIMIENTO', 'Contrato de mantenimiento'),
-('ALQUILER', 'Contrato de alquiler'),
-('COMPRA', 'Contrato de compraventa');
+-- Solicitud de Servicio
+CREATE TABLE solicitud_servicio (
+    id_solicitud_servicio SERIAL PRIMARY KEY,
+    id_cliente INTEGER REFERENCES clientes(id_cliente),
+    id_contrato INTEGER REFERENCES contrato(id_contrato),
+    id_suplemento INTEGER REFERENCES suplemento(id_suplemento),
+    codigo_solicitud VARCHAR(50),
+    nombres_rep VARCHAR(100),
+    apellido1_rep VARCHAR(100),
+    apellido2_rep VARCHAR(100),
+    ci_rep VARCHAR(20),
+    telefono_rep VARCHAR(20),
+    cargo VARCHAR(100),
+    descripcion TEXT,
+    fecha_solicitud DATE DEFAULT CURRENT_DATE,
+    fecha_entrega DATE,
+    estado VARCHAR(50),
+    observaciones TEXT,
+    material_asumido_x BOOLEAN DEFAULT FALSE,
+    id_usuario INTEGER,
+    aprobado BOOLEAN DEFAULT FALSE,
+    codigo_proyecto VARCHAR(50)
+);
 
--- Tipos de Convenio
-INSERT INTO tipo_convenio (nombre, descripcion) VALUES 
-('Contrato de Servicios', 'Contrato de servicios'),
-('Acuerdo de Suministro', 'Acuerdo de suministro'),
-('Contrato de Obra', 'Contrato de obra'),
-('Convenio Marco', 'Convenio marco'),
-('COMPRA VENTA', 'Convenio de compraventa de productos');
+-- Etapas de la Solicitud
+CREATE TABLE etapas (
+    id_etapa SERIAL PRIMARY KEY,
+    id_solicitud_servicio INTEGER NOT NULL REFERENCES solicitud_servicio(id_solicitud_servicio) ON DELETE CASCADE,
+    numero_etapa INTEGER,
+    nombre_etapa VARCHAR(150),
+    fecha_entrega DATE,
+    fecha_pago DATE,
+    descripcion TEXT,
+    valor NUMERIC(15,2) DEFAULT 0.00,
+    id_moneda INTEGER REFERENCES moneda(id_moneda),
+    pagada BOOLEAN DEFAULT FALSE,
+    tipo_etapa VARCHAR(20) DEFAULT 'TAREAS'
+);
 
--- Estados de Contrato
-INSERT INTO estado_contrato (nombre, descripcion) VALUES 
-('ACTIVO', 'Contrato vigente'),
-('CANCELADO', 'Contrato cancelado'),
-('FINALIZADO', 'Contrato finalizado'),
-('PENDIENTE', 'Contrato pendiente de aprobación');
+-- Tareas por Etapa (N:N etapa <-> servicio)
+CREATE TABLE tareas_etapa (
+    id_tarea_etapa SERIAL PRIMARY KEY,
+    id_etapa INTEGER NOT NULL REFERENCES etapas(id_etapa) ON DELETE CASCADE,
+    id_servicio INTEGER REFERENCES servicios(id_servicio),
+    codigo_extendido VARCHAR(100),
+    concepto_modificado TEXT,
+    unidad_medida VARCHAR(20),
+    cantidad NUMERIC(12,2) DEFAULT 0.00,
+    precio_ajustado NUMERIC(15,2) DEFAULT 0.00,
+    id_moneda INTEGER REFERENCES moneda(id_moneda),
+    observaciones_ajustadas TEXT
+);
 
--- Tipos de Movimiento
-INSERT INTO tipo_movimiento (tipo, factor) VALUES 
-('compra', 1),
-('venta', -1),
-('RECEPCION', 1),
-('MERMA', -1),
-('DONACION', -1),
-('DEVOLUCION', -1),
-('AJUSTE_QUITAR', -1),
-('AJUSTE_AGREGAR', 1);
+-- Personas Naturales asignadas a Etapas
+CREATE TABLE persona_etapa (
+    id_etapa INTEGER NOT NULL REFERENCES etapas(id_etapa) ON DELETE CASCADE,
+    id_persona INTEGER NOT NULL REFERENCES clientes(id_cliente),
+    cobro NUMERIC(15,2) DEFAULT 0.00,
+    id_moneda INTEGER REFERENCES moneda(id_moneda),
+    liquidada BOOLEAN DEFAULT FALSE,
+    por_cobrar NUMERIC(15, 2) DEFAULT 0.00,
+    PRIMARY KEY (id_etapa, id_persona)
+);
 
--- Tipos de Entidad
-INSERT INTO tipo_entidad (nombre, descripcion) VALUES 
-('OSDE', 'Organización Superior de Dirección Empresarial'),
-('UEB', 'Unidad Empresarial de Base'),
-('Empresas Presupuestadas', 'Entidades presupuestadas del Estado'),
-('Instituciones MINSAP', 'Instituciones rectoras del Ministerio de Salud Pública');
+-- Facturas asociadas a Etapas
+CREATE TABLE factura_servicio (
+    id_factura_servicio SERIAL PRIMARY KEY,
+    id_etapa INTEGER REFERENCES etapas(id_etapa),
+    id_certificacion INTEGER REFERENCES certificacion(id_certificacion),
+    alcance VARCHAR(20),
+    codigo_factura VARCHAR(50),
+    id_moneda INTEGER REFERENCES moneda(id_moneda),
+    fecha DATE,
+    descripcion TEXT,
+    importe NUMERIC(15,4) DEFAULT 0.00,
+    pagado NUMERIC(15,2) DEFAULT 0.00,
+    observaciones TEXT,
+    cuenta_factura VARCHAR(50),
+    id_usuario INTEGER
+);
 
--- Tipos de Proveedor
-INSERT INTO tipo_proveedor (nombre, descripcion) VALUES 
-('Nacional', 'Proveedor nacional'),
-('Internacional', 'Proveedor internacional'),
-('Persona Natural', 'Persona física como proveedor'),
-('Persona Jurídica', 'Empresa o entidad jurídica como proveedor');
+-- Certificaciones de Etapas
+CREATE TABLE certificacion (
+    id_certificacion SERIAL PRIMARY KEY,
+    nombre VARCHAR(255) NOT NULL,
+    id_etapa INTEGER NOT NULL REFERENCES etapas(id_etapa) ON DELETE CASCADE,
+    constructor TEXT,
+    inversionista TEXT,
+    obra TEXT,
+    objeto_obra TEXT,
+    actividad TEXT,
+    descripcion TEXT,
+    observaciones TEXT,
+    fecha DATE,
+    a_cobrar NUMERIC(15,2),
+    impuesto_venta_onat NUMERIC(15,2) DEFAULT 0.00,
+    facturado BOOLEAN DEFAULT FALSE
+);
 
--- Categorías
-INSERT INTO categorias (nombre, descripcion) VALUES 
-('General', 'Categoría general de productos');
+-- Índice para búsquedas por etapa
+CREATE INDEX idx_certificacion_etapa ON certificacion(id_etapa);
 
--- Subcategorías
-INSERT INTO subcategorias (id_categoria, nombre, descripcion) VALUES 
-(1, 'General', 'Subcategoría general de productos');
+-- Items de Factura de Servicio
+CREATE TABLE items_factura_servicio (
+    id_item_factura_servicio SERIAL PRIMARY KEY,
+    id_factura_servicio INTEGER NOT NULL REFERENCES factura_servicio(id_factura_servicio) ON DELETE CASCADE,
+    codigo_extendido VARCHAR(100),
+    concepto TEXT,
+    unidad_medida VARCHAR(20),
+    cantidad NUMERIC(12,2) DEFAULT 0.00,
+    precio NUMERIC(15,2) DEFAULT 0.00
+);
 
--- Provincias de Cuba
+-- Pagos de Facturas de Servicio
+CREATE TABLE pago_factura_servicio (
+    id_pago_factura_servicio SERIAL PRIMARY KEY,
+    id_factura_servicio INTEGER REFERENCES factura_servicio(id_factura_servicio),
+    monto NUMERIC(15,2) DEFAULT 0.00,
+    id_moneda INTEGER REFERENCES moneda(id_moneda),
+    fecha DATE,
+    monto_disponible NUMERIC(15, 2) DEFAULT 0.00,
+    doc_traza VARCHAR(100)
+);
+
+-- Liquidación a Personas Naturales
+CREATE TABLE persona_liquidacion (
+    id_liquidacion SERIAL PRIMARY KEY,
+    numero VARCHAR(50),
+    id_etapa INTEGER REFERENCES etapas(id_etapa),
+    id_persona INTEGER REFERENCES clientes(id_cliente),
+    fecha_emision DATE DEFAULT CURRENT_DATE,
+    fecha_liquidacion DATE,
+    descripcion TEXT,
+    id_moneda INTEGER REFERENCES moneda(id_moneda),
+    tipo_pago VARCHAR(50) DEFAULT 'TRANSFERENCIA',
+    importe NUMERIC(15,2) DEFAULT 0.00,
+    porcentaje_caguayo NUMERIC(5,2) DEFAULT 10.00,
+    importe_caguayo NUMERIC(15,4) DEFAULT 0.00,
+    porciento_gestion NUMERIC(5,2) DEFAULT 0.00,
+    porciento_empresa NUMERIC(5,2) DEFAULT 0.00,
+    devengado NUMERIC(15,2) DEFAULT 0.00,
+    tributario NUMERIC(15,2) DEFAULT 0.00,
+    tributario_monto NUMERIC(15,4) DEFAULT 0.00,
+    comision_bancaria NUMERIC(15,2) DEFAULT 0.00,
+    neto_pagar NUMERIC(15,2) DEFAULT 0.00,
+    id_tipo_concepto INTEGER,
+    doc_pago_liquidacion VARCHAR(100),
+    gasto_empresa NUMERIC(15,2) DEFAULT 0.00,
+    observacion TEXT,
+    confirmado BOOLEAN DEFAULT false,
+    id_pago INTEGER REFERENCES pago_factura_servicio(id_pago_factura_servicio)
+);
+
+-- =====================================================
+-- CUENTAS DE DEPENDENCIAS - TABLA LOCAL EN TODAS LAS BDs
+-- Se replica desde Central hacia Dependencias via PULL
+-- Las dependencias tienen copia local para FKs funcione
+-- =====================================================
+
+CREATE TABLE cuenta_dependencias (
+    id_cuenta SERIAL PRIMARY KEY,
+    id_dependencia INTEGER NOT NULL REFERENCES dependencia(id_dependencia) ON DELETE CASCADE,
+    id_moneda INTEGER REFERENCES moneda(id_moneda) ON DELETE SET NULL,
+    tipo_cuenta VARCHAR(50) NOT NULL DEFAULT 'CUP',
+    titular VARCHAR(150) NOT NULL,
+    banco VARCHAR(100) NOT NULL,
+    sucursal INTEGER,
+    numero_cuenta VARCHAR(50) NOT NULL,
+    direccion VARCHAR(255) NOT NULL
+);
+
+-- =====================================================
+-- TABLA DE LOGS DEL SISTEMA
+-- Sistema de logging centralizado para auditoría
+-- =====================================================
+
+CREATE TABLE IF NOT EXISTS log (
+    id SERIAL PRIMARY KEY,
+    timestamp TIMESTAMP NOT NULL DEFAULT NOW(),
+    nivel VARCHAR(20) NOT NULL,
+    tipo VARCHAR(20) NOT NULL,
+    mensaje VARCHAR(500) NOT NULL,
+    detalle VARCHAR(2000),
+    ip VARCHAR(50),
+    usuario_id INTEGER,
+    endpoint VARCHAR(200),
+    method VARCHAR(10),
+    status_code INTEGER,
+    usuario_nombre VARCHAR(100),
+    navegador VARCHAR(100)
+);
+
+
 INSERT INTO provincia (nombre) VALUES 
 ('Pinar del Río'),
 ('Artemisa'),
@@ -877,12 +1025,6 @@ INSERT INTO municipio (id_provincia, nombre) VALUES
 
 -- Isla de la Juventud (id=16)
 (16, 'Isla de la Juventud');
-
--- =====================================================
--- USUARIO SUPERADMINISTRADOR
--- =====================================================
-
--- Grupos
 INSERT INTO grupo (nombre, descripcion) VALUES 
 ('ADMINISTRADOR', 'Grupo con acceso total al sistema');
 
@@ -915,227 +1057,4 @@ INSERT INTO funcionalidad (nombre) VALUES
 -- Asignar todas las funcionalidades al grupo ADMINISTRADOR
 INSERT INTO grupo_funcionalidad (id_grupo, id_funcionalidad)
 SELECT 1, id_funcionalidad FROM funcionalidad;
-
-
--- Tipo de dependencia para la matriz
-INSERT INTO tipo_dependencia (nombre, descripcion) VALUES 
-('SUCURSAL', 'Sucursal o agencia'),
-('ALMACEN', 'Almacén de productos');
-
--- Dependencia matriz (oficina principal)
-INSERT INTO dependencia (id_tipo_dependencia, nombre, direccion, telefono, email, web, id_provincia, id_municipio, base_datos, descripcion)
-VALUES (1, 'Caguayo S.A', 'Vista Alegre', '+53 7 1234567', 'info@caguayo.cu', 'https://caguayo.cu', 14, 14, 'caguayosa', 'Oficina principal de Caguayo');
-
--- Usuario superadministrador (contraseña: Admin123@)
-INSERT INTO usuarios (ci, nombre, primer_apellido, segundo_apellido, alias, contrasenia, id_grupo, id_dependencia, cargo)
-VALUES 
-('00000000000', 'Administrador', 'Principal', 'Sistema', 'admin', '$2b$12$21cZipaElHLRaXOxScHGjOPbMVXpvxn2aSwQus/P4/Vs0z0bouTb2', 1, 1, 'Superadministrador');
-
-
--- =====================================================
--- TABLAS DE GESTIÓN DE SERVICIOS
--- =====================================================
-
--- Catálogo de Servicios
-CREATE TABLE servicios (
-    id_servicio SERIAL PRIMARY KEY,
-    codigo_servicio VARCHAR(50) UNIQUE,
-    concepto TEXT,
-    unidad_medida VARCHAR(20),
-    precio NUMERIC(15,2) DEFAULT 0.00,
-    id_moneda INTEGER REFERENCES moneda(id_moneda),
-    observaciones TEXT
-);
-
--- Solicitud de Servicio
-CREATE TABLE solicitud_servicio (
-    id_solicitud_servicio SERIAL PRIMARY KEY,
-    id_cliente INTEGER REFERENCES clientes(id_cliente),
-    id_contrato INTEGER REFERENCES contrato(id_contrato),
-    id_suplemento INTEGER REFERENCES suplemento(id_suplemento),
-    codigo_solicitud VARCHAR(50),
-    nombres_rep VARCHAR(100),
-    apellido1_rep VARCHAR(100),
-    apellido2_rep VARCHAR(100),
-    ci_rep VARCHAR(20),
-    telefono_rep VARCHAR(20),
-    cargo VARCHAR(100),
-    descripcion TEXT,
-    fecha_solicitud DATE DEFAULT CURRENT_DATE,
-    fecha_entrega DATE,
-    estado VARCHAR(50),
-    observaciones TEXT,
-    material_asumido_x BOOLEAN DEFAULT FALSE,
-    id_usuario INTEGER,
-    aprobado BOOLEAN DEFAULT FALSE,
-    codigo_proyecto VARCHAR(50)
-);
-
--- Etapas de la Solicitud
-CREATE TABLE etapas (
-    id_etapa SERIAL PRIMARY KEY,
-    id_solicitud_servicio INTEGER NOT NULL REFERENCES solicitud_servicio(id_solicitud_servicio) ON DELETE CASCADE,
-    numero_etapa INTEGER,
-    nombre_etapa VARCHAR(150),
-    fecha_entrega DATE,
-    fecha_pago DATE,
-    descripcion TEXT,
-    valor NUMERIC(15,2) DEFAULT 0.00,
-    id_moneda INTEGER REFERENCES moneda(id_moneda),
-    pagada BOOLEAN DEFAULT FALSE,
-    tipo_etapa VARCHAR(20) DEFAULT 'TAREAS'
-);
-
--- Tareas por Etapa (N:N etapa <-> servicio)
-CREATE TABLE tareas_etapa (
-    id_tarea_etapa SERIAL PRIMARY KEY,
-    id_etapa INTEGER NOT NULL REFERENCES etapas(id_etapa) ON DELETE CASCADE,
-    id_servicio INTEGER REFERENCES servicios(id_servicio),
-    codigo_extendido VARCHAR(100),
-    concepto_modificado TEXT,
-    unidad_medida VARCHAR(20),
-    cantidad NUMERIC(12,2) DEFAULT 0.00,
-    precio_ajustado NUMERIC(15,2) DEFAULT 0.00,
-    id_moneda INTEGER REFERENCES moneda(id_moneda),
-    observaciones_ajustadas TEXT
-);
-
--- Personas Naturales asignadas a Etapas
-CREATE TABLE persona_etapa (
-    id_etapa INTEGER NOT NULL REFERENCES etapas(id_etapa) ON DELETE CASCADE,
-    id_persona INTEGER NOT NULL REFERENCES clientes(id_cliente),
-    cobro NUMERIC(15,2) DEFAULT 0.00,
-    id_moneda INTEGER REFERENCES moneda(id_moneda),
-    liquidada BOOLEAN DEFAULT FALSE,
-    por_cobrar NUMERIC(15, 2) DEFAULT 0.00,
-    PRIMARY KEY (id_etapa, id_persona)
-);
-
--- Facturas asociadas a Etapas
-CREATE TABLE factura_servicio (
-    id_factura_servicio SERIAL PRIMARY KEY,
-    id_etapa INTEGER REFERENCES etapas(id_etapa),
-    id_certificacion INTEGER REFERENCES certificacion(id_certificacion),
-    alcance VARCHAR(20),
-    codigo_factura VARCHAR(50),
-    id_moneda INTEGER REFERENCES moneda(id_moneda),
-    fecha DATE,
-    descripcion TEXT,
-    importe NUMERIC(15,4) DEFAULT 0.00,
-    pagado NUMERIC(15,2) DEFAULT 0.00,
-    observaciones TEXT,
-    cuenta_factura VARCHAR(50),
-    id_usuario INTEGER
-);
-
--- Certificaciones de Etapas
-CREATE TABLE certificacion (
-    id_certificacion SERIAL PRIMARY KEY,
-    nombre VARCHAR(255) NOT NULL,
-    id_etapa INTEGER NOT NULL REFERENCES etapas(id_etapa) ON DELETE CASCADE,
-    constructor TEXT,
-    inversionista TEXT,
-    obra TEXT,
-    objeto_obra TEXT,
-    actividad TEXT,
-    descripcion TEXT,
-    observaciones TEXT,
-    fecha DATE,
-    a_cobrar NUMERIC(15,2),
-    impuesto_venta_onat NUMERIC(15,2) DEFAULT 0.00,
-    facturado BOOLEAN DEFAULT FALSE
-);
-
--- Índice para búsquedas por etapa
-CREATE INDEX idx_certificacion_etapa ON certificacion(id_etapa);
-
--- Items de Factura de Servicio
-CREATE TABLE items_factura_servicio (
-    id_item_factura_servicio SERIAL PRIMARY KEY,
-    id_factura_servicio INTEGER NOT NULL REFERENCES factura_servicio(id_factura_servicio) ON DELETE CASCADE,
-    codigo_extendido VARCHAR(100),
-    concepto TEXT,
-    unidad_medida VARCHAR(20),
-    cantidad NUMERIC(12,2) DEFAULT 0.00,
-    precio NUMERIC(15,2) DEFAULT 0.00
-);
-
--- Pagos de Facturas de Servicio
-CREATE TABLE pago_factura_servicio (
-    id_pago_factura_servicio SERIAL PRIMARY KEY,
-    id_factura_servicio INTEGER REFERENCES factura_servicio(id_factura_servicio),
-    monto NUMERIC(15,2) DEFAULT 0.00,
-    id_moneda INTEGER REFERENCES moneda(id_moneda),
-    fecha DATE,
-    monto_disponible NUMERIC(15, 2) DEFAULT 0.00,
-    doc_traza VARCHAR(100)
-);
-
--- Liquidación a Personas Naturales
-CREATE TABLE persona_liquidacion (
-    id_liquidacion SERIAL PRIMARY KEY,
-    numero VARCHAR(50),
-    id_etapa INTEGER REFERENCES etapas(id_etapa),
-    id_persona INTEGER REFERENCES clientes(id_cliente),
-    fecha_emision DATE DEFAULT CURRENT_DATE,
-    fecha_liquidacion DATE,
-    descripcion TEXT,
-    id_moneda INTEGER REFERENCES moneda(id_moneda),
-    tipo_pago VARCHAR(50) DEFAULT 'TRANSFERENCIA',
-    importe NUMERIC(15,2) DEFAULT 0.00,
-    porcentaje_caguayo NUMERIC(5,2) DEFAULT 10.00,
-    importe_caguayo NUMERIC(15,4) DEFAULT 0.00,
-    porciento_gestion NUMERIC(5,2) DEFAULT 0.00,
-    porciento_empresa NUMERIC(5,2) DEFAULT 0.00,
-    devengado NUMERIC(15,2) DEFAULT 0.00,
-    tributario NUMERIC(15,2) DEFAULT 0.00,
-    tributario_monto NUMERIC(15,4) DEFAULT 0.00,
-    comision_bancaria NUMERIC(15,2) DEFAULT 0.00,
-    neto_pagar NUMERIC(15,2) DEFAULT 0.00,
-    id_tipo_concepto INTEGER,
-    doc_pago_liquidacion VARCHAR(100),
-    gasto_empresa NUMERIC(15,2) DEFAULT 0.00,
-    observacion TEXT,
-    confirmado BOOLEAN DEFAULT false,
-    id_pago INTEGER REFERENCES pago_factura_servicio(id_pago_factura_servicio)
-);
-
--- =====================================================
--- CUENTAS DE DEPENDENCIAS - TABLA LOCAL EN TODAS LAS BDs
--- Se replica desde Central hacia Dependencias via PULL
--- Las dependencias tienen copia local para FKs funcione
--- =====================================================
-
-CREATE TABLE cuenta_dependencias (
-    id_cuenta SERIAL PRIMARY KEY,
-    id_dependencia INTEGER NOT NULL REFERENCES dependencia(id_dependencia) ON DELETE CASCADE,
-    id_moneda INTEGER REFERENCES moneda(id_moneda) ON DELETE SET NULL,
-    tipo_cuenta VARCHAR(50) NOT NULL DEFAULT 'CUP',
-    titular VARCHAR(150) NOT NULL,
-    banco VARCHAR(100) NOT NULL,
-    sucursal INTEGER,
-    numero_cuenta VARCHAR(50) NOT NULL,
-    direccion VARCHAR(255) NOT NULL
-);
-
--- =====================================================
--- TABLA DE LOGS DEL SISTEMA
--- Sistema de logging centralizado para auditoría
--- =====================================================
-
-CREATE TABLE IF NOT EXISTS log (
-    id SERIAL PRIMARY KEY,
-    timestamp TIMESTAMP NOT NULL DEFAULT NOW(),
-    nivel VARCHAR(20) NOT NULL,
-    tipo VARCHAR(20) NOT NULL,
-    mensaje VARCHAR(500) NOT NULL,
-    detalle VARCHAR(2000),
-    ip VARCHAR(50),
-    usuario_id INTEGER,
-    endpoint VARCHAR(200),
-    method VARCHAR(10),
-    status_code INTEGER,
-    usuario_nombre VARCHAR(100),
-    navegador VARCHAR(100)
-);
 

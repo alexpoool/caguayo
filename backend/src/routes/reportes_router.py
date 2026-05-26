@@ -25,7 +25,7 @@ router = APIRouter(prefix="/reportes", tags=["Reportes"])
 
 async def get_usuario_actual(
     authorization: str = Header(None),
-    db_auth: AsyncSession = Depends(get_auth_session),
+    db_auth: AsyncSession = Depends(get_session),
 ) -> str:
     """Obtiene el nombre del usuario autenticado desde el token."""
     if not authorization or not authorization.startswith("Bearer "):

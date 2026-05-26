@@ -63,11 +63,11 @@ class DatabaseService:
         return statements
 
     @staticmethod
-    def crear_base_datos(base_datos: str) -> List[str]:
+    def crear_base_datos(base_datos: str, sql_file: str = "init.sql") -> List[str]:
         sql_path = os.path.join(
             os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
             "sql",
-            "init.sql",
+            sql_file,
         )
 
         with open(sql_path, "r", encoding="utf-8") as f:
@@ -310,53 +310,79 @@ class DatabaseService:
         local_cur = local_conn.cursor()
         
         try:
+            # 1. Fetch ALL data from central first
             central_cur.execute("SELECT id_moneda, nombre, denominacion, simbolo FROM moneda ORDER BY id_moneda")
             monedas = central_cur.fetchall()
-            
+
+            central_cur.execute("SELECT id_tipo_dependencia, nombre, descripcion FROM tipo_dependencia ORDER BY id_tipo_dependencia")
+            tipos = central_cur.fetchall()
+
+            central_cur.execute("SELECT id_provincia, nombre FROM provincia ORDER BY id_provincia")
+            provincias = central_cur.fetchall()
+
+            central_cur.execute("SELECT id_municipio, id_provincia, nombre FROM municipio ORDER BY id_municipio")
+            municipios = central_cur.fetchall()
+
+            central_cur.execute("""
+                SELECT id_dependencia, id_tipo_dependencia, codigo_padre, nombre, direccion, telefono, 
+                       email, web, id_provincia, id_municipio, descripcion, base_datos
+                FROM dependencia 
+                ORDER BY id_dependencia
+            """)
+            deps = central_cur.fetchall()
+
+            central_cur.execute("""
+                SELECT id_cuenta, id_dependencia, id_moneda, titular, banco, sucursal, numero_cuenta, direccion
+                FROM cuenta_dependencias
+                ORDER BY id_cuenta, id_dependencia
+            """)
+            cuentas = central_cur.fetchall()
+
+            # 2. DELETE in FK-safe order (children before parents)
+            local_cur.execute("DELETE FROM dependencia")
+            local_cur.execute("DELETE FROM municipio")
+            local_cur.execute("DELETE FROM provincia")
+            local_cur.execute("DELETE FROM cuenta_dependencias")
             local_cur.execute("DELETE FROM moneda")
+            local_cur.execute("DELETE FROM tipo_dependencia")
+
+            # 3. INSERT in FK-safe order (parents before children)
             for m in monedas:
                 local_cur.execute(
                     "INSERT INTO moneda (id_moneda, nombre, denominacion, simbolo) VALUES (%s, %s, %s, %s)",
                     m
                 )
             print(f"[DB SERVICE] Replicated {len(monedas)} monedas", flush=True)
-            
-            central_cur.execute("SELECT id_tipo_dependencia, nombre, descripcion FROM tipo_dependencia ORDER BY id_tipo_dependencia")
-            tipos = central_cur.fetchall()
-            
-            local_cur.execute("DELETE FROM tipo_dependencia")
+
             for t in tipos:
                 local_cur.execute(
                     "INSERT INTO tipo_dependencia (id_tipo_dependencia, nombre, descripcion) VALUES (%s, %s, %s)",
                     t
                 )
             print(f"[DB SERVICE] Replicated {len(tipos)} tipo_dependencia", flush=True)
-            
-            central_cur.execute("""
-                SELECT id_dependencia, id_tipo_dependencia, codigo_padre, nombre, direccion, telefono, 
-                       email, web, id_provincia, id_municipio, descripcion
-                FROM dependencia 
-                WHERE id_dependencia = 1
-            """)
-            deps = central_cur.fetchall()
-            
-            local_cur.execute("DELETE FROM dependencia WHERE id_dependencia = 1")
+
+            for p in provincias:
+                local_cur.execute(
+                    "INSERT INTO provincia (id_provincia, nombre) VALUES (%s, %s)",
+                    p
+                )
+            print(f"[DB SERVICE] Replicated {len(provincias)} provincias", flush=True)
+
+            for m in municipios:
+                local_cur.execute(
+                    "INSERT INTO municipio (id_municipio, id_provincia, nombre) VALUES (%s, %s, %s)",
+                    m
+                )
+            print(f"[DB SERVICE] Replicated {len(municipios)} municipios", flush=True)
+
             for d in deps:
                 local_cur.execute("""
                     INSERT INTO dependencia (id_dependencia, id_tipo_dependencia, codigo_padre, nombre, 
-                                          direccion, telefono, email, web, id_provincia, id_municipio, descripcion)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                                          direccion, telefono, email, web, id_provincia, id_municipio, descripcion, base_datos)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 """, d)
-            print(f"[DB SERVICE] Replicated {len(deps)} dependencias (root)", flush=True)
-            
-            central_cur.execute("""
-                SELECT id_cuenta, id_dependencia, id_moneda, titular, banco, sucursal, numero_cuenta, direccion
-                FROM cuenta_dependencias
-                WHERE id_dependencia = 1
-            """)
-            cuentas = central_cur.fetchall()
-            
-            local_cur.execute("DELETE FROM cuenta_dependencias WHERE id_dependencia = 1")
+            print(f"[DB SERVICE] Replicated {len(deps)} dependencias", flush=True)
+
             for c in cuentas:
                 local_cur.execute("""
                     INSERT INTO cuenta_dependencias (id_cuenta, id_dependencia, id_moneda, titular, banco, 
@@ -364,7 +390,7 @@ class DatabaseService:
                     VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
                 """, c)
             print(f"[DB SERVICE] Replicated {len(cuentas)} cuenta_dependencias", flush=True)
-            
+
             local_conn.commit()
             print(f"[DB SERVICE] Data replication completed for {base_datos}", flush=True)
             
@@ -376,6 +402,50 @@ class DatabaseService:
             central_conn.close()
             local_cur.close()
             local_conn.close()
+
+    @staticmethod
+    def insertar_admin_en_db(base_datos: str, id_dependencia: int) -> None:
+        print(
+            f"[DB SERVICE] Inserting admin user in {base_datos} "
+            f"with id_dependencia={id_dependencia}",
+            flush=True,
+        )
+        conn = psycopg2.connect(
+            host=os.getenv("ADMIN_DB_HOST", "localhost"),
+            port=int(os.getenv("ADMIN_DB_PORT", 5432)),
+            user=os.getenv("ADMIN_DB_USER", "postgres"),
+            password=os.getenv("ADMIN_DB_PASSWORD", "postgres"),
+            database=base_datos,
+            client_encoding="utf8",
+        )
+        conn.autocommit = True
+        cur = conn.cursor()
+        try:
+            cur.execute(
+                """
+                INSERT INTO usuarios (ci, nombre, primer_apellido, segundo_apellido, alias, contrasenia, id_grupo, id_dependencia, cargo)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                ON CONFLICT (alias) DO UPDATE SET id_dependencia = EXCLUDED.id_dependencia
+                """,
+                (
+                    "00000000000",
+                    "Administrador",
+                    "Principal",
+                    "Sistema",
+                    "admin",
+                    "$2b$12$21cZipaElHLRaXOxScHGjOPbMVXpvxn2aSwQus/P4/Vs0z0bouTb2",
+                    1,
+                    id_dependencia,
+                    "Superadministrador",
+                ),
+            )
+            print(f"[DB SERVICE] Admin user inserted in {base_datos}", flush=True)
+        except Exception as e:
+            print(f"[DB SERVICE] Error inserting admin user: {e}", flush=True)
+            raise
+        finally:
+            cur.close()
+            conn.close()
 
     @staticmethod
     def eliminar_base_datos(base_datos: str) -> bool:

@@ -51,7 +51,7 @@ async def register(
 @router.post("/logout")
 async def logout(
     authorization: str = Header(None),
-    db: AsyncSession = Depends(get_auth_session),
+    db: AsyncSession = Depends(get_session),
 ):
     """Cerrar sesión"""
     if not authorization or not authorization.startswith("Bearer "):
@@ -69,7 +69,7 @@ async def logout(
 @router.get("/me", response_model=LoginResponse)
 async def get_current_user(
     authorization: str = Header(None),
-    db: AsyncSession = Depends(get_auth_session),
+    db: AsyncSession = Depends(get_session),
 ):
     """Obtener información del usuario actual"""
     if not authorization or not authorization.startswith("Bearer "):
@@ -97,7 +97,7 @@ async def get_current_user(
 @router.get("/funcionalidades", response_model=List[FuncionalidadInfo])
 async def get_funcionalidades(
     authorization: str = Header(None),
-    db: AsyncSession = Depends(get_auth_session),
+    db: AsyncSession = Depends(get_session),
 ):
     """Obtener funcionalidades del grupo del usuario actual"""
     if not authorization or not authorization.startswith("Bearer "):
@@ -127,7 +127,7 @@ async def buscar_alias(
 async def actualizar_perfil(
     perfil_data: PerfilUpdateRequest,
     authorization: str = Header(None),
-    db: AsyncSession = Depends(get_auth_session),
+    db: AsyncSession = Depends(get_session),
 ):
     """Actualizar perfil del usuario (alias y/o contraseña)"""
     if not authorization or not authorization.startswith("Bearer "):

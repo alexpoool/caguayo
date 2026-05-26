@@ -115,7 +115,14 @@ async def database_middleware(request: Request, call_next):
             payload = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
             base_datos = payload.get("base_datos")
             if base_datos:
-                set_current_db(base_datos)
+                from urllib.parse import urlparse
+                from src.database.connection import AUTH_DATABASE
+                parsed = urlparse(os.getenv("DATABASE_URL", ""))
+                actual_db = parsed.path.lstrip("/")
+                if base_datos == actual_db:
+                    set_current_db(AUTH_DATABASE)
+                else:
+                    set_current_db(base_datos)
     except Exception:
         pass
     response = await call_next(request)

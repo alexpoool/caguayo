@@ -146,11 +146,13 @@ async def login(db: AsyncSession, login_data: LoginRequest) -> Optional[LoginRes
     host = conexion.host if conexion else os.getenv("ADMIN_DB_HOST", "localhost")
     puerto = conexion.puerto if conexion else int(os.getenv("ADMIN_DB_PORT", 5432))
     usuario_db = (
-        conexion.usuario if conexion else os.getenv("ADMIN_DB_USER", "postgres")
+        conexion.usuario
+        if conexion and conexion.usuario
+        else os.getenv("ADMIN_DB_USER", "postgres")
     )
     contrasenia_db = (
         conexion.contrasenia
-        if conexion
+        if conexion and conexion.contrasenia
         else os.getenv("ADMIN_DB_PASSWORD", "debianpostgres")
     )
 
@@ -183,19 +185,19 @@ async def login(db: AsyncSession, login_data: LoginRequest) -> Optional[LoginRes
         if not verify_password(login_data.contrasenia, usuario.contrasenia):
             return None
 
-        # 5. Obtener la dependencia desde la BD central
+        # 5. Obtener la dependencia desde la BD destino
         dependencia = None
         if usuario.id_dependencia:
             statement = select(Dependencia).where(
                 Dependencia.id_dependencia == usuario.id_dependencia
             )
-            results = await db.exec(statement)
+            results = db_target.exec(statement)
             dependencia = results.first()
 
-        # 6. Obtener grupo
+        # 6. Obtener grupo desde la BD destino
         grupo = None
         if usuario.id_grupo:
-            grupo = await db.get(Grupo, usuario.id_grupo)
+            grupo = db_target.get(Grupo, usuario.id_grupo)
 
         # 7. Obtener funcionalidades del grupo (desde la BD del usuario)
         statement = select(GrupoFuncionalidad).where(
@@ -215,51 +217,71 @@ async def login(db: AsyncSession, login_data: LoginRequest) -> Optional[LoginRes
                     )
                 )
 
-    # 8. Crear token JWT
-    token_data = {
-        "sub": str(usuario.id_usuario),
-        "alias": usuario.alias,
-        "nombre": f"{usuario.nombre} {usuario.primer_apellido}",
-        "base_datos": login_data.base_datos,
-    }
-    token = create_access_token(token_data)
+        # 8. Crear token JWT
+        token_data = {
+            "sub": str(usuario.id_usuario),
+            "alias": usuario.alias,
+            "nombre": f"{usuario.nombre} {usuario.primer_apellido}",
+            "base_datos": login_data.base_datos,
+        }
+        token = create_access_token(token_data)
 
-    # 9. Guardar sesión en la base de datos
-    fecha_expiracion = datetime.utcnow() + timedelta(hours=ACCESS_TOKEN_EXPIRE_HOURS)
-    sesion = Sesion(
-        id_usuario=usuario.id_usuario,
-        token=token,
-        base_datos=login_data.base_datos,
-        fecha_expiracion=fecha_expiracion,
-    )
-    db.add(sesion)
-    await db.commit()
+        # 9. Guardar sesión en la base de datos destino
+        fecha_expiracion = datetime.utcnow() + timedelta(hours=ACCESS_TOKEN_EXPIRE_HOURS)
+        sesion = Sesion(
+            id_usuario=usuario.id_usuario,
+            token=token,
+            base_datos=login_data.base_datos,
+            fecha_expiracion=fecha_expiracion,
+        )
+        db_target.add(sesion)
+        db_target.commit()
+
+        usuario_id = usuario.id_usuario
+        usuario_ci = usuario.ci
+        usuario_nombre = usuario.nombre
+        usuario_primer_apellido = usuario.primer_apellido
+        usuario_segundo_apellido = usuario.segundo_apellido
+        usuario_alias = usuario.alias
+        usuario_cargo = usuario.cargo
+
+        dep_id = dependencia.id_dependencia if dependencia else None
+        dep_nombre = dependencia.nombre if dependencia else None
+        dep_base_datos = dependencia.base_datos if dependencia else None
+        dep_host = dependencia.host if dependencia else None
+        dep_puerto = dependencia.puerto if dependencia else None
+        dep_email = dependencia.email if dependencia else None
+        dep_telefono = dependencia.telefono if dependencia else None
+        dep_direccion = dependencia.direccion if dependencia else None
+
+        grupo_id = grupo.id_grupo if grupo else None
+        grupo_nombre = grupo.nombre if grupo else None
 
     return LoginResponse(
         token=token,
         usuario=UsuarioInfo(
-            id_usuario=usuario.id_usuario,
-            ci=usuario.ci,
-            nombre=usuario.nombre,
-            primer_apellido=usuario.primer_apellido,
-            segundo_apellido=usuario.segundo_apellido,
-            alias=usuario.alias,
-            cargo=usuario.cargo,
+            id_usuario=usuario_id,
+            ci=usuario_ci,
+            nombre=usuario_nombre,
+            primer_apellido=usuario_primer_apellido,
+            segundo_apellido=usuario_segundo_apellido,
+            alias=usuario_alias,
+            cargo=usuario_cargo,
             dependencia=DependenciaInfo(
-                id_dependencia=dependencia.id_dependencia,
-                nombre=dependencia.nombre,
-                base_datos=dependencia.base_datos,
-                host=dependencia.host,
-                puerto=dependencia.puerto,
-                email=dependencia.email,
-                telefono=dependencia.telefono,
-                direccion=dependencia.direccion,
+                id_dependencia=dep_id,
+                nombre=dep_nombre,
+                base_datos=dep_base_datos,
+                host=dep_host,
+                puerto=dep_puerto,
+                email=dep_email,
+                telefono=dep_telefono,
+                direccion=dep_direccion,
             )
             if dependencia
             else None,
             grupo=GrupoInfo(
-                id_grupo=grupo.id_grupo,
-                nombre=grupo.nombre,
+                id_grupo=grupo_id,
+                nombre=grupo_nombre,
             )
             if grupo
             else None,

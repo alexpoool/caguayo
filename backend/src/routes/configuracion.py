@@ -303,7 +303,16 @@ async def crear_tipo_dependencia(
     data: TipoDependenciaCreate,
     db: AsyncSession = Depends(get_session),
 ):
-    return await tipo_dependencia_service.create(db, data)
+    db_obj = await tipo_dependencia_service.create(db, data)
+
+    from src.services.replicacion_service import ReplicacionService
+    ReplicacionService.replicar_tipo_dependencia({
+        "id_tipo_dependencia": db_obj.id_tipo_dependencia,
+        "nombre": db_obj.nombre,
+        "descripcion": db_obj.descripcion,
+    }, "INSERT")
+
+    return db_obj
 
 
 @router.get("/tipos-dependencia/{tipo_id}", response_model=TipoDependenciaRead)
