@@ -9,7 +9,7 @@ import type { Cliente, Cuenta } from '../../types/ventas';
 import type { Moneda } from '../../types/moneda';
 import { Plus, Save, Trash2, Edit, ArrowLeft, Search, Receipt, X, Eye, DollarSign, Hash, Tag, FileText, Check, ChevronDown, Printer, ListChecks, List, Percent } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { authService } from '../../services/auth';
 
 type View = 'list' | 'form';
@@ -94,6 +94,7 @@ function SearchSelect({
 
 export function FacturasServicioPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams] = useSearchParams();
   const etapaParam = searchParams.get('etapa');
   const solicitudParam = searchParams.get('solicitud');
@@ -113,6 +114,14 @@ export function FacturasServicioPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [filtroEtapa, setFiltroEtapa] = useState<number | null>(etapaParam ? Number(etapaParam) : null);
   const [detailModal, setDetailModal] = useState<{ isOpen: boolean; item: FacturaServicio | null }>({ isOpen: false, item: null });
+
+  useEffect(() => {
+    if (searchParams.has('_')) {
+      setView('list');
+      setEditingId(null);
+      navigate(location.pathname, { replace: true });
+    }
+  }, [searchParams]);
   const [itemsModal, setItemsModal] = useState<{ isOpen: boolean; factura: FacturaServicio | null; items: ItemFacturaServicio[] }>({ isOpen: false, factura: null, items: [] });
   const [loadingItems, setLoadingItems] = useState(false);
   const [confirmModal, setConfirmModal] = useState<{

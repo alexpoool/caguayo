@@ -152,12 +152,11 @@ export function getFacturaDocument(
     .header-box-row strong { font-weight: 700; }
     .fila-fechas { display: flex; justify-content: space-between; margin: 18px 0 12px 0; border-bottom: 1px dashed #aaa; padding-bottom: 12px; }
     .bloque-fecha { font-weight: 600; font-size: 13px; }
-    .info-cliente { display: grid; grid-template-columns: 14ch 16ch 1fr; gap: 8px 16px; background: #f9f9f0; padding: 8px; border: 1px solid #ccc; margin-bottom: 12px; font-size: 11.5px; align-items: center; }
-    .contrato-titulo { grid-column: 1 / -1; font-size: 13px; font-weight: 800; text-transform: uppercase; text-align: center; color: #1a5c1a; }
-    .fila-datos { display: contents; }
-    .campo { min-width: 0; }
-    .fila-banco-titulo { grid-column: 1 / -1; font-size: 12px; font-weight: 800; text-transform: uppercase; text-align: center; color: #1a5c1a; border-top: 1px dashed #ccc; padding-top: 6px; margin-top: 4px; }
-    .fila-cuenta { grid-column: 1 / -1; }
+    .info-cliente { background: #f9f9f0; padding: 8px; border: 1px solid #ccc; margin-bottom: 12px; font-size: 11.5px; }
+    .cliente-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 4px 8px; }
+    .cliente-grid .full-row { grid-column: 1 / -1; }
+    .cliente-titulo { font-size: 13px; font-weight: 800; text-transform: uppercase; text-align: center; color: #1a5c1a; }
+
     .info-pago { display: flex; flex-wrap: wrap; justify-content: space-between; background: #f0f7f0; padding: 6px; border: 1px solid #1a5c1a; margin-bottom: 10px; font-size: 12px; }
     .pago-header { font-size: 13px; font-weight: 800; text-transform: uppercase; margin-bottom: 6px; color: #1a5c1a; width: 100%; text-align: center; margin-top: 6px; }
     .descripcion-general { background: #fffef5; padding: 6px; border: 1px solid #ccc; margin-bottom: 8px; font-size: 12px; }
@@ -202,18 +201,21 @@ export function getFacturaDocument(
     </div>
 
     <div class="info-cliente">
-      <div class="contrato-titulo">CONTRATO Nº ${numeroContrato} <span></span> Cliente: ${nombreCliente}</div>
-      <div class="fila-datos">
-        <span class="campo"><strong>NIT/CI:</strong> ${cliente?.nit || ''}</span>
-        <span class="campo"><strong>Dirección:</strong> ${direccionCompleta}</span>
+      <div class="cliente-grid">
+        <div class="full-row cliente-titulo">CONTRATO Nº ${numeroContrato} — Cliente: ${nombreCliente}</div>
+        <div><strong>NIT/CI:</strong> ${cliente?.nit || ''}</div>
+        <div><strong>Dirección:</strong> ${direccionCompleta}</div>
+        <div></div>
+        ${clienteCuentas.length > 0 ? `
+        <div class="full-row cliente-titulo">BANCO:</div>
+        <div><strong>Cuenta:</strong> ${cuentaNumero} (${moneda})</div>
+        <div><strong>Banco:</strong> ${cuentaBanco}</div>
+        <div><strong>Sucursal:</strong> ${cuentaSucursal}</div>
+        <div><strong>Dirección:</strong> ${cuentaDireccion}</div>
+        <div></div>
+        <div></div>
+        ` : ''}
       </div>
-      <div class="fila-banco-titulo">BANCO:</div>
-      <div class="fila-datos">
-        <span class="campo"><strong>Banco:</strong> ${cuentaBanco}</span>
-        <span class="campo"><strong>Sucursal:</strong> ${cuentaSucursal}</span>
-        <span class="campo"><strong>Dirección:</strong> ${cuentaDireccion}</span>
-      </div>
-      <div class="fila-cuenta"><strong>Número de cuenta:</strong> ${cuentaNumero} (${moneda})</div>
     </div>
 
     <div class="descripcion-general">

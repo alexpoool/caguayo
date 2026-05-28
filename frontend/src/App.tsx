@@ -192,13 +192,21 @@ function App() {
 
   const NavLink = ({ to, children, onClick, exact = false }: { to: string; children: React.ReactNode; onClick?: () => void; exact?: boolean }) => {
     const linkLocation = useLocation();
+    const navigate = useNavigate();
     const isActive = exact 
       ? linkLocation.pathname === to
       : linkLocation.pathname === to || (linkLocation.pathname.startsWith(`${to}/`) && to !== '/movimientos');
+    const handleClick = (e: React.MouseEvent) => {
+      onClick?.();
+      if (linkLocation.pathname === to) {
+        e.preventDefault();
+        navigate(`${to}?_=${Date.now()}`, { replace: true });
+      }
+    };
     return (
       <Link
         to={to}
-        onClick={onClick}
+        onClick={handleClick}
         className={`
           group flex items-center ${slimSidebar ? 'justify-center' : 'gap-3'} ${slimSidebar ? 'px-0' : 'px-3'} py-2.5 rounded-lg 
           transition-all duration-300 ease-out relative overflow-hidden
