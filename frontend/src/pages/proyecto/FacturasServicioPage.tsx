@@ -2,11 +2,12 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Button, Input, Label, Card, CardContent, CardHeader, CardTitle, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, ConfirmModal } from '../../components/ui';
+import { SignToggle } from '../../components/ui/SignToggle';
 import { facturasServicioService, etapasProyectoService, monedaService, solicitudesService, tareasEtapaService, dependenciasService, cuentasService, clientesService, certificacionesService, contratosService } from '../../services/api';
 import type { FacturaServicio, FacturaServicioCreate, FacturaServicioUpdate, Etapa, TareaEtapa, SolicitudServicio, ItemFacturaServicio, Certificacion } from '../../types/servicio';
 import type { Cliente, Cuenta } from '../../types/ventas';
 import type { Moneda } from '../../types/moneda';
-import { Plus, Save, Trash2, Edit, ArrowLeft, Search, Receipt, X, Eye, DollarSign, Hash, Tag, FileText, Check, ChevronDown, Printer, ListChecks, List } from 'lucide-react';
+import { Plus, Save, Trash2, Edit, ArrowLeft, Search, Receipt, X, Eye, DollarSign, Hash, Tag, FileText, Check, ChevronDown, Printer, ListChecks, List, Percent } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { authService } from '../../services/auth';
@@ -132,9 +133,11 @@ export function FacturasServicioPage() {
 
   const [tareasDeEtapa, setTareasDeEtapa] = useState<TareaEtapa[]>([]);
   const [selectedTareas, setSelectedTareas] = useState<number[]>([]);
-  const [tareaModifiers, setTareaModifiers] = useState<Record<number, { cantidad: number; precio: number }>>({});
+  const [tareaModifiers, setTareaModifiers] = useState<Record<number, { cantidad: number; precio: number; ajuste_porciento: number; ajuste_valor: number }>>({});
   const [certificacionesDeEtapa, setCertificacionesDeEtapa] = useState<Certificacion[]>([]);
   const [selectedCertificacion, setSelectedCertificacion] = useState<number | null>(null);
+  const [certAjustePorciento, setCertAjustePorciento] = useState<number>(0);
+  const [certAjusteValor, setCertAjusteValor] = useState<number>(0);
 
   const [cuentasDependencia, setCuentasDependencia] = useState<any[]>([]);
   const user = authService.getUser();
@@ -178,6 +181,8 @@ export function FacturasServicioPage() {
         setFormData(prev => ({ ...prev, descripcion: etapa?.descripcion || '' }));
         setCertificacionesDeEtapa([]);
         setSelectedCertificacion(null);
+        setCertAjustePorciento(0);
+        setCertAjusteValor(0);
         tareasEtapaService.getTareasByEtapa(selectedEtapaId)
           .then(setTareasDeEtapa)
           .catch(() => setTareasDeEtapa([]));
@@ -187,6 +192,8 @@ export function FacturasServicioPage() {
       setSelectedTareas([]);
       setCertificacionesDeEtapa([]);
       setSelectedCertificacion(null);
+      setCertAjustePorciento(0);
+      setCertAjusteValor(0);
     }
   }, [selectedEtapaId, etapas]);
 
@@ -306,7 +313,8 @@ export function FacturasServicioPage() {
           tareas_seleccionadas: selectedTareas.length > 0 ? selectedTareas : undefined
         };
         const modifiers = Object.keys(tareaModifiers).length > 0 ? { tarea_modifiers: tareaModifiers } : {};
-        await facturasServicioService.updateFacturaServicio(editingId, { ...data, ...modifiers });
+        const certAjustes = esCertificaciones ? { ajuste_porciento: certAjustePorciento, ajuste_valor: certAjusteValor } : {};
+        await facturasServicioService.updateFacturaServicio(editingId, { ...data, ...modifiers, ...certAjustes });
       } else {
         const data: FacturaServicioCreate = {
           id_etapa: selectedEtapaId || (etapaParam ? Number(etapaParam) : undefined),
@@ -321,7 +329,8 @@ export function FacturasServicioPage() {
           tareas_seleccionadas: selectedTareas
         };
         const modifiers = Object.keys(tareaModifiers).length > 0 ? { tarea_modifiers: tareaModifiers } : {};
-        await facturasServicioService.createFacturaServicio({ ...data, ...modifiers });
+        const certAjustes = esCertificaciones ? { ajuste_porciento: certAjustePorciento, ajuste_valor: certAjusteValor } : {};
+        await facturasServicioService.createFacturaServicio({ ...data, ...modifiers, ...certAjustes });
       }
       toast.success(editingId ? 'Actualizado' : 'Creado');
       setView('list');
@@ -417,6 +426,8 @@ export function FacturasServicioPage() {
   const handleSelectEtapa = (id: number | null) => {
     setSelectedTareas([]);
     setSelectedCertificacion(null);
+    setCertAjustePorciento(0);
+    setCertAjusteValor(0);
     setSelectedEtapaId(id);
     if (id) {
       const etapa = etapas.find(e => e.id_etapa === id);
@@ -525,10 +536,22 @@ export function FacturasServicioPage() {
         </tr>
       `;
     }).join('');
-    const total = itemsData.reduce((sum, item) => sum + (Number(item.cantidad || 0) * Number(item.precio || 0)), 0);
+    const subtotal = itemsData.reduce((sum, item) => sum + (Number(item.cantidad || 0) * Number(item.precio || 0)), 0);
+    const descuento = itemsData.reduce((sum, item) => {
+      const base = Number(item.cantidad || 0) * Number(item.precio || 0);
+      const ajustePorc = Number(item.ajuste_porciento || 0);
+      const ajusteVal = Number(item.ajuste_valor || 0);
+      const ajusteAmount = base * (ajustePorc / 100) + ajusteVal;
+      return sum - ajusteAmount;
+    }, 0);
+    const totalFinal = subtotal - descuento;
     const aCobrar = certificacion ? Number(certificacion.a_cobrar || 0) : 0;
     const impuestoOnat = certificacion ? Number(certificacion.impuesto_venta_onat || 0) : 0;
-    const totalCert = aCobrar + impuestoOnat;
+    const subtotalCert = aCobrar - impuestoOnat;
+    const descuentoCert = certificacion
+      ? -(aCobrar * Number(certificacion.ajuste_porciento || 0) / 100 + Number(certificacion.ajuste_valor || 0))
+      : 0;
+    const totalCert = subtotalCert - descuentoCert;
 
     const fechaEmision = factura.fecha ? new Date(factura.fecha).toLocaleDateString('es-ES') : 'N/A';
 
@@ -578,13 +601,36 @@ export function FacturasServicioPage() {
     .tabla-tareas td:nth-child(3) { width: 10%; text-align: center; }
     .tabla-tareas td:nth-child(4) { width: 15%; text-align: right; }
     .tabla-tareas td:nth-child(5) { width: 17%; text-align: right; }
+    .tabla-tareas .subtotal-row td,
+    .tabla-tareas .descuento-row td,
+    .tabla-tareas .total-row td { border: none; }
+    .tabla-tareas .subtotal-row td:nth-child(1),
+    .tabla-tareas .descuento-row td:nth-child(1),
+    .tabla-tareas .total-row td:nth-child(1) { border-left: 1px solid #222; }
+    .tabla-tareas .subtotal-row td:nth-child(3) { border-right: 1px solid #222; border-top: 1px solid #222; }
+    .tabla-tareas .descuento-row td:nth-child(3) { border-right: 1px solid #222; }
+    .tabla-tareas .total-row td:nth-child(3) { border-right: 1px solid #222; }
+    .tabla-tareas .subtotal-row td:nth-child(4),
+    .tabla-tareas .descuento-row td:nth-child(4),
+    .tabla-tareas .total-row td:nth-child(4) { border-left: 1px solid #222; border-right: 1px solid #222; border-top: 1px solid #222; }
+    .tabla-tareas .subtotal-row td:nth-child(5),
+    .tabla-tareas .descuento-row td:nth-child(5) { border-left: 1px solid #222; border-right: 1px solid #222; border-top: 1px solid #222; }
+    .tabla-tareas .total-row td:nth-child(1),
+    .tabla-tareas .total-row td:nth-child(2) { border-bottom: 1px solid #222; }
+    .tabla-tareas .total-row td:nth-child(3) { border-right: 1px solid #222; border-bottom: 1px solid #222; }
+    .tabla-tareas .total-row td:nth-child(4) { border-left: 1px solid #222; border-right: 1px solid #222; border-top: 1px solid #222; border-bottom: 1px solid #222; }
+    .tabla-tareas .total-row td:nth-child(5) { border-left: 1px solid #222; border-right: 1px solid #222; border-top: 1px solid #222; border-bottom: 1px solid #222; }
+    .tabla-tareas .subtotal-row td { font-weight: 700; font-size: 13px; }
+    .tabla-tareas .descuento-row td { font-size: 12px; }
     .tabla-tareas .total-row td { font-weight: 800; font-size: 14px; }
     .tabla-totales { width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 16px; }
     .tabla-totales th, .tabla-totales td { border: 1px solid #222; padding: 6px 4px; vertical-align: top; }
     .tabla-totales th { background-color: #cccccc; font-weight: 700; text-align: center; }
     .tabla-totales td:nth-child(1) { width: 70%; }
     .tabla-totales td:nth-child(2) { width: 30%; text-align: right; }
-    .tabla-totales .total-row td { font-weight: 800; font-size: 14px; }
+    .tabla-totales .total-row td { font-weight: 800; font-size: 13px; }
+    .tabla-totales .subtotal-row td { font-weight: 700; font-size: 13px; border-top: 2px solid #222; }
+    .tabla-totales .descuento-row td { font-size: 12px; }
     .totales { display: flex; justify-content: flex-end; margin-bottom: 20px; }
     .cuadro-totales { width: 280px; border: 1px solid black; background: white; padding: 12px 15px; font-size: 13px; font-family: monospace; }
     .linea-total { display: flex; justify-content: space-between; margin-bottom: 6px; }
@@ -678,10 +724,19 @@ export function FacturasServicioPage() {
           <td>Actividad</td>
           <td>${simboloMoneda} ${aCobrar.toFixed(2)}</td>
         </tr>
-        <tr>
+         <tr>
           <td>Impuesto Venta ONAT</td>
           <td>${simboloMoneda} ${impuestoOnat.toFixed(2)}</td>
         </tr>
+        <tr class="subtotal-row">
+          <td><strong>Subtotal</strong></td>
+          <td>${simboloMoneda} ${subtotalCert.toFixed(2)}</td>
+        </tr>
+        ${descuentoCert !== 0 ? `
+        <tr class="descuento-row">
+          <td><strong>Descuento</strong></td>
+          <td>${simboloMoneda} ${descuentoCert.toFixed(2)}</td>
+        </tr>` : ''}
         <tr class="total-row">
           <td><strong>Total</strong></td>
           <td>${simboloMoneda} ${totalCert.toFixed(2)}</td>
@@ -701,10 +756,27 @@ export function FacturasServicioPage() {
       </thead>
       <tbody>
         ${tareasRows || '<tr><td colspan="5" style="text-align:center;">Sin servicios registrados</td></tr>'}
+        <tr class="subtotal-row">
+          <td></td>
+          <td></td>
+          <td></td>
+          <td><strong>Subtotal</strong></td>
+          <td style="text-align: right;">${simboloMoneda} ${subtotal.toFixed(2)}</td>
+        </tr>
+        ${descuento !== 0 ? `
+        <tr class="descuento-row">
+          <td></td>
+          <td></td>
+          <td></td>
+          <td><strong>Descuento</strong></td>
+          <td style="text-align: right;">${simboloMoneda} ${descuento.toFixed(2)}</td>
+        </tr>` : ''}
         <tr class="total-row">
-          <td colspan="3"></td>
+          <td></td>
+          <td></td>
+          <td></td>
           <td><strong>Total</strong></td>
-          <td style="text-align: right;">${simboloMoneda} ${total.toFixed(2)}</td>
+          <td style="text-align: right;">${simboloMoneda} ${totalFinal.toFixed(2)}</td>
         </tr>
       </tbody>
     </table>
@@ -1124,6 +1196,8 @@ export function FacturasServicioPage() {
                       <th className="px-3 py-2 text-center w-20">Und</th>
                       <th className="px-3 py-2 text-right w-24">Cantidad</th>
                       <th className="px-3 py-2 text-right w-24">Precio</th>
+                      <th className="px-3 py-2 text-right w-20">Ajuste(%)</th>
+                      <th className="px-3 py-2 text-right w-28">Ajuste($)</th>
                       <th className="px-3 py-2 text-right w-28">Importe</th>
                     </tr>
                   </thead>
@@ -1147,7 +1221,12 @@ export function FacturasServicioPage() {
                                   setSelectedTareas(prev => [...prev, tarea.id_tarea_etapa]);
                                   setTareaModifiers(prev => ({
                                     ...prev,
-                                    [tarea.id_tarea_etapa]: { cantidad: Number(tarea.cantidad || 0), precio: Number(tarea.precio_ajustado || 0) }
+                                    [tarea.id_tarea_etapa]: {
+                                      cantidad: Number(tarea.cantidad || 0),
+                                      precio: Number(tarea.precio_ajustado || 0),
+                                      ajuste_porciento: 0,
+                                      ajuste_valor: 0
+                                    }
                                   }));
                                 } else {
                                   setSelectedTareas(prev => prev.filter(id => id !== tarea.id_tarea_etapa));
@@ -1198,6 +1277,66 @@ export function FacturasServicioPage() {
                               <span className="text-gray-900">{getMonedaSymbol(formData.id_moneda)} {Number(tarea.precio_ajustado || 0).toFixed(2)}</span>
                             )}
                           </td>
+                          <td className="px-3 py-2 text-right">
+                            {isSelected ? (
+                              <div className="flex items-center justify-end gap-1">
+                                <SignToggle
+                                  value={mod?.ajuste_porciento ?? 0}
+                                  onChange={(val) => setTareaModifiers(prev => ({
+                                    ...prev,
+                                    [tarea.id_tarea_etapa]: { ...prev[tarea.id_tarea_etapa], ajuste_porciento: val }
+                                  }))}
+                                />
+                                  <input
+                                    type="number"
+                                    step="0.01"
+                                    placeholder="0.00"
+                                    className="w-16 text-right px-2 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-teal-500 outline-none"
+                                    value={mod?.ajuste_porciento ? Math.abs(mod.ajuste_porciento) : ''}
+                                    onChange={(e) => {
+                                      const val = e.target.value;
+                                      const sign = (mod?.ajuste_porciento ?? 0) >= 0 ? 1 : -1;
+                                      setTareaModifiers(prev => ({
+                                        ...prev,
+                                        [tarea.id_tarea_etapa]: { ...prev[tarea.id_tarea_etapa], ajuste_porciento: val ? Number(val) * sign : 0 }
+                                      }));
+                                    }}
+                                  />
+                              </div>
+                            ) : (
+                              <span className="text-gray-500">-</span>
+                            )}
+                          </td>
+                          <td className="px-3 py-2 text-right">
+                            {isSelected ? (
+                              <div className="flex items-center justify-end gap-1">
+                                <SignToggle
+                                  value={mod?.ajuste_valor ?? 0}
+                                  onChange={(val) => setTareaModifiers(prev => ({
+                                    ...prev,
+                                    [tarea.id_tarea_etapa]: { ...prev[tarea.id_tarea_etapa], ajuste_valor: val }
+                                  }))}
+                                />
+                                <input
+                                  type="number"
+                                  step="0.01"
+                                  placeholder="0.00"
+                                  className="w-20 text-right px-2 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-teal-500 outline-none"
+                                  value={mod?.ajuste_valor ? Math.abs(mod.ajuste_valor) : ''}
+                                  onChange={(e) => {
+                                    const val = e.target.value;
+                                    const sign = (mod?.ajuste_valor ?? 0) >= 0 ? 1 : -1;
+                                    setTareaModifiers(prev => ({
+                                      ...prev,
+                                      [tarea.id_tarea_etapa]: { ...prev[tarea.id_tarea_etapa], ajuste_valor: val ? Number(val) * sign : 0 }
+                                    }));
+                                  }}
+                                />
+                              </div>
+                            ) : (
+                              <span className="text-gray-500">-</span>
+                            )}
+                          </td>
                           <td className="px-3 py-2 text-right font-medium text-gray-900">{getMonedaSymbol(formData.id_moneda)} {importe.toFixed(2)}</td>
                         </tr>
                       );
@@ -1230,49 +1369,108 @@ export function FacturasServicioPage() {
                 <FileText className="h-5 w-5 text-teal-600" />
                 Certificación a Facturar
               </Label>
-              <div className="mt-1 space-y-2">
-                {certificacionesDeEtapa.filter(c => !c.facturado || c.id_certificacion === selectedCertificacion).map((cert) => {
-                  const isSelected = selectedCertificacion === cert.id_certificacion;
-                  const isYaFacturada = cert.facturado && !isSelected;
-                  return (
-                    <label
-                      key={cert.id_certificacion}
-                      className={`flex items-center gap-3 p-3 rounded-xl border-2 cursor-pointer transition-all ${isSelected
-                          ? 'border-teal-500 bg-teal-50 shadow-md'
-                          : isYaFacturada
-                            ? 'border-gray-200 bg-gray-50 opacity-50 cursor-not-allowed'
-                            : 'border-gray-200 hover:border-teal-300 hover:bg-teal-50/50'
-                        }`}
-                    >
-                      <input
-                        type="radio"
-                        checked={isSelected}
-                        disabled={isYaFacturada}
-                        onChange={() => {
-                          if (!isYaFacturada) {
-                            setSelectedCertificacion(isSelected ? null : cert.id_certificacion);
-                          }
-                        }}
-                        className="h-4 w-4 text-teal-600 border-gray-300 focus:ring-teal-500"
-                      />
-                      <div className="flex-1 flex justify-between items-center">
-                        <div>
-                          <span className="text-sm font-semibold text-gray-900">{cert.nombre}</span>
-                          {cert.constructor || cert.obra ? (
-                            <span className="text-sm text-gray-500 ml-2">{cert.constructor ? `${cert.constructor} - ` : ''}{cert.obra || ''}</span>
-                          ) : null}
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-bold text-gray-900">{getMonedaSymbol(formData.id_moneda)} {Number(cert.a_cobrar || 0).toFixed(2)}</span>
-                          {isYaFacturada && <span className="text-xs text-red-500 font-medium">Ya facturada</span>}
-                        </div>
-                      </div>
-                    </label>
-                  );
-                })}
-                {certificacionesDeEtapa.filter(c => !c.facturado).length === 0 && (
-                  <p className="text-sm text-gray-500">Todas las certificaciones de esta etapa ya están facturadas</p>
-                )}
+              <div className="border border-gray-200 rounded-lg overflow-hidden">
+                <table className="w-full text-sm">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-3 py-2 text-left w-10"></th>
+                      <th className="px-3 py-2 text-left">Nombre</th>
+                      <th className="px-3 py-2 text-right w-28">A Cobrar</th>
+                      <th className="px-3 py-2 text-right w-24">Ajuste(%)</th>
+                      <th className="px-3 py-2 text-right w-28">Ajuste($)</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {certificacionesDeEtapa.filter(c => !c.facturado || c.id_certificacion === selectedCertificacion).map((cert) => {
+                      const isSelected = selectedCertificacion === cert.id_certificacion;
+                      const isYaFacturada = cert.facturado && !isSelected;
+                      return (
+                        <tr key={cert.id_certificacion} className={`hover:bg-gray-50 transition-colors ${isYaFacturada ? 'opacity-50 bg-gray-50' : ''}`}>
+                          <td className="px-3 py-2">
+                            <input
+                              type="radio"
+                              checked={isSelected}
+                              disabled={isYaFacturada}
+                              onChange={() => {
+                                if (!isYaFacturada) {
+                                  setSelectedCertificacion(isSelected ? null : cert.id_certificacion);
+                                  setCertAjustePorciento(isSelected ? 0 : (cert.ajuste_porciento || 0));
+                                  setCertAjusteValor(isSelected ? 0 : (cert.ajuste_valor || 0));
+                                }
+                              }}
+                              className="h-4 w-4 text-teal-600 border-gray-300 focus:ring-teal-500"
+                            />
+                          </td>
+                          <td className="px-3 py-2">
+                            <span className="font-medium text-gray-900">{cert.nombre}</span>
+                            {cert.constructor || cert.obra ? (
+                              <span className="text-sm text-gray-500 ml-1">{cert.constructor ? `${cert.constructor} - ` : ''}{cert.obra || ''}</span>
+                            ) : null}
+                            {isYaFacturada && <span className="ml-2 text-xs text-red-500 font-medium">Ya facturada</span>}
+                          </td>
+                          <td className="px-3 py-2 text-right font-medium text-gray-900">
+                            {getMonedaSymbol(formData.id_moneda)} {Number(cert.a_cobrar || 0).toFixed(2)}
+                          </td>
+                          <td className="px-3 py-2 text-right">
+                            {isSelected ? (
+                              <div className="flex items-center justify-end gap-1">
+                                <SignToggle
+                                  value={certAjustePorciento}
+                                  onChange={(val) => setCertAjustePorciento(val)}
+                                />
+                                <input
+                                  type="number"
+                                  step="0.01"
+                                  placeholder="0.00"
+                                  className="w-16 text-right px-2 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-teal-500 outline-none"
+                                  value={certAjustePorciento ? Math.abs(certAjustePorciento) : ''}
+                                  onChange={(e) => {
+                                    const val = e.target.value;
+                                    const sign = certAjustePorciento >= 0 ? 1 : -1;
+                                    setCertAjustePorciento(val ? Number(val) * sign : 0);
+                                  }}
+                                />
+                              </div>
+                            ) : (
+                              <span className="text-gray-500">-</span>
+                            )}
+                          </td>
+                          <td className="px-3 py-2 text-right">
+                            {isSelected ? (
+                              <div className="flex items-center justify-end gap-1">
+                                <SignToggle
+                                  value={certAjusteValor}
+                                  onChange={(val) => setCertAjusteValor(val)}
+                                />
+                                <input
+                                  type="number"
+                                  step="0.01"
+                                  placeholder="0.00"
+                                  className="w-20 text-right px-2 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-teal-500 outline-none"
+                                  value={certAjusteValor ? Math.abs(certAjusteValor) : ''}
+                                  onChange={(e) => {
+                                    const val = e.target.value;
+                                    const sign = certAjusteValor >= 0 ? 1 : -1;
+                                    setCertAjusteValor(val ? Number(val) * sign : 0);
+                                  }}
+                                />
+                              </div>
+                            ) : (
+                              <span className="text-gray-500">-</span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                    {certificacionesDeEtapa.filter(c => !c.facturado).length === 0 && (
+                      <tr>
+                        <td colSpan={5} className="px-3 py-4 text-center text-sm text-gray-500">
+                          Todas las certificaciones de esta etapa ya están facturadas
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
               </div>
             </div>
           )}
@@ -1449,6 +1647,8 @@ export function FacturasServicioPage() {
                         <th className="px-3 py-2 text-center font-semibold text-gray-700 border border-gray-300 w-20">Und</th>
                         <th className="px-3 py-2 text-right font-semibold text-gray-700 border border-gray-300 w-24">Cantidad</th>
                         <th className="px-3 py-2 text-right font-semibold text-gray-700 border border-gray-300 w-28">Precio</th>
+                        <th className="px-3 py-2 text-right font-semibold text-gray-700 border border-gray-300 w-20">Ajuste(%)</th>
+                        <th className="px-3 py-2 text-right font-semibold text-gray-700 border border-gray-300 w-28">Ajuste($)</th>
                         <th className="px-3 py-2 text-right font-semibold text-gray-700 border border-gray-300 w-28">Importe</th>
                       </tr>
                     </thead>
@@ -1461,6 +1661,12 @@ export function FacturasServicioPage() {
                             <td className="px-3 py-2 border border-gray-300 text-center text-gray-600">{item.unidad_medida || '-'}</td>
                             <td className="px-3 py-2 border border-gray-300 text-right text-gray-900">{Number(item.cantidad || 0).toFixed(2)}</td>
                             <td className="px-3 py-2 border border-gray-300 text-right text-gray-900">{getMonedaSymbol(itemsModal.factura?.id_moneda)} {Number(item.precio || 0).toFixed(2)}</td>
+                            <td className="px-3 py-2 border border-gray-300 text-right text-gray-600">
+                              {item.ajuste_porciento ? `${item.ajuste_porciento > 0 ? '+' : ''}${Number(item.ajuste_porciento).toFixed(2)}%` : '-'}
+                            </td>
+                            <td className="px-3 py-2 border border-gray-300 text-right text-gray-600">
+                              {item.ajuste_valor ? `${getMonedaSymbol(itemsModal.factura?.id_moneda)} ${Number(item.ajuste_valor).toFixed(2)}` : '-'}
+                            </td>
                             <td className="px-3 py-2 border border-gray-300 text-right font-medium text-gray-900">{getMonedaSymbol(itemsModal.factura?.id_moneda)} {importe.toFixed(2)}</td>
                           </tr>
                         );

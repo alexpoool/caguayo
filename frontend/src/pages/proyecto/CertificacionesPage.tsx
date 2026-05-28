@@ -454,6 +454,7 @@ export function CertificacionesPage() {
                   <p className="font-bold text-teal-900 text-xl">${Number(detailModal.item.a_cobrar).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                 </div>
               </div>
+
             </div>
             <div className="p-6 border-t border-gray-200 bg-gray-50 flex justify-end">
               <button onClick={() => setDetailModal({ isOpen: false, item: null })} className="px-6 py-3 text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors font-medium">Cerrar</button>

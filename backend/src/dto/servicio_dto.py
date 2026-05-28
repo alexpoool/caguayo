@@ -206,6 +206,8 @@ class FacturaServicioBase(SQLModel):
 class FacturaServicioCreate(FacturaServicioBase):
     tareas_seleccionadas: Optional[List[int]] = None
     tarea_modifiers: Optional[dict] = None
+    ajuste_porciento: Optional[Decimal] = None
+    ajuste_valor: Optional[Decimal] = None
 
 
 class FacturaServicioRead(FacturaServicioBase):
@@ -226,6 +228,8 @@ class FacturaServicioUpdate(SQLModel):
     id_usuario: Optional[int] = None
     tareas_seleccionadas: Optional[List[int]] = None
     tarea_modifiers: Optional[dict] = None
+    ajuste_porciento: Optional[Decimal] = None
+    ajuste_valor: Optional[Decimal] = None
 
 
 # ==========================================
@@ -239,6 +243,8 @@ class ItemFacturaServicioBase(SQLModel):
     unidad_medida: Optional[str] = None
     cantidad: Decimal = Decimal("0.00")
     precio: Decimal = Decimal("0.00")
+    ajuste_porciento: Decimal = Decimal("0.00")
+    ajuste_valor: Decimal = Decimal("0.00")
 
 
 class ItemFacturaServicioCreate(ItemFacturaServicioBase):
@@ -432,6 +438,8 @@ class CertificacionBase(SQLModel):
     fecha: Optional[date] = None
     a_cobrar: Decimal = Decimal("0.00")
     impuesto_venta_onat: Decimal = Decimal("0.00")
+    ajuste_porciento: Decimal = Decimal("0.00")
+    ajuste_valor: Decimal = Decimal("0.00")
     facturado: bool = False
 
 
@@ -457,3 +465,5 @@ class CertificacionUpdate(SQLModel):
     precio_servicio: Optional[Decimal] = None
     gasto_caguayo: Optional[int] = None
     a_cobrar: Optional[Decimal] = None
+    ajuste_porciento: Optional[Decimal] = None
+    ajuste_valor: Optional[Decimal] = None

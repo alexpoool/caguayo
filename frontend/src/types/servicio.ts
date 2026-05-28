@@ -199,7 +199,9 @@ export interface FacturaServicioCreate {
   cuenta_factura?: string;
   id_usuario?: number;
   tareas_seleccionadas?: number[];
-  tarea_modifiers?: Record<number, { cantidad: number; precio: number }>;
+  tarea_modifiers?: Record<number, { cantidad: number; precio: number; ajuste_porciento: number; ajuste_valor: number }>;
+  ajuste_porciento?: number;
+  ajuste_valor?: number;
 }
 
 export interface FacturaServicioUpdate {
@@ -216,7 +218,9 @@ export interface FacturaServicioUpdate {
   cuenta_factura?: string;
   id_usuario?: number;
   tareas_seleccionadas?: number[];
-  tarea_modifiers?: Record<number, { cantidad: number; precio: number }>;
+  tarea_modifiers?: Record<number, { cantidad: number; precio: number; ajuste_porciento: number; ajuste_valor: number }>;
+  ajuste_porciento?: number;
+  ajuste_valor?: number;
 }
 
 export interface ItemFacturaServicio {
@@ -228,6 +232,8 @@ export interface ItemFacturaServicio {
   unidad_medida?: string;
   cantidad: number;
   precio: number;
+  ajuste_porciento?: number;
+  ajuste_valor?: number;
 }
 
 export interface PagoFacturaServicio {
@@ -402,6 +408,8 @@ export interface Certificacion {
   fecha?: string;
   a_cobrar: number;
   impuesto_venta_onat?: number;
+  ajuste_porciento?: number;
+  ajuste_valor?: number;
   facturado?: boolean;
 }
 
@@ -418,6 +426,8 @@ export interface CertificacionCreate {
   fecha?: string;
   a_cobrar?: number;
   impuesto_venta_onat?: number;
+  ajuste_porciento?: number;
+  ajuste_valor?: number;
   facturado?: boolean;
 }
 
@@ -434,4 +444,6 @@ export interface CertificacionUpdate {
   fecha?: string;
   a_cobrar?: number;
   impuesto_venta_onat?: number;
+  ajuste_porciento?: number;
+  ajuste_valor?: number;
 }

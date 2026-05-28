@@ -1043,6 +1043,8 @@ CREATE TABLE certificacion (
     fecha DATE,
     a_cobrar NUMERIC(15,2),
     impuesto_venta_onat NUMERIC(15,2) DEFAULT 0.00,
+    ajuste_porciento NUMERIC(5,2) DEFAULT 0.00,
+    ajuste_valor NUMERIC(15,2) DEFAULT 0.00,
     facturado BOOLEAN DEFAULT FALSE
 );
 
@@ -1057,7 +1059,9 @@ CREATE TABLE items_factura_servicio (
     concepto TEXT,
     unidad_medida VARCHAR(20),
     cantidad NUMERIC(12,2) DEFAULT 0.00,
-    precio NUMERIC(15,2) DEFAULT 0.00
+    precio NUMERIC(15,2) DEFAULT 0.00,
+    ajuste_porciento NUMERIC(5,2) DEFAULT 0.00,
+    ajuste_valor NUMERIC(15,2) DEFAULT 0.00
 );
 
 -- Pagos de Facturas de Servicio

@@ -313,6 +313,10 @@ class FacturaServicioService:
         data.tareas_seleccionadas = None
         tarea_modifiers = data.tarea_modifiers or {}
         data.tarea_modifiers = None
+        certificacion_ajuste_porciento = data.ajuste_porciento
+        data.ajuste_porciento = None
+        certificacion_ajuste_valor = data.ajuste_valor
+        data.ajuste_valor = None
 
         if data.id_certificacion:
             data.importe = certificacion.a_cobrar
@@ -349,18 +353,43 @@ class FacturaServicioService:
         
         f = await factura_servicio_repo.get(db, f_id)
 
+        if data.id_certificacion and (certificacion_ajuste_porciento is not None or certificacion_ajuste_valor is not None):
+            stmt = select(Certificacion).where(Certificacion.id_certificacion == data.id_certificacion)
+            result = await db.exec(stmt)
+            cert = result.first()
+            if cert:
+                if certificacion_ajuste_porciento is not None:
+                    cert.ajuste_porciento = certificacion_ajuste_porciento
+                if certificacion_ajuste_valor is not None:
+                    cert.ajuste_valor = certificacion_ajuste_valor
+                await db.commit()
+                await db.refresh(cert)
+
         if tareas_seleccionadas:
             for tarea_id in tareas_seleccionadas:
                 tarea = await tarea_etapa_repo.get(db, tarea_id)
                 if tarea:
+                    modifier = tarea_modifiers.get(str(tarea_id))
+                    if modifier:
+                        cant = Decimal(str(modifier.get("cantidad", 0)))
+                        prec = Decimal(str(modifier.get("precio", 0)))
+                        ajuste_pct = Decimal(str(modifier.get("ajuste_porciento", 0)))
+                        ajuste_val = Decimal(str(modifier.get("ajuste_valor", 0)))
+                    else:
+                        cant = tarea.cantidad or Decimal("0")
+                        prec = tarea.precio_ajustado or Decimal("0")
+                        ajuste_pct = Decimal("0.00")
+                        ajuste_val = Decimal("0.00")
                     item_data = ItemFacturaServicioCreate(
                         id_factura_servicio=f_id,
                         id_tarea_etapa=tarea_id,
                         codigo_extendido=tarea.codigo_extendido,
                         concepto=tarea.concepto_modificado,
                         unidad_medida=tarea.unidad_medida,
-                        cantidad=tarea.cantidad or Decimal("0"),
-                        precio=tarea.precio_ajustado or Decimal("0")
+                        cantidad=cant,
+                        precio=prec,
+                        ajuste_porciento=ajuste_pct,
+                        ajuste_valor=ajuste_val,
                     )
                     await item_factura_servicio_repo.create(db, obj_in=item_data)
 
@@ -401,6 +430,10 @@ class FacturaServicioService:
         data.tareas_seleccionadas = None
         tarea_modifiers = data.tarea_modifiers or {}
         data.tarea_modifiers = None
+        update_ajuste_porciento = data.ajuste_porciento
+        data.ajuste_porciento = None
+        update_ajuste_valor = data.ajuste_valor
+        data.ajuste_valor = None
 
         if tareas_seleccionadas is not None:
             existing_items = await item_factura_servicio_repo.get_by_factura(db, id)
@@ -421,9 +454,13 @@ class FacturaServicioService:
                     if modifier:
                         cant = Decimal(str(modifier.get("cantidad", 0)))
                         prec = Decimal(str(modifier.get("precio", 0)))
+                        ajuste_pct = Decimal(str(modifier.get("ajuste_porciento", 0)))
+                        ajuste_val = Decimal(str(modifier.get("ajuste_valor", 0)))
                     else:
                         cant = tarea.cantidad or Decimal("0")
                         prec = tarea.precio_ajustado or Decimal("0")
+                        ajuste_pct = Decimal("0.00")
+                        ajuste_val = Decimal("0.00")
                     item_data = ItemFacturaServicioCreate(
                         id_factura_servicio=id,
                         id_tarea_etapa=tarea_id,
@@ -431,7 +468,9 @@ class FacturaServicioService:
                         concepto=tarea.concepto_modificado,
                         unidad_medida=tarea.unidad_medida,
                         cantidad=cant,
-                        precio=prec
+                        precio=prec,
+                        ajuste_porciento=ajuste_pct,
+                        ajuste_valor=ajuste_val,
                     )
                     await item_factura_servicio_repo.create(db, obj_in=item_data)
 
@@ -447,6 +486,18 @@ class FacturaServicioService:
                 etapa = await etapa_repo.get(db, f.id_etapa)
                 if etapa and data.importe > etapa.valor:
                     raise Exception(f"El importe de la factura ({data.importe:.2f}) no puede ser mayor al valor de la etapa ({etapa.valor:.2f})")
+
+        if f.id_certificacion and (update_ajuste_porciento is not None or update_ajuste_valor is not None):
+            stmt = select(Certificacion).where(Certificacion.id_certificacion == f.id_certificacion)
+            result = await db.exec(stmt)
+            cert = result.first()
+            if cert:
+                if update_ajuste_porciento is not None:
+                    cert.ajuste_porciento = update_ajuste_porciento
+                if update_ajuste_valor is not None:
+                    cert.ajuste_valor = update_ajuste_valor
+                await db.commit()
+                await db.refresh(cert)
 
         updated = await factura_servicio_repo.update(db, db_obj=f, obj_in=data)
         return FacturaServicioRead(**updated.model_dump())

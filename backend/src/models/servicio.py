@@ -264,6 +264,8 @@ class Certificacion(SQLModel, table=True):
     fecha: Optional[date] = None
     a_cobrar: Decimal = Field(default=Decimal("0.00"))
     impuesto_venta_onat: Decimal = Field(default=Decimal("0.00"))
+    ajuste_porciento: Decimal = Field(default=Decimal("0.00"))
+    ajuste_valor: Decimal = Field(default=Decimal("0.00"))
     facturado: bool = Field(default=False)
 
     etapa: "Etapa" = Relationship(back_populates="certificaciones")
@@ -297,6 +299,8 @@ class ItemFacturaServicio(SQLModel, table=True):
     unidad_medida: Optional[str] = Field(default=None, max_length=20)
     cantidad: Decimal = Field(default=Decimal("0.00"))
     precio: Decimal = Field(default=Decimal("0.00"))
+    ajuste_porciento: Decimal = Field(default=Decimal("0.00"))
+    ajuste_valor: Decimal = Field(default=Decimal("0.00"))
 
     factura: "FacturaServicio" = Relationship(
         back_populates="items",

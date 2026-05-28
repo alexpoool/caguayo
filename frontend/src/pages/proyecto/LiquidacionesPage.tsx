@@ -1677,7 +1677,7 @@ export function LiquidacionesPage() {
                   }}
                   className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white"
                 >
-                  <option value="">Seleccionar usuario</option>
+                  <option value="">Seleccionar usuario (opcional)</option>
                   {usuarios.map((usuario: Usuario) => (
                     <option key={usuario.id_usuario} value={usuario.id_usuario}>
                       {usuario.nombre} {usuario.primer_apellido} {usuario.segundo_apellido || ''}
@@ -1690,7 +1690,7 @@ export function LiquidacionesPage() {
                 <Input 
                   value={printModal.cargo_autorizado}
                   onChange={(e) => setPrintModal({ ...printModal, cargo_autorizado: e.target.value })}
-                  placeholder="Cargo del autorizado"
+                  placeholder="Cargo del autorizado (opcional)"
                   className="mt-1"
                 />
               </div>
@@ -1699,7 +1699,7 @@ export function LiquidacionesPage() {
                 <Input 
                   value={printModal.revisado_por}
                   onChange={(e) => setPrintModal({ ...printModal, revisado_por: e.target.value })}
-                  placeholder="Nombre de quien revisa"
+                  placeholder="Nombre de quien revisa (opcional)"
                   className="mt-1"
                 />
               </div>
