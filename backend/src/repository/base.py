@@ -72,6 +72,8 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
     ) -> ModelType:
         obj_data = obj_in.model_dump(exclude_unset=True)
         for field, value in obj_data.items():
+            if not hasattr(db_obj, field):
+                continue
             setattr(db_obj, field, value)
         db.add(db_obj)
         if commit:

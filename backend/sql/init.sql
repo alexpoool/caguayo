@@ -330,7 +330,8 @@ CREATE TABLE convenio (
     nombre_convenio VARCHAR(200) NOT NULL,
     fecha DATE NOT NULL,
     vigencia DATE NOT NULL,
-    id_tipo_convenio INTEGER NOT NULL REFERENCES tipo_convenio(id_tipo_convenio) ON DELETE CASCADE
+    id_tipo_convenio INTEGER NOT NULL REFERENCES tipo_convenio(id_tipo_convenio) ON DELETE CASCADE,
+    codigo VARCHAR(50)
 );
 
 -- Anexos
@@ -355,6 +356,15 @@ CREATE TABLE item_anexo (
     precio_compra NUMERIC(15, 4) NOT NULL,
     precio_venta NUMERIC(15, 4) NOT NULL,
     id_moneda INTEGER NOT NULL REFERENCES moneda(id_moneda) ON DELETE CASCADE
+);
+
+-- Anexo-Producto (relación directa anexo-producto)
+CREATE TABLE anexo_producto (
+    id_anexo_producto SERIAL PRIMARY KEY,
+    id_anexo INTEGER NOT NULL REFERENCES anexo(id_anexo),
+    id_producto INTEGER NOT NULL REFERENCES productos(id_producto),
+    cantidad INTEGER NOT NULL,
+    precio_acordado NUMERIC(15, 4)
 );
 
 -- =====================================================
@@ -402,7 +412,20 @@ CREATE TABLE factura (
     descripcion TEXT,
     fecha DATE NOT NULL DEFAULT CURRENT_DATE,
     monto NUMERIC(15, 2) NOT NULL DEFAULT 0.00,
-    pago_actual NUMERIC(15, 2) NOT NULL DEFAULT 0.00
+    pago_actual NUMERIC(15, 2) NOT NULL DEFAULT 0.00,
+    observaciones TEXT
+);
+
+-- Pagos de Facturas
+CREATE TABLE pago (
+    id_pago SERIAL PRIMARY KEY,
+    id_factura INTEGER NOT NULL REFERENCES factura(id_factura) ON DELETE CASCADE,
+    fecha DATE NOT NULL DEFAULT CURRENT_DATE,
+    monto NUMERIC(15, 2) NOT NULL DEFAULT 0.00,
+    id_moneda INTEGER REFERENCES moneda(id_moneda),
+    tipo_pago VARCHAR(50) NOT NULL DEFAULT 'TRANSFERENCIA',
+    referencia VARCHAR(100),
+    observaciones TEXT
 );
 
 -- Item-Factura (reemplaza factura_producto)
@@ -997,7 +1020,8 @@ CREATE TABLE tareas_etapa (
     cantidad NUMERIC(12,2) DEFAULT 0.00,
     precio_ajustado NUMERIC(15,2) DEFAULT 0.00,
     id_moneda INTEGER REFERENCES moneda(id_moneda),
-    observaciones_ajustadas TEXT
+    observaciones_ajustadas TEXT,
+    facturada BOOLEAN DEFAULT FALSE
 );
 
 -- Personas Naturales asignadas a Etapas
@@ -1061,7 +1085,8 @@ CREATE TABLE items_factura_servicio (
     cantidad NUMERIC(12,2) DEFAULT 0.00,
     precio NUMERIC(15,2) DEFAULT 0.00,
     ajuste_porciento NUMERIC(5,2) DEFAULT 0.00,
-    ajuste_valor NUMERIC(15,2) DEFAULT 0.00
+    ajuste_valor NUMERIC(15,2) DEFAULT 0.00,
+    id_tarea_etapa INTEGER NOT NULL REFERENCES tareas_etapa(id_tarea_etapa) ON DELETE CASCADE
 );
 
 -- Pagos de Facturas de Servicio

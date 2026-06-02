@@ -261,7 +261,7 @@ export function FacturasServicioPage() {
     } catch (error) { console.error('Error:', error); }
   };
 
-  useEffect(() => { if (view === 'list') loadFacturas(); }, [view, filtroEtapa, solicitudParam]);
+  useEffect(() => { if (view === 'list') loadFacturas(); }, [view, filtroEtapa, solicitudParam, etapas]);
 
   const handleSave = async () => {
     try {
@@ -472,10 +472,14 @@ export function FacturasServicioPage() {
     return e?.tipo_etapa === 'CERTIFICACIONES';
   };
 
-  const getEtapaTipo = (id?: number) => {
-    if (!id) return 'N/A';
-    const e = etapas.find(et => et.id_etapa === id);
-    if (!e?.tipo_etapa) return 'N/A';
+  const getEtapaTipo = (item: FacturaServicio) => {
+    if (!item.id_etapa) {
+      return item.id_certificacion ? 'Certificación' : 'N/A';
+    }
+    const e = etapas.find(et => et.id_etapa === item.id_etapa);
+    if (!e?.tipo_etapa) {
+      return item.id_certificacion ? 'Certificación' : 'N/A';
+    }
     return e.tipo_etapa === 'CERTIFICACIONES' ? 'Certificación' : 'Tareas';
   };
 
@@ -1064,11 +1068,11 @@ export function FacturasServicioPage() {
                       {getEtapaName(item.id_etapa)}
                     </TableCell>
                     <TableCell>
-                      <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium ${getEtapaTipo(item.id_etapa) === 'Certificación'
+                      <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium ${getEtapaTipo(item) === 'Certificación'
                           ? 'bg-purple-100 text-purple-700'
                           : 'bg-cyan-100 text-cyan-700'
                         }`}>
-                        {getEtapaTipo(item.id_etapa)}
+                        {getEtapaTipo(item)}
                       </span>
                     </TableCell>
                     <TableCell onClick={(e) => e.stopPropagation()}>

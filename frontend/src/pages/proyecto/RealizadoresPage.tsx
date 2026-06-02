@@ -421,13 +421,14 @@ Nuevo Realizador
                   </div>
                 </TableHead>
                 <TableHead>Liquidaciones</TableHead>
+                <TableHead>Liquidar</TableHead>
                 <TableHead className="text-right">Acciones</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredPersonas.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center py-12 text-gray-500">
+                  <TableCell colSpan={6} className="text-center py-12 text-gray-500">
                     {searchTerm ? 'No se encontraron realizadores que coincidan con la búsqueda' : 'No hay realizadores registrados'}
                   </TableCell>
                 </TableRow>
@@ -470,7 +471,10 @@ Nuevo Realizador
                             <Eye className="h-3.5 w-3.5" />
                             Ver
                           </Button>
-                        ) : (
+                        ) : null}
+                      </TableCell>
+                      <TableCell onClick={(e) => e.stopPropagation()}>
+                        {!item.liquidada ? (
                           <Button
                             variant="outline"
                             size="sm"
@@ -480,7 +484,7 @@ Nuevo Realizador
                             <DollarSign className="h-3.5 w-3.5" />
                             Liquidar
                           </Button>
-                        )}
+                        ) : null}
                       </TableCell>
                       <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                         <div className="flex justify-end gap-2">

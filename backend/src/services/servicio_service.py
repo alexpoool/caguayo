@@ -427,13 +427,13 @@ class FacturaServicioService:
             return None
 
         tareas_seleccionadas = data.tareas_seleccionadas
-        data.tareas_seleccionadas = None
+        delattr(data, 'tareas_seleccionadas')
         tarea_modifiers = data.tarea_modifiers or {}
-        data.tarea_modifiers = None
+        delattr(data, 'tarea_modifiers')
         update_ajuste_porciento = data.ajuste_porciento
-        data.ajuste_porciento = None
+        delattr(data, 'ajuste_porciento')
         update_ajuste_valor = data.ajuste_valor
-        data.ajuste_valor = None
+        delattr(data, 'ajuste_valor')
 
         if tareas_seleccionadas is not None:
             existing_items = await item_factura_servicio_repo.get_by_factura(db, id)
@@ -499,6 +499,7 @@ class FacturaServicioService:
                 await db.commit()
                 await db.refresh(cert)
 
+        await db.refresh(f)
         updated = await factura_servicio_repo.update(db, db_obj=f, obj_in=data)
         return FacturaServicioRead(**updated.model_dump())
 
