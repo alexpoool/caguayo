@@ -239,6 +239,7 @@ CREATE TABLE dependencia (
     id_tipo_dependencia INTEGER NOT NULL REFERENCES tipo_dependencia(id_tipo_dependencia) ON DELETE CASCADE,
     codigo_padre INTEGER REFERENCES dependencia(id_dependencia) ON DELETE SET NULL,
     nombre VARCHAR(100) NOT NULL,
+    nit VARCHAR(20) UNIQUE,
     direccion VARCHAR(255) NOT NULL,
     telefono VARCHAR(20) NOT NULL,
     email VARCHAR(100),

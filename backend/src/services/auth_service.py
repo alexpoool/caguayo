@@ -345,6 +345,7 @@ async def get_current_user(db: AsyncSession, token: str) -> Optional[UsuarioInfo
             email=dependencia.email,
             telefono=dependencia.telefono,
             direccion=dependencia.direccion,
+            nit=dependencia.nit,
         )
         if dependencia
         else None,

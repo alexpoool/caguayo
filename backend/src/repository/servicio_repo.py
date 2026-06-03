@@ -177,10 +177,9 @@ class FacturaServicioRepository(
     async def get_last_by_year(
         self, db: AsyncSession, year: int
     ) -> Optional[FacturaServicio]:
-        prefix = f"FAC-{year}-"
         statement = (
             select(FacturaServicio)
-            .where(FacturaServicio.codigo_factura.like(f"{prefix}%"))
+            .where(FacturaServicio.codigo_factura.like(f"%.{year}.%"))
             .order_by(FacturaServicio.codigo_factura.desc())
             .limit(1)
         )
@@ -300,10 +299,9 @@ class PersonaLiquidacionRepository(
     async def get_last_by_year(
         self, db: AsyncSession, year: int
     ) -> Optional[PersonaLiquidacion]:
-        prefix = f"LIQ-{year}-"
         statement = (
             select(PersonaLiquidacion)
-            .where(PersonaLiquidacion.numero.like(f"{prefix}%"))
+            .where(PersonaLiquidacion.numero.like(f"%.{year}.%"))
             .order_by(PersonaLiquidacion.numero.desc())
             .limit(1)
         )

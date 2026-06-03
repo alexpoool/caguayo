@@ -30,6 +30,7 @@ class DependenciaInfo(BaseModel):
     email: Optional[str] = None
     telefono: Optional[str] = None
     direccion: Optional[str] = None
+    nit: Optional[str] = None
 
     class Config:
         from_attributes = True

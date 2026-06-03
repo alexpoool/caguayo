@@ -151,6 +151,7 @@ export function DependenciasPage() {
   const [formData, setFormData] = useState<DependenciaCreate>({
     id_tipo_dependencia: 0,
     nombre: "",
+    nit: "",
     base_datos: "",
     direccion: "",
     telefono: "",
@@ -371,6 +372,7 @@ const { data: tiposCuenta = [] } = useQuery({
     setFormData({
       id_tipo_dependencia: 0,
       nombre: "",
+      nit: "",
       base_datos: "",
       direccion: "",
       telefono: "",
@@ -440,6 +442,7 @@ const { data: tiposCuenta = [] } = useQuery({
       id_tipo_dependencia: dep.id_tipo_dependencia,
       codigo_padre: dep.codigo_padre,
       nombre: dep.nombre,
+      nit: dep.nit || "",
       base_datos: dep.base_datos || "",
       direccion: dep.direccion,
       telefono: dep.telefono,
@@ -502,6 +505,7 @@ const { data: tiposCuenta = [] } = useQuery({
     setFormData({
       id_tipo_dependencia: 0,
       nombre: "",
+      nit: "",
       base_datos: "",
       direccion: "",
       telefono: "",
@@ -699,6 +703,22 @@ const handleDeleteCuenta = (index: number) => {
                   }
                   placeholder="Nombre de la dependencia"
                   className="transition-all duration-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+
+              {/* NIT */}
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2 text-gray-700">
+                  <Hash className="h-5 w-5 text-amber-500" />
+                  NIT
+                </Label>
+                <Input
+                  value={formData.nit || ""}
+                  onChange={(e) =>
+                    setFormData({ ...formData, nit: e.target.value })
+                  }
+                  placeholder="Número de Identificación Tributaria"
+                  className="transition-all duration-200 focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
                 />
               </div>
 
@@ -1711,6 +1731,15 @@ const handleDeleteCuenta = (index: number) => {
                         <span className="inline-flex items-center gap-1 px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm font-medium">
                           {dependenciaDetalle.tipo_dependencia?.nombre || "-"}
                         </span>
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="flex items-center gap-2 text-gray-500 text-sm">
+                          <Hash className="h-4 w-4" />
+                          NIT
+                        </Label>
+                        <p className="font-medium text-gray-900">
+                          {dependenciaDetalle.nit || "-"}
+                        </p>
                       </div>
                       <div className="col-span-2 space-y-1">
                         <Label className="flex items-center gap-2 text-gray-500 text-sm">

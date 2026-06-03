@@ -1,8 +1,9 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Header, HTTPException, Query
 from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlmodel import select
-from typing import List
-from src.database.connection import get_session
+from typing import List, Optional
+from src.database.connection import get_auth_session, get_session
+from src.services.auth_service import get_current_user
 from src.services.servicio_service import (
     ServicioService,
     SolicitudServicioService,
@@ -52,6 +53,20 @@ from src.dto.servicio_dto import (
 from src.models.servicio import PersonaEtapa
 
 
+async def _get_nit_from_token(
+    authorization: Optional[str] = None,
+    db_auth: Optional[AsyncSession] = None,
+) -> Optional[str]:
+    """Extrae el NIT de la dependencia del usuario desde el token JWT."""
+    if not authorization or not authorization.startswith("Bearer ") or not db_auth:
+        return None
+    token = authorization.replace("Bearer ", "")
+    usuario = await get_current_user(db_auth, token)
+    if usuario and usuario.dependencia:
+        return usuario.dependencia.nit
+    return None
+
+
 # ==========================================
 # SERVICIOS
 # ==========================================
@@ -77,9 +92,13 @@ async def get_servicio(id: int, db: AsyncSession = Depends(get_session)):
 
 @servicios_router.post("", response_model=ServicioRead, status_code=201)
 async def create_servicio(
-    data: ServicioCreate, db: AsyncSession = Depends(get_session)
+    data: ServicioCreate,
+    db: AsyncSession = Depends(get_session),
+    authorization: Optional[str] = Header(None),
+    db_auth: AsyncSession = Depends(get_auth_session),
 ):
-    return await ServicioService.create(db, data)
+    nit = await _get_nit_from_token(authorization, db_auth)
+    return await ServicioService.create(db, data, nit=nit)
 
 
 @servicios_router.put("/{id}", response_model=ServicioRead)
@@ -143,17 +162,26 @@ async def get_solicitudes_by_contrato(
 
 @solicitudes_router.post("", response_model=SolicitudServicioRead, status_code=201)
 async def create_solicitud(
-    data: SolicitudServicioCreate, db: AsyncSession = Depends(get_session)
+    data: SolicitudServicioCreate,
+    db: AsyncSession = Depends(get_session),
+    authorization: Optional[str] = Header(None),
+    db_auth: AsyncSession = Depends(get_auth_session),
 ):
-    return await SolicitudServicioService.create(db, data)
+    nit = await _get_nit_from_token(authorization, db_auth)
+    return await SolicitudServicioService.create(db, data, nit=nit)
 
 
 @solicitudes_router.put("/{id}", response_model=SolicitudServicioRead)
 async def update_solicitud(
-    id: int, data: SolicitudServicioUpdate, db: AsyncSession = Depends(get_session)
+    id: int,
+    data: SolicitudServicioUpdate,
+    db: AsyncSession = Depends(get_session),
+    authorization: Optional[str] = Header(None),
+    db_auth: AsyncSession = Depends(get_auth_session),
 ):
     try:
-        result = await SolicitudServicioService.update(db, id, data)
+        nit = await _get_nit_from_token(authorization, db_auth)
+        result = await SolicitudServicioService.update(db, id, data, nit=nit)
         if not result:
             raise HTTPException(status_code=404, detail="Solicitud no encontrada")
         return result
@@ -323,9 +351,13 @@ async def validar_pago_factura_etapa(
 
 @facturas_servicio_router.post("", response_model=FacturaServicioRead, status_code=201)
 async def create_factura_servicio(
-    data: FacturaServicioCreate, db: AsyncSession = Depends(get_session)
+    data: FacturaServicioCreate,
+    db: AsyncSession = Depends(get_session),
+    authorization: Optional[str] = Header(None),
+    db_auth: AsyncSession = Depends(get_auth_session),
 ):
-    return await FacturaServicioService.create(db, data)
+    nit = await _get_nit_from_token(authorization, db_auth)
+    return await FacturaServicioService.create(db, data, nit=nit)
 
 
 @facturas_servicio_router.put("/{id}", response_model=FacturaServicioRead)
@@ -481,9 +513,13 @@ async def get_liquidacion(id: int, db: AsyncSession = Depends(get_session)):
     "", response_model=PersonaLiquidacionRead, status_code=201
 )
 async def create_liquidacion(
-    data: PersonaLiquidacionCreateInput, db: AsyncSession = Depends(get_session)
+    data: PersonaLiquidacionCreateInput,
+    db: AsyncSession = Depends(get_session),
+    authorization: Optional[str] = Header(None),
+    db_auth: AsyncSession = Depends(get_auth_session),
 ):
-    return await PersonaLiquidacionService.create(db, data)
+    nit = await _get_nit_from_token(authorization, db_auth)
+    return await PersonaLiquidacionService.create(db, data, nit=nit)
 
 
 @persona_liquidacion_router.put("/{id}", response_model=PersonaLiquidacionRead)

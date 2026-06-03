@@ -37,6 +37,7 @@ class Dependencia(SQLModel, table=True):
         default=None, foreign_key="dependencia.id_dependencia"
     )
     nombre: str = Field(max_length=100)
+    nit: Optional[str] = Field(default=None, max_length=20, unique=True)
     direccion: str = Field(max_length=255)
     telefono: str = Field(max_length=20)
     email: Optional[str] = Field(default=None, max_length=100)

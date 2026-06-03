@@ -397,7 +397,7 @@ export function LiquidacionesPage() {
       const etapa = (etapas as Etapa[]).find(et => et.id_etapa === etapaId);
       if (etapa) {
         if (etapa.id_moneda) {
-          setFormData(prev => ({ ...prev, id_moneda: etapa.id_moneda }));
+          setFormData(prev => ({ ...prev, id_moneda: etapa.id_moneda ?? prev.id_moneda }));
         }
         setFormData(prev => ({
           ...prev,

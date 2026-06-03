@@ -26,6 +26,7 @@ class DependenciaBase(SQLModel):
     id_tipo_dependencia: int
     codigo_padre: Optional[int] = None
     nombre: str
+    nit: Optional[str] = None
     direccion: str
     telefono: str
     email: Optional[str] = None
@@ -53,6 +54,7 @@ class DependenciaRead(SQLModel):
     id_tipo_dependencia: int
     codigo_padre: Optional[int] = None
     nombre: str
+    nit: Optional[str] = None
     direccion: str
     telefono: str
     email: Optional[str] = None
@@ -76,6 +78,7 @@ class DependenciaConCuentasRead(SQLModel):
     id_tipo_dependencia: int
     codigo_padre: Optional[int] = None
     nombre: str
+    nit: Optional[str] = None
     direccion: str
     telefono: str
     email: Optional[str] = None
@@ -97,6 +100,7 @@ class DependenciaUpdate(SQLModel):
     id_tipo_dependencia: Optional[int] = None
     codigo_padre: Optional[int] = None
     nombre: Optional[str] = None
+    nit: Optional[str] = None
     direccion: Optional[str] = None
     telefono: Optional[str] = None
     email: Optional[str] = None

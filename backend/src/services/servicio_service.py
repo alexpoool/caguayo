@@ -67,9 +67,13 @@ from src.repository.servicio_repo import (
 
 class ServicioService:
     @staticmethod
-    async def create(db: AsyncSession, data: ServicioCreate) -> ServicioRead:
+    async def create(
+        db: AsyncSession, data: ServicioCreate, nit: Optional[str] = None
+    ) -> ServicioRead:
         servicio = await servicio_repo.create(db, obj_in=data)
-        servicio.codigo_servicio = f"SRV-{servicio.id_servicio}"
+        año = datetime.now().year
+        prefijo = f"{nit}." if nit else ""
+        servicio.codigo_servicio = f"{prefijo}{año}.{servicio.id_servicio}"
         await db.commit()
         await db.refresh(servicio)
         return ServicioRead(**servicio.model_dump())
@@ -103,11 +107,19 @@ class ServicioService:
 class SolicitudServicioService:
     @staticmethod
     async def create(
-        db: AsyncSession, data: SolicitudServicioCreate
+        db: AsyncSession, data: SolicitudServicioCreate, nit: Optional[str] = None
     ) -> SolicitudServicioRead:
         s = await solicitud_servicio_repo.create(db, obj_in=data)
-        year_offset = s.fecha_solicitud.year - 2000
-        s.codigo_solicitud = f"SOL-{year_offset}-{s.id_solicitud_servicio}"
+        año = datetime.now().year
+        prefijo = f"{nit}." if nit else ""
+
+        if s.id_contrato:
+            existing = await solicitud_servicio_repo.get_by_contrato(db, s.id_contrato)
+            num = len(existing)
+        else:
+            num = s.id_solicitud_servicio
+
+        s.codigo_solicitud = f"{prefijo}{año}.{num}"
         await db.commit()
         await db.refresh(s)
         return SolicitudServicioRead(**s.model_dump())
@@ -140,7 +152,7 @@ class SolicitudServicioService:
 
     @staticmethod
     async def update(
-        db: AsyncSession, id: int, data: SolicitudServicioUpdate
+        db: AsyncSession, id: int, data: SolicitudServicioUpdate, nit: Optional[str] = None
     ) -> SolicitudServicioRead:
         s = await solicitud_servicio_repo.get(db, id)
         if not s:
@@ -155,8 +167,11 @@ class SolicitudServicioService:
         aprobado = getattr(data, "aprobado", None)
         id_contrato = getattr(data, "id_contrato", None)
         if aprobado and id_contrato and not s.codigo_proyecto:
-            anno = datetime.now().year - 2000
-            data.codigo_proyecto = f"PROY-{anno:02d}-{id}"
+            año = datetime.now().year
+            prefijo = f"{nit}." if nit else ""
+            existing = await solicitud_servicio_repo.get_by_contrato(db, id_contrato)
+            num = len(existing)
+            data.codigo_proyecto = f"{prefijo}{año}.{num}"
 
         updated = await solicitud_servicio_repo.update(db, db_obj=s, obj_in=data)
         return SolicitudServicioRead(**updated.model_dump())
@@ -267,7 +282,7 @@ class PersonaEtapaService:
 class FacturaServicioService:
     @staticmethod
     async def create(
-        db: AsyncSession, data: FacturaServicioCreate
+        db: AsyncSession, data: FacturaServicioCreate, nit: Optional[str] = None
     ) -> FacturaServicioRead:
         etapa = None
         if data.id_etapa:
@@ -298,16 +313,17 @@ class FacturaServicioService:
 
         if not data.codigo_factura:
             year = datetime.now().year
+            letra = "C" if data.id_certificacion else "S"
             last = await factura_servicio_repo.get_last_by_year(db, year)
             if last and last.codigo_factura:
                 try:
-                    last_num = int(last.codigo_factura.split("-")[-1])
+                    last_num = int(last.codigo_factura.split(".")[-1])
                     new_num = last_num + 1
                 except:
                     new_num = 1
             else:
                 new_num = 1
-            data.codigo_factura = f"FAC-{year}-{new_num:04d}"
+            data.codigo_factura = f"{nit or ''}{letra}.{year}.{new_num}"
 
         tareas_seleccionadas = data.tareas_seleccionadas or []
         data.tareas_seleccionadas = None
@@ -634,7 +650,7 @@ class PagoFacturaServicioService:
 class PersonaLiquidacionService:
     @staticmethod
     async def create(
-        db: AsyncSession, data: PersonaLiquidacionCreateInput
+        db: AsyncSession, data: PersonaLiquidacionCreateInput, nit: Optional[str] = None
     ) -> PersonaLiquidacionRead:
         validacion = await PersonaLiquidacionService.validar_liquidar(
             db, data.id_etapa, data.id_persona
@@ -707,13 +723,13 @@ class PersonaLiquidacionService:
             last = await persona_liquidacion_repo.get_last_by_year(db, year)
             if last and last.numero:
                 try:
-                    last_num = int(last.numero.split("-")[-1])
+                    last_num = int(last.numero.split(".")[-1])
                     new_num = last_num + 1
                 except:
                     new_num = 1
             else:
                 new_num = 1
-            liquidacion_data.numero = f"LIQ-{year}-{new_num:04d}"
+            liquidacion_data.numero = f"{nit or ''}L.{year}.{new_num}"
 
         l = await persona_liquidacion_repo.create(db, obj_in=liquidacion_data)
 
