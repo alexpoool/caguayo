@@ -304,6 +304,7 @@ setTodosClientes(todosClientesRes);
       setGuardandoCliente(true);
       if (nuevoClienteTipo === 'NATURAL') {
         const data = await clientesService.createCliente({
+          codigo: `CLI-${Date.now()}`,
           nombre: nuevoClienteData.nombre,
           tipo_persona: 'NATURAL',
           nit: nuevoClienteData.carnet_identidad || '',
@@ -320,6 +321,7 @@ setTodosClientes(todosClientesRes);
         toast.success('Cliente creado');
       } else if (nuevoClienteTipo === 'JURIDICA') {
         const data = await clientesService.createCliente({
+          codigo: `CLI-${Date.now()}`,
           nombre: nuevoClienteData.nombre,
           tipo_persona: 'JURIDICA',
           nit: nuevoClienteData.codigo_nit || nuevoClienteData.codigo_reup || '',
@@ -336,6 +338,7 @@ setTodosClientes(todosClientesRes);
         toast.success('Cliente creado');
       } else if (nuevoClienteTipo === 'TCP') {
         const data = await clientesService.createCliente({
+          codigo: `CLI-${Date.now()}`,
           nombre: nuevoClienteData.nombre,
           tipo_persona: 'TCP',
           nit: nuevoClienteData.carnet_identidad || '',

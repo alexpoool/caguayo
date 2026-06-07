@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { toast } from "react-hot-toast";
 import { Button } from "../../../../components/ui"
 import { Card, CardHeader, CardTitle, CardContent } from "../../../../components/ui"
 import { Label } from "../../../../components/ui"
@@ -73,6 +74,7 @@ export const ClienteForm: React.FC<ClienteFormProps> = ({
   const [formData, setFormData] = useState<any>({
     tipo_persona: editingCliente?.tipo_persona || "NATURAL",
     tipo_relacion: editingCliente?.tipo_relacion || (isProveedorView ? "PROVEEDOR" : "CLIENTE"),
+    codigo: editingCliente?.codigo || "",
     nombre: editingCliente?.nombre || "",
     nit: editingCliente?.nit || "",
     email: editingCliente?.email || "",
@@ -144,10 +146,10 @@ export const ClienteForm: React.FC<ClienteFormProps> = ({
 
   useEffect(() => {
     if (editingCliente) {
-      console.log("[DEBUG] useEffect - editingCliente received:", JSON.stringify(editingCliente, null, 2));
       setFormData({
         tipo_persona: editingCliente.tipo_persona || "NATURAL",
         tipo_relacion: editingCliente.tipo_relacion || (isProveedorView ? "PROVEEDOR" : "CLIENTE"),
+        codigo: editingCliente.codigo || "",
         nombre: editingCliente.nombre || "",
         nit: editingCliente.nit || "",
         email: editingCliente.email || "",
@@ -164,11 +166,9 @@ export const ClienteForm: React.FC<ClienteFormProps> = ({
       setDatosNatural(editingCliente.cliente_natural || null);
       setDatosJuridica(editingCliente.cliente_juridica || null);
       setDatosTCP(editingCliente.cliente_tcp || null);
-      const loadedCuentas = editingCliente.cuentas || cuentasCliente || [];
-      console.log("[DEBUG] useEffect - setting cuentas to:", JSON.stringify(loadedCuentas, null, 2));
-      setCuentas(loadedCuentas);
+      setCuentas(editingCliente.cuentas || cuentasCliente || []);
     }
-  }, [editingCliente, cuentasCliente]);
+  }, [editingCliente]);
 
   const handleTipoPersonaChange = (tipo: TipoPersona) => {
     setTipoPersona(tipo);
@@ -177,6 +177,10 @@ export const ClienteForm: React.FC<ClienteFormProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!formData.codigo?.trim()) {
+      toast.error("El código es obligatorio");
+      return;
+    }
     const { fecha_registro, ...formDataSinFecha } = formData;
     const payload = {
       ...formDataSinFecha,
@@ -194,11 +198,7 @@ export const ClienteForm: React.FC<ClienteFormProps> = ({
   const addCuenta = () => {
     if (nuevaCuenta.numero_cuenta && nuevaCuenta.banco) {
       const newCuenta = { ...nuevaCuenta, id_cuenta: Date.now() };
-      const newCuentas = [...cuentas, newCuenta];
-      setCuentas(newCuentas);
-      if (setCuentasCliente) {
-        setCuentasCliente(newCuentas);
-      }
+      setCuentas([...cuentas, newCuenta]);
       setNuevaCuenta({
         titular: "",
         banco: "",
@@ -213,11 +213,7 @@ export const ClienteForm: React.FC<ClienteFormProps> = ({
   };
 
   const removeCuenta = (index: number) => {
-    const newCuentas = cuentas.filter((_, i) => i !== index);
-    setCuentas(newCuentas);
-    if (setCuentasCliente) {
-      setCuentasCliente(newCuentas);
-    }
+    setCuentas(cuentas.filter((_, i) => i !== index));
   };
 
   return (
@@ -307,7 +303,7 @@ export const ClienteForm: React.FC<ClienteFormProps> = ({
           </CardHeader>
           <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
             <div>
-              <Label>Nombre / Razón Social *</Label>
+              <Label>Nombre Artistico</Label>
               <Input
                 value={formData.nombre || ""}
                 onChange={(e) =>
@@ -326,6 +322,18 @@ export const ClienteForm: React.FC<ClienteFormProps> = ({
                 }
                 required
                 maxLength={20}
+              />
+            </div>
+            <div>
+              <Label>Código</Label>
+              <Input
+                value={formData.codigo || ""}
+                onChange={(e) =>
+                  setFormData({ ...formData, codigo: e.target.value.slice(0, 50) })
+                }
+                required
+                maxLength={50}
+                placeholder="Código del cliente"
               />
             </div>
             <div>

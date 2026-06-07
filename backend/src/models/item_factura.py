@@ -22,6 +22,7 @@ class ItemFactura(SQLModel, table=True):
     precio_compra: Decimal = Field(decimal_places=4, max_digits=15)
     precio_venta: Decimal = Field(decimal_places=4, max_digits=15)
     id_moneda: int = Field(foreign_key="moneda.id_moneda")
+    codigo: Optional[str] = Field(default=None, max_length=100)
 
     factura: "Factura" = Relationship(back_populates="items_factura")
     producto: "Productos" = Relationship(back_populates="items_factura")

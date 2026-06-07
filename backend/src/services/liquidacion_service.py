@@ -27,22 +27,23 @@ def generate_codigo() -> str:
 
 class LiquidacionService:
     @staticmethod
-    async def generate_codigo_liquidacion(db: AsyncSession) -> str:
+    async def generate_codigo_liquidacion(db: AsyncSession, nit: Optional[str] = None) -> str:
         anio = datetime.now().year
         cantidad = await liquidacion_repo.get_codigo_anio(db, anio)
-        return f"{anio}.{cantidad}"
+        prefijo = f"{nit}." if nit else ""
+        return f"{prefijo}C.{anio}.{cantidad}"
 
     @staticmethod
     async def create_liquidacion(
-        db: AsyncSession, data: LiquidacionCreate
+        db: AsyncSession, data: LiquidacionCreate, nit: Optional[str] = None
     ) -> LiquidacionRead:
-        productos_ids = data.producto_ids
+        producto_ids = [pid for pid in data.producto_ids if pid not in (None, "", "undefined")]
 
         # Normalizar valores opcionales
         id_convenio = data.id_convenio if data.id_convenio not in (None, "", "undefined") else None
         id_anexo = data.id_anexo if data.id_anexo not in (None, "", "undefined") else None
 
-        productos_db = await productos_en_liquidacion_repo.get_by_ids(db, productos_ids)
+        productos_db = await productos_en_liquidacion_repo.get_by_ids(db, producto_ids)
 
         if not productos_db:
             raise ValueError("No se encontraron productos para liquidar")
@@ -71,7 +72,6 @@ class LiquidacionService:
         # para productos de CONSIGNACION
         for prod in productos_db:
             if prod.id_anexo:
-                # Obtener cantidad original del item_anexo
                 from src.models.item_anexo import ItemAnexo
                 from src.models.anexo import Anexo
                 from src.models.convenio import Convenio
@@ -90,8 +90,7 @@ class LiquidacionService:
                         and_(
                             ItemAnexo.id_producto == prod.id_producto,
                             ItemAnexo.id_anexo == prod.id_anexo,
-                            TipoConvenio.nombre
-                            != "COMPRA VENTA",  # Solo validar para CONSIGNACION
+                            TipoConvenio.nombre != "COMPRA VENTA",
                         )
                     )
                 )
@@ -109,11 +108,11 @@ class LiquidacionService:
             {"id_producto": prod.id_producto, "cantidad": prod.cantidad}
             for prod in productos_db
         ]
-        
+
         resultado_validacion = await ExistenciaService.validar_multiple(
             db, productos_validar
         )
-        
+
         if not resultado_validacion["valido"]:
             errores = resultado_validacion["errores"]
             mensaje = "\n".join([
@@ -140,7 +139,7 @@ class LiquidacionService:
         subtotal = devengado_calculado - tributario_monto
         neto_pagar = subtotal - gasto_empresa - comision_bancaria
 
-        codigo = await LiquidacionService.generate_codigo_liquidacion(db)
+        codigo = await LiquidacionService.generate_codigo_liquidacion(db, nit=nit)
 
         db_liquidacion = Liquidacion(
             codigo=codigo,
@@ -178,12 +177,11 @@ class LiquidacionService:
         )
 
         productos_response = await productos_en_liquidacion_repo.get_by_ids(
-            db, productos_ids
+            db, producto_ids
         )
 
         productos_en_liquidacion_list = []
         for p in productos_response:
-            # Obtener información del anexo
             anexo_info = None
             if p.id_anexo:
                 from src.models.anexo import Anexo

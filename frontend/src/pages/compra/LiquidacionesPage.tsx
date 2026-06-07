@@ -49,6 +49,7 @@ export function LiquidacionesPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [detailModal, setDetailModal] = useState<{ isOpen: boolean; item: Liquidacion | null }>({ isOpen: false, item: null });
   const [printModal, setPrintModal] = useState<{ isOpen: boolean; liquidacion: Liquidacion | null; autorizado_por: string; cargo_autorizado: string; revisado_por: string }>({ isOpen: false, liquidacion: null, autorizado_por: '', cargo_autorizado: '', revisado_por: '' });
+  const [approveModal, setApproveModal] = useState<{ isOpen: boolean; id_liquidacion: number | null }>({ isOpen: false, id_liquidacion: null });
   
   const [filtroCliente, setFiltroCliente] = useState<number | null>(initialProveedorId ? Number(initialProveedorId) : null);
   const [filtroAnexo, setFiltroAnexo] = useState<number | null>(null);
@@ -285,16 +286,17 @@ export function LiquidacionesPage() {
     const empresaEmail = empresa?.email || '';
     
     const nombreProveedor = cliente?.nombre || 'N/A';
+    const codigoProveedor = cliente?.codigo || 'N/A';
     const cedulaProveedor = cliente?.nit || 'N/A';
 
     const isNatural = cliente?.tipo_persona === 'NATURAL';
     const isTCP = cliente?.tipo_persona === 'TCP';
 
     const cuentasHTML = cuentas.length > 0
-      ? cuentas.map(c => `
-        <div>${c.banco || ''} ${c.numero_cuenta ? '- ' + c.numero_cuenta : ''}</div>
+      ? cuentas.map((c, i) => `
+        ${i > 0 ? '<br>' : ''}<span>${c.banco || ''}${c.numero_cuenta ? ' - ' + c.numero_cuenta : ''}</span>
       `).join('')
-      : '<div>No registrada</div>';
+      : '<span>No registrada</span>';
 
     const tipoConvenio = liquidacion.convenio?.tipo_convenio?.nombre || '';
     const codigoConvenio = liquidacion.convenio?.codigo || '';
@@ -368,22 +370,23 @@ export function LiquidacionesPage() {
         .header-logo { display: flex; align-items: center; gap: 10px; min-width: 120px; }
         .header-logo img { width: 180px; height: 180px; object-fit: contain; }
         .header-center { text-align: center; flex: 1; }
-        .tcp-title { font-size: 26px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; color: #1a5c1a; }
+        .tcp-title { font-size: 26px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; color: black; }
         .nombre-titular { font-size: 15px; font-weight: bold; margin-top: 6px; }
         .direccion-contacto { font-size: 11.5px; margin-top: 6px; line-height: 1.35; }
         .telefonos { font-size: 12px; font-weight: 500; margin-top: 4px; }
         .email { font-size: 12px; color: #1a1a1a; }
-        .header-box { border: 2px solid #1a5c1a; background: #f0f7f0; padding: 10px 15px; min-width: 180px; border-radius: 4px; }
-        .header-box-title { font-size: 14px; font-weight: 800; text-transform: uppercase; color: #1a5c1a; margin-bottom: 6px; border-bottom: 1px solid #1a5c1a; padding-bottom: 4px; }
+        .header-box { border: 2px solid black; background: white; padding: 10px 15px; min-width: 180px; border-radius: 4px; }
+        .header-box-title { font-size: 14px; font-weight: 800; text-transform: uppercase; color: black; margin-bottom: 6px; border-bottom: 1px solid black; padding-bottom: 4px; }
         .header-box-row { font-size: 11px; margin-bottom: 3px; }
         .header-box-row strong { font-weight: 700; }
+        .header-box-row.total-final { font-weight: 800; font-size: 13px; border-top: 1px solid #000; margin-top: 6px; padding-top: 6px; }
         .fila-fechas { display: flex; justify-content: space-between; margin: 18px 0 12px 0; border-bottom: 1px dashed #aaa; padding-bottom: 12px; }
         .bloque-fecha { font-weight: 600; font-size: 13px; }
         .info-cliente { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 16px; background: #f9f9f0; padding: 12px; border: 1px solid #ccc; margin-bottom: 20px; font-size: 12.5px; }
         .cliente-header { font-size: 14px; font-weight: 800; text-transform: uppercase; margin-bottom: 6px; color: #1a5c1a; grid-column: 1 / -1; text-align: center; }
         .cliente-item { }
         .cliente-item strong { font-weight: 800; }
-        .tabla-wrapper { display: flex; gap: 20px; align-items: flex-start; margin: 18px 0 14px 0; }
+        .tabla-wrapper { margin: 18px 0 14px 0; }
         .tabla-productos { flex: 1; width: 100%; border-collapse: collapse; font-size: 12.5px; }
         .tabla-productos th, .tabla-productos td { border: 1px solid #222; padding: 8px 6px; vertical-align: top; }
         .tabla-productos th { background-color: #eae7db; font-weight: 700; text-align: center; }
@@ -391,7 +394,6 @@ export function LiquidacionesPage() {
         .cantidad, .precio, .devengado-col { text-align: right; }
         .devengado-fila { font-weight: bold; background-color: #f4f1e6; }
         .resumen-derecha { display: flex; justify-content: flex-end; margin-top: 8px; margin-bottom: 20px; }
-        .cuadro-totales { width: 280px; border: 1px solid #111; background: #fefcf5; padding: 12px 15px; font-size: 13px; font-family: monospace; }
         .linea-total { display: flex; justify-content: space-between; margin-bottom: 6px; }
         .total-final { font-weight: 800; font-size: 15px; border-top: 1px solid #000; margin-top: 8px; padding-top: 6px; }
         .devengado-total-row { font-weight: bold; border-top: 1px solid #333; margin-top: 6px; padding-top: 4px; }
@@ -401,7 +403,7 @@ export function LiquidacionesPage() {
         .bloque-firma p { margin: 2px 0; }
         .cargo { font-size: 10px; color: #2c2c2c; }
         .nota-revisado { margin-top: 18px; font-size: 10px; text-align: right; border-top: 1px solid #ddd; padding-top: 8px; font-style: italic; }
-        @media (max-width: 650px) { .documento { padding: 1rem; } .tabla-productos th, .tabla-productos td { padding: 5px 3px; font-size: 11px; } .cuadro-totales { width: 100%; } .firmas { flex-direction: column; gap: 20px; } .fila-firmas { flex-direction: column; gap: 20px; } .info-cliente { flex-direction: column; } .header-tcp { flex-direction: column; } .header-box { width: 100%; margin-top: 15px; } .tabla-wrapper { flex-direction: column; } }
+        @media (max-width: 650px) { .documento { padding: 1rem; } .tabla-productos th, .tabla-productos td { padding: 5px 3px; font-size: 11px; } .firmas { flex-direction: column; gap: 20px; } .fila-firmas { flex-direction: column; gap: 20px; } .info-cliente { flex-direction: column; } .header-tcp { flex-direction: column; } .header-box { width: 100%; margin-top: 15px; } }
     </style>
 </head>
 <body>
@@ -419,9 +421,14 @@ export function LiquidacionesPage() {
         </div>
         <div class="header-box">
             <div class="header-box-title">Liquidación</div>
-            <div class="header-box-row"><strong>Concepto:</strong> ${tipoConvenio || 'N/A'}</div>
-            <div class="header-box-row"><strong>Número:</strong> ${codigoConvenio || 'N/A'}</div>
-            <div class="header-box-row"><strong>Moneda:</strong> ${moneda || 'N/A'}</div>
+            <div class="header-box-row" style="border-top:1px solid black;padding-top:4px;margin-top:4px;"><strong>IMPORTE:</strong> ${Number(liquidacion.importe || 0).toFixed(2)}</div>
+            <div class="header-box-row"><span style="color:#666;">Importe Caguayo(${Number(liquidacion.porcentaje_caguayo || 10)}%):</span> -${importeCaguayo}</div>
+            <div class="header-box-row" style="font-weight:bold;border-bottom:1px solid #333;padding-bottom:4px;"><strong>DEVENGADO:</strong> ${subtotalDevengado}</div>
+            <div class="header-box-row"><span style="color:#666;">Tributario(${Number(liquidacion.tributario || 5)}%):</span> -${valorTributario}</div>
+            <div class="header-box-row" style="font-weight:bold;border-bottom:1px solid #333;padding-bottom:4px;"><strong>SUBTOTAL:</strong> ${subtotal}</div>
+            <div class="header-box-row"><span style="color:#666;">Gasto Empresa:</span> -${valorEmpresa}</div>
+            <div class="header-box-row"><span style="color:#666;">Comisión:</span> -${valorComision}</div>
+            <div class="header-box-row total-final"><strong>NETO A COBRAR:</strong> ${netoCobrar}</div>
         </div>
     </div>
 
@@ -433,9 +440,9 @@ export function LiquidacionesPage() {
     <div class="info-cliente">
         <div class="cliente-header">Cliente</div>
         <div class="cliente-item"><strong>Nombre:</strong> ${nombreProveedor}</div>
+        <div class="cliente-item"><strong>Código:</strong> ${codigoProveedor}</div>
         <div class="cliente-item"><strong>Cl.:</strong> ${cedulaProveedor}</div>
-        <div class="cliente-item"><strong>Cuenta:</strong> ${cuentasHTML}</div>
-        <div class="cliente-item"><strong>Registro:</strong> ${isNatural || isTCP ? '1' : 'N/A'}</div>
+            <div class="cliente-item"><strong>Cuenta:</strong> ${cuentasHTML}</div>
     </div>
 
     <div style="margin: 8px 0 6px 0; font-weight: bold; font-size: 14px;">Pago por la compra de los siguientes productos:</div>
@@ -460,18 +467,6 @@ export function LiquidacionesPage() {
                 </tr>
             </tbody>
         </table>
-
-        <div class="cuadro-totales">
-            <div class="linea-total"><span>IMPORTE:</span><span>${Number(liquidacion.importe || 0).toFixed(2)}</span></div>
-            <div class="linea-total" style="color: #666;"><span>&nbsp;&nbsp;(-) Importe Caguayo(${Number(liquidacion.porcentaje_caguayo || 10)}%):</span><span>-${importeCaguayo}</span></div>
-            <div class="linea-total" style="font-weight: bold; border-bottom: 1px solid #333; padding-bottom: 4px;"><span>DEVENGADO:</span><span>${subtotalDevengado}</span></div>
-            <div class="linea-total" style="color: #666;"><span>&nbsp;&nbsp;(-) Tributario(${Number(liquidacion.tributario || 5)}%):</span><span>-${valorTributario}</span></div>
-            <div class="linea-total" style="font-weight: bold; border-bottom: 1px solid #333; padding-bottom: 4px;"><span>SUBTOTAL:</span><span>${subtotal}</span></div>
-            <div class="linea-total" style="color: #666;"><span>&nbsp;&nbsp;(-) Gasto Empresa:</span><span>-${valorEmpresa}</span></div>
-            <div class="linea-total" style="color: #666;"><span>&nbsp;&nbsp;(-) Comisión:</span><span>-${valorComision}</span></div>
-            <div class="linea-total total-final"><span>NETO A COBRAR:</span><span>${netoCobrar}</span></div>
-            <div class="devengado-total-row linea-total" style="margin-top: 12px;"><span><strong>DEVENGADO TOTAL</strong></span><span><strong>${devengadoTotal}</strong></span></div>
-        </div>
     </div>
 
     <div class="firmas">
@@ -676,16 +671,7 @@ export function LiquidacionesPage() {
                           <Button
                             variant="ghost"
                             size="icon"
-                            onClick={() => {
-                              if (confirm('¿Aprobar liquidación?')) {
-                                liquidacionService.aprobarLiquidacion(liquidacion.id_liquidacion)
-                                  .then(() => {
-                                    toast.success('Liquidación aprobada correctamente');
-                                    queryClient.invalidateQueries({ queryKey: ['liquidaciones'] });
-                                  })
-                                  .catch((error: any) => toast.error(error.message || 'Error al aprobar liquidación'));
-                              }
-                            }}
+                            onClick={() => setApproveModal({ isOpen: true, id_liquidacion: liquidacion.id_liquidacion })}
                             className="text-green-600 hover:text-green-800 hover:bg-green-50 h-8 w-8"
                             title="Aprobar liquidación"
                           >
@@ -1243,6 +1229,46 @@ export function LiquidacionesPage() {
               >
                 <Printer className="h-4 w-4" />
                 Imprimir
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {approveModal.isOpen && createPortal(
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 animate-fade-in">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full animate-scale-in">
+            <div className="p-6 border-b border-gray-200">
+              <div className="flex items-center gap-3">
+                <CheckCircle className="h-6 w-6 text-green-600" />
+                <h3 className="text-xl font-bold text-gray-900">Aprobar Liquidación</h3>
+              </div>
+              <p className="text-sm text-gray-500 mt-2">¿Está seguro de aprobar esta liquidación?</p>
+            </div>
+            <div className="p-6 flex justify-end gap-3">
+              <button
+                onClick={() => setApproveModal({ isOpen: false, id_liquidacion: null })}
+                className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 font-medium"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => {
+                  if (approveModal.id_liquidacion) {
+                    liquidacionService.aprobarLiquidacion(approveModal.id_liquidacion)
+                      .then(() => {
+                        toast.success('Liquidación aprobada correctamente');
+                        queryClient.invalidateQueries({ queryKey: ['liquidaciones'] });
+                      })
+                      .catch((error: any) => toast.error(error.message || 'Error al aprobar liquidación'))
+                      .finally(() => setApproveModal({ isOpen: false, id_liquidacion: null }));
+                  }
+                }}
+                className="px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-lg hover:from-green-600 hover:to-emerald-700 font-medium flex items-center gap-2"
+              >
+                <CheckCircle className="h-4 w-4" />
+                Aprobar
               </button>
             </div>
           </div>

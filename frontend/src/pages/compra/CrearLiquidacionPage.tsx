@@ -178,7 +178,6 @@ export function CrearLiquidacionPage() {
 
   const handleProductoSelect = (pelIds: number[]) => {
     setSelectedProductos(prev => {
-      // Agregar todos los IDs de pel_ids que no estén ya seleccionados
       const nuevosIds = pelIds.filter(id => !prev.includes(id));
       return [...prev, ...nuevosIds];
     });
@@ -199,7 +198,6 @@ export function CrearLiquidacionPage() {
   };
 
   const handleSelectAll = () => {
-    // Recolectar todos los pel_ids de todos los productos
     const allPelIds: number[] = [];
     itemsAnexo.forEach((item: any) => {
       if (item.estado === 'A LIQUIDAR' && item.pel_ids && item.pel_ids.length > 0) {
@@ -208,7 +206,6 @@ export function CrearLiquidacionPage() {
         allPelIds.push(item.id_producto_en_liquidacion);
       }
     });
-    // Eliminar duplicados
     const uniqueIds = [...new Set(allPelIds)];
     setSelectedProductos(uniqueIds);
     setFormData(prev => ({ ...prev, producto_ids: uniqueIds }));
@@ -224,7 +221,6 @@ export function CrearLiquidacionPage() {
       (item: any) => item.id_anexo === idAnexo && item.estado === 'A LIQUIDAR'
     );
     
-    // Recolectar todos los pel_ids de los productos de este anexo
     const pelIdsDelAnexo: number[] = [];
     productosDelAnexo.forEach((item: any) => {
       if (item.pel_ids && item.pel_ids.length > 0) {
@@ -234,7 +230,6 @@ export function CrearLiquidacionPage() {
       }
     });
     
-    // Agregar estos IDs manteniendo los existentes de otros anexos
     setSelectedProductos(prev => {
       const otrosIds = prev.filter(id => {
         const item = itemsAnexo.find((i: any) => 
@@ -260,7 +255,7 @@ export function CrearLiquidacionPage() {
     return itemsAnexo
       .filter((item: any) => item.estado === 'A LIQUIDAR' && selectedProductos.includes(item.id_producto_en_liquidacion))
       .reduce((sum: number, item: any) => {
-        return sum + (item.precio_venta * item.cantidad);
+        return sum + (item.precio_venta * (item.por_liquidar || item.cantidad || 0));
       }, 0);
   };
 
@@ -306,9 +301,10 @@ export function CrearLiquidacionPage() {
       return pelIds.some((id: number) => selectedProductos.includes(id));
     });
 
-    const totalCantidad = productosSeleccionados.reduce((sum: number, item: any) => sum + (item.cantidad || 0), 0);
+    const totalCantidad = productosSeleccionados.reduce((sum: number, item: any) => 
+      sum + (item.por_liquidar || item.cantidad || 0), 0);
     const totalMonto = productosSeleccionados.reduce((sum: number, item: any) => 
-      sum + (Number(item.precio_venta) * (item.cantidad || 0)), 0);
+      sum + (Number(item.precio_venta) * (item.por_liquidar || item.cantidad || 0)), 0);
 
     return {
       cantidadProductos: productosSeleccionados.length,
@@ -316,8 +312,8 @@ export function CrearLiquidacionPage() {
       totalMonto,
       productos: productosSeleccionados.map((item: any) => ({
         nombre: item.producto_nombre || `Producto ${item.id_producto}`,
-        cantidad: item.cantidad || 0,
-        importe: Number(item.precio_venta) * (item.cantidad || 0)
+        cantidad: item.por_liquidar || item.cantidad || 0,
+        importe: Number(item.precio_venta) * (item.por_liquidar || item.cantidad || 0)
       }))
     };
   };
@@ -340,7 +336,6 @@ if (!filtroCliente) {
 
     setIsLoading(true);
     try {
-      // Validar existencias antes de crear
       const productosValidar = itemsAnexo
         .filter((item: any) => 
           selectedProductos.includes(item.id_producto_en_liquidacion) ||
@@ -348,7 +343,7 @@ if (!filtroCliente) {
         )
         .map((item: any) => ({
           id_producto: item.id_producto,
-          cantidad: item.cantidad
+          cantidad: item.por_liquidar || item.cantidad || 0
         }));
 
       if (productosValidar.length > 0) {
@@ -370,7 +365,7 @@ if (!filtroCliente) {
       };
       
       await liquidacionService.createLiquidacion(dataToSend);
-      toast.success('Liquidación créée correctamente');
+      toast.success('Liquidación creada correctamente');
       navigate('/compra/liquidaciones');
     } catch (error: any) {
       console.error('Error:', error);
@@ -556,7 +551,21 @@ if (!filtroCliente) {
                           </div>
                           <button
                             type="button"
-                            onClick={() => handleSelectAllAnexo(grupo.id_anexo)}
+                            onClick={() => {
+                              if (todosSeleccionados) {
+                                const pelIdsDelAnexo: number[] = [];
+                                productosALiquidar.forEach((item: any) => {
+                                  if (item.pel_ids && item.pel_ids.length > 0) {
+                                    pelIdsDelAnexo.push(...item.pel_ids);
+                                  } else if (item.id_producto_en_liquidacion) {
+                                    pelIdsDelAnexo.push(item.id_producto_en_liquidacion);
+                                  }
+                                });
+                                handleProductoDeselect(pelIdsDelAnexo);
+                              } else {
+                                handleSelectAllAnexo(grupo.id_anexo);
+                              }
+                            }}
                             className="text-sm text-blue-600 hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
                             disabled={productosALiquidar.length === 0}
                           >
@@ -570,7 +579,8 @@ if (!filtroCliente) {
                             <tr>
                               <th className="px-3 py-2 text-left w-10"></th>
                               <th className="px-3 py-2 text-left">Producto</th>
-                              <th className="px-3 py-2 text-right">Por Liquidar</th>
+                              <th className="px-3 py-2 text-right">Máx. a Liquidar</th>
+                              <th className="px-3 py-2 text-right">En Consignación</th>
                               <th className="px-3 py-2 text-right">Precio</th>
                               <th className="px-3 py-2 text-right">Total</th>
                               <th className="px-3 py-2 text-center">Estado</th>
@@ -580,6 +590,8 @@ if (!filtroCliente) {
                             {grupo.productos.filter((item: any) => item.estado !== 'LIQUIDADO').map((item: any) => {
                               const isALiquidar = item.estado === 'A LIQUIDAR';
                               const isConsignacion = item.estado === 'EN_CONSIGNACION';
+                              const maxALiquidar = item.por_liquidar || item.cantidad || 0;
+                              const enConsignacion = item.en_consignacion ?? 0;
                               const pelIds = item.pel_ids && item.pel_ids.length > 0 ? item.pel_ids : (item.id_producto_en_liquidacion ? [item.id_producto_en_liquidacion] : []);
                               const isSelected = pelIds.length > 0 && pelIds.some((id: number) => selectedProductos.includes(id));
                               const toggleSelect = () => {
@@ -597,13 +609,15 @@ if (!filtroCliente) {
                                       checked={isSelected}
                                       onChange={toggleSelect}
                                       className="rounded"
+                                      disabled={!isALiquidar}
                                     />
                                   </td>
                                   <td className="px-3 py-2">{item.producto_nombre || `Producto ${item.id_producto}`}</td>
-                                  <td className="px-3 py-2 text-right font-medium text-blue-600">{item.por_liquidar}</td>
+                                  <td className="px-3 py-2 text-right font-medium text-blue-600">{maxALiquidar}</td>
+                                  <td className="px-3 py-2 text-right text-gray-600">{enConsignacion}</td>
                                   <td className="px-3 py-2 text-right">${Number(item.precio_venta).toFixed(2)}</td>
                                   <td className="px-3 py-2 text-right font-medium">
-                                    ${(item.precio_venta * item.cantidad).toFixed(2)}
+                                    ${(item.precio_venta * maxALiquidar).toFixed(2)}
                                   </td>
                                   <td className="px-3 py-2 text-center">
                                     <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${

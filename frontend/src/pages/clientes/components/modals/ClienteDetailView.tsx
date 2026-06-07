@@ -70,9 +70,9 @@ export function ClienteDetailView({
         </CardHeader>
         <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
-            <Label># Cliente</Label>
+            <Label>Código</Label>
             <p className="font-medium">
-              {"N/A"}
+              {viewingCliente.codigo || "N/A"}
             </p>
           </div>
           <div>

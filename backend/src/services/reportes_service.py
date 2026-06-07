@@ -45,6 +45,7 @@ async def get_proveedores_por_dependencia(
     for row in results:
         cliente_obj = row[0]
         proveedor_data = {
+            "codigo": cliente_obj.codigo,
             "nombre": cliente_obj.nombre,
             "direccion": cliente_obj.direccion,
             "provincia": "",

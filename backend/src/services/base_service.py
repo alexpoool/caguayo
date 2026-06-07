@@ -1,5 +1,6 @@
 from typing import TypeVar, Generic, Type, List, Optional, Any
 from sqlmodel.ext.asyncio.session import AsyncSession
+from sqlmodel import select
 from fastapi import HTTPException
 from pydantic import BaseModel
 
@@ -48,11 +49,15 @@ class GenericService(Generic[ModelType, CreateDTOType, UpdateDTOType, ReadDTOTyp
 
     async def create(self, db: AsyncSession, obj_in: CreateDTOType) -> ReadDTOType:
         db_obj = await self.repository.create(db, obj_in=obj_in)
-        # To return with properly loaded relations if needed:
         if self.default_load_options:
-            # Re-fetch with relations
-            primary_key_val = getattr(db_obj, db_obj.__table__.primary_key.columns.keys()[0])
-            db_obj = await self.repository.get(db, id=primary_key_val, load_options=self.default_load_options)
+            pk_col = list(db_obj.__table__.primary_key.columns)[0]
+            stmt = select(self.repository.model).where(
+                pk_col == getattr(db_obj, pk_col.name)
+            )
+            for opt in self.default_load_options:
+                stmt = stmt.options(opt)
+            result = await db.exec(stmt)
+            db_obj = result.one()
         return self._to_read_dto(db_obj)
 
     async def update(
@@ -65,7 +70,12 @@ class GenericService(Generic[ModelType, CreateDTOType, UpdateDTOType, ReadDTOTyp
             )
         updated_obj = await self.repository.update(db, db_obj=db_obj, obj_in=obj_in)
         if self.default_load_options:
-             updated_obj = await self.repository.get(db, id=id, load_options=self.default_load_options)
+            pk_col = list(self.repository.model.__table__.primary_key.columns)[0]
+            stmt = select(self.repository.model).where(pk_col == id)
+            for opt in self.default_load_options:
+                stmt = stmt.options(opt)
+            result = await db.exec(stmt)
+            updated_obj = result.one()
         return self._to_read_dto(updated_obj)
 
     async def delete(self, db: AsyncSession, id: int) -> None:

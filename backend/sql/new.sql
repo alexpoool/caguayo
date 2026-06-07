@@ -157,6 +157,7 @@ CREATE TABLE clientes (
     id_provincia INTEGER REFERENCES provincia(id_provincia) ON DELETE SET NULL,
     id_municipio INTEGER REFERENCES municipio(id_municipio) ON DELETE SET NULL,
     codigo_postal VARCHAR(10),
+    codigo VARCHAR(50) NOT NULL UNIQUE,
     direccion TEXT NOT NULL,
     tipo_relacion VARCHAR(20) NOT NULL CHECK (tipo_relacion IN ('CLIENTE', 'PROVEEDOR', 'AMBAS')),
     estado VARCHAR(20) NOT NULL CHECK (estado IN ('ACTIVO', 'INACTIVO')),
@@ -404,10 +405,9 @@ CREATE TABLE suplemento (
     id_estado INTEGER NOT NULL REFERENCES estado_contrato(id_estado_contrato) ON DELETE CASCADE,
     fecha DATE NOT NULL DEFAULT CURRENT_DATE,
     monto NUMERIC(15, 2) NOT NULL DEFAULT 0.00,
-    documento VARCHAR(255)
+    documento VARCHAR(255),
+    codigo VARCHAR(100)
 );
-
-
 
 
 
@@ -443,7 +443,8 @@ CREATE TABLE item_factura (
     cantidad INTEGER NOT NULL DEFAULT 1,
     precio_compra NUMERIC(15, 4) NOT NULL,
     precio_venta NUMERIC(15, 4) NOT NULL,
-    id_moneda INTEGER NOT NULL REFERENCES moneda(id_moneda) ON DELETE CASCADE
+    id_moneda INTEGER NOT NULL REFERENCES moneda(id_moneda) ON DELETE CASCADE,
+    codigo VARCHAR(100)
 );
 
 -- =====================================================
@@ -479,7 +480,8 @@ CREATE TABLE venta_efectivo (
     fecha DATE NOT NULL DEFAULT CURRENT_DATE,
     id_dependencia INTEGER NOT NULL,  -- Sin FK hacia foreign table dependencia
     cajero VARCHAR(100) NOT NULL,
-    monto NUMERIC(15, 2) NOT NULL DEFAULT 0.00
+    monto NUMERIC(15, 2) NOT NULL DEFAULT 0.00,
+    codigo VARCHAR(100)
 );
 
 -- Item-Venta-Efectivo (reemplaza venta_efectivo_producto)
@@ -490,7 +492,8 @@ CREATE TABLE item_venta_efectivo (
     cantidad INTEGER NOT NULL DEFAULT 1,
     precio_compra NUMERIC(15, 4) NOT NULL,
     precio_venta NUMERIC(15, 4) NOT NULL,
-    id_moneda INTEGER NOT NULL REFERENCES moneda(id_moneda) ON DELETE CASCADE
+    id_moneda INTEGER NOT NULL REFERENCES moneda(id_moneda) ON DELETE CASCADE,
+    codigo VARCHAR(100)
 );
 
 -- =====================================================

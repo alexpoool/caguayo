@@ -107,6 +107,7 @@ export function ClientesList({
                     Nombre
                   </div>
                 </TableHead>
+                <TableHead>Código</TableHead>
                 <TableHead>Tipo</TableHead>
                 <TableHead>Estado</TableHead>
                 <TableHead>
@@ -120,7 +121,7 @@ export function ClientesList({
               {filteredClientes.length === 0 ? (
                 <TableRow>
                   <TableCell
-                    colSpan={isProveedorView ? 6 : 5}
+                    colSpan={isProveedorView ? 7 : 6}
                     className="text-center py-12 text-gray-500"
                   >
                     {isProveedorView
@@ -147,6 +148,11 @@ export function ClientesList({
 
                         </div>
                       </div>
+                    </TableCell>
+                    <TableCell>
+                      <span className="text-sm text-gray-600">
+                        {cliente.codigo || "-"}
+                      </span>
                     </TableCell>
                     <TableCell>
                       <span
@@ -277,6 +283,14 @@ export function ClientesList({
               </div>
               <div className="p-6 space-y-4">
                 <div className="grid grid-cols-2 gap-4">
+                  <div className="bg-gradient-to-br from-teal-50 to-cyan-50 p-4 rounded-md border border-teal-100">
+                    <p className="text-xs text-teal-600 uppercase tracking-wider mb-1">
+                      Código
+                    </p>
+                    <p className="font-bold text-gray-900">
+                      {detailModal.cliente.codigo || "-"}
+                    </p>
+                  </div>
                   <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-4 rounded-md border border-blue-100">
                     <p className="text-xs text-blue-600 uppercase tracking-wider mb-1">
                       Cédula/RIF

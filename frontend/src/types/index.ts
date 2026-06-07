@@ -142,6 +142,7 @@ export interface TipoConvenioUpdate {
 
 export interface ClienteSimple {
   id_cliente: number;
+  codigo: string;
   nombre: string;
 }
 

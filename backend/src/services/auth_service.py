@@ -530,7 +530,7 @@ async def register(
     host = conexion.host if conexion else "localhost"
     puerto = conexion.puerto if conexion else 5432
     usuario_db = conexion.usuario if conexion else "postgres"
-    contrasenia_db = conexion.contrasenia if conexion else "1234"
+    contrasenia_db = conexion.contrasenia if conexion else os.getenv("ADMIN_DB_PASSWORD", "postgres")
 
     # 2. Conectarse a la base de datos seleccionada
     from sqlmodel import Session, create_engine
@@ -602,7 +602,27 @@ async def register(
                     )
                 )
 
-    # 9. Obtener dependencia y grupo desde la BD central para la respuesta
+        # 9. Crear token JWT
+        token_data = {
+            "sub": str(usuario.id_usuario),
+            "alias": usuario.alias,
+            "nombre": f"{usuario.nombre} {usuario.primer_apellido}",
+            "base_datos": register_data.base_datos,
+        }
+        token = create_access_token(token_data)
+
+        # 10. Guardar sesión en la BD destino
+        fecha_expiracion = datetime.utcnow() + timedelta(hours=ACCESS_TOKEN_EXPIRE_HOURS)
+        sesion = Sesion(
+            id_usuario=usuario.id_usuario,
+            token=token,
+            base_datos=register_data.base_datos,
+            fecha_expiracion=fecha_expiracion,
+        )
+        db_target.add(sesion)
+        db_target.commit()
+
+    # 11. Obtener dependencia y grupo desde la BD central para la respuesta
     dependencia_central = None
     statement = select(Dependencia).where(
         Dependencia.id_dependencia == register_data.id_dependencia
@@ -611,26 +631,6 @@ async def register(
     dependencia_central = results.first()
 
     grupo_central = await db.get(Grupo, id_grupo)
-
-    # 10. Crear token JWT
-    token_data = {
-        "sub": str(usuario.id_usuario),
-        "alias": usuario.alias,
-        "nombre": f"{usuario.nombre} {usuario.primer_apellido}",
-        "base_datos": register_data.base_datos,
-    }
-    token = create_access_token(token_data)
-
-    # 11. Guardar sesión
-    fecha_expiracion = datetime.utcnow() + timedelta(hours=ACCESS_TOKEN_EXPIRE_HOURS)
-    sesion = Sesion(
-        id_usuario=usuario.id_usuario,
-        token=token,
-        base_datos=register_data.base_datos,
-        fecha_expiracion=fecha_expiracion,
-    )
-    db.add(sesion)
-    await db.commit()
 
     return LoginResponse(
         token=token,

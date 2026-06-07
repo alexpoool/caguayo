@@ -82,6 +82,7 @@ class Suplemento(SQLModel, table=True):
     fecha: date = Field(default=date.today())
     monto: Decimal = Field(default=Decimal("0.00"))
     documento: Optional[str] = Field(default=None, max_length=255)
+    codigo: Optional[str] = Field(default=None, max_length=100)
 
     contrato: "Contrato" = Relationship(back_populates="suplementos")
     estado: "EstadoContrato" = Relationship()
@@ -122,6 +123,7 @@ class VentaEfectivo(SQLModel, table=True):
     id_dependencia: int = Field(foreign_key="dependencia.id_dependencia")
     cajero: str = Field(max_length=100)
     monto: Decimal = Field(default=Decimal("0.00"))
+    codigo: Optional[str] = Field(default=None, max_length=100)
 
     dependencia: "Dependencia" = Relationship()
     items_venta_efectivo: List["ItemVentaEfectivo"] = Relationship(

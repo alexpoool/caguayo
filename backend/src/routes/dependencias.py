@@ -295,6 +295,143 @@ async def crear_dependencia(
     return response
 
 
+# =====================================================
+# Endpoints para cuenta_dependencias (replicación dblink)
+# =====================================================
+
+
+@router.get("/cuentas", response_model=List[CuentaDependenciaRead])
+async def listar_cuentas_dependencias(
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=1000),
+    search: str = Query(None, description="Buscar por titular o nombre de dependencia"),
+    db: AsyncSession = Depends(get_session),
+):
+    """Listar cuentas bancarias de dependencias (desde BD central)."""
+    from sqlmodel import select, or_
+
+    statement = (
+        select(CuentaDependencia)
+        .options(
+            selectinload(CuentaDependencia.moneda),
+            selectinload(CuentaDependencia.dependencia),
+        )
+    )
+
+    statement = statement.offset(skip).limit(limit)
+
+    if search:
+        pass
+
+    results = await db.exec(statement)
+    cuentas = results.all()
+
+    response = []
+    for cuenta in cuentas:
+        dto = CuentaDependenciaRead.model_validate(cuenta)
+        if cuenta.dependencia:
+            dto.dependencia_nombre = cuenta.dependencia.nombre
+        response.append(dto)
+
+    if search:
+        search_lower = search.lower()
+        response = [
+            c for c in response
+            if search_lower in (c.titular or "").lower()
+            or search_lower in (c.dependencia_nombre or "").lower()
+        ]
+
+    return response
+
+
+@router.get("/cuentas/{cuenta_id}", response_model=CuentaDependenciaRead)
+async def obtener_cuenta_dependencia(
+    cuenta_id: int,
+    db: AsyncSession = Depends(get_session),
+):
+    """Obtener una cuenta de dependencia por ID."""
+    cuenta = await cuenta_dependencia_service.get(db, cuenta_id)
+    if not cuenta:
+        raise HTTPException(
+            status_code=404, detail="Cuenta de dependencia no encontrada"
+        )
+    return cuenta
+
+
+@router.get(
+    "/cuentas/dependencia/{id_dependencia}",
+    response_model=List[CuentaDependenciaRead],
+)
+async def obtener_cuentas_por_dependencia(
+    id_dependencia: int,
+    db: AsyncSession = Depends(get_session),
+):
+    """Obtener cuentas por ID de dependencia."""
+    from sqlmodel import select
+    from sqlalchemy.orm import selectinload
+
+    statement = (
+        select(CuentaDependencia)
+        .options(selectinload(CuentaDependencia.moneda))
+        .where(CuentaDependencia.id_dependencia == id_dependencia)
+    )
+    results = await db.exec(statement)
+    return results.all()
+
+
+@router.post("/cuentas", response_model=CuentaDependenciaRead, status_code=201)
+async def crear_cuenta_dependencia(
+    cuenta: CuentaDependenciaCreate,
+    db: AsyncSession = Depends(get_session),
+):
+    """Crear una cuenta de dependencia (se guarda en BD central)."""
+    try:
+        return await cuenta_dependencia_service.create(db, cuenta)
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Error al crear cuenta de dependencia: {str(e)}"
+        )
+
+
+@router.put("/cuentas/{cuenta_id}", response_model=CuentaDependenciaRead)
+async def actualizar_cuenta_dependencia(
+    cuenta_id: int,
+    update_data: CuentaDependenciaUpdate,
+    db: AsyncSession = Depends(get_session),
+):
+    """Actualizar una cuenta de dependencia."""
+    try:
+        cuenta = await cuenta_dependencia_service.update(db, cuenta_id, update_data)
+        if not cuenta:
+            raise HTTPException(
+                status_code=404, detail="Cuenta de dependencia no encontrada"
+            )
+        return cuenta
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error al actualizar cuenta de dependencia: {str(e)}",
+        )
+
+
+@router.delete("/cuentas/{cuenta_id}", status_code=204)
+async def eliminar_cuenta_dependencia(
+    cuenta_id: int,
+    db: AsyncSession = Depends(get_session),
+):
+    """Eliminar una cuenta de dependencia."""
+    try:
+        success = await cuenta_dependencia_service.delete(db, cuenta_id)
+        if not success:
+            raise HTTPException(
+                status_code=404, detail="Cuenta de dependencia no encontrada"
+            )
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Error al eliminar cuenta de dependencia: {str(e)}"
+        )
+
+
 @router.get("/{dependencia_id}", response_model=DependenciaRead)
 async def obtener_dependencia(
     dependencia_id: int,
@@ -452,103 +589,4 @@ async def listar_municipios(
 
 
 # =====================================================
-# Endpoints para cuenta_dependencias (replicación dblink)
-# =====================================================
 
-
-@router.get("/cuentas", response_model=List[CuentaDependenciaRead])
-async def listar_cuentas_dependencias(
-    skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=1000),
-    db: AsyncSession = Depends(get_session),
-):
-    """Listar cuentas bancarias de dependencias (desde BD central)."""
-    return await cuenta_dependencia_service.get_all(db, skip=skip, limit=limit)
-
-
-@router.get("/cuentas/{cuenta_id}", response_model=CuentaDependenciaRead)
-async def obtener_cuenta_dependencia(
-    cuenta_id: int,
-    db: AsyncSession = Depends(get_session),
-):
-    """Obtener una cuenta de dependencia por ID."""
-    cuenta = await cuenta_dependencia_service.get(db, cuenta_id)
-    if not cuenta:
-        raise HTTPException(
-            status_code=404, detail="Cuenta de dependencia no encontrada"
-        )
-    return cuenta
-
-
-@router.get(
-    "/cuentas/dependencia/{id_dependencia}",
-    response_model=List[CuentaDependenciaRead],
-)
-async def obtener_cuentas_por_dependencia(
-    id_dependencia: int,
-    db: AsyncSession = Depends(get_session),
-):
-    """Obtener cuentas por ID de dependencia."""
-    from sqlmodel import select
-    from sqlalchemy.orm import selectinload
-
-    statement = (
-        select(CuentaDependencia)
-        .options(selectinload(CuentaDependencia.moneda))
-        .where(CuentaDependencia.id_dependencia == id_dependencia)
-    )
-    results = await db.exec(statement)
-    return results.all()
-
-
-@router.post("/cuentas", response_model=CuentaDependenciaRead, status_code=201)
-async def crear_cuenta_dependencia(
-    cuenta: CuentaDependenciaCreate,
-    db: AsyncSession = Depends(get_session),
-):
-    """Crear una cuenta de dependencia (se guarda en BD central)."""
-    try:
-        return await cuenta_dependencia_service.create(db, cuenta)
-    except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Error al crear cuenta de dependencia: {str(e)}"
-        )
-
-
-@router.put("/cuentas/{cuenta_id}", response_model=CuentaDependenciaRead)
-async def actualizar_cuenta_dependencia(
-    cuenta_id: int,
-    update_data: CuentaDependenciaUpdate,
-    db: AsyncSession = Depends(get_session),
-):
-    """Actualizar una cuenta de dependencia."""
-    try:
-        cuenta = await cuenta_dependencia_service.update(db, cuenta_id, update_data)
-        if not cuenta:
-            raise HTTPException(
-                status_code=404, detail="Cuenta de dependencia no encontrada"
-            )
-        return cuenta
-    except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Error al actualizar cuenta de dependencia: {str(e)}",
-        )
-
-
-@router.delete("/cuentas/{cuenta_id}", status_code=204)
-async def eliminar_cuenta_dependencia(
-    cuenta_id: int,
-    db: AsyncSession = Depends(get_session),
-):
-    """Eliminar una cuenta de dependencia."""
-    try:
-        success = await cuenta_dependencia_service.delete(db, cuenta_id)
-        if not success:
-            raise HTTPException(
-                status_code=404, detail="Cuenta de dependencia no encontrada"
-            )
-    except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Error al eliminar cuenta de dependencia: {str(e)}"
-        )

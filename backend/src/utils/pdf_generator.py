@@ -27,10 +27,11 @@ def generar_pdf_proveedores_dependencia(proveedores, dependencia_info, tipo_enti
         # For simplicity, generating a single table for now. Can be expanded based on specific requirements.
 
         if tipo_entidad == 'NATURAL':
-            headers = ["CI", "NOMBRE Y APELLIDOS", "DIRECCIÓN", "MUNICIPIO", "VIGENCIA"]
+            headers = ["CÓDIGO", "CI", "NOMBRE Y APELLIDOS", "DIRECCIÓN", "MUNICIPIO", "VIGENCIA"]
             data = [headers]
             for p in proveedores:
                 data.append([
+                    p.get('codigo', ''),
                     p.get('carnet_identidad', ''),
                     p.get('nombre', ''),
                     p.get('direccion', ''),
@@ -38,28 +39,31 @@ def generar_pdf_proveedores_dependencia(proveedores, dependencia_info, tipo_enti
                     str(p.get('vigencia', ''))
                 ])
         elif tipo_entidad == 'TCP':
-             headers = ["NOMBRE Y APELLIDOS", "DIRECCIÓN"]
+             headers = ["CÓDIGO", "NOMBRE Y APELLIDOS", "DIRECCIÓN"]
              data = [headers]
              for p in proveedores:
                  data.append([
+                     p.get('codigo', ''),
                      p.get('nombre', ''),
                      p.get('direccion', '')
                  ])
         elif tipo_entidad == 'JURIDICA':
-             headers = ["NIT", "NOMBRE", "DIRECCIÓN", "MUNICIPIO"]
+             headers = ["CÓDIGO", "NIT", "NOMBRE", "DIRECCIÓN", "MUNICIPIO"]
              data = [headers]
              for p in proveedores:
                  data.append([
+                     p.get('codigo', ''),
                      p.get('codigo_reup', ''),
                      p.get('nombre', ''),
                      p.get('direccion', ''),
                      p.get('municipio', '')
                  ])
         else: # Default/Fallback
-             headers = ["NOMBRE", "DIRECCIÓN"]
+             headers = ["CÓDIGO", "NOMBRE", "DIRECCIÓN"]
              data = [headers]
              for p in proveedores:
                  data.append([
+                     p.get('codigo', ''),
                      p.get('nombre', ''),
                      p.get('direccion', '')
                  ])

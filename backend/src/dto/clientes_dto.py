@@ -87,6 +87,7 @@ class ClienteTCPData(SQLModel):
 class ClienteBase(SQLModel):
     model_config = {"populate_by_name": True}
 
+    codigo: Optional[str] = None
     nit: Optional[str] = None
     nombre: Optional[str] = None
     tipo_persona: str = "NATURAL"
@@ -130,6 +131,7 @@ class ClienteReadWithVentas(ClienteRead):
 class ClienteUpdate(SQLModel):
     model_config = {"extra": "allow"}
 
+    codigo: Optional[str] = None
     nombre: Optional[str] = None
     tipo_persona: Optional[str] = None
     nit: Optional[str] = None
@@ -153,6 +155,7 @@ class ClienteUpdate(SQLModel):
 
 class ClienteSimpleRead(SQLModel):
     id_cliente: int
+    codigo: str
     nombre: Optional[str] = None
     tipo_persona: Optional[str] = None
     estado: Optional[str] = None

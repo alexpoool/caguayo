@@ -1,7 +1,7 @@
-from typing import List
-from fastapi import APIRouter, Depends, HTTPException, Query
+from typing import List, Optional
+from fastapi import APIRouter, Depends, Header, HTTPException, Query
 from sqlmodel.ext.asyncio.session import AsyncSession
-from src.database.connection import get_session
+from src.database.connection import get_auth_session, get_session
 from src.services.productos_en_liquidacion_service import (
     productos_en_liquidacion_service,
 )
@@ -10,6 +10,7 @@ from src.dto.productos_en_liquidacion_dto import (
     ProductosEnLiquidacionRead,
     ProductosEnLiquidacionUpdate,
 )
+from src.utils import _get_nit_from_token
 
 router = APIRouter(
     prefix="/productos-en-liquidacion",
@@ -57,11 +58,14 @@ async def listar_productos_pendientes(
 @router.post("", response_model=ProductosEnLiquidacionRead, status_code=201)
 async def crear_producto(
     producto: ProductosEnLiquidacionCreate,
+    authorization: Optional[str] = Header(None),
+    db_auth: AsyncSession = Depends(get_auth_session),
     db: AsyncSession = Depends(get_session),
 ):
     """Crear un nuevo producto en liquidación."""
     try:
-        return await productos_en_liquidacion_service.create(db, producto)
+        nit = await _get_nit_from_token(authorization, db_auth)
+        return await productos_en_liquidacion_service.create(db, producto, nit=nit)
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"Error al crear producto en liquidación: {str(e)}"

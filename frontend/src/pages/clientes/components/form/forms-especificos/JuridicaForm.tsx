@@ -23,7 +23,7 @@ export const JuridicaForm: React.FC<DatosJuridicaFormProps> = ({
       </CardHeader>
       <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
         <div>
-          <Label>Código REUP</Label>
+          <Label>Código REEUP</Label>
           <Input
             value={data.codigo_reup || ""}
             onChange={(e) =>

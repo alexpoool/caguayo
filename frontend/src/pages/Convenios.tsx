@@ -19,6 +19,7 @@ import toast from "react-hot-toast";
 
 interface ClienteSimple {
   id_cliente: number;
+  codigo: string;
   nombre: string;
 }
 

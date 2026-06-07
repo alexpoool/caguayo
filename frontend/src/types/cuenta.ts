@@ -34,3 +34,36 @@ export interface CuentaUpdate {
   numero_cuenta?: string;
   direccion?: string;
 }
+
+export interface CuentaDependencia {
+  id_cuenta?: number;
+  id_dependencia: number;
+  dependencia_nombre?: string;
+  id_moneda?: number;
+  titular: string;
+  banco: string;
+  sucursal?: number;
+  numero_cuenta: string;
+  direccion: string;
+  moneda?: Moneda;
+}
+
+export interface CuentaDependenciaCreate {
+  id_dependencia: number;
+  id_moneda?: number;
+  titular: string;
+  banco: string;
+  sucursal?: number;
+  numero_cuenta: string;
+  direccion: string;
+}
+
+export interface CuentaDependenciaUpdate {
+  id_dependencia?: number;
+  id_moneda?: number;
+  titular?: string;
+  banco?: string;
+  sucursal?: number;
+  numero_cuenta?: string;
+  direccion?: string;
+}

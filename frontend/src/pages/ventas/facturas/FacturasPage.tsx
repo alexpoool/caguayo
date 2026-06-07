@@ -45,6 +45,7 @@ export function getFacturaDocument(
   user: any,
   clienteCompleto: any = null,
   clienteCuentas: any[] = [],
+  depCuentas: any[] = [],
   autorizadoPor: string = "",
   revisadoPor: string = "",
 ) {
@@ -74,15 +75,15 @@ export function getFacturaDocument(
     .filter(Boolean)
     .join(", ");
 
-  const cuentaCUP = clienteCuentas.find(
-    (c: any) => c.moneda?.nombre === "CUP",
-  );
-  const cuentaNumero = cuentaCUP?.numero_cuenta || "";
-  const cuentaBanco = cuentaCUP?.banco || "";
-  const cuentaSucursal = cuentaCUP?.sucursal || "";
-  const cuentaDireccion = cuentaCUP?.direccion || "";
-
   const moneda = contrato?.moneda?.nombre || "";
+
+  const cuentaDep = depCuentas.find(
+    (c: any) => c.moneda?.nombre === moneda,
+  );
+  const cuentaNumero = cuentaDep?.numero_cuenta || "";
+  const cuentaBanco = cuentaDep?.banco || "";
+  const cuentaSucursal = cuentaDep?.sucursal || "";
+  const cuentaDireccion = cuentaDep?.direccion || "";
   const items = factura.items || [];
 
   const itemsRows = items
@@ -203,11 +204,12 @@ export function getFacturaDocument(
     <div class="info-cliente">
       <div class="cliente-grid">
         <div class="full-row cliente-titulo">CONTRATO Nº ${numeroContrato} — Cliente: ${nombreCliente}</div>
+        <div><strong>Código:</strong> ${cliente?.codigo || ""}</div>
         <div><strong>NIT/CI:</strong> ${cliente?.nit || ''}</div>
         <div><strong>Dirección:</strong> ${direccionCompleta}</div>
         <div></div>
-        ${clienteCuentas.length > 0 ? `
-        <div class="full-row cliente-titulo">BANCO:</div>
+        ${depCuentas.length > 0 ? `
+        <div class="full-row cliente-titulo">DATOS BANCARIOS (${empresaNombre}):</div>
         <div><strong>Cuenta:</strong> ${cuentaNumero} (${moneda})</div>
         <div><strong>Banco:</strong> ${cuentaBanco}</div>
         <div><strong>Sucursal:</strong> ${cuentaSucursal}</div>
@@ -529,6 +531,9 @@ export function FacturasPage() {
       clienteCompleto = contrato.cliente;
     }
 
+    const depId = user?.dependencia?.id_dependencia;
+    const depCuentas = depId ? await dependenciasService.getCuentasByDependencia(depId) : [];
+
     console.log("[DEBUG] handleViewDocument - clienteFinal:", clienteCompleto);
     console.log("[DEBUG] handleViewDocument - cuentasFinal:", clienteCuentas);
 
@@ -539,6 +544,7 @@ export function FacturasPage() {
       user,
       clienteCompleto,
       clienteCuentas,
+      depCuentas,
       "",
       "",
     );
@@ -585,6 +591,9 @@ export function FacturasPage() {
       clienteCompleto = contrato.cliente;
     }
 
+    const depId = user?.dependencia?.id_dependencia;
+    const depCuentas = depId ? await dependenciasService.getCuentasByDependencia(depId) : [];
+
     const html = getFacturaDocument(
       factura,
       contratos,
@@ -592,6 +601,7 @@ export function FacturasPage() {
       user,
       clienteCompleto,
       clienteCuentas,
+      depCuentas,
       "",
       "",
     );

@@ -19,6 +19,7 @@ const BASE_URL = "http://localhost:8000/api/v1";
 // ---------------------------------------------------------------------------
 
 interface ProveedorPreviewItem {
+  codigo: string;
   nombre: string;
   direccion: string;
   provincia: string;
@@ -105,6 +106,7 @@ const ReporteProveedores: React.FC = () => {
   // ── Export columns (depends on tipoEntidad) ────────────────────────────────
   const exportColumns = useMemo<ExportColumn<ProveedorPreviewItem>[]>(() => {
     const base: ExportColumn<ProveedorPreviewItem>[] = [
+      { header: "Código", accessor: "codigo" },
       { header: "Nombre", accessor: "nombre" },
       { header: "Dirección", accessor: "direccion" },
       { header: "Provincia", accessor: "provincia" },
@@ -122,6 +124,10 @@ const ReporteProveedores: React.FC = () => {
   // ── Preview columns (depends on tipoEntidad) ───────────────────────────────
   const columns = useMemo<Column<ProveedorPreviewItem>[]>(() => {
     const base: Column<ProveedorPreviewItem>[] = [
+      {
+        header: "Código",
+        accessor: "codigo",
+      },
       {
         header: "Nombre",
         accessor: "nombre",

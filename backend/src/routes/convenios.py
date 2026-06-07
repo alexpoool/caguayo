@@ -1,12 +1,12 @@
-from typing import List
+from typing import List, Optional
 from datetime import date
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Header, HTTPException, Query
 from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlmodel import select, func
 
-from src.database.connection import get_session
+from src.database.connection import get_auth_session, get_session
 from src.models import Cliente, Cliente as ClienteModel, Convenio
-from src.utils import generar_codigo_anio
+from src.utils import generar_codigo_anio, _get_nit_from_token
 
 router = APIRouter(prefix="/convenios", tags=["convenios"], redirect_slashes=False)
 
@@ -90,9 +90,14 @@ async def obtener_convenio(
 @router.post("", status_code=201)
 async def crear_convenio(
     datos: dict,
+    authorization: Optional[str] = Header(None),
+    db_auth: AsyncSession = Depends(get_auth_session),
     db: AsyncSession = Depends(get_session),
 ):
     try:
+        nit = await _get_nit_from_token(authorization, db_auth)
+        prefijo = f"{nit}." if nit else ""
+
         datos_convertidos = datos.copy()
 
         id_cliente = datos_convertidos.get("id_cliente")
@@ -121,7 +126,8 @@ async def crear_convenio(
 
         año = datos_convertidos.get("fecha", date.today()).year
 
-        codigo = await generar_codigo_anio(db, "convenio", "fecha", año)
+        codigo_base = await generar_codigo_anio(db, "convenio", "fecha", año)
+        codigo = f"{prefijo}C.{codigo_base}"
 
         db_convenio = Convenio(**datos_convertidos, codigo=codigo)
         db.add(db_convenio)

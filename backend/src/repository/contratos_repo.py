@@ -356,9 +356,10 @@ class ItemFacturaRepository(CRUDBase[ItemFactura, ItemFacturaCreate, dict]):
         return results.all()
 
     async def create_items(
-        self, db: AsyncSession, id_factura: int, items_data: List[ItemFacturaCreate]
+        self, db: AsyncSession, id_factura: int, items_data: List[ItemFacturaCreate], nit: Optional[str] = None
     ) -> List[ItemFactura]:
         created_items = []
+        prefijo = f"{nit}." if nit else ""
         for item in items_data:
             producto = await db.get(Productos, item["id_producto"])
             if producto:
@@ -369,7 +370,7 @@ class ItemFacturaRepository(CRUDBase[ItemFactura, ItemFacturaCreate, dict]):
                     "precio_compra": producto.precio_compra,
                     "precio_venta": item["precio_venta"],
                     "id_moneda": item["id_moneda"],
-                    "codigo": f"1.{id_factura}",
+                    "codigo": f"{prefijo}V.1.{id_factura}",
                 }
                 db_item = ItemFactura(**item_dict)
                 db.add(db_item)
@@ -395,8 +396,10 @@ class ItemVentaEfectivoRepository(
         db: AsyncSession,
         id_venta_efectivo: int,
         items_data: List[ItemVentaEfectivoCreate],
+        nit: Optional[str] = None,
     ) -> List[ItemVentaEfectivo]:
         created_items = []
+        prefijo = f"{nit}." if nit else ""
         for item in items_data:
             producto = await db.get(Productos, item["id_producto"])
             if producto:
@@ -407,7 +410,7 @@ class ItemVentaEfectivoRepository(
                     "precio_compra": producto.precio_compra,
                     "precio_venta": item["precio_venta"],
                     "id_moneda": item["id_moneda"],
-                    "codigo": f"0.{id_venta_efectivo}",
+                    "codigo": f"{prefijo}V.0.{id_venta_efectivo}",
                 }
                 db_item = ItemVentaEfectivo(**item_dict)
                 db.add(db_item)

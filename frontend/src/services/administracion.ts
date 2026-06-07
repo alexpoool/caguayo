@@ -2,7 +2,7 @@ import { apiClient } from '../lib/api';
 import type { TipoContrato, TipoContratoCreate, TipoContratoUpdate } from '../types/contrato';
 import type { EstadoContrato, EstadoContratoCreate, EstadoContratoUpdate } from '../types/contrato';
 import type { TipoProveedor, TipoProveedorCreate, TipoProveedorUpdate, TipoConvenio, TipoConvenioCreate, TipoConvenioUpdate } from '../types/index';
-import type { Cuenta, CuentaCreate, CuentaUpdate } from '../types/cuenta';
+import type { Cuenta, CuentaCreate, CuentaUpdate, CuentaDependencia, CuentaDependenciaCreate, CuentaDependenciaUpdate } from '../types/cuenta';
 import type { Grupo, GrupoCreate, GrupoUpdate, Funcionalidad, Usuario, UsuarioCreate, UsuarioUpdate } from '../types/usuario';
 import type { TipoDependencia, TipoDependenciaCreate, TipoDependenciaUpdate, Dependencia, DependenciaConCuentasCreate, DependenciaUpdate, ConexionDatabase } from '../types/dependencia';
 import type { Provincia, Municipio } from '../types/ubicacion';
@@ -186,5 +186,27 @@ export const dependenciasService = {
 
   getBasesDeDatos: async (): Promise<ConexionDatabase[]> => {
     return await apiClient.get('/conexiones');
+  },
+
+  getCuentasDependencia: async (search?: string): Promise<CuentaDependencia[]> => {
+    const params: Record<string, string> = {};
+    if (search) params.search = search;
+    return await apiClient.get('/dependencias/cuentas', params);
+  },
+
+  getCuentaDependencia: async (id: number): Promise<CuentaDependencia> => {
+    return await apiClient.get(`/dependencias/cuentas/${id}`);
+  },
+
+  createCuentaDependencia: async (data: CuentaDependenciaCreate): Promise<CuentaDependencia> => {
+    return await apiClient.post('/dependencias/cuentas', data);
+  },
+
+  updateCuentaDependencia: async (id: number, data: CuentaDependenciaUpdate): Promise<CuentaDependencia> => {
+    return await apiClient.put(`/dependencias/cuentas/${id}`, data);
+  },
+
+  deleteCuentaDependencia: async (id: number): Promise<void> => {
+    await apiClient.delete(`/dependencias/cuentas/${id}`);
   },
 };

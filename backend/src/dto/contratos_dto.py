@@ -93,6 +93,7 @@ class MonedaRead(SQLModel):
 
 class ClienteSimpleRead(SQLModel):
     id_cliente: int
+    codigo: str
     nombre: str
 
 
@@ -103,6 +104,7 @@ class SuplementoBase(SQLModel):
     fecha: date
     monto: Decimal = Decimal("0.00")
     documento: Optional[str] = None
+    codigo: Optional[str] = None
 
 
 class SuplementoCreate(SuplementoBase):
@@ -124,6 +126,7 @@ class SuplementoUpdate(SQLModel):
     fecha: Optional[date] = None
     monto: Optional[Decimal] = None
     documento: Optional[str] = None
+    codigo: Optional[str] = None
 
 
 class ItemFacturaBase(SQLModel):
@@ -131,6 +134,7 @@ class ItemFacturaBase(SQLModel):
     cantidad: int
     precio_venta: Decimal
     id_moneda: int
+    codigo: Optional[str] = None
 
 
 class ItemFacturaCreate(ItemFacturaBase):
@@ -187,6 +191,7 @@ class ItemVentaEfectivoBase(SQLModel):
     cantidad: int
     precio_venta: Decimal
     id_moneda: int
+    codigo: Optional[str] = None
 
 
 class ItemVentaEfectivoCreate(ItemVentaEfectivoBase):
@@ -205,6 +210,7 @@ class VentaEfectivoBase(SQLModel):
     id_dependencia: int
     cajero: str
     monto: Decimal = Decimal("0.00")
+    codigo: Optional[str] = None
 
 
 class VentaEfectivoCreate(VentaEfectivoBase):
@@ -227,6 +233,7 @@ class VentaEfectivoUpdate(SQLModel):
     id_dependencia: Optional[int] = None
     cajero: Optional[str] = None
     monto: Optional[Decimal] = None
+    codigo: Optional[str] = None
 
 
 class DependenciaSimpleRead(SQLModel):

@@ -38,6 +38,7 @@ export interface Moneda {
 
 export interface ClienteSimple {
   id_cliente: number;
+  codigo: string;
   nombre: string;
   nit: string;
 }

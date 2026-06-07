@@ -49,6 +49,7 @@ class CuentaDependenciaCreate(CuentaDependenciaBase):
 
 class CuentaDependenciaRead(CuentaDependenciaBase):
     id_cuenta: Optional[int] = None
+    dependencia_nombre: Optional[str] = None
     moneda: Optional[MonedaRead] = None
 
 

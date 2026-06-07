@@ -42,6 +42,7 @@ class TipoProveedorUpdate(SQLModel):
 
 
 class ClienteBase(SQLModel):
+    codigo: str
     id_tipo_cliente: Optional[int] = None
     nombre: str
     telefono: Optional[str] = None
@@ -59,6 +60,7 @@ class ClienteRead(ClienteBase):
 
 
 class ClienteUpdate(SQLModel):
+    codigo: Optional[str] = None
     id_tipo_cliente: Optional[int] = None
     nombre: Optional[str] = None
     telefono: Optional[str] = None
@@ -171,6 +173,7 @@ class AnexoUpdate(SQLModel):
 
 class ClienteSimpleRead(SQLModel):
     id_cliente: int
+    codigo: str
     nombre: str
 
 

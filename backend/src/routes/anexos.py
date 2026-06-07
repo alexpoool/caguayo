@@ -1,10 +1,10 @@
-from typing import List
+from typing import List, Optional
 from datetime import date, datetime
 from decimal import Decimal
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Header, HTTPException, Query
 from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlalchemy.orm import selectinload
-from src.database.connection import get_session
+from src.database.connection import get_auth_session, get_session
 from src.models import (
     Anexo,
     Dependencia,
@@ -18,7 +18,7 @@ from src.models import (
     TipoConvenio,
 )
 from src.dto.convenios_dto import AnexoRead, AnexoCreate, ItemAnexoCreate
-from src.utils import generar_codigo_con_padre
+from src.utils import generar_codigo_con_padre, _get_nit_from_token
 from src.dto import DependenciaRead
 from sqlmodel import select, func
 
@@ -82,10 +82,15 @@ async def obtener_anexo(
 @router.post("", status_code=201)
 async def crear_anexo(
     datos: AnexoCreate,
+    authorization: Optional[str] = Header(None),
+    db_auth: AsyncSession = Depends(get_auth_session),
     db: AsyncSession = Depends(get_session),
 ):
     """Crear un nuevo anexo con productos y generar movimientos de recepción."""
     try:
+        nit = await _get_nit_from_token(authorization, db_auth)
+        prefijo_nit = f"{nit}." if nit else ""
+
         datos_dict = datos.model_dump(exclude_none=True)
         items_data = datos_dict.pop("items", [])
 
@@ -115,9 +120,8 @@ async def crear_anexo(
         es_compra_venta = tipo_convenio and tipo_convenio.nombre == "COMPRA VENTA"
 
         anio = datos.fecha.year
-        prefijo = conveni.codigo or str(conveni.id_convenio)
         codigo_anexo = await generar_codigo_con_padre(
-            db, prefijo, "anexo", "fecha", anio
+            db, conveni.codigo or str(conveni.id_convenio), "anexo", "fecha", anio
         )
 
         datos_dict["codigo_anexo"] = codigo_anexo
@@ -153,7 +157,7 @@ async def crear_anexo(
                 precio_compra=producto.precio_compra,
                 precio_venta=item["precio_venta"],
                 id_moneda=item["id_moneda"],
-                codigo=f"{datos.id_convenio}.{db_anexo.id_anexo}",
+                codigo=f"{prefijo_nit}C.{datos.id_convenio}.{db_anexo.id_anexo}",
             )
             db.add(db_item)
             await db.flush()
@@ -188,7 +192,7 @@ async def crear_anexo(
             anio = datetime.utcnow().year
             id_convenio_val = db_movimiento.id_convenio or 0
 
-            codigo = f"{anio}.{id_convenio_val}.{codigo_anexo}.{item['id_producto']}"
+            codigo = f"{prefijo_nit}C.{anio}.{id_convenio_val}.{codigo_anexo}.{item['id_producto']}"
             db_movimiento.codigo = codigo
 
             movimientos_creados.append(
@@ -213,7 +217,7 @@ async def crear_anexo(
 
         if productos_para_liquidacion:
             await crear_productos_en_liquidacion(
-                db, db_anexo.id_anexo, productos_para_liquidacion
+                db, db_anexo.id_anexo, productos_para_liquidacion, nit=nit
             )
 
         await db.commit()
@@ -238,12 +242,13 @@ async def crear_anexo(
 
 
 async def crear_productos_en_liquidacion(
-    db: AsyncSession, id_anexo: int, productos: List[dict]
+    db: AsyncSession, id_anexo: int, productos: List[dict], nit: Optional[str] = None
 ) -> None:
     """Agrega productos desde un anexo a la tabla de productos_en_liquidacion."""
+    prefijo_nit = f"{nit}." if nit else ""
     for prod in productos:
         codigo_base = prod.get("codigo_anexo", f"ANX-{id_anexo}")
-        codigo = f"{codigo_base}-LIQ-{prod['id_producto']}"
+        codigo = f"{prefijo_nit}C.{codigo_base}-LIQ-{prod['id_producto']}"
 
         db_producto = ProductosEnLiquidacion(
             codigo=codigo,

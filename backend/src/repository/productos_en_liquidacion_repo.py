@@ -128,16 +128,14 @@ class ProductosEnLiquidacionRepository(CRUDBase[ProductosEnLiquidacion, dict, di
             select(
                 func.max(
                     func.cast(
-                        func.split_part(ProductosEnLiquidacion.codigo, '.', 2),
+                        func.split_part(
+                            func.reverse(ProductosEnLiquidacion.codigo), '.', 1
+                        ),
                         Integer
                     )
                 )
             )
-            .select_from(ProductosEnLiquidacion)
-            .where(
-                func.extract("YEAR", ProductosEnLiquidacion.fecha) == anio,
-                ProductosEnLiquidacion.codigo.like(f"{anio}.%")
-            )
+            .where(func.extract("YEAR", ProductosEnLiquidacion.fecha) == anio)
         )
         result = await db.exec(statement)
         max_codigo = result.one() or 0
@@ -376,6 +374,7 @@ class ProductosEnLiquidacionRepository(CRUDBase[ProductosEnLiquidacion, dict, di
                 ItemAnexo.id_producto,
                 ItemAnexo.id_anexo,
                 ItemAnexo.cantidad,
+                ItemAnexo.cantidad_vendida,
                 ItemAnexo.precio_compra,
                 ItemAnexo.precio_venta,
                 ItemAnexo.id_moneda,
@@ -451,10 +450,11 @@ class ProductosEnLiquidacionRepository(CRUDBase[ProductosEnLiquidacion, dict, di
             id_producto = row[1]
             id_anexo = row[2]
             cantidad_original = row[3]  # x - cantidad entrada en anexo
-            precio_compra = row[4]
-            precio_venta = row[5]
-            id_moneda = row[6]
-            nombre_anexo = row[7]
+            cantidad_vendida = row[4]   # cantidad vendida desde consignación
+            precio_compra = row[5]
+            precio_venta = row[6]
+            id_moneda = row[7]
+            nombre_anexo = row[8]
 
             # Obtener productos_en_liquidacion relacionados para ESTE anexo específico
             # Solo incluye: con id_anexo igual al del item_anexo
@@ -518,6 +518,8 @@ class ProductosEnLiquidacionRepository(CRUDBase[ProductosEnLiquidacion, dict, di
             # Usar el primer ID de pel para el checkbox (o null si no hay ninguno)
             id_pel_principal = pel_ids[0] if pel_ids else None
 
+            en_consignacion = max(0, cantidad_original - cantidad_vendida)
+
             items.append(
                 {
                     "id_item_anexo": id_item_anexo,
@@ -527,6 +529,7 @@ class ProductosEnLiquidacionRepository(CRUDBase[ProductosEnLiquidacion, dict, di
                     "cantidad_original": cantidad_original,  # x
                     "cantidad_liquidada": cantidad_liquidada,  # z
                     "por_liquidar": cantidad_pendiente,  # y - z (cantidad de compras no liquidadas)
+                    "en_consignacion": en_consignacion,  # x - cantidad_vendida (stock actual)
                     "precio_compra": float(precio_compra),
                     "precio_venta": float(precio_venta),
                     "id_moneda": id_moneda,

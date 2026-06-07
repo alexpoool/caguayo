@@ -1,7 +1,7 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, Header, HTTPException
 from sqlmodel.ext.asyncio.session import AsyncSession
-from typing import List
-from src.database.connection import get_session
+from typing import List, Optional
+from src.database.connection import get_auth_session, get_session
 from src.services.contrato_service import (
     ContratoService,
     SuplementoService,
@@ -22,6 +22,7 @@ from src.dto import (
     VentaEfectivoReadWithDetails,
     VentaEfectivoUpdate,
 )
+from src.utils import _get_nit_from_token
 
 contratos_router = APIRouter(
     prefix="/contratos", tags=["contratos"], redirect_slashes=False
@@ -31,11 +32,14 @@ contratos_router = APIRouter(
 @contratos_router.post("", response_model=ContratoReadWithDetails, status_code=201)
 async def crear_contrato(
     contrato: ContratoCreate,
+    authorization: Optional[str] = Header(None),
+    db_auth: AsyncSession = Depends(get_auth_session),
     db: AsyncSession = Depends(get_session),
 ):
     """Crear un nuevo contrato."""
     try:
-        return await ContratoService.create(db, contrato)
+        nit = await _get_nit_from_token(authorization, db_auth)
+        return await ContratoService.create(db, contrato, nit=nit)
     except Exception as e:
         error_msg = str(e)
         if "Input should be a valid integer" in error_msg:
@@ -115,10 +119,13 @@ suplementos_router = APIRouter(
 @suplementos_router.post("", response_model=SuplementoReadWithDetails, status_code=201)
 async def crear_suplemento(
     suplemento: SuplementoCreate,
+    authorization: Optional[str] = Header(None),
+    db_auth: AsyncSession = Depends(get_auth_session),
     db: AsyncSession = Depends(get_session),
 ):
     """Crear un nuevo suplemento."""
     try:
+        nit = await _get_nit_from_token(authorization, db_auth)
         return await SuplementoService.create(db, suplemento)
     except Exception as e:
         raise HTTPException(
@@ -211,11 +218,14 @@ facturas_router = APIRouter(
 @facturas_router.post("", response_model=FacturaReadWithDetails, status_code=201)
 async def crear_factura(
     factura: FacturaCreate,
+    authorization: Optional[str] = Header(None),
+    db_auth: AsyncSession = Depends(get_auth_session),
     db: AsyncSession = Depends(get_session),
 ):
     """Crear una nueva factura."""
     try:
-        return await FacturaService.create(db, factura)
+        nit = await _get_nit_from_token(authorization, db_auth)
+        return await FacturaService.create(db, factura, nit=nit)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error al crear factura: {str(e)}")
 
@@ -307,11 +317,14 @@ ventas_efectivo_router = APIRouter(
 )
 async def crear_venta_efectivo(
     venta: VentaEfectivoCreate,
+    authorization: Optional[str] = Header(None),
+    db_auth: AsyncSession = Depends(get_auth_session),
     db: AsyncSession = Depends(get_session),
 ):
     """Crear una nueva venta en efectivo."""
     try:
-        return await VentaEfectivoService.create(db, venta)
+        nit = await _get_nit_from_token(authorization, db_auth)
+        return await VentaEfectivoService.create(db, venta, nit=nit)
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"Error al crear venta en efectivo: {str(e)}"

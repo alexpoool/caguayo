@@ -55,13 +55,15 @@ import { MonedasPage } from "./Monedas";
 import { UsuariosPage } from "./Usuarios";
 import { GruposPage } from "./Grupos";
 import { DependenciasPage } from "./Dependencias";
+import { CuentasPage } from "./Cuentas";
 
 type TabType =
   | "configuracion"
   | "monedas"
   | "usuarios"
   | "grupos"
-  | "dependencias";
+  | "dependencias"
+  | "cuentas";
 
 type ConfigSubTabType =
   | "tipo-contrato"
@@ -79,6 +81,7 @@ const tabs: { id: TabType; label: string; icon: React.ElementType }[] = [
   { id: "usuarios", label: "Usuarios", icon: Users },
   { id: "grupos", label: "Grupos", icon: Shield },
   { id: "dependencias", label: "Dependencias", icon: Building },
+  { id: "cuentas", label: "Cuentas", icon: Wallet },
 ];
 
 const configSubTabs: { id: ConfigSubTabType; label: string }[] = [
@@ -1498,6 +1501,12 @@ const {
         return (
           <div className="p-0">
             <DependenciasPage />
+          </div>
+        );
+      case "cuentas":
+        return (
+          <div className="p-0">
+            <CuentasPage />
           </div>
         );
       default:

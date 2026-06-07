@@ -36,6 +36,7 @@ class Cliente(SQLModel, table=True):
     id_municipio: Optional[int] = Field(
         default=None, foreign_key="municipio.id_municipio"
     )
+    codigo: str = Field(max_length=50, unique=True)
     codigo_postal: Optional[str] = Field(default=None, max_length=10)
     direccion: str = Field(sa_column=Column(String))
     tipo_relacion: str = Field(max_length=20)  # CLIENTE, PROVEEDOR, AMBAS

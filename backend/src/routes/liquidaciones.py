@@ -1,7 +1,7 @@
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Header, HTTPException, Query
 from sqlmodel.ext.asyncio.session import AsyncSession
-from src.database.connection import get_session
+from src.database.connection import get_auth_session, get_session
 from src.services.liquidacion_service import liquidacion_service
 from src.dto import (
     LiquidacionCreate,
@@ -10,6 +10,7 @@ from src.dto import (
     LiquidacionConfirmar,
 )
 from src.dto.productos_en_liquidacion_dto import ProductosEnLiquidacionRead
+from src.utils import _get_nit_from_token
 
 router = APIRouter(
     prefix="/liquidaciones", tags=["liquidaciones"], redirect_slashes=False
@@ -96,11 +97,14 @@ async def listar_items_anexo_con_estado(
 @router.post("", response_model=LiquidacionRead, status_code=201)
 async def crear_liquidacion(
     liquidacion: LiquidacionCreate,
+    authorization: Optional[str] = Header(None),
+    db_auth: AsyncSession = Depends(get_auth_session),
     db: AsyncSession = Depends(get_session),
 ):
     """Crear una nueva liquidación."""
     try:
-        return await liquidacion_service.create_liquidacion(db, liquidacion)
+        nit = await _get_nit_from_token(authorization, db_auth)
+        return await liquidacion_service.create_liquidacion(db, liquidacion, nit=nit)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:

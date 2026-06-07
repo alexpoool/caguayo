@@ -130,8 +130,11 @@ export function FacturaDetailModal({
                 console.log('[FacturaDetailModal] Cliente ID:', clienteId);
                 const clienteCompleto = clienteId ? await clientesService.getCliente(Number(clienteId)) : null;
                 const clienteCuentas = clienteId ? await cuentasService.getCuentasByCliente(Number(clienteId)) : [];
+                const depCuentas = factura.id_dependencia
+                  ? await dependenciasService.getCuentasByDependencia(factura.id_dependencia)
+                  : [];
                 console.log('[FacturaDetailModal] Generando documento...');
-                const html = getFacturaDocument(factura, contratos, dependencias, null, clienteCompleto, clienteCuentas);
+                const html = getFacturaDocument(factura, contratos, dependencias, null, clienteCompleto, clienteCuentas, depCuentas);
                 console.log('[FacturaDetailModal] HTML generado, length:', html.length);
                 const printWindow = window.open('', '_blank');
                 if (printWindow) {

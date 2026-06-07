@@ -147,6 +147,16 @@ export function PerfilClientePage() {
             <div className="flex items-center gap-3">
               <CreditCard className="h-5 w-5 text-gray-400" />
               <div>
+                <p className="text-sm text-gray-500">Código</p>
+                <p className="font-medium">
+                  {cliente.codigo || "No registrado"}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <CreditCard className="h-5 w-5 text-gray-400" />
+              <div>
                 <p className="text-sm text-gray-500">Cédula / RIF</p>
                 <p className="font-medium">
                   {cliente.nit || "No registrado"}

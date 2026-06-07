@@ -3,7 +3,6 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlmodel import select
 from typing import List, Optional
 from src.database.connection import get_auth_session, get_session
-from src.services.auth_service import get_current_user
 from src.services.servicio_service import (
     ServicioService,
     SolicitudServicioService,
@@ -51,20 +50,7 @@ from src.dto.servicio_dto import (
     CertificacionUpdate,
 )
 from src.models.servicio import PersonaEtapa
-
-
-async def _get_nit_from_token(
-    authorization: Optional[str] = None,
-    db_auth: Optional[AsyncSession] = None,
-) -> Optional[str]:
-    """Extrae el NIT de la dependencia del usuario desde el token JWT."""
-    if not authorization or not authorization.startswith("Bearer ") or not db_auth:
-        return None
-    token = authorization.replace("Bearer ", "")
-    usuario = await get_current_user(db_auth, token)
-    if usuario and usuario.dependencia:
-        return usuario.dependencia.nit
-    return None
+from src.utils import _get_nit_from_token
 
 
 # ==========================================
