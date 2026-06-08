@@ -36,7 +36,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<UsuarioInfo | null>(null);
   const [funcionalidades, setFuncionalidades] = useState<FuncionalidadInfo[]>([]);
   const [baseDatos, setBaseDatos] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   const refreshUser = async () => {
     try {

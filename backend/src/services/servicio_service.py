@@ -729,7 +729,9 @@ class PersonaLiquidacionService:
                     new_num = 1
             else:
                 new_num = 1
-            liquidacion_data.numero = f"{nit or ''}L.{year}.{new_num}"
+            etapa = await db.get(Etapa, liquidacion_data.id_etapa)
+            letra = "C" if etapa and etapa.tipo_etapa == "CERTIFICACIONES" else "S"
+            liquidacion_data.numero = f"{nit or ''}{letra}.{year}.{new_num}"
 
         l = await persona_liquidacion_repo.create(db, obj_in=liquidacion_data)
 

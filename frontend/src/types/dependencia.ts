@@ -1,5 +1,5 @@
 import type { Provincia, Municipio } from './ubicacion';
-import type { Cuenta, CuentaCreate } from './cuenta';
+import type { Cuenta, CuentaCreate, CuentaDependencia } from './cuenta';
 
 export interface TipoDependencia {
   id_tipo_dependencia: number;
@@ -23,6 +23,7 @@ export interface Dependencia {
   codigo_padre?: number;
   nombre: string;
   nit?: string;
+  reeup?: string;
   base_datos?: string;
   direccion: string;
   telefono: string;
@@ -36,6 +37,7 @@ export interface Dependencia {
   provincia?: Provincia;
   municipio?: Municipio;
   cuentas: Cuenta[];
+  cuentas_dependencias?: CuentaDependencia[];
   tablas_creadas?: string[];
 }
 
@@ -44,6 +46,7 @@ export interface DependenciaCreate {
   codigo_padre?: number;
   nombre: string;
   nit?: string;
+  reeup?: string;
   base_datos: string;
   direccion: string;
   telefono: string;
@@ -73,6 +76,7 @@ export interface DependenciaUpdate {
   codigo_padre?: number;
   nombre?: string;
   nit?: string;
+  reeup?: string;
   base_datos?: string;
   direccion?: string;
   telefono?: string;

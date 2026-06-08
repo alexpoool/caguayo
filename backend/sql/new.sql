@@ -17,6 +17,7 @@ CREATE OR REPLACE VIEW v_databases AS
 SELECT datname as nombre_database 
 FROM pg_database 
 WHERE datistemplate = false 
+  AND datname != 'postgres'
 ORDER BY datname;
 
 -- =====================================================
