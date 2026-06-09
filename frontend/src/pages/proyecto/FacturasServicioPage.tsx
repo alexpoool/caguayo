@@ -681,7 +681,7 @@ export function FacturasServicioPage() {
           <div class="telefonos">Tel: ${empresaTelefono}</div>
           ${empresaWeb ? `<div class="web">Web: ${empresaWeb}</div>` : ''}
           ${empresaEmail ? `<div class="email">${empresaEmail}</div>` : ''}
-          ${empresaReeup ? `<div class="reeup">REEUP: ${empresaReeup}</div>` : ''}
+          ${empresaReeup ? `<div class="reeup">Código: ${empresaReeup}</div>` : ''}
         </div>
         <div class="header-box">
           <div class="header-box-title">${tituloDocumento}</div>
