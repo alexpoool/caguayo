@@ -3,8 +3,9 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Button, Input, Label, Card, CardContent, CardHeader, CardTitle } from '../../components/ui';
 import { clientesService, anexosService, monedaService, liquidacionService, existenciaService } from '../../services/api';
 import type { Cliente, Anexo, Moneda, LiquidacionCreate } from '../../services/api';
-import { Plus, Save, ArrowLeft, CheckCircle, Package, X } from 'lucide-react';
+import { Plus, Save, ArrowLeft, CheckCircle, Package, X, FileText } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { esPorcentaje, esNumeroPositivo } from '../../utils/validacionFormularios';
 
 export function CrearLiquidacionPage() {
   const navigate = useNavigate();
@@ -19,8 +20,28 @@ export function CrearLiquidacionPage() {
   const [filtroCliente, setFiltroCliente] = useState<number | null>(initialProveedorId ? Number(initialProveedorId) : null);
   const [filtroAnexo, setFiltroAnexo] = useState<number | null>(null);
   const [selectedProductos, setSelectedProductos] = useState<number[]>([]);
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingProductos, setIsLoadingProductos] = useState(false);
+
+  const validateNumericField = (field: string, value: any): string | null => {
+    if (field === 'porcentaje_caguayo' || field === 'tributario') {
+      const err = esPorcentaje(value, field === 'porcentaje_caguayo' ? '% Caguayo' : 'Tributario');
+      setErrors(prev => ({ ...prev, [field]: err || '' }));
+      return err;
+    }
+    if (field === 'comision_bancaria' || field === 'gasto_empresa') {
+      const num = Number(value);
+      if (isNaN(num) || num < 0) {
+        const err = `${field === 'comision_bancaria' ? 'Comisión' : 'Gasto'} no puede ser negativo`;
+        setErrors(prev => ({ ...prev, [field]: err }));
+        return err;
+      }
+      setErrors(prev => ({ ...prev, [field]: '' }));
+      return null;
+    }
+    return null;
+  };
   
   const [formData, setFormData] = useState<LiquidacionCreate>({
     id_cliente: 0,
@@ -334,6 +355,16 @@ if (!filtroCliente) {
       return;
     }
 
+    const caguayoErr = validateNumericField('porcentaje_caguayo', formData.porcentaje_caguayo);
+    const tributarioErr = validateNumericField('tributario', formData.tributario);
+    const comisionErr = validateNumericField('comision_bancaria', formData.comision_bancaria);
+    const gastoErr = validateNumericField('gasto_empresa', formData.gasto_empresa);
+    if (caguayoErr || tributarioErr || comisionErr || gastoErr) {
+      toast.error('Corrija los valores en los campos de cálculos');
+      setIsLoading(false);
+      return;
+    }
+
     setIsLoading(true);
     try {
       const productosValidar = itemsAnexo
@@ -382,18 +413,22 @@ if (!filtroCliente) {
 
   return (
     <div className="p-6">
-      <div className="mb-6">
-        <Button variant="ghost" onClick={() => navigate('/compra/liquidaciones')}>
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Volver a Liquidaciones
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-2xl font-bold text-gray-900">Nueva Liquidación</h1>
+        <Button variant="outline" onClick={() => navigate('/compra/liquidaciones')} className="gap-2">
+          <ArrowLeft className="h-4 w-4" />
+          Volver
         </Button>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Nueva Liquidación</CardTitle>
+      <Card className="shadow-sm border-gray-200">
+        <CardHeader className="border-b bg-gray-50/50">
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <FileText className="h-5 w-5 text-blue-600" />
+            Información de la Liquidación
+          </CardTitle>
         </CardHeader>
-        <CardContent className="relative">
+        <CardContent className="p-6">
           
           {convenioInfo && (
             <div className="absolute top-6 right-6 bg-gray-50 border border-gray-300 p-3 text-xs rounded shadow-sm z-10" style={{ right: '24px', top: '24px' }}>
@@ -415,10 +450,10 @@ if (!filtroCliente) {
 
           <div className="grid gap-6 md:grid-cols-2">
             <div>
-              <Label>Proveedor *</Label>
-              <div className="relative">
+              <Label className="text-sm font-medium">Proveedor *</Label>
+              <div className="relative mt-1">
                 <select 
-                  className="w-full p-2 border rounded pr-10"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white pr-10"
                   value={filtroCliente || ''}
                   onChange={(e: any) => {
                     const value = Number(e.target.value);
@@ -448,9 +483,9 @@ if (!filtroCliente) {
             </div>
             
             <div>
-              <Label>Anexo</Label>
+              <Label className="text-sm font-medium">Anexo</Label>
               <select 
-                className="w-full p-2 border rounded"
+                className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white"
                 value={filtroAnexo || ''}
                 onChange={(e: any) => handleAnexoChange(e.target.value ? Number(e.target.value) : null)}
                 disabled={!filtroCliente}
@@ -465,9 +500,9 @@ if (!filtroCliente) {
             </div>
             
             <div>
-              <Label>Moneda *</Label>
+              <Label className="text-sm font-medium">Moneda *</Label>
               <select 
-                className="w-full p-2 border rounded"
+                className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white"
                 value={formData.id_moneda}
                 onChange={(e: any) => setFormData(prev => ({ ...prev, id_moneda: Number(e.target.value) }))}
               >
@@ -480,9 +515,9 @@ if (!filtroCliente) {
             </div>
             
             <div>
-              <Label>Tipo de Pago</Label>
+              <Label className="text-sm font-medium">Tipo de Pago</Label>
               <select 
-                className="w-full p-2 border rounded"
+                className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white"
                 value={formData.tipo_pago}
                 onChange={(e: any) => setFormData(prev => ({ ...prev, tipo_pago: e.target.value }))}
               >
@@ -497,7 +532,7 @@ if (!filtroCliente) {
             {filtroCliente && (
             <div className="mt-6">
               <div className="flex justify-between items-center mb-3">
-                <Label className="text-base">Productos por Anexo</Label>
+                <Label className="text-sm font-medium">Productos por Anexo</Label>
                 <div className="flex gap-2">
                   <button
                     type="button"
@@ -681,40 +716,50 @@ if (!filtroCliente) {
 
           <div className="grid gap-4 md:grid-cols-5 mt-6">
             <div>
-              <Label>Caguayo (%)</Label>
+              <Label className="text-sm font-medium">Caguayo (%)</Label>
               <Input
                 type="number"
                 step="0.01"
+                min="0"
+                max="100"
                 value={formData.porcentaje_caguayo}
-                onChange={(e: any) => setFormData(prev => ({ ...prev, porcentaje_caguayo: Number(e.target.value) }))}
+                onChange={(e: any) => { setFormData(prev => ({ ...prev, porcentaje_caguayo: Number(e.target.value) })); validateNumericField('porcentaje_caguayo', e.target.value); }}
               />
+              {errors.porcentaje_caguayo && <p className="text-red-500 text-sm mt-1">{errors.porcentaje_caguayo}</p>}
             </div>
             <div>
-              <Label>Tributario (%)</Label>
+              <Label className="text-sm font-medium">Tributario (%)</Label>
               <Input
                 type="number"
                 step="0.01"
+                min="0"
+                max="100"
                 value={formData.tributario}
-                onChange={(e: any) => setFormData(prev => ({ ...prev, tributario: Number(e.target.value) }))}
+                onChange={(e: any) => { setFormData(prev => ({ ...prev, tributario: Number(e.target.value) })); validateNumericField('tributario', e.target.value); }}
               />
+              {errors.tributario && <p className="text-red-500 text-sm mt-1">{errors.tributario}</p>}
             </div>
             <div>
-              <Label>Comisión Bancaria</Label>
+              <Label className="text-sm font-medium">Comisión Bancaria</Label>
               <Input
                 type="number"
                 step="0.01"
+                min="0"
                 value={formData.comision_bancaria}
-                onChange={(e: any) => setFormData(prev => ({ ...prev, comision_bancaria: Number(e.target.value) }))}
+                onChange={(e: any) => { setFormData(prev => ({ ...prev, comision_bancaria: Number(e.target.value) })); validateNumericField('comision_bancaria', e.target.value); }}
               />
+              {errors.comision_bancaria && <p className="text-red-500 text-sm mt-1">{errors.comision_bancaria}</p>}
             </div>
             <div>
-              <Label>Gasto Empresa</Label>
+              <Label className="text-sm font-medium">Gasto Empresa</Label>
               <Input
                 type="number"
                 step="0.01"
+                min="0"
                 value={formData.gasto_empresa}
-                onChange={(e: any) => setFormData(prev => ({ ...prev, gasto_empresa: Number(e.target.value) }))}
+                onChange={(e: any) => { setFormData(prev => ({ ...prev, gasto_empresa: Number(e.target.value) })); validateNumericField('gasto_empresa', e.target.value); }}
               />
+              {errors.gasto_empresa && <p className="text-red-500 text-sm mt-1">{errors.gasto_empresa}</p>}
             </div>
           </div>
 
@@ -760,16 +805,16 @@ if (!filtroCliente) {
           </div>
 
           <div className="mt-6">
-            <Label>Observaciones</Label>
+            <Label className="text-sm font-medium">Observaciones</Label>
             <textarea
               value={formData.observaciones}
               onChange={(e: any) => setFormData(prev => ({ ...prev, observaciones: e.target.value }))}
               rows={3}
-              className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+              className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white"
             />
           </div>
 
-          <div className="flex gap-2 mt-6">
+          <div className="flex gap-2 mt-8 pt-6 border-t">
             <Button onClick={handleSave} disabled={isLoading}>
               <Save className="w-4 h-4 mr-2" />
               {isLoading ? 'Guardando...' : 'Guardar Liquidación'}

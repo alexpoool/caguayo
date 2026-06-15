@@ -38,8 +38,11 @@ import {
   FileText,
   Receipt,
   CreditCard,
+  ArrowLeft,
 } from "lucide-react";
 import toast from "react-hot-toast";
+import { required, esFechaValida, fechaNoAnterior, seleccionValida } from "../utils/validacionFormularios";
+
 
 type View = "list" | "form";
 type TabType = "contratos" | "suplementos" | "facturas" | "efectivo";
@@ -153,6 +156,40 @@ const loadInitialData = async () => {
   };
 
   const handleSave = async () => {
+    const fieldErrors: string[] = [];
+    if (tab === "contratos") {
+      const nombreErr = required(formData.nombre, "Nombre");
+      if (nombreErr) fieldErrors.push(nombreErr);
+      const clienteErr = seleccionValida(formData.id_cliente, "Cliente");
+      if (clienteErr) fieldErrors.push(clienteErr);
+      const fechaErr = esFechaValida(formData.fecha, "Fecha");
+      if (fechaErr) fieldErrors.push(fechaErr);
+      const vigenciaErr = esFechaValida(formData.vigencia, "Vigencia");
+      if (vigenciaErr) fieldErrors.push(vigenciaErr);
+      if (!fechaErr && !vigenciaErr) {
+        const vigCompare = fechaNoAnterior(formData.vigencia, formData.fecha, "Vigencia");
+        if (vigCompare) fieldErrors.push(vigCompare);
+      }
+    } else if (tab === "suplementos") {
+      if (!selectedContratoId) fieldErrors.push("Debe seleccionar un contrato");
+      const nombreErr = required(formData.nombre, "Nombre");
+      if (nombreErr) fieldErrors.push(nombreErr);
+    } else if (tab === "facturas") {
+      const codigoErr = required(formData.codigo_factura, "Código de factura");
+      if (codigoErr) fieldErrors.push(codigoErr);
+      if (!selectedContratoId) fieldErrors.push("Debe seleccionar un contrato");
+    } else if (tab === "efectivo") {
+      const slipErr = required(formData.slip, "Slip");
+      if (slipErr) fieldErrors.push(slipErr);
+      const cajeroErr = required(formData.cajero, "Cajero");
+      if (cajeroErr) fieldErrors.push(cajeroErr);
+      const depErr = seleccionValida(formData.id_dependencia, "Dependencia");
+      if (depErr) fieldErrors.push(depErr);
+    }
+    if (fieldErrors.length > 0) {
+      toast.error(fieldErrors.join('\n• '));
+      return;
+    }
     try {
       if (tab === "contratos") {
         const data: ContratoCreate = {
@@ -479,9 +516,9 @@ const loadInitialData = async () => {
   );
 
   const renderForm = () => (
-    <Card>
-      <CardHeader>
-        <CardTitle>
+    <>
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-2xl font-bold text-gray-900">
           {editingId ? "Editar" : "Nuevo"}{" "}
           {tab === "contratos"
             ? "Contrato"
@@ -490,16 +527,34 @@ const loadInitialData = async () => {
               : tab === "facturas"
                 ? "Factura"
                 : "Venta en Efectivo"}
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="grid gap-4">
+        </h2>
+        <Button variant="outline" onClick={() => { setView("list"); resetForm(); }} className="gap-2">
+          <ArrowLeft className="h-4 w-4" />
+          Volver
+        </Button>
+      </div>
+      <Card className="shadow-sm border-gray-200">
+        <CardHeader className="border-b bg-gray-50/50">
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <FileText className="h-5 w-5 text-blue-600" />
+            {editingId ? "Editar" : "Nuevo"}{" "}
+            {tab === "contratos"
+              ? "Contrato"
+              : tab === "suplementos"
+                ? "Suplemento"
+                : tab === "facturas"
+                  ? "Factura"
+                  : "Venta en Efectivo"}
+          </CardTitle>
+        </CardHeader>
+      <CardContent className="p-6">
+        <div className="grid gap-6">
           {tab === "contratos" && (
             <>
               <div>
-                <Label>Cliente</Label>
+                <Label className="text-sm font-medium">Cliente</Label>
                 <select
-                  className="w-full p-2 border rounded"
+                  className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white"
                   value={formData.id_cliente || ""}
                   onChange={(e: any) =>
                     setFormData({ ...formData, id_cliente: e.target.value })
@@ -514,7 +569,7 @@ const loadInitialData = async () => {
                 </select>
               </div>
               <div>
-                <Label>Nombre</Label>
+                <Label className="text-sm font-medium">Nombre</Label>
                 <Input
                   value={formData.nombre || ""}
                   onChange={(e: any) =>
@@ -523,7 +578,7 @@ const loadInitialData = async () => {
                 />
               </div>
               <div>
-                <Label>Proforma</Label>
+                <Label className="text-sm font-medium">Proforma</Label>
                 <Input
                   value={formData.proforma || ""}
                   onChange={(e: any) =>
@@ -533,9 +588,9 @@ const loadInitialData = async () => {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label>Estado</Label>
+                  <Label className="text-sm font-medium">Estado</Label>
                   <select
-                    className="w-full p-2 border rounded"
+                    className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white"
                     value={formData.id_estado || ""}
                     onChange={(e: any) =>
                       setFormData({ ...formData, id_estado: e.target.value })
@@ -549,9 +604,9 @@ const loadInitialData = async () => {
                   </select>
                 </div>
                 <div>
-                  <Label>Tipo</Label>
+                  <Label className="text-sm font-medium">Tipo</Label>
                   <select
-                    className="w-full p-2 border rounded"
+                    className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white"
                     value={formData.id_tipo_contrato || ""}
                     onChange={(e: any) =>
                       setFormData({
@@ -570,7 +625,7 @@ const loadInitialData = async () => {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label>Fecha</Label>
+                  <Label className="text-sm font-medium">Fecha</Label>
                   <Input
                     type="date"
                     value={formData.fecha || ""}
@@ -580,7 +635,7 @@ const loadInitialData = async () => {
                   />
                 </div>
                 <div>
-                  <Label>Vigencia</Label>
+                  <Label className="text-sm font-medium">Vigencia</Label>
                   <Input
                     type="date"
                     value={formData.vigencia || ""}
@@ -591,9 +646,9 @@ const loadInitialData = async () => {
                 </div>
               </div>
               <div>
-                <Label>Moneda</Label>
+                <Label className="text-sm font-medium">Moneda</Label>
                 <select
-                  className="w-full p-2 border rounded"
+                  className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white"
                   value={formData.id_moneda || ""}
                   onChange={(e: any) =>
                     setFormData({ ...formData, id_moneda: e.target.value })
@@ -608,7 +663,7 @@ const loadInitialData = async () => {
                 </select>
               </div>
               <div>
-                <Label>Documento Final</Label>
+                <Label className="text-sm font-medium">Documento Final</Label>
                 <Input
                   value={formData.documento_final || ""}
                   onChange={(e: any) =>
@@ -624,7 +679,7 @@ const loadInitialData = async () => {
           {tab === "suplementos" && (
             <>
               <div>
-                <Label>Nombre</Label>
+                <Label className="text-sm font-medium">Nombre</Label>
                 <Input
                   value={formData.nombre || ""}
                   onChange={(e: any) =>
@@ -634,9 +689,9 @@ const loadInitialData = async () => {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label>Estado</Label>
+                  <Label className="text-sm font-medium">Estado</Label>
                   <select
-                    className="w-full p-2 border rounded"
+                    className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white"
                     value={formData.id_estado || ""}
                     onChange={(e: any) =>
                       setFormData({ ...formData, id_estado: e.target.value })
@@ -650,7 +705,7 @@ const loadInitialData = async () => {
                   </select>
                 </div>
                 <div>
-                  <Label>Fecha</Label>
+                  <Label className="text-sm font-medium">Fecha</Label>
                   <Input
                     type="date"
                     value={formData.fecha || ""}
@@ -661,7 +716,7 @@ const loadInitialData = async () => {
                 </div>
               </div>
               <div>
-                <Label>Documento</Label>
+                <Label className="text-sm font-medium">Documento</Label>
                 <Input
                   value={formData.documento || ""}
                   onChange={(e: any) =>
@@ -674,7 +729,7 @@ const loadInitialData = async () => {
           {tab === "facturas" && (
             <>
               <div>
-                <Label>Código Factura</Label>
+                <Label className="text-sm font-medium">Código Factura</Label>
                 <Input
                   value={formData.codigo_factura || ""}
                   onChange={(e: any) =>
@@ -683,7 +738,7 @@ const loadInitialData = async () => {
                 />
               </div>
               <div>
-                <Label>Descripción</Label>
+                <Label className="text-sm font-medium">Descripción</Label>
                 <Input
                   value={formData.descripcion || ""}
                   onChange={(e: any) =>
@@ -692,7 +747,7 @@ const loadInitialData = async () => {
                 />
               </div>
               <div>
-                <Label>Observaciones</Label>
+                <Label className="text-sm font-medium">Observaciones</Label>
                 <Input
                   value={formData.observaciones || ""}
                   onChange={(e: any) =>
@@ -702,7 +757,7 @@ const loadInitialData = async () => {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label>Fecha</Label>
+                  <Label className="text-sm font-medium">Fecha</Label>
                   <Input
                     type="date"
                     value={formData.fecha || ""}
@@ -712,7 +767,7 @@ const loadInitialData = async () => {
                   />
                 </div>
                 <div>
-                  <Label>Pago Actual</Label>
+                  <Label className="text-sm font-medium">Pago Actual</Label>
                   <Input
                     type="number"
                     step="0.01"
@@ -728,7 +783,7 @@ const loadInitialData = async () => {
           {tab === "efectivo" && (
             <>
               <div>
-                <Label>Slip</Label>
+                <Label className="text-sm font-medium">Slip</Label>
                 <Input
                   value={formData.slip || ""}
                   onChange={(e: any) =>
@@ -738,7 +793,7 @@ const loadInitialData = async () => {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label>Fecha</Label>
+                  <Label className="text-sm font-medium">Fecha</Label>
                   <Input
                     type="date"
                     value={formData.fecha || ""}
@@ -748,7 +803,7 @@ const loadInitialData = async () => {
                   />
                 </div>
                 <div>
-                  <Label>Cajero</Label>
+                  <Label className="text-sm font-medium">Cajero</Label>
                   <Input
                     value={formData.cajero || ""}
                     onChange={(e: any) =>
@@ -758,9 +813,9 @@ const loadInitialData = async () => {
                 </div>
               </div>
               <div>
-                <Label>Dependencia</Label>
+                <Label className="text-sm font-medium">Dependencia</Label>
                 <select
-                  className="w-full p-2 border rounded"
+                  className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white"
                   value={formData.id_dependencia || ""}
                   onChange={(e: any) =>
                     setFormData({ ...formData, id_dependencia: e.target.value })
@@ -776,7 +831,7 @@ const loadInitialData = async () => {
               </div>
             </>
           )}
-          <div className="flex gap-2 mt-4">
+          <div className="flex gap-2 mt-8 pt-6 border-t">
             <Button onClick={handleSave}>
               <Save className="w-4 h-4 mr-2" />
               Guardar
@@ -794,6 +849,7 @@ const loadInitialData = async () => {
         </div>
       </CardContent>
     </Card>
+    </>
   );
 
   return (

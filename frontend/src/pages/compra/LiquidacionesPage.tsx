@@ -4,6 +4,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { Button, Card, CardHeader, CardTitle, CardContent, Label, Input, Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../../components/ui';
+import { esPorcentaje, esNumeroPositivo } from '../../utils/validacionFormularios';
 import { 
   Search, 
   Plus, 
@@ -55,6 +56,7 @@ export function LiquidacionesPage() {
   const [filtroAnexo, setFiltroAnexo] = useState<number | null>(null);
   
   const [selectedProductos, setSelectedProductos] = useState<number[]>([]);
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [formData, setFormData] = useState<LiquidacionCreate>({
     id_cliente: 0,
     id_convenio: undefined,
@@ -68,6 +70,25 @@ export function LiquidacionesPage() {
     observaciones: '',
     producto_ids: []
   });
+
+  const validateNumericField = (field: string, value: any): string | null => {
+    if (field === 'porcentaje_caguayo' || field === 'tributario') {
+      const err = esPorcentaje(value, field === 'porcentaje_caguayo' ? '% Caguayo' : 'Tributario');
+      setErrors(prev => ({ ...prev, [field]: err || '' }));
+      return err;
+    }
+    if (field === 'comision_bancaria' || field === 'gasto_empresa') {
+      const num = Number(value);
+      if (isNaN(num) || num < 0) {
+        const err = `${field === 'comision_bancaria' ? 'Comisión' : 'Gasto'} no puede ser negativo`;
+        setErrors(prev => ({ ...prev, [field]: err }));
+        return err;
+      }
+      setErrors(prev => ({ ...prev, [field]: '' }));
+      return null;
+    }
+    return null;
+  };
 
   const { data: liquidaciones = [], isLoading } = useQuery({
     queryKey: ['liquidaciones', activeTab, filtroCliente],
@@ -116,8 +137,8 @@ export function LiquidacionesPage() {
   const createMutation = useMutation({
     mutationFn: (data: LiquidacionCreate) => liquidacionService.createLiquidacion(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['liquidaciones'] });
-      queryClient.invalidateQueries({ queryKey: ['productos-pendientes'] });
+      queryClient.refetchQueries({ queryKey: ['liquidaciones'] });
+      queryClient.refetchQueries({ queryKey: ['productos-pendientes'] });
       toast.success('Liquidación creada correctamente');
       setShowModal(false);
       resetForm();
@@ -130,7 +151,7 @@ export function LiquidacionesPage() {
   const deleteMutation = useMutation({
     mutationFn: (id: number) => liquidacionService.deleteLiquidacion(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['liquidaciones'] });
+      queryClient.refetchQueries({ queryKey: ['liquidaciones'] });
       toast.success('Liquidación eliminada');
     },
     onError: () => {
@@ -705,9 +726,12 @@ export function LiquidacionesPage() {
       {showModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-4xl max-h-[90vh] overflow-hidden">
-            <CardHeader>
+            <CardHeader className="border-b bg-gray-50/50">
               <div className="flex items-center gap-4">
-                <CardTitle>Nueva Liquidación</CardTitle>
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <FileText className="h-5 w-5 text-blue-600" />
+                  Nueva Liquidación
+                </CardTitle>
                 <button onClick={() => { setShowModal(false); resetForm(); }} className="ml-auto text-gray-400 hover:text-gray-600">
                   <X className="w-5 h-5" />
                 </button>
@@ -715,10 +739,10 @@ export function LiquidacionesPage() {
             </CardHeader>
             
             <div className="p-6 overflow-y-auto max-h-[calc(90vh-140px)]">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                 <div>
-                  <Label>Proveedor *</Label>
-                  <div className="relative">
+                  <Label className="text-sm font-medium">Proveedor *</Label>
+                  <div className="relative mt-1">
                     <select
                       value={filtroCliente || ''}
                       onChange={(e) => {
@@ -727,7 +751,7 @@ export function LiquidacionesPage() {
                           handleClienteChange(value);
                         }
                       }}
-                      className="w-full p-2 border rounded pr-10"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white pr-10"
                     >
                       <option value="">Seleccionar proveedor</option>
                       {clientes.map((cliente: Cliente) => (
@@ -750,11 +774,11 @@ export function LiquidacionesPage() {
                 </div>
                 
                 <div>
-                  <Label>Anexo</Label>
+                  <Label className="text-sm font-medium">Anexo</Label>
                   <select
                     value={filtroAnexo || ''}
                     onChange={(e) => handleAnexoChange(e.target.value ? Number(e.target.value) : null)}
-                    className="w-full p-2 border rounded"
+                    className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white"
                     disabled={!filtroCliente}
                   >
                     <option value="">Todos los anexos</option>
@@ -767,11 +791,11 @@ export function LiquidacionesPage() {
                 </div>
                 
                 <div>
-                  <Label>Moneda *</Label>
+                  <Label className="text-sm font-medium">Moneda *</Label>
                   <select
                     value={formData.id_moneda}
                     onChange={(e) => setFormData(prev => ({ ...prev, id_moneda: Number(e.target.value) }))}
-                    className="w-full p-2 border rounded"
+                    className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white"
                   >
                     {monedas.map((moneda: Moneda) => (
                       <option key={moneda.id_moneda} value={moneda.id_moneda}>
@@ -782,11 +806,11 @@ export function LiquidacionesPage() {
                 </div>
                 
                 <div>
-                  <Label>Tipo de Pago</Label>
+                  <Label className="text-sm font-medium">Tipo de Pago</Label>
                   <select
                     value={formData.tipo_pago}
                     onChange={(e) => setFormData(prev => ({ ...prev, tipo_pago: e.target.value }))}
-                    className="w-full p-2 border rounded"
+                    className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white"
                   >
                     <option value="TRANSFERENCIA">Transferencia</option>
                     <option value="EFECTIVO">Efectivo</option>
@@ -867,40 +891,50 @@ export function LiquidacionesPage() {
 
               <div className="grid gap-4 md:grid-cols-5 mb-6">
                 <div>
-                  <Label>% Caguayo</Label>
+                  <Label className="text-sm font-medium">% Caguayo</Label>
                   <Input
                     type="number"
                     step="0.01"
+                    min="0"
+                    max="100"
                     value={formData.porcentaje_caguayo}
-                    onChange={(e) => setFormData(prev => ({ ...prev, porcentaje_caguayo: Number(e.target.value) }))}
+                    onChange={(e) => { setFormData(prev => ({ ...prev, porcentaje_caguayo: Number(e.target.value) })); validateNumericField('porcentaje_caguayo', e.target.value); }}
                   />
+                  {errors.porcentaje_caguayo && <p className="text-red-500 text-sm mt-1">{errors.porcentaje_caguayo}</p>}
                 </div>
                 <div>
-                  <Label>Tributario (%)</Label>
+                  <Label className="text-sm font-medium">Tributario (%)</Label>
                   <Input
                     type="number"
                     step="0.01"
+                    min="0"
+                    max="100"
                     value={formData.tributario}
-                    onChange={(e) => setFormData(prev => ({ ...prev, tributario: Number(e.target.value) }))}
+                    onChange={(e) => { setFormData(prev => ({ ...prev, tributario: Number(e.target.value) })); validateNumericField('tributario', e.target.value); }}
                   />
+                  {errors.tributario && <p className="text-red-500 text-sm mt-1">{errors.tributario}</p>}
                 </div>
                 <div>
-                  <Label>Comisión Bancaria</Label>
+                  <Label className="text-sm font-medium">Comisión Bancaria</Label>
                   <Input
                     type="number"
                     step="0.01"
+                    min="0"
                     value={formData.comision_bancaria}
-                    onChange={(e) => setFormData(prev => ({ ...prev, comision_bancaria: Number(e.target.value) }))}
+                    onChange={(e) => { setFormData(prev => ({ ...prev, comision_bancaria: Number(e.target.value) })); validateNumericField('comision_bancaria', e.target.value); }}
                   />
+                  {errors.comision_bancaria && <p className="text-red-500 text-sm mt-1">{errors.comision_bancaria}</p>}
                 </div>
                 <div>
-                  <Label>Gasto Empresa</Label>
+                  <Label className="text-sm font-medium">Gasto Empresa</Label>
                   <Input
                     type="number"
                     step="0.01"
+                    min="0"
                     value={formData.gasto_empresa}
-                    onChange={(e) => setFormData(prev => ({ ...prev, gasto_empresa: Number(e.target.value) }))}
+                    onChange={(e) => { setFormData(prev => ({ ...prev, gasto_empresa: Number(e.target.value) })); validateNumericField('gasto_empresa', e.target.value); }}
                   />
+                  {errors.gasto_empresa && <p className="text-red-500 text-sm mt-1">{errors.gasto_empresa}</p>}
                 </div>
               </div>
 
@@ -942,12 +976,12 @@ export function LiquidacionesPage() {
               </div>
 
               <div>
-                <Label>Observaciones</Label>
+                <Label className="text-sm font-medium">Observaciones</Label>
                 <textarea
                   value={formData.observaciones}
                   onChange={(e) => setFormData(prev => ({ ...prev, observaciones: e.target.value }))}
                   rows={3}
-                  className="w-full p-2 border rounded resize-none"
+                  className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white resize-none"
                 />
 </div>
             </div>
@@ -960,6 +994,18 @@ export function LiquidacionesPage() {
                 onClick={() => {
                   if (!formData.id_cliente || selectedProductos.length === 0) {
                     toast.error('Seleccione un proveedor y al menos un producto');
+                    return;
+                  }
+                  if (!formData.id_moneda || formData.id_moneda === 0) {
+                    toast.error('Seleccione una moneda');
+                    return;
+                  }
+                  const caguayoErr = validateNumericField('porcentaje_caguayo', formData.porcentaje_caguayo);
+                  const tributarioErr = validateNumericField('tributario', formData.tributario);
+                  const comisionErr = validateNumericField('comision_bancaria', formData.comision_bancaria);
+                  const gastoErr = validateNumericField('gasto_empresa', formData.gasto_empresa);
+                  if (caguayoErr || tributarioErr || comisionErr || gastoErr) {
+                    toast.error('Corrija los valores en los campos de cálculos');
                     return;
                   }
                   createMutation.mutate({

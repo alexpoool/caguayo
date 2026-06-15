@@ -7,6 +7,7 @@ import type { Productos } from '../../types';
 import { Plus, Save, Trash2, Edit, X, Boxes, ArrowLeft, Package, DollarSign, Tag, Eye, User, Search, AlertTriangle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useSearchParams } from 'react-router-dom';
+import { required, esFechaValida, esNumeroPositivo, useFormValidation } from '../../utils/validacionFormularios';
 
 type View = 'list' | 'form' | 'detail';
 
@@ -31,6 +32,11 @@ export function CompraAnexosPage() {
   const [productSearch, setProductSearch] = useState('');
   const [isFocused, setIsFocused] = useState(false);
   const [detailModal, setDetailModal] = useState<{ isOpen: boolean; item: any | null }>({ isOpen: false, item: null });
+
+  const { errors, touched, validateField, handleBlur, validateAll, clearErrors, getError } = useFormValidation([
+    { field: 'nombre_anexo', label: 'Nombre del anexo', validate: (v) => required(v, 'Nombre del anexo') },
+    { field: 'fecha', label: 'Fecha', validate: (v) => esFechaValida(v, 'Fecha') },
+  ]);
 
   useEffect(() => { loadInitialData(); }, []);
 
@@ -75,6 +81,25 @@ export function CompraAnexosPage() {
   const handleSave = async () => {
     if (!selectedConvenio || isNaN(Number(selectedConvenio))) {
       toast.error('Debe seleccionar un convenio');
+      return;
+    }
+    if (!validateAll(formData)) {
+      const errorList = [getError('nombre_anexo'), getError('fecha')].filter(Boolean);
+      toast.error(errorList.join('\n• '));
+      return;
+    }
+    if (selectedProducts.length === 0) {
+      toast.error('Debe agregar al menos un producto');
+      return;
+    }
+    const productErrors = selectedProducts.some(p => p.cantidad < 1);
+    if (productErrors) {
+      toast.error('Cada producto debe tener cantidad mayor o igual a 1');
+      return;
+    }
+    const priceErrors = selectedProducts.some(p => p.precio_venta < 0);
+    if (priceErrors) {
+      toast.error('El precio de venta no puede ser negativo');
       return;
     }
     try {
@@ -327,20 +352,25 @@ export function CompraAnexosPage() {
   );
 
   const renderForm = () => (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="sm" onClick={() => { setView('list'); resetForm(); }}><ArrowLeft className="w-4 h-4" /></Button>
-          <CardTitle>{editingId ? 'Editar' : 'Nuevo'} Anexo</CardTitle>
-          {editingId && formData.codigo_anexo && (
-            <span className="ml-auto font-mono font-bold">{formData.codigo_anexo}</span>
-          )}
-        </div>
-      </CardHeader>
-      <CardContent>
+    <>
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-2xl font-bold text-gray-900">{editingId ? 'Editar' : 'Nuevo'} Anexo</h2>
+        <Button variant="outline" onClick={() => { setView('list'); resetForm(); }} className="gap-2">
+          <ArrowLeft className="h-4 w-4" />
+          Volver
+        </Button>
+      </div>
+      <Card className="shadow-sm border-gray-200">
+        <CardHeader className="border-b bg-gray-50/50">
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <Boxes className="h-5 w-5 text-fuchsia-600" />
+            Información del Anexo
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-6">
         <div className="grid gap-4 md:grid-cols-2">
           <div className="md:col-span-2">
-            <Label>Convenio</Label>
+            <Label className="text-sm font-medium">Convenio</Label>
             {initialConvenioId ? (
               <div className={`mt-1 px-3 py-2 border rounded-lg flex items-center justify-between ${convenioVencido ? 'bg-red-50 border-red-300 text-red-700' : 'bg-gray-100 border-gray-300 text-gray-700'}`}>
                 <span>{convenios.find(c => c.id_convenio === Number(initialConvenioId))?.nombre_convenio || `Convenio #${initialConvenioId}`}</span>
@@ -352,7 +382,7 @@ export function CompraAnexosPage() {
                 )}
               </div>
             ) : (
-              <select className="w-full p-2 border rounded" value={formData.id_convenio || ''} onChange={(e: any) => setFormData({...formData, id_convenio: e.target.value})}>
+              <select className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-fuchsia-500 outline-none bg-white" value={formData.id_convenio || ''} onChange={(e: any) => setFormData({...formData, id_convenio: e.target.value})}>
                 <option value="">Seleccionar</option>
                 {conveniosVigentes.map(c => <option key={c.id_convenio} value={c.id_convenio}>{c.nombre_convenio}</option>)}
               </select>
@@ -362,46 +392,49 @@ export function CompraAnexosPage() {
             )}
           </div>
           
-          <div className="md:col-span-2"><Label>Nombre del Anexo *</Label><Input value={formData.nombre_anexo || ''} onChange={(e: any) => setFormData({...formData, nombre_anexo: e.target.value})} /></div>
+          <div className="md:col-span-2"><Label className="text-sm font-medium">Nombre del Anexo *</Label><Input className="mt-1" value={formData.nombre_anexo || ''} onChange={(e: any) => { setFormData({...formData, nombre_anexo: e.target.value}); validateField('nombre_anexo', e.target.value); }} onBlur={(e: any) => handleBlur('nombre_anexo', e.target.value)} />
+          {getError('nombre_anexo') && <p className="text-red-500 text-sm mt-1">{getError('nombre_anexo')}</p>}</div>
           
           <div>
-            <Label>Fecha *</Label>
-            <div className="flex gap-2">
+            <Label className="text-sm font-medium">Fecha *</Label>
+            <div className="flex gap-2 mt-1">
               <input 
                 type="date" 
                 className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-fuchsia-500 focus:border-fuchsia-500 outline-none transition-colors" 
                 value={formData.fecha || ''} 
-                onChange={(e: any) => setFormData({...formData, fecha: e.target.value})} 
+                onChange={(e: any) => { setFormData({...formData, fecha: e.target.value}); validateField('fecha', e.target.value); }} 
+                onBlur={(e: any) => handleBlur('fecha', e.target.value)}
               />
               <button 
                 type="button" 
-                onClick={() => setFormData({...formData, fecha: new Date().toISOString().split('T')[0]})} 
+                onClick={() => { const hoy = new Date().toISOString().split('T')[0]; setFormData({...formData, fecha: hoy}); validateField('fecha', hoy); }} 
                 className="px-3 py-2 bg-fuchsia-600 text-white rounded-lg hover:bg-fuchsia-700 transition-colors text-sm font-medium whitespace-nowrap"
               >
                 Hoy
               </button>
             </div>
+            {getError('fecha') && <p className="text-red-500 text-sm mt-1">{getError('fecha')}</p>}
           </div>
           
-          <div><Label>Dependencia</Label>
-            <select className="w-full p-2 border rounded" value={formData.id_dependencia || ''} onChange={(e: any) => setFormData({...formData, id_dependencia: e.target.value})}>
+          <div><Label className="text-sm font-medium">Dependencia</Label>
+            <select className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-fuchsia-500 outline-none bg-white" value={formData.id_dependencia || ''} onChange={(e: any) => setFormData({...formData, id_dependencia: e.target.value})}>
               <option value="">{isLoadingDependencias ? 'Cargando...' : 'Seleccionar'}</option>
               {!isLoadingDependencias && dependenciasFiltradas.map(d => <option key={d.id_dependencia} value={d.id_dependencia}>{d.nombre}</option>)}
             </select>
           </div>
           
-          <div><Label>Moneda</Label>
-            <select className="w-full p-2 border rounded" value={formData.id_moneda || ''} onChange={(e: any) => setFormData({...formData, id_moneda: e.target.value})}>
+          <div><Label className="text-sm font-medium">Moneda</Label>
+            <select className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-fuchsia-500 outline-none bg-white" value={formData.id_moneda || ''} onChange={(e: any) => setFormData({...formData, id_moneda: e.target.value})}>
               <option value="">Seleccionar</option>
               {monedas.map(m => <option key={m.id_moneda} value={m.id_moneda}>{m.nombre} ({m.simbolo})</option>)}
             </select>
           </div>
           
-          <div><Label>Comisión (%)</Label><Input type="number" step="0.01" value={formData.comision || ''} onChange={(e: any) => setFormData({...formData, comision: e.target.value})} /></div>
+          <div><Label className="text-sm font-medium">Comisión (%)</Label><Input className="mt-1" type="number" step="0.01" value={formData.comision || ''} onChange={(e: any) => setFormData({...formData, comision: e.target.value})} /></div>
         </div>
 
         <div className="mt-6">
-          <Label className="mb-2 block">Productos</Label>
+          <Label className="text-sm font-medium mb-2 block">Productos</Label>
           <div className="relative mb-3">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <Input
@@ -485,12 +518,13 @@ export function CompraAnexosPage() {
           )}
         </div>
         
-        <div className="flex gap-2 mt-6">
-          <Button onClick={handleSave} disabled={convenioVencido}><Save className="w-4 h-4 mr-2" />Guardar</Button>
+        <div className="flex gap-3 mt-8 pt-6 border-t">
+          <Button onClick={handleSave} disabled={convenioVencido} className="gap-2 bg-gradient-to-r from-fuchsia-500 to-purple-600 hover:from-fuchsia-600 hover:to-purple-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300"><Save className="h-4 w-4" />Guardar</Button>
           <Button variant="outline" onClick={() => { setView('list'); resetForm(); }}>Cancelar</Button>
         </div>
       </CardContent>
     </Card>
+    </>
   );
 
   return (

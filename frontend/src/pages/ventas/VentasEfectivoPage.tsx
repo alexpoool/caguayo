@@ -44,6 +44,7 @@ import {
   Tag,
 } from "lucide-react";
 import toast from "react-hot-toast";
+import { required, seleccionValida } from "../../utils/validacionFormularios";
 
 type View = "list" | "form";
 
@@ -120,6 +121,17 @@ const loadInitialData = async () => {
   }, [view]);
 
   const handleSave = async () => {
+    const fieldErrors: string[] = [];
+    const slipErr = required(formData.slip, 'Slip');
+    if (slipErr) fieldErrors.push(slipErr);
+    const cajeroErr = required(formData.cajero, 'Cajero');
+    if (cajeroErr) fieldErrors.push(cajeroErr);
+    const depErr = seleccionValida(formData.id_dependencia, 'Dependencia');
+    if (depErr) fieldErrors.push(depErr);
+    if (fieldErrors.length > 0) {
+      toast.error(fieldErrors.join('\n• '));
+      return;
+    }
     try {
       const stockErrors = selectedProducts.filter((p) => {
         const stock = stockMap.get(p.id_producto) ?? 0;

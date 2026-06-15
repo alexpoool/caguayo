@@ -95,8 +95,10 @@ export function useClientesLogic() {
       const cliente = await clientesService.createCliente(data);
       return cliente;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["clientes"] });
+    onSuccess: (data) => {
+      queryClient.setQueryData<Cliente[]>(["clientes", isProveedorView], (old) =>
+        old ? [data, ...old] : [data]
+      );
       toast.success("Cliente creado correctamente");
       setView("list");
     },
@@ -110,8 +112,10 @@ export function useClientesLogic() {
   const updateMutation = useMutation({
     mutationFn: ({ id, data }: { id: number; data: ClienteUpdate }) =>
       clientesService.updateCliente(id, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["clientes"] });
+    onSuccess: (data) => {
+      queryClient.setQueryData<Cliente[]>(["clientes", isProveedorView], (old) =>
+        old?.map(c => c.id_cliente === data.id_cliente ? data : c) ?? [data]
+      );
       toast.success("Cliente actualizado correctamente");
       setView("list");
       setEditingCliente(null);
@@ -125,8 +129,10 @@ export function useClientesLogic() {
 
   const deleteMutation = useMutation({
     mutationFn: clientesService.deleteCliente,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["clientes"] });
+    onSuccess: (_data, id) => {
+      queryClient.setQueryData<Cliente[]>(["clientes", isProveedorView], (old) =>
+        old?.filter(c => c.id_cliente !== id) ?? []
+      );
       toast.success("Cliente eliminado correctamente");
     },
     onError: (error: any) => {

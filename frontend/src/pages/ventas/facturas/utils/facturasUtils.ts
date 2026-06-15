@@ -22,12 +22,17 @@ export function calcularTotal(products: SelectedProduct[]): number {
  * Valida que el formulario tenga datos requeridos
  */
 export function validarFactura(data: {
+  codigo_factura?: string;
   id_contrato?: number;
   fecha?: string;
   id_moneda?: number;
   items?: SelectedProduct[];
 }): { valid: boolean; errors: string[] } {
   const errors: string[] = [];
+
+  if (!data.codigo_factura || data.codigo_factura.trim() === '') {
+    errors.push('Debe ingresar un código de factura');
+  }
 
   if (!data.id_contrato) {
     errors.push('Debe seleccionar un contrato');

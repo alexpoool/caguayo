@@ -7,6 +7,7 @@ import type { SuplementoWithDetails } from '../../types/contrato';
 import { Plus, Save, Trash2, Edit, ArrowLeft, Search, Layers, FileText, DollarSign, Calendar, Tag, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useSearchParams } from 'react-router-dom';
+import { required } from '../../utils/validacionFormularios';
 
 type View = 'list' | 'form';
 
@@ -78,6 +79,11 @@ export function SuplementosPage() {
   const handleSave = async () => {
     if (!selectedContratoId) {
       toast.error('Debe seleccionar un contrato');
+      return;
+    }
+    const nombreErr = required(formData.nombre, 'Nombre');
+    if (nombreErr) {
+      toast.error(nombreErr);
       return;
     }
     try {

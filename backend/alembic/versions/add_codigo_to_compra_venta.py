@@ -18,10 +18,10 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    op.add_column("suplemento", sa.Column("codigo", sa.String(100), nullable=True))
-    op.add_column("item_factura", sa.Column("codigo", sa.String(100), nullable=True))
-    op.add_column("venta_efectivo", sa.Column("codigo", sa.String(100), nullable=True))
-    op.add_column("item_venta_efectivo", sa.Column("codigo", sa.String(100), nullable=True))
+    op.execute("ALTER TABLE suplemento ADD COLUMN IF NOT EXISTS codigo VARCHAR(100)")
+    op.execute("ALTER TABLE item_factura ADD COLUMN IF NOT EXISTS codigo VARCHAR(100)")
+    op.execute("ALTER TABLE venta_efectivo ADD COLUMN IF NOT EXISTS codigo VARCHAR(100)")
+    op.execute("ALTER TABLE item_venta_efectivo ADD COLUMN IF NOT EXISTS codigo VARCHAR(100)")
 
 
 def downgrade() -> None:
