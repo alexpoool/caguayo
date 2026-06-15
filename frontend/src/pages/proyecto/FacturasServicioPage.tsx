@@ -515,6 +515,8 @@ export function FacturasServicioPage() {
     const empresaTelefono = empresa?.telefono || '';
     const empresaWeb = empresa?.web || '';
     const empresaEmail = empresa?.email || '';
+    const empresaNit = empresa?.nit || '';
+    const empresaReeup = empresa?.reeup || '';
 
     // Datos del cliente
     const clienteId = solicitud?.id_cliente;
@@ -586,6 +588,7 @@ export function FacturasServicioPage() {
     .nombre-titular { font-size: 15px; font-weight: bold; margin-top: 6px; }
     .direccion-contacto { font-size: 11.5px; margin-top: 6px; line-height: 1.2; }
     .telefonos { font-size: 12px; font-weight: 500; margin-top: 4px; }
+    .reeup { font-size: 12px; font-weight: 500; margin-top: 4px; }
     .web { font-size: 12px; font-weight: 500; margin-top: 4px; }
     .email { font-size: 12px; color: black; }
     .header-box { border: 2px solid black; background: white; padding: 10px 15px; min-width: 180px; border-radius: 4px; }
@@ -678,6 +681,7 @@ export function FacturasServicioPage() {
           <div class="telefonos">Tel: ${empresaTelefono}</div>
           ${empresaWeb ? `<div class="web">Web: ${empresaWeb}</div>` : ''}
           ${empresaEmail ? `<div class="email">${empresaEmail}</div>` : ''}
+          ${empresaReeup ? `<div class="reeup">Código: ${empresaReeup}</div>` : ''}
         </div>
         <div class="header-box">
           <div class="header-box-title">${tituloDocumento}</div>

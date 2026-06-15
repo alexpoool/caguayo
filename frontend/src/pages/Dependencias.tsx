@@ -11,7 +11,6 @@ import {
   X,
   ChevronRight,
   ChevronDown,
-  Trash,
   Tag,
   Network,
   MapPin,
@@ -21,11 +20,11 @@ import {
   Map,
   Locate,
   FileText,
-  Landmark,
-  Store,
   Wallet,
   CreditCard,
   User,
+  Landmark,
+  Store,
   ArrowLeft,
   Sparkles,
   CheckCircle2,
@@ -52,13 +51,8 @@ import {
   TableCell,
   ConfirmModal,
 } from "../components/ui";
-import {
-  dependenciasService,
-  configuracionService,
-} from "../services/administracion";
-import { monedaService } from "../services/api";
+import { dependenciasService } from "../services/administracion";
 import type { Dependencia, DependenciaCreate, DependenciaConCuentasCreate } from "../types/dependencia";
-import type { CuentaCreate } from "../types/cuenta";
 
 interface ArbolDependenciaProps {
   dependencias: Dependencia[];
@@ -152,21 +146,10 @@ export function DependenciasPage() {
     id_tipo_dependencia: 0,
     nombre: "",
     nit: "",
+    reeup: "",
     base_datos: "",
     direccion: "",
     telefono: "",
-  });
-  const [cuentas, setCuentas] = useState<CuentaCreate[]>([]);
-  const [editingCuentaIndex, setEditingCuentaIndex] = useState<number | null>(
-    null,
-  );
-  const [cuentaForm, setCuentaForm] = useState<CuentaCreate>({
-    titular: "",
-    banco: "",
-    sucursal: undefined,
-    direccion: "",
-    numero_cuenta: "",
-    id_moneda: undefined,
   });
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
@@ -207,12 +190,6 @@ export function DependenciasPage() {
 
   const [copiedTable, setCopiedTable] = useState<string | null>(null);
 
-const { data: tiposCuenta = [] } = useQuery({
-    queryKey: ["tiposCuenta"],
-    queryFn: () => Promise.resolve([]),
-    staleTime: 1000 * 60 * 5,
-  });
-
   const { data: dependencias = [] } = useQuery({
     queryKey: ["dependencias"],
     queryFn: () => dependenciasService.getDependencias(),
@@ -239,14 +216,13 @@ const { data: tiposCuenta = [] } = useQuery({
   const [showDropdownBD, setShowDropdownBD] = useState(false);
   const dropdownBDRef = useRef<HTMLDivElement>(null);
 
+  const [busquedaPadre, setBusquedaPadre] = useState("");
+  const [showDropdownPadre, setShowDropdownPadre] = useState(false);
+  const padreDropdownRef = useRef<HTMLDivElement>(null);
+
   const { data: basesDeDatos = [] } = useQuery({
     queryKey: ["bases-de-datos"],
     queryFn: () => dependenciasService.getBasesDeDatos(),
-  });
-
-  const { data: monedas = [] } = useQuery({
-    queryKey: ["monedas"],
-    queryFn: () => monedaService.getMonedas(),
   });
 
   // Refetch municipios when provincia changes
@@ -283,11 +259,14 @@ const { data: tiposCuenta = [] } = useQuery({
     municipios,
   ]);
 
-  // Cerrar dropdown de BD al hacer clic fuera
+  // Cerrar dropdowns al hacer clic fuera
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownBDRef.current && !dropdownBDRef.current.contains(event.target as Node)) {
         setShowDropdownBD(false);
+      }
+      if (padreDropdownRef.current && !padreDropdownRef.current.contains(event.target as Node)) {
+        setShowDropdownPadre(false);
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
@@ -296,6 +275,10 @@ const { data: tiposCuenta = [] } = useQuery({
 
   const basesDeDatosFiltradas = basesDeDatos.filter((bd) =>
     bd.nombre_database.toLowerCase().includes(busquedaBD.toLowerCase()),
+  );
+
+  const dependenciasPadreFiltradas = dependencias.filter((d) =>
+    d.nombre.toLowerCase().includes(busquedaPadre.toLowerCase()),
   );
 
   const createDependencia = useMutation({
@@ -346,9 +329,15 @@ const { data: tiposCuenta = [] } = useQuery({
 
   const deleteDependencia = useMutation({
     mutationFn: dependenciasService.deleteDependencia,
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["dependencias"] });
-      toast.success("Dependencia eliminada");
+      if (data.database_dropped) {
+        toast.success(`"${data.dependencia_nombre}" eliminada. BD "${data.database_name}" también.`);
+      } else if (data.database_name) {
+        toast.error(`"${data.dependencia_nombre}" eliminada. Error al eliminar BD "${data.database_name}".`);
+      } else {
+        toast.success("Dependencia eliminada");
+      }
     },
   });
 
@@ -373,21 +362,16 @@ const { data: tiposCuenta = [] } = useQuery({
       id_tipo_dependencia: 0,
       nombre: "",
       nit: "",
+      reeup: "",
       base_datos: "",
       direccion: "",
       telefono: "",
       id_provincia: isNew ? provinciaId : undefined,
       id_municipio: isNew ? municipioId : undefined,
     });
-    setCuentas([]);
-    setEditingCuentaIndex(null);
-    setCuentaForm({
-      titular: "",
-      banco: "",
-      sucursal: undefined,
-      direccion: "",
-    });
     setSelectedPadre(null);
+    setBusquedaPadre("");
+    setShowDropdownPadre(false);
     setIdConexionExistente(null);
     setBusquedaBD("");
     setShowDropdownBD(false);
@@ -399,7 +383,8 @@ const { data: tiposCuenta = [] } = useQuery({
       !formData.nombre ||
       !formData.direccion ||
       !formData.telefono ||
-      !formData.id_tipo_dependencia
+      !formData.id_tipo_dependencia ||
+      !formData.codigo_padre
     ) {
       toast.error("Todos los campos requeridos deben completarse");
       return;
@@ -426,10 +411,8 @@ const { data: tiposCuenta = [] } = useQuery({
         codigo_padre: formData.codigo_padre,
       };
       
-      // Si seleccionó una BD existente, usar id_conexion_existente
       const data: DependenciaConCuentasCreate = {
         dependencia: dependenciaData,
-        cuentas: cuentas.length > 0 ? cuentas : undefined,
         id_conexion_existente: idConexionExistente ? idConexionExistente : undefined,
       };
       createDependencia.mutate(data);
@@ -443,6 +426,7 @@ const { data: tiposCuenta = [] } = useQuery({
       codigo_padre: dep.codigo_padre,
       nombre: dep.nombre,
       nit: dep.nit || "",
+      reeup: dep.reeup || "",
       base_datos: dep.base_datos || "",
       direccion: dep.direccion,
       telefono: dep.telefono,
@@ -452,26 +436,14 @@ const { data: tiposCuenta = [] } = useQuery({
       id_municipio: dep.id_municipio,
       descripcion: dep.descripcion,
     });
-    // Cargar cuentas existentes de la dependencia
-    if (dep.cuentas && dep.cuentas.length > 0) {
-      setCuentas(
-        dep.cuentas.map((c) => ({
-          titular: c.titular,
-          banco: c.banco,
-          sucursal: c.sucursal,
-          direccion: c.direccion,
-          numero_cuenta: c.numero_cuenta || "",
-          id_moneda: c.id_moneda,
-        })),
-      );
-    } else {
-      setCuentas([]);
-    }
     if (dep.codigo_padre) {
       const padre = dependencias.find(
         (d) => d.id_dependencia === dep.codigo_padre,
       );
       setSelectedPadre(padre || null);
+      setBusquedaPadre(padre?.nombre || "");
+    } else {
+      setBusquedaPadre("");
     }
     if (dep.base_datos) {
       setIdConexionExistente(dep.base_datos);
@@ -506,6 +478,7 @@ const { data: tiposCuenta = [] } = useQuery({
       id_tipo_dependencia: 0,
       nombre: "",
       nit: "",
+      reeup: "",
       base_datos: "",
       direccion: "",
       telefono: "",
@@ -513,6 +486,8 @@ const { data: tiposCuenta = [] } = useQuery({
       id_provincia: provinciaId,
       id_municipio: municipioId,
     });
+    setSelectedPadre(padre);
+    setBusquedaPadre(padre.nombre);
     setView("form");
   };
 
@@ -534,64 +509,6 @@ const { data: tiposCuenta = [] } = useQuery({
         setConfirmModal({ ...confirmModal, isOpen: false });
       },
     });
-  };
-
-  // Funciones para manejar cuentas
-  const handleAddCuenta = () => {
-    if (
-      !cuentaForm.titular ||
-      !cuentaForm.banco ||
-      !cuentaForm.direccion ||
-      !cuentaForm.numero_cuenta
-    ) {
-      toast.error("Todos los campos de la cuenta son requeridos");
-      return;
-    }
-
-    if (editingCuentaIndex !== null) {
-      // Editar cuenta existente
-      const newCuentas = [...cuentas];
-      newCuentas[editingCuentaIndex] = cuentaForm;
-      setCuentas(newCuentas);
-      setEditingCuentaIndex(null);
-      toast.success("Cuenta actualizada");
-    } else {
-      // Agregar nueva cuenta
-      setCuentas([...cuentas, cuentaForm]);
-      toast.success("Cuenta agregada");
-    }
-
-    // Limpiar formulario de cuenta
-    setCuentaForm({
-      titular: "",
-      banco: "",
-      sucursal: undefined,
-      direccion: "",
-      numero_cuenta: "",
-      id_moneda: undefined,
-    });
-  };
-
-  const handleEditCuenta = (index: number) => {
-    setCuentaForm(cuentas[index]);
-    setEditingCuentaIndex(index);
-  };
-
-const handleDeleteCuenta = (index: number) => {
-    const newCuentas = cuentas.filter((_, i) => i !== index);
-    setCuentas(newCuentas);
-    if (editingCuentaIndex === index) {
-      setEditingCuentaIndex(null);
-      setCuentaForm({
-        titular: "",
-        banco: "",
-        sucursal: undefined,
-        direccion: "",
-        numero_cuenta: "",
-        id_moneda: undefined,
-      });
-    }
-    toast.success("Cuenta eliminada");
   };
 
   // Funciones para modales de detalle
@@ -690,36 +607,51 @@ const handleDeleteCuenta = (index: number) => {
                 </div>
               </div>
 
-              {/* Nombre */}
-              <div className="space-y-2">
-                <Label className="flex items-center gap-2 text-gray-700">
-                  <Building className="h-5 w-5 text-blue-500" />
-                  Nombre *
-                </Label>
-                <Input
-                  value={formData.nombre}
-                  onChange={(e) =>
-                    setFormData({ ...formData, nombre: e.target.value })
-                  }
-                  placeholder="Nombre de la dependencia"
-                  className="transition-all duration-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
-
-              {/* NIT */}
-              <div className="space-y-2">
-                <Label className="flex items-center gap-2 text-gray-700">
-                  <Hash className="h-5 w-5 text-amber-500" />
-                  NIT
-                </Label>
-                <Input
-                  value={formData.nit || ""}
-                  onChange={(e) =>
-                    setFormData({ ...formData, nit: e.target.value })
-                  }
-                  placeholder="Número de Identificación Tributaria"
-                  className="transition-all duration-200 focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
-                />
+              {/* Nombre, NIT, REEUP */}
+              <div className="col-span-2 grid grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2 text-gray-700">
+                    <Building className="h-5 w-5 text-blue-500" />
+                    Nombre *
+                  </Label>
+                  <Input
+                    value={formData.nombre}
+                    onChange={(e) =>
+                      setFormData({ ...formData, nombre: e.target.value })
+                    }
+                    placeholder="Nombre de la dependencia"
+                    className="transition-all duration-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2 text-gray-700">
+                    <Hash className="h-5 w-5 text-amber-500" />
+                    NIT
+                  </Label>
+                  <Input
+                    value={formData.nit || ""}
+                    onChange={(e) =>
+                      setFormData({ ...formData, nit: e.target.value })
+                    }
+                    placeholder="Número de Identificación Tributaria"
+                    className="transition-all duration-200 focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2 text-gray-700">
+                    <Hash className="h-5 w-5 text-cyan-500" />
+                    REEUP
+                  </Label>
+                  <Input
+                    value={formData.reeup || ""}
+                    onChange={(e) =>
+                      setFormData({ ...formData, reeup: e.target.value })
+                    }
+                    maxLength={15}
+                    placeholder="Código REEUP"
+                    className="transition-all duration-200 focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
+                  />
+                </div>
               </div>
 
               {/* Descripción */}
@@ -828,32 +760,70 @@ const handleDeleteCuenta = (index: number) => {
               <div className="space-y-2">
                 <Label className="flex items-center gap-2 text-gray-700">
                   <Network className="h-5 w-5 text-green-500" />
-                  Dependencia Padre
+                  Dependencia Padre *
                 </Label>
-                <select
-                  className="w-full border rounded-md px-3 py-2 transition-all duration-200 focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                  value={formData.codigo_padre || ""}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      codigo_padre: e.target.value
-                        ? parseInt(e.target.value)
-                        : undefined,
-                    })
-                  }
-                  disabled={!editingDependencia && !!selectedPadre}
-                >
-                  <option value="">Sin dependencia padre (Nivel raíz)</option>
-                  {dependencias.map((d) => (
-                    <option key={d.id_dependencia} value={d.id_dependencia}>
-                      {d.nombre}
-                    </option>
-                  ))}
-                </select>
+                <div ref={padreDropdownRef} className="relative">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <input
+                      type="text"
+                      placeholder="Buscar dependencia padre..."
+                      value={busquedaPadre}
+                      onChange={(e) => {
+                        setBusquedaPadre(e.target.value);
+                        setShowDropdownPadre(true);
+                        if (e.target.value !== selectedPadre?.nombre) {
+                          setFormData({ ...formData, codigo_padre: undefined });
+                          setSelectedPadre(null);
+                        }
+                      }}
+                      onFocus={() => setShowDropdownPadre(true)}
+                      disabled={!editingDependencia && !!selectedPadre}
+                      className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none bg-white disabled:bg-gray-100"
+                    />
+                    {selectedPadre && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedPadre(null);
+                          setBusquedaPadre("");
+                          setFormData({ ...formData, codigo_padre: undefined });
+                        }}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-red-500"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    )}
+                  </div>
+                  {showDropdownPadre && dependenciasPadreFiltradas.length > 0 && (
+                    <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-auto">
+                      {dependenciasPadreFiltradas.map((d) => (
+                        <button
+                          key={d.id_dependencia}
+                          type="button"
+                          onClick={() => {
+                            setSelectedPadre(d);
+                            setBusquedaPadre(d.nombre);
+                            setFormData({ ...formData, codigo_padre: d.id_dependencia });
+                            setShowDropdownPadre(false);
+                          }}
+                          className="w-full text-left px-4 py-2 hover:bg-green-50 transition-colors border-b border-gray-100 last:border-b-0"
+                        >
+                          <span className="font-medium text-gray-900">{d.nombre}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {showDropdownPadre && dependenciasPadreFiltradas.length === 0 && busquedaPadre && (
+                    <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg p-4 text-center text-gray-500">
+                      No se encontraron dependencias
+                    </div>
+                  )}
+                </div>
                 {selectedPadre && (
                   <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
                     <CheckCircle2 className="h-3 w-3 text-green-500" />
-                    Pre-seleccionado desde "+ Sub"
+                    {editingDependencia ? "Dependencia padre actual" : "Pre-seleccionado desde '+ Sub'"}
                   </p>
                 )}
               </div>
@@ -1025,240 +995,6 @@ const handleDeleteCuenta = (index: number) => {
                 />
               </div>
             </form>
-          </CardContent>
-        </Card>
-
-        {/* Sección de Cuentas Bancarias */}
-        <Card className="hover:shadow-lg transition-shadow duration-300">
-          <CardHeader className="border-b bg-gradient-to-r from-green-50 to-emerald-50">
-            <div className="flex items-center gap-2">
-              <div className="p-2 bg-gradient-to-br from-green-500 to-emerald-600 rounded-lg">
-                <Wallet className="h-6 w-6 text-white" />
-              </div>
-              <CardTitle>Cuentas Bancarias</CardTitle>
-            </div>
-          </CardHeader>
-          <CardContent className="pt-6">
-            {/* Formulario para agregar/editar cuenta */}
-            <div className="grid grid-cols-2 gap-4 mb-6 p-6 bg-gradient-to-br from-gray-50 to-gray-100 rounded-md border border-gray-200">
-              <div className="space-y-2">
-                <Label className="flex items-center gap-2 text-gray-700">
-                  <User className="h-5 w-5 text-blue-500" />
-                  Titular *
-                </Label>
-                <Input
-                  value={cuentaForm.titular}
-                  onChange={(e) =>
-                    setCuentaForm({ ...cuentaForm, titular: e.target.value })
-                  }
-                  placeholder="Nombre del titular"
-                  className="transition-all duration-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label className="flex items-center gap-2 text-gray-700">
-                  <Landmark className="h-5 w-5 text-purple-500" />
-                  Banco *
-                </Label>
-                <Input
-                  value={cuentaForm.banco}
-                  onChange={(e) =>
-                    setCuentaForm({ ...cuentaForm, banco: e.target.value })
-                  }
-                  placeholder="Nombre del banco"
-                  className="transition-all duration-200 focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label className="flex items-center gap-2 text-gray-700">
-                  <Store className="h-5 w-5 text-orange-500" />
-                  Sucursal
-                </Label>
-                <Input
-                  type="number"
-                  value={cuentaForm.sucursal || ""}
-                  onChange={(e) =>
-                    setCuentaForm({
-                      ...cuentaForm,
-                      sucursal: e.target.value
-                        ? parseInt(e.target.value)
-                        : undefined,
-                    })
-                  }
-                  placeholder="Número de sucursal"
-                  className="transition-all duration-200 focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label className="flex items-center gap-2 text-gray-700">
-                  <MapPin className="h-5 w-5 text-red-500" />
-                  Dirección Sucursal *
-                </Label>
-                <Input
-                  value={cuentaForm.direccion}
-                  onChange={(e) =>
-                    setCuentaForm({ ...cuentaForm, direccion: e.target.value })
-                  }
-                  placeholder="Dirección de la sucursal"
-                  className="transition-all duration-200 focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label className="flex items-center gap-2 text-gray-700">
-                  <CreditCard className="h-5 w-5 text-teal-500" />
-                  Moneda *
-                </Label>
-                <select
-                  value={cuentaForm.id_moneda || ""}
-                  onChange={(e) =>
-                    setCuentaForm({ ...cuentaForm, id_moneda: Number(e.target.value) || undefined })
-                  }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white"
-                >
-                  <option value="">Seleccionar moneda</option>
-                  {monedas.map((m) => (
-                    <option key={m.id_moneda} value={m.id_moneda}>
-                      {m.simbolo} - {m.nombre}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="space-y-2">
-                <Label className="flex items-center gap-2 text-gray-700">
-                  <Hash className="h-5 w-5 text-indigo-500" />
-                  Número de Cuenta *
-                </Label>
-                <Input
-                  value={cuentaForm.numero_cuenta || ""}
-                  onChange={(e) =>
-                    setCuentaForm({ ...cuentaForm, numero_cuenta: e.target.value })
-                  }
-                  placeholder="Número de cuenta bancaria"
-                  className="transition-all duration-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                />
-              </div>
-              <div className="col-span-2 flex items-end gap-3">
-                <Button
-                  type="button"
-                  onClick={handleAddCuenta}
-                  variant={
-                    editingCuentaIndex !== null ? "primary" : "secondary"
-                  }
-                  className="gap-2 hover:scale-105 active:scale-95 transition-transform"
-                >
-                  {editingCuentaIndex !== null ? (
-                    <>
-                      <CheckCircle2 className="h-4 w-4" />
-                      Actualizar Cuenta
-                    </>
-                  ) : (
-                    <>
-                      <Plus className="h-4 w-4" />
-                      Agregar Cuenta
-                    </>
-                  )}
-                </Button>
-                {editingCuentaIndex !== null && (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    onClick={() => {
-                      setEditingCuentaIndex(null);
-                      setCuentaForm({
-                        titular: "",
-                        banco: "",
-                        sucursal: undefined,
-                        direccion: "",
-                      });
-                    }}
-                    className="hover:bg-gray-200 transition-colors"
-                  >
-                    <X className="h-4 w-4 mr-2" />
-                    Cancelar
-                  </Button>
-                )}
-              </div>
-            </div>
-
-            {/* Lista de cuentas agregadas */}
-            {cuentas.length > 0 ? (
-              <div className="rounded-md border border-gray-200 overflow-hidden">
-                <Table>
-                  <TableHeader className="bg-gradient-to-r from-green-50 to-emerald-50">
-                    <TableRow>
-                      <TableHead className="flex items-center gap-2">
-                        <User className="h-4 w-4 text-blue-500" />
-                        Titular
-                      </TableHead>
-                      <TableHead>
-                        <div className="flex items-center gap-2">
-                          <Landmark className="h-4 w-4 text-purple-500" />
-                          Banco
-                        </div>
-                      </TableHead>
-                      <TableHead>
-                        <div className="flex items-center gap-2">
-                          <CreditCard className="h-4 w-4 text-indigo-500" />
-                          Tipo
-                        </div>
-                      </TableHead>
-                      <TableHead className="text-right">Acciones</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {cuentas.map((cuenta, index) => {
-                      return (
-                        <TableRow
-                          key={index}
-                          className="hover:bg-gray-50 transition-colors"
-                        >
-                          <TableCell className="font-medium">
-                            {cuenta.titular}
-                          </TableCell>
-                          <TableCell>{cuenta.banco}</TableCell>
-                          <TableCell>
-                            <span className="inline-flex items-center gap-1 px-2 py-1 bg-indigo-100 text-indigo-700 rounded-full text-sm">
-                              <CreditCard className="h-3 w-3" />
-                              -
-                            </span>
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <div className="flex justify-end gap-2">
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => handleEditCuenta(index)}
-                                className="text-blue-600 hover:bg-blue-50 hover:scale-110 transition-all"
-                              >
-                                <Edit className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => handleDeleteCuenta(index)}
-                                className="text-red-600 hover:bg-red-50 hover:scale-110 transition-all"
-                              >
-                                <Trash className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              </div>
-            ) : (
-              <div className="text-center py-8 bg-gray-50 rounded-md border-2 border-dashed border-gray-300">
-                <Wallet className="h-12 w-12 text-gray-400 mx-auto mb-3" />
-                <p className="text-gray-500 font-medium">
-                  No hay cuentas bancarias agregadas
-                </p>
-                <p className="text-sm text-gray-400 mt-1">
-                  Agregue cuentas usando el formulario superior
-                </p>
-              </div>
-            )}
           </CardContent>
         </Card>
 
@@ -1741,6 +1477,15 @@ const handleDeleteCuenta = (index: number) => {
                           {dependenciaDetalle.nit || "-"}
                         </p>
                       </div>
+                      <div className="space-y-1">
+                        <Label className="flex items-center gap-2 text-gray-500 text-sm">
+                          <Hash className="h-4 w-4" />
+                          REEUP
+                        </Label>
+                        <p className="font-medium text-gray-900">
+                          {dependenciaDetalle.reeup || "-"}
+                        </p>
+                      </div>
                       <div className="col-span-2 space-y-1">
                         <Label className="flex items-center gap-2 text-gray-500 text-sm">
                           <MapPin className="h-4 w-4" />
@@ -1900,6 +1645,53 @@ const handleDeleteCuenta = (index: number) => {
                       </div>
                     );
                   })()}
+
+                  {/* Cuentas Bancarias (tabla cuenta_dependencias) */}
+                  {dependenciaDetalle.cuentas_dependencias &&
+                    dependenciaDetalle.cuentas_dependencias.length > 0 && (
+                      <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-md p-5">
+                        <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                          <Wallet className="h-5 w-5 text-green-600" />
+                          Cuentas Bancarias
+                          <span className="ml-2 px-2 py-0.5 bg-green-200 text-green-800 rounded-full text-xs">
+                            {dependenciaDetalle.cuentas_dependencias.length}
+                          </span>
+                        </h3>
+                        <div className="rounded-lg overflow-hidden border border-green-200">
+                          <Table>
+                            <TableHeader className="bg-green-100/50">
+                              <TableRow>
+                                <TableHead>Titular</TableHead>
+                                <TableHead>Banco</TableHead>
+                                <TableHead>Núm. Cuenta</TableHead>
+                                <TableHead>Moneda</TableHead>
+                                <TableHead>Sucursal</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {dependenciaDetalle.cuentas_dependencias.map(
+                                (cuenta, index) => (
+                                  <TableRow
+                                    key={index}
+                                    className="hover:bg-green-50/50 transition-colors"
+                                  >
+                                    <TableCell className="font-medium">
+                                      {cuenta.titular}
+                                    </TableCell>
+                                    <TableCell>{cuenta.banco}</TableCell>
+                                    <TableCell>{cuenta.numero_cuenta || "-"}</TableCell>
+                                    <TableCell>
+                                      {cuenta.moneda?.nombre || "-"}
+                                    </TableCell>
+                                    <TableCell>{cuenta.sucursal || "-"}</TableCell>
+                                  </TableRow>
+                                ),
+                              )}
+                            </TableBody>
+                          </Table>
+                        </div>
+                      </div>
+                    )}
                 </div>
               </div>
             </div>

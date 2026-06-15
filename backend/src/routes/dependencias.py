@@ -438,7 +438,7 @@ async def obtener_dependencia(
     db: AsyncSession = Depends(get_session),
 ):
     from sqlalchemy.orm import selectinload
-    
+
     statement = (
         select(Dependencia)
         .where(Dependencia.id_dependencia == dependencia_id)
@@ -447,6 +447,7 @@ async def obtener_dependencia(
             selectinload(Dependencia.provincia),
             selectinload(Dependencia.municipio).selectinload(Municipio.provincia),
             selectinload(Dependencia.cuentas),
+            selectinload(Dependencia.cuentas_dependencias).selectinload(CuentaDependencia.moneda),
             selectinload(Dependencia.padre),
         )
     )
@@ -504,18 +505,35 @@ async def actualizar_dependencia(
     return DependenciaRead.model_validate(db_obj)
 
 
-@router.delete("/{dependencia_id}", status_code=204)
+@router.delete("/{dependencia_id}")
 async def eliminar_dependencia(
     dependencia_id: int,
     db: AsyncSession = Depends(get_session),
 ):
-    result = await db.execute(
-        text("DELETE FROM dependencia WHERE id_dependencia = :id"),
-        {"id": dependencia_id},
-    )
-    await db.commit()
-    if result.rowcount == 0:
+    dep = await db.get(Dependencia, dependencia_id)
+    if not dep:
         raise HTTPException(status_code=404, detail="Dependencia no encontrada")
+
+    base_datos = dep.base_datos
+    db_name = base_datos if base_datos else None
+    dep_nombre = dep.nombre
+
+    await db.delete(dep)
+    await db.commit()
+
+    db_dropped = False
+    if db_name:
+        try:
+            DatabaseService.eliminar_base_datos(db_name)
+            db_dropped = True
+        except Exception as e:
+            print(f"Error dropping database {db_name}: {e}")
+
+    return {
+        "database_dropped": db_dropped,
+        "database_name": db_name,
+        "dependencia_nombre": dep_nombre,
+    }
 
 
 @router.get("/tipos", response_model=List[TipoDependenciaRead])

@@ -27,6 +27,7 @@ class DependenciaBase(SQLModel):
     codigo_padre: Optional[int] = None
     nombre: str
     nit: Optional[str] = None
+    reeup: Optional[str] = None
     direccion: str
     telefono: str
     email: Optional[str] = None
@@ -55,6 +56,7 @@ class DependenciaRead(SQLModel):
     codigo_padre: Optional[int] = None
     nombre: str
     nit: Optional[str] = None
+    reeup: Optional[str] = None
     direccion: str
     telefono: str
     email: Optional[str] = None
@@ -69,6 +71,7 @@ class DependenciaRead(SQLModel):
     provincia: Optional[ProvinciaRead] = None
     municipio: Optional[MunicipioRead] = None
     cuentas: List[CuentaRead] = []
+    cuentas_dependencias: List[CuentaDependenciaRead] = []
     tablas_creadas: Optional[List[str]] = None
 
 
@@ -79,6 +82,7 @@ class DependenciaConCuentasRead(SQLModel):
     codigo_padre: Optional[int] = None
     nombre: str
     nit: Optional[str] = None
+    reeup: Optional[str] = None
     direccion: str
     telefono: str
     email: Optional[str] = None

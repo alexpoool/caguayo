@@ -35,7 +35,7 @@ from src.dto.auth_dto import (
 
 SECRET_KEY = os.getenv("SECRET_KEY", "caguayo-secret-key-change-in-production")
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_HOURS = 24
+ACCESS_TOKEN_EXPIRE_MINUTES = 5
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
@@ -56,7 +56,7 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
     if expires_delta:
         expire = datetime.utcnow() + expires_delta
     else:
-        expire = datetime.utcnow() + timedelta(hours=ACCESS_TOKEN_EXPIRE_HOURS)
+        expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
@@ -123,6 +123,8 @@ async def search_by_alias(
             email=dependencia.email,
             telefono=dependencia.telefono,
             direccion=dependencia.direccion,
+            nit=dependencia.nit,
+            reeup=dependencia.reeup,
         )
         if dependencia
         else None,
@@ -227,7 +229,7 @@ async def login(db: AsyncSession, login_data: LoginRequest) -> Optional[LoginRes
         token = create_access_token(token_data)
 
         # 9. Guardar sesión en la base de datos destino
-        fecha_expiracion = datetime.utcnow() + timedelta(hours=ACCESS_TOKEN_EXPIRE_HOURS)
+        fecha_expiracion = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
         sesion = Sesion(
             id_usuario=usuario.id_usuario,
             token=token,
@@ -276,6 +278,8 @@ async def login(db: AsyncSession, login_data: LoginRequest) -> Optional[LoginRes
                 email=dep_email,
                 telefono=dep_telefono,
                 direccion=dep_direccion,
+                nit=dependencia.nit,
+                reeup=dependencia.reeup,
             )
             if dependencia
             else None,
@@ -346,6 +350,7 @@ async def get_current_user(db: AsyncSession, token: str) -> Optional[UsuarioInfo
             telefono=dependencia.telefono,
             direccion=dependencia.direccion,
             nit=dependencia.nit,
+            reeup=dependencia.reeup,
         )
         if dependencia
         else None,
@@ -478,6 +483,8 @@ async def update_perfil(
             email=dependencia.email,
             telefono=dependencia.telefono,
             direccion=dependencia.direccion,
+            nit=dependencia.nit,
+            reeup=dependencia.reeup,
         )
         if dependencia
         else None,
@@ -510,6 +517,8 @@ async def get_all_bases_datos_by_alias(
             email=d.email,
             telefono=d.telefono,
             direccion=d.direccion,
+            nit=d.nit,
+            reeup=d.reeup,
         )
         for d in dependencias_con_db
     ]
@@ -584,6 +593,14 @@ async def register(
         db_target.commit()
         db_target.refresh(usuario)
 
+        # Guardar atributos en locales antes de que la sesión se cierre
+        _id_usuario = usuario.id_usuario
+        _ci = usuario.ci
+        _nombre = usuario.nombre
+        _primer_apellido = usuario.primer_apellido
+        _segundo_apellido = usuario.segundo_apellido
+        _alias = usuario.alias
+
         # 8. Obtener funcionalidades del grupo
         statement = select(GrupoFuncionalidad).where(
             GrupoFuncionalidad.id_grupo == id_grupo
@@ -604,17 +621,17 @@ async def register(
 
         # 9. Crear token JWT
         token_data = {
-            "sub": str(usuario.id_usuario),
-            "alias": usuario.alias,
-            "nombre": f"{usuario.nombre} {usuario.primer_apellido}",
+            "sub": str(_id_usuario),
+            "alias": _alias,
+            "nombre": f"{_nombre} {_primer_apellido}",
             "base_datos": register_data.base_datos,
         }
         token = create_access_token(token_data)
 
         # 10. Guardar sesión en la BD destino
-        fecha_expiracion = datetime.utcnow() + timedelta(hours=ACCESS_TOKEN_EXPIRE_HOURS)
+        fecha_expiracion = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
         sesion = Sesion(
-            id_usuario=usuario.id_usuario,
+            id_usuario=_id_usuario,
             token=token,
             base_datos=register_data.base_datos,
             fecha_expiracion=fecha_expiracion,
@@ -635,12 +652,12 @@ async def register(
     return LoginResponse(
         token=token,
         usuario=UsuarioInfo(
-            id_usuario=usuario.id_usuario,
-            ci=usuario.ci,
-            nombre=usuario.nombre,
-            primer_apellido=usuario.primer_apellido,
-            segundo_apellido=usuario.segundo_apellido,
-            alias=usuario.alias,
+            id_usuario=_id_usuario,
+            ci=_ci,
+            nombre=_nombre,
+            primer_apellido=_primer_apellido,
+            segundo_apellido=_segundo_apellido,
+            alias=_alias,
             dependencia=DependenciaInfo(
                 id_dependencia=dependencia_central.id_dependencia,
                 nombre=dependencia_central.nombre,
@@ -649,6 +666,8 @@ async def register(
                 puerto=dependencia_central.puerto or 5432,
                 telefono=dependencia_central.telefono,
                 direccion=dependencia_central.direccion,
+                nit=dependencia_central.nit,
+                reeup=dependencia_central.reeup,
             )
             if dependencia_central
             else None,

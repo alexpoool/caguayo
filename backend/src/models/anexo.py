@@ -23,7 +23,7 @@ class Anexo(SQLModel, table=True):
     nombre_anexo: str = Field(max_length=200)
     fecha: date
     codigo_anexo: Optional[str] = Field(default=None, max_length=50)
-    id_dependencia: Optional[int] = None
+    id_dependencia: Optional[int] = Field(default=None, foreign_key="dependencia.id_dependencia")
     comision: Optional[Decimal] = Field(default=None, decimal_places=2, max_digits=10)
 
     convenios: Optional["Convenio"] = Relationship(

@@ -20,6 +20,8 @@ export interface DependenciaInfo {
   telefono?: string;
   direccion?: string;
   web?: string;
+  nit?: string;
+  reeup?: string;
   cuentas_dependencias?: CuentaDependenciaInfo[];
 }
 

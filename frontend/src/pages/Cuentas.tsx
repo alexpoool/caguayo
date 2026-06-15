@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Wallet,
@@ -73,9 +73,20 @@ export function CuentasPage() {
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
   const { data: cuentas = [], isLoading, isError, error } = useQuery({
-    queryKey: ["cuentas_dependencia", searchTerm],
-    queryFn: () => dependenciasService.getCuentasDependencia(searchTerm || undefined),
+    queryKey: ["cuentas_dependencia"],
+    queryFn: () => dependenciasService.getCuentasDependencia(),
   });
+
+  const filteredCuentas = useMemo(() => {
+    if (!searchTerm) return cuentas;
+    const term = searchTerm.toLowerCase();
+    return cuentas.filter(
+      (c) =>
+        (c.titular && c.titular.toLowerCase().includes(term)) ||
+        (c.dependencia_nombre && c.dependencia_nombre.toLowerCase().includes(term)) ||
+        (c.numero_cuenta && c.numero_cuenta.toLowerCase().includes(term))
+    );
+  }, [cuentas, searchTerm]);
 
   const { data: dependencias = [] } = useQuery({
     queryKey: ["dependencias", "todas"],
@@ -536,7 +547,7 @@ export function CuentasPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {cuentas.length === 0 ? (
+              {filteredCuentas.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={7} className="text-center py-12">
                     <div className="flex flex-col items-center justify-center text-gray-400">
@@ -556,7 +567,7 @@ export function CuentasPage() {
                   </TableCell>
                 </TableRow>
               ) : (
-                cuentas.map((cuenta) => (
+                filteredCuentas.map((cuenta) => (
                   <TableRow
                     key={cuenta.id_cuenta}
                     className="hover:bg-gray-50 transition-colors"

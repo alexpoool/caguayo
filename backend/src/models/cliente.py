@@ -45,12 +45,14 @@ class Cliente(SQLModel, table=True):
     activo: bool = Field(default=True)
 
     provincia: Optional["Provincia"] = Relationship(
+        back_populates="clientes",
         sa_relationship_kwargs={
             "foreign_keys": "Cliente.id_provincia",
 
         },
     )
     municipio: Optional["Municipio"] = Relationship(
+        back_populates="clientes",
         sa_relationship_kwargs={
             "foreign_keys": "Cliente.id_municipio",
 

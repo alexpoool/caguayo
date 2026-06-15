@@ -155,8 +155,8 @@ export const dependenciasService = {
     return await apiClient.put(`/dependencias/${id}`, data);
   },
 
-  deleteDependencia: async (id: number): Promise<void> => {
-    await apiClient.delete(`/dependencias/${id}`);
+  deleteDependencia: async (id: number): Promise<{ database_dropped: boolean; database_name: string | null; dependencia_nombre: string }> => {
+    return await apiClient.delete(`/dependencias/${id}`);
   },
 
   getTiposDependencia: async (): Promise<TipoDependencia[]> => {

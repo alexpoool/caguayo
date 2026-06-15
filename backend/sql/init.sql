@@ -11,6 +11,7 @@ CREATE OR REPLACE VIEW v_databases AS
 SELECT datname as nombre_database 
 FROM pg_database 
 WHERE datistemplate = false 
+  AND datname != 'postgres'
 ORDER BY datname;
 
 -- =====================================================
@@ -235,6 +236,7 @@ CREATE TABLE dependencia (
     codigo_padre INTEGER REFERENCES dependencia(id_dependencia) ON DELETE SET NULL,
     nombre VARCHAR(100) NOT NULL,
     nit VARCHAR(20) UNIQUE,
+    reeup VARCHAR(15),
     direccion VARCHAR(255) NOT NULL,
     telefono VARCHAR(20) NOT NULL,
     email VARCHAR(100),
