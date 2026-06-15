@@ -16,4 +16,4 @@ class ClienteJuridica(SQLModel, table=True):
     )
 
     cliente: "Cliente" = Relationship(back_populates="cliente_juridica")
-    tipo_entidad: Optional["TipoEntidad"] = Relationship()
+    tipo_entidad: Optional["TipoEntidad"] = Relationship(back_populates="clientes_juridicos")
