@@ -558,12 +558,7 @@ if (!filtroCliente) {
                 <p className="text-gray-500 py-4">No hay productos en los anexos de este proveedor</p>
               ) : (
                 <div className="space-y-4 max-h-96 overflow-y-auto">
-                  {itemsPorAnexo.filter((grupo: any) => {
-                    const productosActivos = grupo.productos.filter(
-                      (p: any) => p.estado !== 'LIQUIDADO'
-                    );
-                    return productosActivos.length > 0;
-                  }).map((grupo: any) => {
+                  {itemsPorAnexo.map((grupo: any) => {
                     const productosALiquidar = grupo.productos.filter((p: any) => p.estado !== 'LIQUIDADO');
                     const seleccionadosDelAnexo = selectedProductos.filter(id => {
                       const producto = grupo.productos.find((p: any) => p.id_producto_en_liquidacion === id);
@@ -622,7 +617,7 @@ if (!filtroCliente) {
                             </tr>
                           </thead>
                           <tbody className="divide-y">
-                            {grupo.productos.filter((item: any) => item.estado !== 'LIQUIDADO').map((item: any) => {
+                            {grupo.productos.map((item: any) => {
                               const isALiquidar = item.estado === 'A LIQUIDAR';
                               const isConsignacion = item.estado === 'EN_CONSIGNACION';
                               const maxALiquidar = item.por_liquidar || item.cantidad || 0;

@@ -100,6 +100,7 @@ async def listar_dependencias(
         selectinload(Dependencia.provincia),
         selectinload(Dependencia.municipio).selectinload(Municipio.provincia),
         selectinload(Dependencia.cuentas),
+        selectinload(Dependencia.cuentas_dependencias).selectinload(CuentaDependencia.moneda),
     )
     if search:
         statement = statement.where(
@@ -121,6 +122,7 @@ async def listar_dependencias_jerarquia(
         selectinload(Dependencia.provincia),
         selectinload(Dependencia.municipio),
         selectinload(Dependencia.cuentas),
+        selectinload(Dependencia.cuentas_dependencias).selectinload(CuentaDependencia.moneda),
     )
     if padre_id:
         statement = statement.where(Dependencia.codigo_padre == padre_id)
@@ -285,6 +287,7 @@ async def crear_dependencia(
             selectinload(Dependencia.provincia),
             selectinload(Dependencia.municipio),
             selectinload(Dependencia.cuentas),
+            selectinload(Dependencia.cuentas_dependencias).selectinload(CuentaDependencia.moneda),
             selectinload(Dependencia.padre),
         )
     )
@@ -492,6 +495,7 @@ async def actualizar_dependencia(
             selectinload(Dependencia.provincia),
             selectinload(Dependencia.municipio),
             selectinload(Dependencia.cuentas),
+            selectinload(Dependencia.cuentas_dependencias).selectinload(CuentaDependencia.moneda),
             selectinload(Dependencia.padre).selectinload(Dependencia.tipo_dependencia),
             selectinload(Dependencia.padre).selectinload(Dependencia.provincia),
             selectinload(Dependencia.padre).selectinload(Dependencia.municipio),

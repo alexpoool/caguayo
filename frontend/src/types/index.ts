@@ -194,7 +194,7 @@ export interface ExistenciaHibridaResponse {
   codigo?: string;
   cantidad_entrada: number;
   cantidad_salida: number;
-  existencia: number;
+  stock: number;
   tipo: string;
 }
 

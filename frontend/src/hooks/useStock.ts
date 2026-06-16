@@ -3,7 +3,7 @@ import { existenciaService } from '../services/api';
 
 export interface ExistenciaHibridaItem {
   id_producto: number;
-  existencia: number;
+  stock: number;
 }
 
 export function useStock({ idDependencia }: { idDependencia: number | null }) {

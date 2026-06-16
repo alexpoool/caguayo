@@ -115,7 +115,7 @@ class ExistenciaService:
                 errores.append({
                     "id_producto": prod["id_producto"],
                     "cantidad_solicitada": prod["cantidad"],
-                    "existencia": resultado["existencia"],
+                    "stock": resultado["stock"],
                     "mensaje": resultado["mensaje"]
                 })
         
@@ -135,19 +135,19 @@ class ExistenciaService:
         
         # Konsignación
         konsignacion = await existencia_repo.get_existencias_consignacion(db)
-        total_kons = sum(e["existencia"] for e in konsignacion)
+        total_kons = sum(e["stock"] for e in konsignacion)
         
         # Movimientos
         movimientos = await existencia_repo.get_existencias_movimientos(
             db, id_dependencia
         )
-        total_mov = sum(e["existencia"] for e in movimientos)
+        total_mov = sum(e["stock"] for e in movimientos)
         
         # Híbrido
         hibrido = await existencia_repo.get_existencia_hibrida(
             db, id_dependencia
         )
-        total_hibrido = sum(e["existencia"] for e in hibrido)
+        total_hibrido = sum(e["stock"] for e in hibrido)
         
         return {
             "total_konsignacion": total_kons,
@@ -180,12 +180,12 @@ class ExistenciaService:
             WHERE ia.id_producto = :id_producto
         """)
         kons_result = await db.exec(kons_query, params={"id_producto": id_producto})
-        existencia_kons = kons_result.scalar() or 0
+        stock_kons = kons_result.scalar() or 0
 
         tiene_konsignacion = await ExistenciaService._producto_tiene_item_anexo(db, id_producto)
 
         if tiene_konsignacion:
-            existencia = existencia_kons
+            stock = stock_kons
         else:
             mov_query = text("""
                 SELECT COALESCE(SUM(
@@ -196,15 +196,15 @@ class ExistenciaService:
                 WHERE m.id_producto = :id_producto AND m.estado = 'confirmado'
             """)
             mov_result = await db.exec(mov_query, params={"id_producto": id_producto})
-            existencia = mov_result.scalar() or 0
+            stock = mov_result.scalar() or 0
 
         await db.exec(
-            text("UPDATE productos SET existencia = :existencia WHERE id_producto = :id_producto"),
-            params={"id_producto": id_producto, "existencia": existencia}
+            text("UPDATE productos SET stock = :stock WHERE id_producto = :id_producto"),
+            params={"id_producto": id_producto, "stock": stock}
         )
         await db.commit()
 
-        return existencia
+        return stock
 
     @staticmethod
     async def _producto_tiene_item_anexo(db: AsyncSession, id_producto: int) -> bool:
@@ -215,7 +215,7 @@ class ExistenciaService:
         return (result.first() or 0) > 0
     
     @staticmethod
-    async def actualizar_existencia_producto(
+    async def actualizar_stock_producto(
         db: AsyncSession,
         id_producto: int,
         cambio: int,
@@ -234,25 +234,25 @@ class ExistenciaService:
         from sqlalchemy import text
         
         result = await db.exec(
-            text("SELECT existencia FROM productos WHERE id_producto = :id_producto"),
+            text("SELECT stock FROM productos WHERE id_producto = :id_producto"),
             params={"id_producto": id_producto}
         )
-        existencia_actual = result.scalar() or 0
+        stock_actual = result.scalar() or 0
         
-        nueva_existencia = existencia_actual + cambio
-        if nueva_existencia < 0:
-            raise ValueError(f"Stock insuficiente: existencia actual {existencia_actual}, cambio {cambio}")
+        nuevo_stock = stock_actual + cambio
+        if nuevo_stock < 0:
+            raise ValueError(f"Stock insuficiente: stock actual {stock_actual}, cambio {cambio}")
         
         await db.exec(
-            text("UPDATE productos SET existencia = :existencia WHERE id_producto = :id_producto"),
-            params={"id_producto": id_producto, "existencia": nueva_existencia}
+            text("UPDATE productos SET stock = :stock WHERE id_producto = :id_producto"),
+            params={"id_producto": id_producto, "stock": nuevo_stock}
         )
         if commit:
             await db.commit()
         else:
             await db.flush()
         
-        return nueva_existencia
+        return nuevo_stock
     
     @staticmethod
     async def inicializar_existencias(db: AsyncSession) -> int:
@@ -272,19 +272,19 @@ class ExistenciaService:
                         FROM productos_en_liquidacion pel 
                         WHERE pel.id_producto = ia.id_producto 
                         AND pel.liquidada = true
-                    ), 0) as existencia_konsignacion
+                    ), 0) as stock_konsignacion
                 FROM item_anexo ia
                 GROUP BY ia.id_producto
             ),
             movimientos AS (
                 SELECT 
                     id_producto,
-                    COALESCE(SUM(cantidad), 0) as existencia_mov
+                    COALESCE(SUM(cantidad), 0) as stock_mov
                 FROM movimiento 
                 WHERE estado = 'confirmado'
                 GROUP BY id_producto
             )
-            UPDATE productos p SET existencia = COALESCE(k.existencia_konsignacion, 0) + COALESCE(m.existencia_mov, 0)
+            UPDATE productos p SET stock = COALESCE(k.stock_konsignacion, 0) + COALESCE(m.stock_mov, 0)
             FROM konsignacion k
             LEFT JOIN movimientos m ON k.id_producto = m.id_producto
             WHERE p.id_producto = k.id_producto

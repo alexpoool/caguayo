@@ -196,7 +196,7 @@ export function PerfilClientePage() {
 
             <div className="pt-4 border-t">
               <div className="flex items-center gap-2">
-                {cliente.activo ? (
+                {cliente.estado === 'ACTIVO' ? (
                   <>
                     <CheckCircle className="h-5 w-5 text-green-500" />
                     <span className="font-medium text-green-700">

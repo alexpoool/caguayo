@@ -123,7 +123,7 @@ export function CompraConveniosPage() {
         fecha: item.fecha,
         vigencia: item.vigencia,
         id_tipo_convenio: item.id_tipo_convenio,
-        codigo_convenio: item.codigo,
+        codigo_convenio: item.codigo_convenio,
       });
     } else { resetForm(); }
     setView('form');

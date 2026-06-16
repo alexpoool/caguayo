@@ -144,23 +144,8 @@ export function FacturaForm({
               </div>
             </div>
 
-            {/* Código de factura */}
-            <div>
-              <Label htmlFor="codigo" className="text-sm font-medium">
-                Código de Factura
-              </Label>
-              <Input
-                id="codigo"
-                value={formData.codigo_factura || ''}
-                onChange={(e: any) =>
-                  onFormDataChange({ ...formData, codigo_factura: e.target.value })
-                }
-                className="mt-1"
-                placeholder="Ej: FAC-001"
-              />
-            </div>
-
             {/* Descripción */}
+
             <div>
               <Label htmlFor="descripcion" className="text-sm font-medium">
                 Descripción

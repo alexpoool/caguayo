@@ -581,6 +581,7 @@ export function CompraAnexosPage() {
                           <th className="text-left py-2 text-xs text-gray-500 font-medium">Código</th>
                           <th className="text-left py-2 text-xs text-gray-500 font-medium">Producto</th>
                           <th className="text-right py-2 text-xs text-gray-500 font-medium">Cant.</th>
+                          <th className="text-right py-2 text-xs text-gray-500 font-medium">Liq.</th>
                           <th className="text-right py-2 text-xs text-gray-500 font-medium">P. Unit.</th>
                           <th className="text-right py-2 text-xs text-gray-500 font-medium">Total</th>
                         </tr>
@@ -594,6 +595,7 @@ export function CompraAnexosPage() {
                               <td className="py-2 text-gray-500 font-mono text-xs">{prod?.codigo || '-'}</td>
                               <td className="py-2 text-gray-700">{prod?.nombre || `Producto ${p.id_producto}`}</td>
                               <td className="py-2 text-gray-500 text-right">{p.cantidad}</td>
+                              <td className="py-2 text-gray-500 text-right">{p.cantidad_liquidada ?? 0}</td>
                               <td className="py-2 text-gray-500 text-right">${Number(p.precio_venta || 0).toFixed(2)}</td>
                               <td className="py-2 text-gray-900 font-medium text-right">${total.toFixed(2)}</td>
                             </tr>
@@ -602,7 +604,7 @@ export function CompraAnexosPage() {
                       </tbody>
                       <tfoot>
                         <tr>
-                          <td colSpan={4} className="py-2 text-right text-sm font-bold text-gray-900">Total:</td>
+                          <td colSpan={5} className="py-2 text-right text-sm font-bold text-gray-900">Total:</td>
                           <td className="py-2 text-right text-sm font-bold text-green-600">
                             ${detailModal.item.items_anexo.reduce((t: number, p: any) => t + (p.cantidad * (p.precio_venta || 0)), 0).toFixed(2)}
                           </td>

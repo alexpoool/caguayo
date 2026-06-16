@@ -157,6 +157,7 @@ class ItemAnexoRead(ItemAnexoBase):
     id_anexo: int
     precio_compra: Decimal
     codigo: Optional[str] = None
+    cantidad_liquidada: int = 0
 
 
 class AnexoCreate(AnexoBase):

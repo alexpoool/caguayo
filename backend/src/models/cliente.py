@@ -1,6 +1,6 @@
 from sqlmodel import SQLModel, Field, Relationship
 from typing import Optional, List, TYPE_CHECKING
-from sqlalchemy import Column, String, Boolean, Date
+from sqlalchemy import Column, String, Date
 from datetime import date
 
 if TYPE_CHECKING:
@@ -42,7 +42,6 @@ class Cliente(SQLModel, table=True):
     tipo_relacion: str = Field(max_length=20)  # CLIENTE, PROVEEDOR, AMBAS
     estado: str = Field(max_length=20)  # ACTIVO, INACTIVO
     fecha_registro: date = Field(default=date.today())
-    activo: bool = Field(default=True)
 
     provincia: Optional["Provincia"] = Relationship(
         back_populates="clientes",

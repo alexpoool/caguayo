@@ -43,7 +43,7 @@ export function ProductSelector({
   // Create a map for quick stock lookup
   const stockMap = new Map<number, number>();
   stockData.forEach(item => {
-    stockMap.set(item.id_producto, item.existencia);
+    stockMap.set(item.id_producto, item.stock);
   });
 
   return (

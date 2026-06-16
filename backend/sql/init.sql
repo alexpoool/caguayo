@@ -156,8 +156,7 @@ CREATE TABLE clientes (
     direccion TEXT NOT NULL,
     tipo_relacion VARCHAR(20) NOT NULL CHECK (tipo_relacion IN ('CLIENTE', 'PROVEEDOR', 'AMBAS')),
     estado VARCHAR(20) NOT NULL CHECK (estado IN ('ACTIVO', 'INACTIVO')),
-    fecha_registro DATE NOT NULL DEFAULT CURRENT_DATE,
-    activo BOOLEAN NOT NULL DEFAULT true
+    fecha_registro DATE NOT NULL DEFAULT CURRENT_DATE
 );
 
 -- Clientes - Persona Natural
@@ -320,7 +319,7 @@ CREATE TABLE productos (
     moneda_venta INTEGER NOT NULL REFERENCES moneda(id_moneda) ON DELETE CASCADE,
     precio_venta NUMERIC NOT NULL,
     precio_minimo NUMERIC NOT NULL,
-    existencia INTEGER DEFAULT 0
+    stock INTEGER DEFAULT 0
 );
 
 -- =====================================================
@@ -359,7 +358,8 @@ CREATE TABLE item_anexo (
     cantidad_vendida INTEGER DEFAULT 0,
     precio_compra NUMERIC(15, 4) NOT NULL,
     precio_venta NUMERIC(15, 4) NOT NULL,
-    id_moneda INTEGER NOT NULL REFERENCES moneda(id_moneda) ON DELETE CASCADE
+    id_moneda INTEGER NOT NULL REFERENCES moneda(id_moneda) ON DELETE CASCADE,
+    codigo VARCHAR(50)
 );
 
 -- Anexo-Producto (relación directa anexo-producto)

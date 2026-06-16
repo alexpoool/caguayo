@@ -137,9 +137,11 @@ export interface ItemAnexo {
   id_anexo: number;
   id_producto: number;
   cantidad: number;
+  cantidad_liquidada?: number;
   precio_compra: number;
   precio_venta: number;
   id_moneda: number;
+  codigo?: string;
   producto?: ProductoSimple;
 }
 

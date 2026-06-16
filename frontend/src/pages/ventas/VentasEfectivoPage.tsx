@@ -63,7 +63,7 @@ export function VentasEfectivoPage() {
 
   const stockMap = useMemo(() => {
     const map = new Map<number, number>();
-    stockData.forEach((item: any) => map.set(item.id_producto, item.existencia));
+    stockData.forEach((item: any) => map.set(item.id_producto, item.stock));
     return map;
   }, [stockData]);
 

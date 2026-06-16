@@ -115,7 +115,7 @@ class MovimientoService:
     ) -> MovimientoRead:
         """Confirmar un movimiento cambiando su estado a 'confirmado'.
 
-        Al confirmar, se aplican los cambios de stock en productos.existencia
+        Al confirmar, se aplican los cambios de stock en productos.stock
         y se registra la venta en item_anexo si el tipo es 'venta'.
 
         Args:
@@ -145,7 +145,7 @@ class MovimientoService:
                 id_dependencia=db_movimiento.id_dependencia
             )
             if not validacion["disponible"]:
-                disponible_real = validacion.get("existencia", 0) - validacion.get("stock_comprometido", 0)
+                disponible_real = validacion.get("stock", 0) - validacion.get("stock_comprometido", 0)
                 raise ValueError(
                     f"Stock insuficiente para '{db_movimiento.producto.nombre}'. "
                     f"Disponible: {disponible_real}, "
@@ -161,7 +161,7 @@ class MovimientoService:
         # Para productos konsignación con tipo venta, el stock real se actualiza
         # via registrar_venta_en_anexo (item_anexo.cantidad_vendida)
         if not (tiene_konsignacion and tipo.tipo == "venta"):
-            await ExistenciaService.actualizar_existencia_producto(
+            await ExistenciaService.actualizar_stock_producto(
                 db, db_movimiento.id_producto, cambio, commit=False
             )
 
@@ -171,8 +171,8 @@ class MovimientoService:
                 db, db_movimiento.id_producto, db_movimiento.cantidad, commit=False
             )
 
-        # Sincronizar productos.existencia con el stock real post-actualización
-        # Solo cuando se saltó actualizar_existencia_producto (konsignación + venta)
+        # Sincronizar productos.stock con el stock real post-actualización
+        # Solo cuando se saltó actualizar_stock_producto (konsignación + venta)
         if tiene_konsignacion and tipo.tipo == "venta":
             from sqlalchemy import text as _text
             _sync = await db.exec(
@@ -183,10 +183,10 @@ class MovimientoService:
                 """),
                 params={"id_producto": db_movimiento.id_producto}
             )
-            _existencia_sync = _sync.scalar() or 0
+            _stock_sync = _sync.scalar() or 0
             await db.exec(
-                _text("UPDATE productos SET existencia = :existencia WHERE id_producto = :id_producto"),
-                params={"id_producto": db_movimiento.id_producto, "existencia": _existencia_sync}
+                _text("UPDATE productos SET stock = :stock WHERE id_producto = :id_producto"),
+                params={"id_producto": db_movimiento.id_producto, "stock": _stock_sync}
             )
 
         # Cambiar el estado a confirmado

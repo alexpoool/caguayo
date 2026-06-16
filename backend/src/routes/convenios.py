@@ -37,7 +37,7 @@ async def listar_convenios(
             "fecha": str(c.fecha),
             "vigencia": str(c.vigencia),
             "id_tipo_convenio": c.id_tipo_convenio,
-            "codigo": c.codigo,
+            "codigo_convenio": c.codigo,
         }
         for c in convenios
     ]
@@ -140,7 +140,7 @@ async def crear_convenio(
             "fecha": str(db_convenio.fecha),
             "vigencia": str(db_convenio.vigencia),
             "id_tipo_convenio": db_convenio.id_tipo_convenio,
-            "codigo": db_convenio.codigo,
+            "codigo_convenio": db_convenio.codigo,
         }
     except HTTPException:
         raise
@@ -177,7 +177,7 @@ async def actualizar_convenio(
         "fecha": str(db_convenio.fecha),
         "vigencia": str(db_convenio.vigencia),
         "id_tipo_convenio": db_convenio.id_tipo_convenio,
-        "codigo": db_convenio.codigo,
+        "codigo_convenio": db_convenio.codigo,
     }
 
 
