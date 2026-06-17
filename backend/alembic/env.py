@@ -11,8 +11,7 @@ from src.database.connection import DATABASE_URL
 from src.models import SQLModel
 
 config = context.config
-if not config.get_main_option("sqlalchemy.url"):
-    config.set_main_option("sqlalchemy.url", DATABASE_URL)
+config.set_main_option("sqlalchemy.url", DATABASE_URL)
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
