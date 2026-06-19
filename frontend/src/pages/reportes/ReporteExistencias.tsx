@@ -5,7 +5,7 @@ import { Dependencia } from "../../types/dependencia";
 import { authHelpers } from "../../lib/api";
 import { useReportPreview } from "../../hooks/useReportPreview";
 import ReportPreviewPanel from "../../components/ui/ReportPreviewPanel";
-import type { Column, StatCard, ExportColumn } from "../../components/ui/ReportPreviewPanel";
+import type { Column, StatCard } from "../../components/ui/ReportPreviewPanel";
 import { Boxes, Download, Building2 } from "lucide-react";
 
 // ---------------------------------------------------------------------------
@@ -34,15 +34,6 @@ interface ExistenciasPreviewData {
 // ---------------------------------------------------------------------------
 // Columns (defined outside the component to keep a stable reference)
 // ---------------------------------------------------------------------------
-
-// Export columns
-// ---------------------------------------------------------------------------
-
-const EXPORT_COLUMNS: ExportColumn<ExistenciasPreviewItem>[] = [
-  { header: "Código", accessor: "codigo" },
-  { header: "Descripción", accessor: "descripcion" },
-  { header: "Cantidad", accessor: "cantidad" },
-];
 
 // ---------------------------------------------------------------------------
 // Column definitions
