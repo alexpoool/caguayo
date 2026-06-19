@@ -4,17 +4,15 @@ import { BrowserRouter as Router, Routes, Route, Link, useLocation, Navigate } f
 import { Toaster } from 'react-hot-toast';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import React from 'react';
-import { 
-  ArrowLeftRight, 
-  Boxes, 
-  Clock, 
+import {
+  ArrowLeftRight,
+  Boxes,
+  Clock,
   Home,
   Briefcase,
   BarChart3,
   UserCircle,
   Settings,
-  Shield,
-  Building,
   Coins,
   ChevronLeft,
   ChevronRight,
@@ -25,13 +23,9 @@ import {
   Wrench,
   ClipboardList,
   Layers,
-  ListChecks,
   Users,
-  List,
-  CreditCard,
   Calculator,
-  Package,
-  Terminal
+  Package
 } from 'lucide-react';
 
 import { WelcomePage } from './pages/Welcome';
@@ -102,24 +96,24 @@ const rutasPorModulo: Record<Modulo, string[]> = {
 };
 
 // Componente para proteger rutas según el módulo
-function ProtectedRoute({ 
-  children, 
-  moduloActivo, 
-  currentPath 
-}: { 
-  children: React.ReactNode; 
+function ProtectedRoute({
+  children,
+  moduloActivo,
+  currentPath
+}: {
+  children: React.ReactNode;
   moduloActivo: Modulo;
   currentPath: string;
 }) {
   const rutasPermitidas = rutasPorModulo[moduloActivo];
-  const isAllowed = rutasPermitidas.some(route => 
+  const isAllowed = rutasPermitidas.some(route =>
     currentPath === route || (route !== '/' && currentPath.startsWith(route))
   );
-  
+
   if (!isAllowed) {
     return <Navigate to="/" replace />;
   }
-  
+
   return <>{children}</>;
 }
 
@@ -180,7 +174,7 @@ function App() {
     navigate('/login', { replace: true });
   };
 
-  const handleLinkClick = () => {};
+  const handleLinkClick = () => { };
 
   const handleModuloClick = (moduloId: Modulo) => {
     setModuloActivo(moduloId);
@@ -193,7 +187,7 @@ function App() {
   const NavLink = ({ to, children, onClick, exact = false }: { to: string; children: React.ReactNode; onClick?: () => void; exact?: boolean }) => {
     const linkLocation = useLocation();
     const navigate = useNavigate();
-    const isActive = exact 
+    const isActive = exact
       ? linkLocation.pathname === to
       : linkLocation.pathname === to || (linkLocation.pathname.startsWith(`${to}/`) && to !== '/movimientos');
     const handleClick = (e: React.MouseEvent) => {
@@ -210,8 +204,8 @@ function App() {
         className={`
           group flex items-center ${slimSidebar ? 'justify-center' : 'gap-3'} ${slimSidebar ? 'px-0' : 'px-3'} py-2.5 rounded-lg 
           transition-all duration-300 ease-out relative overflow-hidden
-          ${isActive 
-            ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30' 
+          ${isActive
+            ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30'
             : 'text-slate-300 hover:bg-slate-800 hover:text-white'
           }
         `}
@@ -251,233 +245,233 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <div className={`grid ${isHomePage ? 'grid-cols-[0_1fr]' : slimSidebar ? 'grid-cols-[4.5rem_1fr]' : 'grid-cols-[16rem_1fr]'} grid-rows-[auto_1fr] h-screen bg-gray-50`}>
-          <aside className={`row-span-2 col-start-1 col-end-2 h-full bg-slate-900 text-white flex flex-col shadow-xl min-h-screen transition-all duration-300 ${isHomePage ? 'hidden' : slimSidebar ? 'w-[4.5rem]' : 'w-64'}`}>
-            <div className={`flex items-center ${slimSidebar ? 'justify-center px-0' : 'px-6'} py-4 border-b border-slate-800`}>
-              {!slimSidebar && (
-                <h1 className="text-2xl font-bold tracking-wider text-blue-400">CAGUAYO</h1>
-              )}
-              <button
-                onClick={handleToggleSlim}
-                title={slimSidebar ? 'Expandir sidebar' : 'Contraer sidebar'}
-                className={`p-1 rounded-full hover:bg-slate-800 transition-colors ${slimSidebar ? '' : 'ml-2'}`}
-              >
-                {slimSidebar ? <ChevronRight className="w-6 h-6" /> : <ChevronLeft className="w-6 h-6" />}
-              </button>
-            </div>
+        <aside className={`row-span-2 col-start-1 col-end-2 h-full bg-slate-900 text-white flex flex-col shadow-xl min-h-screen transition-all duration-300 ${isHomePage ? 'hidden' : slimSidebar ? 'w-[4.5rem]' : 'w-64'}`}>
+          <div className={`flex items-center ${slimSidebar ? 'justify-center px-0' : 'px-6'} py-4 border-b border-slate-800`}>
+            {!slimSidebar && (
+              <h1 className="text-2xl font-bold tracking-wider text-blue-400">CAGUAYO</h1>
+            )}
+            <button
+              onClick={handleToggleSlim}
+              title={slimSidebar ? 'Expandir sidebar' : 'Contraer sidebar'}
+              className={`p-1 rounded-full hover:bg-slate-800 transition-colors ${slimSidebar ? '' : 'ml-2'}`}
+            >
+              {slimSidebar ? <ChevronRight className="w-6 h-6" /> : <ChevronLeft className="w-6 h-6" />}
+            </button>
+          </div>
           <nav className={`flex-1 overflow-y-auto py-4 ${slimSidebar ? 'px-1' : ''}`}>
-              <>
-                {moduloActivo === 'inventario' && (
-              <ul className={`space-y-1 ${slimSidebar ? 'px-0' : 'px-3'}`}>
-                {hasFuncionalidad('movimientos') && (
-                <li>
-                  <NavLink to="/movimientos" onClick={handleLinkClick} exact>
-                    <ArrowLeftRight className="w-5 h-5" />
-                    Movimientos
-                  </NavLink>
-                </li>
-                )}
-                {hasFuncionalidad('pendientes') && (
-                <li>
-                  <NavLink to="/movimientos/pendientes" onClick={handleLinkClick}>
-                    <Clock className="w-6 h-6" />
-                    Pendientes
-                  </NavLink>
-                </li>
-                )}
-                {hasFuncionalidad('productos') && (
-                <li>
-                  <NavLink to="/productos" onClick={handleLinkClick}>
-                    <Boxes className="w-6 h-6" />
-                    Productos
-                  </NavLink>
-                </li>
-                )}
-              </ul>
+            <>
+              {moduloActivo === 'inventario' && (
+                <ul className={`space-y-1 ${slimSidebar ? 'px-0' : 'px-3'}`}>
+                  {hasFuncionalidad('movimientos') && (
+                    <li>
+                      <NavLink to="/movimientos" onClick={handleLinkClick} exact>
+                        <ArrowLeftRight className="w-5 h-5" />
+                        Movimientos
+                      </NavLink>
+                    </li>
+                  )}
+                  {hasFuncionalidad('pendientes') && (
+                    <li>
+                      <NavLink to="/movimientos/pendientes" onClick={handleLinkClick}>
+                        <Clock className="w-6 h-6" />
+                        Pendientes
+                      </NavLink>
+                    </li>
+                  )}
+                  {hasFuncionalidad('productos') && (
+                    <li>
+                      <NavLink to="/productos" onClick={handleLinkClick}>
+                        <Boxes className="w-6 h-6" />
+                        Productos
+                      </NavLink>
+                    </li>
+                  )}
+                </ul>
               )}
-{moduloActivo === 'administracion' && (
-              <ul className="space-y-1 px-3">
-                {hasFuncionalidad('configuracion') && (
-                <li>
-                  <NavLink to="/configuracion" onClick={handleLinkClick}>
-                    <Settings className="w-6 h-6" />
-                    Configuración
-                  </NavLink>
-                </li>
-                )}
-              </ul>
+              {moduloActivo === 'administracion' && (
+                <ul className="space-y-1 px-3">
+                  {hasFuncionalidad('configuracion') && (
+                    <li>
+                      <NavLink to="/configuracion" onClick={handleLinkClick}>
+                        <Settings className="w-6 h-6" />
+                        Configuración
+                      </NavLink>
+                    </li>
+                  )}
+                </ul>
               )}
-                {moduloActivo === 'compra' && (
-                  <ul className="space-y-1 px-3">
-                    {hasFuncionalidad('proveedores') && (
+              {moduloActivo === 'compra' && (
+                <ul className="space-y-1 px-3">
+                  {hasFuncionalidad('proveedores') && (
                     <li>
                       <NavLink to="/compra/clientes" onClick={handleLinkClick}>
                         <UserCircle className="w-6 h-6" />
                         Proveedores
                       </NavLink>
                     </li>
-                    )}
-                    {hasFuncionalidad('convenios') && (
+                  )}
+                  {hasFuncionalidad('convenios') && (
                     <li>
                       <NavLink to="/compra/convenios" onClick={handleLinkClick}>
                         <FileText className="w-6 h-6" />
                         Convenios
                       </NavLink>
                     </li>
-                    )}
-                    {hasFuncionalidad('anexos') && (
+                  )}
+                  {hasFuncionalidad('anexos') && (
                     <li>
                       <NavLink to="/compra/anexos" onClick={handleLinkClick}>
                         <Boxes className="w-6 h-6" />
                         Anexos
                       </NavLink>
                     </li>
-                    )}
-                    {hasFuncionalidad('liquidaciones') && (
+                  )}
+                  {hasFuncionalidad('liquidaciones') && (
                     <li>
                       <NavLink to="/compra/liquidaciones" onClick={handleLinkClick}>
                         <Coins className="w-6 h-6" />
                         Liquidaciones
                       </NavLink>
                     </li>
-                    )}
-                    {hasFuncionalidad('productos_liquidacion') && (
+                  )}
+                  {hasFuncionalidad('productos_liquidacion') && (
                     <li>
                       <NavLink to="/compra/productos-liquidacion" onClick={handleLinkClick}>
                         <Coins className="w-6 h-6" />
                         Productos en Liquidación
                       </NavLink>
                     </li>
-                    )}
-                  </ul>
-                )}
-                {moduloActivo === 'venta' && (
-                  <ul className="space-y-1 px-3">
-                    {hasFuncionalidad('clientes') && (
+                  )}
+                </ul>
+              )}
+              {moduloActivo === 'venta' && (
+                <ul className="space-y-1 px-3">
+                  {hasFuncionalidad('clientes') && (
                     <li>
                       <NavLink to="/clientes" onClick={handleLinkClick}>
                         <UserCircle className="w-6 h-6" />
                         Clientes
                       </NavLink>
                     </li>
-                    )}
-                    {hasFuncionalidad('contratos') && (
+                  )}
+                  {hasFuncionalidad('contratos') && (
                     <li>
                       <NavLink to="/ventas/contratos" onClick={handleLinkClick}>
                         <FilePlus className="w-6 h-6" />
                         Contrato
                       </NavLink>
                     </li>
-                    )}
-                    {hasFuncionalidad('suplementos') && (
+                  )}
+                  {hasFuncionalidad('suplementos') && (
                     <li>
                       <NavLink to="/ventas/suplementos" onClick={handleLinkClick}>
                         <FileText className="w-6 h-6" />
                         Suplemento
                       </NavLink>
                     </li>
-                    )}
-                    {hasFuncionalidad('facturas') && (
+                  )}
+                  {hasFuncionalidad('facturas') && (
                     <li>
                       <NavLink to="/ventas/facturas" onClick={handleLinkClick}>
                         <Receipt className="w-6 h-6" />
                         Factura
                       </NavLink>
                     </li>
-                    )}
-                    {hasFuncionalidad('venta_efectivo') && (
+                  )}
+                  {hasFuncionalidad('venta_efectivo') && (
                     <li>
                       <NavLink to="/ventas/efectivo" onClick={handleLinkClick}>
                         <DollarSign className="w-6 h-6" />
                         Efectivo
                       </NavLink>
                     </li>
-                    )}
-                  </ul>
-                )}
-                {moduloActivo === 'proyecto' && (
-                  <ul className="space-y-1 px-3">
-                    {hasFuncionalidad('servicios') && (
+                  )}
+                </ul>
+              )}
+              {moduloActivo === 'proyecto' && (
+                <ul className="space-y-1 px-3">
+                  {hasFuncionalidad('servicios') && (
                     <li>
                       <NavLink to="/proyectos/servicios" onClick={handleLinkClick}>
                         <Wrench className="w-6 h-6" />
                         Servicios
                       </NavLink>
                     </li>
-                    )}
-                    {hasFuncionalidad('solicitudes') && (
+                  )}
+                  {hasFuncionalidad('solicitudes') && (
                     <li>
                       <NavLink to="/proyectos/solicitudes" onClick={handleLinkClick}>
                         <ClipboardList className="w-6 h-6" />
                         Solicitudes
                       </NavLink>
                     </li>
-                    )}
-                    {hasFuncionalidad('proyectos') && (
+                  )}
+                  {hasFuncionalidad('proyectos') && (
                     <li>
                       <NavLink to="/proyectos/proyectos" onClick={handleLinkClick}>
                         <Layers className="w-6 h-6" />
                         Proyectos
                       </NavLink>
                     </li>
-                    )}
-                    {hasFuncionalidad('realizadores') && (
+                  )}
+                  {hasFuncionalidad('realizadores') && (
                     <li>
                       <NavLink to="/proyectos/realizadores" onClick={handleLinkClick}>
                         <Users className="w-6 h-6" />
                         Realizadores
                       </NavLink>
                     </li>
-                    )}
-                    {hasFuncionalidad('facturas_servicio') && (
+                  )}
+                  {hasFuncionalidad('facturas_servicio') && (
                     <li>
                       <NavLink to="/proyectos/facturas-servicio" onClick={handleLinkClick}>
                         <Receipt className="w-6 h-6" />
                         Facturas
                       </NavLink>
                     </li>
-                    )}
-                    {hasFuncionalidad('liquidaciones_servicio') && (
+                  )}
+                  {hasFuncionalidad('liquidaciones_servicio') && (
                     <li>
                       <NavLink to="/proyectos/liquidaciones" onClick={handleLinkClick}>
                         <Calculator className="w-6 h-6" />
                         Liquidaciones
                       </NavLink>
                     </li>
-                    )}
-                  </ul>
-                )}
-                {moduloActivo === 'reportes' && (
-                  <ul className="space-y-1 px-3">
-                    <li>
-                      <NavLink to="/reportes/existencias" onClick={handleLinkClick}>
-                        <Boxes className="w-6 h-6" />
-                        Existencias
-                      </NavLink>
-                    </li>
-                    <li>
-                      <NavLink to="/reportes/movimientos-dependencia" onClick={handleLinkClick}>
-                        <ArrowLeftRight className="w-6 h-6" />
-                        Mov. Dependencia
-                      </NavLink>
-                    </li>
-                    <li>
-                      <NavLink to="/reportes/movimientos-producto" onClick={handleLinkClick}>
-                        <Package className="w-6 h-6" />
-                        Mov. Producto
-                      </NavLink>
-                    </li>
-                    <li>
-                      <NavLink to="/reportes/proveedores" onClick={handleLinkClick}>
-                        <UserCircle className="w-6 h-6" />
-                        Proveedores
-                      </NavLink>
-                    </li>
-                  </ul>
-                )}
-              </>
+                  )}
+                </ul>
+              )}
+              {moduloActivo === 'reportes' && (
+                <ul className="space-y-1 px-3">
+                  <li>
+                    <NavLink to="/reportes/existencias" onClick={handleLinkClick}>
+                      <Boxes className="w-6 h-6" />
+                      Existencias
+                    </NavLink>
+                  </li>
+                  <li>
+                    <NavLink to="/reportes/movimientos-dependencia" onClick={handleLinkClick}>
+                      <ArrowLeftRight className="w-6 h-6" />
+                      Mov. Dependencia
+                    </NavLink>
+                  </li>
+                  <li>
+                    <NavLink to="/reportes/movimientos-producto" onClick={handleLinkClick}>
+                      <Package className="w-6 h-6" />
+                      Mov. Producto
+                    </NavLink>
+                  </li>
+                  <li>
+                    <NavLink to="/reportes/proveedores" onClick={handleLinkClick}>
+                      <UserCircle className="w-6 h-6" />
+                      Proveedores
+                    </NavLink>
+                  </li>
+                </ul>
+              )}
+            </>
           </nav>
         </aside>
-<header className={`${isHomePage ? 'col-start-1 col-end-3' : 'col-start-2 col-end-3'} row-start-1 row-end-2 sticky top-0 z-40 bg-white shadow-sm border-b border-gray-200 px-6 py-4 h-16 flex items-center justify-between`}>
+        <header className={`${isHomePage ? 'col-start-1 col-end-3' : 'col-start-2 col-end-3'} row-start-1 row-end-2 sticky top-0 z-40 bg-white shadow-sm border-b border-gray-200 px-6 py-4 h-16 flex items-center justify-between`}>
           <div className="flex items-center gap-6">
             <div className="flex items-center gap-3 border-r border-gray-200 pr-6">
               <img src="/default.jpg" alt="avatar" className="w-8 h-8 rounded-full object-cover" />
@@ -552,64 +546,64 @@ function App() {
                     </ProtectedRoute>
                   }
                 />
-                <Route 
+                <Route
                   path="/movimientos/pendientes"
                   element={
                     <ProtectedRoute moduloActivo={moduloActivo} currentPath="/movimientos/pendientes">
                       <MovimientosPendientesPage />
                     </ProtectedRoute>
-                  } 
+                  }
                 />
-                <Route 
-                  path="/productos" 
+                <Route
+                  path="/productos"
                   element={
                     <ProtectedRoute moduloActivo={moduloActivo} currentPath="/productos">
                       <ProductosPage />
                     </ProtectedRoute>
-                  } 
+                  }
                 />
-                
+
                 {/* Rutas de Inventario - protegidas */}
-                <Route 
-                  path="/inventario" 
+                <Route
+                  path="/inventario"
                   element={
                     <ProtectedRoute moduloActivo={moduloActivo} currentPath="/inventario">
                       <InventarioHome />
                     </ProtectedRoute>
-                  } 
+                  }
                 />
                 <Route
-                  path="/movimientos/pendientes" 
+                  path="/movimientos/pendientes"
                   element={
                     <ProtectedRoute moduloActivo={moduloActivo} currentPath="/movimientos/pendientes">
                       <MovimientosPendientesPage />
                     </ProtectedRoute>
-                  } 
+                  }
                 />
-                <Route 
-                  path="/movimientos/seleccionar-recepcion" 
+                <Route
+                  path="/movimientos/seleccionar-recepcion"
                   element={
                     <ProtectedRoute moduloActivo={moduloActivo} currentPath="/movimientos">
                       <RecepcionesPage />
                     </ProtectedRoute>
-                  } 
+                  }
                 />
-                <Route 
-                  path="/movimientos/ajuste" 
+                <Route
+                  path="/movimientos/ajuste"
                   element={
                     <ProtectedRoute moduloActivo={moduloActivo} currentPath="/movimientos">
                       <MovimientoAjusteForm />
                     </ProtectedRoute>
-                  } 
+                  }
                 />
                 {/* Rutas de Ventas - protegidas */}
-                <Route 
-                  path="/venta" 
+                <Route
+                  path="/venta"
                   element={
                     <ProtectedRoute moduloActivo={moduloActivo} currentPath="/venta">
                       <VentaHome />
                     </ProtectedRoute>
-                  } 
+                  }
                 />
                 <Route
                   path="/clientes"
@@ -617,189 +611,189 @@ function App() {
                     <ProtectedRoute moduloActivo={moduloActivo} currentPath="/clientes">
                       <ClientesPage />
                     </ProtectedRoute>
-                  } 
+                  }
                 />
-                <Route 
-                  path="/clientes/:id" 
+                <Route
+                  path="/clientes/:id"
                   element={
                     <ProtectedRoute moduloActivo={moduloActivo} currentPath="/clientes">
                       <PerfilClientePage />
                     </ProtectedRoute>
-                  } 
+                  }
                 />
-                <Route 
-                  path="/ventas/operaciones" 
+                <Route
+                  path="/ventas/operaciones"
                   element={
                     <ProtectedRoute moduloActivo={moduloActivo} currentPath="/ventas/operaciones">
                       <VentaHome />
                     </ProtectedRoute>
-                  } 
+                  }
                 />
-                <Route 
-                  path="/ventas/contratos" 
+                <Route
+                  path="/ventas/contratos"
                   element={
                     <ProtectedRoute moduloActivo={moduloActivo} currentPath="/ventas/contratos">
                       <ContratosPage />
                     </ProtectedRoute>
-                  } 
+                  }
                 />
-                <Route 
-                  path="/ventas/suplementos" 
+                <Route
+                  path="/ventas/suplementos"
                   element={
                     <ProtectedRoute moduloActivo={moduloActivo} currentPath="/ventas/suplementos">
                       <SuplementosPage />
                     </ProtectedRoute>
-                  } 
+                  }
                 />
-                <Route 
-                  path="/ventas/facturas" 
+                <Route
+                  path="/ventas/facturas"
                   element={
                     <ProtectedRoute moduloActivo={moduloActivo} currentPath="/ventas/facturas">
                       <FacturasPage />
                     </ProtectedRoute>
-                  } 
+                  }
                 />
-                <Route 
-                  path="/ventas/efectivo" 
+                <Route
+                  path="/ventas/efectivo"
                   element={
                     <ProtectedRoute moduloActivo={moduloActivo} currentPath="/ventas/efectivo">
                       <VentasEfectivoPage />
                     </ProtectedRoute>
-                  } 
+                  }
                 />
-                
+
                 {/* Rutas de Proyectos - protegidas */}
-                <Route 
-                  path="/proyecto" 
+                <Route
+                  path="/proyecto"
                   element={
                     <ProtectedRoute moduloActivo={moduloActivo} currentPath="/proyecto">
                       <ProyectosHome />
                     </ProtectedRoute>
-                  } 
+                  }
                 />
-                <Route 
-                  path="/proyectos/servicios" 
+                <Route
+                  path="/proyectos/servicios"
                   element={
                     <ProtectedRoute moduloActivo={moduloActivo} currentPath="/proyectos/servicios">
                       <ServiciosPage />
                     </ProtectedRoute>
-                  } 
+                  }
                 />
-                <Route 
-                  path="/proyectos/solicitudes" 
+                <Route
+                  path="/proyectos/solicitudes"
                   element={
                     <ProtectedRoute moduloActivo={moduloActivo} currentPath="/proyectos/solicitudes">
                       <SolicitudesPage />
                     </ProtectedRoute>
-                  } 
+                  }
                 />
-                <Route 
-                  path="/proyectos/proyectos" 
+                <Route
+                  path="/proyectos/proyectos"
                   element={
                     <ProtectedRoute moduloActivo={moduloActivo} currentPath="/proyectos/proyectos">
                       <ProyectosPage />
                     </ProtectedRoute>
-                  } 
+                  }
                 />
-                <Route 
-                  path="/proyectos/etapas" 
+                <Route
+                  path="/proyectos/etapas"
                   element={
                     <ProtectedRoute moduloActivo={moduloActivo} currentPath="/proyectos/etapas">
                       <EtapasPage />
                     </ProtectedRoute>
-                  } 
+                  }
                 />
-                <Route 
-                  path="/proyectos/tareas-etapa" 
+                <Route
+                  path="/proyectos/tareas-etapa"
                   element={
                     <ProtectedRoute moduloActivo={moduloActivo} currentPath="/proyectos/tareas-etapa">
                       <TareasEtapaPage />
                     </ProtectedRoute>
-                  } 
+                  }
                 />
-                <Route 
-                  path="/proyectos/realizadores" 
+                <Route
+                  path="/proyectos/realizadores"
                   element={
                     <ProtectedRoute moduloActivo={moduloActivo} currentPath="/proyectos/realizadores">
                       <RealizadoresPage />
                     </ProtectedRoute>
-                  } 
+                  }
                 />
-                <Route 
-                  path="/proyectos/facturas-servicio" 
+                <Route
+                  path="/proyectos/facturas-servicio"
                   element={
                     <ProtectedRoute moduloActivo={moduloActivo} currentPath="/proyectos/facturas-servicio">
                       <FacturasServicioPage />
                     </ProtectedRoute>
-                  } 
+                  }
                 />
-                <Route 
-                  path="/proyectos/pagos-factura-servicio" 
+                <Route
+                  path="/proyectos/pagos-factura-servicio"
                   element={
                     <ProtectedRoute moduloActivo={moduloActivo} currentPath="/proyectos/pagos-factura-servicio">
                       <PagosFacturaServicioPage />
                     </ProtectedRoute>
-                  } 
+                  }
                 />
-                <Route 
-                  path="/proyectos/liquidaciones" 
+                <Route
+                  path="/proyectos/liquidaciones"
                   element={
                     <ProtectedRoute moduloActivo={moduloActivo} currentPath="/proyectos/liquidaciones">
                       <ProyectoLiquidacionesPage />
                     </ProtectedRoute>
-                  } 
+                  }
                 />
-                <Route 
-                  path="/proyectos/certificaciones" 
+                <Route
+                  path="/proyectos/certificaciones"
                   element={
                     <ProtectedRoute moduloActivo={moduloActivo} currentPath="/proyectos/certificaciones">
                       <CertificacionesPage />
                     </ProtectedRoute>
-                  } 
+                  }
                 />
-                
+
                 {/* Rutas de Administración - protegidas */}
-                <Route 
-                  path="/administracion" 
+                <Route
+                  path="/administracion"
                   element={
                     <ProtectedRoute moduloActivo={moduloActivo} currentPath="/administracion">
                       <ConfiguracionPage />
                     </ProtectedRoute>
-                  } 
+                  }
                 />
-                <Route 
-                  path="/movimientos" 
+                <Route
+                  path="/movimientos"
                   element={
                     <ProtectedRoute moduloActivo={moduloActivo} currentPath="/movimientos">
                       <MovimientosPage />
                     </ProtectedRoute>
-                  } 
+                  }
                 />
-                <Route 
-                  path="/movimientos/pendientes" 
+                <Route
+                  path="/movimientos/pendientes"
                   element={
                     <ProtectedRoute moduloActivo={moduloActivo} currentPath="/movimientos/pendientes">
                       <MovimientosPendientesPage />
                     </ProtectedRoute>
-                  } 
+                  }
                 />
-                <Route 
-                  path="/configuracion" 
+                <Route
+                  path="/configuracion"
                   element={
                     <ProtectedRoute moduloActivo={moduloActivo} currentPath="/configuracion">
                       <ConfiguracionPage />
                     </ProtectedRoute>
-                  } 
+                  }
                 />
-                
+
                 {/* Rutas de Compras - protegidas */}
-                <Route 
-                  path="/compra" 
+                <Route
+                  path="/compra"
                   element={
                     <ProtectedRoute moduloActivo={moduloActivo} currentPath="/compra">
                       <CompraHome />
                     </ProtectedRoute>
-                  } 
+                  }
                 />
                 <Route
                   path="/compra/convenios"
@@ -841,134 +835,134 @@ function App() {
                     </ProtectedRoute>
                   }
                 />
-                
+
                 {/* Rutas de Reportes - protegidas */}
-                <Route 
-                  path="/reportes" 
+                <Route
+                  path="/reportes"
                   element={
                     <ProtectedRoute moduloActivo={moduloActivo} currentPath="/reportes">
                       <ReportesHome />
                     </ProtectedRoute>
-                  } 
+                  }
                 />
-                <Route 
-                  path="/reportes/existencias" 
+                <Route
+                  path="/reportes/existencias"
                   element={
                     <ProtectedRoute moduloActivo={moduloActivo} currentPath="/reportes">
                       <ReporteExistencias />
                     </ProtectedRoute>
-                  } 
+                  }
                 />
-                <Route 
-                  path="/reportes/movimientos-dependencia" 
+                <Route
+                  path="/reportes/movimientos-dependencia"
                   element={
                     <ProtectedRoute moduloActivo={moduloActivo} currentPath="/reportes">
                       <ReporteMovimientosDependencia />
                     </ProtectedRoute>
-                  } 
+                  }
                 />
-                <Route 
-                  path="/reportes/movimientos-producto" 
+                <Route
+                  path="/reportes/movimientos-producto"
                   element={
                     <ProtectedRoute moduloActivo={moduloActivo} currentPath="/reportes">
                       <ReporteMovimientosProducto />
                     </ProtectedRoute>
-                  } 
+                  }
                 />
-                <Route 
-                  path="/reportes/proveedores" 
+                <Route
+                  path="/reportes/proveedores"
                   element={
                     <ProtectedRoute moduloActivo={moduloActivo} currentPath="/reportes">
                       <ReporteProveedores />
                     </ProtectedRoute>
-                  } 
+                  }
                 />
-                <Route 
-                  path="/perfil" 
+                <Route
+                  path="/perfil"
                   element={
                     <ProtectedRoute moduloActivo={moduloActivo} currentPath="/perfil">
                       <PerfilPage />
                     </ProtectedRoute>
-                  } 
+                  }
                 />
               </Routes>
             </div>
           </main>
         </div>
       </div>
-    {showAccountModal && (
-      <div
-        className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4"
-        onClick={() => { setShowLogoutConfirm(false); setShowAccountModal(false); }}
-      >
+      {showAccountModal && (
         <div
-          className="bg-white rounded-xl shadow-2xl w-full max-w-sm p-6 transform transition-all animate-fade-in-up"
-          onClick={(e) => e.stopPropagation()}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4"
+          onClick={() => { setShowLogoutConfirm(false); setShowAccountModal(false); }}
         >
-          <div className="flex items-center gap-3">
-            <img src="/default.jpg" alt="avatar" className="w-12 h-12 rounded-full object-cover" />
-            <div>
-              <div className="text-sm font-semibold">{user ? `${user.nombre} ${user.primer_apellido}` : 'Usuario'}</div>
-              <div className="text-xs text-slate-400">{user?.alias || 'Cuenta de usuario'}</div>
+          <div
+            className="bg-white rounded-xl shadow-2xl w-full max-w-sm p-6 transform transition-all animate-fade-in-up"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center gap-3">
+              <img src="/default.jpg" alt="avatar" className="w-12 h-12 rounded-full object-cover" />
+              <div>
+                <div className="text-sm font-semibold">{user ? `${user.nombre} ${user.primer_apellido}` : 'Usuario'}</div>
+                <div className="text-xs text-slate-400">{user?.alias || 'Cuenta de usuario'}</div>
+              </div>
+            </div>
+
+            <div className="mt-4 border-t border-gray-100 pt-4 space-y-2">
+              <button
+                className="w-full text-left px-4 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700 transition-colors"
+                onClick={() => {
+                  setShowAccountModal(false);
+                  setModuloActivo('administracion');
+                  navigate('/perfil');
+                }}
+              >
+                Ver perfil
+              </button>
+
+              {/* TODO: Implementar la acción de 'Salir del sistema' aquí (por ejemplo llamar a la API y limpiar estado). */}
+              <button
+                className="w-full text-left px-4 py-2 rounded-md border border-red-200 text-red-600 bg-red-50 hover:bg-red-100 transition-colors"
+                onClick={async () => {
+                  setShowAccountModal(false);
+                  await logout();
+                  navigate('/login', { replace: true });
+                }}
+              >
+                Salir del sistema
+              </button>
             </div>
           </div>
-
-          <div className="mt-4 border-t border-gray-100 pt-4 space-y-2">
-            <button
-              className="w-full text-left px-4 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700 transition-colors"
-              onClick={() => {
-                setShowAccountModal(false);
-                setModuloActivo('administracion');
-                navigate('/perfil');
-              }}
-            >
-              Ver perfil
-            </button>
-
-            {/* TODO: Implementar la acción de 'Salir del sistema' aquí (por ejemplo llamar a la API y limpiar estado). */}
-            <button
-              className="w-full text-left px-4 py-2 rounded-md border border-red-200 text-red-600 bg-red-50 hover:bg-red-100 transition-colors"
-              onClick={async () => { 
-                setShowAccountModal(false); 
-                await logout();
-                navigate('/login', { replace: true });
-              }}
-            >
-              Salir del sistema
-            </button>
-          </div>
         </div>
-      </div>
-    )}
+      )}
 
-    {showLogoutConfirm && (
-      <div
-        className="fixed inset-0 z-60 flex items-center justify-center bg-black/60 px-4"
-        onClick={() => setShowLogoutConfirm(false)}
-      >
+      {showLogoutConfirm && (
         <div
-          className="bg-white rounded-lg shadow-xl w-full max-w-xs p-5"
-          onClick={(e) => e.stopPropagation()}
+          className="fixed inset-0 z-60 flex items-center justify-center bg-black/60 px-4"
+          onClick={() => setShowLogoutConfirm(false)}
         >
-          <h4 className="text-lg font-semibold">Confirmar cierre de sesión</h4>
-          <p className="text-sm text-slate-500 mt-2">¿Estás seguro que quieres cerrar la sesión?</p>
-          <div className="mt-4 flex justify-end gap-2">
-            <button
-              className="px-3 py-1.5 rounded-md bg-gray-100 hover:bg-gray-200"
-              onClick={() => setShowLogoutConfirm(false)}
-            >
-              Cancelar
-            </button>
-            <button
-              className="px-3 py-1.5 rounded-md bg-red-600 text-white hover:bg-red-700"
-              onClick={handleLogout}
-            >
-              Cerrar sesión
-            </button>
+          <div
+            className="bg-white rounded-lg shadow-xl w-full max-w-xs p-5"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h4 className="text-lg font-semibold">Confirmar cierre de sesión</h4>
+            <p className="text-sm text-slate-500 mt-2">¿Estás seguro que quieres cerrar la sesión?</p>
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                className="px-3 py-1.5 rounded-md bg-gray-100 hover:bg-gray-200"
+                onClick={() => setShowLogoutConfirm(false)}
+              >
+                Cancelar
+              </button>
+              <button
+                className="px-3 py-1.5 rounded-md bg-red-600 text-white hover:bg-red-700"
+                onClick={handleLogout}
+              >
+                Cerrar sesión
+              </button>
+            </div>
           </div>
         </div>
-      </div>
-    )}
+      )}
     </QueryClientProvider>
   );
 }
