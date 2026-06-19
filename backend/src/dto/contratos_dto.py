@@ -1,7 +1,8 @@
-from sqlmodel import SQLModel
+from sqlmodel import SQLModel, Field
 from typing import Optional, List
 from datetime import date
 from decimal import Decimal
+from pydantic import field_validator
 from src.dto.productos_dto import ProductoSimpleRead
 
 
@@ -42,17 +43,25 @@ class EstadoContratoUpdate(SQLModel):
 
 
 class ContratoBase(SQLModel):
-    id_cliente: int
-    nombre: str
+    id_cliente: int = Field(gt=0)
+    nombre: str = Field(min_length=1)
     proforma: Optional[str] = None
-    id_estado: int
+    id_estado: int = Field(gt=0)
     fecha: date
     vigencia: date
-    id_tipo_contrato: int
-    id_moneda: int
-    monto: Decimal = Decimal("0.00")
+    id_tipo_contrato: int = Field(gt=0)
+    id_moneda: int = Field(gt=0)
+    monto: Decimal = Field(default=Decimal("0.00"), ge=0)
     documento_final: Optional[str] = None
     codigo: Optional[str] = None
+
+    @field_validator("vigencia")
+    @classmethod
+    def vigencia_no_anterior_a_fecha(cls, v: date, info) -> date:
+        fecha = info.data.get("fecha")
+        if fecha and v < fecha:
+            raise ValueError("La vigencia no puede ser anterior a la fecha de inicio")
+        return v
 
 
 class ContratoCreate(ContratoBase):
@@ -71,17 +80,27 @@ class ContratoReadWithDetails(ContratoRead):
 
 
 class ContratoUpdate(SQLModel):
-    id_cliente: Optional[int] = None
-    nombre: Optional[str] = None
+    id_cliente: Optional[int] = Field(default=None, gt=0)
+    nombre: Optional[str] = Field(default=None, min_length=1)
     proforma: Optional[str] = None
-    id_estado: Optional[int] = None
+    id_estado: Optional[int] = Field(default=None, gt=0)
     fecha: Optional[date] = None
     vigencia: Optional[date] = None
-    id_tipo_contrato: Optional[int] = None
-    id_moneda: Optional[int] = None
-    monto: Optional[Decimal] = None
+    id_tipo_contrato: Optional[int] = Field(default=None, gt=0)
+    id_moneda: Optional[int] = Field(default=None, gt=0)
+    monto: Optional[Decimal] = Field(default=None, ge=0)
     documento_final: Optional[str] = None
     codigo: Optional[str] = None
+
+    @field_validator("vigencia")
+    @classmethod
+    def vigencia_no_anterior_a_fecha(cls, v: Optional[date], info) -> Optional[date]:
+        if v is None:
+            return v
+        fecha = info.data.get("fecha")
+        if fecha and v < fecha:
+            raise ValueError("La vigencia no puede ser anterior a la fecha de inicio")
+        return v
 
 
 class MonedaRead(SQLModel):
@@ -98,11 +117,11 @@ class ClienteSimpleRead(SQLModel):
 
 
 class SuplementoBase(SQLModel):
-    id_contrato: int
-    nombre: str
-    id_estado: int
+    id_contrato: int = Field(gt=0)
+    nombre: str = Field(min_length=1)
+    id_estado: int = Field(gt=0)
     fecha: date
-    monto: Decimal = Decimal("0.00")
+    monto: Decimal = Field(default=Decimal("0.00"), ge=0)
     documento: Optional[str] = None
     codigo: Optional[str] = None
 
@@ -120,20 +139,20 @@ class SuplementoReadWithDetails(SuplementoRead):
 
 
 class SuplementoUpdate(SQLModel):
-    id_contrato: Optional[int] = None
-    nombre: Optional[str] = None
-    id_estado: Optional[int] = None
+    id_contrato: Optional[int] = Field(default=None, gt=0)
+    nombre: Optional[str] = Field(default=None, min_length=1)
+    id_estado: Optional[int] = Field(default=None, gt=0)
     fecha: Optional[date] = None
-    monto: Optional[Decimal] = None
+    monto: Optional[Decimal] = Field(default=None, ge=0)
     documento: Optional[str] = None
     codigo: Optional[str] = None
 
 
 class ItemFacturaBase(SQLModel):
-    id_producto: int
-    cantidad: int
-    precio_venta: Decimal
-    id_moneda: int
+    id_producto: int = Field(gt=0)
+    cantidad: int = Field(gt=0)
+    precio_venta: Decimal = Field(ge=0)
+    id_moneda: int = Field(gt=0)
     codigo: Optional[str] = None
 
 
@@ -149,20 +168,20 @@ class ItemFacturaRead(ItemFacturaBase):
 
 
 class FacturaBase(SQLModel):
-    id_contrato: int
-    codigo_factura: Optional[str] = None
+    id_contrato: int = Field(gt=0)
+    codigo_factura: Optional[str] = Field(default=None, min_length=1)
     descripcion: Optional[str] = None
     observaciones: Optional[str] = None
     fecha: date
-    monto: Decimal = Decimal("0.00")
-    pago_actual: Decimal = Decimal("0.00")
+    monto: Decimal = Field(default=Decimal("0.00"), ge=0)
+    pago_actual: Decimal = Field(default=Decimal("0.00"), ge=0)
     id_dependencia: Optional[int] = None
 
 
 class FacturaCreate(FacturaBase):
     id_moneda: Optional[int] = None
     items: Optional[List[ItemFacturaCreate]] = None
-    monto: Optional[Decimal] = None
+    monto: Optional[Decimal] = Field(default=None, ge=0)
 
 
 class FacturaRead(FacturaBase):
@@ -174,23 +193,23 @@ class FacturaReadWithDetails(FacturaRead):
 
 
 class FacturaUpdate(SQLModel):
-    id_contrato: Optional[int] = None
-    codigo_factura: Optional[str] = None
+    id_contrato: Optional[int] = Field(default=None, gt=0)
+    codigo_factura: Optional[str] = Field(default=None, min_length=1)
     descripcion: Optional[str] = None
     observaciones: Optional[str] = None
     fecha: Optional[date] = None
-    monto: Optional[Decimal] = None
-    pago_actual: Optional[Decimal] = None
+    monto: Optional[Decimal] = Field(default=None, ge=0)
+    pago_actual: Optional[Decimal] = Field(default=None, ge=0)
     id_dependencia: Optional[int] = None
     id_moneda: Optional[int] = None
     items: Optional[List[ItemFacturaCreate]] = None
 
 
 class ItemVentaEfectivoBase(SQLModel):
-    id_producto: int
-    cantidad: int
-    precio_venta: Decimal
-    id_moneda: int
+    id_producto: int = Field(gt=0)
+    cantidad: int = Field(gt=0)
+    precio_venta: Decimal = Field(ge=0)
+    id_moneda: int = Field(gt=0)
     codigo: Optional[str] = None
 
 
@@ -205,11 +224,11 @@ class ItemVentaEfectivoRead(ItemVentaEfectivoBase):
 
 
 class VentaEfectivoBase(SQLModel):
-    slip: str
+    slip: str = Field(min_length=1)
     fecha: date
-    id_dependencia: int
-    cajero: str
-    monto: Decimal = Decimal("0.00")
+    id_dependencia: int = Field(gt=0)
+    cajero: str = Field(min_length=1)
+    monto: Decimal = Field(default=Decimal("0.00"), ge=0)
     codigo: Optional[str] = None
 
 
@@ -228,17 +247,31 @@ class VentaEfectivoReadWithDetails(VentaEfectivoRead):
 
 
 class VentaEfectivoUpdate(SQLModel):
-    slip: Optional[str] = None
+    slip: Optional[str] = Field(default=None, min_length=1)
     fecha: Optional[date] = None
-    id_dependencia: Optional[int] = None
-    cajero: Optional[str] = None
-    monto: Optional[Decimal] = None
+    id_dependencia: Optional[int] = Field(default=None, gt=0)
+    cajero: Optional[str] = Field(default=None, min_length=1)
+    monto: Optional[Decimal] = Field(default=None, ge=0)
     codigo: Optional[str] = None
 
 
 class DependenciaSimpleRead(SQLModel):
     id_dependencia: int
     nombre: str
+
+
+class ItemAnexoDisponible(SQLModel):
+    id_item_anexo: int
+    id_anexo: int
+    id_producto: int
+    cantidad: int
+    cantidad_vendida: int
+    existencia: int = 0
+    precio_venta: Decimal
+    precio_compra: Decimal
+    id_moneda: int
+    codigo: Optional[str] = None
+    producto: Optional[ProductoSimpleRead] = None
 
 
 # Rebuild de modelos para resolver referencias circulares

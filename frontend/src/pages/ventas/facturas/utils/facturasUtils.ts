@@ -7,6 +7,7 @@ export interface SelectedProduct {
   id_producto: number;
   cantidad: number;
   precio_venta: number;
+  id_moneda?: number;
 }
 
 /**
@@ -37,7 +38,7 @@ export function validarFactura(data: {
     errors.push('Debe seleccionar una fecha');
   }
 
-  if (!data.id_moneda) {
+  if (!data.id_moneda && (!data.items || data.items.length === 0)) {
     errors.push('Debe seleccionar una moneda');
   }
 
@@ -98,6 +99,7 @@ export function prepararFacturaParaAPI(
   selectedProducts: SelectedProduct[],
   selectedContratoId: number | null
 ): any {
+  const moneda = formData.id_moneda ? Number(formData.id_moneda) : undefined;
   return {
     id_contrato: selectedContratoId,
     ...(formData.codigo_factura ? { codigo_factura: formData.codigo_factura } : {}),
@@ -105,12 +107,12 @@ export function prepararFacturaParaAPI(
     descripcion: formData.descripcion,
     observaciones: formData.observaciones,
     id_dependencia: formData.id_dependencia ? Number(formData.id_dependencia) : 4,
-    id_moneda: formData.id_moneda ? Number(formData.id_moneda) : undefined,
+    id_moneda: moneda,
     items: selectedProducts.map((p) => ({
       id_producto: p.id_producto,
       cantidad: p.cantidad,
       precio_venta: p.precio_venta,
-      id_moneda: formData.id_moneda ? Number(formData.id_moneda) : 277,
+      id_moneda: moneda || p.id_moneda || 277,
     })),
   };
 }

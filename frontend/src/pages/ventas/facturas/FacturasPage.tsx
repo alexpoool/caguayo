@@ -291,6 +291,7 @@ export function FacturasPage() {
   const [productos, setProductos] = useState<Productos[]>([]);
   const [monedas, setMonedas] = useState<any[]>([]);
   const [dependencias, setDependencias] = useState<Dependencia[]>([]);
+  const [itemsDisponibles, setItemsDisponibles] = useState<any[]>([]);
 
   // Modales
   const [detailModal, setDetailModal] = useState<{
@@ -325,13 +326,27 @@ export function FacturasPage() {
   const { data: stockData = [] } = useStock({ idDependencia: currentDependenciaId });
   const stockMap = useMemo(() => {
     const map = new Map<number, number>();
-    stockData.forEach((item: any) => map.set(item.id_producto, item.existencia));
+    stockData.forEach((item: any) => map.set(item.id_producto, item.stock));
     return map;
   }, [stockData]);
 
   /**
    * Cargar datos iniciales (contratos, productos, monedas, dependencias)
    */
+  const loadItemsDisponibles = async (contratoId: number | null) => {
+    if (!contratoId) {
+      setItemsDisponibles([]);
+      return;
+    }
+    try {
+      const items = await contratosService.getItemsDisponibles(contratoId);
+      setItemsDisponibles(items || []);
+    } catch (error) {
+      console.error("Error loading items disponibles:", error);
+      setItemsDisponibles([]);
+    }
+  };
+
   const loadInitialData = async () => {
     try {
       const [contratosRes, productosRes, monedasRes, depsRes] =
@@ -352,9 +367,33 @@ export function FacturasPage() {
   };
 
   // Cargar datos iniciales y facturas cuando cambian
+  const productosSource = itemsDisponibles.length > 0
+    ? itemsDisponibles.map((i: any) => ({
+        ...i.producto,
+        id_producto: i.id_producto,
+        precio_venta: i.precio_venta,
+        _id_moneda: i.id_moneda,
+        _id_item_anexo: i.id_item_anexo,
+        _id_anexo: i.id_anexo,
+      }))
+    : productos;
+
   useEffect(() => {
     loadInitialData();
   }, []);
+
+  useEffect(() => {
+    if (facturasHook.selectedContratoId) {
+      loadItemsDisponibles(facturasHook.selectedContratoId);
+      const contrato = contratos.find(c => c.id_contrato === facturasHook.selectedContratoId);
+      const monedaId = contrato?.moneda?.id_moneda;
+      if (monedaId) {
+        facturasHook.setFormData((prev: Record<string, any>) => ({ ...prev, id_moneda: monedaId }));
+      }
+    } else {
+      setItemsDisponibles([]);
+    }
+  }, [facturasHook.selectedContratoId, contratos]);
 
   useEffect(() => {
     facturasHook.loadFacturas();
@@ -364,7 +403,7 @@ export function FacturasPage() {
    * Obtener productos filtrados según búsqueda
    */
   const productosFiltrados =
-    productSelectionHook.getProductosFiltrados(productos);
+    productSelectionHook.getProductosFiltrados(productosSource as Productos[]);
 
   /**
    * Manejar guardado de factura
@@ -376,7 +415,7 @@ export function FacturasPage() {
     });
     if (stockErrors.length > 0) {
       const names = stockErrors.map((p) => {
-        const pr = productos.find((pr) => pr.id_producto === p.id_producto);
+        const pr = productosSource.find((pr: any) => pr.id_producto === p.id_producto);
         return pr?.nombre || `ID ${p.id_producto}`;
       });
       toast.error(`Stock insuficiente para: ${names.join(", ")}`);
@@ -709,7 +748,7 @@ export function FacturasPage() {
           total={productSelectionHook.getTotal()}
           dependencias={dependencias}
           monedas={monedas}
-          productos={productos}
+          productos={productosSource as Productos[]}
           selectedContratoId={facturasHook.selectedContratoId}
           contratos={contratos}
           onFormDataChange={(data: Record<string, any>) =>
@@ -721,11 +760,13 @@ export function FacturasPage() {
           onAddProduct={(id: number) => {
             const stock = stockMap.get(id) ?? 0;
             if (stock < 1) {
-              const pr = productos.find((p) => p.id_producto === id);
-              toast.error(`"${pr?.nombre}" no tiene stock disponible`);
+              const source = itemsDisponibles.length > 0 ? itemsDisponibles : productos;
+              const pr = source.find((p: any) => p.id_producto === id || p.id_producto === id);
+              toast.error(`"${pr?.nombre || pr?.producto?.nombre || `ID ${id}`}" no tiene stock disponible`);
               return;
             }
-            productSelectionHook.addProduct(id, productos);
+            const monedaContrato = facturasHook.formData.id_moneda ? Number(facturasHook.formData.id_moneda) : undefined;
+            productSelectionHook.addProduct(id, productosSource as Productos[], monedaContrato);
           }}
           onUpdateCantidad={(id: number, cant: number) =>
             productSelectionHook.updateCantidad(id, cant)

@@ -125,7 +125,7 @@ class VentaEfectivo(SQLModel, table=True):
     monto: Decimal = Field(default=Decimal("0.00"))
     codigo: Optional[str] = Field(default=None, max_length=100)
 
-    dependencia: "Dependencia" = Relationship()
+    dependencia: "Dependencia" = Relationship(back_populates="ventas_efectivo")
     items_venta_efectivo: List["ItemVentaEfectivo"] = Relationship(
         back_populates="venta_efectivo"
     )

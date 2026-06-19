@@ -17,7 +17,9 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    op.drop_column("clientes", "numero_cliente")
+    op.execute(
+        "ALTER TABLE clientes DROP COLUMN IF EXISTS numero_cliente"
+    )
 
 
 def downgrade() -> None:

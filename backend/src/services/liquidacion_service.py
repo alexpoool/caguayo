@@ -104,9 +104,12 @@ class LiquidacionService:
                     )
 
         # Validar existencias usando el servicio de existencias
+        # Solo para productos de consignación (sin factura/venta asociada)
+        # Los productos de factura/venta ya descontaron stock al crearse la transacción
         productos_validar = [
             {"id_producto": prod.id_producto, "cantidad": prod.cantidad}
             for prod in productos_db
+            if prod.tipo_compra not in ("FACTURA", "VENTA_EFECTIVO")
         ]
 
         resultado_validacion = await ExistenciaService.validar_multiple(
@@ -291,20 +294,21 @@ class LiquidacionService:
 
     @staticmethod
     async def get_productos_pendientes_by_cliente(
-        db: AsyncSession, cliente_id: int, anexo_id: Optional[int] = None
+        db: AsyncSession, cliente_id: int, anexo_id: Optional[int] = None,
+        moneda_id: Optional[int] = None
     ) -> List[dict]:
         return await productos_en_liquidacion_repo.get_pendientes_by_cliente_y_anexo(
-            db, cliente_id, anexo_id
+            db, cliente_id, anexo_id, moneda_id
         )
 
     @staticmethod
     async def get_items_anexo_con_estado(
-        db: AsyncSession, cliente_id: int, anexo_id: Optional[int] = None
+        db: AsyncSession, cliente_id: int, anexo_id: Optional[int] = None, moneda_id: Optional[int] = None
     ) -> List[dict]:
         """Obtiene todos los items de anexos del cliente con estado (EN_CONSIGNACION, A LIQUIDAR, LIQUIDADO)."""
         return (
             await productos_en_liquidacion_repo.get_items_anexo_con_estado_por_cliente(
-                db, cliente_id, anexo_id
+                db, cliente_id, anexo_id, moneda_id
             )
         )
 

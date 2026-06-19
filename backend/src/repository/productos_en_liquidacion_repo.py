@@ -160,7 +160,8 @@ class ProductosEnLiquidacionRepository(CRUDBase[ProductosEnLiquidacion, dict, di
         return result.all()
 
     async def get_pendientes_by_cliente_y_anexo(
-        self, db: AsyncSession, cliente_id: int, anexo_id: Optional[int] = None
+        self, db: AsyncSession, cliente_id: int, anexo_id: Optional[int] = None,
+        moneda_id: Optional[int] = None
     ) -> List[dict]:
         from src.models.anexo import Anexo
         from src.models.convenio import Convenio
@@ -231,6 +232,9 @@ class ProductosEnLiquidacionRepository(CRUDBase[ProductosEnLiquidacion, dict, di
                     ),
                 )
             )
+
+        if moneda_id is not None:
+            statement = statement.where(ProductosEnLiquidacion.id_moneda == moneda_id)
 
         statement = statement.order_by(ProductosEnLiquidacion.fecha.desc())
 
@@ -311,7 +315,7 @@ class ProductosEnLiquidacionRepository(CRUDBase[ProductosEnLiquidacion, dict, di
         return result.all()
 
     async def get_items_anexo_con_estado_por_cliente(
-        self, db: AsyncSession, cliente_id: int, anexo_id: Optional[int] = None
+        self, db: AsyncSession, cliente_id: int, anexo_id: Optional[int] = None, moneda_id: Optional[int] = None
     ) -> List[dict]:
         """Obtiene todos los items de anexos del cliente con su estado:
         - CONSIGNACION: productos en item_anexo sin compras (facturas/ventas) asociadas
@@ -398,6 +402,9 @@ class ProductosEnLiquidacionRepository(CRUDBase[ProductosEnLiquidacion, dict, di
             )
         )
 
+        if moneda_id is not None:
+            items_anexo_stmt = items_anexo_stmt.where(ItemAnexo.id_moneda == moneda_id)
+
         result_items = await db.exec(items_anexo_stmt)
         rows_items = result_items.all()
 
@@ -427,6 +434,9 @@ class ProductosEnLiquidacionRepository(CRUDBase[ProductosEnLiquidacion, dict, di
                 ),
             )
         )
+
+        if moneda_id is not None:
+            pel_stmt = pel_stmt.where(ProductosEnLiquidacion.id_moneda == moneda_id)
 
         result_pel = await db.exec(pel_stmt)
         rows_pel = result_pel.all()
@@ -462,12 +472,11 @@ class ProductosEnLiquidacionRepository(CRUDBase[ProductosEnLiquidacion, dict, di
                 and_(
                     ProductosEnLiquidacion.id_producto == id_producto,
                     ProductosEnLiquidacion.id_anexo == id_anexo,
+                    ProductosEnLiquidacion.id_moneda == id_moneda,
                 )
             )
             result_pel_relacionados = await db.exec(pel_relacionados_stmt)
             pel_relacionados = result_pel_relacionados.all()
-            pel_relacionados = [p for p in pel_relacionados
-                                if not (p.id_factura and p.id_factura in unpaid_factura_ids)]
 
             # Si no hay pel con id_anexo específico, buscar pel con id_anexo = NULL (facturas antiguas)
             # Estos vienen de facturas creadas antes de vincular id_anexo
@@ -479,10 +488,16 @@ class ProductosEnLiquidacionRepository(CRUDBase[ProductosEnLiquidacion, dict, di
                         ProductosEnLiquidacion.id_factura.isnot(None),
                     )
                 )
+                if moneda_id is not None:
+                    pel_fallback_stmt = pel_fallback_stmt.where(ProductosEnLiquidacion.id_moneda == moneda_id)
                 result_fallback = await db.exec(pel_fallback_stmt)
                 pel_relacionados = result_fallback.all()
-                pel_relacionados = [p for p in pel_relacionados
-                                    if not (p.id_factura and p.id_factura in unpaid_factura_ids)]
+
+            # Filtrar productos con facturas impagas
+            pel_relacionados = [
+                p for p in pel_relacionados
+                if not (p.id_factura and p.id_factura in unpaid_factura_ids)
+            ]
 
             # Calcular cantidad pendiente (no liquidada)
             pel_pendiente = [p for p in pel_relacionados if not p.liquidada]
@@ -507,18 +522,20 @@ class ProductosEnLiquidacionRepository(CRUDBase[ProductosEnLiquidacion, dict, di
                 else cantidad_pendiente
             )
 
+            en_consignacion = max(0, cantidad_original - cantidad_vendida)
+
             # Determinar estado
-            if cantidad_liquidada > 0 and cantidad_pendiente == 0:
-                estado = "LIQUIDADO"
-            elif cantidad_pendiente > 0:
+            if cantidad_pendiente > 0:
                 estado = "A LIQUIDAR"
+            elif en_consignacion > 0:
+                estado = "EN_CONSIGNACION"
+            elif cantidad_liquidada >= cantidad_original:
+                estado = "LIQUIDADO"
             else:
                 estado = "EN_CONSIGNACION"
 
             # Usar el primer ID de pel para el checkbox (o null si no hay ninguno)
             id_pel_principal = pel_ids[0] if pel_ids else None
-
-            en_consignacion = max(0, cantidad_original - cantidad_vendida)
 
             items.append(
                 {
@@ -552,12 +569,15 @@ class ProductosEnLiquidacionRepository(CRUDBase[ProductosEnLiquidacion, dict, di
 
         pel_compra_venta = [
             pel for pel in rows_pel
-            if pel.id_anexo in anexos_compra_venta_ids
+            if (
+                pel.id_anexo in anexos_compra_venta_ids
+                or (pel.id_anexo is None and (pel.id_factura is not None or pel.id_venta_efectivo is not None))
+            )
             and not (pel.id_factura and pel.id_factura in unpaid_factura_ids)
         ]
 
         for pel in pel_compra_venta:
-            info_anexo = anexos_info.get(pel.id_anexo, {})
+            info_anexo = anexos_info.get(pel.id_anexo) if pel.id_anexo else {}
 
             # Calcular cantidad ya liquidada de este producto en este anexo
             pel_liquidada_stmt = select(
@@ -567,6 +587,7 @@ class ProductosEnLiquidacionRepository(CRUDBase[ProductosEnLiquidacion, dict, di
                     ProductosEnLiquidacion.id_producto == pel.id_producto,
                     ProductosEnLiquidacion.id_anexo == pel.id_anexo,
                     ProductosEnLiquidacion.liquidada == True,
+                    ProductosEnLiquidacion.id_moneda == pel.id_moneda,
                 )
             )
             result_liquidada = await db.exec(pel_liquidada_stmt)
@@ -618,6 +639,24 @@ class ProductosEnLiquidacionRepository(CRUDBase[ProductosEnLiquidacion, dict, di
                     item["producto_codigo"] = prod.codigo
 
         return items
+
+    async def get_cantidades_liquidadas_por_anexo(
+        self, db: AsyncSession, id_anexo: int
+    ) -> dict[int, int]:
+        from sqlalchemy import text
+
+        query = text("""
+            SELECT ia.id_item_anexo, COALESCE(SUM(pel.cantidad), 0) as cantidad_liquidada
+            FROM item_anexo ia
+            LEFT JOIN productos_en_liquidacion pel
+                ON pel.id_anexo = ia.id_anexo
+                AND pel.id_producto = ia.id_producto
+                AND pel.liquidada = true
+            WHERE ia.id_anexo = :id_anexo
+            GROUP BY ia.id_item_anexo
+        """)
+        result = await db.exec(query, params={"id_anexo": id_anexo})
+        return {row[0]: row[1] for row in result.all()}
 
 
 productos_en_liquidacion_repo = ProductosEnLiquidacionRepository(ProductosEnLiquidacion)

@@ -1,7 +1,10 @@
-from sqlmodel import SQLModel
+from sqlmodel import SQLModel, Field
 from typing import Optional, TYPE_CHECKING
 from datetime import datetime
 from decimal import Decimal
+from pydantic import field_validator
+
+TIPOS_COMPRA_VALIDOS = {"FACTURA", "VENTA_EFECTIVO", "ANEXO"}
 
 if TYPE_CHECKING:
     from .productos_dto import ProductoSimpleRead
@@ -9,15 +12,22 @@ if TYPE_CHECKING:
 
 
 class ProductosEnLiquidacionBase(SQLModel):
-    id_producto: int
-    cantidad: int
-    precio: Decimal
-    id_moneda: int
+    id_producto: int = Field(gt=0)
+    cantidad: int = Field(gt=0)
+    precio: Decimal = Field(ge=0)
+    id_moneda: int = Field(gt=0)
     tipo_compra: str
     id_factura: Optional[int] = None
     id_venta_efectivo: Optional[int] = None
     id_anexo: Optional[int] = None
     liquidada: bool = False
+
+    @field_validator("tipo_compra")
+    @classmethod
+    def validar_tipo_compra(cls, v: str) -> str:
+        if v not in TIPOS_COMPRA_VALIDOS:
+            raise ValueError(f"tipo_compra debe ser uno de {TIPOS_COMPRA_VALIDOS}")
+        return v
 
 
 class ProductosEnLiquidacionCreate(ProductosEnLiquidacionBase):
@@ -51,9 +61,9 @@ class ProductosEnLiquidacionRead(ProductosEnLiquidacionBase):
 
 
 class ProductosEnLiquidacionUpdate(SQLModel):
-    cantidad: Optional[int] = None
-    precio: Optional[Decimal] = None
-    id_moneda: Optional[int] = None
+    cantidad: Optional[int] = Field(default=None, gt=0)
+    precio: Optional[Decimal] = Field(default=None, ge=0)
+    id_moneda: Optional[int] = Field(default=None, gt=0)
     liquidada: Optional[bool] = None
     fecha_liquidacion: Optional[datetime] = None
 

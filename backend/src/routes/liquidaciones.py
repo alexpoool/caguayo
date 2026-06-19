@@ -71,11 +71,12 @@ async def listar_liquidaciones_por_cliente(
 async def listar_productos_pendientes_por_cliente(
     cliente_id: int,
     anexo_id: Optional[int] = Query(None),
+    moneda_id: Optional[int] = Query(None),
     db: AsyncSession = Depends(get_session),
 ):
-    """Listar productos pendientes de un cliente específico (y opcionalmente por anexo)."""
+    """Listar productos pendientes de un cliente específico (y opcionalmente por anexo/moneda)."""
     return await liquidacion_service.get_productos_pendientes_by_cliente(
-        db, cliente_id, anexo_id
+        db, cliente_id, anexo_id, moneda_id
     )
 
 
@@ -86,11 +87,12 @@ async def listar_productos_pendientes_por_cliente(
 async def listar_items_anexo_con_estado(
     cliente_id: int,
     anexo_id: Optional[int] = Query(None),
+    moneda_id: Optional[int] = Query(None),
     db: AsyncSession = Depends(get_session),
 ):
     """Listar todos los items de anexos del cliente con estado (EN_CONSIGNACION, A LIQUIDAR, LIQUIDADO)."""
     return await liquidacion_service.get_items_anexo_con_estado(
-        db, cliente_id, anexo_id
+        db, cliente_id, anexo_id, moneda_id
     )
 
 

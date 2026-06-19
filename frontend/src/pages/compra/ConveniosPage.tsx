@@ -6,6 +6,8 @@ import type { Cliente } from '../../types/ventas';
 import { Plus, Save, Trash2, Edit, FileText, ArrowLeft, Calendar, Tag, User, ScrollText, Boxes, ExternalLink, X, Eye, Search } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { required, seleccionValida, esFechaValida, fechaNoAnterior, useFormValidation } from '../../utils/validacionFormularios';
+
 
 type View = 'list' | 'form' | 'detail';
 
@@ -25,6 +27,14 @@ export function CompraConveniosPage() {
   const [detailModal, setDetailModal] = useState<{ isOpen: boolean; item: any | null }>({ isOpen: false, item: null });
   const [searchTerm, setSearchTerm] = useState('');
   const [filtroCliente, setFiltroCliente] = useState<number | null>(initialProveedorId ? Number(initialProveedorId) : null);
+
+  const { errors, touched, validateField, handleBlur, validateAll, clearErrors, getError } = useFormValidation([
+    { field: 'id_cliente', label: 'Cliente', validate: (v) => seleccionValida(v, 'Cliente') },
+    { field: 'nombre_convenio', label: 'Nombre del convenio', validate: (v) => required(v, 'Nombre del convenio') },
+    { field: 'id_tipo_convenio', label: 'Tipo de convenio', validate: (v) => seleccionValida(v, 'Tipo de convenio') },
+    { field: 'fecha', label: 'Fecha', validate: (v) => esFechaValida(v, 'Fecha') },
+    { field: 'vigencia', label: 'Vigencia', validate: (v) => esFechaValida(v, 'Vigencia') },
+  ]);
 
   useEffect(() => { loadInitialData(); }, []);
   useEffect(() => { if (view === 'list') loadConvenios(); }, [view, filtroCliente]);
@@ -48,6 +58,22 @@ export function CompraConveniosPage() {
   };
 
   const handleSave = async () => {
+    if (!validateAll(formData)) {
+      const errorList = [
+        getError('id_cliente'),
+        getError('nombre_convenio'),
+        getError('id_tipo_convenio'),
+        getError('fecha'),
+        getError('vigencia'),
+      ].filter(Boolean);
+      toast.error(errorList.join('\n• '));
+      return;
+    }
+    const vigenciaError = fechaNoAnterior(formData.vigencia, formData.fecha, 'Vigencia');
+    if (vigenciaError) {
+      toast.error(vigenciaError);
+      return;
+    }
     try {
       const data = {
         id_cliente: Number(formData.id_cliente),
@@ -97,7 +123,7 @@ export function CompraConveniosPage() {
         fecha: item.fecha,
         vigencia: item.vigencia,
         id_tipo_convenio: item.id_tipo_convenio,
-        codigo_convenio: item.codigo,
+        codigo_convenio: item.codigo_convenio,
       });
     } else { resetForm(); }
     setView('form');
@@ -269,82 +295,95 @@ export function CompraConveniosPage() {
   );
 
   const renderForm = () => (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="sm" onClick={() => { setView('list'); resetForm(); }}><ArrowLeft className="w-4 h-4" /></Button>
-          <CardTitle>{editingId ? 'Editar' : 'Nuevo'} Convenio</CardTitle>
-          {editingId && formData.codigo_convenio && (
-            <span className="ml-auto font-mono font-bold">{formData.codigo_convenio}</span>
-          )}
-        </div>
-      </CardHeader>
-      <CardContent>
+    <>
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-2xl font-bold text-gray-900">{editingId ? 'Editar' : 'Nuevo'} Convenio</h2>
+        <Button variant="outline" onClick={() => { setView('list'); resetForm(); }} className="gap-2">
+          <ArrowLeft className="h-4 w-4" />
+          Volver
+        </Button>
+      </div>
+      <Card className="shadow-sm border-gray-200">
+        <CardHeader className="border-b bg-gray-50/50">
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <FileText className="h-5 w-5 text-sky-600" />
+            Información del Convenio
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-6">
         <div className="grid gap-4 md:grid-cols-3 mb-4">
           <div>
-            <Label>Cliente *</Label>
-            <select className="w-full p-2 border rounded" value={formData.id_cliente || ''} onChange={(e: any) => setFormData({...formData, id_cliente: e.target.value})}>
+            <Label className="text-sm font-medium">Cliente *</Label>
+            <select className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sky-500 outline-none bg-white" value={formData.id_cliente || ''} onChange={(e: any) => { setFormData({...formData, id_cliente: e.target.value}); validateField('id_cliente', e.target.value); }} onBlur={(e: any) => handleBlur('id_cliente', e.target.value)}>
               <option value="">Seleccionar cliente</option>
               {clientes.map(c => <option key={c.id_cliente} value={c.id_cliente}>{c.nombre} ({c.nit})</option>)}
             </select>
+            {getError('id_cliente') && <p className="text-red-500 text-sm mt-1">{getError('id_cliente')}</p>}
           </div>
           
-          <div><Label>Nombre del Convenio *</Label><Input value={formData.nombre_convenio || ''} onChange={(e: any) => setFormData({...formData, nombre_convenio: e.target.value})} /></div>
+          <div><Label className="text-sm font-medium">Nombre del Convenio *</Label><Input className="mt-1" value={formData.nombre_convenio || ''} onChange={(e: any) => { setFormData({...formData, nombre_convenio: e.target.value}); validateField('nombre_convenio', e.target.value); }} onBlur={(e: any) => handleBlur('nombre_convenio', e.target.value)} />
+          {getError('nombre_convenio') && <p className="text-red-500 text-sm mt-1">{getError('nombre_convenio')}</p>}</div>
           
-          <div><Label>Tipo de Convenio *</Label>
-            <select className="w-full p-2 border rounded" value={formData.id_tipo_convenio || ''} onChange={(e: any) => setFormData({...formData, id_tipo_convenio: e.target.value})}>
+          <div><Label className="text-sm font-medium">Tipo de Convenio *</Label>
+            <select className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sky-500 outline-none bg-white" value={formData.id_tipo_convenio || ''} onChange={(e: any) => { setFormData({...formData, id_tipo_convenio: e.target.value}); validateField('id_tipo_convenio', e.target.value); }} onBlur={(e: any) => handleBlur('id_tipo_convenio', e.target.value)}>
               <option value="">Seleccionar</option>
               {tiposConvenio.map(t => <option key={t.id_tipo_convenio} value={t.id_tipo_convenio}>{t.nombre}</option>)}
             </select>
+            {getError('id_tipo_convenio') && <p className="text-red-500 text-sm mt-1">{getError('id_tipo_convenio')}</p>}
           </div>
         </div>
         
         <div className="grid gap-4 md:grid-cols-2">
           <div>
-            <Label>Fecha *</Label>
-            <div className="flex gap-2">
+            <Label className="text-sm font-medium">Fecha *</Label>
+            <div className="flex gap-2 mt-1">
               <input 
                 type="date" 
                 className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-sky-500 outline-none transition-colors" 
                 value={formData.fecha || ''} 
-                onChange={(e: any) => setFormData({...formData, fecha: e.target.value})} 
+                onChange={(e: any) => { setFormData({...formData, fecha: e.target.value}); validateField('fecha', e.target.value); }} 
+                onBlur={(e: any) => handleBlur('fecha', e.target.value)}
               />
               <button 
                 type="button" 
-                onClick={() => setFormData({...formData, fecha: new Date().toISOString().split('T')[0]})} 
+                onClick={() => { const hoy = new Date().toISOString().split('T')[0]; setFormData({...formData, fecha: hoy}); validateField('fecha', hoy); }} 
                 className="px-3 py-2 bg-sky-600 text-white rounded-lg hover:bg-sky-700 transition-colors text-sm font-medium whitespace-nowrap"
               >
                 Hoy
               </button>
             </div>
+            {getError('fecha') && <p className="text-red-500 text-sm mt-1">{getError('fecha')}</p>}
           </div>
           
           <div>
-            <Label>Vigencia *</Label>
-            <div className="flex gap-2">
+            <Label className="text-sm font-medium">Vigencia *</Label>
+            <div className="flex gap-2 mt-1">
               <input 
                 type="date" 
                 className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-sky-500 outline-none transition-colors" 
                 value={formData.vigencia || ''} 
-                onChange={(e: any) => setFormData({...formData, vigencia: e.target.value})} 
+                onChange={(e: any) => { setFormData({...formData, vigencia: e.target.value}); validateField('vigencia', e.target.value); }} 
+                onBlur={(e: any) => handleBlur('vigencia', e.target.value)}
               />
               <button 
                 type="button" 
-                onClick={() => setFormData({...formData, vigencia: new Date().toISOString().split('T')[0]})} 
+                onClick={() => { const hoy = new Date().toISOString().split('T')[0]; setFormData({...formData, vigencia: hoy}); validateField('vigencia', hoy); }} 
                 className="px-3 py-2 bg-sky-600 text-white rounded-lg hover:bg-sky-700 transition-colors text-sm font-medium whitespace-nowrap"
               >
                 Hoy
               </button>
             </div>
+            {getError('vigencia') && <p className="text-red-500 text-sm mt-1">{getError('vigencia')}</p>}
           </div>
         </div>
         
-        <div className="flex gap-2 mt-6">
-          <Button onClick={handleSave}><Save className="w-4 h-4 mr-2" />Guardar</Button>
+        <div className="flex gap-3 mt-8 pt-6 border-t">
+          <Button onClick={handleSave} className="gap-2 bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-600 hover:to-blue-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300"><Save className="h-4 w-4" />Guardar</Button>
           <Button variant="outline" onClick={() => { setView('list'); resetForm(); }}>Cancelar</Button>
         </div>
       </CardContent>
     </Card>
+    </>
   );
 
   return (

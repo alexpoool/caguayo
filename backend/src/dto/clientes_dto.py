@@ -102,7 +102,6 @@ class ClienteBase(SQLModel):
     tipo_relacion: Optional[str] = None
     estado: Optional[str] = None
     fecha_registro: Optional[datetime] = None
-    activo: Optional[bool] = None
 
 
 class ClienteCreate(ClienteBase):
@@ -146,7 +145,6 @@ class ClienteUpdate(SQLModel):
     tipo_relacion: Optional[str] = None
     estado: Optional[str] = None
     fecha_registro: Optional[datetime] = None
-    activo: Optional[bool] = None
     cuentas: Optional[List[CuentaCreate]] = None
     cliente_natural: Optional[Any] = None
     cliente_juridica: Optional[Any] = None
@@ -159,4 +157,3 @@ class ClienteSimpleRead(SQLModel):
     nombre: Optional[str] = None
     tipo_persona: Optional[str] = None
     estado: Optional[str] = None
-    activo: Optional[bool] = None

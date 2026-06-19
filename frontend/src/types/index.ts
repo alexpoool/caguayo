@@ -100,6 +100,7 @@ export interface MovimientoCreate {
   id_contrato?: number;
   id_factura?: number;
   id_anexo?: number;
+  id_convenio?: number;
 }
 
 export interface TipoMovimiento {
@@ -169,7 +170,6 @@ export interface Anexo {
   comision?: number;
   dependencia_nombre?: string;
   id_producto?: number | null;
-  id_moneda?: number | null;
   anexo_convenio?: {
     id_convenio: number;
     nombre_convenio: string;
@@ -194,7 +194,7 @@ export interface ExistenciaHibridaResponse {
   codigo?: string;
   cantidad_entrada: number;
   cantidad_salida: number;
-  existencia: number;
+  stock: number;
   tipo: string;
 }
 
@@ -219,8 +219,13 @@ export interface ProductoConCantidad {
   descripcion?: string;
   cantidad: number;
   precio_compra?: number;
+  precio_venta?: number;
+  id_moneda?: number;
+  moneda_simbolo?: string;
+  moneda_nombre?: string;
   id_anexo?: number;
   id_convenio?: number;
+  id_item_anexo?: number;
 }
 
 export interface ProductosUpdate {

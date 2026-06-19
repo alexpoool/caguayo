@@ -17,24 +17,27 @@ depends_on = None
 
 
 def upgrade() -> None:
-    op.create_table(
-        'log',
-        sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
-        sa.Column('timestamp', sa.DateTime(), nullable=False, server_default=sa.text('now()')),
-        sa.Column('nivel', sa.String(length=20), nullable=False),
-        sa.Column('tipo', sa.String(length=20), nullable=False),
-        sa.Column('mensaje', sa.String(length=500), nullable=False),
-        sa.Column('detalle', sa.String(length=2000), nullable=True),
-        sa.Column('ip', sa.String(length=50), nullable=True),
-        sa.Column('usuario_id', sa.Integer(), nullable=True),
-        sa.Column('endpoint', sa.String(length=200), nullable=True),
-        sa.Column('method', sa.String(length=10), nullable=True),
-        sa.Column('status_code', sa.Integer(), nullable=True),
-        sa.Column('usuario_nombre', sa.String(length=100), nullable=True),
-        sa.Column('navegador', sa.String(length=100), nullable=True),
-        sa.PrimaryKeyConstraint('id')
+    op.execute(
+        "CREATE TABLE IF NOT EXISTS log ("
+        "    id SERIAL NOT NULL,"
+        "    timestamp TIMESTAMP WITHOUT TIME ZONE DEFAULT now() NOT NULL,"
+        "    nivel VARCHAR(20) NOT NULL,"
+        "    tipo VARCHAR(20) NOT NULL,"
+        "    mensaje VARCHAR(500) NOT NULL,"
+        "    detalle VARCHAR(2000),"
+        "    ip VARCHAR(50),"
+        "    usuario_id INTEGER,"
+        "    endpoint VARCHAR(200),"
+        "    method VARCHAR(10),"
+        "    status_code INTEGER,"
+        "    usuario_nombre VARCHAR(100),"
+        "    navegador VARCHAR(100),"
+        "    PRIMARY KEY (id)"
+        ")"
     )
-    op.create_index(op.f('ix_log_id'), 'log', ['id'], unique=False)
+    op.execute(
+        "CREATE INDEX IF NOT EXISTS ix_log_id ON log (id)"
+    )
 
 
 def downgrade() -> None:

@@ -6,7 +6,6 @@ from decimal import Decimal
 if TYPE_CHECKING:
     from .venta import Ventas
     from .convenio import Convenio
-    from .moneda import Moneda
     from .item_anexo import ItemAnexo
 
 
@@ -19,11 +18,10 @@ class Anexo(SQLModel, table=True):
         sa_column_kwargs={"autoincrement": True}
     )
     id_convenio: int = Field(foreign_key="convenio.id_convenio")
-    id_moneda: Optional[int] = Field(default=None, foreign_key="moneda.id_moneda")
     nombre_anexo: str = Field(max_length=200)
     fecha: date
     codigo_anexo: Optional[str] = Field(default=None, max_length=50)
-    id_dependencia: Optional[int] = None
+    id_dependencia: Optional[int] = Field(default=None, foreign_key="dependencia.id_dependencia")
     comision: Optional[Decimal] = Field(default=None, decimal_places=2, max_digits=10)
 
     convenios: Optional["Convenio"] = Relationship(

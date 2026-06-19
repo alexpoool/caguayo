@@ -19,7 +19,9 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    op.add_column("convenio", sa.Column("codigo", sa.String(length=50), nullable=True))
+    op.execute(
+        "ALTER TABLE convenio ADD COLUMN IF NOT EXISTS codigo VARCHAR(50)"
+    )
 
 
 def downgrade() -> None:

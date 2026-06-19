@@ -1,7 +1,10 @@
 from typing import Optional, List
 from datetime import date
 from decimal import Decimal
-from sqlmodel import SQLModel
+from sqlmodel import SQLModel, Field
+from pydantic import field_validator
+
+TIPOS_PAGO_VALIDOS = {"TRANSFERENCIA", "EFECTIVO", "CHEQUE", "OTRO"}
 
 
 # ==========================================
@@ -312,21 +315,49 @@ class PersonaLiquidacionBase(SQLModel):
 
 class PersonaLiquidacionCreateInput(SQLModel):
     numero: Optional[str] = None
-    id_etapa: int
-    id_persona: int
+    id_etapa: int = Field(gt=0)
+    id_persona: int = Field(gt=0)
     id_pago: Optional[int] = None
-    importe: Optional[Decimal] = None
+    importe: Optional[Decimal] = Field(default=None, ge=0)
     fecha_emision: date
     fecha_liquidacion: Optional[date] = None
-    descripcion: Optional[str] = None
+    descripcion: Optional[str] = Field(default=None, max_length=500)
     id_moneda: Optional[int] = None
     tipo_pago: str = "TRANSFERENCIA"
     porcentaje_caguayo: float = 10.0
     tributario: float = 5.0
     gasto_empresa: float = 0.0
     comision_bancaria: float = 0.0
-    doc_pago_liquidacion: Optional[str] = None
-    observacion: Optional[str] = None
+    doc_pago_liquidacion: Optional[str] = Field(default=None, max_length=100)
+    observacion: Optional[str] = Field(default=None, max_length=500)
+
+    @field_validator("tipo_pago")
+    @classmethod
+    def validar_tipo_pago(cls, v: str) -> str:
+        if v not in TIPOS_PAGO_VALIDOS:
+            raise ValueError(f"tipo_pago debe ser uno de {TIPOS_PAGO_VALIDOS}")
+        return v
+
+    @field_validator("porcentaje_caguayo")
+    @classmethod
+    def validar_porcentaje_caguayo(cls, v: float) -> float:
+        if v < 0 or v > 100:
+            raise ValueError("porcentaje_caguayo debe estar entre 0 y 100")
+        return v
+
+    @field_validator("tributario")
+    @classmethod
+    def validar_tributario(cls, v: float) -> float:
+        if v < 0 or v > 100:
+            raise ValueError("tributario debe estar entre 0 y 100")
+        return v
+
+    @field_validator("gasto_empresa", "comision_bancaria")
+    @classmethod
+    def validar_monto_no_negativo(cls, v: float) -> float:
+        if v < 0:
+            raise ValueError("El valor no puede ser negativo")
+        return v
 
 
 class PersonaLiquidacionCreate(PersonaLiquidacionBase):
@@ -383,13 +414,13 @@ class PersonaLiquidacionUpdate(SQLModel):
 
 
 class PersonaLiquidacionConfirmar(SQLModel):
-    devengado: Optional[float] = None
-    porcentaje_caguayo: Optional[float] = None
-    tributario: Optional[float] = None
-    comision_bancaria: Optional[float] = None
-    gasto_empresa: Optional[float] = None
-    observaciones: Optional[str] = None
-    doc_pago_liquidacion: Optional[str] = None
+    devengado: Optional[float] = Field(default=None, ge=0)
+    porcentaje_caguayo: Optional[float] = Field(default=None, ge=0, le=100)
+    tributario: Optional[float] = Field(default=None, ge=0, le=100)
+    comision_bancaria: Optional[float] = Field(default=None, ge=0)
+    gasto_empresa: Optional[float] = Field(default=None, ge=0)
+    observaciones: Optional[str] = Field(default=None, max_length=500)
+    doc_pago_liquidacion: Optional[str] = Field(default=None, max_length=100)
 
 
 # ==========================================

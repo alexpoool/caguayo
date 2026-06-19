@@ -107,25 +107,29 @@ def upgrade() -> None:
         )
 
     # 4. factura_servicio.codigo_factura: FAC-2026-0002 → {nit}{letra}.2026.2
-    if nit:
-        conn.execute(
-            text("""
-                UPDATE factura_servicio
-                SET codigo_factura = :nit || CASE WHEN id_certificacion IS NOT NULL THEN 'C' ELSE 'S' END
-                    || '.' || EXTRACT(YEAR FROM fecha)::text || '.' || SPLIT_PART(codigo_factura, '-', 3)::int::text
-                WHERE codigo_factura LIKE 'FAC-%'
-            """),
-            {"nit": nit},
-        )
-    else:
-        conn.execute(
-            text("""
-                UPDATE factura_servicio
-                SET codigo_factura = CASE WHEN id_certificacion IS NOT NULL THEN 'C' ELSE 'S' END
-                    || '.' || EXTRACT(YEAR FROM fecha)::text || '.' || SPLIT_PART(codigo_factura, '-', 3)::int::text
-                WHERE codigo_factura LIKE 'FAC-%'
-            """)
-        )
+    has_certificacion = conn.execute(
+        text("SELECT column_name FROM information_schema.columns WHERE table_name='factura_servicio' AND column_name='id_certificacion'")
+    ).fetchone()
+    if has_certificacion:
+        if nit:
+            conn.execute(
+                text("""
+                    UPDATE factura_servicio
+                    SET codigo_factura = :nit || CASE WHEN id_certificacion IS NOT NULL THEN 'C' ELSE 'S' END
+                        || '.' || EXTRACT(YEAR FROM fecha)::text || '.' || SPLIT_PART(codigo_factura, '-', 3)::int::text
+                    WHERE codigo_factura LIKE 'FAC-%'
+                """),
+                {"nit": nit},
+            )
+        else:
+            conn.execute(
+                text("""
+                    UPDATE factura_servicio
+                    SET codigo_factura = CASE WHEN id_certificacion IS NOT NULL THEN 'C' ELSE 'S' END
+                        || '.' || EXTRACT(YEAR FROM fecha)::text || '.' || SPLIT_PART(codigo_factura, '-', 3)::int::text
+                    WHERE codigo_factura LIKE 'FAC-%'
+                """)
+            )
 
     # 5. persona_liquidacion.numero: LIQ-2026-0001 → {nit}L.2026.1
     if nit:

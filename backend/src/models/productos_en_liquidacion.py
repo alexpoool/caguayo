@@ -71,6 +71,7 @@ class ProductosEnLiquidacion(SQLModel, table=True):
         sa_relationship_kwargs={"foreign_keys": "[ProductosEnLiquidacion.id_anexo]"}
     )
     liquidacion: Optional["Liquidacion"] = Relationship(
+        back_populates="productos_en_liquidacion",
         sa_relationship_kwargs={
             "foreign_keys": "[ProductosEnLiquidacion.id_liquidacion]"
         }

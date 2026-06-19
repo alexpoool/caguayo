@@ -7,6 +7,8 @@ export interface SelectedProduct {
   cantidad: number;
   precio_venta: number;
   precio_compra?: number;
+  id_moneda?: number;
+  precios?: { id_moneda: number; precio_venta: number; precio_compra?: number }[];
 }
 
 export function useProductSelection() {
@@ -17,7 +19,11 @@ export function useProductSelection() {
    * Retorna una función que filtra productos según búsqueda
    */
   const getProductosFiltrados = (productos: Productos[]) => {
-    if (!productSearch.trim()) return [];
+    if (!productSearch.trim()) {
+      return productos.filter(
+        (p) => !selectedProducts.some((sp) => sp.id_producto === p.id_producto)
+      );
+    }
     const search = productSearch.toLowerCase();
     return productos
       .filter(
@@ -31,16 +37,19 @@ export function useProductSelection() {
   /**
    * Agrega un producto a la selección
    */
-  const addProduct = (id: number, productos: Productos[]) => {
-    const producto = productos.find((p) => p.id_producto === id);
+  const addProduct = (id: number, productos: Productos[], idMoneda?: number) => {
+    const producto = productos.find((p: any) => p.id_producto === id);
     if (!selectedProducts.find((p) => p.id_producto === id)) {
+      const itemMoneda = idMoneda || (producto as any)?._id_moneda;
+      const itemPrecioCompra = (producto as any)?._precio_compra;
       setSelectedProducts([
         ...selectedProducts,
         {
           id_producto: id,
           cantidad: 1,
           precio_venta: producto ? Number(producto.precio_venta) : 0,
-          precio_compra: producto ? Number(producto.precio_compra) : 0,
+          precio_compra: producto ? Number(itemPrecioCompra || producto.precio_compra || 0) : 0,
+          id_moneda: itemMoneda,
         },
       ]);
     }
@@ -113,6 +122,8 @@ export function useProductSelection() {
         cantidad: p.cantidad,
         precio_venta: p.precio_venta || 0,
         precio_compra: p.precio_compra || 0,
+        id_moneda: p.id_moneda,
+        precios: p.precios || [],
       }))
     );
   };

@@ -1,9 +1,14 @@
 import React, { useState, useEffect } from "react";
 import { toast } from "react-hot-toast";
-import { Button } from "../../../../components/ui"
-import { Card, CardHeader, CardTitle, CardContent } from "../../../../components/ui"
-import { Label } from "../../../../components/ui"
-import { Input } from "../../../../components/ui"
+import { Button } from "../../../../components/ui";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardContent,
+} from "../../../../components/ui";
+import { Label } from "../../../../components/ui";
+import { Input } from "../../../../components/ui";
 import {
   User,
   Building2,
@@ -19,14 +24,18 @@ import { NaturalForm } from "./forms-especificos/NaturalForm";
 import { JuridicaForm } from "./forms-especificos/JuridicaForm";
 import { TCPForm } from "./forms-especificos/TCPForm";
 import { CuentasBancariasForm } from "./CuentasBancariasForm";
-import type { ClienteNatural, ClienteJuridica, ClienteTCP } from "../../../../types/ventas";
+import type {
+  ClienteNatural,
+  ClienteJuridica,
+  ClienteTCP,
+} from "../../../../types/ventas";
 import { dependenciasService } from "../../../../services/administracion";
 
 export interface ClienteFormProps {
   editingCliente: any | null;
   isProveedorView: boolean;
   onCancel: () => void;
-  onSubmit: (data: any) => void;
+  onSubmit: (data: any) => Promise<void>;
   cuentasCliente?: any[];
   setCuentasCliente?: (cuentas: any[]) => void;
   provincias?: any[];
@@ -45,8 +54,12 @@ export const ClienteForm: React.FC<ClienteFormProps> = ({
   tiposEntidad = [],
   monedas = [],
 }) => {
-  const [localProvincias, setLocalProvincias] = useState<any[]>(provincias || []);
-  const [localTiposEntidad, setLocalTiposEntidad] = useState<any[]>(tiposEntidad || []);
+  const [localProvincias, setLocalProvincias] = useState<any[]>(
+    provincias || [],
+  );
+  const [localTiposEntidad, setLocalTiposEntidad] = useState<any[]>(
+    tiposEntidad || [],
+  );
   const [localMonedas, setLocalMonedas] = useState<any[]>(monedas || []);
 
   useEffect(() => {
@@ -56,7 +69,11 @@ export const ClienteForm: React.FC<ClienteFormProps> = ({
   }, [provincias]);
 
   useEffect(() => {
-    if (tiposEntidad && Array.isArray(tiposEntidad) && tiposEntidad.length > 0) {
+    if (
+      tiposEntidad &&
+      Array.isArray(tiposEntidad) &&
+      tiposEntidad.length > 0
+    ) {
       setLocalTiposEntidad(tiposEntidad);
     }
   }, [tiposEntidad]);
@@ -68,12 +85,14 @@ export const ClienteForm: React.FC<ClienteFormProps> = ({
   }, [monedas]);
 
   const [tipoPersona, setTipoPersona] = useState<TipoPersona>(
-    editingCliente?.tipo_persona || "NATURAL"
+    editingCliente?.tipo_persona || "NATURAL",
   );
 
   const [formData, setFormData] = useState<any>({
     tipo_persona: editingCliente?.tipo_persona || "NATURAL",
-    tipo_relacion: editingCliente?.tipo_relacion || (isProveedorView ? "PROVEEDOR" : "CLIENTE"),
+    tipo_relacion:
+      editingCliente?.tipo_relacion ||
+      (isProveedorView ? "PROVEEDOR" : "CLIENTE"),
     codigo: editingCliente?.codigo || "",
     nombre: editingCliente?.nombre || "",
     nit: editingCliente?.nit || "",
@@ -104,7 +123,7 @@ export const ClienteForm: React.FC<ClienteFormProps> = ({
         const data = await dependenciasService.getMunicipios(provinciaId);
         setMunicipios(data);
       } catch (error) {
-        console.error('Error loading municipios:', error);
+        console.error("Error loading municipios:", error);
         setMunicipios([]);
       } finally {
         setLoadingMunicipios(false);
@@ -121,13 +140,13 @@ export const ClienteForm: React.FC<ClienteFormProps> = ({
   }, []);
 
   const [datosNatural, setDatosNatural] = useState<ClienteNatural | null>(
-    editingCliente?.cliente_natural || null
+    editingCliente?.cliente_natural || null,
   );
   const [datosJuridica, setDatosJuridica] = useState<ClienteJuridica | null>(
-    editingCliente?.cliente_juridica || null
+    editingCliente?.cliente_juridica || null,
   );
   const [datosTCP, setDatosTCP] = useState<ClienteTCP | null>(
-    editingCliente?.cliente_tcp || null
+    editingCliente?.cliente_tcp || null,
   );
 
   const [nuevaCuenta, setNuevaCuenta] = useState<NuevaCuenta>({
@@ -140,15 +159,15 @@ export const ClienteForm: React.FC<ClienteFormProps> = ({
     tipo_cuenta: "CORRIENTE",
     principal: false,
   });
-  const [cuentas, setCuentas] = useState<any[]>(
-    editingCliente?.cuentas || []
-  );
+  const [cuentas, setCuentas] = useState<any[]>(editingCliente?.cuentas || []);
 
   useEffect(() => {
     if (editingCliente) {
       setFormData({
         tipo_persona: editingCliente.tipo_persona || "NATURAL",
-        tipo_relacion: editingCliente.tipo_relacion || (isProveedorView ? "PROVEEDOR" : "CLIENTE"),
+        tipo_relacion:
+          editingCliente.tipo_relacion ||
+          (isProveedorView ? "PROVEEDOR" : "CLIENTE"),
         codigo: editingCliente.codigo || "",
         nombre: editingCliente.nombre || "",
         nit: editingCliente.nit || "",
@@ -175,7 +194,7 @@ export const ClienteForm: React.FC<ClienteFormProps> = ({
     setFormData((prev: any) => ({ ...prev, tipo_persona: tipo }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.codigo?.trim()) {
       toast.error("El código es obligatorio");
@@ -189,10 +208,23 @@ export const ClienteForm: React.FC<ClienteFormProps> = ({
       cliente_tcp: tipoPersona === "TCP" ? datosTCP : undefined,
       cuentas: cuentas,
     };
-    console.log("[DEBUG] handleSubmit - cuentas state:", JSON.stringify(cuentas, null, 2));
-    console.log("[DEBUG] handleSubmit - payload cuentas:", JSON.stringify(payload.cuentas, null, 2));
-    console.log("[DEBUG] handleSubmit - full payload:", JSON.stringify(payload, null, 2));
-    onSubmit(payload);
+    console.log(
+      "[DEBUG] handleSubmit - cuentas state:",
+      JSON.stringify(cuentas, null, 2),
+    );
+    console.log(
+      "[DEBUG] handleSubmit - payload cuentas:",
+      JSON.stringify(payload.cuentas, null, 2),
+    );
+    console.log(
+      "[DEBUG] handleSubmit - full payload:",
+      JSON.stringify(payload, null, 2),
+    );
+    try {
+      await onSubmit(payload);
+    } catch (error) {
+      console.error("Error al guardar cliente:", error);
+    }
   };
 
   const addCuenta = () => {
@@ -235,11 +267,7 @@ export const ClienteForm: React.FC<ClienteFormProps> = ({
             </p>
           </div>
         </div>
-        <Button
-          variant="outline"
-          onClick={onCancel}
-          className="gap-2"
-        >
+        <Button variant="outline" onClick={onCancel} className="gap-2">
           <ArrowLeft className="h-4 w-4" />
           Volver
         </Button>
@@ -303,11 +331,14 @@ export const ClienteForm: React.FC<ClienteFormProps> = ({
           </CardHeader>
           <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
             <div>
-              <Label>Nombre Artistico</Label>
+              <Label>Nombre Comercial</Label>
               <Input
                 value={formData.nombre || ""}
                 onChange={(e) =>
-                  setFormData({ ...formData, nombre: e.target.value.toUpperCase().slice(0, 200) })
+                  setFormData({
+                    ...formData,
+                    nombre: e.target.value.toUpperCase().slice(0, 200),
+                  })
                 }
                 required
                 maxLength={200}
@@ -318,7 +349,10 @@ export const ClienteForm: React.FC<ClienteFormProps> = ({
               <Input
                 value={formData.nit || ""}
                 onChange={(e) =>
-                  setFormData({ ...formData, nit: e.target.value.toUpperCase().slice(0, 20) })
+                  setFormData({
+                    ...formData,
+                    nit: e.target.value.toUpperCase().slice(0, 20),
+                  })
                 }
                 required
                 maxLength={20}
@@ -329,7 +363,10 @@ export const ClienteForm: React.FC<ClienteFormProps> = ({
               <Input
                 value={formData.codigo || ""}
                 onChange={(e) =>
-                  setFormData({ ...formData, codigo: e.target.value.slice(0, 50) })
+                  setFormData({
+                    ...formData,
+                    codigo: e.target.value.slice(0, 50),
+                  })
                 }
                 required
                 maxLength={50}
@@ -341,7 +378,10 @@ export const ClienteForm: React.FC<ClienteFormProps> = ({
               <Input
                 value={formData.telefono || ""}
                 onChange={(e) =>
-                  setFormData({ ...formData, telefono: e.target.value.slice(0, 20) })
+                  setFormData({
+                    ...formData,
+                    telefono: e.target.value.slice(0, 20),
+                  })
                 }
                 maxLength={20}
               />
@@ -352,7 +392,10 @@ export const ClienteForm: React.FC<ClienteFormProps> = ({
                 type="email"
                 value={formData.email || ""}
                 onChange={(e) =>
-                  setFormData({ ...formData, email: e.target.value.toLowerCase().slice(0, 100) })
+                  setFormData({
+                    ...formData,
+                    email: e.target.value.toLowerCase().slice(0, 100),
+                  })
                 }
                 maxLength={100}
               />
@@ -372,12 +415,15 @@ export const ClienteForm: React.FC<ClienteFormProps> = ({
               <Input
                 value={formData.web || ""}
                 onChange={(e) =>
-                  setFormData({ ...formData, web: e.target.value.slice(0, 100) })
+                  setFormData({
+                    ...formData,
+                    web: e.target.value.slice(0, 100),
+                  })
                 }
                 maxLength={100}
               />
             </div>
-             <div className="md:col-span-3">
+            <div className="md:col-span-3">
               <Label>Dirección</Label>
               <Input
                 value={formData.direccion || ""}
@@ -385,13 +431,15 @@ export const ClienteForm: React.FC<ClienteFormProps> = ({
                   setFormData({ ...formData, direccion: e.target.value })
                 }
               />
-            </div>           
+            </div>
             <div>
               <Label>Provincia</Label>
               <select
                 value={formData.id_provincia || ""}
                 onChange={(e) =>
-                  handleProvinciaChange(e.target.value ? parseInt(e.target.value) : undefined)
+                  handleProvinciaChange(
+                    e.target.value ? parseInt(e.target.value) : undefined,
+                  )
                 }
                 className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white"
               >
@@ -410,14 +458,20 @@ export const ClienteForm: React.FC<ClienteFormProps> = ({
                 onChange={(e) =>
                   setFormData({
                     ...formData,
-                    id_municipio: e.target.value ? parseInt(e.target.value) : undefined,
+                    id_municipio: e.target.value
+                      ? parseInt(e.target.value)
+                      : undefined,
                   })
                 }
                 disabled={!formData.id_provincia || loadingMunicipios}
                 className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white disabled:bg-slate-50 disabled:cursor-not-allowed"
               >
                 <option value="">
-                  {loadingMunicipios ? "Cargando..." : (formData.id_provincia ? "Seleccione municipio" : "Primero seleccione provincia")}
+                  {loadingMunicipios
+                    ? "Cargando..."
+                    : formData.id_provincia
+                      ? "Seleccione municipio"
+                      : "Primero seleccione provincia"}
                 </option>
                 {municipios.map((m: any) => (
                   <option key={m.id_municipio} value={m.id_municipio}>
@@ -426,12 +480,15 @@ export const ClienteForm: React.FC<ClienteFormProps> = ({
                 ))}
               </select>
             </div>
-             <div>
+            <div>
               <Label>Código Postal</Label>
               <Input
                 value={formData.codigo_postal || ""}
                 onChange={(e) =>
-                  setFormData({ ...formData, codigo_postal: e.target.value.slice(0, 10) })
+                  setFormData({
+                    ...formData,
+                    codigo_postal: e.target.value.slice(0, 10),
+                  })
                 }
                 maxLength={10}
               />
@@ -478,10 +535,7 @@ export const ClienteForm: React.FC<ClienteFormProps> = ({
 
         {/* Datos según tipo de persona */}
         {tipoPersona === "NATURAL" && (
-          <NaturalForm
-            datos={datosNatural}
-            setDatos={setDatosNatural}
-          />
+          <NaturalForm datos={datosNatural} setDatos={setDatosNatural} />
         )}
 
         {tipoPersona === "JURIDICA" && (
@@ -493,10 +547,7 @@ export const ClienteForm: React.FC<ClienteFormProps> = ({
         )}
 
         {tipoPersona === "TCP" && (
-          <TCPForm
-            datos={datosTCP}
-            setDatos={setDatosTCP}
-          />
+          <TCPForm datos={datosTCP} setDatos={setDatosTCP} />
         )}
 
         {/* Cuentas Bancarias */}
@@ -517,11 +568,7 @@ export const ClienteForm: React.FC<ClienteFormProps> = ({
             <Save className="h-4 w-4" />
             {editingCliente ? "Actualizar" : "Crear"}
           </Button>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={onCancel}
-          >
+          <Button type="button" variant="outline" onClick={onCancel}>
             Cancelar
           </Button>
         </div>

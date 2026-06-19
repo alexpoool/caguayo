@@ -336,6 +336,7 @@ class ItemAnexoRepository(CRUDBase[ItemAnexo, ItemAnexoCreate, dict]):
                     "id_anexo": id_anexo,
                     "id_producto": item["id_producto"],
                     "cantidad": item["cantidad"],
+                    "existencia": item["cantidad"],
                     "precio_compra": producto.precio_compra,
                     "precio_venta": item["precio_venta"],
                     "id_moneda": item["id_moneda"],

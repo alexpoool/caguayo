@@ -7,6 +7,7 @@ import type { Productos } from '../../types';
 import { Plus, Save, Trash2, Edit, X, Boxes, ArrowLeft, Package, DollarSign, Tag, Eye, User, Search, AlertTriangle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useSearchParams } from 'react-router-dom';
+import { required, esFechaValida, esNumeroPositivo, useFormValidation } from '../../utils/validacionFormularios';
 
 type View = 'list' | 'form' | 'detail';
 
@@ -27,10 +28,21 @@ export function CompraAnexosPage() {
   const [formData, setFormData] = useState<Record<string, any>>({});
   const [selectedConvenio, setSelectedConvenio] = useState<number | null>(initialConvenioId ? Number(initialConvenioId) : null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedProducts, setSelectedProducts] = useState<{id_producto: number; cantidad: number; precio_venta: number}[]>([]);
+  const [selectedProducts, setSelectedProducts] = useState<{
+    id_producto: number;
+    cantidad: number;
+    precio_venta: number;
+    id_moneda: number;
+    precios: { id_moneda: number; precio_venta: number; precio_compra?: number }[];
+  }[]>([]);
   const [productSearch, setProductSearch] = useState('');
   const [isFocused, setIsFocused] = useState(false);
   const [detailModal, setDetailModal] = useState<{ isOpen: boolean; item: any | null }>({ isOpen: false, item: null });
+
+  const { errors, touched, validateField, handleBlur, validateAll, clearErrors, getError } = useFormValidation([
+    { field: 'nombre_anexo', label: 'Nombre del anexo', validate: (v) => required(v, 'Nombre del anexo') },
+    { field: 'fecha', label: 'Fecha', validate: (v) => esFechaValida(v, 'Fecha') },
+  ]);
 
   useEffect(() => { loadInitialData(); }, []);
 
@@ -77,19 +89,38 @@ export function CompraAnexosPage() {
       toast.error('Debe seleccionar un convenio');
       return;
     }
+    if (!validateAll(formData)) {
+      const errorList = [getError('nombre_anexo'), getError('fecha')].filter(Boolean);
+      toast.error(errorList.join('\n• '));
+      return;
+    }
+    if (selectedProducts.length === 0) {
+      toast.error('Debe agregar al menos un producto');
+      return;
+    }
+    const productErrors = selectedProducts.some(p => p.cantidad < 1);
+    if (productErrors) {
+      toast.error('Cada producto debe tener cantidad mayor o igual a 1');
+      return;
+    }
+    const priceErrors = selectedProducts.some(p => p.precio_venta < 0);
+    if (priceErrors) {
+      toast.error('El precio de venta no puede ser negativo');
+      return;
+    }
     try {
       const data = {
         id_convenio: Number(selectedConvenio),
         nombre_anexo: formData.nombre_anexo,
         fecha: formData.fecha,
         id_dependencia: formData.id_dependencia ? Number(formData.id_dependencia) : undefined,
-        id_moneda: formData.id_moneda ? Number(formData.id_moneda) : undefined,
         comision: formData.comision ? Number(formData.comision) : undefined,
         items: selectedProducts.map(p => ({
           id_producto: p.id_producto,
           cantidad: p.cantidad,
           precio_venta: p.precio_venta,
-          id_moneda: formData.id_moneda ? Number(formData.id_moneda) : 1
+          id_moneda: p.id_moneda,
+          precios: p.precios.filter(pr => pr.id_moneda !== p.id_moneda)
         }))
       };
       
@@ -130,27 +161,52 @@ export function CompraAnexosPage() {
         nombre_anexo: item.nombre_anexo,
         fecha: item.fecha,
         id_dependencia: item.id_dependencia,
-        id_moneda: item.id_moneda,
         comision: item.comision,
         codigo_anexo: item.codigo_anexo,
       });
       setSelectedProducts(item.items_anexo?.map((p: any) => ({
         id_producto: p.id_producto,
         cantidad: p.cantidad,
-        precio_venta: p.precio_venta || p.precio_compra || 0
+        precio_venta: p.precio_venta || p.precio_compra || 0,
+        id_moneda: p.id_moneda,
+        precios: (p.precios || []).map((pr: any) => ({
+          id_moneda: pr.id_moneda,
+          precio_venta: Number(pr.precio_venta),
+          precio_compra: pr.precio_compra ? Number(pr.precio_compra) : undefined,
+        })),
       })) || []);
     } else { resetForm(); }
     setView('form');
   };
+
+  const defaultMoneda = monedas[0]?.id_moneda || 1;
 
   const addProduct = (producto: Productos) => {
     if (!selectedProducts.find(p => p.id_producto === producto.id_producto)) {
       setSelectedProducts([...selectedProducts, { 
         id_producto: producto.id_producto, 
         cantidad: 1, 
-        precio_venta: Number(producto.precio_venta) 
+        precio_venta: Number(producto.precio_venta),
+        id_moneda: defaultMoneda,
+        precios: [],
       }]);
     }
+  };
+
+  const addPrecioAlternativo = (id: number, id_moneda: number, precio_venta: number) => {
+    setSelectedProducts(selectedProducts.map(p =>
+      p.id_producto === id
+        ? { ...p, precios: [...p.precios.filter(pr => pr.id_moneda !== id_moneda), { id_moneda, precio_venta }] }
+        : p
+    ));
+  };
+
+  const removePrecioAlternativo = (id: number, id_moneda: number) => {
+    setSelectedProducts(selectedProducts.map(p =>
+      p.id_producto === id
+        ? { ...p, precios: p.precios.filter(pr => pr.id_moneda !== id_moneda) }
+        : p
+    ));
   };
 
   const updateProduct = (id: number, field: string, value: number) => {
@@ -327,20 +383,25 @@ export function CompraAnexosPage() {
   );
 
   const renderForm = () => (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="sm" onClick={() => { setView('list'); resetForm(); }}><ArrowLeft className="w-4 h-4" /></Button>
-          <CardTitle>{editingId ? 'Editar' : 'Nuevo'} Anexo</CardTitle>
-          {editingId && formData.codigo_anexo && (
-            <span className="ml-auto font-mono font-bold">{formData.codigo_anexo}</span>
-          )}
-        </div>
-      </CardHeader>
-      <CardContent>
+    <>
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-2xl font-bold text-gray-900">{editingId ? 'Editar' : 'Nuevo'} Anexo</h2>
+        <Button variant="outline" onClick={() => { setView('list'); resetForm(); }} className="gap-2">
+          <ArrowLeft className="h-4 w-4" />
+          Volver
+        </Button>
+      </div>
+      <Card className="shadow-sm border-gray-200">
+        <CardHeader className="border-b bg-gray-50/50">
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <Boxes className="h-5 w-5 text-fuchsia-600" />
+            Información del Anexo
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-6">
         <div className="grid gap-4 md:grid-cols-2">
           <div className="md:col-span-2">
-            <Label>Convenio</Label>
+            <Label className="text-sm font-medium">Convenio</Label>
             {initialConvenioId ? (
               <div className={`mt-1 px-3 py-2 border rounded-lg flex items-center justify-between ${convenioVencido ? 'bg-red-50 border-red-300 text-red-700' : 'bg-gray-100 border-gray-300 text-gray-700'}`}>
                 <span>{convenios.find(c => c.id_convenio === Number(initialConvenioId))?.nombre_convenio || `Convenio #${initialConvenioId}`}</span>
@@ -352,7 +413,7 @@ export function CompraAnexosPage() {
                 )}
               </div>
             ) : (
-              <select className="w-full p-2 border rounded" value={formData.id_convenio || ''} onChange={(e: any) => setFormData({...formData, id_convenio: e.target.value})}>
+              <select className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-fuchsia-500 outline-none bg-white" value={formData.id_convenio || ''} onChange={(e: any) => setFormData({...formData, id_convenio: e.target.value})}>
                 <option value="">Seleccionar</option>
                 {conveniosVigentes.map(c => <option key={c.id_convenio} value={c.id_convenio}>{c.nombre_convenio}</option>)}
               </select>
@@ -362,46 +423,43 @@ export function CompraAnexosPage() {
             )}
           </div>
           
-          <div className="md:col-span-2"><Label>Nombre del Anexo *</Label><Input value={formData.nombre_anexo || ''} onChange={(e: any) => setFormData({...formData, nombre_anexo: e.target.value})} /></div>
+          <div className="md:col-span-2"><Label className="text-sm font-medium">Nombre del Anexo *</Label><Input className="mt-1" value={formData.nombre_anexo || ''} onChange={(e: any) => { setFormData({...formData, nombre_anexo: e.target.value}); validateField('nombre_anexo', e.target.value); }} onBlur={(e: any) => handleBlur('nombre_anexo', e.target.value)} />
+          {getError('nombre_anexo') && <p className="text-red-500 text-sm mt-1">{getError('nombre_anexo')}</p>}</div>
           
           <div>
-            <Label>Fecha *</Label>
-            <div className="flex gap-2">
+            <Label className="text-sm font-medium">Fecha *</Label>
+            <div className="flex gap-2 mt-1">
               <input 
                 type="date" 
                 className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-fuchsia-500 focus:border-fuchsia-500 outline-none transition-colors" 
                 value={formData.fecha || ''} 
-                onChange={(e: any) => setFormData({...formData, fecha: e.target.value})} 
+                onChange={(e: any) => { setFormData({...formData, fecha: e.target.value}); validateField('fecha', e.target.value); }} 
+                onBlur={(e: any) => handleBlur('fecha', e.target.value)}
               />
               <button 
                 type="button" 
-                onClick={() => setFormData({...formData, fecha: new Date().toISOString().split('T')[0]})} 
+                onClick={() => { const hoy = new Date().toISOString().split('T')[0]; setFormData({...formData, fecha: hoy}); validateField('fecha', hoy); }} 
                 className="px-3 py-2 bg-fuchsia-600 text-white rounded-lg hover:bg-fuchsia-700 transition-colors text-sm font-medium whitespace-nowrap"
               >
                 Hoy
               </button>
             </div>
+            {getError('fecha') && <p className="text-red-500 text-sm mt-1">{getError('fecha')}</p>}
           </div>
           
-          <div><Label>Dependencia</Label>
-            <select className="w-full p-2 border rounded" value={formData.id_dependencia || ''} onChange={(e: any) => setFormData({...formData, id_dependencia: e.target.value})}>
+          <div><Label className="text-sm font-medium">Dependencia</Label>
+            <select className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-fuchsia-500 outline-none bg-white" value={formData.id_dependencia || ''} onChange={(e: any) => setFormData({...formData, id_dependencia: e.target.value})}>
               <option value="">{isLoadingDependencias ? 'Cargando...' : 'Seleccionar'}</option>
               {!isLoadingDependencias && dependenciasFiltradas.map(d => <option key={d.id_dependencia} value={d.id_dependencia}>{d.nombre}</option>)}
             </select>
           </div>
           
-          <div><Label>Moneda</Label>
-            <select className="w-full p-2 border rounded" value={formData.id_moneda || ''} onChange={(e: any) => setFormData({...formData, id_moneda: e.target.value})}>
-              <option value="">Seleccionar</option>
-              {monedas.map(m => <option key={m.id_moneda} value={m.id_moneda}>{m.nombre} ({m.simbolo})</option>)}
-            </select>
-          </div>
           
-          <div><Label>Comisión (%)</Label><Input type="number" step="0.01" value={formData.comision || ''} onChange={(e: any) => setFormData({...formData, comision: e.target.value})} /></div>
+          <div><Label className="text-sm font-medium">Comisión (%)</Label><Input className="mt-1" type="number" step="0.01" value={formData.comision || ''} onChange={(e: any) => setFormData({...formData, comision: e.target.value})} /></div>
         </div>
 
         <div className="mt-6">
-          <Label className="mb-2 block">Productos</Label>
+          <Label className="text-sm font-medium mb-2 block">Productos</Label>
           <div className="relative mb-3">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <Input
@@ -438,45 +496,112 @@ export function CompraAnexosPage() {
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="px-3 py-2 text-left">Nombre</th>
-                    <th className="px-3 py-2 text-left">Cantidad</th>
+                    <th className="px-3 py-2 text-left">Cant.</th>
+                    <th className="px-3 py-2 text-left">Moneda</th>
                     <th className="px-3 py-2 text-left">Precio</th>
                     <th className="px-3 py-2 text-left">Subtotal</th>
+                    <th className="px-3 py-2 text-left">Otros Precios</th>
                     <th className="px-3 py-2"></th>
                   </tr>
                 </thead>
                 <tbody>
-                  {selectedProducts.map(p => (
-                    <tr key={p.id_producto} className="border-t">
-                      <td className="px-3 py-2">{getProductoNombre(p.id_producto)}</td>
-                      <td className="px-3 py-2">
-                        <Input 
-                          type="number" 
-                          min="1" 
-                          value={p.cantidad} 
-                          onChange={(e: any) => updateProduct(p.id_producto, 'cantidad', Number(e.target.value))}
-                          className="w-20 h-8"
-                        />
-                      </td>
-                      <td className="px-3 py-2">
-                        <Input 
-                          type="number" 
-                          step="0.01"
-                          value={p.precio_venta} 
-                          onChange={(e: any) => updateProduct(p.id_producto, 'precio_venta', Number(e.target.value))}
-                          className="w-24 h-8"
-                        />
-                      </td>
-                      <td className="px-3 py-2 font-medium">${(p.cantidad * p.precio_venta).toFixed(2)}</td>
-                      <td className="px-3 py-2">
-                        <button onClick={() => removeProduct(p.id_producto)} className="text-red-500"><X className="w-4 h-4" /></button>
-                      </td>
-                    </tr>
-                  ))}
+                  {selectedProducts.map(p => {
+                    const monedasDisponibles = monedas.filter(m => m.id_moneda !== p.id_moneda && !p.precios.some(pr => pr.id_moneda === m.id_moneda));
+                    return (
+                      <tr key={p.id_producto} className="border-t">
+                        <td className="px-3 py-2">{getProductoNombre(p.id_producto)}</td>
+                        <td className="px-3 py-2">
+                          <Input 
+                            type="number" 
+                            min="1" 
+                            value={p.cantidad} 
+                            onChange={(e: any) => updateProduct(p.id_producto, 'cantidad', Number(e.target.value))}
+                            className="w-16 h-8"
+                          />
+                        </td>
+                        <td className="px-3 py-2">
+                          <select
+                            value={p.id_moneda}
+                            onChange={(e: any) => {
+                              const newMoneda = Number(e.target.value);
+                              setSelectedProducts(selectedProducts.map(sp =>
+                                sp.id_producto === p.id_producto
+                                  ? { ...sp, id_moneda: newMoneda, precios: sp.precios.filter(pr => pr.id_moneda !== newMoneda) }
+                                  : sp
+                              ));
+                            }}
+                            className="w-20 h-8 px-2 border border-gray-300 rounded text-sm"
+                          >
+                            {monedas.map(m => (
+                              <option key={m.id_moneda} value={m.id_moneda} disabled={p.precios.some(pr => pr.id_moneda === m.id_moneda)}>
+                                {m.simbolo}
+                              </option>
+                            ))}
+                          </select>
+                        </td>
+                        <td className="px-3 py-2">
+                          <Input 
+                            type="number" 
+                            step="0.01"
+                            value={p.precio_venta} 
+                            onChange={(e: any) => updateProduct(p.id_producto, 'precio_venta', Number(e.target.value))}
+                            className="w-24 h-8"
+                          />
+                        </td>
+                        <td className="px-3 py-2 font-medium">{getMonedaNombre(p.id_moneda)} {(p.cantidad * p.precio_venta).toFixed(2)}</td>
+                        <td className="px-3 py-2">
+                          <div className="flex flex-col gap-1">
+                            {p.precios.map(pr => (
+                              <div key={pr.id_moneda} className="flex items-center gap-1 text-xs">
+                                <span className="font-medium">{getMonedaNombre(pr.id_moneda)}:</span>
+                                <Input
+                                  type="number"
+                                  step="0.01"
+                                  value={pr.precio_venta}
+                                  onChange={(e: any) => {
+                                    const nuevo = Number(e.target.value);
+                                    setSelectedProducts(selectedProducts.map(sp =>
+                                      sp.id_producto === p.id_producto
+                                        ? { ...sp, precios: sp.precios.map(p2 => p2.id_moneda === pr.id_moneda ? { ...p2, precio_venta: nuevo } : p2) }
+                                        : sp
+                                    ));
+                                  }}
+                                  className="w-20 h-6 text-xs"
+                                />
+                                <button onClick={() => removePrecioAlternativo(p.id_producto, pr.id_moneda)} className="text-red-400 hover:text-red-600">
+                                  <X className="w-3 h-3" />
+                                </button>
+                              </div>
+                            ))}
+                            {monedasDisponibles.length > 0 && (
+                              <select
+                                className="text-xs mt-1 h-6 px-1 border border-gray-300 rounded"
+                                value=""
+                                onChange={(e: any) => {
+                                  const mId = Number(e.target.value);
+                                  if (mId) addPrecioAlternativo(p.id_producto, mId, 0);
+                                }}
+                              >
+                                <option value="">+ Agregar moneda</option>
+                                {monedasDisponibles.map(m => (
+                                  <option key={m.id_moneda} value={m.id_moneda}>{m.simbolo} - {m.nombre}</option>
+                                ))}
+                              </select>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-3 py-2">
+                          <button onClick={() => removeProduct(p.id_producto)} className="text-red-500"><X className="w-4 h-4" /></button>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
                 <tfoot className="bg-gray-50 font-semibold">
                   <tr>
-                    <td colSpan={3} className="px-3 py-2 text-right">Total:</td>
-                    <td className="px-3 py-2">${calcTotal().toFixed(2)}</td>
+                    <td colSpan={4} className="px-3 py-2 text-right">Total:</td>
+                    <td className="px-3 py-2">{calcTotal().toFixed(2)}</td>
+                    <td></td>
                     <td></td>
                   </tr>
                 </tfoot>
@@ -485,12 +610,13 @@ export function CompraAnexosPage() {
           )}
         </div>
         
-        <div className="flex gap-2 mt-6">
-          <Button onClick={handleSave} disabled={convenioVencido}><Save className="w-4 h-4 mr-2" />Guardar</Button>
+        <div className="flex gap-3 mt-8 pt-6 border-t">
+          <Button onClick={handleSave} disabled={convenioVencido} className="gap-2 bg-gradient-to-r from-fuchsia-500 to-purple-600 hover:from-fuchsia-600 hover:to-purple-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300"><Save className="h-4 w-4" />Guardar</Button>
           <Button variant="outline" onClick={() => { setView('list'); resetForm(); }}>Cancelar</Button>
         </div>
       </CardContent>
     </Card>
+    </>
   );
 
   return (
@@ -541,40 +667,49 @@ export function CompraAnexosPage() {
                 <div className="bg-gray-50 p-4 rounded-xl">
                   <p className="text-xs text-gray-500 uppercase tracking-wider mb-3">Detalle de Productos</p>
                   <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="border-b border-gray-200">
-                          <th className="text-left py-2 text-xs text-gray-500 font-medium">Código</th>
-                          <th className="text-left py-2 text-xs text-gray-500 font-medium">Producto</th>
-                          <th className="text-right py-2 text-xs text-gray-500 font-medium">Cant.</th>
-                          <th className="text-right py-2 text-xs text-gray-500 font-medium">P. Unit.</th>
-                          <th className="text-right py-2 text-xs text-gray-500 font-medium">Total</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {detailModal.item.items_anexo.map((p: any, idx: number) => {
-                          const prod = productos.find(pr => pr.id_producto === p.id_producto);
-                          const total = p.cantidad * (p.precio_venta || 0);
-                          return (
-                            <tr key={idx} className="border-b border-gray-100 last:border-0">
-                              <td className="py-2 text-gray-500 font-mono text-xs">{prod?.codigo || '-'}</td>
-                              <td className="py-2 text-gray-700">{prod?.nombre || `Producto ${p.id_producto}`}</td>
-                              <td className="py-2 text-gray-500 text-right">{p.cantidad}</td>
-                              <td className="py-2 text-gray-500 text-right">${Number(p.precio_venta || 0).toFixed(2)}</td>
-                              <td className="py-2 text-gray-900 font-medium text-right">${total.toFixed(2)}</td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                      <tfoot>
-                        <tr>
-                          <td colSpan={4} className="py-2 text-right text-sm font-bold text-gray-900">Total:</td>
-                          <td className="py-2 text-right text-sm font-bold text-green-600">
-                            ${detailModal.item.items_anexo.reduce((t: number, p: any) => t + (p.cantidad * (p.precio_venta || 0)), 0).toFixed(2)}
-                          </td>
-                        </tr>
-                      </tfoot>
-                    </table>
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b border-gray-200">
+                            <th className="text-left py-2 text-xs text-gray-500 font-medium">Código</th>
+                            <th className="text-left py-2 text-xs text-gray-500 font-medium">Producto</th>
+                            <th className="text-right py-2 text-xs text-gray-500 font-medium">Cant.</th>
+                            <th className="text-right py-2 text-xs text-gray-500 font-medium">Liq.</th>
+                            <th className="text-right py-2 text-xs text-gray-500 font-medium">P. Unit.</th>
+                            <th className="text-right py-2 text-xs text-gray-500 font-medium">Total</th>
+                            <th className="text-left py-2 text-xs text-gray-500 font-medium">Otros Precios</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {detailModal.item.items_anexo.map((p: any, idx: number) => {
+                            const prod = productos.find(pr => pr.id_producto === p.id_producto);
+                            const total = p.cantidad * (p.precio_venta || 0);
+                            return (
+                              <tr key={idx} className="border-b border-gray-100 last:border-0">
+                                <td className="py-2 text-gray-500 font-mono text-xs">{prod?.codigo || '-'}</td>
+                                <td className="py-2 text-gray-700">{prod?.nombre || `Producto ${p.id_producto}`}</td>
+                                <td className="py-2 text-gray-500 text-right">{p.cantidad}</td>
+                                <td className="py-2 text-gray-500 text-right">{p.cantidad_liquidada ?? 0}</td>
+                                <td className="py-2 text-gray-500 text-right">{getMonedaNombre(p.id_moneda)} {Number(p.precio_venta || 0).toFixed(2)}</td>
+                                <td className="py-2 text-gray-900 font-medium text-right">{getMonedaNombre(p.id_moneda)} {total.toFixed(2)}</td>
+                                <td className="py-2 text-gray-500 text-xs">
+                                  {(p.precios || []).map((pr: any) => (
+                                    <div key={pr.id_moneda}>{getMonedaNombre(pr.id_moneda)} {Number(pr.precio_venta).toFixed(2)}</div>
+                                  ))}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                        <tfoot>
+                          <tr>
+                            <td colSpan={5} className="py-2 text-right text-sm font-bold text-gray-900">Total:</td>
+                            <td className="py-2 text-right text-sm font-bold text-green-600">
+                              {detailModal.item.items_anexo.reduce((t: number, p: any) => t + (p.cantidad * (p.precio_venta || 0)), 0).toFixed(2)}
+                            </td>
+                            <td></td>
+                          </tr>
+                        </tfoot>
+                      </table>
                   </div>
                 </div>
               )}

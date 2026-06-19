@@ -312,8 +312,7 @@ setTodosClientes(todosClientesRes);
           email: nuevoClienteData.correo || '',
           direccion: '',
           tipo_relacion: 'CLIENTE',
-          estado: 'ACTIVO',
-          activo: true
+          estado: 'ACTIVO'
         });
         setFormData(prev => ({ ...prev, id_persona: data.id_cliente }));
         setBusquedaPersona(data.nombre || '');
@@ -329,8 +328,7 @@ setTodosClientes(todosClientesRes);
           email: nuevoClienteData.correo || '',
           direccion: '',
           tipo_relacion: 'CLIENTE',
-          estado: 'ACTIVO',
-          activo: true
+          estado: 'ACTIVO'
         });
         setFormData(prev => ({ ...prev, id_persona: data.id_cliente }));
         setBusquedaPersona(data.nombre || '');
@@ -346,8 +344,7 @@ setTodosClientes(todosClientesRes);
           email: nuevoClienteData.correo || '',
           direccion: '',
           tipo_relacion: 'CLIENTE',
-          estado: 'ACTIVO',
-          activo: true
+          estado: 'ACTIVO'
         });
         setFormData(prev => ({ ...prev, id_persona: data.id_cliente }));
         setBusquedaPersona(data.nombre || '');

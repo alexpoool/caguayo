@@ -156,8 +156,7 @@ CREATE TABLE clientes (
     direccion TEXT NOT NULL,
     tipo_relacion VARCHAR(20) NOT NULL CHECK (tipo_relacion IN ('CLIENTE', 'PROVEEDOR', 'AMBAS')),
     estado VARCHAR(20) NOT NULL CHECK (estado IN ('ACTIVO', 'INACTIVO')),
-    fecha_registro DATE NOT NULL DEFAULT CURRENT_DATE,
-    activo BOOLEAN NOT NULL DEFAULT true
+    fecha_registro DATE NOT NULL DEFAULT CURRENT_DATE
 );
 
 -- Clientes - Persona Natural
@@ -236,6 +235,7 @@ CREATE TABLE dependencia (
     codigo_padre INTEGER REFERENCES dependencia(id_dependencia) ON DELETE SET NULL,
     nombre VARCHAR(100) NOT NULL,
     nit VARCHAR(20) UNIQUE,
+    reeup VARCHAR(15),
     direccion VARCHAR(255) NOT NULL,
     telefono VARCHAR(20) NOT NULL,
     email VARCHAR(100),
@@ -319,7 +319,7 @@ CREATE TABLE productos (
     moneda_venta INTEGER NOT NULL REFERENCES moneda(id_moneda) ON DELETE CASCADE,
     precio_venta NUMERIC NOT NULL,
     precio_minimo NUMERIC NOT NULL,
-    existencia INTEGER DEFAULT 0
+    stock INTEGER DEFAULT 0
 );
 
 -- =====================================================
@@ -341,7 +341,6 @@ CREATE TABLE convenio (
 CREATE TABLE anexo (
 id_anexo SERIAL PRIMARY KEY,
     id_convenio INTEGER NOT NULL REFERENCES convenio(id_convenio) ON DELETE CASCADE,
-    id_moneda INTEGER REFERENCES moneda(id_moneda) ON DELETE SET NULL,
     nombre_anexo VARCHAR(200) NOT NULL,
     fecha DATE NOT NULL,
     codigo_anexo VARCHAR(50),
@@ -356,9 +355,20 @@ CREATE TABLE item_anexo (
     id_producto INTEGER NOT NULL REFERENCES productos(id_producto) ON DELETE CASCADE,
     cantidad INTEGER NOT NULL DEFAULT 1,
     cantidad_vendida INTEGER DEFAULT 0,
+    existencia INTEGER NOT NULL DEFAULT 0,
     precio_compra NUMERIC(15, 4) NOT NULL,
     precio_venta NUMERIC(15, 4) NOT NULL,
-    id_moneda INTEGER NOT NULL REFERENCES moneda(id_moneda) ON DELETE CASCADE
+    id_moneda INTEGER NOT NULL REFERENCES moneda(id_moneda) ON DELETE CASCADE,
+    codigo VARCHAR(50)
+);
+
+-- Precios adicionales para item_anexo
+CREATE TABLE precio_item_anexo (
+    id_precio_item_anexo SERIAL PRIMARY KEY,
+    id_item_anexo INTEGER NOT NULL REFERENCES item_anexo(id_item_anexo) ON DELETE CASCADE,
+    id_moneda INTEGER NOT NULL REFERENCES moneda(id_moneda) ON DELETE CASCADE,
+    precio_venta NUMERIC(15, 4) NOT NULL,
+    precio_compra NUMERIC(15, 4)
 );
 
 -- Anexo-Producto (relación directa anexo-producto)
@@ -602,6 +612,7 @@ CREATE INDEX idx_cuenta_cliente ON cuenta(id_cliente);
 CREATE INDEX idx_anexo_dependencia ON anexo(id_dependencia);
 CREATE INDEX idx_item_anexo_anexo ON item_anexo(id_anexo);
 CREATE INDEX idx_item_anexo_producto ON item_anexo(id_producto);
+CREATE INDEX idx_precio_item_anexo_item ON precio_item_anexo(id_item_anexo);
 CREATE INDEX idx_contrato_cliente ON contrato(id_cliente);
 CREATE INDEX idx_contrato_estado ON contrato(id_estado);
 CREATE INDEX idx_contrato_tipo ON contrato(id_tipo_contrato);
@@ -1171,5 +1182,32 @@ CREATE TABLE IF NOT EXISTS log (
     status_code INTEGER,
     usuario_nombre VARCHAR(100),
     navegador VARCHAR(100)
+);
+
+-- =====================================================
+-- DATOS BASE PARA RECEPCIONES (Convenio/Anexo de la empresa)
+-- =====================================================
+
+INSERT INTO clientes (nombre, tipo_persona, nit, codigo, direccion, tipo_relacion, estado)
+VALUES ('Caguayo S.A', 'JURIDICA', 'NIT-CAGUAYO-001', 'CAGUAYO', 'Vista Alegre', 'CLIENTE', 'ACTIVO');
+
+INSERT INTO convenio (id_cliente, nombre_convenio, fecha, vigencia, id_tipo_convenio, codigo)
+VALUES (
+    (SELECT id_cliente FROM clientes WHERE codigo = 'CAGUAYO'),
+    'Convenio Base Recepción',
+    CURRENT_DATE,
+    '2099-12-31',
+    (SELECT id_tipo_convenio FROM tipo_convenio WHERE nombre = 'COMPRA VENTA'),
+    'BASE-REC'
+);
+
+INSERT INTO anexo (id_convenio, nombre_anexo, fecha, codigo_anexo, id_dependencia, comision)
+VALUES (
+    (SELECT id_convenio FROM convenio WHERE codigo = 'BASE-REC'),
+    'Anexo Base Recepción',
+    CURRENT_DATE,
+    'ANEXO-BASE-REC',
+    1,
+    0
 );
 
