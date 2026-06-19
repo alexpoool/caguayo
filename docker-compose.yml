@@ -1,0 +1,43 @@
+version: '3.8'
+
+services:
+  backend:
+    build: ./Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://solji:Scp2005@localhost:5432/caguayo
+      - PYTHONPATH=/app/backend/src
+    volumes:
+      - ./backend:/app/backend
+    depends_on:
+      - db
+    restart: unless-stopped
+
+  frontend:
+    build: ./Dockerfile.frontend
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_API_URL=http://localhost:8000
+    volumes:
+      - ./frontend:/app/frontend
+      - /app/frontend/node_modules
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      - POSTGRES_USER=solji
+      - POSTGRES_PASSWORD=Scp2005
+      - POSTGRES_DB=caguayo
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
