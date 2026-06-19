@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   backend:
-    build: ./Dockerfile
+    build: ./backend/Dockerfile
     ports:
       - "8000:8000"
     environment:
@@ -15,7 +15,7 @@ services:
     restart: unless-stopped
 
   frontend:
-    build: ./Dockerfile.frontend
+    build: ./frontend/Dockerfile.frontend
     ports:
       - "5173:5173"
     environment:
