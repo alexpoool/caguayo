@@ -1,7 +1,7 @@
 from sqlmodel import SQLModel
 from typing import Optional, List
 from .ubicaciones_dto import ProvinciaRead, MunicipioRead
-from .cuentas_dto import CuentaRead, CuentaCreate, CuentaDependenciaRead
+from .cuentas_dto import CuentaRead, CuentaDependenciaCreate, CuentaDependenciaRead
 
 
 class TipoDependenciaBase(SQLModel):
@@ -46,8 +46,8 @@ class DependenciaCreate(DependenciaBase):
 
 class DependenciaConCuentasCreate(SQLModel):
     dependencia: DependenciaCreate
-    cuentas: Optional[List[CuentaCreate]] = None
-    id_conexion_existente: Optional[str] = None
+    cuentas: Optional[List[CuentaDependenciaCreate]] = None
+    base_datos_existente: Optional[str] = None
 
 
 class DependenciaRead(SQLModel):

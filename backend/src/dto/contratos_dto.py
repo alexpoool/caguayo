@@ -260,6 +260,20 @@ class DependenciaSimpleRead(SQLModel):
     nombre: str
 
 
+class ItemAnexoDisponible(SQLModel):
+    id_item_anexo: int
+    id_anexo: int
+    id_producto: int
+    cantidad: int
+    cantidad_vendida: int
+    existencia: int = 0
+    precio_venta: Decimal
+    precio_compra: Decimal
+    id_moneda: int
+    codigo: Optional[str] = None
+    producto: Optional[ProductoSimpleRead] = None
+
+
 # Rebuild de modelos para resolver referencias circulares
 ItemFacturaRead.model_rebuild()
 FacturaReadWithDetails.model_rebuild()

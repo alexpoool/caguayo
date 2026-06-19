@@ -48,6 +48,7 @@ class MovimientoRepository(CRUDBase[Movimiento, MovimientoCreate, MovimientoUpda
             selectinload(Movimiento.dependencia).selectinload(Dependencia.provincia),  # type: ignore
             selectinload(Movimiento.dependencia).selectinload(Dependencia.municipio).selectinload(Municipio.provincia),  # type: ignore
             selectinload(Movimiento.dependencia).selectinload(Dependencia.cuentas),  # type: ignore
+            selectinload(Movimiento.dependencia).selectinload(Dependencia.cuentas_dependencias),  # type: ignore
             selectinload(Movimiento.producto)
             .selectinload(Productos.subcategoria)
             .selectinload(Subcategorias.categoria),  # type: ignore

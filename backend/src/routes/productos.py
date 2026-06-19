@@ -103,6 +103,25 @@ async def get_productos_con_stock(
         )
 
 
+@router.get("/con-stock-item-anexo")
+async def get_productos_con_stock_item_anexo(
+    db: AsyncSession = Depends(get_session),
+):
+    """Obtener productos con stock desde item_anexo.
+
+    Retorna cada item_anexo como opción individual con stock > 0,
+    incluyendo precios, moneda y origen (anexo/convenio).
+    """
+    try:
+        productos = await MovimientoService.get_productos_con_stock_item_anexo(db)
+        return productos
+    except Exception as e:
+        logger.error(f"Error al obtener productos desde item_anexo: {e}")
+        raise HTTPException(
+            status_code=500, detail=f"Error al obtener productos: {str(e)}"
+        )
+
+
 @router.get("/{producto_id}", response_model=ProductosRead)
 async def read_producto(producto_id: int, db: AsyncSession = Depends(get_session)):
     producto = await ProductosService.get_producto(db, producto_id)

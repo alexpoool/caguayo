@@ -69,6 +69,7 @@ class LiquidacionCreate(SQLModel):
 class LiquidacionRead(LiquidacionBase):
     id_liquidacion: int
     codigo: str
+    moneda: Optional["MonedaRead"] = None
 
 
 class LiquidacionUpdate(SQLModel):

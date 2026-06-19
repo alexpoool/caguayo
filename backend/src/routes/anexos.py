@@ -11,6 +11,7 @@ from src.models import (
     Cliente,
     Convenio,
     ItemAnexo,
+    PrecioItemAnexo,
     Movimiento,
     TipoMovimiento,
     Productos,
@@ -39,7 +40,7 @@ async def listar_anexos(
         statement = select(Anexo).options(
             selectinload(Anexo.convenios).selectinload(Convenio.cliente),
             selectinload(Anexo.convenios).selectinload(Convenio.tipo_convenio),
-            selectinload(Anexo.items_anexo),
+            selectinload(Anexo.items_anexo).selectinload(ItemAnexo.precios),
         )
         if convenio_id:
             statement = statement.where(Anexo.id_convenio == convenio_id)
@@ -96,7 +97,7 @@ async def obtener_anexo(
         select(Anexo)
         .where(Anexo.id_anexo == anexo_id)
         .options(
-            selectinload(Anexo.items_anexo),
+            selectinload(Anexo.items_anexo).selectinload(ItemAnexo.precios),
         )
     )
     results = await db.exec(statement)
@@ -201,6 +202,7 @@ async def crear_anexo(
                 id_anexo=db_anexo.id_anexo,
                 id_producto=item["id_producto"],
                 cantidad=item["cantidad"],
+                existencia=item["cantidad"],
                 precio_compra=producto.precio_compra,
                 precio_venta=item["precio_venta"],
                 id_moneda=item["id_moneda"],
@@ -208,6 +210,16 @@ async def crear_anexo(
             )
             db.add(db_item)
             await db.flush()
+
+            for p in item.get("precios", []):
+                if p["id_moneda"] == item["id_moneda"]:
+                    continue
+                db.add(PrecioItemAnexo(
+                    id_item_anexo=db_item.id_item_anexo,
+                    id_moneda=p["id_moneda"],
+                    precio_venta=p["precio_venta"],
+                    precio_compra=p.get("precio_compra"),
+                ))
 
             producto.precio_compra = producto.precio_compra
             producto.moneda_compra = item["id_moneda"]
@@ -276,7 +288,6 @@ async def crear_anexo(
             "id_convenio": db_anexo.id_convenio,
             "nombre_anexo": db_anexo.nombre_anexo,
             "fecha": str(db_anexo.fecha),
-            "id_moneda": db_anexo.id_moneda,
             "id_dependencia": db_anexo.id_dependencia,
             "comision": float(db_anexo.comision) if db_anexo.comision else None,
             "movimientos": movimientos_creados,
@@ -338,7 +349,6 @@ async def actualizar_anexo(
         "id_convenio": db_anexo.id_convenio,
         "nombre_anexo": db_anexo.nombre_anexo,
         "fecha": str(db_anexo.fecha),
-        "id_moneda": db_anexo.id_moneda,
         "id_dependencia": db_anexo.id_dependencia,
         "comision": float(db_anexo.comision) if db_anexo.comision else None,
     }

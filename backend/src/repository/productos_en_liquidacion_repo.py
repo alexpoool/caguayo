@@ -160,7 +160,8 @@ class ProductosEnLiquidacionRepository(CRUDBase[ProductosEnLiquidacion, dict, di
         return result.all()
 
     async def get_pendientes_by_cliente_y_anexo(
-        self, db: AsyncSession, cliente_id: int, anexo_id: Optional[int] = None
+        self, db: AsyncSession, cliente_id: int, anexo_id: Optional[int] = None,
+        moneda_id: Optional[int] = None
     ) -> List[dict]:
         from src.models.anexo import Anexo
         from src.models.convenio import Convenio
@@ -231,6 +232,9 @@ class ProductosEnLiquidacionRepository(CRUDBase[ProductosEnLiquidacion, dict, di
                     ),
                 )
             )
+
+        if moneda_id is not None:
+            statement = statement.where(ProductosEnLiquidacion.id_moneda == moneda_id)
 
         statement = statement.order_by(ProductosEnLiquidacion.fecha.desc())
 
@@ -311,7 +315,7 @@ class ProductosEnLiquidacionRepository(CRUDBase[ProductosEnLiquidacion, dict, di
         return result.all()
 
     async def get_items_anexo_con_estado_por_cliente(
-        self, db: AsyncSession, cliente_id: int, anexo_id: Optional[int] = None
+        self, db: AsyncSession, cliente_id: int, anexo_id: Optional[int] = None, moneda_id: Optional[int] = None
     ) -> List[dict]:
         """Obtiene todos los items de anexos del cliente con su estado:
         - CONSIGNACION: productos en item_anexo sin compras (facturas/ventas) asociadas
@@ -398,6 +402,9 @@ class ProductosEnLiquidacionRepository(CRUDBase[ProductosEnLiquidacion, dict, di
             )
         )
 
+        if moneda_id is not None:
+            items_anexo_stmt = items_anexo_stmt.where(ItemAnexo.id_moneda == moneda_id)
+
         result_items = await db.exec(items_anexo_stmt)
         rows_items = result_items.all()
 
@@ -427,6 +434,9 @@ class ProductosEnLiquidacionRepository(CRUDBase[ProductosEnLiquidacion, dict, di
                 ),
             )
         )
+
+        if moneda_id is not None:
+            pel_stmt = pel_stmt.where(ProductosEnLiquidacion.id_moneda == moneda_id)
 
         result_pel = await db.exec(pel_stmt)
         rows_pel = result_pel.all()
@@ -462,6 +472,7 @@ class ProductosEnLiquidacionRepository(CRUDBase[ProductosEnLiquidacion, dict, di
                 and_(
                     ProductosEnLiquidacion.id_producto == id_producto,
                     ProductosEnLiquidacion.id_anexo == id_anexo,
+                    ProductosEnLiquidacion.id_moneda == id_moneda,
                 )
             )
             result_pel_relacionados = await db.exec(pel_relacionados_stmt)
@@ -477,6 +488,8 @@ class ProductosEnLiquidacionRepository(CRUDBase[ProductosEnLiquidacion, dict, di
                         ProductosEnLiquidacion.id_factura.isnot(None),
                     )
                 )
+                if moneda_id is not None:
+                    pel_fallback_stmt = pel_fallback_stmt.where(ProductosEnLiquidacion.id_moneda == moneda_id)
                 result_fallback = await db.exec(pel_fallback_stmt)
                 pel_relacionados = result_fallback.all()
 
@@ -556,12 +569,15 @@ class ProductosEnLiquidacionRepository(CRUDBase[ProductosEnLiquidacion, dict, di
 
         pel_compra_venta = [
             pel for pel in rows_pel
-            if pel.id_anexo in anexos_compra_venta_ids
+            if (
+                pel.id_anexo in anexos_compra_venta_ids
+                or (pel.id_anexo is None and (pel.id_factura is not None or pel.id_venta_efectivo is not None))
+            )
             and not (pel.id_factura and pel.id_factura in unpaid_factura_ids)
         ]
 
         for pel in pel_compra_venta:
-            info_anexo = anexos_info.get(pel.id_anexo, {})
+            info_anexo = anexos_info.get(pel.id_anexo) if pel.id_anexo else {}
 
             # Calcular cantidad ya liquidada de este producto en este anexo
             pel_liquidada_stmt = select(
@@ -571,6 +587,7 @@ class ProductosEnLiquidacionRepository(CRUDBase[ProductosEnLiquidacion, dict, di
                     ProductosEnLiquidacion.id_producto == pel.id_producto,
                     ProductosEnLiquidacion.id_anexo == pel.id_anexo,
                     ProductosEnLiquidacion.liquidada == True,
+                    ProductosEnLiquidacion.id_moneda == pel.id_moneda,
                 )
             )
             result_liquidada = await db.exec(pel_liquidada_stmt)

@@ -19,8 +19,16 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    op.alter_column("productos", "existencia", new_column_name="stock")
+    conn = op.get_bind()
+    from sqlalchemy import inspect
+    inspector = inspect(conn)
+    columns = [c["name"] for c in inspector.get_columns("productos")]
+    if "existencia" in columns:
+        op.alter_column("productos", "existencia", new_column_name="stock")
 
 
 def downgrade() -> None:
-    op.alter_column("productos", "stock", new_column_name="existencia")
+    conn = op.get_bind()
+    columns = [c["name"] for c in conn.dialect.get_columns(conn, "productos")]
+    if "stock" in columns:
+        op.alter_column("productos", "stock", new_column_name="existencia")

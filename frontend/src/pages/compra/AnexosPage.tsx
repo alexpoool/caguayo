@@ -28,7 +28,13 @@ export function CompraAnexosPage() {
   const [formData, setFormData] = useState<Record<string, any>>({});
   const [selectedConvenio, setSelectedConvenio] = useState<number | null>(initialConvenioId ? Number(initialConvenioId) : null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedProducts, setSelectedProducts] = useState<{id_producto: number; cantidad: number; precio_venta: number}[]>([]);
+  const [selectedProducts, setSelectedProducts] = useState<{
+    id_producto: number;
+    cantidad: number;
+    precio_venta: number;
+    id_moneda: number;
+    precios: { id_moneda: number; precio_venta: number; precio_compra?: number }[];
+  }[]>([]);
   const [productSearch, setProductSearch] = useState('');
   const [isFocused, setIsFocused] = useState(false);
   const [detailModal, setDetailModal] = useState<{ isOpen: boolean; item: any | null }>({ isOpen: false, item: null });
@@ -108,13 +114,13 @@ export function CompraAnexosPage() {
         nombre_anexo: formData.nombre_anexo,
         fecha: formData.fecha,
         id_dependencia: formData.id_dependencia ? Number(formData.id_dependencia) : undefined,
-        id_moneda: formData.id_moneda ? Number(formData.id_moneda) : undefined,
         comision: formData.comision ? Number(formData.comision) : undefined,
         items: selectedProducts.map(p => ({
           id_producto: p.id_producto,
           cantidad: p.cantidad,
           precio_venta: p.precio_venta,
-          id_moneda: formData.id_moneda ? Number(formData.id_moneda) : 1
+          id_moneda: p.id_moneda,
+          precios: p.precios.filter(pr => pr.id_moneda !== p.id_moneda)
         }))
       };
       
@@ -155,27 +161,52 @@ export function CompraAnexosPage() {
         nombre_anexo: item.nombre_anexo,
         fecha: item.fecha,
         id_dependencia: item.id_dependencia,
-        id_moneda: item.id_moneda,
         comision: item.comision,
         codigo_anexo: item.codigo_anexo,
       });
       setSelectedProducts(item.items_anexo?.map((p: any) => ({
         id_producto: p.id_producto,
         cantidad: p.cantidad,
-        precio_venta: p.precio_venta || p.precio_compra || 0
+        precio_venta: p.precio_venta || p.precio_compra || 0,
+        id_moneda: p.id_moneda,
+        precios: (p.precios || []).map((pr: any) => ({
+          id_moneda: pr.id_moneda,
+          precio_venta: Number(pr.precio_venta),
+          precio_compra: pr.precio_compra ? Number(pr.precio_compra) : undefined,
+        })),
       })) || []);
     } else { resetForm(); }
     setView('form');
   };
+
+  const defaultMoneda = monedas[0]?.id_moneda || 1;
 
   const addProduct = (producto: Productos) => {
     if (!selectedProducts.find(p => p.id_producto === producto.id_producto)) {
       setSelectedProducts([...selectedProducts, { 
         id_producto: producto.id_producto, 
         cantidad: 1, 
-        precio_venta: Number(producto.precio_venta) 
+        precio_venta: Number(producto.precio_venta),
+        id_moneda: defaultMoneda,
+        precios: [],
       }]);
     }
+  };
+
+  const addPrecioAlternativo = (id: number, id_moneda: number, precio_venta: number) => {
+    setSelectedProducts(selectedProducts.map(p =>
+      p.id_producto === id
+        ? { ...p, precios: [...p.precios.filter(pr => pr.id_moneda !== id_moneda), { id_moneda, precio_venta }] }
+        : p
+    ));
+  };
+
+  const removePrecioAlternativo = (id: number, id_moneda: number) => {
+    setSelectedProducts(selectedProducts.map(p =>
+      p.id_producto === id
+        ? { ...p, precios: p.precios.filter(pr => pr.id_moneda !== id_moneda) }
+        : p
+    ));
   };
 
   const updateProduct = (id: number, field: string, value: number) => {
@@ -423,12 +454,6 @@ export function CompraAnexosPage() {
             </select>
           </div>
           
-          <div><Label className="text-sm font-medium">Moneda</Label>
-            <select className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-fuchsia-500 outline-none bg-white" value={formData.id_moneda || ''} onChange={(e: any) => setFormData({...formData, id_moneda: e.target.value})}>
-              <option value="">Seleccionar</option>
-              {monedas.map(m => <option key={m.id_moneda} value={m.id_moneda}>{m.nombre} ({m.simbolo})</option>)}
-            </select>
-          </div>
           
           <div><Label className="text-sm font-medium">Comisión (%)</Label><Input className="mt-1" type="number" step="0.01" value={formData.comision || ''} onChange={(e: any) => setFormData({...formData, comision: e.target.value})} /></div>
         </div>
@@ -471,45 +496,112 @@ export function CompraAnexosPage() {
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="px-3 py-2 text-left">Nombre</th>
-                    <th className="px-3 py-2 text-left">Cantidad</th>
+                    <th className="px-3 py-2 text-left">Cant.</th>
+                    <th className="px-3 py-2 text-left">Moneda</th>
                     <th className="px-3 py-2 text-left">Precio</th>
                     <th className="px-3 py-2 text-left">Subtotal</th>
+                    <th className="px-3 py-2 text-left">Otros Precios</th>
                     <th className="px-3 py-2"></th>
                   </tr>
                 </thead>
                 <tbody>
-                  {selectedProducts.map(p => (
-                    <tr key={p.id_producto} className="border-t">
-                      <td className="px-3 py-2">{getProductoNombre(p.id_producto)}</td>
-                      <td className="px-3 py-2">
-                        <Input 
-                          type="number" 
-                          min="1" 
-                          value={p.cantidad} 
-                          onChange={(e: any) => updateProduct(p.id_producto, 'cantidad', Number(e.target.value))}
-                          className="w-20 h-8"
-                        />
-                      </td>
-                      <td className="px-3 py-2">
-                        <Input 
-                          type="number" 
-                          step="0.01"
-                          value={p.precio_venta} 
-                          onChange={(e: any) => updateProduct(p.id_producto, 'precio_venta', Number(e.target.value))}
-                          className="w-24 h-8"
-                        />
-                      </td>
-                      <td className="px-3 py-2 font-medium">${(p.cantidad * p.precio_venta).toFixed(2)}</td>
-                      <td className="px-3 py-2">
-                        <button onClick={() => removeProduct(p.id_producto)} className="text-red-500"><X className="w-4 h-4" /></button>
-                      </td>
-                    </tr>
-                  ))}
+                  {selectedProducts.map(p => {
+                    const monedasDisponibles = monedas.filter(m => m.id_moneda !== p.id_moneda && !p.precios.some(pr => pr.id_moneda === m.id_moneda));
+                    return (
+                      <tr key={p.id_producto} className="border-t">
+                        <td className="px-3 py-2">{getProductoNombre(p.id_producto)}</td>
+                        <td className="px-3 py-2">
+                          <Input 
+                            type="number" 
+                            min="1" 
+                            value={p.cantidad} 
+                            onChange={(e: any) => updateProduct(p.id_producto, 'cantidad', Number(e.target.value))}
+                            className="w-16 h-8"
+                          />
+                        </td>
+                        <td className="px-3 py-2">
+                          <select
+                            value={p.id_moneda}
+                            onChange={(e: any) => {
+                              const newMoneda = Number(e.target.value);
+                              setSelectedProducts(selectedProducts.map(sp =>
+                                sp.id_producto === p.id_producto
+                                  ? { ...sp, id_moneda: newMoneda, precios: sp.precios.filter(pr => pr.id_moneda !== newMoneda) }
+                                  : sp
+                              ));
+                            }}
+                            className="w-20 h-8 px-2 border border-gray-300 rounded text-sm"
+                          >
+                            {monedas.map(m => (
+                              <option key={m.id_moneda} value={m.id_moneda} disabled={p.precios.some(pr => pr.id_moneda === m.id_moneda)}>
+                                {m.simbolo}
+                              </option>
+                            ))}
+                          </select>
+                        </td>
+                        <td className="px-3 py-2">
+                          <Input 
+                            type="number" 
+                            step="0.01"
+                            value={p.precio_venta} 
+                            onChange={(e: any) => updateProduct(p.id_producto, 'precio_venta', Number(e.target.value))}
+                            className="w-24 h-8"
+                          />
+                        </td>
+                        <td className="px-3 py-2 font-medium">{getMonedaNombre(p.id_moneda)} {(p.cantidad * p.precio_venta).toFixed(2)}</td>
+                        <td className="px-3 py-2">
+                          <div className="flex flex-col gap-1">
+                            {p.precios.map(pr => (
+                              <div key={pr.id_moneda} className="flex items-center gap-1 text-xs">
+                                <span className="font-medium">{getMonedaNombre(pr.id_moneda)}:</span>
+                                <Input
+                                  type="number"
+                                  step="0.01"
+                                  value={pr.precio_venta}
+                                  onChange={(e: any) => {
+                                    const nuevo = Number(e.target.value);
+                                    setSelectedProducts(selectedProducts.map(sp =>
+                                      sp.id_producto === p.id_producto
+                                        ? { ...sp, precios: sp.precios.map(p2 => p2.id_moneda === pr.id_moneda ? { ...p2, precio_venta: nuevo } : p2) }
+                                        : sp
+                                    ));
+                                  }}
+                                  className="w-20 h-6 text-xs"
+                                />
+                                <button onClick={() => removePrecioAlternativo(p.id_producto, pr.id_moneda)} className="text-red-400 hover:text-red-600">
+                                  <X className="w-3 h-3" />
+                                </button>
+                              </div>
+                            ))}
+                            {monedasDisponibles.length > 0 && (
+                              <select
+                                className="text-xs mt-1 h-6 px-1 border border-gray-300 rounded"
+                                value=""
+                                onChange={(e: any) => {
+                                  const mId = Number(e.target.value);
+                                  if (mId) addPrecioAlternativo(p.id_producto, mId, 0);
+                                }}
+                              >
+                                <option value="">+ Agregar moneda</option>
+                                {monedasDisponibles.map(m => (
+                                  <option key={m.id_moneda} value={m.id_moneda}>{m.simbolo} - {m.nombre}</option>
+                                ))}
+                              </select>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-3 py-2">
+                          <button onClick={() => removeProduct(p.id_producto)} className="text-red-500"><X className="w-4 h-4" /></button>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
                 <tfoot className="bg-gray-50 font-semibold">
                   <tr>
-                    <td colSpan={3} className="px-3 py-2 text-right">Total:</td>
-                    <td className="px-3 py-2">${calcTotal().toFixed(2)}</td>
+                    <td colSpan={4} className="px-3 py-2 text-right">Total:</td>
+                    <td className="px-3 py-2">{calcTotal().toFixed(2)}</td>
+                    <td></td>
                     <td></td>
                   </tr>
                 </tfoot>
@@ -575,42 +667,49 @@ export function CompraAnexosPage() {
                 <div className="bg-gray-50 p-4 rounded-xl">
                   <p className="text-xs text-gray-500 uppercase tracking-wider mb-3">Detalle de Productos</p>
                   <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="border-b border-gray-200">
-                          <th className="text-left py-2 text-xs text-gray-500 font-medium">Código</th>
-                          <th className="text-left py-2 text-xs text-gray-500 font-medium">Producto</th>
-                          <th className="text-right py-2 text-xs text-gray-500 font-medium">Cant.</th>
-                          <th className="text-right py-2 text-xs text-gray-500 font-medium">Liq.</th>
-                          <th className="text-right py-2 text-xs text-gray-500 font-medium">P. Unit.</th>
-                          <th className="text-right py-2 text-xs text-gray-500 font-medium">Total</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {detailModal.item.items_anexo.map((p: any, idx: number) => {
-                          const prod = productos.find(pr => pr.id_producto === p.id_producto);
-                          const total = p.cantidad * (p.precio_venta || 0);
-                          return (
-                            <tr key={idx} className="border-b border-gray-100 last:border-0">
-                              <td className="py-2 text-gray-500 font-mono text-xs">{prod?.codigo || '-'}</td>
-                              <td className="py-2 text-gray-700">{prod?.nombre || `Producto ${p.id_producto}`}</td>
-                              <td className="py-2 text-gray-500 text-right">{p.cantidad}</td>
-                              <td className="py-2 text-gray-500 text-right">{p.cantidad_liquidada ?? 0}</td>
-                              <td className="py-2 text-gray-500 text-right">${Number(p.precio_venta || 0).toFixed(2)}</td>
-                              <td className="py-2 text-gray-900 font-medium text-right">${total.toFixed(2)}</td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                      <tfoot>
-                        <tr>
-                          <td colSpan={5} className="py-2 text-right text-sm font-bold text-gray-900">Total:</td>
-                          <td className="py-2 text-right text-sm font-bold text-green-600">
-                            ${detailModal.item.items_anexo.reduce((t: number, p: any) => t + (p.cantidad * (p.precio_venta || 0)), 0).toFixed(2)}
-                          </td>
-                        </tr>
-                      </tfoot>
-                    </table>
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b border-gray-200">
+                            <th className="text-left py-2 text-xs text-gray-500 font-medium">Código</th>
+                            <th className="text-left py-2 text-xs text-gray-500 font-medium">Producto</th>
+                            <th className="text-right py-2 text-xs text-gray-500 font-medium">Cant.</th>
+                            <th className="text-right py-2 text-xs text-gray-500 font-medium">Liq.</th>
+                            <th className="text-right py-2 text-xs text-gray-500 font-medium">P. Unit.</th>
+                            <th className="text-right py-2 text-xs text-gray-500 font-medium">Total</th>
+                            <th className="text-left py-2 text-xs text-gray-500 font-medium">Otros Precios</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {detailModal.item.items_anexo.map((p: any, idx: number) => {
+                            const prod = productos.find(pr => pr.id_producto === p.id_producto);
+                            const total = p.cantidad * (p.precio_venta || 0);
+                            return (
+                              <tr key={idx} className="border-b border-gray-100 last:border-0">
+                                <td className="py-2 text-gray-500 font-mono text-xs">{prod?.codigo || '-'}</td>
+                                <td className="py-2 text-gray-700">{prod?.nombre || `Producto ${p.id_producto}`}</td>
+                                <td className="py-2 text-gray-500 text-right">{p.cantidad}</td>
+                                <td className="py-2 text-gray-500 text-right">{p.cantidad_liquidada ?? 0}</td>
+                                <td className="py-2 text-gray-500 text-right">{getMonedaNombre(p.id_moneda)} {Number(p.precio_venta || 0).toFixed(2)}</td>
+                                <td className="py-2 text-gray-900 font-medium text-right">{getMonedaNombre(p.id_moneda)} {total.toFixed(2)}</td>
+                                <td className="py-2 text-gray-500 text-xs">
+                                  {(p.precios || []).map((pr: any) => (
+                                    <div key={pr.id_moneda}>{getMonedaNombre(pr.id_moneda)} {Number(pr.precio_venta).toFixed(2)}</div>
+                                  ))}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                        <tfoot>
+                          <tr>
+                            <td colSpan={5} className="py-2 text-right text-sm font-bold text-gray-900">Total:</td>
+                            <td className="py-2 text-right text-sm font-bold text-green-600">
+                              {detailModal.item.items_anexo.reduce((t: number, p: any) => t + (p.cantidad * (p.precio_venta || 0)), 0).toFixed(2)}
+                            </td>
+                            <td></td>
+                          </tr>
+                        </tfoot>
+                      </table>
                   </div>
                 </div>
               )}

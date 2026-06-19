@@ -34,6 +34,7 @@ from .conexion_database import ConexionDatabase
 from .especialidades_artisticas import EspecialidadesArtisticas
 from .productos_en_liquidacion import ProductosEnLiquidacion, TipoCompra
 from .item_anexo import ItemAnexo
+from .precio_item_anexo import PrecioItemAnexo
 from .item_factura import ItemFactura
 from .item_venta_efectivo import ItemVentaEfectivo
 from .cuenta_dependencia import CuentaDependencia
@@ -96,6 +97,7 @@ __all__ = [
     "ProductosEnLiquidacion",
     "TipoCompra",
     "ItemAnexo",
+    "PrecioItemAnexo",
     "ItemFactura",
     "ItemVentaEfectivo",
     "CuentaDependencia",

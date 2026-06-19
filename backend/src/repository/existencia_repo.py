@@ -225,13 +225,14 @@ class ExistenciaRepository:
         id_producto: int,
         cantidad: int,
         id_dependencia: Optional[int] = None,
-        id_anexo: Optional[int] = None
+        id_anexo: Optional[int] = None,
+        movimiento_id: Optional[int] = None
     ) -> Dict[str, Any]:
         """Valida si hay suficiente existencia para una transacción.
         
         Considera:
         - Stock físico (consignación o movimientos confirmados)
-        - Stock comprometido (movimientos pendientes de tipo salida)
+        - Stock comprometido (movimientos pendientes de tipo salida excepto el propio)
         """
         
         data = await self.get_existencia_producto(
@@ -241,6 +242,7 @@ class ExistenciaRepository:
         stock_total = data["stock_total"]
         
         # Stock comprometido: movimientos pendientes con factor negativo (salidas)
+        # Excluye el movimiento que se está confirmando (movimiento_id) para no auto-descontarse
         comprometido_query = text("""
             SELECT COALESCE(SUM(m.cantidad), 0)
             FROM movimiento m
@@ -253,6 +255,9 @@ class ExistenciaRepository:
         if id_dependencia:
             comprometido_query = text(f"{comprometido_query.text} AND m.id_dependencia = :id_dependencia")
             comprometido_params["id_dependencia"] = id_dependencia
+        if movimiento_id is not None:
+            comprometido_query = text(f"{comprometido_query.text} AND m.id_movimiento != :movimiento_id")
+            comprometido_params["movimiento_id"] = movimiento_id
         
         comp_result = await db.exec(comprometido_query, params=comprometido_params)
         stock_comprometido = comp_result.scalar() or 0

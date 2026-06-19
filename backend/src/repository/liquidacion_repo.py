@@ -53,6 +53,7 @@ class LiquidacionRepository(CRUDBase[Liquidacion, dict, dict]):
                 selectinload(Liquidacion.productos_en_liquidacion).selectinload(
                     ProductosEnLiquidacion.moneda
                 ),
+                selectinload(Liquidacion.moneda),
             )
         )
         result = await db.exec(statement)
@@ -73,6 +74,7 @@ class LiquidacionRepository(CRUDBase[Liquidacion, dict, dict]):
                 selectinload(Liquidacion.productos_en_liquidacion).selectinload(
                     ProductosEnLiquidacion.moneda
                 ),
+                selectinload(Liquidacion.moneda),
             )
             .offset(skip)
             .limit(limit)
@@ -96,6 +98,7 @@ class LiquidacionRepository(CRUDBase[Liquidacion, dict, dict]):
                 selectinload(Liquidacion.productos_en_liquidacion).selectinload(
                     ProductosEnLiquidacion.moneda
                 ),
+                selectinload(Liquidacion.moneda),
             )
             .offset(skip)
             .limit(limit)
@@ -131,6 +134,7 @@ class LiquidacionRepository(CRUDBase[Liquidacion, dict, dict]):
                 selectinload(Liquidacion.productos_en_liquidacion).selectinload(
                     ProductosEnLiquidacion.moneda
                 ),
+                selectinload(Liquidacion.moneda),
             )
             .offset(skip)
             .limit(limit)
@@ -166,6 +170,7 @@ class LiquidacionRepository(CRUDBase[Liquidacion, dict, dict]):
                 selectinload(Liquidacion.productos_en_liquidacion).selectinload(
                     ProductosEnLiquidacion.moneda
                 ),
+                selectinload(Liquidacion.moneda),
             )
             .offset(skip)
             .limit(limit)

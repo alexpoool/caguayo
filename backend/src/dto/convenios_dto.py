@@ -3,6 +3,7 @@ from typing import Optional, List
 from datetime import date
 from decimal import Decimal
 from pydantic import field_validator
+from .precio_item_anexo_dto import PrecioItemAnexoCreate, PrecioItemAnexoRead
 
 
 class TipoClienteBase(SQLModel):
@@ -131,7 +132,6 @@ class ConvenioUpdate(SQLModel):
 
 class AnexoBase(SQLModel):
     id_convenio: int = Field(gt=0)
-    id_moneda: Optional[int] = None
     nombre_anexo: str = Field(min_length=1)
     fecha: date
     codigo_anexo: Optional[str] = None
@@ -143,13 +143,14 @@ class ItemAnexoBase(SQLModel):
     id_producto: int = Field(gt=0)
     cantidad: int = Field(gt=0)
     cantidad_vendida: int = Field(default=0, ge=0)
+    existencia: int = Field(default=0, ge=0)
     precio_venta: Decimal = Field(ge=0)
     id_moneda: int = Field(gt=0)
     codigo: Optional[str] = None
 
 
 class ItemAnexoCreate(ItemAnexoBase):
-    pass
+    precios: Optional[List[PrecioItemAnexoCreate]] = None
 
 
 class ItemAnexoRead(ItemAnexoBase):
@@ -158,6 +159,7 @@ class ItemAnexoRead(ItemAnexoBase):
     precio_compra: Decimal
     codigo: Optional[str] = None
     cantidad_liquidada: int = 0
+    precios: Optional[List[PrecioItemAnexoRead]] = None
 
 
 class AnexoCreate(AnexoBase):
@@ -173,7 +175,6 @@ class AnexoRead(AnexoBase):
 
 class AnexoUpdate(SQLModel):
     id_convenio: Optional[int] = Field(default=None, gt=0)
-    id_moneda: Optional[int] = None
     nombre_anexo: Optional[str] = Field(default=None, min_length=1)
     fecha: Optional[date] = None
     codigo_anexo: Optional[str] = None

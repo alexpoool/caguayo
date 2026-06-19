@@ -21,7 +21,6 @@ import toast from "react-hot-toast";
 interface Anexo {
   id_anexo: number;
   id_convenio: number;
-  id_moneda?: number | null;
   nombre_anexo: string;
   fecha: string;
   codigo_anexo?: string;
@@ -79,7 +78,6 @@ export function AnexosPage() {
 
   const [formData, setFormData] = useState({
     id_convenio: 0,
-    id_moneda: undefined as number | undefined,
     nombre_anexo: "",
     fecha: "",
     id_dependencia: null as number | null | undefined,
@@ -155,7 +153,6 @@ export function AnexosPage() {
   const resetForm = () => {
     setFormData({
       id_convenio: 0,
-      id_moneda: undefined,
       nombre_anexo: "",
       fecha: "",
       id_dependencia: undefined,
@@ -205,7 +202,6 @@ export function AnexosPage() {
     setEditingAnexo(anexo);
     setFormData({
       id_convenio: anexo.id_convenio,
-      id_moneda: anexo.id_moneda ?? undefined,
       nombre_anexo: anexo.nombre_anexo,
       fecha: anexo.fecha,
       id_dependencia: anexo.id_dependencia ?? null,
@@ -308,29 +304,6 @@ export function AnexosPage() {
                     {formErrors.id_convenio}
                   </p>
                 )}
-              </div>
-
-              <div>
-                <Label>Moneda</Label>
-                <select
-                  value={formData.id_moneda || ""}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      id_moneda: e.target.value
-                        ? parseInt(e.target.value)
-                        : undefined,
-                    })
-                  }
-                  className="w-full mt-1 px-3 py-2 border rounded-lg"
-                >
-                  <option value="">Seleccione una moneda</option>
-                  {monedas.map((m) => (
-                    <option key={m.id_moneda} value={m.id_moneda}>
-                      {m.nombre}
-                    </option>
-                  ))}
-                </select>
               </div>
 
               <div>

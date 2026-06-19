@@ -374,6 +374,7 @@ class ExistenciaService:
             a_vender = min(cantidad_restante, disponible)
             
             item.cantidad_vendida += a_vender
+            item.existencia -= a_vender
             cantidad_restante -= a_vender
             
             actualizada.append({
@@ -395,6 +396,129 @@ class ExistenciaService:
         
         return actualizada
     
+    @staticmethod
+    async def ajustar_existencia_item_anexo(
+        db: AsyncSession,
+        id_anexo: int,
+        id_producto: int,
+        cantidad: int,
+        signo: int,
+        commit: bool = True
+    ) -> Optional[Dict[str, Any]]:
+        """Ajusta existencia en item_anexo para movimientos de ajuste (sin tocar cantidad_vendida).
+        
+        Args:
+            db: Sesión de base de datos
+            id_anexo: ID del anexo
+            id_producto: ID del producto
+            cantidad: Cantidad a ajustar
+            signo: -1 para quitar, +1 para agregar
+            commit: Si hacer commit o solo flush
+        
+        Returns:
+            Dict con resultado
+        """
+        from src.models.item_anexo import ItemAnexo
+        from sqlmodel import select
+
+        if signo == -1:
+            stmt = (
+                select(ItemAnexo)
+                .where(
+                    ItemAnexo.id_anexo == id_anexo,
+                    ItemAnexo.id_producto == id_producto
+                )
+                .order_by(ItemAnexo.id_item_anexo.asc())
+                .limit(1)
+            )
+            result = await db.exec(stmt)
+            item = result.scalars().first()
+
+            if not item:
+                raise ValueError(
+                    f"No se encontró item_anexo para el producto {id_producto} en el anexo {id_anexo}"
+                )
+
+            if item.existencia < cantidad:
+                raise ValueError(
+                    f"Stock insuficiente en item_anexo: disponible {item.existencia}, solicitado {cantidad}"
+                )
+
+            item.existencia -= cantidad
+
+            result_dict = {
+                "id_item_anexo": item.id_item_anexo,
+                "id_anexo": item.id_anexo,
+                "id_producto": item.id_producto,
+                "existencia_anterior": item.existencia + cantidad,
+                "existencia_nueva": item.existencia,
+                "ajuste": -cantidad,
+            }
+
+        elif signo == 1:
+            stmt = (
+                select(ItemAnexo)
+                .where(
+                    ItemAnexo.id_anexo == id_anexo,
+                    ItemAnexo.id_producto == id_producto
+                )
+                .order_by(ItemAnexo.id_item_anexo.asc())
+                .limit(1)
+            )
+            result = await db.exec(stmt)
+            item = result.scalars().first()
+
+            if item:
+                item.existencia += cantidad
+                result_dict = {
+                    "id_item_anexo": item.id_item_anexo,
+                    "id_anexo": item.id_anexo,
+                    "id_producto": item.id_producto,
+                    "existencia_anterior": item.existencia - cantidad,
+                    "existencia_nueva": item.existencia,
+                    "ajuste": +cantidad,
+                }
+            else:
+                from src.models.productos import Productos
+
+                prod_stmt = select(Productos).where(Productos.id_producto == id_producto)
+                prod_result = await db.exec(prod_stmt)
+                producto = prod_result.scalars().first()
+
+                if not producto:
+                    raise ValueError(f"Producto {id_producto} no encontrado")
+
+                item = ItemAnexo(
+                    id_anexo=id_anexo,
+                    id_producto=id_producto,
+                    cantidad=cantidad,
+                    existencia=cantidad,
+                    cantidad_vendida=0,
+                    precio_compra=producto.precio_compra,
+                    precio_venta=producto.precio_venta,
+                    id_moneda=producto.moneda_venta,
+                )
+                db.add(item)
+
+                result_dict = {
+                    "id_item_anexo": item.id_item_anexo,
+                    "id_anexo": item.id_anexo,
+                    "id_producto": item.id_producto,
+                    "existencia_anterior": 0,
+                    "existencia_nueva": cantidad,
+                    "ajuste": +cantidad,
+                    "creado": True,
+                }
+        else:
+            raise ValueError(f"Signo inválido: {signo}. Debe ser -1 o 1")
+
+        if commit:
+            await db.commit()
+        else:
+            await db.flush()
+
+        return result_dict
+
     @staticmethod
     async def get_disponible_por_anexo(
         db: AsyncSession,

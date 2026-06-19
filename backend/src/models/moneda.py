@@ -10,6 +10,7 @@ if TYPE_CHECKING:
     from .item_anexo import ItemAnexo
     from .item_factura import ItemFactura
     from .item_venta_efectivo import ItemVentaEfectivo
+    from .precio_item_anexo import PrecioItemAnexo
 
 
 class Moneda(SQLModel, table=True):
@@ -47,6 +48,7 @@ class Moneda(SQLModel, table=True):
         back_populates="moneda"
     )
     items_anexo: List["ItemAnexo"] = Relationship(back_populates="moneda")
+    precios_item_anexo: List["PrecioItemAnexo"] = Relationship(back_populates="moneda")
     items_factura: List["ItemFactura"] = Relationship(back_populates="moneda")
     items_venta_efectivo: List["ItemVentaEfectivo"] = Relationship(
         back_populates="moneda"

@@ -26,7 +26,7 @@ class ExistenciaResponse(BaseModel):
     id_producto: int
     cantidad_entrada: int
     cantidad_salida: int
-    existencia: int
+    stock: int
     tipo: str
 
 
@@ -36,7 +36,7 @@ class ExistenciaHibridaResponse(BaseModel):
     codigo: Optional[str] = None
     cantidad_entrada: int
     cantidad_salida: int
-    existencia: int
+    stock: int
     tipo: str
 
 

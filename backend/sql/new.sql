@@ -347,7 +347,6 @@ CREATE TABLE convenio (
 CREATE TABLE anexo (
 id_anexo SERIAL PRIMARY KEY,
     id_convenio INTEGER NOT NULL REFERENCES convenio(id_convenio) ON DELETE CASCADE,
-    id_moneda INTEGER REFERENCES moneda(id_moneda) ON DELETE SET NULL,
     nombre_anexo VARCHAR(200) NOT NULL,
     fecha DATE NOT NULL,
     codigo_anexo VARCHAR(50),
@@ -362,10 +361,20 @@ CREATE TABLE item_anexo (
     id_producto INTEGER NOT NULL REFERENCES productos(id_producto) ON DELETE CASCADE,
     cantidad INTEGER NOT NULL DEFAULT 1,
     cantidad_vendida INTEGER DEFAULT 0,
+    existencia INTEGER NOT NULL DEFAULT 0,
     precio_compra NUMERIC(15, 4) NOT NULL,
     precio_venta NUMERIC(15, 4) NOT NULL,
     id_moneda INTEGER NOT NULL REFERENCES moneda(id_moneda) ON DELETE CASCADE,
     codigo VARCHAR(50)
+);
+
+-- Precios adicionales para item_anexo
+CREATE TABLE precio_item_anexo (
+    id_precio_item_anexo SERIAL PRIMARY KEY,
+    id_item_anexo INTEGER NOT NULL REFERENCES item_anexo(id_item_anexo) ON DELETE CASCADE,
+    id_moneda INTEGER NOT NULL REFERENCES moneda(id_moneda) ON DELETE CASCADE,
+    precio_venta NUMERIC(15, 4) NOT NULL,
+    precio_compra NUMERIC(15, 4)
 );
 
 -- Anexo-Producto (relación directa anexo-producto)
@@ -609,6 +618,7 @@ CREATE INDEX idx_cuenta_cliente ON cuenta(id_cliente);
 CREATE INDEX idx_anexo_dependencia ON anexo(id_dependencia);
 CREATE INDEX idx_item_anexo_anexo ON item_anexo(id_anexo);
 CREATE INDEX idx_item_anexo_producto ON item_anexo(id_producto);
+CREATE INDEX idx_precio_item_anexo_item ON precio_item_anexo(id_item_anexo);
 CREATE INDEX idx_contrato_cliente ON contrato(id_cliente);
 CREATE INDEX idx_contrato_estado ON contrato(id_estado);
 CREATE INDEX idx_contrato_tipo ON contrato(id_tipo_contrato);
@@ -1091,4 +1101,60 @@ INSERT INTO funcionalidad (nombre) VALUES
 -- Asignar todas las funcionalidades al grupo ADMINISTRADOR
 INSERT INTO grupo_funcionalidad (id_grupo, id_funcionalidad)
 SELECT 1, id_funcionalidad FROM funcionalidad;
+
+-- =====================================================
+-- DATOS DE REFERENCIA PARA RECEPCIONES
+-- =====================================================
+
+INSERT INTO moneda (nombre, denominacion, simbolo) VALUES 
+('Dólar Americano', 'Dólar Estadounidense', 'USD'),
+('Euro', 'Euro de la Unión Europea', 'EUR');
+
+INSERT INTO tipo_convenio (nombre, descripcion) VALUES 
+('Contrato de Servicios', 'Contrato de servicios'),
+('Acuerdo de Suministro', 'Acuerdo de suministro'),
+('Contrato de Obra', 'Contrato de obra'),
+('Convenio Marco', 'Convenio marco'),
+('COMPRA VENTA', 'Convenio de compraventa de productos');
+
+INSERT INTO tipo_movimiento (tipo, factor) VALUES 
+('compra', 1),
+('venta', -1),
+('RECEPCION', 1),
+('MERMA', -1),
+('DONACION', -1),
+('DEVOLUCION', -1),
+('AJUSTE_QUITAR', -1),
+('AJUSTE_AGREGAR', 1);
+
+INSERT INTO tipo_dependencia (nombre, descripcion) VALUES 
+('SUCURSAL', 'Sucursal o agencia'),
+('ALMACEN', 'Almacén de productos');
+
+INSERT INTO dependencia (id_tipo_dependencia, nombre, direccion, telefono, email, web, id_provincia, id_municipio, base_datos, descripcion)
+VALUES (1, 'Caguayo S.A', 'Vista Alegre', '+53 7 1234567', 'info@caguayo.cu', 'https://caguayo.cu', 14, 14, 'caguayosa', 'Oficina principal de Caguayo');
+
+-- Cliente empresa (proveedor interno) + convenio + anexo base
+INSERT INTO clientes (nombre, tipo_persona, nit, codigo, direccion, tipo_relacion, estado)
+VALUES ('Caguayo S.A', 'JURIDICA', 'NIT-CAGUAYO-001', 'CAGUAYO', 'Vista Alegre', 'CLIENTE', 'ACTIVO');
+
+INSERT INTO convenio (id_cliente, nombre_convenio, fecha, vigencia, id_tipo_convenio, codigo)
+VALUES (
+    (SELECT id_cliente FROM clientes WHERE codigo = 'CAGUAYO'),
+    'Convenio Base Recepción',
+    CURRENT_DATE,
+    '2099-12-31',
+    (SELECT id_tipo_convenio FROM tipo_convenio WHERE nombre = 'COMPRA VENTA'),
+    'BASE-REC'
+);
+
+INSERT INTO anexo (id_convenio, nombre_anexo, fecha, codigo_anexo, id_dependencia, comision)
+VALUES (
+    (SELECT id_convenio FROM convenio WHERE codigo = 'BASE-REC'),
+    'Anexo Base Recepción',
+    CURRENT_DATE,
+    'ANEXO-BASE-REC',
+    1,
+    0
+);
 

@@ -126,10 +126,12 @@ export function LiquidacionesPage() {
   });
 
   const { data: productosPendientes = [] } = useQuery({
-    queryKey: ['productos-pendientes', filtroCliente, filtroAnexo],
+    queryKey: ['productos-pendientes', filtroCliente, filtroAnexo, formData.id_moneda],
     queryFn: () => {
       if (!filtroCliente) return Promise.resolve([]);
-      return liquidacionService.getProductosPendientesByCliente(filtroCliente, filtroAnexo || undefined);
+      return liquidacionService.getProductosPendientesByCliente(
+        filtroCliente, filtroAnexo || undefined, formData.id_moneda
+      );
     },
     enabled: !!filtroCliente
   });
@@ -442,6 +444,8 @@ export function LiquidacionesPage() {
         </div>
         <div class="header-box">
             <div class="header-box-title">Liquidación</div>
+            <div class="header-box-row"><strong>Código:</strong> ${liquidacion.codigo || 'N/A'}</div>
+            <div class="header-box-row"><strong>Moneda:</strong> ${moneda || 'N/A'}</div>
             <div class="header-box-row" style="border-top:1px solid black;padding-top:4px;margin-top:4px;"><strong>IMPORTE:</strong> ${Number(liquidacion.importe || 0).toFixed(2)}</div>
             <div class="header-box-row"><span style="color:#666;">Importe Caguayo(${Number(liquidacion.porcentaje_caguayo || 10)}%):</span> -${importeCaguayo}</div>
             <div class="header-box-row" style="font-weight:bold;border-bottom:1px solid #333;padding-bottom:4px;"><strong>DEVENGADO:</strong> ${subtotalDevengado}</div>

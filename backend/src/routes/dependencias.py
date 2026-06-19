@@ -311,7 +311,7 @@ async def listar_cuentas_dependencias(
     db: AsyncSession = Depends(get_session),
 ):
     """Listar cuentas bancarias de dependencias (desde BD central)."""
-    from sqlmodel import select, or_
+    from sqlmodel import select
 
     statement = (
         select(CuentaDependencia)

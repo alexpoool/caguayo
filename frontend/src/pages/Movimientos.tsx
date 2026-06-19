@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { movimientosService } from '../services/api';
 import type { TipoMovimiento } from '../types/index';
 import { useMovimientos } from '../hooks/useMovimientos';
-import { MovimientoRecepcionForm } from './movimientos/MovimientoForm';
+import { MovimientoRecepcionForm, PrecioExtraForm } from './movimientos/MovimientoForm';
 import {
   Truck,
   AlertCircle,
@@ -64,6 +64,7 @@ export function MovimientosPage() {
     type: 'danger',
   });
   const loadMoreRef = useRef<HTMLDivElement>(null);
+  const [preciosExtraForm, setPreciosExtraForm] = useState<PrecioExtraForm[]>([]);
 
   const { data: tiposMovimiento = [], isLoading: isLoadingTipos } = useQuery({
     queryKey: ['tipos-movimiento'],
@@ -277,6 +278,7 @@ export function MovimientosPage() {
         tipoMovimiento={selectedTipoForm.tipo as 'RECEPCION' | 'MERMA' | 'DONACION' | 'DEVOLUCION'}
         onSubmit={handleFormSubmit}
         onCancel={handleFormCancel}
+        onPreciosChange={setPreciosExtraForm}
       />
     );
   }

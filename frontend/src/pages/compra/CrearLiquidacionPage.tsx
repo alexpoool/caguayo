@@ -16,6 +16,7 @@ export function CrearLiquidacionPage() {
   const [anexos, setAnexos] = useState<Anexo[]>([]);
   const [monedas, setMonedas] = useState<Moneda[]>([]);
   const [itemsAnexo, setItemsAnexo] = useState<any[]>([]);
+  const [allItemsAnexo, setAllItemsAnexo] = useState<any[]>([]);
   
   const [filtroCliente, setFiltroCliente] = useState<number | null>(initialProveedorId ? Number(initialProveedorId) : null);
   const [filtroAnexo, setFiltroAnexo] = useState<number | null>(null);
@@ -79,8 +80,9 @@ export function CrearLiquidacionPage() {
       loadItemsAnexo();
     } else {
       setItemsAnexo([]);
+      setAllItemsAnexo([]);
     }
-  }, [filtroCliente, filtroAnexo]);
+  }, [filtroCliente, filtroAnexo, formData.id_moneda]);
 
   const loadInitialData = async () => {
     try {
@@ -112,11 +114,19 @@ export function CrearLiquidacionPage() {
     
     setIsLoadingProductos(true);
     try {
-      const data = await liquidacionService.getItemsAnexoConEstado(
-        filtroCliente, 
-        filtroAnexo || undefined
-      );
-      setItemsAnexo(data);
+      const [filteredData, allData] = await Promise.all([
+        liquidacionService.getItemsAnexoConEstado(
+          filtroCliente, 
+          filtroAnexo || undefined,
+          formData.id_moneda || undefined
+        ),
+        liquidacionService.getItemsAnexoConEstado(
+          filtroCliente, 
+          filtroAnexo || undefined
+        )
+      ]);
+      setItemsAnexo(filteredData);
+      setAllItemsAnexo(allData);
       setSelectedProductos([]);
     } catch (error) {
       console.error('Error cargando productos:', error);
@@ -124,6 +134,16 @@ export function CrearLiquidacionPage() {
       setIsLoadingProductos(false);
     }
   };
+
+  const productosPorMoneda = useMemo(() => {
+    const counts: Record<number, number> = {};
+    allItemsAnexo.forEach((item: any) => {
+      if (item.id_moneda) {
+        counts[item.id_moneda] = (counts[item.id_moneda] || 0) + 1;
+      }
+    });
+    return counts;
+  }, [allItemsAnexo]);
 
   // Agrupar productos por anexo
   const itemsPorAnexo = useMemo(() => {
@@ -171,6 +191,7 @@ export function CrearLiquidacionPage() {
     setSelectedProductos([]);
     setConvenioInfo(null);
     setItemsAnexo([]);
+    setAllItemsAnexo([]);
   };
 
   const handleAnexoChange = (anexoId: number | null) => {
@@ -368,6 +389,7 @@ if (!filtroCliente) {
     setIsLoading(true);
     try {
       const productosValidar = itemsAnexo
+        .filter((item: any) => item.origen !== "COMPRA_VENTA")
         .filter((item: any) => 
           selectedProductos.includes(item.id_producto_en_liquidacion) ||
           (item.pel_ids && item.pel_ids.some((id: number) => selectedProductos.includes(id)))
@@ -506,11 +528,14 @@ if (!filtroCliente) {
                 value={formData.id_moneda}
                 onChange={(e: any) => setFormData(prev => ({ ...prev, id_moneda: Number(e.target.value) }))}
               >
-                {monedas.map((moneda: Moneda) => (
-                  <option key={moneda.id_moneda} value={moneda.id_moneda}>
-                    {moneda.nombre}
-                  </option>
-                ))}
+                {monedas.map((moneda: Moneda) => {
+                  const count = productosPorMoneda[moneda.id_moneda] || 0;
+                  return (
+                    <option key={moneda.id_moneda} value={moneda.id_moneda}>
+                      {moneda.nombre} ({count})
+                    </option>
+                  );
+                })}
               </select>
             </div>
             
