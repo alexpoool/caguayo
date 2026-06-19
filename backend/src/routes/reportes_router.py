@@ -20,7 +20,7 @@ from src.utils.pdf_generator import (
     generar_pdf_proveedores_dependencia,
 )
 
-router = APIRouter(prefix="/reportes", tags=["Reportes"])
+router = APIRouter(prefix="/reportes", tags=["reportes"])
 
 
 async def get_usuario_actual(
