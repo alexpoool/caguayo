@@ -1,13 +1,9 @@
 import { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import {
-  movimientosService,
-  productosService,
-  dependenciasService,
-} from "../../services/api";
+import { movimientosService } from "../../services/api";
 import { authService } from "../../services/auth";
-import { apiClient } from "../../lib/api";
+
 import { useDependenciasFiltradas } from "../../hooks/useDependenciasFiltradas";
 import {
   Button,
@@ -33,7 +29,6 @@ import {
   X,
   CheckCircle2,
   ArrowRightLeft,
-  Hash,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
@@ -43,7 +38,6 @@ interface Destino {
   id: number;
   id_dependencia: number | null;
   cantidad: number;
-  nombre_database?: string;
 }
 
 interface SearchableSelectProps<T> {
@@ -276,31 +270,11 @@ export function MovimientoAjusteForm() {
   const { data: dependencias = [], isLoading: isLoadingDependencias } =
     useDependenciasFiltradas();
 
-  // Obtener lista de bases de datos
-  const { data: basesDatos = [] } = useQuery({
-    queryKey: ["basesDatos"],
-    queryFn: async () => {
-      const dbs = await apiClient.get<{nombre_database: string}[]>('/conexiones');
-      const dbActual = usuario?.dependencia?.base_datos || 'caguayo_inventario';
-      return dbs.filter((db) => db.nombre_database !== dbActual);
-    },
-  });
-
-  // Obtener dependencias de otra base de datos
-  const getDependenciasDB = async (nombreDB: string) => {
-    try {
-      const deps = await apiClient.get<{id_dependencia: number; nombre: string}[]>(`/conexiones/${nombreDB}/dependencias`);
-      return deps;
-    } catch {
-      return [];
-    }
-  };
-
   const crearAjusteMutation = useMutation({
     mutationFn: (data: {
       id_producto?: number;
       id_dependencia_origen?: number;
-      destinos: { id_dependencia: number; cantidad: number; nombre_database?: string }[];
+      destinos: { id_dependencia: number; cantidad: number }[];
       observacion?: string;
       codigo?: string;
     }) => movimientosService.crearAjuste(data),
@@ -359,15 +333,12 @@ export function MovimientoAjusteForm() {
 
   const handleDestinoChange = (
     id: number,
-    field: "id_dependencia" | "cantidad" | "nombre_database",
+    field: "id_dependencia" | "cantidad",
     value: any,
   ) => {
     setDestinos(
       destinos.map((d) => {
         if (d.id === id) {
-          if (field === "nombre_database") {
-            return { ...d, [field]: value };
-          }
           return { ...d, [field]: value ?? 0 };
         }
         return d;
@@ -402,7 +373,6 @@ export function MovimientoAjusteForm() {
       .map((d) => ({
         id_dependencia: d.id_dependencia as number,
         cantidad: d.cantidad,
-        nombre_database: d.nombre_database,
       }));
 
     if (destinosValidos.length === 0) {
@@ -461,12 +431,12 @@ export function MovimientoAjusteForm() {
 
       <form onSubmit={handleSubmit}>
         <div className="space-y-4">
-          {/* Producto */}
+          {/* Producto y Dependencia de Origen */}
           <Card className="shadow-sm border-gray-200">
             <CardHeader className="border-b bg-gray-50/50">
               <CardTitle className="flex items-center gap-2 text-lg">
                 <Package className="h-5 w-5 text-blue-600" />
-                Producto
+                Producto y Origen
               </CardTitle>
             </CardHeader>
             <CardContent className="p-6">
@@ -498,44 +468,6 @@ export function MovimientoAjusteForm() {
                   )}
                   idField="id_producto"
                 />
-                <div>
-                  <Label className="text-sm font-medium">
-                    Código del Movimiento
-                  </Label>
-                  <div
-                    className={`mt-1 px-4 py-3 rounded-lg border-2 flex items-center gap-2 ${
-                      codigoGenerado
-                        ? "bg-gradient-to-r from-green-50 to-emerald-50 border-green-300 text-green-800 font-mono font-bold shadow-sm"
-                        : "bg-slate-50 border-gray-200 text-gray-400"
-                    }`}
-                  >
-                    {codigoGenerado ? (
-                      <>
-                        <CheckCircle2 className="h-5 w-5 text-green-600" />
-                        {codigoGenerado}
-                      </>
-                    ) : (
-                      <>
-                        <Hash className="h-5 w-5" />
-                        Se generará automáticamente
-                      </>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Dependencia de Origen y Stock */}
-          <Card className="shadow-sm border-gray-200">
-            <CardHeader className="border-b bg-gray-50/50">
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <MapPin className="h-5 w-5 text-blue-600" />
-                Dependencia de Origen
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <SearchableSelect
                   label="Seleccionar Dependencia"
                   required
@@ -555,18 +487,6 @@ export function MovimientoAjusteForm() {
                   getOptionValue={(item) => item.id_dependencia}
                   idField="id_dependencia"
                 />
-                <div>
-                  <Label className="text-sm font-medium">
-                    Stock Disponible
-                  </Label>
-                  <div className="flex items-center h-[46px] mt-1 px-4 border border-gray-200 rounded-lg bg-gray-50">
-                    <span
-                      className={`text-lg font-bold ${stockOrigen > 0 ? "text-green-600" : "text-gray-400"}`}
-                    >
-                      {stockOrigen} unidades
-                    </span>
-                  </div>
-                </div>
               </div>
             </CardContent>
           </Card>
@@ -582,35 +502,13 @@ export function MovimientoAjusteForm() {
             <CardContent className="p-6">
               <div className="space-y-4">
                 {destinos.map((destino) => {
-                  const depsMostrar = destino.nombre_database 
-                    ? [] // Se cargará dinámicamente
-                    : dependencias.filter((d) => !dependenciaOrigen || d.id_dependencia !== dependenciaOrigen.id);
+                  const depsMostrar = dependencias.filter((d) => !dependenciaOrigen || d.id_dependencia !== dependenciaOrigen.id);
                   
                   return (
                   <div
                     key={destino.id}
                     className="flex items-start gap-4 p-4 bg-gray-50 rounded-lg"
                   >
-                    <div className="w-40">
-                      <Label className="text-sm font-medium">Base de Datos</Label>
-                      <select
-                        className="w-full border rounded-md px-2 py-2 mt-1 bg-white"
-                        value={destino.nombre_database || ""}
-                        onChange={(e) => {
-                          const nuevaDB = e.target.value;
-                          handleDestinoChange(destino.id, "nombre_database", nuevaDB);
-                          handleDestinoChange(destino.id, "id_dependencia", null);
-                          handleDestinoChange(destino.id, "cantidad", 0);
-                        }}
-                      >
-                        <option value="">Seleccionar DB...</option>
-                        {basesDatos.map((db) => (
-                          <option key={db.nombre_database} value={db.nombre_database}>
-                            {db.nombre_database}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
                     <div className="flex-1">
                       <SearchableSelect
                         label="Dependencia"

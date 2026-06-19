@@ -63,7 +63,6 @@ export interface Cliente {
   tipo_relacion: 'CLIENTE' | 'PROVEEDOR' | 'AMBAS';
   estado: 'ACTIVO' | 'INACTIVO';
   fecha_registro: string;
-  activo: boolean;
   provincia?: Provincia;
   municipio?: Municipio;
   cuentas?: Cuenta[];
@@ -92,7 +91,6 @@ export interface ClienteCreate {
   tipo_relacion?: 'CLIENTE' | 'PROVEEDOR' | 'AMBAS';
   estado?: 'ACTIVO' | 'INACTIVO';
   fecha_registro?: string;
-  activo?: boolean;
   cuentas?: Array<{
     id_cliente?: number;
     id_moneda?: number;
@@ -120,7 +118,6 @@ export interface ClienteUpdate {
   tipo_relacion?: 'CLIENTE' | 'PROVEEDOR' | 'AMBAS';
   estado?: 'ACTIVO' | 'INACTIVO';
   fecha_registro?: string;
-  activo?: boolean;
   cuentas?: Array<{
     id_cliente?: number;
     id_moneda?: number;

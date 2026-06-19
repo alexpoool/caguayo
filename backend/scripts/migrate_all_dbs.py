@@ -1,47 +1,54 @@
-"""Apply pending SQL migrations to all databases on the server."""
+"""Run alembic migrations on all databases on the server."""
 
-import asyncio
 import os
-from sqlalchemy import text
+from alembic.config import Config
+from alembic import command
+import psycopg2
 from dotenv import load_dotenv
 
 load_dotenv()
 
-DATABASE_URL = os.getenv("DATABASE_URL", "")
 ADMIN_DB_HOST = os.getenv("ADMIN_DB_HOST", "localhost")
 ADMIN_DB_PORT = int(os.getenv("ADMIN_DB_PORT", 5432))
 ADMIN_DB_USER = os.getenv("ADMIN_DB_USER", "postgres")
 ADMIN_DB_PASSWORD = os.getenv("ADMIN_DB_PASSWORD", "postgres")
-ADMIN_DB_NAME = os.getenv("ADMIN_DB_NAME", "postgres")
 
-MIGRATIONS_SQL = [
-    "ALTER TABLE dependencia ADD COLUMN IF NOT EXISTS reeup VARCHAR(15)",
-]
+ALEMBIC_CFG_PATH = os.path.join(os.path.dirname(__file__), "..", "alembic.ini")
 
 
-async def run():
-    from sqlalchemy.ext.asyncio import create_async_engine
+def get_all_databases() -> list[str]:
+    conn = psycopg2.connect(
+        host=ADMIN_DB_HOST,
+        port=ADMIN_DB_PORT,
+        user=ADMIN_DB_USER,
+        password=ADMIN_DB_PASSWORD,
+        dbname="postgres",
+    )
+    conn.autocommit = True
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT datname FROM pg_database "
+        "WHERE datistemplate = false AND datname != 'postgres' "
+        "ORDER BY datname"
+    )
+    databases = [row[0] for row in cur.fetchall()]
+    cur.close()
+    conn.close()
+    return databases
 
-    admin_url = f"postgresql+asyncpg://{ADMIN_DB_USER}:{ADMIN_DB_PASSWORD}@{ADMIN_DB_HOST}:{ADMIN_DB_PORT}/{ADMIN_DB_NAME}"
-    engine = create_async_engine(admin_url, echo=False)
 
-    async with engine.connect() as conn:
-        result = await conn.execute(
-            text("SELECT datname FROM pg_database WHERE datistemplate = false AND datname != 'postgres' ORDER BY datname")
-        )
-        databases = [row[0] for row in result]
-
-    await engine.dispose()
-
+def main():
+    databases = get_all_databases()
+    print(f"Migrating {len(databases)} database(s)...")
     for db_name in databases:
-        db_url = f"postgresql+asyncpg://{ADMIN_DB_USER}:{ADMIN_DB_PASSWORD}@{ADMIN_DB_HOST}:{ADMIN_DB_PORT}/{db_name}"
+        db_url = (
+            f"postgresql+asyncpg://{ADMIN_DB_USER}:{ADMIN_DB_PASSWORD}"
+            f"@{ADMIN_DB_HOST}:{ADMIN_DB_PORT}/{db_name}"
+        )
+        alembic_cfg = Config(ALEMBIC_CFG_PATH)
+        alembic_cfg.set_main_option("sqlalchemy.url", db_url)
         try:
-            eng = create_async_engine(db_url, echo=False)
-            async with eng.connect() as conn:
-                for sql in MIGRATIONS_SQL:
-                    await conn.execute(text(sql))
-                await conn.commit()
-            await eng.dispose()
+            command.upgrade(alembic_cfg, "head")
             print(f"  ✅ {db_name}")
         except Exception as e:
             print(f"  ❌ {db_name}: {e}")
@@ -50,4 +57,4 @@ async def run():
 
 
 if __name__ == "__main__":
-    asyncio.run(run())
+    main()

@@ -1,12 +1,13 @@
 import { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { Button, Input, Card, CardHeader, CardContent, Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../../components/ui';
+import { Button, Input, Label, Card, CardHeader, CardTitle, CardContent, Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../../components/ui';
 import { productosEnLiquidacionService, productosService, monedaService } from '../../services/api';
 import type { ProductosEnLiquidacion, ProductosEnLiquidacionCreate } from '../../services/api';
 import type { Productos } from '../../types';
 import type { Moneda } from '../../types/moneda';
 import { Plus, Save, Trash2, Edit, X, ArrowLeft, Search, Check, Package, Tag, DollarSign, ClipboardList, Eye } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { esNumeroPositivo, esPorcentaje } from '../../utils/validacionFormularios';
 
 type View = 'list' | 'form';
 type FilterType = 'all' | 'pendientes' | 'liquidadas';
@@ -23,6 +24,7 @@ export function ProductosEnLiquidacionPage() {
   
   const [editingId, setEditingId] = useState<number | null>(null);
   const [formData, setFormData] = useState<Partial<ProductosEnLiquidacionCreate>>({});
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   useEffect(() => { loadInitialData(); }, []);
 
@@ -56,17 +58,25 @@ export function ProductosEnLiquidacionPage() {
   useEffect(() => { if (view === 'list') loadProductos(); }, [view, filterType]);
 
   const handleSave = async () => {
+    const newErrors: Record<string, string> = {};
+    if (!formData.id_producto) newErrors.id_producto = 'Seleccione un producto';
+    if (!formData.cantidad || formData.cantidad < 1) newErrors.cantidad = 'La cantidad debe ser mayor o igual a 1';
+    if (formData.precio === undefined || formData.precio === null || formData.precio < 0) newErrors.precio = 'El precio no puede ser negativo';
+    if (!formData.id_moneda) newErrors.id_moneda = 'Seleccione una moneda';
+    if (!formData.tipo_compra) newErrors.tipo_compra = 'Seleccione un tipo de compra';
+    setErrors(newErrors);
+    if (Object.keys(newErrors).length > 0) {
+      toast.error(Object.values(newErrors).join('\n• '));
+      return;
+    }
     try {
-      if (!formData.id_producto || !formData.cantidad || !formData.precio || !formData.id_moneda || !formData.tipo_compra) {
-        toast.error('Complete todos los campos requeridos');
-        return;
-      }
       editingId 
         ? await productosEnLiquidacionService.updateProductoEnLiquidacion(editingId, formData)
         : await productosEnLiquidacionService.createProductoEnLiquidacion(formData as ProductosEnLiquidacionCreate);
       toast.success(editingId ? 'Actualizado' : 'Creado');
       setView('list');
       resetForm();
+      loadProductos();
     } catch (error: any) { toast.error(error.message || 'Error'); }
   };
 
@@ -265,64 +275,77 @@ export function ProductosEnLiquidacionPage() {
   );
 
   const renderForm = () => (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="sm" onClick={() => { setView('list'); resetForm(); }}><ArrowLeft className="w-4 h-4" /></Button>
-          <h2 className="text-xl font-semibold">{editingId ? 'Editar' : 'Nuevo'} Producto en Liquidación</h2>
-        </div>
-      </CardHeader>
-      <CardContent>
-        <div className="grid gap-4">
+    <>
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-2xl font-bold text-gray-900">{editingId ? 'Editar' : 'Nuevo'} Producto en Liquidación</h2>
+        <Button variant="outline" onClick={() => { setView('list'); resetForm(); }} className="gap-2">
+          <ArrowLeft className="h-4 w-4" />
+          Volver
+        </Button>
+      </div>
+      <Card className="shadow-sm border-gray-200">
+        <CardHeader className="border-b bg-gray-50/50">
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <Package className="h-5 w-5 text-red-600" />
+            {editingId ? 'Editar' : 'Nuevo'} Producto en Liquidación
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-6">
+        <div className="grid gap-6">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Producto *</label>
+            <Label className="text-sm font-medium">Producto *</Label>
             <select 
-              className="w-full p-2 border rounded-lg"
+              className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 outline-none bg-white"
               value={formData.id_producto || ''}
-              onChange={(e) => setFormData({...formData, id_producto: Number(e.target.value)})}
+              onChange={(e) => { setFormData({...formData, id_producto: Number(e.target.value)}); setErrors(prev => ({...prev, id_producto: ''})); }}
             >
               <option value="">Seleccionar</option>
               {allProductos.map(p => <option key={p.id_producto} value={p.id_producto}>{p.nombre}</option>)}
             </select>
+            {errors.id_producto && <p className="text-red-500 text-sm mt-1">{errors.id_producto}</p>}
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Cantidad *</label>
+              <Label className="text-sm font-medium">Cantidad *</Label>
               <Input 
                 type="number" 
                 min="1"
                 value={formData.cantidad || ''} 
-                onChange={(e: any) => setFormData({...formData, cantidad: Number(e.target.value)})}
+                onChange={(e: any) => { setFormData({...formData, cantidad: Number(e.target.value)}); setErrors(prev => ({...prev, cantidad: ''})); }}
               />
+              {errors.cantidad && <p className="text-red-500 text-sm mt-1">{errors.cantidad}</p>}
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Precio *</label>
+              <Label className="text-sm font-medium">Precio *</Label>
               <Input 
                 type="number" 
                 step="0.01"
+                min="0"
                 value={formData.precio || ''} 
-                onChange={(e: any) => setFormData({...formData, precio: Number(e.target.value)})}
+                onChange={(e: any) => { setFormData({...formData, precio: Number(e.target.value)}); setErrors(prev => ({...prev, precio: ''})); }}
               />
+              {errors.precio && <p className="text-red-500 text-sm mt-1">{errors.precio}</p>}
             </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Moneda *</label>
+              <Label className="text-sm font-medium">Moneda *</Label>
               <select 
-                className="w-full p-2 border rounded-lg"
+                className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 outline-none bg-white"
                 value={formData.id_moneda || ''}
-                onChange={(e) => setFormData({...formData, id_moneda: Number(e.target.value)})}
+                onChange={(e) => { setFormData({...formData, id_moneda: Number(e.target.value)}); setErrors(prev => ({...prev, id_moneda: ''})); }}
               >
                 <option value="">Seleccionar</option>
                 {monedas.map(m => <option key={m.id_moneda} value={m.id_moneda}>{m.nombre}</option>)}
               </select>
+              {errors.id_moneda && <p className="text-red-500 text-sm mt-1">{errors.id_moneda}</p>}
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Tipo Compra *</label>
+              <Label className="text-sm font-medium">Tipo Compra *</Label>
               <select 
-                className="w-full p-2 border rounded-lg"
+                className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 outline-none bg-white"
                 value={formData.tipo_compra || ''}
-                onChange={(e) => setFormData({...formData, tipo_compra: e.target.value as any})}
+                onChange={(e) => { setFormData({...formData, tipo_compra: e.target.value as any}); setErrors(prev => ({...prev, tipo_compra: ''})); }}
               >
                 <option value="">Seleccionar</option>
                 <option value="FACTURA">Factura</option>
@@ -331,13 +354,14 @@ export function ProductosEnLiquidacionPage() {
               </select>
             </div>
           </div>
-          <div className="flex gap-2 mt-4">
+          <div className="flex gap-2 mt-8 pt-6 border-t">
             <Button onClick={handleSave}><Save className="w-4 h-4 mr-2" />Guardar</Button>
             <Button variant="outline" onClick={() => { setView('list'); resetForm(); }}>Cancelar</Button>
           </div>
         </div>
       </CardContent>
     </Card>
+    </>
   );
 
   return (

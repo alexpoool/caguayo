@@ -11,6 +11,7 @@ from src.models import (
     Cliente,
     Convenio,
     ItemAnexo,
+    PrecioItemAnexo,
     Movimiento,
     TipoMovimiento,
     Productos,
@@ -21,6 +22,7 @@ from src.dto.convenios_dto import AnexoRead, AnexoCreate, ItemAnexoCreate
 from src.utils import generar_codigo_con_padre, _get_nit_from_token
 from src.dto import DependenciaRead
 from sqlmodel import select, func
+from sqlalchemy import text
 
 router = APIRouter(prefix="/anexos", tags=["anexos"], redirect_slashes=False)
 
@@ -38,7 +40,7 @@ async def listar_anexos(
         statement = select(Anexo).options(
             selectinload(Anexo.convenios).selectinload(Convenio.cliente),
             selectinload(Anexo.convenios).selectinload(Convenio.tipo_convenio),
-            selectinload(Anexo.items_anexo),
+            selectinload(Anexo.items_anexo).selectinload(ItemAnexo.precios),
         )
         if convenio_id:
             statement = statement.where(Anexo.id_convenio == convenio_id)
@@ -50,7 +52,33 @@ async def listar_anexos(
         statement = statement.offset(skip).limit(limit)
         results = await db.exec(statement)
         anexos = results.all()
-        return [AnexoRead.model_validate(a) for a in anexos]
+
+        anexo_ids_list = [a.id_anexo for a in anexos if a.items_anexo]
+        if anexo_ids_list:
+            q = text("""
+                SELECT ia.id_anexo, ia.id_item_anexo,
+                       COALESCE(SUM(pel.cantidad), 0) as cantidad_liquidada
+                FROM item_anexo ia
+                LEFT JOIN productos_en_liquidacion pel
+                    ON pel.id_anexo = ia.id_anexo
+                    AND pel.id_producto = ia.id_producto
+                    AND pel.liquidada = true
+                WHERE ia.id_anexo = ANY(:anexo_ids)
+                GROUP BY ia.id_anexo, ia.id_item_anexo
+            """)
+            r = await db.exec(q, params={"anexo_ids": anexo_ids_list})
+            liquidado_map = {(row[0], row[1]): row[2] for row in r.all()}
+            anexos_read = [AnexoRead.model_validate(a) for a in anexos]
+            for a in anexos_read:
+                if a.items_anexo:
+                    for item in a.items_anexo:
+                        item.cantidad_liquidada = liquidado_map.get(
+                            (a.id_anexo, item.id_item_anexo), 0
+                        )
+        else:
+            anexos_read = [AnexoRead.model_validate(a) for a in anexos]
+
+        return anexos_read
     except Exception as e:
         print(f"Error in listar_anexos: {e}")
         import traceback
@@ -69,14 +97,34 @@ async def obtener_anexo(
         select(Anexo)
         .where(Anexo.id_anexo == anexo_id)
         .options(
-            selectinload(Anexo.items_anexo),
+            selectinload(Anexo.items_anexo).selectinload(ItemAnexo.precios),
         )
     )
     results = await db.exec(statement)
     anexo = results.first()
     if not anexo:
         raise HTTPException(status_code=404, detail="Anexo no encontrado")
-    return AnexoRead.model_validate(anexo)
+
+    anexo_read = AnexoRead.model_validate(anexo)
+
+    if anexo_read.items_anexo:
+        q = text("""
+            SELECT ia.id_item_anexo,
+                   COALESCE(SUM(pel.cantidad), 0) as cantidad_liquidada
+            FROM item_anexo ia
+            LEFT JOIN productos_en_liquidacion pel
+                ON pel.id_anexo = ia.id_anexo
+                AND pel.id_producto = ia.id_producto
+                AND pel.liquidada = true
+            WHERE ia.id_anexo = :id_anexo
+            GROUP BY ia.id_item_anexo
+        """)
+        r = await db.exec(q, params={"id_anexo": anexo_id})
+        liquidado_map = {row[0]: row[1] for row in r.all()}
+        for item in anexo_read.items_anexo:
+            item.cantidad_liquidada = liquidado_map.get(item.id_item_anexo, 0)
+
+    return anexo_read
 
 
 @router.post("", status_code=201)
@@ -145,7 +193,7 @@ async def crear_anexo(
                 status_code=500, detail="Tipo de movimiento 'compra' no encontrado"
             )
 
-        for item in items_data:
+        for idx, item in enumerate(items_data, start=1):
             producto = await db.get(Productos, item["id_producto"])
             if not producto:
                 continue
@@ -154,13 +202,24 @@ async def crear_anexo(
                 id_anexo=db_anexo.id_anexo,
                 id_producto=item["id_producto"],
                 cantidad=item["cantidad"],
+                existencia=item["cantidad"],
                 precio_compra=producto.precio_compra,
                 precio_venta=item["precio_venta"],
                 id_moneda=item["id_moneda"],
-                codigo=f"{prefijo_nit}C.{datos.id_convenio}.{db_anexo.id_anexo}",
+                codigo=f"{codigo_anexo}-{idx:03d}",
             )
             db.add(db_item)
             await db.flush()
+
+            for p in item.get("precios", []):
+                if p["id_moneda"] == item["id_moneda"]:
+                    continue
+                db.add(PrecioItemAnexo(
+                    id_item_anexo=db_item.id_item_anexo,
+                    id_moneda=p["id_moneda"],
+                    precio_venta=p["precio_venta"],
+                    precio_compra=p.get("precio_compra"),
+                ))
 
             producto.precio_compra = producto.precio_compra
             producto.moneda_compra = item["id_moneda"]
@@ -229,7 +288,6 @@ async def crear_anexo(
             "id_convenio": db_anexo.id_convenio,
             "nombre_anexo": db_anexo.nombre_anexo,
             "fecha": str(db_anexo.fecha),
-            "id_moneda": db_anexo.id_moneda,
             "id_dependencia": db_anexo.id_dependencia,
             "comision": float(db_anexo.comision) if db_anexo.comision else None,
             "movimientos": movimientos_creados,
@@ -291,7 +349,6 @@ async def actualizar_anexo(
         "id_convenio": db_anexo.id_convenio,
         "nombre_anexo": db_anexo.nombre_anexo,
         "fecha": str(db_anexo.fecha),
-        "id_moneda": db_anexo.id_moneda,
         "id_dependencia": db_anexo.id_dependencia,
         "comision": float(db_anexo.comision) if db_anexo.comision else None,
     }

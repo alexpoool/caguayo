@@ -144,23 +144,8 @@ export function FacturaForm({
               </div>
             </div>
 
-            {/* Código de factura */}
-            <div>
-              <Label htmlFor="codigo" className="text-sm font-medium">
-                Código de Factura
-              </Label>
-              <Input
-                id="codigo"
-                value={formData.codigo_factura || ''}
-                onChange={(e: any) =>
-                  onFormDataChange({ ...formData, codigo_factura: e.target.value })
-                }
-                className="mt-1"
-                placeholder="Ej: FAC-001"
-              />
-            </div>
-
             {/* Descripción */}
+
             <div>
               <Label htmlFor="descripcion" className="text-sm font-medium">
                 Descripción
@@ -210,9 +195,16 @@ export function FacturaForm({
                 onChange={(e: any) =>
                   onFormDataChange({ ...formData, id_moneda: e.target.value })
                 }
+                disabled={!!selectedContratoId && !!formData.id_moneda}
               >
-                <option value="">Seleccionar moneda</option>
-                {monedas.map((m) => (
+                {formData.id_moneda ? (
+                  <option value={formData.id_moneda}>
+                    {monedas.find((m: any) => m.id_moneda === Number(formData.id_moneda))?.nombre || `Moneda #${formData.id_moneda}`}
+                  </option>
+                ) : (
+                  <option value="">Seleccionar moneda</option>
+                )}
+                {monedas.filter((m: any) => m.id_moneda !== Number(formData.id_moneda)).map((m: any) => (
                   <option key={m.id_moneda} value={m.id_moneda}>
                     {m.nombre} ({m.simbolo})
                   </option>
@@ -249,6 +241,7 @@ export function FacturaForm({
             onUpdatePrecioCompra={onUpdatePrecioCompra}
             onRemoveProduct={onRemoveProduct}
             productos={productos}
+            monedas={monedas}
             total={total}
           />
 

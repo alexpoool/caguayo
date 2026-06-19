@@ -43,7 +43,9 @@ import {
   Building,
   Tag,
 } from "lucide-react";
+import { ProductSelector } from "./facturas/components/ProductSelector";
 import toast from "react-hot-toast";
+import { required, seleccionValida } from "../../utils/validacionFormularios";
 
 type View = "list" | "form";
 
@@ -62,14 +64,14 @@ export function VentasEfectivoPage() {
 
   const stockMap = useMemo(() => {
     const map = new Map<number, number>();
-    stockData.forEach((item: any) => map.set(item.id_producto, item.existencia));
+    stockData.forEach((item: any) => map.set(item.id_producto, item.stock));
     return map;
   }, [stockData]);
 
   const [editingId, setEditingId] = useState<number | null>(null);
   const [formData, setFormData] = useState<Record<string, any>>({});
   const [selectedProducts, setSelectedProducts] = useState<
-    { id_producto: number; cantidad: number; precio_venta: number }[]
+    { id_producto: number; cantidad: number; precio_venta: number; id_moneda?: number; precios?: { id_moneda: number; precio_venta: number }[] }[]
   >([]);
   const [productSearch, setProductSearch] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
@@ -120,6 +122,17 @@ const loadInitialData = async () => {
   }, [view]);
 
   const handleSave = async () => {
+    const fieldErrors: string[] = [];
+    const slipErr = required(formData.slip, 'Slip');
+    if (slipErr) fieldErrors.push(slipErr);
+    const cajeroErr = required(formData.cajero, 'Cajero');
+    if (cajeroErr) fieldErrors.push(cajeroErr);
+    const depErr = seleccionValida(formData.id_dependencia, 'Dependencia');
+    if (depErr) fieldErrors.push(depErr);
+    if (fieldErrors.length > 0) {
+      toast.error(fieldErrors.join('\n• '));
+      return;
+    }
     try {
       const stockErrors = selectedProducts.filter((p) => {
         const stock = stockMap.get(p.id_producto) ?? 0;
@@ -163,6 +176,7 @@ const loadInitialData = async () => {
           cantidad: p.cantidad,
           precio_venta: p.precio_venta,
           id_moneda: formData.id_moneda ? Number(formData.id_moneda) : 277,
+          precios: p.precios?.filter(pr => pr.id_moneda !== (formData.id_moneda ? Number(formData.id_moneda) : 277)),
         })),
       };
       editingId
@@ -198,6 +212,16 @@ const loadInitialData = async () => {
     });
   };
 
+  const productosPorMoneda = useMemo(() => {
+    const counts: Record<number, number> = {};
+    productos.forEach((p) => {
+      if (p.moneda_venta) {
+        counts[p.moneda_venta] = (counts[p.moneda_venta] || 0) + 1;
+      }
+    });
+    return counts;
+  }, [productos]);
+
   const resetForm = () => {
     setFormData({});
     setSelectedProducts([]);
@@ -220,6 +244,8 @@ const loadInitialData = async () => {
           id_producto: p.id_producto,
           cantidad: p.cantidad,
           precio_venta: p.precio_venta || 0,
+          id_moneda: p.id_moneda,
+          precios: p.precios || [],
         })) || [],
       );
     } else {
@@ -242,6 +268,7 @@ const loadInitialData = async () => {
           id_producto: id,
           cantidad: 1,
           precio_venta: producto ? Number(producto.precio_venta) : 0,
+          id_moneda: formData.id_moneda ? Number(formData.id_moneda) : undefined,
         },
       ]);
     }
@@ -266,152 +293,23 @@ const loadInitialData = async () => {
   const calcMonto = () =>
     selectedProducts.reduce((t, p) => t + p.cantidad * p.precio_venta, 0);
 
+  const productosPorMonedaSeleccionada = useMemo(() => {
+    if (!formData.id_moneda) return productos;
+    const monedaId = Number(formData.id_moneda);
+    return productos.filter((p) => p.moneda_venta === monedaId);
+  }, [productos, formData.id_moneda]);
+
   const productosFiltrados = useMemo(() => {
     if (!productSearch.trim()) return [];
     const search = productSearch.toLowerCase();
-    return productos
+    return productosPorMonedaSeleccionada
       .filter(
         (p) =>
           p.nombre.toLowerCase().includes(search) &&
           !selectedProducts.some((sp) => sp.id_producto === p.id_producto),
       )
       .slice(0, 10);
-  }, [productos, productSearch, selectedProducts]);
-
-  const renderProductSelector = () => (
-    <div className="mt-4 p-4 border rounded-lg bg-gray-50">
-      <Label className="mb-2 block">Productos</Label>
-      <div className="relative mb-3">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-        <Input
-          placeholder="Buscar producto para agregar..."
-          value={productSearch}
-          onChange={(e) => setProductSearch(e.target.value)}
-          className="pl-9"
-        />
-        {productSearch.trim() && (
-          <div className="absolute z-10 w-full mt-1 bg-white border rounded-lg shadow-lg max-h-48 overflow-y-auto">
-            {productosFiltrados.length === 0 ? (
-              <div className="px-3 py-2 text-sm text-gray-500">
-                No se encontraron productos
-              </div>
-            ) : (
-              productosFiltrados.map((p) => {
-                const stock = stockMap.get(p.id_producto) ?? 0;
-                const stockStatus = stock === 0 ? 'text-red-500' : stock < 5 ? 'text-yellow-500' : 'text-green-500';
-                const stockText = stock === 0 ? 'AGOTADO' : stock < 5 ? 'BAJO' : `${stock}`;
-                return (
-                  <button
-                    key={p.id_producto}
-                    onClick={() => {
-                      addProduct(p.id_producto);
-                      setProductSearch("");
-                    }}
-                    className="w-full px-3 py-2 text-left text-sm hover:bg-emerald-50 flex justify-between items-center"
-                  >
-                    <div className="flex-1 truncate">
-                      <span>{p.nombre}</span>
-                      <span className={`ml-2 text-xs ${stockStatus}`}>({stockText})</span>
-                    </div>
-                    <span className="text-gray-400 text-xs ml-2">
-                      ${Number(p.precio_venta).toFixed(2)}
-                    </span>
-                  </button>
-                );
-              })
-            )}
-          </div>
-        )}
-      </div>
-      {selectedProducts.length > 0 && (
-        <div className="border rounded-lg overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-3 py-2 text-left">Nombre</th>
-                <th className="px-3 py-2 text-left">Cantidad</th>
-                <th className="px-3 py-2 text-left">Precio</th>
-                <th className="px-3 py-2 text-left">Subtotal</th>
-                <th className="px-3 py-2"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {selectedProducts.map((p) => {
-                const pr = productos.find((pr) => pr.id_producto === p.id_producto);
-                const stock = stockMap.get(p.id_producto) ?? 0;
-                const stockError = p.cantidad > stock;
-                const stockStatus = stock === 0 ? 'text-red-500' : stock < 5 ? 'text-yellow-500' : 'text-green-500';
-                return (
-                  <tr key={p.id_producto} className="border-t">
-                    <td className="px-3 py-2">
-                      <div className="flex items-center gap-2">
-                        <span>{pr?.nombre}</span>
-                        {stockError && stock > 0 && (
-                          <span className="text-xs text-red-600">Stock: {stock}</span>
-                        )}
-                        {stock === 0 && (
-                          <span className="text-xs text-red-600 font-bold">AGOTADO</span>
-                        )}
-                        {!stockError && stock > 0 && (
-                          <span className={`text-xs font-medium ${stockStatus}`}>
-                            Stock: {stock}
-                          </span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-3 py-2">
-                      <div className="flex items-center gap-2">
-                        <Input
-                          type="number"
-                          min="1"
-                          value={p.cantidad}
-                          onChange={(e: any) =>
-                            updateCantidad(p.id_producto, Number(e.target.value))
-                          }
-                          className={`w-20 h-8 ${stockError ? 'border-red-500 focus:ring-red-500' : ''}`}
-                          style={{
-                            backgroundColor: stock === 0 && stockError ? '#fef2f2' : undefined,
-                          }}
-                        />
-                        {stockError && (
-                          <span className="text-xs text-red-500 whitespace-nowrap">
-                            Excede stock
-                          </span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-3 py-2">
-                      <Input
-                        type="number"
-                        step="0.01"
-                        value={p.precio_venta}
-                        onChange={(e: any) =>
-                          updatePrecioVenta(p.id_producto, Number(e.target.value))
-                        }
-                        className="w-24 h-8"
-                        placeholder="Precio"
-                      />
-                    </td>
-                    <td className="px-3 py-2 text-gray-600">
-                      ${(p.cantidad * p.precio_venta).toFixed(2)}
-                    </td>
-                    <td className="px-3 py-2">
-                      <button
-                        onClick={() => removeProduct(p.id_producto)}
-                        className="text-red-500"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </div>
-  );
+  }, [productosPorMonedaSeleccionada, productSearch, selectedProducts]);
 
   const filteredVentas = useMemo(() => {
     if (!searchTerm) return ventasEfectivo;
@@ -685,15 +583,35 @@ const loadInitialData = async () => {
                 }
               >
                 <option value="">Seleccionar moneda</option>
-                {monedas.map((m) => (
-                  <option key={m.id_moneda} value={m.id_moneda}>
-                    {m.nombre} ({m.simbolo})
-                  </option>
-                ))}
+                {monedas.map((m) => {
+                  const count = productosPorMoneda[m.id_moneda] || 0;
+                  return (
+                    <option key={m.id_moneda} value={m.id_moneda}>
+                      {m.nombre} ({m.simbolo}) — {count} prod.
+                    </option>
+                  );
+                })}
               </select>
             </div>
           </div>
-          <div className="mt-6">{renderProductSelector()}</div>
+          <div className="mt-6">
+            <ProductSelector
+              selectedProducts={selectedProducts}
+              productSearch={productSearch}
+              onProductSearchChange={setProductSearch}
+              productosFiltrados={productosFiltrados}
+              onAddProduct={(id) => {
+                addProduct(id);
+                setProductSearch("");
+              }}
+              onUpdateCantidad={updateCantidad}
+              onUpdatePrecio={updatePrecioVenta}
+              onRemoveProduct={removeProduct}
+              productos={productosPorMonedaSeleccionada}
+              total={calcMonto()}
+              monedas={monedas}
+            />
+          </div>
           <div className="flex gap-3 mt-8 pt-6 border-t">
             <Button
               onClick={handleSave}

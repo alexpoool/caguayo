@@ -114,6 +114,10 @@ export const productosService = {
 
   async getProductosConStock(): Promise<ProductoConCantidad[]> {
     return apiClient.get<ProductoConCantidad[]>('/productos/con-stock');
+  },
+
+  async getProductosConStockItemAnexo(): Promise<ProductoConCantidad[]> {
+    return apiClient.get<ProductoConCantidad[]>('/productos/con-stock-item-anexo');
   }
 };
 
@@ -489,6 +493,10 @@ export const contratosService = {
 
   async getContrato(id: number): Promise<ContratoWithDetails> {
     return apiClient.get<ContratoWithDetails>(`/contratos/${id}`);
+  },
+
+  async getItemsDisponibles(contratoId: number): Promise<any[]> {
+    return apiClient.get<any[]>(`/contratos/${contratoId}/items-disponibles`);
   },
 
   async createContrato(data: ContratoCreate): Promise<ContratoWithDetails> {
@@ -965,19 +973,21 @@ export const liquidacionService = {
     return apiClient.get<Liquidacion[]>(`/liquidaciones/cliente/${clienteId}`);
   },
 
-  async getProductosPendientesByCliente(clienteId: number, anexoId?: number): Promise<ProductosEnLiquidacion[]> {
-    let url = `/liquidaciones/productos-pendientes/cliente/${clienteId}`;
-    if (anexoId) {
-      url += `?anexo_id=${anexoId}`;
-    }
+  async getProductosPendientesByCliente(clienteId: number, anexoId?: number, monedaId?: number): Promise<ProductosEnLiquidacion[]> {
+    const params = new URLSearchParams();
+    if (anexoId) params.set('anexo_id', String(anexoId));
+    if (monedaId) params.set('moneda_id', String(monedaId));
+    const query = params.toString();
+    const url = `/liquidaciones/productos-pendientes/cliente/${clienteId}${query ? `?${query}` : ''}`;
     return apiClient.get<ProductosEnLiquidacion[]>(url);
   },
 
-  async getItemsAnexoConEstado(clienteId: number, anexoId?: number): Promise<any[]> {
-    let url = `/liquidaciones/productos-anexo/cliente/${clienteId}`;
-    if (anexoId) {
-      url += `?anexo_id=${anexoId}`;
-    }
+  async getItemsAnexoConEstado(clienteId: number, anexoId?: number, monedaId?: number): Promise<any[]> {
+    const params = new URLSearchParams();
+    if (anexoId) params.set('anexo_id', String(anexoId));
+    if (monedaId) params.set('moneda_id', String(monedaId));
+    const query = params.toString();
+    const url = `/liquidaciones/productos-anexo/cliente/${clienteId}${query ? `?${query}` : ''}`;
     return apiClient.get<any[]>(url);
   },
 

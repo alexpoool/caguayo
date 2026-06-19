@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { Search, X } from 'lucide-react';
 import { Input, Label } from '../../../../components/ui';
 import type { Productos } from '../../../../types';
@@ -18,6 +17,7 @@ interface ProductSelectorProps {
   onRemoveProduct: (id: number) => void;
   productos: Productos[];
   total: number;
+  monedas?: any[];
 }
 
 export function ProductSelector({
@@ -32,8 +32,8 @@ export function ProductSelector({
   onRemoveProduct,
   productos,
   total,
+  monedas,
 }: ProductSelectorProps) {
-  const [isFocused, setIsFocused] = useState(false);
   const user = authHelpers.getUser() ?? {};
   const currentDependenciaId = user.dependencia?.id_dependencia ?? null;
   const { data: stockData = [], isLoading: isStockLoading } = useStock({ 
@@ -43,28 +43,27 @@ export function ProductSelector({
   // Create a map for quick stock lookup
   const stockMap = new Map<number, number>();
   stockData.forEach(item => {
-    stockMap.set(item.id_producto, item.existencia);
+    stockMap.set(item.id_producto, item.stock);
   });
 
   return (
     <div className="mt-4 p-4 border rounded-lg bg-gray-50">
       <Label className="mb-2 block">Productos</Label>
 
-      {/* Buscador con dropdown always visible cuando tiene focus */}
-      <div className="relative mb-3">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-        <Input
-          placeholder="Buscar producto para agregar..."
-          value={productSearch}
-          onChange={(e) => onProductSearchChange(e.target.value)}
-          onFocus={() => setIsFocused(true)}
-          onBlur={() => setTimeout(() => setIsFocused(false), 200)}
-          className="pl-9"
-        />
+      {/* Buscador con lista de productos siempre visible */}
+      <div className="mb-3">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <Input
+            placeholder="Buscar producto para agregar..."
+            value={productSearch}
+            onChange={(e) => onProductSearchChange(e.target.value)}
+            className="pl-9"
+          />
+        </div>
 
-        {/* Dropdown de búsqueda - muestra todos los productos cuando tiene focus */}
-        {isFocused && (
-          <div className="absolute z-10 w-full mt-1 bg-white border rounded-lg shadow-lg max-h-64 overflow-y-auto">
+        {/* Lista de productos - siempre visible */}
+        <div className="w-full mt-1 bg-white border rounded-lg shadow-sm max-h-64 overflow-y-auto">
             {productosFiltrados.length === 0 ? (
               <div className="px-3 py-2 text-sm text-gray-500">
                 No se encontraron productos
@@ -81,7 +80,6 @@ export function ProductSelector({
                     onClick={() => {
                       onAddProduct(p.id_producto);
                       onProductSearchChange('');
-                      setIsFocused(false);
                     }}
                     className="w-full px-3 py-2 text-left text-sm hover:bg-violet-50 flex justify-between items-center transition-colors"
                   >
@@ -97,7 +95,6 @@ export function ProductSelector({
               })
             )}
           </div>
-        )}
       </div>
 
       {/* Lista de productos seleccionados */}
@@ -109,6 +106,7 @@ export function ProductSelector({
                 <th className="px-3 py-2 text-left text-sm font-semibold text-gray-700 border-b">Nombre</th>
                 <th className="px-3 py-2 text-center text-sm font-semibold text-gray-700 border-b w-24">Cantidad</th>
                 <th className="px-3 py-2 text-center text-sm font-semibold text-gray-700 border-b w-28">Precio</th>
+                <th className="px-3 py-2 text-center text-sm font-semibold text-gray-700 border-b w-20">Moneda</th>
                 <th className="px-3 py-2 text-right text-sm font-semibold text-gray-700 border-b w-28">Subtotal</th>
                 <th className="px-3 py-2 text-center text-sm font-semibold text-gray-700 border-b w-12"></th>
               </tr>
@@ -162,6 +160,16 @@ export function ProductSelector({
                         className="w-24 h-8 text-center"
                         placeholder="Precio"
                       />
+                    </td>
+                    <td className="px-3 py-2 text-center text-xs text-gray-500">
+                      {p.id_moneda
+                        ? (monedas?.find((m: any) => m.id_moneda === p.id_moneda)?.simbolo || `#${p.id_moneda}`)
+                        : '-'}
+                      {p.precios && p.precios.length > 0 && (
+                        <span className="block text-[10px] text-gray-400">
+                          +{p.precios.length} alt.
+                        </span>
+                      )}
                     </td>
                     <td className="px-3 py-2 text-right text-gray-600 text-sm font-medium">
                       ${subtotal.toFixed(2)}

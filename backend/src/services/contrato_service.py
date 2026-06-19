@@ -3,6 +3,7 @@ from datetime import datetime
 from decimal import Decimal
 from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlmodel import select, func
+from sqlalchemy.orm import selectinload
 from src.repository.base import CRUDBase
 from src.repository.contratos_repo import (
     ContratoRepository,
@@ -30,6 +31,9 @@ from src.models import (
     TipoMovimiento,
     Anexo,
     Productos,
+    ItemAnexo,
+    PrecioItemAnexo,
+    Convenio,
 )
 from src.dto import (
     TipoContratoCreate,
@@ -62,6 +66,7 @@ from src.dto import (
     ItemVentaEfectivoRead,
     ItemFacturaRead,
     ProductoSimpleRead,
+    ItemAnexoDisponible,
 )
 from src.utils import generar_codigo_anio, generar_codigo_con_padre
 from src.services.productos_en_liquidacion_service import (
@@ -243,6 +248,99 @@ class ContratoService:
             return False
         await contrato_repo.remove(db, id=id)
         return True
+
+    @staticmethod
+    async def get_items_disponibles(
+        db: AsyncSession, contrato_id: int
+    ) -> List[ItemAnexoDisponible]:
+        contrato = await db.get(Contrato, contrato_id)
+        if not contrato:
+            return []
+
+        moneda_contrato = contrato.id_moneda
+
+        stmt_convenios = select(Convenio).where(
+            Convenio.id_cliente == contrato.id_cliente
+        )
+        result = await db.exec(stmt_convenios)
+        convenio_ids = [c.id_convenio for c in result.all()]
+        if not convenio_ids:
+            return []
+
+        stmt_anexos = (
+            select(Anexo)
+            .where(Anexo.id_convenio.in_(convenio_ids))
+            .options(
+                selectinload(Anexo.items_anexo).selectinload(ItemAnexo.precios),
+            )
+        )
+        result = await db.exec(stmt_anexos)
+        anexos = result.all()
+
+        items_disponibles = []
+        for anexo in anexos:
+            for item in anexo.items_anexo:
+                producto = await db.get(Productos, item.id_producto)
+                if not producto:
+                    continue
+
+                if item.id_moneda == moneda_contrato:
+                    items_disponibles.append(
+                        ItemAnexoDisponible(
+                            id_item_anexo=item.id_item_anexo,
+                            id_anexo=item.id_anexo,
+                            id_producto=item.id_producto,
+                            cantidad=item.cantidad,
+                            cantidad_vendida=item.cantidad_vendida,
+                            precio_venta=item.precio_venta,
+                            precio_compra=item.precio_compra,
+                            id_moneda=item.id_moneda,
+                            codigo=item.codigo,
+                            producto=ProductoSimpleRead(
+                                id_producto=producto.id_producto,
+                                codigo=producto.codigo,
+                                nombre=producto.nombre,
+                                descripcion=producto.descripcion,
+                                precio_venta=producto.precio_venta,
+                                precio_minimo=producto.precio_minimo,
+                                cantidad=0,
+                            ),
+                        )
+                    )
+                elif item.precios:
+                    precio_alt = next(
+                        (
+                            p
+                            for p in item.precios
+                            if p.id_moneda == moneda_contrato
+                        ),
+                        None,
+                    )
+                    if precio_alt:
+                        items_disponibles.append(
+                            ItemAnexoDisponible(
+                                id_item_anexo=item.id_item_anexo,
+                                id_anexo=item.id_anexo,
+                                id_producto=item.id_producto,
+                                cantidad=item.cantidad,
+                                cantidad_vendida=item.cantidad_vendida,
+                                precio_venta=precio_alt.precio_venta,
+                                precio_compra=precio_alt.precio_compra or item.precio_compra,
+                                id_moneda=moneda_contrato,
+                                codigo=item.codigo,
+                                producto=ProductoSimpleRead(
+                                    id_producto=producto.id_producto,
+                                    codigo=producto.codigo,
+                                    nombre=producto.nombre,
+                                    descripcion=producto.descripcion,
+                                    precio_venta=producto.precio_venta,
+                                    precio_minimo=producto.precio_minimo,
+                                    cantidad=0,
+                                ),
+                            )
+                        )
+
+        return items_disponibles
 
 
 async def map_suplemento_to_read(
@@ -512,14 +610,24 @@ class FacturaService:
         factura = await factura_repo.get(db, id)
         if not factura:
             return False
-        # Cancelar movimientos asociados
         from sqlmodel import select
+        from src.models import ProductosEnLiquidacion
+        # Desvincular productos_en_liquidacion (columna nullable)
+        stmt_liq = select(ProductosEnLiquidacion).where(ProductosEnLiquidacion.id_factura == id)
+        for liq in (await db.exec(stmt_liq)).all():
+            liq.id_factura = None
+            db.add(liq)
+        # Cancelar movimientos asociados
         stmt = select(Movimiento).where(Movimiento.id_factura == id)
         result = await db.exec(stmt)
         for mov in result.all():
             if mov.estado != "cancelado":
                 mov.estado = "cancelado"
                 db.add(mov)
+        # Eliminar items de la factura antes de borrarla (evita NOT NULL en id_factura)
+        items = await item_factura_repo.get_by_factura(db, id)
+        for item in items:
+            await db.delete(item)
         await factura_repo.remove(db, id=id)
         return True
 

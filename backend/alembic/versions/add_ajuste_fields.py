@@ -25,13 +25,11 @@ def upgrade() -> None:
         "items_factura_servicio",
         sa.Column("ajuste_valor", sa.Numeric(precision=15, scale=2), server_default="0.00", nullable=False),
     )
-    op.add_column(
-        "certificacion",
-        sa.Column("ajuste_porciento", sa.Numeric(precision=5, scale=2), server_default="0.00", nullable=False),
+    op.execute(
+        "ALTER TABLE certificacion ADD COLUMN IF NOT EXISTS ajuste_porciento NUMERIC(5, 2) DEFAULT '0.00' NOT NULL"
     )
-    op.add_column(
-        "certificacion",
-        sa.Column("ajuste_valor", sa.Numeric(precision=15, scale=2), server_default="0.00", nullable=False),
+    op.execute(
+        "ALTER TABLE certificacion ADD COLUMN IF NOT EXISTS ajuste_valor NUMERIC(15, 2) DEFAULT '0.00' NOT NULL"
     )
 
 

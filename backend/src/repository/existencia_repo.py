@@ -27,7 +27,7 @@ class ExistenciaRepository:
                 a.nombre_anexo,
                 ia.cantidad as cantidad_entrada,
                 COALESCE(ia.cantidad_vendida, 0) as cantidad_liquidada,
-                ia.cantidad - COALESCE(ia.cantidad_vendida, 0) as existencia
+                ia.cantidad - COALESCE(ia.cantidad_vendida, 0) as stock
             FROM item_anexo ia
             JOIN anexo a ON ia.id_anexo = a.id_anexo
         """)
@@ -50,7 +50,7 @@ class ExistenciaRepository:
                 "nombre_anexo": row[2],
                 "cantidad_entrada": row[3] or 0,
                 "cantidad_liquidada": row[4] or 0,
-                "existencia": row[5] or 0,
+                "stock": row[5] or 0,
                 "tipo": "CONSIGNACION"
             })
         
@@ -68,7 +68,7 @@ class ExistenciaRepository:
                 m.id_dependencia,
                 SUM(CASE WHEN tm.factor > 0 THEN m.cantidad ELSE 0 END) as cantidad_entrada,
                 SUM(CASE WHEN tm.factor < 0 THEN m.cantidad ELSE 0 END) as cantidad_salida,
-                SUM(CASE WHEN tm.factor > 0 THEN m.cantidad ELSE -m.cantidad END) as existencia
+                SUM(CASE WHEN tm.factor > 0 THEN m.cantidad ELSE -m.cantidad END) as stock
             FROM movimiento m
             JOIN tipo_movimiento tm ON m.id_tipo_movimiento = tm.id_tipo_movimiento
             WHERE m.estado = 'confirmado'
@@ -93,7 +93,7 @@ class ExistenciaRepository:
                 "id_dependencia": row[1],
                 "cantidad_entrada": row[2] or 0,
                 "cantidad_salida": row[3] or 0,
-                "existencia": row[4] or 0,
+                "stock": row[4] or 0,
                 "tipo": "MOVIMIENTO"
             })
         
@@ -126,24 +126,24 @@ class ExistenciaRepository:
             kons_rows = [k for k in konsignacion if k["id_producto"] == prod_id]
             mov = next((m for m in movimientos if m["id_producto"] == prod_id), None)
             
-            existencia_kons = sum(k["existencia"] for k in kons_rows) if kons_rows else 0
+            stock_kons = sum(k["stock"] for k in kons_rows) if kons_rows else 0
             
-            existencia_mov = (mov["cantidad_entrada"] if mov else 0) - (mov["cantidad_salida"] if mov else 0)
+            stock_mov = (mov["cantidad_entrada"] if mov else 0) - (mov["cantidad_salida"] if mov else 0)
             
             tiene_konsignacion = len(kons_rows) > 0
             if tiene_konsignacion:
-                existencia_total = existencia_kons
+                stock_total = stock_kons
             else:
-                existencia_total = existencia_mov
+                stock_total = stock_mov
             
-            if existencia_total > 0:
+            if stock_total > 0:
                 existencias_hibridas.append({
                     "id_producto": prod_id,
                     "nombre_producto": prod.nombre,
                     "codigo": prod.codigo,
-                    "cantidad_entrada": existencia_kons + (mov["cantidad_entrada"] if mov else 0),
+                    "cantidad_entrada": stock_kons + (mov["cantidad_entrada"] if mov else 0),
                     "cantidad_salida": (mov["cantidad_salida"] if mov else 0),
-                    "existencia": existencia_total,
+                    "stock": stock_total,
                     "tipo": "HIBRIDO"
                 })
         
@@ -166,7 +166,7 @@ class ExistenciaRepository:
         # Usar cantidad_vendida directamente del item_anexo
         konsignacion_query = text("""
             SELECT 
-                COALESCE(SUM(ia.cantidad), 0) - COALESCE(SUM(ia.cantidad_vendida), 0) as existencia
+                COALESCE(SUM(ia.cantidad), 0) - COALESCE(SUM(ia.cantidad_vendida), 0) as stock
             FROM item_anexo ia
             WHERE ia.id_producto = :id_producto
         """)
@@ -179,14 +179,14 @@ class ExistenciaRepository:
             params["id_anexo"] = id_anexo
         
         kons_result = await db.exec(konsignacion_query, params=params)
-        existencia_kons = kons_result.scalar() or 0
+        stock_kons = kons_result.scalar() or 0
         
         # Movimientos - misma lógica que get_existencia_hibrida
         mov_params = {"id_producto": id_producto}
         mov_query = """
             SELECT COALESCE(SUM(
                 CASE WHEN tm.factor > 0 THEN m.cantidad ELSE -m.cantidad END
-            ), 0) as existencia
+            ), 0) as stock
             FROM movimiento m
             JOIN tipo_movimiento tm ON m.id_tipo_movimiento = tm.id_tipo_movimiento
             WHERE m.id_producto = :id_producto AND m.estado = 'confirmado'
@@ -197,20 +197,20 @@ class ExistenciaRepository:
             mov_params["id_dependencia"] = id_dependencia
         
         mov_result = await db.exec(text(mov_query), params=mov_params)
-        existencia_mov = mov_result.scalar() or 0
+        stock_mov = mov_result.scalar() or 0
 
         tiene_konsignacion = await self._producto_tiene_item_anexo(db, id_producto)
 
         if tiene_konsignacion:
-            existencia_total = existencia_kons
+            stock_total = stock_kons
         else:
-            existencia_total = existencia_mov
+            stock_total = stock_mov
 
         return {
             "id_producto": id_producto,
-            "existencia_konsignacion": existencia_kons,
-            "existencia_movimientos": existencia_mov,
-            "existencia_total": existencia_total,
+            "stock_konsignacion": stock_kons,
+            "stock_movimientos": stock_mov,
+            "stock_total": stock_total,
             "usa_konsignacion": tiene_konsignacion,
         }
 
@@ -225,22 +225,24 @@ class ExistenciaRepository:
         id_producto: int,
         cantidad: int,
         id_dependencia: Optional[int] = None,
-        id_anexo: Optional[int] = None
+        id_anexo: Optional[int] = None,
+        movimiento_id: Optional[int] = None
     ) -> Dict[str, Any]:
         """Valida si hay suficiente existencia para una transacción.
         
         Considera:
         - Stock físico (consignación o movimientos confirmados)
-        - Stock comprometido (movimientos pendientes de tipo salida)
+        - Stock comprometido (movimientos pendientes de tipo salida excepto el propio)
         """
         
-        existencia = await self.get_existencia_producto(
+        data = await self.get_existencia_producto(
             db, id_producto, id_dependencia, id_anexo
         )
         
-        existencia_total = existencia["existencia_total"]
+        stock_total = data["stock_total"]
         
         # Stock comprometido: movimientos pendientes con factor negativo (salidas)
+        # Excluye el movimiento que se está confirmando (movimiento_id) para no auto-descontarse
         comprometido_query = text("""
             SELECT COALESCE(SUM(m.cantidad), 0)
             FROM movimiento m
@@ -253,20 +255,23 @@ class ExistenciaRepository:
         if id_dependencia:
             comprometido_query = text(f"{comprometido_query.text} AND m.id_dependencia = :id_dependencia")
             comprometido_params["id_dependencia"] = id_dependencia
+        if movimiento_id is not None:
+            comprometido_query = text(f"{comprometido_query.text} AND m.id_movimiento != :movimiento_id")
+            comprometido_params["movimiento_id"] = movimiento_id
         
         comp_result = await db.exec(comprometido_query, params=comprometido_params)
         stock_comprometido = comp_result.scalar() or 0
         
-        disponible = existencia_total - stock_comprometido
+        disponible = stock_total - stock_comprometido
         
         return {
             "id_producto": id_producto,
             "cantidad_solicitada": cantidad,
-            "existencia": existencia_total,
+            "stock": stock_total,
             "stock_comprometido": stock_comprometido,
             "disponible": disponible >= cantidad,
             "mensaje": "Disponibilidad OK" if disponible >= cantidad \
-                     else f"Insuficiente. Disponible: {disponible} (físico: {existencia_total}, comprometido: {stock_comprometido})"
+                     else f"Insuficiente. Disponible: {disponible} (físico: {stock_total}, comprometido: {stock_comprometido})"
         }
 
 

@@ -19,7 +19,9 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    op.add_column("item_anexo", sa.Column("cantidad_vendida", sa.Integer(), nullable=False, server_default="0"))
+    op.execute(
+        "ALTER TABLE item_anexo ADD COLUMN IF NOT EXISTS cantidad_vendida INTEGER DEFAULT 0 NOT NULL"
+    )
 
 
 def downgrade() -> None:

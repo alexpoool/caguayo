@@ -3,6 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlmodel import select
 from sqlalchemy.orm import selectinload
+from sqlalchemy.exc import IntegrityError
 from src.database.connection import get_session
 from src.services.cliente_service import ClienteService
 from src.dto import ClienteCreate, ClienteRead, ClienteUpdate
@@ -36,6 +37,15 @@ async def crear_cliente(
     try:
         print(f"DEBUG ROUTE: Received cliente = {cliente.model_dump()}")
         return await ClienteService.create_cliente(db, cliente)
+    except IntegrityError as e:
+        error_msg = str(e.orig)
+        if "clientes_codigo_key" in error_msg:
+            raise HTTPException(status_code=409, detail="El código de cliente ya está registrado")
+        if "clientes_persona_juridica_codigo_reup_key" in error_msg:
+            raise HTTPException(status_code=409, detail="El código REUP ya está registrado")
+        if "clientes_persona_natural_carnet_identidad_key" in error_msg:
+            raise HTTPException(status_code=409, detail="El carnet de identidad ya está registrado")
+        raise HTTPException(status_code=409, detail="Conflicto al crear el cliente: el registro ya existe")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error al crear cliente: {str(e)}")
 

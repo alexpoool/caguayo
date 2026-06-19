@@ -1,11 +1,12 @@
 from sqlmodel import SQLModel, Field, Relationship
-from typing import Optional, TYPE_CHECKING
+from typing import Optional, List, TYPE_CHECKING
 from decimal import Decimal
 
 if TYPE_CHECKING:
     from .anexo import Anexo
     from .producto import Productos
     from .moneda import Moneda
+    from .precio_item_anexo import PrecioItemAnexo
 
 
 class ItemAnexo(SQLModel, table=True):
@@ -20,10 +21,13 @@ class ItemAnexo(SQLModel, table=True):
     id_producto: int = Field(foreign_key="productos.id_producto")
     cantidad: int = Field(default=1)
     cantidad_vendida: int = Field(default=0, sa_column_kwargs={"server_default": "0"})
+    existencia: int = Field(default=0)
     precio_compra: Decimal = Field(decimal_places=4, max_digits=15)
     precio_venta: Decimal = Field(decimal_places=4, max_digits=15)
     id_moneda: int = Field(foreign_key="moneda.id_moneda")
+    codigo: Optional[str] = Field(default=None, max_length=50)
 
     anexo: "Anexo" = Relationship(back_populates="items_anexo")
     producto: "Productos" = Relationship(back_populates="items_anexo")
     moneda: "Moneda" = Relationship(back_populates="items_anexo")
+    precios: List["PrecioItemAnexo"] = Relationship(back_populates="item_anexo")

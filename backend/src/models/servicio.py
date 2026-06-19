@@ -47,7 +47,7 @@ class SolicitudServicio(SQLModel, table=True):
     estado: Optional[str] = Field(default=None, max_length=50)
     observaciones: Optional[str] = None
     material_asumido_x: bool = Field(default=False)
-    id_usuario: Optional[int] = None
+    id_usuario: Optional[int] = Field(default=None, foreign_key="usuarios.id_usuario")
     aprobado: bool = Field(default=False)
     codigo_proyecto: Optional[str] = Field(default=None, max_length=50)
 
@@ -167,7 +167,7 @@ class FacturaServicio(SQLModel, table=True):
     pagado: Decimal = Field(default=Decimal("0.00"))
     observaciones: Optional[str] = None
     cuenta_factura: Optional[str] = Field(default=None, max_length=50)
-    id_usuario: Optional[int] = None
+    id_usuario: Optional[int] = Field(default=None, foreign_key="usuarios.id_usuario")
 
     etapa: "Etapa" = Relationship(back_populates="facturas")
     certificacion: Optional["Certificacion"] = Relationship(back_populates="facturas")
@@ -225,7 +225,7 @@ class PersonaLiquidacion(SQLModel, table=True):
     porciento_gestion: Decimal = Field(default=Decimal("0.00"))
     porciento_empresa: Decimal = Field(default=Decimal("0.00"))
     devengado: Decimal = Field(default=Decimal("0.00"))
-    tributario: Decimal = Field(default=Decimal("5.00"))
+    tributario: Decimal = Field(default=Decimal("0.00"))
     tributario_monto: Decimal = Field(default=Decimal("0.00"))
     comision_bancaria: Decimal = Field(default=Decimal("0.00"))
     neto_pagar: Decimal = Field(default=Decimal("0.00"))
@@ -270,6 +270,7 @@ class Certificacion(SQLModel, table=True):
 
     etapa: "Etapa" = Relationship(back_populates="certificaciones")
     facturas: List["FacturaServicio"] = Relationship(
+        back_populates="certificacion",
         sa_relationship_kwargs={"foreign_keys": "[FacturaServicio.id_certificacion]", "lazy": "selectin"}
     )
 

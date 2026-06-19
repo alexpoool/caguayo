@@ -21,6 +21,7 @@ from src.dto import (
     VentaEfectivoCreate,
     VentaEfectivoReadWithDetails,
     VentaEfectivoUpdate,
+    ItemAnexoDisponible,
 )
 from src.utils import _get_nit_from_token
 
@@ -75,6 +76,23 @@ async def obtener_contrato(
     if not contrato:
         raise HTTPException(status_code=404, detail="Contrato no encontrado")
     return contrato
+
+
+@contratos_router.get(
+    "/{contrato_id}/items-disponibles", response_model=List[ItemAnexoDisponible]
+)
+async def obtener_items_disponibles(
+    contrato_id: int,
+    db: AsyncSession = Depends(get_session),
+):
+    """Obtener items de anexos disponibles con precio en la moneda del contrato."""
+    try:
+        return await ContratoService.get_items_disponibles(db, contrato_id)
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error al obtener items disponibles: {str(e)}",
+        )
 
 
 @contratos_router.put("/{contrato_id}", response_model=ContratoReadWithDetails)

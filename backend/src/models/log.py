@@ -17,7 +17,7 @@ class LogEntry(SQLModel, table=True):
     mensaje: str = Field(max_length=500)
     detalle: Optional[str] = Field(default=None, max_length=2000)
     ip: Optional[str] = Field(default=None, max_length=50)
-    usuario_id: Optional[int] = Field(default=None)
+    usuario_id: Optional[int] = Field(default=None, foreign_key="usuarios.id_usuario")
     endpoint: Optional[str] = Field(default=None, max_length=200)
     method: Optional[str] = Field(default=None, max_length=10)
     status_code: Optional[int] = Field(default=None)

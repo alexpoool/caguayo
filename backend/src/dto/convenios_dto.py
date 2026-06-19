@@ -1,7 +1,9 @@
-from sqlmodel import SQLModel
+from sqlmodel import SQLModel, Field
 from typing import Optional, List
 from datetime import date
 from decimal import Decimal
+from pydantic import field_validator
+from .precio_item_anexo_dto import PrecioItemAnexoCreate, PrecioItemAnexoRead
 
 
 class TipoClienteBase(SQLModel):
@@ -94,12 +96,20 @@ class TipoConvenioUpdate(SQLModel):
 
 
 class ConvenioBase(SQLModel):
-    id_cliente: int
-    nombre_convenio: str
+    id_cliente: int = Field(gt=0)
+    nombre_convenio: str = Field(min_length=1)
     fecha: date
     vigencia: date
-    id_tipo_convenio: int
+    id_tipo_convenio: int = Field(gt=0)
     codigo: Optional[str] = None
+
+    @field_validator("vigencia")
+    @classmethod
+    def vigencia_no_anterior_a_fecha(cls, v: date, info) -> date:
+        fecha = info.data.get("fecha")
+        if fecha and v < fecha:
+            raise ValueError("La vigencia no puede ser anterior a la fecha de inicio")
+        return v
 
 
 class ConvenioCreate(ConvenioBase):
@@ -113,17 +123,16 @@ class ConvenioRead(ConvenioBase):
 
 
 class ConvenioUpdate(SQLModel):
-    id_cliente: Optional[int] = None
-    nombre_convenio: Optional[str] = None
+    id_cliente: Optional[int] = Field(default=None, gt=0)
+    nombre_convenio: Optional[str] = Field(default=None, min_length=1)
     fecha: Optional[date] = None
     vigencia: Optional[date] = None
-    id_tipo_convenio: Optional[int] = None
+    id_tipo_convenio: Optional[int] = Field(default=None, gt=0)
 
 
 class AnexoBase(SQLModel):
-    id_convenio: int
-    id_moneda: Optional[int] = None
-    nombre_anexo: str
+    id_convenio: int = Field(gt=0)
+    nombre_anexo: str = Field(min_length=1)
     fecha: date
     codigo_anexo: Optional[str] = None
     id_dependencia: Optional[int] = None
@@ -131,16 +140,17 @@ class AnexoBase(SQLModel):
 
 
 class ItemAnexoBase(SQLModel):
-    id_producto: int
-    cantidad: int
-    cantidad_vendida: int = 0
-    precio_venta: Decimal
-    id_moneda: int
+    id_producto: int = Field(gt=0)
+    cantidad: int = Field(gt=0)
+    cantidad_vendida: int = Field(default=0, ge=0)
+    existencia: int = Field(default=0, ge=0)
+    precio_venta: Decimal = Field(ge=0)
+    id_moneda: int = Field(gt=0)
     codigo: Optional[str] = None
 
 
 class ItemAnexoCreate(ItemAnexoBase):
-    pass
+    precios: Optional[List[PrecioItemAnexoCreate]] = None
 
 
 class ItemAnexoRead(ItemAnexoBase):
@@ -148,6 +158,8 @@ class ItemAnexoRead(ItemAnexoBase):
     id_anexo: int
     precio_compra: Decimal
     codigo: Optional[str] = None
+    cantidad_liquidada: int = 0
+    precios: Optional[List[PrecioItemAnexoRead]] = None
 
 
 class AnexoCreate(AnexoBase):
@@ -162,9 +174,8 @@ class AnexoRead(AnexoBase):
 
 
 class AnexoUpdate(SQLModel):
-    id_convenio: Optional[int] = None
-    id_moneda: Optional[int] = None
-    nombre_anexo: Optional[str] = None
+    id_convenio: Optional[int] = Field(default=None, gt=0)
+    nombre_anexo: Optional[str] = Field(default=None, min_length=1)
     fecha: Optional[date] = None
     codigo_anexo: Optional[str] = None
     id_dependencia: Optional[int] = None

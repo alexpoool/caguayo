@@ -15,7 +15,7 @@ class ProductosBase(SQLModel):
     moneda_venta: int
     precio_venta: Decimal
     precio_minimo: Decimal
-    existencia: int = 0
+    stock: int = 0
 
 
 class ProductosCreate(ProductosBase):
@@ -29,7 +29,7 @@ class ProductosRead(ProductosBase):
     moneda_compra_rel: Optional[MonedaRead] = None
     moneda_venta_rel: Optional[MonedaRead] = None
     cantidad: int = 0
-    existencia: int = 0
+    stock: int = 0
 
     model_config = {"validate_assignment": False}
 
@@ -44,7 +44,7 @@ class ProductosUpdate(SQLModel):
     moneda_venta: Optional[int] = None
     precio_venta: Optional[Decimal] = None
     precio_minimo: Optional[Decimal] = None
-    existencia: Optional[int] = None
+    stock: Optional[int] = None
 
 
 # DTOs simplificados para Productos en Ventas (sin relaciones lazy)
@@ -56,4 +56,4 @@ class ProductoSimpleRead(SQLModel):
     precio_venta: Decimal
     precio_minimo: Optional[Decimal] = None
     cantidad: int = 0
-    existencia: int = 0
+    stock: int = 0

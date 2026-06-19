@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { facturasService, existenciaService } from '../../../../services/api';
 import type { FacturaWithDetails } from '../../../../types/contrato';
-import { prepararFacturaParaAPI } from '../utils/facturasUtils';
+import { prepararFacturaParaAPI, validarFactura } from '../utils/facturasUtils';
 
 export function useFacturas(initialContratoId?: string | null) {
   const [facturas, setFacturas] = useState<FacturaWithDetails[]>([]);
@@ -33,9 +33,12 @@ export function useFacturas(initialContratoId?: string | null) {
    * Guarda una factura (crear o actualizar)
    */
   const handleSave = async (selectedProducts: any[]) => {
+    const data = prepararFacturaParaAPI(formData, selectedProducts, selectedContratoId);
+    const validacionGeneral = validarFactura(data);
+    if (!validacionGeneral.valid) {
+      return { success: false, message: validacionGeneral.errors.join('\n• ') };
+    }
     try {
-      const data = prepararFacturaParaAPI(formData, selectedProducts, selectedContratoId);
-      
       // Validar stock antes de crear/actualizar
       if (!editingId && selectedProducts.length > 0) {
         const idDependencia = formData.id_dependencia;

@@ -137,17 +137,29 @@ export interface ItemAnexo {
   id_anexo: number;
   id_producto: number;
   cantidad: number;
+  existencia?: number;
+  cantidad_liquidada?: number;
   precio_compra: number;
   precio_venta: number;
   id_moneda: number;
+  codigo?: string;
   producto?: ProductoSimple;
+  precios?: PrecioItemAnexoCreate[];
+}
+
+export interface PrecioItemAnexoCreate {
+  id_moneda: number;
+  precio_venta: number;
+  precio_compra?: number;
 }
 
 export interface ItemAnexoCreate {
   id_producto: number;
   cantidad: number;
+  existencia?: number;
   precio_venta: number;
   id_moneda: number;
+  precios?: PrecioItemAnexoCreate[];
 }
 
 export interface Anexo {
@@ -159,7 +171,6 @@ export interface Anexo {
   numero_anexo?: string;
   id_dependencia?: number | null;
   comision?: number;
-  id_moneda?: number | null;
 }
 
 export interface AnexoWithDetails extends Anexo {
@@ -176,7 +187,6 @@ export interface AnexoCreate {
   nombre_anexo: string;
   fecha: string;
   id_dependencia?: number;
-  id_moneda?: number;
   comision?: number;
   items: ItemAnexoCreate[];
 }

@@ -171,6 +171,7 @@ from .contratos_dto import (
     MonedaRead,
     ClienteSimpleRead,
     DependenciaSimpleRead,
+    ItemAnexoDisponible,
 )
 from .usuarios_dto import (
     GrupoBase,
