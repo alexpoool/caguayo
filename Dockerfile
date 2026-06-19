@@ -8,7 +8,7 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy pyproject.toml and uv.lock
-COPY backend/pyproject.toml backend/uv.lock ./
+COPY pyproject.toml uv.lock ./
 
 # Install uv and dependencies
 RUN pip install uv
