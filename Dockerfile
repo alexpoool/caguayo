@@ -7,7 +7,7 @@ RUN apt-get update && apt-get install -y \
     gcc \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy pyproject.toml and uv.lock
+# Copy pyproject.toml and uv.lock from root directory
 COPY pyproject.toml uv.lock ./
 
 # Install uv and dependencies
