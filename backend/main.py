@@ -65,7 +65,7 @@ __all_models__ = [
 
 app = FastAPI(
     title="Caguayo",
-    description="",
+    description="Documentación oficial de la API del ERP Caguayo",
     version="1.0.0",
     redirect_slashes=False,
 )
@@ -109,6 +109,7 @@ async def database_middleware(request: Request, call_next):
             if base_datos:
                 from urllib.parse import urlparse
                 from src.database.connection import AUTH_DATABASE
+
                 parsed = urlparse(os.getenv("DATABASE_URL", ""))
                 actual_db = parsed.path.lstrip("/")
                 if base_datos == actual_db:

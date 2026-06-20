@@ -40,7 +40,7 @@ async def get_conexiones():
             client_encoding="utf8",
         )
         cur = conn.cursor()
-        cur.execute("SELECT nombre_database FROM v_databases ORDER BY nombre_database")
+        cur.execute("SELECT datname FROM pg_database WHERE datistemplate = false AND datname != 'postgres' ORDER BY datname")
         rows = cur.fetchall()
         cur.close()
         conn.close()

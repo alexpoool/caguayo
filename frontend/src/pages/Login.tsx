@@ -9,6 +9,8 @@ import {
   Lock,
   CheckCircle,
   XCircle,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { apiClient } from "../lib/api";
@@ -24,10 +26,11 @@ type ConexionStatus = "idle" | "testing" | "connected" | "error";
 
 export function LoginPage() {
   const navigate = useNavigate();
-  const { login, isAuthenticated } = useAuth();
+  const { login } = useAuth();
 
   const [alias, setAlias] = useState("");
   const [contrasenia, setContrasenia] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [baseDatos, setBaseDatos] = useState("");
   const [conexiones, setConexiones] = useState<ConexionInfo[]>([]);
   const [loadingConexiones, setLoadingConexiones] = useState(true);
@@ -175,7 +178,7 @@ export function LoginPage() {
                     value={baseDatos}
                     onChange={(e) => handleBaseDatosChange(e.target.value)}
                     disabled={loadingConexiones}
-                    className={`w-full pl-10 pr-10 py-3 border-2 rounded-xl focus:ring-2 focus:border-transparent bg-white transition-all duration-200 ${getSelectBorderClass()}`}
+                    className={`w-full pl-10 pr-12 py-3 border-2 rounded-xl focus:ring-2 focus:border-transparent bg-white transition-all duration-200 ${getSelectBorderClass()}`}
                   >
                     <option key="empty-option" value="">
                       {loadingConexiones
@@ -242,14 +245,25 @@ export function LoginPage() {
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-blue-400" />
                   <Input
-                    type="password"
+                    type={showPassword ? "text" : "password"}
                     placeholder="Ingrese su contraseña"
                     value={contrasenia}
                     onChange={(e) => setContrasenia(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && handleLogin()}
-                    className="pl-10 border-slate-200 focus:ring-blue-500 focus:border-blue-500 rounded-xl transition-all duration-200"
+                    className="pl-10 pr-10 border-slate-200 focus:ring-blue-500 focus:border-blue-500 rounded-xl transition-all duration-200"
                     disabled={!baseDatos}
                   />
+                  <button
+                    type="button"
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-blue-600 focus:outline-none"
+                    onClick={() => setShowPassword(!showPassword)}
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-5 w-5" />
+                    ) : (
+                      <Eye className="h-5 w-5" />
+                    )}
+                  </button>
                 </div>
               </div>
 

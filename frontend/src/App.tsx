@@ -28,7 +28,6 @@ import {
   Package
 } from 'lucide-react';
 
-import { WelcomePage } from './pages/Welcome';
 import { LoginPage } from './pages/Login';
 import { RegisterPage } from './pages/Register';
 import { HomePage } from './pages/HomePage';
@@ -44,7 +43,6 @@ import { RecepcionesPage } from './pages/RecepcionesPage';
 import { MovimientoAjusteForm } from './pages/movimientos/MovimientoAjusteForm';
 import { ConfiguracionPage } from './pages/Configuracion';
 import { InventarioHome } from './pages/home/InventarioHome';
-import { AdministracionHome } from './pages/home/AdministracionHome';
 import { VentaHome } from './pages/home/VentaHome';
 import { CompraHome } from './pages/home/CompraHome';
 import { ReportesHome } from './pages/home/ReportesHome';
@@ -53,8 +51,8 @@ import ReporteExistencias from './pages/reportes/ReporteExistencias';
 import ReporteMovimientosDependencia from './pages/reportes/ReporteMovimientosDependencia';
 import ReporteMovimientosProducto from './pages/reportes/ReporteMovimientosProducto';
 import ReporteProveedores from './pages/reportes/ReporteProveedores';
-import { CompraConveniosPage } from './pages/compra/ConveniosPage';
-import { CompraAnexosPage } from './pages/compra/AnexosPage';
+import { ConveniosPage as CompraConveniosPage } from './pages/Convenios';
+import { AnexosPage as CompraAnexosPage } from './pages/Anexos';
 import { ProductosEnLiquidacionPage } from './pages/compra/ProductosEnLiquidacionPage';
 import { LiquidacionesPage } from './pages/compra/LiquidacionesPage';
 import { CrearLiquidacionPage } from './pages/compra/CrearLiquidacionPage';
@@ -86,12 +84,12 @@ const queryClient = new QueryClient({
 });
 
 const rutasPorModulo: Record<Modulo, string[]> = {
-  inventario: ['/inventario', '/movimientos', '/movimientos/pendientes', '/movimientos/ajuste', '/movimientos/seleccionar-recepcion', '/productos'],
+  inventario: ['/inventario', '/movimientos', '/movimientos/pendientes', '/movimientos/ajuste', '/movimientos/seleccionar-recepcion', '/productos', '/inventario/existencias', '/inventario/movimientos-dependencia', '/inventario/movimientos-producto'],
   administracion: ['/administracion', '/perfil'],
   venta: ['/venta', '/ventas', '/clientes', '/ventas/operaciones', '/ventas/contratos', '/ventas/suplementos', '/ventas/facturas', '/ventas/efectivo'],
-  compra: ['/compra', '/compra/clientes', '/compra/convenios', '/compra/anexos', '/compra/liquidaciones', '/compra/productos-liquidacion'],
+  compra: ['/compra', '/compra/clientes', '/compra/convenios', '/compra/anexos', '/compra/liquidaciones', '/compra/productos-liquidacion', '/compra/proveedores'],
   proyecto: ['/proyecto', '/proyectos', '/proyectos/servicios', '/proyectos/solicitudes', '/proyectos/proyectos', '/proyectos/etapas', '/proyectos/tareas-etapa', '/proyectos/realizadores', '/proyectos/facturas-servicio', '/proyectos/pagos-factura-servicio', '/proyectos/liquidaciones'],
-  reportes: ['/reportes', '/reportes/existencias', '/reportes/movimientos-dependencia', '/reportes/movimientos-producto', '/reportes/proveedores'],
+  reportes: ['/reportes', '/reportes/existencias', '/reportes/movimientos-dependencia', '/reportes/movimientos-producto', '/reportes/proveedores', '/reportes/mincult', '/reportes/onat'],
   home: ['/'],
 };
 
@@ -239,7 +237,7 @@ function App() {
     { id: 'reportes', label: 'Reportes', icon: BarChart3 },
   ];
 
-  function handleToggleSlim(_event: React.MouseEvent<HTMLButtonElement>): void {
+  function handleToggleSlim(): void {
     setSlimSidebar(prev => !prev);
   }
   return (
@@ -286,6 +284,27 @@ function App() {
                       </NavLink>
                     </li>
                   )}
+                  <li className="pt-2">
+                    <p className="text-xs font-semibold text-gray-500 uppercase px-2 mb-1">Reportes</p>
+                  </li>
+                  <li>
+                    <NavLink to="/inventario/existencias" onClick={handleLinkClick}>
+                      <Boxes className="w-6 h-6" />
+                      Existencias
+                    </NavLink>
+                  </li>
+                  <li>
+                    <NavLink to="/inventario/movimientos-dependencia" onClick={handleLinkClick}>
+                      <ArrowLeftRight className="w-6 h-6" />
+                      Mov. Dependencia
+                    </NavLink>
+                  </li>
+                  <li>
+                    <NavLink to="/inventario/movimientos-producto" onClick={handleLinkClick}>
+                      <Package className="w-6 h-6" />
+                      Mov. Producto
+                    </NavLink>
+                  </li>
                 </ul>
               )}
               {moduloActivo === 'administracion' && (
@@ -342,6 +361,15 @@ function App() {
                       </NavLink>
                     </li>
                   )}
+                  <li className="pt-2">
+                    <p className="text-xs font-semibold text-gray-500 uppercase px-2 mb-1">Reportes</p>
+                  </li>
+                  <li>
+                    <NavLink to="/compra/proveedores" onClick={handleLinkClick}>
+                      <UserCircle className="w-6 h-6" />
+                      Proveedores
+                    </NavLink>
+                  </li>
                 </ul>
               )}
               {moduloActivo === 'venta' && (
@@ -442,28 +470,19 @@ function App() {
               )}
               {moduloActivo === 'reportes' && (
                 <ul className="space-y-1 px-3">
+                  <li className="pt-2">
+                    <p className="text-xs font-semibold text-gray-500 uppercase px-2 mb-1">Reportes</p>
+                  </li>
                   <li>
-                    <NavLink to="/reportes/existencias" onClick={handleLinkClick}>
-                      <Boxes className="w-6 h-6" />
-                      Existencias
+                    <NavLink to="/reportes/mincult" onClick={handleLinkClick}>
+                      <FileText className="w-6 h-6" />
+                      MinCult
                     </NavLink>
                   </li>
                   <li>
-                    <NavLink to="/reportes/movimientos-dependencia" onClick={handleLinkClick}>
-                      <ArrowLeftRight className="w-6 h-6" />
-                      Mov. Dependencia
-                    </NavLink>
-                  </li>
-                  <li>
-                    <NavLink to="/reportes/movimientos-producto" onClick={handleLinkClick}>
-                      <Package className="w-6 h-6" />
-                      Mov. Producto
-                    </NavLink>
-                  </li>
-                  <li>
-                    <NavLink to="/reportes/proveedores" onClick={handleLinkClick}>
-                      <UserCircle className="w-6 h-6" />
-                      Proveedores
+                    <NavLink to="/reportes/onat" onClick={handleLinkClick}>
+                      <FileText className="w-6 h-6" />
+                      ONAT
                     </NavLink>
                   </li>
                 </ul>
@@ -836,7 +855,38 @@ function App() {
                   }
                 />
 
-                {/* Rutas de Reportes - protegidas */}
+                <Route
+                  path="/inventario/existencias"
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/inventario">
+                      <ReporteExistencias />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/inventario/movimientos-dependencia"
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/inventario">
+                      <ReporteMovimientosDependencia />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/inventario/movimientos-producto"
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/inventario">
+                      <ReporteMovimientosProducto />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/compra/proveedores"
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/compra">
+                      <ReporteProveedores />
+                    </ProtectedRoute>
+                  }
+                />
                 <Route
                   path="/reportes"
                   element={
@@ -848,7 +898,7 @@ function App() {
                 <Route
                   path="/reportes/existencias"
                   element={
-                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/reportes">
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/reportes/existencias">
                       <ReporteExistencias />
                     </ProtectedRoute>
                   }
@@ -856,7 +906,7 @@ function App() {
                 <Route
                   path="/reportes/movimientos-dependencia"
                   element={
-                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/reportes">
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/reportes/movimientos-dependencia">
                       <ReporteMovimientosDependencia />
                     </ProtectedRoute>
                   }
@@ -864,7 +914,7 @@ function App() {
                 <Route
                   path="/reportes/movimientos-producto"
                   element={
-                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/reportes">
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/reportes/movimientos-producto">
                       <ReporteMovimientosProducto />
                     </ProtectedRoute>
                   }
@@ -872,8 +922,30 @@ function App() {
                 <Route
                   path="/reportes/proveedores"
                   element={
-                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/reportes">
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/reportes/proveedores">
                       <ReporteProveedores />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/reportes/mincult"
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/reportes">
+                      <div className="p-8 text-center">
+                        <h2 className="text-2xl font-bold text-gray-900 mb-2">Reporte MinCult</h2>
+                        <p className="text-gray-500">En desarrollo</p>
+                      </div>
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/reportes/onat"
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/reportes">
+                      <div className="p-8 text-center">
+                        <h2 className="text-2xl font-bold text-gray-900 mb-2">Reporte ONAT</h2>
+                        <p className="text-gray-500">En desarrollo</p>
+                      </div>
                     </ProtectedRoute>
                   }
                 />

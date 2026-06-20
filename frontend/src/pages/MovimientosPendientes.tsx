@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { movimientosService } from '../services/api';
 
-import { Card, CardContent, ConfirmModal, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, Button, Input } from '../components/ui';
+import { Card, ConfirmModal, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, Input, Button } from '../components/ui';
 import {
   Truck,
   AlertCircle,
@@ -12,11 +12,9 @@ import {
   Package,
   TrendingUp,
   TrendingDown,
-  Clock,
   CheckCircle,
   Trash2,
   X,
-  Sparkles,
   Calendar,
   Hash,
   MapPin,
@@ -104,7 +102,6 @@ export function MovimientosPendientesPage() {
 
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState('');
-  const [tipoFiltro, setTipoFiltro] = useState<string>('');
 
   const { data: movimientosPendientes = [], isLoading: isLoadingPendientes } = useQuery({
     queryKey: ['movimientos-pendientes'],
@@ -191,7 +188,7 @@ export function MovimientosPendientesPage() {
       );
     }
     return result;
-  }, [movimientosPendientes, tipoFiltro, searchTerm]);
+  }, [movimientosPendientes, searchTerm]);
 
   const handleVerDetalle = (movimiento: MovimientoPendiente) => {
     setDetailModal({
@@ -332,197 +329,194 @@ export function MovimientosPendientesPage() {
   };
 
   const content = (
-    <div className="h-[calc(100vh-8rem)] flex flex-col animate-fade-in-up">
-      <Card className="flex-1 shadow-lg">
-        <CardContent className="p-6">
-          {/* Header */}
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-4">
-              <div className="p-3 bg-gradient-to-br from-amber-500 to-orange-600 rounded-xl shadow-lg animate-bounce-subtle">
-                <Clock className="h-8 w-8 text-white" />
-              </div>
-              <div>
-                <h2 className="text-2xl font-bold text-gray-900">Movimientos Pendientes</h2>
-                <p className="text-sm text-gray-500">Movimientos en espera de confirmación</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <Sparkles className="h-5 w-5 text-amber-500 animate-pulse" />
-              <span className="px-3 py-1 bg-amber-100 text-amber-800 rounded-full text-sm font-medium">
-                {filteredPendientes.length} pendientes
-              </span>
-            </div>
-          </div>
+    <div className="space-y-6 animate-fade-in-up">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Movimientos Pendientes</h1>
+          <p className="text-gray-500 mt-1">
+            Movimientos en espera de confirmación ({filteredPendientes.length} registros)
+          </p>
+        </div>
+      </div>
 
-          <div className="relative w-full max-w-md mb-4">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Buscar por producto, código..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent text-sm"
-            />
-          </div>
+      <div className="flex flex-wrap gap-2 items-center">
+        <div className="relative max-w-md flex-1">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+          <Input
+            type="text"
+            placeholder="Buscar..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+      </div>
 
-          {isLoadingPendientes ? (
-            <div className="flex items-center justify-center h-64">
-              <div className="p-4 bg-gradient-to-br from-amber-100 to-orange-100 rounded-full">
-                <Clock className="h-12 w-12 text-amber-600 animate-spin" />
-              </div>
+      {isLoadingPendientes ? (
+        <div className="flex flex-col items-center justify-center h-96 gap-4">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+          <div className="text-gray-500">Cargando movimientos...</div>
+        </div>
+      ) : filteredPendientes.length === 0 ? (
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <div className="w-24 h-24 mx-auto mb-4 bg-gradient-to-br from-slate-100 to-gray-100 rounded-full flex items-center justify-center">
+              <PackageCheck className="h-12 w-12 text-slate-400" />
             </div>
-          ) : filteredPendientes.length === 0 ? (
-            <div className="text-center py-12">
-              <div className="w-24 h-24 mx-auto mb-4 bg-gradient-to-br from-amber-100 to-orange-100 rounded-full flex items-center justify-center">
-                <PackageCheck className="h-12 w-12 text-amber-600" />
-              </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-2">
-                {searchTerm || tipoFiltro !== '' ? 'Sin resultados' : '¡Todo al día!'}
-              </h3>
-              <p className="text-gray-500 max-w-md mx-auto">
-                {searchTerm || tipoFiltro !== ''
-                  ? 'No se encontraron movimientos con los filtros aplicados'
-                  : 'No hay movimientos pendientes de confirmación. El inventario está actualizado.'}
-              </p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader className="bg-gradient-to-r from-amber-50 to-orange-50">
-                  <TableRow>
-                    <TableHead>
-                      <div className="flex items-center gap-2">
-                        <ArrowRightLeft className="h-4 w-4 text-amber-600" />
-                        Tipo
-                      </div>
-                    </TableHead>
-                    <TableHead>
-                      <div className="flex items-center gap-2">
-                        <Package className="h-4 w-4 text-amber-600" />
-                        Producto
-                      </div>
-                    </TableHead>
-                    <TableHead>
-                      <div className="flex items-center gap-2">
-                        <Hash className="h-4 w-4 text-amber-600" />
-                        Cantidad
-                      </div>
-                    </TableHead>
-                    <TableHead>
-                      <div className="flex items-center gap-2">
-                        <Calendar className="h-4 w-4 text-amber-600" />
-                        Fecha
-                      </div>
-                    </TableHead>
-                    <TableHead>
-                      <div className="flex items-center gap-2">
-                        <MapPin className="h-4 w-4 text-amber-600" />
-                        Dependencia
-                      </div>
-                    </TableHead>
-                    <TableHead className="text-center">Acciones</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredPendientes.map((mov: MovimientoPendiente) => {
-                    const config = getTipoConfig(mov.tipo_movimiento?.tipo || 'RECEPCION');
-                    const ImpactoIcon = config.impactoIcon;
-                    return (
-                      <TableRow
-                        key={mov.id_movimiento}
-                        className="hover:bg-gray-50/50 transition-colors cursor-pointer"
-                        onClick={() => handleVerDetalle(mov)}
-                      >
-                        <TableCell>
-                          <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${config.badgeBg} ${config.impactoColor}`}>
-                            <ImpactoIcon className="h-3 w-3" />
-                            {config.impacto}
-                          </span>
-                          <span className={`ml-2 font-semibold text-sm ${config.textColor}`}>
-                            {mov.tipo_movimiento?.tipo?.toUpperCase() || 'MOVIMIENTO'}
-                          </span>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <Package className="h-4 w-4 text-gray-400" />
-                            <span className="font-medium text-gray-900">{mov.producto?.nombre || 'Producto no disponible'}</span>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-amber-50 text-amber-700 rounded text-sm font-mono font-medium">
-                            <Hash className="h-3 w-3" />
-                            {mov.cantidad}
-                          </span>
-                        </TableCell>
-                        <TableCell className="text-gray-500">
-                          {new Date(mov.fecha).toLocaleDateString('es-ES')}
-                        </TableCell>
-                        <TableCell className="text-gray-500">
-                          {mov.dependencia?.nombre || 'Sin dependencia'}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center justify-center gap-1">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={(e: any) => {
-                                e.stopPropagation();
-                                handleConfirmarMovimiento(mov.id_movimiento);
-                              }}
-                              disabled={confirmarMutation.isPending}
-                              className="text-green-600 hover:text-green-800 hover:bg-green-50 h-8 w-8"
-                              title="Confirmar movimiento"
-                            >
-                              <Check className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={(e: any) => {
-                                e.stopPropagation();
-                                handleEliminarMovimiento(mov.id_movimiento);
-                              }}
-                              disabled={eliminarMutation.isPending}
-                              className="text-red-600 hover:text-red-800 hover:bg-red-50 h-8 w-8"
-                              title="Eliminar movimiento"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
+            <h3 className="text-xl font-bold text-gray-900 mb-2">
+              {searchTerm ? 'Sin resultados' : '¡Todo al día!'}
+            </h3>
+            <p className="text-gray-500 max-w-md mx-auto">
+              {searchTerm
+                ? 'No se encontraron movimientos con la búsqueda aplicada'
+                : 'No hay movimientos pendientes de confirmación. El inventario está actualizado.'}
+            </p>
+          </div>
+        </div>
+      ) : (
+        <>
+          <Card className="overflow-hidden shadow-sm border-gray-200">
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader className="bg-gradient-to-r from-slate-50 to-gray-100">
+                    <TableRow>
+                      <TableHead>
+                        <div className="flex items-center gap-2">
+                          <ArrowRightLeft className="h-4 w-4 text-slate-600" />
+                          Tipo
+                        </div>
+                      </TableHead>
+                      <TableHead>
+                        <div className="flex items-center gap-2">
+                          <Package className="h-4 w-4 text-slate-600" />
+                          Producto
+                        </div>
+                      </TableHead>
+                      <TableHead>
+                        <div className="flex items-center gap-2">
+                          <Hash className="h-4 w-4 text-slate-600" />
+                          Cantidad
+                        </div>
+                      </TableHead>
+                      <TableHead>
+                        <div className="flex items-center gap-2">
+                          <Calendar className="h-4 w-4 text-slate-600" />
+                          Fecha
+                        </div>
+                      </TableHead>
+                      <TableHead>
+                        <div className="flex items-center gap-2">
+                          <MapPin className="h-4 w-4 text-slate-600" />
+                          Dependencia
+                        </div>
+                      </TableHead>
+                      <TableHead>Estado</TableHead>
+                      <TableHead className="text-right">Acciones</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredPendientes.map((mov: MovimientoPendiente) => {
+                      const config = getTipoConfig(mov.tipo_movimiento?.tipo || 'RECEPCION');
+                      const ImpactoIcon = config.impactoIcon;
+                      return (
+                        <TableRow
+                          key={mov.id_movimiento}
+                          className="hover:bg-gray-50/50 transition-colors cursor-pointer"
+                          onClick={() => handleVerDetalle(mov)}
+                        >
+                          <TableCell>
+                            <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${config.bgColor} ${config.impactoColor}`}>
+                              <ImpactoIcon className="h-3 w-3" />
+                              {config.impacto}
+                            </span>
+                            <span className={`ml-2 font-semibold text-sm ${config.textColor}`}>
+                              {mov.tipo_movimiento?.tipo?.toUpperCase() || 'MOVIMIENTO'}
+                            </span>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <Package className="h-4 w-4 text-gray-400" />
+                              <span className="font-medium text-gray-900">{mov.producto?.nombre || 'Producto no disponible'}</span>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-slate-50 text-slate-700 rounded text-sm font-mono font-medium">
+                              <Hash className="h-3 w-3" />
+                              {mov.cantidad}
+                            </span>
+                          </TableCell>
+                          <TableCell className="text-gray-500">
+                            {new Date(mov.fecha).toLocaleDateString('es-ES')}
+                          </TableCell>
+                          <TableCell className="text-gray-500">
+                            {mov.dependencia?.nombre || 'Sin dependencia'}
+                          </TableCell>
+                          <TableCell>
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                              mov.estado === 'CONFIRMADO'
+                                ? 'bg-green-100 text-green-800'
+                                : mov.estado === 'PENDIENTE'
+                                ? 'bg-yellow-100 text-yellow-800'
+                                : 'bg-gray-100 text-gray-800'
+                            }`}>
+                              {mov.estado}
+                            </span>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex items-center justify-end gap-1">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleConfirmarMovimiento(mov.id_movimiento);
+                                }}
+                                disabled={confirmarMutation.isPending}
+                                className="text-green-600 hover:text-green-800 hover:bg-green-50 h-8 w-8 p-1.5"
+                                title="Confirmar movimiento"
+                              >
+                                <Check className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleEliminarMovimiento(mov.id_movimiento);
+                                }}
+                                disabled={eliminarMutation.isPending}
+                                className="text-red-600 hover:text-red-800 hover:bg-red-50 h-8 w-8 p-1.5"
+                                title="Eliminar movimiento"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                       );
+                      })}
                 </TableBody>
               </Table>
             </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Modal de Confirmación */}
-      <ConfirmModal
-        isOpen={confirmModal.isOpen}
-        onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
-        onConfirm={confirmModal.onConfirm}
-        title={confirmModal.title}
-        message={confirmModal.message}
-        type={confirmModal.type}
-        confirmText="Eliminar"
-        cancelText="Cancelar"
-      />
+          </Card>
+        </>
+      )}
     </div>
   );
 
-  const ModalStockError = () => createPortal(
-    stockErrorModal.isOpen && (
+  const ModalStockError = () => {
+    if (!stockErrorModal.isOpen) return null;
+    return createPortal(
       <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 animate-fade-in">
         <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full animate-scale-in">
           <div className="p-6">
             <div className="flex items-center justify-center mb-4">
-              <div className="w-20 h-20 bg-gradient-to-br from-red-100 to-rose-100 rounded-full flex items-center justify-center">
+              <button 
+                onClick={() => setStockErrorModal({ ...stockErrorModal, isOpen: false })}
+                className="w-20 h-20 bg-gradient-to-br from-red-100 to-rose-100 rounded-full flex items-center justify-center hover:scale-105 transition-transform cursor-pointer"
+              >
                 <AlertCircle className="h-10 w-10 text-red-600" />
-              </div>
+              </button>
             </div>
             <h3 className="text-2xl font-bold text-gray-900 text-center mb-2">
               Stock Insuficiente
@@ -571,13 +565,14 @@ export function MovimientosPendientesPage() {
             </div>
           </div>
         </div>
-      </div>
-    ),
-    document.body
-  );
+      </div>,
+      document.body
+    );
+  };
 
-  const ModalDetalle = () => createPortal(
-    detailModal.isOpen && detailModal.movimiento && (
+  const ModalDetalle = () => {
+    if (!detailModal.isOpen || !detailModal.movimiento) return null;
+    return createPortal(
       <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 animate-fade-in">
         <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-auto animate-scale-in">
           {(() => {
@@ -597,7 +592,7 @@ export function MovimientosPendientesPage() {
                           {detailModal.movimiento?.tipo_movimiento?.tipo?.toUpperCase()}
                         </h3>
                         <p className="text-sm text-gray-500">
-                          Movimiento {detailModal.movimiento?.id_movimiento}
+                          Movimiento #{detailModal.movimiento?.id_movimiento}
                         </p>
                       </div>
                     </div>
@@ -609,6 +604,8 @@ export function MovimientosPendientesPage() {
                       <button
                         onClick={() => setDetailModal({ isOpen: false, movimiento: null })}
                         className="p-2 hover:bg-gray-200 rounded-full transition-colors"
+                        aria-label="Cerrar"
+                        title="Cerrar"
                       >
                         <X className="h-6 w-6 text-gray-500" />
                       </button>
@@ -762,14 +759,24 @@ export function MovimientosPendientesPage() {
             );
           })()}
         </div>
-      </div>
-    ),
-    document.body
-  );
+      </div>,
+      document.body
+    );
+  };
 
   return (
     <>
       {content}
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+        onConfirm={confirmModal.onConfirm}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        type={confirmModal.type}
+        confirmText="Eliminar"
+        cancelText="Cancelar"
+      />
       <ModalStockError />
       <ModalDetalle />
     </>

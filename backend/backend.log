@@ -1,0 +1,14 @@
+2026-06-19 12:24:21,083 - root - INFO - CORS_ORIGINS loaded: ['http://localhost:5173']
+INFO:     Will watch for changes in these directories: ['/home/solji/Solji/Work/caguayo/backend']
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:     Started reloader process [58927] using StatReload
+2026-06-19 12:24:28,963 - root - INFO - CORS_ORIGINS loaded: ['http://localhost:5173']
+2026-06-19 12:24:29,899 - root - INFO - CORS_ORIGINS loaded: ['http://localhost:5173']
+INFO:     Started server process [59019]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [59019]
+INFO:     Stopping reloader process [58927]

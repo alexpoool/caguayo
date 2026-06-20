@@ -6,4 +6,6 @@ readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
     "code-review-graph>=2.3.6",
+    "ruff>=0.15.18",
+    "ty>=0.0.51",
 ]
