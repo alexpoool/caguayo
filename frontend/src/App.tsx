@@ -492,61 +492,56 @@ function App() {
         </aside>
         <header className={`${isHomePage ? 'col-start-1 col-end-3' : 'col-start-2 col-end-3'} row-start-1 row-end-2 sticky top-0 z-40 bg-white shadow-sm border-b border-gray-200 px-6 py-4 h-16 flex items-center justify-between`}>
           <div className="flex items-center gap-6">
-            <div className="flex items-center gap-3 border-r border-gray-200 pr-6">
-              <img src="/default.jpg" alt="avatar" className="w-8 h-8 rounded-full object-cover" />
-              <div>
-                <div className="text-sm font-semibold">{user ? `${user.nombre} ${user.primer_apellido}` : 'Usuario'}</div>
-                <div className="text-xs text-slate-400">{user?.alias || 'Cuenta de usuario'}</div>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-6">
-              {['compra', 'venta', 'proyecto', 'inventario', 'reportes'].map((moduloId) => {
-                const modulo = modulos.find(m => m.id === moduloId);
-                if (!modulo) return null;
-                const isActive = moduloActivo === modulo.id;
-                return (
-                  <button
-                    key={modulo.id}
-                    onClick={() => handleModuloClick(modulo.id)}
-                    className={`text-sm font-medium transition-all duration-300 ease-out hover:-translate-y-0.5 pb-1
-                      ${isActive
-                        ? 'text-blue-900 font-semibold border-b-2 border-blue-600'
-                        : 'text-blue-600 hover:text-blue-800'
-                      }
-                    `}
-                  >
-                    {modulo.label}
-                  </button>
-                );
-              })}
+            <div className="flex items-center gap-2">
+              <Link
+                to="/"
+                onClick={() => setModuloActivo('home')}
+                className="p-2 rounded-lg hover:bg-gray-100 transition-all duration-300 ease-out hover:scale-110 active:scale-95 group"
+                title="Inicio"
+              >
+                <Home className="w-6 h-6 text-gray-700 group-hover:text-blue-600 transition-colors" />
+              </Link>
+              <Link
+                to="/administracion"
+                onClick={() => setModuloActivo('administracion')}
+                className="p-2 rounded-lg hover:bg-gray-100 transition-all duration-300 ease-out hover:scale-110 active:scale-95 group"
+                title="Administración"
+              >
+                <Settings className="w-6 h-6 text-gray-700 group-hover:text-blue-600 transition-colors" />
+              </Link>
+              <button
+                onClick={() => setShowAccountModal(true)}
+                className="flex items-center gap-2 p-2 rounded-lg hover:bg-gray-100 transition-all duration-300 ease-out hover:scale-110 active:scale-95 group"
+                title="Cuenta"
+              >
+                <UserCircle className="w-6 h-6 text-gray-700 group-hover:text-blue-600 transition-colors" />
+                <span className="text-sm font-medium text-gray-700 group-hover:text-blue-600">
+                  {user ? `${user.nombre} ${user.primer_apellido}` : 'Usuario'}
+                </span>
+              </button>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            <Link
-              to="/"
-              onClick={() => setModuloActivo('home')}
-              className="p-2 rounded-lg hover:bg-gray-100 transition-all duration-300 ease-out hover:scale-110 active:scale-95 group"
-              title="Inicio"
-            >
-              <Home className="w-6 h-6 text-gray-700 group-hover:text-blue-600 transition-colors" />
-            </Link>
-            <Link
-              to="/administracion"
-              onClick={() => setModuloActivo('administracion')}
-              className="p-2 rounded-lg hover:bg-gray-100 transition-all duration-300 ease-out hover:scale-110 active:scale-95 group"
-              title="Administración"
-            >
-              <Settings className="w-6 h-6 text-gray-700 group-hover:text-blue-600 transition-colors" />
-            </Link>
-            <button
-              onClick={() => setShowAccountModal(true)}
-              className="p-2 rounded-lg hover:bg-gray-100 transition-all duration-300 ease-out hover:scale-110 active:scale-95 group"
-              title="Cuenta"
-            >
-              <UserCircle className="w-6 h-6 text-gray-700 group-hover:text-blue-600 transition-colors" />
-            </button>
+          <div className="flex items-center gap-6">
+            {['compra', 'venta', 'proyecto', 'inventario', 'reportes'].map((moduloId) => {
+              const modulo = modulos.find(m => m.id === moduloId);
+              if (!modulo) return null;
+              const isActive = moduloActivo === modulo.id;
+              return (
+                <button
+                  key={modulo.id}
+                  onClick={() => handleModuloClick(modulo.id)}
+                  className={`text-sm font-medium transition-all duration-300 ease-out hover:-translate-y-0.5 pb-1
+                    ${isActive
+                      ? 'text-blue-900 font-semibold border-b-2 border-blue-600'
+                      : 'text-blue-600 hover:text-blue-800'
+                    }
+                  `}
+                >
+                  {modulo.label}
+                </button>
+              );
+            })}
           </div>
         </header>
         <div className={`${isHomePage ? 'col-start-1 col-end-3' : 'col-start-2 col-end-3'} row-start-2 row-end-3 min-w-0 flex flex-col overflow-hidden`}>
