@@ -235,6 +235,7 @@ function App() {
     { id: 'proyecto', label: 'Proyectos', icon: Wrench },
     { id: 'inventario', label: 'Inventario', icon: Boxes },
     { id: 'reportes', label: 'Reportes', icon: BarChart3 },
+    { id: 'administracion', label: 'Configuración', icon: Settings },
   ];
 
   function handleToggleSlim(): void {
@@ -503,9 +504,7 @@ function App() {
           </div>
 
           <div className="flex items-center gap-6">
-            {['compra', 'venta', 'proyecto', 'inventario', 'reportes'].map((moduloId) => {
-              const modulo = modulos.find(m => m.id === moduloId);
-              if (!modulo) return null;
+            {modulos.filter(m => m.id !== 'administracion' || user?.grupo?.id_grupo === 1).map((modulo) => {
               const isActive = moduloActivo === modulo.id;
               return (
                 <button
@@ -525,14 +524,6 @@ function App() {
           </div>
 
           <div className="flex items-center gap-2">
-            <Link
-              to="/administracion"
-              onClick={() => setModuloActivo('administracion')}
-              className="p-2 rounded-lg hover:bg-gray-100 transition-all duration-300 ease-out hover:scale-110 active:scale-95 group"
-              title="Administración"
-            >
-              <Settings className="w-6 h-6 text-gray-700 group-hover:text-blue-600 transition-colors" />
-            </Link>
             <button
               onClick={() => setShowAccountModal(true)}
               className="flex items-center gap-2 p-2 rounded-lg hover:bg-gray-100 transition-all duration-300 ease-out hover:scale-110 active:scale-95 group"
