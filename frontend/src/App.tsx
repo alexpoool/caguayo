@@ -42,11 +42,17 @@ import { MovimientosPendientesPage } from './pages/MovimientosPendientes';
 import { RecepcionesPage } from './pages/RecepcionesPage';
 import { MovimientoAjusteForm } from './pages/movimientos/MovimientoAjusteForm';
 import { ConfiguracionPage } from './pages/Configuracion';
+import { MonedasPage } from './pages/Monedas';
+import { UsuariosPage } from './pages/Usuarios';
+import { GruposPage } from './pages/Grupos';
+import { DependenciasPage } from './pages/Dependencias';
+import { CuentasPage } from './pages/Cuentas';
 import { InventarioHome } from './pages/home/InventarioHome';
 import { VentaHome } from './pages/home/VentaHome';
 import { CompraHome } from './pages/home/CompraHome';
 import { ReportesHome } from './pages/home/ReportesHome';
 import { ProyectosHome } from './pages/home/ProyectosHome';
+import { AdministracionHome } from './pages/home/AdministracionHome';
 import ReporteExistencias from './pages/reportes/ReporteExistencias';
 import ReporteMovimientosDependencia from './pages/reportes/ReporteMovimientosDependencia';
 import ReporteMovimientosProducto from './pages/reportes/ReporteMovimientosProducto';
@@ -85,7 +91,7 @@ const queryClient = new QueryClient({
 
 const rutasPorModulo: Record<Modulo, string[]> = {
   inventario: ['/inventario', '/movimientos', '/movimientos/pendientes', '/movimientos/ajuste', '/movimientos/seleccionar-recepcion', '/productos', '/inventario/existencias', '/inventario/movimientos-dependencia', '/inventario/movimientos-producto'],
-  administracion: ['/administracion', '/perfil'],
+  administracion: ['/administracion', '/configuracion', '/monedas', '/usuarios', '/grupos', '/dependencias', '/cuentas', '/perfil'],
   venta: ['/venta', '/ventas', '/clientes', '/ventas/operaciones', '/ventas/contratos', '/ventas/suplementos', '/ventas/facturas', '/ventas/efectivo'],
   compra: ['/compra', '/compra/clientes', '/compra/convenios', '/compra/anexos', '/compra/liquidaciones', '/compra/productos-liquidacion', '/compra/proveedores'],
   proyecto: ['/proyecto', '/proyectos', '/proyectos/servicios', '/proyectos/solicitudes', '/proyectos/proyectos', '/proyectos/etapas', '/proyectos/tareas-etapa', '/proyectos/realizadores', '/proyectos/facturas-servicio', '/proyectos/pagos-factura-servicio', '/proyectos/liquidaciones'],
@@ -285,9 +291,11 @@ function App() {
                       </NavLink>
                     </li>
                   )}
-                  <li className="pt-2">
-                    <p className="text-xs font-semibold text-gray-500 uppercase px-2 mb-1">Reportes</p>
-                  </li>
+                  {!slimSidebar && (
+                    <li className="pt-2">
+                      <p className="text-xs font-semibold text-gray-500 uppercase px-2 mb-1">Reportes</p>
+                    </li>
+                  )}
                   <li>
                     <NavLink to="/inventario/existencias" onClick={handleLinkClick}>
                       <Boxes className="w-6 h-6" />
@@ -315,6 +323,46 @@ function App() {
                       <NavLink to="/configuracion" onClick={handleLinkClick}>
                         <Settings className="w-6 h-6" />
                         Configuración
+                      </NavLink>
+                    </li>
+                  )}
+                  {hasFuncionalidad('monedas') && (
+                    <li>
+                      <NavLink to="/monedas" onClick={handleLinkClick}>
+                        <Coins className="w-6 h-6" />
+                        Monedas
+                      </NavLink>
+                    </li>
+                  )}
+                  {hasFuncionalidad('usuarios') && (
+                    <li>
+                      <NavLink to="/usuarios" onClick={handleLinkClick}>
+                        <Users className="w-6 h-6" />
+                        Usuarios
+                      </NavLink>
+                    </li>
+                  )}
+                  {hasFuncionalidad('grupos') && (
+                    <li>
+                      <NavLink to="/grupos" onClick={handleLinkClick}>
+                        <Shield className="w-6 h-6" />
+                        Grupos
+                      </NavLink>
+                    </li>
+                  )}
+                  {hasFuncionalidad('dependencias') && (
+                    <li>
+                      <NavLink to="/dependencias" onClick={handleLinkClick}>
+                        <Building className="w-6 h-6" />
+                        Dependencias
+                      </NavLink>
+                    </li>
+                  )}
+                  {hasFuncionalidad('cuentas') && (
+                    <li>
+                      <NavLink to="/cuentas" onClick={handleLinkClick}>
+                        <Wallet className="w-6 h-6" />
+                        Cuentas
                       </NavLink>
                     </li>
                   )}
@@ -362,9 +410,11 @@ function App() {
                       </NavLink>
                     </li>
                   )}
-                  <li className="pt-2">
-                    <p className="text-xs font-semibold text-gray-500 uppercase px-2 mb-1">Reportes</p>
-                  </li>
+                  {!slimSidebar && (
+                    <li className="pt-2">
+                      <p className="text-xs font-semibold text-gray-500 uppercase px-2 mb-1">Reportes</p>
+                    </li>
+                  )}
                   <li>
                     <NavLink to="/compra/proveedores" onClick={handleLinkClick}>
                       <UserCircle className="w-6 h-6" />
@@ -471,9 +521,6 @@ function App() {
               )}
               {moduloActivo === 'reportes' && (
                 <ul className="space-y-1 px-3">
-                  <li className="pt-2">
-                    <p className="text-xs font-semibold text-gray-500 uppercase px-2 mb-1">Reportes</p>
-                  </li>
                   <li>
                     <NavLink to="/reportes/mincult" onClick={handleLinkClick}>
                       <FileText className="w-6 h-6" />
@@ -524,16 +571,24 @@ function App() {
           </div>
 
           <div className="flex items-center gap-2">
-            <button
-              onClick={() => setShowAccountModal(true)}
+            <Link
+              to="/perfil"
               className="flex items-center gap-2 p-2 rounded-lg hover:bg-gray-100 transition-all duration-300 ease-out hover:scale-110 active:scale-95 group"
-              title="Cuenta"
+              title="Perfil"
             >
-              <UserCircle className="w-6 h-6 text-gray-700 group-hover:text-blue-600 transition-colors" />
-              <span className="text-sm font-medium text-gray-700 group-hover:text-blue-600">
+              <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center overflow-hidden">
+                {user ? (
+                  <span className="text-sm font-medium text-blue-700">
+                    {user.nombre[0]}{user.primer_apellido[0]}
+                  </span>
+                ) : (
+                  <UserCircle className="w-5 h-5 text-blue-500" />
+                )}
+              </div>
+              <span className="text-sm font-medium text-gray-700 group-hover:text-blue-600 hidden sm:inline">
                 {user ? `${user.nombre} ${user.primer_apellido}` : 'Usuario'}
               </span>
-            </button>
+            </Link>
           </div>
         </header>
         <div className={`${isHomePage ? 'col-start-1 col-end-3' : 'col-start-2 col-end-3'} row-start-2 row-end-3 min-w-0 flex flex-col overflow-hidden`}>
@@ -763,7 +818,55 @@ function App() {
                   path="/administracion"
                   element={
                     <ProtectedRoute moduloActivo={moduloActivo} currentPath="/administracion">
+                      <AdministracionHome />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/configuracion"
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/configuracion">
                       <ConfiguracionPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/monedas"
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/monedas">
+                      <MonedasPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/usuarios"
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/usuarios">
+                      <UsuariosPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/grupos"
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/grupos">
+                      <GruposPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/dependencias"
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/dependencias">
+                      <DependenciasPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/cuentas"
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/cuentas">
+                      <CuentasPage />
                     </ProtectedRoute>
                   }
                 />

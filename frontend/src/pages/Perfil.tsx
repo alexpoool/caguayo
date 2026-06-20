@@ -5,13 +5,13 @@ import { authService } from '../services/auth';
 import { Button, Input, Card, CardContent, CardHeader, CardTitle } from '../components/ui';
 import { 
   User, Lock, Save, ArrowLeft, Loader2, 
-  Shield, Database, Building2, BadgeCheck 
+  Shield, Database, Building2, BadgeCheck, LogOut
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export function PerfilPage() {
   const navigate = useNavigate();
-  const { user, refreshUser } = useAuth();
+  const { user, refreshUser, logout } = useAuth();
   
   const [alias, setAlias] = useState(user?.alias || '');
   const [contraseniaActual, setContraseniaActual] = useState('');
@@ -285,6 +285,34 @@ export function PerfilPage() {
                   </Button>
                 </div>
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Cerrar sesión */}
+          <Card className="border-0 shadow-lg border-red-100">
+            <CardHeader className="bg-white rounded-t-2xl border-b border-red-100 pb-4">
+              <CardTitle className="flex items-center gap-3 text-gray-800">
+                <div className="p-2 bg-red-100 rounded-xl">
+                  <LogOut className="h-5 w-5 text-red-600" />
+                </div>
+                Sesión
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-6">
+              <p className="text-gray-600 mb-4">
+                Cierra tu sesión actual de forma segura.
+              </p>
+              <Button
+                onClick={async () => {
+                  await logout();
+                  navigate('/login', { replace: true });
+                }}
+                variant="outline"
+                className="h-12 px-6 border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300 flex items-center gap-2"
+              >
+                <LogOut className="h-5 w-5" />
+                Salir de la sesión
+              </Button>
             </CardContent>
           </Card>
         </div>
