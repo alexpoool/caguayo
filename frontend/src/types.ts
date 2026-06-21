@@ -72,4 +72,4 @@ export interface DashboardStats {
 
 export interface Dependencia{
   
-};
+}

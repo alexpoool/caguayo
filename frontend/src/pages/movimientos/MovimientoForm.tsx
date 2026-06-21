@@ -9,7 +9,12 @@ import {
   subcategoriasService,
 } from "../../services/api";
 import { useDependenciasFiltradas } from "../../hooks/useDependenciasFiltradas";
-import type { MovimientoCreate, Productos, ProductosCreate, ProductoConCantidad } from "../../types/index";
+import type {
+  MovimientoCreate,
+  Productos,
+  ProductosCreate,
+  ProductoConCantidad,
+} from "../../types/index";
 import type { FacturaWithDetails } from "../../types/contrato";
 import { generarCodigoMovimiento } from "../../utils/codigos";
 import {
@@ -338,15 +343,25 @@ export function MovimientoRecepcionForm({
   const [showNuevoProductoModal, setShowNuevoProductoModal] = useState(false);
   const [busquedaProducto, setBusquedaProducto] = useState("");
   const [showDropdownProducto, setShowDropdownProducto] = useState(false);
-  const [productoSeleccionado, setProductoSeleccionado] = useState<Productos | null>(null);
-  const [selectedItemAnexo, setSelectedItemAnexo] = useState<ProductoConCantidad | null>(null);
+  const [productoSeleccionado, setProductoSeleccionado] =
+    useState<Productos | null>(null);
+  const [selectedItemAnexo, setSelectedItemAnexo] =
+    useState<ProductoConCantidad | null>(null);
   const dropdownProductoRef = useRef<HTMLDivElement>(null);
 
   // Estado para precios adicionales (precio_item_anexo)
   const [showPreciosModal, setShowPreciosModal] = useState(false);
-  const [preciosExtra, setPreciosExtra] = useState<{ precio_compra: string; precio_venta: string; id_moneda: number }[]>([]);
-  const [currentPrecioForm, setCurrentPrecioForm] = useState({ precio_compra: "", precio_venta: "", id_moneda: 0 });
-  const [editingPrecioIndex, setEditingPrecioIndex] = useState<number | null>(null);
+  const [preciosExtra, setPreciosExtra] = useState<
+    { precio_compra: string; precio_venta: string; id_moneda: number }[]
+  >([]);
+  const [currentPrecioForm, setCurrentPrecioForm] = useState({
+    precio_compra: "",
+    precio_venta: "",
+    id_moneda: 0,
+  });
+  const [editingPrecioIndex, setEditingPrecioIndex] = useState<number | null>(
+    null,
+  );
 
   // Elevar precios extra al padre
   useEffect(() => {
@@ -356,7 +371,10 @@ export function MovimientoRecepcionForm({
   // Cerrar dropdown de producto al hacer click fuera
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (dropdownProductoRef.current && !dropdownProductoRef.current.contains(event.target as Node)) {
+      if (
+        dropdownProductoRef.current &&
+        !dropdownProductoRef.current.contains(event.target as Node)
+      ) {
         setShowDropdownProducto(false);
       }
     }
@@ -437,18 +455,20 @@ export function MovimientoRecepcionForm({
   });
 
   // RECEPCION: todos los productos de la tabla
-  const { data: todosProductos = [], isLoading: isLoadingTodosProductos } = useQuery({
-    queryKey: ["productos"],
-    queryFn: () => productosService.getProductos(0, 500),
-    enabled: tipoMovimiento === "RECEPCION",
-  });
+  const { data: todosProductos = [], isLoading: isLoadingTodosProductos } =
+    useQuery({
+      queryKey: ["productos"],
+      queryFn: () => productosService.getProductos(0, 500),
+      enabled: tipoMovimiento === "RECEPCION",
+    });
 
   // Salidas: solo productos con stock desde item_anexo
-  const { data: productosConStock = [], isLoading: isLoadingProductosStock } = useQuery({
-    queryKey: ["productos-con-stock-item-anexo"],
-    queryFn: () => productosService.getProductosConStockItemAnexo(),
-    enabled: tipoMovimiento !== "RECEPCION",
-  });
+  const { data: productosConStock = [], isLoading: isLoadingProductosStock } =
+    useQuery({
+      queryKey: ["productos-con-stock-item-anexo"],
+      queryFn: () => productosService.getProductosConStockItemAnexo(),
+      enabled: tipoMovimiento !== "RECEPCION",
+    });
 
   const { data: subcategorias = [] } = useQuery({
     queryKey: ["subcategorias"],
@@ -456,18 +476,25 @@ export function MovimientoRecepcionForm({
   });
 
   // Producto seleccionado según el tipo de movimiento
-  const selectedProduct = tipoMovimiento === "RECEPCION"
-    ? todosProductos.find((p) => Number(p.id_producto) === Number(formData.id_producto))
-    : selectedItemAnexo;
+  const selectedProduct =
+    tipoMovimiento === "RECEPCION"
+      ? todosProductos.find(
+          (p) => Number(p.id_producto) === Number(formData.id_producto),
+        )
+      : selectedItemAnexo;
 
   // Auto-completar precios y monedas para RECEPCION
   useEffect(() => {
     if (tipoMovimiento === "RECEPCION" && productoSeleccionado) {
       setFormData((prev) => ({
         ...prev,
-        precio_compra: productoSeleccionado.precio_compra ? Number(productoSeleccionado.precio_compra) : undefined,
+        precio_compra: productoSeleccionado.precio_compra
+          ? Number(productoSeleccionado.precio_compra)
+          : undefined,
         moneda_compra: productoSeleccionado.moneda_compra || undefined,
-        precio_venta: productoSeleccionado.precio_venta ? Number(productoSeleccionado.precio_venta) : undefined,
+        precio_venta: productoSeleccionado.precio_venta
+          ? Number(productoSeleccionado.precio_venta)
+          : undefined,
       }));
     }
   }, [productoSeleccionado, tipoMovimiento]);
@@ -478,9 +505,13 @@ export function MovimientoRecepcionForm({
       setFormData((prev) => ({
         ...prev,
         id_producto: selectedItemAnexo.id_producto,
-        precio_compra: selectedItemAnexo.precio_compra ? Number(selectedItemAnexo.precio_compra) : undefined,
+        precio_compra: selectedItemAnexo.precio_compra
+          ? Number(selectedItemAnexo.precio_compra)
+          : undefined,
         moneda_compra: selectedItemAnexo.id_moneda || undefined,
-        precio_venta: selectedItemAnexo.precio_venta ? Number(selectedItemAnexo.precio_venta) : undefined,
+        precio_venta: selectedItemAnexo.precio_venta
+          ? Number(selectedItemAnexo.precio_venta)
+          : undefined,
       }));
     }
   }, [selectedItemAnexo, tipoMovimiento]);
@@ -695,8 +726,7 @@ export function MovimientoRecepcionForm({
   const ImpactoIcon = config.impactoIcon;
   const mostrarPrecios = tipoMovimiento === "RECEPCION";
   const esSalida = ["MERMA", "DONACION", "DEVOLUCION"].includes(tipoMovimiento);
-  const sinStock =
-    esSalida && selectedProduct && (selectedProduct as any).cantidad <= 0;
+  const sinStock = esSalida && !!selectedProduct && (selectedProduct as any).cantidad <= 0;
 
   return (
     <div className="space-y-4">
@@ -735,111 +765,142 @@ export function MovimientoRecepcionForm({
             </CardHeader>
             <CardContent className="p-6">
               {tipoMovimiento === "RECEPCION" ? (
-                <div><div className="grid grid-cols-[4fr_1fr_4fr] gap-4 items-start">
-                  <div ref={dropdownProductoRef} className="relative">
-                    <Label className="text-sm font-semibold mb-1.5 text-gray-700 flex items-center gap-2">
-                      <Package className="h-4 w-4 text-blue-500" />
-                      Producto *
-                    </Label>
-                    <div className="relative mt-1">
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                      <input
-                        type="text"
-                        placeholder="Buscar producto..."
-                        value={productoSeleccionado ? productoSeleccionado.nombre : busquedaProducto}
-                        disabled={!!productoSeleccionado}
-                        onChange={(e) => {
-                          setBusquedaProducto(e.target.value);
-                          setShowDropdownProducto(true);
-                          setProductoSeleccionado(null);
-                          setFormData((prev) => ({ ...prev, id_producto: undefined }));
-                        }}
-                        onFocus={() => setShowDropdownProducto(true)}
-                        className="w-full pl-10 pr-10 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white disabled:bg-gray-100"
-                      />
-                      {productoSeleccionado && (
-                        <button
-                          type="button"
-                          onClick={() => {
+                <div>
+                  <div className="grid grid-cols-[4fr_1fr_4fr] gap-4 items-start">
+                    <div ref={dropdownProductoRef} className="relative">
+                      <Label className="text-sm font-semibold mb-1.5 text-gray-700 flex items-center gap-2">
+                        <Package className="h-4 w-4 text-blue-500" />
+                        Producto *
+                      </Label>
+                      <div className="relative mt-1">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                        <input
+                          type="text"
+                          placeholder="Buscar producto..."
+                          value={
+                            productoSeleccionado
+                              ? productoSeleccionado.nombre
+                              : busquedaProducto
+                          }
+                          disabled={!!productoSeleccionado}
+                          onChange={(e) => {
+                            setBusquedaProducto(e.target.value);
+                            setShowDropdownProducto(true);
                             setProductoSeleccionado(null);
-                            setBusquedaProducto("");
-                            setFormData((prev) => ({ ...prev, id_producto: undefined, precio_compra: undefined, moneda_compra: undefined, precio_venta: undefined }));
+                            setFormData((prev) => ({
+                              ...prev,
+                              id_producto: undefined,
+                            }));
                           }}
-                          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-red-500"
-                        >
-                          <X className="h-4 w-4" />
-                        </button>
-                      )}
-                    </div>
-                    {showDropdownProducto && !productoSeleccionado && (
-                      <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-auto">
-                        {isLoadingTodosProductos ? (
-                          <div className="p-4 text-center text-gray-500">Cargando...</div>
-                        ) : todosProductos.filter((p) =>
-                            p.nombre.toLowerCase().includes(busquedaProducto.toLowerCase())
-                          ).length > 0 ? (
-                          todosProductos
-                            .filter((p) =>
-                              p.nombre.toLowerCase().includes(busquedaProducto.toLowerCase())
-                            )
-                            .map((p) => (
-                              <button
-                                key={p.id_producto}
-                                type="button"
-                                onClick={() => {
-                                  setProductoSeleccionado(p);
-                                  setShowDropdownProducto(false);
-                                  setBusquedaProducto("");
-                                  setFormData((prev) => ({ ...prev, id_producto: p.id_producto }));
-                                }}
-                                className="w-full text-left px-4 py-2 hover:bg-blue-50 transition-colors border-b border-gray-100 last:border-b-0"
-                              >
-                                <div className="flex justify-between items-center">
-                                  <span className="font-medium text-gray-900">{p.nombre}</span>
-                                  <span className="text-green-600 text-xs font-medium">
-                                    {p.precio_compra ? `Compra: $${Number(p.precio_compra).toFixed(2)}` : ""}
-                                  </span>
-                                </div>
-                                {p.descripcion && (
-                                  <span className="text-xs text-gray-400">{p.descripcion}</span>
-                                )}
-                              </button>
-                            ))
-                        ) : (
-                          <div className="p-4 text-center text-gray-500 text-sm">
-                            {busquedaProducto ? "No se encontraron resultados" : "Escribe para buscar..."}
-                          </div>
+                          onFocus={() => setShowDropdownProducto(true)}
+                          className="w-full pl-10 pr-10 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white disabled:bg-gray-100"
+                        />
+                        {productoSeleccionado && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setProductoSeleccionado(null);
+                              setBusquedaProducto("");
+                              setFormData((prev) => ({
+                                ...prev,
+                                id_producto: undefined,
+                                precio_compra: undefined,
+                                moneda_compra: undefined,
+                                precio_venta: undefined,
+                              }));
+                            }}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-red-500"
+                          >
+                            <X className="h-4 w-4" />
+                          </button>
                         )}
                       </div>
-                    )}
-                  </div>
-                  <div>
-                    <Label className="text-sm font-medium">Cantidad *</Label>
-                    <Input
-                      type="number"
-                      min="1"
-                      required
-                      className="mt-1 focus:ring-2 focus:ring-blue-500 outline-none"
-                      value={formData.cantidad || ""}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          cantidad: parseInt(e.target.value) || 0,
-                        })
-                      }
-                      placeholder="0"
-                    />
-                  </div>
-                  <div className="pt-7">
-                    <button
-                      type="button"
-                      onClick={() => setShowNuevoProductoModal(true)}
-                      className="w-full py-2.5 px-4 bg-green-500 hover:bg-green-600 text-white rounded-lg transition-colors font-medium flex items-center justify-center gap-2 whitespace-nowrap"
-                    >
-                      <Plus className="h-4 w-4" />
-                      Nuevo Producto
-                    </button>
-                  </div>
+                      {showDropdownProducto && !productoSeleccionado && (
+                        <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-auto">
+                          {isLoadingTodosProductos ? (
+                            <div className="p-4 text-center text-gray-500">
+                              Cargando...
+                            </div>
+                          ) : todosProductos.filter((p) =>
+                              p.nombre
+                                .toLowerCase()
+                                .includes(busquedaProducto.toLowerCase()),
+                            ).length > 0 ? (
+                            todosProductos
+                              .filter((p) =>
+                                p.nombre
+                                  .toLowerCase()
+                                  .includes(busquedaProducto.toLowerCase()),
+                              )
+                              .map((p) => (
+                                <button
+                                  key={p.id_producto}
+                                  type="button"
+                                  onClick={() => {
+                                    setProductoSeleccionado(p);
+                                    setShowDropdownProducto(false);
+                                    setBusquedaProducto("");
+                                    setFormData((prev) => ({
+                                      ...prev,
+                                      id_producto: p.id_producto,
+                                    }));
+                                  }}
+                                  className="w-full text-left px-4 py-2 hover:bg-blue-50 transition-colors border-b border-gray-100 last:border-b-0"
+                                >
+                                  <div className="flex justify-between items-center">
+                                    <span className="font-medium text-gray-900">
+                                      {p.nombre}
+                                    </span>
+                                    <span className="text-green-600 text-xs font-medium">
+                                      {p.precio_compra
+                                        ? `Compra: $${Number(p.precio_compra).toFixed(2)}`
+                                        : ""}
+                                    </span>
+                                  </div>
+                                  {p.descripcion && (
+                                    <span className="text-xs text-gray-400">
+                                      {p.descripcion}
+                                    </span>
+                                  )}
+                                </button>
+                              ))
+                          ) : (
+                            <div className="p-4 text-center text-gray-500 text-sm">
+                              {busquedaProducto
+                                ? "No se encontraron resultados"
+                                : "Escribe para buscar..."}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                    <div>
+                      <Label className="text-sm font-medium">Cantidad *</Label>
+                      <Input
+                        type="number"
+                        min="1"
+                        required
+                        className="mt-1 focus:ring-2 focus:ring-blue-500 outline-none"
+                        value={formData.cantidad || ""}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            cantidad: parseInt(e.target.value) || 0,
+                          })
+                        }
+                        placeholder="0"
+                      />
+                    </div>
+                    <div className="pt-7">
+                      <button
+                        type="button"
+                        onClick={() => setShowNuevoProductoModal(true)}
+                        className="w-full py-2.5 px-4 bg-green-500 hover:bg-green-600 text-white rounded-lg transition-colors font-medium flex items-center justify-center gap-2 whitespace-nowrap"
+                      >
+                        <Plus className="h-4 w-4" />
+                        Nuevo Producto
+                      </button>
+                    </div>
                   </div>
                   {/* Precios para RECEPCION dentro del mismo card */}
                   {mostrarPrecios && (
@@ -847,16 +908,36 @@ export function MovimientoRecepcionForm({
                       {/* Tabla Precios Base */}
                       <div className="mb-2">
                         <div className="flex items-center gap-2 mb-2">
-                          <svg className="h-4 w-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                          <span className="text-sm font-medium text-gray-700">Precios Base</span>
+                          <svg
+                            className="h-4 w-4 text-green-600"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                            />
+                          </svg>
+                          <span className="text-sm font-medium text-gray-700">
+                            Precios Base
+                          </span>
                         </div>
                         <div className="rounded-lg border border-gray-200 overflow-hidden">
                           <table className="w-full text-sm">
                             <thead>
                               <tr className="bg-gray-50 border-b border-gray-200">
-                                <th className="text-left px-4 py-2.5 font-medium text-gray-600 text-xs uppercase tracking-wider">Moneda</th>
-                                <th className="text-left px-4 py-2.5 font-medium text-gray-600 text-xs uppercase tracking-wider">Precio Compra</th>
-                                <th className="text-left px-4 py-2.5 font-medium text-gray-600 text-xs uppercase tracking-wider">Precio Venta</th>
+                                <th className="text-left px-4 py-2.5 font-medium text-gray-600 text-xs uppercase tracking-wider">
+                                  Moneda
+                                </th>
+                                <th className="text-left px-4 py-2.5 font-medium text-gray-600 text-xs uppercase tracking-wider">
+                                  Precio Compra
+                                </th>
+                                <th className="text-left px-4 py-2.5 font-medium text-gray-600 text-xs uppercase tracking-wider">
+                                  Precio Venta
+                                </th>
                               </tr>
                             </thead>
                             <tbody>
@@ -867,7 +948,8 @@ export function MovimientoRecepcionForm({
                                     onChange={(e) =>
                                       setFormData({
                                         ...formData,
-                                        moneda_compra: parseInt(e.target.value) || 0,
+                                        moneda_compra:
+                                          parseInt(e.target.value) || 0,
                                       })
                                     }
                                     disabled={isLoadingMonedas}
@@ -875,7 +957,10 @@ export function MovimientoRecepcionForm({
                                   >
                                     <option value="">Moneda</option>
                                     {monedas.map((moneda) => (
-                                      <option key={moneda.id_moneda} value={moneda.id_moneda}>
+                                      <option
+                                        key={moneda.id_moneda}
+                                        value={moneda.id_moneda}
+                                      >
                                         {moneda.simbolo} - {moneda.denominacion}
                                       </option>
                                     ))}
@@ -891,7 +976,8 @@ export function MovimientoRecepcionForm({
                                     onChange={(e) =>
                                       setFormData({
                                         ...formData,
-                                        precio_compra: parseFloat(e.target.value) || 0,
+                                        precio_compra:
+                                          parseFloat(e.target.value) || 0,
                                       })
                                     }
                                     placeholder="0.00"
@@ -908,7 +994,8 @@ export function MovimientoRecepcionForm({
                                     onChange={(e) =>
                                       setFormData({
                                         ...formData,
-                                        precio_venta: parseFloat(e.target.value) || 0,
+                                        precio_venta:
+                                          parseFloat(e.target.value) || 0,
                                       })
                                     }
                                     placeholder="0.00"
@@ -924,8 +1011,22 @@ export function MovimientoRecepcionForm({
                       <div className="mt-4 pt-4 border-t border-green-200">
                         <div className="flex items-center justify-between mb-1">
                           <div className="flex items-center gap-2">
-                            <svg className="h-4 w-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                            <span className="text-sm font-medium text-gray-700">Precios Adicionales</span>
+                            <svg
+                              className="h-4 w-4 text-green-600"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                              />
+                            </svg>
+                            <span className="text-sm font-medium text-gray-700">
+                              Precios Adicionales
+                            </span>
                             {preciosExtra.length > 0 && (
                               <span className="inline-flex items-center justify-center h-5 min-w-[1.25rem] px-1.5 text-xs font-bold text-green-700 bg-green-100 rounded-full">
                                 {preciosExtra.length}
@@ -935,7 +1036,11 @@ export function MovimientoRecepcionForm({
                           <button
                             type="button"
                             onClick={() => {
-                              setCurrentPrecioForm({ precio_compra: "", precio_venta: "", id_moneda: 0 });
+                              setCurrentPrecioForm({
+                                precio_compra: "",
+                                precio_venta: "",
+                                id_moneda: 0,
+                              });
                               setEditingPrecioIndex(null);
                               setShowPreciosModal(true);
                             }}
@@ -946,7 +1051,9 @@ export function MovimientoRecepcionForm({
                           </button>
                         </div>
                         {preciosExtra.length === 0 && (
-                          <p className="text-xs text-gray-400 mt-2 ml-6">Sin precios adicionales</p>
+                          <p className="text-xs text-gray-400 mt-2 ml-6">
+                            Sin precios adicionales
+                          </p>
                         )}
                         {preciosExtra.length > 0 && (
                           <div className="mt-4">
@@ -954,25 +1061,42 @@ export function MovimientoRecepcionForm({
                               <table className="w-full text-sm">
                                 <thead>
                                   <tr className="bg-gray-50 border-b border-gray-200">
-                                    <th className="text-left px-4 py-2.5 font-medium text-gray-600 text-xs uppercase tracking-wider">Moneda</th>
-                                    <th className="text-right px-4 py-2.5 font-medium text-gray-600 text-xs uppercase tracking-wider">Precio Compra</th>
-                                    <th className="text-right px-4 py-2.5 font-medium text-gray-600 text-xs uppercase tracking-wider">Precio Venta</th>
-                                    <th className="text-center px-4 py-2.5 font-medium text-gray-600 text-xs uppercase tracking-wider w-20">Acción</th>
+                                    <th className="text-left px-4 py-2.5 font-medium text-gray-600 text-xs uppercase tracking-wider">
+                                      Moneda
+                                    </th>
+                                    <th className="text-right px-4 py-2.5 font-medium text-gray-600 text-xs uppercase tracking-wider">
+                                      Precio Compra
+                                    </th>
+                                    <th className="text-right px-4 py-2.5 font-medium text-gray-600 text-xs uppercase tracking-wider">
+                                      Precio Venta
+                                    </th>
+                                    <th className="text-center px-4 py-2.5 font-medium text-gray-600 text-xs uppercase tracking-wider w-20">
+                                      Acción
+                                    </th>
                                   </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-100">
                                   {preciosExtra.map((p, i) => {
-                                    const moneda = monedas.find((m) => m.id_moneda === p.id_moneda);
+                                    const moneda = monedas.find(
+                                      (m) => m.id_moneda === p.id_moneda,
+                                    );
                                     return (
-                                      <tr key={i} className="hover:bg-green-50/50 transition-colors group">
+                                      <tr
+                                        key={i}
+                                        className="hover:bg-green-50/50 transition-colors group"
+                                      >
                                         <td className="px-4 py-2.5">
                                           <span className="inline-flex items-center gap-1.5 px-2 py-1 bg-blue-50 text-blue-700 rounded-md text-xs font-medium">
                                             {moneda?.simbolo || "?"}
                                           </span>
-                                          <span className="ml-2 text-gray-500 text-xs">{moneda?.denominacion || ""}</span>
+                                          <span className="ml-2 text-gray-500 text-xs">
+                                            {moneda?.denominacion || ""}
+                                          </span>
                                         </td>
                                         <td className="px-4 py-2.5 text-right font-medium text-gray-700">
-                                          {p.precio_compra ? Number(p.precio_compra).toFixed(2) : "-"}
+                                          {p.precio_compra
+                                            ? Number(p.precio_compra).toFixed(2)
+                                            : "-"}
                                         </td>
                                         <td className="px-4 py-2.5 text-right font-medium text-green-700">
                                           {Number(p.precio_venta).toFixed(2)}
@@ -989,15 +1113,45 @@ export function MovimientoRecepcionForm({
                                               className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors"
                                               title="Editar"
                                             >
-                                              <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                                              <svg
+                                                className="h-3.5 w-3.5"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                viewBox="0 0 24 24"
+                                              >
+                                                <path
+                                                  strokeLinecap="round"
+                                                  strokeLinejoin="round"
+                                                  strokeWidth={2}
+                                                  d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                                                />
+                                              </svg>
                                             </button>
                                             <button
                                               type="button"
-                                              onClick={() => setPreciosExtra((prev) => prev.filter((_, j) => j !== i))}
+                                              onClick={() =>
+                                                setPreciosExtra((prev) =>
+                                                  prev.filter(
+                                                    (_, j) => j !== i,
+                                                  ),
+                                                )
+                                              }
                                               className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
                                               title="Eliminar"
                                             >
-                                              <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                              <svg
+                                                className="h-3.5 w-3.5"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                viewBox="0 0 24 24"
+                                              >
+                                                <path
+                                                  strokeLinecap="round"
+                                                  strokeLinejoin="round"
+                                                  strokeWidth={2}
+                                                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                                                />
+                                              </svg>
                                             </button>
                                           </div>
                                         </td>
@@ -1008,7 +1162,10 @@ export function MovimientoRecepcionForm({
                               </table>
                             </div>
                             <p className="mt-1.5 text-xs text-gray-400 text-right">
-                              {preciosExtra.length} {preciosExtra.length === 1 ? "precio adicional" : "precios adicionales"}
+                              {preciosExtra.length}{" "}
+                              {preciosExtra.length === 1
+                                ? "precio adicional"
+                                : "precios adicionales"}
                             </p>
                           </div>
                         )}
@@ -1017,158 +1174,221 @@ export function MovimientoRecepcionForm({
                   )}
                 </div>
               ) : (
-                <div><div className="grid grid-cols-[4fr_1fr_4fr] gap-4 items-start">
-                  <div ref={dropdownProductoRef} className="relative">
-                    <Label className="text-sm font-semibold mb-1.5 text-gray-700 flex items-center gap-2">
-                      <Package className="h-4 w-4 text-blue-500" />
-                      Producto *
-                    </Label>
-                    <div className="relative mt-1">
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                      <input
-                        type="text"
-                        placeholder="Buscar producto del inventario..."
-                        value={selectedItemAnexo ? selectedItemAnexo.nombre : busquedaProducto}
-                        disabled={!!selectedItemAnexo}
-                        onChange={(e) => {
-                          setBusquedaProducto(e.target.value);
-                          setShowDropdownProducto(true);
-                          setSelectedItemAnexo(null);
-                          setFormData((prev) => ({ ...prev, id_producto: undefined, precio_compra: undefined, moneda_compra: undefined, precio_venta: undefined }));
-                        }}
-                        onFocus={() => setShowDropdownProducto(true)}
-                        className="w-full pl-10 pr-10 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white disabled:bg-gray-100"
-                      />
-                      {selectedItemAnexo && (
-                        <button
-                          type="button"
-                          onClick={() => {
+                <div>
+                  <div className="grid grid-cols-[4fr_1fr_4fr] gap-4 items-start">
+                    <div ref={dropdownProductoRef} className="relative">
+                      <Label className="text-sm font-semibold mb-1.5 text-gray-700 flex items-center gap-2">
+                        <Package className="h-4 w-4 text-blue-500" />
+                        Producto *
+                      </Label>
+                      <div className="relative mt-1">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                        <input
+                          type="text"
+                          placeholder="Buscar producto del inventario..."
+                          value={
+                            selectedItemAnexo
+                              ? selectedItemAnexo.nombre
+                              : busquedaProducto
+                          }
+                          disabled={!!selectedItemAnexo}
+                          onChange={(e) => {
+                            setBusquedaProducto(e.target.value);
+                            setShowDropdownProducto(true);
                             setSelectedItemAnexo(null);
-                            setBusquedaProducto("");
-                            setFormData((prev) => ({ ...prev, id_producto: undefined, precio_compra: undefined, moneda_compra: undefined, precio_venta: undefined }));
+                            setFormData((prev) => ({
+                              ...prev,
+                              id_producto: undefined,
+                              precio_compra: undefined,
+                              moneda_compra: undefined,
+                              precio_venta: undefined,
+                            }));
                           }}
-                          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-red-500"
-                        >
-                          <X className="h-4 w-4" />
-                        </button>
-                      )}
-                    </div>
-                    {showDropdownProducto && !selectedItemAnexo && (
-                      <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-auto">
-                        {isLoadingProductosStock ? (
-                          <div className="p-4 text-center text-gray-500">Cargando...</div>
-                        ) : productosConStock.filter((p) =>
-                            p.nombre.toLowerCase().includes(busquedaProducto.toLowerCase())
-                          ).length > 0 ? (
-                          productosConStock
-                            .filter((p) =>
-                              p.nombre.toLowerCase().includes(busquedaProducto.toLowerCase())
-                            )
-                            .map((p, idx) => (
-                              <button
-                                key={`${p.id_item_anexo}-${idx}`}
-                                type="button"
-                                onClick={() => {
-                                  setSelectedItemAnexo(p);
-                                  setShowDropdownProducto(false);
-                                  setBusquedaProducto("");
-                                }}
-                                className="w-full text-left px-4 py-2 hover:bg-blue-50 transition-colors border-b border-gray-100 last:border-b-0"
-                              >
-                                <div className="flex justify-between items-center">
-                                  <span className="font-medium text-gray-900">{p.nombre}</span>
-                                  <div className="flex items-center gap-3">
-                                    <span className="text-gray-500 text-xs">Stock: {p.cantidad}</span>
-                                    {p.precio_compra && (
-                                      <span className="text-green-600 text-xs font-medium">
-                                        Compra: ${Number(p.precio_compra).toFixed(2)}
-                                      </span>
-                                    )}
-                                    {p.precio_venta && (
-                                      <span className="text-blue-600 text-xs font-medium">
-                                        Venta: ${Number(p.precio_venta).toFixed(2)}
-                                      </span>
-                                    )}
-                                    <span className="text-gray-400 text-xs">{p.moneda_simbolo || ""}</span>
-                                  </div>
-                                </div>
-                                {p.descripcion && (
-                                  <span className="text-xs text-gray-400">{p.descripcion}</span>
-                                )}
-                              </button>
-                            ))
-                        ) : (
-                          <div className="p-4 text-center text-gray-500 text-sm">
-                            {busquedaProducto ? "No se encontraron resultados" : "Escribe para buscar..."}
-                          </div>
+                          onFocus={() => setShowDropdownProducto(true)}
+                          className="w-full pl-10 pr-10 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white disabled:bg-gray-100"
+                        />
+                        {selectedItemAnexo && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedItemAnexo(null);
+                              setBusquedaProducto("");
+                              setFormData((prev) => ({
+                                ...prev,
+                                id_producto: undefined,
+                                precio_compra: undefined,
+                                moneda_compra: undefined,
+                                precio_venta: undefined,
+                              }));
+                            }}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-red-500"
+                          >
+                            <X className="h-4 w-4" />
+                          </button>
                         )}
                       </div>
-                    )}
-                    {sinStock && (
-                      <div className="mt-2 px-3 py-2 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2">
-                        <AlertCircle className="h-4 w-4 text-red-500" />
-                        <span className="text-sm text-red-700">
-                          No hay stock disponible. Solo se permiten recepciones para este producto.
+                      {showDropdownProducto && !selectedItemAnexo && (
+                        <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-auto">
+                          {isLoadingProductosStock ? (
+                            <div className="p-4 text-center text-gray-500">
+                              Cargando...
+                            </div>
+                          ) : productosConStock.filter((p) =>
+                              p.nombre
+                                .toLowerCase()
+                                .includes(busquedaProducto.toLowerCase()),
+                            ).length > 0 ? (
+                            productosConStock
+                              .filter((p) =>
+                                p.nombre
+                                  .toLowerCase()
+                                  .includes(busquedaProducto.toLowerCase()),
+                              )
+                              .map((p, idx) => (
+                                <button
+                                  key={`${p.id_item_anexo}-${idx}`}
+                                  type="button"
+                                  onClick={() => {
+                                    setSelectedItemAnexo(p);
+                                    setShowDropdownProducto(false);
+                                    setBusquedaProducto("");
+                                  }}
+                                  className="w-full text-left px-4 py-2 hover:bg-blue-50 transition-colors border-b border-gray-100 last:border-b-0"
+                                >
+                                  <div className="flex justify-between items-center">
+                                    <span className="font-medium text-gray-900">
+                                      {p.nombre}
+                                    </span>
+                                    <div className="flex items-center gap-3">
+                                      <span className="text-gray-500 text-xs">
+                                        Stock: {p.cantidad}
+                                      </span>
+                                      {p.precio_compra && (
+                                        <span className="text-green-600 text-xs font-medium">
+                                          Compra: $
+                                          {Number(p.precio_compra).toFixed(2)}
+                                        </span>
+                                      )}
+                                      {p.precio_venta && (
+                                        <span className="text-blue-600 text-xs font-medium">
+                                          Venta: $
+                                          {Number(p.precio_venta).toFixed(2)}
+                                        </span>
+                                      )}
+                                      <span className="text-gray-400 text-xs">
+                                        {p.moneda_simbolo || ""}
+                                      </span>
+                                    </div>
+                                  </div>
+                                  {p.descripcion && (
+                                    <span className="text-xs text-gray-400">
+                                      {p.descripcion}
+                                    </span>
+                                  )}
+                                </button>
+                              ))
+                          ) : (
+                            <div className="p-4 text-center text-gray-500 text-sm">
+                              {busquedaProducto
+                                ? "No se encontraron resultados"
+                                : "Escribe para buscar..."}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      {sinStock && (
+                        <div className="mt-2 px-3 py-2 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2">
+                          <AlertCircle className="h-4 w-4 text-red-500" />
+                          <span className="text-sm text-red-700">
+                            No hay stock disponible. Solo se permiten
+                            recepciones para este producto.
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                    <div>
+                      <Label className="text-sm font-medium">Cantidad *</Label>
+                      <Input
+                        type="number"
+                        min="1"
+                        max={selectedItemAnexo?.cantidad || undefined}
+                        required
+                        className="mt-1 focus:ring-2 focus:ring-blue-500 outline-none"
+                        value={formData.cantidad || ""}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            cantidad: parseInt(e.target.value) || 0,
+                          })
+                        }
+                        placeholder="Cantidad"
+                      />
+                    </div>
+                    <div />
+                  </div>
+                  {/* Precios del item_anexo seleccionado (solo lectura) */}
+                  {selectedItemAnexo && (
+                    <div className="mt-4 pt-4 border-t border-gray-200">
+                      <div className="flex items-center gap-2 mb-2">
+                        <svg
+                          className="h-4 w-4 text-gray-500"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                          />
+                        </svg>
+                        <span className="text-sm font-medium text-gray-700">
+                          Precios del Producto
                         </span>
                       </div>
-                    )}
-                  </div>
-                  <div>
-                    <Label className="text-sm font-medium">Cantidad *</Label>
-                    <Input
-                      type="number"
-                      min="1"
-                      max={selectedItemAnexo?.cantidad || undefined}
-                      required
-                      className="mt-1 focus:ring-2 focus:ring-blue-500 outline-none"
-                      value={formData.cantidad || ""}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          cantidad: parseInt(e.target.value) || 0,
-                        })
-                      }
-                      placeholder="Cantidad"
-                    />
-                  </div>
-                  <div />
-                </div>
-                {/* Precios del item_anexo seleccionado (solo lectura) */}
-                {selectedItemAnexo && (
-                  <div className="mt-4 pt-4 border-t border-gray-200">
-                    <div className="flex items-center gap-2 mb-2">
-                      <svg className="h-4 w-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                      <span className="text-sm font-medium text-gray-700">Precios del Producto</span>
+                      <div className="rounded-lg border border-gray-200 overflow-hidden">
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="bg-gray-50 border-b border-gray-200">
+                              <th className="text-left px-4 py-2.5 font-medium text-gray-600 text-xs uppercase tracking-wider">
+                                Moneda
+                              </th>
+                              <th className="text-left px-4 py-2.5 font-medium text-gray-600 text-xs uppercase tracking-wider">
+                                Precio Compra
+                              </th>
+                              <th className="text-left px-4 py-2.5 font-medium text-gray-600 text-xs uppercase tracking-wider">
+                                Precio Venta
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <tr className="bg-gray-50/30">
+                              <td className="px-4 py-2.5">
+                                <span className="inline-flex items-center gap-1.5 px-2 py-1 bg-blue-50 text-blue-700 rounded-md text-xs font-medium">
+                                  {selectedItemAnexo.moneda_simbolo || "?"}
+                                </span>
+                                <span className="ml-2 text-gray-500 text-xs">
+                                  {selectedItemAnexo.moneda_nombre || ""}
+                                </span>
+                              </td>
+                              <td className="px-4 py-2.5 font-medium text-gray-700">
+                                {selectedItemAnexo.precio_compra
+                                  ? `$${Number(selectedItemAnexo.precio_compra).toFixed(2)}`
+                                  : "-"}
+                              </td>
+                              <td className="px-4 py-2.5 font-medium text-green-700">
+                                $
+                                {Number(selectedItemAnexo.precio_venta).toFixed(
+                                  2,
+                                )}
+                              </td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
                     </div>
-                    <div className="rounded-lg border border-gray-200 overflow-hidden">
-                      <table className="w-full text-sm">
-                        <thead>
-                          <tr className="bg-gray-50 border-b border-gray-200">
-                            <th className="text-left px-4 py-2.5 font-medium text-gray-600 text-xs uppercase tracking-wider">Moneda</th>
-                            <th className="text-left px-4 py-2.5 font-medium text-gray-600 text-xs uppercase tracking-wider">Precio Compra</th>
-                            <th className="text-left px-4 py-2.5 font-medium text-gray-600 text-xs uppercase tracking-wider">Precio Venta</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          <tr className="bg-gray-50/30">
-                            <td className="px-4 py-2.5">
-                              <span className="inline-flex items-center gap-1.5 px-2 py-1 bg-blue-50 text-blue-700 rounded-md text-xs font-medium">
-                                {selectedItemAnexo.moneda_simbolo || "?"}
-                              </span>
-                              <span className="ml-2 text-gray-500 text-xs">{selectedItemAnexo.moneda_nombre || ""}</span>
-                            </td>
-                            <td className="px-4 py-2.5 font-medium text-gray-700">
-                              {selectedItemAnexo.precio_compra ? `$${Number(selectedItemAnexo.precio_compra).toFixed(2)}` : "-"}
-                            </td>
-                            <td className="px-4 py-2.5 font-medium text-green-700">
-                              ${Number(selectedItemAnexo.precio_venta).toFixed(2)}
-                            </td>
-                          </tr>
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                )}
+                  )}
                 </div>
               )}
             </CardContent>
@@ -1255,248 +1475,344 @@ export function MovimientoRecepcionForm({
       </form>
 
       {/* Modal Nuevo Producto */}
-      {showNuevoProductoModal && createPortal(
-        <div className="fixed inset-0 bg-black/50 z-[9999] flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between p-6 border-b">
-              <h3 className="text-lg font-bold text-gray-900">Nuevo Producto</h3>
-              <button
-                type="button"
-                onClick={() => setShowNuevoProductoModal(false)}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                <X className="h-5 w-5 text-gray-500" />
-              </button>
-            </div>
-            <div className="p-6 space-y-4">
-              <div>
-                <Label className="text-sm font-medium">Nombre *</Label>
-                <Input
-                  required
-                  className="mt-1"
-                  value={nuevoProducto.nombre}
-                  onChange={(e) => setNuevoProducto({ ...nuevoProducto, nombre: e.target.value })}
-                  placeholder="Nombre del producto"
-                />
-              </div>
-              <div>
-                <Label className="text-sm font-medium">Código</Label>
-                <Input
-                  className="mt-1"
-                  value={nuevoProducto.codigo}
-                  onChange={(e) => setNuevoProducto({ ...nuevoProducto, codigo: e.target.value })}
-                  placeholder="Código del producto"
-                />
-              </div>
-              <div>
-                <Label className="text-sm font-medium">Subcategoría *</Label>
-                <select
-                  value={nuevoProducto.id_subcategoria}
-                  onChange={(e) => setNuevoProducto({ ...nuevoProducto, id_subcategoria: parseInt(e.target.value) || 1 })}
-                  className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none bg-white"
+      {showNuevoProductoModal &&
+        createPortal(
+          <div className="fixed inset-0 bg-black/50 z-[9999] flex items-center justify-center p-4">
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+              <div className="flex items-center justify-between p-6 border-b">
+                <h3 className="text-lg font-bold text-gray-900">
+                  Nuevo Producto
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => setShowNuevoProductoModal(false)}
+                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
                 >
-                  {subcategorias.map((sc) => (
-                    <option key={sc.id_subcategoria} value={sc.id_subcategoria}>
-                      {sc.nombre}
-                    </option>
-                  ))}
-                </select>
+                  <X className="h-5 w-5 text-gray-500" />
+                </button>
               </div>
-              <div>
-                <Label className="text-sm font-medium">Descripción</Label>
-                <textarea
-                  value={nuevoProducto.descripcion}
-                  onChange={(e) => setNuevoProducto({ ...nuevoProducto, descripcion: e.target.value })}
-                  rows={2}
-                  className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none resize-none"
-                  placeholder="Descripción del producto"
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="p-6 space-y-4">
                 <div>
-                  <Label className="text-sm font-medium">Precio Compra *</Label>
-                  <div className="flex gap-2 mt-1">
-                    <Input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      required
-                      value={nuevoProducto.precio_compra}
-                      onChange={(e) => setNuevoProducto({ ...nuevoProducto, precio_compra: parseFloat(e.target.value) || 0 })}
-                      className="flex-1"
-                      placeholder="0.00"
-                    />
-                    <select
-                      value={nuevoProducto.moneda_compra}
-                      onChange={(e) => setNuevoProducto({ ...nuevoProducto, moneda_compra: parseInt(e.target.value) || 1 })}
-                      className="w-24 px-2 py-2 border border-gray-300 rounded-lg outline-none bg-white"
-                    >
-                      {monedas.map((m) => (
-                        <option key={m.id_moneda} value={m.id_moneda}>{m.simbolo}</option>
-                      ))}
-                    </select>
+                  <Label className="text-sm font-medium">Nombre *</Label>
+                  <Input
+                    required
+                    className="mt-1"
+                    value={nuevoProducto.nombre}
+                    onChange={(e) =>
+                      setNuevoProducto({
+                        ...nuevoProducto,
+                        nombre: e.target.value,
+                      })
+                    }
+                    placeholder="Nombre del producto"
+                  />
+                </div>
+                <div>
+                  <Label className="text-sm font-medium">Código</Label>
+                  <Input
+                    className="mt-1"
+                    value={nuevoProducto.codigo}
+                    onChange={(e) =>
+                      setNuevoProducto({
+                        ...nuevoProducto,
+                        codigo: e.target.value,
+                      })
+                    }
+                    placeholder="Código del producto"
+                  />
+                </div>
+                <div>
+                  <Label className="text-sm font-medium">Subcategoría *</Label>
+                  <select
+                    value={nuevoProducto.id_subcategoria}
+                    onChange={(e) =>
+                      setNuevoProducto({
+                        ...nuevoProducto,
+                        id_subcategoria: parseInt(e.target.value) || 1,
+                      })
+                    }
+                    className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none bg-white"
+                  >
+                    {subcategorias.map((sc) => (
+                      <option
+                        key={sc.id_subcategoria}
+                        value={sc.id_subcategoria}
+                      >
+                        {sc.nombre}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium">Descripción</Label>
+                  <textarea
+                    value={nuevoProducto.descripcion}
+                    onChange={(e) =>
+                      setNuevoProducto({
+                        ...nuevoProducto,
+                        descripcion: e.target.value,
+                      })
+                    }
+                    rows={2}
+                    className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none resize-none"
+                    placeholder="Descripción del producto"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-sm font-medium">
+                      Precio Compra *
+                    </Label>
+                    <div className="flex gap-2 mt-1">
+                      <Input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        required
+                        value={nuevoProducto.precio_compra}
+                        onChange={(e) =>
+                          setNuevoProducto({
+                            ...nuevoProducto,
+                            precio_compra: parseFloat(e.target.value) || 0,
+                          })
+                        }
+                        className="flex-1"
+                        placeholder="0.00"
+                      />
+                      <select
+                        value={nuevoProducto.moneda_compra}
+                        onChange={(e) =>
+                          setNuevoProducto({
+                            ...nuevoProducto,
+                            moneda_compra: parseInt(e.target.value) || 1,
+                          })
+                        }
+                        className="w-24 px-2 py-2 border border-gray-300 rounded-lg outline-none bg-white"
+                      >
+                        {monedas.map((m) => (
+                          <option key={m.id_moneda} value={m.id_moneda}>
+                            {m.simbolo}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                  <div>
+                    <Label className="text-sm font-medium">
+                      Precio Venta *
+                    </Label>
+                    <div className="flex gap-2 mt-1">
+                      <Input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        required
+                        value={nuevoProducto.precio_venta}
+                        onChange={(e) =>
+                          setNuevoProducto({
+                            ...nuevoProducto,
+                            precio_venta: parseFloat(e.target.value) || 0,
+                          })
+                        }
+                        className="flex-1"
+                        placeholder="0.00"
+                      />
+                      <select
+                        value={nuevoProducto.moneda_venta}
+                        onChange={(e) =>
+                          setNuevoProducto({
+                            ...nuevoProducto,
+                            moneda_venta: parseInt(e.target.value) || 1,
+                          })
+                        }
+                        className="w-24 px-2 py-2 border border-gray-300 rounded-lg outline-none bg-white"
+                      >
+                        {monedas.map((m) => (
+                          <option key={m.id_moneda} value={m.id_moneda}>
+                            {m.simbolo}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
                   </div>
                 </div>
                 <div>
-                  <Label className="text-sm font-medium">Precio Venta *</Label>
-                  <div className="flex gap-2 mt-1">
-                    <Input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      required
-                      value={nuevoProducto.precio_venta}
-                      onChange={(e) => setNuevoProducto({ ...nuevoProducto, precio_venta: parseFloat(e.target.value) || 0 })}
-                      className="flex-1"
-                      placeholder="0.00"
-                    />
-                    <select
-                      value={nuevoProducto.moneda_venta}
-                      onChange={(e) => setNuevoProducto({ ...nuevoProducto, moneda_venta: parseInt(e.target.value) || 1 })}
-                      className="w-24 px-2 py-2 border border-gray-300 rounded-lg outline-none bg-white"
-                    >
-                      {monedas.map((m) => (
-                        <option key={m.id_moneda} value={m.id_moneda}>{m.simbolo}</option>
-                      ))}
-                    </select>
-                  </div>
+                  <Label className="text-sm font-medium">Precio Mínimo *</Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    required
+                    className="mt-1"
+                    value={nuevoProducto.precio_minimo}
+                    onChange={(e) =>
+                      setNuevoProducto({
+                        ...nuevoProducto,
+                        precio_minimo: parseFloat(e.target.value) || 0,
+                      })
+                    }
+                    placeholder="0.00"
+                  />
                 </div>
               </div>
-              <div>
-                <Label className="text-sm font-medium">Precio Mínimo *</Label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  required
-                  className="mt-1"
-                  value={nuevoProducto.precio_minimo}
-                  onChange={(e) => setNuevoProducto({ ...nuevoProducto, precio_minimo: parseFloat(e.target.value) || 0 })}
-                  placeholder="0.00"
-                />
-              </div>
-            </div>
-            <div className="flex justify-end gap-3 p-6 border-t bg-gray-50">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setShowNuevoProductoModal(false)}
-              >
-                Cancelar
-              </Button>
-              <Button
-                type="button"
-                disabled={createProductoMutation.isPending || !nuevoProducto.nombre}
-                onClick={() => {
-                  if (!nuevoProducto.nombre) {
-                    toast.error("El nombre del producto es obligatorio");
-                    return;
+              <div className="flex justify-end gap-3 p-6 border-t bg-gray-50">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setShowNuevoProductoModal(false)}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  type="button"
+                  disabled={
+                    createProductoMutation.isPending || !nuevoProducto.nombre
                   }
-                  createProductoMutation.mutate(nuevoProducto as ProductosCreate);
-                }}
-                className="gap-2 bg-gradient-to-r from-green-500 to-emerald-600 hover:opacity-90 text-white"
-              >
-                <Save className="h-4 w-4" />
-                {createProductoMutation.isPending ? "Guardando..." : "Guardar"}
-              </Button>
+                  onClick={() => {
+                    if (!nuevoProducto.nombre) {
+                      toast.error("El nombre del producto es obligatorio");
+                      return;
+                    }
+                    createProductoMutation.mutate(
+                      nuevoProducto as ProductosCreate,
+                    );
+                  }}
+                  className="gap-2 bg-gradient-to-r from-green-500 to-emerald-600 hover:opacity-90 text-white"
+                >
+                  <Save className="h-4 w-4" />
+                  {createProductoMutation.isPending
+                    ? "Guardando..."
+                    : "Guardar"}
+                </Button>
+              </div>
             </div>
-          </div>
-        </div>,
-        document.body
-      )}
+          </div>,
+          document.body,
+        )}
 
       {/* Modal Precios Adicionales */}
-      {showPreciosModal && createPortal(
-        <div className="fixed inset-0 bg-black/50 z-[9999] flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md">
-            <div className="flex items-center justify-between p-6 border-b">
-              <h3 className="text-lg font-bold text-gray-900">
-                {editingPrecioIndex !== null ? "Editar" : "Agregar"} Precio Adicional
-              </h3>
-              <button
-                type="button"
-                onClick={() => setShowPreciosModal(false)}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                <X className="h-5 w-5 text-gray-500" />
-              </button>
-            </div>
-            <div className="p-6 space-y-4">
-              <div>
-                <Label className="text-sm font-medium">Moneda *</Label>
-                <select
-                  value={currentPrecioForm.id_moneda}
-                  onChange={(e) => setCurrentPrecioForm({ ...currentPrecioForm, id_moneda: parseInt(e.target.value) || 0 })}
-                  className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none bg-white"
+      {showPreciosModal &&
+        createPortal(
+          <div className="fixed inset-0 bg-black/50 z-[9999] flex items-center justify-center p-4">
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-md">
+              <div className="flex items-center justify-between p-6 border-b">
+                <h3 className="text-lg font-bold text-gray-900">
+                  {editingPrecioIndex !== null ? "Editar" : "Agregar"} Precio
+                  Adicional
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => setShowPreciosModal(false)}
+                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
                 >
-                  <option value={0}>Seleccionar moneda</option>
-                  {monedas.map((m) => (
-                    <option key={m.id_moneda} value={m.id_moneda}>{m.simbolo} - {m.denominacion}</option>
-                  ))}
-                </select>
+                  <X className="h-5 w-5 text-gray-500" />
+                </button>
               </div>
-              <div>
-                <Label className="text-sm font-medium">Precio de Compra</Label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  className="mt-1"
-                  value={currentPrecioForm.precio_compra}
-                  onChange={(e) => setCurrentPrecioForm({ ...currentPrecioForm, precio_compra: e.target.value })}
-                  placeholder="0.00"
-                />
+              <div className="p-6 space-y-4">
+                <div>
+                  <Label className="text-sm font-medium">Moneda *</Label>
+                  <select
+                    value={currentPrecioForm.id_moneda}
+                    onChange={(e) =>
+                      setCurrentPrecioForm({
+                        ...currentPrecioForm,
+                        id_moneda: parseInt(e.target.value) || 0,
+                      })
+                    }
+                    className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none bg-white"
+                  >
+                    <option value={0}>Seleccionar moneda</option>
+                    {monedas.map((m) => (
+                      <option key={m.id_moneda} value={m.id_moneda}>
+                        {m.simbolo} - {m.denominacion}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium">
+                    Precio de Compra
+                  </Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    className="mt-1"
+                    value={currentPrecioForm.precio_compra}
+                    onChange={(e) =>
+                      setCurrentPrecioForm({
+                        ...currentPrecioForm,
+                        precio_compra: e.target.value,
+                      })
+                    }
+                    placeholder="0.00"
+                  />
+                </div>
+                <div>
+                  <Label className="text-sm font-medium">
+                    Precio de Venta *
+                  </Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    min="0.01"
+                    required
+                    className="mt-1"
+                    value={currentPrecioForm.precio_venta}
+                    onChange={(e) =>
+                      setCurrentPrecioForm({
+                        ...currentPrecioForm,
+                        precio_venta: e.target.value,
+                      })
+                    }
+                    placeholder="0.00"
+                  />
+                </div>
               </div>
-              <div>
-                <Label className="text-sm font-medium">Precio de Venta *</Label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  min="0.01"
-                  required
-                  className="mt-1"
-                  value={currentPrecioForm.precio_venta}
-                  onChange={(e) => setCurrentPrecioForm({ ...currentPrecioForm, precio_venta: e.target.value })}
-                  placeholder="0.00"
-                />
+              <div className="flex justify-end gap-3 p-6 border-t bg-gray-50">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setShowPreciosModal(false)}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  type="button"
+                  disabled={
+                    !currentPrecioForm.id_moneda ||
+                    !currentPrecioForm.precio_venta
+                  }
+                  onClick={() => {
+                    if (
+                      !currentPrecioForm.id_moneda ||
+                      !currentPrecioForm.precio_venta
+                    ) {
+                      toast.error("Moneda y precio de venta son obligatorios");
+                      return;
+                    }
+                    if (editingPrecioIndex !== null) {
+                      setPreciosExtra((prev) =>
+                        prev.map((p, i) =>
+                          i === editingPrecioIndex ? currentPrecioForm : p,
+                        ),
+                      );
+                    } else {
+                      setPreciosExtra((prev) => [...prev, currentPrecioForm]);
+                    }
+                    setShowPreciosModal(false);
+                    setEditingPrecioIndex(null);
+                  }}
+                  className="gap-2 bg-gradient-to-r from-green-500 to-emerald-600 hover:opacity-90 text-white"
+                >
+                  <Save className="h-4 w-4" />
+                  {editingPrecioIndex !== null ? "Actualizar" : "Agregar"}
+                </Button>
               </div>
             </div>
-            <div className="flex justify-end gap-3 p-6 border-t bg-gray-50">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setShowPreciosModal(false)}
-              >
-                Cancelar
-              </Button>
-              <Button
-                type="button"
-                disabled={!currentPrecioForm.id_moneda || !currentPrecioForm.precio_venta}
-                onClick={() => {
-                  if (!currentPrecioForm.id_moneda || !currentPrecioForm.precio_venta) {
-                    toast.error("Moneda y precio de venta son obligatorios");
-                    return;
-                  }
-                  if (editingPrecioIndex !== null) {
-                    setPreciosExtra((prev) =>
-                      prev.map((p, i) => (i === editingPrecioIndex ? currentPrecioForm : p))
-                    );
-                  } else {
-                    setPreciosExtra((prev) => [...prev, currentPrecioForm]);
-                  }
-                  setShowPreciosModal(false);
-                  setEditingPrecioIndex(null);
-                }}
-                className="gap-2 bg-gradient-to-r from-green-500 to-emerald-600 hover:opacity-90 text-white"
-              >
-                <Save className="h-4 w-4" />
-                {editingPrecioIndex !== null ? "Actualizar" : "Agregar"}
-              </Button>
-            </div>
-          </div>
-        </div>,
-        document.body
-      )}
+          </div>,
+          document.body,
+        )}
     </div>
   );
 }
