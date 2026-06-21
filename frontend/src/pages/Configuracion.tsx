@@ -21,10 +21,6 @@ import {
   Wallet,
   AlertCircle,
   Search,
-  Coins,
-  Users,
-  Shield,
-  Building,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import {
@@ -51,19 +47,7 @@ import {
   subcategoriasService,
   monedaService,
 } from "../services/api";
-import { MonedasPage } from "./Monedas";
-import { UsuariosPage } from "./Usuarios";
-import { GruposPage } from "./Grupos";
-import { DependenciasPage } from "./Dependencias";
-import { CuentasPage } from "./Cuentas";
 
-type TabType =
-  | "configuracion"
-  | "monedas"
-  | "usuarios"
-  | "grupos"
-  | "dependencias"
-  | "cuentas";
 
 type ConfigSubTabType =
   | "tipo-contrato"
@@ -74,15 +58,6 @@ type ConfigSubTabType =
   | "tipo-convenios"
   | "tipo-dependencia"
   | "tipo-cuenta";
-
-const tabs: { id: TabType; label: string; icon: React.ElementType }[] = [
-  { id: "configuracion", label: "Configuración", icon: Settings },
-  { id: "monedas", label: "Monedas", icon: Coins },
-  { id: "usuarios", label: "Usuarios", icon: Users },
-  { id: "grupos", label: "Grupos", icon: Shield },
-  { id: "dependencias", label: "Dependencias", icon: Building },
-  { id: "cuentas", label: "Cuentas", icon: Wallet },
-];
 
 const configSubTabs: { id: ConfigSubTabType; label: string }[] = [
   { id: "tipo-contrato", label: "Tipos de Contrato" },
@@ -204,7 +179,6 @@ function Modal({ isOpen, onClose, title, children }: ModalProps) {
 
 export function ConfiguracionPage() {
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState<TabType>("configuracion");
   const [activeConfigSubTab, setActiveConfigSubTab] =
     useState<ConfigSubTabType>("tipo-contrato");
   const [searchTerm, setSearchTerm] = useState("");
@@ -1451,69 +1425,6 @@ const {
     );
   };
 
-  const renderTabContent = () => {
-    switch (activeTab) {
-      case "configuracion":
-        return (
-          <div className="space-y-4">
-            {/* Sub-tabs de configuración */}
-            <div className="flex gap-1 border-b overflow-x-auto">
-              {configSubTabs.map((tab) => (
-                <button
-                  key={tab.id}
-                  onClick={() => {
-                    setActiveConfigSubTab(tab.id);
-                    setSearchTerm("");
-                  }}
-                  className={`px-4 py-2 text-sm font-medium whitespace-nowrap transition-colors ${
-                    activeConfigSubTab === tab.id
-                      ? "text-blue-600 border-b-2 border-blue-600 bg-blue-50"
-                      : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"
-                  }`}
-                >
-                  {tab.label}
-                </button>
-              ))}
-            </div>
-            {/* Vista de lista */}
-            {renderConfigListView()}
-          </div>
-        );
-      case "monedas":
-        return (
-          <div className="p-0">
-            <MonedasPage />
-          </div>
-        );
-      case "usuarios":
-        return (
-          <div className="p-0">
-            <UsuariosPage />
-          </div>
-        );
-      case "grupos":
-        return (
-          <div className="p-0">
-            <GruposPage />
-          </div>
-        );
-      case "dependencias":
-        return (
-          <div className="p-0">
-            <DependenciasPage />
-          </div>
-        );
-      case "cuentas":
-        return (
-          <div className="p-0">
-            <CuentasPage />
-          </div>
-        );
-      default:
-        return null;
-    }
-  };
-
   return (
     <div className="space-y-4 animate-fade-in-up">
       {/* Header */}
@@ -1529,30 +1440,29 @@ const {
         </div>
       </div>
 
-      {/* Tabs Navigation */}
+      {/* Sub-tabs de configuración */}
       <div className="flex gap-1 border-b bg-white rounded-t-lg px-2 pt-2">
-        {tabs.map((tab) => {
-          const Icon = tab.icon;
-          return (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-2 px-4 py-3 text-sm font-medium transition-all duration-200 rounded-t-lg ${
-                activeTab === tab.id
-                  ? "text-blue-600 bg-blue-50 border-b-2 border-blue-600"
-                  : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"
-              }`}
-            >
-              <Icon className="w-4 h-4" />
-              {tab.label}
-            </button>
-          );
-        })}
+        {configSubTabs.map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => {
+              setActiveConfigSubTab(tab.id);
+              setSearchTerm("");
+            }}
+            className={`px-4 py-2 text-sm font-medium whitespace-nowrap transition-colors ${
+              activeConfigSubTab === tab.id
+                ? "text-blue-600 border-b-2 border-blue-600 bg-blue-50"
+                : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
       </div>
 
-      {/* Tab Content */}
+      {/* Vista de lista */}
       <div className="bg-white rounded-b-lg rounded-tr-lg p-6 border border-t-0">
-        {renderTabContent()}
+        {renderConfigListView()}
       </div>
 
       {/* Confirm Delete Modal */}
