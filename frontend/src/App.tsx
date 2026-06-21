@@ -319,7 +319,7 @@ function App() {
                   </li>
                 </ul>
               )}
-              {moduloActivo === 'administracion' && user?.grupo?.id_grupo === 1 && (
+              {moduloActivo === 'administracion' && (
                 <ul className="space-y-1 px-3">
                   <li>
                     <NavLink to="/configuracion" onClick={handleLinkClick}>
