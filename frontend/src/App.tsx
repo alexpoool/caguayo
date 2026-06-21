@@ -25,7 +25,10 @@ import {
   Layers,
   Users,
   Calculator,
-  Package
+  Package,
+  Shield,
+  Building,
+  Wallet
 } from 'lucide-react';
 
 import { LoginPage } from './pages/Login';
@@ -316,56 +319,44 @@ function App() {
                   </li>
                 </ul>
               )}
-              {moduloActivo === 'administracion' && (
+              {moduloActivo === 'administracion' && user?.grupo?.id_grupo === 1 && (
                 <ul className="space-y-1 px-3">
-                  {hasFuncionalidad('configuracion') && (
-                    <li>
-                      <NavLink to="/configuracion" onClick={handleLinkClick}>
-                        <Settings className="w-6 h-6" />
-                        Configuración
-                      </NavLink>
-                    </li>
-                  )}
-                  {hasFuncionalidad('monedas') && (
-                    <li>
-                      <NavLink to="/monedas" onClick={handleLinkClick}>
-                        <Coins className="w-6 h-6" />
-                        Monedas
-                      </NavLink>
-                    </li>
-                  )}
-                  {hasFuncionalidad('usuarios') && (
-                    <li>
-                      <NavLink to="/usuarios" onClick={handleLinkClick}>
-                        <Users className="w-6 h-6" />
-                        Usuarios
-                      </NavLink>
-                    </li>
-                  )}
-                  {hasFuncionalidad('grupos') && (
-                    <li>
-                      <NavLink to="/grupos" onClick={handleLinkClick}>
-                        <Shield className="w-6 h-6" />
-                        Grupos
-                      </NavLink>
-                    </li>
-                  )}
-                  {hasFuncionalidad('dependencias') && (
-                    <li>
-                      <NavLink to="/dependencias" onClick={handleLinkClick}>
-                        <Building className="w-6 h-6" />
-                        Dependencias
-                      </NavLink>
-                    </li>
-                  )}
-                  {hasFuncionalidad('cuentas') && (
-                    <li>
-                      <NavLink to="/cuentas" onClick={handleLinkClick}>
-                        <Wallet className="w-6 h-6" />
-                        Cuentas
-                      </NavLink>
-                    </li>
-                  )}
+                  <li>
+                    <NavLink to="/configuracion" onClick={handleLinkClick}>
+                      <Settings className="w-6 h-6" />
+                      Configuración
+                    </NavLink>
+                  </li>
+                  <li>
+                    <NavLink to="/monedas" onClick={handleLinkClick}>
+                      <Coins className="w-6 h-6" />
+                      Monedas
+                    </NavLink>
+                  </li>
+                  <li>
+                    <NavLink to="/usuarios" onClick={handleLinkClick}>
+                      <Users className="w-6 h-6" />
+                      Usuarios
+                    </NavLink>
+                  </li>
+                  <li>
+                    <NavLink to="/grupos" onClick={handleLinkClick}>
+                      <Shield className="w-6 h-6" />
+                      Grupos
+                    </NavLink>
+                  </li>
+                  <li>
+                    <NavLink to="/dependencias" onClick={handleLinkClick}>
+                      <Building className="w-6 h-6" />
+                      Dependencias
+                    </NavLink>
+                  </li>
+                  <li>
+                    <NavLink to="/cuentas" onClick={handleLinkClick}>
+                      <Wallet className="w-6 h-6" />
+                      Cuentas
+                    </NavLink>
+                  </li>
                 </ul>
               )}
               {moduloActivo === 'compra' && (
