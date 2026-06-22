@@ -1,43 +1,60 @@
-version: '3.8'
-
 services:
   backend:
-    build: ./backend/Dockerfile
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    image: caguayo-backend:latest
     ports:
       - "8000:8000"
     environment:
-      - DATABASE_URL=postgresql://solji:Scp2005@localhost:5432/caguayo
+      - DATABASE_URL=postgresql://solji:Scp2005@db:5432/caguayo
       - PYTHONPATH=/app/backend/src
-    volumes:
-      - ./backend:/app/backend
+      - SECRET_KEY=${SECRET_KEY:-caguayo-secret-key-change-in-production}
+      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:5173,http://localhost:3000}
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     restart: unless-stopped
+    networks:
+      - caguayo-network
 
   frontend:
-    build: ./frontend/Dockerfile.frontend
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile.frontend
+      args:
+        - VITE_API_BASE_URL=${VITE_API_BASE_URL:-http://localhost:8000/api/v1}
+    image: caguayo-frontend:latest
     ports:
-      - "5173:5173"
-    environment:
-      - VITE_API_BASE_URL=http://localhost:8000/api/v1
-    volumes:
-      - ./frontend:/app/frontend
-      - /app/frontend/node_modules
+      - "5173:80"
     depends_on:
       - backend
     restart: unless-stopped
+    networks:
+      - caguayo-network
 
   db:
     image: postgres:16-alpine
     environment:
-      - POSTGRES_USER=solji
-      - POSTGRES_PASSWORD=Scp2005
-      - POSTGRES_DB=caguayo
+      - POSTGRES_USER=${POSTGRES_USER:-solji}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-Scp2005}
+      - POSTGRES_DB=${POSTGRES_DB:-caguayo}
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U solji -d caguayo"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
     restart: unless-stopped
+    networks:
+      - caguayo-network
 
 volumes:
   postgres_data:
+
+networks:
+  caguayo-network:
+    driver: bridge
