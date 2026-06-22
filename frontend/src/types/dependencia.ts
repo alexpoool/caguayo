@@ -60,7 +60,7 @@ export interface DependenciaCreate {
 export interface DependenciaConCuentasCreate {
   dependencia: DependenciaCreate;
   cuentas?: CuentaCreate[];
-  id_conexion_existente?: string;
+  base_datos_existente?: string;
 }
 
 export interface ConexionDatabase {

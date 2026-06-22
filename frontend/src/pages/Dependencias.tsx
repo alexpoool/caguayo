@@ -305,7 +305,7 @@ export function DependenciasPage() {
         toast.error("Debe estar en la base de datos central para crear dependencias");
       } else {
         toast.error(
-          error?.message || error?.detail || "Error al crear dependencia",
+          error?.response?.data?.detail || error?.detail || error?.message || "Error al crear dependencia",
         );
       }
     },
@@ -413,7 +413,7 @@ export function DependenciasPage() {
       
       const data: DependenciaConCuentasCreate = {
         dependencia: dependenciaData,
-        id_conexion_existente: idConexionExistente ? idConexionExistente : undefined,
+        base_datos_existente: idConexionExistente ? idConexionExistente : undefined,
       };
       createDependencia.mutate(data);
     }

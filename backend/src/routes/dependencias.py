@@ -3,6 +3,7 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlalchemy import text
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import selectinload
 from src.database.connection import get_session
 from src.models import (
@@ -192,7 +193,13 @@ async def crear_dependencia(
                 detail="No se puede crear la dependencia porque se formaría un ciclo en la jerarquía",
             )
 
-    db_obj = await dependencia_repo.create(db, obj_in=data.dependencia)
+    try:
+        db_obj = await dependencia_repo.create(db, obj_in=data.dependencia)
+    except IntegrityError as e:
+        error_msg = str(e.orig)
+        if "dependencia_nit_key" in error_msg:
+            raise HTTPException(status_code=409, detail="El NIT ya está registrado en otra dependencia")
+        raise HTTPException(status_code=409, detail="Conflicto: el registro ya existe")
 
     cuentas_creadas = []
     if data.cuentas:
@@ -216,8 +223,8 @@ async def crear_dependencia(
 
     tablas_creadas = None
 
-    if data.id_conexion_existente:
-        db_obj.base_datos = data.id_conexion_existente
+    if data.base_datos_existente:
+        db_obj.base_datos = data.base_datos_existente
         db_obj = await dependencia_repo.update(db, db_obj=db_obj, obj_in=db_obj)
 
     elif data.dependencia.base_datos:

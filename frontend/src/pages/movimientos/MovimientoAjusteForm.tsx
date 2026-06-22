@@ -307,7 +307,6 @@ export function MovimientoAjusteForm() {
       const idConvenio = productoSeleccionado.id_convenio || 0;
       const idAnexo = productoSeleccionado.id_anexo || 0;
       const codigo = generarCodigoMovimiento(
-        "AJU",
         anio,
         idConvenio,
         idAnexo,

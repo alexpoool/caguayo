@@ -520,16 +520,9 @@ export function MovimientoRecepcionForm({
   useEffect(() => {
     if (formData.id_producto && selectedProduct) {
       const anio = new Date().getFullYear();
-      const tipoMap: Record<string, "REC" | "MER" | "DON" | "DEV"> = {
-        RECEPCION: "REC",
-        MERMA: "MER",
-        DONACION: "DON",
-        DEVOLUCION: "DEV",
-      };
       const idConvenio = (selectedProduct as any)?.id_convenio || 0;
       const idAnexo = (selectedProduct as any)?.id_anexo || 0;
       const codigo = generarCodigoMovimiento(
-        tipoMap[tipoMovimiento] || "REC",
         anio,
         idConvenio,
         idAnexo,
