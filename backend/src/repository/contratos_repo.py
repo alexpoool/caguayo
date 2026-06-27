@@ -202,7 +202,9 @@ class FacturaRepository(CRUDBase[Factura, FacturaCreate, FacturaUpdate]):
     ) -> List[Factura]:
         statement = (
             select(Factura)
-            .options(selectinload(Factura.items_factura).selectinload(ItemFactura.producto))
+            .options(
+                selectinload(Factura.items_factura).selectinload(ItemFactura.producto)
+            )
             .where(Factura.id_contrato == id_contrato)
             .order_by(Factura.id_factura.desc())
         )
@@ -357,7 +359,11 @@ class ItemFacturaRepository(CRUDBase[ItemFactura, ItemFacturaCreate, dict]):
         return results.all()
 
     async def create_items(
-        self, db: AsyncSession, id_factura: int, items_data: List[ItemFacturaCreate], nit: Optional[str] = None
+        self,
+        db: AsyncSession,
+        id_factura: int,
+        items_data: List[ItemFacturaCreate],
+        nit: Optional[str] = None,
     ) -> List[ItemFactura]:
         created_items = []
         prefijo = f"{nit}." if nit else ""

@@ -22,9 +22,7 @@ class ProductosEnLiquidacion(SQLModel, table=True):
     __tablename__ = "productos_en_liquidacion"
 
     id_producto_en_liquidacion: Optional[int] = Field(
-        default=None, 
-        primary_key=True,
-        sa_column_kwargs={"autoincrement": True}
+        default=None, primary_key=True, sa_column_kwargs={"autoincrement": True}
     )
     codigo: str = Field(max_length=50, unique=True)
 
@@ -74,5 +72,5 @@ class ProductosEnLiquidacion(SQLModel, table=True):
         back_populates="productos_en_liquidacion",
         sa_relationship_kwargs={
             "foreign_keys": "[ProductosEnLiquidacion.id_liquidacion]"
-        }
+        },
     )

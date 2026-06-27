@@ -29,7 +29,7 @@ class ConexionTestRequest(BaseModel):
 async def get_conexiones():
     """Obtiene todas las bases de datos del servidor PostgreSQL"""
     from src.services.database_service import DatabaseService
-    
+
     try:
         conn = psycopg2.connect(
             host=os.getenv("ADMIN_DB_HOST", "localhost"),
@@ -40,13 +40,15 @@ async def get_conexiones():
             client_encoding="utf8",
         )
         cur = conn.cursor()
-        cur.execute("SELECT datname FROM pg_database WHERE datistemplate = false AND datname != 'postgres' ORDER BY datname")
+        cur.execute(
+            "SELECT datname FROM pg_database WHERE datistemplate = false AND datname != 'postgres' ORDER BY datname"
+        )
         rows = cur.fetchall()
         cur.close()
         conn.close()
 
         bases_de_datos = [row[0] for row in rows]
-        
+
         for db_name in bases_de_datos:
             try:
                 DatabaseService.verificar_y_crear_tablas_faltantes(db_name)

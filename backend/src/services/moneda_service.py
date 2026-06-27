@@ -5,11 +5,13 @@ from src.services.base_service import GenericService
 
 moneda_repo = CRUDBase[Moneda, MonedaCreate, MonedaUpdate](Moneda)
 
-class MonedaServiceClass(GenericService[Moneda, MonedaCreate, MonedaUpdate, MonedaRead]):
+
+class MonedaServiceClass(
+    GenericService[Moneda, MonedaCreate, MonedaUpdate, MonedaRead]
+):
     pass
 
+
 moneda_service = MonedaServiceClass(
-    repository=moneda_repo,
-    read_schema=MonedaRead,
-    model_name="Moneda"
+    repository=moneda_repo, read_schema=MonedaRead, model_name="Moneda"
 )

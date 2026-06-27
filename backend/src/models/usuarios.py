@@ -10,9 +10,7 @@ class Grupo(SQLModel, table=True):
     __tablename__ = "grupo"
 
     id_grupo: Optional[int] = Field(
-        default=None, 
-        primary_key=True,
-        sa_column_kwargs={"autoincrement": True}
+        default=None, primary_key=True, sa_column_kwargs={"autoincrement": True}
     )
     nombre: str = Field(max_length=100, unique=True)
     descripcion: Optional[str] = None
@@ -25,9 +23,7 @@ class Usuario(SQLModel, table=True):
     __tablename__ = "usuarios"
 
     id_usuario: Optional[int] = Field(
-        default=None, 
-        primary_key=True,
-        sa_column_kwargs={"autoincrement": True}
+        default=None, primary_key=True, sa_column_kwargs={"autoincrement": True}
     )
     ci: str = Field(max_length=20, unique=True)
     nombre: str = Field(max_length=100)

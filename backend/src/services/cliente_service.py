@@ -46,7 +46,12 @@ class ClienteService:
         async with db.begin():
             # Convert DTO to dict, excluding specific subtypes
             obj_data = cliente.model_dump(
-                exclude={"cliente_natural", "cliente_juridica", "cliente_tcp", "cuentas"}
+                exclude={
+                    "cliente_natural",
+                    "cliente_juridica",
+                    "cliente_tcp",
+                    "cuentas",
+                }
             )
             db_cliente = Cliente(**obj_data)
             db.add(db_cliente)
@@ -69,6 +74,7 @@ class ClienteService:
             # Crear cuentas asociadas si se proporcionaron
             if cliente.cuentas:
                 from src.models.cuenta import Cuenta
+
                 for cuenta_data in cliente.cuentas:
                     cuenta_dict = cuenta_data.model_dump()
                     cuenta_dict["id_cliente"] = db_cliente.id_cliente
@@ -131,7 +137,7 @@ class ClienteService:
 
         # Person type filters (NATURAL, TCP, JURIDICA)
         person_types = {"NATURAL", "TCP", "JURIDICA"}
-        
+
         if tipo_relacion:
             # Support comma-separated values (e.g., "PROVEEDOR,AMBAS")
             tipos = [t.strip() for t in tipo_relacion.split(",") if t.strip()]
@@ -156,45 +162,56 @@ class ClienteService:
         db: AsyncSession, cliente_id: int, cliente_update: ClienteUpdate
     ) -> Optional[ClienteRead]:
         from src.models.cuenta import Cuenta
-        
+
         print(f"[DEBUG] update_cliente: cliente_id={cliente_id}")
         print(f"[DEBUG] update_cliente: cliente_update type={type(cliente_update)}")
-        
+
         db_cliente = await cliente_repo.get(db, id=cliente_id)
         if not db_cliente:
             return None
-        
+
         # Detectar si es dict u objeto Pydantic
         if isinstance(cliente_update, dict):
-            print(f"[DEBUG] update_cliente: Es dict, keys={list(cliente_update.keys())}")
+            print(
+                f"[DEBUG] update_cliente: Es dict, keys={list(cliente_update.keys())}"
+            )
             cuentas_data = cliente_update.get("cuentas")
             update_data = {
-                k: v for k, v in cliente_update.items() 
-                if k not in ("cuentas", "cliente_natural", "cliente_juridica", "cliente_tcp") 
+                k: v
+                for k, v in cliente_update.items()
+                if k
+                not in ("cuentas", "cliente_natural", "cliente_juridica", "cliente_tcp")
                 and v is not None
             }
         else:
-            print(f"[DEBUG] update_cliente: Es Pydantic model, cuentas={cliente_update.cuentas}")
+            print(
+                f"[DEBUG] update_cliente: Es Pydantic model, cuentas={cliente_update.cuentas}"
+            )
             cuentas_data = cliente_update.cuentas
             update_data = cliente_update.model_dump(
-                exclude={"cuentas", "cliente_natural", "cliente_juridica", "cliente_tcp"}, 
-                exclude_none=True
+                exclude={
+                    "cuentas",
+                    "cliente_natural",
+                    "cliente_juridica",
+                    "cliente_tcp",
+                },
+                exclude_none=True,
             )
-        
+
         print(f"[DEBUG] update_cliente: cuentas_data={cuentas_data}")
-        
+
         # Update manual de campos (evitar usar repo.update con dict)
         for field, value in update_data.items():
             setattr(db_cliente, field, value)
         await db.flush()
-        
+
         # --- Procesar datos tipo-específicos ---
         from src.models.cliente_natural import ClienteNatural
         from src.models.cliente_juridica import ClienteJuridica
         from src.models.cliente_tcp import ClienteTCP
-        
+
         tipo = update_data.get("tipo_persona") or db_cliente.tipo_persona
-        
+
         if isinstance(cliente_update, dict):
             cliente_natural_data = cliente_update.get("cliente_natural")
             cliente_juridica_data = cliente_update.get("cliente_juridica")
@@ -203,54 +220,88 @@ class ClienteService:
             cliente_natural_data = cliente_update.cliente_natural
             cliente_juridica_data = cliente_update.cliente_juridica
             cliente_tcp_data = cliente_update.cliente_tcp
-        
+
         # Limpiar todas las tablas tipo-específicas
-        await db.execute(text("DELETE FROM clientes_persona_natural WHERE id_cliente = :id"), {"id": cliente_id})
-        await db.execute(text("DELETE FROM clientes_persona_juridica WHERE id_cliente = :id"), {"id": cliente_id})
-        await db.execute(text("DELETE FROM cliente_tcp WHERE id_cliente = :id"), {"id": cliente_id})
-        
+        await db.execute(
+            text("DELETE FROM clientes_persona_natural WHERE id_cliente = :id"),
+            {"id": cliente_id},
+        )
+        await db.execute(
+            text("DELETE FROM clientes_persona_juridica WHERE id_cliente = :id"),
+            {"id": cliente_id},
+        )
+        await db.execute(
+            text("DELETE FROM cliente_tcp WHERE id_cliente = :id"), {"id": cliente_id}
+        )
+
         if tipo == "NATURAL" and cliente_natural_data:
-            nat_dict = cliente_natural_data if isinstance(cliente_natural_data, dict) else cliente_natural_data.model_dump()
+            nat_dict = (
+                cliente_natural_data
+                if isinstance(cliente_natural_data, dict)
+                else cliente_natural_data.model_dump()
+            )
             nat_dict["id_cliente"] = cliente_id
             db.add(ClienteNatural(**nat_dict))
         elif tipo == "JURIDICA" and cliente_juridica_data:
-            jur_dict = cliente_juridica_data if isinstance(cliente_juridica_data, dict) else cliente_juridica_data.model_dump()
+            jur_dict = (
+                cliente_juridica_data
+                if isinstance(cliente_juridica_data, dict)
+                else cliente_juridica_data.model_dump()
+            )
             jur_dict["id_cliente"] = cliente_id
             db.add(ClienteJuridica(**jur_dict))
         elif tipo == "TCP" and cliente_tcp_data:
-            tcp_dict = cliente_tcp_data if isinstance(cliente_tcp_data, dict) else cliente_tcp_data.model_dump()
+            tcp_dict = (
+                cliente_tcp_data
+                if isinstance(cliente_tcp_data, dict)
+                else cliente_tcp_data.model_dump()
+            )
             tcp_dict["id_cliente"] = cliente_id
             db.add(ClienteTCP(**tcp_dict))
-        
+
         await db.flush()
-        
+
         # --- Procesar cuentas bancarias ---
         print(f"[DEBUG] update_cliente: cuentas_data={cuentas_data}")
-        
+
         if cuentas_data is not None:
             # Eliminar cuentas existentes para evitar duplicados
-            existing_cuentas = await db.exec(select(Cuenta).where(Cuenta.id_cliente == cliente_id))
+            existing_cuentas = await db.exec(
+                select(Cuenta).where(Cuenta.id_cliente == cliente_id)
+            )
             for c in existing_cuentas.all():
                 await db.delete(c)
-            
+
             # Re-insertar todas las cuentas del payload
             for cuenta_dict in cuentas_data:
                 if isinstance(cuenta_dict, dict):
-                    cuenta_clean = {k: v for k, v in cuenta_dict.items() if v is not None}
+                    cuenta_clean = {
+                        k: v for k, v in cuenta_dict.items() if v is not None
+                    }
                 else:
                     cuenta_clean = cuenta_dict.model_dump(exclude_none=True)
-                
+
                 cuenta_clean = {
-                    k: v for k, v in cuenta_clean.items()
-                    if k in ("titular", "banco", "sucursal", "numero_cuenta", "direccion", "id_moneda", "id_cliente")
+                    k: v
+                    for k, v in cuenta_clean.items()
+                    if k
+                    in (
+                        "titular",
+                        "banco",
+                        "sucursal",
+                        "numero_cuenta",
+                        "direccion",
+                        "id_moneda",
+                        "id_cliente",
+                    )
                 }
                 cuenta_clean["id_cliente"] = cliente_id
                 db.add(Cuenta(**cuenta_clean))
-            
+
             await db.flush()
         else:
             print(f"[DEBUG] update_cliente: No se procesan cuentas (None)")
-        
+
         # Cargar relaciones para retornar
         result = await db.exec(
             select(Cliente)
@@ -275,6 +326,7 @@ class ClienteService:
         )
         await db.commit()
         return True
+
 
 class ClienteNaturalService:
     @staticmethod

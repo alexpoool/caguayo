@@ -40,12 +40,21 @@ async def crear_cliente(
     except IntegrityError as e:
         error_msg = str(e.orig)
         if "clientes_codigo_key" in error_msg:
-            raise HTTPException(status_code=409, detail="El código de cliente ya está registrado")
+            raise HTTPException(
+                status_code=409, detail="El código de cliente ya está registrado"
+            )
         if "clientes_persona_juridica_codigo_reup_key" in error_msg:
-            raise HTTPException(status_code=409, detail="El código REUP ya está registrado")
+            raise HTTPException(
+                status_code=409, detail="El código REUP ya está registrado"
+            )
         if "clientes_persona_natural_carnet_identidad_key" in error_msg:
-            raise HTTPException(status_code=409, detail="El carnet de identidad ya está registrado")
-        raise HTTPException(status_code=409, detail="Conflicto al crear el cliente: el registro ya existe")
+            raise HTTPException(
+                status_code=409, detail="El carnet de identidad ya está registrado"
+            )
+        raise HTTPException(
+            status_code=409,
+            detail="Conflicto al crear el cliente: el registro ya existe",
+        )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error al crear cliente: {str(e)}")
 

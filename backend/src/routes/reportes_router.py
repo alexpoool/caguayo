@@ -1,18 +1,20 @@
+import logging
 from datetime import date
-from typing import Optional
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.database.connection import get_auth_session, get_session
-from src.services.auth_service import get_current_user
+from src.database.connection import get_session
+from src.dto.auth_dto import UsuarioInfo
 from src.services.reportes_service import (
     get_existencias,
     get_movimientos_dependencia,
     get_movimientos_producto,
     get_proveedores_por_dependencia,
 )
+from src.utils.dependencies import require_auth
+from src.utils.logger import AppLogger
 from src.utils.pdf_generator import (
     generar_pdf_existencias,
     generar_pdf_movimientos_dependencia,
@@ -20,24 +22,13 @@ from src.utils.pdf_generator import (
     generar_pdf_proveedores_dependencia,
 )
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/reportes", tags=["reportes"])
 
 
-async def get_usuario_actual(
-    authorization: str = Header(None),
-    db_auth: AsyncSession = Depends(get_session),
-) -> str:
-    """Obtiene el nombre del usuario autenticado desde el token."""
-    if not authorization or not authorization.startswith("Bearer "):
-        return "Usuario Autenticado"
-
-    token = authorization.replace("Bearer ", "")
-    usuario = await get_current_user(db_auth, token)
-
-    if not usuario:
-        return "Usuario Autenticado"
-
-    return f"{usuario.nombre} {usuario.primer_apellido}"
+# ---------------------------------------------------------------------------
+# Endpoints PDF (requieren autenticación obligatoria)
+# ---------------------------------------------------------------------------
 
 
 @router.get("/proveedores-dependencia")
@@ -49,25 +40,28 @@ async def obtener_reporte_proveedores_dependencia(
     id_provincia: int = Query(None, description="Filtrar por provincia (opcional)"),
     aprobado_por_nombre: str = Query("", description="Nombre de quien aprueba"),
     aprobado_por_cargo: str = Query("", description="Cargo de quien aprueba"),
+    notas: str = Query("", description="Observaciones para incluir en el PDF"),
     db: AsyncSession = Depends(get_session),
-    authorization: str = Header(None),
-    db_auth: AsyncSession = Depends(get_auth_session),
+    current_user: UsuarioInfo = Depends(require_auth),
 ):
     try:
         proveedores, dependencia_info = await get_proveedores_por_dependencia(
             db, id_dependencia, tipo_entidad, id_provincia
         )
 
-        if authorization and authorization.startswith("Bearer "):
-            token = authorization.replace("Bearer ", "")
-            usuario = await get_current_user(db_auth, token)
-            usuario_actual = (
-                f"{usuario.nombre} {usuario.primer_apellido}"
-                if usuario
-                else "Usuario Autenticado"
-            )
-        else:
-            usuario_actual = "Usuario Autenticado"
+        usuario_actual = f"{current_user.nombre} {current_user.primer_apellido}"
+
+        await AppLogger.log_action(
+            modulo="reportes",
+            accion="export_proveedores_dependencia",
+            detalle={
+                "id_dependencia": id_dependencia,
+                "tipo_entidad": tipo_entidad,
+                "id_provincia": id_provincia,
+            },
+            usuario_id=current_user.id_usuario,
+            usuario_nombre=usuario_actual,
+        )
 
         pdf_buffer = generar_pdf_proveedores_dependencia(
             proveedores,
@@ -76,6 +70,7 @@ async def obtener_reporte_proveedores_dependencia(
             usuario_actual,
             aprobado_por_nombre,
             aprobado_por_cargo,
+            notas=notas,
         )
 
         return StreamingResponse(
@@ -86,7 +81,10 @@ async def obtener_reporte_proveedores_dependencia(
             },
         )
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Error en reporte proveedores-dependencia: {e}")
+        raise HTTPException(
+            status_code=500, detail="Error interno al generar el reporte"
+        )
 
 
 @router.get("/existencias")
@@ -94,23 +92,22 @@ async def obtener_reporte_existencias(
     id_dependencia: int = Query(..., description="ID de la Dependencia"),
     aprobado_por_nombre: str = Query("", description="Nombre de quien aprueba"),
     aprobado_por_cargo: str = Query("", description="Cargo de quien aprueba"),
+    notas: str = Query("", description="Observaciones para incluir en el PDF"),
     db: AsyncSession = Depends(get_session),
-    authorization: str = Header(None),
-    db_auth: AsyncSession = Depends(get_auth_session),
+    current_user: UsuarioInfo = Depends(require_auth),
 ):
     try:
         existencias, dependencia_info = await get_existencias(db, id_dependencia)
 
-        if authorization and authorization.startswith("Bearer "):
-            token = authorization.replace("Bearer ", "")
-            usuario = await get_current_user(db_auth, token)
-            usuario_actual = (
-                f"{usuario.nombre} {usuario.primer_apellido}"
-                if usuario
-                else "Usuario Autenticado"
-            )
-        else:
-            usuario_actual = "Usuario Autenticado"
+        usuario_actual = f"{current_user.nombre} {current_user.primer_apellido}"
+
+        await AppLogger.log_action(
+            modulo="reportes",
+            accion="export_existencias",
+            detalle={"id_dependencia": id_dependencia},
+            usuario_id=current_user.id_usuario,
+            usuario_nombre=usuario_actual,
+        )
 
         pdf_buffer = generar_pdf_existencias(
             existencias,
@@ -118,6 +115,7 @@ async def obtener_reporte_existencias(
             usuario_actual,
             aprobado_por_nombre,
             aprobado_por_cargo,
+            notas=notas,
         )
 
         return StreamingResponse(
@@ -128,7 +126,10 @@ async def obtener_reporte_existencias(
             },
         )
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Error en reporte existencias: {e}")
+        raise HTTPException(
+            status_code=500, detail="Error interno al generar el reporte"
+        )
 
 
 @router.get("/movimientos-dependencia")
@@ -138,25 +139,28 @@ async def obtener_reporte_movimientos_dependencia(
     fecha_fin: date = Query(..., description="Fecha Fin"),
     aprobado_por_nombre: str = Query("", description="Nombre de quien aprueba"),
     aprobado_por_cargo: str = Query("", description="Cargo de quien aprueba"),
+    notas: str = Query("", description="Observaciones para incluir en el PDF"),
     db: AsyncSession = Depends(get_session),
-    authorization: str = Header(None),
-    db_auth: AsyncSession = Depends(get_auth_session),
+    current_user: UsuarioInfo = Depends(require_auth),
 ):
     try:
         movimientos, dependencia_info = await get_movimientos_dependencia(
             db, id_dependencia, fecha_inicio, fecha_fin
         )
 
-        if authorization and authorization.startswith("Bearer "):
-            token = authorization.replace("Bearer ", "")
-            usuario = await get_current_user(db_auth, token)
-            usuario_actual = (
-                f"{usuario.nombre} {usuario.primer_apellido}"
-                if usuario
-                else "Usuario Autenticado"
-            )
-        else:
-            usuario_actual = "Usuario Autenticado"
+        usuario_actual = f"{current_user.nombre} {current_user.primer_apellido}"
+
+        await AppLogger.log_action(
+            modulo="reportes",
+            accion="export_movimientos_dependencia",
+            detalle={
+                "id_dependencia": id_dependencia,
+                "fecha_inicio": fecha_inicio.isoformat(),
+                "fecha_fin": fecha_fin.isoformat(),
+            },
+            usuario_id=current_user.id_usuario,
+            usuario_nombre=usuario_actual,
+        )
 
         pdf_buffer = generar_pdf_movimientos_dependencia(
             movimientos,
@@ -166,6 +170,7 @@ async def obtener_reporte_movimientos_dependencia(
             usuario_actual,
             aprobado_por_nombre,
             aprobado_por_cargo,
+            notas=notas,
         )
 
         return StreamingResponse(
@@ -176,7 +181,10 @@ async def obtener_reporte_movimientos_dependencia(
             },
         )
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Error en reporte movimientos-dependencia: {e}")
+        raise HTTPException(
+            status_code=500, detail="Error interno al generar el reporte"
+        )
 
 
 @router.get("/movimientos-producto")
@@ -187,25 +195,29 @@ async def obtener_reporte_movimientos_producto(
     fecha_fin: date = Query(..., description="Fecha Fin"),
     aprobado_por_nombre: str = Query("", description="Nombre de quien aprueba"),
     aprobado_por_cargo: str = Query("", description="Cargo de quien aprueba"),
+    notas: str = Query("", description="Observaciones para incluir en el PDF"),
     db: AsyncSession = Depends(get_session),
-    authorization: str = Header(None),
-    db_auth: AsyncSession = Depends(get_auth_session),
+    current_user: UsuarioInfo = Depends(require_auth),
 ):
     try:
         movimientos, dependencia_info, producto_info = await get_movimientos_producto(
             db, id_dependencia, id_producto, fecha_inicio, fecha_fin
         )
 
-        if authorization and authorization.startswith("Bearer "):
-            token = authorization.replace("Bearer ", "")
-            usuario = await get_current_user(db_auth, token)
-            usuario_actual = (
-                f"{usuario.nombre} {usuario.primer_apellido}"
-                if usuario
-                else "Usuario Autenticado"
-            )
-        else:
-            usuario_actual = "Usuario Autenticado"
+        usuario_actual = f"{current_user.nombre} {current_user.primer_apellido}"
+
+        await AppLogger.log_action(
+            modulo="reportes",
+            accion="export_movimientos_producto",
+            detalle={
+                "id_dependencia": id_dependencia,
+                "id_producto": id_producto,
+                "fecha_inicio": fecha_inicio.isoformat(),
+                "fecha_fin": fecha_fin.isoformat(),
+            },
+            usuario_id=current_user.id_usuario,
+            usuario_nombre=usuario_actual,
+        )
 
         pdf_buffer = generar_pdf_movimientos_producto(
             movimientos,
@@ -216,6 +228,7 @@ async def obtener_reporte_movimientos_producto(
             usuario_actual,
             aprobado_por_nombre,
             aprobado_por_cargo,
+            notas=notas,
         )
 
         return StreamingResponse(
@@ -226,7 +239,10 @@ async def obtener_reporte_movimientos_producto(
             },
         )
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Error en reporte movimientos-producto: {e}")
+        raise HTTPException(
+            status_code=500, detail="Error interno al generar el reporte"
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -238,11 +254,24 @@ async def obtener_reporte_movimientos_producto(
 async def preview_existencias(
     id_dependencia: int = Query(..., description="ID de la Dependencia"),
     db: AsyncSession = Depends(get_session),
+    current_user: UsuarioInfo = Depends(require_auth),
 ):
     try:
         existencias, dependencia_info = await get_existencias(db, id_dependencia)
 
         total_cantidad = sum(float(item["cantidad"]) for item in existencias)
+
+        usuario_actual = f"{current_user.nombre} {current_user.primer_apellido}"
+        await AppLogger.log_action(
+            modulo="reportes",
+            accion="preview_existencias",
+            detalle={
+                "id_dependencia": id_dependencia,
+                "total_items": len(existencias),
+            },
+            usuario_id=current_user.id_usuario,
+            usuario_nombre=usuario_actual,
+        )
 
         return {
             "dependencia": dependencia_info,
@@ -251,7 +280,10 @@ async def preview_existencias(
             "total_cantidad": total_cantidad,
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Error en preview existencias: {e}")
+        raise HTTPException(
+            status_code=500, detail="Error interno al generar el reporte"
+        )
 
 
 @router.get("/movimientos-dependencia/preview")
@@ -260,6 +292,7 @@ async def preview_movimientos_dependencia(
     fecha_inicio: date = Query(..., description="Fecha Inicio"),
     fecha_fin: date = Query(..., description="Fecha Fin"),
     db: AsyncSession = Depends(get_session),
+    current_user: UsuarioInfo = Depends(require_auth),
 ):
     try:
         movimientos, dependencia_info = await get_movimientos_dependencia(
@@ -283,6 +316,19 @@ async def preview_movimientos_dependencia(
             float(r["cantidad"]) for r in movimientos if r["tipo"] == "Salida"
         )
 
+        usuario_actual = f"{current_user.nombre} {current_user.primer_apellido}"
+        await AppLogger.log_action(
+            modulo="reportes",
+            accion="preview_movimientos_dependencia",
+            detalle={
+                "id_dependencia": id_dependencia,
+                "fecha_inicio": fecha_inicio.isoformat(),
+                "fecha_fin": fecha_fin.isoformat(),
+            },
+            usuario_id=current_user.id_usuario,
+            usuario_nombre=usuario_actual,
+        )
+
         return {
             "dependencia": dependencia_info,
             "items": items,
@@ -291,7 +337,10 @@ async def preview_movimientos_dependencia(
             "total_salidas": total_salidas,
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Error en preview movimientos-dependencia: {e}")
+        raise HTTPException(
+            status_code=500, detail="Error interno al generar el reporte"
+        )
 
 
 @router.get("/movimientos-producto/preview")
@@ -301,6 +350,7 @@ async def preview_movimientos_producto(
     fecha_inicio: date = Query(..., description="Fecha Inicio"),
     fecha_fin: date = Query(..., description="Fecha Fin"),
     db: AsyncSession = Depends(get_session),
+    current_user: UsuarioInfo = Depends(require_auth),
 ):
     try:
         movimientos, dependencia_info, producto_info = await get_movimientos_producto(
@@ -324,6 +374,20 @@ async def preview_movimientos_producto(
             float(r["cantidad"]) for r in movimientos if r["tipo"] == "Salida"
         )
 
+        usuario_actual = f"{current_user.nombre} {current_user.primer_apellido}"
+        await AppLogger.log_action(
+            modulo="reportes",
+            accion="preview_movimientos_producto",
+            detalle={
+                "id_dependencia": id_dependencia,
+                "id_producto": id_producto,
+                "fecha_inicio": fecha_inicio.isoformat(),
+                "fecha_fin": fecha_fin.isoformat(),
+            },
+            usuario_id=current_user.id_usuario,
+            usuario_nombre=usuario_actual,
+        )
+
         return {
             "dependencia": dependencia_info,
             "producto": producto_info,
@@ -333,7 +397,10 @@ async def preview_movimientos_producto(
             "total_salidas": total_salidas,
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Error en preview movimientos-producto: {e}")
+        raise HTTPException(
+            status_code=500, detail="Error interno al generar el reporte"
+        )
 
 
 @router.get("/proveedores-dependencia/preview")
@@ -344,10 +411,24 @@ async def preview_proveedores_dependencia(
     ),
     id_provincia: int = Query(None, description="Filtrar por provincia (opcional)"),
     db: AsyncSession = Depends(get_session),
+    current_user: UsuarioInfo = Depends(require_auth),
 ):
     try:
         proveedores, dependencia_info = await get_proveedores_por_dependencia(
             db, id_dependencia, tipo_entidad, id_provincia
+        )
+
+        usuario_actual = f"{current_user.nombre} {current_user.primer_apellido}"
+        await AppLogger.log_action(
+            modulo="reportes",
+            accion="preview_proveedores_dependencia",
+            detalle={
+                "id_dependencia": id_dependencia,
+                "tipo_entidad": tipo_entidad,
+                "id_provincia": id_provincia,
+            },
+            usuario_id=current_user.id_usuario,
+            usuario_nombre=usuario_actual,
         )
 
         return {
@@ -356,4 +437,7 @@ async def preview_proveedores_dependencia(
             "total_items": len(proveedores),
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Error en preview proveedores-dependencia: {e}")
+        raise HTTPException(
+            status_code=500, detail="Error interno al generar el reporte"
+        )

@@ -6,13 +6,15 @@ import { authHelpers } from "../../lib/api";
 import { useReportPreview } from "../../hooks/useReportPreview";
 import ReportPreviewPanel from "../../components/ui/ReportPreviewPanel";
 import type { Column, StatCard, ExportColumn } from "../../components/ui/ReportPreviewPanel";
-import { ArrowLeftRight, Download, Building2 } from "lucide-react";
+import { ArrowLeftRight, Download, Building2, Loader2 } from "lucide-react";
+import ReportNotes from "../../components/ui/ReportNotes";
 
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
 
-const BASE_URL = "http://localhost:8000/api/v1";
+const BASE_URL =
+  import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api/v1";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -118,6 +120,7 @@ const ReporteMovimientosDependencia: React.FC = () => {
   const [fechaFin, setFechaFin] = useState("");
   const [aprobadoPorNombre, setAprobadoPorNombre] = useState("");
   const [aprobadoPorCargo, setAprobadoPorCargo] = useState("");
+  const [notas, setNotas] = useState("");
 
   // ── Derived: selected dependencia object ──────────────────────────────────
   const selectedDependencia = useMemo(
@@ -198,6 +201,7 @@ const ReporteMovimientosDependencia: React.FC = () => {
         fecha_fin: fechaFin,
         aprobado_por_nombre: aprobadoPorNombre,
         aprobado_por_cargo: aprobadoPorCargo,
+        notas: notas,
       });
 
       const token = authHelpers.getToken() || "";
@@ -353,13 +357,20 @@ const ReporteMovimientosDependencia: React.FC = () => {
               </div>
             </div>
 
+            {/* Section: Notas */}
+            <ReportNotes value={notas} onChange={setNotas} />
+
             {/* Submit */}
             <button
               type="submit"
               disabled={!isFormValid || pdfLoading}
               className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
-              <Download className="w-4 h-4" />
+              {pdfLoading ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Download className="w-4 h-4" />
+              )}
               {buttonLabel}
             </button>
           </form>
@@ -374,6 +385,7 @@ const ReporteMovimientosDependencia: React.FC = () => {
           error={previewError}
           columns={COLUMNS}
           stats={stats}
+          notes={notas}
           emptyMessage="No se encontraron movimientos para el período seleccionado"
           exportFileName={`movimientos_dep_${idDependencia ?? "dep"}_${fechaInicio}_${fechaFin}`}
         />

@@ -65,8 +65,12 @@ class LogCreateRequest(BaseModel):
 async def get_logs(
     fecha_desde: Optional[str] = Query(None, description="Fecha desde (ISO)"),
     fecha_hasta: Optional[str] = Query(None, description="Fecha hasta (ISO)"),
-    nivel: Optional[str] = Query(None, description="Nivel: DEBUG, INFO, WARNING, ERROR"),
-    tipo: Optional[str] = Query(None, description="Tipo: REQUEST, ERROR, BUSINESS, ACTION, FRONTEND"),
+    nivel: Optional[str] = Query(
+        None, description="Nivel: DEBUG, INFO, WARNING, ERROR"
+    ),
+    tipo: Optional[str] = Query(
+        None, description="Tipo: REQUEST, ERROR, BUSINESS, ACTION, FRONTEND"
+    ),
     busqueda: Optional[str] = Query(None, description="Buscar en mensaje"),
     limit: int = Query(50, le=200),
     offset: int = Query(0),
@@ -74,45 +78,46 @@ async def get_logs(
 ):
     """Obtiene los logs con filtros"""
     from sqlmodel import select
-    
+
     statement = select(LogEntry).order_by(desc(LogEntry.timestamp))
-    
+
     if fecha_desde:
         try:
             fecha_desde_dt = datetime.fromisoformat(fecha_desde)
             statement = statement.where(LogEntry.timestamp >= fecha_desde_dt)
         except ValueError:
             pass
-    
+
     if fecha_hasta:
         try:
             fecha_hasta_dt = datetime.fromisoformat(fecha_hasta)
             statement = statement.where(LogEntry.timestamp <= fecha_hasta_dt)
         except ValueError:
             pass
-    
+
     if nivel:
         statement = statement.where(LogEntry.nivel == nivel.upper())
-    
+
     if tipo:
         statement = statement.where(LogEntry.tipo == tipo.upper())
-    
+
     if busqueda:
         from sqlalchemy import or_
+
         search_term = f"%{busqueda}%"
         statement = statement.where(
             or_(
                 LogEntry.mensaje.ilike(search_term),
                 LogEntry.nivel.ilike(search_term),
                 LogEntry.tipo.ilike(search_term),
-                LogEntry.usuario_nombre.ilike(search_term)
+                LogEntry.usuario_nombre.ilike(search_term),
             )
         )
-    
+
     statement = statement.limit(limit).offset(offset)
     results = await db.exec(statement)
     logs = results.all()
-    
+
     return [LogEntryResponse.model_validate(log.model_dump()) for log in logs]
 
 
@@ -122,16 +127,18 @@ async def get_log_stats(
 ):
     """Obtiene estadísticas de logs"""
     from sqlmodel import select
-    
+
     ahora = datetime.now()
     hace_24h = ahora - timedelta(hours=24)
     hace_7d = ahora - timedelta(days=7)
-    
+
     # Total últimos 7 días
-    statement_total = select(func.count(LogEntry.id)).where(LogEntry.timestamp >= hace_7d)
+    statement_total = select(func.count(LogEntry.id)).where(
+        LogEntry.timestamp >= hace_7d
+    )
     result = await db.exec(statement_total)
     total = result.one() or 0
-    
+
     # Por nivel
     statement_nivel = (
         select(LogEntry.nivel, func.count(LogEntry.id))
@@ -140,7 +147,7 @@ async def get_log_stats(
     )
     results_nivel = await db.exec(statement_nivel)
     por_nivel = {row[0]: row[1] for row in results_nivel.all()}
-    
+
     # Por tipo
     statement_tipo = (
         select(LogEntry.tipo, func.count(LogEntry.id))
@@ -149,7 +156,7 @@ async def get_log_stats(
     )
     results_tipo = await db.exec(statement_tipo)
     por_tipo = {row[0]: row[1] for row in results_tipo.all()}
-    
+
     # Últimos errores
     statement_errores = (
         select(LogEntry)
@@ -160,12 +167,14 @@ async def get_log_stats(
     )
     results_errores = await db.exec(statement_errores)
     ultimos_errores = results_errores.all()
-    
+
     return LogStatsResponse(
         total=total,
         por_nivel=por_nivel,
         por_tipo=por_tipo,
-        ultimos_errores=[LogEntryResponse.model_validate(e.model_dump()) for e in ultimos_errores],
+        ultimos_errores=[
+            LogEntryResponse.model_validate(e.model_dump()) for e in ultimos_errores
+        ],
     )
 
 
@@ -184,9 +193,10 @@ async def create_log(
     navegador = log_data.navegador
     usuario_id = log_data.usuario_id
     usuario_nombre = log_data.usuario_nombre
-    
+
     if request and not usuario_id:
         from src.services.auth_service import decode_token
+
         auth_header = request.headers.get("authorization")
         if auth_header and auth_header.startswith("Bearer "):
             token = auth_header.replace("Bearer ", "")
@@ -197,7 +207,7 @@ async def create_log(
                 except:
                     pass
                 usuario_nombre = payload.get("nombre")
-    
+
     log_data = {
         "nivel": nivel,
         "tipo": tipo,
@@ -208,12 +218,12 @@ async def create_log(
         "usuario_id": usuario_id,
         "usuario_nombre": usuario_nombre,
     }
-    
+
     db_obj = LogEntry(**log_data)
     db.add(db_obj)
     await db.commit()
     await db.refresh(db_obj)
-    
+
     broadcast_data = {
         "id": db_obj.id,
         "timestamp": db_obj.timestamp.isoformat(),
@@ -230,5 +240,5 @@ async def create_log(
         "status_code": db_obj.status_code,
     }
     await broadcast_log(broadcast_data)
-    
+
     return {"success": True}

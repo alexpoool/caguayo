@@ -189,9 +189,8 @@ class FacturaServicioRepository(
     async def get_by_codigo(
         self, db: AsyncSession, codigo: str
     ) -> Optional[FacturaServicio]:
-        statement = (
-            select(FacturaServicio)
-            .where(FacturaServicio.codigo_factura == codigo)
+        statement = select(FacturaServicio).where(
+            FacturaServicio.codigo_factura == codigo
         )
         results = await db.exec(statement)
         return results.one_or_none()
@@ -256,7 +255,11 @@ class PagoFacturaServicioRepository(
     ) -> List[PagoFacturaServicio]:
         statement = (
             select(PagoFacturaServicio)
-            .join(FacturaServicio, FacturaServicio.id_factura_servicio == PagoFacturaServicio.id_factura_servicio)
+            .join(
+                FacturaServicio,
+                FacturaServicio.id_factura_servicio
+                == PagoFacturaServicio.id_factura_servicio,
+            )
             .where(FacturaServicio.id_etapa == id_etapa)
             .order_by(PagoFacturaServicio.fecha.desc())
         )
@@ -337,13 +340,13 @@ class PersonaLiquidacionRepository(
         self, db: AsyncSession, id_etapa: int, id_persona: int
     ) -> Decimal:
         from sqlalchemy import func
-        statement = (
-            select(func.coalesce(func.sum(PersonaLiquidacion.importe), Decimal("0")))
-            .where(
-                PersonaLiquidacion.id_etapa == id_etapa,
-                PersonaLiquidacion.id_persona == id_persona,
-                PersonaLiquidacion.confirmado == True
-            )
+
+        statement = select(
+            func.coalesce(func.sum(PersonaLiquidacion.importe), Decimal("0"))
+        ).where(
+            PersonaLiquidacion.id_etapa == id_etapa,
+            PersonaLiquidacion.id_persona == id_persona,
+            PersonaLiquidacion.confirmado == True,
         )
         result = await db.exec(statement)
         return result.one() or Decimal("0")
@@ -372,19 +375,15 @@ class ItemFacturaServicioRepository(
     async def get_by_tarea(
         self, db: AsyncSession, id_tarea_etapa: int
     ) -> Optional[ItemFacturaServicio]:
-        statement = (
-            select(ItemFacturaServicio)
-            .where(ItemFacturaServicio.id_tarea_etapa == id_tarea_etapa)
+        statement = select(ItemFacturaServicio).where(
+            ItemFacturaServicio.id_tarea_etapa == id_tarea_etapa
         )
         results = await db.exec(statement)
         return results.one_or_none()
 
-    async def delete_by_factura(
-        self, db: AsyncSession, id_factura: int
-    ) -> bool:
-        statement = (
-            select(ItemFacturaServicio)
-            .where(ItemFacturaServicio.id_factura_servicio == id_factura)
+    async def delete_by_factura(self, db: AsyncSession, id_factura: int) -> bool:
+        statement = select(ItemFacturaServicio).where(
+            ItemFacturaServicio.id_factura_servicio == id_factura
         )
         results = await db.exec(statement)
         items = results.all()

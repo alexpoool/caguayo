@@ -49,19 +49,27 @@ async def get_existencias_por_anexo(
     try:
         return await ExistenciaService.get_existencias_por_anexo(db, id_anexo)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error al obtener existencias: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Error al obtener existencias: {str(e)}"
+        )
 
 
-@existencias_router.get("/dependencia/{id_dependencia}", response_model=List[ExistenciaResponse])
+@existencias_router.get(
+    "/dependencia/{id_dependencia}", response_model=List[ExistenciaResponse]
+)
 async def get_existencias_por_dependencia(
     id_dependencia: int,
     db: AsyncSession = Depends(get_session),
 ):
     """Obtiene existencias por movimientos de una dependencia."""
     try:
-        return await ExistenciaService.get_existencias_por_dependencia(db, id_dependencia)
+        return await ExistenciaService.get_existencias_por_dependencia(
+            db, id_dependencia
+        )
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error al obtener existencias: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Error al obtener existencias: {str(e)}"
+        )
 
 
 @existencias_router.get("/hibridas", response_model=List[ExistenciaHibridaResponse])
@@ -72,9 +80,13 @@ async def get_existencias_hibridas(
 ):
     """Obtiene existencias combinadas (sistema híbrido)."""
     try:
-        return await ExistenciaService.get_existencias_hibridas(db, id_dependencia, id_anexo)
+        return await ExistenciaService.get_existencias_hibridas(
+            db, id_dependencia, id_anexo
+        )
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error al obtener existencias: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Error al obtener existencias: {str(e)}"
+        )
 
 
 @existencias_router.get("/producto/{id_producto}")
@@ -90,7 +102,9 @@ async def get_existencia_producto(
             db, id_producto, id_dependencia, id_anexo
         )
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error al obtener existencia: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Error al obtener existencia: {str(e)}"
+        )
 
 
 @existencias_router.post("/validar")
@@ -101,14 +115,12 @@ async def validar_disponibilidad(
     """Valida si hay suficiente existencia para una transacción."""
     try:
         return await ExistenciaService.validar_disponibilidad(
-            db,
-            data.id_producto,
-            data.cantidad,
-            data.id_dependencia,
-            data.id_anexo
+            db, data.id_producto, data.cantidad, data.id_dependencia, data.id_anexo
         )
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error al validar disponibilidad: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Error al validar disponibilidad: {str(e)}"
+        )
 
 
 @existencias_router.post("/validar-multiples")
@@ -119,13 +131,12 @@ async def validar_multiple(
     """Valida disponibilidad de múltiples productos."""
     try:
         return await ExistenciaService.validar_multiple(
-            db,
-            data.productos,
-            data.id_dependencia,
-            data.id_anexo
+            db, data.productos, data.id_dependencia, data.id_anexo
         )
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error al validar disponibilidad: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Error al validar disponibilidad: {str(e)}"
+        )
 
 
 @existencias_router.get("/resumen")
@@ -137,4 +148,6 @@ async def get_resumen_existencias(
     try:
         return await ExistenciaService.get_resumen_existencias(db, id_dependencia)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error al obtener resumen: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Error al obtener resumen: {str(e)}"
+        )

@@ -27,7 +27,9 @@ def generate_codigo() -> str:
 
 class LiquidacionService:
     @staticmethod
-    async def generate_codigo_liquidacion(db: AsyncSession, nit: Optional[str] = None) -> str:
+    async def generate_codigo_liquidacion(
+        db: AsyncSession, nit: Optional[str] = None
+    ) -> str:
         anio = datetime.now().year
         cantidad = await liquidacion_repo.get_codigo_anio(db, anio)
         prefijo = f"{nit}." if nit else ""
@@ -37,11 +39,19 @@ class LiquidacionService:
     async def create_liquidacion(
         db: AsyncSession, data: LiquidacionCreate, nit: Optional[str] = None
     ) -> LiquidacionRead:
-        producto_ids = [pid for pid in data.producto_ids if pid not in (None, "", "undefined")]
+        producto_ids = [
+            pid for pid in data.producto_ids if pid not in (None, "", "undefined")
+        ]
 
         # Normalizar valores opcionales
-        id_convenio = data.id_convenio if data.id_convenio not in (None, "", "undefined") else None
-        id_anexo = data.id_anexo if data.id_anexo not in (None, "", "undefined") else None
+        id_convenio = (
+            data.id_convenio
+            if data.id_convenio not in (None, "", "undefined")
+            else None
+        )
+        id_anexo = (
+            data.id_anexo if data.id_anexo not in (None, "", "undefined") else None
+        )
 
         productos_db = await productos_en_liquidacion_repo.get_by_ids(db, producto_ids)
 
@@ -118,10 +128,9 @@ class LiquidacionService:
 
         if not resultado_validacion["valido"]:
             errores = resultado_validacion["errores"]
-            mensaje = "\n".join([
-                f"Producto {e['id_producto']}: {e['mensaje']}"
-                for e in errores
-            ])
+            mensaje = "\n".join(
+                [f"Producto {e['id_producto']}: {e['mensaje']}" for e in errores]
+            )
             raise ValueError(f"Stock insuficiente:\n{mensaje}")
 
         importe = Decimal("0.00")
@@ -294,8 +303,10 @@ class LiquidacionService:
 
     @staticmethod
     async def get_productos_pendientes_by_cliente(
-        db: AsyncSession, cliente_id: int, anexo_id: Optional[int] = None,
-        moneda_id: Optional[int] = None
+        db: AsyncSession,
+        cliente_id: int,
+        anexo_id: Optional[int] = None,
+        moneda_id: Optional[int] = None,
     ) -> List[dict]:
         return await productos_en_liquidacion_repo.get_pendientes_by_cliente_y_anexo(
             db, cliente_id, anexo_id, moneda_id
@@ -303,7 +314,10 @@ class LiquidacionService:
 
     @staticmethod
     async def get_items_anexo_con_estado(
-        db: AsyncSession, cliente_id: int, anexo_id: Optional[int] = None, moneda_id: Optional[int] = None
+        db: AsyncSession,
+        cliente_id: int,
+        anexo_id: Optional[int] = None,
+        moneda_id: Optional[int] = None,
     ) -> List[dict]:
         """Obtiene todos los items de anexos del cliente con estado (EN_CONSIGNACION, A LIQUIDAR, LIQUIDADO)."""
         return (
@@ -400,7 +414,7 @@ class LiquidacionService:
         """Aprobar una liquidación - marca como liquidada."""
         from sqlalchemy import update
         from src.models.liquidacion import Liquidacion
-        
+
         stmt = (
             update(Liquidacion)
             .where(Liquidacion.id_liquidacion == liquidacion_id)

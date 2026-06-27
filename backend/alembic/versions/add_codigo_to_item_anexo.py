@@ -5,6 +5,7 @@ Revises: 524de4aaae94
 Create Date: 2026-06-17
 
 """
+
 from typing import Sequence, Union
 
 from alembic import op
@@ -20,6 +21,7 @@ depends_on: Union[str, Sequence[str], None] = None
 def upgrade() -> None:
     conn = op.get_bind()
     from sqlalchemy import inspect
+
     inspector = inspect(conn)
     columns = [c["name"] for c in inspector.get_columns("item_anexo")]
     if "codigo" not in columns:

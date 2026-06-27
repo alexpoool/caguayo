@@ -12,9 +12,7 @@ class ItemFactura(SQLModel, table=True):
     __tablename__ = "item_factura"
 
     id_item_factura: Optional[int] = Field(
-        default=None, 
-        primary_key=True,
-        sa_column_kwargs={"autoincrement": True}
+        default=None, primary_key=True, sa_column_kwargs={"autoincrement": True}
     )
     id_factura: int = Field(foreign_key="factura.id_factura")
     id_producto: int = Field(foreign_key="productos.id_producto")

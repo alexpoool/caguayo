@@ -7,6 +7,7 @@ from src.dto import MonedaCreate, MonedaRead, MonedaUpdate
 
 router = APIRouter(prefix="/monedas", tags=["monedas"], redirect_slashes=False)
 
+
 @router.get("", response_model=List[MonedaRead])
 async def listar_monedas(
     skip: int = Query(0, ge=0),
@@ -15,6 +16,7 @@ async def listar_monedas(
 ):
     return await moneda_service.get_multi(db, skip=skip, limit=limit)
 
+
 @router.post("", response_model=MonedaRead, status_code=201)
 async def crear_moneda(
     moneda: MonedaCreate,
@@ -22,13 +24,18 @@ async def crear_moneda(
 ):
     moneda_obj = await moneda_service.create(db, moneda)
     from src.services.replicacion_service import ReplicacionService
-    ReplicacionService.replicar_moneda({
-        "id_moneda": moneda_obj.id_moneda,
-        "nombre": moneda_obj.nombre,
-        "denominacion": moneda_obj.denominacion,
-        "simbolo": moneda_obj.simbolo,
-    }, "INSERT")
+
+    ReplicacionService.replicar_moneda(
+        {
+            "id_moneda": moneda_obj.id_moneda,
+            "nombre": moneda_obj.nombre,
+            "denominacion": moneda_obj.denominacion,
+            "simbolo": moneda_obj.simbolo,
+        },
+        "INSERT",
+    )
     return moneda_obj
+
 
 @router.get("/{moneda_id}", response_model=MonedaRead)
 async def obtener_moneda(
@@ -37,6 +44,7 @@ async def obtener_moneda(
 ):
     return await moneda_service.get(db, moneda_id)
 
+
 @router.put("/{moneda_id}", response_model=MonedaRead)
 async def actualizar_moneda(
     moneda_id: int,
@@ -44,6 +52,7 @@ async def actualizar_moneda(
     db: AsyncSession = Depends(get_session),
 ):
     return await moneda_service.update(db, moneda_id, moneda_update)
+
 
 @router.delete("/{moneda_id}", status_code=204)
 async def eliminar_moneda(

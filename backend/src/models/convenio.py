@@ -13,9 +13,7 @@ class Convenio(SQLModel, table=True):
     __tablename__ = "convenio"
 
     id_convenio: Optional[int] = Field(
-        default=None, 
-        primary_key=True,
-        sa_column_kwargs={"autoincrement": True}
+        default=None, primary_key=True, sa_column_kwargs={"autoincrement": True}
     )
     id_cliente: int = Field(
         sa_column=Column(
@@ -28,12 +26,6 @@ class Convenio(SQLModel, table=True):
     id_tipo_convenio: int = Field(foreign_key="tipo_convenio.id_tipo_convenio")
     codigo: Optional[str] = Field(default=None, max_length=50)
 
-    cliente: Optional["Cliente"] = Relationship(
-        back_populates="convenios"
-    )
-    tipo_convenio: Optional["TipoConvenio"] = Relationship(
-        back_populates="convenios"
-    )
-    anexos: List["Anexo"] = Relationship(
-        back_populates="convenios"
-    )
+    cliente: Optional["Cliente"] = Relationship(back_populates="convenios")
+    tipo_convenio: Optional["TipoConvenio"] = Relationship(back_populates="convenios")
+    anexos: List["Anexo"] = Relationship(back_populates="convenios")

@@ -22,7 +22,9 @@ class ClienteNatural(SQLModel, table=True):
     ocupacion: Optional[str] = Field(default=None, max_length=100)
     centro_trabajo: Optional[str] = Field(default=None, max_length=200)
     correo_trabajo: Optional[str] = Field(default=None, max_length=100)
-    direccion_trabajo: Optional[str] = Field(default=None, sa_column_kwargs={'nullable': True})
+    direccion_trabajo: Optional[str] = Field(
+        default=None, sa_column_kwargs={"nullable": True}
+    )
     telefono_trabajo: Optional[str] = Field(default=None, max_length=20)
     en_baja: bool = Field(default=False)
     fecha_baja: Optional[date] = Field(default=None)

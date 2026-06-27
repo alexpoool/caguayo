@@ -9,8 +9,8 @@ from typing import Sequence, Union
 from alembic import op
 import sqlalchemy as sa
 
-revision: str = 'drop_estado_liquidacion'
-down_revision: Union[str, None] = 'seed_item_tables'
+revision: str = "drop_estado_liquidacion"
+down_revision: Union[str, None] = "seed_item_tables"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
@@ -25,11 +25,10 @@ def upgrade() -> None:
         """)
     )
     if result.fetchone():
-        op.drop_column('liquidacion', 'estado')
+        op.drop_column("liquidacion", "estado")
 
 
 def downgrade() -> None:
     op.add_column(
-        'liquidacion',
-        sa.Column('estado', sa.String(20), server_default='PENDIENTE')
+        "liquidacion", sa.Column("estado", sa.String(20), server_default="PENDIENTE")
     )

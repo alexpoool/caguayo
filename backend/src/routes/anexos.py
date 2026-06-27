@@ -214,12 +214,14 @@ async def crear_anexo(
             for p in item.get("precios", []):
                 if p["id_moneda"] == item["id_moneda"]:
                     continue
-                db.add(PrecioItemAnexo(
-                    id_item_anexo=db_item.id_item_anexo,
-                    id_moneda=p["id_moneda"],
-                    precio_venta=p["precio_venta"],
-                    precio_compra=p.get("precio_compra"),
-                ))
+                db.add(
+                    PrecioItemAnexo(
+                        id_item_anexo=db_item.id_item_anexo,
+                        id_moneda=p["id_moneda"],
+                        precio_venta=p["precio_venta"],
+                        precio_compra=p.get("precio_compra"),
+                    )
+                )
 
             producto.precio_compra = producto.precio_compra
             producto.moneda_compra = item["id_moneda"]

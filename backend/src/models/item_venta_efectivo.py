@@ -12,9 +12,7 @@ class ItemVentaEfectivo(SQLModel, table=True):
     __tablename__ = "item_venta_efectivo"
 
     id_item_venta_efectivo: Optional[int] = Field(
-        default=None, 
-        primary_key=True,
-        sa_column_kwargs={"autoincrement": True}
+        default=None, primary_key=True, sa_column_kwargs={"autoincrement": True}
     )
     id_venta_efectivo: int = Field(foreign_key="venta_efectivo.id_venta_efectivo")
     id_producto: int = Field(foreign_key="productos.id_producto")

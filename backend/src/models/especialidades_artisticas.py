@@ -9,9 +9,7 @@ class EspecialidadesArtisticas(SQLModel, table=True):
     __tablename__ = "especialidades_artisticas"
 
     id_especialidad: Optional[int] = Field(
-        default=None, 
-        primary_key=True,
-        sa_column_kwargs={"autoincrement": True}
+        default=None, primary_key=True, sa_column_kwargs={"autoincrement": True}
     )
     nombre: str = Field(max_length=100, unique=True)
     descripcion: Optional[str] = None

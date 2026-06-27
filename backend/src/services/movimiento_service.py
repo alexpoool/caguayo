@@ -67,7 +67,9 @@ class MovimientoService:
                     obj_data["id_convenio"] = base_convenio.id_convenio
             if not obj_data.get("id_anexo"):
                 base_anexo = (
-                    await db.exec(select(Anexo).where(Anexo.codigo_anexo == "ANEXO-BASE-REC"))
+                    await db.exec(
+                        select(Anexo).where(Anexo.codigo_anexo == "ANEXO-BASE-REC")
+                    )
                 ).first()
                 if base_anexo:
                     obj_data["id_anexo"] = base_anexo.id_anexo
@@ -167,12 +169,16 @@ class MovimientoService:
         tipo = db_movimiento.tipo_movimiento
         if tipo.factor < 0:
             validacion = await existencia_repo.validar_disponibilidad(
-                db, db_movimiento.id_producto, db_movimiento.cantidad,
+                db,
+                db_movimiento.id_producto,
+                db_movimiento.cantidad,
                 id_dependencia=db_movimiento.id_dependencia,
-                movimiento_id=db_movimiento.id_movimiento
+                movimiento_id=db_movimiento.id_movimiento,
             )
             if not validacion["disponible"]:
-                disponible_real = validacion.get("stock", 0) - validacion.get("stock_comprometido", 0)
+                disponible_real = validacion.get("stock", 0) - validacion.get(
+                    "stock_comprometido", 0
+                )
                 raise ValueError(
                     f"Stock insuficiente para '{db_movimiento.producto.nombre}'. "
                     f"Disponible: {disponible_real}, "
@@ -201,32 +207,43 @@ class MovimientoService:
         # Ajustar existencia en item_anexo para movimientos de ajuste
         if tipo.tipo == "AJUSTE_QUITAR" and db_movimiento.id_anexo:
             await ExistenciaService.ajustar_existencia_item_anexo(
-                db, db_movimiento.id_anexo, db_movimiento.id_producto,
-                db_movimiento.cantidad, signo=-1, commit=False
+                db,
+                db_movimiento.id_anexo,
+                db_movimiento.id_producto,
+                db_movimiento.cantidad,
+                signo=-1,
+                commit=False,
             )
 
         if tipo.tipo == "AJUSTE_AGREGAR" and db_movimiento.id_anexo:
             await ExistenciaService.ajustar_existencia_item_anexo(
-                db, db_movimiento.id_anexo, db_movimiento.id_producto,
-                db_movimiento.cantidad, signo=1, commit=False
+                db,
+                db_movimiento.id_anexo,
+                db_movimiento.id_producto,
+                db_movimiento.cantidad,
+                signo=1,
+                commit=False,
             )
 
         # Sincronizar productos.stock con el stock real post-actualización
         # Solo cuando se saltó actualizar_stock_producto (konsignación + venta)
         if tiene_konsignacion and tipo.tipo == "venta":
             from sqlalchemy import text as _text
+
             _sync = await db.exec(
                 _text("""
                     SELECT COALESCE(SUM(ia.cantidad), 0) - COALESCE(SUM(ia.cantidad_vendida), 0)
                     FROM item_anexo ia
                     WHERE ia.id_producto = :id_producto
                 """),
-                params={"id_producto": db_movimiento.id_producto}
+                params={"id_producto": db_movimiento.id_producto},
             )
             _stock_sync = _sync.scalar() or 0
             await db.exec(
-                _text("UPDATE productos SET stock = :stock WHERE id_producto = :id_producto"),
-                params={"id_producto": db_movimiento.id_producto, "stock": _stock_sync}
+                _text(
+                    "UPDATE productos SET stock = :stock WHERE id_producto = :id_producto"
+                ),
+                params={"id_producto": db_movimiento.id_producto, "stock": _stock_sync},
             )
 
         # Cambiar el estado a confirmado

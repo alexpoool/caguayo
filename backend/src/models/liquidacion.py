@@ -24,9 +24,7 @@ class Liquidacion(SQLModel, table=True):
     __tablename__ = "liquidacion"
 
     id_liquidacion: Optional[int] = Field(
-        default=None, 
-        primary_key=True,
-        sa_column_kwargs={"autoincrement": True}
+        default=None, primary_key=True, sa_column_kwargs={"autoincrement": True}
     )
     codigo: str = Field(max_length=50, unique=True)
 

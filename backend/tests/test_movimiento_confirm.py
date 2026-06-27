@@ -15,9 +15,11 @@ async def test_confirmar_entrada_salida(db_session):
     producto = await db_session.get(Productos, producto_id)
     stock_inicial = producto.existencia
 
-    tipo_compra = (await db_session.exec(
-        select(TipoMovimiento).where(TipoMovimiento.tipo == "compra")
-    )).one()
+    tipo_compra = (
+        await db_session.exec(
+            select(TipoMovimiento).where(TipoMovimiento.tipo == "compra")
+        )
+    ).one()
 
     mov_compra = Movimiento(
         id_tipo_movimiento=tipo_compra.id_tipo_movimiento,
@@ -37,9 +39,11 @@ async def test_confirmar_entrada_salida(db_session):
         f"Expected {stock_inicial + cantidad_compra}, got {producto.existencia}"
     )
 
-    tipo_merma = (await db_session.exec(
-        select(TipoMovimiento).where(TipoMovimiento.tipo == "MERMA")
-    )).one()
+    tipo_merma = (
+        await db_session.exec(
+            select(TipoMovimiento).where(TipoMovimiento.tipo == "MERMA")
+        )
+    ).one()
 
     mov_merma = Movimiento(
         id_tipo_movimiento=tipo_merma.id_tipo_movimiento,
@@ -69,9 +73,11 @@ async def test_confirmar_stock_insuficiente_rechaza(db_session):
 
     producto_id = 207
 
-    tipo_merma = (await db_session.exec(
-        select(TipoMovimiento).where(TipoMovimiento.tipo == "MERMA")
-    )).one()
+    tipo_merma = (
+        await db_session.exec(
+            select(TipoMovimiento).where(TipoMovimiento.tipo == "MERMA")
+        )
+    ).one()
 
     mov = Movimiento(
         id_tipo_movimiento=tipo_merma.id_tipo_movimiento,
@@ -85,6 +91,7 @@ async def test_confirmar_stock_insuficiente_rechaza(db_session):
     await db_session.commit()
 
     import pytest
+
     with pytest.raises(ValueError, match="Stock insuficiente"):
         await MovimientoService.confirmar_movimiento(db_session, mov.id_movimiento)
 

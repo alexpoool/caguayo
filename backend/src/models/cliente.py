@@ -19,9 +19,7 @@ class Cliente(SQLModel, table=True):
     __tablename__ = "clientes"
 
     id_cliente: Optional[int] = Field(
-        default=None,
-        primary_key=True,
-        sa_column_kwargs={"autoincrement": True}
+        default=None, primary_key=True, sa_column_kwargs={"autoincrement": True}
     )
     nombre: str = Field(max_length=200)
     tipo_persona: str = Field(sa_column=Column(String(20)))  # NATURAL, JURIDICA, TCP
@@ -47,14 +45,12 @@ class Cliente(SQLModel, table=True):
         back_populates="clientes",
         sa_relationship_kwargs={
             "foreign_keys": "Cliente.id_provincia",
-
         },
     )
     municipio: Optional["Municipio"] = Relationship(
         back_populates="clientes",
         sa_relationship_kwargs={
             "foreign_keys": "Cliente.id_municipio",
-
         },
     )
     ventas: List["Ventas"] = Relationship(
@@ -65,22 +61,16 @@ class Cliente(SQLModel, table=True):
         back_populates="cliente",
         sa_relationship_kwargs={"passive_deletes": True},
     )
-    movimientos: List["Movimiento"] = Relationship(
-        back_populates="cliente"
-    )
+    movimientos: List["Movimiento"] = Relationship(back_populates="cliente")
     cuentas: List["Cuenta"] = Relationship(
         back_populates="cliente",
         sa_relationship_kwargs={"passive_deletes": True},
     )
-    cliente_natural: Optional["ClienteNatural"] = Relationship(
-        back_populates="cliente"
-    )
+    cliente_natural: Optional["ClienteNatural"] = Relationship(back_populates="cliente")
     cliente_juridica: Optional["ClienteJuridica"] = Relationship(
         back_populates="cliente"
     )
-    cliente_tcp: Optional["ClienteTCP"] = Relationship(
-        back_populates="cliente"
-    )
+    cliente_tcp: Optional["ClienteTCP"] = Relationship(back_populates="cliente")
     contratos: List["Contrato"] = Relationship(
         back_populates="cliente",
         sa_relationship_kwargs={"passive_deletes": True},

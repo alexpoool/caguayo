@@ -13,7 +13,7 @@ class ClienteTCP(SQLModel, table=True):
     nombre: str = Field(max_length=50)
     primer_apellido: str = Field(max_length=50)
     segundo_apellido: Optional[str] = Field(default=None, max_length=50)
-    direccion: str = Field(sa_column_kwargs={'nullable': True})
+    direccion: str = Field(sa_column_kwargs={"nullable": True})
     numero_registro_proyecto: Optional[str] = Field(default=None, max_length=50)
     fecha_aprobacion: Optional[date] = Field(default=None)
 

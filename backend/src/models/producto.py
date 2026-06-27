@@ -18,9 +18,7 @@ class Productos(SQLModel, table=True):
     __tablename__ = "productos"
 
     id_producto: Optional[int] = Field(
-        default=None, 
-        primary_key=True,
-        sa_column_kwargs={"autoincrement": True}
+        default=None, primary_key=True, sa_column_kwargs={"autoincrement": True}
     )
     codigo: Optional[str] = Field(default=None, max_length=50, unique=True)
     id_subcategoria: int = Field(foreign_key="subcategorias.id_subcategoria")

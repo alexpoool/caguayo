@@ -229,7 +229,9 @@ async def login(db: AsyncSession, login_data: LoginRequest) -> Optional[LoginRes
         token = create_access_token(token_data)
 
         # 9. Guardar sesión en la base de datos destino
-        fecha_expiracion = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        fecha_expiracion = datetime.utcnow() + timedelta(
+            minutes=ACCESS_TOKEN_EXPIRE_MINUTES
+        )
         sesion = Sesion(
             id_usuario=usuario.id_usuario,
             token=token,
@@ -539,7 +541,9 @@ async def register(
     host = conexion.host if conexion else "localhost"
     puerto = conexion.puerto if conexion else 5432
     usuario_db = conexion.usuario if conexion else "postgres"
-    contrasenia_db = conexion.contrasenia if conexion else os.getenv("ADMIN_DB_PASSWORD", "postgres")
+    contrasenia_db = (
+        conexion.contrasenia if conexion else os.getenv("ADMIN_DB_PASSWORD", "postgres")
+    )
 
     # 2. Conectarse a la base de datos seleccionada
     from sqlmodel import Session, create_engine
@@ -629,7 +633,9 @@ async def register(
         token = create_access_token(token_data)
 
         # 10. Guardar sesión en la BD destino
-        fecha_expiracion = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        fecha_expiracion = datetime.utcnow() + timedelta(
+            minutes=ACCESS_TOKEN_EXPIRE_MINUTES
+        )
         sesion = Sesion(
             id_usuario=_id_usuario,
             token=token,

@@ -6,13 +6,15 @@ import { authHelpers } from "../../lib/api";
 import { useReportPreview } from "../../hooks/useReportPreview";
 import ReportPreviewPanel from "../../components/ui/ReportPreviewPanel";
 import type { Column, StatCard, ExportColumn } from "../../components/ui/ReportPreviewPanel";
-import { UserCircle, Download } from "lucide-react";
+import { UserCircle, Download, Loader2 } from "lucide-react";
+import ReportNotes from "../../components/ui/ReportNotes";
 
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
 
-const BASE_URL = "http://localhost:8000/api/v1";
+const BASE_URL =
+  import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api/v1";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -62,6 +64,7 @@ const ReporteProveedores: React.FC = () => {
   const [idProvincia, setIdProvincia] = useState<number | null>(null);
   const [aprobadoPorNombre, setAprobadoPorNombre] = useState("");
   const [aprobadoPorCargo, setAprobadoPorCargo] = useState("");
+  const [notas, setNotas] = useState("");
 
   // ── Seed selects on mount ──────────────────────────────────────────────────
   useEffect(() => {
@@ -205,6 +208,7 @@ const ReporteProveedores: React.FC = () => {
         tipo_entidad: tipoEntidad,
         aprobado_por_nombre: aprobadoPorNombre,
         aprobado_por_cargo: aprobadoPorCargo,
+        notas: notas,
       });
 
       if (idProvincia) {
@@ -393,13 +397,22 @@ const ReporteProveedores: React.FC = () => {
               </div>
             </div>
 
+            {/* NOTAS */}
+            <div>
+              <ReportNotes value={notas} onChange={setNotas} />
+            </div>
+
             {/* Submit */}
             <button
               type="submit"
               disabled={pdfLoading || !idDependencia || !tipoEntidad}
               className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium text-white bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
-              <Download className="w-4 h-4 flex-shrink-0" />
+              {pdfLoading ? (
+                <Loader2 className="w-4 h-4 animate-spin flex-shrink-0" />
+              ) : (
+                <Download className="w-4 h-4 flex-shrink-0" />
+              )}
               {submitLabel}
             </button>
           </form>
@@ -414,6 +427,7 @@ const ReporteProveedores: React.FC = () => {
           error={previewError}
           columns={columns}
           stats={stats}
+          notes={notas}
           emptyMessage="No se encontraron proveedores con los filtros seleccionados"
           exportFileName={`proveedores_${idDependencia ?? "dep"}_${tipoEntidad.toLowerCase()}`}
         />

@@ -5,6 +5,7 @@ Revises: remove_id_moneda_from_anexo
 Create Date: 2026-06-17
 
 """
+
 from typing import Sequence, Union
 
 from alembic import op

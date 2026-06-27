@@ -19,7 +19,9 @@ from src.dto.productos_en_liquidacion_dto import (
 
 class ProductosEnLiquidacionService:
     @staticmethod
-    async def generate_codigo(db: AsyncSession, nit: Optional[str] = None, modulo: str = "C") -> str:
+    async def generate_codigo(
+        db: AsyncSession, nit: Optional[str] = None, modulo: str = "C"
+    ) -> str:
         anio = datetime.now().year
         cantidad = await productos_en_liquidacion_repo.get_codigo_anio(db, anio)
         prefijo = f"{nit}." if nit else ""
@@ -30,7 +32,9 @@ class ProductosEnLiquidacionService:
         db: AsyncSession, data: ProductosEnLiquidacionCreate, nit: Optional[str] = None
     ) -> ProductosEnLiquidacionRead:
         modulo = "V" if data.tipo_compra in ("FACTURA", "VENTA_EFECTIVO") else "C"
-        codigo = await ProductosEnLiquidacionService.generate_codigo(db, nit=nit, modulo=modulo)
+        codigo = await ProductosEnLiquidacionService.generate_codigo(
+            db, nit=nit, modulo=modulo
+        )
 
         db_producto = ProductosEnLiquidacion(
             codigo=codigo,
@@ -206,12 +210,14 @@ async def agregar_desde_factura(
     """Agrega productos desde una factura a la tabla de productos_en_liquidacion."""
     if not productos:
         return
-    
+
     prefijo = f"{nit}." if nit else ""
     anio = datetime.now().year
-    codigo_base = await productos_en_liquidacion_service.generate_codigo(db, nit=nit, modulo="V")
-    numero = int(codigo_base.rsplit('.', 1)[-1])
-    
+    codigo_base = await productos_en_liquidacion_service.generate_codigo(
+        db, nit=nit, modulo="V"
+    )
+    numero = int(codigo_base.rsplit(".", 1)[-1])
+
     for prod in productos:
         codigo = f"{prefijo}V.{anio}.{numero}"
         numero += 1
@@ -231,17 +237,22 @@ async def agregar_desde_factura(
 
 
 async def agregar_desde_venta_efectivo(
-    db: AsyncSession, id_venta_efectivo: int, productos: List[dict], nit: Optional[str] = None
+    db: AsyncSession,
+    id_venta_efectivo: int,
+    productos: List[dict],
+    nit: Optional[str] = None,
 ) -> None:
     """Agrega productos desde una venta en efectivo a la tabla de productos_en_liquidacion."""
     if not productos:
         return
-    
+
     prefijo = f"{nit}." if nit else ""
     anio = datetime.now().year
-    codigo_base = await productos_en_liquidacion_service.generate_codigo(db, nit=nit, modulo="V")
-    numero = int(codigo_base.rsplit('.', 1)[-1])
-    
+    codigo_base = await productos_en_liquidacion_service.generate_codigo(
+        db, nit=nit, modulo="V"
+    )
+    numero = int(codigo_base.rsplit(".", 1)[-1])
+
     for prod in productos:
         codigo = f"{prefijo}V.{anio}.{numero}"
         numero += 1
@@ -265,12 +276,14 @@ async def agregar_desde_anexo(
     """Agrega productos desde un anexo a la tabla de productos_en_liquidacion."""
     if not productos:
         return
-    
+
     prefijo = f"{nit}." if nit else ""
     anio = datetime.now().year
-    codigo_base = await productos_en_liquidacion_service.generate_codigo(db, nit=nit, modulo="C")
-    numero = int(codigo_base.rsplit('.', 1)[-1])
-    
+    codigo_base = await productos_en_liquidacion_service.generate_codigo(
+        db, nit=nit, modulo="C"
+    )
+    numero = int(codigo_base.rsplit(".", 1)[-1])
+
     for prod in productos:
         codigo = f"{prefijo}C.{anio}.{numero}"
         numero += 1

@@ -224,10 +224,11 @@ class DatabaseService:
     def verificar_y_crear_tablas_faltantes(base_datos: str) -> List[str]:
         """Verifica y crea tablas faltantes en la base de datos del tenant."""
         import logging
+
         logger = logging.getLogger(__name__)
-        
+
         tablas_necesarias = {
-            'log': """
+            "log": """
                 CREATE TABLE IF NOT EXISTS log (
                     id SERIAL PRIMARY KEY,
                     timestamp TIMESTAMP NOT NULL DEFAULT NOW(),
@@ -245,9 +246,9 @@ class DatabaseService:
                 )
             """,
         }
-        
+
         tablas_creadas = []
-        
+
         conn = psycopg2.connect(
             host=os.getenv("ADMIN_DB_HOST", "localhost"),
             port=int(os.getenv("ADMIN_DB_PORT", 5432)),
@@ -258,35 +259,45 @@ class DatabaseService:
         )
         conn.autocommit = True
         cur = conn.cursor()
-        
+
         for nombre_tabla, ddl in tablas_necesarias.items():
             try:
                 cur.execute(f"SELECT 1 FROM {nombre_tabla} LIMIT 1")
-                logger.info(f"[DB SERVICE] Tabla {nombre_tabla} ya existe en {base_datos}")
+                logger.info(
+                    f"[DB SERVICE] Tabla {nombre_tabla} ya existe en {base_datos}"
+                )
             except psycopg2.errors.UndefinedTable:
                 try:
                     cur.execute(ddl)
                     tablas_creadas.append(nombre_tabla)
-                    logger.info(f"[DB SERVICE] Tabla {nombre_tabla} creada en {base_datos}")
+                    logger.info(
+                        f"[DB SERVICE] Tabla {nombre_tabla} creada en {base_datos}"
+                    )
                 except Exception as e:
-                    logger.warning(f"[DB SERVICE] Error creando tabla {nombre_tabla}: {e}")
+                    logger.warning(
+                        f"[DB SERVICE] Error creando tabla {nombre_tabla}: {e}"
+                    )
             except Exception as e:
-                logger.warning(f"[DB SERVICE] Error verificando tabla {nombre_tabla}: {e}")
-        
+                logger.warning(
+                    f"[DB SERVICE] Error verificando tabla {nombre_tabla}: {e}"
+                )
+
         cur.close()
         conn.close()
-        
+
         if tablas_creadas:
-            logger.info(f"[DB SERVICE] Tablas creadas en {base_datos}: {tablas_creadas}")
+            logger.info(
+                f"[DB SERVICE] Tablas creadas en {base_datos}: {tablas_creadas}"
+            )
         else:
             logger.info(f"[DB SERVICE] No se crearon tablas nuevas en {base_datos}")
-        
+
         return tablas_creadas
 
     @staticmethod
     def replicar_datos_desde_central(base_datos: str) -> None:
         print(f"[DB SERVICE] Replicating data from central to {base_datos}", flush=True)
-        
+
         central_conn = psycopg2.connect(
             host=os.getenv("ADMIN_DB_HOST", "localhost"),
             port=int(os.getenv("ADMIN_DB_PORT", 5432)),
@@ -297,7 +308,7 @@ class DatabaseService:
         )
         central_conn.autocommit = True
         central_cur = central_conn.cursor()
-        
+
         local_conn = psycopg2.connect(
             host=os.getenv("ADMIN_DB_HOST", "localhost"),
             port=int(os.getenv("ADMIN_DB_PORT", 5432)),
@@ -308,19 +319,27 @@ class DatabaseService:
         )
         local_conn.autocommit = True
         local_cur = local_conn.cursor()
-        
+
         try:
             # 1. Fetch ALL data from central first
-            central_cur.execute("SELECT id_moneda, nombre, denominacion, simbolo FROM moneda ORDER BY id_moneda")
+            central_cur.execute(
+                "SELECT id_moneda, nombre, denominacion, simbolo FROM moneda ORDER BY id_moneda"
+            )
             monedas = central_cur.fetchall()
 
-            central_cur.execute("SELECT id_tipo_dependencia, nombre, descripcion FROM tipo_dependencia ORDER BY id_tipo_dependencia")
+            central_cur.execute(
+                "SELECT id_tipo_dependencia, nombre, descripcion FROM tipo_dependencia ORDER BY id_tipo_dependencia"
+            )
             tipos = central_cur.fetchall()
 
-            central_cur.execute("SELECT id_provincia, nombre FROM provincia ORDER BY id_provincia")
+            central_cur.execute(
+                "SELECT id_provincia, nombre FROM provincia ORDER BY id_provincia"
+            )
             provincias = central_cur.fetchall()
 
-            central_cur.execute("SELECT id_municipio, id_provincia, nombre FROM municipio ORDER BY id_municipio")
+            central_cur.execute(
+                "SELECT id_municipio, id_provincia, nombre FROM municipio ORDER BY id_municipio"
+            )
             municipios = central_cur.fetchall()
 
             central_cur.execute("""
@@ -350,50 +369,60 @@ class DatabaseService:
             for m in monedas:
                 local_cur.execute(
                     "INSERT INTO moneda (id_moneda, nombre, denominacion, simbolo) VALUES (%s, %s, %s, %s)",
-                    m
+                    m,
                 )
             print(f"[DB SERVICE] Replicated {len(monedas)} monedas", flush=True)
 
             for t in tipos:
                 local_cur.execute(
                     "INSERT INTO tipo_dependencia (id_tipo_dependencia, nombre, descripcion) VALUES (%s, %s, %s)",
-                    t
+                    t,
                 )
             print(f"[DB SERVICE] Replicated {len(tipos)} tipo_dependencia", flush=True)
 
             for p in provincias:
                 local_cur.execute(
-                    "INSERT INTO provincia (id_provincia, nombre) VALUES (%s, %s)",
-                    p
+                    "INSERT INTO provincia (id_provincia, nombre) VALUES (%s, %s)", p
                 )
             print(f"[DB SERVICE] Replicated {len(provincias)} provincias", flush=True)
 
             for m in municipios:
                 local_cur.execute(
                     "INSERT INTO municipio (id_municipio, id_provincia, nombre) VALUES (%s, %s, %s)",
-                    m
+                    m,
                 )
             print(f"[DB SERVICE] Replicated {len(municipios)} municipios", flush=True)
 
             for d in deps:
-                local_cur.execute("""
+                local_cur.execute(
+                    """
                     INSERT INTO dependencia (id_dependencia, id_tipo_dependencia, codigo_padre, nombre, 
                                           direccion, telefono, email, web, id_provincia, id_municipio, descripcion, base_datos)
                     VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                """, d)
+                """,
+                    d,
+                )
             print(f"[DB SERVICE] Replicated {len(deps)} dependencias", flush=True)
 
             for c in cuentas:
-                local_cur.execute("""
+                local_cur.execute(
+                    """
                     INSERT INTO cuenta_dependencias (id_cuenta, id_dependencia, id_moneda, titular, banco, 
                                                   sucursal, numero_cuenta, direccion)
                     VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-                """, c)
-            print(f"[DB SERVICE] Replicated {len(cuentas)} cuenta_dependencias", flush=True)
+                """,
+                    c,
+                )
+            print(
+                f"[DB SERVICE] Replicated {len(cuentas)} cuenta_dependencias",
+                flush=True,
+            )
 
             local_conn.commit()
-            print(f"[DB SERVICE] Data replication completed for {base_datos}", flush=True)
-            
+            print(
+                f"[DB SERVICE] Data replication completed for {base_datos}", flush=True
+            )
+
         except Exception as e:
             print(f"[DB SERVICE] Error replicating data: {e}", flush=True)
             raise

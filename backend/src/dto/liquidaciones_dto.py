@@ -45,7 +45,9 @@ class LiquidacionCreate(SQLModel):
     tributario: Optional[Decimal] = Field(default=None, ge=0, le=100)
     comision_bancaria: Optional[Decimal] = Field(default=None, ge=0)
     gasto_empresa: Optional[Decimal] = Field(default=None, ge=0)
-    porcentaje_caguayo: Optional[Decimal] = Field(default=Decimal("10.00"), ge=0, le=100)
+    porcentaje_caguayo: Optional[Decimal] = Field(
+        default=Decimal("10.00"), ge=0, le=100
+    )
     tipo_pago: str = "TRANSFERENCIA"
     producto_ids: List[int] = []
 

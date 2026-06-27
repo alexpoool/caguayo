@@ -7,13 +7,15 @@ import type { Productos } from "../../types/index";
 import { useReportPreview } from "../../hooks/useReportPreview";
 import ReportPreviewPanel from "../../components/ui/ReportPreviewPanel";
 import type { Column, StatCard, ExportColumn } from "../../components/ui/ReportPreviewPanel";
-import { Package, Download } from "lucide-react";
+import { Package, Download, Loader2 } from "lucide-react";
+import ReportNotes from "../../components/ui/ReportNotes";
 
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
 
-const BASE_URL = "http://localhost:8000/api/v1";
+const BASE_URL =
+  import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api/v1";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -101,6 +103,7 @@ const ReporteMovimientosProducto: React.FC = () => {
   const [fechaFin, setFechaFin] = useState("");
   const [aprobadoPorNombre, setAprobadoPorNombre] = useState("");
   const [aprobadoPorCargo, setAprobadoPorCargo] = useState("");
+  const [notas, setNotas] = useState("");
 
   // ── Derived: selected objects ─────────────────────────────────────────────
   const selectedDep = useMemo(
@@ -202,6 +205,7 @@ const ReporteMovimientosProducto: React.FC = () => {
         fecha_fin: fechaFin,
         aprobado_por_nombre: aprobadoPorNombre,
         aprobado_por_cargo: aprobadoPorCargo,
+        notas: notas,
       });
 
       const token = authHelpers.getToken() ?? "";
@@ -387,13 +391,22 @@ const ReporteMovimientosProducto: React.FC = () => {
               </div>
             </div>
 
+            {/* Section: NOTAS */}
+            <div className="mb-6">
+              <ReportNotes value={notas} onChange={setNotas} />
+            </div>
+
             {/* Submit */}
             <button
               type="submit"
               disabled={!isFormValid || pdfLoading}
               className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold text-white bg-amber-600 hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
-              <Download className="w-4 h-4 flex-shrink-0" />
+              {pdfLoading ? (
+                <Loader2 className="w-4 h-4 animate-spin flex-shrink-0" />
+              ) : (
+                <Download className="w-4 h-4 flex-shrink-0" />
+              )}
               {buttonLabel}
             </button>
           </form>
@@ -408,6 +421,7 @@ const ReporteMovimientosProducto: React.FC = () => {
           error={previewError}
           columns={COLUMNS}
           stats={stats}
+          notes={notas}
           emptyMessage="No se encontraron movimientos para el producto en el rango de fechas seleccionado."
           exportFileName={`movimientos_prod_${idProducto ?? "prod"}_${fechaInicio}_${fechaFin}`}
         />

@@ -20,8 +20,12 @@ depends_on: Union[str, Sequence[str], None] = None
 def upgrade() -> None:
     op.execute("ALTER TABLE suplemento ADD COLUMN IF NOT EXISTS codigo VARCHAR(100)")
     op.execute("ALTER TABLE item_factura ADD COLUMN IF NOT EXISTS codigo VARCHAR(100)")
-    op.execute("ALTER TABLE venta_efectivo ADD COLUMN IF NOT EXISTS codigo VARCHAR(100)")
-    op.execute("ALTER TABLE item_venta_efectivo ADD COLUMN IF NOT EXISTS codigo VARCHAR(100)")
+    op.execute(
+        "ALTER TABLE venta_efectivo ADD COLUMN IF NOT EXISTS codigo VARCHAR(100)"
+    )
+    op.execute(
+        "ALTER TABLE item_venta_efectivo ADD COLUMN IF NOT EXISTS codigo VARCHAR(100)"
+    )
 
 
 def downgrade() -> None:

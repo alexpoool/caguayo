@@ -5,6 +5,7 @@ Revises: add_nit_column_to_clientes
 Create Date: 2026-05-29
 
 """
+
 from typing import Sequence, Union
 import sqlalchemy as sa
 from alembic import op
@@ -18,15 +19,15 @@ depends_on: Union[str, Sequence[str], None] = None
 def upgrade() -> None:
     from sqlalchemy import text as sa_text
 
-    op.execute(
-        "ALTER TABLE factura ADD COLUMN IF NOT EXISTS id_cuenta INTEGER"
-    )
+    op.execute("ALTER TABLE factura ADD COLUMN IF NOT EXISTS id_cuenta INTEGER")
     conn = op.get_bind()
     result = conn.execute(
-        sa_text("SELECT 1 FROM pg_constraint con "
-                "JOIN pg_class rel ON rel.oid = con.conrelid "
-                "WHERE rel.relname = 'factura' AND con.confrelid = "
-                "(SELECT oid FROM pg_class WHERE relname = 'cuenta')")
+        sa_text(
+            "SELECT 1 FROM pg_constraint con "
+            "JOIN pg_class rel ON rel.oid = con.conrelid "
+            "WHERE rel.relname = 'factura' AND con.confrelid = "
+            "(SELECT oid FROM pg_class WHERE relname = 'cuenta')"
+        )
     )
     if not result.fetchone():
         op.create_foreign_key(

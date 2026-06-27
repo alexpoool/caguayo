@@ -191,7 +191,7 @@ etapas_router = APIRouter(prefix="/etapas", tags=["etapas"], redirect_slashes=Fa
 async def get_all_etapas(
     skip: int = Query(0, ge=0),
     limit: int = Query(10000, ge=1, le=100000),
-    db: AsyncSession = Depends(get_session)
+    db: AsyncSession = Depends(get_session),
 ):
     return await EtapaService.get_all(db, skip=skip, limit=limit)
 
@@ -362,14 +362,16 @@ async def delete_factura_servicio(id: int, db: AsyncSession = Depends(get_sessio
         raise HTTPException(status_code=404, detail="Factura no encontrada")
 
 
-@facturas_servicio_router.get("/{id}/items", response_model=List[ItemFacturaServicioRead])
-async def get_factura_servicio_items(
-    id: int, db: AsyncSession = Depends(get_session)
-):
+@facturas_servicio_router.get(
+    "/{id}/items", response_model=List[ItemFacturaServicioRead]
+)
+async def get_factura_servicio_items(id: int, db: AsyncSession = Depends(get_session)):
     return await FacturaServicioService.get_items(db, id)
 
 
-@facturas_servicio_router.get("/{id}/with-items", response_model=FacturaServicioWithItems)
+@facturas_servicio_router.get(
+    "/{id}/with-items", response_model=FacturaServicioWithItems
+)
 async def get_factura_servicio_with_items(
     id: int, db: AsyncSession = Depends(get_session)
 ):
@@ -445,11 +447,14 @@ async def get_pagos_disponibles_etapa(
 async def get_disponible_liquidar(
     id_etapa: int = Query(...),
     id_persona: int = Query(...),
-    db: AsyncSession = Depends(get_session)
+    db: AsyncSession = Depends(get_session),
 ):
     """Obtiene el monto disponible para liquidar a una persona en una etapa."""
     from decimal import Decimal
-    disponible = await PersonaLiquidacionService.get_disponible_liquidar(db, id_etapa, id_persona)
+
+    disponible = await PersonaLiquidacionService.get_disponible_liquidar(
+        db, id_etapa, id_persona
+    )
     return {"disponible": float(disponible)}
 
 
@@ -549,7 +554,9 @@ async def delete_liquidacion(id: int, db: AsyncSession = Depends(get_session)):
 # ==========================================
 # CERTIFICACIONES
 # ==========================================
-certificaciones_router = APIRouter(prefix="/certificaciones", tags=["certificaciones"], redirect_slashes=False)
+certificaciones_router = APIRouter(
+    prefix="/certificaciones", tags=["certificaciones"], redirect_slashes=False
+)
 
 
 @certificaciones_router.get("", response_model=List[CertificacionRead])
@@ -560,7 +567,9 @@ async def get_certificaciones(
 
 
 @certificaciones_router.get("/etapa/{id_etapa}", response_model=List[CertificacionRead])
-async def get_certificaciones_by_etapa(id_etapa: int, db: AsyncSession = Depends(get_session)):
+async def get_certificaciones_by_etapa(
+    id_etapa: int, db: AsyncSession = Depends(get_session)
+):
     return await certificacion_service.get_by_etapa(db, id_etapa)
 
 

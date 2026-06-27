@@ -9,9 +9,7 @@ class Servicio(SQLModel, table=True):
     __tablename__ = "servicios"
 
     id_servicio: Optional[int] = Field(
-        default=None, 
-        primary_key=True,
-        sa_column_kwargs={"autoincrement": True}
+        default=None, primary_key=True, sa_column_kwargs={"autoincrement": True}
     )
     codigo_servicio: Optional[str] = Field(default=None, max_length=50, unique=True)
     concepto: Optional[str] = None
@@ -25,9 +23,7 @@ class SolicitudServicio(SQLModel, table=True):
     __tablename__ = "solicitud_servicio"
 
     id_solicitud_servicio: Optional[int] = Field(
-        default=None, 
-        primary_key=True,
-        sa_column_kwargs={"autoincrement": True}
+        default=None, primary_key=True, sa_column_kwargs={"autoincrement": True}
     )
     id_cliente: Optional[int] = Field(default=None, foreign_key="clientes.id_cliente")
     id_contrato: Optional[int] = Field(default=None, foreign_key="contrato.id_contrato")
@@ -60,9 +56,7 @@ class Etapa(SQLModel, table=True):
     __tablename__ = "etapas"
 
     id_etapa: Optional[int] = Field(
-        default=None, 
-        primary_key=True,
-        sa_column_kwargs={"autoincrement": True}
+        default=None, primary_key=True, sa_column_kwargs={"autoincrement": True}
     )
     id_solicitud_servicio: int = Field(
         sa_column=Column(
@@ -99,9 +93,7 @@ class TareaEtapa(SQLModel, table=True):
     __tablename__ = "tareas_etapa"
 
     id_tarea_etapa: Optional[int] = Field(
-        default=None, 
-        primary_key=True,
-        sa_column_kwargs={"autoincrement": True}
+        default=None, primary_key=True, sa_column_kwargs={"autoincrement": True}
     )
     id_etapa: int = Field(
         sa_column=Column(
@@ -152,12 +144,12 @@ class FacturaServicio(SQLModel, table=True):
     __tablename__ = "factura_servicio"
 
     id_factura_servicio: Optional[int] = Field(
-        default=None, 
-        primary_key=True,
-        sa_column_kwargs={"autoincrement": True}
+        default=None, primary_key=True, sa_column_kwargs={"autoincrement": True}
     )
     id_etapa: Optional[int] = Field(default=None, foreign_key="etapas.id_etapa")
-    id_certificacion: Optional[int] = Field(default=None, foreign_key="certificacion.id_certificacion")
+    id_certificacion: Optional[int] = Field(
+        default=None, foreign_key="certificacion.id_certificacion"
+    )
     alcance: Optional[str] = Field(default=None, max_length=20)
     codigo_factura: Optional[str] = Field(default=None, max_length=50)
     id_moneda: Optional[int] = Field(default=None, foreign_key="moneda.id_moneda")
@@ -175,8 +167,7 @@ class FacturaServicio(SQLModel, table=True):
         back_populates="factura", sa_relationship_kwargs={"lazy": "selectin"}
     )
     items: List["ItemFacturaServicio"] = Relationship(
-        back_populates="factura",
-        sa_relationship_kwargs={"lazy": "selectin"}
+        back_populates="factura", sa_relationship_kwargs={"lazy": "selectin"}
     )
 
 
@@ -184,9 +175,7 @@ class PagoFacturaServicio(SQLModel, table=True):
     __tablename__ = "pago_factura_servicio"
 
     id_pago_factura_servicio: Optional[int] = Field(
-        default=None, 
-        primary_key=True,
-        sa_column_kwargs={"autoincrement": True}
+        default=None, primary_key=True, sa_column_kwargs={"autoincrement": True}
     )
     id_factura_servicio: Optional[int] = Field(
         default=None, foreign_key="factura_servicio.id_factura_servicio"
@@ -207,9 +196,7 @@ class PersonaLiquidacion(SQLModel, table=True):
     __tablename__ = "persona_liquidacion"
 
     id_liquidacion: Optional[int] = Field(
-        default=None, 
-        primary_key=True,
-        sa_column_kwargs={"autoincrement": True}
+        default=None, primary_key=True, sa_column_kwargs={"autoincrement": True}
     )
     numero: Optional[str] = Field(default=None, max_length=50)
     id_etapa: Optional[int] = Field(default=None, foreign_key="etapas.id_etapa")
@@ -234,7 +221,9 @@ class PersonaLiquidacion(SQLModel, table=True):
     gasto_empresa: Decimal = Field(default=Decimal("0.00"))
     observacion: Optional[str] = None
     confirmado: bool = Field(default=False)
-    id_pago: Optional[int] = Field(default=None, foreign_key="pago_factura_servicio.id_pago_factura_servicio")
+    id_pago: Optional[int] = Field(
+        default=None, foreign_key="pago_factura_servicio.id_pago_factura_servicio"
+    )
 
     pago: Optional["PagoFacturaServicio"] = Relationship(back_populates="liquidaciones")
 
@@ -243,15 +232,12 @@ class Certificacion(SQLModel, table=True):
     __tablename__ = "certificacion"
 
     id_certificacion: Optional[int] = Field(
-        default=None,
-        primary_key=True,
-        sa_column_kwargs={"autoincrement": True}
+        default=None, primary_key=True, sa_column_kwargs={"autoincrement": True}
     )
     nombre: str = Field(max_length=255)
     id_etapa: int = Field(
         sa_column=Column(
-            ForeignKey("etapas.id_etapa", ondelete="CASCADE"),
-            nullable=False
+            ForeignKey("etapas.id_etapa", ondelete="CASCADE"), nullable=False
         )
     )
     constructor: Optional[str] = None
@@ -271,7 +257,10 @@ class Certificacion(SQLModel, table=True):
     etapa: "Etapa" = Relationship(back_populates="certificaciones")
     facturas: List["FacturaServicio"] = Relationship(
         back_populates="certificacion",
-        sa_relationship_kwargs={"foreign_keys": "[FacturaServicio.id_certificacion]", "lazy": "selectin"}
+        sa_relationship_kwargs={
+            "foreign_keys": "[FacturaServicio.id_certificacion]",
+            "lazy": "selectin",
+        },
     )
 
 
@@ -279,20 +268,18 @@ class ItemFacturaServicio(SQLModel, table=True):
     __tablename__ = "items_factura_servicio"
 
     id_item_factura_servicio: Optional[int] = Field(
-        default=None,
-        primary_key=True,
-        sa_column_kwargs={"autoincrement": True}
+        default=None, primary_key=True, sa_column_kwargs={"autoincrement": True}
     )
     id_factura_servicio: int = Field(
         sa_column=Column(
             ForeignKey("factura_servicio.id_factura_servicio", ondelete="CASCADE"),
-            nullable=False
+            nullable=False,
         )
     )
     id_tarea_etapa: int = Field(
         sa_column=Column(
             ForeignKey("tareas_etapa.id_tarea_etapa", ondelete="CASCADE"),
-            nullable=False
+            nullable=False,
         )
     )
     codigo_extendido: Optional[str] = Field(default=None, max_length=100)
@@ -305,5 +292,7 @@ class ItemFacturaServicio(SQLModel, table=True):
 
     factura: "FacturaServicio" = Relationship(
         back_populates="items",
-        sa_relationship_kwargs={"foreign_keys": "[ItemFacturaServicio.id_factura_servicio]"}
+        sa_relationship_kwargs={
+            "foreign_keys": "[ItemFacturaServicio.id_factura_servicio]"
+        },
     )

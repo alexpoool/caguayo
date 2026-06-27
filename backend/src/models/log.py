@@ -7,9 +7,7 @@ class LogEntry(SQLModel, table=True):
     __tablename__ = "log"
 
     id: Optional[int] = Field(
-        default=None,
-        primary_key=True,
-        sa_column_kwargs={"autoincrement": True}
+        default=None, primary_key=True, sa_column_kwargs={"autoincrement": True}
     )
     timestamp: datetime = Field(default_factory=datetime.now)
     nivel: str = Field(max_length=20)

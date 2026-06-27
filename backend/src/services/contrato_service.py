@@ -205,7 +205,9 @@ async def map_contrato_to_read(
 
 class ContratoService:
     @staticmethod
-    async def create(db: AsyncSession, data: ContratoCreate, nit: Optional[str] = None) -> ContratoReadWithDetails:
+    async def create(
+        db: AsyncSession, data: ContratoCreate, nit: Optional[str] = None
+    ) -> ContratoReadWithDetails:
         anio = data.fecha.year
         codigo = await generar_codigo_anio(db, "contrato", "fecha", anio)
         prefijo = f"{nit}." if nit else ""
@@ -309,11 +311,7 @@ class ContratoService:
                     )
                 elif item.precios:
                     precio_alt = next(
-                        (
-                            p
-                            for p in item.precios
-                            if p.id_moneda == moneda_contrato
-                        ),
+                        (p for p in item.precios if p.id_moneda == moneda_contrato),
                         None,
                     )
                     if precio_alt:
@@ -325,7 +323,8 @@ class ContratoService:
                                 cantidad=item.cantidad,
                                 cantidad_vendida=item.cantidad_vendida,
                                 precio_venta=precio_alt.precio_venta,
-                                precio_compra=precio_alt.precio_compra or item.precio_compra,
+                                precio_compra=precio_alt.precio_compra
+                                or item.precio_compra,
                                 id_moneda=moneda_contrato,
                                 codigo=item.codigo,
                                 producto=ProductoSimpleRead(
@@ -433,7 +432,9 @@ async def map_factura_to_read(
     items_con_producto = []
     if factura.items_factura:
         for item in factura.items_factura:
-            producto = await db.get(Productos, item.id_producto) if item.id_producto else None
+            producto = (
+                await db.get(Productos, item.id_producto) if item.id_producto else None
+            )
             item_read = ItemFacturaRead(
                 id_item_factura=item.id_item_factura,
                 id_factura=item.id_factura,
@@ -449,11 +450,13 @@ async def map_factura_to_read(
                     descripcion=producto.descripcion,
                     precio_venta=producto.precio_venta,
                     precio_minimo=producto.precio_minimo,
-                    cantidad=0
-                ) if producto else None
+                    cantidad=0,
+                )
+                if producto
+                else None,
             )
             items_con_producto.append(item_read)
-    
+
     return FacturaReadWithDetails(
         id_factura=factura.id_factura,
         id_contrato=factura.id_contrato,
@@ -469,7 +472,9 @@ async def map_factura_to_read(
 
 class FacturaService:
     @staticmethod
-    async def create(db: AsyncSession, data: FacturaCreate, nit: Optional[str] = None) -> FacturaReadWithDetails:
+    async def create(
+        db: AsyncSession, data: FacturaCreate, nit: Optional[str] = None
+    ) -> FacturaReadWithDetails:
         data_dict = data.model_dump(exclude_none=True)
         items_data = data_dict.pop("items", [])
 
@@ -501,21 +506,22 @@ class FacturaService:
                 {"id_producto": item["id_producto"], "cantidad": item["cantidad"]}
                 for item in items_data
             ]
-            
+
             resultado_validacion = await ExistenciaService.validar_multiple(
                 db, productos_validar, id_dependencia
             )
-            
+
             if not resultado_validacion["valido"]:
                 errores = resultado_validacion["errores"]
-                mensaje = "\n".join([
-                    f"Producto {e['id_producto']}: {e['mensaje']}"
-                    for e in errores
-                ])
+                mensaje = "\n".join(
+                    [f"Producto {e['id_producto']}: {e['mensaje']}" for e in errores]
+                )
                 raise ValueError(f"Stock insuficiente:\n{mensaje}")
 
         if items_data and tipo_mov:
-            await item_factura_repo.create_items(db, factura.id_factura, items_data, nit=nit)
+            await item_factura_repo.create_items(
+                db, factura.id_factura, items_data, nit=nit
+            )
 
             for item in items_data:
                 producto = await db.get(Productos, item["id_producto"])
@@ -554,7 +560,9 @@ class FacturaService:
         await db.commit()
         await db.refresh(factura)
 
-        factura_con_detalles = await factura_repo.get_by_id_with_details(db, factura.id_factura)
+        factura_con_detalles = await factura_repo.get_by_id_with_details(
+            db, factura.id_factura
+        )
         return await map_factura_to_read(db, factura_con_detalles)
 
     @staticmethod
@@ -612,8 +620,11 @@ class FacturaService:
             return False
         from sqlmodel import select
         from src.models import ProductosEnLiquidacion
+
         # Desvincular productos_en_liquidacion (columna nullable)
-        stmt_liq = select(ProductosEnLiquidacion).where(ProductosEnLiquidacion.id_factura == id)
+        stmt_liq = select(ProductosEnLiquidacion).where(
+            ProductosEnLiquidacion.id_factura == id
+        )
         for liq in (await db.exec(stmt_liq)).all():
             liq.id_factura = None
             db.add(liq)
@@ -640,18 +651,22 @@ async def map_venta_efectivo_to_read(
     dependencia = await db.get(Dependencia, venta.id_dependencia)
 
     items_db = await item_venta_efectivo_repo.get_by_venta(db, venta.id_venta_efectivo)
-    items_read = [
-        ItemVentaEfectivoRead(
-            id_item_venta_efectivo=item.id_item_venta_efectivo,
-            id_venta_efectivo=item.id_venta_efectivo,
-            id_producto=item.id_producto,
-            cantidad=item.cantidad,
-            precio_venta=item.precio_venta,
-            precio_compra=item.precio_compra,
-            id_moneda=item.id_moneda,
-        )
-        for item in items_db
-    ] if items_db else []
+    items_read = (
+        [
+            ItemVentaEfectivoRead(
+                id_item_venta_efectivo=item.id_item_venta_efectivo,
+                id_venta_efectivo=item.id_venta_efectivo,
+                id_producto=item.id_producto,
+                cantidad=item.cantidad,
+                precio_venta=item.precio_venta,
+                precio_compra=item.precio_compra,
+                id_moneda=item.id_moneda,
+            )
+            for item in items_db
+        ]
+        if items_db
+        else []
+    )
 
     return VentaEfectivoReadWithDetails(
         id_venta_efectivo=venta.id_venta_efectivo,
@@ -724,7 +739,9 @@ class VentaEfectivoService:
                     codigo = f"{prefijo}V.{anio}.VE{venta.id_venta_efectivo}.{item['id_producto']}"
                     db_movimiento.codigo = codigo
 
-        await agregar_desde_venta_efectivo(db, venta.id_venta_efectivo, items_data, nit=nit)
+        await agregar_desde_venta_efectivo(
+            db, venta.id_venta_efectivo, items_data, nit=nit
+        )
 
         await db.commit()
         await db.refresh(venta)

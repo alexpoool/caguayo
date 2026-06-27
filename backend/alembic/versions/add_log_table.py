@@ -1,17 +1,18 @@
 """Create log table for system logging
 
 Revision ID: add_log_table
-Revises: 
+Revises:
 Create Date: 2026-05-03
 
 """
+
 from alembic import op
 import sqlalchemy as sa
 
 
 # revision identifiers
-revision = 'add_log_table'
-down_revision = 'a9d239ce0765'
+revision = "add_log_table"
+down_revision = "a9d239ce0765"
 branch_labels = None
 depends_on = None
 
@@ -35,11 +36,9 @@ def upgrade() -> None:
         "    PRIMARY KEY (id)"
         ")"
     )
-    op.execute(
-        "CREATE INDEX IF NOT EXISTS ix_log_id ON log (id)"
-    )
+    op.execute("CREATE INDEX IF NOT EXISTS ix_log_id ON log (id)")
 
 
 def downgrade() -> None:
-    op.drop_index(op.f('ix_log_id'), table_name='log')
-    op.drop_table('log')
+    op.drop_index(op.f("ix_log_id"), table_name="log")
+    op.drop_table("log")

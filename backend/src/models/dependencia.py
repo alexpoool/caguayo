@@ -14,9 +14,7 @@ class TipoDependencia(SQLModel, table=True):
     __tablename__ = "tipo_dependencia"
 
     id_tipo_dependencia: Optional[int] = Field(
-        default=None, 
-        primary_key=True,
-        sa_column_kwargs={"autoincrement": True}
+        default=None, primary_key=True, sa_column_kwargs={"autoincrement": True}
     )
     nombre: str = Field(max_length=20, unique=True)
     descripcion: Optional[str] = None
@@ -28,9 +26,7 @@ class Dependencia(SQLModel, table=True):
     __tablename__ = "dependencia"
 
     id_dependencia: Optional[int] = Field(
-        default=None, 
-        primary_key=True,
-        sa_column_kwargs={"autoincrement": True}
+        default=None, primary_key=True, sa_column_kwargs={"autoincrement": True}
     )
     id_tipo_dependencia: int = Field(foreign_key="tipo_dependencia.id_tipo_dependencia")
     codigo_padre: Optional[int] = Field(
@@ -75,9 +71,7 @@ class Provincia(SQLModel, table=True):
     __tablename__ = "provincia"
 
     id_provincia: Optional[int] = Field(
-        default=None, 
-        primary_key=True,
-        sa_column_kwargs={"autoincrement": True}
+        default=None, primary_key=True, sa_column_kwargs={"autoincrement": True}
     )
     nombre: str = Field(max_length=100, unique=True)
 
@@ -90,9 +84,7 @@ class Municipio(SQLModel, table=True):
     __tablename__ = "municipio"
 
     id_municipio: Optional[int] = Field(
-        default=None, 
-        primary_key=True,
-        sa_column_kwargs={"autoincrement": True}
+        default=None, primary_key=True, sa_column_kwargs={"autoincrement": True}
     )
     id_provincia: int = Field(foreign_key="provincia.id_provincia")
     nombre: str = Field(max_length=100)

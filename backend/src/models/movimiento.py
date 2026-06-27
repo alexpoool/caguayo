@@ -17,9 +17,7 @@ class TipoMovimiento(SQLModel, table=True):
     __tablename__ = "tipo_movimiento"
 
     id_tipo_movimiento: Optional[int] = Field(
-        default=None, 
-        primary_key=True,
-        sa_column_kwargs={"autoincrement": True}
+        default=None, primary_key=True, sa_column_kwargs={"autoincrement": True}
     )
     tipo: str = Field(max_length=20, unique=True)
     factor: int
@@ -31,9 +29,7 @@ class Movimiento(SQLModel, table=True):
     __tablename__ = "movimiento"
 
     id_movimiento: Optional[int] = Field(
-        default=None, 
-        primary_key=True,
-        sa_column_kwargs={"autoincrement": True}
+        default=None, primary_key=True, sa_column_kwargs={"autoincrement": True}
     )
     id_tipo_movimiento: int = Field(foreign_key="tipo_movimiento.id_tipo_movimiento")
     id_dependencia: int = Field(foreign_key="dependencia.id_dependencia")

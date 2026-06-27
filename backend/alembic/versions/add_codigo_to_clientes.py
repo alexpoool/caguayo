@@ -19,9 +19,7 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    op.execute(
-        "ALTER TABLE clientes ADD COLUMN IF NOT EXISTS codigo VARCHAR(50)"
-    )
+    op.execute("ALTER TABLE clientes ADD COLUMN IF NOT EXISTS codigo VARCHAR(50)")
     op.execute("""
         UPDATE clientes
         SET codigo = 'CLI-' || LPAD(id_cliente::text, 6, '0')
@@ -30,15 +28,15 @@ def upgrade() -> None:
     op.execute("ALTER TABLE clientes ALTER COLUMN codigo SET NOT NULL")
     conn = op.get_bind()
     has_uq = conn.execute(
-        text("SELECT conname FROM pg_constraint con "
-             "JOIN pg_class rel ON rel.oid = con.conrelid "
-             "WHERE rel.relname = 'clientes' AND con.conname = 'uq_clientes_codigo'")
+        text(
+            "SELECT conname FROM pg_constraint con "
+            "JOIN pg_class rel ON rel.oid = con.conrelid "
+            "WHERE rel.relname = 'clientes' AND con.conname = 'uq_clientes_codigo'"
+        )
     ).fetchone()
     if not has_uq:
         op.create_unique_constraint("uq_clientes_codigo", "clientes", ["codigo"])
-    op.execute(
-        "CREATE INDEX IF NOT EXISTS idx_clientes_codigo ON clientes (codigo)"
-    )
+    op.execute("CREATE INDEX IF NOT EXISTS idx_clientes_codigo ON clientes (codigo)")
 
 
 def downgrade() -> None:

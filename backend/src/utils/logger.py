@@ -7,7 +7,7 @@ logger = logging.getLogger(__name__)
 
 class AppLogger:
     """Utility class para logging de negocio"""
-    
+
     @staticmethod
     async def log_business(
         mensaje: str,
@@ -26,11 +26,11 @@ class AppLogger:
             "usuario_id": usuario_id,
             "usuario_nombre": usuario_nombre,
         }
-        
+
         try:
             from src.database.connection import get_session
             from src.models.log import LogEntry
-            
+
             async for db in get_session():
                 db_obj = LogEntry(**log_data)
                 db.add(db_obj)
@@ -49,8 +49,9 @@ class AppLogger:
     ):
         """Guarda un log de acción de usuario"""
         import json
+
         mensaje = f"{modulo}: {accion}"
-        
+
         await AppLogger.log_business(
             mensaje=mensaje,
             nivel="INFO",
@@ -69,7 +70,7 @@ class AppLogger:
     ):
         """Guarda un log de error"""
         error_str = str(error) if error else None
-        
+
         await AppLogger.log_business(
             mensaje=mensaje,
             nivel="ERROR",
@@ -99,11 +100,11 @@ class AppLogger:
             "usuario_id": usuario_id,
             "usuario_nombre": usuario_nombre,
         }
-        
+
         try:
             from src.database.connection import get_session
             from src.models.log import LogEntry
-            
+
             async for db in get_session():
                 db_obj = LogEntry(**log_data)
                 db.add(db_obj)

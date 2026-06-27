@@ -77,6 +77,7 @@ class DependenciaRead(SQLModel):
 
 class DependenciaConCuentasRead(SQLModel):
     """DTO completo de Dependencia con todas sus cuentas bancarias"""
+
     id_dependencia: int
     id_tipo_dependencia: int
     codigo_padre: Optional[int] = None

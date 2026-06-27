@@ -6,13 +6,15 @@ import { authHelpers } from "../../lib/api";
 import { useReportPreview } from "../../hooks/useReportPreview";
 import ReportPreviewPanel from "../../components/ui/ReportPreviewPanel";
 import type { Column, StatCard } from "../../components/ui/ReportPreviewPanel";
-import { Boxes, Download, Building2 } from "lucide-react";
+import { Boxes, Download, Building2, Loader2 } from "lucide-react";
+import ReportNotes from "../../components/ui/ReportNotes";
 
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
 
-const BASE_URL = "http://localhost:8000/api/v1";
+const BASE_URL =
+  import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api/v1";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -67,6 +69,7 @@ const ReporteExistencias: React.FC = () => {
   const [idDependencia, setIdDependencia] = useState<number | null>(null);
   const [aprobadoPorNombre, setAprobadoPorNombre] = useState("");
   const [aprobadoPorCargo, setAprobadoPorCargo] = useState("");
+  const [notas, setNotas] = useState("");
 
   // ── Derived ───────────────────────────────────────────────────────────────
   const selectedDep = useMemo(
@@ -119,6 +122,7 @@ const ReporteExistencias: React.FC = () => {
         id_dependencia: idDependencia.toString(),
         aprobado_por_nombre: aprobadoPorNombre,
         aprobado_por_cargo: aprobadoPorCargo,
+        notas: notas,
       });
 
       const token = authHelpers.getToken() ?? "";
@@ -268,13 +272,20 @@ const ReporteExistencias: React.FC = () => {
               </div>
             </div>
 
+            {/* ── NOTAS section ────────────────────────────────────────── */}
+            <ReportNotes value={notas} onChange={setNotas} />
+
             {/* ── Submit button ─────────────────────────────────────────── */}
             <button
               type="submit"
               disabled={!idDependencia || pdfLoading}
               className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
-              <Download className="w-4 h-4" aria-hidden="true" />
+              {pdfLoading ? (
+                <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
+              ) : (
+                <Download className="w-4 h-4" aria-hidden="true" />
+              )}
               {buttonLabel}
             </button>
           </form>
@@ -291,6 +302,7 @@ const ReporteExistencias: React.FC = () => {
           error={previewError}
           columns={COLUMNS}
           stats={stats}
+          notes={notas}
           emptyMessage="Esta dependencia no tiene productos registrados"
           exportFileName={`existencias_${idDependencia ?? "dependencia"}`}
         />

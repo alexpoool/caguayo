@@ -108,7 +108,9 @@ def upgrade() -> None:
 
     # 4. factura_servicio.codigo_factura: FAC-2026-0002 → {nit}{letra}.2026.2
     has_certificacion = conn.execute(
-        text("SELECT column_name FROM information_schema.columns WHERE table_name='factura_servicio' AND column_name='id_certificacion'")
+        text(
+            "SELECT column_name FROM information_schema.columns WHERE table_name='factura_servicio' AND column_name='id_certificacion'"
+        )
     ).fetchone()
     if has_certificacion:
         if nit:

@@ -20,14 +20,14 @@ class ReplicacionService:
                 database="caguayosa",
             )
             cur = conn.cursor()
-            
+
             cur.execute("""
                 SELECT nombre_database, host, puerto, usuario, contrasenia
                 FROM conexion_database
                 ORDER BY nombre_database
             """)
             rows = cur.fetchall()
-            
+
             if rows:
                 cur.close()
                 conn.close()
@@ -41,7 +41,7 @@ class ReplicacionService:
                     }
                     for row in rows
                 ]
-            
+
             cur.execute("""
                 SELECT datname 
                 FROM pg_database 
@@ -54,7 +54,7 @@ class ReplicacionService:
             rows = cur.fetchall()
             cur.close()
             conn.close()
-            
+
             return [
                 {
                     "nombre_database": row[0],
@@ -70,7 +70,9 @@ class ReplicacionService:
             return []
 
     @staticmethod
-    def get_conexion_sucursal(nombre_database: str) -> Optional[psycopg2.extensions.connection]:
+    def get_conexion_sucursal(
+        nombre_database: str,
+    ) -> Optional[psycopg2.extensions.connection]:
         try:
             conn = psycopg2.connect(
                 host=os.getenv("ADMIN_DB_HOST", "localhost"),
@@ -92,15 +94,15 @@ class ReplicacionService:
         condicion: Optional[Dict[str, Any]] = None,
     ) -> None:
         sucursales = ReplicacionService.get_sucursales()
-        
+
         for sucursal in sucursales:
             if sucursal["nombre_database"] == ReplicacionService.CENTRAL_DB:
                 continue
-            
+
             conn = ReplicacionService.get_conexion_sucursal(sucursal["nombre_database"])
             if not conn:
                 continue
-            
+
             cur = conn.cursor()
             try:
                 if operacion == "INSERT":
@@ -109,47 +111,75 @@ class ReplicacionService:
                     values = list(datos.values())
                     cur.execute(
                         f"INSERT INTO {tabla} ({columns}) VALUES ({placeholders})",
-                        values
+                        values,
                     )
                 elif operacion == "UPDATE":
                     set_clause = ", ".join([f"{k} = %s" for k in datos.keys()])
                     values = list(datos.values())
                     if condicion:
-                        where_clause = " AND ".join([f"{k} = %s" for k in condicion.keys()])
+                        where_clause = " AND ".join(
+                            [f"{k} = %s" for k in condicion.keys()]
+                        )
                         values += list(condicion.values())
                         cur.execute(
                             f"UPDATE {tabla} SET {set_clause} WHERE {where_clause}",
-                            values
+                            values,
                         )
                     else:
                         cur.execute(f"UPDATE {tabla} SET {set_clause}", values)
                 elif operacion == "DELETE":
                     if condicion:
-                        where_clause = " AND ".join([f"{k} = %s" for k in condicion.keys()])
+                        where_clause = " AND ".join(
+                            [f"{k} = %s" for k in condicion.keys()]
+                        )
                         values = list(condicion.values())
                         cur.execute(f"DELETE FROM {tabla} WHERE {where_clause}", values)
-                
+
                 conn.commit()
-                print(f"[REPLICACION] {operacion} on {sucursal['nombre_database']}.{tabla}")
+                print(
+                    f"[REPLICACION] {operacion} on {sucursal['nombre_database']}.{tabla}"
+                )
             except Exception as e:
                 conn.rollback()
-                print(f"[REPLICACION] Error on {sucursal['nombre_database']}.{tabla}: {e}")
+                print(
+                    f"[REPLICACION] Error on {sucursal['nombre_database']}.{tabla}: {e}"
+                )
             finally:
                 cur.close()
                 conn.close()
 
     @staticmethod
-    def replicar_moneda(datos: Dict[str, Any], operacion: str = "INSERT", condicion: Optional[Dict[str, Any]] = None) -> None:
+    def replicar_moneda(
+        datos: Dict[str, Any],
+        operacion: str = "INSERT",
+        condicion: Optional[Dict[str, Any]] = None,
+    ) -> None:
         ReplicacionService.replicar_tabla("moneda", datos, operacion, condicion)
 
     @staticmethod
-    def replicar_tipo_dependencia(datos: Dict[str, Any], operacion: str = "INSERT", condicion: Optional[Dict[str, Any]] = None) -> None:
-        ReplicacionService.replicar_tabla("tipo_dependencia", datos, operacion, condicion)
+    def replicar_tipo_dependencia(
+        datos: Dict[str, Any],
+        operacion: str = "INSERT",
+        condicion: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        ReplicacionService.replicar_tabla(
+            "tipo_dependencia", datos, operacion, condicion
+        )
 
     @staticmethod
-    def replicar_dependencia(datos: Dict[str, Any], operacion: str = "INSERT", condicion: Optional[Dict[str, Any]] = None) -> None:
+    def replicar_dependencia(
+        datos: Dict[str, Any],
+        operacion: str = "INSERT",
+        condicion: Optional[Dict[str, Any]] = None,
+    ) -> None:
         ReplicacionService.replicar_tabla("dependencia", datos, operacion, condicion)
 
     @staticmethod
-    def replicar_cuenta_dependencia(datos: Dict[str, Any], operacion: str = "INSERT", condicion: Optional[Dict[str, Any]] = None) -> None:
-        ReplicacionService.replicar_tabla("cuenta_dependencias", datos, operacion, condicion)
+    def replicar_cuenta_dependencia(
+        datos: Dict[str, Any],
+        operacion: str = "INSERT",
+        condicion: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        ReplicacionService.replicar_tabla(
+            "cuenta_dependencias", datos, operacion, condicion
+        )

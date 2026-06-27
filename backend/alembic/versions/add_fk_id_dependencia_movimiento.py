@@ -5,6 +5,7 @@ Revises: add_existencia_to_item_anexo
 Create Date: 2026-06-19
 
 """
+
 from typing import Sequence, Union
 
 from alembic import op
@@ -20,14 +21,12 @@ depends_on: Union[str, Sequence[str], None] = None
 def upgrade() -> None:
     conn = op.get_bind()
     from sqlalchemy import inspect
+
     inspector = inspect(conn)
-    
+
     # Check if FK already exists
-    fks = [
-        fk["constrained_columns"]
-        for fk in inspector.get_foreign_keys("movimiento")
-    ]
-    
+    fks = [fk["constrained_columns"] for fk in inspector.get_foreign_keys("movimiento")]
+
     if ["id_dependencia"] not in fks:
         op.create_foreign_key(
             "fk_movimiento_id_dependencia",

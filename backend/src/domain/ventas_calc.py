@@ -2,6 +2,7 @@ from decimal import Decimal
 from typing import List
 from pydantic import BaseModel, computed_field
 
+
 class DetalleCalculo(BaseModel):
     cantidad: Decimal
     precio_unitario: Decimal
@@ -10,6 +11,7 @@ class DetalleCalculo(BaseModel):
     @property
     def subtotal(self) -> Decimal:
         return self.cantidad * self.precio_unitario
+
 
 class CalculadoraVentas(BaseModel):
     detalles: List[DetalleCalculo]

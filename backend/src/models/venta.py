@@ -20,9 +20,7 @@ class Ventas(SQLModel, table=True):
     __tablename__ = "ventas"
 
     id_venta: Optional[int] = Field(
-        default=None, 
-        primary_key=True,
-        sa_column_kwargs={"autoincrement": True}
+        default=None, primary_key=True, sa_column_kwargs={"autoincrement": True}
     )
     id_cliente: int = Field(
         sa_column=Column(

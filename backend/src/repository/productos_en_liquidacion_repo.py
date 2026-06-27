@@ -124,19 +124,17 @@ class ProductosEnLiquidacionRepository(CRUDBase[ProductosEnLiquidacion, dict, di
 
     async def get_codigo_anio(self, db: AsyncSession, anio: int) -> int:
         from sqlalchemy import Integer
-        statement = (
-            select(
-                func.max(
-                    func.cast(
-                        func.split_part(
-                            func.reverse(ProductosEnLiquidacion.codigo), '.', 1
-                        ),
-                        Integer
-                    )
+
+        statement = select(
+            func.max(
+                func.cast(
+                    func.split_part(
+                        func.reverse(ProductosEnLiquidacion.codigo), ".", 1
+                    ),
+                    Integer,
                 )
             )
-            .where(func.extract("YEAR", ProductosEnLiquidacion.fecha) == anio)
-        )
+        ).where(func.extract("YEAR", ProductosEnLiquidacion.fecha) == anio)
         result = await db.exec(statement)
         max_codigo = result.one() or 0
         return max_codigo + 1
@@ -160,8 +158,11 @@ class ProductosEnLiquidacionRepository(CRUDBase[ProductosEnLiquidacion, dict, di
         return result.all()
 
     async def get_pendientes_by_cliente_y_anexo(
-        self, db: AsyncSession, cliente_id: int, anexo_id: Optional[int] = None,
-        moneda_id: Optional[int] = None
+        self,
+        db: AsyncSession,
+        cliente_id: int,
+        anexo_id: Optional[int] = None,
+        moneda_id: Optional[int] = None,
     ) -> List[dict]:
         from src.models.anexo import Anexo
         from src.models.convenio import Convenio
@@ -287,7 +288,7 @@ class ProductosEnLiquidacionRepository(CRUDBase[ProductosEnLiquidacion, dict, di
                         "codigo_factura": factura.codigo_factura,
                         "monto": float(factura.monto),
                         "pagado": float(total_pagado),
-                        "esta_pagada": total_pagado >= factura.monto
+                        "esta_pagada": total_pagado >= factura.monto,
                     }
 
             if info_factura and not info_factura["esta_pagada"]:
@@ -315,7 +316,11 @@ class ProductosEnLiquidacionRepository(CRUDBase[ProductosEnLiquidacion, dict, di
         return result.all()
 
     async def get_items_anexo_con_estado_por_cliente(
-        self, db: AsyncSession, cliente_id: int, anexo_id: Optional[int] = None, moneda_id: Optional[int] = None
+        self,
+        db: AsyncSession,
+        cliente_id: int,
+        anexo_id: Optional[int] = None,
+        moneda_id: Optional[int] = None,
     ) -> List[dict]:
         """Obtiene todos los items de anexos del cliente con su estado:
         - CONSIGNACION: productos en item_anexo sin compras (facturas/ventas) asociadas
@@ -446,7 +451,9 @@ class ProductosEnLiquidacionRepository(CRUDBase[ProductosEnLiquidacion, dict, di
         from src.repository.pago_repo import pago_repo
 
         unpaid_factura_ids = set()
-        factura_ids = set(pel.id_factura for pel in rows_pel if pel.id_factura is not None)
+        factura_ids = set(
+            pel.id_factura for pel in rows_pel if pel.id_factura is not None
+        )
         for fid in factura_ids:
             factura = await db.get(Factura, fid)
             if factura:
@@ -460,7 +467,7 @@ class ProductosEnLiquidacionRepository(CRUDBase[ProductosEnLiquidacion, dict, di
             id_producto = row[1]
             id_anexo = row[2]
             cantidad_original = row[3]  # x - cantidad entrada en anexo
-            cantidad_vendida = row[4]   # cantidad vendida desde consignación
+            cantidad_vendida = row[4]  # cantidad vendida desde consignación
             precio_compra = row[5]
             precio_venta = row[6]
             id_moneda = row[7]
@@ -489,13 +496,16 @@ class ProductosEnLiquidacionRepository(CRUDBase[ProductosEnLiquidacion, dict, di
                     )
                 )
                 if moneda_id is not None:
-                    pel_fallback_stmt = pel_fallback_stmt.where(ProductosEnLiquidacion.id_moneda == moneda_id)
+                    pel_fallback_stmt = pel_fallback_stmt.where(
+                        ProductosEnLiquidacion.id_moneda == moneda_id
+                    )
                 result_fallback = await db.exec(pel_fallback_stmt)
                 pel_relacionados = result_fallback.all()
 
             # Filtrar productos con facturas impagas
             pel_relacionados = [
-                p for p in pel_relacionados
+                p
+                for p in pel_relacionados
                 if not (p.id_factura and p.id_factura in unpaid_factura_ids)
             ]
 
@@ -568,10 +578,16 @@ class ProductosEnLiquidacionRepository(CRUDBase[ProductosEnLiquidacion, dict, di
         ]
 
         pel_compra_venta = [
-            pel for pel in rows_pel
+            pel
+            for pel in rows_pel
             if (
                 pel.id_anexo in anexos_compra_venta_ids
-                or (pel.id_anexo is None and (pel.id_factura is not None or pel.id_venta_efectivo is not None))
+                or (
+                    pel.id_anexo is None
+                    and (
+                        pel.id_factura is not None or pel.id_venta_efectivo is not None
+                    )
+                )
             )
             and not (pel.id_factura and pel.id_factura in unpaid_factura_ids)
         ]

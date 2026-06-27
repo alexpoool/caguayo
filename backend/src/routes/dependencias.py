@@ -93,7 +93,9 @@ async def listar_dependencias(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=1000),
     search: str = Query(None, description="Buscar por nombre"),
-    todas: bool = Query(False, description="Retornar todas las dependencias del sistema"),
+    todas: bool = Query(
+        False, description="Retornar todas las dependencias del sistema"
+    ),
     db: AsyncSession = Depends(get_session),
 ):
     statement = select(Dependencia).options(
@@ -101,7 +103,9 @@ async def listar_dependencias(
         selectinload(Dependencia.provincia),
         selectinload(Dependencia.municipio).selectinload(Municipio.provincia),
         selectinload(Dependencia.cuentas),
-        selectinload(Dependencia.cuentas_dependencias).selectinload(CuentaDependencia.moneda),
+        selectinload(Dependencia.cuentas_dependencias).selectinload(
+            CuentaDependencia.moneda
+        ),
     )
     if search:
         statement = statement.where(
@@ -123,7 +127,9 @@ async def listar_dependencias_jerarquia(
         selectinload(Dependencia.provincia),
         selectinload(Dependencia.municipio),
         selectinload(Dependencia.cuentas),
-        selectinload(Dependencia.cuentas_dependencias).selectinload(CuentaDependencia.moneda),
+        selectinload(Dependencia.cuentas_dependencias).selectinload(
+            CuentaDependencia.moneda
+        ),
     )
     if padre_id:
         statement = statement.where(Dependencia.codigo_padre == padre_id)
@@ -140,11 +146,11 @@ async def get_bases_de_datos(
 ):
     """Obtiene todas las bases de datos existentes de la tabla conexion_database"""
     from sqlmodel import select
-    
+
     statement = select(ConexionDatabase)
     results = await db.exec(statement)
     bases_de_datos = results.all()
-    
+
     return [
         {
             "id_conexion": bd.id_conexion,
@@ -163,30 +169,30 @@ async def crear_dependencia(
     db: AsyncSession = Depends(get_session),
 ):
     from sqlmodel import select
-    
+
     codigo_padre = data.dependencia.codigo_padre
-    
+
     if codigo_padre is not None:
-        statement = select(Dependencia).where(Dependencia.id_dependencia == codigo_padre)
+        statement = select(Dependencia).where(
+            Dependencia.id_dependencia == codigo_padre
+        )
         results = await db.exec(statement)
         dependencia_padre = results.first()
-        
+
         if not dependencia_padre:
             raise HTTPException(
                 status_code=404,
                 detail="Dependencia padre no encontrada",
             )
-        
+
         if dependencia_padre.base_datos is None:
             raise HTTPException(
                 status_code=400,
                 detail="La dependencia padre no tiene base de datos asignada",
             )
-    
+
     if codigo_padre:
-        tiene_ciclo = await validar_ciclo_dependencia(
-            db, 0, codigo_padre
-        )
+        tiene_ciclo = await validar_ciclo_dependencia(db, 0, codigo_padre)
         if tiene_ciclo:
             raise HTTPException(
                 status_code=400,
@@ -198,7 +204,9 @@ async def crear_dependencia(
     except IntegrityError as e:
         error_msg = str(e.orig)
         if "dependencia_nit_key" in error_msg:
-            raise HTTPException(status_code=409, detail="El NIT ya está registrado en otra dependencia")
+            raise HTTPException(
+                status_code=409, detail="El NIT ya está registrado en otra dependencia"
+            )
         raise HTTPException(status_code=409, detail="Conflicto: el registro ya existe")
 
     cuentas_creadas = []
@@ -210,7 +218,9 @@ async def crear_dependencia(
             )
             cuenta_obj = await cuenta_service.create(db, cuenta_create)
 
-            cuenta_dep_data = cuenta_data.model_dump(exclude={"id_cliente", "id_dependencia"})
+            cuenta_dep_data = cuenta_data.model_dump(
+                exclude={"id_cliente", "id_dependencia"}
+            )
             cuenta_dep_obj = CuentaDependencia(
                 id_dependencia=db_obj.id_dependencia,
                 **cuenta_dep_data,
@@ -229,7 +239,9 @@ async def crear_dependencia(
 
     elif data.dependencia.base_datos:
         try:
-            tablas_creadas = DatabaseService.crear_base_datos(data.dependencia.base_datos, "new.sql")
+            tablas_creadas = DatabaseService.crear_base_datos(
+                data.dependencia.base_datos, "new.sql"
+            )
         except Exception as e:
             await dependencia_repo.remove(db, id=db_obj.id_dependencia)
             raise HTTPException(
@@ -241,36 +253,45 @@ async def crear_dependencia(
         DatabaseService.replicar_datos_desde_central(data.dependencia.base_datos)
 
         # Insertar usuario admin con id_dependencia apuntando a la nueva dependencia
-        DatabaseService.insertar_admin_en_db(data.dependencia.base_datos, db_obj.id_dependencia)
+        DatabaseService.insertar_admin_en_db(
+            data.dependencia.base_datos, db_obj.id_dependencia
+        )
 
     from src.services.replicacion_service import ReplicacionService
-    ReplicacionService.replicar_dependencia({
-        "id_dependencia": db_obj.id_dependencia,
-        "id_tipo_dependencia": db_obj.id_tipo_dependencia,
-        "codigo_padre": db_obj.codigo_padre,
-        "nombre": db_obj.nombre,
-        "direccion": db_obj.direccion,
-        "telefono": db_obj.telefono,
-        "email": db_obj.email,
-        "web": db_obj.web,
-        "base_datos": db_obj.base_datos,
-        "host": db_obj.host,
-        "puerto": db_obj.puerto,
-        "id_provincia": db_obj.id_provincia,
-        "id_municipio": db_obj.id_municipio,
-        "descripcion": db_obj.descripcion,
-    }, "INSERT")
+
+    ReplicacionService.replicar_dependencia(
+        {
+            "id_dependencia": db_obj.id_dependencia,
+            "id_tipo_dependencia": db_obj.id_tipo_dependencia,
+            "codigo_padre": db_obj.codigo_padre,
+            "nombre": db_obj.nombre,
+            "direccion": db_obj.direccion,
+            "telefono": db_obj.telefono,
+            "email": db_obj.email,
+            "web": db_obj.web,
+            "base_datos": db_obj.base_datos,
+            "host": db_obj.host,
+            "puerto": db_obj.puerto,
+            "id_provincia": db_obj.id_provincia,
+            "id_municipio": db_obj.id_municipio,
+            "descripcion": db_obj.descripcion,
+        },
+        "INSERT",
+    )
     for cuenta_obj in cuentas_creadas:
-        ReplicacionService.replicar_cuenta_dependencia({
-            "id_cuenta": cuenta_obj.id_cuenta,
-            "id_dependencia": cuenta_obj.id_dependencia,
-            "id_moneda": cuenta_obj.id_moneda,
-            "titular": cuenta_obj.titular,
-            "banco": cuenta_obj.banco,
-            "sucursal": cuenta_obj.sucursal,
-            "numero_cuenta": cuenta_obj.numero_cuenta,
-            "direccion": cuenta_obj.direccion,
-        }, "INSERT")
+        ReplicacionService.replicar_cuenta_dependencia(
+            {
+                "id_cuenta": cuenta_obj.id_cuenta,
+                "id_dependencia": cuenta_obj.id_dependencia,
+                "id_moneda": cuenta_obj.id_moneda,
+                "titular": cuenta_obj.titular,
+                "banco": cuenta_obj.banco,
+                "sucursal": cuenta_obj.sucursal,
+                "numero_cuenta": cuenta_obj.numero_cuenta,
+                "direccion": cuenta_obj.direccion,
+            },
+            "INSERT",
+        )
 
     # Registrar la nueva BD en conexion_database DESPUÉS del PUSH,
     # para que el PUSH no replique duplicados a la BD recién creada
@@ -294,7 +315,9 @@ async def crear_dependencia(
             selectinload(Dependencia.provincia),
             selectinload(Dependencia.municipio),
             selectinload(Dependencia.cuentas),
-            selectinload(Dependencia.cuentas_dependencias).selectinload(CuentaDependencia.moneda),
+            selectinload(Dependencia.cuentas_dependencias).selectinload(
+                CuentaDependencia.moneda
+            ),
             selectinload(Dependencia.padre),
         )
     )
@@ -320,12 +343,9 @@ async def listar_cuentas_dependencias(
     """Listar cuentas bancarias de dependencias (desde BD central)."""
     from sqlmodel import select
 
-    statement = (
-        select(CuentaDependencia)
-        .options(
-            selectinload(CuentaDependencia.moneda),
-            selectinload(CuentaDependencia.dependencia),
-        )
+    statement = select(CuentaDependencia).options(
+        selectinload(CuentaDependencia.moneda),
+        selectinload(CuentaDependencia.dependencia),
     )
 
     statement = statement.offset(skip).limit(limit)
@@ -346,7 +366,8 @@ async def listar_cuentas_dependencias(
     if search:
         search_lower = search.lower()
         response = [
-            c for c in response
+            c
+            for c in response
             if search_lower in (c.titular or "").lower()
             or search_lower in (c.dependencia_nombre or "").lower()
         ]
@@ -457,7 +478,9 @@ async def obtener_dependencia(
             selectinload(Dependencia.provincia),
             selectinload(Dependencia.municipio).selectinload(Municipio.provincia),
             selectinload(Dependencia.cuentas),
-            selectinload(Dependencia.cuentas_dependencias).selectinload(CuentaDependencia.moneda),
+            selectinload(Dependencia.cuentas_dependencias).selectinload(
+                CuentaDependencia.moneda
+            ),
             selectinload(Dependencia.padre),
         )
     )
@@ -465,7 +488,7 @@ async def obtener_dependencia(
     db_obj = results.first()
     if not db_obj:
         raise HTTPException(status_code=404, detail="Dependencia no encontrada")
-    
+
     response = DependenciaRead.model_validate(db_obj)
     return response
 
@@ -502,7 +525,9 @@ async def actualizar_dependencia(
             selectinload(Dependencia.provincia),
             selectinload(Dependencia.municipio),
             selectinload(Dependencia.cuentas),
-            selectinload(Dependencia.cuentas_dependencias).selectinload(CuentaDependencia.moneda),
+            selectinload(Dependencia.cuentas_dependencias).selectinload(
+                CuentaDependencia.moneda
+            ),
             selectinload(Dependencia.padre).selectinload(Dependencia.tipo_dependencia),
             selectinload(Dependencia.padre).selectinload(Dependencia.provincia),
             selectinload(Dependencia.padre).selectinload(Dependencia.municipio),
@@ -618,4 +643,3 @@ async def listar_municipios(
 
 
 # =====================================================
-

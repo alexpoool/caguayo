@@ -152,7 +152,10 @@ class SolicitudServicioService:
 
     @staticmethod
     async def update(
-        db: AsyncSession, id: int, data: SolicitudServicioUpdate, nit: Optional[str] = None
+        db: AsyncSession,
+        id: int,
+        data: SolicitudServicioUpdate,
+        nit: Optional[str] = None,
     ) -> SolicitudServicioRead:
         s = await solicitud_servicio_repo.get(db, id)
         if not s:
@@ -184,7 +187,9 @@ class SolicitudServicioService:
 
 class EtapaService:
     @staticmethod
-    async def get_all(db: AsyncSession, skip: int = 0, limit: int = 10000) -> List[EtapaRead]:
+    async def get_all(
+        db: AsyncSession, skip: int = 0, limit: int = 10000
+    ) -> List[EtapaRead]:
         items = await etapa_repo.get_multi(db, skip=skip, limit=limit)
         return [EtapaRead(**i.model_dump()) for i in items]
 
@@ -288,20 +293,28 @@ class FacturaServicioService:
         if data.id_etapa:
             etapa = await etapa_repo.get(db, data.id_etapa)
             if etapa and etapa.tipo_etapa == "CERTIFICACIONES":
-                stmt = select(Certificacion).where(Certificacion.id_etapa == etapa.id_etapa)
+                stmt = select(Certificacion).where(
+                    Certificacion.id_etapa == etapa.id_etapa
+                )
                 result = await db.exec(stmt)
                 existing_certs = result.all()
                 if not existing_certs:
-                    raise Exception("No hay certificaciones registradas para esta etapa")
+                    raise Exception(
+                        "No hay certificaciones registradas para esta etapa"
+                    )
                 if not data.id_certificacion:
-                    raise Exception("Para facturas de etapas de certificaciones debe seleccionar una certificación")
+                    raise Exception(
+                        "Para facturas de etapas de certificaciones debe seleccionar una certificación"
+                    )
             elif etapa:
                 tareas = await tarea_etapa_repo.get_by_etapa(db, etapa.id_etapa)
                 if not tareas:
                     raise Exception("No hay tareas registradas para esta etapa")
 
         if data.id_certificacion:
-            stmt = select(Certificacion).where(Certificacion.id_certificacion == data.id_certificacion)
+            stmt = select(Certificacion).where(
+                Certificacion.id_certificacion == data.id_certificacion
+            )
             result = await db.exec(stmt)
             certificacion = result.first()
 
@@ -353,24 +366,33 @@ class FacturaServicioService:
             data.importe = importe_total
 
         if etapa and data.importe > etapa.valor:
-            raise Exception(f"El importe de la factura ({data.importe:.2f}) no puede ser mayor al valor de la etapa ({etapa.valor:.2f})")
+            raise Exception(
+                f"El importe de la factura ({data.importe:.2f}) no puede ser mayor al valor de la etapa ({etapa.valor:.2f})"
+            )
 
         data.pagado = Decimal("0")
 
         f = await factura_servicio_repo.create(db, obj_in=data)
-        
+
         await db.commit()
-        
-        result = await db.exec(text("SELECT MAX(id_factura_servicio) FROM factura_servicio"))
+
+        result = await db.exec(
+            text("SELECT MAX(id_factura_servicio) FROM factura_servicio")
+        )
         f_id = result.scalar_one_or_none()
-        
+
         if f_id is None:
             raise Exception("No se pudo obtener el ID de la factura creada")
-        
+
         f = await factura_servicio_repo.get(db, f_id)
 
-        if data.id_certificacion and (certificacion_ajuste_porciento is not None or certificacion_ajuste_valor is not None):
-            stmt = select(Certificacion).where(Certificacion.id_certificacion == data.id_certificacion)
+        if data.id_certificacion and (
+            certificacion_ajuste_porciento is not None
+            or certificacion_ajuste_valor is not None
+        ):
+            stmt = select(Certificacion).where(
+                Certificacion.id_certificacion == data.id_certificacion
+            )
             result = await db.exec(stmt)
             cert = result.first()
             if cert:
@@ -443,13 +465,13 @@ class FacturaServicioService:
             return None
 
         tareas_seleccionadas = data.tareas_seleccionadas
-        delattr(data, 'tareas_seleccionadas')
+        delattr(data, "tareas_seleccionadas")
         tarea_modifiers = data.tarea_modifiers or {}
-        delattr(data, 'tarea_modifiers')
+        delattr(data, "tarea_modifiers")
         update_ajuste_porciento = data.ajuste_porciento
-        delattr(data, 'ajuste_porciento')
+        delattr(data, "ajuste_porciento")
         update_ajuste_valor = data.ajuste_valor
-        delattr(data, 'ajuste_valor')
+        delattr(data, "ajuste_valor")
 
         if tareas_seleccionadas is not None:
             existing_items = await item_factura_servicio_repo.get_by_factura(db, id)
@@ -501,10 +523,16 @@ class FacturaServicioService:
             if f.id_etapa:
                 etapa = await etapa_repo.get(db, f.id_etapa)
                 if etapa and data.importe > etapa.valor:
-                    raise Exception(f"El importe de la factura ({data.importe:.2f}) no puede ser mayor al valor de la etapa ({etapa.valor:.2f})")
+                    raise Exception(
+                        f"El importe de la factura ({data.importe:.2f}) no puede ser mayor al valor de la etapa ({etapa.valor:.2f})"
+                    )
 
-        if f.id_certificacion and (update_ajuste_porciento is not None or update_ajuste_valor is not None):
-            stmt = select(Certificacion).where(Certificacion.id_certificacion == f.id_certificacion)
+        if f.id_certificacion and (
+            update_ajuste_porciento is not None or update_ajuste_valor is not None
+        ):
+            stmt = select(Certificacion).where(
+                Certificacion.id_certificacion == f.id_certificacion
+            )
             result = await db.exec(stmt)
             cert = result.first()
             if cert:
@@ -551,7 +579,7 @@ class FacturaServicioService:
         items = await item_factura_servicio_repo.get_by_factura(db, id)
         return FacturaServicioWithItems(
             **f.model_dump(),
-            items=[ItemFacturaServicioRead(**i.model_dump()) for i in items]
+            items=[ItemFacturaServicioRead(**i.model_dump()) for i in items],
         )
 
     @staticmethod
@@ -604,24 +632,29 @@ class PagoFacturaServicioService:
     ) -> PagoFacturaServicioRead:
         data.monto_disponible = data.monto
         p = await pago_factura_servicio_repo.create(db, obj_in=data)
-        
+
         if data.id_factura_servicio:
             await factura_servicio_repo.actualizar_pagado(
-                db, 
-                data.id_factura_servicio, 
-                data.monto or Decimal("0")
+                db, data.id_factura_servicio, data.monto or Decimal("0")
             )
-            
+
             factura = await factura_servicio_repo.get(db, data.id_factura_servicio)
-            if factura and factura.id_certificacion and factura.pagado >= factura.importe:
+            if (
+                factura
+                and factura.id_certificacion
+                and factura.pagado >= factura.importe
+            ):
                 from src.models.servicio import Certificacion
-                stmt = select(Certificacion).where(Certificacion.id_certificacion == factura.id_certificacion)
+
+                stmt = select(Certificacion).where(
+                    Certificacion.id_certificacion == factura.id_certificacion
+                )
                 result = await db.exec(stmt)
                 certificacion = result.first()
                 if certificacion:
                     certificacion.facturado = True
                     await db.commit()
-        
+
         await db.commit()
         return PagoFacturaServicioRead(**p.model_dump())
 
@@ -637,11 +670,9 @@ class PagoFacturaServicioService:
         pago = await pago_factura_servicio_repo.get(db, id)
         if pago and pago.id_factura_servicio:
             await factura_servicio_repo.actualizar_pagado(
-                db,
-                pago.id_factura_servicio,
-                -(pago.monto or Decimal("0"))
+                db, pago.id_factura_servicio, -(pago.monto or Decimal("0"))
             )
-        
+
         obj = await pago_factura_servicio_repo.remove(db, id=id)
         await db.commit()
         return obj is not None
@@ -664,7 +695,7 @@ class PersonaLiquidacionService:
         from decimal import Decimal
 
         importe = Decimal("0")
-        
+
         if data.importe is not None:
             importe = Decimal(str(data.importe))
         elif data.id_pago:
@@ -738,7 +769,9 @@ class PersonaLiquidacionService:
         if data.id_pago and importe > 0:
             pago = await pago_factura_servicio_repo.get(db, data.id_pago)
             if pago and pago.monto_disponible:
-                pago.monto_disponible = max(Decimal("0"), pago.monto_disponible - importe)
+                pago.monto_disponible = max(
+                    Decimal("0"), pago.monto_disponible - importe
+                )
                 db.add(pago)
                 await db.commit()
 
@@ -769,7 +802,11 @@ class PersonaLiquidacionService:
         old_importe = l.importe or Decimal("0")
         old_id_pago = l.id_pago
 
-        importe = Decimal(str(data.importe)) if data.importe is not None else (l.importe or Decimal("0"))
+        importe = (
+            Decimal(str(data.importe))
+            if data.importe is not None
+            else (l.importe or Decimal("0"))
+        )
 
         porcentaje_caguayo = (
             Decimal(str(data.porcentaje_caguayo))
@@ -831,11 +868,13 @@ class PersonaLiquidacionService:
                 pago_obj = await pago_factura_servicio_repo.get(db, data.id_pago)
                 if pago_obj and pago_obj.monto_disponible is not None:
                     if delta > 0:
-                        pago_obj.monto_disponible = max(Decimal("0"), pago_obj.monto_disponible - delta)
+                        pago_obj.monto_disponible = max(
+                            Decimal("0"), pago_obj.monto_disponible - delta
+                        )
                     else:
                         pago_obj.monto_disponible = min(
                             pago_obj.monto or Decimal("0"),
-                            pago_obj.monto_disponible + abs(delta)
+                            pago_obj.monto_disponible + abs(delta),
                         )
                     db.add(pago_obj)
 
@@ -850,7 +889,10 @@ class PersonaLiquidacionService:
                     total_liquidado = await persona_liquidacion_repo.get_total_liquidado_by_persona_etapa(
                         db, updated.id_etapa, updated.id_persona
                     )
-                    persona_etapa.por_cobrar = max(Decimal("0"), (persona_etapa.cobro or Decimal("0")) - total_liquidado)
+                    persona_etapa.por_cobrar = max(
+                        Decimal("0"),
+                        (persona_etapa.cobro or Decimal("0")) - total_liquidado,
+                    )
                     db.add(persona_etapa)
 
             await db.commit()
@@ -881,18 +923,20 @@ class PersonaLiquidacionService:
             )
 
         importe = l.importe or Decimal("0")
-        
-        total_liquidado = await persona_liquidacion_repo.get_total_liquidado_by_persona_etapa(
-            db, l.id_etapa, l.id_persona
+
+        total_liquidado = (
+            await persona_liquidacion_repo.get_total_liquidado_by_persona_etapa(
+                db, l.id_etapa, l.id_persona
+            )
         )
-        
+
         statement = select(PersonaEtapa).where(
             PersonaEtapa.id_etapa == l.id_etapa,
             PersonaEtapa.id_persona == l.id_persona,
         )
         result = await db.exec(statement)
         persona_etapa = result.first()
-        
+
         if persona_etapa and persona_etapa.cobro:
             cobro = Decimal(str(persona_etapa.cobro))
             disponible = cobro - total_liquidado
@@ -926,17 +970,19 @@ class PersonaLiquidacionService:
 
         if data.observaciones:
             l.observacion = data.observaciones
-        
+
         if data.doc_pago_liquidacion:
             l.doc_pago_liquidacion = data.doc_pago_liquidacion
 
         db.add(l)
-        
+
         if l.id_etapa:
             if persona_etapa:
                 persona_etapa.liquidada = True
                 nuevo_total = total_liquidado + importe
-                persona_etapa.por_cobrar = max(Decimal("0"), (persona_etapa.cobro or Decimal("0")) - nuevo_total)
+                persona_etapa.por_cobrar = max(
+                    Decimal("0"), (persona_etapa.cobro or Decimal("0")) - nuevo_total
+                )
                 db.add(persona_etapa)
 
         await db.commit()
@@ -974,34 +1020,39 @@ class PersonaLiquidacionService:
     @staticmethod
     async def delete(db: AsyncSession, id: int) -> bool:
         from decimal import Decimal
-        
+
         liquidacion = await persona_liquidacion_repo.get(db, id)
         if not liquidacion:
             return False
-        
+
         id_etapa = liquidacion.id_etapa
         id_persona = liquidacion.id_persona
-        
+
         obj = await persona_liquidacion_repo.remove(db, id=id)
-        
+
         if id_etapa and id_persona:
-            total_liquidado = await persona_liquidacion_repo.get_total_liquidado_by_persona_etapa(
-                db, id_etapa, id_persona
+            total_liquidado = (
+                await persona_liquidacion_repo.get_total_liquidado_by_persona_etapa(
+                    db, id_etapa, id_persona
+                )
             )
-            
+
             statement = select(PersonaEtapa).where(
                 PersonaEtapa.id_etapa == id_etapa,
                 PersonaEtapa.id_persona == id_persona,
             )
             result = await db.exec(statement)
             persona_etapa = result.first()
-            
+
             if persona_etapa:
                 if total_liquidado > 0:
                     persona_etapa.liquidada = True
                 else:
                     persona_etapa.liquidada = False
-                persona_etapa.por_cobrar = max(Decimal("0"), (persona_etapa.cobro or Decimal("0")) - total_liquidado)
+                persona_etapa.por_cobrar = max(
+                    Decimal("0"),
+                    (persona_etapa.cobro or Decimal("0")) - total_liquidado,
+                )
                 db.add(persona_etapa)
                 await db.commit()
 
@@ -1010,11 +1061,12 @@ class PersonaLiquidacionService:
                 if pago_obj and pago_obj.monto_disponible is not None:
                     pago_obj.monto_disponible = min(
                         pago_obj.monto or Decimal("0"),
-                        pago_obj.monto_disponible + (liquidacion.importe or Decimal("0"))
+                        pago_obj.monto_disponible
+                        + (liquidacion.importe or Decimal("0")),
                     )
                     db.add(pago_obj)
                     await db.commit()
-        
+
         return obj is not None
 
     @staticmethod
@@ -1060,15 +1112,17 @@ class PersonaLiquidacionService:
         )
         result = await db.exec(statement)
         persona_etapa = result.first()
-        
+
         if not persona_etapa or not persona_etapa.cobro:
             return Decimal("0")
-        
+
         cobro = Decimal(str(persona_etapa.cobro))
-        total_liquidado = await persona_liquidacion_repo.get_total_liquidado_by_persona_etapa(
-            db, id_etapa, id_persona
+        total_liquidado = (
+            await persona_liquidacion_repo.get_total_liquidado_by_persona_etapa(
+                db, id_etapa, id_persona
+            )
         )
-        
+
         disponible = cobro - total_liquidado
         return disponible if disponible > 0 else Decimal("0")
 
@@ -1077,15 +1131,21 @@ class PersonaLiquidacionService:
 # CERTIFICACIONES SERVICE
 # ==========================================
 class CertificacionService:
-    async def create(self, db: AsyncSession, data: CertificacionCreate) -> CertificacionRead:
+    async def create(
+        self, db: AsyncSession, data: CertificacionCreate
+    ) -> CertificacionRead:
         certificacion = Certificacion(**data.model_dump())
         db.add(certificacion)
         await db.commit()
         await db.refresh(certificacion)
         return CertificacionRead.model_validate(certificacion)
 
-    async def get_by_id(self, db: AsyncSession, id_certificacion: int) -> Optional[CertificacionRead]:
-        statement = select(Certificacion).where(Certificacion.id_certificacion == id_certificacion)
+    async def get_by_id(
+        self, db: AsyncSession, id_certificacion: int
+    ) -> Optional[CertificacionRead]:
+        statement = select(Certificacion).where(
+            Certificacion.id_certificacion == id_certificacion
+        )
         result = await db.exec(statement)
         certificacion = result.first()
         if certificacion:
@@ -1093,39 +1153,53 @@ class CertificacionService:
         return None
 
     async def get_all(self, db: AsyncSession) -> List[CertificacionRead]:
-        statement = select(Certificacion).order_by(Certificacion.id_certificacion.desc())
+        statement = select(Certificacion).order_by(
+            Certificacion.id_certificacion.desc()
+        )
         result = await db.exec(statement)
         return [CertificacionRead.model_validate(c) for c in result.all()]
 
-    async def get_by_etapa(self, db: AsyncSession, id_etapa: int) -> List[CertificacionRead]:
-        statement = select(Certificacion).where(Certificacion.id_etapa == id_etapa).order_by(Certificacion.id_certificacion.desc())
+    async def get_by_etapa(
+        self, db: AsyncSession, id_etapa: int
+    ) -> List[CertificacionRead]:
+        statement = (
+            select(Certificacion)
+            .where(Certificacion.id_etapa == id_etapa)
+            .order_by(Certificacion.id_certificacion.desc())
+        )
         result = await db.exec(statement)
         return [CertificacionRead.model_validate(c) for c in result.all()]
 
-    async def update(self, db: AsyncSession, id_certificacion: int, data: CertificacionUpdate) -> Optional[CertificacionRead]:
-        statement = select(Certificacion).where(Certificacion.id_certificacion == id_certificacion)
+    async def update(
+        self, db: AsyncSession, id_certificacion: int, data: CertificacionUpdate
+    ) -> Optional[CertificacionRead]:
+        statement = select(Certificacion).where(
+            Certificacion.id_certificacion == id_certificacion
+        )
         result = await db.exec(statement)
         certificacion = result.first()
-        
+
         if not certificacion:
             return None
-        
+
         update_data = data.model_dump(exclude_unset=True)
         for key, value in update_data.items():
             setattr(certificacion, key, value)
-        
+
         await db.commit()
         await db.refresh(certificacion)
         return CertificacionRead.model_validate(certificacion)
 
     async def delete(self, db: AsyncSession, id_certificacion: int) -> bool:
-        statement = select(Certificacion).where(Certificacion.id_certificacion == id_certificacion)
+        statement = select(Certificacion).where(
+            Certificacion.id_certificacion == id_certificacion
+        )
         result = await db.exec(statement)
         certificacion = result.first()
-        
+
         if not certificacion:
             return False
-        
+
         await db.delete(certificacion)
         await db.commit()
         return True
