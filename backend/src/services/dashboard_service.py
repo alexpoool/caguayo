@@ -6,7 +6,6 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from src.repository import productos_repo, categorias_repo, moneda_repo
 from src.repository.ventas_clientes_repo import ventas_repo, ventas_cliente_repo
 from src.dto import (
-    ProductosRead,
     DashboardStats,
     ProductoStats,
     VentasTrends,
@@ -18,7 +17,6 @@ from src.models import (
     Ventas,
     EstadoVenta,
     Productos,
-    Cliente,
     Movimiento,
     TipoMovimiento,
 )

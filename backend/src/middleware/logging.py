@@ -1,10 +1,8 @@
 import time
 import json
 import logging
-from datetime import datetime
-from typing import Optional, Callable, Union
+from typing import Optional, Callable
 from fastapi import Request, Response
-from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.types import ASGIApp
 

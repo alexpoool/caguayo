@@ -4,7 +4,6 @@ from datetime import date
 
 if TYPE_CHECKING:
     from .cliente import Cliente
-    from .tipo_entidad import TipoEntidad
 
 
 class ClienteNatural(SQLModel, table=True):

@@ -2,8 +2,7 @@ from sqlmodel import select, func
 from sqlalchemy import or_, and_
 from sqlalchemy.orm import selectinload
 from sqlmodel.ext.asyncio.session import AsyncSession
-from typing import List, Optional, Type, TypeVar
-from datetime import datetime
+from typing import List, Optional, TypeVar
 from src.repository.base import CRUDBase
 from src.models.productos_en_liquidacion import ProductosEnLiquidacion
 

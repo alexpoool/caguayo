@@ -9,7 +9,6 @@ from src.dto import (
     LiquidacionUpdate,
     LiquidacionConfirmar,
 )
-from src.dto.productos_en_liquidacion_dto import ProductosEnLiquidacionRead
 from src.utils import _get_nit_from_token
 
 router = APIRouter(

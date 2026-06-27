@@ -1,5 +1,5 @@
 from sqlmodel import SQLModel
-from typing import Optional, List
+from typing import Optional
 
 
 class ProvinciaBase(SQLModel):

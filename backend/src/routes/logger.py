@@ -1,12 +1,10 @@
 from typing import List, Optional
-import asyncio
 from datetime import datetime, timedelta
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import StreamingResponse
-import asyncio
 from src.services.log_sse import broadcast_log, sse_events
 from sqlmodel.ext.asyncio.session import AsyncSession
-from sqlalchemy import func, desc, or_, and_
+from sqlalchemy import func, desc
 from src.database.connection import get_session
 from src.models.log import LogEntry
 from pydantic import BaseModel

@@ -1,4 +1,4 @@
-from sqlmodel import select, func, or_, and_
+from sqlmodel import select, func
 from sqlmodel.ext.asyncio.session import AsyncSession
 from typing import List, Optional, Dict, Any
 from sqlalchemy import text
@@ -16,9 +16,6 @@ class ExistenciaRepository:
         self, db: AsyncSession, id_anexo: Optional[int] = None
     ) -> List[Dict[str, Any]]:
         """Obtiene existencias por konsignación (ItemAnexo -> ProductosEnLiquidacion)."""
-        from src.models.item_anexo import ItemAnexo
-        from src.models.productos_en_liquidacion import ProductosEnLiquidacion
-        from src.models.anexo import Anexo
 
         query = text("""
             SELECT 
@@ -62,7 +59,6 @@ class ExistenciaRepository:
         self, db: AsyncSession, id_dependencia: Optional[int] = None
     ) -> List[Dict[str, Any]]:
         """Obtiene existencias por movimientos (entradas - salidas confirmadas)."""
-        from src.models.movimiento import Movimiento, TipoMovimiento
 
         base_query = """
             SELECT 

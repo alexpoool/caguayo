@@ -1,11 +1,10 @@
 from sqlmodel import SQLModel, Field, Relationship
 from typing import Optional, List, TYPE_CHECKING
-from datetime import date, datetime
+from datetime import date
 from decimal import Decimal
 from enum import Enum
 
 if TYPE_CHECKING:
-    from .venta import Ventas
     from .cliente import Cliente
     from .moneda import Moneda
     from .convenio import Convenio

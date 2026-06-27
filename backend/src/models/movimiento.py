@@ -8,9 +8,6 @@ if TYPE_CHECKING:
     from .producto import Productos
     from .cliente import Cliente
     from .moneda import Moneda
-    from .anexo import Anexo
-    from .convenio import Convenio
-    from .liquidacion import Liquidacion
 
 
 class TipoMovimiento(SQLModel, table=True):

@@ -1,4 +1,3 @@
-from decimal import Decimal
 from sqlmodel.ext.asyncio.session import AsyncSession
 from typing import List
 from src.models.contrato import Factura

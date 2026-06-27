@@ -2,7 +2,6 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlmodel import select
-from sqlalchemy.orm import selectinload
 from sqlalchemy.exc import IntegrityError
 from src.database.connection import get_session
 from src.services.cliente_service import ClienteService

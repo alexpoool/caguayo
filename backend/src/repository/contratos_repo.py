@@ -1,7 +1,7 @@
-from sqlmodel import select, and_
+from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlalchemy.orm import selectinload
-from typing import List, Optional, Any, Union
+from typing import List, Optional, Any
 from decimal import Decimal
 
 

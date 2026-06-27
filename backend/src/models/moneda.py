@@ -3,7 +3,6 @@ from typing import Optional, List, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from .producto import Productos
-    from .venta import Ventas
     from .movimiento import Movimiento
     from .cuenta import Cuenta
     from .cuenta_dependencia import CuentaDependencia

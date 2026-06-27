@@ -65,7 +65,7 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
             else:
                 await db.flush()
             return db_obj
-        except Exception as e:
+        except Exception:
             await db.rollback()
             raise
 

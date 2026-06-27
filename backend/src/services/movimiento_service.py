@@ -1,21 +1,19 @@
-from typing import List, Optional, cast
+from typing import List, Optional
 import logging
 import os
 from datetime import datetime
-from decimal import Decimal
 from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlmodel import select, func
 from sqlalchemy.orm import selectinload
 import psycopg2
 from src.repository import movimiento_repo
-from src.repository.existencia_repo import ExistenciaRepository, existencia_repo
+from src.repository.existencia_repo import existencia_repo
 from src.services.existencia_service import ExistenciaService
 from src.models import (
     Movimiento,
     TipoMovimiento,
     Convenio,
     Anexo,
-    Moneda,
     Productos,
     Dependencia,
     ItemAnexo,
@@ -94,7 +92,7 @@ class MovimientoService:
                 raise ValueError("No se pudo recargar el movimiento con relaciones")
 
             result = MovimientoRead.model_validate(db_movimiento_con_relaciones)
-            logger.info(f"Movimiento convertido a DTO exitosamente")
+            logger.info("Movimiento convertido a DTO exitosamente")
             return result
         except Exception as e:
             logger.error(
@@ -656,7 +654,7 @@ class MovimientoService:
 
         Returns lista de recepciones con información de producto, cantidad y dependencia.
         """
-        from src.models import Cliente, Convenio, Anexo, TipoDependencia
+        from src.models import Cliente, Convenio, Anexo
 
         # Primero obtener los movimientos de tipo RECEPCION
         # Buscar el ID del tipo RECEPCION

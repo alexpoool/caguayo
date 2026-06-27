@@ -1,7 +1,7 @@
 from typing import Optional
 from datetime import date
 from decimal import Decimal
-from sqlmodel import Field, SQLModel, Relationship
+from sqlmodel import Field, SQLModel
 from sqlalchemy import Column, ForeignKey
 
 

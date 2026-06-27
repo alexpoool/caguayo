@@ -4,7 +4,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlalchemy.orm import selectinload
 from sqlmodel import select
 from src.repository.base import CRUDBase
-from src.models import Grupo, Usuario, Funcionalidad, GrupoFuncionalidad
+from src.models import Grupo, Usuario, GrupoFuncionalidad
 from src.dto import (
     GrupoCreate,
     GrupoUpdate,

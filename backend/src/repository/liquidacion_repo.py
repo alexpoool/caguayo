@@ -1,7 +1,6 @@
 from sqlmodel import select, func
 from sqlmodel.ext.asyncio.session import AsyncSession
-from typing import List, Optional, Type, TypeVar
-from datetime import datetime
+from typing import List, Optional, TypeVar
 from sqlalchemy.orm import selectinload
 from src.repository.base import CRUDBase
 from src.models.liquidacion import Liquidacion

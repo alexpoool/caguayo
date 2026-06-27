@@ -1,6 +1,5 @@
 from typing import List
 from sqlmodel.ext.asyncio.session import AsyncSession
-from sqlmodel import select
 from src.repository.base import CRUDBase
 from src.models import TipoCliente, TipoConvenio, TipoProveedor
 from src.dto import (

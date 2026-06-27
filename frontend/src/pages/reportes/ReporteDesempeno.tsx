@@ -110,7 +110,7 @@ const ReporteDesempeno: React.FC = () => {
   // ── Load personas on mount ────────────────────────────────────────────────
   useEffect(() => {
     const token = authHelpers.getToken() ?? "";
-    fetch(`${BASE_URL}/personas`, {
+    fetch(`${BASE_URL}/reportes/personas`, {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then((r) => r.json())

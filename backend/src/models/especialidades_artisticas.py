@@ -1,8 +1,8 @@
-from sqlmodel import SQLModel, Field, Relationship
-from typing import Optional, List, TYPE_CHECKING
+from sqlmodel import SQLModel, Field
+from typing import Optional, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from .cliente import Cliente
+    pass
 
 
 class EspecialidadesArtisticas(SQLModel, table=True):

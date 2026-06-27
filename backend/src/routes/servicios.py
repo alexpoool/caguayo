@@ -1,6 +1,5 @@
 from fastapi import APIRouter, Depends, Header, HTTPException, Query
 from sqlmodel.ext.asyncio.session import AsyncSession
-from sqlmodel import select
 from typing import List, Optional
 from src.database.connection import get_auth_session, get_session
 from src.services.servicio_service import (
@@ -34,10 +33,8 @@ from src.dto.servicio_dto import (
     FacturaServicioUpdate,
     PagoFacturaServicioCreate,
     PagoFacturaServicioRead,
-    PersonaLiquidacionCreate,
     PersonaLiquidacionCreateInput,
     PersonaLiquidacionRead,
-    PersonaLiquidacionUpdate,
     ItemFacturaServicioRead,
     FacturaServicioWithItems,
     PersonaLiquidacionUpdateInput,
@@ -49,7 +46,6 @@ from src.dto.servicio_dto import (
     CertificacionRead,
     CertificacionUpdate,
 )
-from src.models.servicio import PersonaEtapa
 from src.utils import _get_nit_from_token
 
 
@@ -450,7 +446,6 @@ async def get_disponible_liquidar(
     db: AsyncSession = Depends(get_session),
 ):
     """Obtiene el monto disponible para liquidar a una persona en una etapa."""
-    from decimal import Decimal
 
     disponible = await PersonaLiquidacionService.get_disponible_liquidar(
         db, id_etapa, id_persona

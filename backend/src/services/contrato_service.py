@@ -2,17 +2,13 @@ from typing import List, Optional
 from datetime import datetime
 from decimal import Decimal
 from sqlmodel.ext.asyncio.session import AsyncSession
-from sqlmodel import select, func
+from sqlmodel import select
 from sqlalchemy.orm import selectinload
 from src.repository.base import CRUDBase
 from src.repository.contratos_repo import (
-    ContratoRepository,
     contrato_repo,
-    SuplementoRepository,
     suplemento_repo,
-    FacturaRepository,
     factura_repo,
-    VentaEfectivoRepository,
     venta_efectivo_repo,
     item_factura_repo,
     item_venta_efectivo_repo,
@@ -32,7 +28,6 @@ from src.models import (
     Anexo,
     Productos,
     ItemAnexo,
-    PrecioItemAnexo,
     Convenio,
 )
 from src.dto import (
@@ -43,26 +38,20 @@ from src.dto import (
     EstadoContratoUpdate,
     EstadoContratoRead,
     ContratoCreate,
-    ContratoRead,
     ContratoReadWithDetails,
     ContratoUpdate,
     SuplementoCreate,
-    SuplementoRead,
     SuplementoReadWithDetails,
     SuplementoUpdate,
     FacturaCreate,
-    FacturaRead,
     FacturaReadWithDetails,
     FacturaUpdate,
     VentaEfectivoCreate,
-    VentaEfectivoRead,
     VentaEfectivoReadWithDetails,
     VentaEfectivoUpdate,
     MonedaRead,
     ClienteSimpleRead,
     DependenciaSimpleRead,
-    ItemFacturaCreate,
-    ItemVentaEfectivoCreate,
     ItemVentaEfectivoRead,
     ItemFacturaRead,
     ProductoSimpleRead,

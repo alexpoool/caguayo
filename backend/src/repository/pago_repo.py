@@ -1,6 +1,6 @@
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
-from typing import List, Optional
+from typing import List
 from decimal import Decimal
 from src.models.pago import Pago
 from src.dto.pago_dto import PagoCreate, PagoUpdate

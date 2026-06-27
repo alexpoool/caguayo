@@ -1,6 +1,6 @@
 from sqlmodel import SQLModel, Field, Relationship
 from typing import Optional, List, TYPE_CHECKING
-from sqlalchemy import Column, String, Date
+from sqlalchemy import Column, String
 from datetime import date
 
 if TYPE_CHECKING:
@@ -11,7 +11,6 @@ if TYPE_CHECKING:
     from .cliente_natural import ClienteNatural
     from .cliente_juridica import ClienteJuridica
     from .cliente_tcp import ClienteTCP
-    from .tipo_entidad import TipoEntidad
     from .dependencia import Provincia, Municipio
 
 

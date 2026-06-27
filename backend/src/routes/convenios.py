@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import Optional
 from datetime import date
 from fastapi import APIRouter, Depends, Header, HTTPException, Query
 from sqlmodel.ext.asyncio.session import AsyncSession
@@ -19,7 +19,6 @@ async def listar_convenios(
     search: str = Query(None, description="Buscar por nombre"),
     db: AsyncSession = Depends(get_session),
 ):
-    from src.models import Cliente, Cliente as ClienteModel
 
     statement = select(Convenio)
     if cliente_id:
@@ -45,7 +44,6 @@ async def listar_convenios(
 
 @router.get("/simple")
 async def listar_convenios_simple(db: AsyncSession = Depends(get_session)):
-    from src.models import Cliente as ClienteModel
 
     statement = select(Convenio.id_convenio, ClienteModel.nombre).join(
         ClienteModel, isouter=True

@@ -7,13 +7,7 @@ from src.models import (
     Movimiento,
     Productos,
     Subcategorias,
-    Cliente,
-    TipoCliente,
-    TipoConvenio,
     Dependencia,
-    TipoDependencia,
-    Convenio,
-    Provincia,
     Municipio,
     TipoMovimiento,
 )
@@ -27,18 +21,6 @@ from src.dto import (
 class MovimientoRepository(CRUDBase[Movimiento, MovimientoCreate, MovimientoUpdate]):
     def _get_selectinload_options(self):
         """Helper method to get all selectinload options for Movimiento relationships."""
-        from src.models import (
-            Cliente,
-            TipoCliente,
-            TipoConvenio,
-            Dependencia,
-            TipoDependencia,
-            Provincia,
-            Municipio,
-            Subcategorias,
-            TipoMovimiento,
-            Moneda,
-        )
 
         return [
             selectinload(Movimiento.tipo_movimiento),  # type: ignore
@@ -100,7 +82,6 @@ class MovimientoRepository(CRUDBase[Movimiento, MovimientoCreate, MovimientoUpda
         limit: int | None = None,
         tipo: str = None,
     ) -> List[Movimiento]:
-        from sqlalchemy import desc
 
         statement = select(Movimiento).options(*self._get_selectinload_options())
 

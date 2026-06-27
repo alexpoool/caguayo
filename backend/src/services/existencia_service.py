@@ -1,6 +1,6 @@
 from sqlmodel.ext.asyncio.session import AsyncSession
 from typing import List, Optional, Dict, Any
-from src.repository.existencia_repo import ExistenciaRepository, existencia_repo
+from src.repository.existencia_repo import existencia_repo
 
 
 class ExistenciaService:
@@ -341,7 +341,7 @@ class ExistenciaService:
             Lista de items actualizados
         """
         from src.models.item_anexo import ItemAnexo
-        from sqlalchemy import select, update
+        from sqlalchemy import select
 
         actualizada = []
         cantidad_restante = cantidad

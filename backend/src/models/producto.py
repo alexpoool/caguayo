@@ -5,10 +5,8 @@ from decimal import Decimal
 if TYPE_CHECKING:
     from .categoria import Subcategorias
     from .moneda import Moneda
-    from .venta import Ventas
     from .movimiento import Movimiento
     from .detalle_venta import DetalleVenta
-    from .anexo import Anexo
     from .item_anexo import ItemAnexo
     from .item_factura import ItemFactura
     from .item_venta_efectivo import ItemVentaEfectivo

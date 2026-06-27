@@ -4,7 +4,6 @@ from datetime import date
 from decimal import Decimal
 
 if TYPE_CHECKING:
-    from .venta import Ventas
     from .convenio import Convenio
     from .item_anexo import ItemAnexo
 

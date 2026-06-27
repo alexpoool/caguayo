@@ -5,16 +5,9 @@ from sqlmodel import select
 from sqlalchemy import text
 from typing import List, Optional
 from src.models.servicio import (
-    Servicio,
-    SolicitudServicio,
     Etapa,
-    TareaEtapa,
     PersonaEtapa,
-    FacturaServicio,
-    PagoFacturaServicio,
-    PersonaLiquidacion,
     Certificacion,
-    ItemFacturaServicio,
 )
 from src.dto.servicio_dto import (
     ServicioCreate,
@@ -903,7 +896,6 @@ class PersonaLiquidacionService:
     async def confirmar(
         db: AsyncSession, liquidacion_id: int, data: "PersonaLiquidacionConfirmar"
     ) -> Optional[PersonaLiquidacionRead]:
-        from datetime import date
         from decimal import Decimal
 
         l = await persona_liquidacion_repo.get(db, liquidacion_id)
@@ -993,7 +985,6 @@ class PersonaLiquidacionService:
     async def validar_liquidar(
         db: AsyncSession, id_etapa: int, id_persona: int
     ) -> PersonaLiquidacionValidacion:
-        from decimal import Decimal
 
         validacion_factura = await FacturaServicioService.validar_pago_etapa(
             db, id_etapa

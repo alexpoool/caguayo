@@ -124,7 +124,6 @@ class ClienteService:
         limit: int = 10000,
         tipo_relacion: Optional[str] = None,
     ) -> List[ClienteRead]:
-        from sqlalchemy import or_
 
         statement = select(Cliente).options(
             selectinload(Cliente.provincia),
@@ -300,7 +299,7 @@ class ClienteService:
 
             await db.flush()
         else:
-            print(f"[DEBUG] update_cliente: No se procesan cuentas (None)")
+            print("[DEBUG] update_cliente: No se procesan cuentas (None)")
 
         # Cargar relaciones para retornar
         result = await db.exec(

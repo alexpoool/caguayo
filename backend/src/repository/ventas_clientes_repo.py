@@ -1,9 +1,9 @@
-from typing import List, Optional
+from typing import List
 from datetime import datetime
 from sqlmodel import select, func
 from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlalchemy.orm import selectinload
-from src.models import Ventas, DetalleVenta, Cliente, Productos, EstadoVenta
+from src.models import Ventas, DetalleVenta, Cliente, EstadoVenta
 from src.repository.base import CRUDBase
 from src.dto import VentaCreate, VentaUpdate
 

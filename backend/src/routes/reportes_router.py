@@ -13,6 +13,7 @@ from src.services.reportes_service import (
     get_informe_desempeno,
     get_movimientos_dependencia,
     get_movimientos_producto,
+    get_personas_list,
     get_proveedores_por_dependencia,
     get_registro_clientes,
     get_registro_creadores,
@@ -39,6 +40,34 @@ from src.utils.pdf_generator import (
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/reportes", tags=["reportes"])
+
+
+# ---------------------------------------------------------------------------
+# Endpoint auxiliar: listado de personas para dropdowns del frontend
+# ---------------------------------------------------------------------------
+
+
+@router.get("/personas")
+async def listar_personas(
+    db: AsyncSession = Depends(get_session),
+    current_user: UsuarioInfo = Depends(require_auth),
+):
+    try:
+        personas = await get_personas_list(db)
+        usuario_actual = f"{current_user.nombre} {current_user.primer_apellido}"
+        await AppLogger.log_action(
+            modulo="reportes",
+            accion="listar_personas",
+            detalle={"total": len(personas)},
+            usuario_id=current_user.id_usuario,
+            usuario_nombre=usuario_actual,
+        )
+        return personas
+    except Exception as e:
+        logger.error(f"Error al listar personas: {e}")
+        raise HTTPException(
+            status_code=500, detail="Error interno al listar personas"
+        )
 
 
 # ---------------------------------------------------------------------------

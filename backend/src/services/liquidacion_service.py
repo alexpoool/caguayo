@@ -8,8 +8,7 @@ from sqlalchemy import select
 from src.repository.liquidacion_repo import liquidacion_repo
 from src.repository.productos_en_liquidacion_repo import productos_en_liquidacion_repo
 from src.services.existencia_service import ExistenciaService
-from src.models.liquidacion import Liquidacion, TipoPago
-from src.models.productos_en_liquidacion import ProductosEnLiquidacion
+from src.models.liquidacion import Liquidacion
 from src.models.producto import Productos
 from src.models.movimiento import Movimiento
 from src.dto import (

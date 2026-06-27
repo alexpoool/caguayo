@@ -1,5 +1,5 @@
 from sqlmodel import SQLModel, Field
-from typing import Optional, List, TYPE_CHECKING, Literal
+from typing import Optional, List, TYPE_CHECKING
 from datetime import date
 from decimal import Decimal
 from pydantic import field_validator
@@ -7,7 +7,6 @@ from pydantic import field_validator
 TIPOS_PAGO_VALIDOS = {"TRANSFERENCIA", "EFECTIVO", "CHEQUE", "OTRO"}
 
 if TYPE_CHECKING:
-    from .clientes_dto import ClienteRead
     from .monedas_dto import MonedaRead
     from .productos_en_liquidacion_dto import ProductosEnLiquidacionRead
 
@@ -146,7 +145,6 @@ class LiquidacionConProductos(SQLModel):
 
 
 # Rebuild forward references
-from .clientes_dto import ClienteRead
 from .monedas_dto import MonedaRead
 from .productos_en_liquidacion_dto import ProductosEnLiquidacionRead
 

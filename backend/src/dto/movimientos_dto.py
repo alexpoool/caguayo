@@ -5,7 +5,7 @@ from decimal import Decimal
 from pydantic import validator
 from .dependencias_dto import DependenciaRead
 from .productos_dto import ProductosRead
-from .convenios_dto import ClienteRead, AnexoRead
+from .convenios_dto import ClienteRead
 from .monedas_dto import MonedaRead
 
 

@@ -1,8 +1,7 @@
 import os
-from typing import List, Optional
+from typing import List
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlmodel.ext.asyncio.session import AsyncSession
-from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import selectinload
 from src.database.connection import get_session
@@ -11,7 +10,6 @@ from src.models import (
     TipoDependencia,
     Provincia,
     Municipio,
-    Cuenta,
     CuentaDependencia,
     ConexionDatabase,
 )

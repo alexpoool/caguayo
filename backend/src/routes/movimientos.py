@@ -1,12 +1,10 @@
 from typing import List
 import logging
-import os
-import psycopg2
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlmodel import select
 from src.database.connection import get_session
-from src.services.movimiento_service import MovimientoService, Movimiento
+from src.services.movimiento_service import MovimientoService
 from src.models import TipoMovimiento
 from src.dto import (
     MovimientoCreate,
@@ -145,7 +143,6 @@ async def crear_ajuste(
     """
     try:
         import os
-        import psycopg2
 
         # Obtener DB actual del usuario
         db_name_actual = os.getenv("AUTH_DATABASE", "caguayo_inventario")

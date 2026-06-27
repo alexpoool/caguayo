@@ -836,3 +836,36 @@ async def get_resumen_liquidaciones(
         "fecha_fin": fecha_fin.isoformat() if fecha_fin else None,
     }
     return data, meta
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+#  LISTADO DE PERSONAS (para dropdowns en el frontend)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+async def get_personas_list(db: AsyncSession) -> List[Dict[str, Any]]:
+    """Retorna lista de clientes de tipo NATURAL para usar en filtros."""
+    query = (
+        select(
+            Cliente.id_cliente,
+            Cliente.nombre,
+            ClienteNatural.carnet_identidad,
+        )
+        .join(ClienteNatural, Cliente.id_cliente == ClienteNatural.id_cliente)
+        .where(
+            Cliente.tipo_persona == "NATURAL",
+            Cliente.tipo_relacion.in_(["CLIENTE", "AMBAS"]),
+        )
+        .order_by(Cliente.nombre)
+    )
+    result = await db.execute(query)
+    rows = result.all()
+    return [
+        {
+            "id_persona": row.id_cliente,
+            "nombre": row.nombre,
+            "apellidos": "",  # Cliente.nombre es el nombre completo
+            "carnet_identidad": row.carnet_identidad or "",
+        }
+        for row in rows
+    ]

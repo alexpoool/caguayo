@@ -7,8 +7,6 @@ from sqlalchemy.orm import selectinload
 from src.database.connection import get_auth_session, get_session
 from src.models import (
     Anexo,
-    Dependencia,
-    Cliente,
     Convenio,
     ItemAnexo,
     PrecioItemAnexo,
@@ -18,10 +16,9 @@ from src.models import (
     ProductosEnLiquidacion,
     TipoConvenio,
 )
-from src.dto.convenios_dto import AnexoRead, AnexoCreate, ItemAnexoCreate
+from src.dto.convenios_dto import AnexoRead, AnexoCreate
 from src.utils import generar_codigo_con_padre, _get_nit_from_token
-from src.dto import DependenciaRead
-from sqlmodel import select, func
+from sqlmodel import select
 from sqlalchemy import text
 
 router = APIRouter(prefix="/anexos", tags=["anexos"], redirect_slashes=False)
