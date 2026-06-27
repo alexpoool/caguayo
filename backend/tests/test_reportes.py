@@ -21,7 +21,7 @@ Estrategia:
 """
 
 import pytest
-from unittest.mock import AsyncMock, patch, PropertyMock
+from unittest.mock import AsyncMock, patch
 from fastapi.testclient import TestClient
 from fastapi import HTTPException
 from io import BytesIO
@@ -557,3 +557,512 @@ class TestPDFTemplate:
         assert format_quantity("no numerico") == "no numerico"
         assert format_quantity("") == ""
         assert format_quantity(None) == "None"
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+#  DATOS DE PRUEBA – NUEVOS REPORTES (7 reportes × 2 endpoints c/u)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+SAMPLE_CLIENTES: list = [
+    {
+        "id_cliente": 1,
+        "nombre": "Cliente Test S.A.",
+        "reeup": "REUP001",
+        "nit": "NIT001",
+        "direccion": "Calle 1 #123",
+    },
+]
+
+SAMPLE_META_CLIENTES: dict = {"total": 1}
+
+SAMPLE_PROYECTOS: list = [
+    {
+        "id_contrato": 1,
+        "codigo": "PROJ001",
+        "nombre": "Proyecto Alpha",
+        "cliente": "Cliente Test",
+        "fecha": date(2024, 6, 1),
+        "valor": 1000.0,
+        "moneda": "CUP (Peso Cubano)",
+        "tipo_contrato": "Servicios",
+        "estado": "Activo",
+    },
+]
+
+SAMPLE_META_PROYECTOS: dict = {
+    "total": 1,
+    "fecha_inicio": "2024-01-01",
+    "fecha_fin": "2024-12-31",
+}
+
+SAMPLE_CREADORES: list = [
+    {
+        "id_cliente": 1,
+        "carnet_identidad": "12345678901",
+        "nombre_completo": "Juan Perez Lopez",
+        "direccion": "Calle 456",
+        "municipio": "Plaza",
+        "provincia": "La Habana",
+        "numero_registro": "REG001",
+        "codigo": "CRE001",
+        "vigencia": "SÍ",
+        "vigencia_fecha": "",
+        "fecha_baja": "",
+        "en_baja": False,
+    },
+]
+
+SAMPLE_META_CREADORES: dict = {"total": 1, "grupos_municipio": {"Plaza": 1}}
+
+SAMPLE_DESEMPENO: list = [
+    {
+        "id_persona": 1,
+        "persona_nombre": "Juan Perez",
+        "persona_codigo": "CRE001",
+        "codigo_proyecto": "PROJ001",
+        "proyecto_descripcion": "Proyecto Alpha",
+        "nombre_etapa": "Etapa 1",
+        "numero_etapa": 1,
+        "etapa_valor": 500.0,
+        "cobro": 250.0,
+        "por_cobrar": 250.0,
+        "fecha_pago": date(2024, 6, 1),
+        "pagada": False,
+        "fecha_solicitud": date(2024, 5, 1),
+    },
+]
+
+SAMPLE_META_DESEMPENO: dict = {
+    "total_items": 1,
+    "total_personas": 1,
+    "totales_por_persona": {
+        "Juan Perez": {
+            "total_cobro": 250.0,
+            "total_valor": 500.0,
+            "id_persona": 1,
+        },
+    },
+    "gran_total_cobro": 250.0,
+    "gran_total_valor": 500.0,
+}
+
+SAMPLE_ONAT: list = [
+    {
+        "id_liquidacion": 1,
+        "numero": "LIQ001",
+        "fecha_emision": date(2024, 6, 1),
+        "fecha_liquidacion": date(2024, 6, 15),
+        "persona_nombre": "Juan Perez",
+        "carnet_identidad": "12345678901",
+        "numero_registro": "REG001",
+        "nit": "",
+        "direccion": "Calle 123",
+        "moneda": "CUP (Peso Cubano)",
+        "importe": 1000.0,
+        "devengado": 800.0,
+        "porcentaje_caguayo": 10.0,
+        "importe_caguayo": 80.0,
+        "porciento_gestion": 5.0,
+        "porciento_empresa": 5.0,
+        "tributario": 15.0,
+        "tributario_monto": 120.0,
+        "comision_bancaria": 10.0,
+        "gasto_empresa": 20.0,
+        "neto_pagar": 650.0,
+        "tipo_pago": "Transferencia",
+        "confirmado": True,
+    },
+]
+
+SAMPLE_META_ONAT: dict = {
+    "total_items": 1,
+    "totales": {
+        "total_importe": 1000.0,
+        "total_devengado": 800.0,
+        "total_importe_caguayo": 80.0,
+        "total_tributario_monto": 120.0,
+        "total_comision_bancaria": 10.0,
+        "total_gasto_empresa": 20.0,
+        "total_neto_pagar": 650.0,
+    },
+}
+
+SAMPLE_BRACKETS: list = [
+    {
+        "bracket": "Hasta 100",
+        "desde": 0,
+        "hasta": 100,
+        "cantidad": 5,
+        "total_devengado": 250.0,
+        "cantidad_artistas": 3,
+    },
+    {
+        "bracket": "De 101 a 500",
+        "desde": 101,
+        "hasta": 500,
+        "cantidad": 2,
+        "total_devengado": 600.0,
+        "cantidad_artistas": 2,
+    },
+]
+
+SAMPLE_META_MINCULT: dict = {
+    "total_liquidaciones": 7,
+    "total_devengado_general": 850.0,
+}
+
+SAMPLE_LIQUIDACIONES: list = [
+    {
+        "id_liquidacion": 1,
+        "codigo": "LIQ001",
+        "fecha_emision": date(2024, 6, 1),
+        "fecha_liquidacion": date(2024, 6, 15),
+        "cliente_nombre": "Cliente Test",
+        "cliente_nit": "NIT001",
+        "cliente_codigo": "CLI001",
+        "moneda": "CUP (Peso Cubano)",
+        "devengado": 800.0,
+        "tributario": 15.0,
+        "comision_bancaria": 10.0,
+        "gasto_empresa": 20.0,
+        "importe": 1000.0,
+        "neto_pagar": 650.0,
+        "porcentaje_caguayo": 10.0,
+        "importe_caguayo": 80.0,
+        "tributario_monto": 120.0,
+        "tipo_pago": "Transferencia",
+        "liquidada": True,
+        "productos": [],
+    },
+]
+
+SAMPLE_META_LIQUIDACIONES: dict = {
+    "total_items": 1,
+    "totales": {
+        "total_devengado": 800.0,
+        "total_tributario": 15.0,
+        "total_comision_bancaria": 10.0,
+        "total_gasto_empresa": 20.0,
+        "total_importe": 1000.0,
+        "total_neto_pagar": 650.0,
+        "total_importe_caguayo": 80.0,
+        "total_tributario_monto": 120.0,
+    },
+}
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+#  TEST 7 – Auth rejection: 7 nuevos preview endpoints (401)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+class TestPreviewRechazoSinTokenNuevos:
+    """Test 7: Los 7 nuevos endpoints **preview** retornan 401 sin token."""
+
+    @pytest.mark.parametrize("path,params", [
+        ("/api/v1/reportes/clientes/preview", {}),
+        ("/api/v1/reportes/proyectos/preview", {}),
+        ("/api/v1/reportes/creadores/preview", {}),
+        ("/api/v1/reportes/desempeno/preview", {}),
+        ("/api/v1/reportes/onat/preview", {}),
+        ("/api/v1/reportes/mincult/preview", {}),
+        ("/api/v1/reportes/liquidaciones/preview", {}),
+    ])
+    def test_preview_rechaza_sin_token(self, client, auth_fail, path, params):
+        """Verifica que cada nuevo preview retorna 401 cuando la auth falla."""
+        response = client.get(path, params=params)
+        assert response.status_code == 401, (
+            f"[{path}] Esperaba 401, obtuvo {response.status_code}: "
+            f"{response.text[:200]}"
+        )
+        data = response.json()
+        assert "detail" in data
+        assert "Token" in data["detail"] or "autenticación" in data["detail"].lower(), (
+            f"[{path}] El detail debería mencionar el token: {data['detail']}"
+        )
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+#  TEST 8 – Auth rejection: 7 nuevos PDF endpoints (401)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+class TestPDFRechazoSinTokenNuevos:
+    """Test 8: Los 7 nuevos endpoints **PDF** retornan 401 sin token."""
+
+    @pytest.mark.parametrize("path,params", [
+        ("/api/v1/reportes/clientes", {}),
+        ("/api/v1/reportes/proyectos", {}),
+        ("/api/v1/reportes/creadores", {}),
+        ("/api/v1/reportes/desempeno", {}),
+        ("/api/v1/reportes/onat", {}),
+        ("/api/v1/reportes/mincult", {}),
+        ("/api/v1/reportes/liquidaciones", {}),
+    ])
+    def test_pdf_rechaza_sin_token(self, client, auth_fail, path, params):
+        """Verifica que cada nuevo PDF retorna 401 cuando la auth falla."""
+        response = client.get(path, params=params)
+        assert response.status_code == 401, (
+            f"[{path}] Esperaba 401, obtuvo {response.status_code}: "
+            f"{response.text[:200]}"
+        )
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+#  TEST 9 – Preview nuevos endpoints con token (200 + estructura JSON)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+class TestPreviewConTokenNuevos:
+    """Test 9: 7 nuevos preview retornan 200 y estructura JSON correcta con auth."""
+
+    @pytest.mark.parametrize("path,params,func_name,mock_return,expected_keys", [
+        (
+            "/api/v1/reportes/clientes/preview",
+            {},
+            "get_registro_clientes",
+            (SAMPLE_CLIENTES, SAMPLE_META_CLIENTES),
+            ["items", "total_items"],
+        ),
+        (
+            "/api/v1/reportes/proyectos/preview",
+            {"fecha_inicio": "2024-01-01", "fecha_fin": "2024-12-31"},
+            "get_registro_proyectos",
+            (SAMPLE_PROYECTOS, SAMPLE_META_PROYECTOS),
+            ["items", "total_items"],
+        ),
+        (
+            "/api/v1/reportes/creadores/preview",
+            {},
+            "get_registro_creadores",
+            (SAMPLE_CREADORES, SAMPLE_META_CREADORES),
+            ["items", "total_items", "grupos_municipio"],
+        ),
+        (
+            "/api/v1/reportes/desempeno/preview",
+            {"fecha_inicio": "2024-01-01", "fecha_fin": "2024-12-31"},
+            "get_informe_desempeno",
+            (SAMPLE_DESEMPENO, SAMPLE_META_DESEMPENO),
+            ["items", "total_items", "totales_por_persona",
+             "gran_total_cobro", "gran_total_valor"],
+        ),
+        (
+            "/api/v1/reportes/onat/preview",
+            {"fecha_inicio": "2024-01-01", "fecha_fin": "2024-12-31"},
+            "get_reporte_onat",
+            (SAMPLE_ONAT, SAMPLE_META_ONAT),
+            ["items", "total_items", "totales"],
+        ),
+        (
+            "/api/v1/reportes/mincult/preview",
+            {"fecha_inicio": "2024-01-01", "fecha_fin": "2024-12-31"},
+            "get_reporte_mincult",
+            (SAMPLE_BRACKETS, SAMPLE_META_MINCULT),
+            ["items", "total_brackets", "total_liquidaciones",
+             "total_devengado_general"],
+        ),
+        (
+            "/api/v1/reportes/liquidaciones/preview",
+            {"fecha_inicio": "2024-01-01", "fecha_fin": "2024-12-31"},
+            "get_resumen_liquidaciones",
+            (SAMPLE_LIQUIDACIONES, SAMPLE_META_LIQUIDACIONES),
+            ["items", "total_items", "totales"],
+        ),
+    ])
+    def test_preview_con_token(
+        self, client, auth_success, path, params,
+        func_name, mock_return, expected_keys,
+    ):
+        """Verifica que cada nuevo preview con token retorna 200 + claves esperadas."""
+        with patch.object(reportes_router, func_name,
+                          new=AsyncMock(return_value=mock_return)):
+            response = client.get(path, params=params)
+
+        assert response.status_code == 200, (
+            f"[{path}] Esperaba 200, obtuvo {response.status_code}: "
+            f"{response.text[:200]}"
+        )
+        data = response.json()
+        for key in expected_keys:
+            assert key in data, (
+                f"[{path}] Respuesta debería contener '{key}', "
+                f"claves actuales: {list(data.keys())}"
+            )
+        if "total_items" in data:
+            assert isinstance(data["total_items"], int), (
+                f"[{path}] total_items debe ser int, obtuvo {type(data['total_items'])}"
+            )
+        if "total_brackets" in data:
+            assert isinstance(data["total_brackets"], int), (
+                f"[{path}] total_brackets debe ser int, "
+                f"obtuvo {type(data['total_brackets'])}"
+            )
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+#  TEST 10 – Error sanitizado en nuevos endpoints
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+class TestErrorSanitizadoNuevos:
+    """Test 10: Excepción interna en nuevos endpoints → 500 + mensaje genérico."""
+
+    DETALLE_INTERNO = "FALLO_CRITICO_EN_NUEVO_REPORTE"
+
+    @pytest.mark.parametrize("path,params,func_name", [
+        # 2 preview endpoints
+        (
+            "/api/v1/reportes/clientes/preview",
+            {},
+            "get_registro_clientes",
+        ),
+        (
+            "/api/v1/reportes/proyectos/preview",
+            {"fecha_inicio": "2024-01-01", "fecha_fin": "2024-12-31"},
+            "get_registro_proyectos",
+        ),
+        # 2 PDF endpoints
+        (
+            "/api/v1/reportes/clientes",
+            {},
+            "get_registro_clientes",
+        ),
+        (
+            "/api/v1/reportes/proyectos",
+            {"fecha_inicio": "2024-01-01", "fecha_fin": "2024-12-31"},
+            "get_registro_proyectos",
+        ),
+        # 2 additional: creadores PDF + desempeno preview
+        (
+            "/api/v1/reportes/creadores",
+            {},
+            "get_registro_creadores",
+        ),
+        (
+            "/api/v1/reportes/desempeno/preview",
+            {"fecha_inicio": "2024-01-01", "fecha_fin": "2024-12-31"},
+            "get_informe_desempeno",
+        ),
+    ])
+    def test_error_interno_no_expone_detalle(
+        self, client, auth_success, path, params, func_name,
+    ):
+        """Verifica que el mensaje de error NO contiene el detalle interno."""
+        with patch.object(
+            reportes_router, func_name,
+            new=AsyncMock(side_effect=Exception(self.DETALLE_INTERNO)),
+        ):
+            response = client.get(path, params=params)
+
+        assert response.status_code == 500, (
+            f"[{path}] Esperaba 500, obtuvo {response.status_code}: "
+            f"{response.text[:200]}"
+        )
+        data = response.json()
+        detail = data.get("detail", "")
+        assert self.DETALLE_INTERNO not in detail, (
+            f"[{path}] El detalle interno NO debe exponerse: {detail}"
+        )
+        assert "Error interno" in detail, (
+            f"[{path}] El mensaje debe ser genérico, obtuvo: {detail}"
+        )
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+#  TEST 11 – PDF generation con notas para nuevos reportes
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+class TestPDFGenerationNuevos:
+    """Test 11: 4 nuevos endpoints PDF retornan ``StreamingResponse`` PDF."""
+
+    def test_pdf_clientes_con_notas(self, client, auth_success):
+        """PDF clientes → StreamingResponse con ``application/pdf`` + notas."""
+        with patch.object(
+            reportes_router, "get_registro_clientes",
+            new=AsyncMock(return_value=(SAMPLE_CLIENTES, SAMPLE_META_CLIENTES)),
+        ):
+            params = {
+                "notas": "Observaciones para el reporte de clientes.",
+                "aprobado_por_nombre": "Ana Martinez",
+                "aprobado_por_cargo": "Directora Comercial",
+            }
+            response = client.get(
+                "/api/v1/reportes/clientes", params=params,
+            )
+
+        assert response.status_code == 200, (
+            f"Esperaba 200, obtuvo {response.status_code}: {response.text[:200]}"
+        )
+        ct = response.headers.get("content-type", "")
+        assert ct.startswith("application/pdf"), (
+            f"Esperaba Content-Type application/pdf, obtuvo: {ct}"
+        )
+        assert len(response.content) > 0, "El PDF no debe estar vacío"
+
+    def test_pdf_proyectos_con_notas(self, client, auth_success):
+        """PDF proyectos → StreamingResponse con ``application/pdf``."""
+        with patch.object(
+            reportes_router, "get_registro_proyectos",
+            new=AsyncMock(return_value=(
+                SAMPLE_PROYECTOS, SAMPLE_META_PROYECTOS,
+            )),
+        ):
+            params = {
+                "fecha_inicio": "2024-01-01",
+                "fecha_fin": "2024-12-31",
+                "notas": "Resumen de proyectos del período.",
+                "aprobado_por_nombre": "Carlos Ruiz",
+                "aprobado_por_cargo": "Gerente de Proyectos",
+            }
+            response = client.get(
+                "/api/v1/reportes/proyectos", params=params,
+            )
+
+        assert response.status_code == 200
+        assert response.headers.get("content-type", "").startswith("application/pdf")
+        assert len(response.content) > 0
+
+    def test_pdf_creadores_con_notas(self, client, auth_success):
+        """PDF creadores → StreamingResponse con ``application/pdf``."""
+        with patch.object(
+            reportes_router, "get_registro_creadores",
+            new=AsyncMock(return_value=(
+                SAMPLE_CREADORES, SAMPLE_META_CREADORES,
+            )),
+        ):
+            params = {
+                "notas": "Registro de creadores activos.",
+                "aprobado_por_nombre": "Laura Vega",
+                "aprobado_por_cargo": "Coordinadora de Registro",
+            }
+            response = client.get(
+                "/api/v1/reportes/creadores", params=params,
+            )
+
+        assert response.status_code == 200
+        assert response.headers.get("content-type", "").startswith("application/pdf")
+        assert len(response.content) > 0
+
+    def test_pdf_desempeno_con_notas(self, client, auth_success):
+        """PDF desempeño → StreamingResponse con ``application/pdf``."""
+        with patch.object(
+            reportes_router, "get_informe_desempeno",
+            new=AsyncMock(return_value=(
+                SAMPLE_DESEMPENO, SAMPLE_META_DESEMPENO,
+            )),
+        ):
+            params = {
+                "fecha_inicio": "2024-01-01",
+                "fecha_fin": "2024-12-31",
+                "notas": "Informe de desempeño del primer semestre.",
+                "aprobado_por_nombre": "Mario Diaz",
+                "aprobado_por_cargo": "Director de Operaciones",
+            }
+            response = client.get(
+                "/api/v1/reportes/desempeno", params=params,
+            )
+
+        assert response.status_code == 200
+        assert response.headers.get("content-type", "").startswith("application/pdf")
+        assert len(response.content) > 0
