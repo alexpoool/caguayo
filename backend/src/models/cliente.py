@@ -12,6 +12,7 @@ if TYPE_CHECKING:
     from .cliente_juridica import ClienteJuridica
     from .cliente_tcp import ClienteTCP
     from .dependencia import Provincia, Municipio
+    from .contrato import Contrato
 
 
 class Cliente(SQLModel, table=True):

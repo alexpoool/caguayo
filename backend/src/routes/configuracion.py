@@ -188,7 +188,7 @@ async def eliminar_tipo_proveedor(
 
 # Endpoints para Tipos de Proveedores
 @router.get("/tipos-proveedores", response_model=List[TipoProveedorRead])
-async def listar_tipos_proveedor(
+async def listar_tipos_proveedor2(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=1000),
     db: AsyncSession = Depends(get_session),
@@ -197,7 +197,7 @@ async def listar_tipos_proveedor(
 
 
 @router.post("/tipos-proveedores", response_model=TipoProveedorRead, status_code=201)
-async def crear_tipo_proveedor(
+async def crear_tipo_proveedor2(
     data: TipoProveedorCreate,
     db: AsyncSession = Depends(get_session),
 ):
@@ -205,7 +205,7 @@ async def crear_tipo_proveedor(
 
 
 @router.get("/tipos-proveedores/{tipo_id}", response_model=TipoProveedorRead)
-async def obtener_tipo_proveedor(
+async def obtener_tipo_proveedor2(
     tipo_id: int,
     db: AsyncSession = Depends(get_session),
 ):
@@ -216,7 +216,7 @@ async def obtener_tipo_proveedor(
 
 
 @router.put("/tipos-proveedores/{tipo_id}", response_model=TipoProveedorRead)
-async def actualizar_tipo_proveedor(
+async def actualizar_tipo_proveedor2(
     tipo_id: int,
     data: TipoProveedorUpdate,
     db: AsyncSession = Depends(get_session),
@@ -228,7 +228,7 @@ async def actualizar_tipo_proveedor(
 
 
 @router.delete("/tipos-proveedores/{tipo_id}", status_code=204)
-async def eliminar_tipo_proveedor(
+async def eliminar_tipo_proveedor2(
     tipo_id: int,
     db: AsyncSession = Depends(get_session),
 ):

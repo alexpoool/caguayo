@@ -725,7 +725,7 @@ class MovimientoService:
                     "id_dependencia": mov.id_dependencia,
                     "nombre_dependencia": dependencia_nombre,
                     "id_proveedor": mov.id_cliente,
-                    "proveedor_nombre": proveedor_nombre,
+                    "proveedor_nombre": cliente_nombre,
                     "id_convenio": mov.id_convenio,
                     "convenio_nombre": convenioconvenio_nombre,
                     "id_anexo": mov.id_anexo,

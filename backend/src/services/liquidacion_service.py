@@ -138,7 +138,7 @@ class LiquidacionService:
             if producto:
                 importe += producto.precio_venta * prod.cantidad
 
-        devengado = data.devengado or Decimal("0.00")
+        data.devengado or Decimal("0.00")
         tributario = data.tributario or Decimal("0.00")
         comision_bancaria = data.comision_bancaria or Decimal("0.00")
         gasto_empresa = data.gasto_empresa or Decimal("0.00")
@@ -271,7 +271,7 @@ class LiquidacionService:
         db_liquidaciones = await liquidacion_repo.get_multi_with_relations(
             db, skip=skip, limit=limit
         )
-        return [LiquidacionRead.model_validate(l) for l in db_liquidaciones]
+        return [LiquidacionRead.model_validate(liq) for liq in db_liquidaciones]
 
     @staticmethod
     async def get_liquidaciones_pendientes(
@@ -280,7 +280,7 @@ class LiquidacionService:
         db_liquidaciones = await liquidacion_repo.get_pendientes_with_relations(
             db, skip=skip, limit=limit
         )
-        return [LiquidacionRead.model_validate(l) for l in db_liquidaciones]
+        return [LiquidacionRead.model_validate(liq) for liq in db_liquidaciones]
 
     @staticmethod
     async def get_liquidaciones_liquidadas(
@@ -289,7 +289,7 @@ class LiquidacionService:
         db_liquidaciones = await liquidacion_repo.get_liquidadas_with_relations(
             db, skip=skip, limit=limit
         )
-        return [LiquidacionRead.model_validate(l) for l in db_liquidaciones]
+        return [LiquidacionRead.model_validate(liq) for liq in db_liquidaciones]
 
     @staticmethod
     async def get_liquidaciones_by_cliente(
@@ -298,7 +298,7 @@ class LiquidacionService:
         db_liquidaciones = await liquidacion_repo.get_by_cliente_with_relations(
             db, cliente_id, skip=skip, limit=limit
         )
-        return [LiquidacionRead.model_validate(l) for l in db_liquidaciones]
+        return [LiquidacionRead.model_validate(liq) for liq in db_liquidaciones]
 
     @staticmethod
     async def get_productos_pendientes_by_cliente(

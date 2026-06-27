@@ -41,7 +41,7 @@ class ProductosEnLiquidacionRepository(CRUDBase[ProductosEnLiquidacion, dict, di
     ) -> List[ProductosEnLiquidacion]:
         statement = (
             select(ProductosEnLiquidacion)
-            .where(ProductosEnLiquidacion.liquidada == False)
+            .where(not ProductosEnLiquidacion.liquidada)
             .options(
                 selectinload(ProductosEnLiquidacion.producto),
                 selectinload(ProductosEnLiquidacion.moneda),
@@ -59,7 +59,7 @@ class ProductosEnLiquidacionRepository(CRUDBase[ProductosEnLiquidacion, dict, di
     ) -> List[ProductosEnLiquidacion]:
         statement = (
             select(ProductosEnLiquidacion)
-            .where(ProductosEnLiquidacion.liquidada == True)
+            .where(ProductosEnLiquidacion.liquidada)
             .options(
                 selectinload(ProductosEnLiquidacion.producto),
                 selectinload(ProductosEnLiquidacion.moneda),
@@ -144,7 +144,7 @@ class ProductosEnLiquidacionRepository(CRUDBase[ProductosEnLiquidacion, dict, di
         statement = (
             select(ProductosEnLiquidacion)
             .where(
-                ProductosEnLiquidacion.liquidada == False,
+                not ProductosEnLiquidacion.liquidada,
                 ProductosEnLiquidacion.id_anexo.in_(
                     select(ProductosEnLiquidacion.id_anexo).where(
                         ProductosEnLiquidacion.id_anexo.isnot(None)
@@ -210,7 +210,7 @@ class ProductosEnLiquidacionRepository(CRUDBase[ProductosEnLiquidacion, dict, di
                 )
                 .outerjoin(Convenio, Anexo.id_convenio == Convenio.id_convenio)
                 .where(
-                    ProductosEnLiquidacion.liquidada == False,
+                    not ProductosEnLiquidacion.liquidada,
                     ProductosEnLiquidacion.id_anexo == anexo_id,
                     or_(
                         Convenio.id_cliente == cliente_id,
@@ -225,7 +225,7 @@ class ProductosEnLiquidacionRepository(CRUDBase[ProductosEnLiquidacion, dict, di
                 )
                 .outerjoin(Convenio, Anexo.id_convenio == Convenio.id_convenio)
                 .where(
-                    ProductosEnLiquidacion.liquidada == False,
+                    not ProductosEnLiquidacion.liquidada,
                     or_(
                         Convenio.id_cliente == cliente_id,
                         ProductosEnLiquidacion.id_venta_efectivo.isnot(None),
@@ -256,7 +256,7 @@ class ProductosEnLiquidacionRepository(CRUDBase[ProductosEnLiquidacion, dict, di
                 ).where(
                     ProductosEnLiquidacion.id_producto == pel.id_producto,
                     ProductosEnLiquidacion.id_anexo == pel.id_anexo,
-                    ProductosEnLiquidacion.liquidada == True,
+                    ProductosEnLiquidacion.liquidada,
                 )
             elif pel.id_venta_efectivo is not None:
                 cantidad_stmt = select(
@@ -264,7 +264,7 @@ class ProductosEnLiquidacionRepository(CRUDBase[ProductosEnLiquidacion, dict, di
                 ).where(
                     ProductosEnLiquidacion.id_producto == pel.id_producto,
                     ProductosEnLiquidacion.id_venta_efectivo == pel.id_venta_efectivo,
-                    ProductosEnLiquidacion.liquidada == True,
+                    ProductosEnLiquidacion.liquidada,
                 )
             else:
                 cantidad_stmt = None
@@ -420,7 +420,7 @@ class ProductosEnLiquidacionRepository(CRUDBase[ProductosEnLiquidacion, dict, di
                 ProductosEnLiquidacion.id_anexo.in_(anexos_ids),
                 # Productos de facturas del cliente
                 and_(
-                    ProductosEnLiquidacion.id_factura != None,
+                    ProductosEnLiquidacion.id_factura is not None,
                     ProductosEnLiquidacion.id_producto.in_(
                         select(ItemAnexo.id_producto).where(
                             ItemAnexo.id_anexo.in_(anexos_ids)
@@ -429,7 +429,7 @@ class ProductosEnLiquidacionRepository(CRUDBase[ProductosEnLiquidacion, dict, di
                 ),
                 # Productos de ventas efectivo del cliente
                 and_(
-                    ProductosEnLiquidacion.id_venta_efectivo != None,
+                    ProductosEnLiquidacion.id_venta_efectivo is not None,
                     ProductosEnLiquidacion.id_producto.in_(
                         select(ItemAnexo.id_producto).where(
                             ItemAnexo.id_anexo.in_(anexos_ids)
@@ -521,7 +521,7 @@ class ProductosEnLiquidacionRepository(CRUDBase[ProductosEnLiquidacion, dict, di
             pel_ids = [p.id_producto_en_liquidacion for p in pel_pendiente]
 
             # Por liquidar = x - z
-            por_liquidar = max(0, cantidad_original - cantidad_liquidada)
+            max(0, cantidad_original - cantidad_liquidada)
 
             # Validar que cantidad pendiente <= cantidad original
             # (y no puede ser mayor que x)
@@ -601,7 +601,7 @@ class ProductosEnLiquidacionRepository(CRUDBase[ProductosEnLiquidacion, dict, di
                 and_(
                     ProductosEnLiquidacion.id_producto == pel.id_producto,
                     ProductosEnLiquidacion.id_anexo == pel.id_anexo,
-                    ProductosEnLiquidacion.liquidada == True,
+                    ProductosEnLiquidacion.liquidada,
                     ProductosEnLiquidacion.id_moneda == pel.id_moneda,
                 )
             )

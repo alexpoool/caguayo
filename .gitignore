@@ -44,5 +44,7 @@ yarn-error.log*
 
 #solji
 doc
+docs
 .code-review-graph
 .opencode
+.ruff_cache

@@ -512,7 +512,7 @@ async def actualizar_dependencia(
                 detail="No se puede actualizar la dependencia porque se formaría un ciclo en la jerarquía",
             )
 
-    updated = await dependencia_repo.update(db, db_obj=db_obj, obj_in=data)
+    await dependencia_repo.update(db, db_obj=db_obj, obj_in=data)
 
     # Recargar el objeto con las relaciones
     statement = (

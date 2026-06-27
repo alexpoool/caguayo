@@ -69,8 +69,8 @@ class ProductosEnLiquidacionUpdate(SQLModel):
 
 
 # Rebuild forward references
-from .productos_dto import ProductoSimpleRead
-from .monedas_dto import MonedaRead
+from .productos_dto import ProductoSimpleRead  # noqa: E402
+from .monedas_dto import MonedaRead  # noqa: E402
 
 AnexoSimpleRead.model_rebuild()
 FacturaInfo.model_rebuild()

@@ -110,7 +110,7 @@ class LiquidacionRepository(CRUDBase[Liquidacion, dict, dict]):
     ) -> List[Liquidacion]:
         statement = (
             select(Liquidacion)
-            .where(Liquidacion.liquidada == False)
+            .where(not Liquidacion.liquidada)
             .offset(skip)
             .limit(limit)
         )
@@ -122,7 +122,7 @@ class LiquidacionRepository(CRUDBase[Liquidacion, dict, dict]):
     ) -> List[Liquidacion]:
         statement = (
             select(Liquidacion)
-            .where(Liquidacion.liquidada == False)
+            .where(not Liquidacion.liquidada)
             .options(
                 selectinload(Liquidacion.productos_en_liquidacion).selectinload(
                     ProductosEnLiquidacion.producto
@@ -146,7 +146,7 @@ class LiquidacionRepository(CRUDBase[Liquidacion, dict, dict]):
     ) -> List[Liquidacion]:
         statement = (
             select(Liquidacion)
-            .where(Liquidacion.liquidada == True)
+            .where(Liquidacion.liquidada)
             .offset(skip)
             .limit(limit)
         )
@@ -158,7 +158,7 @@ class LiquidacionRepository(CRUDBase[Liquidacion, dict, dict]):
     ) -> List[Liquidacion]:
         statement = (
             select(Liquidacion)
-            .where(Liquidacion.liquidada == True)
+            .where(Liquidacion.liquidada)
             .options(
                 selectinload(Liquidacion.productos_en_liquidacion).selectinload(
                     ProductosEnLiquidacion.producto

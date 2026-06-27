@@ -139,7 +139,7 @@ async def crear_anexo(
         datos_dict = datos.model_dump(exclude_none=True)
         items_data = datos_dict.pop("items", [])
 
-        fecha_anexo = (
+        (
             datos.fecha
             if isinstance(datos.fecha, date)
             else date.fromisoformat(str(datos.fecha))

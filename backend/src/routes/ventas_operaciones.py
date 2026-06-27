@@ -145,7 +145,7 @@ async def crear_suplemento(
 ):
     """Crear un nuevo suplemento."""
     try:
-        nit = await _get_nit_from_token(authorization, db_auth)
+        await _get_nit_from_token(authorization, db_auth)
         return await SuplementoService.create(db, suplemento)
     except Exception as e:
         raise HTTPException(

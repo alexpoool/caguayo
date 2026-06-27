@@ -3,24 +3,6 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlalchemy.orm import selectinload
 from typing import List, Optional, Any
 from decimal import Decimal
-
-
-def normalize_id(value: Any) -> Any:
-    """Normaliza valores que pueden ser objetos anidados o diccionarios a sus IDs."""
-    if value is None:
-        return None
-    if isinstance(value, dict):
-        if "id" in value:
-            return value["id"]
-        for k, v in value.items():
-            if k.endswith("_id"):
-                return v
-        return value
-    if hasattr(value, "id"):
-        return getattr(value, "id", value)
-    return value
-
-
 from src.repository.base import CRUDBase
 from src.models.contrato import (
     Contrato,
@@ -45,6 +27,22 @@ from src.dto.contratos_dto import (
     ItemVentaEfectivoCreate,
 )
 from src.dto.convenios_dto import ItemAnexoCreate
+
+
+def normalize_id(value: Any) -> Any:
+    """Normaliza valores que pueden ser objetos anidados o diccionarios a sus IDs."""
+    if value is None:
+        return None
+    if isinstance(value, dict):
+        if "id" in value:
+            return value["id"]
+        for k, v in value.items():
+            if k.endswith("_id"):
+                return v
+        return value
+    if hasattr(value, "id"):
+        return getattr(value, "id", value)
+    return value
 
 
 class ContratoRepository(CRUDBase[Contrato, ContratoCreate, ContratoUpdate]):

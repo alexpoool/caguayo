@@ -1,4 +1,3 @@
-from sqlmodel import SQLModel
 from .moneda import Moneda
 from .categoria import Categorias, Subcategorias
 from .producto import Productos

@@ -145,7 +145,7 @@ class LiquidacionConProductos(SQLModel):
 
 
 # Rebuild forward references
-from .monedas_dto import MonedaRead
-from .productos_en_liquidacion_dto import ProductosEnLiquidacionRead
+from .monedas_dto import MonedaRead  # noqa: E402
+from .productos_en_liquidacion_dto import ProductosEnLiquidacionRead  # noqa: E402
 
 LiquidacionRead.model_rebuild()

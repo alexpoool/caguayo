@@ -1,8 +1,4 @@
 import os
-from dotenv import load_dotenv
-
-load_dotenv()
-
 from datetime import datetime, timedelta
 from typing import Optional, List
 from sqlalchemy import text
@@ -10,6 +6,7 @@ from jose import JWTError, jwt
 import bcrypt
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
+from dotenv import load_dotenv
 
 from src.models import (
     Usuario,
@@ -32,6 +29,8 @@ from src.dto.auth_dto import (
     PerfilUpdateRequest,
     PerfilResponse,
 )
+
+load_dotenv()
 
 SECRET_KEY = os.getenv("SECRET_KEY", "caguayo-secret-key-change-in-production")
 ALGORITHM = "HS256"

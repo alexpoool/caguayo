@@ -202,7 +202,7 @@ async def create_log(
             if payload:
                 try:
                     usuario_id = int(payload.get("sub"))
-                except:
+                except Exception:
                     pass
                 usuario_nombre = payload.get("nombre")
 

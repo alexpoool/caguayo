@@ -325,7 +325,7 @@ class FacturaServicioService:
                 try:
                     last_num = int(last.codigo_factura.split(".")[-1])
                     new_num = last_num + 1
-                except:
+                except Exception:
                     new_num = 1
             else:
                 new_num = 1
@@ -749,7 +749,7 @@ class PersonaLiquidacionService:
                 try:
                     last_num = int(last.numero.split(".")[-1])
                     new_num = last_num + 1
-                except:
+                except Exception:
                     new_num = 1
             else:
                 new_num = 1
@@ -757,7 +757,7 @@ class PersonaLiquidacionService:
             letra = "C" if etapa and etapa.tipo_etapa == "CERTIFICACIONES" else "S"
             liquidacion_data.numero = f"{nit or ''}{letra}.{year}.{new_num}"
 
-        l = await persona_liquidacion_repo.create(db, obj_in=liquidacion_data)
+        liquidacion = await persona_liquidacion_repo.create(db, obj_in=liquidacion_data)
 
         if data.id_pago and importe > 0:
             pago = await pago_factura_servicio_repo.get(db, data.id_pago)
@@ -768,7 +768,7 @@ class PersonaLiquidacionService:
                 db.add(pago)
                 await db.commit()
 
-        return PersonaLiquidacionRead(**l.model_dump())
+        return PersonaLiquidacionRead(**liquidacion.model_dump())
 
     @staticmethod
     async def get_all(
@@ -779,8 +779,8 @@ class PersonaLiquidacionService:
 
     @staticmethod
     async def get(db: AsyncSession, id: int) -> PersonaLiquidacionRead:
-        l = await persona_liquidacion_repo.get(db, id)
-        return PersonaLiquidacionRead(**l.model_dump()) if l else None
+        liq = await persona_liquidacion_repo.get(db, id)
+        return PersonaLiquidacionRead(**liq.model_dump()) if liq else None
 
     @staticmethod
     async def update(
@@ -788,23 +788,23 @@ class PersonaLiquidacionService:
     ) -> PersonaLiquidacionRead:
         from decimal import Decimal
 
-        l = await persona_liquidacion_repo.get(db, id)
-        if not l:
+        liq = await persona_liquidacion_repo.get(db, id)
+        if not liq:
             return None
 
-        old_importe = l.importe or Decimal("0")
-        old_id_pago = l.id_pago
+        old_importe = liq.importe or Decimal("0")
+        old_id_pago = liq.id_pago
 
         importe = (
             Decimal(str(data.importe))
             if data.importe is not None
-            else (l.importe or Decimal("0"))
+            else (liq.importe or Decimal("0"))
         )
 
         porcentaje_caguayo = (
             Decimal(str(data.porcentaje_caguayo))
             if data.porcentaje_caguayo is not None
-            else (l.porcentaje_caguayo or Decimal("10"))
+            else (liq.porcentaje_caguayo or Decimal("10"))
         )
         importe_caguayo = importe * (porcentaje_caguayo / 100)
         devengado = importe - importe_caguayo
@@ -812,7 +812,7 @@ class PersonaLiquidacionService:
         tributario = (
             Decimal(str(data.tributario))
             if data.tributario is not None
-            else (l.tributario or Decimal("5"))
+            else (liq.tributario or Decimal("5"))
         )
         tributario_monto = devengado * (tributario / 100)
         subtotal = devengado - tributario_monto
@@ -820,12 +820,12 @@ class PersonaLiquidacionService:
         gasto_empresa = (
             Decimal(str(data.gasto_empresa))
             if data.gasto_empresa is not None
-            else (l.gasto_empresa or Decimal("0"))
+            else (liq.gasto_empresa or Decimal("0"))
         )
         comision = (
             Decimal(str(data.comision_bancaria))
             if data.comision_bancaria is not None
-            else (l.comision_bancaria or Decimal("0"))
+            else (liq.comision_bancaria or Decimal("0"))
         )
         neto_pagar = subtotal - gasto_empresa - comision
 
@@ -852,7 +852,7 @@ class PersonaLiquidacionService:
         )
 
         updated = await persona_liquidacion_repo.update(
-            db, db_obj=l, obj_in=update_data
+            db, db_obj=liq, obj_in=update_data
         )
 
         delta = importe - old_importe
@@ -898,15 +898,15 @@ class PersonaLiquidacionService:
     ) -> Optional[PersonaLiquidacionRead]:
         from decimal import Decimal
 
-        l = await persona_liquidacion_repo.get(db, liquidacion_id)
-        if not l:
+        liquidacion_obj = await persona_liquidacion_repo.get(db, liquidacion_id)
+        if not liquidacion_obj:
             return None
 
-        if l.confirmado:
+        if liquidacion_obj.confirmado:
             raise ValueError("La liquidación ya está confirmada")
 
         validacion = await PersonaLiquidacionService.validar_liquidar(
-            db, l.id_etapa, l.id_persona
+            db, liquidacion_obj.id_etapa, liquidacion_obj.id_persona
         )
 
         if not validacion.puede_liquidar:
@@ -914,17 +914,17 @@ class PersonaLiquidacionService:
                 validacion.mensaje or "No se puede confirmar: no hay pagos registrados"
             )
 
-        importe = l.importe or Decimal("0")
+        importe = liquidacion_obj.importe or Decimal("0")
 
         total_liquidado = (
             await persona_liquidacion_repo.get_total_liquidado_by_persona_etapa(
-                db, l.id_etapa, l.id_persona
+                db, liquidacion_obj.id_etapa, liquidacion_obj.id_persona
             )
         )
 
         statement = select(PersonaEtapa).where(
-            PersonaEtapa.id_etapa == l.id_etapa,
-            PersonaEtapa.id_persona == l.id_persona,
+            PersonaEtapa.id_etapa == liquidacion_obj.id_etapa,
+            PersonaEtapa.id_persona == liquidacion_obj.id_persona,
         )
         result = await db.exec(statement)
         persona_etapa = result.first()
@@ -934,41 +934,41 @@ class PersonaLiquidacionService:
             disponible = cobro - total_liquidado
             if importe > disponible:
                 importe = disponible
-                l.importe = importe
+                liquidacion_obj.importe = importe
 
         if data.porcentaje_caguayo is not None:
-            l.porcentaje_caguayo = Decimal(str(data.porcentaje_caguayo))
+            liquidacion_obj.porcentaje_caguayo = Decimal(str(data.porcentaje_caguayo))
         if data.tributario is not None:
-            l.tributario = Decimal(str(data.tributario))
+            liquidacion_obj.tributario = Decimal(str(data.tributario))
         if data.gasto_empresa is not None:
-            l.gasto_empresa = Decimal(str(data.gasto_empresa))
+            liquidacion_obj.gasto_empresa = Decimal(str(data.gasto_empresa))
         if data.comision_bancaria is not None:
-            l.comision_bancaria = Decimal(str(data.comision_bancaria))
+            liquidacion_obj.comision_bancaria = Decimal(str(data.comision_bancaria))
 
-        porcentaje_caguayo = l.porcentaje_caguayo or Decimal("10")
-        l.importe_caguayo = importe * (porcentaje_caguayo / 100)
-        l.devengado = importe - l.importe_caguayo
+        porcentaje_caguayo = liquidacion_obj.porcentaje_caguayo or Decimal("10")
+        liquidacion_obj.importe_caguayo = importe * (porcentaje_caguayo / 100)
+        liquidacion_obj.devengado = importe - liquidacion_obj.importe_caguayo
 
-        tributario = l.tributario or Decimal("5")
-        l.tributario_monto = l.devengado * (tributario / 100)
-        subtotal = l.devengado - l.tributario_monto
+        tributario = liquidacion_obj.tributario or Decimal("5")
+        liquidacion_obj.tributario_monto = liquidacion_obj.devengado * (tributario / 100)
+        subtotal = liquidacion_obj.devengado - liquidacion_obj.tributario_monto
 
-        gasto_empresa = l.gasto_empresa or Decimal("0")
-        comision = l.comision_bancaria or Decimal("0")
-        l.neto_pagar = subtotal - gasto_empresa - comision
+        gasto_empresa = liquidacion_obj.gasto_empresa or Decimal("0")
+        comision = liquidacion_obj.comision_bancaria or Decimal("0")
+        liquidacion_obj.neto_pagar = subtotal - gasto_empresa - comision
 
-        l.fecha_liquidacion = date.today()
-        l.confirmado = True
+        liquidacion_obj.fecha_liquidacion = date.today()
+        liquidacion_obj.confirmado = True
 
         if data.observaciones:
-            l.observacion = data.observaciones
+            liquidacion_obj.observacion = data.observaciones
 
         if data.doc_pago_liquidacion:
-            l.doc_pago_liquidacion = data.doc_pago_liquidacion
+            liquidacion_obj.doc_pago_liquidacion = data.doc_pago_liquidacion
 
-        db.add(l)
+        db.add(liquidacion_obj)
 
-        if l.id_etapa:
+        if liquidacion_obj.id_etapa:
             if persona_etapa:
                 persona_etapa.liquidada = True
                 nuevo_total = total_liquidado + importe
@@ -978,8 +978,8 @@ class PersonaLiquidacionService:
                 db.add(persona_etapa)
 
         await db.commit()
-        await db.refresh(l)
-        return PersonaLiquidacionRead(**l.model_dump())
+        await db.refresh(liquidacion_obj)
+        return PersonaLiquidacionRead(**liquidacion_obj.model_dump())
 
     @staticmethod
     async def validar_liquidar(

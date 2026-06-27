@@ -325,17 +325,6 @@ class PersonaLiquidacionRepository(
         results = await db.exec(statement)
         return results.all()
 
-    async def get_by_persona(
-        self, db: AsyncSession, id_persona: int
-    ) -> List[PersonaLiquidacion]:
-        statement = (
-            select(PersonaLiquidacion)
-            .where(PersonaLiquidacion.id_persona == id_persona)
-            .order_by(PersonaLiquidacion.id_liquidacion.desc())
-        )
-        results = await db.exec(statement)
-        return results.all()
-
     async def get_total_liquidado_by_persona_etapa(
         self, db: AsyncSession, id_etapa: int, id_persona: int
     ) -> Decimal:
@@ -346,7 +335,7 @@ class PersonaLiquidacionRepository(
         ).where(
             PersonaLiquidacion.id_etapa == id_etapa,
             PersonaLiquidacion.id_persona == id_persona,
-            PersonaLiquidacion.confirmado == True,
+            PersonaLiquidacion.confirmado,
         )
         result = await db.exec(statement)
         return result.one() or Decimal("0")

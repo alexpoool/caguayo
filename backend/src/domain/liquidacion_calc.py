@@ -19,4 +19,3 @@ class CalculadoraLiquidacion(BaseModel):
             self.descuentos.comision_bancaria + 
             self.descuentos.gasto_empresa
         )
-,
