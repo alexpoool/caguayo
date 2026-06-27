@@ -1,5 +1,5 @@
 from typing import List, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 from decimal import Decimal
 from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlmodel import select
@@ -213,7 +213,7 @@ class ContratoService:
 
     @staticmethod
     async def get_all(
-        db: AsyncSession, skip: int = 0, limit: int = 10000, id_cliente: int = None
+        db: AsyncSession, skip: int = 0, limit: int = 10000, id_cliente: Optional[int] = None
     ) -> List[ContratoReadWithDetails]:
         contratos = await contrato_repo.get_all_with_details(
             db, skip, limit, id_cliente
@@ -529,7 +529,7 @@ class FacturaService:
                     id_cliente=contrato.id_cliente if contrato else None,
                     id_producto=item["id_producto"],
                     cantidad=item["cantidad"],
-                    fecha=datetime.utcnow(),
+                    fecha=datetime.now(timezone.utc),
                     precio_compra=producto.precio_compra,
                     moneda_compra=producto.moneda_compra,
                     precio_venta=item["precio_venta"],
@@ -540,7 +540,7 @@ class FacturaService:
                 await db.flush()
 
                 if db_movimiento.id_movimiento:
-                    anio = datetime.utcnow().year
+                    anio = datetime.now(timezone.utc).year
                     codigo = f"{prefijo}V.{anio}.FAC{factura.id_factura}.{item['id_producto']}"
                     db_movimiento.codigo = codigo
 
@@ -713,7 +713,7 @@ class VentaEfectivoService:
                     id_venta_efectivo=venta.id_venta_efectivo,
                     id_producto=item["id_producto"],
                     cantidad=item["cantidad"],
-                    fecha=datetime.utcnow(),
+                    fecha=datetime.now(timezone.utc),
                     precio_compra=producto.precio_compra,
                     moneda_compra=producto.moneda_compra,
                     precio_venta=item["precio_venta"],
@@ -724,7 +724,7 @@ class VentaEfectivoService:
                 await db.flush()
 
                 if db_movimiento.id_movimiento:
-                    anio = datetime.utcnow().year
+                    anio = datetime.now(timezone.utc).year
                     codigo = f"{prefijo}V.{anio}.VE{venta.id_venta_efectivo}.{item['id_producto']}"
                     db_movimiento.codigo = codigo
 

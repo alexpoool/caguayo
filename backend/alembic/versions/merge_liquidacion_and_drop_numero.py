@@ -8,8 +8,6 @@ Create Date: 2026-04-06
 
 from typing import Sequence, Union
 
-from alembic import op
-import sqlalchemy as sa
 
 revision: str = "merge_liq_and_drop_numero"
 down_revision: Union[str, None] = (

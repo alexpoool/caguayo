@@ -1,6 +1,6 @@
 # =============================================================================
 #  Caguayo Backend — Multi-Stage Dockerfile
-#  Stage 1 : Builder          (dev deps + quality gates: ruff + pyright)
+#  Stage 1 : Builder          (dev deps + quality gates: ruff + ty)
 #  Stage 2 : Runtime-deps     (production deps only)
 #  Stage 3 : Production       (runtime image)
 # =============================================================================
@@ -19,28 +19,29 @@ RUN apt-get update && apt-get install -y \
     gcc \
     && rm -rf /var/lib/apt/lists/*
 
-# Install uv package manager
-RUN pip install --no-cache-dir uv
+# Install uv and ty (type checker)
+RUN pip install --no-cache-dir uv ty
 
 # Copy dependency metadata first to leverage Docker layer caching
 COPY backend/pyproject.toml backend/uv.lock ./
 
-# Install ALL dependencies (project + dev: ruff, pyright, pytest, httpx)
+# Install ALL dependencies (project + dev: ruff, pytest, httpx)
 RUN uv sync --frozen
 
-# Copy application source code and Alembic configuration
+# Copy application source code, config, and Alembic
 COPY backend/src ./src
 COPY backend/main.py .
 COPY backend/alembic ./alembic
 COPY backend/alembic.ini .
+COPY ty.toml .
 
 # ── Quality Gate 1: Ruff linter ──────────────────────────────────────────
 # Any linting error (exit code != 0) fails the build.
 RUN uv run ruff check src/
 
-# ── Quality Gate 2: Pyright type checker ─────────────────────────────────
-# Any type error (exit code != 0) fails the build.
-RUN uv run pyright src/
+# ── Quality Gate 2: ty type checker ──────────────────────────────────────
+# Any critical type error (exit code != 0) fails the build.
+RUN ty check --config-file ty.toml src/
 
 
 # ---------------------------------------------------------------------------

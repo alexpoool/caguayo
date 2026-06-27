@@ -15,11 +15,16 @@ from src.models.moneda import Moneda
 from src.models.producto import Productos
 from src.models.movimiento import Movimiento, TipoMovimiento
 from src.models.productos_en_liquidacion import ProductosEnLiquidacion
-from src.models.servicio import Etapa, PersonaEtapa, PersonaLiquidacion, SolicitudServicio
+from src.models.servicio import (
+    Etapa,
+    PersonaEtapa,
+    PersonaLiquidacion,
+    SolicitudServicio,
+)
 
 
 async def get_proveedores_por_dependencia(
-    db: AsyncSession, id_dependencia: int, tipo_entidad: str, id_provincia: int = None
+    db: AsyncSession, id_dependencia: int, tipo_entidad: str, id_provincia: Optional[int] = None
 ):
     result = await db.execute(
         select(Dependencia).filter(Dependencia.id_dependencia == id_dependencia)
@@ -384,7 +389,9 @@ async def get_registro_creadores(
             | (Cliente.nombre.ilike(pattern))
         )
 
-    query = query.order_by(Municipio.nombre, ClienteNatural.primer_apellido, ClienteNatural.nombre)
+    query = query.order_by(
+        Municipio.nombre, ClienteNatural.primer_apellido, ClienteNatural.nombre
+    )
     result = await db.execute(query)
     rows = result.all()
 
@@ -396,7 +403,11 @@ async def get_registro_creadores(
             f"{natural.nombre} {natural.primer_apellido}"
             f"{' ' + natural.segundo_apellido if natural.segundo_apellido else ''}"
         )
-        vigente = "SÍ" if (natural.vigencia is None or natural.vigencia >= date.today()) else "NO"
+        vigente = (
+            "SÍ"
+            if (natural.vigencia is None or natural.vigencia >= date.today())
+            else "NO"
+        )
         data.append(
             {
                 "id_cliente": cliente.id_cliente,
@@ -408,8 +419,12 @@ async def get_registro_creadores(
                 "numero_registro": natural.numero_registro or "",
                 "codigo": cliente.codigo,
                 "vigencia": vigente,
-                "vigencia_fecha": natural.vigencia.isoformat() if natural.vigencia else "",
-                "fecha_baja": natural.fecha_baja.isoformat() if natural.fecha_baja else "",
+                "vigencia_fecha": natural.vigencia.isoformat()
+                if natural.vigencia
+                else "",
+                "fecha_baja": natural.fecha_baja.isoformat()
+                if natural.fecha_baja
+                else "",
                 "en_baja": natural.en_baja,
             }
         )
@@ -474,7 +489,9 @@ async def get_informe_desempeno(
     elif estado == "pendiente":
         query = query.filter(Etapa.pagada.is_(False))
 
-    query = query.order_by(Cliente.nombre, SolicitudServicio.codigo_proyecto, Etapa.numero_etapa)
+    query = query.order_by(
+        Cliente.nombre, SolicitudServicio.codigo_proyecto, Etapa.numero_etapa
+    )
     result = await db.execute(query)
     rows = result.all()
 
@@ -506,7 +523,11 @@ async def get_informe_desempeno(
     for d in data:
         key = d["persona_nombre"]
         if key not in totales_por_persona:
-            totales_por_persona[key] = {"total_cobro": 0.0, "total_valor": 0.0, "id_persona": d["id_persona"]}
+            totales_por_persona[key] = {
+                "total_cobro": 0.0,
+                "total_valor": 0.0,
+                "id_persona": d["id_persona"],
+            }
         totales_por_persona[key]["total_cobro"] += d["cobro"]
         totales_por_persona[key]["total_valor"] += d["etapa_valor"]
         gran_total_cobro += d["cobro"]
@@ -592,7 +613,9 @@ async def get_reporte_onat(
                 "numero_registro": r.numero_registro or "",
                 "nit": r.persona_nit or "",
                 "direccion": r.persona_direccion or "",
-                "moneda": f"{r.moneda_simbolo} ({r.moneda_nombre})" if r.moneda_nombre else "",
+                "moneda": f"{r.moneda_simbolo} ({r.moneda_nombre})"
+                if r.moneda_nombre
+                else "",
                 "importe": float(pl.importe),
                 "devengado": float(pl.devengado),
                 "porcentaje_caguayo": float(pl.porcentaje_caguayo),
@@ -708,7 +731,9 @@ async def get_reporte_mincult(
 
     meta = {
         "total_liquidaciones": len(liquidaciones),
-        "total_devengado_general": round(sum(float(pl.devengado) for pl in liquidaciones), 2),
+        "total_devengado_general": round(
+            sum(float(pl.devengado) for pl in liquidaciones), 2
+        ),
         "fecha_inicio": fecha_inicio.isoformat() if fecha_inicio else None,
         "fecha_fin": fecha_fin.isoformat() if fecha_fin else None,
     }
@@ -804,7 +829,9 @@ async def get_resumen_liquidaciones(
             "cliente_nombre": r.cliente_nombre,
             "cliente_nit": r.cliente_nit or "",
             "cliente_codigo": r.cliente_codigo,
-            "moneda": f"{r.moneda_simbolo} ({r.moneda_nombre})" if r.moneda_nombre else "",
+            "moneda": f"{r.moneda_simbolo} ({r.moneda_nombre})"
+            if r.moneda_nombre
+            else "",
             "devengado": float(liq.devengado),
             "tributario": float(liq.tributario),
             "comision_bancaria": float(liq.comision_bancaria),

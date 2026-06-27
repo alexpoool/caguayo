@@ -1,5 +1,5 @@
 from typing import List, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 from decimal import Decimal
 from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlmodel import select
@@ -159,7 +159,7 @@ class ProductosEnLiquidacionService:
             return None
 
         db_producto.liquidada = True
-        db_producto.fecha_liquidacion = datetime.utcnow()
+        db_producto.fecha_liquidacion = datetime.now(timezone.utc)
 
         db.add(db_producto)
         await db.commit()

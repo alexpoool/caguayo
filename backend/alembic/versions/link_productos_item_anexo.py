@@ -50,9 +50,9 @@ def upgrade() -> None:
     default_moneda = result.fetchone()[0]
 
     if existing_relations:
-        ref_anexo, ref_convenio = next(iter(existing_relations.values()))
+        ref_anexo, _ref_convenio = next(iter(existing_relations.values()))
     else:
-        ref_anexo, ref_convenio = default_anexo, default_convenio
+        ref_anexo, _ref_convenio = default_anexo, default_convenio
 
     created_count = 0
     for product_id in all_products:

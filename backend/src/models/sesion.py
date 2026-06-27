@@ -1,6 +1,6 @@
 from sqlmodel import SQLModel, Field, Relationship
 from typing import Optional, TYPE_CHECKING
-from datetime import datetime
+from datetime import datetime, timezone
 
 if TYPE_CHECKING:
     from .usuarios import Usuario
@@ -15,7 +15,7 @@ class Sesion(SQLModel, table=True):
     id_usuario: int = Field(foreign_key="usuarios.id_usuario")
     token: str = Field(max_length=500, unique=True)
     base_datos: str = Field(max_length=100)
-    fecha_login: datetime = Field(default_factory=datetime.utcnow)
+    fecha_login: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     fecha_expiracion: datetime
 
     usuario: "Usuario" = Relationship()

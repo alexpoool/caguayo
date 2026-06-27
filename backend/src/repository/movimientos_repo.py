@@ -26,7 +26,7 @@ class MovimientoRepository(CRUDBase[Movimiento, MovimientoCreate, MovimientoUpda
             selectinload(Movimiento.tipo_movimiento),  # type: ignore
             selectinload(Movimiento.dependencia).selectinload(
                 Dependencia.tipo_dependencia
-            ),  # type: ignore
+            ),
             selectinload(Movimiento.dependencia).selectinload(Dependencia.provincia),  # type: ignore
             selectinload(Movimiento.dependencia)
             .selectinload(Dependencia.municipio)
@@ -34,7 +34,7 @@ class MovimientoRepository(CRUDBase[Movimiento, MovimientoCreate, MovimientoUpda
             selectinload(Movimiento.dependencia).selectinload(Dependencia.cuentas),  # type: ignore
             selectinload(Movimiento.dependencia).selectinload(
                 Dependencia.cuentas_dependencias
-            ),  # type: ignore
+            ),
             selectinload(Movimiento.producto)
             .selectinload(Productos.subcategoria)
             .selectinload(Subcategorias.categoria),  # type: ignore
@@ -80,7 +80,7 @@ class MovimientoRepository(CRUDBase[Movimiento, MovimientoCreate, MovimientoUpda
         *,
         skip: int = 0,
         limit: int | None = None,
-        tipo: str = None,
+        tipo: Optional[str] = None,
     ) -> List[Movimiento]:
 
         statement = select(Movimiento).options(*self._get_selectinload_options())

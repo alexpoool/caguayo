@@ -8,15 +8,20 @@ ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
 
 WORKDIR /app
 
-COPY frontend/package.json frontend/package-lock.json ./
-RUN npm ci
+# Install pnpm
+RUN npm install -g pnpm
 
+# Copy dependency metadata for layer caching
+COPY frontend/package.json frontend/pnpm-lock.yaml ./
+RUN pnpm install --frozen-lockfile
+
+# Copy source code
 COPY frontend/ ./
 
-# ---- Quality Gate ----
-RUN npm run lint
+# ---- Quality Gates ----
+RUN pnpm eslint
 
-RUN npm run build
+RUN pnpm build
 
 # ---- Production Stage ----
 FROM nginx:alpine

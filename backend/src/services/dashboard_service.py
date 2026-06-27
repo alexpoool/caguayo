@@ -1,7 +1,8 @@
 from datetime import datetime, timedelta
 from decimal import Decimal
 from typing import List
-from sqlmodel import select, func, selectinload
+from sqlmodel import select, func
+from sqlalchemy.orm import selectinload
 from sqlmodel.ext.asyncio.session import AsyncSession
 from src.repository import productos_repo, categorias_repo, moneda_repo
 from src.repository.ventas_clientes_repo import ventas_repo, ventas_cliente_repo

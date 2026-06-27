@@ -1,5 +1,5 @@
 from typing import List, Optional
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from decimal import Decimal
 from fastapi import APIRouter, Depends, Header, HTTPException, Query
 from sqlmodel.ext.asyncio.session import AsyncSession
@@ -234,7 +234,7 @@ async def crear_anexo(
                 id_cliente=conveni.id_cliente,
                 id_producto=item["id_producto"],
                 cantidad=item["cantidad"],
-                fecha=datetime.utcnow(),
+                fecha=datetime.now(timezone.utc),
                 precio_compra=producto.precio_compra,
                 moneda_compra=item["id_moneda"],
                 precio_venta=item["precio_venta"],
@@ -247,7 +247,7 @@ async def crear_anexo(
             if db_movimiento.id_movimiento is None:
                 raise HTTPException(status_code=500, detail="Error al crear movimiento")
 
-            anio = datetime.utcnow().year
+            anio = datetime.now(timezone.utc).year
             id_convenio_val = db_movimiento.id_convenio or 0
 
             codigo = f"{prefijo_nit}C.{anio}.{id_convenio_val}.{codigo_anexo}.{item['id_producto']}"

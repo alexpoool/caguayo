@@ -299,9 +299,7 @@ def generar_pdf_clientes(
     notas: str = "",
 ) -> BytesIO:
     """Genera PDF con el registro de clientes."""
-    template = PDFTemplate(
-        title="REGISTRO DE CLIENTES", landscape_mode=False
-    )
+    template = PDFTemplate(title="REGISTRO DE CLIENTES", landscape_mode=False)
     template.set_company_header(name="Caguayo", nit="", address="", phone="")
     template.set_filters({})
 
@@ -412,13 +410,19 @@ def generar_pdf_creadores(
     notas: str = "",
 ) -> BytesIO:
     """Genera PDF con el registro de creadores, agrupado por municipio."""
-    template = PDFTemplate(
-        title="REGISTRO DE CREADORES", landscape_mode=False
-    )
+    template = PDFTemplate(title="REGISTRO DE CREADORES", landscape_mode=False)
     template.set_company_header(name="Caguayo", nit="", address="", phone="")
     template.set_filters({})
 
-    headers = ["No.", "CI", "NOMBRE Y APELLIDOS", "DIRECCIÓN", "REGISTRO", "CÓDIGO", "VIGENCIA"]
+    headers = [
+        "No.",
+        "CI",
+        "NOMBRE Y APELLIDOS",
+        "DIRECCIÓN",
+        "REGISTRO",
+        "CÓDIGO",
+        "VIGENCIA",
+    ]
     all_data: List[List[str]] = []
 
     # Agrupar por municipio
@@ -432,9 +436,7 @@ def generar_pdf_creadores(
     consecutivo = 1
     for municipio in sorted(grupos.keys()):
         items = grupos[municipio]
-        all_data.append(
-            ["", "", f"--- {municipio.upper()} ---", "", "", "", ""]
-        )
+        all_data.append(["", "", f"--- {municipio.upper()} ---", "", "", "", ""])
         for c in items:
             all_data.append(
                 [
@@ -529,7 +531,10 @@ def generar_pdf_desempeno(
                     str(consecutivo),
                     str(persona_nombre),
                     str(it.get("codigo_proyecto", "")),
-                    str(it.get("nombre_etapa", "") or f"Etapa {it.get('numero_etapa', '')}"),
+                    str(
+                        it.get("nombre_etapa", "")
+                        or f"Etapa {it.get('numero_etapa', '')}"
+                    ),
                     format_quantity(it.get("etapa_valor", 0)),
                     format_quantity(it.get("cobro", 0)),
                     format_quantity(it.get("por_cobrar", 0)),

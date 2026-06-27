@@ -7,7 +7,6 @@ Create Date: 2026-05-18
 """
 
 from typing import Sequence, Union
-import sqlalchemy as sa
 from alembic import op
 
 revision: str = "add_nit_column_to_clientes"

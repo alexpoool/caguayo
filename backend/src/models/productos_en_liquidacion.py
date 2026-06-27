@@ -1,6 +1,6 @@
 from sqlmodel import SQLModel, Field, Relationship
 from typing import Optional, TYPE_CHECKING
-from datetime import datetime
+from datetime import datetime, timezone
 from decimal import Decimal
 from enum import Enum
 
@@ -48,7 +48,7 @@ class ProductosEnLiquidacion(SQLModel, table=True):
     )
 
     liquidada: bool = Field(default=False)
-    fecha: datetime = Field(default_factory=datetime.utcnow)
+    fecha: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     fecha_liquidacion: Optional[datetime] = None
 
     producto: "Productos" = Relationship(

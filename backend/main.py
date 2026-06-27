@@ -5,7 +5,6 @@ import uvicorn
 from dotenv import load_dotenv
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
 from src.routes import api_router
 from src.database.connection import set_current_db
 from src.middleware.logging import LoggingMiddleware

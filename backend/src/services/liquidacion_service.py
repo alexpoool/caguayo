@@ -1,7 +1,7 @@
 import random
 import string
 from typing import List, Optional
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from decimal import Decimal
 from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlalchemy import select
@@ -178,7 +178,7 @@ class LiquidacionService:
         for prod in productos_db:
             prod.id_liquidacion = db_liquidacion.id_liquidacion
             prod.liquidada = True
-            prod.fecha_liquidacion = datetime.utcnow()
+            prod.fecha_liquidacion = datetime.now(timezone.utc)
             db.add(prod)
 
         await db.commit()

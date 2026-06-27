@@ -180,7 +180,7 @@ async def get_log_stats(
 async def create_log(
     log_data: LogCreateRequest,
     db: AsyncSession = Depends(get_session),
-    request: Request = None,
+    request: Optional[Request] = None,
 ):
     """Crea un log desde el frontend"""
     nivel = log_data.nivel

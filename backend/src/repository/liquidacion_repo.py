@@ -145,10 +145,7 @@ class LiquidacionRepository(CRUDBase[Liquidacion, dict, dict]):
         self, db: AsyncSession, skip: int = 0, limit: int = 100
     ) -> List[Liquidacion]:
         statement = (
-            select(Liquidacion)
-            .where(Liquidacion.liquidada)
-            .offset(skip)
-            .limit(limit)
+            select(Liquidacion).where(Liquidacion.liquidada).offset(skip).limit(limit)
         )
         result = await db.exec(statement)
         return result.all()

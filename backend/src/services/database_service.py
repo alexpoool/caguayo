@@ -158,9 +158,7 @@ class DatabaseService:
                             flush=True,
                         )
                     elif error_count == 6:
-                        print(
-                            "[DB SERVICE] ... suppressing further errors", flush=True
-                        )
+                        print("[DB SERVICE] ... suppressing further errors", flush=True)
 
         print(
             f"[DB SERVICE] Executed: {success_count} success, {error_count} errors",

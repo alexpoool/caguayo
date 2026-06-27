@@ -56,7 +56,7 @@ async def crear_contrato(
 async def obtener_contratos(
     skip: int = 0,
     limit: int = 10000,
-    id_cliente: int = None,
+    id_cliente: Optional[int] = None,
     db: AsyncSession = Depends(get_session),
 ):
     """Obtener todos los contratos, opcionalmente filtrados por id_cliente."""

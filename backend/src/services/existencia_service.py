@@ -471,7 +471,7 @@ class ExistenciaService:
                     "ajuste": +cantidad,
                 }
             else:
-                from src.models.productos import Productos
+                from src.models.producto import Productos
 
                 prod_stmt = select(Productos).where(
                     Productos.id_producto == id_producto

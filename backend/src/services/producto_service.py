@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 from sqlmodel.ext.asyncio.session import AsyncSession
 from src.repository import productos_repo
 from src.dto import (
@@ -23,7 +23,7 @@ class ProductosService:
 
     @staticmethod
     async def get_productos(
-        db: AsyncSession, skip: int = 0, limit: int = 100, search: str = None
+        db: AsyncSession, skip: int = 0, limit: int = 100, search: Optional[str] = None
     ) -> List[ProductosRead]:
         db_productos = await productos_repo.get_multi(
             db, skip=skip, limit=limit, search=search

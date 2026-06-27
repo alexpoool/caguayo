@@ -9,7 +9,6 @@ Create Date: 2026-06-19
 from typing import Sequence, Union
 
 from alembic import op
-import sqlalchemy as sa
 
 
 revision: str = "add_fk_id_dependencia_movimiento"

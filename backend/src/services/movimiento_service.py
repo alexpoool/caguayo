@@ -1,7 +1,7 @@
 from typing import List, Optional
 import logging
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlmodel import select, func
 from sqlalchemy.orm import selectinload
@@ -109,7 +109,7 @@ class MovimientoService:
 
     @staticmethod
     async def get_movimientos(
-        db: AsyncSession, skip: int = 0, limit: int | None = None, tipo: str = None
+        db: AsyncSession, skip: int = 0, limit: int | None = None, tipo: Optional[str] = None
     ) -> List[MovimientoRead]:
         db_movimientos = await movimiento_repo.get_multi(
             db, skip=skip, limit=limit, tipo=tipo
@@ -819,7 +819,7 @@ class MovimientoService:
 
         movimientos_creados = []
         fecha = (
-            datetime.utcnow()
+            datetime.now(timezone.utc)
             if not ajuste.fecha
             else datetime.fromisoformat(ajuste.fecha)
         )
@@ -965,7 +965,7 @@ class MovimientoService:
                     movimiento_data.get("id_dependencia"),
                     movimiento_data.get("id_producto"),
                     movimiento_data.get("cantidad"),
-                    datetime.utcnow().isoformat(),
+                    datetime.now(timezone.utc).isoformat(),
                     movimiento_data.get("observacion"),
                     movimiento_data.get("id_cliente"),
                     movimiento_data.get("precio_compra"),

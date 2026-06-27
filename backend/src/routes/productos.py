@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel.ext.asyncio.session import AsyncSession
-from typing import List
+from typing import List, Optional
 import logging
 from src.database.connection import get_session
 from src.services import ProductosService
@@ -33,7 +33,7 @@ async def create_producto(
 async def read_productos(
     skip: int = 0,
     limit: int = 100,
-    search: str = None,
+    search: Optional[str] = None,
     db: AsyncSession = Depends(get_session),
 ):
     return await ProductosService.get_productos(

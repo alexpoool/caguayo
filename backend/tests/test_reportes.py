@@ -78,16 +78,19 @@ def auth_success(mock_usuario, mock_db_session):
     Override ``require_auth`` (función sincrónica) y ``get_session``
     (async generator) → flujo de autenticación exitosa sin BD real.
     """
+
     def _override_require_auth():
         return mock_usuario
 
     async def _override_get_session():
         yield mock_db_session
 
-    app.dependency_overrides.update({
-        require_auth: _override_require_auth,
-        get_session: _override_get_session,
-    })
+    app.dependency_overrides.update(
+        {
+            require_auth: _override_require_auth,
+            get_session: _override_get_session,
+        }
+    )
     yield
     app.dependency_overrides.clear()
 
@@ -98,15 +101,20 @@ def auth_fail(mock_db_session):
     Override ``require_auth`` → lanza ``HTTPException(401)``.
     También mockea ``get_session`` para evitar dependencia de BD.
     """
+
     async def _override_get_session():
         yield mock_db_session
 
-    app.dependency_overrides.update({
-        require_auth: lambda: (_ for _ in ()).throw(
-            HTTPException(status_code=401, detail="Token de autenticación requerido")
-        ),
-        get_session: _override_get_session,
-    })
+    app.dependency_overrides.update(
+        {
+            require_auth: lambda: (_ for _ in ()).throw(
+                HTTPException(
+                    status_code=401, detail="Token de autenticación requerido"
+                )
+            ),
+            get_session: _override_get_session,
+        }
+    )
     yield
     app.dependency_overrides.clear()
 
@@ -168,26 +176,36 @@ SAMPLE_PRODUCTO: dict = {"codigo": "PROD001", "nombre": "Producto de prueba 1"}
 class TestPreviewRechazoSinToken:
     """Test 1: Los 4 endpoints **preview** retornan 401 sin token de auth."""
 
-    @pytest.mark.parametrize("path,params", [
-        (
-            "/api/v1/reportes/existencias/preview",
-            {"id_dependencia": 1},
-        ),
-        (
-            "/api/v1/reportes/movimientos-dependencia/preview",
-            {"id_dependencia": 1, "fecha_inicio": "2024-01-01",
-             "fecha_fin": "2024-12-31"},
-        ),
-        (
-            "/api/v1/reportes/movimientos-producto/preview",
-            {"id_dependencia": 1, "id_producto": 1,
-             "fecha_inicio": "2024-01-01", "fecha_fin": "2024-12-31"},
-        ),
-        (
-            "/api/v1/reportes/proveedores-dependencia/preview",
-            {"id_dependencia": 1, "tipo_entidad": "NATURAL"},
-        ),
-    ])
+    @pytest.mark.parametrize(
+        "path,params",
+        [
+            (
+                "/api/v1/reportes/existencias/preview",
+                {"id_dependencia": 1},
+            ),
+            (
+                "/api/v1/reportes/movimientos-dependencia/preview",
+                {
+                    "id_dependencia": 1,
+                    "fecha_inicio": "2024-01-01",
+                    "fecha_fin": "2024-12-31",
+                },
+            ),
+            (
+                "/api/v1/reportes/movimientos-producto/preview",
+                {
+                    "id_dependencia": 1,
+                    "id_producto": 1,
+                    "fecha_inicio": "2024-01-01",
+                    "fecha_fin": "2024-12-31",
+                },
+            ),
+            (
+                "/api/v1/reportes/proveedores-dependencia/preview",
+                {"id_dependencia": 1, "tipo_entidad": "NATURAL"},
+            ),
+        ],
+    )
     def test_preview_rechaza_sin_token(self, client, auth_fail, path, params):
         """Verifica que cada preview retorna 401 cuando la auth falla."""
         response = client.get(path, params=params)
@@ -210,26 +228,36 @@ class TestPreviewRechazoSinToken:
 class TestPDFRechazoSinToken:
     """Test 2: Los 4 endpoints **PDF** retornan 401 sin token de auth."""
 
-    @pytest.mark.parametrize("path,params", [
-        (
-            "/api/v1/reportes/proveedores-dependencia",
-            {"id_dependencia": 1, "tipo_entidad": "NATURAL"},
-        ),
-        (
-            "/api/v1/reportes/existencias",
-            {"id_dependencia": 1},
-        ),
-        (
-            "/api/v1/reportes/movimientos-dependencia",
-            {"id_dependencia": 1, "fecha_inicio": "2024-01-01",
-             "fecha_fin": "2024-12-31"},
-        ),
-        (
-            "/api/v1/reportes/movimientos-producto",
-            {"id_dependencia": 1, "id_producto": 1,
-             "fecha_inicio": "2024-01-01", "fecha_fin": "2024-12-31"},
-        ),
-    ])
+    @pytest.mark.parametrize(
+        "path,params",
+        [
+            (
+                "/api/v1/reportes/proveedores-dependencia",
+                {"id_dependencia": 1, "tipo_entidad": "NATURAL"},
+            ),
+            (
+                "/api/v1/reportes/existencias",
+                {"id_dependencia": 1},
+            ),
+            (
+                "/api/v1/reportes/movimientos-dependencia",
+                {
+                    "id_dependencia": 1,
+                    "fecha_inicio": "2024-01-01",
+                    "fecha_fin": "2024-12-31",
+                },
+            ),
+            (
+                "/api/v1/reportes/movimientos-producto",
+                {
+                    "id_dependencia": 1,
+                    "id_producto": 1,
+                    "fecha_inicio": "2024-01-01",
+                    "fecha_fin": "2024-12-31",
+                },
+            ),
+        ],
+    )
     def test_pdf_rechaza_sin_token(self, client, auth_fail, path, params):
         """Verifica que cada endpoint PDF retorna 401 cuando la auth falla."""
         response = client.get(path, params=params)
@@ -246,47 +274,75 @@ class TestPDFRechazoSinToken:
 class TestPreviewConToken:
     """Test 3: Los 4 preview retornan 200 y estructura JSON correcta con auth."""
 
-    @pytest.mark.parametrize("path,params,func_name,mock_return,expected_keys", [
-        (
-            "/api/v1/reportes/existencias/preview",
-            {"id_dependencia": 1},
-            "get_existencias",
-            (SAMPLE_EXISTENCIAS, SAMPLE_DEPENDENCIA),
-            ["dependencia", "items", "total_items", "total_cantidad"],
-        ),
-        (
-            "/api/v1/reportes/movimientos-dependencia/preview",
-            {"id_dependencia": 1, "fecha_inicio": "2024-01-01",
-             "fecha_fin": "2024-12-31"},
-            "get_movimientos_dependencia",
-            (SAMPLE_MOVIMIENTOS, SAMPLE_DEPENDENCIA),
-            ["dependencia", "items", "total_items",
-             "total_entradas", "total_salidas"],
-        ),
-        (
-            "/api/v1/reportes/movimientos-producto/preview",
-            {"id_dependencia": 1, "id_producto": 1,
-             "fecha_inicio": "2024-01-01", "fecha_fin": "2024-12-31"},
-            "get_movimientos_producto",
-            (SAMPLE_MOVIMIENTOS, SAMPLE_DEPENDENCIA, SAMPLE_PRODUCTO),
-            ["dependencia", "producto", "items", "total_items",
-             "total_entradas", "total_salidas"],
-        ),
-        (
-            "/api/v1/reportes/proveedores-dependencia/preview",
-            {"id_dependencia": 1, "tipo_entidad": "NATURAL"},
-            "get_proveedores_por_dependencia",
-            (SAMPLE_PROVEEDORES, SAMPLE_DEPENDENCIA),
-            ["dependencia", "items", "total_items"],
-        ),
-    ])
+    @pytest.mark.parametrize(
+        "path,params,func_name,mock_return,expected_keys",
+        [
+            (
+                "/api/v1/reportes/existencias/preview",
+                {"id_dependencia": 1},
+                "get_existencias",
+                (SAMPLE_EXISTENCIAS, SAMPLE_DEPENDENCIA),
+                ["dependencia", "items", "total_items", "total_cantidad"],
+            ),
+            (
+                "/api/v1/reportes/movimientos-dependencia/preview",
+                {
+                    "id_dependencia": 1,
+                    "fecha_inicio": "2024-01-01",
+                    "fecha_fin": "2024-12-31",
+                },
+                "get_movimientos_dependencia",
+                (SAMPLE_MOVIMIENTOS, SAMPLE_DEPENDENCIA),
+                [
+                    "dependencia",
+                    "items",
+                    "total_items",
+                    "total_entradas",
+                    "total_salidas",
+                ],
+            ),
+            (
+                "/api/v1/reportes/movimientos-producto/preview",
+                {
+                    "id_dependencia": 1,
+                    "id_producto": 1,
+                    "fecha_inicio": "2024-01-01",
+                    "fecha_fin": "2024-12-31",
+                },
+                "get_movimientos_producto",
+                (SAMPLE_MOVIMIENTOS, SAMPLE_DEPENDENCIA, SAMPLE_PRODUCTO),
+                [
+                    "dependencia",
+                    "producto",
+                    "items",
+                    "total_items",
+                    "total_entradas",
+                    "total_salidas",
+                ],
+            ),
+            (
+                "/api/v1/reportes/proveedores-dependencia/preview",
+                {"id_dependencia": 1, "tipo_entidad": "NATURAL"},
+                "get_proveedores_por_dependencia",
+                (SAMPLE_PROVEEDORES, SAMPLE_DEPENDENCIA),
+                ["dependencia", "items", "total_items"],
+            ),
+        ],
+    )
     def test_preview_con_token(
-        self, client, auth_success, path, params,
-        func_name, mock_return, expected_keys,
+        self,
+        client,
+        auth_success,
+        path,
+        params,
+        func_name,
+        mock_return,
+        expected_keys,
     ):
         """Verifica que cada preview con token retorna 200 + claves esperadas."""
-        with patch.object(reportes_router, func_name,
-                          new=AsyncMock(return_value=mock_return)):
+        with patch.object(
+            reportes_router, func_name, new=AsyncMock(return_value=mock_return)
+        ):
             response = client.get(path, params=params)
 
         assert response.status_code == 200, (
@@ -317,46 +373,62 @@ class TestErrorSanitizado:
 
     DETALLE_INTERNO = "CONEXION_BD_PERDIDA_CRITICA"
 
-    @pytest.mark.parametrize("path,params,func_name", [
-        (
-            "/api/v1/reportes/existencias/preview",
-            {"id_dependencia": 1},
-            "get_existencias",
-        ),
-        (
-            "/api/v1/reportes/movimientos-dependencia/preview",
-            {"id_dependencia": 1, "fecha_inicio": "2024-01-01",
-             "fecha_fin": "2024-12-31"},
-            "get_movimientos_dependencia",
-        ),
-        (
-            "/api/v1/reportes/movimientos-producto/preview",
-            {"id_dependencia": 1, "id_producto": 1,
-             "fecha_inicio": "2024-01-01", "fecha_fin": "2024-12-31"},
-            "get_movimientos_producto",
-        ),
-        (
-            "/api/v1/reportes/proveedores-dependencia/preview",
-            {"id_dependencia": 1, "tipo_entidad": "NATURAL"},
-            "get_proveedores_por_dependencia",
-        ),
-        (
-            "/api/v1/reportes/existencias",
-            {"id_dependencia": 1},
-            "get_existencias",
-        ),
-        (
-            "/api/v1/reportes/proveedores-dependencia",
-            {"id_dependencia": 1, "tipo_entidad": "NATURAL"},
-            "get_proveedores_por_dependencia",
-        ),
-    ])
+    @pytest.mark.parametrize(
+        "path,params,func_name",
+        [
+            (
+                "/api/v1/reportes/existencias/preview",
+                {"id_dependencia": 1},
+                "get_existencias",
+            ),
+            (
+                "/api/v1/reportes/movimientos-dependencia/preview",
+                {
+                    "id_dependencia": 1,
+                    "fecha_inicio": "2024-01-01",
+                    "fecha_fin": "2024-12-31",
+                },
+                "get_movimientos_dependencia",
+            ),
+            (
+                "/api/v1/reportes/movimientos-producto/preview",
+                {
+                    "id_dependencia": 1,
+                    "id_producto": 1,
+                    "fecha_inicio": "2024-01-01",
+                    "fecha_fin": "2024-12-31",
+                },
+                "get_movimientos_producto",
+            ),
+            (
+                "/api/v1/reportes/proveedores-dependencia/preview",
+                {"id_dependencia": 1, "tipo_entidad": "NATURAL"},
+                "get_proveedores_por_dependencia",
+            ),
+            (
+                "/api/v1/reportes/existencias",
+                {"id_dependencia": 1},
+                "get_existencias",
+            ),
+            (
+                "/api/v1/reportes/proveedores-dependencia",
+                {"id_dependencia": 1, "tipo_entidad": "NATURAL"},
+                "get_proveedores_por_dependencia",
+            ),
+        ],
+    )
     def test_error_interno_no_expone_detalle(
-        self, client, auth_success, path, params, func_name,
+        self,
+        client,
+        auth_success,
+        path,
+        params,
+        func_name,
     ):
         """Verifica que el mensaje de error NO contiene el detalle interno."""
         with patch.object(
-            reportes_router, func_name,
+            reportes_router,
+            func_name,
             new=AsyncMock(side_effect=Exception(self.DETALLE_INTERNO)),
         ):
             response = client.get(path, params=params)
@@ -386,7 +458,8 @@ class TestPDFGeneration:
     def test_pdf_existencias_con_notas(self, client, auth_success):
         """PDF existencias → StreamingResponse con ``application/pdf`` + notas."""
         with patch.object(
-            reportes_router, "get_existencias",
+            reportes_router,
+            "get_existencias",
             new=AsyncMock(return_value=(SAMPLE_EXISTENCIAS, SAMPLE_DEPENDENCIA)),
         ):
             params = {
@@ -396,7 +469,8 @@ class TestPDFGeneration:
                 "aprobado_por_cargo": "Director de Operaciones",
             }
             response = client.get(
-                "/api/v1/reportes/existencias", params=params,
+                "/api/v1/reportes/existencias",
+                params=params,
             )
 
         assert response.status_code == 200, (
@@ -411,7 +485,8 @@ class TestPDFGeneration:
     def test_pdf_movimientos_dependencia_con_notas(self, client, auth_success):
         """PDF movimientos-dependencia → StreamingResponse con PDF."""
         with patch.object(
-            reportes_router, "get_movimientos_dependencia",
+            reportes_router,
+            "get_movimientos_dependencia",
             new=AsyncMock(return_value=(SAMPLE_MOVIMIENTOS, SAMPLE_DEPENDENCIA)),
         ):
             params = {
@@ -423,7 +498,8 @@ class TestPDFGeneration:
                 "aprobado_por_cargo": "Jefe de Almacén",
             }
             response = client.get(
-                "/api/v1/reportes/movimientos-dependencia", params=params,
+                "/api/v1/reportes/movimientos-dependencia",
+                params=params,
             )
 
         assert response.status_code == 200
@@ -433,10 +509,15 @@ class TestPDFGeneration:
     def test_pdf_movimientos_producto_con_notas(self, client, auth_success):
         """PDF movimientos-producto → StreamingResponse con PDF."""
         with patch.object(
-            reportes_router, "get_movimientos_producto",
-            new=AsyncMock(return_value=(
-                SAMPLE_MOVIMIENTOS, SAMPLE_DEPENDENCIA, SAMPLE_PRODUCTO,
-            )),
+            reportes_router,
+            "get_movimientos_producto",
+            new=AsyncMock(
+                return_value=(
+                    SAMPLE_MOVIMIENTOS,
+                    SAMPLE_DEPENDENCIA,
+                    SAMPLE_PRODUCTO,
+                )
+            ),
         ):
             params = {
                 "id_dependencia": 1,
@@ -446,7 +527,8 @@ class TestPDFGeneration:
                 "notas": "Notas del producto específico.",
             }
             response = client.get(
-                "/api/v1/reportes/movimientos-producto", params=params,
+                "/api/v1/reportes/movimientos-producto",
+                params=params,
             )
 
         assert response.status_code == 200
@@ -456,7 +538,8 @@ class TestPDFGeneration:
     def test_pdf_proveedores_dependencia_con_notas(self, client, auth_success):
         """PDF proveedores-dependencia → StreamingResponse con PDF."""
         with patch.object(
-            reportes_router, "get_proveedores_por_dependencia",
+            reportes_router,
+            "get_proveedores_por_dependencia",
             new=AsyncMock(return_value=(SAMPLE_PROVEEDORES, SAMPLE_DEPENDENCIA)),
         ):
             params = {
@@ -467,7 +550,8 @@ class TestPDFGeneration:
                 "aprobado_por_cargo": "Director Financiero",
             }
             response = client.get(
-                "/api/v1/reportes/proveedores-dependencia", params=params,
+                "/api/v1/reportes/proveedores-dependencia",
+                params=params,
             )
 
         assert response.status_code == 200
@@ -759,15 +843,18 @@ SAMPLE_META_LIQUIDACIONES: dict = {
 class TestPreviewRechazoSinTokenNuevos:
     """Test 7: Los 7 nuevos endpoints **preview** retornan 401 sin token."""
 
-    @pytest.mark.parametrize("path,params", [
-        ("/api/v1/reportes/clientes/preview", {}),
-        ("/api/v1/reportes/proyectos/preview", {}),
-        ("/api/v1/reportes/creadores/preview", {}),
-        ("/api/v1/reportes/desempeno/preview", {}),
-        ("/api/v1/reportes/onat/preview", {}),
-        ("/api/v1/reportes/mincult/preview", {}),
-        ("/api/v1/reportes/liquidaciones/preview", {}),
-    ])
+    @pytest.mark.parametrize(
+        "path,params",
+        [
+            ("/api/v1/reportes/clientes/preview", {}),
+            ("/api/v1/reportes/proyectos/preview", {}),
+            ("/api/v1/reportes/creadores/preview", {}),
+            ("/api/v1/reportes/desempeno/preview", {}),
+            ("/api/v1/reportes/onat/preview", {}),
+            ("/api/v1/reportes/mincult/preview", {}),
+            ("/api/v1/reportes/liquidaciones/preview", {}),
+        ],
+    )
     def test_preview_rechaza_sin_token(self, client, auth_fail, path, params):
         """Verifica que cada nuevo preview retorna 401 cuando la auth falla."""
         response = client.get(path, params=params)
@@ -790,15 +877,18 @@ class TestPreviewRechazoSinTokenNuevos:
 class TestPDFRechazoSinTokenNuevos:
     """Test 8: Los 7 nuevos endpoints **PDF** retornan 401 sin token."""
 
-    @pytest.mark.parametrize("path,params", [
-        ("/api/v1/reportes/clientes", {}),
-        ("/api/v1/reportes/proyectos", {}),
-        ("/api/v1/reportes/creadores", {}),
-        ("/api/v1/reportes/desempeno", {}),
-        ("/api/v1/reportes/onat", {}),
-        ("/api/v1/reportes/mincult", {}),
-        ("/api/v1/reportes/liquidaciones", {}),
-    ])
+    @pytest.mark.parametrize(
+        "path,params",
+        [
+            ("/api/v1/reportes/clientes", {}),
+            ("/api/v1/reportes/proyectos", {}),
+            ("/api/v1/reportes/creadores", {}),
+            ("/api/v1/reportes/desempeno", {}),
+            ("/api/v1/reportes/onat", {}),
+            ("/api/v1/reportes/mincult", {}),
+            ("/api/v1/reportes/liquidaciones", {}),
+        ],
+    )
     def test_pdf_rechaza_sin_token(self, client, auth_fail, path, params):
         """Verifica que cada nuevo PDF retorna 401 cuando la auth falla."""
         response = client.get(path, params=params)
@@ -816,66 +906,85 @@ class TestPDFRechazoSinTokenNuevos:
 class TestPreviewConTokenNuevos:
     """Test 9: 7 nuevos preview retornan 200 y estructura JSON correcta con auth."""
 
-    @pytest.mark.parametrize("path,params,func_name,mock_return,expected_keys", [
-        (
-            "/api/v1/reportes/clientes/preview",
-            {},
-            "get_registro_clientes",
-            (SAMPLE_CLIENTES, SAMPLE_META_CLIENTES),
-            ["items", "total_items"],
-        ),
-        (
-            "/api/v1/reportes/proyectos/preview",
-            {"fecha_inicio": "2024-01-01", "fecha_fin": "2024-12-31"},
-            "get_registro_proyectos",
-            (SAMPLE_PROYECTOS, SAMPLE_META_PROYECTOS),
-            ["items", "total_items"],
-        ),
-        (
-            "/api/v1/reportes/creadores/preview",
-            {},
-            "get_registro_creadores",
-            (SAMPLE_CREADORES, SAMPLE_META_CREADORES),
-            ["items", "total_items", "grupos_municipio"],
-        ),
-        (
-            "/api/v1/reportes/desempeno/preview",
-            {"fecha_inicio": "2024-01-01", "fecha_fin": "2024-12-31"},
-            "get_informe_desempeno",
-            (SAMPLE_DESEMPENO, SAMPLE_META_DESEMPENO),
-            ["items", "total_items", "totales_por_persona",
-             "gran_total_cobro", "gran_total_valor"],
-        ),
-        (
-            "/api/v1/reportes/onat/preview",
-            {"fecha_inicio": "2024-01-01", "fecha_fin": "2024-12-31"},
-            "get_reporte_onat",
-            (SAMPLE_ONAT, SAMPLE_META_ONAT),
-            ["items", "total_items", "totales"],
-        ),
-        (
-            "/api/v1/reportes/mincult/preview",
-            {"fecha_inicio": "2024-01-01", "fecha_fin": "2024-12-31"},
-            "get_reporte_mincult",
-            (SAMPLE_BRACKETS, SAMPLE_META_MINCULT),
-            ["items", "total_brackets", "total_liquidaciones",
-             "total_devengado_general"],
-        ),
-        (
-            "/api/v1/reportes/liquidaciones/preview",
-            {"fecha_inicio": "2024-01-01", "fecha_fin": "2024-12-31"},
-            "get_resumen_liquidaciones",
-            (SAMPLE_LIQUIDACIONES, SAMPLE_META_LIQUIDACIONES),
-            ["items", "total_items", "totales"],
-        ),
-    ])
+    @pytest.mark.parametrize(
+        "path,params,func_name,mock_return,expected_keys",
+        [
+            (
+                "/api/v1/reportes/clientes/preview",
+                {},
+                "get_registro_clientes",
+                (SAMPLE_CLIENTES, SAMPLE_META_CLIENTES),
+                ["items", "total_items"],
+            ),
+            (
+                "/api/v1/reportes/proyectos/preview",
+                {"fecha_inicio": "2024-01-01", "fecha_fin": "2024-12-31"},
+                "get_registro_proyectos",
+                (SAMPLE_PROYECTOS, SAMPLE_META_PROYECTOS),
+                ["items", "total_items"],
+            ),
+            (
+                "/api/v1/reportes/creadores/preview",
+                {},
+                "get_registro_creadores",
+                (SAMPLE_CREADORES, SAMPLE_META_CREADORES),
+                ["items", "total_items", "grupos_municipio"],
+            ),
+            (
+                "/api/v1/reportes/desempeno/preview",
+                {"fecha_inicio": "2024-01-01", "fecha_fin": "2024-12-31"},
+                "get_informe_desempeno",
+                (SAMPLE_DESEMPENO, SAMPLE_META_DESEMPENO),
+                [
+                    "items",
+                    "total_items",
+                    "totales_por_persona",
+                    "gran_total_cobro",
+                    "gran_total_valor",
+                ],
+            ),
+            (
+                "/api/v1/reportes/onat/preview",
+                {"fecha_inicio": "2024-01-01", "fecha_fin": "2024-12-31"},
+                "get_reporte_onat",
+                (SAMPLE_ONAT, SAMPLE_META_ONAT),
+                ["items", "total_items", "totales"],
+            ),
+            (
+                "/api/v1/reportes/mincult/preview",
+                {"fecha_inicio": "2024-01-01", "fecha_fin": "2024-12-31"},
+                "get_reporte_mincult",
+                (SAMPLE_BRACKETS, SAMPLE_META_MINCULT),
+                [
+                    "items",
+                    "total_brackets",
+                    "total_liquidaciones",
+                    "total_devengado_general",
+                ],
+            ),
+            (
+                "/api/v1/reportes/liquidaciones/preview",
+                {"fecha_inicio": "2024-01-01", "fecha_fin": "2024-12-31"},
+                "get_resumen_liquidaciones",
+                (SAMPLE_LIQUIDACIONES, SAMPLE_META_LIQUIDACIONES),
+                ["items", "total_items", "totales"],
+            ),
+        ],
+    )
     def test_preview_con_token(
-        self, client, auth_success, path, params,
-        func_name, mock_return, expected_keys,
+        self,
+        client,
+        auth_success,
+        path,
+        params,
+        func_name,
+        mock_return,
+        expected_keys,
     ):
         """Verifica que cada nuevo preview con token retorna 200 + claves esperadas."""
-        with patch.object(reportes_router, func_name,
-                          new=AsyncMock(return_value=mock_return)):
+        with patch.object(
+            reportes_router, func_name, new=AsyncMock(return_value=mock_return)
+        ):
             response = client.get(path, params=params)
 
         assert response.status_code == 200, (
@@ -909,47 +1018,56 @@ class TestErrorSanitizadoNuevos:
 
     DETALLE_INTERNO = "FALLO_CRITICO_EN_NUEVO_REPORTE"
 
-    @pytest.mark.parametrize("path,params,func_name", [
-        # 2 preview endpoints
-        (
-            "/api/v1/reportes/clientes/preview",
-            {},
-            "get_registro_clientes",
-        ),
-        (
-            "/api/v1/reportes/proyectos/preview",
-            {"fecha_inicio": "2024-01-01", "fecha_fin": "2024-12-31"},
-            "get_registro_proyectos",
-        ),
-        # 2 PDF endpoints
-        (
-            "/api/v1/reportes/clientes",
-            {},
-            "get_registro_clientes",
-        ),
-        (
-            "/api/v1/reportes/proyectos",
-            {"fecha_inicio": "2024-01-01", "fecha_fin": "2024-12-31"},
-            "get_registro_proyectos",
-        ),
-        # 2 additional: creadores PDF + desempeno preview
-        (
-            "/api/v1/reportes/creadores",
-            {},
-            "get_registro_creadores",
-        ),
-        (
-            "/api/v1/reportes/desempeno/preview",
-            {"fecha_inicio": "2024-01-01", "fecha_fin": "2024-12-31"},
-            "get_informe_desempeno",
-        ),
-    ])
+    @pytest.mark.parametrize(
+        "path,params,func_name",
+        [
+            # 2 preview endpoints
+            (
+                "/api/v1/reportes/clientes/preview",
+                {},
+                "get_registro_clientes",
+            ),
+            (
+                "/api/v1/reportes/proyectos/preview",
+                {"fecha_inicio": "2024-01-01", "fecha_fin": "2024-12-31"},
+                "get_registro_proyectos",
+            ),
+            # 2 PDF endpoints
+            (
+                "/api/v1/reportes/clientes",
+                {},
+                "get_registro_clientes",
+            ),
+            (
+                "/api/v1/reportes/proyectos",
+                {"fecha_inicio": "2024-01-01", "fecha_fin": "2024-12-31"},
+                "get_registro_proyectos",
+            ),
+            # 2 additional: creadores PDF + desempeno preview
+            (
+                "/api/v1/reportes/creadores",
+                {},
+                "get_registro_creadores",
+            ),
+            (
+                "/api/v1/reportes/desempeno/preview",
+                {"fecha_inicio": "2024-01-01", "fecha_fin": "2024-12-31"},
+                "get_informe_desempeno",
+            ),
+        ],
+    )
     def test_error_interno_no_expone_detalle(
-        self, client, auth_success, path, params, func_name,
+        self,
+        client,
+        auth_success,
+        path,
+        params,
+        func_name,
     ):
         """Verifica que el mensaje de error NO contiene el detalle interno."""
         with patch.object(
-            reportes_router, func_name,
+            reportes_router,
+            func_name,
             new=AsyncMock(side_effect=Exception(self.DETALLE_INTERNO)),
         ):
             response = client.get(path, params=params)
@@ -979,7 +1097,8 @@ class TestPDFGenerationNuevos:
     def test_pdf_clientes_con_notas(self, client, auth_success):
         """PDF clientes → StreamingResponse con ``application/pdf`` + notas."""
         with patch.object(
-            reportes_router, "get_registro_clientes",
+            reportes_router,
+            "get_registro_clientes",
             new=AsyncMock(return_value=(SAMPLE_CLIENTES, SAMPLE_META_CLIENTES)),
         ):
             params = {
@@ -988,7 +1107,8 @@ class TestPDFGenerationNuevos:
                 "aprobado_por_cargo": "Directora Comercial",
             }
             response = client.get(
-                "/api/v1/reportes/clientes", params=params,
+                "/api/v1/reportes/clientes",
+                params=params,
             )
 
         assert response.status_code == 200, (
@@ -1003,10 +1123,14 @@ class TestPDFGenerationNuevos:
     def test_pdf_proyectos_con_notas(self, client, auth_success):
         """PDF proyectos → StreamingResponse con ``application/pdf``."""
         with patch.object(
-            reportes_router, "get_registro_proyectos",
-            new=AsyncMock(return_value=(
-                SAMPLE_PROYECTOS, SAMPLE_META_PROYECTOS,
-            )),
+            reportes_router,
+            "get_registro_proyectos",
+            new=AsyncMock(
+                return_value=(
+                    SAMPLE_PROYECTOS,
+                    SAMPLE_META_PROYECTOS,
+                )
+            ),
         ):
             params = {
                 "fecha_inicio": "2024-01-01",
@@ -1016,7 +1140,8 @@ class TestPDFGenerationNuevos:
                 "aprobado_por_cargo": "Gerente de Proyectos",
             }
             response = client.get(
-                "/api/v1/reportes/proyectos", params=params,
+                "/api/v1/reportes/proyectos",
+                params=params,
             )
 
         assert response.status_code == 200
@@ -1026,10 +1151,14 @@ class TestPDFGenerationNuevos:
     def test_pdf_creadores_con_notas(self, client, auth_success):
         """PDF creadores → StreamingResponse con ``application/pdf``."""
         with patch.object(
-            reportes_router, "get_registro_creadores",
-            new=AsyncMock(return_value=(
-                SAMPLE_CREADORES, SAMPLE_META_CREADORES,
-            )),
+            reportes_router,
+            "get_registro_creadores",
+            new=AsyncMock(
+                return_value=(
+                    SAMPLE_CREADORES,
+                    SAMPLE_META_CREADORES,
+                )
+            ),
         ):
             params = {
                 "notas": "Registro de creadores activos.",
@@ -1037,7 +1166,8 @@ class TestPDFGenerationNuevos:
                 "aprobado_por_cargo": "Coordinadora de Registro",
             }
             response = client.get(
-                "/api/v1/reportes/creadores", params=params,
+                "/api/v1/reportes/creadores",
+                params=params,
             )
 
         assert response.status_code == 200
@@ -1047,10 +1177,14 @@ class TestPDFGenerationNuevos:
     def test_pdf_desempeno_con_notas(self, client, auth_success):
         """PDF desempeño → StreamingResponse con ``application/pdf``."""
         with patch.object(
-            reportes_router, "get_informe_desempeno",
-            new=AsyncMock(return_value=(
-                SAMPLE_DESEMPENO, SAMPLE_META_DESEMPENO,
-            )),
+            reportes_router,
+            "get_informe_desempeno",
+            new=AsyncMock(
+                return_value=(
+                    SAMPLE_DESEMPENO,
+                    SAMPLE_META_DESEMPENO,
+                )
+            ),
         ):
             params = {
                 "fecha_inicio": "2024-01-01",
@@ -1060,7 +1194,8 @@ class TestPDFGenerationNuevos:
                 "aprobado_por_cargo": "Director de Operaciones",
             }
             response = client.get(
-                "/api/v1/reportes/desempeno", params=params,
+                "/api/v1/reportes/desempeno",
+                params=params,
             )
 
         assert response.status_code == 200

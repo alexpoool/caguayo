@@ -1,6 +1,6 @@
 from sqlmodel import SQLModel, Field, Relationship
 from typing import Optional, List, TYPE_CHECKING
-from datetime import datetime
+from datetime import datetime, timezone
 from decimal import Decimal
 
 if TYPE_CHECKING:
@@ -33,7 +33,7 @@ class Movimiento(SQLModel, table=True):
     id_anexo: Optional[int] = Field(default=None, foreign_key="anexo.id_anexo")
     id_producto: int = Field(foreign_key="productos.id_producto")
     cantidad: int
-    fecha: datetime = Field(default_factory=datetime.utcnow)
+    fecha: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     observacion: Optional[str] = None
     id_liquidacion: Optional[int] = Field(
         default=None, foreign_key="liquidacion.id_liquidacion"

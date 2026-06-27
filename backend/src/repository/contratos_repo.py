@@ -51,7 +51,7 @@ class ContratoRepository(CRUDBase[Contrato, ContratoCreate, ContratoUpdate]):
         db: AsyncSession,
         skip: int = 0,
         limit: int = 10000,
-        id_cliente: int = None,
+        id_cliente: Optional[int] = None,
     ) -> List[Contrato]:
         statement = select(Contrato)
 
@@ -70,7 +70,7 @@ class ContratoRepository(CRUDBase[Contrato, ContratoCreate, ContratoUpdate]):
         return await db.get(Contrato, id_contrato)
 
     async def create(
-        self, db: AsyncSession, contrato_data: ContratoCreate, codigo: str = None
+        self, db: AsyncSession, contrato_data: ContratoCreate, codigo: Optional[str] = None
     ) -> Contrato:
         contrato_dict = {
             "id_cliente": normalize_id(contrato_data.id_cliente),
@@ -131,7 +131,7 @@ class SuplementoRepository(CRUDBase[Suplemento, SuplementoCreate, SuplementoUpda
         return await db.get(Suplemento, id_suplemento)
 
     async def create(
-        self, db: AsyncSession, suplemento_data: SuplementoCreate, codigo: str = None
+        self, db: AsyncSession, suplemento_data: SuplementoCreate, codigo: Optional[str] = None
     ) -> Suplemento:
         suplemento_dict = {
             "id_contrato": normalize_id(suplemento_data.id_contrato),
@@ -275,7 +275,7 @@ class VentaEfectivoRepository(
         return results.first()
 
     async def create(
-        self, db: AsyncSession, venta_data: VentaEfectivoCreate, codigo: str = None
+        self, db: AsyncSession, venta_data: VentaEfectivoCreate, codigo: Optional[str] = None
     ) -> VentaEfectivo:
         venta_dict = {
             "slip": venta_data.slip,

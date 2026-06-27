@@ -950,7 +950,9 @@ class PersonaLiquidacionService:
         liquidacion_obj.devengado = importe - liquidacion_obj.importe_caguayo
 
         tributario = liquidacion_obj.tributario or Decimal("5")
-        liquidacion_obj.tributario_monto = liquidacion_obj.devengado * (tributario / 100)
+        liquidacion_obj.tributario_monto = liquidacion_obj.devengado * (
+            tributario / 100
+        )
         subtotal = liquidacion_obj.devengado - liquidacion_obj.tributario_monto
 
         gasto_empresa = liquidacion_obj.gasto_empresa or Decimal("0")

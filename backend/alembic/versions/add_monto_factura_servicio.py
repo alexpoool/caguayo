@@ -8,7 +8,6 @@ Create Date: 2026-04-07
 
 from alembic import op
 import sqlalchemy as sa
-from decimal import Decimal
 
 
 revision = "add_monto_factura_servicio"

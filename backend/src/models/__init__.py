@@ -1,3 +1,5 @@
+from sqlmodel import SQLModel
+
 from .moneda import Moneda
 from .categoria import Categorias, Subcategorias
 from .producto import Productos
@@ -54,6 +56,7 @@ from .servicio import (
 from .datos_generales_dependencia import DatosGeneralesDependencia
 
 __all__ = [
+    "SQLModel",
     "Moneda",
     "Categorias",
     "Subcategorias",

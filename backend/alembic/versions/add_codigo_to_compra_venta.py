@@ -8,7 +8,6 @@ Create Date: 2026-06-04
 
 from typing import Sequence, Union
 from alembic import op
-import sqlalchemy as sa
 
 
 revision: str = "add_codigo_to_compra_venta"

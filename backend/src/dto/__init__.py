@@ -162,12 +162,14 @@ from .contratos_dto import (
     VentaEfectivoRead,
     VentaEfectivoReadWithDetails,
     VentaEfectivoUpdate,
+    ItemAnexoDisponible,
     DependenciaSimpleRead,
 )
 from .usuarios_dto import (
     GrupoBase,
     GrupoCreate,
     GrupoRead,
+    GrupoSimpleRead,
     GrupoUpdate,
     FuncionalidadRead,
     UsuarioBase,
@@ -368,6 +370,8 @@ __all__ = [
     "ProductosEnLiquidacionCreate",
     "ProductosEnLiquidacionRead",
     "ProductosEnLiquidacionUpdate",
+    "ItemAnexoDisponible",
+    "GrupoSimpleRead",
 ]
 VentaRead.model_rebuild(
     _types_namespace={

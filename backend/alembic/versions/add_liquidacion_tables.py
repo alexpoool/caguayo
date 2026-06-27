@@ -23,7 +23,7 @@ def upgrade() -> None:
         "liquidacion",
         sa.Column("id_liquidacion", sa.Integer(), nullable=False),
         sa.Column(
-            "codigo", sqlmodel.sql.sqltypes.AutoString(length=50), nullable=False
+            "codigo", sa.String(length=50), nullable=False
         ),
         sa.Column("id_cliente", sa.Integer(), nullable=False),
         sa.Column("id_factura", sa.Integer(), nullable=True),
@@ -31,7 +31,7 @@ def upgrade() -> None:
         sa.Column("liquidada", sa.Boolean(), nullable=False, server_default="false"),
         sa.Column("fecha_emision", sa.Date(), nullable=False),
         sa.Column("fecha_liquidacion", sa.Date(), nullable=True),
-        sa.Column("descripcion", sqlmodel.sql.sqltypes.AutoString(), nullable=True),
+        sa.Column("descripcion", sa.String(), nullable=True),
         sa.Column(
             "devengado",
             sa.Numeric(precision=10, scale=2),
@@ -64,7 +64,7 @@ def upgrade() -> None:
         ),
         sa.Column(
             "tipo_concepto",
-            sqlmodel.sql.sqltypes.AutoString(length=100),
+            sa.String(length=100),
             nullable=False,
         ),
         sa.Column(
@@ -73,7 +73,7 @@ def upgrade() -> None:
             nullable=False,
             server_default="0.00",
         ),
-        sa.Column("observacion", sqlmodel.sql.sqltypes.AutoString(), nullable=True),
+        sa.Column("observacion", sa.String(), nullable=True),
         sa.Column(
             "tipo_pago",
             sa.String(length=20),
@@ -91,7 +91,7 @@ def upgrade() -> None:
         "productos_liquidacion",
         sa.Column("id_producto_liquidacion", sa.Integer(), nullable=False),
         sa.Column(
-            "codigo", sqlmodel.sql.sqltypes.AutoString(length=50), nullable=False
+            "codigo", sa.String(length=50), nullable=False
         ),
         sa.Column("cantidad", sa.Integer(), nullable=False, server_default="1"),
         sa.Column("liquidado", sa.Boolean(), nullable=False, server_default="false"),

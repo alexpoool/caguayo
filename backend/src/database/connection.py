@@ -1,5 +1,6 @@
 import os
 from contextvars import ContextVar
+from typing import Optional
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncEngine
 from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlalchemy.orm import sessionmaker
@@ -68,7 +69,7 @@ async def get_session() -> AsyncSession:
         yield session
 
 
-async def get_auth_session(db_name: str = None) -> AsyncSession:
+async def get_auth_session(db_name: Optional[str] = None) -> AsyncSession:
     """Get session for authentication database."""
     auth_db = db_name or AUTH_DATABASE
     target_engine = _get_engine_for_db(auth_db)

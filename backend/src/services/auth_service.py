@@ -1,5 +1,5 @@
 import os
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional, List
 from sqlalchemy import text
 from jose import JWTError, jwt
@@ -53,9 +53,9 @@ def get_password_hash(password: str) -> str:
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
     to_encode = data.copy()
     if expires_delta:
-        expire = datetime.utcnow() + expires_delta
+        expire = datetime.now(timezone.utc) + expires_delta
     else:
-        expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
@@ -228,7 +228,7 @@ async def login(db: AsyncSession, login_data: LoginRequest) -> Optional[LoginRes
         token = create_access_token(token_data)
 
         # 9. Guardar sesión en la base de datos destino
-        fecha_expiracion = datetime.utcnow() + timedelta(
+        fecha_expiracion = datetime.now(timezone.utc) + timedelta(
             minutes=ACCESS_TOKEN_EXPIRE_MINUTES
         )
         sesion = Sesion(
@@ -314,7 +314,7 @@ async def get_current_user(db: AsyncSession, token: str) -> Optional[UsuarioInfo
     if not sesion:
         return None
 
-    if sesion.fecha_expiracion < datetime.utcnow():
+    if sesion.fecha_expiracion < datetime.now(timezone.utc):
         # Eliminar sesión expirada
         await db.delete(sesion)
         await db.commit()
@@ -632,7 +632,7 @@ async def register(
         token = create_access_token(token_data)
 
         # 10. Guardar sesión en la BD destino
-        fecha_expiracion = datetime.utcnow() + timedelta(
+        fecha_expiracion = datetime.now(timezone.utc) + timedelta(
             minutes=ACCESS_TOKEN_EXPIRE_MINUTES
         )
         sesion = Sesion(

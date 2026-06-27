@@ -793,7 +793,7 @@ def render_invoice_template(data: dict) -> str:
     Returns:
         Rendered HTML string
     """
-    from jinja2 import Template  # lazy import — Jinja2 is optional
+    from jinja2 import Template  # ty: ignore — Jinja2 lazy import, optional dep
 
     template = Template(PDF_TEMPLATE)
     return template.render(**data)

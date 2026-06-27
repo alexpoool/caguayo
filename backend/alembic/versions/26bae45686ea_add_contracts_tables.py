@@ -26,18 +26,18 @@ def upgrade() -> None:
         "tipo_cliente",
         sa.Column("id_tipo_cliente", sa.Integer(), nullable=False),
         sa.Column(
-            "nombre", sqlmodel.sql.sqltypes.AutoString(length=100), nullable=False
+            "nombre", sa.String(length=100), nullable=False
         ),
-        sa.Column("descripcion", sqlmodel.sql.sqltypes.AutoString(), nullable=True),
+        sa.Column("descripcion", sa.String(), nullable=True),
         sa.PrimaryKeyConstraint("id_tipo_cliente"),
     )
     op.create_table(
         "tipo_entidad",
         sa.Column("id_tipo_entidad", sa.Integer(), nullable=False),
         sa.Column(
-            "nombre", sqlmodel.sql.sqltypes.AutoString(length=100), nullable=False
+            "nombre", sa.String(length=100), nullable=False
         ),
-        sa.Column("descripcion", sqlmodel.sql.sqltypes.AutoString(), nullable=True),
+        sa.Column("descripcion", sa.String(), nullable=True),
         sa.PrimaryKeyConstraint("id_tipo_entidad"),
         sa.UniqueConstraint("nombre"),
     )
@@ -45,22 +45,22 @@ def upgrade() -> None:
         "cliente_tcp",
         sa.Column("id_cliente", sa.Integer(), nullable=False),
         sa.Column(
-            "nombre", sqlmodel.sql.sqltypes.AutoString(length=50), nullable=False
+            "nombre", sa.String(length=50), nullable=False
         ),
         sa.Column(
             "primer_apellido",
-            sqlmodel.sql.sqltypes.AutoString(length=50),
+            sa.String(length=50),
             nullable=False,
         ),
         sa.Column(
             "segundo_apellido",
-            sqlmodel.sql.sqltypes.AutoString(length=50),
+            sa.String(length=50),
             nullable=True,
         ),
-        sa.Column("direccion", sqlmodel.sql.sqltypes.AutoString(), nullable=True),
+        sa.Column("direccion", sa.String(), nullable=True),
         sa.Column(
             "numero_registro_proyecto",
-            sqlmodel.sql.sqltypes.AutoString(length=50),
+            sa.String(length=50),
             nullable=True,
         ),
         sa.Column("fecha_aprobacion", sa.Date(), nullable=True),
@@ -74,7 +74,7 @@ def upgrade() -> None:
         "clientes_persona_juridica",
         sa.Column("id_cliente", sa.Integer(), nullable=False),
         sa.Column(
-            "codigo_reup", sqlmodel.sql.sqltypes.AutoString(length=50), nullable=False
+            "codigo_reup", sa.String(length=50), nullable=False
         ),
         sa.Column("id_tipo_entidad", sa.Integer(), nullable=True),
         sa.ForeignKeyConstraint(
@@ -92,56 +92,56 @@ def upgrade() -> None:
         "clientes_persona_natural",
         sa.Column("id_cliente", sa.Integer(), nullable=False),
         sa.Column(
-            "nombre", sqlmodel.sql.sqltypes.AutoString(length=50), nullable=False
+            "nombre", sa.String(length=50), nullable=False
         ),
         sa.Column(
             "primer_apellido",
-            sqlmodel.sql.sqltypes.AutoString(length=50),
+            sa.String(length=50),
             nullable=False,
         ),
         sa.Column(
             "segundo_apellido",
-            sqlmodel.sql.sqltypes.AutoString(length=50),
+            sa.String(length=50),
             nullable=True,
         ),
         sa.Column(
             "carnet_identidad",
-            sqlmodel.sql.sqltypes.AutoString(length=11),
+            sa.String(length=11),
             nullable=False,
         ),
         sa.Column(
             "codigo_expediente",
-            sqlmodel.sql.sqltypes.AutoString(length=50),
+            sa.String(length=50),
             nullable=True,
         ),
         sa.Column(
             "numero_registro",
-            sqlmodel.sql.sqltypes.AutoString(length=50),
+            sa.String(length=50),
             nullable=True,
         ),
         sa.Column(
-            "catalogo", sqlmodel.sql.sqltypes.AutoString(length=100), nullable=True
+            "catalogo", sa.String(length=100), nullable=True
         ),
         sa.Column("es_trabajador", sa.Boolean(), nullable=False),
         sa.Column(
-            "ocupacion", sqlmodel.sql.sqltypes.AutoString(length=100), nullable=True
+            "ocupacion", sa.String(length=100), nullable=True
         ),
         sa.Column(
             "centro_trabajo",
-            sqlmodel.sql.sqltypes.AutoString(length=200),
+            sa.String(length=200),
             nullable=True,
         ),
         sa.Column(
             "correo_trabajo",
-            sqlmodel.sql.sqltypes.AutoString(length=100),
+            sa.String(length=100),
             nullable=True,
         ),
         sa.Column(
-            "direccion_trabajo", sqlmodel.sql.sqltypes.AutoString(), nullable=True
+            "direccion_trabajo", sa.String(), nullable=True
         ),
         sa.Column(
             "telefono_trabajo",
-            sqlmodel.sql.sqltypes.AutoString(length=20),
+            sa.String(length=20),
             nullable=True,
         ),
         sa.Column("en_baja", sa.Boolean(), nullable=False),
@@ -159,10 +159,10 @@ def upgrade() -> None:
         sa.Column("id_contrato", sa.Integer(), nullable=False),
         sa.Column("id_cliente", sa.Integer(), nullable=False),
         sa.Column(
-            "nombre", sqlmodel.sql.sqltypes.AutoString(length=200), nullable=False
+            "nombre", sa.String(length=200), nullable=False
         ),
         sa.Column(
-            "proforma", sqlmodel.sql.sqltypes.AutoString(length=100), nullable=True
+            "proforma", sa.String(length=100), nullable=True
         ),
         sa.Column("id_estado", sa.Integer(), nullable=False),
         sa.Column("fecha", sa.Date(), nullable=False),
@@ -172,7 +172,7 @@ def upgrade() -> None:
         sa.Column("monto", sa.Numeric(), nullable=False),
         sa.Column(
             "documento_final",
-            sqlmodel.sql.sqltypes.AutoString(length=255),
+            sa.String(length=255),
             nullable=True,
         ),
         sa.ForeignKeyConstraint(
@@ -196,11 +196,11 @@ def upgrade() -> None:
     op.create_table(
         "venta_efectivo",
         sa.Column("id_venta_efectivo", sa.Integer(), nullable=False),
-        sa.Column("slip", sqlmodel.sql.sqltypes.AutoString(length=100), nullable=False),
+        sa.Column("slip", sa.String(length=100), nullable=False),
         sa.Column("fecha", sa.Date(), nullable=False),
         sa.Column("id_dependencia", sa.Integer(), nullable=False),
         sa.Column(
-            "cajero", sqlmodel.sql.sqltypes.AutoString(length=100), nullable=False
+            "cajero", sa.String(length=100), nullable=False
         ),
         sa.Column("monto", sa.Numeric(), nullable=False),
         sa.ForeignKeyConstraint(
@@ -231,11 +231,11 @@ def upgrade() -> None:
         sa.Column("id_contrato", sa.Integer(), nullable=False),
         sa.Column(
             "codigo_factura",
-            sqlmodel.sql.sqltypes.AutoString(length=50),
+            sa.String(length=50),
             nullable=False,
         ),
-        sa.Column("descripcion", sqlmodel.sql.sqltypes.AutoString(), nullable=True),
-        sa.Column("observaciones", sqlmodel.sql.sqltypes.AutoString(), nullable=True),
+        sa.Column("descripcion", sa.String(), nullable=True),
+        sa.Column("observaciones", sa.String(), nullable=True),
         sa.Column("fecha", sa.Date(), nullable=False),
         sa.Column("monto", sa.Numeric(), nullable=False),
         sa.Column("pago_actual", sa.Numeric(), nullable=False),
@@ -251,13 +251,13 @@ def upgrade() -> None:
         sa.Column("id_suplemento", sa.Integer(), nullable=False),
         sa.Column("id_contrato", sa.Integer(), nullable=False),
         sa.Column(
-            "nombre", sqlmodel.sql.sqltypes.AutoString(length=200), nullable=False
+            "nombre", sa.String(length=200), nullable=False
         ),
         sa.Column("id_estado", sa.Integer(), nullable=False),
         sa.Column("fecha", sa.Date(), nullable=False),
         sa.Column("monto", sa.Numeric(), nullable=False),
         sa.Column(
-            "documento", sqlmodel.sql.sqltypes.AutoString(length=255), nullable=True
+            "documento", sa.String(length=255), nullable=True
         ),
         sa.ForeignKeyConstraint(
             ["id_contrato"],
@@ -343,7 +343,7 @@ def upgrade() -> None:
     op.add_column(
         "anexo",
         sa.Column(
-            "codigo_anexo", sqlmodel.sql.sqltypes.AutoString(length=50), nullable=True
+            "codigo_anexo", sa.String(length=50), nullable=True
         ),
     )
     op.alter_column(
@@ -362,37 +362,37 @@ def upgrade() -> None:
     )
     op.add_column(
         "clientes",
-        sa.Column("fax", sqlmodel.sql.sqltypes.AutoString(length=20), nullable=True),
+        sa.Column("fax", sa.String(length=20), nullable=True),
     )
     op.add_column(
         "clientes",
-        sa.Column("web", sqlmodel.sql.sqltypes.AutoString(length=100), nullable=True),
+        sa.Column("web", sa.String(length=100), nullable=True),
     )
     op.add_column("clientes", sa.Column("id_provincia", sa.Integer(), nullable=True))
     op.add_column("clientes", sa.Column("id_municipio", sa.Integer(), nullable=True))
     op.add_column(
         "clientes",
         sa.Column(
-            "codigo_postal", sqlmodel.sql.sqltypes.AutoString(length=10), nullable=True
+            "codigo_postal", sa.String(length=10), nullable=True
         ),
     )
     op.add_column(
         "clientes",
         sa.Column(
-            "tipo_relacion", sqlmodel.sql.sqltypes.AutoString(length=20), nullable=False
+            "tipo_relacion", sa.String(length=20), nullable=False
         ),
     )
     op.add_column(
         "clientes",
         sa.Column(
-            "estado", sqlmodel.sql.sqltypes.AutoString(length=20), nullable=False
+            "estado", sa.String(length=20), nullable=False
         ),
     )
     op.alter_column(
         "clientes",
         "nombre",
         existing_type=sa.VARCHAR(length=150),
-        type_=sqlmodel.sql.sqltypes.AutoString(length=200),
+        type_=sa.String(length=200),
         existing_nullable=False,
     )
     op.alter_column(
@@ -417,7 +417,7 @@ def upgrade() -> None:
         "convenio",
         sa.Column(
             "codigo_convenio",
-            sqlmodel.sql.sqltypes.AutoString(length=50),
+            sa.String(length=50),
             nullable=True,
         ),
     )
@@ -432,7 +432,7 @@ def upgrade() -> None:
     op.add_column(
         "cuenta",
         sa.Column(
-            "numero_cuenta", sqlmodel.sql.sqltypes.AutoString(length=50), nullable=False
+            "numero_cuenta", sa.String(length=50), nullable=False
         ),
     )
     op.drop_index(op.f("idx_cuenta_dependencia"), table_name="cuenta")
@@ -448,7 +448,7 @@ def upgrade() -> None:
         "dependencia",
         "descripcion",
         existing_type=sa.TEXT(),
-        type_=sqlmodel.sql.sqltypes.AutoString(),
+        type_=sa.String(),
         existing_nullable=True,
     )
     op.drop_index(op.f("idx_dependencia_tipo"), table_name="dependencia")
@@ -485,14 +485,14 @@ def upgrade() -> None:
         "estado_contrato",
         "descripcion",
         existing_type=sa.TEXT(),
-        type_=sqlmodel.sql.sqltypes.AutoString(),
+        type_=sa.String(),
         existing_nullable=True,
     )
     op.alter_column(
         "grupo",
         "descripcion",
         existing_type=sa.TEXT(),
-        type_=sqlmodel.sql.sqltypes.AutoString(),
+        type_=sa.String(),
         existing_nullable=True,
     )
     op.drop_constraint(
@@ -547,21 +547,21 @@ def upgrade() -> None:
         "tipo_contrato",
         "descripcion",
         existing_type=sa.TEXT(),
-        type_=sqlmodel.sql.sqltypes.AutoString(),
+        type_=sa.String(),
         existing_nullable=True,
     )
     op.alter_column(
         "tipo_convenio",
         "descripcion",
         existing_type=sa.TEXT(),
-        type_=sqlmodel.sql.sqltypes.AutoString(),
+        type_=sa.String(),
         existing_nullable=True,
     )
     op.alter_column(
         "tipo_cuenta",
         "descripcion",
         existing_type=sa.TEXT(),
-        type_=sqlmodel.sql.sqltypes.AutoString(),
+        type_=sa.String(),
         existing_nullable=True,
     )
     op.drop_index(op.f("idx_usuarios_dependencia"), table_name="usuarios")
@@ -608,21 +608,21 @@ def downgrade() -> None:
     op.alter_column(
         "tipo_cuenta",
         "descripcion",
-        existing_type=sqlmodel.sql.sqltypes.AutoString(),
+        existing_type=sa.String(),
         type_=sa.TEXT(),
         existing_nullable=True,
     )
     op.alter_column(
         "tipo_convenio",
         "descripcion",
-        existing_type=sqlmodel.sql.sqltypes.AutoString(),
+        existing_type=sa.String(),
         type_=sa.TEXT(),
         existing_nullable=True,
     )
     op.alter_column(
         "tipo_contrato",
         "descripcion",
-        existing_type=sqlmodel.sql.sqltypes.AutoString(),
+        existing_type=sa.String(),
         type_=sa.TEXT(),
         existing_nullable=True,
     )
@@ -721,14 +721,14 @@ def downgrade() -> None:
     op.alter_column(
         "grupo",
         "descripcion",
-        existing_type=sqlmodel.sql.sqltypes.AutoString(),
+        existing_type=sa.String(),
         type_=sa.TEXT(),
         existing_nullable=True,
     )
     op.alter_column(
         "estado_contrato",
         "descripcion",
-        existing_type=sqlmodel.sql.sqltypes.AutoString(),
+        existing_type=sa.String(),
         type_=sa.TEXT(),
         existing_nullable=True,
     )
@@ -826,7 +826,7 @@ def downgrade() -> None:
     op.alter_column(
         "dependencia",
         "descripcion",
-        existing_type=sqlmodel.sql.sqltypes.AutoString(),
+        existing_type=sa.String(),
         type_=sa.TEXT(),
         existing_nullable=True,
     )
@@ -881,7 +881,7 @@ def downgrade() -> None:
     op.alter_column(
         "clientes",
         "nombre",
-        existing_type=sqlmodel.sql.sqltypes.AutoString(length=200),
+        existing_type=sa.String(length=200),
         type_=sa.VARCHAR(length=150),
         existing_nullable=False,
     )

@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlmodel import select
 from src.services.movimiento_service import MovimientoService
 from src.models.movimiento import Movimiento, TipoMovimiento
@@ -26,7 +26,7 @@ async def test_confirmar_entrada_salida(db_session):
         id_dependencia=242,
         id_producto=producto_id,
         cantidad=cantidad_compra,
-        fecha=datetime.utcnow(),
+        fecha=datetime.now(timezone.utc),
         estado="pendiente",
     )
     db_session.add(mov_compra)
@@ -50,7 +50,7 @@ async def test_confirmar_entrada_salida(db_session):
         id_dependencia=242,
         id_producto=producto_id,
         cantidad=cantidad_merma,
-        fecha=datetime.utcnow(),
+        fecha=datetime.now(timezone.utc),
         estado="pendiente",
     )
     db_session.add(mov_merma)
@@ -84,7 +84,7 @@ async def test_confirmar_stock_insuficiente_rechaza(db_session):
         id_dependencia=242,
         id_producto=producto_id,
         cantidad=99999,
-        fecha=datetime.utcnow(),
+        fecha=datetime.now(timezone.utc),
         estado="pendiente",
     )
     db_session.add(mov)

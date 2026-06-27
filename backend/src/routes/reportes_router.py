@@ -65,9 +65,7 @@ async def listar_personas(
         return personas
     except Exception as e:
         logger.error(f"Error al listar personas: {e}")
-        raise HTTPException(
-            status_code=500, detail="Error interno al listar personas"
-        )
+        raise HTTPException(status_code=500, detail="Error interno al listar personas")
 
 
 # ---------------------------------------------------------------------------
@@ -315,7 +313,12 @@ async def obtener_reporte_clientes(
         )
 
         pdf_buffer = generar_pdf_clientes(
-            data, meta, usuario_actual, aprobado_por_nombre, aprobado_por_cargo, notas=notas
+            data,
+            meta,
+            usuario_actual,
+            aprobado_por_nombre,
+            aprobado_por_cargo,
+            notas=notas,
         )
 
         return StreamingResponse(
@@ -327,7 +330,9 @@ async def obtener_reporte_clientes(
         )
     except Exception as e:
         logger.error(f"Error en reporte clientes: {e}")
-        raise HTTPException(status_code=500, detail="Error interno al generar el reporte")
+        raise HTTPException(
+            status_code=500, detail="Error interno al generar el reporte"
+        )
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -362,7 +367,12 @@ async def obtener_reporte_proyectos(
         )
 
         pdf_buffer = generar_pdf_proyectos(
-            data, meta, usuario_actual, aprobado_por_nombre, aprobado_por_cargo, notas=notas
+            data,
+            meta,
+            usuario_actual,
+            aprobado_por_nombre,
+            aprobado_por_cargo,
+            notas=notas,
         )
 
         return StreamingResponse(
@@ -374,7 +384,9 @@ async def obtener_reporte_proyectos(
         )
     except Exception as e:
         logger.error(f"Error en reporte proyectos: {e}")
-        raise HTTPException(status_code=500, detail="Error interno al generar el reporte")
+        raise HTTPException(
+            status_code=500, detail="Error interno al generar el reporte"
+        )
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -414,7 +426,12 @@ async def obtener_reporte_creadores(
         )
 
         pdf_buffer = generar_pdf_creadores(
-            data, meta, usuario_actual, aprobado_por_nombre, aprobado_por_cargo, notas=notas
+            data,
+            meta,
+            usuario_actual,
+            aprobado_por_nombre,
+            aprobado_por_cargo,
+            notas=notas,
         )
 
         return StreamingResponse(
@@ -426,7 +443,9 @@ async def obtener_reporte_creadores(
         )
     except Exception as e:
         logger.error(f"Error en reporte creadores: {e}")
-        raise HTTPException(status_code=500, detail="Error interno al generar el reporte")
+        raise HTTPException(
+            status_code=500, detail="Error interno al generar el reporte"
+        )
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -465,7 +484,12 @@ async def obtener_reporte_desempeno(
         )
 
         pdf_buffer = generar_pdf_desempeno(
-            data, meta, usuario_actual, aprobado_por_nombre, aprobado_por_cargo, notas=notas
+            data,
+            meta,
+            usuario_actual,
+            aprobado_por_nombre,
+            aprobado_por_cargo,
+            notas=notas,
         )
 
         return StreamingResponse(
@@ -477,7 +501,9 @@ async def obtener_reporte_desempeno(
         )
     except Exception as e:
         logger.error(f"Error en reporte desempeño: {e}")
-        raise HTTPException(status_code=500, detail="Error interno al generar el reporte")
+        raise HTTPException(
+            status_code=500, detail="Error interno al generar el reporte"
+        )
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -516,19 +542,24 @@ async def obtener_reporte_onat(
         )
 
         pdf_buffer = generar_pdf_onat(
-            data, meta, usuario_actual, aprobado_por_nombre, aprobado_por_cargo, notas=notas
+            data,
+            meta,
+            usuario_actual,
+            aprobado_por_nombre,
+            aprobado_por_cargo,
+            notas=notas,
         )
 
         return StreamingResponse(
             pdf_buffer,
             media_type="application/pdf",
-            headers={
-                "Content-Disposition": "attachment; filename=reporte_onat.pdf"
-            },
+            headers={"Content-Disposition": "attachment; filename=reporte_onat.pdf"},
         )
     except Exception as e:
         logger.error(f"Error en reporte ONAT: {e}")
-        raise HTTPException(status_code=500, detail="Error interno al generar el reporte")
+        raise HTTPException(
+            status_code=500, detail="Error interno al generar el reporte"
+        )
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -563,19 +594,24 @@ async def obtener_reporte_mincult(
         )
 
         pdf_buffer = generar_pdf_mincult(
-            data, meta, usuario_actual, aprobado_por_nombre, aprobado_por_cargo, notas=notas
+            data,
+            meta,
+            usuario_actual,
+            aprobado_por_nombre,
+            aprobado_por_cargo,
+            notas=notas,
         )
 
         return StreamingResponse(
             pdf_buffer,
             media_type="application/pdf",
-            headers={
-                "Content-Disposition": "attachment; filename=reporte_mincult.pdf"
-            },
+            headers={"Content-Disposition": "attachment; filename=reporte_mincult.pdf"},
         )
     except Exception as e:
         logger.error(f"Error en reporte MINCULT: {e}")
-        raise HTTPException(status_code=500, detail="Error interno al generar el reporte")
+        raise HTTPException(
+            status_code=500, detail="Error interno al generar el reporte"
+        )
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -588,7 +624,9 @@ async def obtener_reporte_liquidaciones(
     fecha_inicio: Optional[date] = Query(None, description="Fecha Inicio"),
     fecha_fin: Optional[date] = Query(None, description="Fecha Fin"),
     id_cliente: Optional[int] = Query(None, description="Filtrar por cliente"),
-    tipo_concepto: Optional[int] = Query(None, description="Filtrar por tipo de concepto"),
+    tipo_concepto: Optional[int] = Query(
+        None, description="Filtrar por tipo de concepto"
+    ),
     aprobado_por_nombre: str = Query("", description="Nombre de quien aprueba"),
     aprobado_por_cargo: str = Query("", description="Cargo de quien aprueba"),
     notas: str = Query("", description="Observaciones para incluir en el PDF"),
@@ -614,7 +652,12 @@ async def obtener_reporte_liquidaciones(
         )
 
         pdf_buffer = generar_pdf_liquidaciones(
-            data, meta, usuario_actual, aprobado_por_nombre, aprobado_por_cargo, notas=notas
+            data,
+            meta,
+            usuario_actual,
+            aprobado_por_nombre,
+            aprobado_por_cargo,
+            notas=notas,
         )
 
         return StreamingResponse(
@@ -626,7 +669,9 @@ async def obtener_reporte_liquidaciones(
         )
     except Exception as e:
         logger.error(f"Error en reporte liquidaciones: {e}")
-        raise HTTPException(status_code=500, detail="Error interno al generar el reporte")
+        raise HTTPException(
+            status_code=500, detail="Error interno al generar el reporte"
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -855,7 +900,9 @@ async def preview_clientes(
         }
     except Exception as e:
         logger.error(f"Error en preview clientes: {e}")
-        raise HTTPException(status_code=500, detail="Error interno al generar el reporte")
+        raise HTTPException(
+            status_code=500, detail="Error interno al generar el reporte"
+        )
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -902,7 +949,9 @@ async def preview_proyectos(
         }
     except Exception as e:
         logger.error(f"Error en preview proyectos: {e}")
-        raise HTTPException(status_code=500, detail="Error interno al generar el reporte")
+        raise HTTPException(
+            status_code=500, detail="Error interno al generar el reporte"
+        )
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -944,7 +993,9 @@ async def preview_creadores(
         }
     except Exception as e:
         logger.error(f"Error en preview creadores: {e}")
-        raise HTTPException(status_code=500, detail="Error interno al generar el reporte")
+        raise HTTPException(
+            status_code=500, detail="Error interno al generar el reporte"
+        )
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -1001,7 +1052,9 @@ async def preview_desempeno(
         }
     except Exception as e:
         logger.error(f"Error en preview desempeño: {e}")
-        raise HTTPException(status_code=500, detail="Error interno al generar el reporte")
+        raise HTTPException(
+            status_code=500, detail="Error interno al generar el reporte"
+        )
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -1056,7 +1109,9 @@ async def preview_onat(
         }
     except Exception as e:
         logger.error(f"Error en preview ONAT: {e}")
-        raise HTTPException(status_code=500, detail="Error interno al generar el reporte")
+        raise HTTPException(
+            status_code=500, detail="Error interno al generar el reporte"
+        )
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -1095,7 +1150,9 @@ async def preview_mincult(
         }
     except Exception as e:
         logger.error(f"Error en preview MINCULT: {e}")
-        raise HTTPException(status_code=500, detail="Error interno al generar el reporte")
+        raise HTTPException(
+            status_code=500, detail="Error interno al generar el reporte"
+        )
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -1108,7 +1165,9 @@ async def preview_liquidaciones(
     fecha_inicio: Optional[date] = Query(None, description="Fecha Inicio"),
     fecha_fin: Optional[date] = Query(None, description="Fecha Fin"),
     id_cliente: Optional[int] = Query(None, description="Filtrar por cliente"),
-    tipo_concepto: Optional[int] = Query(None, description="Filtrar por tipo de concepto"),
+    tipo_concepto: Optional[int] = Query(
+        None, description="Filtrar por tipo de concepto"
+    ),
     db: AsyncSession = Depends(get_session),
     current_user: UsuarioInfo = Depends(require_auth),
 ):
@@ -1150,4 +1209,6 @@ async def preview_liquidaciones(
         }
     except Exception as e:
         logger.error(f"Error en preview liquidaciones: {e}")
-        raise HTTPException(status_code=500, detail="Error interno al generar el reporte")
+        raise HTTPException(
+            status_code=500, detail="Error interno al generar el reporte"
+        )

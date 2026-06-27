@@ -23,12 +23,12 @@ def upgrade() -> None:
         sa.Column("id_servicio", sa.Integer(), nullable=False),
         sa.Column(
             "codigo_servicio",
-            sqlmodel.sql.sqltypes.AutoString(length=50),
+            sa.String(length=50),
             nullable=True,
         ),
         sa.Column("concepto", sa.Text(), nullable=True),
         sa.Column(
-            "unidad_medida", sqlmodel.sql.sqltypes.AutoString(length=20), nullable=True
+            "unidad_medida", sa.String(length=20), nullable=True
         ),
         sa.Column("precio", sa.Numeric(precision=15, scale=2), nullable=False),
         sa.Column("id_moneda", sa.Integer(), nullable=True),
@@ -46,28 +46,28 @@ def upgrade() -> None:
         sa.Column("id_suplemento", sa.Integer(), nullable=True),
         sa.Column(
             "codigo_solicitud",
-            sqlmodel.sql.sqltypes.AutoString(length=50),
+            sa.String(length=50),
             nullable=True,
         ),
-        sa.Column("numero", sqlmodel.sql.sqltypes.AutoString(length=50), nullable=True),
+        sa.Column("numero", sa.String(length=50), nullable=True),
         sa.Column(
-            "nombres_rep", sqlmodel.sql.sqltypes.AutoString(length=100), nullable=True
+            "nombres_rep", sa.String(length=100), nullable=True
         ),
         sa.Column(
-            "apellido1_rep", sqlmodel.sql.sqltypes.AutoString(length=100), nullable=True
+            "apellido1_rep", sa.String(length=100), nullable=True
         ),
         sa.Column(
-            "apellido2_rep", sqlmodel.sql.sqltypes.AutoString(length=100), nullable=True
+            "apellido2_rep", sa.String(length=100), nullable=True
         ),
-        sa.Column("ci_rep", sqlmodel.sql.sqltypes.AutoString(length=20), nullable=True),
+        sa.Column("ci_rep", sa.String(length=20), nullable=True),
         sa.Column(
-            "telefono_rep", sqlmodel.sql.sqltypes.AutoString(length=20), nullable=True
+            "telefono_rep", sa.String(length=20), nullable=True
         ),
-        sa.Column("cargo", sqlmodel.sql.sqltypes.AutoString(length=100), nullable=True),
+        sa.Column("cargo", sa.String(length=100), nullable=True),
         sa.Column("descripcion", sa.Text(), nullable=True),
         sa.Column("fecha_solicitud", sa.Date(), nullable=False),
         sa.Column("fecha_entrega", sa.Date(), nullable=True),
-        sa.Column("estado", sqlmodel.sql.sqltypes.AutoString(length=50), nullable=True),
+        sa.Column("estado", sa.String(length=50), nullable=True),
         sa.Column("observaciones", sa.Text(), nullable=True),
         sa.Column("material_asumido_x", sa.Boolean(), nullable=False),
         sa.Column("id_usuario", sa.Integer(), nullable=True),
@@ -84,7 +84,7 @@ def upgrade() -> None:
         sa.Column("id_solicitud_servicio", sa.Integer(), nullable=False),
         sa.Column("numero_etapa", sa.Integer(), nullable=True),
         sa.Column(
-            "nombre_etapa", sqlmodel.sql.sqltypes.AutoString(length=150), nullable=True
+            "nombre_etapa", sa.String(length=150), nullable=True
         ),
         sa.Column("fecha_entrega", sa.Date(), nullable=True),
         sa.Column("fecha_pago", sa.Date(), nullable=True),
@@ -108,12 +108,12 @@ def upgrade() -> None:
         sa.Column("id_servicio", sa.Integer(), nullable=True),
         sa.Column(
             "codigo_extendido",
-            sqlmodel.sql.sqltypes.AutoString(length=100),
+            sa.String(length=100),
             nullable=True,
         ),
         sa.Column("concepto_modificado", sa.Text(), nullable=True),
         sa.Column(
-            "unidad_medida", sqlmodel.sql.sqltypes.AutoString(length=20), nullable=True
+            "unidad_medida", sa.String(length=20), nullable=True
         ),
         sa.Column("cantidad", sa.Numeric(precision=12, scale=2), nullable=False),
         sa.Column("precio_ajustado", sa.Numeric(precision=15, scale=2), nullable=False),
@@ -146,12 +146,12 @@ def upgrade() -> None:
         sa.Column("id_factura_servicio", sa.Integer(), nullable=False),
         sa.Column("id_etapa", sa.Integer(), nullable=True),
         sa.Column(
-            "alcance", sqlmodel.sql.sqltypes.AutoString(length=20), nullable=True
+            "alcance", sa.String(length=20), nullable=True
         ),
         sa.Column(
-            "codigo_factura", sqlmodel.sql.sqltypes.AutoString(length=50), nullable=True
+            "codigo_factura", sa.String(length=50), nullable=True
         ),
-        sa.Column("numero", sqlmodel.sql.sqltypes.AutoString(length=50), nullable=True),
+        sa.Column("numero", sa.String(length=50), nullable=True),
         sa.Column("id_moneda", sa.Integer(), nullable=True),
         sa.Column("fecha", sa.Date(), nullable=True),
         sa.Column("descripcion", sa.Text(), nullable=True),
@@ -170,12 +170,12 @@ def upgrade() -> None:
         sa.Column("id_factura_servicio", sa.Integer(), nullable=False),
         sa.Column(
             "codigo_extendido",
-            sqlmodel.sql.sqltypes.AutoString(length=100),
+            sa.String(length=100),
             nullable=True,
         ),
         sa.Column("concepto", sa.Text(), nullable=True),
         sa.Column(
-            "unidad_medida", sqlmodel.sql.sqltypes.AutoString(length=20), nullable=True
+            "unidad_medida", sa.String(length=20), nullable=True
         ),
         sa.Column("cantidad", sa.Numeric(precision=12, scale=2), nullable=False),
         sa.Column("precio", sa.Numeric(precision=15, scale=2), nullable=False),
@@ -195,10 +195,10 @@ def upgrade() -> None:
         sa.Column("id_moneda", sa.Integer(), nullable=True),
         sa.Column("fecha", sa.Date(), nullable=True),
         sa.Column(
-            "doc_traza", sqlmodel.sql.sqltypes.AutoString(length=100), nullable=True
+            "doc_traza", sa.String(length=100), nullable=True
         ),
         sa.Column(
-            "doc_factura", sqlmodel.sql.sqltypes.AutoString(length=100), nullable=True
+            "doc_factura", sa.String(length=100), nullable=True
         ),
         sa.PrimaryKeyConstraint("id_pago_factura_servicio"),
         sa.ForeignKeyConstraint(
@@ -210,7 +210,7 @@ def upgrade() -> None:
     op.create_table(
         "persona_liquidacion",
         sa.Column("id_liquidacion", sa.Integer(), nullable=False),
-        sa.Column("numero", sqlmodel.sql.sqltypes.AutoString(length=50), nullable=True),
+        sa.Column("numero", sa.String(length=50), nullable=True),
         sa.Column("id_etapa", sa.Integer(), nullable=True),
         sa.Column("id_persona", sa.Integer(), nullable=True),
         sa.Column("fecha_emision", sa.Date(), nullable=False),
@@ -233,7 +233,7 @@ def upgrade() -> None:
         sa.Column("id_tipo_concepto", sa.Integer(), nullable=True),
         sa.Column(
             "doc_pago_liquidacion",
-            sqlmodel.sql.sqltypes.AutoString(length=100),
+            sa.String(length=100),
             nullable=True,
         ),
         sa.Column("gasto_empresa", sa.Numeric(precision=15, scale=2), nullable=False),

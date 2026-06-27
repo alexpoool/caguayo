@@ -34,12 +34,12 @@ def upgrade() -> None:
         sa.Column("cantidad", sa.Integer(), nullable=False),
         sa.Column(
             "precio_compra",
-            sqlmodel.sql.sqltypes.AutoString(length=17),
+            sa.String(length=17),
             nullable=False,
         ),
         sa.Column(
             "precio_venta",
-            sqlmodel.sql.sqltypes.AutoString(length=17),
+            sa.String(length=17),
             nullable=False,
         ),
         sa.Column("id_moneda", sa.Integer(), nullable=False),
@@ -61,12 +61,12 @@ def upgrade() -> None:
         sa.Column("cantidad", sa.Integer(), nullable=False),
         sa.Column(
             "precio_compra",
-            sqlmodel.sql.sqltypes.AutoString(length=17),
+            sa.String(length=17),
             nullable=False,
         ),
         sa.Column(
             "precio_venta",
-            sqlmodel.sql.sqltypes.AutoString(length=17),
+            sa.String(length=17),
             nullable=False,
         ),
         sa.Column("id_moneda", sa.Integer(), nullable=False),
@@ -90,12 +90,12 @@ def upgrade() -> None:
         sa.Column("cantidad", sa.Integer(), nullable=False),
         sa.Column(
             "precio_compra",
-            sqlmodel.sql.sqltypes.AutoString(length=17),
+            sa.String(length=17),
             nullable=False,
         ),
         sa.Column(
             "precio_venta",
-            sqlmodel.sql.sqltypes.AutoString(length=17),
+            sa.String(length=17),
             nullable=False,
         ),
         sa.Column("id_moneda", sa.Integer(), nullable=False),
@@ -132,7 +132,7 @@ def downgrade() -> None:
         sa.Column("cantidad", sa.Integer(), nullable=True),
         sa.Column(
             "precio_acordado",
-            sqlmodel.sql.sqltypes.AutoString(length=18),
+            sa.String(length=18),
             nullable=True,
         ),
         sa.ForeignKeyConstraint(["id_anexo"], ["anexo.id_anexo"]),
