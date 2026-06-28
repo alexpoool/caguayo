@@ -91,6 +91,9 @@ COPY --from=builder /app/backend/main.py .
 COPY --from=builder /app/backend/alembic ./alembic
 COPY --from=builder /app/backend/alembic.ini .
 
+# Copy entrypoint script
+COPY backend/entrypoint.sh .
+
 # Create a non‑root user and take ownership
 RUN useradd -m -u 1000 appuser && \
     chown -R appuser:appuser /app/backend
@@ -102,4 +105,4 @@ ENV PYTHONPATH=/app/backend/src
 
 EXPOSE 8000
 
-CMD ["uv", "run", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+ENTRYPOINT ["./entrypoint.sh"]

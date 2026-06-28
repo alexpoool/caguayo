@@ -24,7 +24,10 @@ from src.models.servicio import (
 
 
 async def get_proveedores_por_dependencia(
-    db: AsyncSession, id_dependencia: int, tipo_entidad: str, id_provincia: Optional[int] = None
+    db: AsyncSession,
+    id_dependencia: int,
+    tipo_entidad: str,
+    id_provincia: Optional[int] = None,
 ):
     result = await db.execute(
         select(Dependencia).filter(Dependencia.id_dependencia == id_dependencia)

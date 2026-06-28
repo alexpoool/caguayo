@@ -22,9 +22,7 @@ def upgrade() -> None:
     op.create_table(
         "liquidacion",
         sa.Column("id_liquidacion", sa.Integer(), nullable=False),
-        sa.Column(
-            "codigo", sa.String(length=50), nullable=False
-        ),
+        sa.Column("codigo", sa.String(length=50), nullable=False),
         sa.Column("id_cliente", sa.Integer(), nullable=False),
         sa.Column("id_factura", sa.Integer(), nullable=True),
         sa.Column("id_moneda", sa.Integer(), nullable=False),
@@ -90,9 +88,7 @@ def upgrade() -> None:
     op.create_table(
         "productos_liquidacion",
         sa.Column("id_producto_liquidacion", sa.Integer(), nullable=False),
-        sa.Column(
-            "codigo", sa.String(length=50), nullable=False
-        ),
+        sa.Column("codigo", sa.String(length=50), nullable=False),
         sa.Column("cantidad", sa.Integer(), nullable=False, server_default="1"),
         sa.Column("liquidado", sa.Boolean(), nullable=False, server_default="false"),
         sa.Column("tipo_transaccion", sa.String(length=20), nullable=False),

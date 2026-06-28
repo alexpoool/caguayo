@@ -27,9 +27,7 @@ def upgrade() -> None:
             nullable=True,
         ),
         sa.Column("concepto", sa.Text(), nullable=True),
-        sa.Column(
-            "unidad_medida", sa.String(length=20), nullable=True
-        ),
+        sa.Column("unidad_medida", sa.String(length=20), nullable=True),
         sa.Column("precio", sa.Numeric(precision=15, scale=2), nullable=False),
         sa.Column("id_moneda", sa.Integer(), nullable=True),
         sa.Column("observaciones", sa.Text(), nullable=True),
@@ -50,19 +48,11 @@ def upgrade() -> None:
             nullable=True,
         ),
         sa.Column("numero", sa.String(length=50), nullable=True),
-        sa.Column(
-            "nombres_rep", sa.String(length=100), nullable=True
-        ),
-        sa.Column(
-            "apellido1_rep", sa.String(length=100), nullable=True
-        ),
-        sa.Column(
-            "apellido2_rep", sa.String(length=100), nullable=True
-        ),
+        sa.Column("nombres_rep", sa.String(length=100), nullable=True),
+        sa.Column("apellido1_rep", sa.String(length=100), nullable=True),
+        sa.Column("apellido2_rep", sa.String(length=100), nullable=True),
         sa.Column("ci_rep", sa.String(length=20), nullable=True),
-        sa.Column(
-            "telefono_rep", sa.String(length=20), nullable=True
-        ),
+        sa.Column("telefono_rep", sa.String(length=20), nullable=True),
         sa.Column("cargo", sa.String(length=100), nullable=True),
         sa.Column("descripcion", sa.Text(), nullable=True),
         sa.Column("fecha_solicitud", sa.Date(), nullable=False),
@@ -83,9 +73,7 @@ def upgrade() -> None:
         sa.Column("id_etapa", sa.Integer(), nullable=False),
         sa.Column("id_solicitud_servicio", sa.Integer(), nullable=False),
         sa.Column("numero_etapa", sa.Integer(), nullable=True),
-        sa.Column(
-            "nombre_etapa", sa.String(length=150), nullable=True
-        ),
+        sa.Column("nombre_etapa", sa.String(length=150), nullable=True),
         sa.Column("fecha_entrega", sa.Date(), nullable=True),
         sa.Column("fecha_pago", sa.Date(), nullable=True),
         sa.Column("descripcion", sa.Text(), nullable=True),
@@ -112,9 +100,7 @@ def upgrade() -> None:
             nullable=True,
         ),
         sa.Column("concepto_modificado", sa.Text(), nullable=True),
-        sa.Column(
-            "unidad_medida", sa.String(length=20), nullable=True
-        ),
+        sa.Column("unidad_medida", sa.String(length=20), nullable=True),
         sa.Column("cantidad", sa.Numeric(precision=12, scale=2), nullable=False),
         sa.Column("precio_ajustado", sa.Numeric(precision=15, scale=2), nullable=False),
         sa.Column("id_moneda", sa.Integer(), nullable=True),
@@ -145,12 +131,8 @@ def upgrade() -> None:
         "factura_servicio",
         sa.Column("id_factura_servicio", sa.Integer(), nullable=False),
         sa.Column("id_etapa", sa.Integer(), nullable=True),
-        sa.Column(
-            "alcance", sa.String(length=20), nullable=True
-        ),
-        sa.Column(
-            "codigo_factura", sa.String(length=50), nullable=True
-        ),
+        sa.Column("alcance", sa.String(length=20), nullable=True),
+        sa.Column("codigo_factura", sa.String(length=50), nullable=True),
         sa.Column("numero", sa.String(length=50), nullable=True),
         sa.Column("id_moneda", sa.Integer(), nullable=True),
         sa.Column("fecha", sa.Date(), nullable=True),
@@ -174,9 +156,7 @@ def upgrade() -> None:
             nullable=True,
         ),
         sa.Column("concepto", sa.Text(), nullable=True),
-        sa.Column(
-            "unidad_medida", sa.String(length=20), nullable=True
-        ),
+        sa.Column("unidad_medida", sa.String(length=20), nullable=True),
         sa.Column("cantidad", sa.Numeric(precision=12, scale=2), nullable=False),
         sa.Column("precio", sa.Numeric(precision=15, scale=2), nullable=False),
         sa.PrimaryKeyConstraint("id_item_factura_servicio"),
@@ -194,12 +174,8 @@ def upgrade() -> None:
         sa.Column("monto", sa.Numeric(precision=15, scale=2), nullable=False),
         sa.Column("id_moneda", sa.Integer(), nullable=True),
         sa.Column("fecha", sa.Date(), nullable=True),
-        sa.Column(
-            "doc_traza", sa.String(length=100), nullable=True
-        ),
-        sa.Column(
-            "doc_factura", sa.String(length=100), nullable=True
-        ),
+        sa.Column("doc_traza", sa.String(length=100), nullable=True),
+        sa.Column("doc_factura", sa.String(length=100), nullable=True),
         sa.PrimaryKeyConstraint("id_pago_factura_servicio"),
         sa.ForeignKeyConstraint(
             ["id_factura_servicio"], ["factura_servicio.id_factura_servicio"]

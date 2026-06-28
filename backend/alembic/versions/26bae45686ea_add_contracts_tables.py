@@ -25,18 +25,14 @@ def upgrade() -> None:
     op.create_table(
         "tipo_cliente",
         sa.Column("id_tipo_cliente", sa.Integer(), nullable=False),
-        sa.Column(
-            "nombre", sa.String(length=100), nullable=False
-        ),
+        sa.Column("nombre", sa.String(length=100), nullable=False),
         sa.Column("descripcion", sa.String(), nullable=True),
         sa.PrimaryKeyConstraint("id_tipo_cliente"),
     )
     op.create_table(
         "tipo_entidad",
         sa.Column("id_tipo_entidad", sa.Integer(), nullable=False),
-        sa.Column(
-            "nombre", sa.String(length=100), nullable=False
-        ),
+        sa.Column("nombre", sa.String(length=100), nullable=False),
         sa.Column("descripcion", sa.String(), nullable=True),
         sa.PrimaryKeyConstraint("id_tipo_entidad"),
         sa.UniqueConstraint("nombre"),
@@ -44,9 +40,7 @@ def upgrade() -> None:
     op.create_table(
         "cliente_tcp",
         sa.Column("id_cliente", sa.Integer(), nullable=False),
-        sa.Column(
-            "nombre", sa.String(length=50), nullable=False
-        ),
+        sa.Column("nombre", sa.String(length=50), nullable=False),
         sa.Column(
             "primer_apellido",
             sa.String(length=50),
@@ -73,9 +67,7 @@ def upgrade() -> None:
     op.create_table(
         "clientes_persona_juridica",
         sa.Column("id_cliente", sa.Integer(), nullable=False),
-        sa.Column(
-            "codigo_reup", sa.String(length=50), nullable=False
-        ),
+        sa.Column("codigo_reup", sa.String(length=50), nullable=False),
         sa.Column("id_tipo_entidad", sa.Integer(), nullable=True),
         sa.ForeignKeyConstraint(
             ["id_cliente"],
@@ -91,9 +83,7 @@ def upgrade() -> None:
     op.create_table(
         "clientes_persona_natural",
         sa.Column("id_cliente", sa.Integer(), nullable=False),
-        sa.Column(
-            "nombre", sa.String(length=50), nullable=False
-        ),
+        sa.Column("nombre", sa.String(length=50), nullable=False),
         sa.Column(
             "primer_apellido",
             sa.String(length=50),
@@ -119,13 +109,9 @@ def upgrade() -> None:
             sa.String(length=50),
             nullable=True,
         ),
-        sa.Column(
-            "catalogo", sa.String(length=100), nullable=True
-        ),
+        sa.Column("catalogo", sa.String(length=100), nullable=True),
         sa.Column("es_trabajador", sa.Boolean(), nullable=False),
-        sa.Column(
-            "ocupacion", sa.String(length=100), nullable=True
-        ),
+        sa.Column("ocupacion", sa.String(length=100), nullable=True),
         sa.Column(
             "centro_trabajo",
             sa.String(length=200),
@@ -136,9 +122,7 @@ def upgrade() -> None:
             sa.String(length=100),
             nullable=True,
         ),
-        sa.Column(
-            "direccion_trabajo", sa.String(), nullable=True
-        ),
+        sa.Column("direccion_trabajo", sa.String(), nullable=True),
         sa.Column(
             "telefono_trabajo",
             sa.String(length=20),
@@ -158,12 +142,8 @@ def upgrade() -> None:
         "contrato",
         sa.Column("id_contrato", sa.Integer(), nullable=False),
         sa.Column("id_cliente", sa.Integer(), nullable=False),
-        sa.Column(
-            "nombre", sa.String(length=200), nullable=False
-        ),
-        sa.Column(
-            "proforma", sa.String(length=100), nullable=True
-        ),
+        sa.Column("nombre", sa.String(length=200), nullable=False),
+        sa.Column("proforma", sa.String(length=100), nullable=True),
         sa.Column("id_estado", sa.Integer(), nullable=False),
         sa.Column("fecha", sa.Date(), nullable=False),
         sa.Column("vigencia", sa.Date(), nullable=False),
@@ -199,9 +179,7 @@ def upgrade() -> None:
         sa.Column("slip", sa.String(length=100), nullable=False),
         sa.Column("fecha", sa.Date(), nullable=False),
         sa.Column("id_dependencia", sa.Integer(), nullable=False),
-        sa.Column(
-            "cajero", sa.String(length=100), nullable=False
-        ),
+        sa.Column("cajero", sa.String(length=100), nullable=False),
         sa.Column("monto", sa.Numeric(), nullable=False),
         sa.ForeignKeyConstraint(
             ["id_dependencia"],
@@ -250,15 +228,11 @@ def upgrade() -> None:
         "suplemento",
         sa.Column("id_suplemento", sa.Integer(), nullable=False),
         sa.Column("id_contrato", sa.Integer(), nullable=False),
-        sa.Column(
-            "nombre", sa.String(length=200), nullable=False
-        ),
+        sa.Column("nombre", sa.String(length=200), nullable=False),
         sa.Column("id_estado", sa.Integer(), nullable=False),
         sa.Column("fecha", sa.Date(), nullable=False),
         sa.Column("monto", sa.Numeric(), nullable=False),
-        sa.Column(
-            "documento", sa.String(length=255), nullable=True
-        ),
+        sa.Column("documento", sa.String(length=255), nullable=True),
         sa.ForeignKeyConstraint(
             ["id_contrato"],
             ["contrato.id_contrato"],
@@ -342,9 +316,7 @@ def upgrade() -> None:
     op.add_column("anexo", sa.Column("id_moneda", sa.Integer(), nullable=True))
     op.add_column(
         "anexo",
-        sa.Column(
-            "codigo_anexo", sa.String(length=50), nullable=True
-        ),
+        sa.Column("codigo_anexo", sa.String(length=50), nullable=True),
     )
     op.alter_column(
         "anexo", "id_dependencia", existing_type=sa.INTEGER(), nullable=True
@@ -372,21 +344,15 @@ def upgrade() -> None:
     op.add_column("clientes", sa.Column("id_municipio", sa.Integer(), nullable=True))
     op.add_column(
         "clientes",
-        sa.Column(
-            "codigo_postal", sa.String(length=10), nullable=True
-        ),
+        sa.Column("codigo_postal", sa.String(length=10), nullable=True),
     )
     op.add_column(
         "clientes",
-        sa.Column(
-            "tipo_relacion", sa.String(length=20), nullable=False
-        ),
+        sa.Column("tipo_relacion", sa.String(length=20), nullable=False),
     )
     op.add_column(
         "clientes",
-        sa.Column(
-            "estado", sa.String(length=20), nullable=False
-        ),
+        sa.Column("estado", sa.String(length=20), nullable=False),
     )
     op.alter_column(
         "clientes",
@@ -431,9 +397,7 @@ def upgrade() -> None:
     op.add_column("cuenta", sa.Column("id_cliente", sa.Integer(), nullable=True))
     op.add_column(
         "cuenta",
-        sa.Column(
-            "numero_cuenta", sa.String(length=50), nullable=False
-        ),
+        sa.Column("numero_cuenta", sa.String(length=50), nullable=False),
     )
     op.drop_index(op.f("idx_cuenta_dependencia"), table_name="cuenta")
     op.drop_index(op.f("idx_cuenta_tipo_cuenta"), table_name="cuenta")

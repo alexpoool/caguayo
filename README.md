@@ -6,9 +6,10 @@ This repository contains the Caguayo application, a comprehensive inventory and 
 
 - `backend/` - Python backend application
 - `frontend/` - React frontend application
-- `Dockerfile` - Backend Docker image
-- `Dockerfile.frontend` - Frontend Docker image
+- `backend/Dockerfile` - Backend Docker image (multi-stage)
+- `frontend/Dockerfile.frontend` - Frontend Docker image (multi-stage)
 - `docker-compose.yml` - Docker orchestration
+- `.env.example` - Environment variable template for Docker Compose
 
 ## Database Setup
 
@@ -20,21 +21,29 @@ The application uses PostgreSQL as the database. The database is automatically c
 
 ### Running with Docker
 
-1. Build and start all services:
+1. Configure environment (first time only):
+   ```bash
+   cp .env.example .env
+   # Edit .env and set SECRET_KEY and POSTGRES_PASSWORD
+   ```
+
+2. Build and start all services:
    ```bash
    docker-compose up --build
    ```
 
-2. The following services will be available:
+3. The following services will be available:
    - Backend: http://localhost:8000
    - Frontend: http://localhost:5173
 
-3. To stop the services:
+4. Database migrations run automatically on backend startup.
+
+5. To stop the services:
    ```bash
    docker-compose down
    ```
 
-4. To rebuild and restart:
+6. To rebuild and restart:
    ```bash
    docker-compose up --build -d
    ```

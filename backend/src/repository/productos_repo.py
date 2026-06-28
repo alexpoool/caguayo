@@ -54,7 +54,12 @@ class ProductosRepository(CRUDBase[Productos, ProductosCreate, ProductosUpdate])
         return await self._get_with_relations(db, db_obj.id_producto)
 
     async def get_multi(
-        self, db: AsyncSession, *, skip: int = 0, limit: int = 100, search: Optional[str] = None
+        self,
+        db: AsyncSession,
+        *,
+        skip: int = 0,
+        limit: int = 100,
+        search: Optional[str] = None,
     ) -> List[Productos]:
         statement = select(self.model).options(
             selectinload(Productos.subcategoria).selectinload(Subcategorias.categoria),

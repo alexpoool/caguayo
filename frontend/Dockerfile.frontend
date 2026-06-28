@@ -1,4 +1,4 @@
-ARG VITE_API_BASE_URL=http://localhost:8000/api/v1
+ARG VITE_API_BASE_URL=/api/v1
 
 # ---- Build Stage (quality gate + build) ----
 FROM node:20-alpine AS build
@@ -8,27 +8,26 @@ ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
 
 WORKDIR /app
 
-# Install pnpm
 RUN npm install -g pnpm
 
-# Copy dependency metadata for layer caching
 COPY frontend/package.json frontend/pnpm-lock.yaml ./
 RUN pnpm install --frozen-lockfile
 
-# Copy source code
 COPY frontend/ ./
 
-# ---- Quality Gates ----
 RUN pnpm eslint
-
 RUN pnpm build
 
 # ---- Production Stage ----
 FROM nginx:alpine
 
+RUN chown -R nginx:nginx /usr/share/nginx/html /var/cache/nginx /var/log/nginx /var/run
+
 COPY --from=build /app/dist /usr/share/nginx/html
 COPY frontend/nginx.conf /etc/nginx/conf.d/default.conf
 
-EXPOSE 80
+USER nginx
+
+EXPOSE 8080
 
 CMD ["nginx", "-g", "daemon off;"]

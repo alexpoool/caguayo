@@ -213,7 +213,10 @@ class ContratoService:
 
     @staticmethod
     async def get_all(
-        db: AsyncSession, skip: int = 0, limit: int = 10000, id_cliente: Optional[int] = None
+        db: AsyncSession,
+        skip: int = 0,
+        limit: int = 10000,
+        id_cliente: Optional[int] = None,
     ) -> List[ContratoReadWithDetails]:
         contratos = await contrato_repo.get_all_with_details(
             db, skip, limit, id_cliente

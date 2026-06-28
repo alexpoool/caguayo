@@ -5,12 +5,18 @@ services:
       dockerfile: backend/Dockerfile
     image: caguayo-backend:latest
     ports:
-      - "8000:8000"
+      - "${BACKEND_PORT:-8000}:8000"
     environment:
-      - DATABASE_URL=postgresql://solji:Scp2005@db:5432/caguayo
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-solji}:${POSTGRES_PASSWORD:-Scp2005}@db:5432/${POSTGRES_DB:-caguayo}
       - PYTHONPATH=/app/backend/src
       - SECRET_KEY=${SECRET_KEY:-caguayo-secret-key-change-in-production}
       - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:5173,http://localhost:3000}
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health')\""]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
     depends_on:
       db:
         condition: service_healthy
@@ -23,12 +29,13 @@ services:
       context: .
       dockerfile: frontend/Dockerfile.frontend
       args:
-        - VITE_API_BASE_URL=${VITE_API_BASE_URL:-http://localhost:8000/api/v1}
+        - VITE_API_BASE_URL=${VITE_API_BASE_URL:-/api/v1}
     image: caguayo-frontend:latest
     ports:
-      - "5173:80"
+      - "${FRONTEND_PORT:-5173}:8080"
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     restart: unless-stopped
     networks:
       - caguayo-network
@@ -40,11 +47,11 @@ services:
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-Scp2005}
       - POSTGRES_DB=${POSTGRES_DB:-caguayo}
     ports:
-      - "5432:5432"
+      - "${DB_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U solji -d caguayo"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-solji} -d ${POSTGRES_DB:-caguayo}"]
       interval: 5s
       timeout: 5s
       retries: 5
