@@ -32,7 +32,9 @@ from src.dto.auth_dto import (
 
 load_dotenv()
 
-SECRET_KEY = os.getenv("SECRET_KEY", "caguayo-secret-key-change-in-production")
+SECRET_KEY = os.getenv("SECRET_KEY")
+if not SECRET_KEY:
+    raise RuntimeError("SECRET_KEY environment variable is required")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 5
 
@@ -156,7 +158,7 @@ async def login(db: AsyncSession, login_data: LoginRequest) -> Optional[LoginRes
     contrasenia_db = (
         conexion.contrasenia
         if conexion and conexion.contrasenia
-        else os.getenv("ADMIN_DB_PASSWORD", "debianpostgres")
+        else         os.getenv("ADMIN_DB_PASSWORD")
     )
 
     # 3. Conectarse a la base de datos seleccionada
@@ -543,7 +545,7 @@ async def register(
     puerto = conexion.puerto if conexion else 5432
     usuario_db = conexion.usuario if conexion else "postgres"
     contrasenia_db = (
-        conexion.contrasenia if conexion else os.getenv("ADMIN_DB_PASSWORD", "postgres")
+        conexion.contrasenia if conexion else         os.getenv("ADMIN_DB_PASSWORD")
     )
 
     # 2. Conectarse a la base de datos seleccionada

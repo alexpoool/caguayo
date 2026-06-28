@@ -16,7 +16,7 @@ class ReplicacionService:
                 host=os.getenv("ADMIN_DB_HOST", "localhost"),
                 port=int(os.getenv("ADMIN_DB_PORT", 5432)),
                 user=os.getenv("ADMIN_DB_USER", "postgres"),
-                password=os.getenv("ADMIN_DB_PASSWORD", "postgres"),
+                password=os.getenv("ADMIN_DB_PASSWORD"),
                 database="caguayosa",
             )
             cur = conn.cursor()
@@ -61,7 +61,7 @@ class ReplicacionService:
                     "host": "localhost",
                     "puerto": 5432,
                     "usuario": "postgres",
-                    "contrasenia": os.getenv("ADMIN_DB_PASSWORD", "postgres"),
+                    "contrasenia": os.getenv("ADMIN_DB_PASSWORD"),
                 }
                 for row in rows
             ]
@@ -78,7 +78,7 @@ class ReplicacionService:
                 host=os.getenv("ADMIN_DB_HOST", "localhost"),
                 port=int(os.getenv("ADMIN_DB_PORT", 5432)),
                 user=os.getenv("ADMIN_DB_USER", "postgres"),
-                password=os.getenv("ADMIN_DB_PASSWORD", "postgres"),
+                password=os.getenv("ADMIN_DB_PASSWORD"),
                 database=nombre_database,
             )
             return conn

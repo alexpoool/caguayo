@@ -18,7 +18,9 @@ from src.dto.auth_dto import (
 
 router = APIRouter(prefix="/auth", tags=["autenticacion"])
 
-SECRET_KEY = os.getenv("SECRET_KEY", "caguayo-secret-key-change-in-production")
+SECRET_KEY = os.getenv("SECRET_KEY")
+if not SECRET_KEY:
+    raise RuntimeError("SECRET_KEY environment variable is required")
 
 
 @router.post("/login", response_model=LoginResponse)

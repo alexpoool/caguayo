@@ -933,7 +933,7 @@ class MovimientoService:
                 host=os.getenv("ADMIN_DB_HOST", "localhost"),
                 port=int(os.getenv("ADMIN_DB_PORT", 5432)),
                 user=os.getenv("ADMIN_DB_USER", "postgres"),
-                password=os.getenv("ADMIN_DB_PASSWORD", "1234"),
+                password=os.getenv("ADMIN_DB_PASSWORD"),
                 database=nombre_database,
                 client_encoding="utf8",
             )

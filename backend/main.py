@@ -100,9 +100,9 @@ async def database_middleware(request: Request, call_next):
             token = auth.replace("Bearer ", "")
             from jose import jwt
 
-            SECRET_KEY = os.getenv(
-                "SECRET_KEY", "caguayo-secret-key-change-in-production"
-            )
+            SECRET_KEY = os.getenv("SECRET_KEY")
+            if not SECRET_KEY:
+                raise RuntimeError("SECRET_KEY environment variable is required")
             payload = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
             base_datos = payload.get("base_datos")
             if base_datos:

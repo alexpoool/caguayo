@@ -299,7 +299,7 @@ async def crear_dependencia(
             puerto=5432,
             nombre_database=data.dependencia.base_datos,
             usuario=os.getenv("ADMIN_DB_USER", "postgres"),
-            contrasenia=os.getenv("ADMIN_DB_PASSWORD", "debianpostgres"),
+            contrasenia=os.getenv("ADMIN_DB_PASSWORD"),
         )
         db.add(conexion)
         await db.commit()

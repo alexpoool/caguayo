@@ -35,7 +35,7 @@ async def get_conexiones():
             host=os.getenv("ADMIN_DB_HOST", "localhost"),
             port=int(os.getenv("ADMIN_DB_PORT", 5432)),
             user=os.getenv("ADMIN_DB_USER", "postgres"),
-            password=os.getenv("ADMIN_DB_PASSWORD", "1234"),
+            password=os.getenv("ADMIN_DB_PASSWORD"),
             database="postgres",
             client_encoding="utf8",
         )
@@ -73,8 +73,8 @@ async def test_conexion(data: ConexionTestRequest):
         conn = psycopg2.connect(
             host=data.host,
             port=data.puerto,
-            user=os.getenv("LECTOR_USER", "usuariolector"),
-            password=os.getenv("LECTOR_PASSWORD", "usuariolector123"),
+            user=os.getenv("LECTOR_USER"),
+            password=os.getenv("LECTOR_PASSWORD"),
             database=data.nombre_database,
             client_encoding="utf8",
         )
@@ -100,7 +100,7 @@ async def get_dependencias_por_db(db_name: str):
             host=os.getenv("ADMIN_DB_HOST", "localhost"),
             port=int(os.getenv("ADMIN_DB_PORT", 5432)),
             user=os.getenv("ADMIN_DB_USER", "postgres"),
-            password=os.getenv("ADMIN_DB_PASSWORD", "1234"),
+            password=os.getenv("ADMIN_DB_PASSWORD"),
             database=db_name,
             client_encoding="utf8",
         )

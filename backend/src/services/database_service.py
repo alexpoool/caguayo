@@ -13,7 +13,7 @@ class DatabaseService:
             host=os.getenv("ADMIN_DB_HOST", "localhost"),
             port=int(os.getenv("ADMIN_DB_PORT", 5432)),
             user=os.getenv("ADMIN_DB_USER", "postgres"),
-            password=os.getenv("ADMIN_DB_PASSWORD", "postgres"),
+            password=os.getenv("ADMIN_DB_PASSWORD"),
             database=os.getenv("ADMIN_DB_NAME", "postgres"),
             client_encoding="utf8",
         )
@@ -100,7 +100,7 @@ class DatabaseService:
             host=os.getenv("ADMIN_DB_HOST", "localhost"),
             port=int(os.getenv("ADMIN_DB_PORT", 5432)),
             user=os.getenv("ADMIN_DB_USER", "postgres"),
-            password=os.getenv("ADMIN_DB_PASSWORD", "postgres"),
+            password=os.getenv("ADMIN_DB_PASSWORD"),
             database=base_datos,
             client_encoding="utf8",
         )
@@ -128,10 +128,10 @@ class DatabaseService:
                     port '5432'
                 );
             """)
-            cur.execute("""
+            cur.execute(f"""
                 CREATE USER MAPPING IF NOT EXISTS FOR CURRENT_USER
                 SERVER servidor_central
-                OPTIONS (user 'postgres', password 'debianpostgres');
+                OPTIONS (user '{os.getenv("ADMIN_DB_USER", "postgres")}', password '{os.getenv("ADMIN_DB_PASSWORD")}');
             """)
             print("[DB SERVICE] Server and user mapping created", flush=True)
         except Exception as e:
@@ -204,7 +204,7 @@ class DatabaseService:
             host=os.getenv("ADMIN_DB_HOST", "localhost"),
             port=int(os.getenv("ADMIN_DB_PORT", 5432)),
             user=os.getenv("ADMIN_DB_USER", "postgres"),
-            password=os.getenv("ADMIN_DB_PASSWORD", "postgres"),
+            password=os.getenv("ADMIN_DB_PASSWORD"),
             database=base_datos,
             client_encoding="utf8",
         )
@@ -251,7 +251,7 @@ class DatabaseService:
             host=os.getenv("ADMIN_DB_HOST", "localhost"),
             port=int(os.getenv("ADMIN_DB_PORT", 5432)),
             user=os.getenv("ADMIN_DB_USER", "postgres"),
-            password=os.getenv("ADMIN_DB_PASSWORD", "postgres"),
+            password=os.getenv("ADMIN_DB_PASSWORD"),
             database=base_datos,
             client_encoding="utf8",
         )
@@ -300,7 +300,7 @@ class DatabaseService:
             host=os.getenv("ADMIN_DB_HOST", "localhost"),
             port=int(os.getenv("ADMIN_DB_PORT", 5432)),
             user=os.getenv("ADMIN_DB_USER", "postgres"),
-            password=os.getenv("ADMIN_DB_PASSWORD", "postgres"),
+            password=os.getenv("ADMIN_DB_PASSWORD"),
             database="caguayosa",
             client_encoding="utf8",
         )
@@ -311,7 +311,7 @@ class DatabaseService:
             host=os.getenv("ADMIN_DB_HOST", "localhost"),
             port=int(os.getenv("ADMIN_DB_PORT", 5432)),
             user=os.getenv("ADMIN_DB_USER", "postgres"),
-            password=os.getenv("ADMIN_DB_PASSWORD", "postgres"),
+            password=os.getenv("ADMIN_DB_PASSWORD"),
             database=base_datos,
             client_encoding="utf8",
         )
@@ -441,7 +441,7 @@ class DatabaseService:
             host=os.getenv("ADMIN_DB_HOST", "localhost"),
             port=int(os.getenv("ADMIN_DB_PORT", 5432)),
             user=os.getenv("ADMIN_DB_USER", "postgres"),
-            password=os.getenv("ADMIN_DB_PASSWORD", "postgres"),
+            password=os.getenv("ADMIN_DB_PASSWORD"),
             database=base_datos,
             client_encoding="utf8",
         )
