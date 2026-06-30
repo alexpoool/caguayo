@@ -236,7 +236,7 @@ export function ServiciosPage() {
                           variant="ghost"
                           size="icon"
                           onClick={() => openForm(item)}
-                          className="text-blue-600 hover:text-blue-800 hover:bg-blue-50 h-8 w-8"
+                          className="text-green-600 hover:text-green-800 hover:bg-green-50 h-8 w-8"
                           title="Editar"
                         >
                           <Edit className="h-4 w-4" />
@@ -364,8 +364,8 @@ export function ServiciosPage() {
                   <p className="text-xs text-teal-600 uppercase tracking-wider mb-1">Precio</p>
                   <p className="font-bold text-gray-900 text-xl">${Number(detailModal.item.precio).toFixed(2)}</p>
                 </div>
-                <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-4 rounded-xl border border-green-100">
-                  <p className="text-xs text-green-600 uppercase tracking-wider mb-1">Moneda</p>
+                <div className="bg-gradient-to-br from-teal-50 to-cyan-50 p-4 rounded-xl border border-teal-100">
+                  <p className="text-xs text-teal-600 uppercase tracking-wider mb-1">Moneda</p>
                   <p className="font-bold text-gray-900">{getMonedaNombre(detailModal.item.id_moneda)}</p>
                 </div>
               </div>

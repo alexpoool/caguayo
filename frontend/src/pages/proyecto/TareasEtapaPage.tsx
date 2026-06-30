@@ -364,7 +364,7 @@ export function TareasEtapaPage() {
                           variant="ghost"
                           size="icon"
                           onClick={() => openForm(item)}
-                          className="text-blue-600 hover:text-blue-800 hover:bg-blue-50 h-8 w-8"
+                          className="text-green-600 hover:text-green-800 hover:bg-green-50 h-8 w-8"
                           title="Editar"
                         >
                           <Edit className="h-4 w-4" />
@@ -549,12 +549,12 @@ export function TareasEtapaPage() {
             </div>
             <div className="p-6 space-y-4">
               <div className="grid grid-cols-2 gap-4">
-                <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-4 rounded-xl border border-green-100">
-                  <p className="text-xs text-green-600 uppercase tracking-wider mb-1">Precio Ajustado</p>
-                  <p className="font-bold text-green-900 text-xl">{getMonedaSymbol(detailModal.item.id_moneda)} {Number(detailModal.item.precio_ajustado).toFixed(2)}</p>
+                <div className="bg-gradient-to-br from-teal-50 to-cyan-50 p-4 rounded-xl border border-teal-100">
+                  <p className="text-xs text-teal-600 uppercase tracking-wider mb-1">Precio Ajustado</p>
+                  <p className="font-bold text-teal-900 text-xl">{getMonedaSymbol(detailModal.item.id_moneda)} {Number(detailModal.item.precio_ajustado).toFixed(2)}</p>
                 </div>
-                <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-4 rounded-xl border border-blue-100">
-                  <p className="text-xs text-blue-600 uppercase tracking-wider mb-1">Cantidad</p>
+                <div className="bg-gradient-to-br from-teal-50 to-cyan-50 p-4 rounded-xl border border-teal-100">
+                  <p className="text-xs text-teal-600 uppercase tracking-wider mb-1">Cantidad</p>
                   <p className="font-bold text-gray-900 text-xl">{detailModal.item.cantidad}</p>
                 </div>
                 <div className="bg-gray-50 p-4 rounded-xl">
@@ -566,8 +566,8 @@ export function TareasEtapaPage() {
                   <p className="font-bold text-gray-900">{getMonedaSymbol(detailModal.item.id_moneda) || 'N/A'}</p>
                 </div>
               </div>
-              <div className="bg-gradient-to-br from-purple-50 to-pink-50 p-4 rounded-xl border border-purple-100">
-                <p className="text-xs text-purple-600 uppercase tracking-wider mb-1">Servicio</p>
+              <div className="bg-gradient-to-br from-teal-50 to-cyan-50 p-4 rounded-xl border border-teal-100">
+                <p className="text-xs text-teal-600 uppercase tracking-wider mb-1">Servicio</p>
                 <p className="font-bold text-gray-900">{getServicioName(detailModal.item.id_servicio)}</p>
               </div>
               {detailModal.item.observaciones_ajustadas && (

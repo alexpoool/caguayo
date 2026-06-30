@@ -223,7 +223,7 @@ const ReporteOnat: React.FC = () => {
         </div>
         <div>
           <h1 className="text-xl font-semibold text-gray-900 leading-tight">
-            Ingresos y Retenciones (ONAT)
+            ONAT — Ingresos y Retenciones
           </h1>
           <p className="text-sm text-gray-500">
             Reporte de ingresos, retenciones e importe neto por creador

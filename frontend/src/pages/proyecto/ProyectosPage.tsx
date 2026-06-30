@@ -476,7 +476,7 @@ export function ProyectosPage() {
                             variant="outline"
                             size="sm"
                             onClick={() => item.id_suplemento && openSuplementoModal(item.id_suplemento)}
-                            className="gap-1 text-amber-600 border-amber-200 hover:bg-amber-50 hover:text-amber-700"
+                            className="gap-1 text-teal-600 border-teal-200 hover:bg-teal-50 hover:text-teal-700"
                           >
                             <FilePlus className="h-3.5 w-3.5" />
                             Suplemento
@@ -486,7 +486,7 @@ export function ProyectosPage() {
                             variant="outline"
                             size="sm"
                             onClick={() => item.id_contrato && openContratoModal(item.id_contrato)}
-                            className="gap-1 text-blue-600 border-blue-200 hover:bg-blue-50 hover:text-blue-700"
+                            className="gap-1 text-teal-600 border-teal-200 hover:bg-teal-50 hover:text-teal-700"
                           >
                             <FileText className="h-3.5 w-3.5" />
                             Contrato
@@ -523,7 +523,7 @@ export function ProyectosPage() {
                             variant="ghost"
                             size="icon"
                             onClick={() => handleAsignarContrato(item)}
-                            className="text-purple-600 hover:text-purple-800 hover:bg-purple-50 h-8 w-8"
+                            className="text-teal-600 hover:text-teal-800 hover:bg-teal-50 h-8 w-8"
                             title="Asignar contrato"
                           >
                             <FileText className="h-4 w-4" />
@@ -533,7 +533,7 @@ export function ProyectosPage() {
                           variant="ghost"
                           size="icon"
                           onClick={() => openForm(item)}
-                          className="text-blue-600 hover:text-blue-800 hover:bg-blue-50 h-8 w-8"
+                          className="text-green-600 hover:text-green-800 hover:bg-green-50 h-8 w-8"
                           title="Editar"
                         >
                           <Edit className="h-4 w-4" />
@@ -770,8 +770,8 @@ export function ProyectosPage() {
                 </div>
               </div>
               {(detailModal.item.nombres_rep || detailModal.item.apellido1_rep) && (
-                <div className="bg-gradient-to-br from-purple-50 to-pink-50 p-4 rounded-xl border border-purple-100">
-                  <p className="text-xs text-purple-600 uppercase tracking-wider mb-1">Representante</p>
+                <div className="bg-gradient-to-br from-teal-50 to-cyan-50 p-4 rounded-xl border border-teal-100">
+                  <p className="text-xs text-teal-600 uppercase tracking-wider mb-1">Representante</p>
                   <p className="font-bold text-gray-900">{[detailModal.item.nombres_rep, detailModal.item.apellido1_rep, detailModal.item.apellido2_rep].filter(Boolean).join(' ')}</p>
                   {detailModal.item.ci_rep && <p className="text-sm text-gray-600 mt-1">CI: {detailModal.item.ci_rep}</p>}
                   {detailModal.item.telefono_rep && <p className="text-sm text-gray-600 mt-1">Tel: {detailModal.item.telefono_rep}</p>}
@@ -861,10 +861,10 @@ export function ProyectosPage() {
       {suplementoModal.isOpen && createPortal(
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 animate-fade-in">
           <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-auto animate-scale-in">
-            <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-amber-50 to-orange-50">
+            <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-teal-50 to-cyan-50">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
-                  <div className="p-3 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 text-white shadow-lg">
+                  <div className="p-3 rounded-xl bg-gradient-to-br from-teal-500 to-cyan-600 text-white shadow-lg">
                     <FilePlus className="h-7 w-7" />
                   </div>
                     <div>
@@ -912,10 +912,10 @@ export function ProyectosPage() {
       {aprobarModal.isOpen && createPortal(
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 animate-fade-in">
           <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-auto animate-scale-in">
-            <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-green-50 to-emerald-50">
+            <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-teal-50 to-cyan-50">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
-                  <div className="p-3 rounded-xl bg-gradient-to-br from-green-500 to-emerald-600 text-white shadow-lg">
+                  <div className="p-3 rounded-xl bg-gradient-to-br from-teal-500 to-cyan-600 text-white shadow-lg">
                     <CheckCircle className="h-7 w-7" />
                   </div>
                   <div>
@@ -946,14 +946,14 @@ export function ProyectosPage() {
                 </button>
                 <button
                   onClick={() => setAprobarModal(prev => ({ ...prev, modo: 'seleccionar-suplemento' }))}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-colors ${aprobarModal.modo === 'seleccionar-suplemento' ? 'bg-amber-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-colors ${aprobarModal.modo === 'seleccionar-suplemento' ? 'bg-teal-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
                 >
                   <Layers className="h-4 w-4" />
                   Suplemento
                 </button>
                 <button
                   onClick={() => setAprobarModal(prev => ({ ...prev, modo: 'crear-suplemento' }))}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-colors ${aprobarModal.modo === 'crear-suplemento' ? 'bg-amber-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-colors ${aprobarModal.modo === 'crear-suplemento' ? 'bg-teal-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
                 >
                   <Plus className="h-4 w-4" />
                   Nuevo Suplemento
@@ -1190,7 +1190,7 @@ export function ProyectosPage() {
             </div>
             <div className="p-6 border-t border-gray-200 bg-gray-50 flex justify-end gap-3">
               <button onClick={() => { setAprobarModal({ isOpen: false, solicitud: null, modo: 'seleccionar', contratos: [], loadingContratos: false }); setFormContrato({}); setSuplementosPorContrato({}); }} className="px-6 py-3 text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors font-medium">Cancelar</button>
-              <button onClick={confirmarAprobacion} className="px-6 py-3 text-white bg-gradient-to-r from-green-500 to-emerald-600 rounded-xl hover:from-green-600 hover:to-emerald-700 transition-colors font-medium">Confirmar Aprobación</button>
+              <button onClick={confirmarAprobacion} className="px-6 py-3 text-white bg-gradient-to-r from-teal-500 to-cyan-600 rounded-xl hover:from-teal-600 hover:to-cyan-700 shadow-lg hover:shadow-xl transition-all font-medium">Confirmar Aprobación</button>
             </div>
           </div>
         </div>,

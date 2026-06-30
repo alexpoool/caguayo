@@ -297,7 +297,7 @@ export function EtapasPage() {
                         variant="outline"
                         size="sm"
                         onClick={() => navigate(`/proyectos/facturas-servicio?etapa=${item.id_etapa}`)}
-                        className="gap-1 text-purple-600 border-purple-200 hover:bg-purple-50 hover:text-purple-700"
+                        className="gap-1 text-teal-600 border-teal-200 hover:bg-teal-50 hover:text-teal-700"
                       >
                         <FileText className="h-3.5 w-3.5" />
                         Facturas
@@ -308,7 +308,7 @@ export function EtapasPage() {
                         variant="outline"
                         size="sm"
                         onClick={() => navigate(`/proyectos/realizadores?etapa=${item.id_etapa}`)}
-                        className="gap-1 text-blue-600 border-blue-200 hover:bg-blue-50 hover:text-blue-700"
+                        className="gap-1 text-teal-600 border-teal-200 hover:bg-teal-50 hover:text-teal-700"
                       >
                         <Users className="h-3.5 w-3.5" />
                         Realizadores
@@ -330,7 +330,7 @@ export function EtapasPage() {
                           variant="outline"
                           size="sm"
                           onClick={() => navigate(`/proyectos/tareas-etapa?etapa=${item.id_etapa}`)}
-                          className="gap-1 text-amber-600 border-amber-200 hover:bg-amber-50 hover:text-amber-700"
+                          className="gap-1 text-teal-600 border-teal-200 hover:bg-teal-50 hover:text-teal-700"
                         >
                           <CheckSquare className="h-3.5 w-3.5" />
                           Tareas
@@ -343,7 +343,7 @@ export function EtapasPage() {
                           variant="ghost"
                           size="icon"
                           onClick={() => openForm(item)}
-                          className="text-blue-600 hover:text-blue-800 hover:bg-blue-50 h-8 w-8"
+                          className="text-green-600 hover:text-green-800 hover:bg-green-50 h-8 w-8"
                           title="Editar"
                         >
                           <Edit className="h-4 w-4" />
@@ -402,7 +402,7 @@ export function EtapasPage() {
                 <span className={`px-3 py-1 rounded-full text-sm font-medium ${
                   formData.tipo_etapa === 'CERTIFICACIONES' 
                     ? 'bg-teal-100 text-teal-800' 
-                    : 'bg-amber-100 text-amber-800'
+                    : 'bg-teal-100 text-teal-800'
                 }`}>
                   {formData.tipo_etapa === 'CERTIFICACIONES' ? 'Certificaciones' : 'Tareas'}
                 </span>
@@ -495,11 +495,11 @@ export function EtapasPage() {
             <div className="p-6 space-y-4">
               <button
                 onClick={() => handleTipoEtapaSelect('TAREAS')}
-                className="w-full p-4 border-2 border-gray-200 rounded-xl hover:border-amber-500 hover:bg-amber-50 transition-all text-left group"
+                className="w-full p-4 border-2 border-gray-200 rounded-xl hover:border-teal-500 hover:bg-teal-50 transition-all text-left group"
               >
                 <div className="flex items-center gap-4">
-                  <div className="p-3 rounded-xl bg-amber-100 group-hover:bg-amber-200 transition-colors">
-                    <FileText className="h-6 w-6 text-amber-600" />
+                  <div className="p-3 rounded-xl bg-teal-100 group-hover:bg-teal-200 transition-colors">
+                    <FileText className="h-6 w-6 text-teal-600" />
                   </div>
                   <div>
                     <h4 className="font-semibold text-gray-900">Tareas</h4>
@@ -559,7 +559,7 @@ export function EtapasPage() {
                       <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
                         detailModal.item.tipo_etapa === 'CERTIFICACIONES' 
                           ? 'bg-teal-100 text-teal-800' 
-                          : 'bg-amber-100 text-amber-800'
+                          : 'bg-teal-100 text-teal-800'
                       }`}>
                         {detailModal.item.tipo_etapa === 'CERTIFICACIONES' ? 'Certificaciones' : 'Tareas'}
                       </span>
@@ -596,12 +596,12 @@ export function EtapasPage() {
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
-                <div className="bg-gradient-to-br from-purple-50 to-pink-50 p-4 rounded-xl border border-purple-100">
-                  <p className="text-xs text-purple-600 uppercase tracking-wider mb-1">Fecha Entrega</p>
+                <div className="bg-gradient-to-br from-teal-50 to-cyan-50 p-4 rounded-xl border border-teal-100">
+                  <p className="text-xs text-teal-600 uppercase tracking-wider mb-1">Fecha Entrega</p>
                   <p className="font-bold text-gray-900">{detailModal.item.fecha_entrega || 'N/A'}</p>
                 </div>
-                <div className="bg-gradient-to-br from-orange-50 to-amber-50 p-4 rounded-xl border border-orange-100">
-                  <p className="text-xs text-orange-600 uppercase tracking-wider mb-1">Fecha Pago</p>
+                <div className="bg-gradient-to-br from-teal-50 to-cyan-50 p-4 rounded-xl border border-teal-100">
+                  <p className="text-xs text-teal-600 uppercase tracking-wider mb-1">Fecha Pago</p>
                   <p className="font-bold text-gray-900">{detailModal.item.fecha_pago || 'N/A'}</p>
                 </div>
               </div>
@@ -613,12 +613,12 @@ export function EtapasPage() {
               )}
             </div>
             <div className="p-6 border-t border-gray-200 bg-gray-50 flex justify-end gap-3 flex-wrap">
-              <button onClick={() => navigate(`/proyectos/facturas-servicio?etapa=${detailModal.item!.id_etapa}`)} className="px-4 py-2 text-white bg-purple-600 rounded-xl hover:bg-purple-700 transition-colors font-medium text-sm">Facturas</button>
-              <button onClick={() => navigate(`/proyectos/realizadores?etapa=${detailModal.item!.id_etapa}`)} className="px-4 py-2 text-white bg-blue-600 rounded-xl hover:bg-blue-700 transition-colors font-medium text-sm">Realizadores</button>
+              <button onClick={() => navigate(`/proyectos/facturas-servicio?etapa=${detailModal.item!.id_etapa}`)} className="px-4 py-2 text-white bg-gradient-to-r from-teal-500 to-cyan-600 rounded-xl hover:from-teal-600 hover:to-cyan-700 transition-all font-medium text-sm">Facturas</button>
+              <button onClick={() => navigate(`/proyectos/realizadores?etapa=${detailModal.item!.id_etapa}`)} className="px-4 py-2 text-white bg-gradient-to-r from-teal-500 to-cyan-600 rounded-xl hover:from-teal-600 hover:to-cyan-700 transition-all font-medium text-sm">Realizadores</button>
               {detailModal.item.tipo_etapa === 'CERTIFICACIONES' ? (
-                <button onClick={() => navigate(`/proyectos/certificaciones?etapa=${detailModal.item!.id_etapa}`)} className="px-4 py-2 text-white bg-teal-600 rounded-xl hover:bg-teal-700 transition-colors font-medium text-sm">Certificaciones</button>
+                <button onClick={() => navigate(`/proyectos/certificaciones?etapa=${detailModal.item!.id_etapa}`)} className="px-4 py-2 text-white bg-gradient-to-r from-teal-500 to-cyan-600 rounded-xl hover:from-teal-600 hover:to-cyan-700 transition-all font-medium text-sm">Certificaciones</button>
               ) : (
-                <button onClick={() => navigate(`/proyectos/tareas-etapa?etapa=${detailModal.item!.id_etapa}`)} className="px-4 py-2 text-white bg-amber-600 rounded-xl hover:bg-amber-700 transition-colors font-medium text-sm">Tareas</button>
+                <button onClick={() => navigate(`/proyectos/tareas-etapa?etapa=${detailModal.item!.id_etapa}`)} className="px-4 py-2 text-white bg-gradient-to-r from-teal-500 to-cyan-600 rounded-xl hover:from-teal-600 hover:to-cyan-700 transition-all font-medium text-sm">Tareas</button>
               )}
               <button onClick={() => setDetailModal({ isOpen: false, item: null })} className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors font-medium text-sm">Cerrar</button>
             </div>

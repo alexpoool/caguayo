@@ -26,32 +26,32 @@ export function ProyectosHome() {
               </div>
             </div>
 
-            <div className="flex items-start gap-2 p-3 bg-blue-50 rounded-lg">
-              <ClipboardList className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
+            <div className="flex items-start gap-2 p-3 bg-teal-50 rounded-lg">
+              <ClipboardList className="h-4 w-4 text-teal-600 mt-0.5 flex-shrink-0" />
               <div>
                 <h3 className="font-bold text-sm text-gray-800">Solicitudes</h3>
                 <p className="text-xs text-gray-600 mt-0.5">Solicitudes de servicio con etapas y tareas.</p>
               </div>
             </div>
 
-            <div className="flex items-start gap-2 p-3 bg-purple-50 rounded-lg">
-              <Users className="h-4 w-4 text-purple-600 mt-0.5 flex-shrink-0" />
+            <div className="flex items-start gap-2 p-3 bg-teal-50 rounded-lg">
+              <Users className="h-4 w-4 text-teal-600 mt-0.5 flex-shrink-0" />
               <div>
                 <h3 className="font-bold text-sm text-gray-800">Realizadores</h3>
                 <p className="text-xs text-gray-600 mt-0.5">Personas naturales asignadas a etapas de proyectos.</p>
               </div>
             </div>
 
-            <div className="flex items-start gap-2 p-3 bg-amber-50 rounded-lg">
-              <Receipt className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
+            <div className="flex items-start gap-2 p-3 bg-teal-50 rounded-lg">
+              <Receipt className="h-4 w-4 text-teal-600 mt-0.5 flex-shrink-0" />
               <div>
                 <h3 className="font-bold text-sm text-gray-800">Facturas</h3>
                 <p className="text-xs text-gray-600 mt-0.5">Facturación por servicios con items y pagos.</p>
               </div>
             </div>
 
-            <div className="flex items-start gap-2 p-3 bg-green-50 rounded-lg col-span-2">
-              <Calculator className="h-4 w-4 text-green-600 mt-0.5 flex-shrink-0" />
+            <div className="flex items-start gap-2 p-3 bg-teal-50 rounded-lg col-span-2">
+              <Calculator className="h-4 w-4 text-teal-600 mt-0.5 flex-shrink-0" />
               <div>
                 <h3 className="font-bold text-sm text-gray-800">Liquidaciones</h3>
                 <p className="text-xs text-gray-600 mt-0.5">Liquidación final a realizadores con cálculos financieros automáticos.</p>

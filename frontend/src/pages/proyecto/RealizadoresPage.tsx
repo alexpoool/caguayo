@@ -466,7 +466,7 @@ Nuevo Realizador
                                 toast.error('Error al cargar liquidaciones');
                               }
                             }}
-                            className="gap-1 text-blue-600 border-blue-200 hover:bg-blue-50 hover:text-blue-700"
+                            className="gap-1 text-teal-600 border-teal-200 hover:bg-teal-50 hover:text-teal-700"
                           >
                             <Eye className="h-3.5 w-3.5" />
                             Ver
@@ -479,7 +479,7 @@ Nuevo Realizador
                             variant="outline"
                             size="sm"
                             onClick={() => navigate(`/proyectos/liquidaciones?solicitud=${currentEtapa?.id_solicitud_servicio}&etapa=${item.id_etapa}&persona=${item.id_persona}`)}
-                            className="gap-1 text-green-600 border-green-200 hover:bg-green-50 hover:text-green-700"
+                            className="gap-1 text-teal-600 border-teal-200 hover:bg-teal-50 hover:text-teal-700"
                           >
                             <DollarSign className="h-3.5 w-3.5" />
                             Liquidar
@@ -723,9 +723,9 @@ Nuevo Realizador
             </div>
             <div className="p-6 space-y-4">
               <div className="grid grid-cols-2 gap-4">
-                <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-4 rounded-xl border border-green-100">
-                  <p className="text-xs text-green-600 uppercase tracking-wider mb-1">Cobro</p>
-                  <p className="font-bold text-green-900 text-xl">{getMonedaSymbol(detailModal.item.id_moneda)} {Number(detailModal.item.cobro).toFixed(2)}</p>
+                <div className="bg-gradient-to-br from-teal-50 to-cyan-50 p-4 rounded-xl border border-teal-100">
+                  <p className="text-xs text-teal-600 uppercase tracking-wider mb-1">Cobro</p>
+                  <p className="font-bold text-teal-900 text-xl">{getMonedaSymbol(detailModal.item.id_moneda)} {Number(detailModal.item.cobro).toFixed(2)}</p>
                 </div>
                 <div className="bg-gray-50 p-4 rounded-xl">
                   <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Moneda</p>
@@ -764,10 +764,10 @@ Nuevo Realizador
       {liquidacionesModal.isOpen && liquidacionesModal.persona && createPortal(
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60">
           <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-auto">
-            <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
+            <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-teal-50 to-cyan-50">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
-                  <div className="p-3 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-lg">
+                  <div className="p-3 rounded-xl bg-gradient-to-br from-teal-500 to-cyan-600 text-white shadow-lg">
                     <FileText className="h-7 w-7" />
                   </div>
                   <div>
@@ -822,7 +822,7 @@ Nuevo Realizador
                           setLiquidacionesModal({ isOpen: false, persona: null, liquidaciones: [] });
                           navigate(`/proyectos/liquidaciones?id=${liq.id_liquidacion}`);
                         }}
-                        className="text-blue-600 border-blue-200 hover:bg-blue-50"
+                        className="text-teal-600 border-teal-200 hover:bg-teal-50"
                       >
                         <Eye className="h-3.5 w-3.5 mr-1" />
                         Ver Detalle

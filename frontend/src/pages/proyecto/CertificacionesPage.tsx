@@ -267,12 +267,12 @@ export function CertificacionesPage() {
               </div>
             </div>
 
-            <div className="flex justify-end gap-2 mt-6">
-              <Button variant="outline" onClick={() => setView('list')}>Cancelar</Button>
-              <Button onClick={handleSave}>
-                <Save className="w-4 h-4 mr-2" />
-                Guardar
+            <div className="flex gap-3 mt-8 pt-6 border-t">
+              <Button onClick={handleSave} className="gap-2 bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300">
+                <Save className="h-4 w-4" />
+                {editingId ? 'Actualizar' : 'Guardar'}
               </Button>
+              <Button variant="outline" onClick={() => { setView('list'); resetForm(); }}>Cancelar</Button>
             </div>
           </CardContent>
         </Card>
@@ -321,7 +321,8 @@ export function CertificacionesPage() {
         </div>
       </div>
 
-      <Card>
+      <Card className="overflow-hidden shadow-sm border-gray-200">
+        <div className="overflow-x-auto">
         <Table>
           <TableHeader className="bg-gradient-to-r from-teal-50 to-cyan-50">
             <TableRow>
@@ -350,14 +351,26 @@ export function CertificacionesPage() {
                   <TableCell>{cert.obra || '-'}</TableCell>
                   <TableCell>{cert.fecha ? new Date(cert.fecha).toLocaleDateString() : '-'}</TableCell>
                   <TableCell className="text-right">${Number(cert.a_cobrar).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
-                  <TableCell>
-                    <div className="flex gap-1">
-                      <button onClick={(e) => { e.stopPropagation(); handleEdit(cert); }} className="p-1 hover:bg-gray-100 rounded">
-                        <Edit className="w-4 h-4" />
-                      </button>
-                      <button onClick={(e) => { e.stopPropagation(); handleDelete(cert); }} className="p-1 hover:bg-red-50 text-red-600 rounded">
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                  <TableCell onClick={(e) => e.stopPropagation()}>
+                    <div className="flex justify-end gap-2">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleEdit(cert)}
+                        className="text-green-600 hover:text-green-800 hover:bg-green-50 h-8 w-8"
+                        title="Editar"
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleDelete(cert)}
+                        className="text-red-600 hover:text-red-800 hover:bg-red-50 h-8 w-8"
+                        title="Eliminar"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
                     </div>
                   </TableCell>
                 </TableRow>
@@ -365,6 +378,7 @@ export function CertificacionesPage() {
             )}
           </TableBody>
         </Table>
+        </div>
       </Card>
 
       {confirmModal.isOpen && (
@@ -439,12 +453,12 @@ export function CertificacionesPage() {
                 </div>
               )}
               <div className="grid grid-cols-2 gap-4">
-                <div className="bg-gradient-to-br from-amber-50 to-orange-50 p-4 rounded-xl border border-amber-100">
-                  <p className="text-xs text-amber-600 uppercase tracking-wider mb-1">Fecha</p>
+                <div className="bg-gradient-to-br from-teal-50 to-cyan-50 p-4 rounded-xl border border-teal-100">
+                  <p className="text-xs text-teal-600 uppercase tracking-wider mb-1">Fecha</p>
                   <p className="font-bold text-gray-900 text-lg">{detailModal.item.fecha ? new Date(detailModal.item.fecha).toLocaleDateString() : 'N/A'}</p>
                 </div>
-                <div className="bg-gradient-to-br from-indigo-50 to-blue-50 p-4 rounded-xl border border-indigo-100">
-                  <p className="text-xs text-indigo-600 uppercase tracking-wider mb-1">Impuesto Venta ONAT</p>
+                <div className="bg-gradient-to-br from-teal-50 to-cyan-50 p-4 rounded-xl border border-teal-100">
+                  <p className="text-xs text-teal-600 uppercase tracking-wider mb-1">Impuesto Venta ONAT</p>
                   <p className="font-bold text-gray-900 text-lg">${Number(detailModal.item.impuesto_venta_onat || 0).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                 </div>
               </div>

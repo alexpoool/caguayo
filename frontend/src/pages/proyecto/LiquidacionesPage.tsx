@@ -866,7 +866,7 @@ export function LiquidacionesPage() {
                   Volver a Realizadores
                 </Button>
               )}
-              <div className="p-3 bg-gradient-to-br from-teal-500 to-cyan-600 rounded-xl shadow-lg">
+              <div className="p-3 bg-gradient-to-br from-teal-500 to-cyan-600 rounded-xl shadow-lg animate-bounce-subtle">
                 <ScrollText className="h-8 w-8 text-white" />
               </div>
               <div>
@@ -876,7 +876,7 @@ export function LiquidacionesPage() {
             </div>
             <Button
               onClick={() => openForm()}
-              className="gap-2 bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white shadow-lg"
+              className="gap-2 bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300"
             >
               <Plus className="h-4 w-4" />
               Nueva Liquidación
@@ -1000,7 +1000,7 @@ export function LiquidacionesPage() {
                               variant="ghost"
                               size="icon"
                               onClick={() => handleViewDocument(liquidacion)}
-                              className="text-blue-600 hover:text-blue-800 hover:bg-blue-50 h-8 w-8"
+                              className="text-teal-600 hover:text-teal-800 hover:bg-teal-50 h-8 w-8"
                               title="Ver documento"
                             >
                               <Eye className="h-4 w-4" />
@@ -1025,7 +1025,7 @@ export function LiquidacionesPage() {
                               variant="ghost"
                               size="icon"
                               onClick={() => openForm(liquidacion)}
-                              className="text-blue-600 hover:text-blue-800 hover:bg-blue-50 h-8 w-8"
+                              className="text-green-600 hover:text-green-800 hover:bg-green-50 h-8 w-8"
                               title="Editar"
                             >
                               <Edit className="h-4 w-4" />
@@ -1443,29 +1443,29 @@ export function LiquidacionesPage() {
                   Detalle Financiero
                 </h4>
                 <div className="grid grid-cols-3 gap-4">
-                  <div className="bg-blue-50 p-3 rounded-xl border border-blue-100">
-                    <p className="text-xs text-blue-600 uppercase tracking-wider mb-1">Importe</p>
-                    <p className="font-bold text-blue-900">{getMonedaSimbolo(detailModal.item.id_moneda)} {Number(detailModal.item.importe || 0).toLocaleString()}</p>
+                  <div className="bg-teal-50 p-3 rounded-xl border border-teal-100">
+                    <p className="text-xs text-teal-600 uppercase tracking-wider mb-1">Importe</p>
+                    <p className="font-bold text-teal-900">{getMonedaSimbolo(detailModal.item.id_moneda)} {Number(detailModal.item.importe || 0).toLocaleString()}</p>
                   </div>
-                  <div className="bg-purple-50 p-3 rounded-xl border border-purple-100">
-                    <p className="text-xs text-purple-600 uppercase tracking-wider mb-1">Devengado</p>
-                    <p className="font-bold text-purple-900">{getMonedaSimbolo(detailModal.item.id_moneda)} {Number(detailModal.item.devengado || 0).toLocaleString()}</p>
+                  <div className="bg-teal-50 p-3 rounded-xl border border-teal-100">
+                    <p className="text-xs text-teal-600 uppercase tracking-wider mb-1">Devengado</p>
+                    <p className="font-bold text-teal-900">{getMonedaSimbolo(detailModal.item.id_moneda)} {Number(detailModal.item.devengado || 0).toLocaleString()}</p>
                   </div>
-                  <div className="bg-orange-50 p-3 rounded-xl border border-orange-100">
-                    <p className="text-xs text-orange-600 uppercase tracking-wider mb-1">Tributario</p>
-                    <p className="font-bold text-orange-900">{Number(detailModal.item.tributario || 0).toFixed(2)}%</p>
+                  <div className="bg-teal-50 p-3 rounded-xl border border-teal-100">
+                    <p className="text-xs text-teal-600 uppercase tracking-wider mb-1">Tributario</p>
+                    <p className="font-bold text-teal-900">{Number(detailModal.item.tributario || 0).toFixed(2)}%</p>
                   </div>
                   <div className="bg-gray-50 p-3 rounded-xl">
                     <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Comisión</p>
                     <p className="font-bold text-gray-900">{getMonedaSimbolo(detailModal.item.id_moneda)} {Number(detailModal.item.comision_bancaria || 0).toLocaleString()}</p>
                   </div>
-                  <div className="bg-red-50 p-3 rounded-xl border border-red-100">
-                    <p className="text-xs text-red-600 uppercase tracking-wider mb-1">Gasto Empresa</p>
-                    <p className="font-bold text-red-900">{getMonedaSimbolo(detailModal.item.id_moneda)} {Number(detailModal.item.gasto_empresa || 0).toLocaleString()}</p>
+                  <div className="bg-teal-50 p-3 rounded-xl border border-teal-100">
+                    <p className="text-xs text-teal-600 uppercase tracking-wider mb-1">Gasto Empresa</p>
+                    <p className="font-bold text-teal-900">{getMonedaSimbolo(detailModal.item.id_moneda)} {Number(detailModal.item.gasto_empresa || 0).toLocaleString()}</p>
                   </div>
-                  <div className="bg-green-50 p-3 rounded-xl border border-green-100 col-span-3">
-                    <p className="text-xs text-green-600 uppercase tracking-wider mb-1">Neto a Pagar</p>
-                    <p className="font-bold text-green-900 text-xl">{getMonedaSimbolo(detailModal.item.id_moneda)} {Number(detailModal.item.neto_pagar || 0).toLocaleString()}</p>
+                  <div className="bg-teal-50 p-3 rounded-xl border border-teal-100 col-span-3">
+                    <p className="text-xs text-teal-600 uppercase tracking-wider mb-1">Neto a Pagar</p>
+                    <p className="font-bold text-teal-900 text-xl">{getMonedaSimbolo(detailModal.item.id_moneda)} {Number(detailModal.item.neto_pagar || 0).toLocaleString()}</p>
                   </div>
                 </div>
               </div>
@@ -1482,10 +1482,10 @@ export function LiquidacionesPage() {
       {confirmModal.isOpen && confirmModal.item && createPortal(
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60">
           <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full">
-            <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-green-50 to-emerald-50">
+            <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-teal-50 to-cyan-50">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
-                  <div className="p-3 rounded-xl bg-gradient-to-br from-green-500 to-emerald-600 text-white shadow-lg">
+                  <div className="p-3 rounded-xl bg-gradient-to-br from-teal-500 to-cyan-600 text-white shadow-lg">
                     <Check className="h-7 w-7" />
                   </div>
                   <div>
@@ -1528,7 +1528,7 @@ export function LiquidacionesPage() {
               <button
                 onClick={handleConfirmarSubmit}
                 disabled={confirmarMutation.isPending}
-                className="px-6 py-3 text-white bg-gradient-to-r from-green-500 to-emerald-600 rounded-xl hover:from-green-600 hover:to-emerald-700 transition-colors font-medium disabled:opacity-50"
+                className="px-6 py-3 text-white bg-gradient-to-r from-teal-500 to-cyan-600 rounded-xl hover:from-teal-600 hover:to-cyan-700 shadow-lg hover:shadow-xl transition-all font-medium disabled:opacity-50"
               >
                 {confirmarMutation.isPending ? 'Confirmando...' : 'Confirmar'}
               </button>
@@ -1634,7 +1634,7 @@ export function LiquidacionesPage() {
             <div className="p-6 border-t border-gray-200 bg-gray-50 flex justify-between gap-3">
               <button
                 onClick={() => navigate(`/proyectos/facturas-servicio?etapa=${validacionModal.validacion?.id_etapa}`)}
-                className="px-6 py-3 text-white bg-gradient-to-r from-purple-500 to-indigo-600 rounded-xl hover:from-purple-600 hover:to-indigo-700 transition-colors font-medium"
+                className="px-6 py-3 text-white bg-gradient-to-r from-teal-500 to-cyan-600 rounded-xl hover:from-teal-600 hover:to-cyan-700 shadow-lg hover:shadow-xl transition-all font-medium"
               >
                 Ir a Pagar Factura
               </button>
@@ -1653,9 +1653,9 @@ export function LiquidacionesPage() {
       {printModal.isOpen && printModal.liquidacion && createPortal(
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 animate-fade-in">
           <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full animate-scale-in">
-            <div className="p-6 border-b border-gray-200">
+            <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-teal-50 to-cyan-50">
               <div className="flex items-center gap-3">
-                <Printer className="h-6 w-6 text-gray-600" />
+                <Printer className="h-6 w-6 text-teal-600" />
                 <h3 className="text-xl font-bold text-gray-900">Imprimir Liquidación</h3>
               </div>
               <p className="text-sm text-gray-500 mt-2">Complete los datos para la impresión</p>
@@ -1713,7 +1713,7 @@ export function LiquidacionesPage() {
               </button>
               <button 
                 onClick={handlePrint} 
-                className="px-4 py-2 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-lg hover:from-blue-600 hover:to-indigo-700 font-medium flex items-center gap-2"
+                className="px-4 py-2 bg-gradient-to-r from-teal-500 to-cyan-600 text-white rounded-lg hover:from-teal-600 hover:to-cyan-700 shadow-lg hover:shadow-xl transition-all font-medium flex items-center gap-2"
               >
                 <Printer className="h-4 w-4" />
                 Imprimir

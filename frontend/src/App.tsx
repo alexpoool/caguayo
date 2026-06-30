@@ -580,8 +580,8 @@ function App() {
                     <NavLink to="/reportes/mincult" onClick={handleLinkClick}>
                       <FileText className="w-6 h-6" />
                       <span>
-                        <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider block leading-tight">MINCULT</span>
-                        <span>Retribución por Escala</span>
+                        <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider block leading-tight">ONAT</span>
+                        <span>Ingresos y Retenciones</span>
                       </span>
                     </NavLink>
                   </li>

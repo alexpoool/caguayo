@@ -1073,8 +1073,8 @@ export function FacturasServicioPage() {
                     </TableCell>
                     <TableCell>
                       <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium ${getEtapaTipo(item) === 'Certificación'
-                          ? 'bg-purple-100 text-purple-700'
-                          : 'bg-cyan-100 text-cyan-700'
+                          ? 'bg-teal-100 text-teal-700'
+                          : 'bg-teal-100 text-teal-700'
                         }`}>
                         {getEtapaTipo(item)}
                       </span>
@@ -1092,7 +1092,7 @@ export function FacturasServicioPage() {
                         variant="outline"
                         size="sm"
                         onClick={() => navigate(`/proyectos/pagos-factura-servicio?factura=${item.id_factura_servicio}`)}
-                        className="gap-1 text-green-600 border-green-200 hover:bg-green-50 hover:text-green-700"
+                        className="gap-1 text-teal-600 border-teal-200 hover:bg-teal-50 hover:text-teal-700"
                       >
                         <DollarSign className="h-3.5 w-3.5" />
                         Pagos
@@ -1104,7 +1104,7 @@ export function FacturasServicioPage() {
                           variant="ghost"
                           size="icon"
                           onClick={() => handleViewDocument(item)}
-                          className="text-blue-600 hover:text-blue-800 hover:bg-blue-50 h-8 w-8"
+                          className="text-teal-600 hover:text-teal-800 hover:bg-teal-50 h-8 w-8"
                           title="Ver documento"
                         >
                           <Eye className="h-4 w-4" />
@@ -1122,7 +1122,7 @@ export function FacturasServicioPage() {
                           variant="ghost"
                           size="icon"
                           onClick={() => openForm(item)}
-                          className="text-blue-600 hover:text-blue-800 hover:bg-blue-50 h-8 w-8"
+                          className="text-green-600 hover:text-green-800 hover:bg-green-50 h-8 w-8"
                           title="Editar"
                         >
                           <Edit className="h-4 w-4" />
@@ -1572,13 +1572,13 @@ export function FacturasServicioPage() {
                 const saldo = importe - pagado;
                 return (
                   <div className="grid grid-cols-3 gap-4">
-                    <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-4 rounded-xl border border-green-100">
-                      <p className="text-xs text-green-600 uppercase tracking-wider mb-1">Importe Total</p>
-                      <p className="font-bold text-green-900 text-xl">{getMonedaSymbol(detailModal.item.id_moneda)} {importe.toFixed(2)}</p>
+                    <div className="bg-gradient-to-br from-teal-50 to-cyan-50 p-4 rounded-xl border border-teal-100">
+                      <p className="text-xs text-teal-600 uppercase tracking-wider mb-1">Importe Total</p>
+                      <p className="font-bold text-teal-900 text-xl">{getMonedaSymbol(detailModal.item.id_moneda)} {importe.toFixed(2)}</p>
                     </div>
-                    <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-4 rounded-xl border border-blue-100">
-                      <p className="text-xs text-blue-600 uppercase tracking-wider mb-1">Pagado</p>
-                      <p className="font-bold text-blue-900 text-xl">{getMonedaSymbol(detailModal.item.id_moneda)} {pagado.toFixed(2)}</p>
+                    <div className="bg-gradient-to-br from-teal-50 to-cyan-50 p-4 rounded-xl border border-teal-100">
+                      <p className="text-xs text-teal-600 uppercase tracking-wider mb-1">Pagado</p>
+                      <p className="font-bold text-teal-900 text-xl">{getMonedaSymbol(detailModal.item.id_moneda)} {pagado.toFixed(2)}</p>
                     </div>
                     <div className={`p-4 rounded-xl border ${saldo > 0 ? 'bg-red-50 border-red-100' : 'bg-gray-50 border-gray-100'}`}>
                       <p className={`text-xs uppercase tracking-wider mb-1 ${saldo > 0 ? 'text-red-600' : 'text-gray-500'}`}>Saldo Pendiente</p>
@@ -1618,7 +1618,7 @@ export function FacturasServicioPage() {
               <Button
                 variant="outline"
                 onClick={() => navigate(`/proyectos/pagos-factura-servicio?factura=${detailModal.item?.id_factura_servicio}`)}
-                className="gap-2 text-green-600 border-green-200 hover:bg-green-50"
+                className="gap-2 text-teal-600 border-teal-200 hover:bg-teal-50"
               >
                 <DollarSign className="h-4 w-4" />
                 Pagos

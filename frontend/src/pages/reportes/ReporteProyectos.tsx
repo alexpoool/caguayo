@@ -194,7 +194,7 @@ const ReporteProyectos: React.FC = () => {
     <div className="space-y-6">
       {/* ── Page header ─────────────────────────────────────────────────── */}
       <div className="flex items-center gap-3">
-        <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-sky-600 flex items-center justify-center shadow-sm">
+        <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-gradient-to-br from-teal-500 to-cyan-600 flex items-center justify-center shadow-lg animate-bounce-subtle">
           <Layers className="w-5 h-5 text-white" aria-hidden="true" />
         </div>
         <div>
@@ -231,7 +231,7 @@ const ReporteProyectos: React.FC = () => {
                     type="date"
                     value={fechaInicio}
                     onChange={(e) => setFechaInicio(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-sky-500 focus:border-sky-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
                   />
                 </div>
                 <div>
@@ -246,7 +246,7 @@ const ReporteProyectos: React.FC = () => {
                     type="date"
                     value={fechaFin}
                     onChange={(e) => setFechaFin(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-sky-500 focus:border-sky-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
                   />
                 </div>
               </div>
@@ -272,7 +272,7 @@ const ReporteProyectos: React.FC = () => {
                     value={aprobadoPorNombre}
                     onChange={(e) => setAprobadoPorNombre(e.target.value)}
                     placeholder="Ej. Juan Pérez"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-sky-500 focus:border-sky-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
                   />
                 </div>
 
@@ -289,7 +289,7 @@ const ReporteProyectos: React.FC = () => {
                     value={aprobadoPorCargo}
                     onChange={(e) => setAprobadoPorCargo(e.target.value)}
                     placeholder="Ej. Director General"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-sky-500 focus:border-sky-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
                   />
                 </div>
               </div>
@@ -302,7 +302,7 @@ const ReporteProyectos: React.FC = () => {
             <button
               type="submit"
               disabled={!isFormValid || pdfLoading}
-              className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium text-white bg-sky-600 hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium text-white bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {pdfLoading ? (
                 <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
