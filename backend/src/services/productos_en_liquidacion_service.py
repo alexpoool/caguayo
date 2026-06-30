@@ -1,12 +1,14 @@
 from typing import List, Optional
 from datetime import datetime, timezone
 from decimal import Decimal
+import logging
 from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlmodel import select
 
 from src.repository.productos_en_liquidacion_repo import (
     productos_en_liquidacion_repo,
 )
+from src.core.config import settings
 from src.models.productos_en_liquidacion import ProductosEnLiquidacion
 from src.models.item_anexo import ItemAnexo
 from src.models.moneda import Moneda
@@ -15,6 +17,8 @@ from src.dto.productos_en_liquidacion_dto import (
     ProductosEnLiquidacionRead,
     ProductosEnLiquidacionUpdate,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class ProductosEnLiquidacionService:
@@ -82,7 +86,7 @@ class ProductosEnLiquidacionService:
                     ProductosEnLiquidacionRead.model_validate(p, from_attributes=True)
                 )
             except Exception as e:
-                print(f"Error validating product: {e}")
+                logger.error("Error validating product", exc_info=True)
                 results.append(
                     ProductosEnLiquidacionRead(
                         id_producto_en_liquidacion=p.id_producto_en_liquidacion,
@@ -201,7 +205,7 @@ async def get_codigo_from_item_anexo(
 async def _get_default_moneda(db: AsyncSession) -> int:
     stmt = select(Moneda.id_moneda).limit(1)
     result = await db.exec(stmt)
-    return result.first() or 277
+    return result.first() or settings.DEFAULT_MONEDA_ID
 
 
 async def agregar_desde_factura(

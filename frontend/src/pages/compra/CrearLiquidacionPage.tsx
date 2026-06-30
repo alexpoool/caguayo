@@ -6,6 +6,9 @@ import type { Cliente, Anexo, Moneda, LiquidacionCreate } from '../../services/a
 import { Plus, Save, ArrowLeft, CheckCircle, Package, X, FileText } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { esPorcentaje, esNumeroPositivo } from '../../utils/validacionFormularios';
+import { Decimal } from 'decimal.js';
+import { mul, add, sub, percentToMultiplier, toNumber, toFixed } from '../../utils/decimal';
+import { DEFAULTS } from '../../config/defaults';
 
 export function CrearLiquidacionPage() {
   const navigate = useNavigate();
@@ -50,11 +53,11 @@ export function CrearLiquidacionPage() {
     id_anexo: undefined,
     id_moneda: 0,
     devengado: 0,
-    tributario: 5,
+    tributario: DEFAULTS.TRIBUTARIO,
     comision_bancaria: 0,
     gasto_empresa: 0,
-    porcentaje_caguayo: 10,
-    tipo_pago: 'TRANSFERENCIA',
+    porcentaje_caguayo: DEFAULTS.PORCENTAJE_CAGUAYO,
+    tipo_pago: DEFAULTS.TIPO_PAGO,
     observaciones: '',
     producto_ids: []
   });
@@ -96,7 +99,7 @@ export function CrearLiquidacionPage() {
       setAnexos(anexosData);
       setMonedas(monedasData);
     } catch (error) {
-      console.error('Error cargando datos:', error);
+      console.error('Error en operación:', error instanceof Error ? error.message : 'Error desconocido');
     }
   };
 
@@ -129,7 +132,7 @@ export function CrearLiquidacionPage() {
       setAllItemsAnexo(allData);
       setSelectedProductos([]);
     } catch (error) {
-      console.error('Error cargando productos:', error);
+      console.error('Error en operación:', error instanceof Error ? error.message : 'Error desconocido');
     } finally {
       setIsLoadingProductos(false);
     }
@@ -293,45 +296,46 @@ export function CrearLiquidacionPage() {
     });
   };
 
-  const calculateImporte = () => {
-    return itemsAnexo
+  const calculateImporte = (): number => {
+    const total = itemsAnexo
       .filter((item: any) => item.estado === 'A LIQUIDAR' && selectedProductos.includes(item.id_producto_en_liquidacion))
-      .reduce((sum: number, item: any) => {
-        return sum + (item.precio_venta * (item.por_liquidar || item.cantidad || 0));
-      }, 0);
+      .reduce((acc: Decimal, item: any) => {
+        return add(acc, mul(item.precio_venta, (item.por_liquidar || item.cantidad || 0)));
+      }, new Decimal(0));
+    return toNumber(total);
   };
 
-  const calculateImporteCaguayo = () => {
-    const importe = calculateImporte();
-    const porcentaje = Number(formData.porcentaje_caguayo) || 10;
-    return importe * (porcentaje / 100);
+  const calculateImporteCaguayo = (): number => {
+    const importe = new Decimal(calculateImporte());
+    const porcentaje = Number(formData.porcentaje_caguayo) || DEFAULTS.PORCENTAJE_CAGUAYO;
+    const result = mul(importe, percentToMultiplier(porcentaje));
+    return toNumber(result);
   };
 
-  const calculateDevengado = () => {
-    const importe = calculateImporte();
-    const importe_caguayo = calculateImporteCaguayo();
-    return importe - importe_caguayo;
+  const calculateDevengado = (): number => {
+    const importe = new Decimal(calculateImporte());
+    const importe_caguayo = new Decimal(calculateImporteCaguayo());
+    return toNumber(sub(importe, importe_caguayo));
   };
 
-  const calculateTributarioMonto = () => {
-    const devengado = calculateDevengado();
+  const calculateTributarioMonto = (): number => {
+    const devengado = new Decimal(calculateDevengado());
     const tributario = Number(formData.tributario) || 0;
-    return devengado * (tributario / 100);
+    const result = mul(devengado, percentToMultiplier(tributario));
+    return toNumber(result);
   };
 
-  const calculateSubtotal = () => {
-    const devengado = calculateDevengado();
-    const tributario_monto = calculateTributarioMonto();
-    return devengado - tributario_monto;
+  const calculateSubtotal = (): number => {
+    const devengado = new Decimal(calculateDevengado());
+    const tributario_monto = new Decimal(calculateTributarioMonto());
+    return toNumber(sub(devengado, tributario_monto));
   };
 
-  const calculateNetoPagar = () => {
-    const devengado = calculateDevengado();
-    const tributario_monto = calculateTributarioMonto();
-    const subtotal = devengado - tributario_monto;
+  const calculateNetoPagar = (): number => {
+    const subtotal = new Decimal(calculateSubtotal());
     const gasto_empresa = Number(formData.gasto_empresa) || 0;
     const comision = Number(formData.comision_bancaria) || 0;
-    return subtotal - gasto_empresa - comision;
+    return toNumber(sub(sub(subtotal, gasto_empresa), comision));
   };
 
   // Calcular datos de productos seleccionados para el resumen
@@ -345,8 +349,10 @@ export function CrearLiquidacionPage() {
 
     const totalCantidad = productosSeleccionados.reduce((sum: number, item: any) => 
       sum + (item.por_liquidar || item.cantidad || 0), 0);
-    const totalMonto = productosSeleccionados.reduce((sum: number, item: any) => 
-      sum + (Number(item.precio_venta) * (item.por_liquidar || item.cantidad || 0)), 0);
+    const totalMonto = toNumber(
+      productosSeleccionados.reduce((acc: Decimal, item: any) => 
+        add(acc, mul(Number(item.precio_venta), (item.por_liquidar || item.cantidad || 0))), new Decimal(0))
+    );
 
     return {
       cantidadProductos: productosSeleccionados.length,
@@ -355,7 +361,7 @@ export function CrearLiquidacionPage() {
       productos: productosSeleccionados.map((item: any) => ({
         nombre: item.producto_nombre || `Producto ${item.id_producto}`,
         cantidad: item.por_liquidar || item.cantidad || 0,
-        importe: Number(item.precio_venta) * (item.por_liquidar || item.cantidad || 0)
+        importe: toNumber(mul(Number(item.precio_venta), (item.por_liquidar || item.cantidad || 0)))
       }))
     };
   };
@@ -421,7 +427,7 @@ if (!filtroCliente) {
       toast.success('Liquidación creada correctamente');
       navigate('/compra/liquidaciones');
     } catch (error: any) {
-      console.error('Error:', error);
+      console.error('Error en operación:', error instanceof Error ? error.message : 'Error desconocido');
       toast.error(error?.response?.data?.detail || 'Error al crear liquidación');
 } finally {
       setIsLoading(false);
@@ -672,7 +678,7 @@ if (!filtroCliente) {
                                   <td className="px-3 py-2 text-right text-gray-600">{enConsignacion}</td>
                                   <td className="px-3 py-2 text-right">${Number(item.precio_venta).toFixed(2)}</td>
                                   <td className="px-3 py-2 text-right font-medium">
-                                    ${(item.precio_venta * maxALiquidar).toFixed(2)}
+                                      ${toFixed(mul(item.precio_venta, maxALiquidar), 2)}
                                   </td>
                                   <td className="px-3 py-2 text-center">
                                     <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${
@@ -793,7 +799,7 @@ if (!filtroCliente) {
                   <span className="text-base font-bold text-gray-800">{calculateImporte().toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between pl-4">
-                  <span className="text-sm text-gray-500">Importe Caguayo ({Number(formData.porcentaje_caguayo || 10)}%):</span>
+                    <span className="text-sm text-gray-500">Importe Caguayo ({Number(formData.porcentaje_caguayo || DEFAULTS.PORCENTAJE_CAGUAYO)}%):</span>
                   <span className="text-sm text-gray-500">- {calculateImporteCaguayo().toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between border-b border-gray-200 pb-1">

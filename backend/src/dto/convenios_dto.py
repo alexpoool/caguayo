@@ -3,7 +3,10 @@ from typing import Optional, List
 from datetime import date
 from decimal import Decimal
 from pydantic import field_validator
+import re
 from .precio_item_anexo_dto import PrecioItemAnexoCreate, PrecioItemAnexoRead
+
+EMAIL_REGEX = r'^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$'
 
 
 class TipoClienteBase(SQLModel):
@@ -51,6 +54,13 @@ class ClienteBase(SQLModel):
     email: Optional[str] = None
     direccion: Optional[str] = None
 
+    @field_validator("email")
+    @classmethod
+    def validar_email(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None and not re.match(EMAIL_REGEX, v):
+            raise ValueError("Email inválido")
+        return v
+
 
 class ClienteCreate(ClienteBase):
     pass
@@ -68,6 +78,13 @@ class ClienteUpdate(SQLModel):
     telefono: Optional[str] = None
     email: Optional[str] = None
     direccion: Optional[str] = None
+
+    @field_validator("email")
+    @classmethod
+    def validar_email(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None and not re.match(EMAIL_REGEX, v):
+            raise ValueError("Email inválido")
+        return v
 
 
 # Alias to avoid conflict with clientes_dto.py
@@ -111,6 +128,13 @@ class ConvenioBase(SQLModel):
             raise ValueError("La vigencia no puede ser anterior a la fecha de inicio")
         return v
 
+    @field_validator("fecha")
+    @classmethod
+    def fecha_no_futura(cls, v: date) -> date:
+        if v > date.today():
+            raise ValueError("La fecha no puede ser futura")
+        return v
+
 
 class ConvenioCreate(ConvenioBase):
     pass
@@ -129,6 +153,23 @@ class ConvenioUpdate(SQLModel):
     vigencia: Optional[date] = None
     id_tipo_convenio: Optional[int] = Field(default=None, gt=0)
 
+    @field_validator("vigencia")
+    @classmethod
+    def vigencia_no_anterior_a_fecha(cls, v: Optional[date], info) -> Optional[date]:
+        if v is None:
+            return v
+        fecha = info.data.get("fecha")
+        if fecha and v < fecha:
+            raise ValueError("La vigencia no puede ser anterior a la fecha de inicio")
+        return v
+
+    @field_validator("fecha")
+    @classmethod
+    def fecha_no_futura(cls, v: Optional[date]) -> Optional[date]:
+        if v is not None and v > date.today():
+            raise ValueError("La fecha no puede ser futura")
+        return v
+
 
 class AnexoBase(SQLModel):
     id_convenio: int = Field(gt=0)
@@ -136,7 +177,14 @@ class AnexoBase(SQLModel):
     fecha: date
     codigo_anexo: Optional[str] = None
     id_dependencia: Optional[int] = None
-    comision: Optional[Decimal] = None
+    comision: Optional[Decimal] = Field(default=None, ge=0, le=100)
+
+    @field_validator("fecha")
+    @classmethod
+    def fecha_no_futura(cls, v: date) -> date:
+        if v > date.today():
+            raise ValueError("La fecha no puede ser futura")
+        return v
 
 
 class ItemAnexoBase(SQLModel):
@@ -179,7 +227,14 @@ class AnexoUpdate(SQLModel):
     fecha: Optional[date] = None
     codigo_anexo: Optional[str] = None
     id_dependencia: Optional[int] = None
-    comision: Optional[Decimal] = None
+    comision: Optional[Decimal] = Field(default=None, ge=0, le=100)
+
+    @field_validator("fecha")
+    @classmethod
+    def fecha_no_futura(cls, v: Optional[date]) -> Optional[date]:
+        if v is not None and v > date.today():
+            raise ValueError("La fecha no puede ser futura")
+        return v
 
 
 class ClienteSimpleRead(SQLModel):

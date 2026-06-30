@@ -1,3 +1,4 @@
+import logging
 from typing import List, Optional
 from datetime import date, datetime, timezone
 from decimal import Decimal
@@ -16,12 +17,21 @@ from src.models import (
     ProductosEnLiquidacion,
     TipoConvenio,
 )
-from src.dto.convenios_dto import AnexoRead, AnexoCreate
-from src.utils import generar_codigo_con_padre, _get_nit_from_token
+from src.dto.convenios_dto import AnexoRead, AnexoCreate, AnexoUpdate
+from src.utils import generar_codigo_con_padre, _get_nit_from_token, verify_auth
 from sqlmodel import select
 from sqlalchemy import text
 
+logger = logging.getLogger(__name__)
+
 router = APIRouter(prefix="/anexos", tags=["anexos"], redirect_slashes=False)
+
+
+def _sanitize_search(search: str) -> tuple:
+    """Escape wildcard characters and return a sanitized search string
+    plus the pre/post wildcard pattern."""
+    escaped = search.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+    return escaped
 
 
 @router.get("", response_model=List[AnexoRead])
@@ -42,9 +52,10 @@ async def listar_anexos(
         if convenio_id:
             statement = statement.where(Anexo.id_convenio == convenio_id)
         if search:
+            escaped_search = _sanitize_search(search)
             statement = statement.where(
-                (Anexo.nombre_anexo.ilike(f"%{search}%"))
-                | (Anexo.codigo_anexo.ilike(f"%{search}%"))
+                (Anexo.nombre_anexo.ilike(f"%{escaped_search}%"))
+                | (Anexo.codigo_anexo.ilike(f"%{escaped_search}%"))
             )
         statement = statement.offset(skip).limit(limit)
         results = await db.exec(statement)
@@ -77,11 +88,8 @@ async def listar_anexos(
 
         return anexos_read
     except Exception as e:
-        print(f"Error in listar_anexos: {e}")
-        import traceback
-
-        traceback.print_exc()
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error("Error en listar_anexos", exc_info=True)
+        raise HTTPException(status_code=500, detail="Error interno del servidor")
 
 
 @router.get("/{anexo_id}", response_model=AnexoRead)
@@ -220,7 +228,6 @@ async def crear_anexo(
                     )
                 )
 
-            producto.precio_compra = producto.precio_compra
             producto.moneda_compra = item["id_moneda"]
             producto.precio_venta = item["precio_venta"]
             producto.moneda_venta = item["id_moneda"]
@@ -295,7 +302,8 @@ async def crear_anexo(
         raise
     except Exception as e:
         await db.rollback()
-        raise HTTPException(status_code=500, detail=f"Error al crear anexo: {str(e)}")
+        logger.error("Error al crear anexo", exc_info=True)
+        raise HTTPException(status_code=500, detail="Error interno del servidor")
 
 
 async def crear_productos_en_liquidacion(
@@ -324,45 +332,68 @@ async def crear_productos_en_liquidacion(
 @router.patch("/{anexo_id}")
 async def actualizar_anexo(
     anexo_id: int,
-    datos: dict,
+    datos: AnexoUpdate,
+    authorization: Optional[str] = Header(None),
+    db_auth: AsyncSession = Depends(get_auth_session),
     db: AsyncSession = Depends(get_session),
 ):
     """Actualizar un anexo."""
-    statement = select(Anexo).where(Anexo.id_anexo == anexo_id)
-    results = await db.exec(statement)
-    db_anexo = results.first()
-    if not db_anexo:
-        raise HTTPException(status_code=404, detail="Anexo no encontrado")
+    try:
+        await verify_auth(authorization=authorization, db_auth=db_auth)
 
-    for key, value in datos.items():
-        if value is not None:
-            if key == "fecha" and isinstance(value, str):
-                value = date.fromisoformat(value)
-            setattr(db_anexo, key, value)
+        statement = select(Anexo).where(Anexo.id_anexo == anexo_id)
+        results = await db.exec(statement)
+        db_anexo = results.first()
+        if not db_anexo:
+            raise HTTPException(status_code=404, detail="Anexo no encontrado")
 
-    await db.commit()
-    await db.refresh(db_anexo)
-    return {
-        "id_anexo": db_anexo.id_anexo,
-        "codigo_anexo": db_anexo.codigo_anexo,
-        "id_convenio": db_anexo.id_convenio,
-        "nombre_anexo": db_anexo.nombre_anexo,
-        "fecha": str(db_anexo.fecha),
-        "id_dependencia": db_anexo.id_dependencia,
-        "comision": float(db_anexo.comision) if db_anexo.comision else None,
-    }
+        update_data = datos.model_dump(exclude_unset=True)
+        db_anexo.sqlmodel_update(update_data)
+
+        await db.commit()
+        await db.refresh(db_anexo)
+        return {
+            "id_anexo": db_anexo.id_anexo,
+            "codigo_anexo": db_anexo.codigo_anexo,
+            "id_convenio": db_anexo.id_convenio,
+            "nombre_anexo": db_anexo.nombre_anexo,
+            "fecha": str(db_anexo.fecha),
+            "id_dependencia": db_anexo.id_dependencia,
+            "comision": float(db_anexo.comision) if db_anexo.comision else None,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        await db.rollback()
+        logger.error("Error al actualizar anexo", exc_info=True)
+        raise HTTPException(
+            status_code=500, detail="Error interno del servidor"
+        )
 
 
 @router.delete("/{anexo_id}", status_code=204)
 async def eliminar_anexo(
     anexo_id: int,
+    authorization: Optional[str] = Header(None),
+    db_auth: AsyncSession = Depends(get_auth_session),
     db: AsyncSession = Depends(get_session),
 ):
     """Eliminar un anexo."""
-    statement = select(Anexo).where(Anexo.id_anexo == anexo_id)
-    results = await db.exec(statement)
-    db_anexo = results.first()
-    if not db_anexo:
-        raise HTTPException(status_code=404, detail="Anexo no encontrado")
-    await db.delete(db_anexo)
-    await db.commit()
+    try:
+        await verify_auth(authorization=authorization, db_auth=db_auth)
+
+        statement = select(Anexo).where(Anexo.id_anexo == anexo_id)
+        results = await db.exec(statement)
+        db_anexo = results.first()
+        if not db_anexo:
+            raise HTTPException(status_code=404, detail="Anexo no encontrado")
+        await db.delete(db_anexo)
+        await db.commit()
+    except HTTPException:
+        raise
+    except Exception as e:
+        await db.rollback()
+        logger.error("Error al eliminar anexo", exc_info=True)
+        raise HTTPException(
+            status_code=500, detail="Error interno del servidor"
+        )

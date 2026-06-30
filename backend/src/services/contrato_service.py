@@ -58,6 +58,8 @@ from src.dto import (
     ItemAnexoDisponible,
 )
 from src.utils import generar_codigo_anio, generar_codigo_con_padre
+from src.core.config import settings
+from src.core.exceptions import BusinessLogicError
 from src.services.productos_en_liquidacion_service import (
     agregar_desde_factura,
     agregar_desde_venta_efectivo,
@@ -486,7 +488,7 @@ class FacturaService:
         factura = await factura_repo.create(db, data)
 
         contrato = await db.get(Contrato, factura.id_contrato)
-        id_dependencia = data.id_dependencia or 4
+        id_dependencia = data.id_dependencia or settings.DEFAULT_DEPENDENCIA_ID
 
         stmt_tipo_mov = select(TipoMovimiento).where(TipoMovimiento.tipo == "venta")
         result_tipo = await db.exec(stmt_tipo_mov)
@@ -508,7 +510,7 @@ class FacturaService:
                 mensaje = "\n".join(
                     [f"Producto {e['id_producto']}: {e['mensaje']}" for e in errores]
                 )
-                raise ValueError(f"Stock insuficiente:\n{mensaje}")
+                raise BusinessLogicError(f"Stock insuficiente:\n{mensaje}")
 
         if items_data and tipo_mov:
             await item_factura_repo.create_items(
@@ -695,6 +697,24 @@ class VentaEfectivoService:
         stmt_tipo_mov = select(TipoMovimiento).where(TipoMovimiento.tipo == "venta")
         result_tipo = await db.exec(stmt_tipo_mov)
         tipo_mov = result_tipo.first()
+
+        # Validar existencias antes de crear venta en efectivo
+        if items_data:
+            productos_validar = [
+                {"id_producto": item["id_producto"], "cantidad": item["cantidad"]}
+                for item in items_data
+            ]
+
+            resultado_validacion = await ExistenciaService.validar_multiple(
+                db, productos_validar, venta.id_dependencia
+            )
+
+            if not resultado_validacion["valido"]:
+                errores = resultado_validacion["errores"]
+                mensaje = "\n".join(
+                    [f"Producto {e['id_producto']}: {e['mensaje']}" for e in errores]
+                )
+                raise BusinessLogicError(f"Stock insuficiente:\n{mensaje}")
 
         if items_data and tipo_mov:
             await item_venta_efectivo_repo.create_items(

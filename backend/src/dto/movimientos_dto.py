@@ -1,8 +1,8 @@
-from sqlmodel import SQLModel
+from sqlmodel import SQLModel, Field
 from typing import Optional
 from datetime import datetime
 from decimal import Decimal
-from pydantic import validator
+from pydantic import field_validator
 from .dependencias_dto import DependenciaRead
 from .productos_dto import ProductosRead
 from .convenios_dto import ClienteRead
@@ -31,13 +31,13 @@ class MovimientoBase(SQLModel):
     id_tipo_movimiento: int
     id_dependencia: int
     id_producto: int
-    cantidad: int
+    cantidad: int = Field(gt=0)
     codigo: Optional[str] = None
     observacion: Optional[str] = None
     id_cliente: Optional[int] = None
-    precio_compra: Optional[Decimal] = None
+    precio_compra: Optional[Decimal] = Field(default=None, ge=0)
     moneda_compra: Optional[int] = None
-    precio_venta: Optional[Decimal] = None
+    precio_venta: Optional[Decimal] = Field(default=None, ge=0)
     moneda_venta: Optional[int] = None
     id_anexo: Optional[int] = None
     id_convenio: Optional[int] = None
@@ -49,8 +49,7 @@ class MovimientoCreate(MovimientoBase):
 
 
 class MovimientoRead(MovimientoBase):
-    class Config:
-        from_attributes = True
+    model_config = {"from_attributes": True}
 
     id_movimiento: int
     fecha: datetime
@@ -63,11 +62,12 @@ class MovimientoRead(MovimientoBase):
     moneda_compra_rel: Optional[MonedaRead] = None
     moneda_venta_rel: Optional[MonedaRead] = None
 
-    @validator("precio_compra", "precio_venta", pre=True)
+    @field_validator("precio_compra", "precio_venta", mode="before")
+    @classmethod
     def parse_decimal(cls, v):
         if v is None:
             return None
-        return float(v)
+        return Decimal(str(v))
 
 
 class MovimientoUpdate(SQLModel):

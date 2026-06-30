@@ -368,13 +368,19 @@ export function AnexosPage() {
                   <Input
                     type="number"
                     step="0.01"
+                    min="0"
+                    max="100"
                     value={formData.comision}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        comision: parseFloat(e.target.value) || 0,
-                      })
-                    }
+                    onChange={(e) => {
+                      const val = parseFloat(e.target.value);
+                      if (isNaN(val) || val < 0) {
+                        setFormData({ ...formData, comision: 0 });
+                      } else if (val > 100) {
+                        setFormData({ ...formData, comision: 100 });
+                      } else {
+                        setFormData({ ...formData, comision: val });
+                      }
+                    }}
                     placeholder="0.00"
                   />
                 </div>

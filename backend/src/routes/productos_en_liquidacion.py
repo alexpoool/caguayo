@@ -1,3 +1,4 @@
+import logging
 from typing import List, Optional
 from fastapi import APIRouter, Depends, Header, HTTPException, Query
 from sqlmodel.ext.asyncio.session import AsyncSession
@@ -10,7 +11,9 @@ from src.dto.productos_en_liquidacion_dto import (
     ProductosEnLiquidacionRead,
     ProductosEnLiquidacionUpdate,
 )
-from src.utils import _get_nit_from_token
+from src.utils import _get_nit_from_token, verify_auth
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(
     prefix="/productos-en-liquidacion",
@@ -67,8 +70,9 @@ async def crear_producto(
         nit = await _get_nit_from_token(authorization, db_auth)
         return await productos_en_liquidacion_service.create(db, producto, nit=nit)
     except Exception as e:
+        logger.error("Error al crear producto en liquidación", exc_info=True)
         raise HTTPException(
-            status_code=500, detail=f"Error al crear producto en liquidación: {str(e)}"
+            status_code=500, detail="Error interno del servidor"
         )
 
 
@@ -90,41 +94,76 @@ async def obtener_producto(
 async def actualizar_producto(
     producto_id: int,
     producto_update: ProductosEnLiquidacionUpdate,
+    authorization: Optional[str] = Header(None),
+    db_auth: AsyncSession = Depends(get_auth_session),
     db: AsyncSession = Depends(get_session),
 ):
     """Actualizar un producto en liquidación."""
-    producto = await productos_en_liquidacion_service.update(
-        db, producto_id, producto_update
-    )
-    if not producto:
-        raise HTTPException(
-            status_code=404, detail="Producto en liquidación no encontrado"
+    try:
+        await verify_auth(authorization=authorization, db_auth=db_auth)
+        producto = await productos_en_liquidacion_service.update(
+            db, producto_id, producto_update
         )
-    return producto
+        if not producto:
+            raise HTTPException(
+                status_code=404, detail="Producto en liquidación no encontrado"
+            )
+        return producto
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("Error al actualizar producto en liquidación", exc_info=True)
+        raise HTTPException(
+            status_code=500, detail="Error interno del servidor"
+        )
 
 
 @router.post("/{producto_id}/liquidar", response_model=ProductosEnLiquidacionRead)
 async def liquidar_producto(
     producto_id: int,
+    authorization: Optional[str] = Header(None),
+    db_auth: AsyncSession = Depends(get_auth_session),
     db: AsyncSession = Depends(get_session),
 ):
     """Marcar un producto como liquidado."""
-    producto = await productos_en_liquidacion_service.marcar_liquidada(db, producto_id)
-    if not producto:
-        raise HTTPException(
-            status_code=404, detail="Producto en liquidación no encontrado"
+    try:
+        await verify_auth(authorization=authorization, db_auth=db_auth)
+        producto = await productos_en_liquidacion_service.marcar_liquidada(
+            db, producto_id
         )
-    return producto
+        if not producto:
+            raise HTTPException(
+                status_code=404, detail="Producto en liquidación no encontrado"
+            )
+        return producto
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("Error al liquidar producto", exc_info=True)
+        raise HTTPException(
+            status_code=500, detail="Error interno del servidor"
+        )
 
 
 @router.delete("/{producto_id}", status_code=204)
 async def eliminar_producto(
     producto_id: int,
+    authorization: Optional[str] = Header(None),
+    db_auth: AsyncSession = Depends(get_auth_session),
     db: AsyncSession = Depends(get_session),
 ):
     """Eliminar un producto en liquidación."""
-    success = await productos_en_liquidacion_service.delete(db, producto_id)
-    if not success:
+    try:
+        await verify_auth(authorization=authorization, db_auth=db_auth)
+        success = await productos_en_liquidacion_service.delete(db, producto_id)
+        if not success:
+            raise HTTPException(
+                status_code=404, detail="Producto en liquidación no encontrado"
+            )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("Error al eliminar producto en liquidación", exc_info=True)
         raise HTTPException(
-            status_code=404, detail="Producto en liquidación no encontrado"
+            status_code=500, detail="Error interno del servidor"
         )

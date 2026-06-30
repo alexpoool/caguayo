@@ -34,6 +34,10 @@ import { clientesService, cuentasService, type Cliente } from '../../services/ap
 import { anexosService, type Anexo } from '../../services/api';
 import { monedaService, type Moneda } from '../../services/api';
 import { authService } from '../../services/auth';
+import { Decimal } from 'decimal.js';
+import { mul, add, sub, percentToMultiplier, toNumber, toFixed } from '../../utils/decimal';
+import { escapeHtml } from '../../utils/sanitize';
+import { DEFAULTS } from '../../config/defaults';
 
 type TabType = 'todas' | 'pendientes' | 'liquidadas';
 
@@ -61,12 +65,12 @@ export function LiquidacionesPage() {
     id_cliente: 0,
     id_convenio: undefined,
     id_anexo: undefined,
-    id_moneda: 277,
+    id_moneda: DEFAULTS.MONEDA_ID,
     devengado: 0,
     tributario: 0,
     comision_bancaria: 0,
     gasto_empresa: 0,
-    tipo_pago: 'TRANSFERENCIA',
+    tipo_pago: DEFAULTS.TIPO_PAGO,
     observaciones: '',
     producto_ids: []
   });
@@ -166,13 +170,13 @@ export function LiquidacionesPage() {
       id_cliente: 0,
       id_convenio: undefined,
       id_anexo: undefined,
-      id_moneda: 277,
+      id_moneda: DEFAULTS.MONEDA_ID,
       devengado: 0,
       tributario: 0,
       comision_bancaria: 0,
       gasto_empresa: 0,
-      porcentaje_caguayo: 10,
-      tipo_pago: 'TRANSFERENCIA',
+      porcentaje_caguayo: DEFAULTS.PORCENTAJE_CAGUAYO,
+      tipo_pago: DEFAULTS.TIPO_PAGO,
       observaciones: '',
       producto_ids: []
     });
@@ -241,43 +245,46 @@ export function LiquidacionesPage() {
     setFormData(prev => ({ ...prev, producto_ids: [] }));
   };
 
-  const calculateImporte = () => {
-    return productosPendientes
+  const calculateImporte = (): number => {
+    const total = productosPendientes
       .filter((p: ProductosEnLiquidacion) => selectedProductos.includes(p.id_producto_en_liquidacion))
-      .reduce((sum: number, p: ProductosEnLiquidacion) => {
-        return sum + (p.precio * p.cantidad);
-      }, 0);
+      .reduce((acc: Decimal, p: ProductosEnLiquidacion) => {
+        return add(acc, mul(p.precio, p.cantidad));
+      }, new Decimal(0));
+    return toNumber(total);
   };
 
-  const calculateImporteCaguayo = () => {
-    const importe = calculateImporte();
-    const porcentaje = Number(formData.porcentaje_caguayo) || 10;
-    return importe * (porcentaje / 100);
+  const calculateImporteCaguayo = (): number => {
+    const importe = new Decimal(calculateImporte());
+    const porcentaje = Number(formData.porcentaje_caguayo) || DEFAULTS.PORCENTAJE_CAGUAYO;
+    const result = mul(importe, percentToMultiplier(porcentaje));
+    return toNumber(result);
   };
 
-  const calculateDevengado = () => {
-    const importe = calculateImporte();
-    const importe_caguayo = calculateImporteCaguayo();
-    return importe - importe_caguayo;
+  const calculateDevengado = (): number => {
+    const importe = new Decimal(calculateImporte());
+    const importe_caguayo = new Decimal(calculateImporteCaguayo());
+    return toNumber(sub(importe, importe_caguayo));
   };
 
-  const calculateTributarioMonto = () => {
-    const devengado = calculateDevengado();
+  const calculateTributarioMonto = (): number => {
+    const devengado = new Decimal(calculateDevengado());
     const tributario = Number(formData.tributario) || 0;
-    return devengado * (tributario / 100);
+    const result = mul(devengado, percentToMultiplier(tributario));
+    return toNumber(result);
   };
 
-  const calculateSubtotal = () => {
-    const devengado = calculateDevengado();
-    const tributario_monto = calculateTributarioMonto();
-    return devengado - tributario_monto;
+  const calculateSubtotal = (): number => {
+    const devengado = new Decimal(calculateDevengado());
+    const tributario_monto = new Decimal(calculateTributarioMonto());
+    return toNumber(sub(devengado, tributario_monto));
   };
 
-  const calculateNetoPagar = () => {
-    const subtotal = calculateSubtotal();
+  const calculateNetoPagar = (): number => {
+    const subtotal = new Decimal(calculateSubtotal());
     const gasto_empresa = Number(formData.gasto_empresa) || 0;
     const comision = Number(formData.comision_bancaria) || 0;
-    return subtotal - gasto_empresa - comision;
+    return toNumber(sub(sub(subtotal, gasto_empresa), comision));
   };
 
   const filteredLiquidaciones = liquidaciones.filter((l: Liquidacion) => {
@@ -303,29 +310,29 @@ export function LiquidacionesPage() {
     const confectionadoPor = user ? `${user.nombre || ''} ${user.primer_apellido || ''}`.trim() : '';
     
     const empresa = user?.dependencia;
-    const empresaNombre = empresa?.nombre || 'Empresa';
-    const empresaDireccion = empresa?.direccion || '';
-    const empresaTelefono = empresa?.telefono || '';
-    const empresaEmail = empresa?.email || '';
+    const empresaNombre = escapeHtml(empresa?.nombre || 'Empresa');
+    const empresaDireccion = escapeHtml(empresa?.direccion || '');
+    const empresaTelefono = escapeHtml(empresa?.telefono || '');
+    const empresaEmail = escapeHtml(empresa?.email || '');
     
-    const nombreProveedor = cliente?.nombre || 'N/A';
-    const codigoProveedor = cliente?.codigo || 'N/A';
-    const cedulaProveedor = cliente?.nit || 'N/A';
+    const nombreProveedor = escapeHtml(cliente?.nombre || 'N/A');
+    const codigoProveedor = escapeHtml(cliente?.codigo || 'N/A');
+    const cedulaProveedor = escapeHtml(cliente?.nit || 'N/A');
 
     const isNatural = cliente?.tipo_persona === 'NATURAL';
     const isTCP = cliente?.tipo_persona === 'TCP';
 
     const cuentasHTML = cuentas.length > 0
       ? cuentas.map((c, i) => `
-        ${i > 0 ? '<br>' : ''}<span>${c.banco || ''}${c.numero_cuenta ? ' - ' + c.numero_cuenta : ''}</span>
+        ${i > 0 ? '<br>' : ''}<span>${escapeHtml(c.banco || '')}${c.numero_cuenta ? ' - ' + escapeHtml(String(c.numero_cuenta)) : ''}</span>
       `).join('')
       : '<span>No registrada</span>';
 
-    const tipoConvenio = liquidacion.convenio?.tipo_convenio?.nombre || '';
-    const codigoConvenio = liquidacion.convenio?.codigo || '';
-    const moneda = liquidacion.moneda?.nombre || '';
+    const tipoConvenio = escapeHtml(liquidacion.convenio?.tipo_convenio?.nombre || '');
+    const codigoConvenio = escapeHtml(liquidacion.convenio?.codigo || '');
+    const moneda = escapeHtml(liquidacion.moneda?.nombre || '');
 
-    const numeroAnexo = liquidacion.anexo?.numero_anexo || '';
+    const numeroAnexo = escapeHtml(String(liquidacion.anexo?.numero_anexo || ''));
     const infoConvenioFila = codigoConvenio 
       ? `<tr style="background:#f3f0e6;"><td colspan="5"><strong>CONVENIO: ${codigoConvenio}</strong></td></tr>` 
       : '';
@@ -340,50 +347,66 @@ export function LiquidacionesPage() {
       productosPorAnexo[idAnexo].push(p);
     });
 
-    // Generar filas con separadores y totales por anexo
+    // Generar filas con separadores y totales por anexo usando Decimal
     const productosRows = Object.entries(productosPorAnexo).map(([idAnexo, productos]) => {
-      const nombreAnexo = productos[0]?.anexo?.nombre_anexo || `Anexo ${idAnexo}`;
-      const totalAnexo = productos.reduce((sum, p) => sum + Number(p.precio * p.cantidad || 0), 0);
+      const nombreAnexo = escapeHtml(productos[0]?.anexo?.nombre_anexo || `Anexo ${idAnexo}`);
+      const totalAnexo = toFixed(
+        productos.reduce((acc: Decimal, p: any) => add(acc, mul(Number(p.precio || 0), p.cantidad || 0)), new Decimal(0)),
+        2
+      );
       const filasProductos = productos.map((p: any) => `
         <tr>
-          <td>${p.codigo || 'N/A'}</td>
-          <td>${p.producto?.nombre || 'Producto'}</td>
+          <td>${escapeHtml(String(p.codigo || 'N/A'))}</td>
+          <td>${escapeHtml(p.producto?.nombre || 'Producto')}</td>
           <td class="cantidad">${p.cantidad || 0}</td>
           <td class="precio">${Number(p.precio || 0).toFixed(2)}</td>
-          <td class="devengado-col">${Number(p.precio * p.cantidad || 0).toFixed(2)}</td>
+          <td class="devengado-col">${toFixed(mul(Number(p.precio || 0), p.cantidad || 0), 2)}</td>
         </tr>
       `).join('');
       
       return `
         <tr style="background:#f3f0e6; font-weight:bold;">
-          <td colspan="5">ANEXO: ${nombreAnexo} - Total: ${totalAnexo.toFixed(2)}</td>
+          <td colspan="5">ANEXO: ${nombreAnexo} - Total: ${totalAnexo}</td>
         </tr>
         ${filasProductos}
       `;
     }).join('');
 
-    const subtotalDevengado = Number(liquidacion.devengado || 0).toFixed(2);
-    const importeCaguayo = Number(liquidacion.importe_caguayo || (liquidacion.importe * (liquidacion.porcentaje_caguayo || 10) / 100)).toFixed(2);
-    const valorTributario = Number(liquidacion.tributario_monto || (liquidacion.devengado * liquidacion.tributario / 100) || 0).toFixed(2);
-    const subtotal = Number(liquidacion.devengado - (liquidacion.tributario_monto || liquidacion.devengado * liquidacion.tributario / 100) || 0).toFixed(2);
-    const valorEmpresa = Number(liquidacion.gasto_empresa || 0).toFixed(2);
-    const valorComision = Number(liquidacion.comision_bancaria || 0).toFixed(2);
-    const netoCobrar = Number(liquidacion.neto_pagar || 0).toFixed(2);
-    const devengadoTotal = Number(liquidacion.importe - (liquidacion.importe_caguayo || liquidacion.importe * (liquidacion.porcentaje_caguayo || 10) / 100) || 0).toFixed(2);
+    // Financial calculations with Decimal precision
+    const importeDec = new Decimal(liquidacion.importe || 0);
+    const porcentajeCaguayoDec = new Decimal(liquidacion.porcentaje_caguayo || DEFAULTS.PORCENTAJE_CAGUAYO);
+    const importeCaguayoDec = mul(importeDec, percentToMultiplier(porcentajeCaguayoDec.toNumber()));
+    const devengadoDec = sub(importeDec, importeCaguayoDec);
+    const tributarioDec = new Decimal(liquidacion.tributario || 0);
+    const tributarioMontoDec = mul(devengadoDec, percentToMultiplier(tributarioDec.toNumber()));
+    const subtotalDec = sub(devengadoDec, tributarioMontoDec);
+    const gastoEmpresaDec = new Decimal(liquidacion.gasto_empresa || 0);
+    const comisionDec = new Decimal(liquidacion.comision_bancaria || 0);
+    const netoDec = sub(sub(subtotalDec, gastoEmpresaDec), comisionDec);
+
+    const subtotalDevengado = toFixed(devengadoDec, 2);
+    const valorTributario = toFixed(tributarioMontoDec, 2);
+    const subtotal = toFixed(subtotalDec, 2);
+    const valorEmpresa = toFixed(gastoEmpresaDec, 2);
+    const valorComision = toFixed(comisionDec, 2);
+    const netoCobrar = toFixed(netoDec, 2);
+    const devengadoTotal = toFixed(devengadoDec, 2);
 
     const fechaEmision = liquidacion.fecha_emision ? new Date(liquidacion.fecha_emision).toLocaleDateString('es-ES') : 'N/A';
     const fechaLiquidacion = liquidacion.fecha_liquidacion ? new Date(liquidacion.fecha_liquidacion).toLocaleDateString('es-ES') : 'N/A';
 
-    const notaDocumento = codigoConvenio || numeroAnexo 
-      ? `Documento generado según Convenio No. ${codigoConvenio || '---'} - Anexo No. ${numeroAnexo || '---'} · Liquidación válida como comprobante de pago.`
-      : 'Liquidación válida como comprobante de pago.';
+    const notaDocumento = escapeHtml(
+      codigoConvenio || numeroAnexo 
+        ? `Documento generado según Convenio No. ${codigoConvenio || '---'} - Anexo No. ${numeroAnexo || '---'} · Liquidación válida como comprobante de pago.`
+        : 'Liquidación válida como comprobante de pago.'
+    );
 
     return `<!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-    <title>Liquidación | ${liquidacion.codigo}</title>
+    <title>Liquidación | ${escapeHtml(String(liquidacion.codigo))}</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { background: #dbdbdb; display: flex; justify-content: center; align-items: center; min-height: 100vh; font-family: 'Courier New', 'Monaco', monospace; padding: 30px 20px; }
@@ -444,12 +467,12 @@ export function LiquidacionesPage() {
         </div>
         <div class="header-box">
             <div class="header-box-title">Liquidación</div>
-            <div class="header-box-row"><strong>Código:</strong> ${liquidacion.codigo || 'N/A'}</div>
+            <div class="header-box-row"><strong>Código:</strong> ${escapeHtml(String(liquidacion.codigo || 'N/A'))}</div>
             <div class="header-box-row"><strong>Moneda:</strong> ${moneda || 'N/A'}</div>
-            <div class="header-box-row" style="border-top:1px solid black;padding-top:4px;margin-top:4px;"><strong>IMPORTE:</strong> ${Number(liquidacion.importe || 0).toFixed(2)}</div>
-            <div class="header-box-row"><span style="color:#666;">Importe Caguayo(${Number(liquidacion.porcentaje_caguayo || 10)}%):</span> -${importeCaguayo}</div>
+            <div class="header-box-row" style="border-top:1px solid black;padding-top:4px;margin-top:4px;"><strong>IMPORTE:</strong> ${toFixed(importeDec, 2)}</div>
+            <div class="header-box-row"><span style="color:#666;">Importe Caguayo(${porcentajeCaguayoDec}%):</span> -${toFixed(importeCaguayoDec, 2)}</div>
             <div class="header-box-row" style="font-weight:bold;border-bottom:1px solid #333;padding-bottom:4px;"><strong>DEVENGADO:</strong> ${subtotalDevengado}</div>
-            <div class="header-box-row"><span style="color:#666;">Tributario(${Number(liquidacion.tributario || 5)}%):</span> -${valorTributario}</div>
+            <div class="header-box-row"><span style="color:#666;">Tributario(${tributarioDec}%):</span> -${valorTributario}</div>
             <div class="header-box-row" style="font-weight:bold;border-bottom:1px solid #333;padding-bottom:4px;"><strong>SUBTOTAL:</strong> ${subtotal}</div>
             <div class="header-box-row"><span style="color:#666;">Gasto Empresa:</span> -${valorEmpresa}</div>
             <div class="header-box-row"><span style="color:#666;">Comisión:</span> -${valorComision}</div>
@@ -498,13 +521,13 @@ export function LiquidacionesPage() {
         <div class="fila-firmas">
             <div class="bloque-firma">
                 <p><strong>Confeccionado por:</strong></p>
-                <p>${confectionadoPor}</p>
+                <p>${escapeHtml(confectionadoPor)}</p>
                 <p class="cargo">Cargo: </p>
             </div>
             <div class="bloque-firma">
                 <p><strong>Autorizado por:</strong></p>
-                <p>${autorizadoPor || '___'}</p>
-                <p class="cargo">Cargo: ${cargoAutorizado || '_________________'}</p>
+                <p>${escapeHtml(autorizadoPor) || '___'}</p>
+                <p class="cargo">Cargo: ${escapeHtml(cargoAutorizado) || '_________________'}</p>
             </div>
         </div>
         <div class="fila-firmas">
@@ -514,7 +537,7 @@ export function LiquidacionesPage() {
             </div>
             <div class="bloque-firma">
                 <p><strong>Revisado por:</strong></p>
-                <p>${revisadoPor || '___'}</p>
+                <p>${escapeHtml(revisadoPor) || '___'}</p>
             </div>
         </div>
     </div>
@@ -949,7 +972,7 @@ export function LiquidacionesPage() {
                     <span className="text-base font-bold text-gray-800">{calculateImporte().toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between pl-4">
-                    <span className="text-sm text-gray-500">Importe Caguayo ({Number(formData.porcentaje_caguayo || 10)}%):</span>
+                    <span className="text-sm text-gray-500">Importe Caguayo ({Number(formData.porcentaje_caguayo || DEFAULTS.PORCENTAJE_CAGUAYO)}%):</span>
                     <span className="text-sm text-gray-500">- {calculateImporteCaguayo().toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between border-b border-gray-200 pb-1">

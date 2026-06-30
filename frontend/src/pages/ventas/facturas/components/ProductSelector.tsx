@@ -4,6 +4,7 @@ import type { Productos } from '../../../../types';
 import type { SelectedProduct } from '../hooks/useProductSelection';
 import { useStock } from '../../../../hooks/useStock';
 import { authHelpers } from '../../../../lib/api';
+import { mul, toNumber, toFixed } from '../../../../utils/decimal';
 
 interface ProductSelectorProps {
   selectedProducts: SelectedProduct[];
@@ -114,7 +115,7 @@ export function ProductSelector({
             <tbody>
               {selectedProducts.map((p) => {
                 const pr = productos.find((pr) => pr.id_producto === p.id_producto);
-                const subtotal = p.cantidad * p.precio_venta;
+                const subtotal = toNumber(mul(p.cantidad, p.precio_venta));
                 const stock = stockMap.get(p.id_producto) ?? 0;
                 const tieneStockSuficiente = stock >= p.cantidad;
 

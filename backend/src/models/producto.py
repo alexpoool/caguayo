@@ -1,4 +1,5 @@
 from sqlmodel import SQLModel, Field, Relationship
+from sqlalchemy import Column, Integer
 from typing import Optional, List, TYPE_CHECKING
 from decimal import Decimal
 
@@ -27,7 +28,7 @@ class Productos(SQLModel, table=True):
     moneda_venta: int = Field(foreign_key="moneda.id_moneda")
     precio_venta: Decimal
     precio_minimo: Decimal
-    stock: int = Field(default=0, sa_column_kwargs={"server_default": "0"})
+    stock: int = Field(default=0, sa_column=Column("existencia", Integer, server_default="0"))
 
     # Relaciones
     subcategoria: "Subcategorias" = Relationship(back_populates="productos")

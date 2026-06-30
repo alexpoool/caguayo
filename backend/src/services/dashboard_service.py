@@ -21,7 +21,7 @@ from src.models import (
     Movimiento,
     TipoMovimiento,
 )
-from src.models.venta import DetalleVenta
+from src.models import DetalleVenta
 
 
 async def calcular_cantidad_producto(db: AsyncSession, producto_id: int) -> int:

@@ -1,3 +1,4 @@
+import logging
 from typing import Optional
 from datetime import date
 from fastapi import APIRouter, Depends, Header, HTTPException, Query
@@ -6,9 +7,17 @@ from sqlmodel import select, func
 
 from src.database.connection import get_auth_session, get_session
 from src.models import Cliente, Cliente as ClienteModel, Convenio
-from src.utils import generar_codigo_anio, _get_nit_from_token
+from src.dto.convenios_dto import ConvenioCreate, ConvenioUpdate
+from src.utils import generar_codigo_anio, _get_nit_from_token, verify_auth
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/convenios", tags=["convenios"], redirect_slashes=False)
+
+
+def _sanitize_search(search: str) -> str:
+    """Escape wildcard characters from search string."""
+    return search.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
 
 
 @router.get("")
@@ -19,12 +28,12 @@ async def listar_convenios(
     search: str = Query(None, description="Buscar por nombre"),
     db: AsyncSession = Depends(get_session),
 ):
-
     statement = select(Convenio)
     if cliente_id:
         statement = statement.where(Convenio.id_cliente == cliente_id)
     if search:
-        statement = statement.where(Convenio.nombre_convenio.ilike(f"%{search}%"))
+        escaped = _sanitize_search(search)
+        statement = statement.where(Convenio.nombre_convenio.ilike(f"%{escaped}%"))
     statement = statement.offset(skip).limit(limit)
     results = await db.exec(statement)
     convenios = results.all()
@@ -44,7 +53,6 @@ async def listar_convenios(
 
 @router.get("/simple")
 async def listar_convenios_simple(db: AsyncSession = Depends(get_session)):
-
     statement = select(Convenio.id_convenio, ClienteModel.nombre).join(
         ClienteModel, isouter=True
     )
@@ -59,7 +67,8 @@ async def contar_convenios(
 ):
     statement = select(func.count(Convenio.id_convenio))
     if search:
-        statement = statement.where(Convenio.nombre_convenio.ilike(f"%{search}%"))
+        escaped = _sanitize_search(search)
+        statement = statement.where(Convenio.nombre_convenio.ilike(f"%{escaped}%"))
     results = await db.exec(statement)
     return results.one()
 
@@ -87,7 +96,7 @@ async def obtener_convenio(
 
 @router.post("", status_code=201)
 async def crear_convenio(
-    datos: dict,
+    datos: ConvenioCreate,
     authorization: Optional[str] = Header(None),
     db_auth: AsyncSession = Depends(get_auth_session),
     db: AsyncSession = Depends(get_session),
@@ -96,9 +105,7 @@ async def crear_convenio(
         nit = await _get_nit_from_token(authorization, db_auth)
         prefijo = f"{nit}." if nit else ""
 
-        datos_convertidos = datos.copy()
-
-        id_cliente = datos_convertidos.get("id_cliente")
+        id_cliente = datos.id_cliente
         if not id_cliente:
             raise HTTPException(status_code=400, detail="El cliente es requerido")
 
@@ -115,19 +122,13 @@ async def crear_convenio(
                 detail="Solo los clientes que son proveedores o ambos pueden tener convenios",
             )
 
-        if isinstance(datos_convertidos.get("fecha"), str):
-            datos_convertidos["fecha"] = date.fromisoformat(datos_convertidos["fecha"])
-        if isinstance(datos_convertidos.get("vigencia"), str):
-            datos_convertidos["vigencia"] = date.fromisoformat(
-                datos_convertidos["vigencia"]
-            )
-
-        año = datos_convertidos.get("fecha", date.today()).year
+        año = datos.fecha.year
 
         codigo_base = await generar_codigo_anio(db, "convenio", "fecha", año)
         codigo = f"{prefijo}C.{codigo_base}"
 
-        db_convenio = Convenio(**datos_convertidos, codigo=codigo)
+        datos_dict = datos.model_dump()
+        db_convenio = Convenio(**datos_dict, codigo=codigo)
         db.add(db_convenio)
         await db.commit()
         await db.refresh(db_convenio)
@@ -143,51 +144,73 @@ async def crear_convenio(
     except HTTPException:
         raise
     except Exception as e:
+        logger.error("Error al crear convenio", exc_info=True)
         raise HTTPException(
-            status_code=500, detail=f"Error al crear convenio: {str(e)}"
+            status_code=500, detail="Error interno del servidor"
         )
 
 
 @router.patch("/{convenioid}")
 async def actualizar_convenio(
     convenioid: int,
-    datos: dict,
+    datos: ConvenioUpdate,
+    authorization: Optional[str] = Header(None),
+    db_auth: AsyncSession = Depends(get_auth_session),
     db: AsyncSession = Depends(get_session),
 ):
-    statement = select(Convenio).where(Convenio.id_convenio == convenioid)
-    results = await db.exec(statement)
-    db_convenio = results.first()
-    if not db_convenio:
-        raise HTTPException(status_code=404, detail="Convenio no encontrado")
+    try:
+        await verify_auth(authorization=authorization, db_auth=db_auth)
 
-    for key, value in datos.items():
-        if value is not None:
-            if key in ("fecha", "vigencia") and isinstance(value, str):
-                value = date.fromisoformat(value)
-            setattr(db_convenio, key, value)
+        statement = select(Convenio).where(Convenio.id_convenio == convenioid)
+        results = await db.exec(statement)
+        db_convenio = results.first()
+        if not db_convenio:
+            raise HTTPException(status_code=404, detail="Convenio no encontrado")
 
-    await db.commit()
-    await db.refresh(db_convenio)
-    return {
-        "id_convenio": db_convenio.id_convenio,
-        "id_cliente": db_convenio.id_cliente,
-        "nombre_convenio": db_convenio.nombre_convenio,
-        "fecha": str(db_convenio.fecha),
-        "vigencia": str(db_convenio.vigencia),
-        "id_tipo_convenio": db_convenio.id_tipo_convenio,
-        "codigo_convenio": db_convenio.codigo,
-    }
+        update_data = datos.model_dump(exclude_unset=True)
+        db_convenio.sqlmodel_update(update_data)
+
+        await db.commit()
+        await db.refresh(db_convenio)
+        return {
+            "id_convenio": db_convenio.id_convenio,
+            "id_cliente": db_convenio.id_cliente,
+            "nombre_convenio": db_convenio.nombre_convenio,
+            "fecha": str(db_convenio.fecha),
+            "vigencia": str(db_convenio.vigencia),
+            "id_tipo_convenio": db_convenio.id_tipo_convenio,
+            "codigo_convenio": db_convenio.codigo,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("Error al actualizar convenio", exc_info=True)
+        raise HTTPException(
+            status_code=500, detail="Error interno del servidor"
+        )
 
 
 @router.delete("/{convenioid}", status_code=204)
 async def eliminar_convenio(
     convenioid: int,
+    authorization: Optional[str] = Header(None),
+    db_auth: AsyncSession = Depends(get_auth_session),
     db: AsyncSession = Depends(get_session),
 ):
-    statement = select(Convenio).where(Convenio.id_convenio == convenioid)
-    results = await db.exec(statement)
-    db_convenio = results.first()
-    if not db_convenio:
-        raise HTTPException(status_code=404, detail="Convenio no encontrado")
-    await db.delete(db_convenio)
-    await db.commit()
+    try:
+        await verify_auth(authorization=authorization, db_auth=db_auth)
+
+        statement = select(Convenio).where(Convenio.id_convenio == convenioid)
+        results = await db.exec(statement)
+        db_convenio = results.first()
+        if not db_convenio:
+            raise HTTPException(status_code=404, detail="Convenio no encontrado")
+        await db.delete(db_convenio)
+        await db.commit()
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("Error al eliminar convenio", exc_info=True)
+        raise HTTPException(
+            status_code=500, detail="Error interno del servidor"
+        )

@@ -1,4 +1,5 @@
-from datetime import datetime, timezone
+import pytest
+from datetime import datetime
 from sqlmodel import select
 from src.services.movimiento_service import MovimientoService
 from src.models.movimiento import Movimiento, TipoMovimiento
@@ -13,7 +14,10 @@ async def test_confirmar_entrada_salida(db_session):
     cantidad_merma = 3
 
     producto = await db_session.get(Productos, producto_id)
-    stock_inicial = producto.existencia
+    if not producto:
+        pytest.skip(f"Producto id={producto_id} no existe en esta BD")
+
+    stock_inicial = producto.stock
 
     tipo_compra = (
         await db_session.exec(
@@ -21,12 +25,19 @@ async def test_confirmar_entrada_salida(db_session):
         )
     ).one()
 
+    # Buscar una dependencia válida
+    from src.models import Dependencia
+    deps = (await db_session.exec(select(Dependencia).limit(1))).first()
+    if not deps:
+        pytest.skip("No hay dependencias en la BD")
+    dep_id = deps.id_dependencia
+
     mov_compra = Movimiento(
         id_tipo_movimiento=tipo_compra.id_tipo_movimiento,
-        id_dependencia=242,
+        id_dependencia=dep_id,
         id_producto=producto_id,
         cantidad=cantidad_compra,
-        fecha=datetime.now(timezone.utc),
+        fecha=datetime.now(),
         estado="pendiente",
     )
     db_session.add(mov_compra)
@@ -35,8 +46,8 @@ async def test_confirmar_entrada_salida(db_session):
     await MovimientoService.confirmar_movimiento(db_session, mov_compra.id_movimiento)
 
     await db_session.refresh(producto)
-    assert producto.existencia == stock_inicial + cantidad_compra, (
-        f"Expected {stock_inicial + cantidad_compra}, got {producto.existencia}"
+    assert producto.stock == stock_inicial + cantidad_compra, (
+        f"Expected {stock_inicial + cantidad_compra}, got {producto.stock}"
     )
 
     tipo_merma = (
@@ -47,10 +58,10 @@ async def test_confirmar_entrada_salida(db_session):
 
     mov_merma = Movimiento(
         id_tipo_movimiento=tipo_merma.id_tipo_movimiento,
-        id_dependencia=242,
+        id_dependencia=dep_id,
         id_producto=producto_id,
         cantidad=cantidad_merma,
-        fecha=datetime.now(timezone.utc),
+        fecha=datetime.now(),
         estado="pendiente",
     )
     db_session.add(mov_merma)
@@ -59,9 +70,9 @@ async def test_confirmar_entrada_salida(db_session):
     await MovimientoService.confirmar_movimiento(db_session, mov_merma.id_movimiento)
 
     await db_session.refresh(producto)
-    assert producto.existencia == stock_inicial + cantidad_compra - cantidad_merma, (
+    assert producto.stock == stock_inicial + cantidad_compra - cantidad_merma, (
         f"Expected {stock_inicial + cantidad_compra - cantidad_merma}, "
-        f"got {producto.existencia}"
+        f"got {producto.stock}"
     )
 
     await MovimientoService.cancelar_movimiento(db_session, mov_compra.id_movimiento)
@@ -73,24 +84,32 @@ async def test_confirmar_stock_insuficiente_rechaza(db_session):
 
     producto_id = 207
 
+    producto = await db_session.get(Productos, producto_id)
+    if not producto:
+        pytest.skip(f"Producto id={producto_id} no existe en esta BD")
+
     tipo_merma = (
         await db_session.exec(
             select(TipoMovimiento).where(TipoMovimiento.tipo == "MERMA")
         )
     ).one()
 
+    from src.models import Dependencia
+    deps = (await db_session.exec(select(Dependencia).limit(1))).first()
+    if not deps:
+        pytest.skip("No hay dependencias en la BD")
+    dep_id = deps.id_dependencia
+
     mov = Movimiento(
         id_tipo_movimiento=tipo_merma.id_tipo_movimiento,
-        id_dependencia=242,
+        id_dependencia=dep_id,
         id_producto=producto_id,
         cantidad=99999,
-        fecha=datetime.now(timezone.utc),
+        fecha=datetime.now(),
         estado="pendiente",
     )
     db_session.add(mov)
     await db_session.commit()
-
-    import pytest
 
     with pytest.raises(ValueError, match="Stock insuficiente"):
         await MovimientoService.confirmar_movimiento(db_session, mov.id_movimiento)

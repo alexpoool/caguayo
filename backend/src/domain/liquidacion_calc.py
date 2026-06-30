@@ -1,3 +1,5 @@
+# DEPRECATED - not used, logic is inline in liquidacion_service.py
+# This module is kept for reference only and may be removed in the future.
 from decimal import Decimal
 from pydantic import BaseModel, computed_field
 

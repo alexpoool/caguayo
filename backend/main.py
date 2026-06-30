@@ -4,10 +4,12 @@ import logging
 import uvicorn
 from dotenv import load_dotenv
 from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from src.routes import api_router
 from src.database.connection import set_current_db
 from src.middleware.logging import LoggingMiddleware
+from src.core.exceptions import AppError, NotFoundError, ValidationError, BusinessLogicError
 from src.models import (
     Anexo,
     Categorias,
@@ -138,6 +140,20 @@ async def root():
 @app.get("/health")
 async def health_check():
     return {"status": "healthy"}
+
+
+@app.exception_handler(AppError)
+async def app_error_handler(request: Request, exc: AppError):
+    status_map = {
+        NotFoundError: 404,
+        ValidationError: 422,
+        BusinessLogicError: 400,
+    }
+    status = status_map.get(type(exc), exc.status_code)
+    logging.getLogger(__name__).warning(
+        f"AppError handled: type={type(exc).__name__}, status={status}, detail={exc.message}"
+    )
+    return JSONResponse(status_code=status, content={"detail": exc.message})
 
 
 if __name__ == "__main__":

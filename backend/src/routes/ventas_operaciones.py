@@ -1,3 +1,4 @@
+import logging
 from fastapi import APIRouter, Depends, Header, HTTPException
 from sqlmodel.ext.asyncio.session import AsyncSession
 from typing import List, Optional
@@ -23,7 +24,9 @@ from src.dto import (
     VentaEfectivoUpdate,
     ItemAnexoDisponible,
 )
-from src.utils import _get_nit_from_token
+from src.utils import _get_nit_from_token, verify_auth
+
+logger = logging.getLogger(__name__)
 
 contratos_router = APIRouter(
     prefix="/contratos", tags=["contratos"], redirect_slashes=False
@@ -41,14 +44,17 @@ async def crear_contrato(
     try:
         nit = await _get_nit_from_token(authorization, db_auth)
         return await ContratoService.create(db, contrato, nit=nit)
+    except HTTPException:
+        raise
     except Exception as e:
         error_msg = str(e)
         if "Input should be a valid integer" in error_msg:
             raise HTTPException(
                 status_code=400, detail=f"Error de validación: {error_msg}"
             )
+        logger.error("Error al crear contrato", exc_info=True)
         raise HTTPException(
-            status_code=500, detail=f"Error al crear contrato: {error_msg}"
+            status_code=500, detail="Error interno del servidor"
         )
 
 
@@ -63,8 +69,9 @@ async def obtener_contratos(
     try:
         return await ContratoService.get_all(db, skip, limit, id_cliente)
     except Exception as e:
+        logger.error("Error al obtener contratos", exc_info=True)
         raise HTTPException(
-            status_code=500, detail=f"Error al obtener contratos: {str(e)}"
+            status_code=500, detail="Error interno del servidor"
         )
 
 
@@ -91,9 +98,9 @@ async def obtener_items_disponibles(
     try:
         return await ContratoService.get_items_disponibles(db, contrato_id)
     except Exception as e:
+        logger.error("Error al obtener items disponibles", exc_info=True)
         raise HTTPException(
-            status_code=500,
-            detail=f"Error al obtener items disponibles: {str(e)}",
+            status_code=500, detail="Error interno del servidor"
         )
 
 
@@ -101,33 +108,45 @@ async def obtener_items_disponibles(
 async def actualizar_contrato(
     contrato_id: int,
     update_data: ContratoUpdate,
+    authorization: Optional[str] = Header(None),
+    db_auth: AsyncSession = Depends(get_auth_session),
     db: AsyncSession = Depends(get_session),
 ):
     """Actualizar un contrato."""
     try:
+        await verify_auth(authorization=authorization, db_auth=db_auth)
         contrato = await ContratoService.update(db, contrato_id, update_data)
         if not contrato:
             raise HTTPException(status_code=404, detail="Contrato no encontrado")
         return contrato
+    except HTTPException:
+        raise
     except Exception as e:
+        logger.error("Error al actualizar contrato", exc_info=True)
         raise HTTPException(
-            status_code=500, detail=f"Error al actualizar contrato: {str(e)}"
+            status_code=500, detail="Error interno del servidor"
         )
 
 
 @contratos_router.delete("/{contrato_id}", status_code=204)
 async def eliminar_contrato(
     contrato_id: int,
+    authorization: Optional[str] = Header(None),
+    db_auth: AsyncSession = Depends(get_auth_session),
     db: AsyncSession = Depends(get_session),
 ):
     """Eliminar un contrato."""
     try:
+        await verify_auth(authorization=authorization, db_auth=db_auth)
         success = await ContratoService.delete(db, contrato_id)
         if not success:
             raise HTTPException(status_code=404, detail="Contrato no encontrado")
+    except HTTPException:
+        raise
     except Exception as e:
+        logger.error("Error al eliminar contrato", exc_info=True)
         raise HTTPException(
-            status_code=500, detail=f"Error al eliminar contrato: {str(e)}"
+            status_code=500, detail="Error interno del servidor"
         )
 
 
@@ -145,11 +164,14 @@ async def crear_suplemento(
 ):
     """Crear un nuevo suplemento."""
     try:
-        await _get_nit_from_token(authorization, db_auth)
+        await verify_auth(authorization=authorization, db_auth=db_auth)
         return await SuplementoService.create(db, suplemento)
+    except HTTPException:
+        raise
     except Exception as e:
+        logger.error("Error al crear suplemento", exc_info=True)
         raise HTTPException(
-            status_code=500, detail=f"Error al crear suplemento: {str(e)}"
+            status_code=500, detail="Error interno del servidor"
         )
 
 
@@ -164,8 +186,9 @@ async def obtener_suplementos_por_contrato(
     try:
         return await SuplementoService.get_all_by_contrato(db, contrato_id)
     except Exception as e:
+        logger.error("Error al obtener suplementos", exc_info=True)
         raise HTTPException(
-            status_code=500, detail=f"Error al obtener suplementos: {str(e)}"
+            status_code=500, detail="Error interno del servidor"
         )
 
 
@@ -179,8 +202,9 @@ async def obtener_suplementos(
     try:
         return await SuplementoService.get_all(db, skip, limit)
     except Exception as e:
+        logger.error("Error al obtener suplementos", exc_info=True)
         raise HTTPException(
-            status_code=500, detail=f"Error al obtener suplementos: {str(e)}"
+            status_code=500, detail="Error interno del servidor"
         )
 
 
@@ -200,33 +224,45 @@ async def obtener_suplemento(
 async def actualizar_suplemento(
     suplemento_id: int,
     update_data: SuplementoUpdate,
+    authorization: Optional[str] = Header(None),
+    db_auth: AsyncSession = Depends(get_auth_session),
     db: AsyncSession = Depends(get_session),
 ):
     """Actualizar un suplemento."""
     try:
+        await verify_auth(authorization=authorization, db_auth=db_auth)
         suplemento = await SuplementoService.update(db, suplemento_id, update_data)
         if not suplemento:
             raise HTTPException(status_code=404, detail="Suplemento no encontrado")
         return suplemento
+    except HTTPException:
+        raise
     except Exception as e:
+        logger.error("Error al actualizar suplemento", exc_info=True)
         raise HTTPException(
-            status_code=500, detail=f"Error al actualizar suplemento: {str(e)}"
+            status_code=500, detail="Error interno del servidor"
         )
 
 
 @suplementos_router.delete("/{suplemento_id}", status_code=204)
 async def eliminar_suplemento(
     suplemento_id: int,
+    authorization: Optional[str] = Header(None),
+    db_auth: AsyncSession = Depends(get_auth_session),
     db: AsyncSession = Depends(get_session),
 ):
     """Eliminar un suplemento."""
     try:
+        await verify_auth(authorization=authorization, db_auth=db_auth)
         success = await SuplementoService.delete(db, suplemento_id)
         if not success:
             raise HTTPException(status_code=404, detail="Suplemento no encontrado")
+    except HTTPException:
+        raise
     except Exception as e:
+        logger.error("Error al eliminar suplemento", exc_info=True)
         raise HTTPException(
-            status_code=500, detail=f"Error al eliminar suplemento: {str(e)}"
+            status_code=500, detail="Error interno del servidor"
         )
 
 
@@ -246,8 +282,13 @@ async def crear_factura(
     try:
         nit = await _get_nit_from_token(authorization, db_auth)
         return await FacturaService.create(db, factura, nit=nit)
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error al crear factura: {str(e)}")
+        logger.error("Error al crear factura", exc_info=True)
+        raise HTTPException(
+            status_code=500, detail="Error interno del servidor"
+        )
 
 
 @facturas_router.get("", response_model=List[FacturaReadWithDetails])
@@ -260,8 +301,9 @@ async def obtener_facturas(
     try:
         return await FacturaService.get_all(db, skip, limit)
     except Exception as e:
+        logger.error("Error al obtener facturas", exc_info=True)
         raise HTTPException(
-            status_code=500, detail=f"Error al obtener facturas: {str(e)}"
+            status_code=500, detail="Error interno del servidor"
         )
 
 
@@ -276,8 +318,9 @@ async def obtener_facturas_por_contrato(
     try:
         return await FacturaService.get_by_contrato(db, contrato_id)
     except Exception as e:
+        logger.error("Error al obtener facturas", exc_info=True)
         raise HTTPException(
-            status_code=500, detail=f"Error al obtener facturas: {str(e)}"
+            status_code=500, detail="Error interno del servidor"
         )
 
 
@@ -297,33 +340,45 @@ async def obtener_factura(
 async def actualizar_factura(
     factura_id: int,
     update_data: FacturaUpdate,
+    authorization: Optional[str] = Header(None),
+    db_auth: AsyncSession = Depends(get_auth_session),
     db: AsyncSession = Depends(get_session),
 ):
     """Actualizar una factura."""
     try:
+        await verify_auth(authorization=authorization, db_auth=db_auth)
         factura = await FacturaService.update(db, factura_id, update_data)
         if not factura:
             raise HTTPException(status_code=404, detail="Factura no encontrada")
         return factura
+    except HTTPException:
+        raise
     except Exception as e:
+        logger.error("Error al actualizar factura", exc_info=True)
         raise HTTPException(
-            status_code=500, detail=f"Error al actualizar factura: {str(e)}"
+            status_code=500, detail="Error interno del servidor"
         )
 
 
 @facturas_router.delete("/{factura_id}", status_code=204)
 async def eliminar_factura(
     factura_id: int,
+    authorization: Optional[str] = Header(None),
+    db_auth: AsyncSession = Depends(get_auth_session),
     db: AsyncSession = Depends(get_session),
 ):
     """Eliminar una factura."""
     try:
+        await verify_auth(authorization=authorization, db_auth=db_auth)
         success = await FacturaService.delete(db, factura_id)
         if not success:
             raise HTTPException(status_code=404, detail="Factura no encontrada")
+    except HTTPException:
+        raise
     except Exception as e:
+        logger.error("Error al eliminar factura", exc_info=True)
         raise HTTPException(
-            status_code=500, detail=f"Error al eliminar factura: {str(e)}"
+            status_code=500, detail="Error interno del servidor"
         )
 
 
@@ -345,9 +400,12 @@ async def crear_venta_efectivo(
     try:
         nit = await _get_nit_from_token(authorization, db_auth)
         return await VentaEfectivoService.create(db, venta, nit=nit)
+    except HTTPException:
+        raise
     except Exception as e:
+        logger.error("Error al crear venta en efectivo", exc_info=True)
         raise HTTPException(
-            status_code=500, detail=f"Error al crear venta en efectivo: {str(e)}"
+            status_code=500, detail="Error interno del servidor"
         )
 
 
@@ -361,8 +419,9 @@ async def obtener_ventas_efectivo(
     try:
         return await VentaEfectivoService.get_all(db, skip, limit)
     except Exception as e:
+        logger.error("Error al obtener ventas en efectivo", exc_info=True)
         raise HTTPException(
-            status_code=500, detail=f"Error al obtener ventas en efectivo: {str(e)}"
+            status_code=500, detail="Error interno del servidor"
         )
 
 
@@ -382,35 +441,47 @@ async def obtener_venta_efectivo(
 async def actualizar_venta_efectivo(
     venta_id: int,
     update_data: VentaEfectivoUpdate,
+    authorization: Optional[str] = Header(None),
+    db_auth: AsyncSession = Depends(get_auth_session),
     db: AsyncSession = Depends(get_session),
 ):
     """Actualizar una venta en efectivo."""
     try:
+        await verify_auth(authorization=authorization, db_auth=db_auth)
         venta = await VentaEfectivoService.update(db, venta_id, update_data)
         if not venta:
             raise HTTPException(
                 status_code=404, detail="Venta en efectivo no encontrada"
             )
         return venta
+    except HTTPException:
+        raise
     except Exception as e:
+        logger.error("Error al actualizar venta en efectivo", exc_info=True)
         raise HTTPException(
-            status_code=500, detail=f"Error al actualizar venta en efectivo: {str(e)}"
+            status_code=500, detail="Error interno del servidor"
         )
 
 
 @ventas_efectivo_router.delete("/{venta_id}", status_code=204)
 async def eliminar_venta_efectivo(
     venta_id: int,
+    authorization: Optional[str] = Header(None),
+    db_auth: AsyncSession = Depends(get_auth_session),
     db: AsyncSession = Depends(get_session),
 ):
     """Eliminar una venta en efectivo."""
     try:
+        await verify_auth(authorization=authorization, db_auth=db_auth)
         success = await VentaEfectivoService.delete(db, venta_id)
         if not success:
             raise HTTPException(
                 status_code=404, detail="Venta en efectivo no encontrada"
             )
+    except HTTPException:
+        raise
     except Exception as e:
+        logger.error("Error al eliminar venta en efectivo", exc_info=True)
         raise HTTPException(
-            status_code=500, detail=f"Error al eliminar venta en efectivo: {str(e)}"
+            status_code=500, detail="Error interno del servidor"
         )

@@ -36,7 +36,7 @@ export function ProductosEnLiquidacionPage() {
       ]);
       setAllProductos(prods);
       setMonedas(mons);
-    } catch (error) { console.error('Error:', error); }
+    } catch (error) { console.error('Error en operación:', error instanceof Error ? error.message : 'Error desconocido'); }
   };
 
   const loadProductos = async () => {
@@ -51,7 +51,7 @@ export function ProductosEnLiquidacionPage() {
         data = await productosEnLiquidacionService.getProductosEnLiquidacion();
       }
       setProductos(data);
-    } catch (error) { console.error('Error:', error); }
+    } catch (error) { console.error('Error en operación:', error instanceof Error ? error.message : 'Error desconocido'); }
     finally { setLoading(false); }
   };
 

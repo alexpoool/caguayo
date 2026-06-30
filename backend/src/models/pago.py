@@ -1,8 +1,12 @@
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 from datetime import date
 from decimal import Decimal
-from sqlmodel import Field, SQLModel
+from sqlmodel import Field, SQLModel, Relationship
 from sqlalchemy import Column, ForeignKey
+
+if TYPE_CHECKING:
+    from .contrato import Factura
+    from .moneda import Moneda
 
 
 class Pago(SQLModel, table=True):
@@ -22,3 +26,7 @@ class Pago(SQLModel, table=True):
     tipo_pago: str = Field(max_length=50, default="TRANSFERENCIA")
     referencia: Optional[str] = Field(default=None, max_length=100)
     observaciones: Optional[str] = None
+
+    # Relationships
+    factura: Optional["Factura"] = Relationship(back_populates="pagos")
+    moneda: Optional["Moneda"] = Relationship()

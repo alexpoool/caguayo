@@ -1,6 +1,7 @@
-from sqlmodel import SQLModel
+from sqlmodel import SQLModel, Field
 from typing import Optional
 from decimal import Decimal
+from pydantic import field_validator, model_validator
 from .monedas_dto import MonedaRead
 from .categorias_dto import SubcategoriasRead
 
@@ -8,18 +9,22 @@ from .categorias_dto import SubcategoriasRead
 class ProductosBase(SQLModel):
     codigo: Optional[str] = None
     id_subcategoria: int
-    nombre: str
+    nombre: str = Field(min_length=1, max_length=150)
     descripcion: Optional[str] = None
     moneda_compra: int
-    precio_compra: Decimal
+    precio_compra: Decimal = Field(ge=0)
     moneda_venta: int
-    precio_venta: Decimal
-    precio_minimo: Decimal
-    stock: int = 0
+    precio_venta: Decimal = Field(ge=0)
+    precio_minimo: Decimal = Field(ge=0)
+    stock: int = Field(default=0, ge=0)
 
 
 class ProductosCreate(ProductosBase):
-    pass
+    @model_validator(mode="after")
+    def validar_precio_venta_minimo(self):
+        if self.precio_minimo is not None and self.precio_venta < self.precio_minimo:
+            raise ValueError("precio_venta no puede ser menor que precio_minimo")
+        return self
 
 
 class ProductosRead(ProductosBase):
@@ -37,14 +42,14 @@ class ProductosRead(ProductosBase):
 class ProductosUpdate(SQLModel):
     codigo: Optional[str] = None
     id_subcategoria: Optional[int] = None
-    nombre: Optional[str] = None
+    nombre: Optional[str] = Field(default=None, min_length=1, max_length=150)
     descripcion: Optional[str] = None
     moneda_compra: Optional[int] = None
-    precio_compra: Optional[Decimal] = None
+    precio_compra: Optional[Decimal] = Field(default=None, ge=0)
     moneda_venta: Optional[int] = None
-    precio_venta: Optional[Decimal] = None
-    precio_minimo: Optional[Decimal] = None
-    stock: Optional[int] = None
+    precio_venta: Optional[Decimal] = Field(default=None, ge=0)
+    precio_minimo: Optional[Decimal] = Field(default=None, ge=0)
+    stock: Optional[int] = Field(default=None, ge=0)
 
 
 # DTOs simplificados para Productos en Ventas (sin relaciones lazy)

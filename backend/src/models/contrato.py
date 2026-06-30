@@ -10,6 +10,7 @@ if TYPE_CHECKING:
     from .dependencia import Dependencia
     from .item_factura import ItemFactura
     from .item_venta_efectivo import ItemVentaEfectivo
+    from .pago import Pago
 
 
 class TipoContrato(SQLModel, table=True):
@@ -96,6 +97,7 @@ class Factura(SQLModel, table=True):
 
     contrato: "Contrato" = Relationship(back_populates="facturas")
     items_factura: List["ItemFactura"] = Relationship(back_populates="factura")
+    pagos: List["Pago"] = Relationship(back_populates="factura")
 
 
 class VentaEfectivo(SQLModel, table=True):

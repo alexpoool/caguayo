@@ -46,6 +46,9 @@ import {
 import { ProductSelector } from "./facturas/components/ProductSelector";
 import toast from "react-hot-toast";
 import { required, seleccionValida } from "../../utils/validacionFormularios";
+import { Decimal } from "decimal.js";
+import { mul, add, toNumber, toFixed } from "../../utils/decimal";
+import { DEFAULTS } from "../../config/defaults";
 
 type View = "list" | "form";
 
@@ -104,7 +107,7 @@ const loadInitialData = async () => {
       setProductos(r1);
       setMonedas(r2);
     } catch (error) {
-      console.error("Error:", error);
+      console.error("Error en operación:", error instanceof Error ? error.message : "Error desconocido");
     }
   };
 
@@ -113,7 +116,7 @@ const loadInitialData = async () => {
       const data = await ventasEfectivoService.getVentasEfectivo();
       setVentasEfectivo(data);
     } catch (error) {
-      console.error("Error:", error);
+      console.error("Error en operación:", error instanceof Error ? error.message : "Error desconocido");
     }
   };
 
@@ -169,14 +172,14 @@ const loadInitialData = async () => {
         slip: formData.slip || "",
         fecha: formData.fecha || new Date().toISOString().split("T")[0],
         cajero: formData.cajero || "",
-        id_dependencia: Number(formData.id_dependencia) || 1,
+        id_dependencia: Number(formData.id_dependencia) || DEFAULTS.DEPENDENCIA_ID,
         id_moneda: formData.id_moneda ? Number(formData.id_moneda) : undefined,
         items: selectedProducts.map((p) => ({
           id_producto: p.id_producto,
           cantidad: p.cantidad,
           precio_venta: p.precio_venta,
-          id_moneda: formData.id_moneda ? Number(formData.id_moneda) : 277,
-          precios: p.precios?.filter(pr => pr.id_moneda !== (formData.id_moneda ? Number(formData.id_moneda) : 277)),
+          id_moneda: formData.id_moneda ? Number(formData.id_moneda) : DEFAULTS.MONEDA_ID,
+          precios: p.precios?.filter(pr => pr.id_moneda !== (formData.id_moneda ? Number(formData.id_moneda) : DEFAULTS.MONEDA_ID)),
         })),
       };
       editingId
@@ -290,8 +293,12 @@ const loadInitialData = async () => {
   const removeProduct = (id: number) => {
     setSelectedProducts(selectedProducts.filter((p) => p.id_producto !== id));
   };
-  const calcMonto = () =>
-    selectedProducts.reduce((t, p) => t + p.cantidad * p.precio_venta, 0);
+  const calcMonto = (): number => {
+    const total = selectedProducts.reduce((acc, p) => {
+      return add(acc, mul(p.cantidad, p.precio_venta));
+    }, new Decimal(0));
+    return toNumber(total);
+  };
 
   const productosPorMonedaSeleccionada = useMemo(() => {
     if (!formData.id_moneda) return productos;
@@ -754,7 +761,7 @@ const loadInitialData = async () => {
                                 ${Number(p.precio_venta || 0).toFixed(2)}
                               </td>
                               <td className="py-1 text-right font-medium">
-                                ${Number((p.precio_venta || 0) * p.cantidad).toFixed(2)}
+                                ${toFixed(mul(Number(p.precio_venta || 0), p.cantidad), 2)}
                               </td>
                             </tr>
                           ))}
@@ -763,7 +770,10 @@ const loadInitialData = async () => {
                           <tr className="font-medium">
                             <td colSpan={4} className="pt-2 text-right text-gray-600">Total:</td>
                             <td className="pt-2 text-right text-gray-900">
-                              ${detailModal.item.items.reduce((t: number, p: any) => t + Number((p.precio_venta || 0) * p.cantidad), 0).toFixed(2)}
+                              ${toFixed(
+                                detailModal.item.items.reduce((acc: Decimal, p: any) => add(acc, mul(Number(p.precio_venta || 0), p.cantidad)), new Decimal(0)),
+                                2
+                              )}
                             </td>
                           </tr>
                         </tfoot>
