@@ -12,7 +12,7 @@ import {
   Search,
   Save,
   ArrowLeft,
-  Building,
+  ScrollText,
   Eye,
 } from "lucide-react";
 import toast from "react-hot-toast";
@@ -48,6 +48,7 @@ import {
   Card,
   CardContent,
   CardHeader,
+  CardTitle,
   Table,
   TableHeader,
   TableBody,
@@ -213,20 +214,34 @@ export function ConveniosPage() {
     return (
       <div className="max-w-2xl mx-auto">
         <div className="flex items-center gap-4 mb-6">
-          <button
+          <Button
+            variant="ghost"
+            size="icon"
             onClick={() => setView("list")}
-            className="p-2 hover:bg-slate-50 rounded-lg"
+            className="h-9 w-9"
           >
             <ArrowLeft className="h-5 w-5" />
-          </button>
-          <h1 className="text-xl font-bold text-gray-900">
-            {editingConvenio ? "Editar" : "Nuevo"} Convenio
-          </h1>
+          </Button>
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-gradient-to-br from-teal-500 to-cyan-600 rounded shadow-lg animate-bounce-subtle">
+              <ScrollText className="h-5 w-5 text-white" />
+            </div>
+            <h1 className="text-xl font-bold text-gray-900">
+              {editingConvenio ? "Editar" : "Nuevo"} Convenio
+            </h1>
+          </div>
         </div>
 
-        <Card>
-          <CardContent className="pt-6">
-            <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit}>
+          {/* Datos del Convenio */}
+          <Card className="mb-6 shadow-sm border-gray-200">
+            <CardHeader className="border-b bg-gray-50/50">
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <ScrollText className="h-5 w-5 text-teal-600" />
+                Datos del Convenio
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="mt-4 space-y-4">
               <div>
                 <Label>Cliente *</Label>
                 <select
@@ -237,7 +252,7 @@ export function ConveniosPage() {
                       id_cliente: parseInt(e.target.value) || 0,
                     })
                   }
-                  className="w-full mt-1 px-3 py-2 border rounded-lg"
+                  className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white"
                 >
                   <option value="">Seleccione un cliente</option>
                   {clientes.map((c) => (
@@ -263,7 +278,7 @@ export function ConveniosPage() {
                       id_tipo_convenio: parseInt(e.target.value) || 0,
                     })
                   }
-                  className="w-full mt-1 px-3 py-2 border rounded-lg"
+                  className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white"
                 >
                   <option value="">Seleccione un tipo</option>
                   {tiposConvenio.map((tc) => (
@@ -301,7 +316,7 @@ export function ConveniosPage() {
                 )}
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <Label>Fecha *</Label>
                   <Input
@@ -333,23 +348,26 @@ export function ConveniosPage() {
                   )}
                 </div>
               </div>
+            </CardContent>
+          </Card>
 
-              <div className="flex gap-3 pt-4">
-                <Button type="submit">
-                  <Save className="h-4 w-4 mr-2" />
-                  {editingConvenio ? "Actualizar" : "Crear"}
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setView("list")}
-                >
-                  Cancelar
-                </Button>
-              </div>
-            </form>
-          </CardContent>
-        </Card>
+          <div className="flex gap-3 pt-2 pb-8">
+            <Button
+              type="submit"
+              className="gap-2 bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300"
+            >
+              <Save className="h-4 w-4" />
+              {editingConvenio ? "Actualizar" : "Crear"}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setView("list")}
+            >
+              Cancelar
+            </Button>
+          </div>
+        </form>
       </div>
     );
   }
@@ -359,59 +377,86 @@ export function ConveniosPage() {
     return (
       <div className="space-y-4">
         <div className="flex items-center gap-4 mb-6">
-          <button
+          <Button
+            variant="ghost"
+            size="icon"
             onClick={() => {
               setView("list");
               setViewingConvenio(null);
             }}
-            className="p-2 hover:bg-slate-50 rounded-lg"
+            className="h-9 w-9"
           >
             <ArrowLeft className="h-5 w-5" />
-          </button>
-          <h1 className="text-xl font-bold text-gray-900">
-            Detalle del Convenio
-          </h1>
+          </Button>
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-gradient-to-br from-teal-500 to-cyan-600 rounded shadow-lg animate-bounce-subtle">
+              <ScrollText className="h-5 w-5 text-white" />
+            </div>
+            <h1 className="text-xl font-bold text-gray-900">
+              Detalle del Convenio
+            </h1>
+          </div>
         </div>
 
-        <Card>
-          <CardHeader>
-            <CardContent className="pt-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label>Código</Label>
-                  <p className="font-medium">
-                    {viewingConvenio.codigo_convenio || "N/A"}
-                  </p>
-                </div>
-                <div>
-                  <Label>Nombre</Label>
-                  <p className="font-medium">
-                    {viewingConvenio.nombre_convenio}
-                  </p>
-                </div>
-                <div>
-                  <Label>Cliente</Label>
-                  <p className="font-medium">
-                    {viewingConvenio.cliente?.nombre || "N/A"}
-                  </p>
-                </div>
-                <div>
-                  <Label>Tipo de Convenio</Label>
-                  <p className="font-medium">
-                    {viewingConvenio.tipo_convenio?.nombre || "N/A"}
-                  </p>
-                </div>
-                <div>
-                  <Label>Fecha</Label>
-                  <p className="font-medium">{viewingConvenio.fecha}</p>
-                </div>
-                <div>
-                  <Label>Vigencia</Label>
-                  <p className="font-medium">{viewingConvenio.vigencia}</p>
-                </div>
-              </div>
-            </CardContent>
+        <Card className="shadow-sm border-gray-200">
+          <CardHeader className="border-b bg-gray-50/50">
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <ScrollText className="h-5 w-5 text-teal-600" />
+              Detalles del Convenio
+            </CardTitle>
           </CardHeader>
+          <CardContent className="pt-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="bg-gradient-to-br from-teal-50 to-cyan-50 p-4 rounded-md border border-teal-100">
+                <p className="text-xs text-teal-600 uppercase tracking-wider mb-1">
+                  Código
+                </p>
+                <p className="font-bold text-gray-900">
+                  {viewingConvenio.codigo_convenio || "N/A"}
+                </p>
+              </div>
+              <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-4 rounded-md border border-blue-100">
+                <p className="text-xs text-blue-600 uppercase tracking-wider mb-1">
+                  Nombre
+                </p>
+                <p className="font-bold text-gray-900">
+                  {viewingConvenio.nombre_convenio}
+                </p>
+              </div>
+              <div className="bg-gradient-to-br from-purple-50 to-pink-50 p-4 rounded-md border border-purple-100">
+                <p className="text-xs text-purple-600 uppercase tracking-wider mb-1">
+                  Cliente
+                </p>
+                <p className="font-bold text-gray-900">
+                  {viewingConvenio.cliente?.nombre || "N/A"}
+                </p>
+              </div>
+              <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-4 rounded-md border border-green-100">
+                <p className="text-xs text-green-600 uppercase tracking-wider mb-1">
+                  Tipo de Convenio
+                </p>
+                <p className="font-bold text-gray-900">
+                  {viewingConvenio.tipo_convenio?.nombre || "N/A"}
+                </p>
+              </div>
+              <div className="bg-gradient-to-br from-orange-50 to-amber-50 p-4 rounded-md border border-orange-100">
+                <p className="text-xs text-orange-600 uppercase tracking-wider mb-1">
+                  Fecha
+                </p>
+                <p className="font-bold text-gray-900">
+                  {viewingConvenio.fecha}
+                </p>
+              </div>
+              <div className="bg-gradient-to-br from-rose-50 to-red-50 p-4 rounded-md border border-rose-100">
+                <p className="text-xs text-rose-600 uppercase tracking-wider mb-1">
+                  Vigencia
+                </p>
+                <p className="font-bold text-gray-900">
+                  {viewingConvenio.vigencia}
+                </p>
+              </div>
+            </div>
+          </CardContent>
         </Card>
 
         <div className="flex gap-3">
@@ -420,8 +465,9 @@ export function ConveniosPage() {
               setEditingConvenio(viewingConvenio);
               setView("form");
             }}
+            className="gap-2 bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300"
           >
-            <Edit className="h-4 w-4 mr-2" />
+            <Edit className="h-4 w-4" />
             Editar
           </Button>
           <Button
@@ -431,7 +477,7 @@ export function ConveniosPage() {
               setViewingConvenio(null);
             }}
           >
-            Cancelar
+            Volver
           </Button>
         </div>
       </div>
@@ -439,91 +485,108 @@ export function ConveniosPage() {
   }
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-baseline">
-          <h1 className="text-xl font-bold text-gray-900">Convenios</h1>
-          <p className="text-sm text-gray-500 ml-3 hidden sm:block">
-            Gestión de convenios ({filteredConvenios.length} registrados)
-          </p>
+    <div className="space-y-4">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-gradient-to-br from-teal-500 to-cyan-600 rounded shadow-lg animate-bounce-subtle">
+            <ScrollText className="h-5 w-5 text-white" />
+          </div>
+          <div className="flex items-baseline">
+            <h1 className="text-xl font-bold text-gray-900">Convenios</h1>
+            <p className="text-sm text-gray-500 ml-3 hidden sm:block">
+              Gestión de convenios ({convenios.length} registrados)
+            </p>
+          </div>
         </div>
-        <Button onClick={handleNew}>
-          <Plus className="h-4 w-4 mr-2" />
+        <Button
+          onClick={handleNew}
+          className="gap-2 bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300"
+        >
+          <Plus className="h-4 w-4" />
           Nuevo Convenio
         </Button>
       </div>
 
-      <Card>
-        <CardHeader>
-          <div className="flex items-center gap-2">
-            <Search className="h-5 w-5 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Buscar convenios..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="flex-1 px-3 py-2 border rounded-lg"
-            />
-          </div>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <p className="text-center py-8 text-gray-500">Cargando...</p>
-          ) : filteredConvenios.length === 0 ? (
-            <p className="text-center py-8 text-gray-500">
-              No hay convenios registrados
-            </p>
-          ) : (
-            <Table>
-              <TableHeader>
+      <div className="flex gap-2">
+        <div className="flex-1 relative max-w-md">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+          <Input
+            placeholder="Buscar convenios..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+      </div>
+
+      <Card className="overflow-hidden shadow-sm border-gray-200">
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader className="bg-gradient-to-r from-teal-50 to-cyan-50">
+              <TableRow>
+                <TableHead>Código</TableHead>
+                <TableHead>Cliente</TableHead>
+                <TableHead>Nombre</TableHead>
+                <TableHead>Fecha</TableHead>
+                <TableHead>Vigencia</TableHead>
+                <TableHead className="text-right">Acciones</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {isLoading ? (
                 <TableRow>
-                  <TableHead>Código</TableHead>
-                  <TableHead>Cliente</TableHead>
-                  <TableHead>Nombre</TableHead>
-                  <TableHead>Fecha</TableHead>
-                  <TableHead>Vigencia</TableHead>
-                  <TableHead>Acciones</TableHead>
+                  <TableCell colSpan={6} className="text-center py-12 text-gray-500">
+                    Cargando...
+                  </TableCell>
                 </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredConvenios.map((convenio) => (
+              ) : filteredConvenios.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="text-center py-12 text-gray-500">
+                    No hay convenios registrados
+                  </TableCell>
+                </TableRow>
+              ) : (
+                filteredConvenios.map((convenio) => (
                   <TableRow key={convenio.id_convenio}>
                     <TableCell className="font-medium">
                       {convenio.codigo_convenio || "-"}
                     </TableCell>
                     <TableCell>
-                      <div className="flex items-center gap-2">
-                        <Building className="h-4 w-4 text-gray-400" />
-                        <span>{convenio.cliente?.nombre || "Sin cliente"}</span>
-                      </div>
+                      {convenio.cliente?.nombre || "Sin cliente"}
                     </TableCell>
                     <TableCell className="font-medium">
                       {convenio.nombre_convenio}
                     </TableCell>
                     <TableCell>{convenio.fecha}</TableCell>
                     <TableCell>{convenio.vigencia}</TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <button
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          variant="ghost"
+                          size="icon"
                           onClick={() => handleEdit(convenio)}
-                          className="p-1 hover:bg-slate-50 rounded"
+                          className="text-green-600 hover:text-green-800 hover:bg-green-50 h-8 w-8"
+                          title="Editar"
                         >
-                          <Edit className="h-4 w-4 text-blue-600" />
-                        </button>
-                        <button
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
                           onClick={() => handleDelete(convenio)}
-                          className="p-1 hover:bg-slate-50 rounded"
+                          className="text-red-600 hover:text-red-800 hover:bg-red-50 h-8 w-8"
+                          title="Eliminar"
                         >
-                          <Trash2 className="h-4 w-4 text-red-600" />
-                        </button>
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
                       </div>
                     </TableCell>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
       </Card>
 
       <ConfirmModal

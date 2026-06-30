@@ -49,6 +49,7 @@ import {
   Card,
   CardContent,
   CardHeader,
+  CardTitle,
   Table,
   TableHeader,
   TableBody,
@@ -266,20 +267,34 @@ export function AnexosPage() {
     return (
       <div className="max-w-2xl mx-auto">
         <div className="flex items-center gap-4 mb-6">
-          <button
+          <Button
+            variant="ghost"
+            size="icon"
             onClick={() => setView("list")}
-            className="p-2 hover:bg-slate-50 rounded-lg"
+            className="h-9 w-9"
           >
             <ArrowLeft className="h-5 w-5" />
-          </button>
-          <h1 className="text-xl font-bold text-gray-900">
-            {editingAnexo ? "Editar" : "Nuevo"} Anexo
-          </h1>
+          </Button>
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-gradient-to-br from-teal-500 to-cyan-600 rounded shadow-lg animate-bounce-subtle">
+              <Package className="h-5 w-5 text-white" />
+            </div>
+            <h1 className="text-xl font-bold text-gray-900">
+              {editingAnexo ? "Editar" : "Nuevo"} Anexo
+            </h1>
+          </div>
         </div>
 
-        <Card>
-          <CardContent className="pt-6">
-            <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit}>
+          {/* Datos del Anexo */}
+          <Card className="mb-6 shadow-sm border-gray-200">
+            <CardHeader className="border-b bg-gray-50/50">
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <Package className="h-5 w-5 text-teal-600" />
+                Datos del Anexo
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="mt-4 space-y-4">
               <div>
                 <Label>Convenio *</Label>
                 <select
@@ -290,7 +305,7 @@ export function AnexosPage() {
                       id_convenio: parseInt(e.target.value) || 0,
                     })
                   }
-                  className="w-full mt-1 px-3 py-2 border rounded-lg"
+                  className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white"
                 >
                   <option value="">Seleccione un convenio</option>
                   {convenios.map((c) => (
@@ -306,23 +321,25 @@ export function AnexosPage() {
                 )}
               </div>
 
-              <div>
-                <Label>Nombre del Anexo *</Label>
-                <Input
-                  value={formData.nombre_anexo}
-                  onChange={(e) =>
-                    setFormData({ ...formData, nombre_anexo: e.target.value })
-                  }
-                  placeholder="Nombre del anexo"
-                />
-                {formErrors.nombre_anexo && (
-                  <p className="text-red-500 text-sm mt-1">
-                    {formErrors.nombre_anexo}
-                  </p>
-                )}
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label>Nombre del Anexo *</Label>
+                  <Input
+                    value={formData.nombre_anexo}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        nombre_anexo: e.target.value,
+                      })
+                    }
+                    placeholder="Nombre del anexo"
+                  />
+                  {formErrors.nombre_anexo && (
+                    <p className="text-red-500 text-sm mt-1">
+                      {formErrors.nombre_anexo}
+                    </p>
+                  )}
+                </div>
                 <div>
                   <Label>Fecha *</Label>
                   <Input
@@ -340,7 +357,7 @@ export function AnexosPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <Label>Dependencia</Label>
                   <select
@@ -353,7 +370,7 @@ export function AnexosPage() {
                           : undefined,
                       })
                     }
-                    className="w-full mt-1 px-3 py-2 border rounded-lg"
+                    className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white"
                   >
                     <option value="">Seleccione dependencia</option>
                     {dependencias.map((d) => (
@@ -385,172 +402,196 @@ export function AnexosPage() {
                   />
                 </div>
               </div>
+            </CardContent>
+          </Card>
 
-              <div className="border-t pt-4 mt-4">
-                <Label className="flex items-center gap-2 mb-3">
-                  <Package className="h-4 w-4" />
-                  Productos del Anexo *
-                </Label>
+          {/* Productos del Anexo */}
+          <Card className="mb-6 shadow-sm border-gray-200">
+            <CardHeader className="border-b bg-gray-50/50">
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <Package className="h-5 w-5 text-teal-600" />
+                Productos del Anexo *
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="mt-4">
+              {formErrors.productos && (
+                <p className="text-red-500 text-sm mb-3">
+                  {formErrors.productos}
+                </p>
+              )}
 
-                {formErrors.productos && (
-                  <p className="text-red-500 text-sm mb-2">
-                    {formErrors.productos}
-                  </p>
-                )}
-
-                <div className="grid grid-cols-4 gap-2 mb-3">
-                  <select
-                    value={newProduct.id_producto || ""}
-                    onChange={(e) =>
-                      setNewProduct({
-                        ...newProduct,
-                        id_producto: parseInt(e.target.value) || 0,
-                      })
-                    }
-                    className="px-3 py-2 border rounded-lg"
-                  >
-                    <option value="">Producto</option>
-                    {productos.map((p) => (
-                      <option key={p.id_producto} value={p.id_producto}>
-                        {p.nombre}
-                      </option>
-                    ))}
-                  </select>
-                  <Input
-                    type="number"
-                    min="1"
-                    value={newProduct.cantidad}
-                    onChange={(e) =>
-                      setNewProduct({
-                        ...newProduct,
-                        cantidad: parseInt(e.target.value) || 0,
-                      })
-                    }
-                    placeholder="Cantidad"
-                  />
-                  <Input
-                    type="number"
-                    step="0.01"
-                    value={newProduct.precio_compra}
-                    onChange={(e) =>
-                      setNewProduct({
-                        ...newProduct,
-                        precio_compra: parseFloat(e.target.value) || 0,
-                      })
-                    }
-                    placeholder="Precio compra"
-                  />
-                  <Button type="button" onClick={addProduct} variant="outline">
-                    <Plus className="h-4 w-4" />
-                  </Button>
-                </div>
-
-                {formData.productos.length > 0 && (
-                  <div className="border rounded-lg overflow-hidden">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Producto</TableHead>
-                          <TableHead>Cantidad</TableHead>
-                          <TableHead>Precio Compra</TableHead>
-                          <TableHead></TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {formData.productos.map((prod, index) => (
-                          <TableRow key={index}>
-                            <TableCell>
-                              {prod.nombre_producto ||
-                                `Producto ${prod.id_producto}`}
-                            </TableCell>
-                            <TableCell>{prod.cantidad}</TableCell>
-                            <TableCell>{prod.precio_compra}</TableCell>
-                            <TableCell>
-                              <button
-                                type="button"
-                                onClick={() => removeProduct(index)}
-                                className="p-1 hover:bg-slate-50 rounded"
-                              >
-                                <Trash2 className="h-4 w-4 text-red-600" />
-                              </button>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
-                )}
-              </div>
-
-              <div className="flex gap-3 pt-4">
-                <Button type="submit">
-                  <Save className="h-4 w-4 mr-2" />
-                  {editingAnexo ? "Actualizar" : "Crear"}
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setView("list")}
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-2 mb-3">
+                <select
+                  value={newProduct.id_producto || ""}
+                  onChange={(e) =>
+                    setNewProduct({
+                      ...newProduct,
+                      id_producto: parseInt(e.target.value) || 0,
+                    })
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white"
                 >
-                  Cancelar
+                  <option value="">Producto</option>
+                  {productos.map((p) => (
+                    <option key={p.id_producto} value={p.id_producto}>
+                      {p.nombre}
+                    </option>
+                  ))}
+                </select>
+                <Input
+                  type="number"
+                  min="1"
+                  value={newProduct.cantidad}
+                  onChange={(e) =>
+                    setNewProduct({
+                      ...newProduct,
+                      cantidad: parseInt(e.target.value) || 0,
+                    })
+                  }
+                  placeholder="Cantidad"
+                />
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={newProduct.precio_compra}
+                  onChange={(e) =>
+                    setNewProduct({
+                      ...newProduct,
+                      precio_compra: parseFloat(e.target.value) || 0,
+                    })
+                  }
+                  placeholder="Precio compra"
+                />
+                <Button type="button" onClick={addProduct} variant="outline" className="gap-1">
+                  <Plus className="h-4 w-4" />
+                  Agregar
                 </Button>
               </div>
-            </form>
-          </CardContent>
-        </Card>
+
+              {formData.productos.length > 0 && (
+                <div className="border rounded-lg overflow-hidden">
+                  <Table>
+                    <TableHeader className="bg-gray-50/50">
+                      <TableRow>
+                        <TableHead>Producto</TableHead>
+                        <TableHead>Cantidad</TableHead>
+                        <TableHead>Precio Compra</TableHead>
+                        <TableHead></TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {formData.productos.map((prod, index) => (
+                        <TableRow key={index}>
+                          <TableCell>
+                            {prod.nombre_producto ||
+                              `Producto ${prod.id_producto}`}
+                          </TableCell>
+                          <TableCell>{prod.cantidad}</TableCell>
+                          <TableCell>{prod.precio_compra}</TableCell>
+                          <TableCell>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => removeProduct(index)}
+                              className="text-red-600 hover:text-red-800 hover:bg-red-50 h-8 w-8"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <div className="flex gap-3 pt-2 pb-8">
+            <Button
+              type="submit"
+              className="gap-2 bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300"
+            >
+              <Save className="h-4 w-4" />
+              {editingAnexo ? "Actualizar" : "Crear"}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setView("list")}
+            >
+              Cancelar
+            </Button>
+          </div>
+        </form>
       </div>
     );
   }
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-baseline">
-          <h1 className="text-xl font-bold text-gray-900">Anexos</h1>
-          <p className="text-sm text-gray-500 ml-3 hidden sm:block">
-            Gestión de anexos ({filteredAnexos.length} registrados)
-          </p>
+    <div className="space-y-4">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-gradient-to-br from-teal-500 to-cyan-600 rounded shadow-lg animate-bounce-subtle">
+            <Package className="h-5 w-5 text-white" />
+          </div>
+          <div className="flex items-baseline">
+            <h1 className="text-xl font-bold text-gray-900">Anexos</h1>
+            <p className="text-sm text-gray-500 ml-3 hidden sm:block">
+              Gestión de anexos ({anexos.length} registrados)
+            </p>
+          </div>
         </div>
-        <Button onClick={handleNew}>
-          <Plus className="h-4 w-4 mr-2" />
+        <Button
+          onClick={handleNew}
+          className="gap-2 bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300"
+        >
+          <Plus className="h-4 w-4" />
           Nuevo Anexo
         </Button>
       </div>
 
-      <Card>
-        <CardHeader>
-          <div className="flex items-center gap-2">
-            <Search className="h-5 w-5 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Buscar anexos..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="flex-1 px-3 py-2 border rounded-lg"
-            />
-          </div>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <p className="text-center py-8 text-gray-500">Cargando...</p>
-          ) : filteredAnexos.length === 0 ? (
-            <p className="text-center py-8 text-gray-500">
-              No hay anexos registrados
-            </p>
-          ) : (
-            <Table>
-              <TableHeader>
+      <div className="flex gap-2">
+        <div className="flex-1 relative max-w-md">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+          <Input
+            placeholder="Buscar anexos..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+      </div>
+
+      <Card className="overflow-hidden shadow-sm border-gray-200">
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader className="bg-gradient-to-r from-teal-50 to-cyan-50">
+              <TableRow>
+                <TableHead>Convenio</TableHead>
+                <TableHead>Código</TableHead>
+                <TableHead>Nombre</TableHead>
+                <TableHead>Fecha</TableHead>
+                <TableHead>Comisión</TableHead>
+                <TableHead className="text-right">Acciones</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {isLoading ? (
                 <TableRow>
-                  <TableHead>Convenio</TableHead>
-                  <TableHead>Nombre</TableHead>
-                  <TableHead>Número</TableHead>
-                  <TableHead>Fecha</TableHead>
-                  <TableHead>Comisión</TableHead>
-                  <TableHead>Acciones</TableHead>
+                  <TableCell colSpan={6} className="text-center py-12 text-gray-500">
+                    Cargando...
+                  </TableCell>
                 </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredAnexos.map((anexo) => (
+              ) : filteredAnexos.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="text-center py-12 text-gray-500">
+                    No hay anexos registrados
+                  </TableCell>
+                </TableRow>
+              ) : (
+                filteredAnexos.map((anexo) => (
                   <TableRow key={anexo.id_anexo}>
                     <TableCell>
                       {anexo.anexo_convenio?.nombre_convenio || "Sin convenio"}
@@ -563,28 +604,34 @@ export function AnexosPage() {
                     <TableCell>
                       {anexo.comision ? `${anexo.comision}%` : "-"}
                     </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <button
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          variant="ghost"
+                          size="icon"
                           onClick={() => handleEdit(anexo)}
-                          className="p-1 hover:bg-slate-50 rounded"
+                          className="text-green-600 hover:text-green-800 hover:bg-green-50 h-8 w-8"
+                          title="Editar"
                         >
-                          <Edit className="h-4 w-4 text-blue-600" />
-                        </button>
-                        <button
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
                           onClick={() => handleDelete(anexo)}
-                          className="p-1 hover:bg-slate-50 rounded"
+                          className="text-red-600 hover:text-red-800 hover:bg-red-50 h-8 w-8"
+                          title="Eliminar"
                         >
-                          <Trash2 className="h-4 w-4 text-red-600" />
-                        </button>
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
                       </div>
                     </TableCell>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
       </Card>
 
       <ConfirmModal
