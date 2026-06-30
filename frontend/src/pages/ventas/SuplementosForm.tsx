@@ -33,11 +33,11 @@ export const SuplementosForm: React.FC<SuplementosFormProps> = ({
   <div className="space-y-4">
     <div className="flex items-center justify-between">
       <div className="flex items-center gap-3">
-        <div className="p-2 bg-gradient-to-br from-amber-500 to-orange-600 rounded shadow-lg animate-bounce-subtle">
+        <div className="p-2 bg-gradient-to-br from-teal-500 to-cyan-600 rounded shadow-lg animate-bounce-subtle">
           <Layers className="h-5 w-5 text-white" />
         </div>
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">
+          <h2 className="text-xl font-bold text-gray-900">
             {editingId ? "Editar Suplemento" : "Nuevo Suplemento"}
           </h2>
           <p className="text-sm text-gray-500 ml-3 hidden sm:block">
@@ -60,7 +60,7 @@ export const SuplementosForm: React.FC<SuplementosFormProps> = ({
     <Card className="shadow-sm border-gray-200">
       <CardHeader className="border-b bg-gray-50/50">
         <CardTitle className="flex items-center gap-2 text-lg">
-          <Layers className="h-5 w-5 text-amber-600" />
+          <Layers className="h-5 w-5 text-teal-600" />
           Información del Suplemento
         </CardTitle>
       </CardHeader>
@@ -80,7 +80,7 @@ export const SuplementosForm: React.FC<SuplementosFormProps> = ({
           <div>
             <Label className="text-sm font-medium">Estado</Label>
             <select
-              className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none bg-white"
+              className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white"
               value={formData.id_estado || ""}
               onChange={(e: any) =>
                 setFormData({ ...formData, id_estado: e.target.value })
@@ -98,7 +98,7 @@ export const SuplementosForm: React.FC<SuplementosFormProps> = ({
             <div className="flex gap-2">
               <input
                 type="date"
-                className="flex-1 mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition-colors"
+                className="flex-1 mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition-colors"
                 value={formData.fecha || ""}
                 onChange={(e: any) =>
                   setFormData({ ...formData, fecha: e.target.value })
@@ -107,7 +107,7 @@ export const SuplementosForm: React.FC<SuplementosFormProps> = ({
               <button
                 type="button"
                 onClick={() => setFormData({ ...formData, fecha: new Date().toISOString().split('T')[0] })}
-                className="mt-1 px-3 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors text-sm font-medium whitespace-nowrap"
+                className="mt-1 px-3 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors text-sm font-medium whitespace-nowrap"
               >
                 Hoy
               </button>
@@ -128,7 +128,7 @@ export const SuplementosForm: React.FC<SuplementosFormProps> = ({
         <div className="flex gap-3 mt-8 pt-6 border-t">
           <Button
             onClick={handleSave}
-            className="gap-2 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300"
+            className="gap-2 bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300"
           >
             <Save className="h-4 w-4" />
             {editingId ? "Actualizar" : "Guardar"}

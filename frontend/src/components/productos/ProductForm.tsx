@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import type { Productos, ProductosCreate } from '../../types/index';
 import { subcategoriasService, categoriasService, monedaService } from '../../services/api';
 import { Button, Input, Label, Card, CardContent, CardHeader, CardTitle } from '../ui';
-import { ArrowLeft, Save, X } from 'lucide-react';
+import { ArrowLeft, Save, X, Package } from 'lucide-react';
 
 interface ProductFormProps {
   initialData?: Productos | null;
@@ -107,9 +107,12 @@ export function ProductForm({ initialData, onSubmit, onCancel, isSubmitting = fa
   const isLoading = isLoadingCategorias || isLoadingSubcategorias || isLoadingMonedas;
 
   return (
-    <Card className="overflow-hidden">
-      <CardHeader className="flex flex-row items-center justify-between py-2 px-6">
-        <CardTitle className="text-lg">{initialData ? 'Editar Producto' : 'Nuevo Producto'}</CardTitle>
+    <Card className="overflow-hidden shadow-sm border-gray-200">
+      <CardHeader className="flex flex-row items-center justify-between py-3 px-6 border-b bg-gray-50/50">
+        <CardTitle className="flex items-center gap-2 text-lg">
+          <Package className="h-5 w-5 text-teal-600" />
+          {initialData ? 'Editar Producto' : 'Nuevo Producto'}
+        </CardTitle>
         <Button variant="ghost" onClick={onCancel} className="gap-2">
           <ArrowLeft className="h-4 w-4" />
           Volver a la lista
@@ -154,7 +157,7 @@ export function ProductForm({ initialData, onSubmit, onCancel, isSubmitting = fa
                 value={selectedCategoria || ''}
                 onChange={(e) => handleCategoriaChange(parseInt(e.target.value) || 0)}
                 disabled={isLoadingCategorias}
-                className="w-full px-3 py-2 h-11 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all bg-white"
+                className="w-full px-3 py-2 h-11 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition-all bg-white"
               >
                 <option value="">{isLoadingCategorias ? 'Cargando...' : 'Seleccione una categoría'}</option>
                 {categorias.map((categoria) => (
@@ -172,7 +175,7 @@ export function ProductForm({ initialData, onSubmit, onCancel, isSubmitting = fa
                 value={formData.id_subcategoria || ''}
                 onChange={(e) => setFormData({ ...formData, id_subcategoria: parseInt(e.target.value) || 0 })}
                 disabled={!selectedCategoria || isLoadingSubcategorias}
-                className="w-full px-3 py-2 h-11 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all bg-white disabled:bg-slate-50"
+                className="w-full px-3 py-2 h-11 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition-all bg-white disabled:bg-slate-50"
               >
                 <option value="">{!selectedCategoria ? 'Primero seleccione una categoría' : 'Seleccione una subcategoría'}</option>
                 {subcategoriasFiltradas.map((subcategoria) => (
@@ -272,14 +275,14 @@ export function ProductForm({ initialData, onSubmit, onCancel, isSubmitting = fa
               value={formData.descripcion}
               onChange={(e) => setFormData({ ...formData, descripcion: e.target.value })}
               rows={2}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all resize-none"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition-all resize-none"
               placeholder="Detalles adicionales del producto..."
             />
           </div>
 
           {/* Botones */}
           <div className="flex gap-4 pt-4 border-t">
-            <Button type="submit" className="w-32 gap-2" disabled={isSubmitting || isLoading}>
+            <Button type="submit" className="w-32 gap-2 bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300" disabled={isSubmitting || isLoading}>
               <Save className="h-4 w-4" />
               {isSubmitting ? 'Guardando...' : initialData ? 'Actualizar' : 'Guardar'}
             </Button>

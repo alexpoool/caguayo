@@ -157,15 +157,15 @@ export function ContratosPage() {
   }, [contratos, searchTerm]);
 
   const renderList = () => (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div className="flex items-center gap-4">
-          <div className="p-3 bg-gradient-to-br from-rose-500 to-pink-600 rounded-xl shadow-lg animate-bounce-subtle">
-            <FileText className="h-8 w-8 text-white" />
+    <div className="space-y-4">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-gradient-to-br from-teal-500 to-cyan-600 rounded shadow-lg animate-bounce-subtle">
+            <FileText className="h-5 w-5 text-white" />
           </div>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Contratos</h1>
-            <p className="text-gray-500 mt-1">
+          <div className="flex items-baseline">
+            <h1 className="text-xl font-bold text-gray-900">Contratos</h1>
+            <p className="text-sm text-gray-500 ml-3 hidden sm:block">
               {filteredContratos.length === contratos.length 
                 ? `Gestión de contratos (${contratos.length} items)`
                 : `Mostrando ${filteredContratos.length} de ${contratos.length} contratos`
@@ -175,7 +175,7 @@ export function ContratosPage() {
         </div>
         <Button
           onClick={() => openForm()}
-          className="gap-2 bg-gradient-to-r from-rose-500 to-pink-600 hover:from-rose-600 hover:to-pink-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300"
+          className="gap-2 bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300"
         >
           <Plus className="h-4 w-4" />
           Nuevo Contrato
@@ -197,29 +197,29 @@ export function ContratosPage() {
       <Card className="overflow-hidden shadow-sm border-gray-200">
         <div className="overflow-x-auto">
           <Table>
-            <TableHeader className="bg-gradient-to-r from-rose-50 to-pink-50">
+            <TableHeader className="bg-gradient-to-r from-teal-50 to-cyan-50">
               <TableRow>
                 <TableHead>
                   <div className="flex items-center gap-2">
-                    <Tag className="h-4 w-4 text-rose-600" />
+                    <Tag className="h-4 w-4 text-teal-600" />
                     Código
                   </div>
                 </TableHead>
                 <TableHead>
                   <div className="flex items-center gap-2">
-                    <FileText className="h-4 w-4 text-rose-600" />
+                    <FileText className="h-4 w-4 text-teal-600" />
                     Nombre
                   </div>
                 </TableHead>
                 <TableHead>
                   <div className="flex items-center gap-2">
-                    <User className="h-4 w-4 text-rose-600" />
+                    <User className="h-4 w-4 text-teal-600" />
                     Cliente
                   </div>
                 </TableHead>
                 <TableHead>
                   <div className="flex items-center gap-2">
-                    <Receipt className="h-4 w-4 text-rose-600" />
+                    <Receipt className="h-4 w-4 text-teal-600" />
                     Facturas
                   </div>
                 </TableHead>
@@ -238,7 +238,7 @@ export function ContratosPage() {
                 filteredContratos.map((item) => (
                   <TableRow key={item.id_contrato} className="hover:bg-gray-50/50 transition-colors cursor-pointer" onClick={() => setDetailModal({ isOpen: true, item })}>
                     <TableCell>
-                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-rose-50 text-rose-700 rounded text-sm font-mono font-medium">
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-teal-50 text-teal-700 rounded text-sm font-mono font-medium">
                         <Tag className="h-3 w-3" />
                         {item.codigo || 'N/A'}
                       </span>
@@ -257,7 +257,7 @@ export function ContratosPage() {
                         variant="outline"
                         size="sm"
                         onClick={() => navigate(`/ventas/facturas?contrato=${item.id_contrato}`)}
-                        className="gap-1 text-rose-600 border-rose-200 hover:bg-rose-50 hover:text-rose-700"
+                        className="gap-1 text-teal-600 border-teal-200 hover:bg-teal-50 hover:text-teal-700"
                       >
                         <Receipt className="h-3.5 w-3.5" />
                         Ver
@@ -268,7 +268,7 @@ export function ContratosPage() {
                         variant="outline"
                         size="sm"
                         onClick={() => navigate(`/ventas/suplementos?contrato=${item.id_contrato}`)}
-                        className="gap-1 text-amber-600 border-amber-200 hover:bg-amber-50 hover:text-amber-700"
+                        className="gap-1 text-teal-600 border-teal-200 hover:bg-teal-50 hover:text-teal-700"
                       >
                         <Layers className="h-3.5 w-3.5" />
                         Suplemento
@@ -280,7 +280,7 @@ export function ContratosPage() {
                           variant="ghost"
                           size="icon"
                           onClick={() => openForm(item)}
-                          className="text-blue-600 hover:text-blue-800 hover:bg-blue-50 h-8 w-8"
+                          className="text-green-600 hover:text-green-800 hover:bg-green-50 h-8 w-8"
                           title="Editar"
                         >
                           <Edit className="h-4 w-4" />
@@ -315,12 +315,12 @@ export function ContratosPage() {
               <ArrowLeft className="h-4 w-4" />
             </Button>
           )}
-          <div className="p-3 bg-gradient-to-br from-rose-500 to-pink-600 rounded-xl shadow-lg animate-bounce-subtle">
-            <FileText className="h-8 w-8 text-white" />
+          <div className="p-2 bg-gradient-to-br from-teal-500 to-cyan-600 rounded shadow-lg animate-bounce-subtle">
+            <FileText className="h-5 w-5 text-white" />
           </div>
           <div>
-            <h2 className="text-2xl font-bold text-gray-900">{editingId ? 'Editar Contrato' : 'Nuevo Contrato'}</h2>
-            <p className="text-gray-500 mt-1">Complete los datos del contrato</p>
+            <h2 className="text-xl font-bold text-gray-900">{editingId ? 'Editar Contrato' : 'Nuevo Contrato'}</h2>
+            <p className="text-sm text-gray-500 ml-3 hidden sm:block">Complete los datos del contrato</p>
           </div>
         </div>
         <Button variant="outline" onClick={() => { setView('list'); resetForm(); }} className="gap-2">
@@ -332,7 +332,7 @@ export function ContratosPage() {
       <Card className="shadow-sm border-gray-200">
         <CardHeader className="border-b bg-gray-50/50">
           <CardTitle className="flex items-center gap-2 text-lg">
-            <FileText className="h-5 w-5 text-rose-600" />
+            <FileText className="h-5 w-5 text-teal-600" />
             Información del Contrato
           </CardTitle>
         </CardHeader>
@@ -349,7 +349,7 @@ export function ContratosPage() {
                   {clientes.find(c => c.id_cliente === Number(initialClienteId))?.nombre || `Cliente #${initialClienteId}`}
                 </div>
               ) : (
-                <select className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 outline-none bg-white" value={formData.id_cliente || ''} onChange={(e: any) => setFormData({...formData, id_cliente: e.target.value})}>
+                <select className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white" value={formData.id_cliente || ''} onChange={(e: any) => setFormData({...formData, id_cliente: e.target.value})}>
                   <option value="">Seleccionar cliente</option>
                   {clientes.map(c => <option key={c.id_cliente} value={c.id_cliente}>{c.nombre}</option>)}
                 </select>
@@ -361,7 +361,7 @@ export function ContratosPage() {
             </div>
             <div>
               <Label className="text-sm font-medium">Tipo</Label>
-              <select className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 outline-none bg-white" value={formData.id_tipo_contrato || ''} onChange={(e: any) => setFormData({...formData, id_tipo_contrato: e.target.value})}>
+              <select className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white" value={formData.id_tipo_contrato || ''} onChange={(e: any) => setFormData({...formData, id_tipo_contrato: e.target.value})}>
                 {tiposContrato.map(t => <option key={t.id_tipo_contrato} value={t.id_tipo_contrato}>{t.nombre}</option>)}
               </select>
             </div>
@@ -370,14 +370,14 @@ export function ContratosPage() {
               <div className="flex gap-2">
                 <input 
                   type="date" 
-                  className="flex-1 mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-rose-500 outline-none transition-colors" 
+                  className="flex-1 mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition-colors" 
                   value={formData.fecha || ''} 
                   onChange={(e: any) => setFormData({...formData, fecha: e.target.value})} 
                 />
                 <button 
                   type="button" 
                   onClick={() => setFormData({...formData, fecha: new Date().toISOString().split('T')[0]})} 
-                  className="mt-1 px-3 py-2 bg-rose-600 text-white rounded-lg hover:bg-rose-700 transition-colors text-sm font-medium whitespace-nowrap"
+                  className="mt-1 px-3 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors text-sm font-medium whitespace-nowrap"
                 >
                   Hoy
                 </button>
@@ -388,14 +388,14 @@ export function ContratosPage() {
               <div className="flex gap-2">
                 <input 
                   type="date" 
-                  className="flex-1 mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-rose-500 outline-none transition-colors" 
+                  className="flex-1 mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition-colors" 
                   value={formData.vigencia || ''} 
                   onChange={(e: any) => setFormData({...formData, vigencia: e.target.value})} 
                 />
                 <button 
                   type="button" 
                   onClick={() => setFormData({...formData, vigencia: new Date().toISOString().split('T')[0]})} 
-                  className="mt-1 px-3 py-2 bg-rose-600 text-white rounded-lg hover:bg-rose-700 transition-colors text-sm font-medium whitespace-nowrap"
+                  className="mt-1 px-3 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors text-sm font-medium whitespace-nowrap"
                 >
                   Hoy
                 </button>
@@ -403,7 +403,7 @@ export function ContratosPage() {
             </div>
             <div>
               <Label className="text-sm font-medium">Moneda</Label>
-              <select className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 outline-none bg-white" value={formData.id_moneda || ''} onChange={(e: any) => setFormData({...formData, id_moneda: e.target.value})}>
+              <select className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white" value={formData.id_moneda || ''} onChange={(e: any) => setFormData({...formData, id_moneda: e.target.value})}>
                 <option value="">Seleccionar moneda</option>
                 {monedas.map(m => <option key={m.id_moneda} value={m.id_moneda}>{m.nombre}</option>)}
               </select>
@@ -414,7 +414,7 @@ export function ContratosPage() {
             </div>
           </div>
           <div className="flex gap-3 mt-8 pt-6 border-t">
-            <Button onClick={handleSave} className="gap-2 bg-gradient-to-r from-rose-500 to-pink-600 hover:from-rose-600 hover:to-pink-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300">
+            <Button onClick={handleSave} className="gap-2 bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300">
               <Save className="h-4 w-4" />
               {editingId ? 'Actualizar' : 'Guardar'}
             </Button>
@@ -442,10 +442,10 @@ export function ContratosPage() {
       {detailModal.isOpen && detailModal.item && createPortal(
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 animate-fade-in">
           <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-auto animate-scale-in">
-            <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-rose-50 to-pink-50">
+            <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-teal-50 to-cyan-50">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
-                  <div className="p-3 rounded-xl bg-gradient-to-br from-rose-500 to-pink-600 text-white shadow-lg">
+                  <div className="p-3 rounded-xl bg-gradient-to-br from-teal-500 to-cyan-600 text-white shadow-lg">
                     <FileText className="h-7 w-7" />
                   </div>
                   <div>

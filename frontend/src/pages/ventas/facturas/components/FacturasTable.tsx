@@ -30,35 +30,35 @@ export function FacturasTable({
   return (
     <div className="overflow-x-auto">
       <Table>
-        <TableHeader className="bg-gradient-to-r from-violet-50 to-purple-50">
+        <TableHeader className="bg-gradient-to-r from-teal-50 to-cyan-50">
           <TableRow>
             <TableHead>
               <div className="flex items-center gap-2">
-                <Receipt className="h-4 w-4 text-violet-600" />
+                <Receipt className="h-4 w-4 text-teal-600" />
                 Código
               </div>
             </TableHead>
             <TableHead>
               <div className="flex items-center gap-2">
-                <DollarSign className="h-4 w-4 text-violet-600" />
+                <DollarSign className="h-4 w-4 text-teal-600" />
                 Monto
               </div>
             </TableHead>
             <TableHead>
               <div className="flex items-center gap-2">
-                <DollarSign className="h-4 w-4 text-violet-600" />
+                <DollarSign className="h-4 w-4 text-teal-600" />
                 Pago Actual
               </div>
             </TableHead>
             <TableHead>
               <div className="flex items-center gap-2">
-                <Calendar className="h-4 w-4 text-violet-600" />
+                <Calendar className="h-4 w-4 text-teal-600" />
                 Fecha
               </div>
             </TableHead>
             <TableHead>
               <div className="flex items-center gap-2">
-                <CreditCard className="h-4 w-4 text-violet-600" />
+                <CreditCard className="h-4 w-4 text-teal-600" />
                 Pago
               </div>
             </TableHead>
@@ -80,7 +80,7 @@ export function FacturasTable({
                 onClick={() => onViewDetails(item)}
               >
                 <TableCell>
-                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-violet-50 text-violet-700 rounded text-sm font-mono font-medium">
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-teal-50 text-teal-700 rounded text-sm font-mono font-medium">
                     <Receipt className="h-3 w-3" />
                     {item.codigo_factura || 'N/A'}
                   </span>
@@ -148,7 +148,7 @@ export function FacturasTable({
                       variant="ghost"
                       size="icon"
                       onClick={() => onEdit(item)}
-                      className="text-blue-600 hover:text-blue-800 hover:bg-blue-50 h-8 w-8 transition-colors"
+                      className="text-green-600 hover:text-green-800 hover:bg-green-50 h-8 w-8 transition-colors"
                       title="Editar"
                     >
                       <Edit className="h-4 w-4" />

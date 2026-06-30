@@ -6,6 +6,7 @@ import type {
   ContratoWithDetails,
   SuplementoWithDetails,
 } from "../../types/contrato";
+import { Layers, X } from "lucide-react";
 import toast from "react-hot-toast";
 import { useSearchParams } from "react-router-dom";
 import { SuplementosList } from "./SuplementosList";
@@ -173,10 +174,12 @@ export function SuplementosMainPage() {
         createPortal(
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 animate-fade-in">
             <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-auto animate-scale-in">
-              <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-amber-50 to-orange-50">
+              <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-teal-50 to-cyan-50">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="p-3 rounded-md bg-gradient-to-br from-amber-500 to-orange-600 text-white shadow-lg" />
+                    <div className="p-3 rounded-md bg-gradient-to-br from-teal-500 to-cyan-600 text-white shadow-lg">
+                      <Layers className="h-7 w-7" />
+                    </div>
                     <div>
                       <h3 className="text-2xl font-bold text-gray-900">
                         {detailModal.item.nombre}
@@ -192,7 +195,7 @@ export function SuplementosMainPage() {
                     }
                     className="p-2 hover:bg-gray-200 rounded-full transition-colors"
                   >
-                    X
+                    <X className="h-6 w-6 text-gray-500" />
                   </button>
                 </div>
               </div>

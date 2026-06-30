@@ -4,7 +4,6 @@ import {
   Users,
   DollarSign,
   FileText,
-  Construction,
 } from "lucide-react";
 
 export function VentaHome() {
@@ -12,16 +11,16 @@ export function VentaHome() {
     <div className="h-[calc(100vh-8rem)] overflow-hidden flex flex-col items-center justify-center p-4">
       <div className="w-full max-w-3xl">
         <div className="text-center mb-4">
-          <div className="inline-flex p-3 rounded-2xl bg-gradient-to-br from-green-500 to-emerald-600 text-white shadow-md mb-3">
+          <div className="inline-flex p-3 rounded bg-gradient-to-br from-teal-500 to-cyan-600 text-white shadow-lg mb-3 animate-bounce-subtle">
             <Briefcase className="h-8 w-8" />
           </div>
-          <h1 className="text-xl font-bold text-gray-800">MÓDULO DE VENTAS</h1>
-          <p className="text-sm text-gray-600 mt-1">
+          <h1 className="text-xl font-bold text-gray-900">Módulo de Ventas</h1>
+          <p className="text-sm text-gray-500 mt-1">
             Gestión comercial y atención al cliente
           </p>
         </div>
 
-        <div className="bg-white rounded-md shadow-lg p-4">
+        <div className="bg-white rounded-md shadow-lg p-4 border border-gray-200">
           <p className="text-sm text-gray-700 mb-4">
             El módulo de Ventas gestiona todas las operaciones comerciales del
             sistema, desde el registro de ventas hasta el control de clientes y
@@ -29,8 +28,8 @@ export function VentaHome() {
           </p>
 
           <div className="grid grid-cols-2 gap-3">
-            <div className="flex items-start gap-2 p-3 bg-green-50 rounded-lg">
-              <ShoppingCart className="h-4 w-4 text-green-600 mt-0.5 flex-shrink-0" />
+            <div className="flex items-start gap-2 p-3 bg-gradient-to-br from-teal-50 to-cyan-50 rounded-lg border border-teal-100">
+              <ShoppingCart className="h-4 w-4 text-teal-600 mt-0.5 flex-shrink-0" />
               <div>
                 <h3 className="font-bold text-sm text-gray-800">Ventas</h3>
                 <p className="text-xs text-gray-600 mt-0.5">
@@ -40,8 +39,8 @@ export function VentaHome() {
               </div>
             </div>
 
-            <div className="flex items-start gap-2 p-3 bg-purple-50 rounded-lg">
-              <Users className="h-4 w-4 text-purple-600 mt-0.5 flex-shrink-0" />
+            <div className="flex items-start gap-2 p-3 bg-gradient-to-br from-teal-50 to-cyan-50 rounded-lg border border-teal-100">
+              <Users className="h-4 w-4 text-teal-600 mt-0.5 flex-shrink-0" />
               <div>
                 <h3 className="font-bold text-sm text-gray-800">Clientes</h3>
                 <p className="text-xs text-gray-600 mt-0.5">
@@ -51,8 +50,8 @@ export function VentaHome() {
               </div>
             </div>
 
-            <div className="flex items-start gap-2 p-3 bg-blue-50 rounded-lg">
-              <FileText className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
+            <div className="flex items-start gap-2 p-3 bg-gradient-to-br from-teal-50 to-cyan-50 rounded-lg border border-teal-100">
+              <FileText className="h-4 w-4 text-teal-600 mt-0.5 flex-shrink-0" />
               <div>
                 <h3 className="font-bold text-sm text-gray-800">
                   Estados de Venta
@@ -64,8 +63,8 @@ export function VentaHome() {
               </div>
             </div>
 
-            <div className="flex items-start gap-2 p-3 bg-amber-50 rounded-lg">
-              <DollarSign className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
+            <div className="flex items-start gap-2 p-3 bg-gradient-to-br from-teal-50 to-cyan-50 rounded-lg border border-teal-100">
+              <DollarSign className="h-4 w-4 text-teal-600 mt-0.5 flex-shrink-0" />
               <div>
                 <h3 className="font-bold text-sm text-gray-800">
                   Control Financiero

@@ -46,9 +46,38 @@ export function ProductListView({
 
   if (isLoading) {
     return (
-      <div className="flex flex-col items-center justify-center h-96 gap-4">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-        <div className="text-gray-500">Cargando productos...</div>
+      <div className="space-y-4">
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-gradient-to-br from-teal-500 to-cyan-600 rounded shadow-lg animate-bounce-subtle">
+            <Package className="h-5 w-5 text-white" />
+          </div>
+          <div className="flex items-baseline">
+            <h1 className="text-xl font-bold text-gray-900">Productos</h1>
+            <p className="text-sm text-gray-500 ml-3 hidden sm:block">Cargando...</p>
+          </div>
+        </div>
+        <Card className="overflow-hidden shadow-sm border-gray-200">
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader className="bg-gradient-to-r from-teal-50 to-cyan-50">
+                <TableRow>
+                  <TableHead className="w-[40%]">Nombre</TableHead>
+                  <TableHead>Precio Venta</TableHead>
+                  <TableHead>Precio Mínimo</TableHead>
+                  <TableHead>Subcategoría</TableHead>
+                  <TableHead className="text-right">Acciones</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                <TableRow>
+                  <TableCell colSpan={5} className="text-center py-12 text-gray-500">
+                    Cargando productos...
+                  </TableCell>
+                </TableRow>
+              </TableBody>
+            </Table>
+          </div>
+        </Card>
       </div>
     );
   }
@@ -68,20 +97,25 @@ export function ProductListView({
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Productos</h1>
-          <p className="text-gray-500 mt-1">
-            {productos.length === totalProductos 
-              ? `Gestión de inventario (${totalProductos} items)`
-              : `Mostrando ${productos.length} de ${totalProductos} productos`
-            }
-          </p>
+    <div className="space-y-4">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-gradient-to-br from-teal-500 to-cyan-600 rounded shadow-lg animate-bounce-subtle">
+            <Package className="h-5 w-5 text-white" />
+          </div>
+          <div className="flex items-baseline">
+            <h1 className="text-xl font-bold text-gray-900">Productos</h1>
+            <p className="text-sm text-gray-500 ml-3 hidden sm:block">
+              {productos.length === totalProductos 
+                ? `Gestión de inventario (${totalProductos} items)`
+                : `Mostrando ${productos.length} de ${totalProductos} productos`
+              }
+            </p>
+          </div>
         </div>
         <Button
           onClick={onCreateNew}
-          className="gap-2 shadow-sm"
+          className="gap-2 bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300"
         >
           <Plus className="h-4 w-4" />
           Nuevo Producto
@@ -104,7 +138,7 @@ export function ProductListView({
       <Card className="overflow-hidden shadow-sm border-gray-200">
         <div className="overflow-x-auto">
           <Table>
-            <TableHeader className="bg-gray-50/50">
+            <TableHeader className="bg-gradient-to-r from-teal-50 to-cyan-50">
               <TableRow>
                 <TableHead className="w-[40%]">Nombre</TableHead>
                 <TableHead>Precio Venta</TableHead>
@@ -125,7 +159,7 @@ export function ProductListView({
                   <TableRow key={producto.id_producto} className="hover:bg-gray-50/50 transition-colors">
                     <TableCell>
                       <div className="flex items-center gap-3">
-                        <div className="p-2 bg-blue-50 rounded-lg text-blue-600">
+                        <div className="p-2 bg-teal-50 rounded-lg text-teal-600">
                            <Package className="h-4 w-4" />
                         </div>
                         <div>
@@ -153,7 +187,7 @@ export function ProductListView({
                           variant="ghost"
                           size="icon"
                           onClick={() => onEdit(producto)}
-                          className="text-blue-600 hover:text-blue-800 hover:bg-blue-50 h-8 w-8"
+                          className="text-green-600 hover:text-green-800 hover:bg-green-50 h-8 w-8"
                           title="Editar"
                         >
                           <Edit className="h-4 w-4" />

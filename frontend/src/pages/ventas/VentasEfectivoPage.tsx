@@ -332,7 +332,7 @@ const loadInitialData = async () => {
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <div className="p-2 bg-gradient-to-br from-emerald-500 to-green-600 rounded shadow-lg animate-bounce-subtle">
+          <div className="p-2 bg-gradient-to-br from-teal-500 to-cyan-600 rounded shadow-lg animate-bounce-subtle">
             <Wallet className="h-5 w-5 text-white" />
           </div>
           <div className="flex items-baseline">
@@ -348,7 +348,7 @@ const loadInitialData = async () => {
         </div>
         <Button
           onClick={() => openForm()}
-          className="gap-2 bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300"
+          className="gap-2 bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300"
         >
           <Plus className="h-4 w-4" />
           Nueva Venta
@@ -370,36 +370,36 @@ const loadInitialData = async () => {
       <Card className="overflow-hidden shadow-sm border-gray-200">
         <div className="overflow-x-auto">
           <Table>
-            <TableHeader className="bg-gradient-to-r from-emerald-50 to-green-50">
+            <TableHeader className="bg-gradient-to-r from-teal-50 to-cyan-50">
               <TableRow>
                 <TableHead>
                   <div className="flex items-center gap-2">
-                    <Tag className="h-4 w-4 text-emerald-600" />
+                    <Tag className="h-4 w-4 text-teal-600" />
                     Código
                   </div>
                 </TableHead>
                 <TableHead>
                   <div className="flex items-center gap-2">
-                    <Wallet className="h-4 w-4 text-emerald-600" />
+                    <Wallet className="h-4 w-4 text-teal-600" />
                     Slip
                   </div>
                 </TableHead>
                 <TableHead>Cajero</TableHead>
                 <TableHead>
                   <div className="flex items-center gap-2">
-                    <DollarSign className="h-4 w-4 text-emerald-600" />
+                    <DollarSign className="h-4 w-4 text-teal-600" />
                     Monto
                   </div>
                 </TableHead>
                 <TableHead>
                   <div className="flex items-center gap-2">
-                    <Calendar className="h-4 w-4 text-emerald-600" />
+                    <Calendar className="h-4 w-4 text-teal-600" />
                     Fecha
                   </div>
                 </TableHead>
                 <TableHead>
                   <div className="flex items-center gap-2">
-                    <Building className="h-4 w-4 text-emerald-600" />
+                    <Building className="h-4 w-4 text-teal-600" />
                     Dependencia
                   </div>
                 </TableHead>
@@ -426,7 +426,7 @@ const loadInitialData = async () => {
                     onClick={() => setDetailModal({ isOpen: true, item })}
                   >
                     <TableCell>
-                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-emerald-50 text-emerald-700 rounded text-sm font-mono font-medium">
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-teal-50 text-teal-700 rounded text-sm font-mono font-medium">
                         <Tag className="h-3 w-3" />
                         {item.codigo || "N/A"}
                       </span>
@@ -455,7 +455,7 @@ const loadInitialData = async () => {
                           variant="ghost"
                           size="icon"
                           onClick={() => openForm(item)}
-                          className="text-blue-600 hover:text-blue-800 hover:bg-blue-50 h-8 w-8"
+                          className="text-green-600 hover:text-green-800 hover:bg-green-50 h-8 w-8"
                           title="Editar"
                         >
                           <Edit className="h-4 w-4" />
@@ -487,7 +487,7 @@ const loadInitialData = async () => {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="p-2 bg-gradient-to-br from-emerald-500 to-green-600 rounded shadow-lg animate-bounce-subtle">
+          <div className="p-2 bg-gradient-to-br from-teal-500 to-cyan-600 rounded shadow-lg animate-bounce-subtle">
             <Wallet className="h-5 w-5 text-white" />
           </div>
           <div>
@@ -515,7 +515,7 @@ const loadInitialData = async () => {
       <Card className="shadow-sm border-gray-200">
         <CardHeader className="border-b bg-gray-50/50">
           <CardTitle className="flex items-center gap-2 text-lg">
-            <Wallet className="h-5 w-5 text-emerald-600" />
+            <Wallet className="h-5 w-5 text-teal-600" />
             Información de la Venta
           </CardTitle>
         </CardHeader>
@@ -537,7 +537,7 @@ const loadInitialData = async () => {
               <div className="flex gap-2">
                 <input
                   type="date"
-                  className="flex-1 mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-colors"
+                  className="flex-1 mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition-colors"
                   value={formData.fecha || ""}
                   onChange={(e: any) =>
                     setFormData({ ...formData, fecha: e.target.value })
@@ -546,7 +546,7 @@ const loadInitialData = async () => {
                 <button
                   type="button"
                   onClick={() => setFormData({ ...formData, fecha: new Date().toISOString().split('T')[0] })}
-                  className="mt-1 px-3 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors text-sm font-medium whitespace-nowrap"
+                  className="mt-1 px-3 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors text-sm font-medium whitespace-nowrap"
                 >
                   Hoy
                 </button>
@@ -566,7 +566,7 @@ const loadInitialData = async () => {
             <div>
               <Label className="text-sm font-medium">Dependencia</Label>
               <select
-                className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none bg-white"
+                className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white"
                 value={formData.id_dependencia || ""}
                 onChange={(e: any) =>
                   setFormData({ ...formData, id_dependencia: e.target.value })
@@ -583,7 +583,7 @@ const loadInitialData = async () => {
             <div>
               <Label className="text-sm font-medium">Moneda</Label>
               <select
-                className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none bg-white"
+                className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white"
                 value={formData.id_moneda || ""}
                 onChange={(e: any) =>
                   setFormData({ ...formData, id_moneda: e.target.value })
@@ -622,7 +622,7 @@ const loadInitialData = async () => {
           <div className="flex gap-3 mt-8 pt-6 border-t">
             <Button
               onClick={handleSave}
-              className="gap-2 bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300"
+              className="gap-2 bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300"
             >
               <Save className="h-4 w-4" />
               {editingId ? "Actualizar" : "Guardar"}
@@ -661,10 +661,10 @@ const loadInitialData = async () => {
         createPortal(
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 animate-fade-in">
             <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-auto animate-scale-in">
-              <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-emerald-50 to-green-50">
+              <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-teal-50 to-cyan-50">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="p-3 rounded-md bg-gradient-to-br from-emerald-500 to-green-600 text-white shadow-lg">
+                    <div className="p-3 rounded-md bg-gradient-to-br from-teal-500 to-cyan-600 text-white shadow-lg">
                       <Wallet className="h-7 w-7" />
                     </div>
                     <div>

@@ -329,18 +329,23 @@ export function MovimientosPendientesPage() {
   };
 
   const content = (
-    <div className="space-y-6 animate-fade-in-up">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Movimientos Pendientes</h1>
-          <p className="text-gray-500 mt-1">
-            Movimientos en espera de confirmación ({filteredPendientes.length} registros)
-          </p>
+    <div className="space-y-4 animate-fade-in-up">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-gradient-to-br from-teal-500 to-cyan-600 rounded shadow-lg animate-bounce-subtle">
+            <PackageCheck className="h-5 w-5 text-white" />
+          </div>
+          <div className="flex items-baseline">
+            <h1 className="text-xl font-bold text-gray-900">Movimientos Pendientes</h1>
+            <p className="text-sm text-gray-500 ml-3 hidden sm:block">
+              Movimientos en espera de confirmación ({filteredPendientes.length} registros)
+            </p>
+          </div>
         </div>
       </div>
 
-      <div className="flex flex-wrap gap-2 items-center">
-        <div className="relative max-w-md flex-1">
+      <div className="flex gap-2">
+        <div className="flex-1 relative max-w-md">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
           <Input
             type="text"
@@ -352,155 +357,140 @@ export function MovimientosPendientesPage() {
         </div>
       </div>
 
-      {isLoadingPendientes ? (
-        <div className="flex flex-col items-center justify-center h-96 gap-4">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-          <div className="text-gray-500">Cargando movimientos...</div>
-        </div>
-      ) : filteredPendientes.length === 0 ? (
-        <div className="flex items-center justify-center h-64">
-          <div className="text-center">
-            <div className="w-24 h-24 mx-auto mb-4 bg-gradient-to-br from-slate-100 to-gray-100 rounded-full flex items-center justify-center">
-              <PackageCheck className="h-12 w-12 text-slate-400" />
-            </div>
-            <h3 className="text-xl font-bold text-gray-900 mb-2">
-              {searchTerm ? 'Sin resultados' : '¡Todo al día!'}
-            </h3>
-            <p className="text-gray-500 max-w-md mx-auto">
-              {searchTerm
-                ? 'No se encontraron movimientos con la búsqueda aplicada'
-                : 'No hay movimientos pendientes de confirmación. El inventario está actualizado.'}
-            </p>
-          </div>
-        </div>
-      ) : (
-        <>
-          <Card className="overflow-hidden shadow-sm border-gray-200">
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader className="bg-gradient-to-r from-slate-50 to-gray-100">
-                    <TableRow>
-                      <TableHead>
+      <Card className="overflow-hidden shadow-sm border-gray-200">
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader className="bg-gradient-to-r from-teal-50 to-cyan-50">
+              <TableRow>
+                <TableHead>
+                  <div className="flex items-center gap-2">
+                    <ArrowRightLeft className="h-4 w-4 text-teal-600" />
+                    Tipo
+                  </div>
+                </TableHead>
+                <TableHead>
+                  <div className="flex items-center gap-2">
+                    <Package className="h-4 w-4 text-teal-600" />
+                    Producto
+                  </div>
+                </TableHead>
+                <TableHead>
+                  <div className="flex items-center gap-2">
+                    <Hash className="h-4 w-4 text-teal-600" />
+                    Cantidad
+                  </div>
+                </TableHead>
+                <TableHead>
+                  <div className="flex items-center gap-2">
+                    <Calendar className="h-4 w-4 text-teal-600" />
+                    Fecha
+                  </div>
+                </TableHead>
+                <TableHead>
+                  <div className="flex items-center gap-2">
+                    <MapPin className="h-4 w-4 text-teal-600" />
+                    Dependencia
+                  </div>
+                </TableHead>
+                <TableHead>Estado</TableHead>
+                <TableHead className="text-right">Acciones</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {isLoadingPendientes ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center py-12 text-gray-500">
+                    Cargando movimientos...
+                  </TableCell>
+                </TableRow>
+              ) : filteredPendientes.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center py-12 text-gray-500">
+                    {searchTerm
+                      ? 'No se encontraron movimientos con la búsqueda aplicada'
+                      : 'No hay movimientos pendientes de confirmación'}
+                  </TableCell>
+                </TableRow>
+              ) : (
+                filteredPendientes.map((mov: MovimientoPendiente) => {
+                  const config = getTipoConfig(mov.tipo_movimiento?.tipo || 'RECEPCION');
+                  const ImpactoIcon = config.impactoIcon;
+                  return (
+                    <TableRow
+                      key={mov.id_movimiento}
+                      className="hover:bg-gray-50/50 transition-colors cursor-pointer"
+                      onClick={() => handleVerDetalle(mov)}
+                    >
+                      <TableCell>
+                        <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${config.bgColor} ${config.impactoColor}`}>
+                          <ImpactoIcon className="h-3 w-3" />
+                          {config.impacto}
+                        </span>
+                        <span className={`ml-2 font-semibold text-sm ${config.textColor}`}>
+                          {mov.tipo_movimiento?.tipo?.toUpperCase() || 'MOVIMIENTO'}
+                        </span>
+                      </TableCell>
+                      <TableCell>
                         <div className="flex items-center gap-2">
-                          <ArrowRightLeft className="h-4 w-4 text-slate-600" />
-                          Tipo
+                          <Package className="h-4 w-4 text-gray-400" />
+                          <span className="font-medium text-gray-900">{mov.producto?.nombre || 'Producto no disponible'}</span>
                         </div>
-                      </TableHead>
-                      <TableHead>
-                        <div className="flex items-center gap-2">
-                          <Package className="h-4 w-4 text-slate-600" />
-                          Producto
+                      </TableCell>
+                      <TableCell>
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-slate-50 text-slate-700 rounded text-sm font-mono font-medium">
+                          <Hash className="h-3 w-3" />
+                          {mov.cantidad}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-gray-500">
+                        {new Date(mov.fecha).toLocaleDateString('es-ES')}
+                      </TableCell>
+                      <TableCell className="text-gray-500">
+                        {mov.dependencia?.nombre || 'Sin dependencia'}
+                      </TableCell>
+                      <TableCell>
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                          mov.estado === 'CONFIRMADO'
+                            ? 'bg-green-100 text-green-800'
+                            : mov.estado === 'PENDIENTE'
+                            ? 'bg-yellow-100 text-yellow-800'
+                            : 'bg-gray-100 text-gray-800'
+                        }`}>
+                          {mov.estado}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleConfirmarMovimiento(mov.id_movimiento)}
+                            disabled={confirmarMutation.isPending}
+                            className="text-green-600 hover:text-green-800 hover:bg-green-50 h-8 w-8"
+                            title="Confirmar movimiento"
+                          >
+                            <Check className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleEliminarMovimiento(mov.id_movimiento)}
+                            disabled={eliminarMutation.isPending}
+                            className="text-red-600 hover:text-red-800 hover:bg-red-50 h-8 w-8"
+                            title="Eliminar movimiento"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
                         </div>
-                      </TableHead>
-                      <TableHead>
-                        <div className="flex items-center gap-2">
-                          <Hash className="h-4 w-4 text-slate-600" />
-                          Cantidad
-                        </div>
-                      </TableHead>
-                      <TableHead>
-                        <div className="flex items-center gap-2">
-                          <Calendar className="h-4 w-4 text-slate-600" />
-                          Fecha
-                        </div>
-                      </TableHead>
-                      <TableHead>
-                        <div className="flex items-center gap-2">
-                          <MapPin className="h-4 w-4 text-slate-600" />
-                          Dependencia
-                        </div>
-                      </TableHead>
-                      <TableHead>Estado</TableHead>
-                      <TableHead className="text-right">Acciones</TableHead>
+                      </TableCell>
                     </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredPendientes.map((mov: MovimientoPendiente) => {
-                      const config = getTipoConfig(mov.tipo_movimiento?.tipo || 'RECEPCION');
-                      const ImpactoIcon = config.impactoIcon;
-                      return (
-                        <TableRow
-                          key={mov.id_movimiento}
-                          className="hover:bg-gray-50/50 transition-colors cursor-pointer"
-                          onClick={() => handleVerDetalle(mov)}
-                        >
-                          <TableCell>
-                            <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${config.bgColor} ${config.impactoColor}`}>
-                              <ImpactoIcon className="h-3 w-3" />
-                              {config.impacto}
-                            </span>
-                            <span className={`ml-2 font-semibold text-sm ${config.textColor}`}>
-                              {mov.tipo_movimiento?.tipo?.toUpperCase() || 'MOVIMIENTO'}
-                            </span>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
-                              <Package className="h-4 w-4 text-gray-400" />
-                              <span className="font-medium text-gray-900">{mov.producto?.nombre || 'Producto no disponible'}</span>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-slate-50 text-slate-700 rounded text-sm font-mono font-medium">
-                              <Hash className="h-3 w-3" />
-                              {mov.cantidad}
-                            </span>
-                          </TableCell>
-                          <TableCell className="text-gray-500">
-                            {new Date(mov.fecha).toLocaleDateString('es-ES')}
-                          </TableCell>
-                          <TableCell className="text-gray-500">
-                            {mov.dependencia?.nombre || 'Sin dependencia'}
-                          </TableCell>
-                          <TableCell>
-                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                              mov.estado === 'CONFIRMADO'
-                                ? 'bg-green-100 text-green-800'
-                                : mov.estado === 'PENDIENTE'
-                                ? 'bg-yellow-100 text-yellow-800'
-                                : 'bg-gray-100 text-gray-800'
-                            }`}>
-                              {mov.estado}
-                            </span>
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <div className="flex items-center justify-end gap-1">
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleConfirmarMovimiento(mov.id_movimiento);
-                                }}
-                                disabled={confirmarMutation.isPending}
-                                className="text-green-600 hover:text-green-800 hover:bg-green-50 h-8 w-8 p-1.5"
-                                title="Confirmar movimiento"
-                              >
-                                <Check className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleEliminarMovimiento(mov.id_movimiento);
-                                }}
-                                disabled={eliminarMutation.isPending}
-                                className="text-red-600 hover:text-red-800 hover:bg-red-50 h-8 w-8 p-1.5"
-                                title="Eliminar movimiento"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                       );
-                      })}
-                </TableBody>
-              </Table>
-            </div>
-          </Card>
-        </>
-      )}
+                  );
+                })
+              )}
+            </TableBody>
+          </Table>
+        </div>
+      </Card>
     </div>
   );
 
@@ -581,7 +571,7 @@ export function MovimientosPendientesPage() {
             const ImpactoIcon = config.impactoIcon;
             return (
               <>
-                <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-white">
+                <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-teal-50 to-cyan-50">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
                       <div className={`p-3 rounded-xl bg-gradient-to-br ${config.gradient} text-white shadow-lg`}>

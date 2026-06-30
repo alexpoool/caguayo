@@ -140,21 +140,23 @@ export function SuplementosPage() {
   };
 
   const renderList = () => (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div className="flex items-center gap-4">
-          <div className="p-3 bg-gradient-to-br from-amber-500 to-orange-600 rounded-xl shadow-lg animate-bounce-subtle">
-            <Layers className="h-8 w-8 text-white" />
+    <div className="space-y-4">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-gradient-to-br from-teal-500 to-cyan-600 rounded shadow-lg animate-bounce-subtle">
+            <Layers className="h-5 w-5 text-white" />
           </div>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Suplementos</h1>
-            <p className="text-gray-500 mt-1">Gestión de suplementos de contratos</p>
+          <div className="flex items-baseline">
+            <h1 className="text-xl font-bold text-gray-900">Suplementos</h1>
+            <p className="text-sm text-gray-500 ml-3 hidden sm:block">
+              Gestión de suplementos ({suplementos.length} registrados)
+            </p>
           </div>
         </div>
         <Button
           onClick={() => openForm()}
           disabled={contratos.length === 0}
-          className="gap-2 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300 disabled:opacity-50 disabled:transform-none"
+          className="gap-2 bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300 disabled:opacity-50 disabled:transform-none"
         >
           <Plus className="h-4 w-4" />
           Nuevo Suplemento
@@ -174,30 +176,30 @@ export function SuplementosPage() {
       <Card className="overflow-hidden shadow-sm border-gray-200">
           <div className="overflow-x-auto">
             <Table>
-              <TableHeader className="bg-gradient-to-r from-amber-50 to-orange-50">
+              <TableHeader className="bg-gradient-to-r from-teal-50 to-cyan-50">
                 <TableRow>
                   <TableHead>
                     <div className="flex items-center gap-2">
-                      <Tag className="h-4 w-4 text-amber-600" />
+                      <Tag className="h-4 w-4 text-teal-600" />
                       Código
                     </div>
                   </TableHead>
                   <TableHead>
                     <div className="flex items-center gap-2">
-                      <FileText className="h-4 w-4 text-amber-600" />
+                      <FileText className="h-4 w-4 text-teal-600" />
                       Nombre
                     </div>
                   </TableHead>
                   <TableHead>
                     <div className="flex items-center gap-2">
-                      <DollarSign className="h-4 w-4 text-amber-600" />
+                      <DollarSign className="h-4 w-4 text-teal-600" />
                       Monto
                     </div>
                   </TableHead>
                   <TableHead>Estado</TableHead>
                   <TableHead>
                     <div className="flex items-center gap-2">
-                      <Calendar className="h-4 w-4 text-amber-600" />
+                      <Calendar className="h-4 w-4 text-teal-600" />
                       Fecha
                     </div>
                   </TableHead>
@@ -215,7 +217,7 @@ export function SuplementosPage() {
                   filteredSuplementos.map((item) => (
                     <TableRow key={item.id_suplemento} className="hover:bg-gray-50/50 transition-colors cursor-pointer" onClick={() => setDetailModal({ isOpen: true, item })}>
                       <TableCell>
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-amber-50 text-amber-700 rounded text-sm font-mono font-medium">
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-teal-50 text-teal-700 rounded text-sm font-mono font-medium">
                           <Tag className="h-3 w-3" />
                           {item.codigo || 'N/A'}
                         </span>
@@ -239,7 +241,7 @@ export function SuplementosPage() {
                       <TableCell className="text-gray-500">{item.fecha}</TableCell>
                       <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                         <div className="flex justify-end gap-2">
-                          <Button variant="ghost" size="icon" onClick={() => openForm(item)} className="text-blue-600 hover:text-blue-800 hover:bg-blue-50 h-8 w-8" title="Editar">
+                          <Button variant="ghost" size="icon" onClick={() => openForm(item)} className="text-green-600 hover:text-green-800 hover:bg-green-50 h-8 w-8" title="Editar">
                             <Edit className="h-4 w-4" />
                           </Button>
                           <Button variant="ghost" size="icon" onClick={() => handleDelete(item.id_suplemento, item.nombre)} className="text-red-600 hover:text-red-800 hover:bg-red-50 h-8 w-8" title="Eliminar">
@@ -261,12 +263,12 @@ export function SuplementosPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <div className="p-3 bg-gradient-to-br from-amber-500 to-orange-600 rounded-xl shadow-lg animate-bounce-subtle">
-            <Layers className="h-8 w-8 text-white" />
+          <div className="p-2 bg-gradient-to-br from-teal-500 to-cyan-600 rounded shadow-lg animate-bounce-subtle">
+            <Layers className="h-5 w-5 text-white" />
           </div>
           <div>
-            <h2 className="text-2xl font-bold text-gray-900">{editingId ? 'Editar Suplemento' : 'Nuevo Suplemento'}</h2>
-            <p className="text-gray-500 mt-1">Complete los datos del suplemento</p>
+            <h2 className="text-xl font-bold text-gray-900">{editingId ? 'Editar Suplemento' : 'Nuevo Suplemento'}</h2>
+            <p className="text-sm text-gray-500 ml-3 hidden sm:block">Complete los datos del suplemento</p>
           </div>
         </div>
         <Button variant="outline" onClick={() => { setView('list'); resetForm(); }} className="gap-2">
@@ -278,7 +280,7 @@ export function SuplementosPage() {
       <Card className="shadow-sm border-gray-200">
         <CardHeader className="border-b bg-gray-50/50">
           <CardTitle className="flex items-center gap-2 text-lg">
-            <Layers className="h-5 w-5 text-amber-600" />
+            <Layers className="h-5 w-5 text-teal-600" />
             Información del Suplemento
           </CardTitle>
         </CardHeader>
@@ -296,7 +298,7 @@ export function SuplementosPage() {
                 </div>
               ) : (
                 <select 
-                  className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none bg-white"
+                  className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white"
                   value={selectedContratoId || ''} 
                   onChange={(e) => setSelectedContratoId(e.target.value ? Number(e.target.value) : null)}
                 >
@@ -307,7 +309,7 @@ export function SuplementosPage() {
             </div>
             <div>
               <Label className="text-sm font-medium">Estado</Label>
-              <select className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none bg-white" value={formData.id_estado || ''} onChange={(e: any) => setFormData({...formData, id_estado: e.target.value})}>
+              <select className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white" value={formData.id_estado || ''} onChange={(e: any) => setFormData({...formData, id_estado: e.target.value})}>
                 {estados.map(e => <option key={e.id_estado_contrato} value={e.id_estado_contrato}>{e.nombre}</option>)}
               </select>
             </div>
@@ -316,14 +318,14 @@ export function SuplementosPage() {
               <div className="flex gap-2">
                 <input 
                   type="date" 
-                  className="flex-1 mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition-colors" 
+                  className="flex-1 mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition-colors" 
                   value={formData.fecha || ''} 
                   onChange={(e: any) => setFormData({...formData, fecha: e.target.value})} 
                 />
                 <button 
                   type="button" 
                   onClick={() => setFormData({...formData, fecha: new Date().toISOString().split('T')[0]})} 
-                  className="mt-1 px-3 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors text-sm font-medium whitespace-nowrap"
+                  className="mt-1 px-3 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors text-sm font-medium whitespace-nowrap"
                 >
                   Hoy
                 </button>
@@ -335,7 +337,7 @@ export function SuplementosPage() {
             </div>
           </div>
           <div className="flex gap-3 mt-8 pt-6 border-t">
-            <Button onClick={handleSave} className="gap-2 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300">
+            <Button onClick={handleSave} className="gap-2 bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300">
               <Save className="h-4 w-4" />
               {editingId ? 'Actualizar' : 'Guardar'}
             </Button>
@@ -363,10 +365,10 @@ export function SuplementosPage() {
       {detailModal.isOpen && detailModal.item && createPortal(
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 animate-fade-in">
           <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-auto animate-scale-in">
-            <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-amber-50 to-orange-50">
+            <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-teal-50 to-cyan-50">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
-                  <div className="p-3 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 text-white shadow-lg">
+                  <div className="p-3 rounded-xl bg-gradient-to-br from-teal-500 to-cyan-600 text-white shadow-lg">
                     <Layers className="h-7 w-7" />
                   </div>
                   <div>

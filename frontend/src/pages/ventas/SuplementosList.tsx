@@ -1,4 +1,5 @@
 import {
+  Plus,
   Layers,
   Tag,
   FileText,
@@ -43,7 +44,7 @@ export const SuplementosList: React.FC<SuplementosListProps> = ({
   <div className="space-y-4">
     <div className="flex items-center justify-between gap-3">
       <div className="flex items-center gap-3">
-        <div className="p-2 bg-gradient-to-br from-amber-500 to-orange-600 rounded shadow-lg animate-bounce-subtle">
+        <div className="p-2 bg-gradient-to-br from-teal-500 to-cyan-600 rounded shadow-lg animate-bounce-subtle">
           <Layers className="h-5 w-5 text-white" />
         </div>
         <div className="flex items-baseline">
@@ -55,7 +56,7 @@ export const SuplementosList: React.FC<SuplementosListProps> = ({
       </div>
       <div className="flex gap-2">
         <select
-          className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none"
+          className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none"
           value={selectedContratoId || ""}
           onChange={(e: any) =>
             setSelectedContratoId(Number(e.target.value) || null)
@@ -71,44 +72,55 @@ export const SuplementosList: React.FC<SuplementosListProps> = ({
         <Button
           onClick={() => openForm()}
           disabled={!selectedContratoId}
-          className="gap-2 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300 disabled:opacity-50 disabled:transform-none"
+          className="gap-2 bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300 disabled:opacity-50 disabled:transform-none"
         >
+          <Plus className="h-4 w-4" />
           Nuevo Suplemento
         </Button>
       </div>
     </div>
     {!selectedContratoId ? (
-      <p className="text-gray-500 text-center py-12">
-        Seleccione un contrato para ver sus suplementos.
-      </p>
+      <Card className="overflow-hidden shadow-sm border-gray-200">
+        <div className="overflow-x-auto">
+          <Table>
+            <TableBody>
+              <TableRow>
+                <TableCell colSpan={6} className="text-center py-12 text-gray-500">
+                  Seleccione un contrato para ver sus suplementos.
+                </TableCell>
+              </TableRow>
+            </TableBody>
+          </Table>
+        </div>
+      </Card>
     ) : (
       <Card className="overflow-hidden shadow-sm border-gray-200">
         <div className="overflow-x-auto">
           <Table>
-            <TableHeader className="bg-gradient-to-r from-amber-50 to-orange-50">
+            <TableHeader className="bg-gradient-to-r from-teal-50 to-cyan-50">
               <TableRow>
                 <TableHead>
                   <div className="flex items-center gap-2">
-                    <Tag className="h-4 w-4 text-amber-600" />
+                    <Tag className="h-4 w-4 text-teal-600" />
                     Código
                   </div>
                 </TableHead>
                 <TableHead>
                   <div className="flex items-center gap-2">
-                    <FileText className="h-4 w-4 text-amber-600" />
+                    <FileText className="h-4 w-4 text-teal-600" />
                     Nombre
                   </div>
                 </TableHead>
                 <TableHead>
                   <div className="flex items-center gap-2">
-                    <DollarSign className="h-4 w-4 text-amber-600" />
+                    <DollarSign className="h-4 w-4 text-teal-600" />
                     Monto
                   </div>
                 </TableHead>
                 <TableHead>Estado</TableHead>
                 <TableHead>
                   <div className="flex items-center gap-2">
-                    <Calendar className="h-4 w-4 text-amber-600" />
+                    <Calendar className="h-4 w-4 text-teal-600" />
                     Fecha
                   </div>
                 </TableHead>
@@ -133,7 +145,7 @@ export const SuplementosList: React.FC<SuplementosListProps> = ({
                     onClick={() => openForm(item)}
                   >
                     <TableCell>
-                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-amber-50 text-amber-700 rounded text-sm font-mono font-medium">
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-teal-50 text-teal-700 rounded text-sm font-mono font-medium">
                         <Tag className="h-3 w-3" />
                         {item.codigo || "N/A"}
                       </span>
@@ -173,7 +185,7 @@ export const SuplementosList: React.FC<SuplementosListProps> = ({
                           variant="ghost"
                           size="icon"
                           onClick={() => openForm(item)}
-                          className="text-blue-600 hover:text-blue-800 hover:bg-blue-50 h-8 w-8"
+                          className="text-green-600 hover:text-green-800 hover:bg-green-50 h-8 w-8"
                           title="Editar"
                         >
                           <Edit className="h-4 w-4" />

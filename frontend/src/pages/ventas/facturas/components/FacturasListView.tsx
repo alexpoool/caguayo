@@ -1,5 +1,5 @@
-import { Plus } from 'lucide-react';
-import { Card, CardHeader, CardTitle, CardContent, Button, Label } from '../../../../components/ui';
+import { Plus, Receipt } from 'lucide-react';
+import { Button } from '../../../../components/ui';
 import { FacturasTable } from './FacturasTable';
 import type { FacturaWithDetails } from '../../../../types/contrato';
 import type { ContratoWithDetails } from '../../../../types/contrato';
@@ -37,13 +37,23 @@ export function FacturasListView({
     hasOnPrintDocument: typeof onPrintDocument,
   });
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-gray-900">Facturas</h2>
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-gradient-to-br from-teal-500 to-cyan-600 rounded shadow-lg animate-bounce-subtle">
+            <Receipt className="h-5 w-5 text-white" />
+          </div>
+          <div className="flex items-baseline">
+            <h1 className="text-xl font-bold text-gray-900">Facturas</h1>
+            <p className="text-sm text-gray-500 ml-3 hidden sm:block">
+              Gestión de facturas ({facturas.length} registros)
+            </p>
+          </div>
+        </div>
         <Button
           onClick={onAddNew}
-          className="gap-2 bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300"
+          className="gap-2 bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300"
         >
           <Plus className="h-4 w-4" />
           Nueva Factura
@@ -51,71 +61,59 @@ export function FacturasListView({
       </div>
 
       {/* Filtro por contrato */}
-      <Card className="bg-white">
-        <CardHeader className="border-b bg-gray-50/50">
-          <CardTitle className="text-lg">Filtrar por Contrato</CardTitle>
-        </CardHeader>
-        <CardContent className="p-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <Label htmlFor="contrato-filter" className="text-sm font-medium">
-                Contrato
-              </Label>
-              <select
-                id="contrato-filter"
-                className="w-full mt-2 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 outline-none bg-white"
-                value={selectedContratoId || ''}
-                onChange={(e) => {
-                  const value = e.target.value;
-                  onSelectedContratoChange(value ? Number(value) : null);
-                }}
-              >
-                <option value="">Todos los contratos</option>
-                {contratos.map((c) => (
-                  <option key={c.id_contrato} value={c.id_contrato}>
-                    {c.codigo || c.nombre} - {c.nombre}
-                  </option>
-                ))}
-              </select>
-            </div>
+      <div className="flex gap-2">
+        <div className="flex-1 relative max-w-md">
+          <select
+            id="contrato-filter"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white"
+            value={selectedContratoId || ''}
+            onChange={(e) => {
+              const value = e.target.value;
+              onSelectedContratoChange(value ? Number(value) : null);
+            }}
+          >
+            <option value="">Todos los contratos</option>
+            {contratos.map((c) => (
+              <option key={c.id_contrato} value={c.id_contrato}>
+                {c.codigo || c.nombre} - {c.nombre}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
 
-            {/* Resumen */}
-            <div className="bg-gradient-to-br from-violet-50 to-purple-50 p-4 rounded-xl border border-violet-100">
-              <p className="text-xs text-violet-600 uppercase tracking-wider mb-1">
-                Total de Facturas
-              </p>
-              <p className="text-2xl font-bold text-violet-900">{facturas.length}</p>
-            </div>
+      {/* Resumen stats */}
+      <div className="grid grid-cols-2 gap-3">
+        <div className="bg-gradient-to-br from-teal-50 to-cyan-50 p-4 rounded-xl border border-teal-100">
+          <p className="text-xs text-teal-600 uppercase tracking-wider mb-1">
+            Total Facturas
+          </p>
+          <p className="text-2xl font-bold text-teal-900">{facturas.length}</p>
+        </div>
 
-            <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-4 rounded-xl border border-green-100">
-              <p className="text-xs text-green-600 uppercase tracking-wider mb-1">
-                Monto Total
-              </p>
-              <p className="text-2xl font-bold text-green-900">
-                $
-                {facturas
-                  .reduce((sum, f) => sum + Number(f.monto), 0)
-                  .toFixed(2)}
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+        <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-4 rounded-xl border border-green-100">
+          <p className="text-xs text-green-600 uppercase tracking-wider mb-1">
+            Monto Total
+          </p>
+          <p className="text-2xl font-bold text-green-900">
+            $
+            {facturas
+              .reduce((sum, f) => sum + Number(f.monto), 0)
+              .toFixed(2)}
+          </p>
+        </div>
+      </div>
 
       {/* Tabla de facturas */}
-      <Card>
-        <CardContent className="p-6">
-          <FacturasTable
-            facturas={facturas}
-            onEdit={onEdit}
-            onDelete={onDelete}
-            onViewDetails={onViewDetails}
-            onOpenPagos={onOpenPagos}
-            onViewDocument={onViewDocument}
-            onPrintDocument={onPrintDocument}
-          />
-        </CardContent>
-      </Card>
+      <FacturasTable
+        facturas={facturas}
+        onEdit={onEdit}
+        onDelete={onDelete}
+        onViewDetails={onViewDetails}
+        onOpenPagos={onOpenPagos}
+        onViewDocument={onViewDocument}
+        onPrintDocument={onPrintDocument}
+      />
     </div>
   );
 }
