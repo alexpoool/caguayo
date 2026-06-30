@@ -5,7 +5,7 @@ import { productosEnLiquidacionService, productosService, monedaService } from '
 import type { ProductosEnLiquidacion, ProductosEnLiquidacionCreate } from '../../services/api';
 import type { Productos } from '../../types';
 import type { Moneda } from '../../types/moneda';
-import { Plus, Save, Trash2, Edit, X, ArrowLeft, Search, Check, Package, Tag, DollarSign, ClipboardList, Eye } from 'lucide-react';
+import { Plus, Save, Trash2, Edit, X, ArrowLeft, Search, Check, Package, Tag, DollarSign, ClipboardList, Eye, Boxes } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { esNumeroPositivo, esPorcentaje } from '../../utils/validacionFormularios';
 
@@ -124,22 +124,29 @@ export function ProductosEnLiquidacionPage() {
   };
 
   const renderList = () => (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div className="flex items-center gap-4">
-          <div className="p-3 bg-gradient-to-br from-red-500 to-rose-600 rounded-xl shadow-lg animate-bounce-subtle">
-            <ClipboardList className="h-8 w-8 text-white" />
+    <div className="space-y-4">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-gradient-to-br from-teal-500 to-cyan-600 rounded shadow-lg animate-bounce-subtle">
+            <Boxes className="h-5 w-5 text-white" />
           </div>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Productos en Liquidación</h1>
-            <p className="text-gray-500 mt-1">
-              {filteredProductos.length === productos.length 
+          <div className="flex items-baseline">
+            <h1 className="text-xl font-bold text-gray-900">Productos en Liquidación</h1>
+            <p className="text-sm text-gray-500 ml-3 hidden sm:block">
+              {filteredProductos.length === productos.length
                 ? `Gestión de productos (${productos.length} items)`
                 : `Mostrando ${filteredProductos.length} de ${productos.length} productos`
               }
             </p>
           </div>
         </div>
+        <Button
+          onClick={() => openForm()}
+          className="gap-2 bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300"
+        >
+          <Plus className="h-4 w-4" />
+          Nuevo Producto
+        </Button>
       </div>
 
       <div className="flex gap-4 border-b">
@@ -149,7 +156,7 @@ export function ProductosEnLiquidacionPage() {
             onClick={() => setFilterType(tab)}
             className={`px-4 py-2 font-medium transition-colors ${
               filterType === tab
-                ? 'text-lime-600 border-b-2 border-lime-600'
+                ? 'text-teal-600 border-b-2 border-teal-600'
                 : 'text-gray-500 hover:text-gray-700'
             }`}
           >
@@ -173,24 +180,24 @@ export function ProductosEnLiquidacionPage() {
       <Card className="overflow-hidden shadow-sm border-gray-200">
         <div className="overflow-x-auto">
           <Table>
-            <TableHeader className="bg-gradient-to-r from-red-50 to-rose-50">
+            <TableHeader className="bg-gradient-to-r from-teal-50 to-cyan-50">
               <TableRow>
                 <TableHead>
                   <div className="flex items-center gap-2">
-                    <Package className="h-4 w-4 text-red-600" />
+                    <Package className="h-4 w-4 text-teal-600" />
                     Producto
                   </div>
                 </TableHead>
                 <TableHead>Cantidad</TableHead>
                 <TableHead>
                   <div className="flex items-center gap-2">
-                    <DollarSign className="h-4 w-4 text-red-600" />
+                    <DollarSign className="h-4 w-4 text-teal-600" />
                     Precio Compra
                   </div>
                 </TableHead>
                 <TableHead>
                   <div className="flex items-center gap-2">
-                    <DollarSign className="h-4 w-4 text-red-600" />
+                    <DollarSign className="h-4 w-4 text-teal-600" />
                     Precio Venta
                   </div>
                 </TableHead>
@@ -248,7 +255,7 @@ export function ProductosEnLiquidacionPage() {
                           variant="ghost"
                           size="icon"
                           onClick={() => openForm(item)}
-                          className="text-blue-600 hover:text-blue-800 hover:bg-blue-50 h-8 w-8"
+                          className="text-green-600 hover:text-green-800 hover:bg-green-50 h-8 w-8"
                           title="Editar"
                         >
                           <Edit className="h-4 w-4" />
@@ -275,27 +282,37 @@ export function ProductosEnLiquidacionPage() {
   );
 
   const renderForm = () => (
-    <>
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-bold text-gray-900">{editingId ? 'Editar' : 'Nuevo'} Producto en Liquidación</h2>
-        <Button variant="outline" onClick={() => { setView('list'); resetForm(); }} className="gap-2">
-          <ArrowLeft className="h-4 w-4" />
-          Volver
+    <div className="max-w-2xl mx-auto">
+      <div className="flex items-center gap-4 mb-6">
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => { setView('list'); resetForm(); }}
+          className="h-9 w-9"
+        >
+          <ArrowLeft className="h-5 w-5" />
         </Button>
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-gradient-to-br from-teal-500 to-cyan-600 rounded shadow-lg animate-bounce-subtle">
+            <Boxes className="h-5 w-5 text-white" />
+          </div>
+          <h1 className="text-xl font-bold text-gray-900">
+            {editingId ? 'Editar' : 'Nuevo'} Producto en Liquidación
+          </h1>
+        </div>
       </div>
       <Card className="shadow-sm border-gray-200">
         <CardHeader className="border-b bg-gray-50/50">
           <CardTitle className="flex items-center gap-2 text-lg">
-            <Package className="h-5 w-5 text-red-600" />
+            <Package className="h-5 w-5 text-teal-600" />
             {editingId ? 'Editar' : 'Nuevo'} Producto en Liquidación
           </CardTitle>
         </CardHeader>
-        <CardContent className="p-6">
-        <div className="grid gap-6">
+        <CardContent className="mt-4 space-y-4">
           <div>
             <Label className="text-sm font-medium">Producto *</Label>
             <select 
-              className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 outline-none bg-white"
+              className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white"
               value={formData.id_producto || ''}
               onChange={(e) => { setFormData({...formData, id_producto: Number(e.target.value)}); setErrors(prev => ({...prev, id_producto: ''})); }}
             >
@@ -331,7 +348,7 @@ export function ProductosEnLiquidacionPage() {
             <div>
               <Label className="text-sm font-medium">Moneda *</Label>
               <select 
-                className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 outline-none bg-white"
+                className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white"
                 value={formData.id_moneda || ''}
                 onChange={(e) => { setFormData({...formData, id_moneda: Number(e.target.value)}); setErrors(prev => ({...prev, id_moneda: ''})); }}
               >
@@ -343,7 +360,7 @@ export function ProductosEnLiquidacionPage() {
             <div>
               <Label className="text-sm font-medium">Tipo Compra *</Label>
               <select 
-                className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 outline-none bg-white"
+                className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white"
                 value={formData.tipo_compra || ''}
                 onChange={(e) => { setFormData({...formData, tipo_compra: e.target.value as any}); setErrors(prev => ({...prev, tipo_compra: ''})); }}
               >
@@ -354,29 +371,34 @@ export function ProductosEnLiquidacionPage() {
               </select>
             </div>
           </div>
-          <div className="flex gap-2 mt-8 pt-6 border-t">
-            <Button onClick={handleSave}><Save className="w-4 h-4 mr-2" />Guardar</Button>
+          <div className="flex gap-3 pt-6 border-t">
+            <Button
+              onClick={handleSave}
+              className="gap-2 bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300"
+            >
+              <Save className="w-4 h-4" />
+              Guardar
+            </Button>
             <Button variant="outline" onClick={() => { setView('list'); resetForm(); }}>Cancelar</Button>
           </div>
-        </div>
-      </CardContent>
-    </Card>
-    </>
+        </CardContent>
+      </Card>
+    </div>
   );
 
   return (
-    <div className="p-6">
+    <div>
       {view === 'list' && renderList()}
       {view === 'form' && renderForm()}
 
       {detailModal.isOpen && detailModal.item && createPortal(
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 animate-fade-in">
           <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-auto animate-scale-in">
-            <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-red-50 to-rose-50">
+            <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-teal-50 to-cyan-50">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
-                  <div className="p-3 rounded-xl bg-gradient-to-br from-red-500 to-rose-600 text-white shadow-lg">
-                    <ClipboardList className="h-7 w-7" />
+                  <div className="p-3 rounded-xl bg-gradient-to-br from-teal-500 to-cyan-600 text-white shadow-lg">
+                    <Boxes className="h-7 w-7" />
                   </div>
                   <div>
                     <h3 className="text-2xl font-bold text-gray-900">{detailModal.item.producto?.nombre || 'Producto'}</h3>

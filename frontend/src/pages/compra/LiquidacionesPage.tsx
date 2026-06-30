@@ -21,7 +21,9 @@ import {
   Calendar,
   User,
   X,
-  Printer
+  Printer,
+  Receipt,
+  Package
 } from 'lucide-react';
 import { 
   liquidacionService, 
@@ -584,15 +586,17 @@ export function LiquidacionesPage() {
     }, []);
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div className="flex items-center gap-4">
-          <div className="p-3 bg-gradient-to-br from-lime-500 to-green-600 rounded-xl shadow-lg animate-bounce-subtle">
-            <ScrollText className="h-8 w-8 text-white" />
+    <div className="space-y-4">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-gradient-to-br from-teal-500 to-cyan-600 rounded shadow-lg animate-bounce-subtle">
+            <Receipt className="h-5 w-5 text-white" />
           </div>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Liquidaciones</h1>
-            <p className="text-gray-500 mt-1">Gestión de liquidaciones a proveedores</p>
+          <div className="flex items-baseline">
+            <h1 className="text-xl font-bold text-gray-900">Liquidaciones</h1>
+            <p className="text-sm text-gray-500 ml-3 hidden sm:block">
+              Gestión de liquidaciones ({liquidaciones.length} registradas)
+            </p>
           </div>
         </div>
         <Button
@@ -602,7 +606,7 @@ export function LiquidacionesPage() {
               : '/compra/liquidaciones/crear';
             navigate(url);
           }}
-          className="gap-2 bg-gradient-to-r from-lime-500 to-green-600 hover:from-lime-600 hover:to-green-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300"
+          className="gap-2 bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300"
         >
           <Plus className="h-4 w-4" />
           Nueva Liquidación
@@ -616,7 +620,7 @@ export function LiquidacionesPage() {
             onClick={() => setActiveTab(tab)}
             className={`px-4 py-2 font-medium transition-colors ${
               activeTab === tab
-                ? 'text-lime-600 border-b-2 border-lime-600'
+                ? 'text-teal-600 border-b-2 border-teal-600'
                 : 'text-gray-500 hover:text-gray-700'
             }`}
           >
@@ -625,15 +629,14 @@ export function LiquidacionesPage() {
         ))}
       </div>
 
-      <div className="flex gap-4 items-center">
-        <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-          <input
-            type="text"
+      <div className="flex gap-2">
+        <div className="flex-1 relative max-w-md">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+          <Input
             placeholder="Buscar liquidaciones..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-lime-500 focus:border-transparent"
+            className="pl-10"
           />
         </div>
       </div>
@@ -641,23 +644,23 @@ export function LiquidacionesPage() {
       <Card className="overflow-hidden shadow-sm border-gray-200">
         <div className="overflow-x-auto">
           <Table>
-            <TableHeader className="bg-gradient-to-r from-lime-50 to-green-50">
+            <TableHeader className="bg-gradient-to-r from-teal-50 to-cyan-50">
               <TableRow>
                 <TableHead>
                   <div className="flex items-center gap-2">
-                    <Tag className="h-4 w-4 text-lime-600" />
+                    <Tag className="h-4 w-4 text-teal-600" />
                     Código
                   </div>
                 </TableHead>
                 <TableHead>
                   <div className="flex items-center gap-2">
-                    <User className="h-4 w-4 text-lime-600" />
+                    <User className="h-4 w-4 text-teal-600" />
                     Proveedor
                   </div>
                 </TableHead>
                 <TableHead>
                   <div className="flex items-center gap-2">
-                    <DollarSign className="h-4 w-4 text-lime-600" />
+                    <DollarSign className="h-4 w-4 text-teal-600" />
                     Importe
                   </div>
                 </TableHead>
@@ -679,7 +682,7 @@ export function LiquidacionesPage() {
                 filteredLiquidaciones.map((liquidacion: Liquidacion) => (
                   <TableRow key={liquidacion.id_liquidacion} className="hover:bg-gray-50/50 transition-colors cursor-pointer" onClick={() => setDetailModal({ isOpen: true, item: liquidacion })}>
                     <TableCell>
-                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-lime-50 text-lime-700 rounded text-sm font-mono font-medium">
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-teal-50 text-teal-700 rounded text-sm font-mono font-medium">
                         <Tag className="h-3 w-3" />
                         {liquidacion.codigo}
                       </span>
@@ -753,10 +756,12 @@ export function LiquidacionesPage() {
       {showModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-4xl max-h-[90vh] overflow-hidden">
-            <CardHeader className="border-b bg-gray-50/50">
+            <CardHeader className="border-b bg-gradient-to-r from-teal-50 to-cyan-50">
               <div className="flex items-center gap-4">
+                <div className="p-2 bg-gradient-to-br from-teal-500 to-cyan-600 rounded shadow-lg">
+                  <Receipt className="h-5 w-5 text-white" />
+                </div>
                 <CardTitle className="flex items-center gap-2 text-lg">
-                  <FileText className="h-5 w-5 text-blue-600" />
                   Nueva Liquidación
                 </CardTitle>
                 <button onClick={() => { setShowModal(false); resetForm(); }} className="ml-auto text-gray-400 hover:text-gray-600">
@@ -765,252 +770,288 @@ export function LiquidacionesPage() {
               </div>
             </CardHeader>
             
-            <div className="p-6 overflow-y-auto max-h-[calc(90vh-140px)]">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                <div>
-                  <Label className="text-sm font-medium">Proveedor *</Label>
-                  <div className="relative mt-1">
-                    <select
-                      value={filtroCliente || ''}
-                      onChange={(e) => {
-                        const value = Number(e.target.value);
-                        if (value) {
-                          handleClienteChange(value);
-                        }
-                      }}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white pr-10"
-                    >
-                      <option value="">Seleccionar proveedor</option>
-                      {clientes.map((cliente: Cliente) => (
-                        <option key={cliente.id_cliente} value={cliente.id_cliente}>
-                          {cliente.nombre}
-                        </option>
-                      ))}
-                    </select>
-                    {filtroCliente && (
-                      <button
-                        type="button"
-                        onClick={handleChangeProveedorClick}
-                        className="absolute right-8 top-1/2 -translate-y-1/2 p-1 text-gray-500 hover:text-red-500 transition-colors"
-                        title="Cambiar proveedor"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
-                    )}
-                  </div>
-                </div>
-                
-                <div>
-                  <Label className="text-sm font-medium">Anexo</Label>
-                  <select
-                    value={filtroAnexo || ''}
-                    onChange={(e) => handleAnexoChange(e.target.value ? Number(e.target.value) : null)}
-                    className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white"
-                    disabled={!filtroCliente}
-                  >
-                    <option value="">Todos los anexos</option>
-                    {clienteAnexos.map((anexo: Anexo) => (
-                      <option key={anexo.id_anexo} value={anexo.id_anexo}>
-                        {anexo.nombre_anexo}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                
-                <div>
-                  <Label className="text-sm font-medium">Moneda *</Label>
-                  <select
-                    value={formData.id_moneda}
-                    onChange={(e) => setFormData(prev => ({ ...prev, id_moneda: Number(e.target.value) }))}
-                    className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white"
-                  >
-                    {monedas.map((moneda: Moneda) => (
-                      <option key={moneda.id_moneda} value={moneda.id_moneda}>
-                        {moneda.nombre}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                
-                <div>
-                  <Label className="text-sm font-medium">Tipo de Pago</Label>
-                  <select
-                    value={formData.tipo_pago}
-                    onChange={(e) => setFormData(prev => ({ ...prev, tipo_pago: e.target.value }))}
-                    className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white"
-                  >
-                    <option value="TRANSFERENCIA">Transferencia</option>
-                    <option value="EFECTIVO">Efectivo</option>
-                    <option value="CHEQUE">Cheque</option>
-                    <option value="OTRO">Otro</option>
-                  </select>
-                </div>
-              </div>
-
-              {filtroCliente && (
-                <div className="mb-6">
-                  <div className="flex justify-between items-center mb-2">
-                    <h3 className="font-medium text-gray-700">Productos Pendientes</h3>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={handleSelectAll}
-                        className="text-sm text-blue-600 hover:underline"
-                      >
-                        Seleccionar todos
-                      </button>
-                      <span className="text-gray-300">|</span>
-                      <button
-                        onClick={handleDeselectAll}
-                        className="text-sm text-blue-600 hover:underline"
-                      >
-                        Deseleccionar todos
-                      </button>
-                    </div>
-                  </div>
-                  
-                  {productosPendientes.length === 0 ? (
-                    <p className="text-gray-500 text-sm py-4">No hay productos pendientes para este proveedor</p>
-                  ) : (
-                    <div className="border rounded-lg max-h-60 overflow-y-auto">
-                      <table className="w-full text-sm">
-                        <thead className="bg-gray-50 sticky top-0">
-                          <tr>
-                            <th className="px-3 py-2 text-left"></th>
-                            <th className="px-3 py-2 text-left">Código</th>
-                            <th className="px-3 py-2 text-left">Producto</th>
-                            <th className="px-3 py-2 text-right">A Liquidar</th>
-                            <th className="px-3 py-2 text-right">Por Liquidar</th>
-                            <th className="px-3 py-2 text-right">Precio Venta</th>
-                            <th className="px-3 py-2 text-right">Total</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y">
-                          {productosPendientes.map((prod: ProductosEnLiquidacion) => (
-                            <tr key={prod.id_producto_en_liquidacion} className="hover:bg-gray-50">
-                              <td className="px-3 py-2">
-                                <input
-                                  type="checkbox"
-                                  checked={selectedProductos.includes(prod.id_producto_en_liquidacion)}
-                                  onChange={() => handleProductoSelect(prod.id_producto_en_liquidacion)}
-                                  className="rounded"
-                                />
-                              </td>
-                              <td className="px-3 py-2">{prod.codigo}</td>
-                              <td className="px-3 py-2">{prod.producto_nombre || prod.producto?.nombre || `Producto ${prod.id_producto}`}</td>
-                              <td className="px-3 py-2 text-right">{prod.cantidad}</td>
-                              <td className="px-3 py-2 text-right">
-                                {((prod.cantidad_original || 0) - (prod.cantidad_liquidada || 0)) > 0 
-                                  ? (prod.cantidad_original || 0) - (prod.cantidad_liquidada || 0) 
-                                  : 0}
-                              </td>
-                              <td className="px-3 py-2 text-right">{prod.precio?.toLocaleString()}</td>
-                              <td className="px-3 py-2 text-right font-medium">
-                                {(prod.precio * prod.cantidad).toLocaleString()}
-                              </td>
-                            </tr>
+            <div className="p-6 overflow-y-auto max-h-[calc(90vh-140px)] space-y-6">
+              {/* Datos de Liquidación */}
+              <Card className="shadow-sm border-gray-200">
+                <CardHeader className="border-b bg-gray-50/50">
+                  <CardTitle className="flex items-center gap-2 text-base">
+                    <FileText className="h-4 w-4 text-teal-600" />
+                    Datos de Liquidación
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="mt-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label className="text-sm font-medium">Proveedor *</Label>
+                      <div className="relative mt-1">
+                        <select
+                          value={filtroCliente || ''}
+                          onChange={(e) => {
+                            const value = Number(e.target.value);
+                            if (value) {
+                              handleClienteChange(value);
+                            }
+                          }}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white pr-10"
+                        >
+                          <option value="">Seleccionar proveedor</option>
+                          {clientes.map((cliente: Cliente) => (
+                            <option key={cliente.id_cliente} value={cliente.id_cliente}>
+                              {cliente.nombre}
+                            </option>
                           ))}
-                        </tbody>
-                      </table>
+                        </select>
+                        {filtroCliente && (
+                          <button
+                            type="button"
+                            onClick={handleChangeProveedorClick}
+                            className="absolute right-8 top-1/2 -translate-y-1/2 p-1 text-gray-500 hover:text-red-500 transition-colors"
+                            title="Cambiar proveedor"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
                     </div>
-                  )}
-                </div>
+                    
+                    <div>
+                      <Label className="text-sm font-medium">Anexo</Label>
+                      <select
+                        value={filtroAnexo || ''}
+                        onChange={(e) => handleAnexoChange(e.target.value ? Number(e.target.value) : null)}
+                        className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white"
+                        disabled={!filtroCliente}
+                      >
+                        <option value="">Todos los anexos</option>
+                        {clienteAnexos.map((anexo: Anexo) => (
+                          <option key={anexo.id_anexo} value={anexo.id_anexo}>
+                            {anexo.nombre_anexo}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    
+                    <div>
+                      <Label className="text-sm font-medium">Moneda *</Label>
+                      <select
+                        value={formData.id_moneda}
+                        onChange={(e) => setFormData(prev => ({ ...prev, id_moneda: Number(e.target.value) }))}
+                        className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white"
+                      >
+                        {monedas.map((moneda: Moneda) => (
+                          <option key={moneda.id_moneda} value={moneda.id_moneda}>
+                            {moneda.nombre}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    
+                    <div>
+                      <Label className="text-sm font-medium">Tipo de Pago</Label>
+                      <select
+                        value={formData.tipo_pago}
+                        onChange={(e) => setFormData(prev => ({ ...prev, tipo_pago: e.target.value }))}
+                        className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white"
+                      >
+                        <option value="TRANSFERENCIA">Transferencia</option>
+                        <option value="EFECTIVO">Efectivo</option>
+                        <option value="CHEQUE">Cheque</option>
+                        <option value="OTRO">Otro</option>
+                      </select>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Productos Pendientes */}
+              {filtroCliente && (
+                <Card className="shadow-sm border-gray-200">
+                  <CardHeader className="border-b bg-gray-50/50">
+                    <div className="flex justify-between items-center w-full">
+                      <CardTitle className="flex items-center gap-2 text-base">
+                        <Package className="h-4 w-4 text-teal-600" />
+                        Productos Pendientes
+                      </CardTitle>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={handleSelectAll}
+                          className="text-sm text-teal-600 hover:underline"
+                        >
+                          Seleccionar todos
+                        </button>
+                        <span className="text-gray-300">|</span>
+                        <button
+                          onClick={handleDeselectAll}
+                          className="text-sm text-teal-600 hover:underline"
+                        >
+                          Deseleccionar todos
+                        </button>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="mt-4">
+                    {productosPendientes.length === 0 ? (
+                      <p className="text-gray-500 text-sm py-4">No hay productos pendientes para este proveedor</p>
+                    ) : (
+                      <div className="border rounded-lg max-h-60 overflow-y-auto">
+                        <Table>
+                          <TableHeader className="bg-gray-50 sticky top-0">
+                            <TableRow>
+                              <TableHead className="w-10"></TableHead>
+                              <TableHead>Código</TableHead>
+                              <TableHead>Producto</TableHead>
+                              <TableHead className="text-right">A Liquidar</TableHead>
+                              <TableHead className="text-right">Por Liquidar</TableHead>
+                              <TableHead className="text-right">Precio Venta</TableHead>
+                              <TableHead className="text-right">Total</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {productosPendientes.map((prod: ProductosEnLiquidacion) => (
+                              <TableRow key={prod.id_producto_en_liquidacion} className="hover:bg-gray-50">
+                                <TableCell>
+                                  <input
+                                    type="checkbox"
+                                    checked={selectedProductos.includes(prod.id_producto_en_liquidacion)}
+                                    onChange={() => handleProductoSelect(prod.id_producto_en_liquidacion)}
+                                    className="rounded"
+                                  />
+                                </TableCell>
+                                <TableCell>{prod.codigo}</TableCell>
+                                <TableCell>{prod.producto_nombre || prod.producto?.nombre || `Producto ${prod.id_producto}`}</TableCell>
+                                <TableCell className="text-right">{prod.cantidad}</TableCell>
+                                <TableCell className="text-right">
+                                  {((prod.cantidad_original || 0) - (prod.cantidad_liquidada || 0)) > 0 
+                                    ? (prod.cantidad_original || 0) - (prod.cantidad_liquidada || 0) 
+                                    : 0}
+                                </TableCell>
+                                <TableCell className="text-right">{prod.precio?.toLocaleString()}</TableCell>
+                                <TableCell className="text-right font-medium">
+                                  {(prod.precio * prod.cantidad).toLocaleString()}
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
               )}
 
-              <div className="grid gap-4 md:grid-cols-5 mb-6">
-                <div>
-                  <Label className="text-sm font-medium">% Caguayo</Label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    max="100"
-                    value={formData.porcentaje_caguayo}
-                    onChange={(e) => { setFormData(prev => ({ ...prev, porcentaje_caguayo: Number(e.target.value) })); validateNumericField('porcentaje_caguayo', e.target.value); }}
-                  />
-                  {errors.porcentaje_caguayo && <p className="text-red-500 text-sm mt-1">{errors.porcentaje_caguayo}</p>}
-                </div>
-                <div>
-                  <Label className="text-sm font-medium">Tributario (%)</Label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    max="100"
-                    value={formData.tributario}
-                    onChange={(e) => { setFormData(prev => ({ ...prev, tributario: Number(e.target.value) })); validateNumericField('tributario', e.target.value); }}
-                  />
-                  {errors.tributario && <p className="text-red-500 text-sm mt-1">{errors.tributario}</p>}
-                </div>
-                <div>
-                  <Label className="text-sm font-medium">Comisión Bancaria</Label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={formData.comision_bancaria}
-                    onChange={(e) => { setFormData(prev => ({ ...prev, comision_bancaria: Number(e.target.value) })); validateNumericField('comision_bancaria', e.target.value); }}
-                  />
-                  {errors.comision_bancaria && <p className="text-red-500 text-sm mt-1">{errors.comision_bancaria}</p>}
-                </div>
-                <div>
-                  <Label className="text-sm font-medium">Gasto Empresa</Label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={formData.gasto_empresa}
-                    onChange={(e) => { setFormData(prev => ({ ...prev, gasto_empresa: Number(e.target.value) })); validateNumericField('gasto_empresa', e.target.value); }}
-                  />
-                  {errors.gasto_empresa && <p className="text-red-500 text-sm mt-1">{errors.gasto_empresa}</p>}
-                </div>
-              </div>
+              {/* Cálculos de Liquidación */}
+              <Card className="shadow-sm border-gray-200">
+                <CardHeader className="border-b bg-gray-50/50">
+                  <CardTitle className="flex items-center gap-2 text-base">
+                    <DollarSign className="h-4 w-4 text-teal-600" />
+                    Cálculos de Liquidación
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="mt-4">
+                  <div className="grid gap-4 md:grid-cols-4 mb-6">
+                    <div>
+                      <Label className="text-sm font-medium">% Caguayo</Label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        max="100"
+                        value={formData.porcentaje_caguayo}
+                        onChange={(e) => { setFormData(prev => ({ ...prev, porcentaje_caguayo: Number(e.target.value) })); validateNumericField('porcentaje_caguayo', e.target.value); }}
+                      />
+                      {errors.porcentaje_caguayo && <p className="text-red-500 text-sm mt-1">{errors.porcentaje_caguayo}</p>}
+                    </div>
+                    <div>
+                      <Label className="text-sm font-medium">Tributario (%)</Label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        max="100"
+                        value={formData.tributario}
+                        onChange={(e) => { setFormData(prev => ({ ...prev, tributario: Number(e.target.value) })); validateNumericField('tributario', e.target.value); }}
+                      />
+                      {errors.tributario && <p className="text-red-500 text-sm mt-1">{errors.tributario}</p>}
+                    </div>
+                    <div>
+                      <Label className="text-sm font-medium">Comisión Bancaria</Label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={formData.comision_bancaria}
+                        onChange={(e) => { setFormData(prev => ({ ...prev, comision_bancaria: Number(e.target.value) })); validateNumericField('comision_bancaria', e.target.value); }}
+                      />
+                      {errors.comision_bancaria && <p className="text-red-500 text-sm mt-1">{errors.comision_bancaria}</p>}
+                    </div>
+                    <div>
+                      <Label className="text-sm font-medium">Gasto Empresa</Label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={formData.gasto_empresa}
+                        onChange={(e) => { setFormData(prev => ({ ...prev, gasto_empresa: Number(e.target.value) })); validateNumericField('gasto_empresa', e.target.value); }}
+                      />
+                      {errors.gasto_empresa && <p className="text-red-500 text-sm mt-1">{errors.gasto_empresa}</p>}
+                    </div>
+                  </div>
 
-<div className="bg-gray-50 rounded-lg p-4 mb-6">
-                <div className="space-y-1">
-                  <div className="flex justify-between">
-                    <span className="text-base font-bold text-gray-800">IMPORTE:</span>
-                    <span className="text-base font-bold text-gray-800">{calculateImporte().toLocaleString()}</span>
+                  <div className="bg-gray-50 rounded-lg p-5">
+                    <div className="space-y-1.5">
+                      <div className="flex justify-between">
+                        <span className="text-base font-bold text-gray-800">IMPORTE:</span>
+                        <span className="text-base font-bold text-gray-800">{calculateImporte().toLocaleString()}</span>
+                      </div>
+                      <div className="flex justify-between pl-4">
+                        <span className="text-sm text-gray-500">Importe Caguayo ({Number(formData.porcentaje_caguayo || DEFAULTS.PORCENTAJE_CAGUAYO)}%):</span>
+                        <span className="text-sm text-gray-500">- {calculateImporteCaguayo().toLocaleString()}</span>
+                      </div>
+                      <div className="flex justify-between border-b border-gray-200 pb-1.5">
+                        <span className="text-base font-semibold text-red-600">DEVENGADO:</span>
+                        <span className="text-base font-semibold text-red-600">{calculateDevengado().toLocaleString()}</span>
+                      </div>
+                      <div className="flex justify-between pl-4">
+                        <span className="text-sm text-gray-500">Tributario ({Number(formData.tributario || 0)}%):</span>
+                        <span className="text-sm text-gray-500">- {calculateTributarioMonto().toLocaleString()}</span>
+                      </div>
+                      <div className="flex justify-between border-b border-gray-200 pb-1.5">
+                        <span className="text-base font-semibold text-gray-700">SUBTOTAL:</span>
+                        <span className="text-base font-semibold text-gray-700">{calculateSubtotal().toLocaleString()}</span>
+                      </div>
+                      <div className="flex justify-between pl-4">
+                        <span className="text-sm text-gray-500">Gasto Empresa:</span>
+                        <span className="text-sm text-gray-500">- {Number(formData.gasto_empresa || 0).toLocaleString()}</span>
+                      </div>
+                      <div className="flex justify-between pl-4">
+                        <span className="text-sm text-gray-500">Comisión:</span>
+                        <span className="text-sm text-gray-500">- {Number(formData.comision_bancaria || 0).toLocaleString()}</span>
+                      </div>
+                      <div className="flex justify-between border-t-2 border-gray-300 pt-2.5 mt-1.5">
+                        <span className="text-lg font-bold text-gray-800">NETO A PAGAR:</span>
+                        <span className="text-lg font-bold text-green-600">{calculateNetoPagar().toLocaleString()}</span>
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex justify-between pl-4">
-                    <span className="text-sm text-gray-500">Importe Caguayo ({Number(formData.porcentaje_caguayo || DEFAULTS.PORCENTAJE_CAGUAYO)}%):</span>
-                    <span className="text-sm text-gray-500">- {calculateImporteCaguayo().toLocaleString()}</span>
-                  </div>
-                  <div className="flex justify-between border-b border-gray-200 pb-1">
-                    <span className="text-base font-semibold text-red-600">DEVENGADO:</span>
-                    <span className="text-base font-semibold text-red-600">{calculateDevengado().toLocaleString()}</span>
-                  </div>
-                  <div className="flex justify-between pl-4">
-                    <span className="text-sm text-gray-500">Tributario ({Number(formData.tributario || 0)}%):</span>
-                    <span className="text-sm text-gray-500">- {calculateTributarioMonto().toLocaleString()}</span>
-                  </div>
-                  <div className="flex justify-between border-b border-gray-200 pb-1">
-                    <span className="text-base font-semibold text-gray-700">SUBTOTAL:</span>
-                    <span className="text-base font-semibold text-gray-700">{calculateSubtotal().toLocaleString()}</span>
-                  </div>
-                  <div className="flex justify-between pl-4">
-                    <span className="text-sm text-gray-500">Gasto Empresa:</span>
-                    <span className="text-sm text-gray-500">- {Number(formData.gasto_empresa || 0).toLocaleString()}</span>
-                  </div>
-                  <div className="flex justify-between pl-4">
-                    <span className="text-sm text-gray-500">Comisión:</span>
-                    <span className="text-sm text-gray-500">- {Number(formData.comision_bancaria || 0).toLocaleString()}</span>
-                  </div>
-                  <div className="flex justify-between border-t-2 border-gray-300 pt-2 mt-1">
-                    <span className="text-lg font-bold text-gray-800">NETO A PAGAR:</span>
-                    <span className="text-lg font-bold text-green-600">{calculateNetoPagar().toLocaleString()}</span>
-                  </div>
-                </div>
-              </div>
+                </CardContent>
+              </Card>
 
-              <div>
-                <Label className="text-sm font-medium">Observaciones</Label>
-                <textarea
-                  value={formData.observaciones}
-                  onChange={(e) => setFormData(prev => ({ ...prev, observaciones: e.target.value }))}
-                  rows={3}
-                  className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white resize-none"
-                />
-</div>
+              <Card className="shadow-sm border-gray-200">
+                <CardHeader className="border-b bg-gray-50/50">
+                  <CardTitle className="flex items-center gap-2 text-base">
+                    <ScrollText className="h-4 w-4 text-teal-600" />
+                    Observaciones
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="mt-4">
+                  <textarea
+                    value={formData.observaciones}
+                    onChange={(e) => setFormData(prev => ({ ...prev, observaciones: e.target.value }))}
+                    rows={3}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white resize-none"
+                  />
+                </CardContent>
+              </Card>
             </div>
 
             <div className="px-6 py-4 border-t bg-gray-50 flex justify-end gap-3">
@@ -1041,6 +1082,7 @@ export function LiquidacionesPage() {
                   });
                 }}
                 disabled={createMutation.isPending || selectedProductos.length === 0}
+                className="gap-2 bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300"
               >
                 {createMutation.isPending ? 'Creando...' : 'Crear Liquidación'}
               </Button>
@@ -1052,7 +1094,7 @@ export function LiquidacionesPage() {
       {showDetailModal && selectedLiquidacion && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl">
-            <div className="px-6 py-4 border-b flex justify-between items-center">
+            <div className="px-6 py-4 border-b flex justify-between items-center bg-gradient-to-r from-teal-50 to-cyan-50">
               <h2 className="text-xl font-bold">Detalle de Liquidación</h2>
               <button onClick={() => { setShowDetailModal(false); setSelectedLiquidacion(null); }} className="text-gray-400 hover:text-gray-600">
                 <X className="w-6 h-6" />
@@ -1144,11 +1186,11 @@ export function LiquidacionesPage() {
       {detailModal.isOpen && detailModal.item && createPortal(
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 animate-fade-in">
           <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-auto animate-scale-in">
-            <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-lime-50 to-green-50">
+            <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-teal-50 to-cyan-50">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
-                  <div className="p-3 rounded-xl bg-gradient-to-br from-lime-500 to-green-600 text-white shadow-lg">
-                    <ScrollText className="h-7 w-7" />
+                  <div className="p-3 rounded-xl bg-gradient-to-br from-teal-500 to-cyan-600 text-white shadow-lg">
+                    <Receipt className="h-7 w-7" />
                   </div>
                   <div>
                     <h3 className="text-2xl font-bold text-gray-900">Liquidación</h3>
