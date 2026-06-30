@@ -52,27 +52,15 @@ The application uses PostgreSQL as the database. The database is automatically c
 
 #### Backend
 
-1. Ensure PostgreSQL is running with the correct credentials:
-   - User: solji
-   - Password: Scp2005
-   - Database: caguayo
+1. Ensure PostgreSQL is running. Configure your connection in `.env`:
+   ```bash
+   DATABASE_URL=postgresql://USUARIO:CONTRASEÑA@localhost:5432/caguayo
+   ```
 
-2. Create the database tables:
+2. Create and apply database migrations:
    ```bash
    cd backend
-   python3 -c "
-   from sqlalchemy import create_engine
-   from sqlmodel import SQLModel
-   from src.models import Cliente
-   import asyncio
-
-   async def create_tables():
-       engine = create_engine('postgresql://solji:Scp2005@localhost:5432/caguayo')
-       SQLModel.metadata.create_all(engine)
-       print('Tables created successfully')
-
-   asyncio.run(create_tables())
-   "
+   alembic upgrade head
    ```
 
 3. Run the backend:
