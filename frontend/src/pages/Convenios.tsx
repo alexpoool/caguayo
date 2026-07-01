@@ -212,7 +212,7 @@ export function ConveniosPage() {
 
   if (view === "form") {
     return (
-      <div className="max-w-2xl mx-auto">
+      <div className="p-6">
         <div className="flex items-center gap-4 mb-6">
           <Button
             variant="ghost"
@@ -233,15 +233,8 @@ export function ConveniosPage() {
         </div>
 
         <form onSubmit={handleSubmit}>
-          {/* Datos del Convenio */}
-          <Card className="mb-6 shadow-sm border-gray-200">
-            <CardHeader className="border-b bg-gray-50/50">
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <ScrollText className="h-5 w-5 text-teal-600" />
-                Datos del Convenio
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="mt-4 space-y-4">
+          <Card className="shadow-sm border-gray-200">
+            <CardContent className="pt-6 space-y-4">
               <div>
                 <Label>Cliente *</Label>
                 <select

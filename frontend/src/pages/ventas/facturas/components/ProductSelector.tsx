@@ -84,9 +84,14 @@ export function ProductSelector({
                     }}
                     className="w-full px-3 py-2 text-left text-sm hover:bg-violet-50 flex justify-between items-center transition-colors"
                   >
-                    <div className="flex-1">
-                      <span className="truncate">{p.nombre}</span>
+                    <div className="flex-1 min-w-0">
+                      <span className="truncate block">{p.nombre}</span>
                       <span className={`ml-2 text-xs ${stockStatus}`}>({stockText})</span>
+                      {(p as any)._nombre_anexo && (
+                        <span className="block text-[10px] text-gray-400 truncate">
+                          └ {(p as any)._nombre_anexo}
+                        </span>
+                      )}
                     </div>
                     <span className="text-gray-400 text-xs ml-2">
                       ${Number(p.precio_venta).toFixed(2)}
@@ -105,6 +110,7 @@ export function ProductSelector({
             <thead className="bg-slate-50">
               <tr>
                 <th className="px-3 py-2 text-left text-sm font-semibold text-gray-700 border-b">Nombre</th>
+                <th className="px-3 py-2 text-left text-sm font-semibold text-gray-700 border-b">Procedencia</th>
                 <th className="px-3 py-2 text-center text-sm font-semibold text-gray-700 border-b w-24">Cantidad</th>
                 <th className="px-3 py-2 text-center text-sm font-semibold text-gray-700 border-b w-28">Precio</th>
                 <th className="px-3 py-2 text-center text-sm font-semibold text-gray-700 border-b w-20">Moneda</th>
@@ -133,6 +139,9 @@ export function ProductSelector({
                       {stock > 0 && !tieneStockSuficiente && (
                         <span className="ml-2 text-xs text-red-500">(excede)</span>
                       )}
+                    </td>
+                    <td className="px-3 py-2 text-sm text-gray-500">
+                      {(pr as any)?._nombre_anexo || '-'}
                     </td>
                     <td className="px-3 py-2">
                       <Input

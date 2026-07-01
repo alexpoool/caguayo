@@ -6,20 +6,28 @@ from src.dto import (
     ProductosUpdate,
     ProductosRead,
 )
+from src.services.existencia_service import ExistenciaService
 
 
 class ProductosService:
+    @staticmethod
+    async def _inject_stock(db: AsyncSession, producto: ProductosRead) -> ProductosRead:
+        producto.stock = await ExistenciaService.calcular_stock_producto(db, producto.id_producto)
+        return producto
+
     @staticmethod
     async def create_producto(
         db: AsyncSession, producto: ProductosCreate
     ) -> ProductosRead:
         db_producto = await productos_repo.create(db, obj_in=producto)
-        return ProductosRead.model_validate(db_producto)
+        return await ProductosService._inject_stock(db, ProductosRead.model_validate(db_producto))
 
     @staticmethod
     async def get_producto(db: AsyncSession, producto_id: int) -> ProductosRead:
         db_producto = await productos_repo.get(db, id=producto_id)
-        return ProductosRead.model_validate(db_producto) if db_producto else None
+        if not db_producto:
+            return None
+        return await ProductosService._inject_stock(db, ProductosRead.model_validate(db_producto))
 
     @staticmethod
     async def get_productos(
@@ -28,7 +36,7 @@ class ProductosService:
         db_productos = await productos_repo.get_multi(
             db, skip=skip, limit=limit, search=search
         )
-        return [ProductosRead.model_validate(p) for p in db_productos]
+        return [await ProductosService._inject_stock(db, ProductosRead.model_validate(p)) for p in db_productos]
 
     @staticmethod
     async def update_producto(
@@ -39,7 +47,7 @@ class ProductosService:
             updated_producto = await productos_repo.update(
                 db, db_obj=db_producto, obj_in=producto
             )
-            return ProductosRead.model_validate(updated_producto)
+            return await ProductosService._inject_stock(db, ProductosRead.model_validate(updated_producto))
         return None
 
     @staticmethod
@@ -50,7 +58,7 @@ class ProductosService:
     @staticmethod
     async def search_productos(db: AsyncSession, nombre: str) -> List[ProductosRead]:
         db_productos = await productos_repo.get_by_nombre(db, nombre=nombre)
-        return [ProductosRead.model_validate(p) for p in db_productos]
+        return [await ProductosService._inject_stock(db, ProductosRead.model_validate(p)) for p in db_productos]
 
     @staticmethod
     async def get_productos_by_anexo(
@@ -61,12 +69,10 @@ class ProductosService:
 
         productos_data = await MovimientoService.get_productos_by_anexo(db, anexo_id)
 
-        # Convertir a ProductosRead
         result = []
         for p_data in productos_data:
             producto = await ProductosService.get_producto(db, p_data["id_producto"])
             if producto:
-                # Agregar cantidad calculada
                 producto_dict = producto.model_dump()
                 producto_dict["cantidad"] = p_data["cantidad"]
                 result.append(ProductosRead(**producto_dict))
@@ -79,12 +85,10 @@ class ProductosService:
 
         productos_data = await MovimientoService.get_productos_con_stock(db)
 
-        # Convertir a ProductosRead
         result = []
         for p_data in productos_data:
             producto = await ProductosService.get_producto(db, p_data["id_producto"])
             if producto:
-                # Agregar cantidad calculada
                 producto_dict = producto.model_dump()
                 producto_dict["cantidad"] = p_data["cantidad"]
                 result.append(ProductosRead(**producto_dict))

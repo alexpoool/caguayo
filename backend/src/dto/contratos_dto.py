@@ -263,10 +263,10 @@ class DependenciaSimpleRead(SQLModel):
 class ItemAnexoDisponible(SQLModel):
     id_item_anexo: int
     id_anexo: int
+    nombre_anexo: str
     id_producto: int
-    cantidad: int
-    cantidad_vendida: int
-    existencia: int = 0
+    entrada: int
+    vendido: int
     precio_venta: Decimal
     precio_compra: Decimal
     id_moneda: int

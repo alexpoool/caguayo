@@ -136,9 +136,8 @@ export interface ItemAnexo {
   id_item_anexo: number;
   id_anexo: number;
   id_producto: number;
-  cantidad: number;
-  existencia?: number;
-  cantidad_liquidada?: number;
+  entrada: number;
+  vendido: number;
   precio_compra: number;
   precio_venta: number;
   id_moneda: number;
@@ -155,8 +154,7 @@ export interface PrecioItemAnexoCreate {
 
 export interface ItemAnexoCreate {
   id_producto: number;
-  cantidad: number;
-  existencia?: number;
+  entrada: number;
   precio_venta: number;
   id_moneda: number;
   precios?: PrecioItemAnexoCreate[];

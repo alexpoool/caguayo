@@ -15,6 +15,7 @@ import {
   Save,
   ArrowLeft,
   Package,
+  X,
 } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -37,9 +38,12 @@ interface Anexo {
 
 interface AnexoProducto {
   id_producto: number;
-  cantidad: number;
+  entrada: number;
   precio_compra: number;
+  precio_venta: number;
+  id_moneda: number;
   nombre_producto?: string;
+  precios?: { id_moneda: number; precio_venta: number; precio_compra?: number }[];
 }
 
 import {
@@ -87,8 +91,8 @@ export function AnexosPage() {
   });
   const [newProduct, setNewProduct] = useState({
     id_producto: 0,
-    cantidad: 1,
-    precio_compra: 0,
+    entrada: 1,
+    precios: [] as { id_moneda: number; precio_venta: number; precio_compra?: number }[],
   });
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [searchTerm, setSearchTerm] = useState("");
@@ -160,7 +164,9 @@ export function AnexosPage() {
       comision: 0,
       productos: [],
     });
-    setNewProduct({ id_producto: 0, cantidad: 1, precio_compra: 0 });
+    setNewProduct({
+      id_producto: 0, entrada: 1, precios: [],
+    });
     setFormErrors({});
     setEditingAnexo(null);
   };
@@ -168,29 +174,63 @@ export function AnexosPage() {
   const addProduct = () => {
     if (
       !newProduct.id_producto ||
-      !newProduct.cantidad ||
-      !newProduct.precio_compra
+      !newProduct.entrada ||
+      newProduct.precios.length === 0
     ) {
-      toast.error("Complete todos los campos del producto");
+      toast.error("Complete todos los campos del producto y agregue al menos un precio");
       return;
     }
     const producto = productos.find(
       (p) => p.id_producto === newProduct.id_producto,
     );
+    const main = newProduct.precios[0];
     setFormData({
       ...formData,
       productos: [
         ...formData.productos,
-        { ...newProduct, nombre_producto: producto?.nombre },
+        {
+          ...newProduct,
+          id_moneda: main.id_moneda,
+          precio_venta: main.precio_venta,
+          precio_compra: main.precio_compra || 0,
+          nombre_producto: producto?.nombre,
+          precios: newProduct.precios,
+        },
       ],
     });
-    setNewProduct({ id_producto: 0, cantidad: 1, precio_compra: 0 });
+    setNewProduct({
+      id_producto: 0, entrada: 1, precios: [],
+    });
   };
 
   const removeProduct = (index: number) => {
     setFormData({
       ...formData,
       productos: formData.productos.filter((_, i) => i !== index),
+    });
+  };
+
+  const addPrecio = () => {
+    const available = monedas.find(
+      (m: any) => !newProduct.precios.some((p) => p.id_moneda === m.id_moneda)
+    );
+    if (!available) return;
+    setNewProduct({
+      ...newProduct,
+      precios: [...newProduct.precios, { id_moneda: available.id_moneda, precio_venta: 0, precio_compra: 0 }],
+    });
+  };
+
+  const updatePrecio = (index: number, field: string, value: any) => {
+    const updated = [...newProduct.precios];
+    (updated[index] as any)[field] = value;
+    setNewProduct({ ...newProduct, precios: updated });
+  };
+
+  const removePrecio = (index: number) => {
+    setNewProduct({
+      ...newProduct,
+      precios: newProduct.precios.filter((_, i) => i !== index),
     });
   };
 
@@ -241,8 +281,11 @@ export function AnexosPage() {
       ...formData,
       productos: formData.productos.map((p) => ({
         id_producto: p.id_producto,
-        cantidad: p.cantidad,
+        entrada: p.entrada,
+        precio_venta: p.precio_venta,
+        id_moneda: p.id_moneda,
         precio_compra: p.precio_compra,
+        precios: p.precios || [],
       })),
     };
 
@@ -265,7 +308,7 @@ export function AnexosPage() {
 
   if (view === "form") {
     return (
-      <div className="max-w-2xl mx-auto">
+      <div className="p-6">
         <div className="flex items-center gap-4 mb-6">
           <Button
             variant="ghost"
@@ -286,15 +329,8 @@ export function AnexosPage() {
         </div>
 
         <form onSubmit={handleSubmit}>
-          {/* Datos del Anexo */}
-          <Card className="mb-6 shadow-sm border-gray-200">
-            <CardHeader className="border-b bg-gray-50/50">
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <Package className="h-5 w-5 text-teal-600" />
-                Datos del Anexo
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="mt-4 space-y-4">
+          <Card className="shadow-sm border-gray-200">
+            <CardContent className="pt-6 space-y-4">
               <div>
                 <Label>Convenio *</Label>
                 <select
@@ -405,7 +441,6 @@ export function AnexosPage() {
             </CardContent>
           </Card>
 
-          {/* Productos del Anexo */}
           <Card className="mb-6 shadow-sm border-gray-200">
             <CardHeader className="border-b bg-gray-50/50">
               <CardTitle className="flex items-center gap-2 text-lg">
@@ -420,91 +455,161 @@ export function AnexosPage() {
                 </p>
               )}
 
-              <div className="grid grid-cols-1 sm:grid-cols-4 gap-2 mb-3">
-                <select
-                  value={newProduct.id_producto || ""}
-                  onChange={(e) =>
-                    setNewProduct({
-                      ...newProduct,
-                      id_producto: parseInt(e.target.value) || 0,
-                    })
-                  }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white"
-                >
-                  <option value="">Producto</option>
-                  {productos.map((p) => (
-                    <option key={p.id_producto} value={p.id_producto}>
-                      {p.nombre}
-                    </option>
-                  ))}
-                </select>
-                <Input
-                  type="number"
-                  min="1"
-                  value={newProduct.cantidad}
-                  onChange={(e) =>
-                    setNewProduct({
-                      ...newProduct,
-                      cantidad: parseInt(e.target.value) || 0,
-                    })
-                  }
-                  placeholder="Cantidad"
-                />
-                <Input
-                  type="number"
-                  step="0.01"
-                  value={newProduct.precio_compra}
-                  onChange={(e) =>
-                    setNewProduct({
-                      ...newProduct,
-                      precio_compra: parseFloat(e.target.value) || 0,
-                    })
-                  }
-                  placeholder="Precio compra"
-                />
-                <Button type="button" onClick={addProduct} variant="outline" className="gap-1">
-                  <Plus className="h-4 w-4" />
-                  Agregar
-                </Button>
+              <div className="mb-3">
+                <div className="grid grid-cols-3 gap-2 mb-1 text-xs font-medium text-gray-500">
+                  <div className="px-3 py-1">Producto</div>
+                  <div className="px-3 py-1">Entrada</div>
+                  <div></div>
+                </div>
+                <div className="grid grid-cols-3 gap-2">
+                  <select
+                    value={newProduct.id_producto || ""}
+                    onChange={(e) =>
+                      setNewProduct({
+                        ...newProduct,
+                        id_producto: parseInt(e.target.value) || 0,
+                      })
+                    }
+                    className="px-3 py-2 border rounded-lg"
+                  >
+                    <option value="">Producto</option>
+                    {productos.map((p) => (
+                      <option key={p.id_producto} value={p.id_producto}>
+                        {p.nombre}
+                      </option>
+                    ))}
+                  </select>
+                  <Input
+                    type="number"
+                    min="1"
+                    value={newProduct.entrada}
+                    onChange={(e) =>
+                      setNewProduct({
+                        ...newProduct,
+                        entrada: parseInt(e.target.value) || 0,
+                      })
+                    }
+                    placeholder="Entrada"
+                  />
+                  <Button type="button" onClick={addProduct} variant="outline">
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
 
-              {formData.productos.length > 0 && (
-                <div className="border rounded-lg overflow-hidden">
-                  <Table>
-                    <TableHeader className="bg-gray-50/50">
-                      <TableRow>
-                        <TableHead>Producto</TableHead>
-                        <TableHead>Cantidad</TableHead>
-                        <TableHead>Precio Compra</TableHead>
-                        <TableHead></TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {formData.productos.map((prod, index) => (
+              <div className="mb-3 p-3 bg-gray-50 rounded-lg border">
+                <p className="text-sm font-medium text-gray-600 mb-2">Precios</p>
+                {newProduct.precios.length > 0 ? (
+                  newProduct.precios.map((alt, i) => (
+                    <div key={i} className="grid grid-cols-4 gap-2 mb-2">
+                      <select
+                        value={alt.id_moneda || ""}
+                        onChange={(e) => updatePrecio(i, 'id_moneda', parseInt(e.target.value) || 0)}
+                        className="px-3 py-2 border rounded-lg text-sm"
+                      >
+                        <option value="">Moneda</option>
+                        {monedas
+                          .filter((m: any) => !newProduct.precios.some((p) => p.id_moneda === m.id_moneda) || m.id_moneda === alt.id_moneda)
+                          .map((m: any) => (
+                            <option key={m.id_moneda} value={m.id_moneda}>
+                              {m.simbolo || m.nombre}
+                            </option>
+                          ))}
+                      </select>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        value={alt.precio_venta}
+                        onChange={(e) => updatePrecio(i, 'precio_venta', parseFloat(e.target.value) || 0)}
+                        placeholder="P. Venta"
+                        className="text-sm"
+                      />
+                      <Input
+                        type="number"
+                        step="0.01"
+                        value={alt.precio_compra}
+                        onChange={(e) => updatePrecio(i, 'precio_compra', parseFloat(e.target.value) || 0)}
+                        placeholder="P. Compra"
+                        className="text-sm"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removePrecio(i)}
+                        className="p-1 hover:bg-red-50 rounded self-center"
+                      >
+                        <X className="h-4 w-4 text-red-500" />
+                      </button>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-xs text-gray-400 mb-2">Agregue al menos un precio</p>
+                )}
+                {monedas.some(
+                  (m: any) => !newProduct.precios.some((p) => p.id_moneda === m.id_moneda)
+                ) && (
+                  <button
+                    type="button"
+                    onClick={addPrecio}
+                    className="text-xs text-violet-600 hover:text-violet-800 flex items-center gap-1 mt-1"
+                  >
+                    <Plus className="h-3 w-3" />
+                    Agregar precio
+                  </button>
+                )}
+              </div>
+
+              <div className="border rounded-lg overflow-hidden">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Producto</TableHead>
+                      <TableHead>Entrada</TableHead>
+                      <TableHead>Moneda</TableHead>
+                      <TableHead>P. Venta</TableHead>
+                      <TableHead>P. Compra</TableHead>
+                      <TableHead></TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {formData.productos.length > 0 ? (
+                      formData.productos.map((prod, index) => (
                         <TableRow key={index}>
                           <TableCell>
                             {prod.nombre_producto ||
                               `Producto ${prod.id_producto}`}
                           </TableCell>
-                          <TableCell>{prod.cantidad}</TableCell>
+                          <TableCell>{prod.entrada}</TableCell>
+                          <TableCell>
+                            {monedas.find((m: any) => m.id_moneda === prod.id_moneda)?.simbolo || `#${prod.id_moneda}`}
+                            {prod.precios && prod.precios.length > 0 && (
+                              <span className="block text-[10px] text-gray-400">
+                                +{prod.precios.length} alt.
+                              </span>
+                            )}
+                          </TableCell>
+                          <TableCell>{prod.precio_venta.toFixed(2)}</TableCell>
                           <TableCell>{prod.precio_compra}</TableCell>
                           <TableCell>
-                            <Button
+                            <button
                               type="button"
-                              variant="ghost"
-                              size="icon"
                               onClick={() => removeProduct(index)}
-                              className="text-red-600 hover:text-red-800 hover:bg-red-50 h-8 w-8"
+                              className="p-1 hover:bg-slate-50 rounded"
                             >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
+                              <Trash2 className="h-4 w-4 text-red-600" />
+                            </button>
                           </TableCell>
                         </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              )}
+                      ))
+                    ) : (
+                      <TableRow>
+                        <TableCell colSpan={6} className="text-center text-gray-400 py-4">
+                          No hay productos agregados
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
             </CardContent>
           </Card>
 

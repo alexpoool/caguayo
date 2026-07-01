@@ -189,9 +189,8 @@ class AnexoBase(SQLModel):
 
 class ItemAnexoBase(SQLModel):
     id_producto: int = Field(gt=0)
-    cantidad: int = Field(gt=0)
-    cantidad_vendida: int = Field(default=0, ge=0)
-    existencia: int = Field(default=0, ge=0)
+    entrada: int = Field(gt=0)
+    vendido: int = Field(default=0, ge=0)
     precio_venta: Decimal = Field(ge=0)
     id_moneda: int = Field(gt=0)
     codigo: Optional[str] = None

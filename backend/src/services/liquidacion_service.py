@@ -11,8 +11,6 @@ from src.services.existencia_service import ExistenciaService
 from src.models.liquidacion import Liquidacion
 from src.models.producto import Productos
 from src.models.movimiento import Movimiento
-from src.core.config import settings
-from src.core.exceptions import BusinessLogicError, ValidationError, NotFoundError
 from src.dto import (
     LiquidacionCreate,
     LiquidacionRead,
@@ -37,22 +35,27 @@ class LiquidacionService:
         return f"{prefijo}C.{anio}.{cantidad}"
 
     @staticmethod
-    async def _validar_liquidacion(
-        db: AsyncSession,
-        producto_ids: List[int],
-        data_id_convenio: Optional[int],
-        data_id_anexo: Optional[int],
-        data_porcentaje_caguayo: Optional[Decimal],
-        data_tributario: Optional[Decimal],
-        data_comision_bancaria: Optional[Decimal],
-        data_gasto_empresa: Optional[Decimal],
-        data_tipo_pago: str,
-    ) -> dict:
-        """Validate liquidation business rules. Returns validated data dict or raises."""
+    async def create_liquidacion(
+        db: AsyncSession, data: LiquidacionCreate, nit: Optional[str] = None
+    ) -> LiquidacionRead:
+        producto_ids = [
+            pid for pid in data.producto_ids if pid not in (None, "", "undefined")
+        ]
+
+        # Normalizar valores opcionales
+        id_convenio = (
+            data.id_convenio
+            if data.id_convenio not in (None, "", "undefined")
+            else None
+        )
+        id_anexo = (
+            data.id_anexo if data.id_anexo not in (None, "", "undefined") else None
+        )
+
         productos_db = await productos_en_liquidacion_repo.get_by_ids(db, producto_ids)
 
         if not productos_db:
-            raise BusinessLogicError("No se encontraron productos para liquidar")
+            raise ValueError("No se encontraron productos para liquidar")
 
         # Validar que las facturas estén pagadas completamente
         from src.models.contrato import Factura
@@ -69,12 +72,13 @@ class LiquidacionService:
                 total_pagado = await pago_repo.get_total_pagado(db, id_factura)
                 if total_pagado < factura.monto:
                     pendiente = factura.monto - total_pagado
-                    raise BusinessLogicError(
+                    raise ValueError(
                         f"Factura {factura.codigo_factura} no está pagada completamente. "
                         f"Pagado: {total_pagado}, Pendiente: {pendiente}"
                     )
 
         # Validar que las cantidades a liquidar no excedan las cantidades originales
+        # para productos de CONSIGNACION
         for prod in productos_db:
             if prod.id_anexo:
                 from src.models.item_anexo import ItemAnexo
@@ -84,7 +88,7 @@ class LiquidacionService:
                 from sqlalchemy import and_
 
                 item_stmt = (
-                    select(ItemAnexo.cantidad)
+                    select(ItemAnexo.entrada)
                     .join(Anexo, ItemAnexo.id_anexo == Anexo.id_anexo)
                     .join(Convenio, Anexo.id_convenio == Convenio.id_convenio)
                     .join(
@@ -103,12 +107,14 @@ class LiquidacionService:
                 cantidad_original = result_item.scalar_one_or_none()
 
                 if cantidad_original is not None and prod.cantidad > cantidad_original:
-                    raise BusinessLogicError(
+                    raise ValueError(
                         f"La cantidad a liquidar ({prod.cantidad}) no puede exceder "
                         f"la cantidad original ({cantidad_original}) del producto en el anexo"
                     )
 
-        # Validar existencias
+        # Validar existencias usando el servicio de existencias
+        # Solo para productos de consignación (sin factura/venta asociada)
+        # Los productos de factura/venta ya descontaron stock al crearse la transacción
         productos_validar = [
             {"id_producto": prod.id_producto, "cantidad": prod.cantidad}
             for prod in productos_db
@@ -124,7 +130,7 @@ class LiquidacionService:
             mensaje = "\n".join(
                 [f"Producto {e['id_producto']}: {e['mensaje']}" for e in errores]
             )
-            raise BusinessLogicError(f"Stock insuficiente:\n{mensaje}")
+            raise ValueError(f"Stock insuficiente:\n{mensaje}")
 
         importe = Decimal("0.00")
         for prod in productos_db:
@@ -132,12 +138,11 @@ class LiquidacionService:
             if producto:
                 importe += producto.precio_venta * prod.cantidad
 
-        tributario = data_tributario or Decimal(str(settings.DEFAULT_TRIBUTARIO))
-        comision_bancaria = data_comision_bancaria or Decimal("0.00")
-        gasto_empresa = data_gasto_empresa or Decimal("0.00")
-        porcentaje_caguayo = data_porcentaje_caguayo or Decimal(
-            str(settings.DEFAULT_PORCENTAJE_CAGUAYO)
-        )
+        data.devengado or Decimal("0.00")
+        tributario = data.tributario or Decimal("0.00")
+        comision_bancaria = data.comision_bancaria or Decimal("0.00")
+        gasto_empresa = data.gasto_empresa or Decimal("0.00")
+        porcentaje_caguayo = data.porcentaje_caguayo or Decimal("10.00")
 
         importe_caguayo = importe * (porcentaje_caguayo / 100)
         devengado_calculado = importe - importe_caguayo
@@ -145,72 +150,26 @@ class LiquidacionService:
         subtotal = devengado_calculado - tributario_monto
         neto_pagar = subtotal - gasto_empresa - comision_bancaria
 
-        return {
-            "productos_db": productos_db,
-            "id_convenio": data_id_convenio,
-            "id_anexo": data_id_anexo,
-            "importe": importe,
-            "porcentaje_caguayo": porcentaje_caguayo,
-            "importe_caguayo": importe_caguayo,
-            "devengado_calculado": devengado_calculado,
-            "tributario": tributario,
-            "tributario_monto": tributario_monto,
-            "neto_pagar": neto_pagar,
-            "comision_bancaria": comision_bancaria,
-            "gasto_empresa": gasto_empresa,
-            "tipo_pago": data_tipo_pago,
-        }
-
-    @staticmethod
-    async def create_liquidacion(
-        db: AsyncSession, data: LiquidacionCreate, nit: Optional[str] = None
-    ) -> LiquidacionRead:
-        producto_ids = [pid for pid in data.producto_ids if pid is not None]
-
-        if not producto_ids:
-            raise ValidationError("Debe incluir al menos un producto válido")
-
-        id_convenio = (
-            data.id_convenio if data.id_convenio is not None else None
-        )
-        id_anexo = (
-            data.id_anexo if data.id_anexo is not None else None
-        )
-
-        validated = await LiquidacionService._validar_liquidacion(
-            db,
-            producto_ids,
-            id_convenio,
-            id_anexo,
-            data.porcentaje_caguayo,
-            data.tributario,
-            data.comision_bancaria,
-            data.gasto_empresa,
-            data.tipo_pago,
-        )
-
-        productos_db = validated["productos_db"]
-
         codigo = await LiquidacionService.generate_codigo_liquidacion(db, nit=nit)
 
         db_liquidacion = Liquidacion(
             codigo=codigo,
             id_cliente=data.id_cliente,
-            id_convenio=validated["id_convenio"],
-            id_anexo=validated["id_anexo"],
+            id_convenio=id_convenio,
+            id_anexo=id_anexo,
             id_moneda=data.id_moneda,
             liquidada=False,
             fecha_emision=data.fecha_emision or date.today(),
             observaciones=data.observaciones,
-            devengado=validated["devengado_calculado"],
-            tributario=validated["tributario"],
-            comision_bancaria=validated["comision_bancaria"],
-            gasto_empresa=validated["gasto_empresa"],
-            importe=validated["importe"],
-            importe_caguayo=validated["importe_caguayo"],
-            tributario_monto=validated["tributario_monto"],
-            neto_pagar=validated["neto_pagar"],
-            tipo_pago=validated["tipo_pago"],
+            devengado=devengado_calculado,
+            tributario=tributario,
+            comision_bancaria=comision_bancaria,
+            gasto_empresa=gasto_empresa,
+            importe=importe,
+            importe_caguayo=importe_caguayo,
+            tributario_monto=tributario_monto,
+            neto_pagar=neto_pagar,
+            tipo_pago=data.tipo_pago,
         )
         db.add(db_liquidacion)
         await db.commit()
@@ -289,7 +248,7 @@ class LiquidacionService:
             )
             return result
         except Exception as serialization_error:
-            raise BusinessLogicError(
+            raise ValueError(
                 f"Error serializando respuesta: {serialization_error}, "
                 f"productos_en_liquidacion_list len={len(productos_en_liquidacion_list)}, "
                 f"db_liquidacion.id_liquidacion={db_liquidacion.id_liquidacion}"
@@ -394,7 +353,7 @@ class LiquidacionService:
             return None
 
         if db_liquidacion.liquidada:
-            raise BusinessLogicError("La liquidación ya está confirmada")
+            raise ValueError("La liquidación ya está confirmada")
 
         # Validar que las facturas estén pagadas completamente
         from src.models.contrato import Factura
@@ -407,7 +366,7 @@ class LiquidacionService:
                     total_pagado = await pago_repo.get_total_pagado(db, pel.id_factura)
                     if total_pagado < factura.monto:
                         pendiente = factura.monto - total_pagado
-                        raise BusinessLogicError(
+                        raise ValueError(
                             f"Factura {factura.codigo_factura} no está pagada completamente. "
                             f"Pagado: {total_pagado}, Pendiente: {pendiente}"
                         )
@@ -451,32 +410,16 @@ class LiquidacionService:
 
     @staticmethod
     async def aprobar(db: AsyncSession, liquidacion_id: int) -> bool:
-        """Aprobar una liquidación - ejecuta lógica de negocio completa antes de marcar como liquidada."""
-        db_liquidacion = await liquidacion_repo.get_with_relations(db, liquidacion_id)
-        if not db_liquidacion:
-            return False
+        """Aprobar una liquidación - marca como liquidada."""
+        from sqlalchemy import update
+        from src.models.liquidacion import Liquidacion
 
-        if db_liquidacion.liquidada:
-            raise BusinessLogicError("La liquidación ya está aprobada")
-
-        # Validar que las facturas estén pagadas completamente
-        from src.models.contrato import Factura
-        from src.repository.pago_repo import pago_repo
-
-        for pel in db_liquidacion.productos_en_liquidacion:
-            if pel.id_factura and pel.tipo_compra == "FACTURA":
-                factura = await db.get(Factura, pel.id_factura)
-                if factura:
-                    total_pagado = await pago_repo.get_total_pagado(db, pel.id_factura)
-                    if total_pagado < factura.monto:
-                        pendiente = factura.monto - total_pagado
-                        raise BusinessLogicError(
-                            f"Factura {factura.codigo_factura} no está pagada completamente. "
-                            f"Pagado: {total_pagado}, Pendiente: {pendiente}"
-                        )
-
-        db_liquidacion.liquidada = True
-        db_liquidacion.fecha_liquidacion = date.today()
+        stmt = (
+            update(Liquidacion)
+            .where(Liquidacion.id_liquidacion == liquidacion_id)
+            .values(liquidada=True)
+        )
+        await db.exec(stmt)
         await db.commit()
         return True
 

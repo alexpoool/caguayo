@@ -324,8 +324,7 @@ CREATE TABLE productos (
     precio_compra NUMERIC NOT NULL,
     moneda_venta INTEGER NOT NULL REFERENCES moneda(id_moneda) ON DELETE CASCADE,
     precio_venta NUMERIC NOT NULL,
-    precio_minimo NUMERIC NOT NULL,
-    stock INTEGER DEFAULT 0
+    precio_minimo NUMERIC NOT NULL
 );
 
 -- =====================================================
@@ -1096,7 +1095,19 @@ INSERT INTO funcionalidad (nombre) VALUES
 ('realizadores'),
 ('proyectos'),
 ('facturas_servicio'),
-('liquidaciones_servicio');
+('liquidaciones_servicio'),
+('dependencias'),
+('reporte_existencias'),
+('reporte_movimientos_dependencia'),
+('reporte_movimientos_producto'),
+('reporte_proveedores'),
+('reporte_clientes'),
+('reporte_proyectos'),
+('reporte_creadores'),
+('reporte_desempeno'),
+('reporte_liquidaciones'),
+('reporte_onat'),
+('reporte_mincult');
 
 -- Asignar todas las funcionalidades al grupo ADMINISTRADOR
 INSERT INTO grupo_funcionalidad (id_grupo, id_funcionalidad)

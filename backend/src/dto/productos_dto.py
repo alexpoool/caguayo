@@ -1,7 +1,7 @@
 from sqlmodel import SQLModel, Field
 from typing import Optional
 from decimal import Decimal
-from pydantic import field_validator, model_validator
+from pydantic import model_validator
 from .monedas_dto import MonedaRead
 from .categorias_dto import SubcategoriasRead
 
@@ -16,7 +16,6 @@ class ProductosBase(SQLModel):
     moneda_venta: int
     precio_venta: Decimal = Field(ge=0)
     precio_minimo: Decimal = Field(ge=0)
-    stock: int = Field(default=0, ge=0)
 
 
 class ProductosCreate(ProductosBase):
@@ -49,7 +48,6 @@ class ProductosUpdate(SQLModel):
     moneda_venta: Optional[int] = None
     precio_venta: Optional[Decimal] = Field(default=None, ge=0)
     precio_minimo: Optional[Decimal] = Field(default=None, ge=0)
-    stock: Optional[int] = Field(default=None, ge=0)
 
 
 # DTOs simplificados para Productos en Ventas (sin relaciones lazy)

@@ -251,7 +251,7 @@ function App() {
     { id: 'proyecto', label: 'Proyectos', icon: Wrench },
     { id: 'inventario', label: 'Inventario', icon: Boxes },
     { id: 'reportes', label: 'Reportes', icon: BarChart3 },
-    { id: 'administracion', label: 'Configuración', icon: Settings },
+    { id: 'administracion', label: 'Administración', icon: Settings },
   ];
 
   function handleToggleSlim(): void {
@@ -306,24 +306,30 @@ function App() {
                       <p className="text-xs font-semibold text-gray-500 uppercase px-2 mb-1">Reportes</p>
                     </li>
                   )}
-                  <li>
-                    <NavLink to="/inventario/existencias" onClick={handleLinkClick}>
-                      <Boxes className="w-6 h-6" />
-                      Existencias
-                    </NavLink>
-                  </li>
-                  <li>
-                    <NavLink to="/inventario/movimientos-dependencia" onClick={handleLinkClick}>
-                      <ArrowLeftRight className="w-6 h-6" />
-                      Mov. Dependencia
-                    </NavLink>
-                  </li>
-                  <li>
-                    <NavLink to="/inventario/movimientos-producto" onClick={handleLinkClick}>
-                      <Package className="w-6 h-6" />
-                      Mov. Producto
-                    </NavLink>
-                  </li>
+                  {hasFuncionalidad('reporte_existencias') && (
+                    <li>
+                      <NavLink to="/inventario/existencias" onClick={handleLinkClick}>
+                        <Boxes className="w-6 h-6" />
+                        Existencias
+                      </NavLink>
+                    </li>
+                  )}
+                  {hasFuncionalidad('reporte_movimientos_dependencia') && (
+                    <li>
+                      <NavLink to="/inventario/movimientos-dependencia" onClick={handleLinkClick}>
+                        <ArrowLeftRight className="w-6 h-6" />
+                        Mov. Dependencia
+                      </NavLink>
+                    </li>
+                  )}
+                  {hasFuncionalidad('reporte_movimientos_producto') && (
+                    <li>
+                      <NavLink to="/inventario/movimientos-producto" onClick={handleLinkClick}>
+                        <Package className="w-6 h-6" />
+                        Mov. Producto
+                      </NavLink>
+                    </li>
+                  )}
                 </ul>
               )}
               {moduloActivo === 'administracion' && (
@@ -352,12 +358,14 @@ function App() {
                       Grupos
                     </NavLink>
                   </li>
-                  <li>
-                    <NavLink to="/dependencias" onClick={handleLinkClick}>
-                      <Building className="w-6 h-6" />
-                      Dependencias
-                    </NavLink>
-                  </li>
+                  {hasFuncionalidad('dependencias') && (
+                    <li>
+                      <NavLink to="/dependencias" onClick={handleLinkClick}>
+                        <Building className="w-6 h-6" />
+                        Dependencias
+                      </NavLink>
+                    </li>
+                  )}
                   <li>
                     <NavLink to="/cuentas" onClick={handleLinkClick}>
                       <Wallet className="w-6 h-6" />
@@ -413,12 +421,14 @@ function App() {
                       <p className="text-xs font-semibold text-gray-500 uppercase px-2 mb-1">Reportes</p>
                     </li>
                   )}
-                  <li>
-                    <NavLink to="/compra/proveedores" onClick={handleLinkClick}>
-                      <UserCircle className="w-6 h-6" />
-                      Proveedores
-                    </NavLink>
-                  </li>
+                  {hasFuncionalidad('reporte_proveedores') && (
+                    <li>
+                      <NavLink to="/compra/proveedores" onClick={handleLinkClick}>
+                        <UserCircle className="w-6 h-6" />
+                        Proveedores
+                      </NavLink>
+                    </li>
+                  )}
                 </ul>
               )}
               {moduloActivo === 'venta' && (
@@ -468,12 +478,14 @@ function App() {
                       <p className="text-xs font-semibold text-gray-500 uppercase px-2 mb-1">Reportes</p>
                     </li>
                   )}
-                  <li>
-                    <NavLink to="/ventas/registro-clientes" onClick={handleLinkClick}>
-                      <UserCircle className="w-6 h-6" />
-                      Registro de Clientes
-                    </NavLink>
-                  </li>
+                  {hasFuncionalidad('reporte_clientes') && (
+                    <li>
+                      <NavLink to="/ventas/registro-clientes" onClick={handleLinkClick}>
+                        <UserCircle className="w-6 h-6" />
+                        Registro de Clientes
+                      </NavLink>
+                    </li>
+                  )}
                 </ul>
               )}
               {moduloActivo === 'proyecto' && (
@@ -531,12 +543,14 @@ function App() {
                       <p className="text-xs font-semibold text-gray-500 uppercase px-2 mb-1">Reportes</p>
                     </li>
                   )}
-                  <li>
-                    <NavLink to="/proyectos/registro-proyectos" onClick={handleLinkClick}>
-                      <Layers className="w-6 h-6" />
-                      Registro de Proyectos
-                    </NavLink>
-                  </li>
+                  {hasFuncionalidad('reporte_proyectos') && (
+                    <li>
+                      <NavLink to="/proyectos/registro-proyectos" onClick={handleLinkClick}>
+                        <Layers className="w-6 h-6" />
+                        Registro de Proyectos
+                      </NavLink>
+                    </li>
+                  )}
                 </ul>
               )}
               {moduloActivo === 'reportes' && (
@@ -546,45 +560,55 @@ function App() {
                       <p className="text-xs font-semibold text-gray-500 uppercase px-2 mb-1">Representación</p>
                     </li>
                   )}
-                  <li>
-                    <NavLink to="/reportes/registro-creadores" onClick={handleLinkClick}>
-                      <Users className="w-6 h-6" />
-                      Registro de Creadores
-                    </NavLink>
-                  </li>
-                  <li>
-                    <NavLink to="/reportes/informe-desempeno" onClick={handleLinkClick}>
-                      <BarChart3 className="w-6 h-6" />
-                      Informe de Desempeño
-                    </NavLink>
-                  </li>
-                  <li>
-                    <NavLink to="/reportes/resumen-liquidaciones" onClick={handleLinkClick}>
-                      <Calculator className="w-6 h-6" />
-                      Resumen de Liquidaciones
-                    </NavLink>
-                  </li>
+                  {hasFuncionalidad('reporte_creadores') && (
+                    <li>
+                      <NavLink to="/reportes/registro-creadores" onClick={handleLinkClick}>
+                        <Users className="w-6 h-6" />
+                        Registro de Creadores
+                      </NavLink>
+                    </li>
+                  )}
+                  {hasFuncionalidad('reporte_desempeno') && (
+                    <li>
+                      <NavLink to="/reportes/informe-desempeno" onClick={handleLinkClick}>
+                        <BarChart3 className="w-6 h-6" />
+                        Informe de Desempeño
+                      </NavLink>
+                    </li>
+                  )}
+                  {hasFuncionalidad('reporte_liquidaciones') && (
+                    <li>
+                      <NavLink to="/reportes/resumen-liquidaciones" onClick={handleLinkClick}>
+                        <Calculator className="w-6 h-6" />
+                        Resumen de Liquidaciones
+                      </NavLink>
+                    </li>
+                  )}
 
                   {!slimSidebar && (
                     <li className="pt-2">
                       <p className="text-xs font-semibold text-gray-500 uppercase px-2 mb-1">Ministerios</p>
                     </li>
                   )}
-                  <li>
-                    <NavLink to="/reportes/onat" onClick={handleLinkClick}>
-                      <FileText className="w-6 h-6" />
-                      Ingreso y Retenciones
-                    </NavLink>
-                  </li>
-                  <li>
-                    <NavLink to="/reportes/mincult" onClick={handleLinkClick}>
-                      <FileText className="w-6 h-6" />
-                      <span>
-                        <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider block leading-tight">ONAT</span>
-                        <span>Ingresos y Retenciones</span>
-                      </span>
-                    </NavLink>
-                  </li>
+                  {hasFuncionalidad('reporte_onat') && (
+                    <li>
+                      <NavLink to="/reportes/onat" onClick={handleLinkClick}>
+                        <FileText className="w-6 h-6" />
+                        Ingreso y Retenciones
+                      </NavLink>
+                    </li>
+                  )}
+                  {hasFuncionalidad('reporte_mincult') && (
+                    <li>
+                      <NavLink to="/reportes/mincult" onClick={handleLinkClick}>
+                        <FileText className="w-6 h-6" />
+                        <span>
+                          <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider block leading-tight">ONAT</span>
+                          <span>Ingresos y Retenciones</span>
+                        </span>
+                      </NavLink>
+                    </li>
+                  )}
                 </ul>
               )}
             </>

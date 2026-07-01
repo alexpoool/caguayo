@@ -6,18 +6,94 @@ This repository contains the Caguayo application, a comprehensive inventory and 
 
 - `backend/` - Python backend application
 - `frontend/` - React frontend application
+- `backend/sql/` - SQL schemas (init.sql, new.sql)
 - `backend/Dockerfile` - Backend Docker image (multi-stage)
 - `frontend/Dockerfile.frontend` - Frontend Docker image (multi-stage)
 - `docker-compose.yml` - Docker orchestration
 - `.env.example` - Environment variable template for Docker Compose
+- `start.sh` - Script de inicio para desarrollo local
+
+## Tecnologías
+
+### Backend
+- **FastAPI**: Framework web moderno y rápido para construir APIs con Python.
+- **SQLModel**: ORM híbrido que combina SQLAlchemy y Pydantic.
+- **PostgreSQL**: Base de datos relacional robusta.
+- **Alembic**: Herramienta de migración de base de datos.
+- **AsyncPG**: Driver asíncrono para PostgreSQL.
+- **UV**: Gestor de paquetes y proyectos de Python ultra rápido.
+
+### Frontend
+- **React**: Biblioteca para construir interfaces de usuario.
+- **TypeScript**: Superset de JavaScript con tipado estático.
+- **Vite**: Herramienta de construcción frontend de próxima generación.
+- **Tailwind CSS**: Framework CSS de utilidad primero.
+- **React Query**: Gestión de estado del servidor en aplicaciones React.
+- **pnPM**: Gestor de paquetes eficiente.
+
+## Prerrequisitos
+
+- Python 3.13+
+- Node.js 20+
+- PostgreSQL 16+
+- `uv` (instalar: `curl -LsSf https://astral.sh/uv/install.sh | sh`)
+- `pnpm` (instalar: `npm install -g pnpm`)
+- `tmux` (para el script de inicio rápido)
+- Docker y Docker Compose (para despliegue containerizado)
+
+## Configuración inicial de PostgreSQL
+
+### 1. Crear la base de datos
+
+```bash
+psql -U postgres -h localhost -p 5432
+
+CREATE DATABASE caguayo_inventario;
+
+\q
+```
+
+### 2. Crear usuario lector (opcional pero necesario para algunas funcionalidades)
+
+```bash
+psql -U postgres -h localhost -p 5432
+
+CREATE USER usuariolector WITH PASSWORD 'usuariolector123';
+
+GRANT CONNECT ON DATABASE caguayo_inventario TO usuariolector;
+GRANT SELECT ON ALL TABLES IN SCHEMA public TO usuariolector;
+
+\du usuariolector
+```
+
+### 3. Vista v_databases
+
+La vista `v_databases` se crea automáticamente al ejecutar `init.sql` o `new.sql`, pero si necesitas crearla manualmente:
+
+```sql
+CREATE OR REPLACE VIEW v_databases AS 
+SELECT datname as nombre_database 
+FROM pg_database 
+WHERE datistemplate = false 
+ORDER BY datname;
+```
+
+## Usuario Superadministrador
+
+Al ejecutar `init.sql` por primera vez, se crea automáticamente un super usuario:
+
+| Campo | Valor |
+|-------|-------|
+| **Alias** | admin |
+| **Contraseña** | Admin123@ |
+| **Grupo** | ADMINISTRADOR (acceso total) |
+| **Dependencia** | Caguayo Matriz |
+
+**Importante**: Cambiar la contraseña en el primer inicio de sesión.
 
 ## Database Setup
 
 The application uses PostgreSQL as the database. The database is automatically created and initialized when using Docker Compose.
-
-### Prerequisites
-
-- Docker and Docker Compose installed
 
 ### Running with Docker
 
@@ -50,38 +126,83 @@ The application uses PostgreSQL as the database. The database is automatically c
 
 ### Running without Docker
 
-#### Backend
+#### Inicio rápido (recomendado)
 
-1. Ensure PostgreSQL is running. Configure your connection in `.env`:
+Usa el script `start.sh` para iniciar todo automáticamente — verifica prerequisitos, instala dependencias, crea la base de datos si no existe, corre migraciones, y levanta backend + frontend en una sesión de tmux:
+
+```bash
+./start.sh
+```
+
+**Comandos útiles para tmux:**
+
+| Acción | Comando |
+|--------|---------|
+| Ver logs en vivo | `tmux attach -t caguayo` |
+| Salir sin detener servicios | `Ctrl+B`, luego `d` |
+| Detener todo | `tmux kill-session -t caguayo` |
+
+#### Manual — Backend
+
+1. Ensure PostgreSQL is running. Configure your connection in `backend/.env`:
    ```bash
-   DATABASE_URL=postgresql://USUARIO:CONTRASEÑA@localhost:5432/caguayo
+   DATABASE_URL=postgresql+psycopg://USUARIO:CONTRASEÑA@localhost:5432/caguayo
    ```
 
-2. Create and apply database migrations:
+2. Install dependencies:
    ```bash
    cd backend
-   alembic upgrade head
+   uv sync
    ```
 
-3. Run the backend:
+3. Create and apply database migrations:
    ```bash
    cd backend
-   uvicorn main:app --host 0.0.0.0 --port 8000
+   uv run alembic upgrade head
    ```
 
-#### Frontend
+4. Run the backend:
+   ```bash
+   cd backend
+   uv run uvicorn main:app --host 0.0.0.0 --port 8000
+   ```
+
+#### Manual — Frontend
 
 1. Install dependencies:
    ```bash
    cd frontend
-   npm install
+   pnpm install
    ```
 
 2. Run the frontend:
    ```bash
    cd frontend
-   npm run dev
+   pnpm dev
    ```
+
+## Vistas de Base de Datos
+
+El sistema utiliza vistas en PostgreSQL para optimizar consultas.
+
+### v_databases
+
+Vista que lista todas las bases de datos disponibles en el servidor PostgreSQL (excepto templates).
+
+**Creación:**
+```sql
+CREATE OR REPLACE VIEW v_databases AS 
+SELECT datname as nombre_database 
+FROM pg_database 
+WHERE datistemplate = false 
+ORDER BY datname;
+```
+
+**Uso en el backend:**
+```python
+# En backend/src/routes/conexiones.py
+cur.execute("SELECT nombre_database FROM v_databases ORDER BY nombre_database")
+```
 
 ## Database Schema
 
@@ -176,7 +297,7 @@ To run migrations:
 3. Run:
    ```bash
    cd backend
-   alembic upgrade head
+   uv run alembic upgrade head
    ```
 
 To create a new migration:
@@ -185,12 +306,12 @@ To create a new migration:
 2. Run:
    ```bash
    cd backend
-   alembic revision --autogenerate -m "migration description"
+   uv run alembic revision --autogenerate -m "migration description"
    ```
 
 3. Apply the migration:
    ```bash
-   alembic upgrade head
+   uv run alembic upgrade head
    ```
 
 ## License

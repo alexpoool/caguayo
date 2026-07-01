@@ -27,9 +27,8 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/anexos", tags=["anexos"], redirect_slashes=False)
 
 
-def _sanitize_search(search: str) -> tuple:
-    """Escape wildcard characters and return a sanitized search string
-    plus the pre/post wildcard pattern."""
+def _sanitize_search(search: str) -> str:
+    """Escape wildcard characters and return a sanitized search string."""
     escaped = search.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
     return escaped
 
@@ -206,8 +205,7 @@ async def crear_anexo(
             db_item = ItemAnexo(
                 id_anexo=db_anexo.id_anexo,
                 id_producto=item["id_producto"],
-                cantidad=item["cantidad"],
-                existencia=item["cantidad"],
+                entrada=item["entrada"],
                 precio_compra=producto.precio_compra,
                 precio_venta=item["precio_venta"],
                 id_moneda=item["id_moneda"],
@@ -240,7 +238,7 @@ async def crear_anexo(
                 id_convenio=db_anexo.id_convenio,
                 id_cliente=conveni.id_cliente,
                 id_producto=item["id_producto"],
-                cantidad=item["cantidad"],
+                cantidad=item["entrada"],
                 fecha=datetime.now(timezone.utc),
                 precio_compra=producto.precio_compra,
                 moneda_compra=item["id_moneda"],
@@ -265,7 +263,7 @@ async def crear_anexo(
                     "id_movimiento": db_movimiento.id_movimiento,
                     "codigo": codigo,
                     "id_producto": item["id_producto"],
-                    "cantidad": item["cantidad"],
+                    "cantidad": item["entrada"],
                 }
             )
 
@@ -273,7 +271,7 @@ async def crear_anexo(
                 productos_para_liquidacion.append(
                     {
                         "id_producto": item["id_producto"],
-                        "cantidad": item["cantidad"],
+                        "cantidad": item["entrada"],
                         "precio": producto.precio_compra,
                         "id_moneda": item["id_moneda"],
                         "codigo_anexo": codigo_anexo,

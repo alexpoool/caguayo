@@ -231,5 +231,5 @@ export interface Producto {
   descripcion?: string;
   precio_venta: number;
   precio_minimo: number;
-  stock: number;
+  stock?: number;
 }

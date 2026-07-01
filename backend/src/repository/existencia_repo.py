@@ -16,42 +16,40 @@ class ExistenciaRepository:
         self, db: AsyncSession, id_anexo: Optional[int] = None
     ) -> List[Dict[str, Any]]:
         """Obtiene existencias por konsignación (ItemAnexo -> ProductosEnLiquidacion)."""
-
-        query = text("""
+        base = """
             SELECT 
                 ia.id_producto,
                 ia.id_anexo,
                 a.nombre_anexo,
-                ia.cantidad as cantidad_entrada,
-                COALESCE(ia.cantidad_vendida, 0) as cantidad_liquidada,
-                ia.cantidad - COALESCE(ia.cantidad_vendida, 0) as stock
+                ia.entrada as cantidad_entrada,
+                COALESCE(ia.vendido, 0) as vendido,
+                ia.entrada - COALESCE(ia.vendido, 0) as stock
             FROM item_anexo ia
             JOIN anexo a ON ia.id_anexo = a.id_anexo
-        """)
+        """
 
         params = {}
+        where_clause = ""
         if id_anexo:
-            query = text(f"{query.text} AND ia.id_anexo = :id_anexo")
+            where_clause = "WHERE ia.id_anexo = :id_anexo"
             params = {"id_anexo": id_anexo}
 
-        query = text(f"{query.text} ORDER BY ia.id_producto")
+        query = text(f"{base} {where_clause} ORDER BY ia.id_producto")
 
         result = await db.exec(query, params=params)
         rows = result.all()
 
         existencias = []
         for row in rows:
-            existencias.append(
-                {
-                    "id_producto": row[0],
-                    "id_anexo": row[1],
-                    "nombre_anexo": row[2],
-                    "cantidad_entrada": row[3] or 0,
-                    "cantidad_liquidada": row[4] or 0,
-                    "stock": row[5] or 0,
-                    "tipo": "CONSIGNACION",
-                }
-            )
+            existencias.append({
+                "id_producto": row[0],
+                "id_anexo": row[1],
+                "nombre_anexo": row[2],
+                "cantidad_entrada": row[3] or 0,
+                "vendido": row[4] or 0,
+                "stock": row[5] or 0,
+                "tipo": "CONSIGNACION"
+            })
 
         return existencias
 
@@ -165,15 +163,16 @@ class ExistenciaRepository:
         """Obtiene existencia de un producto específico.
 
         Usa la misma lógica que get_existencia_hibrida para mantener consistencia:
-        - Konsignación: cantidad - cantidad_vendida (directo de item_anexo)
+        - Konsignación: entrada - vendido (directo de item_anexo)
         - Movimientos: entradas - salidas confirmadas
         """
 
-        # Konsignación - misma lógica que get_existencia_hibrida
-        # Usar cantidad_vendida directamente del item_anexo
+
+        # Konsignación - stock = entrada - vendido
+
         konsignacion_query = text("""
             SELECT 
-                COALESCE(SUM(ia.cantidad), 0) - COALESCE(SUM(ia.cantidad_vendida), 0) as stock
+                COALESCE(SUM(ia.entrada), 0) - COALESCE(SUM(ia.vendido), 0) as stock
             FROM item_anexo ia
             WHERE ia.id_producto = :id_producto
         """)

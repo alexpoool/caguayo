@@ -21,12 +21,18 @@ class TestVentaEfectivoCreateStockValidation:
         from src.dto import VentaEfectivoCreate
         from src.core.exceptions import BusinessLogicError
         from src.models import Productos
+        from src.services.existencia_service import ExistenciaService
+        from sqlmodel import select
 
         # Buscar un producto con existencia 0
-        from sqlmodel import select
-        stmt = select(Productos).where(Productos.stock == 0).limit(1)
+        stmt = select(Productos).limit(50)
         result = await db_session.exec(stmt)
-        producto = result.first()
+        producto = None
+        for p in result.all():
+            stock = await ExistenciaService.calcular_stock_producto(db_session, p.id_producto)
+            if stock == 0:
+                producto = p
+                break
 
         if not producto:
             pytest.skip("No hay productos con existencia 0 en la BD para probar")

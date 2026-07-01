@@ -175,7 +175,7 @@ class ProductosEnLiquidacionRepository(CRUDBase[ProductosEnLiquidacion, dict, di
                 ProductosEnLiquidacion,
                 Productos.nombre.label("producto_nombre"),
                 func.coalesce(
-                    ItemAnexo.cantidad,
+                    ItemAnexo.entrada,
                     ItemVentaEfectivo.cantidad,
                     ItemFactura.cantidad,
                 ).label("cantidad_original"),
@@ -381,8 +381,8 @@ class ProductosEnLiquidacionRepository(CRUDBase[ProductosEnLiquidacion, dict, di
                 ItemAnexo.id_item_anexo,
                 ItemAnexo.id_producto,
                 ItemAnexo.id_anexo,
-                ItemAnexo.cantidad,
-                ItemAnexo.cantidad_vendida,
+                ItemAnexo.entrada,
+                ItemAnexo.vendido,
                 ItemAnexo.precio_compra,
                 ItemAnexo.precio_venta,
                 ItemAnexo.id_moneda,
@@ -465,8 +465,8 @@ class ProductosEnLiquidacionRepository(CRUDBase[ProductosEnLiquidacion, dict, di
             id_item_anexo = row[0]
             id_producto = row[1]
             id_anexo = row[2]
-            cantidad_original = row[3]  # x - cantidad entrada en anexo
-            cantidad_vendida = row[4]  # cantidad vendida desde consignación
+            cantidad_original = row[3]  # x = entrada
+            vendido = row[4]            # cantidad vendida desde consignación
             precio_compra = row[5]
             precio_venta = row[6]
             id_moneda = row[7]
@@ -531,7 +531,7 @@ class ProductosEnLiquidacionRepository(CRUDBase[ProductosEnLiquidacion, dict, di
                 else cantidad_pendiente
             )
 
-            en_consignacion = max(0, cantidad_original - cantidad_vendida)
+            en_consignacion = max(0, cantidad_original - vendido)
 
             # Determinar estado
             if cantidad_pendiente > 0:
@@ -555,7 +555,7 @@ class ProductosEnLiquidacionRepository(CRUDBase[ProductosEnLiquidacion, dict, di
                     "cantidad_original": cantidad_original,  # x
                     "cantidad_liquidada": cantidad_liquidada,  # z
                     "por_liquidar": cantidad_pendiente,  # y - z (cantidad de compras no liquidadas)
-                    "en_consignacion": en_consignacion,  # x - cantidad_vendida (stock actual)
+                    "en_consignacion": en_consignacion,  # x - vendido (stock actual)
                     "precio_compra": float(precio_compra),
                     "precio_venta": float(precio_venta),
                     "id_moneda": id_moneda,

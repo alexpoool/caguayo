@@ -20,8 +20,8 @@ from src.models import (
     Productos,
     Movimiento,
     TipoMovimiento,
+    DetalleVenta,
 )
-from src.models import DetalleVenta
 
 
 async def calcular_cantidad_producto(db: AsyncSession, producto_id: int) -> int:
@@ -193,7 +193,6 @@ class DashboardService:
         db: AsyncSession, limit: int = 5
     ) -> List[ProductoStats]:
         """Obtener los productos más vendidos."""
-        from src.models import DetalleVenta
 
         # Consulta para obtener productos más vendidos
         statement = (

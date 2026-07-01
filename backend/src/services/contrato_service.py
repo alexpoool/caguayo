@@ -285,9 +285,10 @@ class ContratoService:
                         ItemAnexoDisponible(
                             id_item_anexo=item.id_item_anexo,
                             id_anexo=item.id_anexo,
+                            nombre_anexo=anexo.nombre_anexo,
                             id_producto=item.id_producto,
-                            cantidad=item.cantidad,
-                            cantidad_vendida=item.cantidad_vendida,
+                            entrada=item.entrada,
+                            vendido=item.vendido,
                             precio_venta=item.precio_venta,
                             precio_compra=item.precio_compra,
                             id_moneda=item.id_moneda,
@@ -313,9 +314,10 @@ class ContratoService:
                             ItemAnexoDisponible(
                                 id_item_anexo=item.id_item_anexo,
                                 id_anexo=item.id_anexo,
+                                nombre_anexo=anexo.nombre_anexo,
                                 id_producto=item.id_producto,
-                                cantidad=item.cantidad,
-                                cantidad_vendida=item.cantidad_vendida,
+                                entrada=item.entrada,
+                                vendido=item.vendido,
                                 precio_venta=precio_alt.precio_venta,
                                 precio_compra=precio_alt.precio_compra
                                 or item.precio_compra,

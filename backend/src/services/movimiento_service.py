@@ -186,20 +186,7 @@ class MovimientoService:
                     f"Solicitado: {db_movimiento.cantidad}"
                 )
 
-        # Aplicar cambios de stock
-        cambio = db_movimiento.cantidad * tipo.factor
-        tiene_konsignacion = await ExistenciaService._producto_tiene_item_anexo(
-            db, db_movimiento.id_producto
-        )
-
-        # Para productos konsignación con tipo venta, el stock real se actualiza
-        # via registrar_venta_en_anexo (item_anexo.cantidad_vendida)
-        if not (tiene_konsignacion and tipo.tipo == "venta"):
-            await ExistenciaService.actualizar_stock_producto(
-                db, db_movimiento.id_producto, cambio, commit=False
-            )
-
-        # Registrar venta en anexo si es tipo 'venta' o salida
+        # Registrar venta en item_anexo (incrementa vendido)
         if tipo.tipo in ("venta", "DONACION", "MERMA", "DEVOLUCION"):
             await ExistenciaService.registrar_venta_en_anexo(
                 db, db_movimiento.id_producto, db_movimiento.cantidad, commit=False
@@ -226,26 +213,6 @@ class MovimientoService:
                 commit=False,
             )
 
-        # Sincronizar productos.stock con el stock real post-actualización
-        # Solo cuando se saltó actualizar_stock_producto (konsignación + venta)
-        if tiene_konsignacion and tipo.tipo == "venta":
-            from sqlalchemy import text as _text
-
-            _sync = await db.exec(
-                _text("""
-                    SELECT COALESCE(SUM(ia.cantidad), 0) - COALESCE(SUM(ia.cantidad_vendida), 0)
-                    FROM item_anexo ia
-                    WHERE ia.id_producto = :id_producto
-                """),
-                params={"id_producto": db_movimiento.id_producto},
-            )
-            _stock_sync = _sync.scalar() or 0
-            await db.exec(
-                _text(
-                    "UPDATE productos SET stock = :stock WHERE id_producto = :id_producto"
-                ),
-                params={"id_producto": db_movimiento.id_producto, "stock": _stock_sync},
-            )
 
         # Cambiar el estado a confirmado
         db_movimiento.estado = "confirmado"
@@ -453,19 +420,21 @@ class MovimientoService:
                 p.nombre,
                 p.codigo,
                 p.descripcion,
-                ia.existencia AS stock,
+                (ia.entrada - ia.vendido) AS stock,
                 ia.precio_compra,
                 ia.precio_venta,
                 ia.id_moneda,
                 m.simbolo AS moneda_simbolo,
                 m.denominacion AS moneda_nombre,
                 ia.id_anexo,
-                a.id_convenio
+                a.id_convenio,
+                ia.entrada,
+                ia.vendido
             FROM item_anexo ia
             JOIN productos p ON ia.id_producto = p.id_producto
             JOIN anexo a ON ia.id_anexo = a.id_anexo
             JOIN moneda m ON ia.id_moneda = m.id_moneda
-            WHERE ia.existencia > 0
+            WHERE (ia.entrada - ia.vendido) > 0
             ORDER BY p.nombre
         """)
         result = await db.exec(query)

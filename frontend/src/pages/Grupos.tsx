@@ -80,7 +80,19 @@ const MODULOS: Modulo[] = [
   },
   {
     nombre: "Reportes",
-    funcionalidades: [],
+    funcionalidades: [
+      "reporte_existencias",
+      "reporte_movimientos_dependencia",
+      "reporte_movimientos_producto",
+      "reporte_proveedores",
+      "reporte_clientes",
+      "reporte_proyectos",
+      "reporte_creadores",
+      "reporte_desempeno",
+      "reporte_liquidaciones",
+      "reporte_onat",
+      "reporte_mincult",
+    ],
   },
 ];
 

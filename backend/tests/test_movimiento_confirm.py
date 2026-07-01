@@ -2,6 +2,7 @@ import pytest
 from datetime import datetime
 from sqlmodel import select
 from src.services.movimiento_service import MovimientoService
+from src.services.existencia_service import ExistenciaService
 from src.models.movimiento import Movimiento, TipoMovimiento
 from src.models.producto import Productos
 
@@ -17,7 +18,7 @@ async def test_confirmar_entrada_salida(db_session):
     if not producto:
         pytest.skip(f"Producto id={producto_id} no existe en esta BD")
 
-    stock_inicial = producto.stock
+    stock_inicial = await ExistenciaService.calcular_stock_producto(db_session, producto_id)
 
     tipo_compra = (
         await db_session.exec(
@@ -45,9 +46,9 @@ async def test_confirmar_entrada_salida(db_session):
 
     await MovimientoService.confirmar_movimiento(db_session, mov_compra.id_movimiento)
 
-    await db_session.refresh(producto)
-    assert producto.stock == stock_inicial + cantidad_compra, (
-        f"Expected {stock_inicial + cantidad_compra}, got {producto.stock}"
+    stock_despues = await ExistenciaService.calcular_stock_producto(db_session, producto_id)
+    assert stock_despues == stock_inicial + cantidad_compra, (
+        f"Expected {stock_inicial + cantidad_compra}, got {stock_despues}"
     )
 
     tipo_merma = (
@@ -69,10 +70,10 @@ async def test_confirmar_entrada_salida(db_session):
 
     await MovimientoService.confirmar_movimiento(db_session, mov_merma.id_movimiento)
 
-    await db_session.refresh(producto)
-    assert producto.stock == stock_inicial + cantidad_compra - cantidad_merma, (
+    stock_final = await ExistenciaService.calcular_stock_producto(db_session, producto_id)
+    assert stock_final == stock_inicial + cantidad_compra - cantidad_merma, (
         f"Expected {stock_inicial + cantidad_compra - cantidad_merma}, "
-        f"got {producto.stock}"
+        f"got {stock_final}"
     )
 
     await MovimientoService.cancelar_movimiento(db_session, mov_compra.id_movimiento)

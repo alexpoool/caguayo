@@ -375,6 +375,7 @@ export function FacturasPage() {
         _id_moneda: i.id_moneda,
         _id_item_anexo: i.id_item_anexo,
         _id_anexo: i.id_anexo,
+        _nombre_anexo: i.nombre_anexo,
       }))
     : productos;
 
