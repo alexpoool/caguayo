@@ -193,7 +193,10 @@ class DashboardService:
         db: AsyncSession, limit: int = 5
     ) -> List[ProductoStats]:
         """Obtener los productos más vendidos."""
+<<<<<<< HEAD
 
+=======
+>>>>>>> f8f47c0 (fix: import mal ubicados)
         # Consulta para obtener productos más vendidos
         statement = (
             select(
