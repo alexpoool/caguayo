@@ -5,6 +5,7 @@ from datetime import date
 
 if TYPE_CHECKING:
     from .venta import Ventas
+    from .compra import Compra
     from .convenio import Convenio
     from .movimiento import Movimiento
     from .cuenta import Cuenta
@@ -54,6 +55,10 @@ class Cliente(SQLModel, table=True):
         },
     )
     ventas: List["Ventas"] = Relationship(
+        back_populates="cliente",
+        sa_relationship_kwargs={"passive_deletes": True},
+    )
+    compras: List["Compra"] = Relationship(
         back_populates="cliente",
         sa_relationship_kwargs={"passive_deletes": True},
     )

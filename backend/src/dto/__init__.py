@@ -200,6 +200,15 @@ from .productos_en_liquidacion_dto import (
     ProductosEnLiquidacionRead,
     ProductosEnLiquidacionUpdate,
 )
+from .compras_dto import (
+    DetalleCompraBase,
+    DetalleCompraCreate,
+    DetalleCompraRead,
+    CompraBase,
+    CompraCreate,
+    CompraRead,
+    CompraUpdate,
+)
 
 
 __all__ = [
@@ -370,6 +379,13 @@ __all__ = [
     "ProductosEnLiquidacionCreate",
     "ProductosEnLiquidacionRead",
     "ProductosEnLiquidacionUpdate",
+    "DetalleCompraBase",
+    "DetalleCompraCreate",
+    "DetalleCompraRead",
+    "CompraBase",
+    "CompraCreate",
+    "CompraRead",
+    "CompraUpdate",
     "ItemAnexoDisponible",
     "GrupoSimpleRead",
 ]
@@ -377,5 +393,10 @@ VentaRead.model_rebuild(
     _types_namespace={
         "ClienteRead": ClienteRead,
         "ClienteReadWithVentas": ClienteReadWithVentas,
+    }
+)
+CompraRead.model_rebuild(
+    _types_namespace={
+        "ClienteRead": ClienteRead,
     }
 )

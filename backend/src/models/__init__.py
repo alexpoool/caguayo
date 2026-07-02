@@ -9,6 +9,8 @@ from .cliente_juridica import ClienteJuridica
 from .cliente_tcp import ClienteTCP
 from .venta import Ventas, EstadoVenta
 from .detalle_venta import DetalleVenta
+from .compra import Compra, EstadoCompra
+from .detalle_compra import DetalleCompra
 from .movimiento import TipoMovimiento, Movimiento
 from .dependencia import TipoDependencia, Dependencia, Provincia, Municipio
 from .anexo import Anexo
@@ -68,6 +70,9 @@ __all__ = [
     "Ventas",
     "EstadoVenta",
     "DetalleVenta",
+    "Compra",
+    "EstadoCompra",
+    "DetalleCompra",
     "TipoMovimiento",
     "Movimiento",
     "TipoDependencia",

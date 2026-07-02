@@ -41,6 +41,8 @@ from .servicios import (
 )
 from .logger import router as logger_router
 from .existencias import existencias_router
+from .ventas import router as ventas_router
+from .compras import router as compras_router
 
 api_router = APIRouter(prefix="/api/v1")
 
@@ -82,6 +84,8 @@ api_router.include_router(persona_liquidacion_router)
 api_router.include_router(certificaciones_router)
 api_router.include_router(logger_router)
 api_router.include_router(existencias_router)
+api_router.include_router(ventas_router)
+api_router.include_router(compras_router)
 
 
 @api_router.get("/")
@@ -114,5 +118,7 @@ async def api_info():
             "facturas_servicio": "/api/v1/facturas-servicio",
             "pagos_factura_servicio": "/api/v1/pagos-factura-servicio",
             "persona_liquidacion": "/api/v1/persona-liquidacion",
+            "ventas": "/api/v1/ventas",
+            "compras": "/api/v1/compras",
         },
     }

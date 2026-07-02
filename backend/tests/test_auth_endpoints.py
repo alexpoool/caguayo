@@ -52,6 +52,18 @@ class TestPutEndpointsWithoutToken:
         assert response.status_code == 401, \
             f"PUT /productos-en-liquidacion/1: esperado 401, obtenido {response.status_code} - {response.json()}"
 
+    def test_put_ventas_sin_token(self, client):
+        """PUT /api/v1/ventas/1 sin token → 401."""
+        response = client.put("/api/v1/ventas/1", json={})
+        assert response.status_code == 401, \
+            f"PUT /ventas/1: esperado 401, obtenido {response.status_code} - {response.json()}"
+
+    def test_put_compras_sin_token(self, client):
+        """PUT /api/v1/compras/1 sin token → 401."""
+        response = client.put("/api/v1/compras/1", json={})
+        assert response.status_code == 401, \
+            f"PUT /compras/1: esperado 401, obtenido {response.status_code} - {response.json()}"
+
 
 # ─────────────────────────────────────────────────────────────
 # Endpoints DELETE — deben rechazar sin token
@@ -106,6 +118,18 @@ class TestDeleteEndpointsWithoutToken:
         response = client.delete("/api/v1/productos-en-liquidacion/1")
         assert response.status_code == 401, \
             f"DELETE /productos-en-liquidacion/1: esperado 401, obtenido {response.status_code}"
+
+    def test_delete_ventas_sin_token(self, client):
+        """DELETE /api/v1/ventas/1 sin token → 401."""
+        response = client.delete("/api/v1/ventas/1")
+        assert response.status_code == 401, \
+            f"DELETE /ventas/1: esperado 401, obtenido {response.status_code}"
+
+    def test_delete_compras_sin_token(self, client):
+        """DELETE /api/v1/compras/1 sin token → 401."""
+        response = client.delete("/api/v1/compras/1")
+        assert response.status_code == 401, \
+            f"DELETE /compras/1: esperado 401, obtenido {response.status_code}"
 
 
 # ─────────────────────────────────────────────────────────────
