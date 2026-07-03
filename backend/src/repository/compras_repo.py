@@ -5,7 +5,7 @@ from sqlmodel import select, func
 from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from src.models.compra import Compra, EstadoCompra
+from src.models.compra import Compra
 from src.models.detalle_compra import DetalleCompra
 from src.repository.base import CRUDBase
 from src.dto.compras_dto import CompraCreate, CompraUpdate, DetalleCompraCreate

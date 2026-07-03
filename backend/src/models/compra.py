@@ -1,5 +1,5 @@
 from sqlmodel import SQLModel, Field, Relationship
-from sqlalchemy import Column, ForeignKey
+from sqlalchemy import Column, ForeignKey, String
 from typing import Optional, List, TYPE_CHECKING
 from decimal import Decimal
 from datetime import datetime, timezone
@@ -29,7 +29,11 @@ class Compra(SQLModel, table=True):
     )
     fecha: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     total: Decimal = Field(default=0, decimal_places=2)
-    estado: EstadoCompra = Field(default=EstadoCompra.PENDIENTE)
+    estado: str = Field(
+        default="PENDIENTE",
+        max_length=20,
+        sa_column=Column(String(20), nullable=False, server_default="PENDIENTE"),
+    )
     observacion: Optional[str] = None
     fecha_registro: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     fecha_actualizacion: Optional[datetime] = None

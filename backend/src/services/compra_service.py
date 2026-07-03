@@ -7,7 +7,7 @@ from sqlalchemy.orm import selectinload
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from src.models.compra import Compra, EstadoCompra
+from src.models.compra import Compra
 from src.models.detalle_compra import DetalleCompra
 from src.dto.compras_dto import CompraCreate, CompraRead, CompraUpdate
 from src.repository.compras_repo import compras_repo, detalle_compra_repo
@@ -33,7 +33,7 @@ class CompraService:
                 id_cliente=compra_data.id_cliente,
                 fecha=fecha,
                 total=Decimal("0"),
-                estado=EstadoCompra.PENDIENTE,
+                estado="PENDIENTE",
                 observacion=compra_data.observacion,
             )
             db.add(compra)
