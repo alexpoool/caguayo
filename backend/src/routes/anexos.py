@@ -364,9 +364,7 @@ async def actualizar_anexo(
     except Exception as e:
         await db.rollback()
         logger.error("Error al actualizar anexo", exc_info=True)
-        raise HTTPException(
-            status_code=500, detail="Error interno del servidor"
-        )
+        raise HTTPException(status_code=500, detail="Error interno del servidor")
 
 
 @router.delete("/{anexo_id}", status_code=204)
@@ -392,6 +390,4 @@ async def eliminar_anexo(
     except Exception as e:
         await db.rollback()
         logger.error("Error al eliminar anexo", exc_info=True)
-        raise HTTPException(
-            status_code=500, detail="Error interno del servidor"
-        )
+        raise HTTPException(status_code=500, detail="Error interno del servidor")

@@ -80,14 +80,9 @@ class CompraService:
     ) -> List[CompraRead]:
         """Listar compras con filtros opcionales y eager loading."""
         try:
-            statement = (
-                select(Compra)
-                .options(
-                    selectinload(Compra.cliente),
-                    selectinload(Compra.detalles).selectinload(
-                        DetalleCompra.producto
-                    ),
-                )
+            statement = select(Compra).options(
+                selectinload(Compra.cliente),
+                selectinload(Compra.detalles).selectinload(DetalleCompra.producto),
             )
 
             if id_cliente is not None:

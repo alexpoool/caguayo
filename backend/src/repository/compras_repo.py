@@ -62,9 +62,7 @@ class ComprasRepository(CRUDBase[Compra, CompraCreate, CompraUpdate]):
         return list(results.all())
 
 
-class DetalleCompraRepository(
-    CRUDBase[DetalleCompra, DetalleCompraCreate, dict]
-):
+class DetalleCompraRepository(CRUDBase[DetalleCompra, DetalleCompraCreate, dict]):
     async def get_by_compra(
         self, db: AsyncSession, id_compra: int
     ) -> List[DetalleCompra]:

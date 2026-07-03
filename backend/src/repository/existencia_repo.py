@@ -41,15 +41,17 @@ class ExistenciaRepository:
 
         existencias = []
         for row in rows:
-            existencias.append({
-                "id_producto": row[0],
-                "id_anexo": row[1],
-                "nombre_anexo": row[2],
-                "cantidad_entrada": row[3] or 0,
-                "vendido": row[4] or 0,
-                "stock": row[5] or 0,
-                "tipo": "CONSIGNACION"
-            })
+            existencias.append(
+                {
+                    "id_producto": row[0],
+                    "id_anexo": row[1],
+                    "nombre_anexo": row[2],
+                    "cantidad_entrada": row[3] or 0,
+                    "vendido": row[4] or 0,
+                    "stock": row[5] or 0,
+                    "tipo": "CONSIGNACION",
+                }
+            )
 
         return existencias
 
@@ -166,7 +168,6 @@ class ExistenciaRepository:
         - Konsignación: entrada - vendido (directo de item_anexo)
         - Movimientos: entradas - salidas confirmadas
         """
-
 
         # Konsignación - stock = entrada - vendido
 

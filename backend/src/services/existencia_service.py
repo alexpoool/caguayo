@@ -134,10 +134,7 @@ class ExistenciaService:
         }
 
     @staticmethod
-    async def calcular_stock_producto(
-        db: AsyncSession,
-        id_producto: int
-    ) -> int:
+    async def calcular_stock_producto(db: AsyncSession, id_producto: int) -> int:
         """Calcula el stock actual de un producto desde tablas fuente.
 
         Solo lectura, no escribe en productos.
@@ -150,29 +147,34 @@ class ExistenciaService:
         """
         from sqlalchemy import text
 
-        tiene_konsignacion = await existencia_repo._producto_tiene_item_anexo(db, id_producto)
+        tiene_konsignacion = await existencia_repo._producto_tiene_item_anexo(
+            db, id_producto
+        )
 
         if tiene_konsignacion:
-            r = await db.exec(text("""
+            r = await db.exec(
+                text("""
                 SELECT COALESCE(SUM(ia.entrada - ia.vendido), 0)
                 FROM item_anexo ia
                 WHERE ia.id_producto = :id_producto
-            """), params={"id_producto": id_producto})
+            """),
+                params={"id_producto": id_producto},
+            )
         else:
-            r = await db.exec(text("""
+            r = await db.exec(
+                text("""
                 SELECT COALESCE(SUM(m.cantidad * tm.factor), 0)
                 FROM movimiento m
                 JOIN tipo_movimiento tm ON m.id_tipo_movimiento = tm.id_tipo_movimiento
                 WHERE m.id_producto = :id_producto AND m.estado = 'confirmado'
-            """), params={"id_producto": id_producto})
+            """),
+                params={"id_producto": id_producto},
+            )
 
         return r.scalar() or 0
 
     @staticmethod
-    async def recalcular_existencia(
-        db: AsyncSession,
-        id_producto: int
-    ) -> int:
+    async def recalcular_existencia(db: AsyncSession, id_producto: int) -> int:
         """Recalcula la existencia de un producto (solo lectura, ya no persiste).
 
         Returns:
@@ -196,7 +198,7 @@ class ExistenciaService:
             select(ItemAnexo)
             .where(
                 ItemAnexo.id_producto == id_producto,
-                ItemAnexo.entrada > ItemAnexo.vendido
+                ItemAnexo.entrada > ItemAnexo.vendido,
             )
             .order_by(ItemAnexo.id_anexo.asc(), ItemAnexo.id_item_anexo.asc())
             .limit(1)
@@ -214,7 +216,7 @@ class ExistenciaService:
             "id_producto": item.id_producto,
             "entrada": item.entrada,
             "vendido": item.vendido,
-            "disponible": disponible
+            "disponible": disponible,
         }
 
     @staticmethod
@@ -239,7 +241,7 @@ class ExistenciaService:
                 select(ItemAnexo)
                 .where(
                     ItemAnexo.id_producto == id_producto,
-                    ItemAnexo.entrada > ItemAnexo.vendido
+                    ItemAnexo.entrada > ItemAnexo.vendido,
                 )
                 .order_by(ItemAnexo.id_anexo.asc(), ItemAnexo.id_item_anexo.asc())
                 .limit(1)
@@ -256,12 +258,14 @@ class ExistenciaService:
             item.vendido += a_vender
             cantidad_restante -= a_vender
 
-            actualizada.append({
-                "id_item_anexo": item.id_item_anexo,
-                "id_anexo": item.id_anexo,
-                "vendido": item.vendido,
-                "vendido_en_esta": a_vender
-            })
+            actualizada.append(
+                {
+                    "id_item_anexo": item.id_item_anexo,
+                    "id_anexo": item.id_anexo,
+                    "vendido": item.vendido,
+                    "vendido_en_esta": a_vender,
+                }
+            )
 
         if commit:
             await db.commit()
@@ -305,10 +309,7 @@ class ExistenciaService:
 
         stmt = (
             select(ItemAnexo)
-            .where(
-                ItemAnexo.id_anexo == id_anexo,
-                ItemAnexo.id_producto == id_producto
-            )
+            .where(ItemAnexo.id_anexo == id_anexo, ItemAnexo.id_producto == id_producto)
             .order_by(ItemAnexo.id_item_anexo.asc())
             .limit(1)
         )
@@ -368,15 +369,9 @@ class ExistenciaService:
         from src.models.item_anexo import ItemAnexo
         from sqlalchemy import select, func
 
-        stmt = (
-            select(func.sum(
-                ItemAnexo.entrada - ItemAnexo.vendido
-            ).label("disponible"))
-            .where(
-                ItemAnexo.id_producto == id_producto,
-                ItemAnexo.id_anexo == id_anexo
-            )
-        )
+        stmt = select(
+            func.sum(ItemAnexo.entrada - ItemAnexo.vendido).label("disponible")
+        ).where(ItemAnexo.id_producto == id_producto, ItemAnexo.id_anexo == id_anexo)
         result = await db.exec(stmt)
         return result.scalar() or 0
 

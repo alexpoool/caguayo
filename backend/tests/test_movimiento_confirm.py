@@ -18,7 +18,9 @@ async def test_confirmar_entrada_salida(db_session):
     if not producto:
         pytest.skip(f"Producto id={producto_id} no existe en esta BD")
 
-    stock_inicial = await ExistenciaService.calcular_stock_producto(db_session, producto_id)
+    stock_inicial = await ExistenciaService.calcular_stock_producto(
+        db_session, producto_id
+    )
 
     tipo_compra = (
         await db_session.exec(
@@ -28,6 +30,7 @@ async def test_confirmar_entrada_salida(db_session):
 
     # Buscar una dependencia válida
     from src.models import Dependencia
+
     deps = (await db_session.exec(select(Dependencia).limit(1))).first()
     if not deps:
         pytest.skip("No hay dependencias en la BD")
@@ -46,7 +49,9 @@ async def test_confirmar_entrada_salida(db_session):
 
     await MovimientoService.confirmar_movimiento(db_session, mov_compra.id_movimiento)
 
-    stock_despues = await ExistenciaService.calcular_stock_producto(db_session, producto_id)
+    stock_despues = await ExistenciaService.calcular_stock_producto(
+        db_session, producto_id
+    )
     assert stock_despues == stock_inicial + cantidad_compra, (
         f"Expected {stock_inicial + cantidad_compra}, got {stock_despues}"
     )
@@ -70,7 +75,9 @@ async def test_confirmar_entrada_salida(db_session):
 
     await MovimientoService.confirmar_movimiento(db_session, mov_merma.id_movimiento)
 
-    stock_final = await ExistenciaService.calcular_stock_producto(db_session, producto_id)
+    stock_final = await ExistenciaService.calcular_stock_producto(
+        db_session, producto_id
+    )
     assert stock_final == stock_inicial + cantidad_compra - cantidad_merma, (
         f"Expected {stock_inicial + cantidad_compra - cantidad_merma}, "
         f"got {stock_final}"
@@ -96,6 +103,7 @@ async def test_confirmar_stock_insuficiente_rechaza(db_session):
     ).one()
 
     from src.models import Dependencia
+
     deps = (await db_session.exec(select(Dependencia).limit(1))).first()
     if not deps:
         pytest.skip("No hay dependencias en la BD")

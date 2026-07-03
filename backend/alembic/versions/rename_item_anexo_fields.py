@@ -5,6 +5,7 @@ Revises: add_fk_id_dependencia_movimiento
 Create Date: 2026-06-24
 
 """
+
 from typing import Sequence, Union
 
 from alembic import op
@@ -20,6 +21,7 @@ depends_on: Union[str, Sequence[str], None] = None
 def upgrade() -> None:
     conn = op.get_bind()
     from sqlalchemy import inspect
+
     inspector = inspect(conn)
     columns = [col["name"] for col in inspector.get_columns("item_anexo")]
 
@@ -78,11 +80,15 @@ $function$;
 def downgrade() -> None:
     conn = op.get_bind()
     from sqlalchemy import inspect
+
     inspector = inspect(conn)
     columns = [col["name"] for col in inspector.get_columns("item_anexo")]
 
     if "existencia" not in columns:
-        op.add_column("item_anexo", sa.Column("existencia", sa.Integer(), nullable=False, server_default="0"))
+        op.add_column(
+            "item_anexo",
+            sa.Column("existencia", sa.Integer(), nullable=False, server_default="0"),
+        )
 
     if "cantidad" not in columns:
         op.alter_column("item_anexo", "entrada", new_column_name="cantidad")

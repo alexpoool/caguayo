@@ -53,9 +53,7 @@ async def crear_contrato(
                 status_code=400, detail=f"Error de validación: {error_msg}"
             )
         logger.error("Error al crear contrato", exc_info=True)
-        raise HTTPException(
-            status_code=500, detail="Error interno del servidor"
-        )
+        raise HTTPException(status_code=500, detail="Error interno del servidor")
 
 
 @contratos_router.get("", response_model=List[ContratoReadWithDetails])
@@ -70,9 +68,7 @@ async def obtener_contratos(
         return await ContratoService.get_all(db, skip, limit, id_cliente)
     except Exception as e:
         logger.error("Error al obtener contratos", exc_info=True)
-        raise HTTPException(
-            status_code=500, detail="Error interno del servidor"
-        )
+        raise HTTPException(status_code=500, detail="Error interno del servidor")
 
 
 @contratos_router.get("/{contrato_id}", response_model=ContratoReadWithDetails)
@@ -99,9 +95,7 @@ async def obtener_items_disponibles(
         return await ContratoService.get_items_disponibles(db, contrato_id)
     except Exception as e:
         logger.error("Error al obtener items disponibles", exc_info=True)
-        raise HTTPException(
-            status_code=500, detail="Error interno del servidor"
-        )
+        raise HTTPException(status_code=500, detail="Error interno del servidor")
 
 
 @contratos_router.put("/{contrato_id}", response_model=ContratoReadWithDetails)
@@ -123,9 +117,7 @@ async def actualizar_contrato(
         raise
     except Exception as e:
         logger.error("Error al actualizar contrato", exc_info=True)
-        raise HTTPException(
-            status_code=500, detail="Error interno del servidor"
-        )
+        raise HTTPException(status_code=500, detail="Error interno del servidor")
 
 
 @contratos_router.delete("/{contrato_id}", status_code=204)
@@ -145,9 +137,7 @@ async def eliminar_contrato(
         raise
     except Exception as e:
         logger.error("Error al eliminar contrato", exc_info=True)
-        raise HTTPException(
-            status_code=500, detail="Error interno del servidor"
-        )
+        raise HTTPException(status_code=500, detail="Error interno del servidor")
 
 
 suplementos_router = APIRouter(
@@ -170,9 +160,7 @@ async def crear_suplemento(
         raise
     except Exception as e:
         logger.error("Error al crear suplemento", exc_info=True)
-        raise HTTPException(
-            status_code=500, detail="Error interno del servidor"
-        )
+        raise HTTPException(status_code=500, detail="Error interno del servidor")
 
 
 @suplementos_router.get(
@@ -187,9 +175,7 @@ async def obtener_suplementos_por_contrato(
         return await SuplementoService.get_all_by_contrato(db, contrato_id)
     except Exception as e:
         logger.error("Error al obtener suplementos", exc_info=True)
-        raise HTTPException(
-            status_code=500, detail="Error interno del servidor"
-        )
+        raise HTTPException(status_code=500, detail="Error interno del servidor")
 
 
 @suplementos_router.get("", response_model=List[SuplementoReadWithDetails])
@@ -203,9 +189,7 @@ async def obtener_suplementos(
         return await SuplementoService.get_all(db, skip, limit)
     except Exception as e:
         logger.error("Error al obtener suplementos", exc_info=True)
-        raise HTTPException(
-            status_code=500, detail="Error interno del servidor"
-        )
+        raise HTTPException(status_code=500, detail="Error interno del servidor")
 
 
 @suplementos_router.get("/{suplemento_id}", response_model=SuplementoReadWithDetails)
@@ -239,9 +223,7 @@ async def actualizar_suplemento(
         raise
     except Exception as e:
         logger.error("Error al actualizar suplemento", exc_info=True)
-        raise HTTPException(
-            status_code=500, detail="Error interno del servidor"
-        )
+        raise HTTPException(status_code=500, detail="Error interno del servidor")
 
 
 @suplementos_router.delete("/{suplemento_id}", status_code=204)
@@ -261,9 +243,7 @@ async def eliminar_suplemento(
         raise
     except Exception as e:
         logger.error("Error al eliminar suplemento", exc_info=True)
-        raise HTTPException(
-            status_code=500, detail="Error interno del servidor"
-        )
+        raise HTTPException(status_code=500, detail="Error interno del servidor")
 
 
 facturas_router = APIRouter(
@@ -286,9 +266,7 @@ async def crear_factura(
         raise
     except Exception as e:
         logger.error("Error al crear factura", exc_info=True)
-        raise HTTPException(
-            status_code=500, detail="Error interno del servidor"
-        )
+        raise HTTPException(status_code=500, detail="Error interno del servidor")
 
 
 @facturas_router.get("", response_model=List[FacturaReadWithDetails])
@@ -302,9 +280,7 @@ async def obtener_facturas(
         return await FacturaService.get_all(db, skip, limit)
     except Exception as e:
         logger.error("Error al obtener facturas", exc_info=True)
-        raise HTTPException(
-            status_code=500, detail="Error interno del servidor"
-        )
+        raise HTTPException(status_code=500, detail="Error interno del servidor")
 
 
 @facturas_router.get(
@@ -319,9 +295,7 @@ async def obtener_facturas_por_contrato(
         return await FacturaService.get_by_contrato(db, contrato_id)
     except Exception as e:
         logger.error("Error al obtener facturas", exc_info=True)
-        raise HTTPException(
-            status_code=500, detail="Error interno del servidor"
-        )
+        raise HTTPException(status_code=500, detail="Error interno del servidor")
 
 
 @facturas_router.get("/{factura_id}", response_model=FacturaReadWithDetails)
@@ -355,9 +329,7 @@ async def actualizar_factura(
         raise
     except Exception as e:
         logger.error("Error al actualizar factura", exc_info=True)
-        raise HTTPException(
-            status_code=500, detail="Error interno del servidor"
-        )
+        raise HTTPException(status_code=500, detail="Error interno del servidor")
 
 
 @facturas_router.delete("/{factura_id}", status_code=204)
@@ -377,9 +349,7 @@ async def eliminar_factura(
         raise
     except Exception as e:
         logger.error("Error al eliminar factura", exc_info=True)
-        raise HTTPException(
-            status_code=500, detail="Error interno del servidor"
-        )
+        raise HTTPException(status_code=500, detail="Error interno del servidor")
 
 
 ventas_efectivo_router = APIRouter(
@@ -404,9 +374,7 @@ async def crear_venta_efectivo(
         raise
     except Exception as e:
         logger.error("Error al crear venta en efectivo", exc_info=True)
-        raise HTTPException(
-            status_code=500, detail="Error interno del servidor"
-        )
+        raise HTTPException(status_code=500, detail="Error interno del servidor")
 
 
 @ventas_efectivo_router.get("", response_model=List[VentaEfectivoReadWithDetails])
@@ -420,9 +388,7 @@ async def obtener_ventas_efectivo(
         return await VentaEfectivoService.get_all(db, skip, limit)
     except Exception as e:
         logger.error("Error al obtener ventas en efectivo", exc_info=True)
-        raise HTTPException(
-            status_code=500, detail="Error interno del servidor"
-        )
+        raise HTTPException(status_code=500, detail="Error interno del servidor")
 
 
 @ventas_efectivo_router.get("/{venta_id}", response_model=VentaEfectivoReadWithDetails)
@@ -458,9 +424,7 @@ async def actualizar_venta_efectivo(
         raise
     except Exception as e:
         logger.error("Error al actualizar venta en efectivo", exc_info=True)
-        raise HTTPException(
-            status_code=500, detail="Error interno del servidor"
-        )
+        raise HTTPException(status_code=500, detail="Error interno del servidor")
 
 
 @ventas_efectivo_router.delete("/{venta_id}", status_code=204)
@@ -482,6 +446,4 @@ async def eliminar_venta_efectivo(
         raise
     except Exception as e:
         logger.error("Error al eliminar venta en efectivo", exc_info=True)
-        raise HTTPException(
-            status_code=500, detail="Error interno del servidor"
-        )
+        raise HTTPException(status_code=500, detail="Error interno del servidor")

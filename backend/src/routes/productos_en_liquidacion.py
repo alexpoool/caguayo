@@ -71,9 +71,7 @@ async def crear_producto(
         return await productos_en_liquidacion_service.create(db, producto, nit=nit)
     except Exception as e:
         logger.error("Error al crear producto en liquidación", exc_info=True)
-        raise HTTPException(
-            status_code=500, detail="Error interno del servidor"
-        )
+        raise HTTPException(status_code=500, detail="Error interno del servidor")
 
 
 @router.get("/{producto_id}", response_model=ProductosEnLiquidacionRead)
@@ -113,9 +111,7 @@ async def actualizar_producto(
         raise
     except Exception as e:
         logger.error("Error al actualizar producto en liquidación", exc_info=True)
-        raise HTTPException(
-            status_code=500, detail="Error interno del servidor"
-        )
+        raise HTTPException(status_code=500, detail="Error interno del servidor")
 
 
 @router.post("/{producto_id}/liquidar", response_model=ProductosEnLiquidacionRead)
@@ -140,9 +136,7 @@ async def liquidar_producto(
         raise
     except Exception as e:
         logger.error("Error al liquidar producto", exc_info=True)
-        raise HTTPException(
-            status_code=500, detail="Error interno del servidor"
-        )
+        raise HTTPException(status_code=500, detail="Error interno del servidor")
 
 
 @router.delete("/{producto_id}", status_code=204)
@@ -164,6 +158,4 @@ async def eliminar_producto(
         raise
     except Exception as e:
         logger.error("Error al eliminar producto en liquidación", exc_info=True)
-        raise HTTPException(
-            status_code=500, detail="Error interno del servidor"
-        )
+        raise HTTPException(status_code=500, detail="Error interno del servidor")

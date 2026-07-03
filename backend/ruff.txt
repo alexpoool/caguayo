@@ -1,0 +1,694 @@
+F401 [*] `sqlmodel` imported but unused
+  --> alembic/versions/26bae45686ea_add_contracts_tables.py:13:8
+   |
+11 | from alembic import op
+12 | import sqlalchemy as sa
+13 | import sqlmodel
+   |        ^^^^^^^^
+14 | from sqlalchemy.dialects import postgresql
+   |
+help: Remove unused import: `sqlmodel`
+
+F401 [*] `sqlmodel` imported but unused
+  --> alembic/versions/add_liquidacion_tables.py:13:8
+   |
+11 | from alembic import op
+12 | import sqlalchemy as sa
+13 | import sqlmodel
+   |        ^^^^^^^^
+14 |
+15 | revision: str = "add_liquidacion_tables"
+   |
+help: Remove unused import: `sqlmodel`
+
+F401 [*] `sqlmodel` imported but unused
+  --> alembic/versions/add_servicios_tables.py:11:8
+   |
+ 9 | from alembic import op
+10 | import sqlalchemy as sa
+11 | import sqlmodel
+   |        ^^^^^^^^
+   |
+help: Remove unused import: `sqlmodel`
+
+F401 [*] `sqlmodel` imported but unused
+  --> alembic/versions/replace_producto_tables.py:13:8
+   |
+11 | from alembic import op
+12 | import sqlalchemy as sa
+13 | import sqlmodel
+   |        ^^^^^^^^
+   |
+help: Remove unused import: `sqlmodel`
+
+F401 [*] `os` imported but unused
+ --> src/core/config.py:1:8
+  |
+1 | import os
+  |        ^^
+2 | from pydantic_settings import BaseSettings
+  |
+help: Remove unused import: `os`
+
+F401 [*] `sqlmodel.func` imported but unused
+ --> src/repository/compras_repo.py:4:30
+  |
+2 | from typing import List
+3 |
+4 | from sqlmodel import select, func
+  |                              ^^^^
+5 | from sqlmodel.ext.asyncio.session import AsyncSession
+6 | from sqlalchemy.orm import selectinload
+  |
+help: Remove unused import: `sqlmodel.func`
+
+F401 [*] `src.models.compra.EstadoCompra` imported but unused
+  --> src/repository/compras_repo.py:8:39
+   |
+ 6 | from sqlalchemy.orm import selectinload
+ 7 |
+ 8 | from src.models.compra import Compra, EstadoCompra
+   |                                       ^^^^^^^^^^^^
+ 9 | from src.models.detalle_compra import DetalleCompra
+10 | from src.repository.base import CRUDBase
+   |
+help: Remove unused import: `src.models.compra.EstadoCompra`
+
+F841 [*] Local variable `e` is assigned to but never used
+  --> src/routes/anexos.py:89:25
+   |
+88 |         return anexos_read
+89 |     except Exception as e:
+   |                         ^
+90 |         logger.error("Error en listar_anexos", exc_info=True)
+91 |         raise HTTPException(status_code=500, detail="Error interno del servidor")
+   |
+help: Remove assignment to unused variable `e`
+
+F841 [*] Local variable `e` is assigned to but never used
+   --> src/routes/anexos.py:301:25
+    |
+299 |     except HTTPException:
+300 |         raise
+301 |     except Exception as e:
+    |                         ^
+302 |         await db.rollback()
+303 |         logger.error("Error al crear anexo", exc_info=True)
+    |
+help: Remove assignment to unused variable `e`
+
+F841 [*] Local variable `e` is assigned to but never used
+   --> src/routes/anexos.py:364:25
+    |
+362 |     except HTTPException:
+363 |         raise
+364 |     except Exception as e:
+    |                         ^
+365 |         await db.rollback()
+366 |         logger.error("Error al actualizar anexo", exc_info=True)
+    |
+help: Remove assignment to unused variable `e`
+
+F841 [*] Local variable `e` is assigned to but never used
+   --> src/routes/anexos.py:390:25
+    |
+388 |     except HTTPException:
+389 |         raise
+390 |     except Exception as e:
+    |                         ^
+391 |         await db.rollback()
+392 |         logger.error("Error al eliminar anexo", exc_info=True)
+    |
+help: Remove assignment to unused variable `e`
+
+F401 [*] `datetime.date` imported but unused
+ --> src/routes/convenios.py:3:22
+  |
+1 | import logging
+2 | from typing import Optional
+3 | from datetime import date
+  |                      ^^^^
+4 | from fastapi import APIRouter, Depends, Header, HTTPException, Query
+5 | from sqlmodel.ext.asyncio.session import AsyncSession
+  |
+help: Remove unused import: `datetime.date`
+
+F841 [*] Local variable `e` is assigned to but never used
+   --> src/routes/convenios.py:146:25
+    |
+144 |     except HTTPException:
+145 |         raise
+146 |     except Exception as e:
+    |                         ^
+147 |         logger.error("Error al crear convenio", exc_info=True)
+148 |         raise HTTPException(status_code=500, detail="Error interno del servidor")
+    |
+help: Remove assignment to unused variable `e`
+
+F841 [*] Local variable `e` is assigned to but never used
+   --> src/routes/convenios.py:184:25
+    |
+182 |     except HTTPException:
+183 |         raise
+184 |     except Exception as e:
+    |                         ^
+185 |         logger.error("Error al actualizar convenio", exc_info=True)
+186 |         raise HTTPException(status_code=500, detail="Error interno del servidor")
+    |
+help: Remove assignment to unused variable `e`
+
+F841 [*] Local variable `e` is assigned to but never used
+   --> src/routes/convenios.py:208:25
+    |
+206 |     except HTTPException:
+207 |         raise
+208 |     except Exception as e:
+    |                         ^
+209 |         logger.error("Error al eliminar convenio", exc_info=True)
+210 |         raise HTTPException(status_code=500, detail="Error interno del servidor")
+    |
+help: Remove assignment to unused variable `e`
+
+F401 [*] `src.core.exceptions.NotFoundError` imported but unused
+ --> src/routes/liquidaciones.py:7:53
+  |
+5 | from src.database.connection import get_auth_session, get_session
+6 | from src.services.liquidacion_service import liquidacion_service
+7 | from src.core.exceptions import BusinessLogicError, NotFoundError, ValidationError
+  |                                                     ^^^^^^^^^^^^^
+8 | from src.dto import (
+9 |     LiquidacionCreate,
+  |
+help: Remove unused import: `src.core.exceptions.NotFoundError`
+
+F841 [*] Local variable `e` is assigned to but never used
+   --> src/routes/liquidaciones.py:117:25
+    |
+115 |     except (BusinessLogicError, ValidationError) as e:
+116 |         raise HTTPException(status_code=400, detail=str(e))
+117 |     except Exception as e:
+    |                         ^
+118 |         logger.error("Error al crear liquidación", exc_info=True)
+119 |         raise HTTPException(status_code=500, detail="Error interno del servidor")
+    |
+help: Remove assignment to unused variable `e`
+
+F841 [*] Local variable `e` is assigned to but never used
+   --> src/routes/liquidaciones.py:155:25
+    |
+153 |     except (BusinessLogicError, ValidationError) as e:
+154 |         raise HTTPException(status_code=400, detail=str(e))
+155 |     except Exception as e:
+    |                         ^
+156 |         logger.error("Error al actualizar liquidación", exc_info=True)
+157 |         raise HTTPException(status_code=500, detail="Error interno del servidor")
+    |
+help: Remove assignment to unused variable `e`
+
+F841 [*] Local variable `e` is assigned to but never used
+   --> src/routes/liquidaciones.py:181:25
+    |
+179 |     except (BusinessLogicError, ValidationError) as e:
+180 |         raise HTTPException(status_code=400, detail=str(e))
+181 |     except Exception as e:
+    |                         ^
+182 |         logger.error("Error al confirmar liquidación", exc_info=True)
+183 |         raise HTTPException(status_code=500, detail="Error interno del servidor")
+    |
+help: Remove assignment to unused variable `e`
+
+F841 [*] Local variable `e` is assigned to but never used
+   --> src/routes/liquidaciones.py:203:25
+    |
+201 |     except (BusinessLogicError, ValidationError) as e:
+202 |         raise HTTPException(status_code=400, detail=str(e))
+203 |     except Exception as e:
+    |                         ^
+204 |         logger.error("Error al eliminar liquidación", exc_info=True)
+205 |         raise HTTPException(status_code=500, detail="Error interno del servidor")
+    |
+help: Remove assignment to unused variable `e`
+
+F841 [*] Local variable `e` is assigned to but never used
+   --> src/routes/liquidaciones.py:226:25
+    |
+224 |     except (BusinessLogicError, ValidationError) as e:
+225 |         raise HTTPException(status_code=400, detail=str(e))
+226 |     except Exception as e:
+    |                         ^
+227 |         logger.error("Error al aprobar liquidación", exc_info=True)
+228 |         raise HTTPException(status_code=500, detail="Error interno del servidor")
+    |
+help: Remove assignment to unused variable `e`
+
+F841 [*] Local variable `e` is assigned to but never used
+  --> src/routes/productos_en_liquidacion.py:72:25
+   |
+70 |         nit = await _get_nit_from_token(authorization, db_auth)
+71 |         return await productos_en_liquidacion_service.create(db, producto, nit=nit)
+72 |     except Exception as e:
+   |                         ^
+73 |         logger.error("Error al crear producto en liquidación", exc_info=True)
+74 |         raise HTTPException(status_code=500, detail="Error interno del servidor")
+   |
+help: Remove assignment to unused variable `e`
+
+F841 [*] Local variable `e` is assigned to but never used
+   --> src/routes/productos_en_liquidacion.py:112:25
+    |
+110 |     except HTTPException:
+111 |         raise
+112 |     except Exception as e:
+    |                         ^
+113 |         logger.error("Error al actualizar producto en liquidación", exc_info=True)
+114 |         raise HTTPException(status_code=500, detail="Error interno del servidor")
+    |
+help: Remove assignment to unused variable `e`
+
+F841 [*] Local variable `e` is assigned to but never used
+   --> src/routes/productos_en_liquidacion.py:137:25
+    |
+135 |     except HTTPException:
+136 |         raise
+137 |     except Exception as e:
+    |                         ^
+138 |         logger.error("Error al liquidar producto", exc_info=True)
+139 |         raise HTTPException(status_code=500, detail="Error interno del servidor")
+    |
+help: Remove assignment to unused variable `e`
+
+F841 [*] Local variable `e` is assigned to but never used
+   --> src/routes/productos_en_liquidacion.py:159:25
+    |
+157 |     except HTTPException:
+158 |         raise
+159 |     except Exception as e:
+    |                         ^
+160 |         logger.error("Error al eliminar producto en liquidación", exc_info=True)
+161 |         raise HTTPException(status_code=500, detail="Error interno del servidor")
+    |
+help: Remove assignment to unused variable `e`
+
+F841 [*] Local variable `e` is assigned to but never used
+  --> src/routes/ventas_operaciones.py:69:25
+   |
+67 |     try:
+68 |         return await ContratoService.get_all(db, skip, limit, id_cliente)
+69 |     except Exception as e:
+   |                         ^
+70 |         logger.error("Error al obtener contratos", exc_info=True)
+71 |         raise HTTPException(status_code=500, detail="Error interno del servidor")
+   |
+help: Remove assignment to unused variable `e`
+
+F841 [*] Local variable `e` is assigned to but never used
+  --> src/routes/ventas_operaciones.py:96:25
+   |
+94 |     try:
+95 |         return await ContratoService.get_items_disponibles(db, contrato_id)
+96 |     except Exception as e:
+   |                         ^
+97 |         logger.error("Error al obtener items disponibles", exc_info=True)
+98 |         raise HTTPException(status_code=500, detail="Error interno del servidor")
+   |
+help: Remove assignment to unused variable `e`
+
+F841 [*] Local variable `e` is assigned to but never used
+   --> src/routes/ventas_operaciones.py:118:25
+    |
+116 |     except HTTPException:
+117 |         raise
+118 |     except Exception as e:
+    |                         ^
+119 |         logger.error("Error al actualizar contrato", exc_info=True)
+120 |         raise HTTPException(status_code=500, detail="Error interno del servidor")
+    |
+help: Remove assignment to unused variable `e`
+
+F841 [*] Local variable `e` is assigned to but never used
+   --> src/routes/ventas_operaciones.py:138:25
+    |
+136 |     except HTTPException:
+137 |         raise
+138 |     except Exception as e:
+    |                         ^
+139 |         logger.error("Error al eliminar contrato", exc_info=True)
+140 |         raise HTTPException(status_code=500, detail="Error interno del servidor")
+    |
+help: Remove assignment to unused variable `e`
+
+F841 [*] Local variable `e` is assigned to but never used
+   --> src/routes/ventas_operaciones.py:161:25
+    |
+159 |     except HTTPException:
+160 |         raise
+161 |     except Exception as e:
+    |                         ^
+162 |         logger.error("Error al crear suplemento", exc_info=True)
+163 |         raise HTTPException(status_code=500, detail="Error interno del servidor")
+    |
+help: Remove assignment to unused variable `e`
+
+F841 [*] Local variable `e` is assigned to but never used
+   --> src/routes/ventas_operaciones.py:176:25
+    |
+174 |     try:
+175 |         return await SuplementoService.get_all_by_contrato(db, contrato_id)
+176 |     except Exception as e:
+    |                         ^
+177 |         logger.error("Error al obtener suplementos", exc_info=True)
+178 |         raise HTTPException(status_code=500, detail="Error interno del servidor")
+    |
+help: Remove assignment to unused variable `e`
+
+F841 [*] Local variable `e` is assigned to but never used
+   --> src/routes/ventas_operaciones.py:190:25
+    |
+188 |     try:
+189 |         return await SuplementoService.get_all(db, skip, limit)
+190 |     except Exception as e:
+    |                         ^
+191 |         logger.error("Error al obtener suplementos", exc_info=True)
+192 |         raise HTTPException(status_code=500, detail="Error interno del servidor")
+    |
+help: Remove assignment to unused variable `e`
+
+F841 [*] Local variable `e` is assigned to but never used
+   --> src/routes/ventas_operaciones.py:224:25
+    |
+222 |     except HTTPException:
+223 |         raise
+224 |     except Exception as e:
+    |                         ^
+225 |         logger.error("Error al actualizar suplemento", exc_info=True)
+226 |         raise HTTPException(status_code=500, detail="Error interno del servidor")
+    |
+help: Remove assignment to unused variable `e`
+
+F841 [*] Local variable `e` is assigned to but never used
+   --> src/routes/ventas_operaciones.py:244:25
+    |
+242 |     except HTTPException:
+243 |         raise
+244 |     except Exception as e:
+    |                         ^
+245 |         logger.error("Error al eliminar suplemento", exc_info=True)
+246 |         raise HTTPException(status_code=500, detail="Error interno del servidor")
+    |
+help: Remove assignment to unused variable `e`
+
+F841 [*] Local variable `e` is assigned to but never used
+   --> src/routes/ventas_operaciones.py:267:25
+    |
+265 |     except HTTPException:
+266 |         raise
+267 |     except Exception as e:
+    |                         ^
+268 |         logger.error("Error al crear factura", exc_info=True)
+269 |         raise HTTPException(status_code=500, detail="Error interno del servidor")
+    |
+help: Remove assignment to unused variable `e`
+
+F841 [*] Local variable `e` is assigned to but never used
+   --> src/routes/ventas_operaciones.py:281:25
+    |
+279 |     try:
+280 |         return await FacturaService.get_all(db, skip, limit)
+281 |     except Exception as e:
+    |                         ^
+282 |         logger.error("Error al obtener facturas", exc_info=True)
+283 |         raise HTTPException(status_code=500, detail="Error interno del servidor")
+    |
+help: Remove assignment to unused variable `e`
+
+F841 [*] Local variable `e` is assigned to but never used
+   --> src/routes/ventas_operaciones.py:296:25
+    |
+294 |     try:
+295 |         return await FacturaService.get_by_contrato(db, contrato_id)
+296 |     except Exception as e:
+    |                         ^
+297 |         logger.error("Error al obtener facturas", exc_info=True)
+298 |         raise HTTPException(status_code=500, detail="Error interno del servidor")
+    |
+help: Remove assignment to unused variable `e`
+
+F841 [*] Local variable `e` is assigned to but never used
+   --> src/routes/ventas_operaciones.py:330:25
+    |
+328 |     except HTTPException:
+329 |         raise
+330 |     except Exception as e:
+    |                         ^
+331 |         logger.error("Error al actualizar factura", exc_info=True)
+332 |         raise HTTPException(status_code=500, detail="Error interno del servidor")
+    |
+help: Remove assignment to unused variable `e`
+
+F841 [*] Local variable `e` is assigned to but never used
+   --> src/routes/ventas_operaciones.py:350:25
+    |
+348 |     except HTTPException:
+349 |         raise
+350 |     except Exception as e:
+    |                         ^
+351 |         logger.error("Error al eliminar factura", exc_info=True)
+352 |         raise HTTPException(status_code=500, detail="Error interno del servidor")
+    |
+help: Remove assignment to unused variable `e`
+
+F841 [*] Local variable `e` is assigned to but never used
+   --> src/routes/ventas_operaciones.py:375:25
+    |
+373 |     except HTTPException:
+374 |         raise
+375 |     except Exception as e:
+    |                         ^
+376 |         logger.error("Error al crear venta en efectivo", exc_info=True)
+377 |         raise HTTPException(status_code=500, detail="Error interno del servidor")
+    |
+help: Remove assignment to unused variable `e`
+
+F841 [*] Local variable `e` is assigned to but never used
+   --> src/routes/ventas_operaciones.py:389:25
+    |
+387 |     try:
+388 |         return await VentaEfectivoService.get_all(db, skip, limit)
+389 |     except Exception as e:
+    |                         ^
+390 |         logger.error("Error al obtener ventas en efectivo", exc_info=True)
+391 |         raise HTTPException(status_code=500, detail="Error interno del servidor")
+    |
+help: Remove assignment to unused variable `e`
+
+F841 [*] Local variable `e` is assigned to but never used
+   --> src/routes/ventas_operaciones.py:425:25
+    |
+423 |     except HTTPException:
+424 |         raise
+425 |     except Exception as e:
+    |                         ^
+426 |         logger.error("Error al actualizar venta en efectivo", exc_info=True)
+427 |         raise HTTPException(status_code=500, detail="Error interno del servidor")
+    |
+help: Remove assignment to unused variable `e`
+
+F841 [*] Local variable `e` is assigned to but never used
+   --> src/routes/ventas_operaciones.py:447:25
+    |
+445 |     except HTTPException:
+446 |         raise
+447 |     except Exception as e:
+    |                         ^
+448 |         logger.error("Error al eliminar venta en efectivo", exc_info=True)
+449 |         raise HTTPException(status_code=500, detail="Error interno del servidor")
+    |
+help: Remove assignment to unused variable `e`
+
+F841 [*] Local variable `e` is assigned to but never used
+  --> src/services/productos_en_liquidacion_service.py:88:33
+   |
+86 |                     ProductosEnLiquidacionRead.model_validate(p, from_attributes=True)
+87 |                 )
+88 |             except Exception as e:
+   |                                 ^
+89 |                 logger.error("Error validating product", exc_info=True)
+90 |                 results.append(
+   |
+help: Remove assignment to unused variable `e`
+
+F401 [*] `src.dto.ventas_dto.DetalleVentaCreate` imported but unused
+  --> src/services/venta_service.py:15:5
+   |
+13 |     VentaRead,
+14 |     VentaUpdate,
+15 |     DetalleVentaCreate,
+   |     ^^^^^^^^^^^^^^^^^^
+16 |     DetalleVentaRead,
+17 | )
+   |
+help: Remove unused import
+
+F401 [*] `src.dto.ventas_dto.DetalleVentaRead` imported but unused
+  --> src/services/venta_service.py:16:5
+   |
+14 |     VentaUpdate,
+15 |     DetalleVentaCreate,
+16 |     DetalleVentaRead,
+   |     ^^^^^^^^^^^^^^^^
+17 | )
+18 | from src.repository.ventas_clientes_repo import ventas_repo, detalle_venta_repo
+   |
+help: Remove unused import
+
+F841 [*] Local variable `e` is assigned to but never used
+  --> src/services/venta_service.py:71:29
+   |
+69 |             # Recargar con eager loading
+70 |             return await VentaService.get(db, venta.id_venta)
+71 |         except Exception as e:
+   |                             ^
+72 |             await db.rollback()
+73 |             logger.error("Error al crear venta", exc_info=True)
+   |
+help: Remove assignment to unused variable `e`
+
+F841 [*] Local variable `e` is assigned to but never used
+   --> src/services/venta_service.py:108:29
+    |
+106 |             ventas = list(results.all())
+107 |             return [VentaRead.model_validate(v) for v in ventas]
+108 |         except Exception as e:
+    |                             ^
+109 |             logger.error("Error al listar ventas", exc_info=True)
+110 |             raise
+    |
+help: Remove assignment to unused variable `e`
+
+F841 [*] Local variable `e` is assigned to but never used
+   --> src/services/venta_service.py:126:29
+    |
+124 |         except ValueError:
+125 |             raise
+126 |         except Exception as e:
+    |                             ^
+127 |             logger.error("Error al obtener venta", exc_info=True)
+128 |             raise
+    |
+help: Remove assignment to unused variable `e`
+
+F841 [*] Local variable `e` is assigned to but never used
+   --> src/services/venta_service.py:155:29
+    |
+153 |         except ValueError:
+154 |             raise
+155 |         except Exception as e:
+    |                             ^
+156 |             await db.rollback()
+157 |             logger.error("Error al actualizar venta", exc_info=True)
+    |
+help: Remove assignment to unused variable `e`
+
+F841 [*] Local variable `e` is assigned to but never used
+   --> src/services/venta_service.py:180:29
+    |
+178 |         except ValueError:
+179 |             raise
+180 |         except Exception as e:
+    |                             ^
+181 |             await db.rollback()
+182 |             logger.error("Error al eliminar venta", exc_info=True)
+    |
+help: Remove assignment to unused variable `e`
+
+F401 [*] `pytest` imported but unused
+  --> tests/test_auth_endpoints.py:10:8
+   |
+ 8 | """
+ 9 |
+10 | import pytest
+   |        ^^^^^^
+   |
+help: Remove unused import: `pytest`
+
+F401 [*] `pytest` imported but unused
+  --> tests/test_compras_integration.py:10:8
+   |
+ 8 | """
+ 9 |
+10 | import pytest
+   |        ^^^^^^
+   |
+help: Remove unused import: `pytest`
+
+F541 [*] f-string without any placeholders
+  --> tests/test_error_handling.py:73:45
+   |
+71 |         # Hacer una petición a un endpoint que no existe
+72 |         response = client.get("/api/v1/no-existe-endpoint")
+73 |         assert response.status_code == 404, f"Esperado 404 para endpoint inexistente"
+   |                                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+74 |         detail = response.json().get("detail", "")
+75 |         assert "Error interno del servidor" not in detail, (
+   |
+help: Remove extraneous `f` prefix
+
+F401 [*] `src.services.liquidacion_service.liquidacion_service` imported but unused
+  --> tests/test_error_handling.py:84:54
+   |
+82 |         # Probar directamente contra el servicio, no via HTTP,
+83 |         # para evitar conflictos de event loop con asyncpg + TestClient.
+84 |         from src.services.liquidacion_service import liquidacion_service
+   |                                                      ^^^^^^^^^^^^^^^^^^^
+85 |         from src.dto import LiquidacionCreate
+86 |         from src.core.exceptions import BusinessLogicError
+   |
+help: Remove unused import: `src.services.liquidacion_service.liquidacion_service`
+
+F401 [*] `src.core.exceptions.BusinessLogicError` imported but unused
+  --> tests/test_error_handling.py:86:41
+   |
+84 |         from src.services.liquidacion_service import liquidacion_service
+85 |         from src.dto import LiquidacionCreate
+86 |         from src.core.exceptions import BusinessLogicError
+   |                                         ^^^^^^^^^^^^^^^^^^
+87 |
+88 |         # Crear liquidación con producto_ids vacíos debería fallar
+   |
+help: Remove unused import: `src.core.exceptions.BusinessLogicError`
+
+F401 [*] `src.core.exceptions.AppError` imported but unused
+   --> tests/test_error_handling.py:112:41
+    |
+110 |         """Verifica que el handler AppError está registrado en la app."""
+111 |         from main import app
+112 |         from src.core.exceptions import AppError
+    |                                         ^^^^^^^^
+113 |
+114 |         # El handler se registra con @app.exception_handler(AppError)
+    |
+help: Remove unused import: `src.core.exceptions.AppError`
+
+E712 Avoid equality comparisons to `True`; use `Liquidacion.liquidada:` for truth checks
+  --> tests/test_liquidacion_validation.py:74:42
+   |
+73 |         # Buscar una liquidación ya liquidada
+74 |         stmt = select(Liquidacion).where(Liquidacion.liquidada == True).limit(1)
+   |                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+75 |         result = await db_session.exec(stmt)
+76 |         liquidacion = result.first()
+   |
+help: Replace with `Liquidacion.liquidada`
+
+F401 [*] `pytest` imported but unused
+  --> tests/test_ventas_integration.py:10:8
+   |
+ 8 | """
+ 9 |
+10 | import pytest
+   |        ^^^^^^
+   |
+help: Remove unused import: `pytest`
+
+Found 59 errors.
+[*] 58 fixable with the `--fix` option (1 hidden fix can be enabled with the `--unsafe-fixes` option).

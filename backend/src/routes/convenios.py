@@ -145,9 +145,7 @@ async def crear_convenio(
         raise
     except Exception as e:
         logger.error("Error al crear convenio", exc_info=True)
-        raise HTTPException(
-            status_code=500, detail="Error interno del servidor"
-        )
+        raise HTTPException(status_code=500, detail="Error interno del servidor")
 
 
 @router.patch("/{convenioid}")
@@ -185,9 +183,7 @@ async def actualizar_convenio(
         raise
     except Exception as e:
         logger.error("Error al actualizar convenio", exc_info=True)
-        raise HTTPException(
-            status_code=500, detail="Error interno del servidor"
-        )
+        raise HTTPException(status_code=500, detail="Error interno del servidor")
 
 
 @router.delete("/{convenioid}", status_code=204)
@@ -211,6 +207,4 @@ async def eliminar_convenio(
         raise
     except Exception as e:
         logger.error("Error al eliminar convenio", exc_info=True)
-        raise HTTPException(
-            status_code=500, detail="Error interno del servidor"
-        )
+        raise HTTPException(status_code=500, detail="Error interno del servidor")

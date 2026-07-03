@@ -64,9 +64,7 @@ def upgrade() -> None:
         sa.Column("id_compra", sa.Integer(), nullable=False),
         sa.Column("id_producto", sa.Integer(), nullable=False),
         sa.Column("cantidad", sa.Integer(), nullable=False),
-        sa.Column(
-            "precio_unitario", sa.Numeric(precision=15, scale=2), nullable=False
-        ),
+        sa.Column("precio_unitario", sa.Numeric(precision=15, scale=2), nullable=False),
         sa.Column("subtotal", sa.Numeric(precision=15, scale=2), nullable=False),
         sa.PrimaryKeyConstraint("id_detalle"),
         sa.ForeignKeyConstraint(

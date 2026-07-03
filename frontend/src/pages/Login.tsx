@@ -49,8 +49,18 @@ export function LoginPage() {
       try {
         const response = await apiClient.get<ConexionInfo[]>("/conexiones");
         setConexiones(response);
+        if (response.length === 0) {
+          toast.error(
+            "No se encontraron bases de datos. Verifique que el servidor backend esté funcionando.",
+            { duration: 6000 }
+          );
+        }
       } catch (error) {
         console.error("Error fetching conexiones:", error);
+        toast.error(
+          "Error al conectar con el servidor. Verifique su conexión de red y que el backend esté activo.",
+          { duration: 6000 }
+        );
       } finally {
         setLoadingConexiones(false);
       }

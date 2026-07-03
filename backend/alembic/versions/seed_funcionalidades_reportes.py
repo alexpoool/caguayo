@@ -5,6 +5,7 @@ Revises: drop_productos_stock
 Create Date: 2026-07-01
 
 """
+
 from typing import Sequence, Union
 
 from alembic import op
@@ -37,7 +38,9 @@ def upgrade() -> None:
     conn = op.get_bind()
     for nombre in NUEVAS_FUNCIONALIDADES:
         result = conn.execute(
-            sa.text("SELECT id_funcionalidad FROM funcionalidad WHERE nombre = :nombre"),
+            sa.text(
+                "SELECT id_funcionalidad FROM funcionalidad WHERE nombre = :nombre"
+            ),
             {"nombre": nombre},
         )
         row = result.fetchone()
@@ -47,7 +50,9 @@ def upgrade() -> None:
                 {"nombre": nombre},
             )
             result = conn.execute(
-                sa.text("SELECT id_funcionalidad FROM funcionalidad WHERE nombre = :nombre"),
+                sa.text(
+                    "SELECT id_funcionalidad FROM funcionalidad WHERE nombre = :nombre"
+                ),
                 {"nombre": nombre},
             )
             row = result.fetchone()

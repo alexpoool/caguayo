@@ -23,8 +23,9 @@ class TestDetalleVentaCreate:
         with pytest.raises(ValidationError) as exc_info:
             DetalleVentaCreate(id_producto=1, cantidad=0, precio_unitario=100)
         errors = exc_info.value.errors()
-        assert any(e["loc"] == ("cantidad",) for e in errors), \
+        assert any(e["loc"] == ("cantidad",) for e in errors), (
             f"Esperado error en 'cantidad', se obtuvo: {errors}"
+        )
 
     def test_cantidad_negativa_rechazada(self):
         """cantidad=-1 debe fallar (gt=0)."""
@@ -33,8 +34,9 @@ class TestDetalleVentaCreate:
         with pytest.raises(ValidationError) as exc_info:
             DetalleVentaCreate(id_producto=1, cantidad=-1, precio_unitario=100)
         errors = exc_info.value.errors()
-        assert any(e["loc"] == ("cantidad",) for e in errors), \
+        assert any(e["loc"] == ("cantidad",) for e in errors), (
             f"Esperado error en 'cantidad', se obtuvo: {errors}"
+        )
 
     def test_precio_unitario_negativo_rechazado(self):
         """precio_unitario=-1 debe fallar (ge=0)."""
@@ -43,14 +45,17 @@ class TestDetalleVentaCreate:
         with pytest.raises(ValidationError) as exc_info:
             DetalleVentaCreate(id_producto=1, cantidad=1, precio_unitario=-1)
         errors = exc_info.value.errors()
-        assert any(e["loc"] == ("precio_unitario",) for e in errors), \
+        assert any(e["loc"] == ("precio_unitario",) for e in errors), (
             f"Esperado error en 'precio_unitario', se obtuvo: {errors}"
+        )
 
     def test_datos_validos_aceptados(self):
         """Datos válidos deben ser aceptados."""
         from src.dto import DetalleVentaCreate
 
-        item = DetalleVentaCreate(id_producto=1, cantidad=5, precio_unitario=Decimal("100.00"))
+        item = DetalleVentaCreate(
+            id_producto=1, cantidad=5, precio_unitario=Decimal("100.00")
+        )
         assert item.cantidad == 5
         assert item.precio_unitario == Decimal("100.00")
 
@@ -87,8 +92,9 @@ class TestVentaBaseEstado:
                 estado="INVALIDO",
             )
         errors = exc_info.value.errors()
-        assert any("estado" in str(e["loc"]) for e in errors), \
+        assert any("estado" in str(e["loc"]) for e in errors), (
             f"Esperado error en 'estado', se obtuvo: {errors}"
+        )
 
     def test_estado_anulada_valido(self):
         """Crear VentaBase con estado='ANULADA' debe ser aceptado."""
@@ -142,8 +148,9 @@ class TestProductosCreate:
         # o con loc específicos según la implementación
         error_messages = [str(e.get("msg", "")) for e in errors]
         combined = " ".join(error_messages)
-        assert "precio_venta" in combined.lower() or "menor" in combined.lower(), \
+        assert "precio_venta" in combined.lower() or "menor" in combined.lower(), (
             f"Esperado error de precio_venta < precio_minimo, se obtuvo: {errors}"
+        )
 
     def test_precio_venta_igual_a_minimo_valido(self):
         """precio_venta=100, precio_minimo=100 debe ser aceptado."""
@@ -195,8 +202,9 @@ class TestMovimientoCreate:
                 cantidad=0,
             )
         errors = exc_info.value.errors()
-        assert any(e["loc"] == ("cantidad",) for e in errors), \
+        assert any(e["loc"] == ("cantidad",) for e in errors), (
             f"Esperado error en 'cantidad', se obtuvo: {errors}"
+        )
 
     def test_cantidad_negativa_rechazada(self):
         """cantidad=-5 debe fallar (gt=0)."""
@@ -210,8 +218,9 @@ class TestMovimientoCreate:
                 cantidad=-5,
             )
         errors = exc_info.value.errors()
-        assert any(e["loc"] == ("cantidad",) for e in errors), \
+        assert any(e["loc"] == ("cantidad",) for e in errors), (
             f"Esperado error en 'cantidad', se obtuvo: {errors}"
+        )
 
     def test_cantidad_positiva_valida(self):
         """cantidad=10 debe ser aceptado."""
@@ -240,8 +249,9 @@ class TestAnexoUpdateComision:
         with pytest.raises(ValidationError) as exc_info:
             AnexoUpdate(comision=Decimal("-1"))
         errors = exc_info.value.errors()
-        assert any(e["loc"] == ("comision",) for e in errors), \
+        assert any(e["loc"] == ("comision",) for e in errors), (
             f"Esperado error en 'comision', se obtuvo: {errors}"
+        )
 
     def test_comision_mayor_100_rechazada(self):
         """comision=101 debe fallar (le=100)."""
@@ -251,8 +261,9 @@ class TestAnexoUpdateComision:
         with pytest.raises(ValidationError) as exc_info:
             AnexoUpdate(comision=Decimal("101"))
         errors = exc_info.value.errors()
-        assert any(e["loc"] == ("comision",) for e in errors), \
+        assert any(e["loc"] == ("comision",) for e in errors), (
             f"Esperado error en 'comision', se obtuvo: {errors}"
+        )
 
     def test_comision_0_valida(self):
         """comision=0 debe ser aceptado."""
@@ -291,8 +302,9 @@ class TestAnexoBaseComision:
                 comision=Decimal("-1"),
             )
         errors = exc_info.value.errors()
-        assert any(e["loc"] == ("comision",) for e in errors), \
+        assert any(e["loc"] == ("comision",) for e in errors), (
             f"Esperado error en 'comision', se obtuvo: {errors}"
+        )
 
     def test_comision_mayor_100_rechazada(self):
         """comision=101 debe fallar (le=100)."""
@@ -308,8 +320,9 @@ class TestAnexoBaseComision:
                 comision=Decimal("101"),
             )
         errors = exc_info.value.errors()
-        assert any(e["loc"] == ("comision",) for e in errors), \
+        assert any(e["loc"] == ("comision",) for e in errors), (
             f"Esperado error en 'comision', se obtuvo: {errors}"
+        )
 
 
 # ─────────────────────────────────────────────────────────────
@@ -325,8 +338,9 @@ class TestDetalleCompraCreate:
         with pytest.raises(ValidationError) as exc_info:
             DetalleCompraCreate(id_producto=1, cantidad=0, precio_unitario=100)
         errors = exc_info.value.errors()
-        assert any(e["loc"] == ("cantidad",) for e in errors), \
+        assert any(e["loc"] == ("cantidad",) for e in errors), (
             f"Esperado error en 'cantidad', se obtuvo: {errors}"
+        )
 
     def test_cantidad_negativa_rechazada(self):
         """cantidad=-1 debe fallar (gt=0)."""
@@ -335,8 +349,9 @@ class TestDetalleCompraCreate:
         with pytest.raises(ValidationError) as exc_info:
             DetalleCompraCreate(id_producto=1, cantidad=-1, precio_unitario=100)
         errors = exc_info.value.errors()
-        assert any(e["loc"] == ("cantidad",) for e in errors), \
+        assert any(e["loc"] == ("cantidad",) for e in errors), (
             f"Esperado error en 'cantidad', se obtuvo: {errors}"
+        )
 
     def test_precio_unitario_negativo_rechazado(self):
         """precio_unitario=-1 debe fallar (ge=0)."""
@@ -345,14 +360,17 @@ class TestDetalleCompraCreate:
         with pytest.raises(ValidationError) as exc_info:
             DetalleCompraCreate(id_producto=1, cantidad=1, precio_unitario=-1)
         errors = exc_info.value.errors()
-        assert any(e["loc"] == ("precio_unitario",) for e in errors), \
+        assert any(e["loc"] == ("precio_unitario",) for e in errors), (
             f"Esperado error en 'precio_unitario', se obtuvo: {errors}"
+        )
 
     def test_datos_validos_aceptados(self):
         """Datos válidos deben ser aceptados."""
         from src.dto import DetalleCompraCreate
 
-        item = DetalleCompraCreate(id_producto=1, cantidad=5, precio_unitario=Decimal("100.00"))
+        item = DetalleCompraCreate(
+            id_producto=1, cantidad=5, precio_unitario=Decimal("100.00")
+        )
         assert item.cantidad == 5
         assert item.precio_unitario == Decimal("100.00")
 
@@ -361,7 +379,10 @@ class TestDetalleCompraCreate:
         from src.dto import DetalleCompraCreate
 
         item = DetalleCompraCreate(
-            id_producto=1, cantidad=5, precio_unitario=Decimal("100.00"), subtotal=Decimal("500.00")
+            id_producto=1,
+            cantidad=5,
+            precio_unitario=Decimal("100.00"),
+            subtotal=Decimal("500.00"),
         )
         assert item.subtotal == Decimal("500.00")
 
@@ -370,10 +391,13 @@ class TestDetalleCompraCreate:
         from src.dto import DetalleCompraCreate
 
         with pytest.raises(ValidationError) as exc_info:
-            DetalleCompraCreate(id_producto=1, cantidad=1, precio_unitario=100, subtotal=-1)
+            DetalleCompraCreate(
+                id_producto=1, cantidad=1, precio_unitario=100, subtotal=-1
+            )
         errors = exc_info.value.errors()
-        assert any(e["loc"] == ("subtotal",) for e in errors), \
+        assert any(e["loc"] == ("subtotal",) for e in errors), (
             f"Esperado error en 'subtotal', se obtuvo: {errors}"
+        )
 
 
 # ─────────────────────────────────────────────────────────────
@@ -408,8 +432,9 @@ class TestCompraBaseEstado:
                 estado="INVALIDO",
             )
         errors = exc_info.value.errors()
-        assert any("estado" in str(e["loc"]) for e in errors), \
+        assert any("estado" in str(e["loc"]) for e in errors), (
             f"Esperado error en 'estado', se obtuvo: {errors}"
+        )
 
     def test_estado_anulada_valido(self):
         """Crear CompraBase con estado='ANULADA' debe ser aceptado."""
@@ -465,8 +490,9 @@ class TestCompraUpdateEstado:
         with pytest.raises(ValidationError) as exc_info:
             CompraUpdate(estado="INVALIDO")
         errors = exc_info.value.errors()
-        assert any("estado" in str(e["loc"]) for e in errors), \
+        assert any("estado" in str(e["loc"]) for e in errors), (
             f"Esperado error en 'estado', se obtuvo: {errors}"
+        )
 
 
 # ─────────────────────────────────────────────────────────────
@@ -481,7 +507,11 @@ class TestCompraCreate:
 
         c = CompraCreate(
             id_cliente=1,
-            detalles=[DetalleCompraCreate(id_producto=1, cantidad=2, precio_unitario=Decimal("100"))]
+            detalles=[
+                DetalleCompraCreate(
+                    id_producto=1, cantidad=2, precio_unitario=Decimal("100")
+                )
+            ],
         )
         assert c.id_cliente == 1
         assert len(c.detalles) == 1

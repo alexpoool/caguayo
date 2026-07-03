@@ -1,4 +1,5 @@
 import os
+import logging
 from dotenv import load_dotenv
 from typing import List
 from fastapi import APIRouter, HTTPException
@@ -6,6 +7,8 @@ from pydantic import BaseModel
 import psycopg2
 
 load_dotenv()
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/conexiones", tags=["conexiones"])
 
@@ -62,8 +65,11 @@ async def get_conexiones():
             for row in rows
         ]
     except Exception as e:
-        print(f"Error getting conexiones: {e}")
-        return []
+        logger.error("Error al obtener conexiones de PostgreSQL: %s", e, exc_info=True)
+        raise HTTPException(
+            status_code=503,
+            detail="No se pudieron obtener las bases de datos. Verifique la conexión al servidor PostgreSQL.",
+        )
 
 
 @router.post("/test")

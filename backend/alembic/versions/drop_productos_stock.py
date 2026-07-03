@@ -5,6 +5,7 @@ Revises: rename_item_anexo_fields
 Create Date: 2026-06-24
 
 """
+
 from typing import Sequence, Union
 
 from alembic import op
@@ -20,6 +21,7 @@ depends_on: Union[str, Sequence[str], None] = None
 def upgrade() -> None:
     conn = op.get_bind()
     from sqlalchemy import inspect
+
     inspector = inspect(conn)
     columns = [col["name"] for col in inspector.get_columns("productos")]
 
@@ -41,11 +43,15 @@ $function$;
 def downgrade() -> None:
     conn = op.get_bind()
     from sqlalchemy import inspect
+
     inspector = inspect(conn)
     columns = [col["name"] for col in inspector.get_columns("productos")]
 
     if "stock" not in columns:
-        op.add_column("productos", sa.Column("stock", sa.Integer(), nullable=False, server_default="0"))
+        op.add_column(
+            "productos",
+            sa.Column("stock", sa.Integer(), nullable=False, server_default="0"),
+        )
 
     op.execute("""
 CREATE OR REPLACE FUNCTION public.recalcular_existencia_producto()

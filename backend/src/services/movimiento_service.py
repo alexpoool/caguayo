@@ -213,7 +213,6 @@ class MovimientoService:
                 commit=False,
             )
 
-
         # Cambiar el estado a confirmado
         db_movimiento.estado = "confirmado"
 

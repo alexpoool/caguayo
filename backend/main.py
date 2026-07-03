@@ -9,7 +9,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from src.routes import api_router
 from src.database.connection import set_current_db
 from src.middleware.logging import LoggingMiddleware
-from src.core.exceptions import AppError, NotFoundError, ValidationError, BusinessLogicError
+from src.core.exceptions import (
+    AppError,
+    NotFoundError,
+    ValidationError,
+    BusinessLogicError,
+)
 from src.models import (
     Anexo,
     Categorias,

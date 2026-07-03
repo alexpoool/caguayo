@@ -8,7 +8,13 @@ from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from src.models import Ventas, DetalleVenta, EstadoVenta
-from src.dto.ventas_dto import VentaCreate, VentaRead, VentaUpdate, DetalleVentaCreate, DetalleVentaRead
+from src.dto.ventas_dto import (
+    VentaCreate,
+    VentaRead,
+    VentaUpdate,
+    DetalleVentaCreate,
+    DetalleVentaRead,
+)
 from src.repository.ventas_clientes_repo import ventas_repo, detalle_venta_repo
 
 logger = logging.getLogger(__name__)
@@ -41,7 +47,9 @@ class VentaService:
             # Crear detalles y acumular total
             total = Decimal("0")
             for detalle_data in venta_data.detalles:
-                subtotal = Decimal(str(detalle_data.cantidad)) * detalle_data.precio_unitario
+                subtotal = (
+                    Decimal(str(detalle_data.cantidad)) * detalle_data.precio_unitario
+                )
                 total += subtotal
                 detalle = DetalleVenta(
                     id_venta=venta.id_venta,
@@ -77,12 +85,9 @@ class VentaService:
     ) -> List[VentaRead]:
         """Listar ventas con filtros opcionales y eager loading."""
         try:
-            statement = (
-                select(Ventas)
-                .options(
-                    selectinload(Ventas.cliente),
-                    selectinload(Ventas.detalles).selectinload(DetalleVenta.producto),
-                )
+            statement = select(Ventas).options(
+                selectinload(Ventas.cliente),
+                selectinload(Ventas.detalles).selectinload(DetalleVenta.producto),
             )
 
             if id_cliente is not None:
@@ -94,7 +99,9 @@ class VentaService:
             if fecha_fin is not None:
                 statement = statement.where(Ventas.fecha <= fecha_fin)
 
-            statement = statement.order_by(Ventas.fecha.desc()).offset(skip).limit(limit)
+            statement = (
+                statement.order_by(Ventas.fecha.desc()).offset(skip).limit(limit)
+            )
             results = await db.exec(statement)
             ventas = list(results.all())
             return [VentaRead.model_validate(v) for v in ventas]

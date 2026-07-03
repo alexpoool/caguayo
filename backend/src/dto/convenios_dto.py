@@ -6,7 +6,7 @@ from pydantic import field_validator
 import re
 from .precio_item_anexo_dto import PrecioItemAnexoCreate, PrecioItemAnexoRead
 
-EMAIL_REGEX = r'^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$'
+EMAIL_REGEX = r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$"
 
 
 class TipoClienteBase(SQLModel):

@@ -116,9 +116,7 @@ async def crear_liquidacion(
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         logger.error("Error al crear liquidación", exc_info=True)
-        raise HTTPException(
-            status_code=500, detail="Error interno del servidor"
-        )
+        raise HTTPException(status_code=500, detail="Error interno del servidor")
 
 
 @router.get("/{liquidacion_id}", response_model=LiquidacionRead)
@@ -156,9 +154,7 @@ async def actualizar_liquidacion(
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         logger.error("Error al actualizar liquidación", exc_info=True)
-        raise HTTPException(
-            status_code=500, detail="Error interno del servidor"
-        )
+        raise HTTPException(status_code=500, detail="Error interno del servidor")
 
 
 @router.post("/{liquidacion_id}/confirmar", response_model=LiquidacionRead)
@@ -184,9 +180,7 @@ async def confirmar_liquidacion(
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         logger.error("Error al confirmar liquidación", exc_info=True)
-        raise HTTPException(
-            status_code=500, detail="Error interno del servidor"
-        )
+        raise HTTPException(status_code=500, detail="Error interno del servidor")
 
 
 @router.delete("/{liquidacion_id}", status_code=204)
@@ -208,9 +202,7 @@ async def eliminar_liquidacion(
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         logger.error("Error al eliminar liquidación", exc_info=True)
-        raise HTTPException(
-            status_code=500, detail="Error interno del servidor"
-        )
+        raise HTTPException(status_code=500, detail="Error interno del servidor")
 
 
 @router.patch("/{liquidacion_id}/aprobar")
@@ -233,6 +225,4 @@ async def aprobar_liquidacion(
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         logger.error("Error al aprobar liquidación", exc_info=True)
-        raise HTTPException(
-            status_code=500, detail="Error interno del servidor"
-        )
+        raise HTTPException(status_code=500, detail="Error interno del servidor")

@@ -37,7 +37,9 @@ def client():
         future=True,
         connect_args={"server_settings": {"client_encoding": "utf8"}},
     )
-    AsyncSessionLocal = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+    AsyncSessionLocal = sessionmaker(
+        engine, class_=AsyncSession, expire_on_commit=False
+    )
 
     async def override_get_session():
         async with AsyncSessionLocal() as session:
@@ -57,6 +59,7 @@ def client():
 
     # Cleanup engine
     import asyncio
+
     try:
         loop = asyncio.get_event_loop()
         if loop.is_running():

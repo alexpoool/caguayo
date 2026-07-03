@@ -466,7 +466,7 @@ class ProductosEnLiquidacionRepository(CRUDBase[ProductosEnLiquidacion, dict, di
             id_producto = row[1]
             id_anexo = row[2]
             cantidad_original = row[3]  # x = entrada
-            vendido = row[4]            # cantidad vendida desde consignación
+            vendido = row[4]  # cantidad vendida desde consignación
             precio_compra = row[5]
             precio_venta = row[6]
             id_moneda = row[7]

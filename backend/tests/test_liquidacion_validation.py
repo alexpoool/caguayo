@@ -29,7 +29,9 @@ class TestVentaEfectivoCreateStockValidation:
         result = await db_session.exec(stmt)
         producto = None
         for p in result.all():
-            stock = await ExistenciaService.calcular_stock_producto(db_session, p.id_producto)
+            stock = await ExistenciaService.calcular_stock_producto(
+                db_session, p.id_producto
+            )
             if stock == 0:
                 producto = p
                 break
@@ -43,12 +45,14 @@ class TestVentaEfectivoCreateStockValidation:
             id_dependencia=4,
             cajero="Test Cajero",
             id_moneda=1,
-            items=[{
-                "id_producto": producto.id_producto,
-                "cantidad": 99999,  # Cantidad excesiva
-                "precio_venta": Decimal("100.00"),
-                "id_moneda": 1,
-            }],
+            items=[
+                {
+                    "id_producto": producto.id_producto,
+                    "cantidad": 99999,  # Cantidad excesiva
+                    "precio_venta": Decimal("100.00"),
+                    "id_moneda": 1,
+                }
+            ],
         )
 
         with pytest.raises(BusinessLogicError, match="Stock insuficiente"):

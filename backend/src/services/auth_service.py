@@ -158,7 +158,7 @@ async def login(db: AsyncSession, login_data: LoginRequest) -> Optional[LoginRes
     contrasenia_db = (
         conexion.contrasenia
         if conexion and conexion.contrasenia
-        else         os.getenv("ADMIN_DB_PASSWORD")
+        else os.getenv("ADMIN_DB_PASSWORD")
     )
 
     # 3. Conectarse a la base de datos seleccionada
@@ -545,7 +545,7 @@ async def register(
     puerto = conexion.puerto if conexion else 5432
     usuario_db = conexion.usuario if conexion else "postgres"
     contrasenia_db = (
-        conexion.contrasenia if conexion else         os.getenv("ADMIN_DB_PASSWORD")
+        conexion.contrasenia if conexion else os.getenv("ADMIN_DB_PASSWORD")
     )
 
     # 2. Conectarse a la base de datos seleccionada

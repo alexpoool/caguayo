@@ -35,7 +35,9 @@ async def verify_auth(
     token = authorization.replace("Bearer ", "")
     usuario = await get_current_user(db_auth, token)
     if not usuario:
-        raise HTTPException(status_code=401, detail="No autorizado: token inválido o expirado")
+        raise HTTPException(
+            status_code=401, detail="No autorizado: token inválido o expirado"
+        )
     return {
         "id_usuario": usuario.id_usuario,
         "alias": usuario.alias,
