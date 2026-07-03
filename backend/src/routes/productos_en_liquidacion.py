@@ -62,12 +62,11 @@ async def listar_productos_pendientes(
 async def crear_producto(
     producto: ProductosEnLiquidacionCreate,
     authorization: Optional[str] = Header(None),
-    db_auth: AsyncSession = Depends(get_auth_session),
     db: AsyncSession = Depends(get_session),
 ):
     """Crear un nuevo producto en liquidación."""
     try:
-        nit = await _get_nit_from_token(authorization, db_auth)
+        nit = await _get_nit_from_token(authorization, db)
         return await productos_en_liquidacion_service.create(db, producto, nit=nit)
     except Exception as e:
         logger.error("Error al crear producto en liquidación", exc_info=True)
@@ -93,12 +92,11 @@ async def actualizar_producto(
     producto_id: int,
     producto_update: ProductosEnLiquidacionUpdate,
     authorization: Optional[str] = Header(None),
-    db_auth: AsyncSession = Depends(get_auth_session),
     db: AsyncSession = Depends(get_session),
 ):
     """Actualizar un producto en liquidación."""
     try:
-        await verify_auth(authorization=authorization, db_auth=db_auth)
+        await verify_auth(authorization=authorization, db=db)
         producto = await productos_en_liquidacion_service.update(
             db, producto_id, producto_update
         )
@@ -118,12 +116,11 @@ async def actualizar_producto(
 async def liquidar_producto(
     producto_id: int,
     authorization: Optional[str] = Header(None),
-    db_auth: AsyncSession = Depends(get_auth_session),
     db: AsyncSession = Depends(get_session),
 ):
     """Marcar un producto como liquidado."""
     try:
-        await verify_auth(authorization=authorization, db_auth=db_auth)
+        await verify_auth(authorization=authorization, db=db)
         producto = await productos_en_liquidacion_service.marcar_liquidada(
             db, producto_id
         )
@@ -143,12 +140,11 @@ async def liquidar_producto(
 async def eliminar_producto(
     producto_id: int,
     authorization: Optional[str] = Header(None),
-    db_auth: AsyncSession = Depends(get_auth_session),
     db: AsyncSession = Depends(get_session),
 ):
     """Eliminar un producto en liquidación."""
     try:
-        await verify_auth(authorization=authorization, db_auth=db_auth)
+        await verify_auth(authorization=authorization, db=db)
         success = await productos_en_liquidacion_service.delete(db, producto_id)
         if not success:
             raise HTTPException(

@@ -107,12 +107,11 @@ async def listar_items_anexo_con_estado(
 async def crear_liquidacion(
     liquidacion: LiquidacionCreate,
     authorization: Optional[str] = Header(None),
-    db_auth: AsyncSession = Depends(get_auth_session),
     db: AsyncSession = Depends(get_session),
 ):
     """Crear una nueva liquidación."""
     try:
-        nit = await _get_nit_from_token(authorization, db_auth)
+        nit = await _get_nit_from_token(authorization, db)
         return await liquidacion_service.create_liquidacion(db, liquidacion, nit=nit)
     except HTTPException:
         raise
@@ -140,12 +139,11 @@ async def actualizar_liquidacion(
     liquidacion_id: int,
     liquidacion_update: LiquidacionUpdate,
     authorization: Optional[str] = Header(None),
-    db_auth: AsyncSession = Depends(get_auth_session),
     db: AsyncSession = Depends(get_session),
 ):
     """Actualizar una liquidación existente."""
     try:
-        await verify_auth(authorization=authorization, db_auth=db_auth)
+        await verify_auth(authorization=authorization, db=db)
         liquidacion = await liquidacion_service.update_liquidacion(
             db, liquidacion_id, liquidacion_update
         )
@@ -166,12 +164,11 @@ async def confirmar_liquidacion(
     liquidacion_id: int,
     data: LiquidacionConfirmar,
     authorization: Optional[str] = Header(None),
-    db_auth: AsyncSession = Depends(get_auth_session),
     db: AsyncSession = Depends(get_session),
 ):
     """Confirmar una liquidación (marcar como liquidada)."""
     try:
-        await verify_auth(authorization=authorization, db_auth=db_auth)
+        await verify_auth(authorization=authorization, db=db)
         liquidacion = await liquidacion_service.confirmar_liquidacion(
             db, liquidacion_id, data
         )
@@ -191,12 +188,11 @@ async def confirmar_liquidacion(
 async def eliminar_liquidacion(
     liquidacion_id: int,
     authorization: Optional[str] = Header(None),
-    db_auth: AsyncSession = Depends(get_auth_session),
     db: AsyncSession = Depends(get_session),
 ):
     """Eliminar una liquidación permanentemente."""
     try:
-        await verify_auth(authorization=authorization, db_auth=db_auth)
+        await verify_auth(authorization=authorization, db=db)
         success = await liquidacion_service.delete_liquidacion(db, liquidacion_id)
         if not success:
             raise HTTPException(status_code=404, detail="Liquidación no encontrada")
@@ -213,12 +209,11 @@ async def eliminar_liquidacion(
 async def aprobar_liquidacion(
     liquidacion_id: int,
     authorization: Optional[str] = Header(None),
-    db_auth: AsyncSession = Depends(get_auth_session),
     db: AsyncSession = Depends(get_session),
 ):
     """Aprobar una liquidación (marcar como liquidada usando lógica de negocio completa)."""
     try:
-        await verify_auth(authorization=authorization, db_auth=db_auth)
+        await verify_auth(authorization=authorization, db=db)
         result = await liquidacion_service.aprobar(db, liquidacion_id)
         if not result:
             raise HTTPException(status_code=404, detail="Liquidación no encontrada")

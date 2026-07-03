@@ -37,12 +37,11 @@ contratos_router = APIRouter(
 async def crear_contrato(
     contrato: ContratoCreate,
     authorization: Optional[str] = Header(None),
-    db_auth: AsyncSession = Depends(get_auth_session),
     db: AsyncSession = Depends(get_session),
 ):
     """Crear un nuevo contrato."""
     try:
-        nit = await _get_nit_from_token(authorization, db_auth)
+        nit = await _get_nit_from_token(authorization, db)
         return await ContratoService.create(db, contrato, nit=nit)
     except HTTPException:
         raise
@@ -103,12 +102,11 @@ async def actualizar_contrato(
     contrato_id: int,
     update_data: ContratoUpdate,
     authorization: Optional[str] = Header(None),
-    db_auth: AsyncSession = Depends(get_auth_session),
     db: AsyncSession = Depends(get_session),
 ):
     """Actualizar un contrato."""
     try:
-        await verify_auth(authorization=authorization, db_auth=db_auth)
+        await verify_auth(authorization=authorization, db=db)
         contrato = await ContratoService.update(db, contrato_id, update_data)
         if not contrato:
             raise HTTPException(status_code=404, detail="Contrato no encontrado")
@@ -124,12 +122,11 @@ async def actualizar_contrato(
 async def eliminar_contrato(
     contrato_id: int,
     authorization: Optional[str] = Header(None),
-    db_auth: AsyncSession = Depends(get_auth_session),
     db: AsyncSession = Depends(get_session),
 ):
     """Eliminar un contrato."""
     try:
-        await verify_auth(authorization=authorization, db_auth=db_auth)
+        await verify_auth(authorization=authorization, db=db)
         success = await ContratoService.delete(db, contrato_id)
         if not success:
             raise HTTPException(status_code=404, detail="Contrato no encontrado")
@@ -149,12 +146,11 @@ suplementos_router = APIRouter(
 async def crear_suplemento(
     suplemento: SuplementoCreate,
     authorization: Optional[str] = Header(None),
-    db_auth: AsyncSession = Depends(get_auth_session),
     db: AsyncSession = Depends(get_session),
 ):
     """Crear un nuevo suplemento."""
     try:
-        await verify_auth(authorization=authorization, db_auth=db_auth)
+        await verify_auth(authorization=authorization, db=db)
         return await SuplementoService.create(db, suplemento)
     except HTTPException:
         raise
@@ -209,12 +205,11 @@ async def actualizar_suplemento(
     suplemento_id: int,
     update_data: SuplementoUpdate,
     authorization: Optional[str] = Header(None),
-    db_auth: AsyncSession = Depends(get_auth_session),
     db: AsyncSession = Depends(get_session),
 ):
     """Actualizar un suplemento."""
     try:
-        await verify_auth(authorization=authorization, db_auth=db_auth)
+        await verify_auth(authorization=authorization, db=db)
         suplemento = await SuplementoService.update(db, suplemento_id, update_data)
         if not suplemento:
             raise HTTPException(status_code=404, detail="Suplemento no encontrado")
@@ -230,12 +225,11 @@ async def actualizar_suplemento(
 async def eliminar_suplemento(
     suplemento_id: int,
     authorization: Optional[str] = Header(None),
-    db_auth: AsyncSession = Depends(get_auth_session),
     db: AsyncSession = Depends(get_session),
 ):
     """Eliminar un suplemento."""
     try:
-        await verify_auth(authorization=authorization, db_auth=db_auth)
+        await verify_auth(authorization=authorization, db=db)
         success = await SuplementoService.delete(db, suplemento_id)
         if not success:
             raise HTTPException(status_code=404, detail="Suplemento no encontrado")
@@ -255,12 +249,11 @@ facturas_router = APIRouter(
 async def crear_factura(
     factura: FacturaCreate,
     authorization: Optional[str] = Header(None),
-    db_auth: AsyncSession = Depends(get_auth_session),
     db: AsyncSession = Depends(get_session),
 ):
     """Crear una nueva factura."""
     try:
-        nit = await _get_nit_from_token(authorization, db_auth)
+        nit = await _get_nit_from_token(authorization, db)
         return await FacturaService.create(db, factura, nit=nit)
     except HTTPException:
         raise
@@ -315,12 +308,11 @@ async def actualizar_factura(
     factura_id: int,
     update_data: FacturaUpdate,
     authorization: Optional[str] = Header(None),
-    db_auth: AsyncSession = Depends(get_auth_session),
     db: AsyncSession = Depends(get_session),
 ):
     """Actualizar una factura."""
     try:
-        await verify_auth(authorization=authorization, db_auth=db_auth)
+        await verify_auth(authorization=authorization, db=db)
         factura = await FacturaService.update(db, factura_id, update_data)
         if not factura:
             raise HTTPException(status_code=404, detail="Factura no encontrada")
@@ -336,12 +328,11 @@ async def actualizar_factura(
 async def eliminar_factura(
     factura_id: int,
     authorization: Optional[str] = Header(None),
-    db_auth: AsyncSession = Depends(get_auth_session),
     db: AsyncSession = Depends(get_session),
 ):
     """Eliminar una factura."""
     try:
-        await verify_auth(authorization=authorization, db_auth=db_auth)
+        await verify_auth(authorization=authorization, db=db)
         success = await FacturaService.delete(db, factura_id)
         if not success:
             raise HTTPException(status_code=404, detail="Factura no encontrada")
@@ -363,12 +354,11 @@ ventas_efectivo_router = APIRouter(
 async def crear_venta_efectivo(
     venta: VentaEfectivoCreate,
     authorization: Optional[str] = Header(None),
-    db_auth: AsyncSession = Depends(get_auth_session),
     db: AsyncSession = Depends(get_session),
 ):
     """Crear una nueva venta en efectivo."""
     try:
-        nit = await _get_nit_from_token(authorization, db_auth)
+        nit = await _get_nit_from_token(authorization, db)
         return await VentaEfectivoService.create(db, venta, nit=nit)
     except HTTPException:
         raise
@@ -408,12 +398,11 @@ async def actualizar_venta_efectivo(
     venta_id: int,
     update_data: VentaEfectivoUpdate,
     authorization: Optional[str] = Header(None),
-    db_auth: AsyncSession = Depends(get_auth_session),
     db: AsyncSession = Depends(get_session),
 ):
     """Actualizar una venta en efectivo."""
     try:
-        await verify_auth(authorization=authorization, db_auth=db_auth)
+        await verify_auth(authorization=authorization, db=db)
         venta = await VentaEfectivoService.update(db, venta_id, update_data)
         if not venta:
             raise HTTPException(
@@ -431,12 +420,11 @@ async def actualizar_venta_efectivo(
 async def eliminar_venta_efectivo(
     venta_id: int,
     authorization: Optional[str] = Header(None),
-    db_auth: AsyncSession = Depends(get_auth_session),
     db: AsyncSession = Depends(get_session),
 ):
     """Eliminar una venta en efectivo."""
     try:
-        await verify_auth(authorization=authorization, db_auth=db_auth)
+        await verify_auth(authorization=authorization, db=db)
         success = await VentaEfectivoService.delete(db, venta_id)
         if not success:
             raise HTTPException(

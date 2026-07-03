@@ -61,12 +61,11 @@ async def obtener_venta(
 async def crear_venta(
     venta_data: VentaCreate,
     authorization: Optional[str] = Header(None),
-    db_auth: AsyncSession = Depends(get_auth_session),
     db: AsyncSession = Depends(get_session),
 ):
     """Crear una nueva venta con sus detalles. Requiere autenticación."""
     try:
-        await verify_auth(authorization, db_auth)
+        await verify_auth(authorization, db)
         return await VentaService.create(db, venta_data)
     except HTTPException:
         raise
@@ -80,12 +79,11 @@ async def actualizar_venta(
     id_venta: int,
     update_data: VentaUpdate,
     authorization: Optional[str] = Header(None),
-    db_auth: AsyncSession = Depends(get_auth_session),
     db: AsyncSession = Depends(get_session),
 ):
     """Actualizar una venta existente. Requiere autenticación."""
     try:
-        await verify_auth(authorization, db_auth)
+        await verify_auth(authorization, db)
         return await VentaService.update(db, id_venta, update_data)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
@@ -100,12 +98,11 @@ async def actualizar_venta(
 async def eliminar_venta(
     id_venta: int,
     authorization: Optional[str] = Header(None),
-    db_auth: AsyncSession = Depends(get_auth_session),
     db: AsyncSession = Depends(get_session),
 ):
     """Eliminar una venta. Requiere autenticación."""
     try:
-        await verify_auth(authorization, db_auth)
+        await verify_auth(authorization, db)
         await VentaService.delete(db, id_venta)
         return None
     except ValueError as e:

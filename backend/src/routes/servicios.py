@@ -77,9 +77,8 @@ async def create_servicio(
     data: ServicioCreate,
     db: AsyncSession = Depends(get_session),
     authorization: Optional[str] = Header(None),
-    db_auth: AsyncSession = Depends(get_auth_session),
 ):
-    nit = await _get_nit_from_token(authorization, db_auth)
+    nit = await _get_nit_from_token(authorization, db)
     return await ServicioService.create(db, data, nit=nit)
 
 
@@ -147,9 +146,8 @@ async def create_solicitud(
     data: SolicitudServicioCreate,
     db: AsyncSession = Depends(get_session),
     authorization: Optional[str] = Header(None),
-    db_auth: AsyncSession = Depends(get_auth_session),
 ):
-    nit = await _get_nit_from_token(authorization, db_auth)
+    nit = await _get_nit_from_token(authorization, db)
     return await SolicitudServicioService.create(db, data, nit=nit)
 
 
@@ -159,10 +157,9 @@ async def update_solicitud(
     data: SolicitudServicioUpdate,
     db: AsyncSession = Depends(get_session),
     authorization: Optional[str] = Header(None),
-    db_auth: AsyncSession = Depends(get_auth_session),
 ):
     try:
-        nit = await _get_nit_from_token(authorization, db_auth)
+        nit = await _get_nit_from_token(authorization, db)
         result = await SolicitudServicioService.update(db, id, data, nit=nit)
         if not result:
             raise HTTPException(status_code=404, detail="Solicitud no encontrada")
@@ -336,9 +333,8 @@ async def create_factura_servicio(
     data: FacturaServicioCreate,
     db: AsyncSession = Depends(get_session),
     authorization: Optional[str] = Header(None),
-    db_auth: AsyncSession = Depends(get_auth_session),
 ):
-    nit = await _get_nit_from_token(authorization, db_auth)
+    nit = await _get_nit_from_token(authorization, db)
     return await FacturaServicioService.create(db, data, nit=nit)
 
 
@@ -502,9 +498,8 @@ async def create_liquidacion(
     data: PersonaLiquidacionCreateInput,
     db: AsyncSession = Depends(get_session),
     authorization: Optional[str] = Header(None),
-    db_auth: AsyncSession = Depends(get_auth_session),
 ):
-    nit = await _get_nit_from_token(authorization, db_auth)
+    nit = await _get_nit_from_token(authorization, db)
     return await PersonaLiquidacionService.create(db, data, nit=nit)
 
 

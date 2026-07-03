@@ -98,11 +98,10 @@ async def obtener_convenio(
 async def crear_convenio(
     datos: ConvenioCreate,
     authorization: Optional[str] = Header(None),
-    db_auth: AsyncSession = Depends(get_auth_session),
     db: AsyncSession = Depends(get_session),
 ):
     try:
-        nit = await _get_nit_from_token(authorization, db_auth)
+        nit = await _get_nit_from_token(authorization, db)
         prefijo = f"{nit}." if nit else ""
 
         id_cliente = datos.id_cliente
@@ -153,11 +152,10 @@ async def actualizar_convenio(
     convenioid: int,
     datos: ConvenioUpdate,
     authorization: Optional[str] = Header(None),
-    db_auth: AsyncSession = Depends(get_auth_session),
     db: AsyncSession = Depends(get_session),
 ):
     try:
-        await verify_auth(authorization=authorization, db_auth=db_auth)
+        await verify_auth(authorization=authorization, db=db)
 
         statement = select(Convenio).where(Convenio.id_convenio == convenioid)
         results = await db.exec(statement)
@@ -190,11 +188,10 @@ async def actualizar_convenio(
 async def eliminar_convenio(
     convenioid: int,
     authorization: Optional[str] = Header(None),
-    db_auth: AsyncSession = Depends(get_auth_session),
     db: AsyncSession = Depends(get_session),
 ):
     try:
-        await verify_auth(authorization=authorization, db_auth=db_auth)
+        await verify_auth(authorization=authorization, db=db)
 
         statement = select(Convenio).where(Convenio.id_convenio == convenioid)
         results = await db.exec(statement)

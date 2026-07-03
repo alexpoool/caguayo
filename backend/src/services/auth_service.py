@@ -318,7 +318,7 @@ async def get_current_user(db: AsyncSession, token: str) -> Optional[UsuarioInfo
     if not sesion:
         return None
 
-    if sesion.fecha_expiracion < datetime.now(timezone.utc):
+    if sesion.fecha_expiracion.replace(tzinfo=timezone.utc) < datetime.now(timezone.utc):
         # Eliminar sesión expirada
         await db.delete(sesion)
         await db.commit()

@@ -61,12 +61,11 @@ async def obtener_compra(
 async def crear_compra(
     compra_data: CompraCreate,
     authorization: Optional[str] = Header(None),
-    db_auth: AsyncSession = Depends(get_auth_session),
     db: AsyncSession = Depends(get_session),
 ):
     """Crear una nueva compra con sus detalles. Requiere autenticación."""
     try:
-        await verify_auth(authorization, db_auth)
+        await verify_auth(authorization, db)
         return await CompraService.create(db, compra_data)
     except HTTPException:
         raise
@@ -80,12 +79,11 @@ async def actualizar_compra(
     id_compra: int,
     update_data: CompraUpdate,
     authorization: Optional[str] = Header(None),
-    db_auth: AsyncSession = Depends(get_auth_session),
     db: AsyncSession = Depends(get_session),
 ):
     """Actualizar una compra existente. Requiere autenticación."""
     try:
-        await verify_auth(authorization, db_auth)
+        await verify_auth(authorization, db)
         return await CompraService.update(db, id_compra, update_data)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
@@ -100,12 +98,11 @@ async def actualizar_compra(
 async def eliminar_compra(
     id_compra: int,
     authorization: Optional[str] = Header(None),
-    db_auth: AsyncSession = Depends(get_auth_session),
     db: AsyncSession = Depends(get_session),
 ):
     """Eliminar una compra. Requiere autenticación."""
     try:
-        await verify_auth(authorization, db_auth)
+        await verify_auth(authorization, db)
         await CompraService.delete(db, id_compra)
         return None
     except ValueError as e:

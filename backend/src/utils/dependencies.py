@@ -3,7 +3,7 @@ import logging
 from fastapi import Depends, Header, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.database.connection import get_auth_session
+from src.database.connection import get_session
 from src.dto.auth_dto import UsuarioInfo
 from src.services.auth_service import get_current_user
 
@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 async def require_auth(
     authorization: str = Header(...),
-    db_auth: AsyncSession = Depends(get_auth_session),
+    db_auth: AsyncSession = Depends(get_session),
 ) -> UsuarioInfo:
     """FastAPI dependency that requires a valid JWT Bearer token.
 

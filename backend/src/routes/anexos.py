@@ -135,12 +135,11 @@ async def obtener_anexo(
 async def crear_anexo(
     datos: AnexoCreate,
     authorization: Optional[str] = Header(None),
-    db_auth: AsyncSession = Depends(get_auth_session),
     db: AsyncSession = Depends(get_session),
 ):
     """Crear un nuevo anexo con productos y generar movimientos de recepción."""
     try:
-        nit = await _get_nit_from_token(authorization, db_auth)
+        nit = await _get_nit_from_token(authorization, db)
         prefijo_nit = f"{nit}." if nit else ""
 
         datos_dict = datos.model_dump(exclude_none=True)
@@ -332,12 +331,11 @@ async def actualizar_anexo(
     anexo_id: int,
     datos: AnexoUpdate,
     authorization: Optional[str] = Header(None),
-    db_auth: AsyncSession = Depends(get_auth_session),
     db: AsyncSession = Depends(get_session),
 ):
     """Actualizar un anexo."""
     try:
-        await verify_auth(authorization=authorization, db_auth=db_auth)
+        await verify_auth(authorization=authorization, db=db)
 
         statement = select(Anexo).where(Anexo.id_anexo == anexo_id)
         results = await db.exec(statement)
@@ -371,12 +369,11 @@ async def actualizar_anexo(
 async def eliminar_anexo(
     anexo_id: int,
     authorization: Optional[str] = Header(None),
-    db_auth: AsyncSession = Depends(get_auth_session),
     db: AsyncSession = Depends(get_session),
 ):
     """Eliminar un anexo."""
     try:
-        await verify_auth(authorization=authorization, db_auth=db_auth)
+        await verify_auth(authorization=authorization, db=db)
 
         statement = select(Anexo).where(Anexo.id_anexo == anexo_id)
         results = await db.exec(statement)
