@@ -79,6 +79,11 @@ export function useReportPreview<T>(
         clearTimeout(loadingTimer);
 
         if (!response.ok) {
+          if (response.status === 401) {
+            localStorage.removeItem("auth_token");
+            window.location.href = "/login";
+            return;
+          }
           let message = `Error ${response.status}: ${response.statusText}`;
           try {
             const body = await response.json();
