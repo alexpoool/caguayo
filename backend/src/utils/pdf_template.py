@@ -1,14 +1,10 @@
 """
 Módulo de plantillas PDF.
 
-Contiene dos enfoques complementarios:
-
-1. **PDFTemplate** – clase ReportLab Platypus para generar reportes
-   profesionales (proveedores, existencias, movimientos) con tabla,
-   paginación, firmas y sección de notas.
-
-2. **render_invoice_template** – función que renderiza una plantilla
-   Jinja2 HTML para facturas (usada por el módulo de facturación).
+Contiene PDFTemplate – clase ReportLab Platypus para generar reportes
+profesionales (proveedores, existencias, movimientos) con tabla,
+paginación, firmas y sección de notas, optimizada para bajo consumo
+de tinta (estética monocromática y minimalista).
 """
 
 from io import BytesIO
@@ -18,7 +14,7 @@ from datetime import datetime
 from reportlab.lib.pagesizes import letter, landscape
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.enums import TA_LEFT, TA_RIGHT, TA_CENTER
-from reportlab.lib.colors import HexColor, white
+from reportlab.lib.colors import white, black
 from reportlab.platypus import (
     SimpleDocTemplate,
     Table,
@@ -32,20 +28,20 @@ from reportlab.platypus import (
 #  PARTE 1 – PDFTemplate (ReportLab Platypus) para reportes
 # ═══════════════════════════════════════════════════════════════════════════════
 
-# ─── Color palette ───────────────────────────────────────────────────────────
-HEADER_BG = HexColor("#2c3e50")  # Dark blue-gray
-HEADER_FG = white
-ZEBRA_LIGHT = HexColor("#f8f9fa")  # Very light gray
-ZEBRA_DARK = white
-BORDER_COLOR = HexColor("#dee2e6")  # Light gray border
-NOTE_BORDER = HexColor("#ffc107")  # Amber for note border
-NOTE_BG = HexColor("#fffbe6")  # Pale yellow
-TITLE_COLOR = HexColor("#2c3e50")
-SUBTITLE_COLOR = HexColor("#495057")
-MUTED_COLOR = HexColor("#6c757d")
-TOTALS_BG = HexColor("#e9ecef")
-TOTALS_LINE = HexColor("#2c3e50")
-HR_COLOR = HexColor("#dee2e6")
+# ─── Color palette (monochrome, ink-saving) ────────────────────────────
+HEADER_BG = white           # white background for table header
+HEADER_FG = black           # black text for header
+ZEBRA_LIGHT = white         # no zebra → all rows white
+ZEBRA_DARK = white          # no zebra
+BORDER_COLOR = black        # black borders
+NOTE_BORDER = black         # black border for notes
+NOTE_BG = white             # white background for notes
+TITLE_COLOR = black         # titles in black
+SUBTITLE_COLOR = black      # subtitles in black
+MUTED_COLOR = black         # secondary text also black
+TOTALS_BG = white           # white background for totals row
+TOTALS_LINE = black         # totals line in black
+HR_COLOR = black            # horizontal rule in black
 
 
 class PDFTemplate:
@@ -65,10 +61,10 @@ class PDFTemplate:
         self.doc = SimpleDocTemplate(
             self.buffer,
             pagesize=self.page_size,
-            rightMargin=30,
-            leftMargin=30,
-            topMargin=50,
-            bottomMargin=50,
+            rightMargin=20,
+            leftMargin=20,
+            topMargin=30,
+            bottomMargin=25,
         )
 
         self.elements: list = []
@@ -96,9 +92,9 @@ class PDFTemplate:
             ParagraphStyle(
                 "ReportTitle",
                 fontName="Helvetica-Bold",
-                fontSize=16,
+                fontSize=12,
                 alignment=TA_CENTER,
-                spaceAfter=4,
+                spaceAfter=2,
                 textColor=TITLE_COLOR,
             )
         )
@@ -106,20 +102,20 @@ class PDFTemplate:
             ParagraphStyle(
                 "CompanyInfo",
                 fontName="Helvetica",
-                fontSize=9,
+                fontSize=7,
                 alignment=TA_CENTER,
                 spaceAfter=2,
                 textColor=SUBTITLE_COLOR,
-                leading=12,
+                leading=9,
             )
         )
         styles.add(
             ParagraphStyle(
                 "DateLine",
                 fontName="Helvetica",
-                fontSize=8,
+                fontSize=7,
                 alignment=TA_CENTER,
-                spaceAfter=6,
+                spaceAfter=3,
                 textColor=MUTED_COLOR,
             )
         )
@@ -127,103 +123,102 @@ class PDFTemplate:
             ParagraphStyle(
                 "FilterInfo",
                 fontName="Helvetica",
-                fontSize=8,
+                fontSize=7,
                 alignment=TA_LEFT,
                 spaceAfter=2,
                 textColor=MUTED_COLOR,
-                leading=10,
+                leading=9,
             )
         )
         styles.add(
             ParagraphStyle(
                 "NoteHeader",
                 fontName="Helvetica-Bold",
-                fontSize=10,
+                fontSize=9,
                 alignment=TA_LEFT,
                 spaceBefore=4,
                 spaceAfter=4,
-                textColor=HexColor("#856404"),
+                textColor=black,
             )
         )
         styles.add(
             ParagraphStyle(
                 "NoteText",
                 fontName="Helvetica",
-                fontSize=9,
+                fontSize=8,
                 alignment=TA_LEFT,
                 spaceAfter=4,
-                textColor=HexColor("#856404"),
-                leading=13,
+                textColor=black,
+                leading=11,
                 borderPadding=8,
-                backColor=NOTE_BG,
             )
         )
         styles.add(
             ParagraphStyle(
                 "SignatureText",
                 fontName="Helvetica",
-                fontSize=9,
+                fontSize=8,
                 alignment=TA_LEFT,
                 spaceAfter=2,
-                leading=11,
+                leading=9,
             )
         )
         styles.add(
             ParagraphStyle(
                 "TableCell",
                 fontName="Helvetica",
-                fontSize=8,
+                fontSize=7,
                 alignment=TA_LEFT,
-                leading=10,
+                leading=9,
             )
         )
         styles.add(
             ParagraphStyle(
                 "TableCellNumber",
                 fontName="Helvetica",
-                fontSize=8,
+                fontSize=7,
                 alignment=TA_RIGHT,
-                leading=10,
+                leading=9,
             )
         )
         styles.add(
             ParagraphStyle(
                 "TableCellCode",
                 fontName="Courier",
-                fontSize=8,
+                fontSize=7,
                 alignment=TA_LEFT,
-                leading=10,
+                leading=9,
             )
         )
         styles.add(
             ParagraphStyle(
                 "TableHeader",
                 fontName="Helvetica-Bold",
-                fontSize=8,
+                fontSize=7,
                 alignment=TA_CENTER,
                 textColor=HEADER_FG,
-                leading=10,
+                leading=9,
             )
         )
         styles.add(
             ParagraphStyle(
                 "TotalsRow",
                 fontName="Helvetica-Bold",
-                fontSize=8,
+                fontSize=7,
                 alignment=TA_RIGHT,
                 textColor=TITLE_COLOR,
-                leading=10,
+                leading=9,
             )
         )
         styles.add(
             ParagraphStyle(
                 "EmptyState",
                 fontName="Helvetica",
-                fontSize=11,
+                fontSize=9,
                 alignment=TA_CENTER,
                 textColor=MUTED_COLOR,
-                spaceBefore=30,
-                spaceAfter=30,
+                spaceBefore=15,
+                spaceAfter=15,
             )
         )
         return styles
@@ -286,7 +281,7 @@ class PDFTemplate:
             code_columns = self._detect_code_columns(headers)
 
         # Column widths
-        available_width = self.page_size[0] - 60  # 30+30 margins
+        available_width = self.page_size[0] - 40  # 20+20 margins
         if col_widths is None:
             col_widths = [available_width / len(headers)] * len(headers)
 
@@ -330,7 +325,7 @@ class PDFTemplate:
         )
 
         self.elements.append(table)
-        self.elements.append(Spacer(1, 12))
+        self.elements.append(Spacer(1, 6))
 
     @staticmethod
     def _detect_numeric_columns(data: List[List[str]]) -> List[int]:
@@ -381,11 +376,11 @@ class PDFTemplate:
             ("TEXTCOLOR", (0, 0), (-1, 0), HEADER_FG),
             ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
             ("FONTSIZE", (0, 0), (-1, 0), 8),
-            ("BOTTOMPADDING", (0, 0), (-1, 0), 8),
-            ("TOPPADDING", (0, 0), (-1, 0), 8),
-            ("LINEBELOW", (0, 0), (-1, 0), 1.5, HexColor("#1a252f")),
+            ("BOTTOMPADDING", (0, 0), (-1, 0), 5),
+            ("TOPPADDING", (0, 0), (-1, 0), 5),
+            ("LINEBELOW", (0, 0), (-1, 0), 1.5, black),
             # ── Grid ────────────────────────────────────────────────────
-            ("GRID", (0, 0), (-1, num_rows - 1), 0.5, BORDER_COLOR),
+            ("GRID", (0, 0), (-1, num_rows - 1), 0.3, BORDER_COLOR),
             # ── Zebra striping ──────────────────────────────────────────
         ]
         for ri in range(data_start, data_end + 1):
@@ -395,10 +390,10 @@ class PDFTemplate:
         cmds.extend(
             [
                 # ── Cell padding ────────────────────────────────────────────
-                ("TOPPADDING", (0, data_start), (-1, data_end), 5),
-                ("BOTTOMPADDING", (0, data_start), (-1, data_end), 5),
-                ("LEFTPADDING", (0, 0), (-1, num_rows - 1), 6),
-                ("RIGHTPADDING", (0, 0), (-1, num_rows - 1), 6),
+                ("TOPPADDING", (0, data_start), (-1, data_end), 3),
+                ("BOTTOMPADDING", (0, data_start), (-1, data_end), 3),
+                ("LEFTPADDING", (0, 0), (-1, num_rows - 1), 4),
+                ("RIGHTPADDING", (0, 0), (-1, num_rows - 1), 4),
                 # ── Valign ──────────────────────────────────────────────────
                 ("VALIGN", (0, 0), (-1, num_rows - 1), "MIDDLE"),
             ]
@@ -408,10 +403,10 @@ class PDFTemplate:
             cmds.extend(
                 [
                     ("BACKGROUND", (0, totals_idx), (-1, totals_idx), TOTALS_BG),
-                    ("LINEABOVE", (0, totals_idx), (-1, totals_idx), 1.5, TOTALS_LINE),
+                    ("LINEABOVE", (0, totals_idx), (-1, totals_idx), 1, TOTALS_LINE),
                     ("FONTNAME", (0, totals_idx), (-1, totals_idx), "Helvetica-Bold"),
-                    ("TOPPADDING", (0, totals_idx), (-1, totals_idx), 8),
-                    ("BOTTOMPADDING", (0, totals_idx), (-1, totals_idx), 8),
+                    ("TOPPADDING", (0, totals_idx), (-1, totals_idx), 5),
+                    ("BOTTOMPADDING", (0, totals_idx), (-1, totals_idx), 5),
                 ]
             )
 
@@ -425,7 +420,7 @@ class PDFTemplate:
             return
 
         self._has_content = True
-        self.elements.append(Spacer(1, 10))
+        self.elements.append(Spacer(1, 6))
         self.elements.append(
             Paragraph("<b>OBSERVACIONES</b>", self.styles["NoteHeader"])
         )
@@ -438,17 +433,16 @@ class PDFTemplate:
         note_table.setStyle(
             TableStyle(
                 [
-                    ("BOX", (0, 0), (-1, -1), 0.5, NOTE_BORDER),
-                    ("BACKGROUND", (0, 0), (-1, -1), NOTE_BG),
-                    ("LEFTPADDING", (0, 0), (-1, -1), 8),
-                    ("RIGHTPADDING", (0, 0), (-1, -1), 8),
-                    ("TOPPADDING", (0, 0), (-1, -1), 6),
-                    ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+                    ("BOX", (0, 0), (-1, -1), 0.3, black),
+                    ("LEFTPADDING", (0, 0), (-1, -1), 6),
+                    ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+                    ("TOPPADDING", (0, 0), (-1, -1), 4),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
                 ]
             )
         )
         self.elements.append(note_table)
-        self.elements.append(Spacer(1, 8))
+        self.elements.append(Spacer(1, 4))
 
     def add_signature_section(
         self,
@@ -457,11 +451,11 @@ class PDFTemplate:
         approved_role: str = "",
     ) -> None:
         """Append the signature block at the bottom of the document."""
-        self.elements.append(Spacer(1, 24))
+        self.elements.append(Spacer(1, 16))
 
         fecha_emision = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         sig = self.styles["SignatureText"]
-        half = self.page_size[0] / 2 - 40
+        half = self.page_size[0] / 2 - 30
 
         sig_data = [
             [
@@ -492,10 +486,10 @@ class PDFTemplate:
                 [
                     ("ALIGN", (0, 0), (-1, -1), "LEFT"),
                     ("VALIGN", (0, 0), (-1, -1), "TOP"),
-                    ("TOPPADDING", (0, 0), (-1, -1), 3),
-                    ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+                    ("TOPPADDING", (0, 0), (-1, -1), 2),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
                     ("LEFTPADDING", (0, 0), (-1, -1), 0),
-                    ("RIGHTPADDING", (0, 0), (-1, -1), 5),
+                    ("RIGHTPADDING", (0, 0), (-1, -1), 3),
                 ]
             )
         )
@@ -527,7 +521,7 @@ class PDFTemplate:
 
     def _build_header(self) -> None:
         """Compose the document header (company, title, date, filters)."""
-        self.elements.append(Spacer(1, 6))
+        self.elements.append(Spacer(1, 3))
 
         # Company block
         if self._company_name:
@@ -548,7 +542,7 @@ class PDFTemplate:
             self.elements.append(
                 Paragraph("<br/>".join(details), self.styles["CompanyInfo"])
             )
-            self.elements.append(Spacer(1, 4))
+            self.elements.append(Spacer(1, 2))
 
         # Title
         self.elements.append(
@@ -572,7 +566,7 @@ class PDFTemplate:
                 self.elements.append(
                     Paragraph(" | ".join(parts), self.styles["FilterInfo"])
                 )
-                self.elements.append(Spacer(1, 4))
+                self.elements.append(Spacer(1, 2))
 
         # Horizontal rule
         hr_table = Table(
@@ -582,20 +576,20 @@ class PDFTemplate:
         hr_table.setStyle(
             TableStyle(
                 [
-                    ("LINEBELOW", (0, 0), (-1, 0), 1, HR_COLOR),
+                    ("LINEBELOW", (0, 0), (-1, 0), 1, black),
                     ("TOPPADDING", (0, 0), (-1, 0), 0),
-                    ("BOTTOMPADDING", (0, 0), (-1, 0), 4),
+                    ("BOTTOMPADDING", (0, 0), (-1, 0), 2),
                 ]
             )
         )
         self.elements.append(hr_table)
-        self.elements.append(Spacer(1, 6))
+        self.elements.append(Spacer(1, 3))
 
     def _add_page_number(self, canvas, doc) -> None:
         """Callback drawn at the bottom of each page."""
         canvas.saveState()
-        canvas.setFont("Helvetica", 8)
-        canvas.setFillColor(MUTED_COLOR)
+        canvas.setFont("Helvetica", 7)
+        canvas.setFillColor(black)
         canvas.drawCentredString(
             self.page_size[0] / 2,
             15,
@@ -626,174 +620,3 @@ def format_quantity(value: object) -> str:
     except (ValueError, TypeError):
         return str(value)
 
-
-# ═══════════════════════════════════════════════════════════════════════════════
-#  PARTE 2 – Plantilla Jinja2 para facturas (HTML → PDF)
-# ═══════════════════════════════════════════════════════════════════════════════
-
-PDF_TEMPLATE = """
-<doc>
-  <body>
-    <style>
-      body {
-        font-family: Helvetica;
-        font-size: 10pt;
-        margin: 2cm;
-      }
-      .empresa {
-        text-align: center;
-        margin-bottom: 20px;
-      }
-      .factura-titulo {
-        font-size: 18pt;
-        font-weight: bold;
-        text-align: center;
-        margin: 20px 0;
-      }
-      .datos-factura {
-        margin-bottom: 15px;
-      }
-      .paguese {
-        background-color: #f0f0f0;
-        padding: 5px;
-        margin: 10px 0;
-      }
-      table {
-        width: 100%;
-        border-collapse: collapse;
-        margin: 20px 0;
-      }
-      th, td {
-        border: 1px solid black;
-        padding: 6px;
-        text-align: left;
-      }
-      th {
-        background-color: #ddd;
-      }
-      .total {
-        text-align: right;
-        font-weight: bold;
-      }
-      .firmas {
-        margin-top: 40px;
-        display: flex;
-        justify-content: space-between;
-      }
-    </style>
-
-    <!-- Encabezado empresa -->
-    <div class="empresa">
-      <b>{{ empresa_raiz }}</b><br/>
-      {{ dependencia_factura }}<br/>
-      {{ direccion }}<br/>
-      {{ municipio }}, {{ provincia }}<br/>
-      Teléfono: {{ telefono }}<br/>
-      Correo: {{ email }}
-    </div>
-
-    <!-- Título Factura -->
-    <div class="factura-titulo">FACTURA</div>
-
-    <!-- Datos de la factura -->
-    <div class="datos-factura">
-      Código: <b>{{ codigo_factura }}</b><br/>
-      Fecha: {{ fecha }}<br/>
-      Moneda: <b>{{ moneda }}</b>
-    </div>
-
-    <!-- A quién pagar -->
-    <div class="paguese">
-      Paguese a: {{ nombre_empresa_pago }}<br/>
-      Código: {{ codigo_empresa_pago }}<br/>
-      <b>CUENTA CUP</b><br/>
-      Cuenta: {{ cuenta_cup }}<br/>
-      NIT: {{ nit_empresa }}<br/>
-      <b>BANCO:</b> {{ banco }}<br/>
-      Titular: {{ titular_cuenta }}<br/>
-      Sucursal: {{ sucursal }}<br/>
-      Dirección: {{ direccion_sucursal }}
-    </div>
-
-    <!-- Contrato y Cliente -->
-    <div>
-      Contrato N° {{ numero_contrato }} con el Cliente<br/>
-      Nombre: {{ nombre_cliente }}<br/>
-      Código: {{ codigo_cliente }} &nbsp;&nbsp; NIT: {{ nit_cliente }}<br/>
-      Provincia: {{ provincia_cliente }} &nbsp;&nbsp; Municipio: {{ municipio_cliente }}<br/>
-      Dirección: {{ direccion_cliente }}<br/>
-      <b>BANCO:</b> {{ banco_cliente }}<br/>
-      Titular: {{ titular_cliente }}<br/>
-      Sucursal: {{ sucursal_cliente }}<br/>
-      Dirección: {{ direccion_sucursal_cliente }}
-    </div>
-
-    <!-- Descripción general -->
-    <div>
-      <b>Descripción:</b> {{ descripcion_general }}
-    </div>
-
-    <!-- Tabla de items -->
-    <table>
-      <tr>
-        <th>Código</th>
-        <th>Descripción</th>
-        <th>Cantidad</th>
-        <th>Precio</th>
-        <th>Importe</th>
-      </tr>
-      {% for item in items %}
-      <tr>
-        <td>{{ item.codigo_item }}</td>
-        <td>{{ item.descripcion_item }}</td>
-        <td>{{ item.cantidad_item }}</td>
-        <td>{{ item.precio_item }}</td>
-        <td>{{ item.importe_item }}</td>
-      </tr>
-      {% endfor %}
-    </table>
-
-    <!-- Total -->
-    <div class="total">
-      TOTAL: {{ total_factura }}
-    </div>
-
-    <!-- Firmas -->
-    <div class="firmas">
-      <div>
-        Confeccionado por:<br/>
-        {{ nombre_confecciona }}<br/>
-        Cargo: {{ cargo_confecciona }}<br/>
-        Fecha Emisión: {{ fecha_emision }}
-      </div>
-      <div>
-        Recibido por:<br/>
-        Nombre: ____________<br/>
-        Cargo: ____________<br/>
-        Fecha: ____________<br/>
-        Firma: ____________
-      </div>
-    </div>
-
-    <div style="text-align: center; margin-top: 40px;">
-      Página 1 de 1
-    </div>
-  </body>
-</doc>
-"""
-
-
-def render_invoice_template(data: dict) -> str:
-    """
-    Render the invoice template with the provided data
-
-    Args:
-        data: Dictionary containing all the template variables
-
-    Returns:
-        Rendered HTML string
-    """
-    from jinja2 import Template  # ty: ignore — Jinja2 lazy import, optional dep
-
-    template = Template(PDF_TEMPLATE)
-    return template.render(**data)

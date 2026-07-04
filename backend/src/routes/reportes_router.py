@@ -17,17 +17,14 @@ from src.services.reportes_service import (
     get_personas_list,
     get_proveedores_por_dependencia,
     get_registro_clientes,
-    get_registro_creadores,
     get_registro_proyectos,
     get_reporte_mincult,
     get_reporte_onat,
     get_resumen_liquidaciones,
 )
-from src.utils.dependencies import require_auth
 from src.utils.logger import AppLogger
 from src.utils.pdf_generator import (
     generar_pdf_clientes,
-    generar_pdf_creadores,
     generar_pdf_desempeno,
     generar_pdf_existencias,
     generar_pdf_liquidaciones,
@@ -111,7 +108,7 @@ async def obtener_reporte_proveedores_dependencia(
     aprobado_por_cargo: str = Query("", description="Cargo de quien aprueba"),
     notas: str = Query("", description="Observaciones para incluir en el PDF"),
     db: AsyncSession = Depends(get_session),
-    current_user: UsuarioInfo = Depends(require_auth),
+    current_user: UsuarioInfo = Depends(get_optional_user),
 ):
     try:
         proveedores, dependencia_info = await get_proveedores_por_dependencia(
@@ -163,7 +160,7 @@ async def obtener_reporte_existencias(
     aprobado_por_cargo: str = Query("", description="Cargo de quien aprueba"),
     notas: str = Query("", description="Observaciones para incluir en el PDF"),
     db: AsyncSession = Depends(get_session),
-    current_user: UsuarioInfo = Depends(require_auth),
+    current_user: UsuarioInfo = Depends(get_optional_user),
 ):
     try:
         existencias, dependencia_info = await get_existencias(db, id_dependencia)
@@ -210,7 +207,7 @@ async def obtener_reporte_movimientos_dependencia(
     aprobado_por_cargo: str = Query("", description="Cargo de quien aprueba"),
     notas: str = Query("", description="Observaciones para incluir en el PDF"),
     db: AsyncSession = Depends(get_session),
-    current_user: UsuarioInfo = Depends(require_auth),
+    current_user: UsuarioInfo = Depends(get_optional_user),
 ):
     try:
         movimientos, dependencia_info = await get_movimientos_dependencia(
@@ -266,7 +263,7 @@ async def obtener_reporte_movimientos_producto(
     aprobado_por_cargo: str = Query("", description="Cargo de quien aprueba"),
     notas: str = Query("", description="Observaciones para incluir en el PDF"),
     db: AsyncSession = Depends(get_session),
-    current_user: UsuarioInfo = Depends(require_auth),
+    current_user: UsuarioInfo = Depends(get_optional_user),
 ):
     try:
         movimientos, dependencia_info, producto_info = await get_movimientos_producto(
@@ -325,7 +322,7 @@ async def obtener_reporte_clientes(
     aprobado_por_cargo: str = Query("", description="Cargo de quien aprueba"),
     notas: str = Query("", description="Observaciones para incluir en el PDF"),
     db: AsyncSession = Depends(get_session),
-    current_user: UsuarioInfo = Depends(require_auth),
+    current_user: UsuarioInfo = Depends(get_optional_user),
 ):
     try:
         data, meta = await get_registro_clientes(db)
@@ -375,7 +372,7 @@ async def obtener_reporte_proyectos(
     aprobado_por_cargo: str = Query("", description="Cargo de quien aprueba"),
     notas: str = Query("", description="Observaciones para incluir en el PDF"),
     db: AsyncSession = Depends(get_session),
-    current_user: UsuarioInfo = Depends(require_auth),
+    current_user: UsuarioInfo = Depends(get_optional_user),
 ):
     try:
         data, meta = await get_registro_proyectos(db, fecha_inicio, fecha_fin)
@@ -417,65 +414,6 @@ async def obtener_reporte_proyectos(
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-#  REPORTE 3 – REGISTRO DE CREADORES
-# ═══════════════════════════════════════════════════════════════════════════════
-
-
-@router.get("/creadores")
-async def obtener_reporte_creadores(
-    id_provincia: Optional[int] = Query(None, description="Filtrar por provincia"),
-    id_municipio: Optional[int] = Query(None, description="Filtrar por municipio"),
-    vigencia: Optional[str] = Query(None, description="Vigencia (activo/inactivo)"),
-    texto_busqueda: Optional[str] = Query(None, description="Texto de búsqueda"),
-    aprobado_por_nombre: str = Query("", description="Nombre de quien aprueba"),
-    aprobado_por_cargo: str = Query("", description="Cargo de quien aprueba"),
-    notas: str = Query("", description="Observaciones para incluir en el PDF"),
-    db: AsyncSession = Depends(get_session),
-    current_user: UsuarioInfo = Depends(require_auth),
-):
-    try:
-        data, meta = await get_registro_creadores(
-            db, id_provincia, id_municipio, vigencia, texto_busqueda
-        )
-        usuario_actual = f"{current_user.nombre} {current_user.primer_apellido}"
-
-        await AppLogger.log_action(
-            modulo="reportes",
-            accion="export_creadores",
-            detalle={
-                "total": len(data),
-                "id_provincia": id_provincia,
-                "id_municipio": id_municipio,
-                "vigencia": vigencia,
-            },
-            usuario_id=current_user.id_usuario,
-            usuario_nombre=usuario_actual,
-        )
-
-        pdf_buffer = generar_pdf_creadores(
-            data,
-            meta,
-            usuario_actual,
-            aprobado_por_nombre,
-            aprobado_por_cargo,
-            notas=notas,
-        )
-
-        return StreamingResponse(
-            pdf_buffer,
-            media_type="application/pdf",
-            headers={
-                "Content-Disposition": "attachment; filename=registro_creadores.pdf"
-            },
-        )
-    except Exception as e:
-        logger.error(f"Error en reporte creadores: {e}")
-        raise HTTPException(
-            status_code=500, detail="Error interno al generar el reporte"
-        )
-
-
-# ═══════════════════════════════════════════════════════════════════════════════
 #  REPORTE 4 – INFORME DE DESEMPEÑO
 # ═══════════════════════════════════════════════════════════════════════════════
 
@@ -490,7 +428,7 @@ async def obtener_reporte_desempeno(
     aprobado_por_cargo: str = Query("", description="Cargo de quien aprueba"),
     notas: str = Query("", description="Observaciones para incluir en el PDF"),
     db: AsyncSession = Depends(get_session),
-    current_user: UsuarioInfo = Depends(require_auth),
+    current_user: UsuarioInfo = Depends(get_optional_user),
 ):
     try:
         data, meta = await get_informe_desempeno(
@@ -548,7 +486,7 @@ async def obtener_reporte_onat(
     aprobado_por_cargo: str = Query("", description="Cargo de quien aprueba"),
     notas: str = Query("", description="Observaciones para incluir en el PDF"),
     db: AsyncSession = Depends(get_session),
-    current_user: UsuarioInfo = Depends(require_auth),
+    current_user: UsuarioInfo = Depends(get_optional_user),
 ):
     try:
         data, meta = await get_reporte_onat(
@@ -602,7 +540,7 @@ async def obtener_reporte_mincult(
     aprobado_por_cargo: str = Query("", description="Cargo de quien aprueba"),
     notas: str = Query("", description="Observaciones para incluir en el PDF"),
     db: AsyncSession = Depends(get_session),
-    current_user: UsuarioInfo = Depends(require_auth),
+    current_user: UsuarioInfo = Depends(get_optional_user),
 ):
     try:
         data, meta = await get_reporte_mincult(db, fecha_inicio, fecha_fin)
@@ -658,7 +596,7 @@ async def obtener_reporte_liquidaciones(
     aprobado_por_cargo: str = Query("", description="Cargo de quien aprueba"),
     notas: str = Query("", description="Observaciones para incluir en el PDF"),
     db: AsyncSession = Depends(get_session),
-    current_user: UsuarioInfo = Depends(require_auth),
+    current_user: UsuarioInfo = Depends(get_optional_user),
 ):
     try:
         data, meta = await get_resumen_liquidaciones(
@@ -976,50 +914,6 @@ async def preview_proyectos(
         }
     except Exception as e:
         logger.error(f"Error en preview proyectos: {e}")
-        raise HTTPException(
-            status_code=500, detail="Error interno al generar el reporte"
-        )
-
-
-# ═══════════════════════════════════════════════════════════════════════════════
-#  PREVIEW REPORTE 3 – CREADORES
-# ═══════════════════════════════════════════════════════════════════════════════
-
-
-@router.get("/creadores/preview")
-async def preview_creadores(
-    id_provincia: Optional[int] = Query(None, description="Filtrar por provincia"),
-    id_municipio: Optional[int] = Query(None, description="Filtrar por municipio"),
-    vigencia: Optional[str] = Query(None, description="Vigencia (activo/inactivo)"),
-    texto_busqueda: Optional[str] = Query(None, description="Texto de búsqueda"),
-    db: AsyncSession = Depends(get_session),
-    current_user: UsuarioInfo = Depends(get_optional_user),
-):
-    try:
-        data, meta = await get_registro_creadores(
-            db, id_provincia, id_municipio, vigencia, texto_busqueda
-        )
-
-        usuario_actual = f"{current_user.nombre} {current_user.primer_apellido}"
-        await AppLogger.log_action(
-            modulo="reportes",
-            accion="preview_creadores",
-            detalle={
-                "total_items": len(data),
-                "id_provincia": id_provincia,
-                "id_municipio": id_municipio,
-            },
-            usuario_id=current_user.id_usuario,
-            usuario_nombre=usuario_actual,
-        )
-
-        return {
-            "items": data,
-            "total_items": len(data),
-            "grupos_municipio": meta.get("grupos_municipio", {}),
-        }
-    except Exception as e:
-        logger.error(f"Error en preview creadores: {e}")
         raise HTTPException(
             status_code=500, detail="Error interno al generar el reporte"
         )

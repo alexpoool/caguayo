@@ -27,6 +27,7 @@ from .ventas_operaciones import (
 from .productos_en_liquidacion import router as productos_en_liquidacion_router
 from .liquidaciones import router as liquidaciones_router
 from .pagos import router as pagos_router
+from .proyecto_router import router as proyecto_router
 from .reportes_router import router as reportes_router
 from .servicios import (
     servicios_router,
@@ -72,6 +73,7 @@ api_router.include_router(ventas_efectivo_router)
 api_router.include_router(productos_en_liquidacion_router)
 api_router.include_router(liquidaciones_router)
 api_router.include_router(pagos_router)
+api_router.include_router(proyecto_router)
 api_router.include_router(reportes_router)
 api_router.include_router(servicios_router)
 api_router.include_router(solicitudes_router)
