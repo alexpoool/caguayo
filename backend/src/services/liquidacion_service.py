@@ -57,6 +57,16 @@ class LiquidacionService:
         if not productos_db:
             raise ValueError("No se encontraron productos para liquidar")
 
+        # Validar que todos los productos estén facturados
+        # Solo se permite liquidar productos que vienen de una factura (tipo_compra = FACTURA)
+        for prod in productos_db:
+            if prod.tipo_compra != "FACTURA":
+                raise ValueError(
+                    f"El producto {prod.codigo} (ID: {prod.id_producto}) no puede ser liquidado "
+                    f"porque no está facturado. Tipo de compra: {prod.tipo_compra}. "
+                    f"Solo se permite liquidar productos provenientes de facturas."
+                )
+
         # Validar que las facturas estén pagadas completamente
         from src.models.contrato import Factura
         from src.repository.pago_repo import pago_repo
@@ -354,6 +364,15 @@ class LiquidacionService:
 
         if db_liquidacion.liquidada:
             raise ValueError("La liquidación ya está confirmada")
+
+        # Validar que todos los productos estén facturados
+        for pel in db_liquidacion.productos_en_liquidacion:
+            if pel.tipo_compra != "FACTURA":
+                raise ValueError(
+                    f"El producto {pel.codigo} no puede ser liquidado "
+                    f"porque no está facturado. Tipo de compra: {pel.tipo_compra}. "
+                    f"Solo se permite liquidar productos provenientes de facturas."
+                )
 
         # Validar que las facturas estén pagadas completamente
         from src.models.contrato import Factura
