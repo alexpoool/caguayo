@@ -10,12 +10,12 @@ Cubre:
   6. PDFTemplate unit test (construcción, empty state, firmas, landscape, format_quantity)
 
 Estrategia:
-  - Usa ``app.dependency_overrides`` para reemplazar ``require_auth`` (con
-    función sincrónica) y ``get_session`` (con async generator), evitando
-    depender de BD real para la autenticación.
+  - Usa ``app.dependency_overrides`` para reemplazar ``get_optional_user`` (en
+    ambos routers: ``reportes_router`` y ``proyecto_router``) y ``get_session``
+    (con async generator), evitando depender de BD real para la autenticación.
   - Usa ``unittest.mock.patch.object`` para interceptar las funciones del
-    servicio en el namespace de ``reportes_router`` (donde son importadas
-    por nombre con ``from ... import``).
+    servicio en el namespace correcto (``reportes_router`` o ``proyecto_router``,
+    según dónde sean importadas con ``from ... import``).
   - Tests con ``pytest.mark.parametrize`` para cubrir los 4 endpoints sin
     duplicar código.
 """
@@ -28,7 +28,6 @@ from io import BytesIO
 from datetime import date
 
 from main import app
-from src.utils.dependencies import require_auth
 from src.database.connection import get_session
 from src.dto.auth_dto import UsuarioInfo, DependenciaInfo, GrupoInfo
 from src.utils.pdf_template import PDFTemplate, format_quantity
@@ -36,7 +35,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 # Referencia al módulo del router para parchear correctamente las funciones
 # importadas por nombre (from ... import <func>)
-from src.routes import reportes_router
+from src.routes import reportes_router, proyecto_router
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -75,11 +74,11 @@ def mock_db_session():
 @pytest.fixture
 def auth_success(mock_usuario, mock_db_session):
     """
-    Override ``require_auth`` (función sincrónica) y ``get_session``
-    (async generator) → flujo de autenticación exitosa sin BD real.
+    Override ``get_optional_user`` en ambos routers (reportes y proyecto)
+    y ``get_session`` (async generator) → flujo de autenticación exitosa sin BD real.
     """
 
-    def _override_require_auth():
+    async def _override_optional_user():
         return mock_usuario
 
     async def _override_get_session():
@@ -87,7 +86,8 @@ def auth_success(mock_usuario, mock_db_session):
 
     app.dependency_overrides.update(
         {
-            require_auth: _override_require_auth,
+            reportes_router.get_optional_user: _override_optional_user,
+            proyecto_router.get_optional_user: _override_optional_user,
             get_session: _override_get_session,
         }
     )
@@ -98,20 +98,22 @@ def auth_success(mock_usuario, mock_db_session):
 @pytest.fixture
 def auth_fail(mock_db_session):
     """
-    Override ``require_auth`` → lanza ``HTTPException(401)``.
+    Override ``get_optional_user`` en ambos routers → lanza ``HTTPException(401)``.
     También mockea ``get_session`` para evitar dependencia de BD.
     """
+
+    async def _override_optional_user_401():
+        raise HTTPException(
+            status_code=401, detail="Token de autenticación requerido"
+        )
 
     async def _override_get_session():
         yield mock_db_session
 
     app.dependency_overrides.update(
         {
-            require_auth: lambda: (_ for _ in ()).throw(
-                HTTPException(
-                    status_code=401, detail="Token de autenticación requerido"
-                )
-            ),
+            reportes_router.get_optional_user: _override_optional_user_401,
+            proyecto_router.get_optional_user: _override_optional_user_401,
             get_session: _override_get_session,
         }
     )
@@ -848,7 +850,7 @@ class TestPreviewRechazoSinTokenNuevos:
         [
             ("/api/v1/reportes/clientes/preview", {}),
             ("/api/v1/reportes/proyectos/preview", {}),
-            ("/api/v1/reportes/creadores/preview", {}),
+            ("/api/v1/proyecto/preview", {}),
             ("/api/v1/reportes/desempeno/preview", {}),
             ("/api/v1/reportes/onat/preview", {}),
             ("/api/v1/reportes/mincult/preview", {}),
@@ -882,7 +884,7 @@ class TestPDFRechazoSinTokenNuevos:
         [
             ("/api/v1/reportes/clientes", {}),
             ("/api/v1/reportes/proyectos", {}),
-            ("/api/v1/reportes/creadores", {}),
+            ("/api/v1/proyecto/", {}),
             ("/api/v1/reportes/desempeno", {}),
             ("/api/v1/reportes/onat", {}),
             ("/api/v1/reportes/mincult", {}),
@@ -924,7 +926,7 @@ class TestPreviewConTokenNuevos:
                 ["items", "total_items"],
             ),
             (
-                "/api/v1/reportes/creadores/preview",
+                "/api/v1/proyecto/preview",
                 {},
                 "get_registro_creadores",
                 (SAMPLE_CREADORES, SAMPLE_META_CREADORES),
@@ -982,8 +984,12 @@ class TestPreviewConTokenNuevos:
         expected_keys,
     ):
         """Verifica que cada nuevo preview con token retorna 200 + claves esperadas."""
+        target_module = (
+            proyecto_router if func_name == "get_registro_creadores"
+            else reportes_router
+        )
         with patch.object(
-            reportes_router, func_name, new=AsyncMock(return_value=mock_return)
+            target_module, func_name, new=AsyncMock(return_value=mock_return)
         ):
             response = client.get(path, params=params)
 
@@ -1045,7 +1051,7 @@ class TestErrorSanitizadoNuevos:
             ),
             # 2 additional: creadores PDF + desempeno preview
             (
-                "/api/v1/reportes/creadores",
+                "/api/v1/proyecto/",
                 {},
                 "get_registro_creadores",
             ),
@@ -1065,8 +1071,12 @@ class TestErrorSanitizadoNuevos:
         func_name,
     ):
         """Verifica que el mensaje de error NO contiene el detalle interno."""
+        target_module = (
+            proyecto_router if func_name == "get_registro_creadores"
+            else reportes_router
+        )
         with patch.object(
-            reportes_router,
+            target_module,
             func_name,
             new=AsyncMock(side_effect=Exception(self.DETALLE_INTERNO)),
         ):
@@ -1151,7 +1161,7 @@ class TestPDFGenerationNuevos:
     def test_pdf_creadores_con_notas(self, client, auth_success):
         """PDF creadores → StreamingResponse con ``application/pdf``."""
         with patch.object(
-            reportes_router,
+            proyecto_router,
             "get_registro_creadores",
             new=AsyncMock(
                 return_value=(
@@ -1166,7 +1176,7 @@ class TestPDFGenerationNuevos:
                 "aprobado_por_cargo": "Coordinadora de Registro",
             }
             response = client.get(
-                "/api/v1/reportes/creadores",
+                "/api/v1/proyecto/",
                 params=params,
             )
 

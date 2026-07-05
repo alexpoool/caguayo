@@ -438,7 +438,9 @@ class LiquidacionService:
             .where(Liquidacion.id_liquidacion == liquidacion_id)
             .values(liquidada=True)
         )
-        await db.exec(stmt)
+        result = await db.exec(stmt)
+        if result.rowcount == 0:
+            return False
         await db.commit()
         return True
 
