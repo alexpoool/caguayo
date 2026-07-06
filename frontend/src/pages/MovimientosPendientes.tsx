@@ -1,7 +1,8 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { movimientosService } from '../services/api';
+import { useInfiniteList } from '../hooks/useInfiniteList';
 
 import { Card, ConfirmModal, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, Input, Button } from '../components/ui';
 import {
@@ -27,7 +28,8 @@ import {
   ArrowRightLeft,
   Check,
   Search,
-  ShoppingCart
+  ShoppingCart,
+  Loader2
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -103,15 +105,39 @@ export function MovimientosPendientesPage() {
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState('');
 
-  const { data: movimientosPendientes = [], isLoading: isLoadingPendientes } = useQuery({
-    queryKey: ['movimientos-pendientes'],
-    queryFn: () => movimientosService.getMovimientosPendientes(),
+  // ── Infinite list ──────────────────────────────────────────────────────────
+
+  const {
+    items: movimientosPendientes,
+    isLoading: isLoadingPendientes,
+    isFetchingMore,
+    hasMore,
+    loadMore,
+    refresh,
+  } = useInfiniteList<MovimientoPendiente>({
+    queryKeyBase: 'movimientos-pendientes',
+    queryFn: (skip, limit) => movimientosService.getMovimientosPendientes(skip, limit),
+    limit: 100,
   });
+
+  // IntersectionObserver para scroll infinito
+  const loadMoreRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const el = loadMoreRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting) loadMore(); },
+      { threshold: 0.1 },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [loadMore]);
 
   const confirmarMutation = useMutation({
     mutationFn: (id: number) => movimientosService.confirmarMovimiento(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['movimientos-pendientes'] });
+      refresh();
       queryClient.invalidateQueries({ queryKey: ['productos-con-stock'] });
       queryClient.invalidateQueries({ queryKey: ['productos-por-dependencia'] });
       toast.success('Movimiento confirmado exitosamente');
@@ -142,7 +168,7 @@ export function MovimientosPendientesPage() {
   const eliminarMutation = useMutation({
     mutationFn: (id: number) => movimientosService.deleteMovimiento(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['movimientos-pendientes'] });
+      refresh();
       queryClient.invalidateQueries({ queryKey: ['productos-con-stock'] });
       queryClient.invalidateQueries({ queryKey: ['productos-por-dependencia'] });
       toast.success('Movimiento eliminado exitosamente');
@@ -489,6 +515,15 @@ export function MovimientosPendientesPage() {
               )}
             </TableBody>
           </Table>
+        </div>
+        {/* Sentinel para scroll infinito */}
+        <div ref={loadMoreRef} className="flex justify-center py-2">
+          {isFetchingMore && (
+            <div className="flex items-center gap-2 text-gray-500">
+              <Loader2 className="h-5 w-5 animate-spin" />
+              <span>Cargando más...</span>
+            </div>
+          )}
         </div>
       </Card>
     </div>

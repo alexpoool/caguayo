@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Button, Input, Label, Card, CardContent, CardHeader, CardTitle, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, ConfirmModal } from '../../components/ui';
@@ -7,9 +7,10 @@ import type { SolicitudServicio, SolicitudServicioCreate, SolicitudServicioUpdat
 import type { ContratoWithDetails, ContratoCreate, SuplementoWithDetails, SuplementoCreate } from '../../types/contrato';
 import type { Cliente } from '../../types/ventas';
 import type { Moneda } from '../../types/moneda';
-import { Plus, Save, Trash2, Edit, ArrowLeft, Search, ClipboardList, Tag, X, Layers, CheckCircle, CheckSquare, FileText, FilePlus, User, DollarSign, Calendar } from 'lucide-react';
+import { Plus, Save, Trash2, Edit, ArrowLeft, Search, ClipboardList, Tag, X, Layers, CheckCircle, CheckSquare, FileText, FilePlus, User, DollarSign, Calendar, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
+import { useInfiniteList } from '../../hooks/useInfiniteList';
 
 type View = 'list' | 'form';
 
@@ -18,8 +19,6 @@ type EstadoFiltro = 'EN PROCESO' | 'TERMINADA' | 'CANCELADA' | 'TODAS';
 export function ProyectosPage() {
   const navigate = useNavigate();
   const [view, setView] = useState<View>('list');
-
-  const [solicitudes, setSolicitudes] = useState<SolicitudServicio[]>([]);
 
   const [editingId, setEditingId] = useState<number | null>(null);
   const [formData, setFormData] = useState<Record<string, any>>({});
@@ -39,6 +38,34 @@ export function ProyectosPage() {
     onConfirm: () => {},
     type: 'danger'
   });
+
+  const loadMoreRef = useRef<HTMLDivElement>(null);
+
+  const {
+    items: solicitudes,
+    isLoading,
+    isFetchingMore,
+    refresh,
+    hasMore,
+    loadMore,
+  } = useInfiniteList<SolicitudServicio>({
+    queryKeyBase: 'solicitudes-proyecto',
+    queryFn: (skip, limit) => solicitudesService.getSolicitudes(skip, limit),
+  });
+
+  useEffect(() => {
+    if (!hasMore || isFetchingMore) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore) {
+          loadMore();
+        }
+      },
+      { threshold: 0.1 },
+    );
+    if (loadMoreRef.current) observer.observe(loadMoreRef.current);
+    return () => observer.disconnect();
+  }, [hasMore, isFetchingMore, loadMore]);
 
   const [contratoModal, setContratoModal] = useState<{ isOpen: boolean; item: ContratoWithDetails | null; loading: boolean }>({ isOpen: false, item: null, loading: false });
   const [suplementoModal, setSuplementoModal] = useState<{ isOpen: boolean; item: SuplementoWithDetails | null; loading: boolean }>({ isOpen: false, item: null, loading: false });
@@ -62,13 +89,6 @@ export function ProyectosPage() {
   const tiposContrato = [{ id: 1, nombre: 'SERVICIO' }, { id: 2, nombre: 'OBRA' }, { id: 3, nombre: 'MANTENIMIENTO' }, { id: 4, nombre: 'ALQUILER' }, { id: 5, nombre: 'COMPRA' }];
 
   const estados = ['PENDIENTE', 'EN NEGOCIACION', 'EN PROCESO', 'TERMINADA', 'CANCELADA'];
-
-  const loadSolicitudes = async () => {
-    try { const data = await solicitudesService.getSolicitudes(); setSolicitudes(data); }
-    catch (error) { console.error('Error:', error); }
-  };
-
-  useEffect(() => { if (view === 'list') loadSolicitudes(); }, [view]);
 
   useEffect(() => {
     const loadData = async () => {
@@ -124,7 +144,7 @@ export function ProyectosPage() {
       toast.success(editingId ? 'Actualizado' : 'Creado');
       setView('list');
       resetForm();
-      loadSolicitudes();
+      refresh();
     } catch (error: any) { toast.error(error.message || 'Error'); }
   };
 
@@ -137,7 +157,7 @@ export function ProyectosPage() {
         try {
           await solicitudesService.deleteSolicitud(id);
           toast.success('Eliminado');
-          loadSolicitudes();
+          refresh();
         } catch (error: any) { toast.error(error.message || 'Error'); }
       },
       type: 'danger'
@@ -155,7 +175,7 @@ export function ProyectosPage() {
             estado: 'CANCELADA'
           });
           toast.success('Solicitud cancelada');
-          loadSolicitudes();
+          refresh();
         } catch (error: any) { toast.error(error.message || 'Error'); }
       },
       type: 'warning'
@@ -173,7 +193,7 @@ export function ProyectosPage() {
             estado: 'TERMINADA'
           });
           toast.success('Solicitud terminada');
-          loadSolicitudes();
+          refresh();
         } catch (error: any) { toast.error(error.message || 'Error'); }
       },
       type: 'info'
@@ -187,7 +207,7 @@ export function ProyectosPage() {
         estado: 'EN NEGOCIACION'
       });
       toast.success('Solicitud en negociación');
-      loadSolicitudes();
+      refresh();
     } catch (error: any) { toast.error(error.message || 'Error'); }
   };
 
@@ -314,7 +334,7 @@ export function ProyectosPage() {
       setAprobarModal({ isOpen: false, solicitud: null, modo: 'seleccionar', contratos: [], loadingContratos: false });
       setFormContrato({});
       setSuplementosPorContrato({});
-      loadSolicitudes();
+      refresh();
     } catch (error: any) {
       toast.error(error.message || 'Error al aprobar');
     }
@@ -587,6 +607,14 @@ export function ProyectosPage() {
               )}
             </TableBody>
           </Table>
+        </div>
+        <div ref={loadMoreRef} className="flex justify-center py-2">
+          {isFetchingMore && (
+            <div className="flex items-center gap-2 text-gray-500">
+              <Loader2 className="h-5 w-5 animate-spin" />
+              <span>Cargando más...</span>
+            </div>
+          )}
         </div>
       </Card>
     </div>

@@ -1,7 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { ConfirmModal } from "../../components/ui";
 import { suplementosService, contratosService, configuracionService } from "../../services/api";
+import { useInfiniteList } from "../../hooks/useInfiniteList";
 import type {
   ContratoWithDetails,
   SuplementoWithDetails,
@@ -17,7 +18,6 @@ export function SuplementosMainPage() {
   const initialContratoId = searchParams.get("contrato");
 
   const [view, setView] = useState<"list" | "form">("list");
-  const [suplementos, setSuplementos] = useState<SuplementoWithDetails[]>([]);
   const [contratos, setContratos] = useState<ContratoWithDetails[]>([]);
   const [estados, setEstados] = useState<{ id_estado_contrato: number; nombre: string }[]>([]);
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -25,6 +25,8 @@ export function SuplementosMainPage() {
     initialContratoId ? Number(initialContratoId) : null,
   );
   const [formData, setFormData] = useState<Record<string, any>>({});
+  const [searchTerm, setSearchTerm] = useState('');
+  const loadMoreRef = useRef<HTMLDivElement | null>(null);
   const [detailModal, setDetailModal] = useState<{
     isOpen: boolean;
     item: SuplementoWithDetails | null;
@@ -43,6 +45,51 @@ export function SuplementosMainPage() {
     type: "danger",
   });
 
+  // ── Infinite scroll ──────────────────────────────────────────────────────
+
+  const {
+    items: suplementos,
+    isLoading,
+    isFetchingMore,
+    isError,
+    error,
+    hasMore,
+    loadMore,
+    refresh,
+    reset,
+  } = useInfiniteList<SuplementoWithDetails>({
+    queryKeyBase: 'suplementos',
+    queryFn: (skip, limit) =>
+      selectedContratoId
+        ? suplementosService.getSuplementosByContrato(selectedContratoId, skip, limit)
+        : suplementosService.getSuplementos(skip, limit),
+    extraQueryKeyParams: [selectedContratoId],
+    limit: 100,
+  });
+
+  // Reiniciar scroll infinito cuando cambia el contrato seleccionado
+  useEffect(() => {
+    reset();
+  }, [selectedContratoId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // IntersectionObserver para infinite scroll
+  useEffect(() => {
+    const sentinel = loadMoreRef.current;
+    if (!sentinel) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore && !isFetchingMore) {
+          loadMore();
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [hasMore, isFetchingMore, loadMore]);
+
   useEffect(() => {
     loadInitialData();
   }, []);
@@ -60,25 +107,6 @@ export function SuplementosMainPage() {
     }
   };
 
-  const loadSuplementos = async () => {
-    try {
-      if (selectedContratoId) {
-        const data =
-          await suplementosService.getSuplementosByContrato(selectedContratoId);
-        setSuplementos(data);
-      } else {
-        const data = await suplementosService.getSuplementos();
-        setSuplementos(data);
-      }
-    } catch (error) {
-      console.error("Error:", error);
-    }
-  };
-
-  useEffect(() => {
-    if (view === "list") loadSuplementos();
-  }, [view, selectedContratoId]);
-
   const handleSave = async () => {
     try {
       const data = {
@@ -94,7 +122,7 @@ export function SuplementosMainPage() {
       toast.success(editingId ? "Actualizado" : "Creado");
       setView("list");
       resetForm();
-      loadSuplementos();
+      refresh();
     } catch (error: any) {
       toast.error(error.message || "Error");
     }
@@ -109,7 +137,7 @@ export function SuplementosMainPage() {
         try {
           await suplementosService.deleteSuplemento(id);
           toast.success("Eliminado");
-          loadSuplementos();
+          refresh();
         } catch (error: any) {
           toast.error(error.message || "Error");
         }
@@ -143,6 +171,15 @@ export function SuplementosMainPage() {
       {view === "list" && (
         <SuplementosList
           suplementos={suplementos}
+          isLoading={isLoading}
+          isFetchingMore={isFetchingMore}
+          isError={isError}
+          error={error}
+          hasMore={hasMore}
+          loadMore={loadMore}
+          loadMoreRef={loadMoreRef}
+          searchTerm={searchTerm}
+          setSearchTerm={setSearchTerm}
           contratos={contratos}
           selectedContratoId={selectedContratoId}
           setSelectedContratoId={setSelectedContratoId}

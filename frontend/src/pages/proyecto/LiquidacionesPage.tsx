@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { createPortal } from 'react-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -21,7 +21,8 @@ import {
   ArrowLeft,
   Save,
   Eye,
-  Printer
+  Printer,
+  Loader2
 } from 'lucide-react';
 import { authService } from '../../services/auth';
 import { 
@@ -35,6 +36,7 @@ import {
   certificacionesService
 } from '../../services/api';
 import { administracionService } from '../../services/administracion';
+import { useInfiniteList } from '../../hooks/useInfiniteList';
 import type { Usuario } from '../../types/usuario';
 import type { PersonaLiquidacionInput, PersonaLiquidacionInputUpdate, FacturaPagoValidacion, PersonaLiquidacionValidacion } from '../../types/servicio';
 import type { 
@@ -125,10 +127,33 @@ export function LiquidacionesPage() {
   const [disponibleLiquidar, setDisponibleLiquidar] = useState<number>(0);
   const [porCobrarPersona, setPorCobrarPersona] = useState<number>(0);
 
-  const { data: liquidaciones = [], isLoading } = useQuery({
-    queryKey: ['persona-liquidaciones', activeTab],
-    queryFn: () => personaLiquidacionService.getLiquidaciones(0, 1000)
+  const loadMoreRef = useRef<HTMLDivElement>(null);
+
+  const {
+    items: liquidaciones,
+    isLoading,
+    isFetchingMore,
+    refresh,
+    hasMore,
+    loadMore,
+  } = useInfiniteList({
+    queryKeyBase: 'persona-liquidaciones',
+    queryFn: (skip, limit) => personaLiquidacionService.getLiquidaciones(skip, limit),
   });
+
+  useEffect(() => {
+    if (!hasMore || isFetchingMore) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore) {
+          loadMore();
+        }
+      },
+      { threshold: 0.1 },
+    );
+    if (loadMoreRef.current) observer.observe(loadMoreRef.current);
+    return () => observer.disconnect();
+  }, [hasMore, isFetchingMore, loadMore]);
 
   const { data: monedas = [] } = useQuery({
     queryKey: ['monedas'],
@@ -1050,6 +1075,14 @@ export function LiquidacionesPage() {
                   )}
                 </TableBody>
               </Table>
+            </div>
+            <div ref={loadMoreRef} className="flex justify-center py-2">
+              {isFetchingMore && (
+                <div className="flex items-center gap-2 text-gray-500">
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                  <span>Cargando más...</span>
+                </div>
+              )}
             </div>
           </Card>
         </>

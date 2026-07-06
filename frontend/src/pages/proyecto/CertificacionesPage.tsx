@@ -1,11 +1,12 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Button, Input, Label, Card, CardContent, CardHeader, CardTitle, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, ConfirmModal } from '../../components/ui';
 import { certificacionesService, etapasProyectoService, solicitudesService } from '../../services/api';
 import type { Certificacion, CertificacionCreate, CertificacionUpdate, Etapa } from '../../types/servicio';
-import { Plus, Save, Trash2, Edit, ArrowLeft, Search, FileText, X, Check, DollarSign } from 'lucide-react';
+import { Plus, Save, Trash2, Edit, ArrowLeft, Search, FileText, X, Check, DollarSign, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useInfiniteList } from '../../hooks/useInfiniteList';
 
 type View = 'list' | 'form';
 
@@ -15,9 +16,42 @@ export function CertificacionesPage() {
   const etapaIdParam = searchParams.get('etapa');
   
   const [view, setView] = useState<View>('list');
-  const [certificaciones, setCertificaciones] = useState<Certificacion[]>([]);
   const [etapas, setEtapas] = useState<Etapa[]>([]);
   const [solicitudesMap, setSolicitudesMap] = useState<Record<number, { codigo_proyecto?: string; id_solicitud_servicio: number }>>({});
+
+  const loadMoreRef = useRef<HTMLDivElement>(null);
+
+  const {
+    items: certificaciones,
+    isLoading,
+    isFetchingMore,
+    refresh,
+    hasMore,
+    loadMore,
+  } = useInfiniteList<Certificacion>({
+    queryKeyBase: 'certificaciones',
+    queryFn: async (skip, limit) => {
+      if (etapaIdParam) {
+        return certificacionesService.getCertificacionesByEtapa(Number(etapaIdParam));
+      }
+      return certificacionesService.getCertificaciones(skip, limit);
+    },
+    extraQueryKeyParams: etapaIdParam ? [etapaIdParam] : [],
+  });
+
+  useEffect(() => {
+    if (!hasMore || isFetchingMore) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore) {
+          loadMore();
+        }
+      },
+      { threshold: 0.1 },
+    );
+    if (loadMoreRef.current) observer.observe(loadMoreRef.current);
+    return () => observer.disconnect();
+  }, [hasMore, isFetchingMore, loadMore]);
   
   const [editingId, setEditingId] = useState<number | null>(null);
   const [formData, setFormData] = useState<Record<string, any>>({});
@@ -49,17 +83,15 @@ export function CertificacionesPage() {
   }, [certificaciones, searchTerm]);
 
   useEffect(() => {
-    loadData();
+    loadSupportData();
   }, []);
 
-  const loadData = async () => {
+  const loadSupportData = async () => {
     try {
-      const [certRes, etapasRes, solicRes] = await Promise.all([
-        etapaIdParam ? certificacionesService.getCertificacionesByEtapa(Number(etapaIdParam)) : certificacionesService.getCertificaciones(),
+      const [etapasRes, solicRes] = await Promise.all([
         etapasProyectoService.getAllEtapas(),
         solicitudesService.getSolicitudes(0, 1000)
       ]);
-      setCertificaciones(certRes);
       setEtapas(etapasRes);
       const map: Record<number, { codigo_proyecto?: string; id_solicitud_servicio: number }> = {};
       solicRes.forEach((s: any) => { map[s.id_solicitud_servicio] = s; });
@@ -131,8 +163,8 @@ export function CertificacionesPage() {
         await certificacionesService.createCertificacion(data);
         toast.success('Certificación creada');
       }
-      await loadData();
       setView('list');
+      refresh();
     } catch (error) {
       console.error('Error saving:', error);
       toast.error('Error al guardar');
@@ -148,7 +180,7 @@ export function CertificacionesPage() {
         try {
           await certificacionesService.deleteCertificacion(item.id_certificacion);
           toast.success('Certificación eliminada');
-          await loadData();
+          refresh();
         } catch (error) {
           toast.error('Error al eliminar');
         }
@@ -378,6 +410,14 @@ export function CertificacionesPage() {
             )}
           </TableBody>
         </Table>
+        </div>
+        <div ref={loadMoreRef} className="flex justify-center py-2">
+          {isFetchingMore && (
+            <div className="flex items-center gap-2 text-gray-500">
+              <Loader2 className="h-5 w-5 animate-spin" />
+              <span>Cargando más...</span>
+            </div>
+          )}
         </div>
       </Card>
 

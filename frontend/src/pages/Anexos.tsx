@@ -154,7 +154,7 @@ export function AnexosPage() {
   const createMutation = useMutation({
     mutationFn: (data: Partial<Anexo>) => anexosService.createAnexo(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["anexos"] });
+      refresh();
       toast.success("Anexo creado");
       setView("list");
       resetForm();
@@ -166,7 +166,7 @@ export function AnexosPage() {
     mutationFn: ({ id, data }: { id: number; data: Partial<Anexo> }) =>
       anexosService.updateAnexo(id, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["anexos"] });
+      refresh();
       toast.success("Anexo actualizado");
       setView("list");
       resetForm();
@@ -177,7 +177,7 @@ export function AnexosPage() {
   const deleteMutation = useMutation({
     mutationFn: (id: number) => anexosService.deleteAnexo(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["anexos"] });
+      refresh();
       toast.success("Anexo eliminado");
       setConfirmModal((prev) => ({ ...prev, isOpen: false }));
     },
@@ -324,16 +324,6 @@ export function AnexosPage() {
       createMutation.mutate(payload);
     }
   };
-
-  const filteredAnexos = anexos.filter((a) => {
-    if (!searchTerm) return true;
-    const term = searchTerm.toLowerCase();
-    return (
-      a.nombre_anexo?.toLowerCase().includes(term) ||
-      a.codigo_anexo?.toLowerCase().includes(term) ||
-      a.anexo_convenio?.nombre_convenio?.toLowerCase().includes(term)
-    );
-  });
 
   if (view === "form") {
     return (
@@ -689,12 +679,12 @@ export function AnexosPage() {
       <div className="flex gap-2">
         <div className="flex-1 relative max-w-md">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-          <Input
-            placeholder="Buscar anexos..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10"
-          />
+            <Input
+              placeholder="Buscar anexos..."
+              value={searchTerm}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-10"
+            />
         </div>
       </div>
 
@@ -718,14 +708,14 @@ export function AnexosPage() {
                     Cargando...
                   </TableCell>
                 </TableRow>
-              ) : filteredAnexos.length === 0 ? (
+              ) : anexos.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={6} className="text-center py-12 text-gray-500">
                     No hay anexos registrados
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredAnexos.map((anexo) => (
+                anexos.map((anexo) => (
                   <TableRow key={anexo.id_anexo}>
                     <TableCell>
                       {anexo.anexo_convenio?.nombre_convenio || "Sin convenio"}
@@ -765,6 +755,15 @@ export function AnexosPage() {
               )}
             </TableBody>
           </Table>
+        </div>
+        {/* Sentinel para scroll infinito */}
+        <div ref={loadMoreRef} className="flex justify-center py-2">
+          {isFetchingMore && (
+            <div className="flex items-center gap-2 text-gray-500">
+              <Loader2 className="h-5 w-5 animate-spin" />
+              <span>Cargando más...</span>
+            </div>
+          )}
         </div>
       </Card>
 

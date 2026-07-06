@@ -7,10 +7,11 @@ import { facturasServicioService, etapasProyectoService, monedaService, solicitu
 import type { FacturaServicio, FacturaServicioCreate, FacturaServicioUpdate, Etapa, TareaEtapa, SolicitudServicio, ItemFacturaServicio, Certificacion } from '../../types/servicio';
 import type { Cliente, Cuenta } from '../../types/ventas';
 import type { Moneda } from '../../types/moneda';
-import { Plus, Save, Trash2, Edit, ArrowLeft, Search, Receipt, X, Eye, DollarSign, Hash, Tag, FileText, Check, ChevronDown, Printer, ListChecks, List, Percent } from 'lucide-react';
+import { Plus, Save, Trash2, Edit, ArrowLeft, Search, Receipt, X, Eye, DollarSign, Hash, Tag, FileText, Check, ChevronDown, Printer, ListChecks, List, Percent, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { authService } from '../../services/auth';
+import { useInfiniteList } from '../../hooks/useInfiniteList';
 
 type View = 'list' | 'form';
 
@@ -100,11 +101,38 @@ export function FacturasServicioPage() {
   const solicitudParam = searchParams.get('solicitud');
   const [view, setView] = useState<View>('list');
 
-  const [facturas, setFacturas] = useState<FacturaServicio[]>([]);
   const [solicitudes, setSolicitudes] = useState<any[]>([]);
   const [etapas, setEtapas] = useState<Etapa[]>([]);
   const [monedas, setMonedas] = useState<Moneda[]>([]);
   const [currentEtapa, setCurrentEtapa] = useState<Etapa | null>(null);
+
+  const loadMoreRef = useRef<HTMLDivElement>(null);
+
+  const {
+    items: facturasInfinitas,
+    isLoading: isLoadingFacturas,
+    isFetchingMore,
+    refresh,
+    hasMore,
+    loadMore,
+  } = useInfiniteList<FacturaServicio>({
+    queryKeyBase: 'facturas-servicio',
+    queryFn: (skip, limit) => facturasServicioService.getFacturasServicio(skip, limit),
+  });
+
+  useEffect(() => {
+    if (!hasMore || isFetchingMore) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore) {
+          loadMore();
+        }
+      },
+      { threshold: 0.1 },
+    );
+    if (loadMoreRef.current) observer.observe(loadMoreRef.current);
+    return () => observer.disconnect();
+  }, [hasMore, isFetchingMore, loadMore]);
 
   const [selectedSolicitudId, setSelectedSolicitudId] = useState<number | null>(solicitudParam ? Number(solicitudParam) : null);
   const [selectedEtapaId, setSelectedEtapaId] = useState<number | null>(etapaParam ? Number(etapaParam) : null);
@@ -243,25 +271,12 @@ export function FacturasServicioPage() {
     } catch (error) { console.error('Error:', error); setEtapas([]); }
   };
 
-  const loadFacturas = async () => {
-    try {
-      if (filtroEtapa) {
-        const data = await facturasServicioService.getFacturasByEtapa(filtroEtapa);
-        setFacturas(data);
-      } else if (solicitudParam) {
-        const etapasData = await etapasProyectoService.getEtapasBySolicitud(Number(solicitudParam));
-        const etapaIds = etapasData.map((e: Etapa) => e.id_etapa).filter(Boolean);
-        const todasLasFacturas = await facturasServicioService.getFacturasServicio(0, 1000);
-        const filtradas = todasLasFacturas.filter((f: FacturaServicio) => f.id_etapa && etapaIds.includes(f.id_etapa));
-        setFacturas(filtradas);
-      } else {
-        const data = await facturasServicioService.getFacturasServicio(0, 1000);
-        setFacturas(data);
-      }
-    } catch (error) { console.error('Error:', error); }
-  };
-
-  useEffect(() => { if (view === 'list') loadFacturas(); }, [view, filtroEtapa, solicitudParam, etapas]);
+  // Load support data (etapas for solicitudParam filtering)
+  useEffect(() => {
+    if (solicitudParam && view === 'list') {
+      loadEtapasBySolicitud(Number(solicitudParam));
+    }
+  }, [view, solicitudParam]);
 
   const handleSave = async () => {
     try {
@@ -344,7 +359,7 @@ export function FacturasServicioPage() {
       toast.success(editingId ? 'Actualizado' : 'Creado');
       setView('list');
       resetForm();
-      loadFacturas();
+      refresh();
     } catch (error: any) { toast.error(error.message || 'Error'); }
   };
 
@@ -357,7 +372,7 @@ export function FacturasServicioPage() {
         try {
           await facturasServicioService.deleteFacturaServicio(id);
           toast.success('Eliminado');
-          loadFacturas();
+          refresh();
         } catch (error: any) { toast.error(error.message || 'Error'); }
       },
       type: 'danger'
@@ -447,12 +462,29 @@ export function FacturasServicioPage() {
   };
 
   const filteredFacturas = useMemo(() => {
-    if (!searchTerm) return facturas;
-    const term = searchTerm.toLowerCase();
-    return facturas.filter(f =>
-      f.codigo_factura?.toLowerCase().includes(term)
-    );
-  }, [facturas, searchTerm]);
+    let result = facturasInfinitas;
+    
+    // Filter by etapa if filtroEtapa is set
+    if (filtroEtapa) {
+      result = result.filter(f => f.id_etapa === filtroEtapa);
+    }
+    
+    // Filter by solicitud (via etapas) if solicitudParam is set
+    if (solicitudParam && etapas.length > 0) {
+      const etapaIds = etapas.map(e => e.id_etapa).filter(Boolean);
+      result = result.filter(f => f.id_etapa && etapaIds.includes(f.id_etapa));
+    }
+    
+    // Filter by search term
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase();
+      result = result.filter(f =>
+        f.codigo_factura?.toLowerCase().includes(term)
+      );
+    }
+    
+    return result;
+  }, [facturasInfinitas, searchTerm, filtroEtapa, solicitudParam, etapas]);
 
   const getMonedaSymbol = (id?: number) => {
     if (!id) return '';
@@ -1143,6 +1175,14 @@ export function FacturasServicioPage() {
               )}
             </TableBody>
           </Table>
+        </div>
+        <div ref={loadMoreRef} className="flex justify-center py-2">
+          {isFetchingMore && (
+            <div className="flex items-center gap-2 text-gray-500">
+              <Loader2 className="h-5 w-5 animate-spin" />
+              <span>Cargando más...</span>
+            </div>
+          )}
         </div>
       </Card>
     </div>

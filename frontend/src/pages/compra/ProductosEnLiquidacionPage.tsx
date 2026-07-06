@@ -1,6 +1,5 @@
-import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { useQueryClient } from '@tanstack/react-query';
 import { Button, Input, Label, Card, CardHeader, CardTitle, CardContent, Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../../components/ui';
 import { productosEnLiquidacionService, productosService, monedaService } from '../../services/api';
 import type { ProductosEnLiquidacion, ProductosEnLiquidacionCreate } from '../../services/api';
@@ -15,7 +14,6 @@ type View = 'list' | 'form';
 type FilterType = 'all' | 'pendientes' | 'liquidadas';
 
 export function ProductosEnLiquidacionPage() {
-  const queryClient = useQueryClient();
   const [view, setView] = useState<View>('list');
   const [filterType, setFilterType] = useState<FilterType>('pendientes');
   const [allProductos, setAllProductos] = useState<Productos[]>([]);
@@ -234,7 +232,7 @@ export function ProductosEnLiquidacionPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {loading ? (
+              {isLoading ? (
                 <TableRow>
                   <TableCell colSpan={7} className="text-center py-8">
                     <div className="flex justify-center">
@@ -303,6 +301,15 @@ export function ProductosEnLiquidacionPage() {
               )}
             </TableBody>
           </Table>
+        </div>
+        {/* Sentinel para scroll infinito */}
+        <div ref={loadMoreRef} className="flex justify-center py-2">
+          {isFetchingMore && (
+            <div className="flex items-center gap-2 text-gray-500">
+              <Loader2 className="h-5 w-5 animate-spin" />
+              <span>Cargando más...</span>
+            </div>
+          )}
         </div>
       </Card>
     </div>

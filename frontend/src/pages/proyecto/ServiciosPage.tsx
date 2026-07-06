@@ -1,12 +1,13 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Button, Input, Label, Card, CardContent, CardHeader, CardTitle, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, ConfirmModal } from '../../components/ui';
 import { serviciosProyectoService, monedaService } from '../../services/api';
 import type { Servicio, ServicioCreate, ServicioUpdate } from '../../types/servicio';
 import type { Moneda } from '../../types/moneda';
-import { Plus, Save, Trash2, Edit, ArrowLeft, Search, Wrench, DollarSign, Tag, X } from 'lucide-react';
+import { Plus, Save, Trash2, Edit, ArrowLeft, Search, Wrench, DollarSign, Tag, X, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useInfiniteList } from '../../hooks/useInfiniteList';
 
 type View = 'list' | 'form';
 
@@ -16,7 +17,6 @@ export function ServiciosPage() {
   const servicioParam = searchParams.get('servicio');
   const [view, setView] = useState<View>('list');
 
-  const [servicios, setServicios] = useState<Servicio[]>([]);
   const [monedas, setMonedas] = useState<Moneda[]>([]);
 
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -37,6 +37,34 @@ export function ServiciosPage() {
     type: 'danger'
   });
 
+  const loadMoreRef = useRef<HTMLDivElement>(null);
+
+  const {
+    items: servicios,
+    isLoading,
+    isFetchingMore,
+    refresh,
+    hasMore,
+    loadMore,
+  } = useInfiniteList<Servicio>({
+    queryKeyBase: 'servicios-proyecto',
+    queryFn: (skip, limit) => serviciosProyectoService.getServicios(skip, limit),
+  });
+
+  useEffect(() => {
+    if (!hasMore || isFetchingMore) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore) {
+          loadMore();
+        }
+      },
+      { threshold: 0.1 },
+    );
+    if (loadMoreRef.current) observer.observe(loadMoreRef.current);
+    return () => observer.disconnect();
+  }, [hasMore, isFetchingMore, loadMore]);
+
   useEffect(() => { loadInitialData(); }, []);
 
   const loadInitialData = async () => {
@@ -45,20 +73,6 @@ export function ServiciosPage() {
       setMonedas(monedasRes);
     } catch (error) { console.error('Error:', error); }
   };
-
-  const loadServicios = async () => {
-    try { 
-      const data = await serviciosProyectoService.getServicios(); 
-      if (servicioParam) {
-        setServicios(data.filter(s => s.id_servicio === Number(servicioParam)));
-      } else {
-        setServicios(data);
-      }
-    }
-    catch (error) { console.error('Error:', error); }
-  };
-
-  useEffect(() => { if (view === 'list') loadServicios(); }, [view]);
 
   const handleSave = async () => {
     try {
@@ -85,7 +99,7 @@ export function ServiciosPage() {
       toast.success(editingId ? 'Actualizado' : 'Creado');
       setView('list');
       resetForm();
-      loadServicios();
+      refresh();
     } catch (error: any) { toast.error(error.message || 'Error'); }
   };
 
@@ -98,7 +112,7 @@ export function ServiciosPage() {
         try {
           await serviciosProyectoService.deleteServicio(id);
           toast.success('Eliminado');
-          loadServicios();
+          refresh();
         } catch (error: any) { toast.error(error.message || 'Error'); }
       },
       type: 'danger'
@@ -123,12 +137,16 @@ export function ServiciosPage() {
   };
 
   const filteredServicios = useMemo(() => {
-    if (!searchTerm) return servicios;
-    return servicios.filter(s =>
+    let result = servicios;
+    if (servicioParam) {
+      result = result.filter(s => s.id_servicio === Number(servicioParam));
+    }
+    if (!searchTerm) return result;
+    return result.filter(s =>
       s.concepto?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       s.codigo_servicio?.toLowerCase().includes(searchTerm.toLowerCase())
     );
-  }, [servicios, searchTerm]);
+  }, [servicios, searchTerm, servicioParam]);
 
   const getMonedaNombre = (id?: number) => {
     if (!id) return 'N/A';
@@ -154,6 +172,7 @@ export function ServiciosPage() {
                 ? `Gestión de servicios (${servicios.length} items)`
                 : `Mostrando ${filteredServicios.length} de ${servicios.length} servicios`
               }
+              {isFetchingMore && <Loader2 className="h-4 w-4 animate-spin inline ml-2" />}
             </p>
           </div>
         </div>
@@ -257,6 +276,14 @@ export function ServiciosPage() {
               )}
             </TableBody>
           </Table>
+        </div>
+        <div ref={loadMoreRef} className="flex justify-center py-2">
+          {isFetchingMore && (
+            <div className="flex items-center gap-2 text-gray-500">
+              <Loader2 className="h-5 w-5 animate-spin" />
+              <span>Cargando más...</span>
+            </div>
+          )}
         </div>
       </Card>
     </div>

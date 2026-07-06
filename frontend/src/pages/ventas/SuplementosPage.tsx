@@ -138,7 +138,7 @@ export function SuplementosPage() {
         try {
           await suplementosService.deleteSuplemento(id);
           toast.success('Eliminado');
-          loadSuplementos();
+          refresh();
         } catch (error: any) { toast.error(error.message || 'Error'); }
       },
       type: 'danger'
@@ -234,10 +234,25 @@ export function SuplementosPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {suplementos.length === 0 ? (
+                {isLoading ? (
                   <TableRow>
                     <TableCell colSpan={6} className="text-center py-12 text-gray-500">
-                      No hay suplementos
+                      <div className="flex flex-col items-center gap-2">
+                        <div className="h-5 w-5 border-2 border-teal-500 border-t-transparent rounded-full animate-spin" />
+                        Cargando suplementos...
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ) : isError ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center py-12 text-red-500">
+                      Error al cargar suplementos: {(error as Error)?.message || 'Error desconocido'}
+                    </TableCell>
+                  </TableRow>
+                ) : filteredSuplementos.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center py-12 text-gray-500">
+                      {searchTerm ? 'No se encontraron suplementos que coincidan con la búsqueda' : 'No hay suplementos'}
                     </TableCell>
                   </TableRow>
                 ) : (
@@ -282,6 +297,21 @@ export function SuplementosPage() {
               </TableBody>
             </Table>
           </div>
+          {/* Sentinel para infinite scroll */}
+          {!isLoading && filteredSuplementos.length > 0 && (
+            <div ref={loadMoreRef} className="flex justify-center py-3 border-t border-gray-100">
+              {isFetchingMore ? (
+                <span className="text-sm text-teal-600 flex items-center gap-2">
+                  <div className="h-4 w-4 border-2 border-teal-500 border-t-transparent rounded-full animate-spin" />
+                  Cargando más...
+                </span>
+              ) : hasMore ? (
+                <span className="text-sm text-gray-400">Desplázate para cargar más</span>
+              ) : (
+                <span className="text-sm text-gray-400">— Fin de los resultados —</span>
+              )}
+            </div>
+          )}
         </Card>
     </div>
   );
