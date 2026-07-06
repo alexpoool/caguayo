@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { Button, Input, Label, Card, CardContent, CardHeader, CardTitle, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, ConfirmModal } from '../../components/ui';
 import { suplementosService, contratosService, configuracionService } from '../../services/api';
+import { useInfiniteList } from '../../hooks/useInfiniteList';
 import type { ContratoWithDetails } from '../../types/contrato';
 import type { SuplementoWithDetails } from '../../types/contrato';
 import { Plus, Save, Trash2, Edit, ArrowLeft, Search, Layers, FileText, DollarSign, Calendar, Tag, X } from 'lucide-react';
@@ -17,7 +18,6 @@ export function SuplementosPage() {
 
   const [view, setView] = useState<View>('list');
   
-  const [suplementos, setSuplementos] = useState<SuplementoWithDetails[]>([]);
   const [contratos, setContratos] = useState<ContratoWithDetails[]>([]);
   const [estados, setEstados] = useState<{id_estado_contrato: number, nombre: string}[]>([]);
   
@@ -25,6 +25,7 @@ export function SuplementosPage() {
   const [selectedContratoId, setSelectedContratoId] = useState<number | null>(initialContratoId ? Number(initialContratoId) : null);
   const [formData, setFormData] = useState<Record<string, any>>({});
   const [searchTerm, setSearchTerm] = useState('');
+  const loadMoreRef = useRef<HTMLDivElement | null>(null);
   const [detailModal, setDetailModal] = useState<{ isOpen: boolean; item: SuplementoWithDetails | null }>({ isOpen: false, item: null });
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
@@ -40,6 +41,46 @@ export function SuplementosPage() {
     type: 'danger'
   });
 
+  // ── Infinite scroll ──────────────────────────────────────────────────────
+
+  const {
+    items: suplementos,
+    isLoading,
+    isFetchingMore,
+    isError,
+    error,
+    hasMore,
+    loadMore,
+    refresh,
+    reset,
+  } = useInfiniteList<SuplementoWithDetails>({
+    queryKeyBase: 'suplementos',
+    queryFn: (skip, limit) =>
+      initialContratoId
+        ? suplementosService.getSuplementosByContrato(Number(initialContratoId), skip, limit)
+        : suplementosService.getSuplementos(skip, limit),
+    extraQueryKeyParams: [initialContratoId],
+    limit: 100,
+  });
+
+  // IntersectionObserver para infinite scroll
+  useEffect(() => {
+    const sentinel = loadMoreRef.current;
+    if (!sentinel) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore && !isFetchingMore) {
+          loadMore();
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [hasMore, isFetchingMore, loadMore]);
+
   useEffect(() => { loadInitialData(); }, []);
 
   const loadInitialData = async () => {
@@ -53,28 +94,14 @@ export function SuplementosPage() {
     } catch (error) { console.error('Error:', error); }
   };
 
-  const loadSuplementos = async () => {
-    try {
-      if (initialContratoId) {
-        const data = await suplementosService.getSuplementosByContrato(Number(initialContratoId));
-        setSuplementos(data);
-      } else {
-        const data = await suplementosService.getSuplementos();
-        setSuplementos(data);
-      }
-    } catch (error) { console.error('Error:', error); }
-  };
-
-  useEffect(() => { 
-    if (view === 'list') loadSuplementos(); 
-  }, [view, initialContratoId]);
-
-  const filteredSuplementos = suplementos.filter(s => {
-    if (!searchTerm) return true;
+  const filteredSuplementos = useMemo(() => {
+    if (!searchTerm) return suplementos;
     const term = searchTerm.toLowerCase();
-    return s.codigo?.toLowerCase().includes(term) || 
-           s.nombre?.toLowerCase().includes(term);
-  });
+    return suplementos.filter(s =>
+      s.codigo?.toLowerCase().includes(term) ||
+      s.nombre?.toLowerCase().includes(term)
+    );
+  }, [suplementos, searchTerm]);
 
   const handleSave = async () => {
     if (!selectedContratoId) {
@@ -98,7 +125,7 @@ export function SuplementosPage() {
       toast.success(editingId ? 'Actualizado' : 'Creado');
       setView('list');
       resetForm();
-      loadSuplementos();
+      refresh();
     } catch (error: any) { toast.error(error.message || 'Error'); }
   };
 

@@ -1,7 +1,8 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Button, Input, Label, Card, CardContent, CardHeader, CardTitle, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, ConfirmModal } from '../../components/ui';
 import { contratosService, clientesService, monedaService, solicitudesService, configuracionService } from '../../services/api';
+import { useInfiniteList } from '../../hooks/useInfiniteList';
 import type { Cliente } from '../../types/ventas';
 import type { Moneda } from '../../types/moneda';
 import type { ContratoWithDetails, ContratoCreate } from '../../types/contrato';
@@ -18,7 +19,6 @@ export function ContratosPage() {
   const solicitudParam = searchParams.get('solicitud');
   const [view, setView] = useState<View>(searchParams.get('solicitud') ? 'form' : 'list');
   
-  const [contratos, setContratos] = useState<ContratoWithDetails[]>([]);
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [monedas, setMonedas] = useState<Moneda[]>([]);
   const [tiposContrato, setTiposContrato] = useState<{id_tipo_contrato: number, nombre: string}[]>([]);
@@ -28,6 +28,48 @@ export function ContratosPage() {
   const [formData, setFormData] = useState<Record<string, any>>({});
   const [searchTerm, setSearchTerm] = useState('');
   const [filtroCliente, setFiltroCliente] = useState<number | null>(initialClienteId ? Number(initialClienteId) : null);
+  const loadMoreRef = useRef<HTMLDivElement | null>(null);
+
+  const {
+    items: contratos,
+    isLoading,
+    isFetchingMore,
+    isError,
+    error,
+    hasMore,
+    loadMore,
+    refresh,
+    reset,
+  } = useInfiniteList<ContratoWithDetails>({
+    queryKeyBase: 'contratos',
+    queryFn: (skip, limit) =>
+      contratosService.getContratos(skip, limit, filtroCliente || undefined),
+    extraQueryKeyParams: [filtroCliente],
+    limit: 100,
+  });
+
+  // Reiniciar scroll infinito cuando cambia el filtro de cliente
+  useEffect(() => {
+    reset();
+  }, [filtroCliente]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // IntersectionObserver para infinite scroll
+  useEffect(() => {
+    const sentinel = loadMoreRef.current;
+    if (!sentinel) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore && !isFetchingMore) {
+          loadMore();
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [hasMore, isFetchingMore, loadMore]);
   const [detailModal, setDetailModal] = useState<{ isOpen: boolean; item: ContratoWithDetails | null }>({ isOpen: false, item: null });
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
@@ -60,16 +102,6 @@ export function ContratosPage() {
     } catch (error) { console.error('Error:', error); }
   };
 
-  const loadContratos = async () => {
-    try { 
-      const data = await contratosService.getContratos(0, 10000, filtroCliente || undefined); 
-      setContratos(data); 
-    } 
-    catch (error) { console.error('Error:', error); }
-  };
-
-  useEffect(() => { if (view === 'list') loadContratos(); }, [view, filtroCliente]);
-
   const handleSave = async () => {
     try {
       const data: ContratoCreate = { 
@@ -100,7 +132,7 @@ export function ContratosPage() {
       }
       setView('list');
       resetForm();
-      loadContratos();
+      refresh();
     } catch (error: any) { toast.error(error.message || 'Error'); }
   };
 
@@ -113,7 +145,7 @@ export function ContratosPage() {
         try {
           await contratosService.deleteContrato(id);
           toast.success('Eliminado');
-          loadContratos();
+          refresh();
         } catch (error: any) { toast.error(error.message || 'Error'); }
       },
       type: 'danger'
@@ -228,9 +260,24 @@ export function ContratosPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredContratos.length === 0 ? (
+              {isLoading ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center py-12 text-gray-500">
+                  <TableCell colSpan={6} className="text-center py-12 text-gray-500">
+                    <div className="flex flex-col items-center gap-2">
+                      <div className="h-5 w-5 border-2 border-teal-500 border-t-transparent rounded-full animate-spin" />
+                      Cargando contratos...
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ) : isError ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="text-center py-12 text-red-500">
+                    Error al cargar contratos: {(error as Error)?.message || 'Error desconocido'}
+                  </TableCell>
+                </TableRow>
+              ) : filteredContratos.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="text-center py-12 text-gray-500">
                     {searchTerm ? 'No se encontraron contratos que coincidan con la búsqueda' : 'No hay contratos'}
                   </TableCell>
                 </TableRow>
@@ -302,6 +349,21 @@ export function ContratosPage() {
             </TableBody>
           </Table>
         </div>
+        {/* Sentinel para infinite scroll */}
+        {!isLoading && filteredContratos.length > 0 && (
+          <div ref={loadMoreRef} className="flex justify-center py-3 border-t border-gray-100">
+            {isFetchingMore ? (
+              <span className="text-sm text-teal-600 flex items-center gap-2">
+                <div className="h-4 w-4 border-2 border-teal-500 border-t-transparent rounded-full animate-spin" />
+                Cargando más...
+              </span>
+            ) : hasMore ? (
+              <span className="text-sm text-gray-400">Desplázate para cargar más</span>
+            ) : (
+              <span className="text-sm text-gray-400">— Fin de los resultados —</span>
+            )}
+          </div>
+        )}
       </Card>
     </div>
   );

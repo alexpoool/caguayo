@@ -1,35 +1,48 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { movimientosService } from '../services/api';
+import type { Movimiento } from '../types/index';
 import toast from 'react-hot-toast';
-import { useState } from 'react';
+import { useMemo } from 'react';
+import { useInfiniteList } from './useInfiniteList';
 
 export function useMovimientos(tipoFiltro?: 'todos') {
   const queryClient = useQueryClient();
-  const [searchTerm, setSearchTerm] = useState('');
 
-  const query = useQuery({
-    queryKey: ['movimientos', tipoFiltro, searchTerm],
-    queryFn: async () => {
-      const tipo = tipoFiltro && tipoFiltro !== 'todos' ? tipoFiltro : undefined;
-      
-      const movimientos = await movimientosService.getMovimientos(tipo);
-      
-      let filteredMovimientos = movimientos;
-      if (searchTerm) {
-        const term = searchTerm.toLowerCase();
-        filteredMovimientos = movimientos.filter((m: any) => 
-          m.producto?.nombre?.toLowerCase().includes(term) ||
-          m.tipo_movimiento?.tipo?.toLowerCase().includes(term) ||
-          m.dependencia?.nombre?.toLowerCase().includes(term)
-        );
-      }
-      
-      return [...filteredMovimientos].sort((a, b) => 
-        new Date(b.fecha).getTime() - new Date(a.fecha).getTime()
-      );
-    },
-    staleTime: 0,
+  const tipo = tipoFiltro && tipoFiltro !== 'todos' ? tipoFiltro : undefined;
+
+  const {
+    items,
+    isLoading,
+    isFetchingMore,
+    isError,
+    error,
+    hasMore,
+    loadMore,
+    searchTerm,
+    setSearch,
+    refresh,
+  } = useInfiniteList<Movimiento>({
+    queryKeyBase: 'movimientos',
+    queryFn: (skip, limit) => movimientosService.getMovimientos(skip, limit, tipo),
+    extraQueryKeyParams: [tipoFiltro],
+    limit: 100,
   });
+
+  // Client-side filtering and sorting (fallback while backend doesn't support search)
+  const movimientos = useMemo(() => {
+    let filtered = items;
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase();
+      filtered = items.filter((m: any) =>
+        m.producto?.nombre?.toLowerCase().includes(term) ||
+        m.tipo_movimiento?.tipo?.toLowerCase().includes(term) ||
+        m.dependencia?.nombre?.toLowerCase().includes(term)
+      );
+    }
+    return [...filtered].sort((a, b) =>
+      new Date(b.fecha).getTime() - new Date(a.fecha).getTime()
+    );
+  }, [items, searchTerm]);
 
   const deleteMutation = useMutation({
     mutationFn: movimientosService.deleteMovimiento,
@@ -43,20 +56,17 @@ export function useMovimientos(tipoFiltro?: 'todos') {
   });
 
   return {
-    movimientos: query.data || [],
-    totalMovimientos: query.data?.length || 0,
-    isLoading: query.isLoading,
-    isFetchingMore: query.isFetching,
-    isError: query.isError,
-    error: query.error,
-    hasMore: false,
-    loadMore: () => {},
+    movimientos,
+    isLoading,
+    isFetchingMore,
+    isError,
+    error,
+    hasMore,
+    loadMore,
     searchTerm,
-    setSearch: setSearchTerm,
+    setSearch,
     deleteMovimiento: deleteMutation.mutate,
-    refresh: () => {
-      queryClient.invalidateQueries({ queryKey: ['movimientos'] });
-    },
+    refresh,
     isDeleting: deleteMutation.isPending
   };
 }

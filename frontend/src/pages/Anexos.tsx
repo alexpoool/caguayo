@@ -1,5 +1,6 @@
-import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useState, useEffect, useRef } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { useInfiniteList } from "../hooks/useInfiniteList";
 import {
   anexosService,
   conveniosService,
@@ -16,6 +17,7 @@ import {
   ArrowLeft,
   Package,
   X,
+  Loader2,
 } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -64,7 +66,6 @@ import {
 } from "../components/ui";
 
 export function AnexosPage() {
-  const queryClient = useQueryClient();
   const [view, setView] = useState<"list" | "form">("list");
   const [editingAnexo, setEditingAnexo] = useState<Anexo | null>(null);
   const [confirmModal, setConfirmModal] = useState<{
@@ -95,12 +96,40 @@ export function AnexosPage() {
     precios: [] as { id_moneda: number; precio_venta: number; precio_compra?: number }[],
   });
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
-  const [searchTerm, setSearchTerm] = useState("");
 
-  const { data: anexos = [], isLoading } = useQuery({
-    queryKey: ["anexos"],
-    queryFn: () => anexosService.getAnexos(),
+  // ── Lista infinita de anexos ───────────────────────────────────────────────
+  const {
+    items: anexos,
+    isLoading,
+    isFetchingMore,
+    hasMore,
+    loadMore,
+    searchTerm,
+    setSearch,
+    refresh,
+  } = useInfiniteList<Anexo>({
+    queryKeyBase: "anexos",
+    queryFn: (skip, limit, search) =>
+      anexosService.getAnexos(undefined, search || undefined, skip, limit),
+    limit: 100,
   });
+
+  // ── Scroll infinito ────────────────────────────────────────────────────────
+  const loadMoreRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!hasMore || isFetchingMore) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore) {
+          loadMore();
+        }
+      },
+      { threshold: 0.1 },
+    );
+    if (loadMoreRef.current) observer.observe(loadMoreRef.current);
+    return () => observer.disconnect();
+  }, [hasMore, isFetchingMore, loadMore]);
 
   const { data: convenios = [] } = useQuery({
     queryKey: ["convenios"],

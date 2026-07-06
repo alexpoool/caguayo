@@ -1,7 +1,8 @@
-import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useState, useEffect, useRef } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { monedaService } from "../services/api";
 import type { Moneda, MonedaCreate, MonedaUpdate } from "../types/moneda";
+import { useInfiniteList } from "../hooks/useInfiniteList";
 import {
   Plus,
   Edit,
@@ -17,6 +18,7 @@ import {
   Sparkles,
   AlertCircle,
   Wallet,
+  Loader2,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import {
@@ -62,16 +64,39 @@ export function MonedasPage() {
   });
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
-  // Queries
+  // Infinite list
   const {
-    data: monedas = [],
+    items: monedas,
     isLoading,
+    isFetchingMore,
     isError,
     error,
-  } = useQuery({
-    queryKey: ["monedas"],
-    queryFn: () => monedaService.getMonedas(),
+    hasMore,
+    loadMore,
+    searchTerm,
+    setSearch,
+    refresh,
+  } = useInfiniteList<Moneda>({
+    queryKeyBase: 'monedas',
+    queryFn: (skip, limit) => monedaService.getMonedas(skip, limit),
   });
+
+  // Scroll infinito
+  const loadMoreRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!hasMore || isFetchingMore) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore) {
+          loadMore();
+        }
+      },
+      { threshold: 0.1 },
+    );
+    if (loadMoreRef.current) observer.observe(loadMoreRef.current);
+    return () => observer.disconnect();
+  }, [hasMore, isFetchingMore, loadMore]);
 
   // Mutations
   const createMutation = useMutation({
@@ -375,9 +400,7 @@ export function MonedasPage() {
             {error instanceof Error ? error.message : "Error desconocido"}
           </p>
           <Button
-            onClick={() =>
-              queryClient.invalidateQueries({ queryKey: ["monedas"] })
-            }
+            onClick={refresh}
             className="gap-2 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white"
           >
             <RefreshCw className="h-4 w-4" />
@@ -518,6 +541,15 @@ export function MonedasPage() {
               )}
             </TableBody>
           </Table>
+        </div>
+        {/* Elemento para scroll infinito */}
+        <div ref={loadMoreRef} className="flex justify-center py-2">
+          {isFetchingMore && (
+            <div className="flex items-center gap-2 text-gray-500">
+              <Loader2 className="h-5 w-5 animate-spin" />
+              <span>Cargando más...</span>
+            </div>
+          )}
         </div>
       </Card>
 

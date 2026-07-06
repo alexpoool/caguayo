@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -23,7 +23,8 @@ import {
   X,
   Printer,
   Receipt,
-  Package
+  Package,
+  Loader2
 } from 'lucide-react';
 import { 
   liquidacionService, 
@@ -40,6 +41,7 @@ import { Decimal } from 'decimal.js';
 import { mul, add, sub, percentToMultiplier, toNumber, toFixed } from '../../utils/decimal';
 import { escapeHtml } from '../../utils/sanitize';
 import { DEFAULTS } from '../../config/defaults';
+import { useInfiniteList } from '../../hooks/useInfiniteList';
 
 type TabType = 'todas' | 'pendientes' | 'liquidadas';
 
@@ -53,7 +55,6 @@ export function LiquidacionesPage() {
   const [showModal, setShowModal] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [selectedLiquidacion, setSelectedLiquidacion] = useState<Liquidacion | null>(null);
-  const [searchTerm, setSearchTerm] = useState('');
   const [detailModal, setDetailModal] = useState<{ isOpen: boolean; item: Liquidacion | null }>({ isOpen: false, item: null });
   const [printModal, setPrintModal] = useState<{ isOpen: boolean; liquidacion: Liquidacion | null; autorizado_por: string; cargo_autorizado: string; revisado_por: string }>({ isOpen: false, liquidacion: null, autorizado_por: '', cargo_autorizado: '', revisado_por: '' });
   const [approveModal, setApproveModal] = useState<{ isOpen: boolean; id_liquidacion: number | null }>({ isOpen: false, id_liquidacion: null });
@@ -96,20 +97,54 @@ export function LiquidacionesPage() {
     return null;
   };
 
-  const { data: liquidaciones = [], isLoading } = useQuery({
-    queryKey: ['liquidaciones', activeTab, filtroCliente],
-    queryFn: async () => {
-      if (filtroCliente) {
-        return liquidacionService.getLiquidacionesByCliente(filtroCliente);
-      }
+  const {
+    items: liquidaciones,
+    isLoading,
+    isFetchingMore,
+    hasMore,
+    loadMore,
+    searchTerm,
+    setSearch,
+    refresh,
+    reset,
+  } = useInfiniteList<Liquidacion>({
+    queryKeyBase: 'liquidaciones',
+    queryFn: (skip, limit) => {
       if (activeTab === 'pendientes') {
-        return liquidacionService.getLiquidacionesPendientes();
+        return liquidacionService.getLiquidacionesPendientes(skip, limit);
       } else if (activeTab === 'liquidadas') {
-        return liquidacionService.getLiquidacionesLiquidadas();
+        return liquidacionService.getLiquidacionesLiquidadas(skip, limit);
       }
-      return liquidacionService.getLiquidaciones();
-    }
+      return liquidacionService.getLiquidaciones(skip, limit);
+    },
+    extraQueryKeyParams: [activeTab],
+    limit: 100,
   });
+
+  // Resetear paginación al cambiar de tab
+  useEffect(() => {
+    reset();
+  }, [activeTab]);
+
+  // IntersectionObserver para scroll infinito
+  const loadMoreRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const el = loadMoreRef.current;
+    if (!el) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          loadMore();
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [loadMore]);
 
   const { data: clientes = [] } = useQuery({
     queryKey: ['clientes-proveedores'],
@@ -145,7 +180,7 @@ export function LiquidacionesPage() {
   const createMutation = useMutation({
     mutationFn: (data: LiquidacionCreate) => liquidacionService.createLiquidacion(data),
     onSuccess: () => {
-      queryClient.refetchQueries({ queryKey: ['liquidaciones'] });
+      refresh();
       queryClient.refetchQueries({ queryKey: ['productos-pendientes'] });
       toast.success('Liquidación creada correctamente');
       setShowModal(false);
@@ -159,7 +194,7 @@ export function LiquidacionesPage() {
   const deleteMutation = useMutation({
     mutationFn: (id: number) => liquidacionService.deleteLiquidacion(id),
     onSuccess: () => {
-      queryClient.refetchQueries({ queryKey: ['liquidaciones'] });
+      refresh();
       toast.success('Liquidación eliminada');
     },
     onError: () => {
@@ -290,6 +325,7 @@ export function LiquidacionesPage() {
   };
 
   const filteredLiquidaciones = liquidaciones.filter((l: Liquidacion) => {
+    if (filtroCliente && l.id_cliente !== filtroCliente) return false;
     if (!searchTerm) return true;
     const search = searchTerm.toLowerCase();
     return l.codigo?.toLowerCase().includes(search) || 
@@ -635,7 +671,7 @@ export function LiquidacionesPage() {
           <Input
             placeholder="Buscar liquidaciones..."
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={(e) => setSearch(e.target.value)}
             className="pl-10"
           />
         </div>
@@ -752,6 +788,13 @@ export function LiquidacionesPage() {
           </Table>
         </div>
       </Card>
+
+      {/* Sentinel para scroll infinito */}
+      {hasMore && (
+        <div ref={loadMoreRef} className="flex justify-center py-4">
+          <Loader2 className="h-6 w-6 animate-spin text-teal-500" />
+        </div>
+      )}
 
       {showModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -1374,7 +1417,7 @@ export function LiquidacionesPage() {
                     liquidacionService.aprobarLiquidacion(approveModal.id_liquidacion)
                       .then(() => {
                         toast.success('Liquidación aprobada correctamente');
-                        queryClient.invalidateQueries({ queryKey: ['liquidaciones'] });
+                        refresh();
                       })
                       .catch((error: any) => toast.error(error.message || 'Error al aprobar liquidación'))
                       .finally(() => setApproveModal({ isOpen: false, id_liquidacion: null }));

@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
 import { facturasService, existenciaService } from '../../../../services/api';
 import type { FacturaWithDetails } from '../../../../types/contrato';
+import { useInfiniteList } from '../../../../hooks/useInfiniteList';
 import { prepararFacturaParaAPI, validarFactura } from '../utils/facturasUtils';
 
 export function useFacturas(initialContratoId?: string | null) {
-  const [facturas, setFacturas] = useState<FacturaWithDetails[]>([]);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [selectedContratoId, setSelectedContratoId] = useState<number | null>(
     initialContratoId ? Number(initialContratoId) : null
@@ -12,22 +12,28 @@ export function useFacturas(initialContratoId?: string | null) {
   const [formData, setFormData] = useState<Record<string, any>>({});
 
   /**
-   * Carga facturas según el contrato seleccionado
+   * Lista infinita de facturas según el contrato seleccionado
    */
-  const loadFacturas = async () => {
-    try {
+  const infinite = useInfiniteList<FacturaWithDetails>({
+    queryKeyBase: 'facturas',
+    queryFn: async (skip: number, limit: number) => {
       if (selectedContratoId) {
-        const data = await facturasService.getFacturasByContrato(selectedContratoId);
-        setFacturas(data);
-      } else {
-        const data = await facturasService.getFacturas();
-        setFacturas(data);
+        // getFacturasByContrato no soporta paginación; se obtienen todas de una vez
+        return facturasService.getFacturasByContrato(selectedContratoId);
       }
-    } catch (error) {
-      console.error('Error loading facturas:', error);
-      setFacturas([]);
-    }
-  };
+      return facturasService.getFacturas(skip, limit);
+    },
+    extraQueryKeyParams: [selectedContratoId],
+    limit: 100,
+  });
+
+  /**
+   * Resetea la lista cuando cambia el filtro de contrato
+   */
+  useEffect(() => {
+    infinite.reset();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedContratoId]);
 
   /**
    * Guarda una factura (crear o actualizar)
@@ -65,7 +71,7 @@ export function useFacturas(initialContratoId?: string | null) {
         await facturasService.createFactura(data);
       }
       
-      await loadFacturas();
+      infinite.refresh();
       resetForm();
       return { success: true, message: editingId ? 'Actualizado' : 'Creado' };
     } catch (error: any) {
@@ -98,7 +104,7 @@ export function useFacturas(initialContratoId?: string | null) {
   const handleDelete = async (id: number) => {
     try {
       await facturasService.deleteFactura(id);
-      await loadFacturas();
+      infinite.refresh();
       return { success: true, message: 'Eliminado' };
     } catch (error: any) {
       return { success: false, message: error.message || 'Error al eliminar factura' };
@@ -114,15 +120,20 @@ export function useFacturas(initialContratoId?: string | null) {
   };
 
   return {
-    facturas,
-    setFacturas,
+    facturas: infinite.items,
+    isLoading: infinite.isLoading,
+    isError: infinite.isError,
+    error: infinite.error,
+    hasMore: infinite.hasMore,
+    loadMore: infinite.loadMore,
+    isFetchingMore: infinite.isFetchingMore,
+    refresh: infinite.refresh,
     editingId,
     setEditingId,
     selectedContratoId,
     setSelectedContratoId,
     formData,
     setFormData,
-    loadFacturas,
     handleSave,
     handleDelete,
     openForm,

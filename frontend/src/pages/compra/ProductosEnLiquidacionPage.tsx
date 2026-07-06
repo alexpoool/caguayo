@@ -1,11 +1,13 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { Button, Input, Label, Card, CardHeader, CardTitle, CardContent, Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../../components/ui';
 import { productosEnLiquidacionService, productosService, monedaService } from '../../services/api';
 import type { ProductosEnLiquidacion, ProductosEnLiquidacionCreate } from '../../services/api';
 import type { Productos } from '../../types';
 import type { Moneda } from '../../types/moneda';
-import { Plus, Save, Trash2, Edit, X, ArrowLeft, Search, Check, Package, Tag, DollarSign, ClipboardList, Eye, Boxes } from 'lucide-react';
+import { useInfiniteList } from '../../hooks/useInfiniteList';
+import { Plus, Save, Trash2, Edit, X, ArrowLeft, Search, Check, Package, Tag, DollarSign, ClipboardList, Eye, Boxes, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { esNumeroPositivo, esPorcentaje } from '../../utils/validacionFormularios';
 
@@ -13,49 +15,74 @@ type View = 'list' | 'form';
 type FilterType = 'all' | 'pendientes' | 'liquidadas';
 
 export function ProductosEnLiquidacionPage() {
+  const queryClient = useQueryClient();
   const [view, setView] = useState<View>('list');
   const [filterType, setFilterType] = useState<FilterType>('pendientes');
-  const [productos, setProductos] = useState<ProductosEnLiquidacion[]>([]);
   const [allProductos, setAllProductos] = useState<Productos[]>([]);
   const [monedas, setMonedas] = useState<Moneda[]>([]);
-  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [detailModal, setDetailModal] = useState<{ isOpen: boolean; item: ProductosEnLiquidacion | null }>({ isOpen: false, item: null });
-  
+
   const [editingId, setEditingId] = useState<number | null>(null);
   const [formData, setFormData] = useState<Partial<ProductosEnLiquidacionCreate>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  useEffect(() => { loadInitialData(); }, []);
+  // ── Infinite list ──────────────────────────────────────────────────────────
 
-  const loadInitialData = async () => {
-    try {
-      const [prods, mons] = await Promise.all([
-        productosService.getProductos(0, 1000),
-        monedaService.getMonedas(0, 100)
-      ]);
-      setAllProductos(prods);
-      setMonedas(mons);
-    } catch (error) { console.error('Error en operación:', error instanceof Error ? error.message : 'Error desconocido'); }
-  };
-
-  const loadProductos = async () => {
-    setLoading(true);
-    try {
-      let data: ProductosEnLiquidacion[];
+  const {
+    items: productos,
+    isLoading,
+    isFetchingMore,
+    hasMore,
+    loadMore,
+    refresh,
+    reset,
+  } = useInfiniteList<ProductosEnLiquidacion>({
+    queryKeyBase: 'productos-liquidacion',
+    queryFn: (skip, limit) => {
       if (filterType === 'pendientes') {
-        data = await productosEnLiquidacionService.getProductosEnLiquidacionPendientes();
+        return productosEnLiquidacionService.getProductosEnLiquidacionPendientes(skip, limit);
       } else if (filterType === 'liquidadas') {
-        data = await productosEnLiquidacionService.getProductosEnLiquidacionLiquidadas();
-      } else {
-        data = await productosEnLiquidacionService.getProductosEnLiquidacion();
+        return productosEnLiquidacionService.getProductosEnLiquidacionLiquidadas(skip, limit);
       }
-      setProductos(data);
-    } catch (error) { console.error('Error en operación:', error instanceof Error ? error.message : 'Error desconocido'); }
-    finally { setLoading(false); }
-  };
+      return productosEnLiquidacionService.getProductosEnLiquidacion(skip, limit);
+    },
+    extraQueryKeyParams: [filterType],
+    limit: 100,
+  });
 
-  useEffect(() => { if (view === 'list') loadProductos(); }, [view, filterType]);
+  // Reset al cambiar de pestaña
+  useEffect(() => { reset(); }, [filterType]);
+
+  // IntersectionObserver para scroll infinito
+  const loadMoreRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const el = loadMoreRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting) loadMore(); },
+      { threshold: 0.1 },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [loadMore]);
+
+  // ── Referencia de datos (productos para select, monedas) ─────────────────
+
+  useEffect(() => {
+    const loadInitialData = async () => {
+      try {
+        const [prods, mons] = await Promise.all([
+          productosService.getProductos(0, 1000),
+          monedaService.getMonedas(0, 100)
+        ]);
+        setAllProductos(prods);
+        setMonedas(mons);
+      } catch (error) { console.error('Error en operación:', error instanceof Error ? error.message : 'Error desconocido'); }
+    };
+    loadInitialData();
+  }, []);
 
   const handleSave = async () => {
     const newErrors: Record<string, string> = {};
@@ -76,7 +103,7 @@ export function ProductosEnLiquidacionPage() {
       toast.success(editingId ? 'Actualizado' : 'Creado');
       setView('list');
       resetForm();
-      loadProductos();
+      refresh();
     } catch (error: any) { toast.error(error.message || 'Error'); }
   };
 
@@ -85,7 +112,7 @@ export function ProductosEnLiquidacionPage() {
     try {
       await productosEnLiquidacionService.deleteProducto(id);
       toast.success('Eliminado');
-      loadProductos();
+      refresh();
     } catch (error: any) { toast.error(error.message || 'Error'); }
   };
 

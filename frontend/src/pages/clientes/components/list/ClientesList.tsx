@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, RefObject } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import {
@@ -10,6 +10,7 @@ import {
   Edit,
   Trash2,
   X,
+  Loader2,
 } from "lucide-react";
 import {
   Button,
@@ -34,6 +35,8 @@ export interface ClientesListProps {
   handleEdit: (cliente: Cliente) => void;
   handleDelete: (cliente: Cliente) => void;
   handleViewDetails: (cliente: Cliente) => void;
+  loadMoreRef?: RefObject<HTMLDivElement>;
+  isFetchingMore?: boolean;
 }
 
 export function ClientesList({
@@ -46,6 +49,8 @@ export function ClientesList({
   handleEdit,
   handleDelete,
   handleViewDetails,
+  loadMoreRef,
+  isFetchingMore,
 }: ClientesListProps) {
   const navigate = useNavigate();
   const [detailModal, setDetailModal] = useState<{
@@ -249,6 +254,17 @@ export function ClientesList({
             </TableBody>
           </Table>
         </div>
+        {/* Elemento para scroll infinito */}
+        {loadMoreRef && (
+          <div ref={loadMoreRef} className="flex justify-center py-2">
+            {isFetchingMore && (
+              <div className="flex items-center gap-2 text-gray-500">
+                <Loader2 className="h-5 w-5 animate-spin" />
+                <span>Cargando más clientes...</span>
+              </div>
+            )}
+          </div>
+        )}
       </Card>
 
       {detailModal.isOpen &&

@@ -1,4 +1,4 @@
-import React from "react";
+import { useEffect, useRef } from "react";
 import { useClientesLogic } from "./clientes/hooks/useClientesLogic";
 import { ClienteForm } from "./clientes/components/form/ClienteForm";
 import { ClienteDetailView } from "./clientes/components/modals/ClienteDetailView";
@@ -42,8 +42,33 @@ export function ClientesPage() {
     handleEdit,
     handleDelete,
     filteredClientes,
+    hasMore,
+    loadMore,
+    isFetchingMore,
     navigate,
   } = useClientesLogic();
+
+  const loadMoreRef = useRef<HTMLDivElement>(null);
+
+  // Scroll infinito con IntersectionObserver
+  useEffect(() => {
+    if (!hasMore || isFetchingMore) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore) {
+          loadMore();
+        }
+      },
+      { threshold: 0.1 },
+    );
+
+    if (loadMoreRef.current) {
+      observer.observe(loadMoreRef.current);
+    }
+
+    return () => observer.disconnect();
+  }, [hasMore, isFetchingMore, loadMore]);
 
   const resetForm = () => {
     setEditingCliente(null);
@@ -58,20 +83,22 @@ export function ClientesPage() {
     <div className="flex-1 w-full bg-gray-50/50">
       {/* List View */}
       {view === "list" && (
-        <ClientesList
-          filteredClientes={filteredClientes}
-          totalClientes={clientes.length}
-          searchTerm={searchTerm}
-          setSearchTerm={setSearchTerm}
-          isProveedorView={isProveedorView}
-          onNew={() => {
-            resetForm();
-            setView("form");
-          }}
-          handleEdit={handleEdit}
-          handleDelete={handleDelete}
-          handleViewDetails={handleViewDetails}
-        />
+          <ClientesList
+            filteredClientes={filteredClientes}
+            totalClientes={clientes.length}
+            searchTerm={searchTerm}
+            setSearchTerm={setSearchTerm}
+            isProveedorView={isProveedorView}
+            onNew={() => {
+              resetForm();
+              setView("form");
+            }}
+            handleEdit={handleEdit}
+            handleDelete={handleDelete}
+            handleViewDetails={handleViewDetails}
+            loadMoreRef={loadMoreRef}
+            isFetchingMore={isFetchingMore}
+          />
       )}
 
       {/* Form View */}

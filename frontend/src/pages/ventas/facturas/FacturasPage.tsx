@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import { createPortal } from "react-dom";
 import { useSearchParams } from "react-router-dom";
 import {
@@ -331,6 +331,28 @@ export function FacturasPage() {
   }, [stockData]);
 
   /**
+   * Infinite scroll: sentinel ref + IntersectionObserver
+   */
+  const loadMoreRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const sentinel = loadMoreRef.current;
+    if (!sentinel) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && facturasHook.hasMore && !facturasHook.isFetchingMore) {
+          facturasHook.loadMore();
+        }
+      },
+      { threshold: 0.1 },
+    );
+
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [facturasHook.hasMore, facturasHook.isFetchingMore, facturasHook.loadMore]);
+
+  /**
    * Cargar datos iniciales (contratos, productos, monedas, dependencias)
    */
   const loadItemsDisponibles = async (contratoId: number | null) => {
@@ -395,10 +417,6 @@ export function FacturasPage() {
       setItemsDisponibles([]);
     }
   }, [facturasHook.selectedContratoId, contratos]);
-
-  useEffect(() => {
-    facturasHook.loadFacturas();
-  }, [view, facturasHook.selectedContratoId]);
 
   /**
    * Obtener productos filtrados según búsqueda
@@ -474,7 +492,7 @@ export function FacturasPage() {
     );
     if (result.success) {
       toast.success(result.message);
-      facturasHook.loadFacturas();
+      facturasHook.refresh();
     } else {
       toast.error(result.message);
     }
@@ -491,7 +509,7 @@ export function FacturasPage() {
     );
     if (result.success) {
       toast.success(result.message);
-      facturasHook.loadFacturas();
+      facturasHook.refresh();
     } else {
       toast.error(result.message);
     }
@@ -687,6 +705,7 @@ export function FacturasPage() {
       <div className="p-6">
 <FacturasListView
           facturas={facturasHook.facturas}
+          isLoading={facturasHook.isLoading}
           contratos={contratos}
           selectedContratoId={facturasHook.selectedContratoId}
           onSelectedContratoChange={(id: number | null) =>
@@ -701,6 +720,8 @@ export function FacturasPage() {
           onOpenPagos={handleOpenPagoModal}
           onViewDocument={handleViewDocument}
           onPrintDocument={handlePrintDocument}
+          loadMoreRef={loadMoreRef}
+          isFetchingMore={facturasHook.isFetchingMore}
         />
 
         {/* Modales */}

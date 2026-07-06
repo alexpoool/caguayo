@@ -1,4 +1,4 @@
-import { Plus, Receipt } from 'lucide-react';
+import { Plus, Receipt, Loader2 } from 'lucide-react';
 import { Button } from '../../../../components/ui';
 import { FacturasTable } from './FacturasTable';
 import type { FacturaWithDetails } from '../../../../types/contrato';
@@ -6,6 +6,7 @@ import type { ContratoWithDetails } from '../../../../types/contrato';
 
 interface FacturasListViewProps {
   facturas: FacturaWithDetails[];
+  isLoading?: boolean;
   contratos: ContratoWithDetails[];
   selectedContratoId: number | null;
   onSelectedContratoChange: (id: number | null) => void;
@@ -16,10 +17,13 @@ interface FacturasListViewProps {
   onOpenPagos: (factura: FacturaWithDetails) => void;
   onViewDocument: (factura: FacturaWithDetails) => void;
   onPrintDocument: (factura: FacturaWithDetails) => void;
+  loadMoreRef: React.RefObject<HTMLDivElement>;
+  isFetchingMore: boolean;
 }
 
 export function FacturasListView({
   facturas,
+  isLoading = false,
   contratos,
   selectedContratoId,
   onSelectedContratoChange,
@@ -30,6 +34,8 @@ export function FacturasListView({
   onOpenPagos,
   onViewDocument,
   onPrintDocument,
+  loadMoreRef,
+  isFetchingMore,
 }: FacturasListViewProps) {
   console.log('[FacturasListView] Render:', {
     facturasCount: facturas.length,
@@ -104,16 +110,33 @@ export function FacturasListView({
         </div>
       </div>
 
-      {/* Tabla de facturas */}
-      <FacturasTable
-        facturas={facturas}
-        onEdit={onEdit}
-        onDelete={onDelete}
-        onViewDetails={onViewDetails}
-        onOpenPagos={onOpenPagos}
-        onViewDocument={onViewDocument}
-        onPrintDocument={onPrintDocument}
-      />
+      {/* Tabla de facturas o skeleton inicial */}
+      {isLoading && facturas.length === 0 ? (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="h-6 w-6 animate-spin text-teal-500" />
+          <span className="ml-3 text-sm text-gray-500">Cargando facturas...</span>
+        </div>
+      ) : (
+        <FacturasTable
+          facturas={facturas}
+          onEdit={onEdit}
+          onDelete={onDelete}
+          onViewDetails={onViewDetails}
+          onOpenPagos={onOpenPagos}
+          onViewDocument={onViewDocument}
+          onPrintDocument={onPrintDocument}
+        />
+      )}
+
+      {/* Sentinel para infinite scroll */}
+      <div
+        ref={loadMoreRef}
+        className="flex justify-center py-4"
+      >
+        {isFetchingMore && (
+          <Loader2 className="h-5 w-5 animate-spin text-teal-500" />
+        )}
+      </div>
     </div>
   );
 }

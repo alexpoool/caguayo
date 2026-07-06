@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { useInfiniteList } from "../../../hooks/useInfiniteList";
 import {
   clientesService,
   tiposEntidadService,
@@ -24,8 +25,9 @@ import toast from "react-hot-toast";
 
 type TipoPersona = "NATURAL" | "JURIDICA" | "TCP";
 
+const DEFAULT_LIMIT = 100;
+
 export function useClientesLogic() {
-  const queryClient = useQueryClient();
   const location = useLocation();
   const navigate = useNavigate();
   const [view, setView] = useState<"list" | "form" | "detail">("list");
@@ -65,13 +67,24 @@ export function useClientesLogic() {
     isOpen: false,
     cliente: null,
   });
-  const [searchTerm, setSearchTerm] = useState("");
 
-  // Queries - el backend filtra por tipo_relacion según la vista
+  // ── Lista infinita de clientes ────────────────────────────────────────────
   const tipoRelacionFilter = isProveedorView ? "PROVEEDOR,AMBAS" : "CLIENTE,AMBAS";
-  const { data: clientes = [] } = useQuery({
-    queryKey: ["clientes", isProveedorView],
-    queryFn: () => clientesService.getClientes(0, 10000, tipoRelacionFilter),
+
+  const {
+    items: clientes,
+    isFetchingMore,
+    hasMore,
+    loadMore,
+    searchTerm,
+    setSearch,
+    refresh,
+  } = useInfiniteList<Cliente>({
+    queryKeyBase: "clientes",
+    queryFn: (skip, limit, _search) =>
+      clientesService.getClientes(skip, limit, tipoRelacionFilter),
+    limit: DEFAULT_LIMIT,
+    extraQueryKeyParams: [isProveedorView],
   });
 
   const { data: tiposEntidad = [] } = useQuery({
@@ -89,16 +102,14 @@ export function useClientesLogic() {
     queryFn: () => dependenciasService.getProvincias(),
   });
 
-  // Mutations
+  // ── Mutaciones ───────────────────────────────────────────────────────────
   const createMutation = useMutation({
     mutationFn: async (data: ClienteCreate) => {
       const cliente = await clientesService.createCliente(data);
       return cliente;
     },
-    onSuccess: (data) => {
-      queryClient.setQueryData<Cliente[]>(["clientes", isProveedorView], (old) =>
-        old ? [data, ...old] : [data]
-      );
+    onSuccess: () => {
+      refresh();
       toast.success("Cliente creado correctamente");
       setView("list");
     },
@@ -112,10 +123,8 @@ export function useClientesLogic() {
   const updateMutation = useMutation({
     mutationFn: ({ id, data }: { id: number; data: ClienteUpdate }) =>
       clientesService.updateCliente(id, data),
-    onSuccess: (data) => {
-      queryClient.setQueryData<Cliente[]>(["clientes", isProveedorView], (old) =>
-        old?.map(c => c.id_cliente === data.id_cliente ? data : c) ?? [data]
-      );
+    onSuccess: () => {
+      refresh();
       toast.success("Cliente actualizado correctamente");
       setView("list");
       setEditingCliente(null);
@@ -129,10 +138,8 @@ export function useClientesLogic() {
 
   const deleteMutation = useMutation({
     mutationFn: clientesService.deleteCliente,
-    onSuccess: (_data, id) => {
-      queryClient.setQueryData<Cliente[]>(["clientes", isProveedorView], (old) =>
-        old?.filter(c => c.id_cliente !== id) ?? []
-      );
+    onSuccess: () => {
+      refresh();
       toast.success("Cliente eliminado correctamente");
     },
     onError: (error: any) => {
@@ -213,7 +220,7 @@ export function useClientesLogic() {
     detailModal,
     setDetailModal,
     searchTerm,
-    setSearchTerm,
+    setSearchTerm: setSearch,
     clientes,
     tiposEntidad,
     monedas,
@@ -225,6 +232,9 @@ export function useClientesLogic() {
     handleEdit,
     handleDelete,
     filteredClientes,
+    hasMore,
+    loadMore,
+    isFetchingMore,
     navigate,
   };
 }

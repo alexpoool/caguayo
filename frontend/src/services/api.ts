@@ -337,17 +337,21 @@ export const movimientosService = {
     return apiClient.get<TipoMovimiento[]>('/movimientos/tipos');
   },
 
-  async getMovimientos(tipo?: string): Promise<Movimiento[]> {
+  async getMovimientos(skip = 0, limit = 100, tipo?: string): Promise<Movimiento[]> {
     const params = new URLSearchParams();
+    params.append('skip', skip.toString());
+    params.append('limit', limit.toString());
     if (tipo) {
       params.append('tipo', tipo);
     }
-    const queryString = params.toString();
-    return apiClient.get<Movimiento[]>(`/movimientos${queryString ? '?' + queryString : ''}`);
+    return apiClient.get<Movimiento[]>(`/movimientos?${params.toString()}`);
   },
 
-  async getMovimientosPendientes(): Promise<Movimiento[]> {
-    return apiClient.get<Movimiento[]>('/movimientos/pendientes');
+  async getMovimientosPendientes(skip = 0, limit = 100): Promise<Movimiento[]> {
+    const params = new URLSearchParams();
+    params.append('skip', skip.toString());
+    params.append('limit', limit.toString());
+    return apiClient.get<Movimiento[]>(`/movimientos/pendientes?${params.toString()}`);
   },
 
   async createMovimiento(data: MovimientoCreate): Promise<Movimiento> {
@@ -517,8 +521,8 @@ export const suplementosService = {
     return apiClient.get<SuplementoWithDetails[]>(`/suplementos?skip=${skip}&limit=${limit}`);
   },
 
-  async getSuplementosByContrato(contratoId: number): Promise<SuplementoWithDetails[]> {
-    return apiClient.get<SuplementoWithDetails[]>(`/suplementos/contrato/${contratoId}`);
+  async getSuplementosByContrato(contratoId: number, skip = 0, limit = 100): Promise<SuplementoWithDetails[]> {
+    return apiClient.get<SuplementoWithDetails[]>(`/suplementos/contrato/${contratoId}?skip=${skip}&limit=${limit}`);
   },
 
   async getSuplemento(id: number): Promise<SuplementoWithDetails> {

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { createPortal } from "react-dom";
 import {
   Button,
@@ -25,6 +25,7 @@ import {
 } from "../../services/api";
 import { useDependenciasFiltradas } from "../../hooks/useDependenciasFiltradas";
 import { useStock } from "../../hooks/useStock";
+import { useInfiniteList } from "../../hooks/useInfiniteList";
 import { authHelpers } from "../../lib/api";
 import type { Productos } from "../../types";
 import type { Dependencia } from "../../types/dependencia";
@@ -42,6 +43,7 @@ import {
   Calendar,
   Building,
   Tag,
+  Loader2,
 } from "lucide-react";
 import { ProductSelector } from "./facturas/components/ProductSelector";
 import toast from "react-hot-toast";
@@ -55,15 +57,49 @@ type View = "list" | "form";
 export function VentasEfectivoPage() {
   const [view, setView] = useState<View>("list");
 
-  const [ventasEfectivo, setVentasEfectivo] = useState<
-    VentaEfectivoWithDetails[]
-  >([]);
+  const loadMoreRef = useRef<HTMLDivElement>(null);
+
+  const {
+    items,
+    isLoading,
+    isFetchingMore,
+    hasMore,
+    loadMore,
+    searchTerm,
+    setSearch,
+    refresh,
+  } = useInfiniteList<VentaEfectivoWithDetails>({
+    queryKeyBase: 'ventas-efectivo',
+    queryFn: (skip, limit) => ventasEfectivoService.getVentasEfectivo(skip, limit),
+    limit: 100,
+  });
+
   const [productos, setProductos] = useState<Productos[]>([]);
   const { data: dependencias = [], isLoading: isLoadingDependencias } = useDependenciasFiltradas();
   const [monedas, setMonedas] = useState<any[]>([]);
   const user = authHelpers.getUser() ?? {};
   const currentDependenciaId = user.dependencia?.id_dependencia ?? null;
   const { data: stockData = [] } = useStock({ idDependencia: currentDependenciaId });
+
+  // Scroll infinito con IntersectionObserver
+  useEffect(() => {
+    if (!hasMore || isFetchingMore) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore) {
+          loadMore();
+        }
+      },
+      { threshold: 0.1 },
+    );
+
+    if (loadMoreRef.current) {
+      observer.observe(loadMoreRef.current);
+    }
+
+    return () => observer.disconnect();
+  }, [hasMore, isFetchingMore, loadMore]);
 
   const stockMap = useMemo(() => {
     const map = new Map<number, number>();
@@ -77,7 +113,6 @@ export function VentasEfectivoPage() {
     { id_producto: number; cantidad: number; precio_venta: number; id_moneda?: number; precios?: { id_moneda: number; precio_venta: number }[] }[]
   >([]);
   const [productSearch, setProductSearch] = useState("");
-  const [searchTerm, setSearchTerm] = useState("");
   const [detailModal, setDetailModal] = useState<{
     isOpen: boolean;
     item: VentaEfectivoWithDetails | null;
@@ -110,19 +145,6 @@ const loadInitialData = async () => {
       console.error("Error en operación:", error instanceof Error ? error.message : "Error desconocido");
     }
   };
-
-  const loadVentasEfectivo = async () => {
-    try {
-      const data = await ventasEfectivoService.getVentasEfectivo();
-      setVentasEfectivo(data);
-    } catch (error) {
-      console.error("Error en operación:", error instanceof Error ? error.message : "Error desconocido");
-    }
-  };
-
-  useEffect(() => {
-    if (view === "list") loadVentasEfectivo();
-  }, [view]);
 
   const handleSave = async () => {
     const fieldErrors: string[] = [];
@@ -191,7 +213,7 @@ const loadInitialData = async () => {
       toast.success(editingId ? "Actualizado" : "Creado");
       setView("list");
       resetForm();
-      loadVentasEfectivo();
+      refresh();
     } catch (error: any) {
       toast.error(error.message || "Error");
     }
@@ -206,7 +228,7 @@ const loadInitialData = async () => {
         try {
           await ventasEfectivoService.deleteVentaEfectivo(id);
           toast.success("Eliminado");
-          loadVentasEfectivo();
+          refresh();
         } catch (error: any) {
           toast.error(error.message || "Error");
         }
@@ -319,14 +341,14 @@ const loadInitialData = async () => {
   }, [productosPorMonedaSeleccionada, productSearch, selectedProducts]);
 
   const filteredVentas = useMemo(() => {
-    if (!searchTerm) return ventasEfectivo;
-    return ventasEfectivo.filter(
+    if (!searchTerm) return items;
+    return items.filter(
       (v) =>
         v.slip?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         v.cajero?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         v.dependencia?.nombre?.toLowerCase().includes(searchTerm.toLowerCase()),
     );
-  }, [ventasEfectivo, searchTerm]);
+  }, [items, searchTerm]);
 
   const renderList = () => (
     <div className="space-y-4">
@@ -340,9 +362,9 @@ const loadInitialData = async () => {
               Ventas en Efectivo
             </h1>
             <p className="text-sm text-gray-500 ml-3 hidden sm:block">
-              {filteredVentas.length === ventasEfectivo.length
-                ? `Gestión de ventas (${ventasEfectivo.length} items)`
-                : `Mostrando ${filteredVentas.length} de ${ventasEfectivo.length} ventas`}
+              {filteredVentas.length === items.length
+                ? `Gestión de ventas (${items.length} items)`
+                : `Mostrando ${filteredVentas.length} de ${items.length} ventas`}
             </p>
           </div>
         </div>
@@ -361,7 +383,7 @@ const loadInitialData = async () => {
           <Input
             placeholder="Buscar ventas..."
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={(e) => setSearch(e.target.value)}
             className="pl-10"
           />
         </div>
@@ -480,6 +502,12 @@ const loadInitialData = async () => {
           </Table>
         </div>
       </Card>
+      {isFetchingMore && (
+        <div className="flex justify-center py-4">
+          <Loader2 className="h-5 w-5 animate-spin" />
+        </div>
+      )}
+      <div ref={loadMoreRef} className="h-4" />
     </div>
   );
 

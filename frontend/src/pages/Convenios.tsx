@@ -1,5 +1,6 @@
-import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useState, useEffect, useRef } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { useInfiniteList } from "../hooks/useInfiniteList";
 import {
   conveniosService,
   clientesService,
@@ -14,6 +15,7 @@ import {
   ArrowLeft,
   ScrollText,
   Eye,
+  Loader2,
 } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -59,7 +61,6 @@ import {
 } from "../components/ui";
 
 export function ConveniosPage() {
-  const queryClient = useQueryClient();
   const [view, setView] = useState<"list" | "form" | "detail">("list");
   const [editingConvenio, setEditingConvenio] = useState<Convenio | null>(null);
   const [viewingConvenio, setViewingConvenio] = useState<Convenio | null>(null);
@@ -85,12 +86,40 @@ export function ConveniosPage() {
     id_tipo_convenio: 0,
   });
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
-  const [searchTerm, setSearchTerm] = useState("");
 
-  const { data: convenios = [], isLoading } = useQuery({
-    queryKey: ["convenios"],
-    queryFn: () => conveniosService.getConvenios(),
+  // ── Lista infinita de convenios ────────────────────────────────────────────
+  const {
+    items: convenios,
+    isLoading,
+    isFetchingMore,
+    hasMore,
+    loadMore,
+    searchTerm,
+    setSearch,
+    refresh,
+  } = useInfiniteList<Convenio>({
+    queryKeyBase: "convenios",
+    queryFn: (skip, limit, search) =>
+      conveniosService.getConvenios(undefined, search || undefined, skip, limit),
+    limit: 100,
   });
+
+  // ── Scroll infinito ────────────────────────────────────────────────────────
+  const loadMoreRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!hasMore || isFetchingMore) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore) {
+          loadMore();
+        }
+      },
+      { threshold: 0.1 },
+    );
+    if (loadMoreRef.current) observer.observe(loadMoreRef.current);
+    return () => observer.disconnect();
+  }, [hasMore, isFetchingMore, loadMore]);
 
   const { data: clientes = [] } = useQuery({
     queryKey: ["clientes"],
@@ -106,7 +135,7 @@ export function ConveniosPage() {
     mutationFn: (data: Partial<Convenio>) =>
       conveniosService.createConvenio(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["convenios"] });
+      refresh();
       toast.success("Convenio creado");
       setView("list");
       resetForm();
@@ -118,7 +147,7 @@ export function ConveniosPage() {
     mutationFn: ({ id, data }: { id: number; data: Partial<Convenio> }) =>
       conveniosService.updateConvenio(id, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["convenios"] });
+      refresh();
       toast.success("Convenio actualizado");
       setView("list");
       resetForm();
@@ -129,7 +158,7 @@ export function ConveniosPage() {
   const deleteMutation = useMutation({
     mutationFn: (id: number) => conveniosService.deleteConvenio(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["convenios"] });
+      refresh();
       toast.success("Convenio eliminado");
       setConfirmModal((prev) => ({ ...prev, isOpen: false }));
     },
@@ -200,15 +229,6 @@ export function ConveniosPage() {
       createMutation.mutate(formData);
     }
   };
-
-  const filteredConvenios = convenios.filter((c) => {
-    if (!searchTerm) return true;
-    const term = searchTerm.toLowerCase();
-    return (
-      c.nombre_convenio?.toLowerCase().includes(term) ||
-      c.cliente?.nombre?.toLowerCase().includes(term)
-    );
-  });
 
   if (view === "form") {
     return (
@@ -503,12 +523,12 @@ export function ConveniosPage() {
       <div className="flex gap-2">
         <div className="flex-1 relative max-w-md">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-          <Input
-            placeholder="Buscar convenios..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10"
-          />
+            <Input
+              placeholder="Buscar convenios..."
+              value={searchTerm}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-10"
+            />
         </div>
       </div>
 
@@ -532,14 +552,14 @@ export function ConveniosPage() {
                     Cargando...
                   </TableCell>
                 </TableRow>
-              ) : filteredConvenios.length === 0 ? (
+              ) : convenios.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={6} className="text-center py-12 text-gray-500">
                     No hay convenios registrados
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredConvenios.map((convenio) => (
+                convenios.map((convenio) => (
                   <TableRow key={convenio.id_convenio}>
                     <TableCell className="font-medium">
                       {convenio.codigo_convenio || "-"}
@@ -579,6 +599,15 @@ export function ConveniosPage() {
               )}
             </TableBody>
           </Table>
+        </div>
+        {/* Sentinel para scroll infinito */}
+        <div ref={loadMoreRef} className="flex justify-center py-2">
+          {isFetchingMore && (
+            <div className="flex items-center gap-2 text-gray-500">
+              <Loader2 className="h-5 w-5 animate-spin" />
+              <span>Cargando más...</span>
+            </div>
+          )}
         </div>
       </Card>
 
