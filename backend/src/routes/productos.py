@@ -36,9 +36,13 @@ async def read_productos(
     search: Optional[str] = None,
     db: AsyncSession = Depends(get_session),
 ):
-    return await ProductosService.get_productos(
-        db, skip=skip, limit=limit, search=search
-    )
+    try:
+        return await ProductosService.get_productos(
+            db, skip=skip, limit=limit, search=search
+        )
+    except Exception as e:
+        logger.error("Error al listar productos", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Error al listar productos: {str(e)}")
 
 
 @router.get("/search/{nombre}", response_model=List[ProductosRead])

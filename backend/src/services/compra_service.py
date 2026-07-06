@@ -7,6 +7,7 @@ from sqlalchemy.orm import selectinload
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
+from src.models.cliente import Cliente
 from src.models.compra import Compra
 from src.models.detalle_compra import DetalleCompra
 from src.dto.compras_dto import CompraCreate, CompraRead, CompraUpdate
@@ -81,7 +82,12 @@ class CompraService:
         """Listar compras con filtros opcionales y eager loading."""
         try:
             statement = select(Compra).options(
-                selectinload(Compra.cliente),
+                selectinload(Compra.cliente).selectinload(Cliente.provincia),
+                selectinload(Compra.cliente).selectinload(Cliente.municipio),
+                selectinload(Compra.cliente).selectinload(Cliente.cuentas),
+                selectinload(Compra.cliente).selectinload(Cliente.cliente_natural),
+                selectinload(Compra.cliente).selectinload(Cliente.cliente_juridica),
+                selectinload(Compra.cliente).selectinload(Cliente.cliente_tcp),
                 selectinload(Compra.detalles).selectinload(DetalleCompra.producto),
             )
 
@@ -109,7 +115,12 @@ class CompraService:
         """Obtener una compra por ID con eager loading de relaciones."""
         try:
             load_options = [
-                selectinload(Compra.cliente),
+                selectinload(Compra.cliente).selectinload(Cliente.provincia),
+                selectinload(Compra.cliente).selectinload(Cliente.municipio),
+                selectinload(Compra.cliente).selectinload(Cliente.cuentas),
+                selectinload(Compra.cliente).selectinload(Cliente.cliente_natural),
+                selectinload(Compra.cliente).selectinload(Cliente.cliente_juridica),
+                selectinload(Compra.cliente).selectinload(Cliente.cliente_tcp),
                 selectinload(Compra.detalles).selectinload(DetalleCompra.producto),
             ]
             compra = await compras_repo.get(db, id_compra, load_options=load_options)

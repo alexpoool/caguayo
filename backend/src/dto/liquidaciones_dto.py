@@ -30,7 +30,6 @@ class LiquidacionBase(SQLModel):
     importe_caguayo: Decimal = Field(default=Decimal("0.00"), ge=0)
     tributario_monto: Decimal = Field(default=Decimal("0.00"), ge=0)
     tipo_pago: str = "TRANSFERENCIA"
-    productos_en_liquidacion: Optional[List["ProductosEnLiquidacionRead"]] = None
 
 
 class LiquidacionCreate(SQLModel):
@@ -71,6 +70,7 @@ class LiquidacionRead(LiquidacionBase):
     id_liquidacion: int
     codigo: str
     moneda: Optional["MonedaRead"] = None
+    productos_en_liquidacion: Optional[List["ProductosEnLiquidacionRead"]] = None
 
 
 class LiquidacionUpdate(SQLModel):

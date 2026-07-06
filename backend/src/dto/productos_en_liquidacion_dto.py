@@ -4,7 +4,7 @@ from datetime import datetime
 from decimal import Decimal
 from pydantic import field_validator
 
-TIPOS_COMPRA_VALIDOS = {"FACTURA", "VENTA_EFECTIVO", "ANEXO"}
+TIPOS_COMPRA_VALIDOS = {"FACTURA", "VENTA_EFECTIVO", "ANEXO", "COMPRA VENTA"}
 
 if TYPE_CHECKING:
     from .productos_dto import ProductoSimpleRead

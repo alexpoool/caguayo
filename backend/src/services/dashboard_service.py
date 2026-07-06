@@ -21,6 +21,7 @@ from src.models import (
     Movimiento,
     TipoMovimiento,
     DetalleVenta,
+    Cliente,
 )
 
 
@@ -150,14 +151,27 @@ class DashboardService:
             skip=0,
             limit=5,
             load_options=[
-                selectinload(Ventas.cliente),
+                selectinload(Ventas.cliente).selectinload(Cliente.provincia),
+                selectinload(Ventas.cliente).selectinload(Cliente.municipio),
                 selectinload(Ventas.detalles).selectinload(DetalleVenta.producto),
             ],
         )
         ultimas_ventas = [VentaRead.model_validate(v) for v in ultimas_ventas_db]
 
         # Clientes recientes (últimos 5 registrados)
-        clientes_recientes_db = await ventas_cliente_repo.get_multi(db, skip=0, limit=5)
+        clientes_recientes_db = await ventas_cliente_repo.get_multi(
+            db,
+            skip=0,
+            limit=5,
+            load_options=[
+                selectinload(Cliente.provincia),
+                selectinload(Cliente.municipio),
+                selectinload(Cliente.cuentas),
+                selectinload(Cliente.cliente_natural),
+                selectinload(Cliente.cliente_juridica),
+                selectinload(Cliente.cliente_tcp),
+            ],
+        )
         clientes_recientes = [
             ClienteRead.model_validate(c) for c in clientes_recientes_db
         ]

@@ -154,7 +154,7 @@ class ExistenciaService:
         if tiene_konsignacion:
             r = await db.exec(
                 text("""
-                SELECT COALESCE(SUM(ia.entrada - ia.vendido), 0)
+                SELECT COALESCE(SUM(ia.cantidad - ia.cantidad_vendida), 0)
                 FROM item_anexo ia
                 WHERE ia.id_producto = :id_producto
             """),

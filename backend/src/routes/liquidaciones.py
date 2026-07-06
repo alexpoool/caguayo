@@ -27,7 +27,11 @@ async def listar_liquidaciones(
     db: AsyncSession = Depends(get_session),
 ):
     """Listar todas las liquidaciones con paginación."""
-    return await liquidacion_service.get_liquidaciones(db, skip=skip, limit=limit)
+    try:
+        return await liquidacion_service.get_liquidaciones(db, skip=skip, limit=limit)
+    except Exception as e:
+        logger.error("Error al listar liquidaciones", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/pendientes", response_model=List[LiquidacionRead])

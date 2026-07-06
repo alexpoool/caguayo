@@ -18,6 +18,7 @@ class ProductosRepository(CRUDBase[Productos, ProductosCreate, ProductosUpdate])
         statement = (
             select(self.model)
             .options(
+                selectinload(Productos.subcategoria),
                 selectinload(Productos.subcategoria).selectinload(
                     Subcategorias.categoria
                 ),
@@ -62,6 +63,7 @@ class ProductosRepository(CRUDBase[Productos, ProductosCreate, ProductosUpdate])
         search: Optional[str] = None,
     ) -> List[Productos]:
         statement = select(self.model).options(
+            selectinload(Productos.subcategoria),
             selectinload(Productos.subcategoria).selectinload(Subcategorias.categoria),
             selectinload(Productos.moneda_compra_rel),
             selectinload(Productos.moneda_venta_rel),
@@ -86,6 +88,7 @@ class ProductosRepository(CRUDBase[Productos, ProductosCreate, ProductosUpdate])
         statement = (
             select(Productos)
             .options(
+                selectinload(Productos.subcategoria),
                 selectinload(Productos.subcategoria).selectinload(
                     Subcategorias.categoria
                 ),
@@ -119,6 +122,7 @@ class ProductosRepository(CRUDBase[Productos, ProductosCreate, ProductosUpdate])
         statement = (
             select(self.model)
             .options(
+                selectinload(Productos.subcategoria),
                 selectinload(Productos.subcategoria).selectinload(
                     Subcategorias.categoria
                 ),
