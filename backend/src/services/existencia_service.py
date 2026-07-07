@@ -186,11 +186,6 @@ class ExistenciaService:
     async def obtener_item_anexo_para_venta(
         db: AsyncSession, id_producto: int, cantidad: int
     ) -> Optional[Dict[str, Any]]:
-        """Obtiene el item_anexo más antiguo con stock disponible para vender (FIFO).
-
-        Returns:
-            Dict con id_item_anexo, id_anexo, entrada, vendido, disponible
-        """
         from src.models.item_anexo import ItemAnexo
         from sqlalchemy import select
 

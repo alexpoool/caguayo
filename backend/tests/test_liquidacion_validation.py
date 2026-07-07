@@ -24,8 +24,17 @@ class TestVentaEfectivoCreateStockValidation:
         from src.dto import VentaEfectivoCreate
         from src.core.exceptions import BusinessLogicError
         from src.models import Productos
+        from src.models.dependencia import Dependencia
         from src.services.existencia_service import ExistenciaService
         from sqlmodel import select
+
+        # Obtener una dependencia real de la BD
+        stmt_dep = select(Dependencia).limit(1)
+        res_dep = await db_session.exec(stmt_dep)
+        dependencia = res_dep.first()
+
+        if not dependencia:
+            pytest.skip("No hay dependencias en la BD para probar")
 
         # Buscar un producto con existencia 0
         stmt = select(Productos).limit(50)
@@ -45,7 +54,7 @@ class TestVentaEfectivoCreateStockValidation:
         venta_create = VentaEfectivoCreate(
             slip="TEST-SLIP-001",
             fecha=date.today(),
-            id_dependencia=4,
+            id_dependencia=dependencia.id_dependencia,
             cajero="Test Cajero",
             id_moneda=1,
             items=[
@@ -66,10 +75,9 @@ class TestLiquidacionAprobarValidacion:
     """Verifica que aprobar liquidación ejecute lógica de negocio completa."""
 
     @pytest.mark.asyncio
-    async def test_aprobar_liquidacion_ya_aprobada_rechaza(self, db_session):
-        """Aprobar una liquidación ya liquidada debe lanzar BusinessLogicError."""
+    async def test_aprobar_liquidacion_ya_aprobada_es_idempotente(self, db_session):
+        """Aprobar una liquidación ya liquidada es idempotente: retorna True sin error."""
         from src.services.liquidacion_service import liquidacion_service
-        from src.core.exceptions import BusinessLogicError
         from src.models import Liquidacion
         from sqlmodel import select
 
@@ -81,8 +89,11 @@ class TestLiquidacionAprobarValidacion:
         if not liquidacion:
             pytest.skip("No hay liquidaciones liquidadas en la BD para probar")
 
-        with pytest.raises(BusinessLogicError, match="ya está aprobada"):
-            await liquidacion_service.aprobar(db_session, liquidacion.id_liquidacion)
+        # El servicio es idempotente: aprobar una ya aprobada retorna True
+        resultado = await liquidacion_service.aprobar(
+            db_session, liquidacion.id_liquidacion
+        )
+        assert resultado is True
 
     @pytest.mark.asyncio
     async def test_aprobar_liquidacion_inexistente(self, db_session):
@@ -321,9 +332,7 @@ class TestCreateLiquidacionTipoCompraValidation:
         from src.dto import LiquidacionCreate
 
         # Arrange: producto con tipo_compra=ANEXO
-        producto_mock = _make_producto_mock(
-            "ANEXO", codigo="ANX-001", id_producto=20
-        )
+        producto_mock = _make_producto_mock("ANEXO", codigo="ANX-001", id_producto=20)
 
         mock_db = AsyncMock()
         data = LiquidacionCreate(

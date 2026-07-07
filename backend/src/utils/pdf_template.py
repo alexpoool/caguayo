@@ -29,19 +29,19 @@ from reportlab.platypus import (
 # ═══════════════════════════════════════════════════════════════════════════════
 
 # ─── Color palette (monochrome, ink-saving) ────────────────────────────
-HEADER_BG = white           # white background for table header
-HEADER_FG = black           # black text for header
-ZEBRA_LIGHT = white         # no zebra → all rows white
-ZEBRA_DARK = white          # no zebra
-BORDER_COLOR = black        # black borders
-NOTE_BORDER = black         # black border for notes
-NOTE_BG = white             # white background for notes
-TITLE_COLOR = black         # titles in black
-SUBTITLE_COLOR = black      # subtitles in black
-MUTED_COLOR = black         # secondary text also black
-TOTALS_BG = white           # white background for totals row
-TOTALS_LINE = black         # totals line in black
-HR_COLOR = black            # horizontal rule in black
+HEADER_BG = white  # white background for table header
+HEADER_FG = black  # black text for header
+ZEBRA_LIGHT = white  # no zebra → all rows white
+ZEBRA_DARK = white  # no zebra
+BORDER_COLOR = black  # black borders
+NOTE_BORDER = black  # black border for notes
+NOTE_BG = white  # white background for notes
+TITLE_COLOR = black  # titles in black
+SUBTITLE_COLOR = black  # subtitles in black
+MUTED_COLOR = black  # secondary text also black
+TOTALS_BG = white  # white background for totals row
+TOTALS_LINE = black  # totals line in black
+HR_COLOR = black  # horizontal rule in black
 
 
 class PDFTemplate:
@@ -628,4 +628,3 @@ def format_quantity(value: object) -> str:
         return f"{num:,.2f}"
     except (ValueError, TypeError):
         return str(value)
-

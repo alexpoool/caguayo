@@ -42,7 +42,9 @@ async def read_productos(
         )
     except Exception as e:
         logger.error("Error al listar productos", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Error al listar productos: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Error al listar productos: {str(e)}"
+        )
 
 
 @router.get("/search/{nombre}", response_model=List[ProductosRead])

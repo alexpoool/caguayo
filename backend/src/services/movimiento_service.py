@@ -419,7 +419,7 @@ class MovimientoService:
                 p.nombre,
                 p.codigo,
                 p.descripcion,
-                (ia.entrada - ia.vendido) AS stock,
+                (ia.entrada - ia.cantidad_vendida) AS stock,
                 ia.precio_compra,
                 ia.precio_venta,
                 ia.id_moneda,
@@ -427,13 +427,13 @@ class MovimientoService:
                 m.denominacion AS moneda_nombre,
                 ia.id_anexo,
                 a.id_convenio,
-                ia.entrada,
-                ia.vendido
+                ia.cantidad,
+                ia.cantidad_vendida
             FROM item_anexo ia
             JOIN productos p ON ia.id_producto = p.id_producto
             JOIN anexo a ON ia.id_anexo = a.id_anexo
             JOIN moneda m ON ia.id_moneda = m.id_moneda
-            WHERE (ia.entrada - ia.vendido) > 0
+            WHERE (ia.cantidad - ia.cantidad_vendida) > 0
             ORDER BY p.nombre
         """)
         result = await db.exec(query)

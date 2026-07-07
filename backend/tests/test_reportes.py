@@ -103,9 +103,7 @@ def auth_fail(mock_db_session):
     """
 
     async def _override_optional_user_401():
-        raise HTTPException(
-            status_code=401, detail="Token de autenticación requerido"
-        )
+        raise HTTPException(status_code=401, detail="Token de autenticación requerido")
 
     async def _override_get_session():
         yield mock_db_session
@@ -985,7 +983,8 @@ class TestPreviewConTokenNuevos:
     ):
         """Verifica que cada nuevo preview con token retorna 200 + claves esperadas."""
         target_module = (
-            proyecto_router if func_name == "get_registro_creadores"
+            proyecto_router
+            if func_name == "get_registro_creadores"
             else reportes_router
         )
         with patch.object(
@@ -1072,7 +1071,8 @@ class TestErrorSanitizadoNuevos:
     ):
         """Verifica que el mensaje de error NO contiene el detalle interno."""
         target_module = (
-            proyecto_router if func_name == "get_registro_creadores"
+            proyecto_router
+            if func_name == "get_registro_creadores"
             else reportes_router
         )
         with patch.object(
