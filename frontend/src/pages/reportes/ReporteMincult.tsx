@@ -182,7 +182,7 @@ const ReporteMincult: React.FC = () => {
         </div>
         <div>
           <h1 className="text-xl font-semibold text-gray-900 leading-tight">
-            ONAT — Ingresos y Retenciones
+            MINCULT — Ingresos por escala
           </h1>
           <p className="text-sm text-gray-500">
             Reporte de retribuciones agrupadas por escala de ingresos

@@ -520,12 +520,18 @@ class PDFTemplate:
     # ── Internal helpers ──────────────────────────────────────────────────
 
     def _build_header(self) -> None:
-        """Compose the document header (company, title, date, filters)."""
-        self.elements.append(Spacer(1, 3))
+        """Compose the document header (company, title, date, filters).
+
+        Builds header elements into a temporary list and prepends them to
+        ``self.elements`` so that the header appears *before* tables, notes,
+        and signatures that were added earlier.
+        """
+        header_parts: list = []
+        header_parts.append(Spacer(1, 3))
 
         # Company block
         if self._company_name:
-            self.elements.append(
+            header_parts.append(
                 Paragraph(
                     f"<b>{self._escape(self._company_name)}</b>",
                     self.styles["CompanyInfo"],
@@ -539,19 +545,19 @@ class PDFTemplate:
         if self._company_phone:
             details.append(f"Tel: {self._escape(self._company_phone)}")
         if details:
-            self.elements.append(
+            header_parts.append(
                 Paragraph("<br/>".join(details), self.styles["CompanyInfo"])
             )
-            self.elements.append(Spacer(1, 2))
+            header_parts.append(Spacer(1, 2))
 
         # Title
-        self.elements.append(
+        header_parts.append(
             Paragraph(f"<b>{self._escape(self.title)}</b>", self.styles["ReportTitle"])
         )
 
         # Date
         fecha = datetime.now().strftime("%d/%m/%Y %H:%M")
-        self.elements.append(
+        header_parts.append(
             Paragraph(f"Fecha de emisión: {fecha}", self.styles["DateLine"])
         )
 
@@ -563,10 +569,10 @@ class PDFTemplate:
                 if v
             ]
             if parts:
-                self.elements.append(
+                header_parts.append(
                     Paragraph(" | ".join(parts), self.styles["FilterInfo"])
                 )
-                self.elements.append(Spacer(1, 2))
+                header_parts.append(Spacer(1, 2))
 
         # Horizontal rule
         hr_table = Table(
@@ -582,8 +588,11 @@ class PDFTemplate:
                 ]
             )
         )
-        self.elements.append(hr_table)
-        self.elements.append(Spacer(1, 3))
+        header_parts.append(hr_table)
+        header_parts.append(Spacer(1, 3))
+
+        # Prepend header parts so they render before tables, notes, signatures
+        self.elements = header_parts + self.elements
 
     def _add_page_number(self, canvas, doc) -> None:
         """Callback drawn at the bottom of each page."""
