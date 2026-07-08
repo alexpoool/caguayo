@@ -53,7 +53,15 @@ class ContratoRepository(CRUDBase[Contrato, ContratoCreate, ContratoUpdate]):
         limit: int = 10000,
         id_cliente: Optional[int] = None,
     ) -> List[Contrato]:
-        statement = select(Contrato)
+        statement = (
+            select(Contrato)
+            .options(
+                selectinload(Contrato.estado),
+                selectinload(Contrato.tipo_contrato),
+                selectinload(Contrato.moneda),
+                selectinload(Contrato.cliente),
+            )
+        )
 
         if id_cliente is not None:
             statement = statement.where(Contrato.id_cliente == id_cliente)
@@ -182,7 +190,9 @@ class FacturaRepository(CRUDBase[Factura, FacturaCreate, FacturaUpdate]):
     ) -> List[Factura]:
         statement = (
             select(Factura)
-            .options(selectinload(Factura.items_factura))
+            .options(
+                selectinload(Factura.items_factura).selectinload(ItemFactura.producto)
+            )
             .offset(skip)
             .limit(limit)
             .order_by(Factura.id_factura.desc())
@@ -195,7 +205,9 @@ class FacturaRepository(CRUDBase[Factura, FacturaCreate, FacturaUpdate]):
     ) -> Optional[Factura]:
         statement = (
             select(Factura)
-            .options(selectinload(Factura.items_factura))
+            .options(
+                selectinload(Factura.items_factura).selectinload(ItemFactura.producto)
+            )
             .where(Factura.id_factura == id_factura)
         )
         results = await db.exec(statement)

@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
@@ -84,13 +84,51 @@ export function useInfiniteList<T>({
       if (skip === 0) {
         setAllItems(newItems);
       } else {
-        setAllItems(prev => [...prev, ...newItems]);
+        setAllItems(prev => {
+          if (prev.length === 0) {
+            const baseData = queryClient.getQueryData([queryKeyBase, 0, searchTerm, ...extraQueryKeyParams]);
+            if (baseData) return [...(baseData as T[]), ...newItems];
+          }
+          return [...prev, ...newItems];
+        });
       }
 
       return newItems;
     },
     staleTime,
+    gcTime: Infinity,
   });
+
+  // ── Items visibles ───────────────────────────────────────────────────────
+  // Usar query.data directamente para la primera página (incluye caché de React Query)
+  // y allItems para páginas acumuladas por infinite scroll
+
+  const items = useMemo(() => {
+    if (skip === 0) {
+      return query.data || allItems;
+    }
+    return allItems;
+  }, [skip, query.data, allItems]);
+
+  // Sincronizar allItems desde query.data para que loadMore funcione
+  // cuando los datos vienen de caché (sin ejecutar queryFn)
+
+  useEffect(() => {
+    if (!query.data) return;
+    if (skip === 0) {
+      setAllItems(query.data);
+      setHasMore(query.data.length >= limit);
+    } else {
+      setAllItems(prev => {
+        if (prev.length > 0) return prev;
+        const baseKey = [queryKeyBase, 0, searchTerm, ...extraQueryKeyParams];
+        const baseData = queryClient.getQueryData(baseKey);
+        if (baseData) return [...(baseData as T[]), ...(query.data ?? [])];
+        return query.data ?? [];
+      });
+      setHasMore((query.data?.length ?? 0) >= limit);
+    }
+  }, [skip, query.data, limit, queryClient, queryKeyBase, searchTerm, extraQueryKeyParams]);
 
   // ── Cargar más ───────────────────────────────────────────────────────────
 
@@ -109,10 +147,16 @@ export function useInfiniteList<T>({
     queryClient.invalidateQueries({ queryKey: [queryKeyBase] });
   }, [queryClient, queryKeyBase]);
 
+  // ── Debug ─────────────────────────────────────────────────────────────────
+
+  console.log(
+    `[useInfiniteList:${queryKeyBase}] skip=${skip} qdata=${query.data?.length ?? 0} all=${allItems.length} isLoading=${query.isLoading} isFetching=${query.isFetching} hasMore=${hasMore}`,
+  );
+
   // ── Retorno ──────────────────────────────────────────────────────────────
 
   return {
-    items: allItems,
+    items,
     isLoading: query.isLoading && skip === 0,
     isFetchingMore: query.isFetching,
     isError: query.isError,

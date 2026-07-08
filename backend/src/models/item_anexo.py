@@ -1,7 +1,6 @@
 from sqlmodel import SQLModel, Field, Relationship
 from typing import Optional, List, TYPE_CHECKING
 from decimal import Decimal
-from sqlalchemy import Column, Integer
 
 if TYPE_CHECKING:
     from .anexo import Anexo
@@ -18,14 +17,8 @@ class ItemAnexo(SQLModel, table=True):
     )
     id_anexo: int = Field(foreign_key="anexo.id_anexo")
     id_producto: int = Field(foreign_key="productos.id_producto")
-    entrada: int = Field(
-        default=1,
-        sa_column=Column("cantidad", Integer, default=1),
-    )
-    vendido: int = Field(
-        default=0,
-        sa_column=Column("cantidad_vendida", Integer, default=0, server_default="0"),
-    )
+    entrada: int = Field(default=1)
+    vendido: int = Field(default=0, sa_column_kwargs={"server_default": "0"})
     precio_compra: Decimal = Field(decimal_places=4, max_digits=15)
     precio_venta: Decimal = Field(decimal_places=4, max_digits=15)
     id_moneda: int = Field(foreign_key="moneda.id_moneda")

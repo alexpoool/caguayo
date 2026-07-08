@@ -122,7 +122,7 @@ class LiquidacionRepository(CRUDBase[Liquidacion, dict, dict]):
     ) -> List[Liquidacion]:
         statement = (
             select(Liquidacion)
-            .where(not Liquidacion.liquidada)
+            .where(Liquidacion.liquidada == False)
             .options(
                 selectinload(Liquidacion.productos_en_liquidacion).selectinload(
                     ProductosEnLiquidacion.producto

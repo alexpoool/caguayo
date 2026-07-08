@@ -120,6 +120,8 @@ class ConvenioBase(SQLModel):
     id_tipo_convenio: int = Field(gt=0)
     codigo: Optional[str] = None
 
+
+class ConvenioCreate(ConvenioBase):
     @field_validator("vigencia")
     @classmethod
     def vigencia_no_anterior_a_fecha(cls, v: date, info) -> date:
@@ -134,10 +136,6 @@ class ConvenioBase(SQLModel):
         if v > date.today():
             raise ValueError("La fecha no puede ser futura")
         return v
-
-
-class ConvenioCreate(ConvenioBase):
-    pass
 
 
 class ConvenioRead(ConvenioBase):
@@ -177,14 +175,7 @@ class AnexoBase(SQLModel):
     fecha: date
     codigo_anexo: Optional[str] = None
     id_dependencia: Optional[int] = None
-    comision: Optional[Decimal] = Field(default=None, ge=0, le=100)
-
-    @field_validator("fecha")
-    @classmethod
-    def fecha_no_futura(cls, v: date) -> date:
-        if v > date.today():
-            raise ValueError("La fecha no puede ser futura")
-        return v
+    comision: Optional[Decimal] = None
 
 
 class ItemAnexoBase(SQLModel):
@@ -211,6 +202,14 @@ class ItemAnexoRead(ItemAnexoBase):
 
 class AnexoCreate(AnexoBase):
     items: Optional[List[ItemAnexoCreate]] = None
+    comision: Optional[Decimal] = Field(default=None, ge=0, le=100)
+
+    @field_validator("fecha")
+    @classmethod
+    def fecha_no_futura(cls, v: date) -> date:
+        if v > date.today():
+            raise ValueError("La fecha no puede ser futura")
+        return v
 
 
 class AnexoRead(AnexoBase):

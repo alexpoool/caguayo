@@ -146,10 +146,10 @@ class EstadoContratoService:
 async def map_contrato_to_read(
     db: AsyncSession, contrato: Contrato
 ) -> ContratoReadWithDetails:
-    estado = await db.get(EstadoContrato, contrato.id_estado)
-    tipo_contrato = await db.get(TipoContrato, contrato.id_tipo_contrato)
-    moneda = await db.get(Moneda, contrato.id_moneda)
-    cliente = await db.get(Cliente, contrato.id_cliente)
+    estado = contrato.estado or await db.get(EstadoContrato, contrato.id_estado)
+    tipo_contrato = contrato.tipo_contrato or await db.get(TipoContrato, contrato.id_tipo_contrato)
+    moneda = contrato.moneda or await db.get(Moneda, contrato.id_moneda)
+    cliente = contrato.cliente or await db.get(Cliente, contrato.id_cliente)
 
     return ContratoReadWithDetails(
         id_contrato=contrato.id_contrato,
@@ -429,7 +429,7 @@ async def map_factura_to_read(
     items_con_producto = []
     if factura.items_factura:
         for item in factura.items_factura:
-            producto = (
+            producto = item.producto or (
                 await db.get(Productos, item.id_producto) if item.id_producto else None
             )
             item_read = ItemFacturaRead(

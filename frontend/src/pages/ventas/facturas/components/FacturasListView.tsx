@@ -1,4 +1,5 @@
-import { Plus, Receipt, Loader2 } from 'lucide-react';
+import { useState, useEffect, useRef, useMemo } from 'react';
+import { Plus, Receipt, Loader2, Search } from 'lucide-react';
 import { Button } from '../../../../components/ui';
 import { FacturasTable } from './FacturasTable';
 import type { FacturaWithDetails } from '../../../../types/contrato';
@@ -37,6 +38,26 @@ export function FacturasListView({
   loadMoreRef,
   isFetchingMore,
 }: FacturasListViewProps) {
+  const [contratoSearch, setContratoSearch] = useState('');
+  const [showContratoDropdown, setShowContratoDropdown] = useState(false);
+  const contratoRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (contratoRef.current && !contratoRef.current.contains(e.target as Node)) {
+        setShowContratoDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const filteredContratos = useMemo(() => {
+    if (!contratoSearch) return contratos;
+    const term = contratoSearch.toLowerCase();
+    return contratos.filter((c) => c.nombre?.toLowerCase().includes(term));
+  }, [contratos, contratoSearch]);
+
   console.log('[FacturasListView] Render:', {
     facturasCount: facturas.length,
     hasOnViewDocument: typeof onViewDocument,
@@ -66,48 +87,48 @@ export function FacturasListView({
         </Button>
       </div>
 
-      {/* Filtro por contrato */}
-      <div className="flex gap-2">
-        <div className="flex-1 relative max-w-md">
-          <select
-            id="contrato-filter"
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white"
-            value={selectedContratoId || ''}
+      {/* Filtro por contrato (buscador) */}
+      <div ref={contratoRef} className="relative max-w-md">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <input
+            value={
+              selectedContratoId
+                ? (contratos.find((c) => c.id_contrato === selectedContratoId)?.nombre || '')
+                : contratoSearch
+            }
             onChange={(e) => {
-              const value = e.target.value;
-              onSelectedContratoChange(value ? Number(value) : null);
+              setContratoSearch(e.target.value);
+              onSelectedContratoChange(null);
+              setShowContratoDropdown(true);
             }}
-          >
-            <option value="">Todos los contratos</option>
-            {contratos.map((c) => (
-              <option key={c.id_contrato} value={c.id_contrato}>
-                {c.codigo || c.nombre} - {c.nombre}
-              </option>
-            ))}
-          </select>
+            onFocus={() => setShowContratoDropdown(true)}
+            placeholder="Buscar contrato..."
+            className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white"
+          />
         </div>
-      </div>
-
-      {/* Resumen stats */}
-      <div className="grid grid-cols-2 gap-3">
-        <div className="bg-gradient-to-br from-teal-50 to-cyan-50 p-4 rounded-xl border border-teal-100">
-          <p className="text-xs text-teal-600 uppercase tracking-wider mb-1">
-            Total Facturas
-          </p>
-          <p className="text-2xl font-bold text-teal-900">{facturas.length}</p>
-        </div>
-
-        <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-4 rounded-xl border border-green-100">
-          <p className="text-xs text-green-600 uppercase tracking-wider mb-1">
-            Monto Total
-          </p>
-          <p className="text-2xl font-bold text-green-900">
-            $
-            {facturas
-              .reduce((sum, f) => sum + Number(f.monto), 0)
-              .toFixed(2)}
-          </p>
-        </div>
+        {showContratoDropdown && (
+          <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+            {filteredContratos.length === 0 ? (
+              <div className="px-3 py-2 text-sm text-gray-500">No se encontraron contratos</div>
+            ) : (
+              filteredContratos.map((c) => (
+                <button
+                  key={c.id_contrato}
+                  type="button"
+                  className="w-full px-3 py-2 text-left text-sm hover:bg-teal-50 transition-colors"
+                  onClick={() => {
+                    onSelectedContratoChange(c.id_contrato);
+                    setContratoSearch('');
+                    setShowContratoDropdown(false);
+                  }}
+                >
+                  {c.nombre}
+                </button>
+              ))
+            )}
+          </div>
+        )}
       </div>
 
       {/* Tabla de facturas o skeleton inicial */}

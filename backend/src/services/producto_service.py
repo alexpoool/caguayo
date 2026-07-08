@@ -42,10 +42,7 @@ class ProductosService:
         db_productos = await productos_repo.get_multi(
             db, skip=skip, limit=limit, search=search
         )
-        return [
-            await ProductosService._inject_stock(db, ProductosRead.model_validate(p))
-            for p in db_productos
-        ]
+        return [ProductosRead.model_validate(p) for p in db_productos]
 
     @staticmethod
     async def update_producto(

@@ -21,9 +21,9 @@ class ExistenciaRepository:
                 ia.id_producto,
                 ia.id_anexo,
                 a.nombre_anexo,
-                ia.cantidad as cantidad_entrada,
-                COALESCE(ia.cantidad_vendida, 0) as vendido,
-                ia.cantidad - COALESCE(ia.cantidad_vendida, 0) as stock
+                ia.entrada as cantidad_entrada,
+                COALESCE(ia.vendido, 0) as vendido,
+                ia.entrada - COALESCE(ia.vendido, 0) as stock
             FROM item_anexo ia
             JOIN anexo a ON ia.id_anexo = a.id_anexo
         """
@@ -173,7 +173,7 @@ class ExistenciaRepository:
 
         konsignacion_query = text("""
             SELECT 
-                COALESCE(SUM(ia.cantidad), 0) - COALESCE(SUM(ia.cantidad_vendida), 0) as stock
+                COALESCE(SUM(ia.entrada), 0) - COALESCE(SUM(ia.vendido), 0) as stock
             FROM item_anexo ia
             WHERE ia.id_producto = :id_producto
         """)

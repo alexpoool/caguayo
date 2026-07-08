@@ -31,6 +31,7 @@ export function useFacturas(initialContratoId?: string | null) {
    * Resetea la lista cuando cambia el filtro de contrato
    */
   useEffect(() => {
+    console.log('[useFacturas] reset triggered selectedContratoId=', selectedContratoId);
     infinite.reset();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedContratoId]);

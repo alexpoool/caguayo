@@ -101,6 +101,8 @@ async def obtener_anexo(
         select(Anexo)
         .where(Anexo.id_anexo == anexo_id)
         .options(
+            selectinload(Anexo.convenios).selectinload(Convenio.cliente),
+            selectinload(Anexo.convenios).selectinload(Convenio.tipo_convenio),
             selectinload(Anexo.items_anexo).selectinload(ItemAnexo.precios),
         )
     )
