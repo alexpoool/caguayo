@@ -26,6 +26,9 @@ export function SuplementosPage() {
   const [formData, setFormData] = useState<Record<string, any>>({});
   const [searchTerm, setSearchTerm] = useState('');
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
+  const [contratoSearch, setContratoSearch] = useState('');
+  const [showContratoDropdown, setShowContratoDropdown] = useState(false);
+  const contratoRef = useRef<HTMLDivElement | null>(null);
   const [detailModal, setDetailModal] = useState<{ isOpen: boolean; item: SuplementoWithDetails | null }>({ isOpen: false, item: null });
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
@@ -94,6 +97,22 @@ export function SuplementosPage() {
     } catch (error) { console.error('Error:', error); }
   };
 
+  const filteredContratos = useMemo(() => {
+    if (!contratoSearch) return contratos;
+    const term = contratoSearch.toLowerCase();
+    return contratos.filter(c => c.nombre.toLowerCase().includes(term));
+  }, [contratos, contratoSearch]);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (contratoRef.current && !contratoRef.current.contains(e.target as Node)) {
+        setShowContratoDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   const filteredSuplementos = useMemo(() => {
     if (!searchTerm) return suplementos;
     const term = searchTerm.toLowerCase();
@@ -119,6 +138,7 @@ export function SuplementosPage() {
         nombre: formData.nombre || '',
         id_estado: Number(formData.id_estado) || (estados.length > 0 ? estados[0].id_estado_contrato : 1), 
         fecha: formData.fecha || new Date().toISOString().split('T')[0],
+        monto: formData.monto ? Number(formData.monto) : 0,
         documento: formData.documento
       };
       editingId ? await suplementosService.updateSuplemento(editingId, data as any) : await suplementosService.createSuplemento(data as any);
@@ -159,6 +179,7 @@ export function SuplementosPage() {
         nombre: item.nombre, 
         id_estado: item.id_estado, 
         fecha: item.fecha, 
+        monto: item.monto,
         documento: item.documento,
         id_contrato: item.id_contrato
       });
@@ -343,26 +364,56 @@ export function SuplementosPage() {
         </CardHeader>
         <CardContent className="p-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="md:col-span-2">
+            <div>
               <Label className="text-sm font-medium">Nombre *</Label>
               <Input value={formData.nombre || ''} onChange={(e: any) => setFormData({...formData, nombre: e.target.value})} className="mt-1" placeholder="Nombre del suplemento" />
             </div>
-            <div className="md:col-span-2">
+            <div ref={contratoRef}>
               <Label className="text-sm font-medium">Contrato *</Label>
               {selectedContratoId && editingId ? (
                 <div className="mt-1 px-3 py-2 bg-gray-100 border border-gray-300 rounded-lg text-gray-700">
                   {contratos.find(c => c.id_contrato === Number(selectedContratoId))?.nombre || `Contrato #${selectedContratoId}`}
                 </div>
               ) : (
-                <select 
-                  className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white"
-                  value={selectedContratoId || ''} 
-                  onChange={(e) => setSelectedContratoId(e.target.value ? Number(e.target.value) : null)}
-                >
-                  <option value="">Seleccionar contrato</option>
-                  {contratos.map(c => <option key={c.id_contrato} value={c.id_contrato}>{c.nombre}</option>)}
-                </select>
+                <div className="relative mt-1">
+                  <Input
+                    value={selectedContratoId ? (contratos.find(c => c.id_contrato === selectedContratoId)?.nombre || '') : contratoSearch}
+                    onChange={(e: any) => {
+                      setContratoSearch(e.target.value);
+                      setSelectedContratoId(null);
+                      setShowContratoDropdown(true);
+                    }}
+                    onFocus={() => setShowContratoDropdown(true)}
+                    placeholder="Buscar contrato..."
+                  />
+                  {showContratoDropdown && (
+                    <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                      {filteredContratos.length === 0 ? (
+                        <div className="px-3 py-2 text-sm text-gray-500">No se encontraron contratos</div>
+                      ) : (
+                        filteredContratos.map(c => (
+                          <button
+                            key={c.id_contrato}
+                            type="button"
+                            className="w-full px-3 py-2 text-left text-sm hover:bg-teal-50 transition-colors"
+                            onClick={() => {
+                              setSelectedContratoId(c.id_contrato);
+                              setContratoSearch('');
+                              setShowContratoDropdown(false);
+                            }}
+                          >
+                            {c.nombre}
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  )}
+                </div>
               )}
+            </div>
+            <div>
+              <Label className="text-sm font-medium">Monto</Label>
+              <Input type="number" step="0.01" min="0" value={formData.monto ?? ''} onChange={(e: any) => setFormData({...formData, monto: e.target.value})} className="mt-1" placeholder="0.00" />
             </div>
             <div>
               <Label className="text-sm font-medium">Estado</Label>
@@ -388,7 +439,7 @@ export function SuplementosPage() {
                 </button>
               </div>
             </div>
-            <div className="md:col-span-2">
+            <div>
               <Label className="text-sm font-medium">Documento</Label>
               <Input value={formData.documento || ''} onChange={(e: any) => setFormData({...formData, documento: e.target.value})} className="mt-1" placeholder="Número de documento" />
             </div>

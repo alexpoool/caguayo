@@ -351,6 +351,7 @@ async def map_suplemento_to_read(
         fecha=suplemento.fecha,
         monto=suplemento.monto,
         documento=suplemento.documento,
+        codigo=suplemento.codigo,
         estado=EstadoContratoRead(
             id_estado_contrato=estado.id_estado_contrato,
             nombre=estado.nombre,

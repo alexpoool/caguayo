@@ -191,6 +191,9 @@ export function SuplementosMainPage() {
         <SuplementosForm
           formData={formData}
           setFormData={setFormData}
+          contratos={contratos}
+          selectedContratoId={selectedContratoId}
+          setSelectedContratoId={setSelectedContratoId}
           estados={estados}
           editingId={editingId}
           handleSave={handleSave}
