@@ -11,11 +11,9 @@ import toast from 'react-hot-toast';
 import { esNumeroPositivo, esPorcentaje } from '../../utils/validacionFormularios';
 
 type View = 'list' | 'form';
-type FilterType = 'all' | 'pendientes' | 'liquidadas';
 
 export function ProductosEnLiquidacionPage() {
   const [view, setView] = useState<View>('list');
-  const [filterType, setFilterType] = useState<FilterType>('pendientes');
   const [allProductos, setAllProductos] = useState<Productos[]>([]);
   const [monedas, setMonedas] = useState<Moneda[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -34,28 +32,18 @@ export function ProductosEnLiquidacionPage() {
     hasMore,
     loadMore,
     refresh,
-    reset,
   } = useInfiniteList<ProductosEnLiquidacion>({
-    queryKeyBase: 'productos-liquidacion',
-    queryFn: (skip, limit) => {
-      if (filterType === 'pendientes') {
-        return productosEnLiquidacionService.getProductosEnLiquidacionPendientes(skip, limit);
-      } else if (filterType === 'liquidadas') {
-        return productosEnLiquidacionService.getProductosEnLiquidacionLiquidadas(skip, limit);
-      }
-      return productosEnLiquidacionService.getProductosEnLiquidacion(skip, limit);
-    },
-    extraQueryKeyParams: [filterType],
+    queryKeyBase: 'productos-liquidacion-pendientes',
+    queryFn: (skip, limit) =>
+      productosEnLiquidacionService.getProductosEnLiquidacionPendientes(skip, limit),
     limit: 100,
   });
-
-  // Reset al cambiar de pestaña
-  useEffect(() => { reset(); }, [filterType]);
 
   // IntersectionObserver para scroll infinito
   const loadMoreRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    if (!hasMore || isFetchingMore) return;
     const el = loadMoreRef.current;
     if (!el) return;
     const observer = new IntersectionObserver(
@@ -64,7 +52,7 @@ export function ProductosEnLiquidacionPage() {
     );
     observer.observe(el);
     return () => observer.disconnect();
-  }, [loadMore]);
+  }, [loadMore, hasMore, isFetchingMore]);
 
   // ── Referencia de datos (productos para select, monedas) ─────────────────
 
@@ -172,22 +160,6 @@ export function ProductosEnLiquidacionPage() {
           <Plus className="h-4 w-4" />
           Nuevo Producto
         </Button>
-      </div>
-
-      <div className="flex gap-4 border-b">
-        {(['pendientes', 'liquidadas', 'all'] as FilterType[]).map((tab) => (
-          <button
-            key={tab}
-            onClick={() => setFilterType(tab)}
-            className={`px-4 py-2 font-medium transition-colors ${
-              filterType === tab
-                ? 'text-teal-600 border-b-2 border-teal-600'
-                : 'text-gray-500 hover:text-gray-700'
-            }`}
-          >
-            {tab === 'all' ? 'Todas' : tab.charAt(0).toUpperCase() + tab.slice(1)}
-          </button>
-        ))}
       </div>
 
       <div className="flex gap-2">
@@ -303,14 +275,16 @@ export function ProductosEnLiquidacionPage() {
           </Table>
         </div>
         {/* Sentinel para scroll infinito */}
-        <div ref={loadMoreRef} className="flex justify-center py-2">
-          {isFetchingMore && (
-            <div className="flex items-center gap-2 text-gray-500">
-              <Loader2 className="h-5 w-5 animate-spin" />
-              <span>Cargando más...</span>
-            </div>
-          )}
-        </div>
+        {hasMore && (
+          <div ref={loadMoreRef} className="flex justify-center py-2">
+            {isFetchingMore && (
+              <div className="flex items-center gap-2 text-gray-500">
+                <Loader2 className="h-5 w-5 animate-spin" />
+                <span>Cargando más...</span>
+              </div>
+            )}
+          </div>
+        )}
       </Card>
     </div>
   );

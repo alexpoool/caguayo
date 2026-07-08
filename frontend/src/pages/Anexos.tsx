@@ -31,10 +31,10 @@ interface Anexo {
   comision?: number;
   dependencia_nombre?: string;
   id_producto?: number | null;
-  anexo_convenio?: {
+  convenios?: {
     id_convenio: number;
     nombre_convenio: string;
-    codigo_convenio?: string;
+    codigo?: string;
   };
 }
 
@@ -718,7 +718,7 @@ export function AnexosPage() {
                 anexos.map((anexo) => (
                   <TableRow key={anexo.id_anexo}>
                     <TableCell>
-                      {anexo.anexo_convenio?.nombre_convenio || "Sin convenio"}
+                      {anexo.convenios?.nombre_convenio || "Sin convenio"}
                     </TableCell>
                     <TableCell className="font-medium">
                       {anexo.codigo_anexo || "-"}

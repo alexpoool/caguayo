@@ -130,6 +130,7 @@ export function LiquidacionesPage() {
   const loadMoreRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    if (!hasMore || isFetchingMore) return;
     const el = loadMoreRef.current;
     if (!el) return;
 
@@ -144,7 +145,7 @@ export function LiquidacionesPage() {
 
     observer.observe(el);
     return () => observer.disconnect();
-  }, [loadMore]);
+  }, [loadMore, hasMore, isFetchingMore]);
 
   const { data: clientes = [] } = useQuery({
     queryKey: ['clientes-proveedores'],
