@@ -2,8 +2,8 @@ from datetime import datetime, date
 from decimal import Decimal
 from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlmodel import select
-from sqlalchemy import text
 from typing import List, Optional
+from src.utils.codigos_entidad import generar_codigo
 from src.models.servicio import (
     Etapa,
     PersonaEtapa,
@@ -61,12 +61,11 @@ from src.repository.servicio_repo import (
 class ServicioService:
     @staticmethod
     async def create(
-        db: AsyncSession, data: ServicioCreate, nit: Optional[str] = None
+        db: AsyncSession, data: ServicioCreate, denominacion: Optional[str] = None
     ) -> ServicioRead:
         servicio = await servicio_repo.create(db, obj_in=data)
         año = datetime.now().year
-        prefijo = f"{nit}." if nit else ""
-        servicio.codigo_servicio = f"{prefijo}{año}.{servicio.id_servicio}"
+        servicio.codigo_servicio = generar_codigo(denominacion or "", año, servicio.id_servicio)
         await db.commit()
         await db.refresh(servicio)
         return ServicioRead(**servicio.model_dump())
@@ -100,19 +99,11 @@ class ServicioService:
 class SolicitudServicioService:
     @staticmethod
     async def create(
-        db: AsyncSession, data: SolicitudServicioCreate, nit: Optional[str] = None
+        db: AsyncSession, data: SolicitudServicioCreate, denominacion: Optional[str] = None
     ) -> SolicitudServicioRead:
         s = await solicitud_servicio_repo.create(db, obj_in=data)
         año = datetime.now().year
-        prefijo = f"{nit}." if nit else ""
-
-        if s.id_contrato:
-            existing = await solicitud_servicio_repo.get_by_contrato(db, s.id_contrato)
-            num = len(existing)
-        else:
-            num = s.id_solicitud_servicio
-
-        s.codigo_solicitud = f"{prefijo}{año}.{num}"
+        s.codigo_solicitud = generar_codigo(denominacion or "", año, s.id_solicitud_servicio)
         await db.commit()
         await db.refresh(s)
         return SolicitudServicioRead(**s.model_dump())
@@ -148,7 +139,7 @@ class SolicitudServicioService:
         db: AsyncSession,
         id: int,
         data: SolicitudServicioUpdate,
-        nit: Optional[str] = None,
+        denominacion: Optional[str] = None,
     ) -> SolicitudServicioRead:
         s = await solicitud_servicio_repo.get(db, id)
         if not s:
@@ -164,10 +155,7 @@ class SolicitudServicioService:
         id_contrato = getattr(data, "id_contrato", None)
         if aprobado and id_contrato and not s.codigo_proyecto:
             año = datetime.now().year
-            prefijo = f"{nit}." if nit else ""
-            existing = await solicitud_servicio_repo.get_by_contrato(db, id_contrato)
-            num = len(existing)
-            data.codigo_proyecto = f"{prefijo}{año}.{num}"
+            data.codigo_proyecto = generar_codigo(denominacion or "", año, s.id_solicitud_servicio)
 
         updated = await solicitud_servicio_repo.update(db, db_obj=s, obj_in=data)
         return SolicitudServicioRead(**updated.model_dump())
@@ -280,7 +268,7 @@ class PersonaEtapaService:
 class FacturaServicioService:
     @staticmethod
     async def create(
-        db: AsyncSession, data: FacturaServicioCreate, nit: Optional[str] = None
+        db: AsyncSession, data: FacturaServicioCreate, denominacion: Optional[str] = None
     ) -> FacturaServicioRead:
         etapa = None
         if data.id_etapa:
@@ -317,20 +305,7 @@ class FacturaServicioService:
             if certificacion.facturado:
                 raise Exception("La certificación ya está facturada")
 
-        if not data.codigo_factura:
-            year = datetime.now().year
-            letra = "C" if data.id_certificacion else "S"
-            last = await factura_servicio_repo.get_last_by_year(db, year)
-            if last and last.codigo_factura:
-                try:
-                    last_num = int(last.codigo_factura.split(".")[-1])
-                    new_num = last_num + 1
-                except Exception:
-                    new_num = 1
-            else:
-                new_num = 1
-            data.codigo_factura = f"{nit or ''}{letra}.{year}.{new_num}"
-
+        data.codigo_factura = None
         tareas_seleccionadas = data.tareas_seleccionadas or []
         data.tareas_seleccionadas = None
         tarea_modifiers = data.tarea_modifiers or {}
@@ -366,18 +341,12 @@ class FacturaServicioService:
         data.pagado = Decimal("0")
 
         f = await factura_servicio_repo.create(db, obj_in=data)
-
+        await db.flush()
+        f.codigo_factura = generar_codigo(denominacion or "", datetime.now().year, f.id_factura_servicio)
+        db.add(f)
         await db.commit()
 
-        result = await db.exec(
-            text("SELECT MAX(id_factura_servicio) FROM factura_servicio")
-        )
-        f_id = result.scalar_one_or_none()
-
-        if f_id is None:
-            raise Exception("No se pudo obtener el ID de la factura creada")
-
-        f = await factura_servicio_repo.get(db, f_id)
+        f = await factura_servicio_repo.get(db, f.id_factura_servicio)
 
         if data.id_certificacion and (
             certificacion_ajuste_porciento is not None
@@ -412,7 +381,7 @@ class FacturaServicioService:
                         ajuste_pct = Decimal("0.00")
                         ajuste_val = Decimal("0.00")
                     item_data = ItemFacturaServicioCreate(
-                        id_factura_servicio=f_id,
+                        id_factura_servicio=f.id_factura_servicio,
                         id_tarea_etapa=tarea_id,
                         codigo_extendido=tarea.codigo_extendido,
                         concepto=tarea.concepto_modificado,
@@ -674,7 +643,7 @@ class PagoFacturaServicioService:
 class PersonaLiquidacionService:
     @staticmethod
     async def create(
-        db: AsyncSession, data: PersonaLiquidacionCreateInput, nit: Optional[str] = None
+        db: AsyncSession, data: PersonaLiquidacionCreateInput, denominacion: Optional[str] = None
     ) -> PersonaLiquidacionRead:
         validacion = await PersonaLiquidacionService.validar_liquidar(
             db, data.id_etapa, data.id_persona
@@ -742,22 +711,12 @@ class PersonaLiquidacionService:
             observacion=data.observacion,
         )
 
-        if not liquidacion_data.numero:
-            year = datetime.now().year
-            last = await persona_liquidacion_repo.get_last_by_year(db, year)
-            if last and last.numero:
-                try:
-                    last_num = int(last.numero.split(".")[-1])
-                    new_num = last_num + 1
-                except Exception:
-                    new_num = 1
-            else:
-                new_num = 1
-            etapa = await db.get(Etapa, liquidacion_data.id_etapa)
-            letra = "C" if etapa and etapa.tipo_etapa == "CERTIFICACIONES" else "S"
-            liquidacion_data.numero = f"{nit or ''}{letra}.{year}.{new_num}"
+        liquidacion_data.numero = None
 
         liquidacion = await persona_liquidacion_repo.create(db, obj_in=liquidacion_data)
+        await db.flush()
+        liquidacion.numero = generar_codigo(denominacion or "", datetime.now().year, liquidacion.id_liquidacion)
+        db.add(liquidacion)
 
         if data.id_pago and importe > 0:
             pago = await pago_factura_servicio_repo.get(db, data.id_pago)
@@ -766,7 +725,8 @@ class PersonaLiquidacionService:
                     Decimal("0"), pago.monto_disponible - importe
                 )
                 db.add(pago)
-                await db.commit()
+
+        await db.commit()
 
         return PersonaLiquidacionRead(**liquidacion.model_dump())
 

@@ -33,6 +33,7 @@ class Dependencia(SQLModel, table=True):
         default=None, foreign_key="dependencia.id_dependencia"
     )
     nombre: str = Field(max_length=100)
+    denominacion: str = Field(max_length=3)
     nit: Optional[str] = Field(default=None, max_length=20, unique=True)
     reeup: Optional[str] = Field(default=None, max_length=15)
     direccion: str = Field(max_length=255)

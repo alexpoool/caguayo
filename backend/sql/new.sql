@@ -240,6 +240,7 @@ CREATE TABLE dependencia (
     id_tipo_dependencia INTEGER NOT NULL REFERENCES tipo_dependencia(id_tipo_dependencia) ON DELETE CASCADE,
     codigo_padre INTEGER REFERENCES dependencia(id_dependencia) ON DELETE SET NULL,
     nombre VARCHAR(100) NOT NULL,
+    denominacion VARCHAR(3) NOT NULL,
     nit VARCHAR(20) UNIQUE,
     reeup VARCHAR(15),
     direccion VARCHAR(255) NOT NULL,
@@ -1122,11 +1123,8 @@ INSERT INTO moneda (nombre, denominacion, simbolo) VALUES
 ('Euro', 'Euro de la Unión Europea', 'EUR');
 
 INSERT INTO tipo_convenio (nombre, descripcion) VALUES 
-('Contrato de Servicios', 'Contrato de servicios'),
-('Acuerdo de Suministro', 'Acuerdo de suministro'),
-('Contrato de Obra', 'Contrato de obra'),
-('Convenio Marco', 'Convenio marco'),
-('COMPRA VENTA', 'Convenio de compraventa de productos');
+('COMPRA VENTA', 'Convenio de compraventa de productos'),
+('CONSIGNACION', 'Consignación de productos para liquidación posterior');
 
 INSERT INTO tipo_movimiento (tipo, factor) VALUES 
 ('compra', 1),

@@ -21,3 +21,8 @@ async def generar_codigo_con_padre(
     result = await db.exec(raw, params={"anio": anio})
     count = result.one()[0]
     return f"{prefijo}.{(count + 1):03d}"
+
+
+def generar_codigo(denominacion: str, anio: int, entity_id: int) -> str:
+    """Genera código con patrón {denominacion}.{año_2d}.{entity_id}. Ej: OFI.26.5"""
+    return f"{denominacion}.{str(anio)[-2:]}.{entity_id}"

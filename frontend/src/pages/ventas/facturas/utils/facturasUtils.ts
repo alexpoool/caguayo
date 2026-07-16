@@ -8,6 +8,7 @@ export interface SelectedProduct {
   cantidad: number;
   precio_venta: number;
   id_moneda?: number;
+  id_anexo?: number;
 }
 
 /**
@@ -36,10 +37,6 @@ export function validarFactura(data: {
 
   if (!data.fecha) {
     errors.push('Debe seleccionar una fecha');
-  }
-
-  if (!data.id_moneda && (!data.items || data.items.length === 0)) {
-    errors.push('Debe seleccionar una moneda');
   }
 
   if (!data.items || data.items.length === 0) {
@@ -97,22 +94,25 @@ export function getPorcentajePago(
 export function prepararFacturaParaAPI(
   formData: Record<string, any>,
   selectedProducts: SelectedProduct[],
-  selectedContratoId: number | null
+  selectedContratoId: number | null,
+  contratos: any[],
+  userDependenciaId?: number | null
 ): any {
-  const moneda = formData.id_moneda ? Number(formData.id_moneda) : undefined;
+  const contrato = contratos.find(c => c.id_contrato === selectedContratoId);
+  const moneda = contrato?.id_moneda;
   return {
     id_contrato: selectedContratoId,
-    ...(formData.codigo_factura ? { codigo_factura: formData.codigo_factura } : {}),
     fecha: formData.fecha || new Date().toISOString().split('T')[0],
     descripcion: formData.descripcion,
     observaciones: formData.observaciones,
-    id_dependencia: formData.id_dependencia ? Number(formData.id_dependencia) : 4,
+    id_dependencia: userDependenciaId,
     id_moneda: moneda,
     items: selectedProducts.map((p) => ({
       id_producto: p.id_producto,
       cantidad: p.cantidad,
       precio_venta: p.precio_venta,
-      id_moneda: moneda || p.id_moneda || 277,
+      id_moneda: moneda,
+      id_anexo: p.id_anexo,
     })),
   };
 }

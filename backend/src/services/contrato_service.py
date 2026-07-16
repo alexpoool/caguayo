@@ -57,13 +57,9 @@ from src.dto import (
     ProductoSimpleRead,
     ItemAnexoDisponible,
 )
-from src.utils import generar_codigo_anio, generar_codigo_con_padre
-from src.core.config import settings
+from src.utils import generar_codigo_anio, generar_codigo_con_padre, generar_codigo
 from src.core.exceptions import BusinessLogicError
-from src.services.productos_en_liquidacion_service import (
-    agregar_desde_factura,
-    agregar_desde_venta_efectivo,
-)
+
 
 tipo_contrato_repo = CRUDBase[TipoContrato, TipoContratoCreate, TipoContratoUpdate](
     TipoContrato
@@ -146,10 +142,10 @@ class EstadoContratoService:
 async def map_contrato_to_read(
     db: AsyncSession, contrato: Contrato
 ) -> ContratoReadWithDetails:
-    estado = contrato.estado or await db.get(EstadoContrato, contrato.id_estado)
-    tipo_contrato = contrato.tipo_contrato or await db.get(TipoContrato, contrato.id_tipo_contrato)
-    moneda = contrato.moneda or await db.get(Moneda, contrato.id_moneda)
-    cliente = contrato.cliente or await db.get(Cliente, contrato.id_cliente)
+    estado = await db.get(EstadoContrato, contrato.id_estado)
+    tipo_contrato = await db.get(TipoContrato, contrato.id_tipo_contrato)
+    moneda = await db.get(Moneda, contrato.id_moneda)
+    cliente = await db.get(Cliente, contrato.id_cliente)
 
     return ContratoReadWithDetails(
         id_contrato=contrato.id_contrato,
@@ -197,13 +193,14 @@ async def map_contrato_to_read(
 class ContratoService:
     @staticmethod
     async def create(
-        db: AsyncSession, data: ContratoCreate, nit: Optional[str] = None
+        db: AsyncSession, data: ContratoCreate, denominacion: Optional[str] = None
     ) -> ContratoReadWithDetails:
+        contrato = await contrato_repo.create(db, data)
         anio = data.fecha.year
-        codigo = await generar_codigo_anio(db, "contrato", "fecha", anio)
-        prefijo = f"{nit}." if nit else ""
-        codigo = f"{prefijo}V.{codigo}"
-        contrato = await contrato_repo.create(db, data, codigo=codigo)
+        contrato.codigo = generar_codigo(denominacion or "", anio, contrato.id_contrato)
+        db.add(contrato)
+        await db.commit()
+        await db.refresh(contrato)
         return await map_contrato_to_read(db, contrato)
 
     @staticmethod
@@ -364,17 +361,14 @@ async def map_suplemento_to_read(
 class SuplementoService:
     @staticmethod
     async def create(
-        db: AsyncSession, data: SuplementoCreate
+        db: AsyncSession, data: SuplementoCreate, denominacion: Optional[str] = None
     ) -> SuplementoReadWithDetails:
-        contrato = await db.get(Contrato, data.id_contrato)
-        prefijo = (
-            contrato.codigo if (contrato and contrato.codigo) else str(data.id_contrato)
-        )
+        suplemento = await suplemento_repo.create(db, data)
         anio = data.fecha.year
-        codigo = await generar_codigo_con_padre(
-            db, prefijo, "suplemento", "fecha", anio
-        )
-        suplemento = await suplemento_repo.create(db, data, codigo=codigo)
+        suplemento.codigo = generar_codigo(denominacion or "", anio, suplemento.id_suplemento)
+        db.add(suplemento)
+        await db.commit()
+        await db.refresh(suplemento)
         return await map_suplemento_to_read(db, suplemento)
 
     @staticmethod
@@ -429,9 +423,7 @@ async def map_factura_to_read(
     items_con_producto = []
     if factura.items_factura:
         for item in factura.items_factura:
-            producto = item.producto or (
-                await db.get(Productos, item.id_producto) if item.id_producto else None
-            )
+            producto = await db.get(Productos, item.id_producto) if item.id_producto else None
             item_read = ItemFacturaRead(
                 id_item_factura=item.id_item_factura,
                 id_factura=item.id_factura,
@@ -470,28 +462,26 @@ async def map_factura_to_read(
 class FacturaService:
     @staticmethod
     async def create(
-        db: AsyncSession, data: FacturaCreate, nit: Optional[str] = None
+        db: AsyncSession, data: FacturaCreate, denominacion: Optional[str] = None, id_dependencia_usuario: Optional[int] = None
     ) -> FacturaReadWithDetails:
         data_dict = data.model_dump(exclude_none=True)
         items_data = data_dict.pop("items", [])
-
-        prefijo = f"{nit}." if nit else ""
-        if not data_dict.get("codigo_factura"):
-            anio = data.fecha.year
-            codigo = await generar_codigo_anio(db, "factura", "fecha", anio)
-            data_dict["codigo_factura"] = f"{prefijo}V.{codigo}"
 
         total_monto = sum(
             Decimal(str(item["cantidad"])) * Decimal(str(item["precio_venta"]))
             for item in items_data
         )
 
-        data.codigo_factura = data_dict["codigo_factura"]
         data.monto = total_monto
         factura = await factura_repo.create(db, data)
 
+        anio = data.fecha.year
+        factura.codigo_factura = generar_codigo(denominacion or "", anio, factura.id_factura)
+        db.add(factura)
+        await db.flush()
+
         contrato = await db.get(Contrato, factura.id_contrato)
-        id_dependencia = data.id_dependencia or settings.DEFAULT_DEPENDENCIA_ID
+        id_dependencia = data.id_dependencia or id_dependencia_usuario
 
         stmt_tipo_mov = select(TipoMovimiento).where(TipoMovimiento.tipo == "venta")
         result_tipo = await db.exec(stmt_tipo_mov)
@@ -517,7 +507,7 @@ class FacturaService:
 
         if items_data and tipo_mov:
             await item_factura_repo.create_items(
-                db, factura.id_factura, items_data, nit=nit
+                db, factura.id_factura, items_data, denominacion=denominacion
             )
 
             for item in items_data:
@@ -537,11 +527,12 @@ class FacturaService:
                     id_cliente=contrato.id_cliente if contrato else None,
                     id_producto=item["id_producto"],
                     cantidad=item["cantidad"],
-                    fecha=datetime.now(timezone.utc),
+                    fecha=datetime.now(timezone.utc).replace(tzinfo=None),
                     precio_compra=producto.precio_compra,
                     moneda_compra=producto.moneda_compra,
                     precio_venta=item["precio_venta"],
                     moneda_venta=item["id_moneda"],
+                    id_anexo=item.get("id_anexo"),
                     estado="pendiente",
                 )
                 db.add(db_movimiento)
@@ -549,10 +540,8 @@ class FacturaService:
 
                 if db_movimiento.id_movimiento:
                     anio = datetime.now(timezone.utc).year
-                    codigo = f"{prefijo}V.{anio}.FAC{factura.id_factura}.{item['id_producto']}"
+                    codigo = f"{denominacion}.{str(anio)[-2:]}.FAC{factura.id_factura}.{item['id_producto']}"
                     db_movimiento.codigo = codigo
-
-        await agregar_desde_factura(db, factura.id_factura, items_data, nit=nit)
 
         await db.commit()
         await db.refresh(factura)
@@ -631,7 +620,8 @@ class FacturaService:
         for mov in result.all():
             if mov.estado != "cancelado":
                 mov.estado = "cancelado"
-                db.add(mov)
+            mov.id_factura = None
+            db.add(mov)
         # Eliminar items de la factura antes de borrarla (evita NOT NULL en id_factura)
         items = await item_factura_repo.get_by_factura(db, id)
         for item in items:
@@ -658,6 +648,13 @@ async def map_venta_efectivo_to_read(
                 precio_venta=item.precio_venta,
                 precio_compra=item.precio_compra,
                 id_moneda=item.id_moneda,
+                codigo=item.codigo,
+                producto=ProductoSimpleRead(
+                    id_producto=item.producto.id_producto,
+                    codigo=item.producto.codigo,
+                    nombre=item.producto.nombre,
+                    precio_venta=item.producto.precio_venta,
+                ) if item.producto else None,
             )
             for item in items_db
         ]
@@ -672,6 +669,7 @@ async def map_venta_efectivo_to_read(
         id_dependencia=venta.id_dependencia,
         cajero=venta.cajero,
         monto=venta.monto,
+        codigo=venta.codigo,
         dependencia=DependenciaSimpleRead(
             id_dependencia=dependencia.id_dependencia,
             nombre=dependencia.nombre,
@@ -685,17 +683,17 @@ async def map_venta_efectivo_to_read(
 class VentaEfectivoService:
     @staticmethod
     async def create(
-        db: AsyncSession, data: VentaEfectivoCreate, nit: Optional[str] = None
+        db: AsyncSession, data: VentaEfectivoCreate, denominacion: Optional[str] = None
     ) -> VentaEfectivoReadWithDetails:
         data_dict = data.model_dump(exclude_none=True)
         items_data = data_dict.pop("items", [])
 
-        anio = data.fecha.year
-        codigo = await generar_codigo_anio(db, "venta_efectivo", "fecha", anio)
-        prefijo = f"{nit}." if nit else ""
-        data_dict["codigo"] = f"{prefijo}V.{codigo}"
+        venta = await venta_efectivo_repo.create(db, data)
 
-        venta = await venta_efectivo_repo.create(db, data, codigo=data_dict["codigo"])
+        anio = data.fecha.year
+        venta.codigo = generar_codigo(denominacion or "", anio, venta.id_venta_efectivo)
+        db.add(venta)
+        await db.flush()
 
         stmt_tipo_mov = select(TipoMovimiento).where(TipoMovimiento.tipo == "venta")
         result_tipo = await db.exec(stmt_tipo_mov)
@@ -721,8 +719,18 @@ class VentaEfectivoService:
 
         if items_data and tipo_mov:
             await item_venta_efectivo_repo.create_items(
-                db, venta.id_venta_efectivo, items_data, nit=nit
+                db, venta.id_venta_efectivo, items_data, denominacion=denominacion
             )
+
+            # Resolver id_anexo desde id_item_anexo
+            from src.models.item_anexo import ItemAnexo
+            for item in items_data:
+                if "id_anexo" not in item or item["id_anexo"] is None:
+                    id_item_anexo = item.get("id_item_anexo")
+                    if id_item_anexo is not None:
+                        item_anexo = await db.get(ItemAnexo, id_item_anexo)
+                        if item_anexo:
+                            item["id_anexo"] = item_anexo.id_anexo
 
             for item in items_data:
                 producto = await db.get(Productos, item["id_producto"])
@@ -739,11 +747,12 @@ class VentaEfectivoService:
                     id_venta_efectivo=venta.id_venta_efectivo,
                     id_producto=item["id_producto"],
                     cantidad=item["cantidad"],
-                    fecha=datetime.now(timezone.utc),
+                    fecha=datetime.now(timezone.utc).replace(tzinfo=None),
                     precio_compra=producto.precio_compra,
                     moneda_compra=producto.moneda_compra,
                     precio_venta=item["precio_venta"],
                     moneda_venta=item["id_moneda"],
+                    id_anexo=item.get("id_anexo"),
                     estado="pendiente",
                 )
                 db.add(db_movimiento)
@@ -751,12 +760,8 @@ class VentaEfectivoService:
 
                 if db_movimiento.id_movimiento:
                     anio = datetime.now(timezone.utc).year
-                    codigo = f"{prefijo}V.{anio}.VE{venta.id_venta_efectivo}.{item['id_producto']}"
+                    codigo = f"{denominacion}.{str(anio)[-2:]}.VE{venta.id_venta_efectivo}.{item['id_producto']}"
                     db_movimiento.codigo = codigo
-
-        await agregar_desde_venta_efectivo(
-            db, venta.id_venta_efectivo, items_data, nit=nit
-        )
 
         await db.commit()
         await db.refresh(venta)

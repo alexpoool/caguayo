@@ -175,6 +175,17 @@ export interface Anexo {
     nombre_convenio: string;
     codigo_anexo?: string;
   };
+  items_anexo?: {
+    id_item_anexo: number;
+    id_producto: number;
+    entrada: number;
+    precio_compra: number;
+    precio_venta: number;
+    id_moneda: number;
+    codigo?: string;
+    producto?: { id_producto: number; nombre: string; codigo?: string };
+    precios?: { id_moneda: number; precio_venta: number; precio_compra?: number }[];
+  }[];
 }
 
 // Dependencia se importa desde dependencia.ts
@@ -226,6 +237,7 @@ export interface ProductoConCantidad {
   id_anexo?: number;
   id_convenio?: number;
   id_item_anexo?: number;
+  precios?: { id_moneda: number; precio_venta: number | null; precio_compra: number | null }[];
 }
 
 export interface ProductosUpdate {

@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
+import { useSearchParams } from 'react-router-dom';
 import { Button, Input, Label, Card, CardHeader, CardTitle, CardContent, Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../../components/ui';
 import { productosEnLiquidacionService, productosService, monedaService } from '../../services/api';
 import type { ProductosEnLiquidacion, ProductosEnLiquidacionCreate } from '../../services/api';
@@ -11,19 +12,28 @@ import toast from 'react-hot-toast';
 import { esNumeroPositivo, esPorcentaje } from '../../utils/validacionFormularios';
 
 type View = 'list' | 'form';
+type TabType = 'todas' | 'pendientes' | 'liquidadas';
 
 export function ProductosEnLiquidacionPage() {
+  const [searchParams] = useSearchParams();
+  const initialProveedorId = searchParams.get('proveedor');
+  const [filtroCliente, setFiltroCliente] = useState<number | null>(initialProveedorId ? Number(initialProveedorId) : null);
+
   const [view, setView] = useState<View>('list');
   const [allProductos, setAllProductos] = useState<Productos[]>([]);
   const [monedas, setMonedas] = useState<Moneda[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [detailModal, setDetailModal] = useState<{ isOpen: boolean; item: ProductosEnLiquidacion | null }>({ isOpen: false, item: null });
 
+  const [activeTab, setActiveTab] = useState<TabType>('pendientes');
+
   const [editingId, setEditingId] = useState<number | null>(null);
   const [formData, setFormData] = useState<Partial<ProductosEnLiquidacionCreate>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   // ── Infinite list ──────────────────────────────────────────────────────────
+
+  const queryKeyParams = useMemo(() => [activeTab, filtroCliente], [activeTab, filtroCliente]);
 
   const {
     items: productos,
@@ -32,12 +42,21 @@ export function ProductosEnLiquidacionPage() {
     hasMore,
     loadMore,
     refresh,
+    reset,
   } = useInfiniteList<ProductosEnLiquidacion>({
-    queryKeyBase: 'productos-liquidacion-pendientes',
-    queryFn: (skip, limit) =>
-      productosEnLiquidacionService.getProductosEnLiquidacionPendientes(skip, limit),
+    queryKeyBase: 'productos-liquidacion',
+    extraQueryKeyParams: queryKeyParams,
+    queryFn: (skip, limit) => {
+      if (activeTab === 'pendientes')
+        return productosEnLiquidacionService.getProductosEnLiquidacionPendientes(skip, limit, filtroCliente ?? undefined);
+      if (activeTab === 'liquidadas')
+        return productosEnLiquidacionService.getProductosEnLiquidacionLiquidadas(skip, limit, filtroCliente ?? undefined);
+      return productosEnLiquidacionService.getProductosEnLiquidacion(skip, limit, filtroCliente ?? undefined);
+    },
     limit: 100,
   });
+
+  useEffect(() => { reset(); }, [activeTab, filtroCliente]);
 
   // IntersectionObserver para scroll infinito
   const loadMoreRef = useRef<HTMLDivElement>(null);
@@ -153,13 +172,23 @@ export function ProductosEnLiquidacionPage() {
             </p>
           </div>
         </div>
-        <Button
-          onClick={() => openForm()}
-          className="gap-2 bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300"
-        >
-          <Plus className="h-4 w-4" />
-          Nuevo Producto
-        </Button>
+
+      </div>
+
+      <div className="flex gap-4 border-b">
+        {(['todas', 'pendientes', 'liquidadas'] as TabType[]).map((tab) => (
+          <button
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            className={`px-4 py-2 font-medium transition-colors ${
+              activeTab === tab
+                ? 'text-teal-600 border-b-2 border-teal-600'
+                : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            {tab === 'todas' ? 'Todas' : tab === 'pendientes' ? 'Pendientes' : 'Liquidadas'}
+          </button>
+        ))}
       </div>
 
       <div className="flex gap-2">

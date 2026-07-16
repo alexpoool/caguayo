@@ -27,7 +27,7 @@ class Compra(SQLModel, table=True):
             ForeignKey("clientes.id_cliente", ondelete="CASCADE"), nullable=False
         )
     )
-    fecha: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    fecha: datetime = Field(default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
     total: Decimal = Field(default=0, decimal_places=2)
     estado: str = Field(
         default="PENDIENTE",
@@ -35,7 +35,7 @@ class Compra(SQLModel, table=True):
         sa_column=Column(String(20), nullable=False, server_default="PENDIENTE"),
     )
     observacion: Optional[str] = None
-    fecha_registro: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    fecha_registro: datetime = Field(default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
     fecha_actualizacion: Optional[datetime] = None
 
     # Relaciones

@@ -1,12 +1,11 @@
-import { useEffect } from 'react';
-import { Save, ArrowLeft, Receipt } from 'lucide-react';
+import { useState, useRef, useEffect, useMemo } from 'react';
+import { Save, ArrowLeft, Receipt, Search } from 'lucide-react';
 import { Button, Label, Input, Card, CardHeader, CardTitle, CardContent } from '../../../../components/ui';
 import { ProductSelector } from './ProductSelector';
-import { authHelpers } from '../../../../lib/api';
-import type { Dependencia } from '../../../../types/dependencia';
 import type { SelectedProduct } from '../hooks/useProductSelection';
 import type { Productos } from '../../../../types';
 import type { ContratoWithDetails } from '../../../../types/contrato';
+import type { Cliente } from '../../../../types/ventas';
 
 interface FacturaFormProps {
   editingId: number | null;
@@ -15,11 +14,11 @@ interface FacturaFormProps {
   productSearch: string;
   productosFiltrados: Productos[];
   total: number;
-  dependencias: Dependencia[];
-  monedas: any[];
   productos: Productos[];
+  monedas: any[];
   selectedContratoId: number | null;
   contratos: ContratoWithDetails[];
+  clientes: Cliente[];
   onFormDataChange: (data: Record<string, any>) => void;
   onProductSearchChange: (search: string) => void;
   onAddProduct: (id: number) => void;
@@ -39,11 +38,11 @@ export function FacturaForm({
   productSearch,
   productosFiltrados,
   total,
-  dependencias,
-  monedas,
   productos,
+  monedas,
   selectedContratoId,
   contratos,
+  clientes,
   onFormDataChange,
   onProductSearchChange,
   onAddProduct,
@@ -55,12 +54,52 @@ export function FacturaForm({
   onSave,
   onCancel,
 }: FacturaFormProps) {
-  const currentUser = authHelpers.getUser();
+  const [selectedClienteId, setSelectedClienteId] = useState<number | null>(null);
+  const [clienteSearch, setClienteSearch] = useState('');
+  const [showClienteDropdown, setShowClienteDropdown] = useState(false);
+  const [contratoSearch, setContratoSearch] = useState('');
+  const [showContratoDropdown, setShowContratoDropdown] = useState(false);
+  const clienteRef = useRef<HTMLDivElement>(null);
+  const contratoRef = useRef<HTMLDivElement>(null);
+
+  const selectedCliente = useMemo(() => {
+    if (!selectedClienteId) return null;
+    return clientes.find(c => c.id_cliente === selectedClienteId) || null;
+  }, [selectedClienteId, clientes]);
+
+  const filteredClientes = useMemo(() => {
+    if (!clienteSearch) return clientes;
+    const q = clienteSearch.toLowerCase();
+    return clientes.filter(c =>
+      c.nombre?.toLowerCase().includes(q) || c.codigo?.toLowerCase().includes(q)
+    );
+  }, [clientes, clienteSearch]);
+
+  const filteredContratos = useMemo(() => {
+    let list = contratos;
+    if (selectedClienteId) {
+      list = list.filter(c => c.id_cliente === selectedClienteId);
+    }
+    if (!contratoSearch) return list;
+    const q = contratoSearch.toLowerCase();
+    return list.filter(c =>
+      c.nombre?.toLowerCase().includes(q) ||
+      c.codigo?.toLowerCase().includes(q) ||
+      c.cliente?.nombre?.toLowerCase().includes(q)
+    );
+  }, [contratos, selectedClienteId, contratoSearch]);
 
   useEffect(() => {
-    if (!editingId && currentUser?.dependencia && !formData.id_dependencia) {
-      onFormDataChange({ ...formData, id_dependencia: currentUser.dependencia.id_dependencia });
+    function handleClick(e: MouseEvent) {
+      if (clienteRef.current && !clienteRef.current.contains(e.target as Node)) {
+        setShowClienteDropdown(false);
+      }
+      if (contratoRef.current && !contratoRef.current.contains(e.target as Node)) {
+        setShowContratoDropdown(false);
+      }
     }
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
   }, []);
 
   return (
@@ -93,30 +132,109 @@ export function FacturaForm({
           </CardTitle>
         </CardHeader>
         <CardContent className="p-6">
-          {/* Grid de campos */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Contrato */}
-            <div>
-              <Label htmlFor="contrato" className="text-sm font-medium">
-                Contrato
-              </Label>
-              <select
-                id="contrato"
-                className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 outline-none bg-white"
-                value={selectedContratoId || ''}
-                onChange={(e: any) => {
-                  const value = e.target.value;
-                  onSelectedContratoChange(value ? Number(value) : null);
-                  onFormDataChange({ ...formData, id_contrato: value ? Number(value) : null });
-                }}
-              >
-                <option value="">Seleccionar contrato</option>
-                {contratos.map((c) => (
-                  <option key={c.id_contrato} value={c.id_contrato}>
-                    {c.codigo || c.id_contrato} - {c.nombre} ({c.cliente?.nombre || 'Sin cliente'})
-                  </option>
-                ))}
-              </select>
+            {/* Cliente (buscador) */}
+            <div ref={clienteRef} className="relative">
+              <Label className="text-sm font-medium">Cliente</Label>
+              <div className="relative mt-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <input
+                  value={selectedCliente ? selectedCliente.nombre : clienteSearch}
+                  onChange={(e) => {
+                    setClienteSearch(e.target.value);
+                    if (selectedCliente) {
+                      setSelectedClienteId(null);
+                      onSelectedContratoChange(null);
+                    }
+                    setShowClienteDropdown(true);
+                  }}
+                  onFocus={() => setShowClienteDropdown(true)}
+                  placeholder="Buscar cliente..."
+                  className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 outline-none bg-white"
+                />
+              </div>
+              {showClienteDropdown && (
+                <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                  {selectedClienteId && (
+                    <button
+                      type="button"
+                      className="w-full px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50 transition-colors font-medium border-b border-gray-200"
+                      onClick={() => {
+                        setSelectedClienteId(null);
+                        onSelectedContratoChange(null);
+                        setShowClienteDropdown(false);
+                      }}
+                    >
+                      ✕ Quitar filtro de cliente
+                    </button>
+                  )}
+                  {filteredClientes.length === 0 ? (
+                    <div className="px-3 py-2 text-sm text-gray-500">No se encontraron clientes</div>
+                  ) : (
+                    filteredClientes.map((c) => (
+                      <button
+                        key={c.id_cliente}
+                        type="button"
+                        className={`w-full px-3 py-2 text-left text-sm hover:bg-violet-50 transition-colors ${selectedClienteId === c.id_cliente ? 'bg-violet-100 font-medium' : ''}`}
+                        onClick={() => {
+                          setSelectedClienteId(c.id_cliente);
+                          onSelectedContratoChange(null);
+                          setClienteSearch('');
+                          setShowClienteDropdown(false);
+                        }}
+                      >
+                        {c.nombre} ({c.codigo})
+                      </button>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Contrato (buscador) */}
+            <div ref={contratoRef} className="relative">
+              <Label className="text-sm font-medium">Contrato</Label>
+              <div className="relative mt-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <input
+                  value={
+                    selectedContratoId
+                      ? (contratos.find(c => c.id_contrato === selectedContratoId)?.nombre || '')
+                      : contratoSearch
+                  }
+                  onChange={(e) => {
+                    setContratoSearch(e.target.value);
+                    onSelectedContratoChange(null);
+                    setShowContratoDropdown(true);
+                  }}
+                  onFocus={() => setShowContratoDropdown(true)}
+                  placeholder="Buscar contrato..."
+                  className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 outline-none bg-white"
+                />
+              </div>
+              {showContratoDropdown && (
+                <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                  {filteredContratos.length === 0 ? (
+                    <div className="px-3 py-2 text-sm text-gray-500">No se encontraron contratos</div>
+                  ) : (
+                    filteredContratos.map((c) => (
+                      <button
+                        key={c.id_contrato}
+                        type="button"
+                        className="w-full px-3 py-2 text-left text-sm hover:bg-violet-50 transition-colors"
+                        onClick={() => {
+                          onSelectedContratoChange(c.id_contrato);
+                          setSelectedClienteId(c.id_cliente);
+                          setContratoSearch('');
+                          setShowContratoDropdown(false);
+                        }}
+                      >
+                        {c.nombre} ({c.cliente?.nombre || 'Sin cliente'})
+                      </button>
+                    ))
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Fecha */}
@@ -124,12 +242,12 @@ export function FacturaForm({
               <Label htmlFor="fecha" className="text-sm font-medium">
                 Fecha
               </Label>
-              <div className="flex gap-2">
+              <div className="flex gap-2 mt-1">
                 <input
                   type="date"
                   id="fecha"
-                  className="flex-1 mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-violet-500 outline-none transition-colors"
-                  value={formData.fecha || ''}
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-violet-500 outline-none transition-colors"
+                  value={formData.fecha || new Date().toISOString().split('T')[0]}
                   onChange={(e: any) =>
                     onFormDataChange({ ...formData, fecha: e.target.value })
                   }
@@ -137,7 +255,7 @@ export function FacturaForm({
                 <button
                   type="button"
                   onClick={() => onFormDataChange({ ...formData, fecha: new Date().toISOString().split('T')[0] })}
-                  className="mt-1 px-3 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition-colors text-sm font-medium whitespace-nowrap"
+                  className="px-3 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition-colors text-sm font-medium whitespace-nowrap"
                 >
                   Hoy
                 </button>
@@ -145,7 +263,6 @@ export function FacturaForm({
             </div>
 
             {/* Descripción */}
-
             <div>
               <Label htmlFor="descripcion" className="text-sm font-medium">
                 Descripción
@@ -158,73 +275,6 @@ export function FacturaForm({
                 }
                 className="mt-1"
                 placeholder="Descripción de la factura"
-              />
-            </div>
-
-            {/* Dependencia */}
-            <div>
-              <Label htmlFor="dependencia" className="text-sm font-medium">
-                Dependencia
-              </Label>
-              <select
-                id="dependencia"
-                className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 outline-none bg-white"
-                value={formData.id_dependencia || ''}
-                onChange={(e: any) =>
-                  onFormDataChange({ ...formData, id_dependencia: e.target.value })
-                }
-              >
-                <option value="">Seleccionar dependencia</option>
-                {dependencias.map((d) => (
-                  <option key={d.id_dependencia} value={d.id_dependencia}>
-                    {d.nombre}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Moneda */}
-            <div>
-              <Label htmlFor="moneda" className="text-sm font-medium">
-                Moneda
-              </Label>
-              <select
-                id="moneda"
-                className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 outline-none bg-white"
-                value={formData.id_moneda || ''}
-                onChange={(e: any) =>
-                  onFormDataChange({ ...formData, id_moneda: e.target.value })
-                }
-                disabled={!!selectedContratoId && !!formData.id_moneda}
-              >
-                {formData.id_moneda ? (
-                  <option value={formData.id_moneda}>
-                    {monedas.find((m: any) => m.id_moneda === Number(formData.id_moneda))?.nombre || `Moneda #${formData.id_moneda}`}
-                  </option>
-                ) : (
-                  <option value="">Seleccionar moneda</option>
-                )}
-                {monedas.filter((m: any) => m.id_moneda !== Number(formData.id_moneda)).map((m: any) => (
-                  <option key={m.id_moneda} value={m.id_moneda}>
-                    {m.nombre} ({m.simbolo})
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Observaciones */}
-            <div className="md:col-span-2">
-              <Label htmlFor="observaciones" className="text-sm font-medium">
-                Observaciones
-              </Label>
-              <Input
-                id="observaciones"
-                value={formData.observaciones || ''}
-                onChange={(e: any) =>
-                  onFormDataChange({ ...formData, observaciones: e.target.value })
-                }
-                className="mt-1"
-                placeholder="Observaciones adicionales"
               />
             </div>
           </div>
@@ -244,6 +294,22 @@ export function FacturaForm({
             monedas={monedas}
             total={total}
           />
+
+          {/* Observaciones */}
+          <div className="mt-6">
+            <Label htmlFor="observaciones" className="text-sm font-medium">
+              Observaciones
+            </Label>
+            <Input
+              id="observaciones"
+              value={formData.observaciones || ''}
+              onChange={(e: any) =>
+                onFormDataChange({ ...formData, observaciones: e.target.value })
+              }
+              className="mt-1"
+              placeholder="Observaciones adicionales"
+            />
+          </div>
 
           {/* Botones de acción */}
           <div className="flex gap-3 mt-8 pt-6 border-t">

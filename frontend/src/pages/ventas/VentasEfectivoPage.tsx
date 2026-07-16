@@ -27,7 +27,7 @@ import { useDependenciasFiltradas } from "../../hooks/useDependenciasFiltradas";
 import { useStock } from "../../hooks/useStock";
 import { useInfiniteList } from "../../hooks/useInfiniteList";
 import { authHelpers } from "../../lib/api";
-import type { Productos } from "../../types";
+import type { Productos, ProductoConCantidad } from "../../types";
 import type { Dependencia } from "../../types/dependencia";
 import type { VentaEfectivoWithDetails } from "../../types/contrato";
 import {
@@ -74,7 +74,7 @@ export function VentasEfectivoPage() {
     limit: 100,
   });
 
-  const [productos, setProductos] = useState<Productos[]>([]);
+  const [productos, setProductos] = useState<ProductoConCantidad[]>([]);
   const { data: dependencias = [], isLoading: isLoadingDependencias } = useDependenciasFiltradas();
   const [monedas, setMonedas] = useState<any[]>([]);
   const user = authHelpers.getUser() ?? {};
@@ -110,7 +110,7 @@ export function VentasEfectivoPage() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [formData, setFormData] = useState<Record<string, any>>({});
   const [selectedProducts, setSelectedProducts] = useState<
-    { id_producto: number; cantidad: number; precio_venta: number; id_moneda?: number; precios?: { id_moneda: number; precio_venta: number }[] }[]
+    { id_producto: number; cantidad: number; precio_venta: number; id_moneda?: number; id_item_anexo?: number; precios?: { id_moneda: number; precio_venta: number }[] }[]
   >([]);
   const [productSearch, setProductSearch] = useState("");
   const [detailModal, setDetailModal] = useState<{
@@ -137,7 +137,7 @@ export function VentasEfectivoPage() {
 
 const loadInitialData = async () => {
     try {
-      const r1 = await productosService.getProductos(0, 1000);
+      const r1 = await productosService.getProductosConStockItemAnexo();
       const r2 = await monedaService.getMonedas(0, 100);
       setProductos(r1);
       setMonedas(r2);
@@ -201,6 +201,7 @@ const loadInitialData = async () => {
           cantidad: p.cantidad,
           precio_venta: p.precio_venta,
           id_moneda: formData.id_moneda ? Number(formData.id_moneda) : DEFAULTS.MONEDA_ID,
+          id_item_anexo: p.id_item_anexo,
           precios: p.precios?.filter(pr => pr.id_moneda !== (formData.id_moneda ? Number(formData.id_moneda) : DEFAULTS.MONEDA_ID)),
         })),
       };
@@ -236,16 +237,6 @@ const loadInitialData = async () => {
       type: "danger",
     });
   };
-
-  const productosPorMoneda = useMemo(() => {
-    const counts: Record<number, number> = {};
-    productos.forEach((p) => {
-      if (p.moneda_venta) {
-        counts[p.moneda_venta] = (counts[p.moneda_venta] || 0) + 1;
-      }
-    });
-    return counts;
-  }, [productos]);
 
   const resetForm = () => {
     setFormData({});
@@ -294,6 +285,7 @@ const loadInitialData = async () => {
           cantidad: 1,
           precio_venta: producto ? Number(producto.precio_venta) : 0,
           id_moneda: formData.id_moneda ? Number(formData.id_moneda) : undefined,
+          id_item_anexo: producto?.id_item_anexo,
         },
       ]);
     }
@@ -325,7 +317,7 @@ const loadInitialData = async () => {
   const productosPorMonedaSeleccionada = useMemo(() => {
     if (!formData.id_moneda) return productos;
     const monedaId = Number(formData.id_moneda);
-    return productos.filter((p) => p.moneda_venta === monedaId);
+    return productos.filter((p) => p.id_moneda === monedaId);
   }, [productos, formData.id_moneda]);
 
   const productosFiltrados = useMemo(() => {
@@ -618,14 +610,11 @@ const loadInitialData = async () => {
                 }
               >
                 <option value="">Seleccionar moneda</option>
-                {monedas.map((m) => {
-                  const count = productosPorMoneda[m.id_moneda] || 0;
-                  return (
-                    <option key={m.id_moneda} value={m.id_moneda}>
-                      {m.nombre} ({m.simbolo}) — {count} prod.
-                    </option>
-                  );
-                })}
+                {monedas.map((m) => (
+                  <option key={m.id_moneda} value={m.id_moneda}>
+                    {m.nombre}
+                  </option>
+                ))}
               </select>
             </div>
           </div>
@@ -634,7 +623,7 @@ const loadInitialData = async () => {
               selectedProducts={selectedProducts}
               productSearch={productSearch}
               onProductSearchChange={setProductSearch}
-              productosFiltrados={productosFiltrados}
+              productosFiltrados={productosFiltrados as any}
               onAddProduct={(id) => {
                 addProduct(id);
                 setProductSearch("");
@@ -642,7 +631,7 @@ const loadInitialData = async () => {
               onUpdateCantidad={updateCantidad}
               onUpdatePrecio={updatePrecioVenta}
               onRemoveProduct={removeProduct}
-              productos={productosPorMonedaSeleccionada}
+              productos={productosPorMonedaSeleccionada as any}
               total={calcMonto()}
               monedas={monedas}
             />

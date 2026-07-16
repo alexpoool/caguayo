@@ -6,6 +6,7 @@ if TYPE_CHECKING:
     from .contrato import VentaEfectivo
     from .producto import Productos
     from .moneda import Moneda
+    from .anexo import Anexo
 
 
 class ItemVentaEfectivo(SQLModel, table=True):
@@ -21,6 +22,9 @@ class ItemVentaEfectivo(SQLModel, table=True):
     precio_venta: Decimal = Field(decimal_places=4, max_digits=15)
     id_moneda: int = Field(foreign_key="moneda.id_moneda")
     codigo: Optional[str] = Field(default=None, max_length=100)
+    id_anexo: Optional[int] = Field(
+        default=None, foreign_key="anexo.id_anexo", nullable=True
+    )
 
     venta_efectivo: "VentaEfectivo" = Relationship(
         back_populates="items_venta_efectivo"

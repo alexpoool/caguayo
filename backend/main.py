@@ -93,7 +93,7 @@ else:
 
 logging.info(f"CORS_ORIGINS loaded: {cors_origins}")
 
-app.add_middleware(LoggingMiddleware)
+# app.add_middleware(LoggingMiddleware)
 
 app.include_router(api_router)
 

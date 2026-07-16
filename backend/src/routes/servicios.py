@@ -46,7 +46,7 @@ from src.dto.servicio_dto import (
     CertificacionRead,
     CertificacionUpdate,
 )
-from src.utils import _get_nit_from_token
+from src.utils import _get_denominacion_from_token
 
 
 # ==========================================
@@ -78,8 +78,8 @@ async def create_servicio(
     db: AsyncSession = Depends(get_session),
     authorization: Optional[str] = Header(None),
 ):
-    nit = await _get_nit_from_token(authorization, db)
-    return await ServicioService.create(db, data, nit=nit)
+    denominacion = await _get_denominacion_from_token(authorization)
+    return await ServicioService.create(db, data, denominacion=denominacion)
 
 
 @servicios_router.put("/{id}", response_model=ServicioRead)
@@ -147,8 +147,8 @@ async def create_solicitud(
     db: AsyncSession = Depends(get_session),
     authorization: Optional[str] = Header(None),
 ):
-    nit = await _get_nit_from_token(authorization, db)
-    return await SolicitudServicioService.create(db, data, nit=nit)
+    denominacion = await _get_denominacion_from_token(authorization)
+    return await SolicitudServicioService.create(db, data, denominacion=denominacion)
 
 
 @solicitudes_router.put("/{id}", response_model=SolicitudServicioRead)
@@ -159,8 +159,8 @@ async def update_solicitud(
     authorization: Optional[str] = Header(None),
 ):
     try:
-        nit = await _get_nit_from_token(authorization, db)
-        result = await SolicitudServicioService.update(db, id, data, nit=nit)
+        denominacion = await _get_denominacion_from_token(authorization)
+        result = await SolicitudServicioService.update(db, id, data, denominacion=denominacion)
         if not result:
             raise HTTPException(status_code=404, detail="Solicitud no encontrada")
         return result
@@ -334,8 +334,8 @@ async def create_factura_servicio(
     db: AsyncSession = Depends(get_session),
     authorization: Optional[str] = Header(None),
 ):
-    nit = await _get_nit_from_token(authorization, db)
-    return await FacturaServicioService.create(db, data, nit=nit)
+    denominacion = await _get_denominacion_from_token(authorization)
+    return await FacturaServicioService.create(db, data, denominacion=denominacion)
 
 
 @facturas_servicio_router.put("/{id}", response_model=FacturaServicioRead)
@@ -499,8 +499,8 @@ async def create_liquidacion(
     db: AsyncSession = Depends(get_session),
     authorization: Optional[str] = Header(None),
 ):
-    nit = await _get_nit_from_token(authorization, db)
-    return await PersonaLiquidacionService.create(db, data, nit=nit)
+    denominacion = await _get_denominacion_from_token(authorization)
+    return await PersonaLiquidacionService.create(db, data, denominacion=denominacion)
 
 
 @persona_liquidacion_router.put("/{id}", response_model=PersonaLiquidacionRead)

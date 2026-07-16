@@ -631,6 +631,7 @@ export function LiquidacionesPage() {
     const empresaDireccion = empresa?.direccion || '';
     const empresaTelefono = empresa?.telefono || '';
     const empresaEmail = empresa?.email || '';
+    const empresaReeup = empresa?.reeup || '';
     
     const nombreRealizador = realizador?.nombre || 'N/A';
     const cedulaRealizador = realizador?.nit || 'N/A';
@@ -690,7 +691,7 @@ export function LiquidacionesPage() {
         .header-box-row { font-size: 11px; margin-bottom: 3px; }
         .header-box-row strong { font-weight: 700; }
         .header-box-row.total-final { font-weight: 800; font-size: 13px; border-top: 1px solid #000; margin-top: 6px; padding-top: 6px; }
-        .fila-fechas { display: flex; justify-content: space-between; margin: 18px 0 12px 0; border-bottom: 1px dashed #aaa; padding-bottom: 12px; }
+        .fila-fechas { display: flex; justify-content: space-between; margin: 18px 0 12px 0; border-bottom: none; padding-bottom: 12px; }
         .bloque-fecha { font-weight: 600; font-size: 13px; }
         .info-proyecto { display: flex; flex-wrap: wrap; justify-content: space-between; background: white; padding: 12px; border: 1px solid black; margin-bottom: 20px; font-size: 12.5px; }
         .proyecto-item { min-width: 180px; margin-bottom: 6px; }
@@ -727,6 +728,7 @@ export function LiquidacionesPage() {
         <div class="header-center">
             <div class="tcp-title">CAGUAYO S.A.</div>
             <div class="nombre-titular">${empresaNombre}</div>
+            ${empresaReeup ? `<div style="font-size: 11.5px; margin-top: 2px;">Código: ${empresaReeup}</div>` : ''}
             <div class="direccion-contacto">${empresaDireccion}</div>
             <div class="telefonos">Tel: ${empresaTelefono}</div>
             <div class="email">${empresaEmail}</div>

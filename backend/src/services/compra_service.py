@@ -27,7 +27,7 @@ class CompraService:
     ) -> CompraRead:
         """Crear una compra con sus detalles, calculando subtotales y total."""
         try:
-            fecha = compra_data.fecha or datetime.now(timezone.utc)
+            fecha = compra_data.fecha or datetime.now(timezone.utc).replace(tzinfo=None)
 
             # Crear la compra con total inicial 0
             compra = Compra(
@@ -150,7 +150,7 @@ class CompraService:
                 if value is not None and hasattr(compra, field):
                     setattr(compra, field, value)
 
-            compra.fecha_actualizacion = datetime.now(timezone.utc)
+            compra.fecha_actualizacion = datetime.now(timezone.utc).replace(tzinfo=None)
             db.add(compra)
             await db.commit()
             await db.refresh(compra)

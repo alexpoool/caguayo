@@ -24,7 +24,7 @@ from src.dto import (
     VentaEfectivoUpdate,
     ItemAnexoDisponible,
 )
-from src.utils import _get_nit_from_token, verify_auth
+from src.utils import _get_denominacion_from_token, _get_user_dependencia_id, verify_auth
 
 logger = logging.getLogger(__name__)
 
@@ -41,8 +41,8 @@ async def crear_contrato(
 ):
     """Crear un nuevo contrato."""
     try:
-        nit = await _get_nit_from_token(authorization, db)
-        return await ContratoService.create(db, contrato, nit=nit)
+        denominacion = await _get_denominacion_from_token(authorization)
+        return await ContratoService.create(db, contrato, denominacion=denominacion)
     except HTTPException:
         raise
     except Exception as e:
@@ -151,7 +151,8 @@ async def crear_suplemento(
     """Crear un nuevo suplemento."""
     try:
         await verify_auth(authorization=authorization, db=db)
-        return await SuplementoService.create(db, suplemento)
+        denominacion = await _get_denominacion_from_token(authorization)
+        return await SuplementoService.create(db, suplemento, denominacion=denominacion)
     except HTTPException:
         raise
     except Exception as e:
@@ -253,12 +254,13 @@ async def crear_factura(
 ):
     """Crear una nueva factura."""
     try:
-        nit = await _get_nit_from_token(authorization, db)
-        return await FacturaService.create(db, factura, nit=nit)
+        denominacion = await _get_denominacion_from_token(authorization)
+        id_dependencia = await _get_user_dependencia_id(authorization)
+        return await FacturaService.create(db, factura, denominacion=denominacion, id_dependencia_usuario=id_dependencia)
     except HTTPException:
         raise
     except Exception as e:
-        logger.error("Error al crear factura", exc_info=True)
+        logger.error("Error al crear factura: %s", str(e), exc_info=True)
         raise HTTPException(status_code=500, detail="Error interno del servidor")
 
 
@@ -358,8 +360,8 @@ async def crear_venta_efectivo(
 ):
     """Crear una nueva venta en efectivo."""
     try:
-        nit = await _get_nit_from_token(authorization, db)
-        return await VentaEfectivoService.create(db, venta, nit=nit)
+        denominacion = await _get_denominacion_from_token(authorization)
+        return await VentaEfectivoService.create(db, venta, denominacion=denominacion)
     except HTTPException:
         raise
     except Exception as e:

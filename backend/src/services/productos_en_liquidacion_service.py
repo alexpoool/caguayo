@@ -12,6 +12,7 @@ from src.core.config import settings
 from src.models.productos_en_liquidacion import ProductosEnLiquidacion
 from src.models.item_anexo import ItemAnexo
 from src.models.moneda import Moneda
+from src.utils.codigos_entidad import generar_codigo
 from src.dto.productos_en_liquidacion_dto import (
     ProductosEnLiquidacionCreate,
     ProductosEnLiquidacionRead,
@@ -24,24 +25,20 @@ logger = logging.getLogger(__name__)
 class ProductosEnLiquidacionService:
     @staticmethod
     async def generate_codigo(
-        db: AsyncSession, nit: Optional[str] = None, modulo: str = "C"
+        db: AsyncSession, denominacion: Optional[str] = None, modulo: str = "C"
     ) -> str:
         anio = datetime.now().year
         cantidad = await productos_en_liquidacion_repo.get_codigo_anio(db, anio)
-        prefijo = f"{nit}." if nit else ""
-        return f"{prefijo}{modulo}.{anio}.{cantidad}"
+        if denominacion:
+            return f"{denominacion}.{anio % 100}.{modulo}.{cantidad}"
+        return f"{anio % 100}.{modulo}.{cantidad}"
 
     @staticmethod
     async def create(
-        db: AsyncSession, data: ProductosEnLiquidacionCreate, nit: Optional[str] = None
+        db: AsyncSession, data: ProductosEnLiquidacionCreate, denominacion: Optional[str] = None
     ) -> ProductosEnLiquidacionRead:
-        modulo = "V" if data.tipo_compra in ("FACTURA", "VENTA_EFECTIVO") else "C"
-        codigo = await ProductosEnLiquidacionService.generate_codigo(
-            db, nit=nit, modulo=modulo
-        )
-
         db_producto = ProductosEnLiquidacion(
-            codigo=codigo,
+            codigo="",
             id_producto=data.id_producto,
             cantidad=data.cantidad,
             precio=data.precio,
@@ -53,6 +50,9 @@ class ProductosEnLiquidacionService:
             liquidada=False,
         )
 
+        db.add(db_producto)
+        await db.flush()
+        db_producto.codigo = generar_codigo(denominacion, datetime.now().year, db_producto.id_producto_en_liquidacion)
         db.add(db_producto)
         await db.commit()
         await db.refresh(db_producto)
@@ -74,10 +74,11 @@ class ProductosEnLiquidacionService:
 
     @staticmethod
     async def get_multi(
-        db: AsyncSession, skip: int = 0, limit: int = 100
+        db: AsyncSession, skip: int = 0, limit: int = 100,
+        cliente_id: Optional[int] = None
     ) -> List[ProductosEnLiquidacionRead]:
         db_productos = await productos_en_liquidacion_repo.get_multi_with_relations(
-            db, skip=skip, limit=limit
+            db, skip=skip, limit=limit, cliente_id=cliente_id
         )
         results = []
         for p in db_productos:
@@ -108,10 +109,11 @@ class ProductosEnLiquidacionService:
 
     @staticmethod
     async def get_pendientes(
-        db: AsyncSession, skip: int = 0, limit: int = 100
+        db: AsyncSession, skip: int = 0, limit: int = 100,
+        cliente_id: Optional[int] = None
     ) -> List[ProductosEnLiquidacionRead]:
         db_productos = await productos_en_liquidacion_repo.get_pendientes(
-            db, skip=skip, limit=limit
+            db, skip=skip, limit=limit, cliente_id=cliente_id
         )
         return [
             ProductosEnLiquidacionRead.model_validate(p, from_attributes=True)
@@ -120,10 +122,11 @@ class ProductosEnLiquidacionService:
 
     @staticmethod
     async def get_liquidadas(
-        db: AsyncSession, skip: int = 0, limit: int = 100
+        db: AsyncSession, skip: int = 0, limit: int = 100,
+        cliente_id: Optional[int] = None
     ) -> List[ProductosEnLiquidacionRead]:
         db_productos = await productos_en_liquidacion_repo.get_liquidadas(
-            db, skip=skip, limit=limit
+            db, skip=skip, limit=limit, cliente_id=cliente_id
         )
         return [
             ProductosEnLiquidacionRead.model_validate(p, from_attributes=True)
@@ -163,7 +166,7 @@ class ProductosEnLiquidacionService:
             return None
 
         db_producto.liquidada = True
-        db_producto.fecha_liquidacion = datetime.now(timezone.utc)
+        db_producto.fecha_liquidacion = datetime.now(timezone.utc).replace(tzinfo=None)
 
         db.add(db_producto)
         await db.commit()
@@ -209,24 +212,15 @@ async def _get_default_moneda(db: AsyncSession) -> int:
 
 
 async def agregar_desde_factura(
-    db: AsyncSession, id_factura: int, productos: List[dict], nit: Optional[str] = None
+    db: AsyncSession, id_factura: int, productos: List[dict], denominacion: Optional[str] = None
 ) -> None:
-    """Agrega productos desde una factura a la tabla de productos_en_liquidacion."""
     if not productos:
         return
 
-    prefijo = f"{nit}." if nit else ""
-    anio = datetime.now().year
-    codigo_base = await productos_en_liquidacion_service.generate_codigo(
-        db, nit=nit, modulo="V"
-    )
-    numero = int(codigo_base.rsplit(".", 1)[-1])
-
+    items = []
     for prod in productos:
-        codigo = f"{prefijo}V.{anio}.{numero}"
-        numero += 1
         db_producto = ProductosEnLiquidacion(
-            codigo=codigo,
+            codigo="",
             id_producto=prod["id_producto"],
             cantidad=prod["cantidad"],
             precio=Decimal(str(prod.get("precio_venta", prod.get("precio", 0)))),
@@ -237,62 +231,55 @@ async def agregar_desde_factura(
             liquidada=False,
         )
         db.add(db_producto)
+        items.append(db_producto)
     await db.flush()
+    anio = datetime.now().year
+    for item in items:
+        item.codigo = generar_codigo(denominacion, anio, item.id_producto_en_liquidacion)
+        db.add(item)
 
 
 async def agregar_desde_venta_efectivo(
     db: AsyncSession,
     id_venta_efectivo: int,
     productos: List[dict],
-    nit: Optional[str] = None,
+    denominacion: Optional[str] = None,
 ) -> None:
-    """Agrega productos desde una venta en efectivo a la tabla de productos_en_liquidacion."""
     if not productos:
         return
 
-    prefijo = f"{nit}." if nit else ""
-    anio = datetime.now().year
-    codigo_base = await productos_en_liquidacion_service.generate_codigo(
-        db, nit=nit, modulo="V"
-    )
-    numero = int(codigo_base.rsplit(".", 1)[-1])
-
+    items = []
     for prod in productos:
-        codigo = f"{prefijo}V.{anio}.{numero}"
-        numero += 1
         db_producto = ProductosEnLiquidacion(
-            codigo=codigo,
+            codigo="",
             id_producto=prod["id_producto"],
             cantidad=prod["cantidad"],
             precio=Decimal(str(prod.get("precio_venta", prod.get("precio", 0)))),
             id_moneda=prod.get("id_moneda", await _get_default_moneda(db)),
             tipo_compra="VENTA_EFECTIVO",
             id_venta_efectivo=id_venta_efectivo,
+            id_anexo=prod.get("id_anexo"),
             liquidada=False,
         )
         db.add(db_producto)
+        items.append(db_producto)
     await db.flush()
+    anio = datetime.now().year
+    for item in items:
+        item.codigo = generar_codigo(denominacion, anio, item.id_producto_en_liquidacion)
+        db.add(item)
 
 
 async def agregar_desde_anexo(
-    db: AsyncSession, id_anexo: int, productos: List[dict], nit: Optional[str] = None
+    db: AsyncSession, id_anexo: int, productos: List[dict], denominacion: Optional[str] = None
 ) -> None:
-    """Agrega productos desde un anexo a la tabla de productos_en_liquidacion."""
     if not productos:
         return
 
-    prefijo = f"{nit}." if nit else ""
-    anio = datetime.now().year
-    codigo_base = await productos_en_liquidacion_service.generate_codigo(
-        db, nit=nit, modulo="C"
-    )
-    numero = int(codigo_base.rsplit(".", 1)[-1])
-
+    items = []
     for prod in productos:
-        codigo = f"{prefijo}C.{anio}.{numero}"
-        numero += 1
         db_producto = ProductosEnLiquidacion(
-            codigo=codigo,
+            codigo="",
             id_producto=prod["id_producto"],
             cantidad=prod["cantidad"],
             precio=Decimal(str(prod.get("precio_venta", prod.get("precio", 0)))),
@@ -302,4 +289,10 @@ async def agregar_desde_anexo(
             liquidada=False,
         )
         db.add(db_producto)
+        items.append(db_producto)
+    await db.flush()
+    anio = datetime.now().year
+    for item in items:
+        item.codigo = generar_codigo(denominacion, anio, item.id_producto_en_liquidacion)
+        db.add(item)
     await db.commit()

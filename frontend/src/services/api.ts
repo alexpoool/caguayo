@@ -853,6 +853,7 @@ export interface ProductosEnLiquidacion {
   fecha_liquidacion?: string;
   producto?: any;
   moneda?: any;
+  anexo?: { id_anexo: number; nombre_anexo: string };
   producto_nombre?: string;
   cantidad_original?: number;
   cantidad_liquidada?: number;
@@ -870,16 +871,22 @@ export interface ProductosEnLiquidacionCreate {
 }
 
 export const productosEnLiquidacionService = {
-  async getProductosEnLiquidacion(skip = 0, limit = 100): Promise<ProductosEnLiquidacion[]> {
-    return apiClient.get<ProductosEnLiquidacion[]>(`/productos-en-liquidacion?skip=${skip}&limit=${limit}`);
+  async getProductosEnLiquidacion(skip = 0, limit = 100, clienteId?: number): Promise<ProductosEnLiquidacion[]> {
+    const params = new URLSearchParams({ skip: String(skip), limit: String(limit) });
+    if (clienteId) params.set('cliente_id', String(clienteId));
+    return apiClient.get<ProductosEnLiquidacion[]>(`/productos-en-liquidacion?${params}`);
   },
 
-  async getProductosEnLiquidacionPendientes(skip = 0, limit = 100): Promise<ProductosEnLiquidacion[]> {
-    return apiClient.get<ProductosEnLiquidacion[]>(`/productos-en-liquidacion/pendientes?skip=${skip}&limit=${limit}`);
+  async getProductosEnLiquidacionPendientes(skip = 0, limit = 100, clienteId?: number): Promise<ProductosEnLiquidacion[]> {
+    const params = new URLSearchParams({ skip: String(skip), limit: String(limit) });
+    if (clienteId) params.set('cliente_id', String(clienteId));
+    return apiClient.get<ProductosEnLiquidacion[]>(`/productos-en-liquidacion/pendientes?${params}`);
   },
 
-  async getProductosEnLiquidacionLiquidadas(skip = 0, limit = 100): Promise<ProductosEnLiquidacion[]> {
-    return apiClient.get<ProductosEnLiquidacion[]>(`/productos-en-liquidacion/liquidadas?skip=${skip}&limit=${limit}`);
+  async getProductosEnLiquidacionLiquidadas(skip = 0, limit = 100, clienteId?: number): Promise<ProductosEnLiquidacion[]> {
+    const params = new URLSearchParams({ skip: String(skip), limit: String(limit) });
+    if (clienteId) params.set('cliente_id', String(clienteId));
+    return apiClient.get<ProductosEnLiquidacion[]>(`/productos-en-liquidacion/liquidadas?${params}`);
   },
 
   async getProductoEnLiquidacion(id: number): Promise<ProductosEnLiquidacion> {
@@ -957,16 +964,22 @@ export interface LiquidacionConfirmar {
 }
 
 export const liquidacionService = {
-  async getLiquidaciones(skip = 0, limit = 100): Promise<Liquidacion[]> {
-    return apiClient.get<Liquidacion[]>(`/liquidaciones?skip=${skip}&limit=${limit}`);
+  async getLiquidaciones(skip = 0, limit = 100, clienteId?: number): Promise<Liquidacion[]> {
+    const params = new URLSearchParams({ skip: String(skip), limit: String(limit) });
+    if (clienteId) params.set('cliente_id', String(clienteId));
+    return apiClient.get<Liquidacion[]>(`/liquidaciones?${params}`);
   },
 
-  async getLiquidacionesPendientes(skip = 0, limit = 100): Promise<Liquidacion[]> {
-    return apiClient.get<Liquidacion[]>(`/liquidaciones/pendientes?skip=${skip}&limit=${limit}`);
+  async getLiquidacionesPendientes(skip = 0, limit = 100, clienteId?: number): Promise<Liquidacion[]> {
+    const params = new URLSearchParams({ skip: String(skip), limit: String(limit) });
+    if (clienteId) params.set('cliente_id', String(clienteId));
+    return apiClient.get<Liquidacion[]>(`/liquidaciones/pendientes?${params}`);
   },
 
-  async getLiquidacionesLiquidadas(skip = 0, limit = 100): Promise<Liquidacion[]> {
-    return apiClient.get<Liquidacion[]>(`/liquidaciones/liquidadas?skip=${skip}&limit=${limit}`);
+  async getLiquidacionesLiquidadas(skip = 0, limit = 100, clienteId?: number): Promise<Liquidacion[]> {
+    const params = new URLSearchParams({ skip: String(skip), limit: String(limit) });
+    if (clienteId) params.set('cliente_id', String(clienteId));
+    return apiClient.get<Liquidacion[]>(`/liquidaciones/liquidadas?${params}`);
   },
 
   async getLiquidacion(id: number): Promise<Liquidacion> {

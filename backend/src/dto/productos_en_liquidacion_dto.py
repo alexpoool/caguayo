@@ -56,6 +56,7 @@ class ProductosEnLiquidacionRead(ProductosEnLiquidacionBase):
     moneda: Optional["MonedaRead"] = None
     cantidad_original: Optional[int] = None
     cantidad_liquidada: Optional[int] = None
+    id_cliente: Optional[int] = None
     anexo: Optional["AnexoSimpleRead"] = None
     info_factura: Optional[FacturaInfo] = None
 

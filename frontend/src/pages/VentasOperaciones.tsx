@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 import {
   Button,
@@ -82,9 +82,28 @@ export function VentasOperacionesPage() {
     null,
   );
   const [formData, setFormData] = useState<Record<string, any>>({});
+  const [clienteSearch, setClienteSearch] = useState('');
+  const [showClienteDropdown, setShowClienteDropdown] = useState(false);
+  const clienteRef = useRef<HTMLDivElement | null>(null);
+
+  const filteredClientes = useMemo(() => {
+    if (!clienteSearch) return clientes;
+    const term = clienteSearch.toLowerCase();
+    return clientes.filter(c => c.nombre.toLowerCase().includes(term));
+  }, [clientes, clienteSearch]);
 
   useEffect(() => {
     loadInitialData();
+  }, []);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (clienteRef.current && !clienteRef.current.contains(e.target as Node)) {
+        setShowClienteDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
   useEffect(() => {
     if (tab === "contratos") loadContratos();
@@ -175,8 +194,6 @@ const loadInitialData = async () => {
       const nombreErr = required(formData.nombre, "Nombre");
       if (nombreErr) fieldErrors.push(nombreErr);
     } else if (tab === "facturas") {
-      const codigoErr = required(formData.codigo_factura, "Código de factura");
-      if (codigoErr) fieldErrors.push(codigoErr);
       if (!selectedContratoId) fieldErrors.push("Debe seleccionar un contrato");
     } else if (tab === "efectivo") {
       const slipErr = required(formData.slip, "Slip");
@@ -211,7 +228,6 @@ const loadInitialData = async () => {
         const data = {
           id_contrato: selectedContratoId!,
           nombre: formData.nombre || "",
-          id_estado: Number(formData.id_estado) || (estados[0]?.id_estado_contrato ?? 0),
           fecha: formData.fecha || new Date().toISOString().split("T")[0],
           documento: formData.documento,
         };
@@ -222,7 +238,6 @@ const loadInitialData = async () => {
       } else if (tab === "facturas") {
         const data = {
           id_contrato: selectedContratoId!,
-          codigo_factura: formData.codigo_factura || "",
           fecha: formData.fecha || new Date().toISOString().split("T")[0],
           descripcion: formData.descripcion,
           observaciones: formData.observaciones,
@@ -281,7 +296,7 @@ const loadInitialData = async () => {
   };
 
   const resetForm = () => {
-    setFormData({});
+    setFormData({ fecha: new Date().toISOString().split("T")[0] });
     setEditingId(null);
   };
 
@@ -551,22 +566,45 @@ const loadInitialData = async () => {
         <div className="grid gap-6">
           {tab === "contratos" && (
             <>
-              <div>
+              <div ref={clienteRef} className="relative">
                 <Label className="text-sm font-medium">Cliente</Label>
-                <select
-                  className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white"
-                  value={formData.id_cliente || ""}
-                  onChange={(e: any) =>
-                    setFormData({ ...formData, id_cliente: e.target.value })
+                <Input
+                  value={
+                    formData.id_cliente
+                      ? (clientes.find(c => c.id_cliente === Number(formData.id_cliente))?.nombre || '')
+                      : clienteSearch
                   }
-                >
-                  <option value="">Seleccionar</option>
-                  {clientes.map((c) => (
-                    <option key={c.id_cliente} value={c.id_cliente}>
-                      {c.nombre}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(e) => {
+                    setClienteSearch(e.target.value);
+                    setFormData({ ...formData, id_cliente: '' });
+                    setShowClienteDropdown(true);
+                  }}
+                  onFocus={() => setShowClienteDropdown(true)}
+                  placeholder="Buscar cliente..."
+                  className="mt-1"
+                />
+                {showClienteDropdown && (
+                  <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                    {filteredClientes.length === 0 ? (
+                      <div className="px-3 py-2 text-sm text-gray-500">No se encontraron clientes</div>
+                    ) : (
+                      filteredClientes.map(c => (
+                        <button
+                          key={c.id_cliente}
+                          type="button"
+                          className="w-full px-3 py-2 text-left text-sm hover:bg-teal-50 transition-colors"
+                          onClick={() => {
+                            setFormData({ ...formData, id_cliente: c.id_cliente });
+                            setClienteSearch('');
+                            setShowClienteDropdown(false);
+                          }}
+                        >
+                          {c.nombre}
+                        </button>
+                      ))
+                    )}
+                  </div>
+                )}
               </div>
               <div>
                 <Label className="text-sm font-medium">Nombre</Label>
@@ -687,33 +725,15 @@ const loadInitialData = async () => {
                   }
                 />
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label className="text-sm font-medium">Estado</Label>
-                  <select
-                    className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white"
-                    value={formData.id_estado || ""}
-                    onChange={(e: any) =>
-                      setFormData({ ...formData, id_estado: e.target.value })
-                    }
-                  >
-                    {estados.map((e) => (
-                      <option key={e.id_estado_contrato} value={e.id_estado_contrato}>
-                        {e.nombre}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <Label className="text-sm font-medium">Fecha</Label>
-                  <Input
-                    type="date"
-                    value={formData.fecha || ""}
-                    onChange={(e: any) =>
-                      setFormData({ ...formData, fecha: e.target.value })
-                    }
-                  />
-                </div>
+              <div>
+                <Label className="text-sm font-medium">Fecha</Label>
+                <Input
+                  type="date"
+                  value={formData.fecha || ""}
+                  onChange={(e: any) =>
+                    setFormData({ ...formData, fecha: e.target.value })
+                  }
+                />
               </div>
               <div>
                 <Label className="text-sm font-medium">Documento</Label>
@@ -728,15 +748,6 @@ const loadInitialData = async () => {
           )}
           {tab === "facturas" && (
             <>
-              <div>
-                <Label className="text-sm font-medium">Código Factura</Label>
-                <Input
-                  value={formData.codigo_factura || ""}
-                  onChange={(e: any) =>
-                    setFormData({ ...formData, codigo_factura: e.target.value })
-                  }
-                />
-              </div>
               <div>
                 <Label className="text-sm font-medium">Descripción</Label>
                 <Input

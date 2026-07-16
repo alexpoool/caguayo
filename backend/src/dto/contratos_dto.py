@@ -119,9 +119,7 @@ class ClienteSimpleRead(SQLModel):
 class SuplementoBase(SQLModel):
     id_contrato: int = Field(gt=0)
     nombre: str = Field(min_length=1)
-    id_estado: int = Field(gt=0)
     fecha: date
-    monto: Decimal = Field(default=Decimal("0.00"), ge=0)
     documento: Optional[str] = None
     codigo: Optional[str] = None
 
@@ -164,6 +162,7 @@ class ItemFacturaRead(ItemFacturaBase):
     id_item_factura: int
     id_factura: int
     precio_compra: Decimal
+    id_anexo: Optional[int] = None
     producto: Optional[ProductoSimpleRead] = None
 
 
@@ -211,6 +210,7 @@ class ItemVentaEfectivoBase(SQLModel):
     precio_venta: Decimal = Field(ge=0)
     id_moneda: int = Field(gt=0)
     codigo: Optional[str] = None
+    id_item_anexo: Optional[int] = None
 
 
 class ItemVentaEfectivoCreate(ItemVentaEfectivoBase):
@@ -221,6 +221,8 @@ class ItemVentaEfectivoRead(ItemVentaEfectivoBase):
     id_item_venta_efectivo: int
     id_venta_efectivo: int
     precio_compra: Decimal
+    id_anexo: Optional[int] = None
+    producto: Optional[ProductoSimpleRead] = None
 
 
 class VentaEfectivoBase(SQLModel):

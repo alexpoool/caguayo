@@ -1,11 +1,11 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { Button, Input, Label, Card, CardContent, CardHeader, CardTitle, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, ConfirmModal } from '../../components/ui';
-import { suplementosService, contratosService, configuracionService } from '../../services/api';
+import { suplementosService, contratosService } from '../../services/api';
 import { useInfiniteList } from '../../hooks/useInfiniteList';
 import type { ContratoWithDetails } from '../../types/contrato';
 import type { SuplementoWithDetails } from '../../types/contrato';
-import { Plus, Save, Trash2, Edit, ArrowLeft, Search, Layers, FileText, DollarSign, Calendar, Tag, X } from 'lucide-react';
+import { Plus, Save, Trash2, Edit, ArrowLeft, Search, Layers, FileText, Calendar, Tag, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useSearchParams } from 'react-router-dom';
 import { required } from '../../utils/validacionFormularios';
@@ -19,7 +19,6 @@ export function SuplementosPage() {
   const [view, setView] = useState<View>('list');
   
   const [contratos, setContratos] = useState<ContratoWithDetails[]>([]);
-  const [estados, setEstados] = useState<{id_estado_contrato: number, nombre: string}[]>([]);
   
   const [editingId, setEditingId] = useState<number | null>(null);
   const [selectedContratoId, setSelectedContratoId] = useState<number | null>(initialContratoId ? Number(initialContratoId) : null);
@@ -88,12 +87,8 @@ export function SuplementosPage() {
 
   const loadInitialData = async () => {
     try {
-      const [contratosRes, estadosRes] = await Promise.all([
-        contratosService.getContratos(0, 1000),
-        configuracionService.getEstadosContrato()
-      ]);
+      const contratosRes = await contratosService.getContratos(0, 1000);
       setContratos(contratosRes);
-      setEstados(estadosRes);
     } catch (error) { console.error('Error:', error); }
   };
 
@@ -136,9 +131,7 @@ export function SuplementosPage() {
       const data = { 
         id_contrato: selectedContratoId, 
         nombre: formData.nombre || '',
-        id_estado: Number(formData.id_estado) || (estados.length > 0 ? estados[0].id_estado_contrato : 1), 
         fecha: formData.fecha || new Date().toISOString().split('T')[0],
-        monto: formData.monto ? Number(formData.monto) : 0,
         documento: formData.documento
       };
       editingId ? await suplementosService.updateSuplemento(editingId, data as any) : await suplementosService.createSuplemento(data as any);
@@ -177,9 +170,7 @@ export function SuplementosPage() {
       setSelectedContratoId(item.id_contrato);
       setFormData({ 
         nombre: item.nombre, 
-        id_estado: item.id_estado, 
         fecha: item.fecha, 
-        monto: item.monto,
         documento: item.documento,
         id_contrato: item.id_contrato
       });
@@ -238,12 +229,6 @@ export function SuplementosPage() {
                       Nombre
                     </div>
                   </TableHead>
-                  <TableHead>
-                    <div className="flex items-center gap-2">
-                      <DollarSign className="h-4 w-4 text-teal-600" />
-                      Monto
-                    </div>
-                  </TableHead>
                   <TableHead>Estado</TableHead>
                   <TableHead>
                     <div className="flex items-center gap-2">
@@ -257,7 +242,7 @@ export function SuplementosPage() {
               <TableBody>
                 {isLoading ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center py-12 text-gray-500">
+                    <TableCell colSpan={5} className="text-center py-12 text-gray-500">
                       <div className="flex flex-col items-center gap-2">
                         <div className="h-5 w-5 border-2 border-teal-500 border-t-transparent rounded-full animate-spin" />
                         Cargando suplementos...
@@ -266,13 +251,13 @@ export function SuplementosPage() {
                   </TableRow>
                 ) : isError ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center py-12 text-red-500">
+                    <TableCell colSpan={5} className="text-center py-12 text-red-500">
                       Error al cargar suplementos: {(error as Error)?.message || 'Error desconocido'}
                     </TableCell>
                   </TableRow>
                 ) : filteredSuplementos.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center py-12 text-gray-500">
+                    <TableCell colSpan={5} className="text-center py-12 text-gray-500">
                       {searchTerm ? 'No se encontraron suplementos que coincidan con la búsqueda' : 'No hay suplementos'}
                     </TableCell>
                   </TableRow>
@@ -287,9 +272,6 @@ export function SuplementosPage() {
                       </TableCell>
                       <TableCell>
                         <span className="font-medium text-gray-900">{item.nombre}</span>
-                      </TableCell>
-                      <TableCell className="font-medium text-gray-900">
-                        ${Number(item.monto).toFixed(2)}
                       </TableCell>
                       <TableCell>
                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
@@ -412,16 +394,6 @@ export function SuplementosPage() {
               )}
             </div>
             <div>
-              <Label className="text-sm font-medium">Monto</Label>
-              <Input type="number" step="0.01" min="0" value={formData.monto ?? ''} onChange={(e: any) => setFormData({...formData, monto: e.target.value})} className="mt-1" placeholder="0.00" />
-            </div>
-            <div>
-              <Label className="text-sm font-medium">Estado</Label>
-              <select className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white" value={formData.id_estado || ''} onChange={(e: any) => setFormData({...formData, id_estado: e.target.value})}>
-                {estados.map(e => <option key={e.id_estado_contrato} value={e.id_estado_contrato}>{e.nombre}</option>)}
-              </select>
-            </div>
-            <div>
               <Label className="text-sm font-medium">Fecha</Label>
               <div className="flex gap-2">
                 <input 
@@ -489,12 +461,8 @@ export function SuplementosPage() {
                 </button>
               </div>
             </div>
-            <div className="p-6 space-y-4">
+              <div className="p-6 space-y-4">
               <div className="grid grid-cols-2 gap-4">
-                <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-4 rounded-xl border border-green-100">
-                  <p className="text-xs text-green-600 uppercase tracking-wider mb-1">Monto</p>
-                  <p className="font-bold text-green-900 text-xl">${Number(detailModal.item.monto).toFixed(2)}</p>
-                </div>
                 <div className="bg-gray-50 p-4 rounded-xl">
                   <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Estado</p>
                   <span className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium ${

@@ -1,5 +1,3 @@
-import random
-import string
 from typing import List, Optional
 from datetime import date, datetime, timezone
 from decimal import Decimal
@@ -11,32 +9,33 @@ from src.services.existencia_service import ExistenciaService
 from src.models.liquidacion import Liquidacion
 from src.models.producto import Productos
 from src.models.movimiento import Movimiento
+from src.utils.codigos_entidad import generar_codigo
 from src.dto import (
     LiquidacionCreate,
     LiquidacionRead,
     LiquidacionUpdate,
     LiquidacionConfirmar,
 )
-from src.dto.productos_en_liquidacion_dto import ProductosEnLiquidacionRead
-
-
-def generate_codigo() -> str:
-    return "".join(random.choices(string.digits, k=10))
+from src.dto.productos_en_liquidacion_dto import ProductosEnLiquidacionRead, AnexoSimpleRead
+from src.dto.monedas_dto import MonedaRead
+from src.dto.clientes_dto import ClienteSimpleRead
+from src.dto.convenios_dto import ConvenioSimpleRead
 
 
 class LiquidacionService:
     @staticmethod
     async def generate_codigo_liquidacion(
-        db: AsyncSession, nit: Optional[str] = None
+        db: AsyncSession, denominacion: Optional[str] = None
     ) -> str:
         anio = datetime.now().year
         cantidad = await liquidacion_repo.get_codigo_anio(db, anio)
-        prefijo = f"{nit}." if nit else ""
-        return f"{prefijo}C.{anio}.{cantidad}"
+        if denominacion:
+            return f"{denominacion}.{anio % 100}.L.{cantidad}"
+        return f"{anio % 100}.L.{cantidad}"
 
     @staticmethod
     async def create_liquidacion(
-        db: AsyncSession, data: LiquidacionCreate, nit: Optional[str] = None
+        db: AsyncSession, data: LiquidacionCreate, denominacion: Optional[str] = None
     ) -> LiquidacionRead:
         producto_ids = [
             pid for pid in data.producto_ids if pid not in (None, "", "undefined")
@@ -57,14 +56,25 @@ class LiquidacionService:
         if not productos_db:
             raise ValueError("No se encontraron productos para liquidar")
 
-        # Validar que todos los productos estén facturados
-        # Solo se permite liquidar productos que vienen de una factura (tipo_compra = FACTURA)
+        # Derivar id_anexo e id_convenio desde los productos si no se proporcionaron
+        if id_anexo is None:
+            anexos = {p.id_anexo for p in productos_db if p.id_anexo is not None}
+            if len(anexos) == 1:
+                id_anexo = anexos.pop()
+        if id_convenio is None and id_anexo is not None:
+            from src.models.anexo import Anexo
+            anexo = await db.get(Anexo, id_anexo)
+            if anexo:
+                id_convenio = anexo.id_convenio
+
+        # Validar que todos los productos estén facturados o vengan de anexo
+        # Solo se permite liquidar productos FACTURA o ANEXO
         for prod in productos_db:
-            if prod.tipo_compra != "FACTURA":
+            if prod.tipo_compra not in ("FACTURA", "ANEXO", "VENTA_EFECTIVO"):
                 raise ValueError(
                     f"El producto {prod.codigo} (ID: {prod.id_producto}) no puede ser liquidado "
                     f"porque no está facturado. Tipo de compra: {prod.tipo_compra}. "
-                    f"Solo se permite liquidar productos provenientes de facturas."
+                    f"Solo se permite liquidar productos provenientes de facturas o anexos."
                 )
 
         # Validar que las facturas estén pagadas completamente
@@ -160,10 +170,8 @@ class LiquidacionService:
         subtotal = devengado_calculado - tributario_monto
         neto_pagar = subtotal - gasto_empresa - comision_bancaria
 
-        codigo = await LiquidacionService.generate_codigo_liquidacion(db, nit=nit)
-
         db_liquidacion = Liquidacion(
-            codigo=codigo,
+            codigo="",
             id_cliente=data.id_cliente,
             id_convenio=id_convenio,
             id_anexo=id_anexo,
@@ -182,13 +190,14 @@ class LiquidacionService:
             tipo_pago=data.tipo_pago,
         )
         db.add(db_liquidacion)
+        await db.flush()
+        db_liquidacion.codigo = generar_codigo(denominacion, datetime.now().year, db_liquidacion.id_liquidacion)
+        db.add(db_liquidacion)
         await db.commit()
         await db.refresh(db_liquidacion)
 
         for prod in productos_db:
             prod.id_liquidacion = db_liquidacion.id_liquidacion
-            prod.liquidada = True
-            prod.fecha_liquidacion = datetime.now(timezone.utc)
             db.add(prod)
 
         await db.commit()
@@ -254,6 +263,10 @@ class LiquidacionService:
                 porcentaje_caguayo=db_liquidacion.porcentaje_caguayo,
                 neto_pagar=db_liquidacion.neto_pagar,
                 tipo_pago=db_liquidacion.tipo_pago,
+                moneda=MonedaRead.model_validate(db_liquidacion.moneda) if db_liquidacion.moneda else None,
+                cliente=ClienteSimpleRead.model_validate(db_liquidacion.cliente) if db_liquidacion.cliente else None,
+                convenio=ConvenioSimpleRead.model_validate(db_liquidacion.convenio) if db_liquidacion.convenio else None,
+                anexo=AnexoSimpleRead.model_validate(db_liquidacion.anexo) if db_liquidacion.anexo else None,
                 productos_en_liquidacion=productos_en_liquidacion_list,
             )
             return result
@@ -276,28 +289,31 @@ class LiquidacionService:
 
     @staticmethod
     async def get_liquidaciones(
-        db: AsyncSession, skip: int = 0, limit: int = 100
+        db: AsyncSession, skip: int = 0, limit: int = 100,
+        cliente_id: Optional[int] = None
     ) -> List[LiquidacionRead]:
         db_liquidaciones = await liquidacion_repo.get_multi_with_relations(
-            db, skip=skip, limit=limit
+            db, skip=skip, limit=limit, cliente_id=cliente_id
         )
         return [LiquidacionRead.model_validate(liq) for liq in db_liquidaciones]
 
     @staticmethod
     async def get_liquidaciones_pendientes(
-        db: AsyncSession, skip: int = 0, limit: int = 100
+        db: AsyncSession, skip: int = 0, limit: int = 100,
+        cliente_id: Optional[int] = None
     ) -> List[LiquidacionRead]:
         db_liquidaciones = await liquidacion_repo.get_pendientes_with_relations(
-            db, skip=skip, limit=limit
+            db, skip=skip, limit=limit, cliente_id=cliente_id
         )
         return [LiquidacionRead.model_validate(liq) for liq in db_liquidaciones]
 
     @staticmethod
     async def get_liquidaciones_liquidadas(
-        db: AsyncSession, skip: int = 0, limit: int = 100
+        db: AsyncSession, skip: int = 0, limit: int = 100,
+        cliente_id: Optional[int] = None
     ) -> List[LiquidacionRead]:
         db_liquidaciones = await liquidacion_repo.get_liquidadas_with_relations(
-            db, skip=skip, limit=limit
+            db, skip=skip, limit=limit, cliente_id=cliente_id
         )
         return [LiquidacionRead.model_validate(liq) for liq in db_liquidaciones]
 
@@ -365,15 +381,6 @@ class LiquidacionService:
         if db_liquidacion.liquidada:
             raise ValueError("La liquidación ya está confirmada")
 
-        # Validar que todos los productos estén facturados
-        for pel in db_liquidacion.productos_en_liquidacion:
-            if pel.tipo_compra != "FACTURA":
-                raise ValueError(
-                    f"El producto {pel.codigo} no puede ser liquidado "
-                    f"porque no está facturado. Tipo de compra: {pel.tipo_compra}. "
-                    f"Solo se permite liquidar productos provenientes de facturas."
-                )
-
         # Validar que las facturas estén pagadas completamente
         from src.models.contrato import Factura
         from src.repository.pago_repo import pago_repo
@@ -396,6 +403,11 @@ class LiquidacionService:
             db_liquidacion.tipo_pago = data.tipo_pago
         if data.observaciones:
             db_liquidacion.observaciones = data.observaciones
+
+        for pel in db_liquidacion.productos_en_liquidacion:
+            pel.liquidada = True
+            pel.fecha_liquidacion = datetime.now(timezone.utc).replace(tzinfo=None)
+            db.add(pel)
 
         await db.commit()
         await db.refresh(db_liquidacion)
@@ -432,6 +444,7 @@ class LiquidacionService:
         """Aprobar una liquidación - marca como liquidada."""
         from sqlalchemy import update
         from src.models.liquidacion import Liquidacion
+        from src.models.productos_en_liquidacion import ProductosEnLiquidacion
 
         stmt = (
             update(Liquidacion)
@@ -441,6 +454,16 @@ class LiquidacionService:
         result = await db.exec(stmt)
         if result.rowcount == 0:
             return False
+
+        stmt_prod = (
+            update(ProductosEnLiquidacion)
+            .where(ProductosEnLiquidacion.id_liquidacion == liquidacion_id)
+            .values(
+                liquidada=True,
+                fecha_liquidacion=datetime.now(timezone.utc).replace(tzinfo=None),
+            )
+        )
+        await db.exec(stmt_prod)
         await db.commit()
         return True
 

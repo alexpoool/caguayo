@@ -78,7 +78,6 @@ export function ServiciosPage() {
     try {
       if (editingId) {
         const data: ServicioUpdate = {
-          codigo_servicio: formData.codigo_servicio,
           concepto: formData.concepto,
           unidad_medida: formData.unidad_medida,
           precio: formData.precio ? Number(formData.precio) : undefined,

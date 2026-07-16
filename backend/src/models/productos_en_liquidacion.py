@@ -8,6 +8,7 @@ if TYPE_CHECKING:
     from .producto import Productos
     from .moneda import Moneda
     from .anexo import Anexo
+    from .cliente import Cliente
     from .contrato import Factura, VentaEfectivo
     from .liquidacion import Liquidacion
 
@@ -42,13 +43,16 @@ class ProductosEnLiquidacion(SQLModel, table=True):
     id_anexo: Optional[int] = Field(
         default=None, foreign_key="anexo.id_anexo", nullable=True
     )
+    id_cliente: Optional[int] = Field(
+        default=None, foreign_key="clientes.id_cliente", nullable=True
+    )
 
     id_liquidacion: Optional[int] = Field(
         default=None, foreign_key="liquidacion.id_liquidacion", nullable=True
     )
 
     liquidada: bool = Field(default=False)
-    fecha: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    fecha: datetime = Field(default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
     fecha_liquidacion: Optional[datetime] = None
 
     producto: "Productos" = Relationship(
@@ -67,6 +71,9 @@ class ProductosEnLiquidacion(SQLModel, table=True):
     )
     anexo: Optional["Anexo"] = Relationship(
         sa_relationship_kwargs={"foreign_keys": "[ProductosEnLiquidacion.id_anexo]"}
+    )
+    cliente: Optional["Cliente"] = Relationship(
+        sa_relationship_kwargs={"foreign_keys": "[ProductosEnLiquidacion.id_cliente]"}
     )
     liquidacion: Optional["Liquidacion"] = Relationship(
         back_populates="productos_en_liquidacion",

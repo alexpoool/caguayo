@@ -213,7 +213,7 @@ export function ClientesList({
                           size="sm"
                           onClick={() =>
                             navigate(
-                              `/compra/liquidaciones?proveedor=${cliente.id_cliente}`,
+                              `/compra/productos-liquidacion?proveedor=${cliente.id_cliente}`,
                             )
                           }
                           className="gap-1 text-purple-600 border-purple-200 hover:bg-purple-50 hover:text-purple-700"

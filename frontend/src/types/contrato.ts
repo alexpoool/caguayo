@@ -103,9 +103,7 @@ export interface Suplemento {
   id_suplemento: number;
   id_contrato: number;
   nombre: string;
-  id_estado: number;
   fecha: string;
-  monto: number;
   documento?: string;
   codigo?: string;
 }
@@ -117,18 +115,14 @@ export interface SuplementoWithDetails extends Suplemento {
 export interface SuplementoCreate {
   id_contrato: number;
   nombre: string;
-  id_estado: number;
   fecha: string;
-  monto?: number;
   documento?: string;
 }
 
 export interface SuplementoUpdate {
   id_contrato?: number;
   nombre?: string;
-  id_estado?: number;
   fecha?: string;
-  monto?: number;
   documento?: string;
 }
 

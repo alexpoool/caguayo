@@ -86,6 +86,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const token = authHelpers.getToken();
       if (token) {
         try {
+          const payload = JSON.parse(atob(token.split('.')[1]));
+          if (payload.exp * 1000 < Date.now()) {
+            authHelpers.clearAuth();
+            setIsLoading(false);
+            return;
+          }
+        } catch {
+          authHelpers.clearAuth();
+          setIsLoading(false);
+          return;
+        }
+        try {
           await refreshUser();
         } catch {
           authHelpers.clearAuth();

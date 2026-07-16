@@ -11,7 +11,7 @@ from src.dto import (
     LiquidacionUpdate,
     LiquidacionConfirmar,
 )
-from src.utils import _get_nit_from_token, verify_auth
+from src.utils import _get_denominacion_from_token, verify_auth
 
 logger = logging.getLogger(__name__)
 
@@ -24,11 +24,12 @@ router = APIRouter(
 async def listar_liquidaciones(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=1000),
+    cliente_id: Optional[int] = Query(None),
     db: AsyncSession = Depends(get_session),
 ):
     """Listar todas las liquidaciones con paginación."""
     try:
-        return await liquidacion_service.get_liquidaciones(db, skip=skip, limit=limit)
+        return await liquidacion_service.get_liquidaciones(db, skip=skip, limit=limit, cliente_id=cliente_id)
     except Exception as e:
         logger.error("Error al listar liquidaciones", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
@@ -38,11 +39,12 @@ async def listar_liquidaciones(
 async def listar_liquidaciones_pendientes(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=1000),
+    cliente_id: Optional[int] = Query(None),
     db: AsyncSession = Depends(get_session),
 ):
     """Listar liquidaciones pendientes."""
     return await liquidacion_service.get_liquidaciones_pendientes(
-        db, skip=skip, limit=limit
+        db, skip=skip, limit=limit, cliente_id=cliente_id
     )
 
 
@@ -50,11 +52,12 @@ async def listar_liquidaciones_pendientes(
 async def listar_liquidaciones_liquidadas(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=1000),
+    cliente_id: Optional[int] = Query(None),
     db: AsyncSession = Depends(get_session),
 ):
     """Listar liquidaciones liquidadas."""
     return await liquidacion_service.get_liquidaciones_liquidadas(
-        db, skip=skip, limit=limit
+        db, skip=skip, limit=limit, cliente_id=cliente_id
     )
 
 
@@ -111,8 +114,8 @@ async def crear_liquidacion(
 ):
     """Crear una nueva liquidación."""
     try:
-        nit = await _get_nit_from_token(authorization, db)
-        return await liquidacion_service.create_liquidacion(db, liquidacion, nit=nit)
+        denominacion = await _get_denominacion_from_token(authorization)
+        return await liquidacion_service.create_liquidacion(db, liquidacion, denominacion=denominacion)
     except HTTPException:
         raise
     except (BusinessLogicError, ValidationError) as e:

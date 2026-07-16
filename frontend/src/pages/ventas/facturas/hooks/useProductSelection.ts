@@ -8,6 +8,7 @@ export interface SelectedProduct {
   precio_venta: number;
   precio_compra?: number;
   id_moneda?: number;
+  id_anexo?: number;
   precios?: { id_moneda: number; precio_venta: number; precio_compra?: number }[];
 }
 
@@ -20,9 +21,7 @@ export function useProductSelection() {
    */
   const getProductosFiltrados = (productos: Productos[]) => {
     if (!productSearch.trim()) {
-      return productos.filter(
-        (p) => !selectedProducts.some((sp) => sp.id_producto === p.id_producto)
-      );
+      return [];
     }
     const search = productSearch.toLowerCase();
     return productos
@@ -40,8 +39,8 @@ export function useProductSelection() {
   const addProduct = (id: number, productos: Productos[], idMoneda?: number) => {
     const producto = productos.find((p: any) => p.id_producto === id);
     if (!selectedProducts.find((p) => p.id_producto === id)) {
-      const itemMoneda = idMoneda || (producto as any)?._id_moneda;
-      const itemPrecioCompra = (producto as any)?._precio_compra;
+      const itemMoneda = idMoneda || (producto as any)?.id_moneda;
+      const itemPrecioCompra = (producto as any)?.precio_compra;
       setSelectedProducts([
         ...selectedProducts,
         {
@@ -50,6 +49,7 @@ export function useProductSelection() {
           precio_venta: producto ? Number(producto.precio_venta) : 0,
           precio_compra: producto ? Number(itemPrecioCompra || producto.precio_compra || 0) : 0,
           id_moneda: itemMoneda,
+          id_anexo: (producto as any)?.id_anexo,
         },
       ]);
     }

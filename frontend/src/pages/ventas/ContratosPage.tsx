@@ -28,6 +28,15 @@ export function ContratosPage() {
   const [formData, setFormData] = useState<Record<string, any>>({});
   const [searchTerm, setSearchTerm] = useState('');
   const [filtroCliente, setFiltroCliente] = useState<number | null>(initialClienteId ? Number(initialClienteId) : null);
+  const [clienteSearch, setClienteSearch] = useState('');
+  const [showClienteDropdown, setShowClienteDropdown] = useState(false);
+  const clienteRef = useRef<HTMLDivElement | null>(null);
+
+  const filteredClientes = useMemo(() => {
+    if (!clienteSearch) return clientes;
+    const term = clienteSearch.toLowerCase();
+    return clientes.filter(c => c.nombre.toLowerCase().includes(term));
+  }, [clientes, clienteSearch]);
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
 
   const {
@@ -86,6 +95,16 @@ export function ContratosPage() {
   });
 
   useEffect(() => { loadInitialData(); }, []);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (clienteRef.current && !clienteRef.current.contains(e.target as Node)) {
+        setShowClienteDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const loadInitialData = async () => {
     try {
@@ -152,7 +171,7 @@ export function ContratosPage() {
     });
   };
 
-  const resetForm = () => { setFormData({}); setEditingId(null); };
+  const resetForm = () => { setFormData({ fecha: new Date().toISOString().split('T')[0] }); setEditingId(null); };
 
   const openForm = (item?: ContratoWithDetails) => {
     if (item) {
@@ -170,7 +189,7 @@ export function ContratosPage() {
     } else { 
       resetForm();
       if (initialClienteId) {
-        setFormData({ id_cliente: Number(initialClienteId) });
+        setFormData(prev => ({ ...prev, id_cliente: Number(initialClienteId) }));
       }
     }
     setView('form');
@@ -404,17 +423,52 @@ export function ContratosPage() {
               <Label className="text-sm font-medium">Nombre *</Label>
               <Input value={formData.nombre || ''} onChange={(e: any) => setFormData({...formData, nombre: e.target.value})} className="mt-1" placeholder="Nombre del contrato" />
             </div>
-            <div>
+            <div ref={clienteRef} className="relative">
               <Label className="text-sm font-medium">Cliente *</Label>
               {initialClienteId ? (
                 <div className="mt-1 px-3 py-2 bg-gray-100 border border-gray-300 rounded-lg text-gray-700">
                   {clientes.find(c => c.id_cliente === Number(initialClienteId))?.nombre || `Cliente #${initialClienteId}`}
                 </div>
               ) : (
-                <select className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white" value={formData.id_cliente || ''} onChange={(e: any) => setFormData({...formData, id_cliente: e.target.value})}>
-                  <option value="">Seleccionar cliente</option>
-                  {clientes.map(c => <option key={c.id_cliente} value={c.id_cliente}>{c.nombre}</option>)}
-                </select>
+                <>
+                  <Input
+                    value={
+                      formData.id_cliente
+                        ? (clientes.find(c => c.id_cliente === Number(formData.id_cliente))?.nombre || '')
+                        : clienteSearch
+                    }
+                    onChange={(e) => {
+                      setClienteSearch(e.target.value);
+                      setFormData({ ...formData, id_cliente: '' });
+                      setShowClienteDropdown(true);
+                    }}
+                    onFocus={() => setShowClienteDropdown(true)}
+                    placeholder="Buscar cliente..."
+                    className="mt-1"
+                  />
+                  {showClienteDropdown && (
+                    <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                      {filteredClientes.length === 0 ? (
+                        <div className="px-3 py-2 text-sm text-gray-500">No se encontraron clientes</div>
+                      ) : (
+                        filteredClientes.map(c => (
+                          <button
+                            key={c.id_cliente}
+                            type="button"
+                            className="w-full px-3 py-2 text-left text-sm hover:bg-teal-50 transition-colors"
+                            onClick={() => {
+                              setFormData({ ...formData, id_cliente: c.id_cliente });
+                              setClienteSearch('');
+                              setShowClienteDropdown(false);
+                            }}
+                          >
+                            {c.nombre}
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  )}
+                </>
               )}
             </div>
             <div>

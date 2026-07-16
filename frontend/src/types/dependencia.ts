@@ -22,6 +22,7 @@ export interface Dependencia {
   id_tipo_dependencia: number;
   codigo_padre?: number;
   nombre: string;
+  denominacion: string;
   nit?: string;
   reeup?: string;
   base_datos?: string;
@@ -45,6 +46,7 @@ export interface DependenciaCreate {
   id_tipo_dependencia: number;
   codigo_padre?: number;
   nombre: string;
+  denominacion: string;
   nit?: string;
   reeup?: string;
   base_datos: string;
@@ -75,6 +77,7 @@ export interface DependenciaUpdate {
   id_tipo_dependencia?: number;
   codigo_padre?: number;
   nombre?: string;
+  denominacion?: string;
   nit?: string;
   reeup?: string;
   base_datos?: string;

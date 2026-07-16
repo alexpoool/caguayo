@@ -27,6 +27,7 @@ class PagoService:
         pago = await pago_repo.create_pago(db, data)
 
         factura.pago_actual = total_pagado + data.monto
+
         await db.commit()
         await db.refresh(factura)
 

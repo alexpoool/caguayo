@@ -234,6 +234,7 @@ CREATE TABLE dependencia (
     id_tipo_dependencia INTEGER NOT NULL REFERENCES tipo_dependencia(id_tipo_dependencia) ON DELETE CASCADE,
     codigo_padre INTEGER REFERENCES dependencia(id_dependencia) ON DELETE SET NULL,
     nombre VARCHAR(100) NOT NULL,
+    denominacion VARCHAR(3) NOT NULL,
     nit VARCHAR(20) UNIQUE,
     reeup VARCHAR(15),
     direccion VARCHAR(255) NOT NULL,
@@ -352,7 +353,7 @@ CREATE TABLE item_anexo (
     id_item_anexo SERIAL PRIMARY KEY,
     id_anexo INTEGER NOT NULL REFERENCES anexo(id_anexo) ON DELETE CASCADE,
     id_producto INTEGER NOT NULL REFERENCES productos(id_producto) ON DELETE CASCADE,
-    cantidad INTEGER NOT NULL DEFAULT 1,
+    cantidad INTEGER NOT NULL DEFAULT 0,
     cantidad_vendida INTEGER DEFAULT 0,
     existencia INTEGER NOT NULL DEFAULT 0,
     precio_compra NUMERIC(15, 4) NOT NULL,
@@ -532,15 +533,20 @@ CREATE TABLE liquidacion (
 CREATE TABLE productos_en_liquidacion (
     id_producto_en_liquidacion SERIAL PRIMARY KEY,
     codigo VARCHAR(50) NOT NULL UNIQUE,
+    
     id_producto INTEGER NOT NULL REFERENCES productos(id_producto),
     cantidad INTEGER NOT NULL,
     precio NUMERIC(15, 4) NOT NULL,
     id_moneda INTEGER NOT NULL REFERENCES moneda(id_moneda),
     tipo_compra VARCHAR(20) NOT NULL,
+    
+    
     id_factura INTEGER REFERENCES factura(id_factura),
     id_venta_efectivo INTEGER REFERENCES venta_efectivo(id_venta_efectivo),
     id_anexo INTEGER REFERENCES anexo(id_anexo),
     id_liquidacion INTEGER REFERENCES liquidacion(id_liquidacion),
+    
+    
     liquidada BOOLEAN DEFAULT FALSE,
     fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     fecha_liquidacion TIMESTAMP
@@ -646,11 +652,8 @@ INSERT INTO tipo_contrato (nombre, descripcion) VALUES
 
 -- Tipos de Convenio
 INSERT INTO tipo_convenio (nombre, descripcion) VALUES 
-('Contrato de Servicios', 'Contrato de servicios'),
-('Acuerdo de Suministro', 'Acuerdo de suministro'),
-('Contrato de Obra', 'Contrato de obra'),
-('Convenio Marco', 'Convenio marco'),
-('COMPRA VENTA', 'Convenio de compraventa de productos');
+('COMPRA VENTA', 'Convenio de compraventa de productos'),
+('CONSIGNACION', 'Consignación de productos para liquidación posterior');
 
 -- Estados de Contrato
 INSERT INTO estado_contrato (nombre, descripcion) VALUES 

@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import Dict, List, Optional
 import logging
 import os
 from datetime import datetime, timezone
@@ -9,15 +9,19 @@ import psycopg2
 from src.repository import movimiento_repo
 from src.repository.existencia_repo import existencia_repo
 from src.services.existencia_service import ExistenciaService
+from src.services.productos_en_liquidacion_service import ProductosEnLiquidacionService
 from src.models import (
     Movimiento,
     TipoMovimiento,
+    TipoConvenio,
     Convenio,
     Anexo,
     Productos,
     Dependencia,
     ItemAnexo,
+    ProductosEnLiquidacion,
 )
+from src.models.productos_en_liquidacion import TipoCompra
 from src.dto import (
     MovimientoCreate,
     MovimientoRead,
@@ -192,6 +196,38 @@ class MovimientoService:
                 db, db_movimiento.id_producto, db_movimiento.cantidad, commit=False
             )
 
+        # Crear ProductosEnLiquidacion para ventas (factura y venta efectivo)
+        if tipo.tipo == "venta" and db_movimiento.id_anexo:
+            codigo = await ProductosEnLiquidacionService.generate_codigo(
+                db, modulo="V"
+            )
+            tipo_compra = "FACTURA" if db_movimiento.id_factura else (
+                "VENTA_EFECTIVO" if db_movimiento.id_venta_efectivo else None
+            )
+            if tipo_compra:
+                # Resolver proveedor desde Anexo → Convenio
+                proveedor_id = None
+                anexo_rec = await db.get(Anexo, db_movimiento.id_anexo)
+                if anexo_rec and anexo_rec.id_convenio:
+                    convenio_rec = await db.get(Convenio, anexo_rec.id_convenio)
+                    if convenio_rec:
+                        proveedor_id = convenio_rec.id_cliente
+
+                pel = ProductosEnLiquidacion(
+                    codigo=codigo,
+                    id_producto=db_movimiento.id_producto,
+                    cantidad=db_movimiento.cantidad,
+                    precio=db_movimiento.precio_venta,
+                    id_moneda=db_movimiento.moneda_venta,
+                    tipo_compra=tipo_compra,
+                    id_factura=db_movimiento.id_factura,
+                    id_venta_efectivo=db_movimiento.id_venta_efectivo,
+                    id_anexo=db_movimiento.id_anexo,
+                    id_cliente=proveedor_id,
+                    liquidada=False,
+                )
+                db.add(pel)
+
         # Ajustar existencia en item_anexo para movimientos de ajuste
         if tipo.tipo == "AJUSTE_QUITAR" and db_movimiento.id_anexo:
             await ExistenciaService.ajustar_existencia_item_anexo(
@@ -212,6 +248,48 @@ class MovimientoService:
                 signo=1,
                 commit=False,
             )
+
+        # Si es movimiento de compra o recepción
+        if tipo.tipo in ("compra", "RECEPCION") and db_movimiento.id_anexo:
+            stmt = select(ItemAnexo).where(
+                ItemAnexo.id_anexo == db_movimiento.id_anexo,
+                ItemAnexo.id_producto == db_movimiento.id_producto,
+            )
+            item_anexo = (await db.exec(stmt)).first()
+            if not item_anexo:
+                pass
+            else:
+                # Determinar si el convenio es COMPRA_VENTA
+                es_compra_venta = False
+                proveedor_id_compra = None
+                anexo = await db.get(Anexo, db_movimiento.id_anexo)
+                if anexo and anexo.id_convenio:
+                    convenio = await db.get(Convenio, anexo.id_convenio)
+                    if convenio:
+                        tipo_convenio = await db.get(TipoConvenio, convenio.id_tipo_convenio)
+                        es_compra_venta = tipo_convenio and tipo_convenio.nombre == "COMPRA VENTA"
+                        proveedor_id_compra = convenio.id_cliente
+
+                # Siempre marcar disponible para vender
+                item_anexo.a_vender = True
+                db.add(item_anexo)
+
+                if es_compra_venta:
+                    # COMPRA_VENTA: también crear productos_en_liquidacion
+                    codigo_base = item_anexo.codigo or f"ANX-{db_movimiento.id_anexo}"
+                    codigo = f"{codigo_base}-LIQ-{db_movimiento.id_producto}"
+                    pel = ProductosEnLiquidacion(
+                        codigo=codigo,
+                        id_producto=db_movimiento.id_producto,
+                        cantidad=db_movimiento.cantidad,
+                        precio=item_anexo.precio_compra,
+                        id_moneda=item_anexo.id_moneda,
+                        tipo_compra=TipoCompra.ANEXO,
+                        id_anexo=db_movimiento.id_anexo,
+                        id_cliente=proveedor_id_compra,
+                        liquidada=False,
+                    )
+                    db.add(pel)
 
         # Cambiar el estado a confirmado
         db_movimiento.estado = "confirmado"
@@ -434,10 +512,31 @@ class MovimientoService:
             JOIN anexo a ON ia.id_anexo = a.id_anexo
             JOIN moneda m ON ia.id_moneda = m.id_moneda
             WHERE (ia.entrada - ia.vendido) > 0
+              AND ia.a_vender = TRUE
             ORDER BY p.nombre
         """)
         result = await db.exec(query)
         rows = result.mappings().all()
+
+        # Load alternative prices for all items
+        precios_query = text("""
+            SELECT id_item_anexo, id_moneda, precio_venta, precio_compra
+            FROM precio_item_anexo
+        """)
+        precios_result = await db.exec(precios_query)
+        precios_rows = precios_result.mappings().all()
+
+        precios_by_item: Dict[int, List[dict]] = {}
+        for pr in precios_rows:
+            item_id = pr.id_item_anexo
+            if item_id not in precios_by_item:
+                precios_by_item[item_id] = []
+            precios_by_item[item_id].append({
+                "id_moneda": pr.id_moneda,
+                "precio_venta": float(pr.precio_venta) if pr.precio_venta else None,
+                "precio_compra": float(pr.precio_compra) if pr.precio_compra else None,
+            })
+
         return [
             {
                 "id_item_anexo": r.id_item_anexo,
@@ -453,6 +552,7 @@ class MovimientoService:
                 "moneda_nombre": r.moneda_nombre,
                 "id_anexo": r.id_anexo,
                 "id_convenio": r.id_convenio,
+                "precios": precios_by_item.get(r.id_item_anexo, []),
             }
             for r in rows
         ]
@@ -790,9 +890,9 @@ class MovimientoService:
 
         movimientos_creados = []
         fecha = (
-            datetime.now(timezone.utc)
+            datetime.now(timezone.utc).replace(tzinfo=None)
             if not ajuste.fecha
-            else datetime.fromisoformat(ajuste.fecha)
+            else datetime.fromisoformat(ajuste.fecha).replace(tzinfo=None)
         )
         codigo_ajuste = ajuste.codigo or ""
 

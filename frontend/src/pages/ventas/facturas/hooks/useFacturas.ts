@@ -39,8 +39,8 @@ export function useFacturas(initialContratoId?: string | null) {
   /**
    * Guarda una factura (crear o actualizar)
    */
-  const handleSave = async (selectedProducts: any[]) => {
-    const data = prepararFacturaParaAPI(formData, selectedProducts, selectedContratoId);
+  const handleSave = async (selectedProducts: any[], contratos: any[] = [], userDependenciaId?: number | null) => {
+    const data = prepararFacturaParaAPI(formData, selectedProducts, selectedContratoId, contratos, userDependenciaId);
     const validacionGeneral = validarFactura(data);
     if (!validacionGeneral.valid) {
       return { success: false, message: validacionGeneral.errors.join('\n• ') };
@@ -48,7 +48,7 @@ export function useFacturas(initialContratoId?: string | null) {
     try {
       // Validar stock antes de crear/actualizar
       if (!editingId && selectedProducts.length > 0) {
-        const idDependencia = formData.id_dependencia;
+        const idDependencia = userDependenciaId;
         
         const validacion = await existenciaService.validarMultiple(
           selectedProducts.map((p: any) => ({
@@ -91,8 +91,6 @@ export function useFacturas(initialContratoId?: string | null) {
         descripcion: factura.descripcion,
         observaciones: factura.observaciones,
         fecha: factura.fecha,
-        id_dependencia: factura.id_dependencia || '',
-        id_moneda: factura.id_moneda || '',
       });
     } else {
       resetForm();
@@ -116,7 +114,7 @@ export function useFacturas(initialContratoId?: string | null) {
    * Resetea el formulario
    */
   const resetForm = () => {
-    setFormData({});
+    setFormData({ fecha: new Date().toISOString().split('T')[0] });
     setEditingId(null);
   };
 

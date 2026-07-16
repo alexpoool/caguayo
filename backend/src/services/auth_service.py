@@ -36,7 +36,7 @@ SECRET_KEY = os.getenv("SECRET_KEY")
 if not SECRET_KEY:
     raise RuntimeError("SECRET_KEY environment variable is required")
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 5256000
+ACCESS_TOKEN_EXPIRE_MINUTES = 10
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
@@ -128,6 +128,7 @@ async def search_by_alias(
             direccion=dependencia.direccion,
             nit=dependencia.nit,
             reeup=dependencia.reeup,
+            denominacion=dependencia.denominacion,
         )
         if dependencia
         else None,
@@ -232,7 +233,7 @@ async def login(db: AsyncSession, login_data: LoginRequest) -> Optional[LoginRes
         token = create_access_token(token_data)
 
         # 9. Guardar sesión en la base de datos destino
-        fecha_expiracion = datetime.now(timezone.utc) + timedelta(
+        fecha_expiracion = datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(
             minutes=ACCESS_TOKEN_EXPIRE_MINUTES
         )
         sesion = Sesion(
@@ -260,6 +261,7 @@ async def login(db: AsyncSession, login_data: LoginRequest) -> Optional[LoginRes
         dep_email = dependencia.email if dependencia else None
         dep_telefono = dependencia.telefono if dependencia else None
         dep_direccion = dependencia.direccion if dependencia else None
+        dep_denominacion = dependencia.denominacion if dependencia else None
 
         grupo_id = grupo.id_grupo if grupo else None
         grupo_nombre = grupo.nombre if grupo else None
@@ -285,6 +287,7 @@ async def login(db: AsyncSession, login_data: LoginRequest) -> Optional[LoginRes
                 direccion=dep_direccion,
                 nit=dependencia.nit,
                 reeup=dependencia.reeup,
+                denominacion=dep_denominacion,
             )
             if dependencia
             else None,
@@ -356,6 +359,7 @@ async def get_current_user(db: AsyncSession, token: str) -> Optional[UsuarioInfo
             direccion=dependencia.direccion,
             nit=dependencia.nit,
             reeup=dependencia.reeup,
+            denominacion=dependencia.denominacion,
         )
         if dependencia
         else None,
@@ -490,6 +494,7 @@ async def update_perfil(
             direccion=dependencia.direccion,
             nit=dependencia.nit,
             reeup=dependencia.reeup,
+            denominacion=dependencia.denominacion,
         )
         if dependencia
         else None,
@@ -524,6 +529,7 @@ async def get_all_bases_datos_by_alias(
             direccion=d.direccion,
             nit=d.nit,
             reeup=d.reeup,
+            denominacion=d.denominacion,
         )
         for d in dependencias_con_db
     ]
@@ -636,7 +642,7 @@ async def register(
         token = create_access_token(token_data)
 
         # 10. Guardar sesión en la BD destino
-        fecha_expiracion = datetime.now(timezone.utc) + timedelta(
+        fecha_expiracion = datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(
             minutes=ACCESS_TOKEN_EXPIRE_MINUTES
         )
         sesion = Sesion(
@@ -677,6 +683,7 @@ async def register(
                 direccion=dependencia_central.direccion,
                 nit=dependencia_central.nit,
                 reeup=dependencia_central.reeup,
+                denominacion=dependencia_central.denominacion,
             )
             if dependencia_central
             else None,

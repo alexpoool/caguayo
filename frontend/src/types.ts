@@ -73,3 +73,5 @@ export interface DashboardStats {
 export interface Dependencia{
   
 }
+
+export type { ProductoConCantidad } from "./types/index";

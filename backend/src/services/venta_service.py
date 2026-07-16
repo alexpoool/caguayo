@@ -31,7 +31,7 @@ class VentaService:
     ) -> VentaRead:
         """Crear una venta con sus detalles, calculando subtotales y total."""
         try:
-            fecha = venta_data.fecha or datetime.now(timezone.utc)
+            fecha = venta_data.fecha or datetime.now(timezone.utc).replace(tzinfo=None)
 
             # Crear la venta con total inicial 0
             venta = Ventas(
@@ -144,7 +144,7 @@ class VentaService:
                 if value is not None and hasattr(venta, field):
                     setattr(venta, field, value)
 
-            venta.fecha_actualizacion = datetime.now(timezone.utc)
+            venta.fecha_actualizacion = datetime.now(timezone.utc).replace(tzinfo=None)
             db.add(venta)
             await db.commit()
             await db.refresh(venta)

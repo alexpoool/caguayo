@@ -4,11 +4,12 @@ from datetime import date
 from fastapi import APIRouter, Depends, Header, HTTPException, Query
 from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlmodel import select, func
+from sqlalchemy.orm import selectinload
 
 from src.database.connection import get_auth_session, get_session
 from src.models import Cliente, Cliente as ClienteModel, Convenio
-from src.dto.convenios_dto import ConvenioCreate, ConvenioUpdate
-from src.utils import generar_codigo_anio, _get_nit_from_token, verify_auth
+from src.dto.convenios_dto import ConvenioCreate, ConvenioRead, ConvenioUpdate
+from src.utils import generar_codigo, _get_denominacion_from_token, verify_auth
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +29,11 @@ async def listar_convenios(
     search: str = Query(None, description="Buscar por nombre"),
     db: AsyncSession = Depends(get_session),
 ):
-    statement = select(Convenio)
+    statement = (
+        select(Convenio)
+        .options(selectinload(Convenio.cliente), selectinload(Convenio.tipo_convenio))
+        .order_by(Convenio.id_convenio.desc())
+    )
     if cliente_id:
         statement = statement.where(Convenio.id_cliente == cliente_id)
     if search:
@@ -37,18 +42,7 @@ async def listar_convenios(
     statement = statement.offset(skip).limit(limit)
     results = await db.exec(statement)
     convenios = results.all()
-    return [
-        {
-            "id_convenio": c.id_convenio,
-            "id_cliente": c.id_cliente,
-            "nombre_convenio": c.nombre_convenio,
-            "fecha": str(c.fecha),
-            "vigencia": str(c.vigencia),
-            "id_tipo_convenio": c.id_tipo_convenio,
-            "codigo_convenio": c.codigo,
-        }
-        for c in convenios
-    ]
+    return [ConvenioRead.model_validate(c) for c in convenios]
 
 
 @router.get("/simple")
@@ -78,20 +72,16 @@ async def obtener_convenio(
     convenioid: int,
     db: AsyncSession = Depends(get_session),
 ):
-    statement = select(Convenio).where(Convenio.id_convenio == convenioid)
+    statement = (
+        select(Convenio)
+        .where(Convenio.id_convenio == convenioid)
+        .options(selectinload(Convenio.cliente), selectinload(Convenio.tipo_convenio))
+    )
     results = await db.exec(statement)
     c = results.first()
     if not c:
         raise HTTPException(status_code=404, detail="Convenio no encontrado")
-    return {
-        "id_convenio": c.id_convenio,
-        "id_cliente": c.id_cliente,
-        "nombre_convenio": c.nombre_convenio,
-        "fecha": str(c.fecha),
-        "vigencia": str(c.vigencia),
-        "id_tipo_convenio": c.id_tipo_convenio,
-        "codigo": c.codigo,
-    }
+    return ConvenioRead.model_validate(c)
 
 
 @router.post("", status_code=201)
@@ -101,8 +91,7 @@ async def crear_convenio(
     db: AsyncSession = Depends(get_session),
 ):
     try:
-        nit = await _get_nit_from_token(authorization, db)
-        prefijo = f"{nit}." if nit else ""
+        denominacion = await _get_denominacion_from_token(authorization)
 
         id_cliente = datos.id_cliente
         if not id_cliente:
@@ -121,13 +110,11 @@ async def crear_convenio(
                 detail="Solo los clientes que son proveedores o ambos pueden tener convenios",
             )
 
-        año = datos.fecha.year
-
-        codigo_base = await generar_codigo_anio(db, "convenio", "fecha", año)
-        codigo = f"{prefijo}C.{codigo_base}"
-
-        datos_dict = datos.model_dump()
-        db_convenio = Convenio(**datos_dict, codigo=codigo)
+        datos_dict = datos.model_dump(exclude={"codigo"})
+        db_convenio = Convenio(**datos_dict, codigo="")
+        db.add(db_convenio)
+        await db.flush()
+        db_convenio.codigo = generar_codigo(denominacion, datos.fecha.year, db_convenio.id_convenio)
         db.add(db_convenio)
         await db.commit()
         await db.refresh(db_convenio)
@@ -138,7 +125,7 @@ async def crear_convenio(
             "fecha": str(db_convenio.fecha),
             "vigencia": str(db_convenio.vigencia),
             "id_tipo_convenio": db_convenio.id_tipo_convenio,
-            "codigo_convenio": db_convenio.codigo,
+            "codigo": db_convenio.codigo,
         }
     except HTTPException:
         raise
@@ -175,7 +162,7 @@ async def actualizar_convenio(
             "fecha": str(db_convenio.fecha),
             "vigencia": str(db_convenio.vigencia),
             "id_tipo_convenio": db_convenio.id_tipo_convenio,
-            "codigo_convenio": db_convenio.codigo,
+            "codigo": db_convenio.codigo,
         }
     except HTTPException:
         raise

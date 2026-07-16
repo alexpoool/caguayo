@@ -15,7 +15,7 @@ class Sesion(SQLModel, table=True):
     id_usuario: int = Field(foreign_key="usuarios.id_usuario")
     token: str = Field(max_length=500, unique=True)
     base_datos: str = Field(max_length=100)
-    fecha_login: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    fecha_login: datetime = Field(default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
     fecha_expiracion: datetime
 
     usuario: "Usuario" = Relationship()

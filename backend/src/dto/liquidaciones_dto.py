@@ -8,7 +8,9 @@ TIPOS_PAGO_VALIDOS = {"TRANSFERENCIA", "EFECTIVO", "CHEQUE", "OTRO"}
 
 if TYPE_CHECKING:
     from .monedas_dto import MonedaRead
-    from .productos_en_liquidacion_dto import ProductosEnLiquidacionRead
+    from .clientes_dto import ClienteSimpleRead
+    from .convenios_dto import ConvenioSimpleRead
+    from .productos_en_liquidacion_dto import ProductosEnLiquidacionRead, AnexoSimpleRead
 
 
 class LiquidacionBase(SQLModel):
@@ -70,6 +72,9 @@ class LiquidacionRead(LiquidacionBase):
     id_liquidacion: int
     codigo: str
     moneda: Optional["MonedaRead"] = None
+    cliente: Optional["ClienteSimpleRead"] = None
+    convenio: Optional["ConvenioSimpleRead"] = None
+    anexo: Optional["AnexoSimpleRead"] = None
     productos_en_liquidacion: Optional[List["ProductosEnLiquidacionRead"]] = None
 
 
@@ -146,6 +151,8 @@ class LiquidacionConProductos(SQLModel):
 
 # Rebuild forward references
 from .monedas_dto import MonedaRead  # noqa: E402
-from .productos_en_liquidacion_dto import ProductosEnLiquidacionRead  # noqa: E402
+from .clientes_dto import ClienteSimpleRead  # noqa: E402
+from .convenios_dto import ConvenioSimpleRead  # noqa: E402
+from .productos_en_liquidacion_dto import ProductosEnLiquidacionRead, AnexoSimpleRead  # noqa: E402
 
 LiquidacionRead.model_rebuild()

@@ -11,7 +11,7 @@ from src.dto.productos_en_liquidacion_dto import (
     ProductosEnLiquidacionRead,
     ProductosEnLiquidacionUpdate,
 )
-from src.utils import _get_nit_from_token, verify_auth
+from src.utils import _get_denominacion_from_token, verify_auth
 
 logger = logging.getLogger(__name__)
 
@@ -26,11 +26,12 @@ router = APIRouter(
 async def listar_productos(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=1000),
+    cliente_id: Optional[int] = Query(None),
     db: AsyncSession = Depends(get_session),
 ):
     """Listar todos los productos en liquidación."""
     return await productos_en_liquidacion_service.get_multi(
-        skip=skip, limit=limit, db=db
+        skip=skip, limit=limit, db=db, cliente_id=cliente_id
     )
 
 
@@ -38,11 +39,12 @@ async def listar_productos(
 async def listar_productos_liquidados(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=1000),
+    cliente_id: Optional[int] = Query(None),
     db: AsyncSession = Depends(get_session),
 ):
     """Listar productos en liquidación liquidados."""
     return await productos_en_liquidacion_service.get_liquidadas(
-        db, skip=skip, limit=limit
+        db, skip=skip, limit=limit, cliente_id=cliente_id
     )
 
 
@@ -50,11 +52,12 @@ async def listar_productos_liquidados(
 async def listar_productos_pendientes(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=1000),
+    cliente_id: Optional[int] = Query(None),
     db: AsyncSession = Depends(get_session),
 ):
     """Listar productos en liquidación pendientes."""
     return await productos_en_liquidacion_service.get_pendientes(
-        db, skip=skip, limit=limit
+        db, skip=skip, limit=limit, cliente_id=cliente_id
     )
 
 
@@ -66,8 +69,8 @@ async def crear_producto(
 ):
     """Crear un nuevo producto en liquidación."""
     try:
-        nit = await _get_nit_from_token(authorization, db)
-        return await productos_en_liquidacion_service.create(db, producto, nit=nit)
+        denominacion = await _get_denominacion_from_token(authorization)
+        return await productos_en_liquidacion_service.create(db, producto, denominacion=denominacion)
     except Exception as e:
         logger.error("Error al crear producto en liquidación", exc_info=True)
         raise HTTPException(status_code=500, detail="Error interno del servidor")

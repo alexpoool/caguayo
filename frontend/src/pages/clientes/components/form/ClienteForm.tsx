@@ -297,7 +297,7 @@ export const ClienteForm: React.FC<ClienteFormProps> = ({
                 },
                 {
                   value: "TCP" as TipoPersona,
-                  label: "TCP (Trabajo por Cuenta Propia)",
+                  label: "TCP",
                   icon: Briefcase,
                 },
               ].map((tipo) => (

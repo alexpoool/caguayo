@@ -5,6 +5,7 @@ from decimal import Decimal
 from pydantic import field_validator
 import re
 from .precio_item_anexo_dto import PrecioItemAnexoCreate, PrecioItemAnexoRead
+from .productos_dto import ProductoSimpleRead
 
 EMAIL_REGEX = r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$"
 
@@ -189,6 +190,7 @@ class ItemAnexoBase(SQLModel):
 
 class ItemAnexoCreate(ItemAnexoBase):
     precios: Optional[List[PrecioItemAnexoCreate]] = None
+    precio_compra: Optional[Decimal] = Field(default=None, ge=0)
 
 
 class ItemAnexoRead(ItemAnexoBase):
@@ -197,6 +199,8 @@ class ItemAnexoRead(ItemAnexoBase):
     precio_compra: Decimal
     codigo: Optional[str] = None
     cantidad_liquidada: int = 0
+    a_vender: bool = False
+    producto: Optional[ProductoSimpleRead] = None
     precios: Optional[List[PrecioItemAnexoRead]] = None
 
 
@@ -226,6 +230,7 @@ class AnexoUpdate(SQLModel):
     codigo_anexo: Optional[str] = None
     id_dependencia: Optional[int] = None
     comision: Optional[Decimal] = Field(default=None, ge=0, le=100)
+    items: Optional[List[ItemAnexoCreate]] = None
 
     @field_validator("fecha")
     @classmethod
@@ -244,3 +249,4 @@ class ClienteSimpleRead(SQLModel):
 class ConvenioSimpleRead(SQLModel):
     id_convenio: int
     nombre_convenio: str
+    codigo: Optional[str] = None

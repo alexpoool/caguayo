@@ -3,7 +3,9 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlalchemy.orm import selectinload
 from typing import List, Optional, Any
 from decimal import Decimal
+from datetime import datetime
 from src.repository.base import CRUDBase
+from src.utils.codigos_entidad import generar_codigo
 from src.models.contrato import (
     Contrato,
     Suplemento,
@@ -150,9 +152,9 @@ class SuplementoRepository(CRUDBase[Suplemento, SuplementoCreate, SuplementoUpda
         suplemento_dict = {
             "id_contrato": normalize_id(suplemento_data.id_contrato),
             "nombre": suplemento_data.nombre,
-            "id_estado": normalize_id(suplemento_data.id_estado),
+            "id_estado": getattr(suplemento_data, "id_estado", None) or 1,
             "fecha": suplemento_data.fecha,
-            "monto": suplemento_data.monto or Decimal("0.00"),
+            "monto": getattr(suplemento_data, "monto", None) or Decimal("0.00"),
             "documento": suplemento_data.documento,
             "codigo": codigo,
         }
@@ -228,9 +230,10 @@ class FacturaRepository(CRUDBase[Factura, FacturaCreate, FacturaUpdate]):
         return results.all()
 
     async def create(self, db: AsyncSession, factura_data: FacturaCreate) -> Factura:
+        from time import monotonic_ns
         factura_dict = {
             "id_contrato": normalize_id(factura_data.id_contrato),
-            "codigo_factura": factura_data.codigo_factura,
+            "codigo_factura": factura_data.codigo_factura or f"TMP_{monotonic_ns()}",
             "descripcion": factura_data.descripcion,
             "observaciones": factura_data.observaciones,
             "fecha": factura_data.fecha,
@@ -381,10 +384,10 @@ class ItemFacturaRepository(CRUDBase[ItemFactura, ItemFacturaCreate, dict]):
         db: AsyncSession,
         id_factura: int,
         items_data: List[ItemFacturaCreate],
-        nit: Optional[str] = None,
+        denominacion: Optional[str] = None,
     ) -> List[ItemFactura]:
         created_items = []
-        prefijo = f"{nit}." if nit else ""
+        anio = datetime.now().year
         for item in items_data:
             producto = await db.get(Productos, item["id_producto"])
             if producto:
@@ -395,11 +398,15 @@ class ItemFacturaRepository(CRUDBase[ItemFactura, ItemFacturaCreate, dict]):
                     "precio_compra": producto.precio_compra,
                     "precio_venta": item["precio_venta"],
                     "id_moneda": item["id_moneda"],
-                    "codigo": f"{prefijo}V.1.{id_factura}",
+                    "id_anexo": item.get("id_anexo"),
                 }
                 db_item = ItemFactura(**item_dict)
                 db.add(db_item)
                 created_items.append(db_item)
+        await db.flush()
+        for db_item in created_items:
+            db_item.codigo = generar_codigo(denominacion or "", anio, db_item.id_item_factura)
+            db.add(db_item)
         await db.flush()
         return created_items
 
@@ -410,8 +417,10 @@ class ItemVentaEfectivoRepository(
     async def get_by_venta(
         self, db: AsyncSession, id_venta_efectivo: int
     ) -> List[ItemVentaEfectivo]:
-        statement = select(ItemVentaEfectivo).where(
-            ItemVentaEfectivo.id_venta_efectivo == id_venta_efectivo
+        statement = (
+            select(ItemVentaEfectivo)
+            .where(ItemVentaEfectivo.id_venta_efectivo == id_venta_efectivo)
+            .options(selectinload(ItemVentaEfectivo.producto))
         )
         results = await db.exec(statement)
         return results.all()
@@ -421,13 +430,20 @@ class ItemVentaEfectivoRepository(
         db: AsyncSession,
         id_venta_efectivo: int,
         items_data: List[ItemVentaEfectivoCreate],
-        nit: Optional[str] = None,
+        denominacion: Optional[str] = None,
     ) -> List[ItemVentaEfectivo]:
         created_items = []
-        prefijo = f"{nit}." if nit else ""
+        anio = datetime.now().year
         for item in items_data:
             producto = await db.get(Productos, item["id_producto"])
             if producto:
+                id_anexo = None
+                id_item_anexo = item.get("id_item_anexo")
+                if id_item_anexo is not None:
+                    item_anexo = await db.get(ItemAnexo, id_item_anexo)
+                    if item_anexo:
+                        id_anexo = item_anexo.id_anexo
+
                 item_dict = {
                     "id_venta_efectivo": id_venta_efectivo,
                     "id_producto": item["id_producto"],
@@ -435,11 +451,15 @@ class ItemVentaEfectivoRepository(
                     "precio_compra": producto.precio_compra,
                     "precio_venta": item["precio_venta"],
                     "id_moneda": item["id_moneda"],
-                    "codigo": f"{prefijo}V.0.{id_venta_efectivo}",
+                    "id_anexo": id_anexo,
                 }
                 db_item = ItemVentaEfectivo(**item_dict)
                 db.add(db_item)
                 created_items.append(db_item)
+        await db.flush()
+        for db_item in created_items:
+            db_item.codigo = generar_codigo(denominacion or "", anio, db_item.id_item_venta_efectivo)
+            db.add(db_item)
         await db.flush()
         return created_items
 

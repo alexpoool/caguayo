@@ -80,7 +80,16 @@ export function ProyectosPage() {
 
   const [suplementosPorContrato, setSuplementosPorContrato] = useState<{ [key: number]: SuplementoWithDetails[] }>({});
   const [formContrato, setFormContrato] = useState<Record<string, any>>({});
+  const [clienteSearch, setClienteSearch] = useState('');
+  const [showClienteDropdown, setShowClienteDropdown] = useState(false);
+  const clienteRef = useRef<HTMLDivElement | null>(null);
   const [clientes, setClientes] = useState<Cliente[]>([]);
+
+  const filteredClientes = useMemo(() => {
+    if (!clienteSearch) return clientes;
+    const term = clienteSearch.toLowerCase();
+    return clientes.filter(c => c.nombre.toLowerCase().includes(term));
+  }, [clientes, clienteSearch]);
   const [monedas, setMonedas] = useState<Moneda[]>([]);
   const { data: estadosContrato = [] } = useQuery({
     queryKey: ['estados-contrato'],
@@ -89,6 +98,16 @@ export function ProyectosPage() {
   const tiposContrato = [{ id: 1, nombre: 'SERVICIO' }, { id: 2, nombre: 'OBRA' }, { id: 3, nombre: 'MANTENIMIENTO' }, { id: 4, nombre: 'ALQUILER' }, { id: 5, nombre: 'COMPRA' }];
 
   const estados = ['PENDIENTE', 'EN NEGOCIACION', 'EN PROCESO', 'TERMINADA', 'CANCELADA'];
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (clienteRef.current && !clienteRef.current.contains(e.target as Node)) {
+        setShowClienteDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   useEffect(() => {
     const loadData = async () => {
@@ -280,10 +299,8 @@ export function ProyectosPage() {
         const data: SuplementoCreate = {
           id_contrato: Number(formContrato.id_contrato_suplemento),
           nombre: formContrato.nombre_suplemento || `Suplemento-${Date.now()}`,
-          id_estado: Number(formContrato.id_estado_suplemento) || (estadosContrato[0]?.id_estado_contrato ?? 0),
           fecha: formContrato.fecha_suplemento || new Date().toISOString().split('T')[0],
           documento: formContrato.documento_suplemento,
-          monto: formContrato.monto_suplemento ? Number(formContrato.monto_suplemento) : 0
         };
         const nuevoSuplemento = await suplementosService.createSuplemento(data);
         const contratoDelSuplemento = aprobarModal.contratos.find(c => c.id_contrato === Number(formContrato.id_contrato_suplemento));
@@ -920,7 +937,7 @@ export function ProyectosPage() {
                   </div>
                   <div className="bg-gray-50 p-4 rounded-xl">
                     <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Monto</p>
-                    <p className="font-bold text-gray-900">${Number(suplementoModal.item.monto).toFixed(2)}</p>
+                    <p className="font-bold text-gray-900">-</p>
                   </div>
                   <div className="bg-gray-50 p-4 rounded-xl">
                     <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Fecha</p>
@@ -966,7 +983,11 @@ export function ProyectosPage() {
                   Contrato
                 </button>
                 <button
-                  onClick={() => setAprobarModal(prev => ({ ...prev, modo: 'crear' }))}
+                  onClick={() => {
+                    setAprobarModal(prev => ({ ...prev, modo: 'crear' }));
+                    setFormContrato({ fecha: new Date().toISOString().split('T')[0] });
+                    setClienteSearch('');
+                  }}
                   className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-colors ${aprobarModal.modo === 'crear' ? 'bg-teal-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
                 >
                   <Plus className="h-4 w-4" />
@@ -1024,16 +1045,45 @@ export function ProyectosPage() {
                         placeholder="Nombre del contrato"
                       />
                     </div>
-                    <div>
+                    <div ref={clienteRef} className="relative">
                       <Label className="text-sm font-medium">Cliente *</Label>
-                      <select
-                        className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white"
-                        value={formContrato.id_cliente || ''}
-                        onChange={(e: any) => setFormContrato({ ...formContrato, id_cliente: e.target.value })}
-                      >
-                        <option value="">Seleccionar cliente</option>
-                        {clientes.map(c => <option key={c.id_cliente} value={c.id_cliente}>{c.nombre}</option>)}
-                      </select>
+                      <Input
+                        value={
+                          formContrato.id_cliente
+                            ? (clientes.find(c => c.id_cliente === Number(formContrato.id_cliente))?.nombre || '')
+                            : clienteSearch
+                        }
+                        onChange={(e) => {
+                          setClienteSearch(e.target.value);
+                          setFormContrato({ ...formContrato, id_cliente: '' });
+                          setShowClienteDropdown(true);
+                        }}
+                        onFocus={() => setShowClienteDropdown(true)}
+                        placeholder="Buscar cliente..."
+                        className="mt-1"
+                      />
+                      {showClienteDropdown && (
+                        <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                          {filteredClientes.length === 0 ? (
+                            <div className="px-3 py-2 text-sm text-gray-500">No se encontraron clientes</div>
+                          ) : (
+                            filteredClientes.map(c => (
+                              <button
+                                key={c.id_cliente}
+                                type="button"
+                                className="w-full px-3 py-2 text-left text-sm hover:bg-teal-50 transition-colors"
+                                onClick={() => {
+                                  setFormContrato({ ...formContrato, id_cliente: c.id_cliente });
+                                  setClienteSearch('');
+                                  setShowClienteDropdown(false);
+                                }}
+                              >
+                                {c.nombre}
+                              </button>
+                            ))
+                          )}
+                        </div>
+                      )}
                     </div>
                     <div>
                       <Label className="text-sm font-medium">Tipo</Label>
@@ -1137,7 +1187,7 @@ export function ProyectosPage() {
                         <option value="">Seleccionar...</option>
                         {(suplementosPorContrato[Number(formContrato.id_contrato_suple)] || []).map(s => (
                           <option key={s.id_suplemento} value={s.id_suplemento}>
-                            {s.nombre || s.codigo || `Suplemento #${s.id_suplemento}`} - ${Number(s.monto || 0).toFixed(2)}
+                            {s.nombre || s.codigo || `Suplemento #${s.id_suplemento}`} - -
                           </option>
                         ))}
                       </select>
@@ -1172,26 +1222,6 @@ export function ProyectosPage() {
                         onChange={(e: any) => setFormContrato({ ...formContrato, nombre_suplemento: e.target.value })}
                         className="mt-1"
                         placeholder="Nombre del suplemento"
-                      />
-                    </div>
-                    <div>
-                      <Label className="text-sm font-medium">Estado</Label>
-                      <select
-                        className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none bg-white"
-                        value={formContrato.id_estado_suplemento || ''}
-                        onChange={(e: any) => setFormContrato({ ...formContrato, id_estado_suplemento: e.target.value })}
-                      >
-                        {estadosContrato.map(e => <option key={e.id_estado_contrato} value={e.id_estado_contrato}>{e.nombre}</option>)}
-                      </select>
-                    </div>
-                    <div>
-                      <Label className="text-sm font-medium">Monto</Label>
-                      <Input
-                        type="number"
-                        value={formContrato.monto_suplemento || ''}
-                        onChange={(e: any) => setFormContrato({ ...formContrato, monto_suplemento: e.target.value })}
-                        className="mt-1"
-                        placeholder="0.00"
                       />
                     </div>
                     <div>

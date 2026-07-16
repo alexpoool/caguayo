@@ -145,6 +145,7 @@ export function DependenciasPage() {
   const [formData, setFormData] = useState<DependenciaCreate>({
     id_tipo_dependencia: 0,
     nombre: "",
+    denominacion: "",
     nit: "",
     reeup: "",
     base_datos: "",
@@ -361,6 +362,7 @@ export function DependenciasPage() {
     setFormData({
       id_tipo_dependencia: 0,
       nombre: "",
+      denominacion: "",
       nit: "",
       reeup: "",
       base_datos: "",
@@ -381,12 +383,17 @@ export function DependenciasPage() {
     e.preventDefault();
     if (
       !formData.nombre ||
+      !formData.denominacion ||
+      formData.denominacion.length > 3 ||
       !formData.direccion ||
       !formData.telefono ||
       !formData.id_tipo_dependencia ||
       !formData.codigo_padre
     ) {
-      toast.error("Todos los campos requeridos deben completarse");
+      const msg = formData.denominacion.length > 3
+        ? "La denominación no puede tener más de 3 caracteres"
+        : "Todos los campos requeridos deben completarse";
+      toast.error(msg);
       return;
     }
 
@@ -425,6 +432,7 @@ export function DependenciasPage() {
       id_tipo_dependencia: dep.id_tipo_dependencia,
       codigo_padre: dep.codigo_padre,
       nombre: dep.nombre,
+      denominacion: dep.denominacion,
       nit: dep.nit || "",
       reeup: dep.reeup || "",
       base_datos: dep.base_datos || "",
@@ -477,6 +485,7 @@ export function DependenciasPage() {
     setFormData({
       id_tipo_dependencia: 0,
       nombre: "",
+      denominacion: "",
       nit: "",
       reeup: "",
       base_datos: "",
@@ -607,8 +616,8 @@ export function DependenciasPage() {
                 </div>
               </div>
 
-              {/* Nombre, NIT, REEUP */}
-              <div className="col-span-2 grid grid-cols-3 gap-4">
+              {/* Nombre, Denominación, NIT, REEUP */}
+              <div className="col-span-2 grid grid-cols-4 gap-4">
                 <div className="space-y-2">
                   <Label className="flex items-center gap-2 text-gray-700">
                     <Building className="h-5 w-5 text-blue-500" />
@@ -621,6 +630,21 @@ export function DependenciasPage() {
                     }
                     placeholder="Nombre de la dependencia"
                     className="transition-all duration-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2 text-gray-700">
+                    <FileText className="h-5 w-5 text-indigo-500" />
+                    Denom. *
+                  </Label>
+                  <Input
+                    value={formData.denominacion}
+                    onChange={(e) =>
+                      setFormData({ ...formData, denominacion: e.target.value.toUpperCase().slice(0, 3) })
+                    }
+                    maxLength={3}
+                    placeholder="Máx 3 caracteres"
+                    className="transition-all duration-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 uppercase"
                   />
                 </div>
                 <div className="space-y-2">
@@ -1125,6 +1149,7 @@ export function DependenciasPage() {
               <TableHeader className="bg-gradient-to-r from-blue-50 to-indigo-50">
                 <TableRow>
                   <TableHead>Nombre</TableHead>
+                  <TableHead>Den.</TableHead>
                   <TableHead>Tipo</TableHead>
                   <TableHead>Teléfono</TableHead>
                   <TableHead className="text-right">Acciones</TableHead>
@@ -1144,7 +1169,7 @@ export function DependenciasPage() {
                     return (
                       <TableRow>
                         <TableCell
-                          colSpan={4}
+                          colSpan={5}
                           className="text-center py-8 text-gray-500"
                         >
                           <Building className="h-8 w-8 mx-auto mb-2 text-gray-300" />
@@ -1167,6 +1192,11 @@ export function DependenciasPage() {
                           )}
                           {dep.nombre}
                         </div>
+                      </TableCell>
+                      <TableCell>
+                        <span className="font-mono text-xs bg-gray-100 px-1.5 py-0.5 rounded">
+                          {dep.denominacion}
+                        </span>
                       </TableCell>
                       <TableCell>
                         {dep.tipo_dependencia?.nombre || "-"}

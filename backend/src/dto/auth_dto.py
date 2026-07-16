@@ -31,6 +31,7 @@ class DependenciaInfo(BaseModel):
     direccion: Optional[str] = None
     nit: Optional[str] = None
     reeup: Optional[str] = None
+    denominacion: Optional[str] = None
 
     class Config:
         from_attributes = True
