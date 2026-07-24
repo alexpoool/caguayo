@@ -65,7 +65,6 @@ import ReporteProyectos from './pages/reportes/ReporteProyectos';
 import ReporteCreadores from './pages/reportes/ReporteCreadores';
 import ReporteDesempeno from './pages/reportes/ReporteDesempeno';
 import ReporteOnat from './pages/reportes/ReporteOnat';
-import ReporteMincult from './pages/reportes/ReporteMincult';
 import ReporteLiquidaciones from './pages/reportes/ReporteLiquidaciones';
 import { ConveniosPage as CompraConveniosPage } from './pages/Convenios';
 import { AnexosPage as CompraAnexosPage } from './pages/Anexos';
@@ -105,7 +104,7 @@ const rutasPorModulo: Record<Modulo, string[]> = {
   venta: ['/venta', '/ventas', '/clientes', '/ventas/operaciones', '/ventas/contratos', '/ventas/suplementos', '/ventas/facturas', '/ventas/efectivo', '/ventas/registro-clientes', '/perfil'],
   compra: ['/compra', '/compra/clientes', '/compra/convenios', '/compra/anexos', '/compra/liquidaciones', '/compra/productos-liquidacion', '/compra/proveedores', '/perfil'],
   proyecto: ['/proyecto', '/proyectos', '/proyectos/servicios', '/proyectos/solicitudes', '/proyectos/proyectos', '/proyectos/etapas', '/proyectos/tareas-etapa', '/proyectos/realizadores', '/proyectos/facturas-servicio', '/proyectos/pagos-factura-servicio', '/proyectos/liquidaciones', '/proyectos/registro-proyectos', '/perfil'],
-  reportes: ['/reportes', '/reportes/existencias', '/reportes/movimientos-dependencia', '/reportes/movimientos-producto', '/reportes/proveedores', '/reportes/mincult', '/reportes/onat', '/reportes/registro-creadores', '/reportes/informe-desempeno', '/reportes/resumen-liquidaciones', '/reportes/ingresos-retenciones', '/perfil'],
+  reportes: ['/reportes', '/reportes/existencias', '/reportes/movimientos-dependencia', '/reportes/movimientos-producto', '/reportes/proveedores', '/reportes/onat', '/reportes/registro-creadores', '/reportes/informe-desempeno', '/reportes/resumen-liquidaciones', '/reportes/ingresos-retenciones', '/perfil'],
   home: ['/', '/perfil'],
 };
 
@@ -598,17 +597,6 @@ function App() {
                       </NavLink>
                     </li>
                   )}
-                  {hasFuncionalidad('reporte_mincult') && (
-                    <li>
-                      <NavLink to="/reportes/mincult" onClick={handleLinkClick}>
-                        <FileText className="w-6 h-6" />
-                        <span>
-                          <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider block leading-tight">MINCULT</span>
-                          <span>Escala de ingresos</span>
-                        </span>
-                      </NavLink>
-                    </li>
-                  )}
                 </ul>
               )}
             </>
@@ -1097,14 +1085,6 @@ function App() {
                   element={
                     <ProtectedRoute moduloActivo={moduloActivo} currentPath="/reportes/proveedores">
                       <ReporteProveedores />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/reportes/mincult"
-                  element={
-                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/reportes">
-                      <ReporteMincult />
                     </ProtectedRoute>
                   }
                 />

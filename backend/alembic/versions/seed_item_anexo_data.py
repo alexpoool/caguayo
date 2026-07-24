@@ -41,8 +41,8 @@ def upgrade() -> None:
             rows.append({
                 "id_anexo": anexo_id,
                 "id_producto": prod[0],
-                "entrada": stocks[i],
-                "vendido": 0,
+                "cantidad": stocks[i],
+                "cantidad_vendida": 0,
                 "precio_compra": str(float(prod[1]) if prod[1] else 10),
                 "precio_venta": str(float(prod[2]) if prod[2] else 50),
                 "id_moneda": prod[3] if prod[3] else 1,
@@ -50,8 +50,8 @@ def upgrade() -> None:
 
     conn.execute(
         sa.text("""
-            INSERT INTO item_anexo (id_anexo, id_producto, entrada, vendido, precio_compra, precio_venta, id_moneda)
-            VALUES (:id_anexo, :id_producto, :entrada, :vendido, :precio_compra, :precio_venta, :id_moneda)
+            INSERT INTO item_anexo (id_anexo, id_producto, cantidad, cantidad_vendida, precio_compra, precio_venta, id_moneda)
+            VALUES (:id_anexo, :id_producto, :cantidad, :cantidad_vendida, :precio_compra, :precio_venta, :id_moneda)
         """),
         rows,
     )
@@ -69,8 +69,8 @@ def downgrade() -> None:
                 FROM item_anexo
                 GROUP BY id_anexo
             ) first ON ia.id_anexo = first.id_anexo
-            WHERE ia.entrada IN (15, 20, 25, 30, 50)
-              AND ia.vendido = 0
+            WHERE ia.cantidad IN (15, 20, 25, 30, 50)
+              AND ia.cantidad_vendida = 0
               AND ia.id_item_anexo > first.first_id
         """)
     ).fetchall()

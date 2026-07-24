@@ -572,47 +572,50 @@ class PDFTemplate:
         self.elements = header_parts + self.elements
 
     def _draw_footer(self, canvas, doc) -> None:
-        """Draw page number and signature block at the bottom of each page."""
+        """Draw page number and signature block at bottom of each page."""
         canvas.saveState()
-        canvas.setFont("Courier", 7)
-        canvas.setFillColor(black)
 
         page_width = self.page_size[0]
         margin = 20
         available_width = page_width - 2 * margin
 
-        # --- Page number ---
+        # --- Page number at bottom center ---
+        page_num = canvas.getPageNumber()
+        canvas.setFont("Courier", 7)
+        canvas.setFillColor(black)
         canvas.drawCentredString(
             page_width / 2,
-            15,
-            f"Pagina {canvas.getPageNumber()}",
+            10,
+            f"Página {page_num}",
         )
 
-        # --- Signature block ---
-        sig_y = 30
-        half_w = available_width / 2
+        # --- Signature block: two-column layout ---
+        sig_y = 65
+        col_split = available_width * 0.55  # right column starts at 55% of available width
         fecha_emision = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
         canvas.setStrokeColor(black)
         canvas.setLineWidth(0.5)
-        canvas.line(margin, sig_y + 10, page_width - margin, sig_y + 10)
+        canvas.line(margin, sig_y + 8, page_width - margin, sig_y + 8)
 
+        # Left column: CONFECCIONADO POR
         canvas.setFont("Courier-Bold", 7)
         canvas.drawString(margin, sig_y, "CONFECCIONADO POR:")
-        canvas.drawString(margin + half_w, sig_y, "APROBADO POR:")
-
         canvas.setFont("Courier", 7)
-        canvas.drawString(margin, sig_y - 12, f"USUARIO: {self._escape(self._sig_created_by)}")
-        canvas.drawString(margin + half_w, sig_y - 12, f"NOMBRE: {self._escape(self._sig_approved_by)}")
+        canvas.drawString(margin, sig_y - 10, f"USUARIO: {self._escape(self._sig_created_by)}")
+        canvas.drawString(margin, sig_y - 20, "CARGO: ________________")
+        canvas.drawString(margin, sig_y - 30, f"FECHA DE EMISION: {fecha_emision}")
+        canvas.drawString(margin, sig_y - 40, "FIRMA: ________________")
 
-        canvas.drawString(margin, sig_y - 24, "CARGO: ________________")
-        canvas.drawString(margin + half_w, sig_y - 24, f"CARGO: {self._escape(self._sig_approved_role)}")
-
-        canvas.drawString(margin, sig_y - 36, f"FECHA DE EMISION: {fecha_emision}")
-        canvas.drawString(margin + half_w, sig_y - 36, "FECHA: ________________")
-
-        canvas.drawString(margin, sig_y - 48, "FIRMA: ________________")
-        canvas.drawString(margin + half_w, sig_y - 48, "FIRMA: ________________")
+        # Right column: APROBADO POR (shifted right)
+        right_x = margin + col_split
+        canvas.setFont("Courier-Bold", 7)
+        canvas.drawString(right_x, sig_y, "APROBADO POR:")
+        canvas.setFont("Courier", 7)
+        canvas.drawString(right_x, sig_y - 10, f"NOMBRE: {self._escape(self._sig_approved_by)}")
+        canvas.drawString(right_x, sig_y - 20, f"CARGO: {self._escape(self._sig_approved_role)}")
+        canvas.drawString(right_x, sig_y - 30, "FECHA: ________________")
+        canvas.drawString(right_x, sig_y - 40, "FIRMA: ________________")
 
         canvas.restoreState()
 

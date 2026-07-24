@@ -21,7 +21,7 @@ def upgrade() -> None:
         'a_vender', sa.Boolean(), nullable=False, server_default=sa.text('false')
     ))
     # Existing items that have been vendidos > 0 should be available to sell
-    op.execute("UPDATE item_anexo SET a_vender = true WHERE vendido > 0")
+    op.execute("UPDATE item_anexo SET a_vender = true WHERE cantidad_vendida > 0")
 
 
 def downgrade() -> None:
