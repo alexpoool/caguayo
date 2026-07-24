@@ -1,18 +1,16 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect } from "react";
 import { toast } from "react-hot-toast";
 import { authHelpers } from "../../lib/api";
-import { useReportPreview } from "../../hooks/useReportPreview";
-import ReportPreviewPanel from "../../components/ui/ReportPreviewPanel";
-import type { Column, StatCard } from "../../components/ui/ReportPreviewPanel";
-import { BarChart3, Download, Loader2 } from "lucide-react";
+import { BarChart3, Loader2, Eye, Printer } from "lucide-react";
 import ReportNotes from "../../components/ui/ReportNotes";
+import { Button } from "../../components/ui/Button";
 
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
 
 const BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api/v1";
+  import.meta.env.VITE_API_BASE_URL || "/api/v1";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -24,79 +22,11 @@ interface PersonaSimple {
   apellidos: string;
 }
 
-interface DesempenoPreviewItem {
-  numero: number;
-  creador: string;
-  proyecto: string;
-  etapa: string;
-  valor: number;
-  cobro: number;
-  estado: string;
-}
-
-interface DesempenoPreviewData {
-  items: DesempenoPreviewItem[];
-  total_items: number;
-}
-
-// ---------------------------------------------------------------------------
-// Column definitions
-// ---------------------------------------------------------------------------
-
-const COLUMNS: Column<DesempenoPreviewItem>[] = [
-  {
-    header: "No.",
-    accessor: "numero",
-    align: "right",
-    className: "w-12",
-  },
-  {
-    header: "CREADOR",
-    accessor: "creador",
-    className: "font-medium",
-  },
-  {
-    header: "PROYECTO",
-    accessor: "proyecto",
-  },
-  {
-    header: "ETAPA",
-    accessor: "etapa",
-  },
-  {
-    header: "VALOR",
-    accessor: "valor",
-    align: "right",
-  },
-  {
-    header: "COBRO",
-    accessor: "cobro",
-    align: "right",
-  },
-  {
-    header: "ESTADO",
-    accessor: "estado",
-  },
-];
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-function formatDateEs(isoDate: string): string {
-  return new Date(isoDate + "T00:00:00").toLocaleDateString("es-ES", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
-}
-
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
 
 const ReporteDesempeno: React.FC = () => {
-  // ── State ─────────────────────────────────────────────────────────────────
   const [pdfLoading, setPdfLoading] = useState(false);
   const [personas, setPersonas] = useState<PersonaSimple[]>([]);
   const [fechaInicio, setFechaInicio] = useState("");
@@ -107,7 +37,6 @@ const ReporteDesempeno: React.FC = () => {
   const [aprobadoPorCargo, setAprobadoPorCargo] = useState("");
   const [notas, setNotas] = useState("");
 
-  // ── Load personas on mount ────────────────────────────────────────────────
   useEffect(() => {
     const token = authHelpers.getToken() ?? "";
     fetch(`${BASE_URL}/reportes/personas`, {
@@ -116,61 +45,13 @@ const ReporteDesempeno: React.FC = () => {
       .then((r) => r.json())
       .then((data: PersonaSimple[]) => setPersonas(data))
       .catch(() => {
-        // fallback: no mostrar error, simplemente no cargar dropdown
         console.warn("No se pudieron cargar las personas");
       });
   }, []);
 
-  // ── Preview URL ───────────────────────────────────────────────────────────
-  const previewUrl = useMemo<string | null>(() => {
-    if (!fechaInicio || !fechaFin) return null;
-    const params = new URLSearchParams({
-      fecha_inicio: fechaInicio,
-      fecha_fin: fechaFin,
-    });
-    if (idPersona) params.append("id_persona", idPersona.toString());
-    if (estado) params.append("estado", estado);
-    return `${BASE_URL}/reportes/desempeno/preview?${params.toString()}`;
-  }, [fechaInicio, fechaFin, idPersona, estado]);
+  const canSubmit = Boolean(fechaInicio && fechaFin);
 
-  // ── Live preview data ─────────────────────────────────────────────────────
-  const {
-    data: previewData,
-    loading: previewLoading,
-    error: previewError,
-  } = useReportPreview<DesempenoPreviewData>(previewUrl);
-
-  // ── Stats ─────────────────────────────────────────────────────────────────
-  const stats = useMemo<StatCard[] | undefined>(() => {
-    if (!previewData) return undefined;
-    return [
-      { label: "Total registros", value: previewData.total_items, color: "amber" },
-    ];
-  }, [previewData]);
-
-  // ── Preview subtitle ──────────────────────────────────────────────────────
-  const previewSubtitle =
-    fechaInicio && fechaFin
-      ? `${formatDateEs(fechaInicio)} – ${formatDateEs(fechaFin)}`
-      : undefined;
-
-  // ── Form validation ───────────────────────────────────────────────────────
-  const isFormValid = Boolean(fechaInicio && fechaFin);
-
-  // ── Button label ─────────────────────────────────────────────────────────
-  const buttonLabel = pdfLoading
-    ? "Generando PDF..."
-    : previewData && previewData.total_items > 0
-    ? `Exportar ${previewData.total_items} registros como PDF`
-    : "Exportar PDF";
-
-  // ── PDF export ────────────────────────────────────────────────────────────
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!isFormValid) {
-      toast.error("Seleccione un rango de fechas");
-      return;
-    }
+  const generatePdfBlob = async (): Promise<Blob | null> => {
     setPdfLoading(true);
     try {
       const params = new URLSearchParams({
@@ -196,23 +77,45 @@ const ReporteDesempeno: React.FC = () => {
         throw new Error(`Error ${response.status}: ${response.statusText}`);
       }
 
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `informe_desempeno_${fechaInicio}_${fechaFin}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-
-      toast.success("Reporte generado exitosamente");
+      return await response.blob();
     } catch (error) {
       console.error(error);
       toast.error("Hubo un error al generar el reporte.");
+      return null;
     } finally {
       setPdfLoading(false);
     }
+  };
+
+  const handlePreview = async () => {
+    if (!canSubmit) {
+      toast.error("Seleccione un rango de fechas");
+      return;
+    }
+    const blob = await generatePdfBlob();
+    if (!blob) return;
+    const url = window.URL.createObjectURL(blob);
+    const newWindow = window.open(url, "_blank");
+    if (newWindow) newWindow.focus();
+    setTimeout(() => window.URL.revokeObjectURL(url), 60000);
+  };
+
+  const handleDownload = async () => {
+    if (!canSubmit) {
+      toast.error("Seleccione un rango de fechas");
+      return;
+    }
+    const blob = await generatePdfBlob();
+    if (!blob) return;
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `informe_desempeno_${fechaInicio}_${fechaFin}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+    toast.success("Reporte generado exitosamente");
   };
 
   // ── Render ────────────────────────────────────────────────────────────────
@@ -233,11 +136,9 @@ const ReporteDesempeno: React.FC = () => {
         </div>
       </div>
 
-      {/* ── Two-column layout ────────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 xl:grid-cols-[380px_1fr] items-start gap-6">
-        {/* ── Left: form panel ──────────────────────────────────────────── */}
+      <div className="max-w-lg mx-auto">
         <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-6">
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form className="space-y-6">
             {/* ── FILTROS section ───────────────────────────────────────── */}
             <div>
               <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
@@ -374,35 +275,20 @@ const ReporteDesempeno: React.FC = () => {
             {/* ── NOTAS section ──────────────────────────────────────────── */}
             <ReportNotes value={notas} onChange={setNotas} />
 
-            {/* ── Submit button ─────────────────────────────────────────── */}
-            <button
-              type="submit"
-              disabled={!isFormValid || pdfLoading}
-              className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium text-white bg-orange-600 hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              {pdfLoading ? (
-                <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
-              ) : (
-                <Download className="w-4 h-4" aria-hidden="true" />
+            <div className="flex items-center gap-2">
+              {pdfLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : (
+                <>
+                  <Button variant="ghost" size="icon" onClick={handlePreview} className="text-purple-600 hover:text-purple-800 hover:bg-purple-50 h-8 w-8" title="Visualizar documento" disabled={!canSubmit}>
+                    <Eye className="h-4 w-4" />
+                  </Button>
+                  <Button variant="ghost" size="icon" onClick={handleDownload} className="text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 h-8 w-8" title="Imprimir documento" disabled={!canSubmit}>
+                    <Printer className="h-4 w-4" />
+                  </Button>
+                </>
               )}
-              {buttonLabel}
-            </button>
+            </div>
           </form>
         </div>
-
-        {/* ── Right: live preview panel ──────────────────────────────────── */}
-        <ReportPreviewPanel<DesempenoPreviewItem>
-          title="Vista previa del reporte"
-          subtitle={previewSubtitle}
-          data={previewData?.items ?? null}
-          loading={previewLoading}
-          error={previewError}
-          columns={COLUMNS}
-          stats={stats}
-          notes={notas}
-          emptyMessage="No se encontraron resultados con los filtros seleccionados"
-          exportFileName={`informe_desempeno_${fechaInicio}_${fechaFin}`}
-        />
       </div>
     </div>
   );

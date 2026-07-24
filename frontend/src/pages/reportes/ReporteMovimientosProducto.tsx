@@ -4,96 +4,22 @@ import { dependenciasService, productosService } from "../../services/api";
 import { Dependencia } from "../../types/dependencia";
 import { authHelpers } from "../../lib/api";
 import type { Productos } from "../../types/index";
-import { useReportPreview } from "../../hooks/useReportPreview";
-import ReportPreviewPanel from "../../components/ui/ReportPreviewPanel";
-import type { Column, StatCard, ExportColumn } from "../../components/ui/ReportPreviewPanel";
-import { Package, Download, Loader2 } from "lucide-react";
+import { Package, Loader2, Eye, Printer } from "lucide-react";
 import ReportNotes from "../../components/ui/ReportNotes";
+import { Button } from "../../components/ui/Button";
 
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
 
 const BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api/v1";
-
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
-
-interface MovimientosProductoPreviewItem {
-  fecha: string;
-  operacion: string;
-  tipo: "Entrada" | "Salida" | "Neutro";
-  cantidad: number;
-}
-
-interface MovimientosProductoPreviewData {
-  dependencia: { nombre: string; direccion: string };
-  producto: { codigo: string; nombre: string };
-  items: MovimientosProductoPreviewItem[];
-  total_items: number;
-  total_entradas: number;
-  total_salidas: number;
-}
-
-// ---------------------------------------------------------------------------
-// Export columns
-// ---------------------------------------------------------------------------
-
-const EXPORT_COLUMNS: ExportColumn<MovimientosProductoPreviewItem>[] = [
-  { header: "Fecha", accessor: "fecha" },
-  { header: "Operación", accessor: "operacion" },
-  { header: "Tipo", accessor: "tipo" },
-  { header: "Cantidad", accessor: "cantidad" },
-];
-
-// ---------------------------------------------------------------------------
-// Column definitions
-// ---------------------------------------------------------------------------
-
-const COLUMNS: Column<MovimientosProductoPreviewItem>[] = [
-  {
-    header: "Fecha",
-    accessor: (row) =>
-      new Date(row.fecha + "T00:00:00").toLocaleDateString("es-ES"),
-  },
-  {
-    header: "Operación",
-    accessor: "operacion",
-  },
-  {
-    header: "Tipo",
-    accessor: (row) => {
-      const styles: Record<MovimientosProductoPreviewItem["tipo"], string> = {
-        Entrada: "bg-green-100 text-green-700",
-        Salida: "bg-red-100 text-red-700",
-        Neutro: "bg-gray-100 text-gray-600",
-      };
-      return (
-        <span
-          className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-            styles[row.tipo] ?? "bg-gray-100 text-gray-600"
-          }`}
-        >
-          {row.tipo}
-        </span>
-      );
-    },
-  },
-  {
-    header: "Cantidad",
-    accessor: "cantidad",
-    align: "right",
-  },
-];
+  import.meta.env.VITE_API_BASE_URL || "/api/v1";
 
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
 
 const ReporteMovimientosProducto: React.FC = () => {
-  // ── State ─────────────────────────────────────────────────────────────────
   const [pdfLoading, setPdfLoading] = useState(false);
   const [dependencias, setDependencias] = useState<Dependencia[]>([]);
   const [productos, setProductos] = useState<Productos[]>([]);
@@ -105,7 +31,6 @@ const ReporteMovimientosProducto: React.FC = () => {
   const [aprobadoPorCargo, setAprobadoPorCargo] = useState("");
   const [notas, setNotas] = useState("");
 
-  // ── Derived: selected objects ─────────────────────────────────────────────
   const selectedDep = useMemo(
     () => dependencias.find((d) => d.id_dependencia === idDependencia) ?? null,
     [dependencias, idDependencia]
@@ -116,7 +41,6 @@ const ReporteMovimientosProducto: React.FC = () => {
     [productos, idProducto]
   );
 
-  // ── Load data on mount ────────────────────────────────────────────────────
   useEffect(() => {
     dependenciasService.getDependencias().then(setDependencias).catch(() => {
       toast.error("No se pudieron cargar las dependencias.");
@@ -126,76 +50,11 @@ const ReporteMovimientosProducto: React.FC = () => {
     });
   }, []);
 
-  // ── Preview URL (debounced by hook) ───────────────────────────────────────
-  const previewUrl = useMemo(() => {
-    if (!idDependencia || !idProducto || !fechaInicio || !fechaFin) return null;
-    const params = new URLSearchParams({
-      id_dependencia: idDependencia.toString(),
-      id_producto: idProducto.toString(),
-      fecha_inicio: fechaInicio,
-      fecha_fin: fechaFin,
-    });
-    return `${BASE_URL}/reportes/movimientos-producto/preview?${params.toString()}`;
-  }, [idDependencia, idProducto, fechaInicio, fechaFin]);
-
-  // ── Live preview ──────────────────────────────────────────────────────────
-  const {
-    data: previewData,
-    loading: previewLoading,
-    error: previewError,
-  } = useReportPreview<MovimientosProductoPreviewData>(previewUrl);
-
-  // ── Stats ─────────────────────────────────────────────────────────────────
-  const stats: StatCard[] | undefined = useMemo(() => {
-    if (!previewData) return undefined;
-    const cards: StatCard[] = [
-      { label: "Total registros", value: previewData.total_items, color: "gray" },
-      {
-        label: "Total entradas",
-        value: previewData.total_entradas.toLocaleString(),
-        color: "green",
-      },
-      {
-        label: "Total salidas",
-        value: previewData.total_salidas.toLocaleString(),
-        color: "red",
-      },
-    ];
-    if (previewData.producto) {
-      cards.push({
-        label: "Producto",
-        value: previewData.producto.nombre,
-        color: "amber",
-      });
-    }
-    return cards;
-  }, [previewData]);
-
-  // ── Preview subtitle ──────────────────────────────────────────────────────
-  const previewSubtitle =
-    selectedDep && selectedProd
-      ? `${selectedDep.nombre} · ${selectedProd.nombre}`
-      : undefined;
-
-  // ── Form validation ───────────────────────────────────────────────────────
-  const isFormValid = Boolean(
+  const canSubmit = Boolean(
     idDependencia && idProducto && fechaInicio && fechaFin
   );
 
-  // ── Button label ──────────────────────────────────────────────────────────
-  const buttonLabel = pdfLoading
-    ? "Generando PDF..."
-    : previewData && previewData.total_items > 0
-    ? `Exportar ${previewData.total_items} registros como PDF`
-    : "Exportar PDF";
-
-  // ── PDF export ────────────────────────────────────────────────────────────
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!isFormValid) {
-      toast.error("Complete todos los campos requeridos.");
-      return;
-    }
+  const generatePdfBlob = async (): Promise<Blob | null> => {
     setPdfLoading(true);
     try {
       const params = new URLSearchParams({
@@ -221,23 +80,45 @@ const ReporteMovimientosProducto: React.FC = () => {
         throw new Error(`Error ${response.status}: ${response.statusText}`);
       }
 
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const anchor = document.createElement("a");
-      anchor.href = url;
-      anchor.download = `movimientos_producto_${idProducto}.pdf`;
-      document.body.appendChild(anchor);
-      anchor.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(anchor);
-
-      toast.success("Reporte generado exitosamente.");
+      return await response.blob();
     } catch (error) {
       console.error(error);
       toast.error("Hubo un error al generar el reporte.");
+      return null;
     } finally {
       setPdfLoading(false);
     }
+  };
+
+  const handlePreview = async () => {
+    if (!canSubmit) {
+      toast.error("Complete todos los campos requeridos.");
+      return;
+    }
+    const blob = await generatePdfBlob();
+    if (!blob) return;
+    const url = window.URL.createObjectURL(blob);
+    const newWindow = window.open(url, "_blank");
+    if (newWindow) newWindow.focus();
+    setTimeout(() => window.URL.revokeObjectURL(url), 60000);
+  };
+
+  const handleDownload = async () => {
+    if (!canSubmit) {
+      toast.error("Complete todos los campos requeridos.");
+      return;
+    }
+    const blob = await generatePdfBlob();
+    if (!blob) return;
+    const url = window.URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `movimientos_producto_${idProducto}.pdf`;
+    document.body.appendChild(anchor);
+    anchor.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(anchor);
+    toast.success("Reporte generado exitosamente.");
   };
 
   // ── Render ────────────────────────────────────────────────────────────────
@@ -258,11 +139,10 @@ const ReporteMovimientosProducto: React.FC = () => {
         </div>
       </div>
 
-      {/* ── Split layout ── */}
-      <div className="grid grid-cols-1 xl:grid-cols-[420px_1fr] items-start gap-6">
-        {/* ── Form panel ── */}
+      {/* ── Form layout ── */}
+      <div className="max-w-lg mx-auto">
         <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-6">
-          <form onSubmit={handleSubmit} noValidate>
+          <form noValidate>
             {/* Section: FILTROS */}
             <div className="mb-6">
               <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-4">
@@ -396,35 +276,20 @@ const ReporteMovimientosProducto: React.FC = () => {
               <ReportNotes value={notas} onChange={setNotas} />
             </div>
 
-            {/* Submit */}
-            <button
-              type="submit"
-              disabled={!isFormValid || pdfLoading}
-              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold text-white bg-amber-600 hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              {pdfLoading ? (
-                <Loader2 className="w-4 h-4 animate-spin flex-shrink-0" />
-              ) : (
-                <Download className="w-4 h-4 flex-shrink-0" />
+            <div className="flex items-center gap-2">
+              {pdfLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : (
+                <>
+                  <Button variant="ghost" size="icon" onClick={handlePreview} className="text-purple-600 hover:text-purple-800 hover:bg-purple-50 h-8 w-8" title="Visualizar documento" disabled={!canSubmit}>
+                    <Eye className="h-4 w-4" />
+                  </Button>
+                  <Button variant="ghost" size="icon" onClick={handleDownload} className="text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 h-8 w-8" title="Imprimir documento" disabled={!canSubmit}>
+                    <Printer className="h-4 w-4" />
+                  </Button>
+                </>
               )}
-              {buttonLabel}
-            </button>
+            </div>
           </form>
         </div>
-
-        {/* ── Preview panel ── */}
-        <ReportPreviewPanel<MovimientosProductoPreviewItem>
-          title="Vista previa — Movimientos por Producto"
-          subtitle={previewSubtitle}
-          data={previewData?.items ?? null}
-          loading={previewLoading}
-          error={previewError}
-          columns={COLUMNS}
-          stats={stats}
-          notes={notas}
-          emptyMessage="No se encontraron movimientos para el producto en el rango de fechas seleccionado."
-          exportFileName={`movimientos_prod_${idProducto ?? "prod"}_${fechaInicio}_${fechaFin}`}
-        />
       </div>
     </div>
   );

@@ -11,6 +11,8 @@ from io import BytesIO
 from typing import Dict, List, Optional
 from datetime import datetime
 
+import os
+
 from reportlab.lib.pagesizes import letter, landscape
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.enums import TA_LEFT, TA_RIGHT, TA_CENTER
@@ -21,7 +23,10 @@ from reportlab.platypus import (
     TableStyle,
     Paragraph,
     Spacer,
+    Image,
 )
+
+LOGO_PATH = os.path.join(os.path.dirname(__file__), "..", "static", "logo-black.png")
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -64,7 +69,7 @@ class PDFTemplate:
             rightMargin=20,
             leftMargin=20,
             topMargin=30,
-            bottomMargin=25,
+            bottomMargin=70,
         )
 
         self.elements: list = []
@@ -82,6 +87,11 @@ class PDFTemplate:
         # Becomes True when at least one table or content is added
         self._has_content = False
 
+        # Signature data (drawn in footer)
+        self._sig_created_by = ""
+        self._sig_approved_by = ""
+        self._sig_approved_role = ""
+
     # ── Style initialisation ──────────────────────────────────────────────
 
     @staticmethod
@@ -91,7 +101,7 @@ class PDFTemplate:
         styles.add(
             ParagraphStyle(
                 "ReportTitle",
-                fontName="Helvetica-Bold",
+                fontName="Courier-Bold",
                 fontSize=12,
                 alignment=TA_CENTER,
                 spaceAfter=2,
@@ -101,7 +111,7 @@ class PDFTemplate:
         styles.add(
             ParagraphStyle(
                 "CompanyInfo",
-                fontName="Helvetica",
+                fontName="Courier",
                 fontSize=7,
                 alignment=TA_CENTER,
                 spaceAfter=2,
@@ -112,7 +122,7 @@ class PDFTemplate:
         styles.add(
             ParagraphStyle(
                 "DateLine",
-                fontName="Helvetica",
+                fontName="Courier",
                 fontSize=7,
                 alignment=TA_CENTER,
                 spaceAfter=3,
@@ -122,7 +132,7 @@ class PDFTemplate:
         styles.add(
             ParagraphStyle(
                 "FilterInfo",
-                fontName="Helvetica",
+                fontName="Courier",
                 fontSize=7,
                 alignment=TA_LEFT,
                 spaceAfter=2,
@@ -133,7 +143,7 @@ class PDFTemplate:
         styles.add(
             ParagraphStyle(
                 "NoteHeader",
-                fontName="Helvetica-Bold",
+                fontName="Courier-Bold",
                 fontSize=9,
                 alignment=TA_LEFT,
                 spaceBefore=4,
@@ -144,7 +154,7 @@ class PDFTemplate:
         styles.add(
             ParagraphStyle(
                 "NoteText",
-                fontName="Helvetica",
+                fontName="Courier",
                 fontSize=8,
                 alignment=TA_LEFT,
                 spaceAfter=4,
@@ -156,7 +166,7 @@ class PDFTemplate:
         styles.add(
             ParagraphStyle(
                 "SignatureText",
-                fontName="Helvetica",
+                fontName="Courier",
                 fontSize=8,
                 alignment=TA_LEFT,
                 spaceAfter=2,
@@ -166,7 +176,7 @@ class PDFTemplate:
         styles.add(
             ParagraphStyle(
                 "TableCell",
-                fontName="Helvetica",
+                fontName="Courier",
                 fontSize=7,
                 alignment=TA_LEFT,
                 leading=9,
@@ -175,7 +185,7 @@ class PDFTemplate:
         styles.add(
             ParagraphStyle(
                 "TableCellNumber",
-                fontName="Helvetica",
+                fontName="Courier",
                 fontSize=7,
                 alignment=TA_RIGHT,
                 leading=9,
@@ -193,7 +203,7 @@ class PDFTemplate:
         styles.add(
             ParagraphStyle(
                 "TableHeader",
-                fontName="Helvetica-Bold",
+                fontName="Courier-Bold",
                 fontSize=7,
                 alignment=TA_CENTER,
                 textColor=HEADER_FG,
@@ -203,7 +213,7 @@ class PDFTemplate:
         styles.add(
             ParagraphStyle(
                 "TotalsRow",
-                fontName="Helvetica-Bold",
+                fontName="Courier-Bold",
                 fontSize=7,
                 alignment=TA_RIGHT,
                 textColor=TITLE_COLOR,
@@ -213,7 +223,7 @@ class PDFTemplate:
         styles.add(
             ParagraphStyle(
                 "EmptyState",
-                fontName="Helvetica",
+                fontName="Courier",
                 fontSize=9,
                 alignment=TA_CENTER,
                 textColor=MUTED_COLOR,
@@ -374,7 +384,7 @@ class PDFTemplate:
             # ── Header row ──────────────────────────────────────────────
             ("BACKGROUND", (0, 0), (-1, 0), HEADER_BG),
             ("TEXTCOLOR", (0, 0), (-1, 0), HEADER_FG),
-            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+            ("FONTNAME", (0, 0), (-1, 0), "Courier-Bold"),
             ("FONTSIZE", (0, 0), (-1, 0), 8),
             ("BOTTOMPADDING", (0, 0), (-1, 0), 5),
             ("TOPPADDING", (0, 0), (-1, 0), 5),
@@ -404,7 +414,7 @@ class PDFTemplate:
                 [
                     ("BACKGROUND", (0, totals_idx), (-1, totals_idx), TOTALS_BG),
                     ("LINEABOVE", (0, totals_idx), (-1, totals_idx), 1, TOTALS_LINE),
-                    ("FONTNAME", (0, totals_idx), (-1, totals_idx), "Helvetica-Bold"),
+                    ("FONTNAME", (0, totals_idx), (-1, totals_idx), "Courier-Bold"),
                     ("TOPPADDING", (0, totals_idx), (-1, totals_idx), 5),
                     ("BOTTOMPADDING", (0, totals_idx), (-1, totals_idx), 5),
                 ]
@@ -450,50 +460,10 @@ class PDFTemplate:
         approved_by: str = "",
         approved_role: str = "",
     ) -> None:
-        """Append the signature block at the bottom of the document."""
-        self.elements.append(Spacer(1, 16))
-
-        fecha_emision = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        sig = self.styles["SignatureText"]
-        half = self.page_size[0] / 2 - 30
-
-        sig_data = [
-            [
-                Paragraph("<b>CONFECCIONADO POR:</b>", sig),
-                Paragraph("<b>APROBADO POR:</b>", sig),
-            ],
-            [
-                Paragraph(f"USUARIO: {self._escape(created_by)}", sig),
-                Paragraph(f"NOMBRE: {self._escape(approved_by)}", sig),
-            ],
-            [
-                Paragraph("CARGO: ________________", sig),
-                Paragraph(f"CARGO: {self._escape(approved_role)}", sig),
-            ],
-            [
-                Paragraph(f"FECHA DE EMISIÓN: {fecha_emision}", sig),
-                Paragraph("FECHA: ________________", sig),
-            ],
-            [
-                Paragraph("FIRMA: ________________", sig),
-                Paragraph("FIRMA: ________________", sig),
-            ],
-        ]
-
-        sig_table = Table(sig_data, colWidths=[half, half])
-        sig_table.setStyle(
-            TableStyle(
-                [
-                    ("ALIGN", (0, 0), (-1, -1), "LEFT"),
-                    ("VALIGN", (0, 0), (-1, -1), "TOP"),
-                    ("TOPPADDING", (0, 0), (-1, -1), 2),
-                    ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
-                    ("LEFTPADDING", (0, 0), (-1, -1), 0),
-                    ("RIGHTPADDING", (0, 0), (-1, -1), 3),
-                ]
-            )
-        )
-        self.elements.append(sig_table)
+        """Store signature data to be drawn in the page footer."""
+        self._sig_created_by = created_by
+        self._sig_approved_by = approved_by
+        self._sig_approved_role = approved_role
 
     # ── Build ─────────────────────────────────────────────────────────────
 
@@ -511,8 +481,8 @@ class PDFTemplate:
 
         self.doc.build(
             self.elements,
-            onFirstPage=self._add_page_number,
-            onLaterPages=self._add_page_number,
+            onFirstPage=self._draw_footer,
+            onLaterPages=self._draw_footer,
         )
         self.buffer.seek(0)
         return self.buffer
@@ -520,7 +490,7 @@ class PDFTemplate:
     # ── Internal helpers ──────────────────────────────────────────────────
 
     def _build_header(self) -> None:
-        """Compose the document header (company, title, date, filters).
+        """Compose the document header (logo, company, title, date, filters).
 
         Builds header elements into a temporary list and prepends them to
         ``self.elements`` so that the header appears *before* tables, notes,
@@ -529,9 +499,11 @@ class PDFTemplate:
         header_parts: list = []
         header_parts.append(Spacer(1, 3))
 
-        # Company block
+        # Right-column: company info + title + date + filters
+        right_column: list = []
+
         if self._company_name:
-            header_parts.append(
+            right_column.append(
                 Paragraph(
                     f"<b>{self._escape(self._company_name)}</b>",
                     self.styles["CompanyInfo"],
@@ -545,23 +517,20 @@ class PDFTemplate:
         if self._company_phone:
             details.append(f"Tel: {self._escape(self._company_phone)}")
         if details:
-            header_parts.append(
+            right_column.append(
                 Paragraph("<br/>".join(details), self.styles["CompanyInfo"])
             )
-            header_parts.append(Spacer(1, 2))
+            right_column.append(Spacer(1, 2))
 
-        # Title
-        header_parts.append(
+        right_column.append(
             Paragraph(f"<b>{self._escape(self.title)}</b>", self.styles["ReportTitle"])
         )
 
-        # Date
         fecha = datetime.now().strftime("%d/%m/%Y %H:%M")
-        header_parts.append(
-            Paragraph(f"Fecha de emisión: {fecha}", self.styles["DateLine"])
+        right_column.append(
+            Paragraph(f"Fecha de emision: {fecha}", self.styles["DateLine"])
         )
 
-        # Filters (inline pipe-separated list)
         if self._filters:
             parts = [
                 f"<b>{self._escape(k)}:</b> {self._escape(str(v))}"
@@ -569,41 +538,82 @@ class PDFTemplate:
                 if v
             ]
             if parts:
-                header_parts.append(
+                right_column.append(
                     Paragraph(" | ".join(parts), self.styles["FilterInfo"])
                 )
-                header_parts.append(Spacer(1, 2))
+                right_column.append(Spacer(1, 6))
 
-        # Horizontal rule
-        hr_table = Table(
-            [[""]],
-            colWidths=[self.page_size[0] - 60],
-        )
-        hr_table.setStyle(
-            TableStyle(
-                [
-                    ("LINEBELOW", (0, 0), (-1, 0), 1, black),
-                    ("TOPPADDING", (0, 0), (-1, 0), 0),
-                    ("BOTTOMPADDING", (0, 0), (-1, 0), 2),
-                ]
-            )
-        )
-        header_parts.append(hr_table)
-        header_parts.append(Spacer(1, 3))
+        # Logo column + right column in a two-column table
+        if os.path.exists(LOGO_PATH):
+            try:
+                logo_img = Image(LOGO_PATH, width=60, height=60)
+                header_table = Table(
+                    [[logo_img, right_column]],
+                    colWidths=[70, self.page_size[0] - 110],
+                )
+                header_table.setStyle(
+                    TableStyle(
+                        [
+                            ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                            ("LEFTPADDING", (0, 0), (0, 0), 0),
+                            ("RIGHTPADDING", (0, 0), (0, 0), 6),
+                            ("TOPPADDING", (0, 0), (-1, -1), 0),
+                            ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
+                        ]
+                    )
+                )
+                header_parts.append(header_table)
+            except Exception:
+                header_parts.extend(right_column)
+        else:
+            header_parts.extend(right_column)
 
         # Prepend header parts so they render before tables, notes, signatures
         self.elements = header_parts + self.elements
 
-    def _add_page_number(self, canvas, doc) -> None:
-        """Callback drawn at the bottom of each page."""
+    def _draw_footer(self, canvas, doc) -> None:
+        """Draw page number and signature block at the bottom of each page."""
         canvas.saveState()
-        canvas.setFont("Helvetica", 7)
+        canvas.setFont("Courier", 7)
         canvas.setFillColor(black)
+
+        page_width = self.page_size[0]
+        margin = 20
+        available_width = page_width - 2 * margin
+
+        # --- Page number ---
         canvas.drawCentredString(
-            self.page_size[0] / 2,
+            page_width / 2,
             15,
-            f"Página {canvas.getPageNumber()}",
+            f"Pagina {canvas.getPageNumber()}",
         )
+
+        # --- Signature block ---
+        sig_y = 30
+        half_w = available_width / 2
+        fecha_emision = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+        canvas.setStrokeColor(black)
+        canvas.setLineWidth(0.5)
+        canvas.line(margin, sig_y + 10, page_width - margin, sig_y + 10)
+
+        canvas.setFont("Courier-Bold", 7)
+        canvas.drawString(margin, sig_y, "CONFECCIONADO POR:")
+        canvas.drawString(margin + half_w, sig_y, "APROBADO POR:")
+
+        canvas.setFont("Courier", 7)
+        canvas.drawString(margin, sig_y - 12, f"USUARIO: {self._escape(self._sig_created_by)}")
+        canvas.drawString(margin + half_w, sig_y - 12, f"NOMBRE: {self._escape(self._sig_approved_by)}")
+
+        canvas.drawString(margin, sig_y - 24, "CARGO: ________________")
+        canvas.drawString(margin + half_w, sig_y - 24, f"CARGO: {self._escape(self._sig_approved_role)}")
+
+        canvas.drawString(margin, sig_y - 36, f"FECHA DE EMISION: {fecha_emision}")
+        canvas.drawString(margin + half_w, sig_y - 36, "FECHA: ________________")
+
+        canvas.drawString(margin, sig_y - 48, "FIRMA: ________________")
+        canvas.drawString(margin + half_w, sig_y - 48, "FIRMA: ________________")
+
         canvas.restoreState()
 
     @staticmethod

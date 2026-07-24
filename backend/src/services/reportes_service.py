@@ -327,7 +327,7 @@ async def get_registro_proyectos(
                 "cliente": r.cliente_nombre,
                 "fecha": contrato.fecha,
                 "valor": float(contrato.monto),
-                "moneda": f"{r.moneda_simbolo} ({r.moneda_nombre})",
+                "moneda": r.moneda_simbolo or "",
                 "tipo_contrato": r.tipo_contrato_nombre,
                 "estado": r.estado_contrato_nombre,
             }
@@ -616,9 +616,7 @@ async def get_reporte_onat(
                 "numero_registro": r.numero_registro or "",
                 "nit": r.persona_nit or "",
                 "direccion": r.persona_direccion or "",
-                "moneda": f"{r.moneda_simbolo} ({r.moneda_nombre})"
-                if r.moneda_nombre
-                else "",
+                "moneda": r.moneda_simbolo or "",
                 "importe": float(pl.importe),
                 "devengado": float(pl.devengado),
                 "porcentaje_caguayo": float(pl.porcentaje_caguayo),
@@ -832,9 +830,7 @@ async def get_resumen_liquidaciones(
             "cliente_nombre": r.cliente_nombre,
             "cliente_nit": r.cliente_nit or "",
             "cliente_codigo": r.cliente_codigo,
-            "moneda": f"{r.moneda_simbolo} ({r.moneda_nombre})"
-            if r.moneda_nombre
-            else "",
+            "moneda": r.moneda_simbolo or "",
             "devengado": float(liq.devengado),
             "tributario": float(liq.tributario),
             "comision_bancaria": float(liq.comision_bancaria),

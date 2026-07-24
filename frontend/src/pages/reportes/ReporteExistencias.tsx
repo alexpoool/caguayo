@@ -3,67 +3,22 @@ import { toast } from "react-hot-toast";
 import { dependenciasService } from "../../services/administracion";
 import { Dependencia } from "../../types/dependencia";
 import { authHelpers } from "../../lib/api";
-import { useReportPreview } from "../../hooks/useReportPreview";
-import ReportPreviewPanel from "../../components/ui/ReportPreviewPanel";
-import type { Column, StatCard } from "../../components/ui/ReportPreviewPanel";
-import { Boxes, Download, Building2, Loader2 } from "lucide-react";
+import { Boxes, Building2, Loader2, Eye, Printer } from "lucide-react";
 import ReportNotes from "../../components/ui/ReportNotes";
+import { Button } from "../../components/ui/Button";
 
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
 
 const BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api/v1";
-
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
-
-interface ExistenciasPreviewItem {
-  codigo: string;
-  descripcion: string;
-  cantidad: number;
-}
-
-interface ExistenciasPreviewData {
-  dependencia: { nombre: string; direccion: string };
-  items: ExistenciasPreviewItem[];
-  total_items: number;
-  total_cantidad: number;
-}
-
-// ---------------------------------------------------------------------------
-// Columns (defined outside the component to keep a stable reference)
-// ---------------------------------------------------------------------------
-
-// ---------------------------------------------------------------------------
-// Column definitions
-// ---------------------------------------------------------------------------
-
-const COLUMNS: Column<ExistenciasPreviewItem>[] = [
-  {
-    header: "Código",
-    accessor: "codigo",
-    className: "font-mono text-xs",
-  },
-  {
-    header: "Descripción",
-    accessor: "descripcion",
-  },
-  {
-    header: "Cantidad",
-    accessor: "cantidad",
-    align: "right",
-  },
-];
+  import.meta.env.VITE_API_BASE_URL || "/api/v1";
 
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
 
 const ReporteExistencias: React.FC = () => {
-  // ── State ─────────────────────────────────────────────────────────────────
   const [pdfLoading, setPdfLoading] = useState(false);
   const [dependencias, setDependencias] = useState<Dependencia[]>([]);
   const [idDependencia, setIdDependencia] = useState<number | null>(null);
@@ -71,51 +26,22 @@ const ReporteExistencias: React.FC = () => {
   const [aprobadoPorCargo, setAprobadoPorCargo] = useState("");
   const [notas, setNotas] = useState("");
 
-  // ── Derived ───────────────────────────────────────────────────────────────
   const selectedDep = useMemo(
     () => dependencias.find((d) => d.id_dependencia === idDependencia) ?? null,
     [dependencias, idDependencia]
   );
 
-  // ── Load dependencias on mount ────────────────────────────────────────────
   useEffect(() => {
     dependenciasService.getDependencias().then(setDependencias);
   }, []);
 
-  // ── Preview URL (only when a dependencia is selected) ─────────────────────
-  const previewUrl = useMemo(() => {
-    if (!idDependencia) return null;
-    return `${BASE_URL}/reportes/existencias/preview?id_dependencia=${idDependencia}`;
-  }, [idDependencia]);
+  const canSubmit = !!idDependencia;
 
-  // ── Live preview data ─────────────────────────────────────────────────────
-  const {
-    data: previewData,
-    loading: previewLoading,
-    error: previewError,
-  } = useReportPreview<ExistenciasPreviewData>(previewUrl);
-
-  // ── Stats (only when preview data is available) ───────────────────────────
-  const stats = useMemo<StatCard[] | undefined>(() => {
-    if (!previewData) return undefined;
-    return [
-      { label: "Total productos", value: previewData.total_items, color: "blue" },
-      {
-        label: "Total unidades",
-        value: previewData.total_cantidad.toLocaleString(),
-        color: "green",
-      },
-    ];
-  }, [previewData]);
-
-  // ── PDF export ────────────────────────────────────────────────────────────
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const generatePdfBlob = async (): Promise<Blob | null> => {
     if (!idDependencia) {
       toast.error("Seleccione una dependencia");
-      return;
+      return null;
     }
-
     setPdfLoading(true);
     try {
       const params = new URLSearchParams({
@@ -124,7 +50,6 @@ const ReporteExistencias: React.FC = () => {
         aprobado_por_cargo: aprobadoPorCargo,
         notas: notas,
       });
-
       const token = authHelpers.getToken() ?? "";
       const response = await fetch(
         `${BASE_URL}/reportes/existencias?${params.toString()}`,
@@ -133,41 +58,44 @@ const ReporteExistencias: React.FC = () => {
           headers: { Authorization: `Bearer ${token}` },
         }
       );
-
       if (!response.ok) {
         throw new Error(`Error ${response.status}: ${response.statusText}`);
       }
-
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `existencias_dependencia_${idDependencia}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-
-      toast.success("Reporte generado exitosamente");
+      return await response.blob();
     } catch (error) {
       console.error(error);
       toast.error("Hubo un error al generar el reporte.");
+      return null;
     } finally {
       setPdfLoading(false);
     }
   };
 
-  // ── Button label ──────────────────────────────────────────────────────────
-  const buttonLabel = pdfLoading
-    ? "Generando PDF..."
-    : previewData
-    ? `Exportar ${previewData.total_items} registros como PDF`
-    : "Exportar PDF";
+  const handlePreview = async () => {
+    const blob = await generatePdfBlob();
+    if (!blob) return;
+    const url = window.URL.createObjectURL(blob);
+    const newWindow = window.open(url, "_blank");
+    if (newWindow) newWindow.focus();
+    setTimeout(() => window.URL.revokeObjectURL(url), 60000);
+  };
 
-  // ── Render ────────────────────────────────────────────────────────────────
+  const handleDownload = async () => {
+    const blob = await generatePdfBlob();
+    if (!blob) return;
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `existencias_dependencia_${idDependencia}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+    toast.success("Reporte generado exitosamente");
+  };
+
   return (
     <div className="space-y-6">
-      {/* ── Page header ─────────────────────────────────────────────────── */}
       <div className="flex items-center gap-3">
         <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-blue-600 flex items-center justify-center shadow-sm">
           <Boxes className="w-5 h-5 text-white" aria-hidden="true" />
@@ -180,17 +108,13 @@ const ReporteExistencias: React.FC = () => {
         </div>
       </div>
 
-      {/* ── Two-column layout ────────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 xl:grid-cols-[380px_1fr] items-start gap-6">
-        {/* ── Left: form panel ──────────────────────────────────────────── */}
+      <div className="max-w-lg mx-auto">
         <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-6">
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {/* ── FILTROS section ───────────────────────────────────────── */}
+          <form className="space-y-6">
             <div>
               <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
                 Filtros
               </p>
-
               <div>
                 <label
                   htmlFor="dependencia"
@@ -216,8 +140,6 @@ const ReporteExistencias: React.FC = () => {
                     </option>
                   ))}
                 </select>
-
-                {/* Direccion hint */}
                 {selectedDep?.direccion && (
                   <div className="flex items-start gap-1.5 mt-1.5">
                     <Building2 className="w-3.5 h-3.5 text-gray-400 mt-0.5 flex-shrink-0" />
@@ -229,12 +151,10 @@ const ReporteExistencias: React.FC = () => {
               </div>
             </div>
 
-            {/* ── FIRMAS section ────────────────────────────────────────── */}
             <div>
               <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
                 Firmas e Información Adicional
               </p>
-
               <div className="space-y-3">
                 <div>
                   <label
@@ -252,7 +172,6 @@ const ReporteExistencias: React.FC = () => {
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
-
                 <div>
                   <label
                     htmlFor="aprobado-cargo"
@@ -272,40 +191,35 @@ const ReporteExistencias: React.FC = () => {
               </div>
             </div>
 
-            {/* ── NOTAS section ────────────────────────────────────────── */}
             <ReportNotes value={notas} onChange={setNotas} />
 
-            {/* ── Submit button ─────────────────────────────────────────── */}
-            <button
-              type="submit"
-              disabled={!idDependencia || pdfLoading}
-              className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              {pdfLoading ? (
-                <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
-              ) : (
-                <Download className="w-4 h-4" aria-hidden="true" />
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-gray-100">
+              {pdfLoading && (
+                <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
               )}
-              {buttonLabel}
-            </button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handlePreview}
+                className="text-purple-600 hover:text-purple-800 hover:bg-purple-50 h-8 w-8"
+                title="Visualizar documento"
+                disabled={!canSubmit || pdfLoading}
+              >
+                <Eye className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleDownload}
+                className="text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 h-8 w-8"
+                title="Imprimir documento"
+                disabled={!canSubmit || pdfLoading}
+              >
+                <Printer className="h-4 w-4" />
+              </Button>
+            </div>
           </form>
         </div>
-
-        {/* ── Right: live preview panel ──────────────────────────────────── */}
-        <ReportPreviewPanel<ExistenciasPreviewItem>
-          title="Vista previa del reporte"
-          subtitle={
-            selectedDep ? `Dependencia: ${selectedDep.nombre}` : undefined
-          }
-          data={previewData?.items ?? null}
-          loading={previewLoading}
-          error={previewError}
-          columns={COLUMNS}
-          stats={stats}
-          notes={notas}
-          emptyMessage="Esta dependencia no tiene productos registrados"
-          exportFileName={`existencias_${idDependencia ?? "dependencia"}`}
-        />
       </div>
     </div>
   );

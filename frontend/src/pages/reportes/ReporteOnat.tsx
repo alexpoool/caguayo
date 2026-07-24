@@ -1,12 +1,10 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect } from "react";
 import { toast } from "react-hot-toast";
 import { monedaService } from "../../services/api";
 import { authHelpers } from "../../lib/api";
-import { useReportPreview } from "../../hooks/useReportPreview";
-import ReportPreviewPanel from "../../components/ui/ReportPreviewPanel";
-import type { Column, StatCard } from "../../components/ui/ReportPreviewPanel";
-import { Receipt, Download, Loader2 } from "lucide-react";
+import { Receipt, Loader2, Eye, Printer } from "lucide-react";
 import ReportNotes from "../../components/ui/ReportNotes";
+import { Button } from "../../components/ui/Button";
 import type { Moneda } from "../../types/moneda";
 
 // ---------------------------------------------------------------------------
@@ -14,87 +12,7 @@ import type { Moneda } from "../../types/moneda";
 // ---------------------------------------------------------------------------
 
 const BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api/v1";
-
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
-
-interface OnatPreviewItem {
-  creador: string;
-  ci: string;
-  importe: number;
-  caguayo: number;
-  ingreso_bruto: number;
-  retencion: number;
-  empresa: number;
-  ingreso_neto: number;
-}
-
-interface OnatPreviewData {
-  items: OnatPreviewItem[];
-  total_items: number;
-}
-
-// ---------------------------------------------------------------------------
-// Column definitions
-// ---------------------------------------------------------------------------
-
-const COLUMNS: Column<OnatPreviewItem>[] = [
-  {
-    header: "CREADOR",
-    accessor: "creador",
-    className: "font-medium",
-  },
-  {
-    header: "CI",
-    accessor: "ci",
-    className: "font-mono text-xs",
-  },
-  {
-    header: "IMPORTE",
-    accessor: "importe",
-    align: "right",
-  },
-  {
-    header: "CAGUAYO",
-    accessor: "caguayo",
-    align: "right",
-  },
-  {
-    header: "INGRESO BRUTO",
-    accessor: "ingreso_bruto",
-    align: "right",
-  },
-  {
-    header: "RETENCIÓN",
-    accessor: "retencion",
-    align: "right",
-  },
-  {
-    header: "EMPRESA",
-    accessor: "empresa",
-    align: "right",
-  },
-  {
-    header: "INGRESO NETO",
-    accessor: "ingreso_neto",
-    align: "right",
-    className: "font-semibold",
-  },
-];
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-function formatDateEs(isoDate: string): string {
-  return new Date(isoDate + "T00:00:00").toLocaleDateString("es-ES", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
-}
+  import.meta.env.VITE_API_BASE_URL || "/api/v1";
 
 // ---------------------------------------------------------------------------
 // Component
@@ -112,6 +30,8 @@ const ReporteOnat: React.FC = () => {
   const [aprobadoPorCargo, setAprobadoPorCargo] = useState("");
   const [notas, setNotas] = useState("");
 
+  const canSubmit = Boolean(fechaInicio && fechaFin);
+
   // ── Load monedas on mount ─────────────────────────────────────────────────
   useEffect(() => {
     monedaService.getMonedas().then(setMonedas).catch(() => {
@@ -119,55 +39,11 @@ const ReporteOnat: React.FC = () => {
     });
   }, []);
 
-  // ── Preview URL ───────────────────────────────────────────────────────────
-  const previewUrl = useMemo<string | null>(() => {
-    if (!fechaInicio || !fechaFin) return null;
-    const params = new URLSearchParams({
-      fecha_inicio: fechaInicio,
-      fecha_fin: fechaFin,
-    });
-    if (idMoneda) params.append("id_moneda", idMoneda.toString());
-    if (idPersona.trim()) params.append("id_persona", idPersona.trim());
-    return `${BASE_URL}/reportes/onat/preview?${params.toString()}`;
-  }, [fechaInicio, fechaFin, idMoneda, idPersona]);
-
-  // ── Live preview data ─────────────────────────────────────────────────────
-  const {
-    data: previewData,
-    loading: previewLoading,
-    error: previewError,
-  } = useReportPreview<OnatPreviewData>(previewUrl);
-
-  // ── Stats ─────────────────────────────────────────────────────────────────
-  const stats = useMemo<StatCard[] | undefined>(() => {
-    if (!previewData) return undefined;
-    return [
-      { label: "Total registros", value: previewData.total_items, color: "red" },
-    ];
-  }, [previewData]);
-
-  // ── Preview subtitle ──────────────────────────────────────────────────────
-  const previewSubtitle =
-    fechaInicio && fechaFin
-      ? `${formatDateEs(fechaInicio)} – ${formatDateEs(fechaFin)}`
-      : undefined;
-
-  // ── Form validation ───────────────────────────────────────────────────────
-  const isFormValid = Boolean(fechaInicio && fechaFin);
-
-  // ── Button label ─────────────────────────────────────────────────────────
-  const buttonLabel = pdfLoading
-    ? "Generando PDF..."
-    : previewData && previewData.total_items > 0
-    ? `Exportar ${previewData.total_items} registros como PDF`
-    : "Exportar PDF";
-
-  // ── PDF export ────────────────────────────────────────────────────────────
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!isFormValid) {
+  // ── PDF generation ────────────────────────────────────────────────────────
+  const generatePdfBlob = async (): Promise<Blob | null> => {
+    if (!canSubmit) {
       toast.error("Seleccione un rango de fechas");
-      return;
+      return null;
     }
     setPdfLoading(true);
     try {
@@ -194,23 +70,37 @@ const ReporteOnat: React.FC = () => {
         throw new Error(`Error ${response.status}: ${response.statusText}`);
       }
 
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `reporte_onat_${fechaInicio}_${fechaFin}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-
-      toast.success("Reporte generado exitosamente");
+      return await response.blob();
     } catch (error) {
       console.error(error);
       toast.error("Hubo un error al generar el reporte.");
+      return null;
     } finally {
       setPdfLoading(false);
     }
+  };
+
+  const handlePreview = async () => {
+    const blob = await generatePdfBlob();
+    if (!blob) return;
+    const url = window.URL.createObjectURL(blob);
+    const newWindow = window.open(url, "_blank");
+    if (newWindow) newWindow.focus();
+    setTimeout(() => window.URL.revokeObjectURL(url), 60000);
+  };
+
+  const handleDownload = async () => {
+    const blob = await generatePdfBlob();
+    if (!blob) return;
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `reporte_onat_${fechaInicio}_${fechaFin}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+    toast.success("Reporte generado exitosamente");
   };
 
   // ── Render ────────────────────────────────────────────────────────────────
@@ -231,11 +121,9 @@ const ReporteOnat: React.FC = () => {
         </div>
       </div>
 
-      {/* ── Two-column layout ────────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 xl:grid-cols-[380px_1fr] items-start gap-6">
-        {/* ── Left: form panel ──────────────────────────────────────────── */}
+      <div className="max-w-lg mx-auto">
         <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-6">
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form className="space-y-6">
             {/* ── FILTROS section ───────────────────────────────────────── */}
             <div>
               <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
@@ -370,35 +258,34 @@ const ReporteOnat: React.FC = () => {
             {/* ── NOTAS section ──────────────────────────────────────────── */}
             <ReportNotes value={notas} onChange={setNotas} />
 
-            {/* ── Submit button ─────────────────────────────────────────── */}
-            <button
-              type="submit"
-              disabled={!isFormValid || pdfLoading}
-              className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium text-white bg-rose-600 hover:bg-rose-700 focus:outline-none focus:ring-2 focus:ring-rose-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              {pdfLoading ? (
-                <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
-              ) : (
-                <Download className="w-4 h-4" aria-hidden="true" />
+            {/* ── Action buttons ────────────────────────────────────────── */}
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-gray-100">
+              {pdfLoading && (
+                <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
               )}
-              {buttonLabel}
-            </button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handlePreview}
+                className="text-purple-600 hover:text-purple-800 hover:bg-purple-50 h-8 w-8"
+                title="Visualizar documento"
+                disabled={!canSubmit || pdfLoading}
+              >
+                <Eye className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleDownload}
+                className="text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 h-8 w-8"
+                title="Imprimir documento"
+                disabled={!canSubmit || pdfLoading}
+              >
+                <Printer className="h-4 w-4" />
+              </Button>
+            </div>
           </form>
         </div>
-
-        {/* ── Right: live preview panel ──────────────────────────────────── */}
-        <ReportPreviewPanel<OnatPreviewItem>
-          title="Vista previa del reporte"
-          subtitle={previewSubtitle}
-          data={previewData?.items ?? null}
-          loading={previewLoading}
-          error={previewError}
-          columns={COLUMNS}
-          stats={stats}
-          notes={notas}
-          emptyMessage="No se encontraron registros con los filtros seleccionados"
-          exportFileName={`reporte_onat_${fechaInicio}_${fechaFin}`}
-        />
       </div>
     </div>
   );

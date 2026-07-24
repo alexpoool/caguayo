@@ -1,51 +1,18 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect } from "react";
 import { toast } from "react-hot-toast";
 import { dependenciasService } from "../../services/administracion";
 import { Dependencia } from "../../types/dependencia";
 import { authHelpers } from "../../lib/api";
-import { useReportPreview } from "../../hooks/useReportPreview";
-import ReportPreviewPanel from "../../components/ui/ReportPreviewPanel";
-import type { Column, StatCard, ExportColumn } from "../../components/ui/ReportPreviewPanel";
-import { UserCircle, Download, Loader2 } from "lucide-react";
+import { UserCircle, Loader2, Eye, Printer } from "lucide-react";
 import ReportNotes from "../../components/ui/ReportNotes";
+import { Button } from "../../components/ui/Button";
 
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
 
 const BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api/v1";
-
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
-
-interface ProveedorPreviewItem {
-  codigo: string;
-  nombre: string;
-  direccion: string;
-  provincia: string;
-  municipio: string;
-  carnet_identidad?: string;
-  vigencia?: string;
-  codigo_reup?: string;
-}
-
-interface ProveedoresPreviewData {
-  dependencia: { nombre: string; direccion: string };
-  items: ProveedorPreviewItem[];
-  total_items: number;
-}
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-const TIPO_LABELS: Record<string, string> = {
-  NATURAL: "Personas Naturales",
-  TCP: "TCP",
-  JURIDICA: "Instituciones/Empresas",
-};
+  import.meta.env.VITE_API_BASE_URL || "/api/v1";
 
 // ---------------------------------------------------------------------------
 // Component
@@ -66,6 +33,8 @@ const ReporteProveedores: React.FC = () => {
   const [aprobadoPorCargo, setAprobadoPorCargo] = useState("");
   const [notas, setNotas] = useState("");
 
+  const canSubmit = Boolean(idDependencia && tipoEntidad);
+
   // ── Seed selects on mount ──────────────────────────────────────────────────
   useEffect(() => {
     dependenciasService.getDependencias().then(setDependencias).catch(() => {
@@ -76,135 +45,16 @@ const ReporteProveedores: React.FC = () => {
     });
   }, []);
 
-  // ── Derived values ─────────────────────────────────────────────────────────
-  const selectedDep = useMemo(
-    () => dependencias.find((d) => d.id_dependencia === idDependencia) ?? null,
-    [dependencias, idDependencia]
-  );
-
-  const tipoLabel = tipoEntidad ? (TIPO_LABELS[tipoEntidad] ?? tipoEntidad) : "";
-
-  // ── Preview URL (debounced inside the hook) ────────────────────────────────
-  const previewUrl = useMemo<string | null>(() => {
-    if (!idDependencia || !tipoEntidad) return null;
-
-    const params = new URLSearchParams({
-      id_dependencia: idDependencia.toString(),
-      tipo_entidad: tipoEntidad,
-    });
-
-    if (idProvincia) {
-      params.append("id_provincia", idProvincia.toString());
-    }
-
-    return `${BASE_URL}/reportes/proveedores-dependencia/preview?${params.toString()}`;
-  }, [idDependencia, tipoEntidad, idProvincia]);
-
-  const {
-    data: previewData,
-    loading: previewLoading,
-    error: previewError,
-  } = useReportPreview<ProveedoresPreviewData>(previewUrl);
-
-  // ── Export columns (depends on tipoEntidad) ────────────────────────────────
-  const exportColumns = useMemo<ExportColumn<ProveedorPreviewItem>[]>(() => {
-    const base: ExportColumn<ProveedorPreviewItem>[] = [
-      { header: "Código", accessor: "codigo" },
-      { header: "Nombre", accessor: "nombre" },
-      { header: "Dirección", accessor: "direccion" },
-      { header: "Provincia", accessor: "provincia" },
-      { header: "Municipio", accessor: "municipio" },
-    ];
-    if (tipoEntidad === "NATURAL") {
-      base.push({ header: "Carnet de Identidad", accessor: "carnet_identidad" });
-    }
-    if (tipoEntidad === "JURIDICA") {
-      base.push({ header: "Código REUP", accessor: "codigo_reup" });
-    }
-    return base;
-  }, [tipoEntidad]);
-
-  // ── Preview columns (depends on tipoEntidad) ───────────────────────────────
-  const columns = useMemo<Column<ProveedorPreviewItem>[]>(() => {
-    const base: Column<ProveedorPreviewItem>[] = [
-      {
-        header: "Código",
-        accessor: "codigo",
-      },
-      {
-        header: "Nombre",
-        accessor: "nombre",
-        className: "font-medium",
-      },
-      {
-        header: "Dirección",
-        accessor: "direccion",
-      },
-      {
-        header: "Provincia",
-        accessor: "provincia",
-      },
-      {
-        header: "Municipio",
-        accessor: "municipio",
-      },
-    ];
-
-    if (tipoEntidad === "NATURAL") {
-      base.push({
-        header: "Carnet de Identidad",
-        accessor: "carnet_identidad",
-      });
-    }
-
-    if (tipoEntidad === "JURIDICA") {
-      base.push({
-        header: "Código REUP",
-        accessor: "codigo_reup",
-      });
-    }
-
-    return base;
-  }, [tipoEntidad]);
-
-  // ── Stats ──────────────────────────────────────────────────────────────────
-  const stats = useMemo<StatCard[] | undefined>(() => {
-    if (!previewData) return undefined;
-
-    return [
-      {
-        label: "Total proveedores",
-        value: previewData.total_items,
-        color: "green",
-      },
-      {
-        label: "Tipo de proveedor",
-        value: tipoLabel,
-        color: "green",
-      },
-    ];
-  }, [previewData, tipoLabel]);
-
-  // ── Panel subtitle ─────────────────────────────────────────────────────────
-  const panelSubtitle =
-    selectedDep && tipoLabel
-      ? `${selectedDep.nombre} · ${tipoLabel}`
-      : undefined;
-
-  // ── PDF export ─────────────────────────────────────────────────────────────
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!idDependencia || !tipoEntidad) {
+  // ── PDF generation ─────────────────────────────────────────────────────────
+  const generatePdfBlob = async (): Promise<Blob | null> => {
+    if (!canSubmit) {
       toast.error("Seleccione una dependencia y un tipo de proveedor");
-      return;
+      return null;
     }
-
     setPdfLoading(true);
-
     try {
       const params = new URLSearchParams({
-        id_dependencia: idDependencia.toString(),
+        id_dependencia: idDependencia!.toString(),
         tipo_entidad: tipoEntidad,
         aprobado_por_nombre: aprobadoPorNombre,
         aprobado_por_cargo: aprobadoPorCargo,
@@ -230,33 +80,38 @@ const ReporteProveedores: React.FC = () => {
         throw new Error(`Error ${response.status}: ${response.statusText}`);
       }
 
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `proveedores_dependencia_${idDependencia}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-
-      toast.success("Reporte generado exitosamente");
+      return await response.blob();
     } catch (error) {
       console.error(error);
       toast.error("Hubo un error al generar el reporte.");
+      return null;
     } finally {
       setPdfLoading(false);
     }
   };
 
-  // ── Submit button label ────────────────────────────────────────────────────
-  const submitLabel = useMemo(() => {
-    if (pdfLoading) return "Generando PDF...";
-    if (previewData && previewData.total_items > 0) {
-      return `Exportar ${previewData.total_items} proveedores como PDF`;
-    }
-    return "Exportar PDF";
-  }, [pdfLoading, previewData]);
+  const handlePreview = async () => {
+    const blob = await generatePdfBlob();
+    if (!blob) return;
+    const url = window.URL.createObjectURL(blob);
+    const newWindow = window.open(url, "_blank");
+    if (newWindow) newWindow.focus();
+    setTimeout(() => window.URL.revokeObjectURL(url), 60000);
+  };
+
+  const handleDownload = async () => {
+    const blob = await generatePdfBlob();
+    if (!blob) return;
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `proveedores_dependencia_${idDependencia}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+    toast.success("Reporte generado exitosamente");
+  };
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
@@ -276,11 +131,9 @@ const ReporteProveedores: React.FC = () => {
         </div>
       </div>
 
-      {/* ── Split layout ── */}
-      <div className="grid grid-cols-1 xl:grid-cols-[400px_1fr] items-start gap-6">
-        {/* ── Form panel ── */}
+      <div className="max-w-lg mx-auto">
         <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-6 space-y-6">
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form className="space-y-6">
             {/* FILTROS */}
             <div>
               <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
@@ -402,35 +255,34 @@ const ReporteProveedores: React.FC = () => {
               <ReportNotes value={notas} onChange={setNotas} />
             </div>
 
-            {/* Submit */}
-            <button
-              type="submit"
-              disabled={pdfLoading || !idDependencia || !tipoEntidad}
-              className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium text-white bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              {pdfLoading ? (
-                <Loader2 className="w-4 h-4 animate-spin flex-shrink-0" />
-              ) : (
-                <Download className="w-4 h-4 flex-shrink-0" />
+            {/* Action buttons */}
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-gray-100">
+              {pdfLoading && (
+                <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
               )}
-              {submitLabel}
-            </button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handlePreview}
+                className="text-purple-600 hover:text-purple-800 hover:bg-purple-50 h-8 w-8"
+                title="Visualizar documento"
+                disabled={!canSubmit || pdfLoading}
+              >
+                <Eye className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleDownload}
+                className="text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 h-8 w-8"
+                title="Imprimir documento"
+                disabled={!canSubmit || pdfLoading}
+              >
+                <Printer className="h-4 w-4" />
+              </Button>
+            </div>
           </form>
         </div>
-
-        {/* ── Preview panel ── */}
-        <ReportPreviewPanel<ProveedorPreviewItem>
-          title="Vista previa"
-          subtitle={panelSubtitle}
-          data={previewData?.items ?? null}
-          loading={previewLoading}
-          error={previewError}
-          columns={columns}
-          stats={stats}
-          notes={notas}
-          emptyMessage="No se encontraron proveedores con los filtros seleccionados"
-          exportFileName={`proveedores_${idDependencia ?? "dep"}_${tipoEntidad.toLowerCase()}`}
-        />
       </div>
     </div>
   );
