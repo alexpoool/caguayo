@@ -19,7 +19,9 @@ depends_on = None
 def upgrade() -> None:
     op.add_column(
         "dependencia",
-        sa.Column("denominacion", sa.String(length=3), nullable=False, server_default=""),
+        sa.Column(
+            "denominacion", sa.String(length=3), nullable=False, server_default=""
+        ),
     )
 
 

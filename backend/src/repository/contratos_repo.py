@@ -55,14 +55,11 @@ class ContratoRepository(CRUDBase[Contrato, ContratoCreate, ContratoUpdate]):
         limit: int = 10000,
         id_cliente: Optional[int] = None,
     ) -> List[Contrato]:
-        statement = (
-            select(Contrato)
-            .options(
-                selectinload(Contrato.estado),
-                selectinload(Contrato.tipo_contrato),
-                selectinload(Contrato.moneda),
-                selectinload(Contrato.cliente),
-            )
+        statement = select(Contrato).options(
+            selectinload(Contrato.estado),
+            selectinload(Contrato.tipo_contrato),
+            selectinload(Contrato.moneda),
+            selectinload(Contrato.cliente),
         )
 
         if id_cliente is not None:
@@ -231,6 +228,7 @@ class FacturaRepository(CRUDBase[Factura, FacturaCreate, FacturaUpdate]):
 
     async def create(self, db: AsyncSession, factura_data: FacturaCreate) -> Factura:
         from time import monotonic_ns
+
         factura_dict = {
             "id_contrato": normalize_id(factura_data.id_contrato),
             "codigo_factura": factura_data.codigo_factura or f"TMP_{monotonic_ns()}",
@@ -405,7 +403,9 @@ class ItemFacturaRepository(CRUDBase[ItemFactura, ItemFacturaCreate, dict]):
                 created_items.append(db_item)
         await db.flush()
         for db_item in created_items:
-            db_item.codigo = generar_codigo(denominacion or "", anio, db_item.id_item_factura)
+            db_item.codigo = generar_codigo(
+                denominacion or "", anio, db_item.id_item_factura
+            )
             db.add(db_item)
         await db.flush()
         return created_items
@@ -458,7 +458,9 @@ class ItemVentaEfectivoRepository(
                 created_items.append(db_item)
         await db.flush()
         for db_item in created_items:
-            db_item.codigo = generar_codigo(denominacion or "", anio, db_item.id_item_venta_efectivo)
+            db_item.codigo = generar_codigo(
+                denominacion or "", anio, db_item.id_item_venta_efectivo
+            )
             db.add(db_item)
         await db.flush()
         return created_items

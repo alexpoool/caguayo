@@ -10,7 +10,10 @@ if TYPE_CHECKING:
     from .monedas_dto import MonedaRead
     from .clientes_dto import ClienteSimpleRead
     from .convenios_dto import ConvenioSimpleRead
-    from .productos_en_liquidacion_dto import ProductosEnLiquidacionRead, AnexoSimpleRead
+    from .productos_en_liquidacion_dto import (
+        ProductosEnLiquidacionRead,
+        AnexoSimpleRead,
+    )
 
 
 class LiquidacionBase(SQLModel):

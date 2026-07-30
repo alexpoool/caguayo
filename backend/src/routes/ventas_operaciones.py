@@ -24,7 +24,11 @@ from src.dto import (
     VentaEfectivoUpdate,
     ItemAnexoDisponible,
 )
-from src.utils import _get_denominacion_from_token, _get_user_dependencia_id, verify_auth
+from src.utils import (
+    _get_denominacion_from_token,
+    _get_user_dependencia_id,
+    verify_auth,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -256,7 +260,12 @@ async def crear_factura(
     try:
         denominacion = await _get_denominacion_from_token(authorization)
         id_dependencia = await _get_user_dependencia_id(authorization)
-        return await FacturaService.create(db, factura, denominacion=denominacion, id_dependencia_usuario=id_dependencia)
+        return await FacturaService.create(
+            db,
+            factura,
+            denominacion=denominacion,
+            id_dependencia_usuario=id_dependencia,
+        )
     except HTTPException:
         raise
     except Exception as e:

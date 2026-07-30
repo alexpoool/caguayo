@@ -52,7 +52,9 @@ class ProductosEnLiquidacion(SQLModel, table=True):
     )
 
     liquidada: bool = Field(default=False)
-    fecha: datetime = Field(default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
+    fecha: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None)
+    )
     fecha_liquidacion: Optional[datetime] = None
 
     producto: "Productos" = Relationship(

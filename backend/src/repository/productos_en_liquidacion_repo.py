@@ -20,26 +20,33 @@ class ProductosEnLiquidacionRepository(CRUDBase[ProductosEnLiquidacion, dict, di
         return result.first()
 
     async def get_multi_with_relations(
-        self, db: AsyncSession, skip: int = 0, limit: int = 100,
-        cliente_id: Optional[int] = None
+        self,
+        db: AsyncSession,
+        skip: int = 0,
+        limit: int = 100,
+        cliente_id: Optional[int] = None,
     ) -> List[ProductosEnLiquidacion]:
-        statement = (
-            select(ProductosEnLiquidacion)
-            .options(
-                selectinload(ProductosEnLiquidacion.producto),
-                selectinload(ProductosEnLiquidacion.moneda),
-                selectinload(ProductosEnLiquidacion.anexo),
-            )
+        statement = select(ProductosEnLiquidacion).options(
+            selectinload(ProductosEnLiquidacion.producto),
+            selectinload(ProductosEnLiquidacion.moneda),
+            selectinload(ProductosEnLiquidacion.anexo),
         )
         if cliente_id is not None:
             statement = statement.where(ProductosEnLiquidacion.id_cliente == cliente_id)
-        statement = statement.order_by(ProductosEnLiquidacion.fecha.desc()).offset(skip).limit(limit)
+        statement = (
+            statement.order_by(ProductosEnLiquidacion.fecha.desc())
+            .offset(skip)
+            .limit(limit)
+        )
         result = await db.exec(statement)
         return result.all()
 
     async def get_pendientes(
-        self, db: AsyncSession, skip: int = 0, limit: int = 100,
-        cliente_id: Optional[int] = None
+        self,
+        db: AsyncSession,
+        skip: int = 0,
+        limit: int = 100,
+        cliente_id: Optional[int] = None,
     ) -> List[ProductosEnLiquidacion]:
         statement = (
             select(ProductosEnLiquidacion)
@@ -52,13 +59,20 @@ class ProductosEnLiquidacionRepository(CRUDBase[ProductosEnLiquidacion, dict, di
         )
         if cliente_id is not None:
             statement = statement.where(ProductosEnLiquidacion.id_cliente == cliente_id)
-        statement = statement.order_by(ProductosEnLiquidacion.fecha.desc()).offset(skip).limit(limit)
+        statement = (
+            statement.order_by(ProductosEnLiquidacion.fecha.desc())
+            .offset(skip)
+            .limit(limit)
+        )
         result = await db.exec(statement)
         return result.all()
 
     async def get_liquidadas(
-        self, db: AsyncSession, skip: int = 0, limit: int = 100,
-        cliente_id: Optional[int] = None
+        self,
+        db: AsyncSession,
+        skip: int = 0,
+        limit: int = 100,
+        cliente_id: Optional[int] = None,
     ) -> List[ProductosEnLiquidacion]:
         statement = (
             select(ProductosEnLiquidacion)
@@ -71,7 +85,11 @@ class ProductosEnLiquidacionRepository(CRUDBase[ProductosEnLiquidacion, dict, di
         )
         if cliente_id is not None:
             statement = statement.where(ProductosEnLiquidacion.id_cliente == cliente_id)
-        statement = statement.order_by(ProductosEnLiquidacion.fecha_liquidacion.desc()).offset(skip).limit(limit)
+        statement = (
+            statement.order_by(ProductosEnLiquidacion.fecha_liquidacion.desc())
+            .offset(skip)
+            .limit(limit)
+        )
         result = await db.exec(statement)
         return result.all()
 
@@ -130,9 +148,7 @@ class ProductosEnLiquidacionRepository(CRUDBase[ProductosEnLiquidacion, dict, di
         statement = select(
             func.max(
                 func.cast(
-                    func.split_part(
-                        ProductosEnLiquidacion.codigo, ".", -1
-                    ),
+                    func.split_part(ProductosEnLiquidacion.codigo, ".", -1),
                     Integer,
                 )
             )
@@ -205,27 +221,23 @@ class ProductosEnLiquidacionRepository(CRUDBase[ProductosEnLiquidacion, dict, di
         )
 
         if anexo_id:
-            statement = (
-                base_joins.where(
-                    ProductosEnLiquidacion.liquidada == False,
-                    ProductosEnLiquidacion.id_liquidacion == None,
-                    ProductosEnLiquidacion.id_anexo == anexo_id,
-                    or_(
-                        ProductosEnLiquidacion.id_cliente == cliente_id,
-                        ProductosEnLiquidacion.id_venta_efectivo.isnot(None),
-                    ),
-                )
+            statement = base_joins.where(
+                ProductosEnLiquidacion.liquidada == False,
+                ProductosEnLiquidacion.id_liquidacion == None,
+                ProductosEnLiquidacion.id_anexo == anexo_id,
+                or_(
+                    ProductosEnLiquidacion.id_cliente == cliente_id,
+                    ProductosEnLiquidacion.id_venta_efectivo.isnot(None),
+                ),
             )
         else:
-            statement = (
-                base_joins.where(
-                    ProductosEnLiquidacion.liquidada == False,
-                    ProductosEnLiquidacion.id_liquidacion == None,
-                    or_(
-                        ProductosEnLiquidacion.id_cliente == cliente_id,
-                        ProductosEnLiquidacion.id_venta_efectivo.isnot(None),
-                    ),
-                )
+            statement = base_joins.where(
+                ProductosEnLiquidacion.liquidada == False,
+                ProductosEnLiquidacion.id_liquidacion == None,
+                or_(
+                    ProductosEnLiquidacion.id_cliente == cliente_id,
+                    ProductosEnLiquidacion.id_venta_efectivo.isnot(None),
+                ),
             )
 
         if moneda_id is not None:

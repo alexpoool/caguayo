@@ -16,7 +16,10 @@ from src.dto import (
     LiquidacionUpdate,
     LiquidacionConfirmar,
 )
-from src.dto.productos_en_liquidacion_dto import ProductosEnLiquidacionRead, AnexoSimpleRead
+from src.dto.productos_en_liquidacion_dto import (
+    ProductosEnLiquidacionRead,
+    AnexoSimpleRead,
+)
 from src.dto.monedas_dto import MonedaRead
 from src.dto.clientes_dto import ClienteSimpleRead
 from src.dto.convenios_dto import ConvenioSimpleRead
@@ -63,6 +66,7 @@ class LiquidacionService:
                 id_anexo = anexos.pop()
         if id_convenio is None and id_anexo is not None:
             from src.models.anexo import Anexo
+
             anexo = await db.get(Anexo, id_anexo)
             if anexo:
                 id_convenio = anexo.id_convenio
@@ -191,7 +195,9 @@ class LiquidacionService:
         )
         db.add(db_liquidacion)
         await db.flush()
-        db_liquidacion.codigo = generar_codigo(denominacion, datetime.now().year, db_liquidacion.id_liquidacion)
+        db_liquidacion.codigo = generar_codigo(
+            denominacion, datetime.now().year, db_liquidacion.id_liquidacion
+        )
         db.add(db_liquidacion)
         await db.commit()
         await db.refresh(db_liquidacion)
@@ -263,10 +269,18 @@ class LiquidacionService:
                 porcentaje_caguayo=db_liquidacion.porcentaje_caguayo,
                 neto_pagar=db_liquidacion.neto_pagar,
                 tipo_pago=db_liquidacion.tipo_pago,
-                moneda=MonedaRead.model_validate(db_liquidacion.moneda) if db_liquidacion.moneda else None,
-                cliente=ClienteSimpleRead.model_validate(db_liquidacion.cliente) if db_liquidacion.cliente else None,
-                convenio=ConvenioSimpleRead.model_validate(db_liquidacion.convenio) if db_liquidacion.convenio else None,
-                anexo=AnexoSimpleRead.model_validate(db_liquidacion.anexo) if db_liquidacion.anexo else None,
+                moneda=MonedaRead.model_validate(db_liquidacion.moneda)
+                if db_liquidacion.moneda
+                else None,
+                cliente=ClienteSimpleRead.model_validate(db_liquidacion.cliente)
+                if db_liquidacion.cliente
+                else None,
+                convenio=ConvenioSimpleRead.model_validate(db_liquidacion.convenio)
+                if db_liquidacion.convenio
+                else None,
+                anexo=AnexoSimpleRead.model_validate(db_liquidacion.anexo)
+                if db_liquidacion.anexo
+                else None,
                 productos_en_liquidacion=productos_en_liquidacion_list,
             )
             return result
@@ -289,8 +303,10 @@ class LiquidacionService:
 
     @staticmethod
     async def get_liquidaciones(
-        db: AsyncSession, skip: int = 0, limit: int = 100,
-        cliente_id: Optional[int] = None
+        db: AsyncSession,
+        skip: int = 0,
+        limit: int = 100,
+        cliente_id: Optional[int] = None,
     ) -> List[LiquidacionRead]:
         db_liquidaciones = await liquidacion_repo.get_multi_with_relations(
             db, skip=skip, limit=limit, cliente_id=cliente_id
@@ -299,8 +315,10 @@ class LiquidacionService:
 
     @staticmethod
     async def get_liquidaciones_pendientes(
-        db: AsyncSession, skip: int = 0, limit: int = 100,
-        cliente_id: Optional[int] = None
+        db: AsyncSession,
+        skip: int = 0,
+        limit: int = 100,
+        cliente_id: Optional[int] = None,
     ) -> List[LiquidacionRead]:
         db_liquidaciones = await liquidacion_repo.get_pendientes_with_relations(
             db, skip=skip, limit=limit, cliente_id=cliente_id
@@ -309,8 +327,10 @@ class LiquidacionService:
 
     @staticmethod
     async def get_liquidaciones_liquidadas(
-        db: AsyncSession, skip: int = 0, limit: int = 100,
-        cliente_id: Optional[int] = None
+        db: AsyncSession,
+        skip: int = 0,
+        limit: int = 100,
+        cliente_id: Optional[int] = None,
     ) -> List[LiquidacionRead]:
         db_liquidaciones = await liquidacion_repo.get_liquidadas_with_relations(
             db, skip=skip, limit=limit, cliente_id=cliente_id

@@ -62,26 +62,26 @@ class LiquidacionRepository(CRUDBase[Liquidacion, dict, dict]):
         return result.first()
 
     async def get_multi_with_relations(
-        self, db: AsyncSession, skip: int = 0, limit: int = 100,
-        cliente_id: Optional[int] = None
+        self,
+        db: AsyncSession,
+        skip: int = 0,
+        limit: int = 100,
+        cliente_id: Optional[int] = None,
     ) -> List[Liquidacion]:
-        statement = (
-            select(Liquidacion)
-            .options(
-                selectinload(Liquidacion.productos_en_liquidacion).selectinload(
-                    ProductosEnLiquidacion.producto
-                ),
-                selectinload(Liquidacion.productos_en_liquidacion).selectinload(
-                    ProductosEnLiquidacion.anexo
-                ),
-                selectinload(Liquidacion.productos_en_liquidacion).selectinload(
-                    ProductosEnLiquidacion.moneda
-                ),
-                selectinload(Liquidacion.moneda),
-                selectinload(Liquidacion.cliente),
-                selectinload(Liquidacion.convenio),
-                selectinload(Liquidacion.anexo),
-            )
+        statement = select(Liquidacion).options(
+            selectinload(Liquidacion.productos_en_liquidacion).selectinload(
+                ProductosEnLiquidacion.producto
+            ),
+            selectinload(Liquidacion.productos_en_liquidacion).selectinload(
+                ProductosEnLiquidacion.anexo
+            ),
+            selectinload(Liquidacion.productos_en_liquidacion).selectinload(
+                ProductosEnLiquidacion.moneda
+            ),
+            selectinload(Liquidacion.moneda),
+            selectinload(Liquidacion.cliente),
+            selectinload(Liquidacion.convenio),
+            selectinload(Liquidacion.anexo),
         )
         if cliente_id is not None:
             statement = statement.where(Liquidacion.id_cliente == cliente_id)
@@ -129,8 +129,11 @@ class LiquidacionRepository(CRUDBase[Liquidacion, dict, dict]):
         return result.all()
 
     async def get_pendientes_with_relations(
-        self, db: AsyncSession, skip: int = 0, limit: int = 100,
-        cliente_id: Optional[int] = None
+        self,
+        db: AsyncSession,
+        skip: int = 0,
+        limit: int = 100,
+        cliente_id: Optional[int] = None,
     ) -> List[Liquidacion]:
         statement = (
             select(Liquidacion)
@@ -167,8 +170,11 @@ class LiquidacionRepository(CRUDBase[Liquidacion, dict, dict]):
         return result.all()
 
     async def get_liquidadas_with_relations(
-        self, db: AsyncSession, skip: int = 0, limit: int = 100,
-        cliente_id: Optional[int] = None
+        self,
+        db: AsyncSession,
+        skip: int = 0,
+        limit: int = 100,
+        cliente_id: Optional[int] = None,
     ) -> List[Liquidacion]:
         statement = (
             select(Liquidacion)

@@ -198,11 +198,11 @@ class MovimientoService:
 
         # Crear ProductosEnLiquidacion para ventas (factura y venta efectivo)
         if tipo.tipo == "venta" and db_movimiento.id_anexo:
-            codigo = await ProductosEnLiquidacionService.generate_codigo(
-                db, modulo="V"
-            )
-            tipo_compra = "FACTURA" if db_movimiento.id_factura else (
-                "VENTA_EFECTIVO" if db_movimiento.id_venta_efectivo else None
+            codigo = await ProductosEnLiquidacionService.generate_codigo(db, modulo="V")
+            tipo_compra = (
+                "FACTURA"
+                if db_movimiento.id_factura
+                else ("VENTA_EFECTIVO" if db_movimiento.id_venta_efectivo else None)
             )
             if tipo_compra:
                 # Resolver proveedor desde Anexo → Convenio
@@ -266,8 +266,12 @@ class MovimientoService:
                 if anexo and anexo.id_convenio:
                     convenio = await db.get(Convenio, anexo.id_convenio)
                     if convenio:
-                        tipo_convenio = await db.get(TipoConvenio, convenio.id_tipo_convenio)
-                        es_compra_venta = tipo_convenio and tipo_convenio.nombre == "COMPRA VENTA"
+                        tipo_convenio = await db.get(
+                            TipoConvenio, convenio.id_tipo_convenio
+                        )
+                        es_compra_venta = (
+                            tipo_convenio and tipo_convenio.nombre == "COMPRA VENTA"
+                        )
                         proveedor_id_compra = convenio.id_cliente
 
                 # Siempre marcar disponible para vender
@@ -531,11 +535,15 @@ class MovimientoService:
             item_id = pr.id_item_anexo
             if item_id not in precios_by_item:
                 precios_by_item[item_id] = []
-            precios_by_item[item_id].append({
-                "id_moneda": pr.id_moneda,
-                "precio_venta": float(pr.precio_venta) if pr.precio_venta else None,
-                "precio_compra": float(pr.precio_compra) if pr.precio_compra else None,
-            })
+            precios_by_item[item_id].append(
+                {
+                    "id_moneda": pr.id_moneda,
+                    "precio_venta": float(pr.precio_venta) if pr.precio_venta else None,
+                    "precio_compra": float(pr.precio_compra)
+                    if pr.precio_compra
+                    else None,
+                }
+            )
 
         return [
             {
@@ -892,7 +900,7 @@ class MovimientoService:
         fecha = (
             datetime.now(timezone.utc).replace(tzinfo=None)
             if not ajuste.fecha
-            else datetime.fromisoformat(ajuste.fecha).replace(tzinfo=None)
+            else datetime.fromisoformat(ajuste.fecha).replace(tzinfo=None)
         )
         codigo_ajuste = ajuste.codigo or ""
 

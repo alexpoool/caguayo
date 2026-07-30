@@ -591,7 +591,9 @@ class PDFTemplate:
 
         # --- Signature block: two-column layout ---
         sig_y = 65
-        col_split = available_width * 0.55  # right column starts at 55% of available width
+        col_split = (
+            available_width * 0.55
+        )  # right column starts at 55% of available width
         fecha_emision = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
         canvas.setStrokeColor(black)
@@ -602,7 +604,9 @@ class PDFTemplate:
         canvas.setFont("Courier-Bold", 7)
         canvas.drawString(margin, sig_y, "CONFECCIONADO POR:")
         canvas.setFont("Courier", 7)
-        canvas.drawString(margin, sig_y - 10, f"USUARIO: {self._escape(self._sig_created_by)}")
+        canvas.drawString(
+            margin, sig_y - 10, f"USUARIO: {self._escape(self._sig_created_by)}"
+        )
         canvas.drawString(margin, sig_y - 20, "CARGO: ________________")
         canvas.drawString(margin, sig_y - 30, f"FECHA DE EMISION: {fecha_emision}")
         canvas.drawString(margin, sig_y - 40, "FIRMA: ________________")
@@ -612,8 +616,12 @@ class PDFTemplate:
         canvas.setFont("Courier-Bold", 7)
         canvas.drawString(right_x, sig_y, "APROBADO POR:")
         canvas.setFont("Courier", 7)
-        canvas.drawString(right_x, sig_y - 10, f"NOMBRE: {self._escape(self._sig_approved_by)}")
-        canvas.drawString(right_x, sig_y - 20, f"CARGO: {self._escape(self._sig_approved_role)}")
+        canvas.drawString(
+            right_x, sig_y - 10, f"NOMBRE: {self._escape(self._sig_approved_by)}"
+        )
+        canvas.drawString(
+            right_x, sig_y - 20, f"CARGO: {self._escape(self._sig_approved_role)}"
+        )
         canvas.drawString(right_x, sig_y - 30, "FECHA: ________________")
         canvas.drawString(right_x, sig_y - 40, "FIRMA: ________________")
 

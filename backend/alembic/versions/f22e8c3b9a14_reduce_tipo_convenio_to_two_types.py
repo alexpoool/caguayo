@@ -5,6 +5,7 @@ Revises: 128537904b80
 Create Date: 2026-07-13 12:00:00.000000
 
 """
+
 from typing import Sequence, Union
 
 from alembic import op
@@ -23,9 +24,11 @@ def upgrade() -> None:
 
     # 1. Insert CONSIGNACION if not exists
     conn.execute(
-        text("INSERT INTO tipo_convenio (nombre, descripcion) "
-             "SELECT 'CONSIGNACION', 'Consignación de productos para liquidación posterior' "
-             "WHERE NOT EXISTS (SELECT 1 FROM tipo_convenio WHERE nombre = 'CONSIGNACION')")
+        text(
+            "INSERT INTO tipo_convenio (nombre, descripcion) "
+            "SELECT 'CONSIGNACION', 'Consignación de productos para liquidación posterior' "
+            "WHERE NOT EXISTS (SELECT 1 FROM tipo_convenio WHERE nombre = 'CONSIGNACION')"
+        )
     )
 
     # 2. Get the id of CONSIGNACION
@@ -43,15 +46,23 @@ def upgrade() -> None:
     # 4. Update convenios that reference old tipos (not COMPRA VENTA or CONSIGNACION)
     if consignacion_id:
         conn.execute(
-            text("UPDATE convenio SET id_tipo_convenio = :new_id "
-                 "WHERE id_tipo_convenio NOT IN (:keep1, :keep2) "
-                 "OR id_tipo_convenio IS NULL"),
-            {"new_id": consignacion_id, "keep1": compra_venta_id, "keep2": consignacion_id}
+            text(
+                "UPDATE convenio SET id_tipo_convenio = :new_id "
+                "WHERE id_tipo_convenio NOT IN (:keep1, :keep2) "
+                "OR id_tipo_convenio IS NULL"
+            ),
+            {
+                "new_id": consignacion_id,
+                "keep1": compra_venta_id,
+                "keep2": consignacion_id,
+            },
         )
 
     # 5. Delete old tipo_convenio rows (not COMPRA VENTA or CONSIGNACION)
     conn.execute(
-        text("DELETE FROM tipo_convenio WHERE nombre NOT IN ('COMPRA VENTA', 'CONSIGNACION')")
+        text(
+            "DELETE FROM tipo_convenio WHERE nombre NOT IN ('COMPRA VENTA', 'CONSIGNACION')"
+        )
     )
 
 
@@ -68,8 +79,10 @@ def downgrade() -> None:
 
     for nombre, descripcion in original_tipos:
         conn.execute(
-            text("INSERT INTO tipo_convenio (nombre, descripcion) "
-                 "SELECT :nombre, :descripcion "
-                 "WHERE NOT EXISTS (SELECT 1 FROM tipo_convenio WHERE nombre = :nombre)"),
-            {"nombre": nombre, "descripcion": descripcion}
+            text(
+                "INSERT INTO tipo_convenio (nombre, descripcion) "
+                "SELECT :nombre, :descripcion "
+                "WHERE NOT EXISTS (SELECT 1 FROM tipo_convenio WHERE nombre = :nombre)"
+            ),
+            {"nombre": nombre, "descripcion": descripcion},
         )

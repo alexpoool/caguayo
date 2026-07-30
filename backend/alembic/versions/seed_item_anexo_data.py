@@ -5,6 +5,7 @@ Revises: e4040402ac2c
 Create Date: 2026-07-09
 
 """
+
 from typing import Sequence, Union
 from alembic import op
 import sqlalchemy as sa
@@ -38,15 +39,17 @@ def upgrade() -> None:
     for idx, (anexo_id,) in enumerate(anexos):
         for i in range(5):
             prod = productos[(idx * 5 + i) % len(productos)]
-            rows.append({
-                "id_anexo": anexo_id,
-                "id_producto": prod[0],
-                "cantidad": stocks[i],
-                "cantidad_vendida": 0,
-                "precio_compra": str(float(prod[1]) if prod[1] else 10),
-                "precio_venta": str(float(prod[2]) if prod[2] else 50),
-                "id_moneda": prod[3] if prod[3] else 1,
-            })
+            rows.append(
+                {
+                    "id_anexo": anexo_id,
+                    "id_producto": prod[0],
+                    "cantidad": stocks[i],
+                    "cantidad_vendida": 0,
+                    "precio_compra": str(float(prod[1]) if prod[1] else 10),
+                    "precio_venta": str(float(prod[2]) if prod[2] else 50),
+                    "id_moneda": prod[3] if prod[3] else 1,
+                }
+            )
 
     conn.execute(
         sa.text("""

@@ -163,7 +163,9 @@ async def crear_anexo(
         db_anexo = Anexo(**datos_dict)
         db.add(db_anexo)
         await db.flush()
-        db_anexo.codigo_anexo = generar_codigo(denominacion, datos.fecha.year, db_anexo.id_anexo)
+        db_anexo.codigo_anexo = generar_codigo(
+            denominacion, datos.fecha.year, db_anexo.id_anexo
+        )
         db.add(db_anexo)
         await db.flush()
 
@@ -241,7 +243,9 @@ async def crear_anexo(
             anio = datetime.now(timezone.utc).year
             id_convenio_val = db_movimiento.id_convenio or 0
 
-            db_movimiento.codigo = generar_codigo(denominacion or "", anio, db_movimiento.id_movimiento)
+            db_movimiento.codigo = generar_codigo(
+                denominacion or "", anio, db_movimiento.id_movimiento
+            )
 
             movimientos_creados.append(
                 {
@@ -315,7 +319,9 @@ async def actualizar_anexo(
 
             await db.flush()
 
-            stmt_tipo_mov = select(TipoMovimiento).where(TipoMovimiento.tipo == "compra")
+            stmt_tipo_mov = select(TipoMovimiento).where(
+                TipoMovimiento.tipo == "compra"
+            )
             result_tipo = await db.exec(stmt_tipo_mov)
             tipo_mov = result_tipo.first()
             if not tipo_mov or tipo_mov.id_tipo_movimiento is None:
@@ -323,7 +329,9 @@ async def actualizar_anexo(
                     status_code=500, detail="Tipo de movimiento 'compra' no encontrado"
                 )
 
-            stmt_conv = select(Convenio).where(Convenio.id_convenio == db_anexo.id_convenio)
+            stmt_conv = select(Convenio).where(
+                Convenio.id_convenio == db_anexo.id_convenio
+            )
             result_conv = await db.exec(stmt_conv)
             conveni = result_conv.first()
 
@@ -382,10 +390,14 @@ async def actualizar_anexo(
                 await db.flush()
 
                 if db_movimiento.id_movimiento is None:
-                    raise HTTPException(status_code=500, detail="Error al crear movimiento")
+                    raise HTTPException(
+                        status_code=500, detail="Error al crear movimiento"
+                    )
 
                 anio = datetime.now(timezone.utc).year
-                db_movimiento.codigo = generar_codigo(denominacion, anio, db_movimiento.id_movimiento)
+                db_movimiento.codigo = generar_codigo(
+                    denominacion, anio, db_movimiento.id_movimiento
+                )
 
         await db.commit()
         await db.refresh(db_anexo)

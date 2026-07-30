@@ -114,7 +114,9 @@ async def crear_convenio(
         db_convenio = Convenio(**datos_dict, codigo="")
         db.add(db_convenio)
         await db.flush()
-        db_convenio.codigo = generar_codigo(denominacion, datos.fecha.year, db_convenio.id_convenio)
+        db_convenio.codigo = generar_codigo(
+            denominacion, datos.fecha.year, db_convenio.id_convenio
+        )
         db.add(db_convenio)
         await db.commit()
         await db.refresh(db_convenio)

@@ -160,7 +160,9 @@ async def update_solicitud(
 ):
     try:
         denominacion = await _get_denominacion_from_token(authorization)
-        result = await SolicitudServicioService.update(db, id, data, denominacion=denominacion)
+        result = await SolicitudServicioService.update(
+            db, id, data, denominacion=denominacion
+        )
         if not result:
             raise HTTPException(status_code=404, detail="Solicitud no encontrada")
         return result

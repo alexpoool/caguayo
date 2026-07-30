@@ -35,7 +35,9 @@ class ProductosEnLiquidacionService:
 
     @staticmethod
     async def create(
-        db: AsyncSession, data: ProductosEnLiquidacionCreate, denominacion: Optional[str] = None
+        db: AsyncSession,
+        data: ProductosEnLiquidacionCreate,
+        denominacion: Optional[str] = None,
     ) -> ProductosEnLiquidacionRead:
         db_producto = ProductosEnLiquidacion(
             codigo="",
@@ -52,7 +54,9 @@ class ProductosEnLiquidacionService:
 
         db.add(db_producto)
         await db.flush()
-        db_producto.codigo = generar_codigo(denominacion, datetime.now().year, db_producto.id_producto_en_liquidacion)
+        db_producto.codigo = generar_codigo(
+            denominacion, datetime.now().year, db_producto.id_producto_en_liquidacion
+        )
         db.add(db_producto)
         await db.commit()
         await db.refresh(db_producto)
@@ -74,8 +78,10 @@ class ProductosEnLiquidacionService:
 
     @staticmethod
     async def get_multi(
-        db: AsyncSession, skip: int = 0, limit: int = 100,
-        cliente_id: Optional[int] = None
+        db: AsyncSession,
+        skip: int = 0,
+        limit: int = 100,
+        cliente_id: Optional[int] = None,
     ) -> List[ProductosEnLiquidacionRead]:
         db_productos = await productos_en_liquidacion_repo.get_multi_with_relations(
             db, skip=skip, limit=limit, cliente_id=cliente_id
@@ -109,8 +115,10 @@ class ProductosEnLiquidacionService:
 
     @staticmethod
     async def get_pendientes(
-        db: AsyncSession, skip: int = 0, limit: int = 100,
-        cliente_id: Optional[int] = None
+        db: AsyncSession,
+        skip: int = 0,
+        limit: int = 100,
+        cliente_id: Optional[int] = None,
     ) -> List[ProductosEnLiquidacionRead]:
         db_productos = await productos_en_liquidacion_repo.get_pendientes(
             db, skip=skip, limit=limit, cliente_id=cliente_id
@@ -122,8 +130,10 @@ class ProductosEnLiquidacionService:
 
     @staticmethod
     async def get_liquidadas(
-        db: AsyncSession, skip: int = 0, limit: int = 100,
-        cliente_id: Optional[int] = None
+        db: AsyncSession,
+        skip: int = 0,
+        limit: int = 100,
+        cliente_id: Optional[int] = None,
     ) -> List[ProductosEnLiquidacionRead]:
         db_productos = await productos_en_liquidacion_repo.get_liquidadas(
             db, skip=skip, limit=limit, cliente_id=cliente_id
@@ -212,7 +222,10 @@ async def _get_default_moneda(db: AsyncSession) -> int:
 
 
 async def agregar_desde_factura(
-    db: AsyncSession, id_factura: int, productos: List[dict], denominacion: Optional[str] = None
+    db: AsyncSession,
+    id_factura: int,
+    productos: List[dict],
+    denominacion: Optional[str] = None,
 ) -> None:
     if not productos:
         return
@@ -235,7 +248,9 @@ async def agregar_desde_factura(
     await db.flush()
     anio = datetime.now().year
     for item in items:
-        item.codigo = generar_codigo(denominacion, anio, item.id_producto_en_liquidacion)
+        item.codigo = generar_codigo(
+            denominacion, anio, item.id_producto_en_liquidacion
+        )
         db.add(item)
 
 
@@ -266,12 +281,17 @@ async def agregar_desde_venta_efectivo(
     await db.flush()
     anio = datetime.now().year
     for item in items:
-        item.codigo = generar_codigo(denominacion, anio, item.id_producto_en_liquidacion)
+        item.codigo = generar_codigo(
+            denominacion, anio, item.id_producto_en_liquidacion
+        )
         db.add(item)
 
 
 async def agregar_desde_anexo(
-    db: AsyncSession, id_anexo: int, productos: List[dict], denominacion: Optional[str] = None
+    db: AsyncSession,
+    id_anexo: int,
+    productos: List[dict],
+    denominacion: Optional[str] = None,
 ) -> None:
     if not productos:
         return
@@ -293,6 +313,8 @@ async def agregar_desde_anexo(
     await db.flush()
     anio = datetime.now().year
     for item in items:
-        item.codigo = generar_codigo(denominacion, anio, item.id_producto_en_liquidacion)
+        item.codigo = generar_codigo(
+            denominacion, anio, item.id_producto_en_liquidacion
+        )
         db.add(item)
     await db.commit()

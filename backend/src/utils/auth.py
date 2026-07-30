@@ -27,6 +27,7 @@ async def _get_nit_from_token(
         return None
     from src.models.usuarios import Usuario
     from src.models.dependencia import Dependencia
+
     async with _auth_async_session() as auth_db:
         usuario = await auth_db.get(Usuario, int(usuario_id))
         if not usuario or not usuario.id_dependencia:
@@ -51,6 +52,7 @@ async def _get_denominacion_from_token(
         return None
     from src.models.usuarios import Usuario
     from src.models.dependencia import Dependencia
+
     async with _auth_async_session() as auth_db:
         usuario = await auth_db.get(Usuario, int(usuario_id))
         if not usuario or not usuario.id_dependencia:
@@ -74,6 +76,7 @@ async def _get_user_dependencia_id(
     if not usuario_id:
         return None
     from src.models.usuarios import Usuario
+
     async with _auth_async_session() as auth_db:
         usuario = await auth_db.get(Usuario, int(usuario_id))
         if not usuario or not usuario.id_dependencia:
@@ -102,5 +105,7 @@ async def verify_auth(
         "id_usuario": usuario.id_usuario,
         "alias": usuario.alias,
         "nombre": usuario.nombre,
-        "denominacion": usuario.dependencia.denominacion if usuario.dependencia else None,
+        "denominacion": usuario.dependencia.denominacion
+        if usuario.dependencia
+        else None,
     }

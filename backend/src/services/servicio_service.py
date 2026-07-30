@@ -65,7 +65,9 @@ class ServicioService:
     ) -> ServicioRead:
         servicio = await servicio_repo.create(db, obj_in=data)
         año = datetime.now().year
-        servicio.codigo_servicio = generar_codigo(denominacion or "", año, servicio.id_servicio)
+        servicio.codigo_servicio = generar_codigo(
+            denominacion or "", año, servicio.id_servicio
+        )
         await db.commit()
         await db.refresh(servicio)
         return ServicioRead(**servicio.model_dump())
@@ -99,11 +101,15 @@ class ServicioService:
 class SolicitudServicioService:
     @staticmethod
     async def create(
-        db: AsyncSession, data: SolicitudServicioCreate, denominacion: Optional[str] = None
+        db: AsyncSession,
+        data: SolicitudServicioCreate,
+        denominacion: Optional[str] = None,
     ) -> SolicitudServicioRead:
         s = await solicitud_servicio_repo.create(db, obj_in=data)
         año = datetime.now().year
-        s.codigo_solicitud = generar_codigo(denominacion or "", año, s.id_solicitud_servicio)
+        s.codigo_solicitud = generar_codigo(
+            denominacion or "", año, s.id_solicitud_servicio
+        )
         await db.commit()
         await db.refresh(s)
         return SolicitudServicioRead(**s.model_dump())
@@ -155,7 +161,9 @@ class SolicitudServicioService:
         id_contrato = getattr(data, "id_contrato", None)
         if aprobado and id_contrato and not s.codigo_proyecto:
             año = datetime.now().year
-            data.codigo_proyecto = generar_codigo(denominacion or "", año, s.id_solicitud_servicio)
+            data.codigo_proyecto = generar_codigo(
+                denominacion or "", año, s.id_solicitud_servicio
+            )
 
         updated = await solicitud_servicio_repo.update(db, db_obj=s, obj_in=data)
         return SolicitudServicioRead(**updated.model_dump())
@@ -268,7 +276,9 @@ class PersonaEtapaService:
 class FacturaServicioService:
     @staticmethod
     async def create(
-        db: AsyncSession, data: FacturaServicioCreate, denominacion: Optional[str] = None
+        db: AsyncSession,
+        data: FacturaServicioCreate,
+        denominacion: Optional[str] = None,
     ) -> FacturaServicioRead:
         etapa = None
         if data.id_etapa:
@@ -342,7 +352,9 @@ class FacturaServicioService:
 
         f = await factura_servicio_repo.create(db, obj_in=data)
         await db.flush()
-        f.codigo_factura = generar_codigo(denominacion or "", datetime.now().year, f.id_factura_servicio)
+        f.codigo_factura = generar_codigo(
+            denominacion or "", datetime.now().year, f.id_factura_servicio
+        )
         db.add(f)
         await db.commit()
 
@@ -643,7 +655,9 @@ class PagoFacturaServicioService:
 class PersonaLiquidacionService:
     @staticmethod
     async def create(
-        db: AsyncSession, data: PersonaLiquidacionCreateInput, denominacion: Optional[str] = None
+        db: AsyncSession,
+        data: PersonaLiquidacionCreateInput,
+        denominacion: Optional[str] = None,
     ) -> PersonaLiquidacionRead:
         validacion = await PersonaLiquidacionService.validar_liquidar(
             db, data.id_etapa, data.id_persona
@@ -715,7 +729,9 @@ class PersonaLiquidacionService:
 
         liquidacion = await persona_liquidacion_repo.create(db, obj_in=liquidacion_data)
         await db.flush()
-        liquidacion.numero = generar_codigo(denominacion or "", datetime.now().year, liquidacion.id_liquidacion)
+        liquidacion.numero = generar_codigo(
+            denominacion or "", datetime.now().year, liquidacion.id_liquidacion
+        )
         db.add(liquidacion)
 
         if data.id_pago and importe > 0:

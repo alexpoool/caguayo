@@ -365,7 +365,9 @@ class SuplementoService:
     ) -> SuplementoReadWithDetails:
         suplemento = await suplemento_repo.create(db, data)
         anio = data.fecha.year
-        suplemento.codigo = generar_codigo(denominacion or "", anio, suplemento.id_suplemento)
+        suplemento.codigo = generar_codigo(
+            denominacion or "", anio, suplemento.id_suplemento
+        )
         db.add(suplemento)
         await db.commit()
         await db.refresh(suplemento)
@@ -423,7 +425,9 @@ async def map_factura_to_read(
     items_con_producto = []
     if factura.items_factura:
         for item in factura.items_factura:
-            producto = await db.get(Productos, item.id_producto) if item.id_producto else None
+            producto = (
+                await db.get(Productos, item.id_producto) if item.id_producto else None
+            )
             item_read = ItemFacturaRead(
                 id_item_factura=item.id_item_factura,
                 id_factura=item.id_factura,
@@ -462,7 +466,10 @@ async def map_factura_to_read(
 class FacturaService:
     @staticmethod
     async def create(
-        db: AsyncSession, data: FacturaCreate, denominacion: Optional[str] = None, id_dependencia_usuario: Optional[int] = None
+        db: AsyncSession,
+        data: FacturaCreate,
+        denominacion: Optional[str] = None,
+        id_dependencia_usuario: Optional[int] = None,
     ) -> FacturaReadWithDetails:
         data_dict = data.model_dump(exclude_none=True)
         items_data = data_dict.pop("items", [])
@@ -476,7 +483,9 @@ class FacturaService:
         factura = await factura_repo.create(db, data)
 
         anio = data.fecha.year
-        factura.codigo_factura = generar_codigo(denominacion or "", anio, factura.id_factura)
+        factura.codigo_factura = generar_codigo(
+            denominacion or "", anio, factura.id_factura
+        )
         db.add(factura)
         await db.flush()
 
@@ -654,7 +663,9 @@ async def map_venta_efectivo_to_read(
                     codigo=item.producto.codigo,
                     nombre=item.producto.nombre,
                     precio_venta=item.producto.precio_venta,
-                ) if item.producto else None,
+                )
+                if item.producto
+                else None,
             )
             for item in items_db
         ]
@@ -724,6 +735,7 @@ class VentaEfectivoService:
 
             # Resolver id_anexo desde id_item_anexo
             from src.models.item_anexo import ItemAnexo
+
             for item in items_data:
                 if "id_anexo" not in item or item["id_anexo"] is None:
                     id_item_anexo = item.get("id_item_anexo")

@@ -70,7 +70,9 @@ async def crear_producto(
     """Crear un nuevo producto en liquidación."""
     try:
         denominacion = await _get_denominacion_from_token(authorization)
-        return await productos_en_liquidacion_service.create(db, producto, denominacion=denominacion)
+        return await productos_en_liquidacion_service.create(
+            db, producto, denominacion=denominacion
+        )
     except Exception as e:
         logger.error("Error al crear producto en liquidación", exc_info=True)
         raise HTTPException(status_code=500, detail="Error interno del servidor")

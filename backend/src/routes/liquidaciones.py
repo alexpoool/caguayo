@@ -29,7 +29,9 @@ async def listar_liquidaciones(
 ):
     """Listar todas las liquidaciones con paginación."""
     try:
-        return await liquidacion_service.get_liquidaciones(db, skip=skip, limit=limit, cliente_id=cliente_id)
+        return await liquidacion_service.get_liquidaciones(
+            db, skip=skip, limit=limit, cliente_id=cliente_id
+        )
     except Exception as e:
         logger.error("Error al listar liquidaciones", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
@@ -115,7 +117,9 @@ async def crear_liquidacion(
     """Crear una nueva liquidación."""
     try:
         denominacion = await _get_denominacion_from_token(authorization)
-        return await liquidacion_service.create_liquidacion(db, liquidacion, denominacion=denominacion)
+        return await liquidacion_service.create_liquidacion(
+            db, liquidacion, denominacion=denominacion
+        )
     except HTTPException:
         raise
     except (BusinessLogicError, ValidationError) as e:
