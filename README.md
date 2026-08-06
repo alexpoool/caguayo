@@ -166,6 +166,33 @@ On the **first run**, the backend automatically detects an empty database and ex
 
 After `init.sql` completes, Alembic migrations run automatically to apply any schema changes.
 
+#### Sincronizar el esquema de una BD existente
+
+Para **actualizar el esquema de una base de datos ya creada** (p.ej. una base vieja que
+le falta lo nuevo que hay en `init.sql`), sin borrar datos, usa el script
+`backend/scripts/sync_schema.py`:
+
+```bash
+# Desde backend/
+uv run python -m scripts.sync_schema <nombre_bd>
+```
+
+Esto compara la BD con `init.sql` y aplica solo lo que falta: vistas, tablas y
+columnas nuevas. Al final marca la BD con `alembic stamp head` para que `alembic
+upgrade head` solo aplique migraciones futuras.
+
+Opciones:
+
+| Comando | Descripción |
+|---|---|
+| `uv run python -m scripts.sync_schema <bd>` | Actualiza el esquema existente y marca alembic en `head`. |
+| `uv run python -m scripts.sync_schema <bd> --seeds` | Además inserta los datos iniciales (solo en tablas vacías, evita duplicados). |
+| `uv run python -m scripts.sync_schema <bd> --sql new.sql` | Sincroniza contra `new.sql` (p.ej. base de un tenant). |
+| `uv run python -m scripts.sync_schema <bd> --no-stamp` | Solo aplica el SQL, no toca `alembic_version`. |
+
+> Las columnas nuevas `NOT NULL` sin valor por defecto se añaden como **nullable**
+> cuando la tabla ya tiene filas, para no romper los datos existentes.
+
 #### Managing Services
 
 To stop:
