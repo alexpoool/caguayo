@@ -75,9 +75,10 @@ async def get_conexiones():
 @router.post("/test")
 async def test_conexion(data: ConexionTestRequest):
     """Prueba la conexión a una base de datos específica"""
+    host = data.host if data.host != "localhost" else os.getenv("ADMIN_DB_HOST", "localhost")
     try:
         conn = psycopg2.connect(
-            host=data.host,
+            host=host,
             port=data.puerto,
             user=os.getenv("LECTOR_USER"),
             password=os.getenv("LECTOR_PASSWORD"),

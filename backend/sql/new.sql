@@ -1140,8 +1140,8 @@ INSERT INTO tipo_dependencia (nombre, descripcion) VALUES
 ('SUCURSAL', 'Sucursal o agencia'),
 ('ALMACEN', 'Almacén de productos');
 
-INSERT INTO dependencia (id_tipo_dependencia, nombre, direccion, telefono, email, web, id_provincia, id_municipio, base_datos, descripcion)
-VALUES (1, 'Caguayo S.A', 'Vista Alegre', '+53 7 1234567', 'info@caguayo.cu', 'https://caguayo.cu', 14, 14, 'caguayosa', 'Oficina principal de Caguayo');
+INSERT INTO dependencia (id_tipo_dependencia, nombre, denominacion, direccion, telefono, email, web, id_provincia, id_municipio, base_datos, descripcion)
+VALUES (1, 'Caguayo S.A', 'SA', 'Vista Alegre', '+53 7 1234567', 'info@caguayo.cu', 'https://caguayo.cu', 14, 14, 'caguayosa', 'Oficina principal de Caguayo');
 
 -- Cliente empresa (proveedor interno) + convenio + anexo base
 INSERT INTO clientes (nombre, tipo_persona, nit, codigo, direccion, tipo_relacion, estado)
@@ -1166,4 +1166,11 @@ VALUES (
     1,
     0
 );
+
+-- =====================================================
+-- USUARIO SUPERADMINISTRADOR
+-- =====================================================
+
+INSERT INTO usuarios (ci, nombre, primer_apellido, segundo_apellido, alias, contrasenia, id_grupo, id_dependencia, cargo)
+VALUES ('00000000000', 'Administrador', 'Principal', 'Sistema', 'admin', '$2b$12$21cZipaElHLRaXOxScHGjOPbMVXpvxn2aSwQus/P4/Vs0z0bouTb2', 1, 1, 'Superadministrador');
 

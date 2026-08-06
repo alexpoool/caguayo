@@ -1,0 +1,5 @@
+FROM mcr.microsoft.com/devcontainers/python:3.13
+
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+
+ENV PYTHONUNBUFFERED=1

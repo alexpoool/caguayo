@@ -1,0 +1,48 @@
+services:
+  dev:
+    build:
+      context: .
+      dockerfile: .devcontainer/Containerfile
+    volumes:
+      - ./:/workspace:cached
+    command: sleep infinity
+    environment:
+      DATABASE_URL: postgresql://caguayo:change-me@db:5432/caguayo
+      ADMIN_DB_HOST: db
+      ADMIN_DB_PORT: 5432
+      ADMIN_DB_USER: caguayo
+      ADMIN_DB_PASSWORD: change-me
+      ADMIN_DB_NAME: postgres
+      LECTOR_USER: caguayo
+      LECTOR_PASSWORD: change-me
+      AUTH_DATABASE: caguayo
+      SECRET_KEY: dev-secret-key-devcontainer-only
+      PYTHONPATH: /workspace/backend/src
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - caguayo-network
+
+  db:
+    image: docker.io/postgres:16-alpine
+    pull_policy: missing
+    environment:
+      POSTGRES_USER: caguayo
+      POSTGRES_PASSWORD: change-me
+      POSTGRES_DB: caguayo
+    ports:
+      - "5433:5432"
+    healthcheck:
+      test: pg_isready -U caguayo -d caguayo
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - caguayo-network
+
+  backend:
+    profiles: ["never"]
+
+  frontend:
+    profiles: ["never"]

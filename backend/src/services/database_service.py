@@ -341,7 +341,7 @@ class DatabaseService:
             municipios = central_cur.fetchall()
 
             central_cur.execute("""
-                SELECT id_dependencia, id_tipo_dependencia, codigo_padre, nombre, direccion, telefono, 
+                SELECT id_dependencia, id_tipo_dependencia, codigo_padre, nombre, denominacion, direccion, telefono, 
                        email, web, id_provincia, id_municipio, descripcion, base_datos
                 FROM dependencia 
                 ORDER BY id_dependencia
@@ -394,9 +394,9 @@ class DatabaseService:
             for d in deps:
                 local_cur.execute(
                     """
-                    INSERT INTO dependencia (id_dependencia, id_tipo_dependencia, codigo_padre, nombre, 
+                    INSERT INTO dependencia (id_dependencia, id_tipo_dependencia, codigo_padre, nombre, denominacion,
                                           direccion, telefono, email, web, id_provincia, id_municipio, descripcion, base_datos)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 """,
                     d,
                 )

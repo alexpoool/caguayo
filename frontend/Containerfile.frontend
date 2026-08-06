@@ -19,9 +19,9 @@ RUN pnpm eslint
 RUN pnpm build
 
 # ---- Production Stage ----
-FROM nginx:alpine
+FROM docker.io/nginx:alpine
 
-RUN chown -R nginx:nginx /usr/share/nginx/html /var/cache/nginx /var/log/nginx /var/run
+RUN chown -R nginx:nginx /usr/share/nginx/html /var/cache/nginx /var/log/nginx /var/run /run
 
 COPY --from=build /app/dist /usr/share/nginx/html
 COPY frontend/nginx.conf /etc/nginx/conf.d/default.conf

@@ -2,25 +2,28 @@ services:
   backend:
     build:
       context: .
-      dockerfile: backend/Dockerfile
-    image: caguayo-backend:latest
+      dockerfile: backend/Containerfile
+    image: webapi
     ports:
       - "${BACKEND_PORT:-8000}:8000"
     environment:
       - DATABASE_URL=postgresql://${POSTGRES_USER:-caguayo}:${POSTGRES_PASSWORD:-change-me}@db:5432/${POSTGRES_DB:-caguayo}
-      - PYTHONPATH=/app/backend/src
+      - PYTHONPATH=/app/backend
       - SECRET_KEY=${SECRET_KEY:?SECRET_KEY must be set in .env file}
       - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:5173,http://localhost:3000}
       - ADMIN_DB_HOST=db
-      - ADMIN_DB_PORT=${DB_PORT:-5432}
+      - ADMIN_DB_PORT=5432
       - ADMIN_DB_USER=${POSTGRES_USER:-caguayo}
       - ADMIN_DB_PASSWORD=${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
       - ADMIN_DB_NAME=postgres
       - LECTOR_USER=${POSTGRES_USER:-caguayo}
       - LECTOR_PASSWORD=${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
       - AUTH_DATABASE=${POSTGRES_DB:-caguayo}
+      - POSTGRES_USER=${POSTGRES_USER:-caguayo}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
+      - POSTGRES_DB=${POSTGRES_DB:-caguayo}
     healthcheck:
-      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health')\""]
+      test: python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"
       interval: 10s
       timeout: 5s
       retries: 5
@@ -35,10 +38,10 @@ services:
   frontend:
     build:
       context: .
-      dockerfile: frontend/Dockerfile.frontend
+      dockerfile: frontend/Containerfile.frontend
       args:
         - VITE_API_BASE_URL=${VITE_API_BASE_URL:-/api/v1}
-    image: caguayo-frontend:latest
+    image: webapp
     ports:
       - "${FRONTEND_PORT:-5173}:8080"
     depends_on:
@@ -49,17 +52,18 @@ services:
       - caguayo-network
 
   db:
-    image: postgres:16-alpine
+    image: docker.io/postgres:16-alpine
+    pull_policy: missing
     environment:
       - POSTGRES_USER=${POSTGRES_USER:-caguayo}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in .env file}
       - POSTGRES_DB=${POSTGRES_DB:-caguayo}
     ports:
-      - "${DB_PORT:-5432}:5432"
+      - "${DB_PORT:-5433}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-caguayo} -d ${POSTGRES_DB:-caguayo}"]
+      test: pg_isready -U ${POSTGRES_USER:-caguayo} -d ${POSTGRES_DB:-caguayo}
       interval: 5s
       timeout: 5s
       retries: 5

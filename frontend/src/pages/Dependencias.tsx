@@ -287,18 +287,12 @@ export function DependenciasPage() {
     onSuccess: (data) => {
       console.log("Create dependencia response:", data);
       queryClient.invalidateQueries({ queryKey: ["dependencias"] });
-      if (data.tablas_creadas && data.tablas_creadas.length > 0) {
-        setDatabaseCreatedModal({
-          isOpen: true,
-          dependencia: data,
-          tablas: data.tablas_creadas,
-        });
-        setView("list");
-      } else {
-        toast.success("Dependencia creada exitosamente");
-        setView("list");
-        resetForm();
-      }
+      setDatabaseCreatedModal({
+        isOpen: true,
+        dependencia: data,
+        tablas: data.tablas_creadas ?? [],
+      });
+      setView("list");
     },
     onError: (error: any) => {
       console.log("Create dependencia error:", error);
@@ -1278,10 +1272,12 @@ export function DependenciasPage() {
                   </div>
                   <div>
                     <h2 className="text-xl font-bold text-gray-900">
-                      Base de Datos Creada
+                      Dependencia Creada
                     </h2>
                     <p className="text-sm text-gray-500">
-                      La base de datos se ha creado exitosamente
+                      {databaseCreatedModal.tablas.length > 0
+                        ? "La base de datos se ha creado exitosamente"
+                        : "La dependencia se ha creado exitosamente"}
                     </p>
                   </div>
                 </div>
@@ -1330,13 +1326,14 @@ export function DependenciasPage() {
                     </div>
                   </div>
 
-                  <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-md p-5">
-                    <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                      <Database className="h-5 w-5 text-green-500" />
-                      Base de Datos Creada
-                    </h3>
-                    <div className="bg-white rounded-lg p-4 border border-green-200">
-                      <div className="flex items-center justify-between">
+{databaseCreatedModal.tablas.length > 0 && (
+                    <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-md p-5">
+                      <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                        <Database className="h-5 w-5 text-green-500" />
+                        Base de Datos Creada
+                      </h3>
+                      <div className="bg-white rounded-lg p-4 border border-green-200">
+                        <div className="flex items-center justify-between">
                         <div className="space-y-1">
                           <Label className="flex items-center gap-2 text-gray-500 text-sm">
                             Nombre de la Base de Datos
@@ -1362,56 +1359,59 @@ export function DependenciasPage() {
                       </div>
                     </div>
                   </div>
-
-                  <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-md p-5">
-                    <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                      <CheckCircle2 className="h-5 w-5 text-blue-500" />
-                      Tablas Creadas ({databaseCreatedModal.tablas.length})
-                    </h3>
-                    <div className="bg-white rounded-lg border border-blue-200 max-h-60 overflow-auto">
-                      <div className="divide-y divide-gray-100">
-                        {databaseCreatedModal.tablas.map((tabla, index) => (
-                          <div
-                            key={tabla}
-                            className="flex items-center justify-between px-4 py-2 hover:bg-gray-50 transition-colors"
-                          >
-                            <div className="flex items-center gap-2">
-                              <span className="text-xs text-gray-400 font-mono w-6">
-                                {index + 1}
-                              </span>
-                              <span className="font-mono text-sm text-gray-700">
-                                {tabla}
-                              </span>
-                            </div>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => {
-                                navigator.clipboard.writeText(tabla);
-                                setCopiedTable(tabla);
-                                setTimeout(() => setCopiedTable(null), 2000);
-                              }}
-                              className="text-gray-400 hover:text-gray-600"
+                  )}
+                  {databaseCreatedModal.tablas.length > 0 && (
+                    <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-md p-5">
+                      <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                        <CheckCircle2 className="h-5 w-5 text-blue-500" />
+                        Tablas Creadas ({databaseCreatedModal.tablas.length})
+                      </h3>
+                      <div className="bg-white rounded-lg border border-blue-200 max-h-60 overflow-auto">
+                        <div className="divide-y divide-gray-100">
+                          {databaseCreatedModal.tablas.map((tabla, index) => (
+                            <div
+                              key={tabla}
+                              className="flex items-center justify-between px-4 py-2 hover:bg-gray-50 transition-colors"
                             >
-                              {copiedTable === tabla ? (
-                                <Check className="h-4 w-4 text-green-500" />
-                              ) : (
-                                <Copy className="h-4 w-4" />
-                              )}
-                            </Button>
-                          </div>
-                        ))}
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs text-gray-400 font-mono w-6">
+                                  {index + 1}
+                                </span>
+                                <span className="font-mono text-sm text-gray-700">
+                                  {tabla}
+                                </span>
+                              </div>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                  navigator.clipboard.writeText(tabla);
+                                  setCopiedTable(tabla);
+                                  setTimeout(() => setCopiedTable(null), 2000);
+                                }}
+                                className="text-gray-400 hover:text-gray-600"
+                              >
+                                {copiedTable === tabla ? (
+                                  <Check className="h-4 w-4 text-green-500" />
+                                ) : (
+                                  <Copy className="h-4 w-4" />
+                                )}
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     </div>
-                  </div>
-
-                  <div className="bg-amber-50 border border-amber-200 rounded-md p-4">
-                    <p className="text-sm text-amber-800">
-                      <strong>Nota:</strong> Guarde el nombre de la base de
-                      datos. La conexión se realizara usando las credenciales
-                      configuradas en el servidor.
-                    </p>
-                  </div>
+                  )}
+                  {databaseCreatedModal.tablas.length > 0 && (
+                    <div className="bg-amber-50 border border-amber-200 rounded-md p-4">
+                      <p className="text-sm text-amber-800">
+                        <strong>Nota:</strong> Guarde el nombre de la base de
+                        datos. La conexión se realizara usando las credenciales
+                        configuradas en el servidor.
+                      </p>
+                    </div>
+                  )}
                 </div>
               </div>
               <div className="flex-shrink-0 p-6 border-t bg-gray-50 rounded-b-2xl">

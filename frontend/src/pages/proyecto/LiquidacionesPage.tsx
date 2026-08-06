@@ -728,10 +728,10 @@ export function LiquidacionesPage() {
         <div class="header-center">
             <div class="tcp-title">CAGUAYO S.A.</div>
             <div class="nombre-titular">${empresaNombre}</div>
-            ${empresaReeup ? `<div style="font-size: 11.5px; margin-top: 2px;">Código: ${empresaReeup}</div>` : ''}
             <div class="direccion-contacto">${empresaDireccion}</div>
             <div class="telefonos">Tel: ${empresaTelefono}</div>
             <div class="email">${empresaEmail}</div>
+            ${empresaReeup ? `<div class="direccion-contacto" style="margin-top: 2px;">Código: ${empresaReeup}</div>` : ''}
         </div>
         <div class="header-box">
             <div class="header-box-title">Liquidación</div>

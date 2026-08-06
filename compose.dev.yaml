@@ -1,0 +1,42 @@
+services:
+  backend:
+    entrypoint: []
+    command: uv run uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+    volumes:
+      - ./backend/src:/app/backend/src
+      - ./backend/main.py:/app/backend/main.py
+      - ./backend/alembic:/app/backend/alembic
+      - ./backend/alembic.ini:/app/backend/alembic.ini
+      - ./backend/sql:/app/backend/sql
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health')\""]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+    depends_on:
+      db:
+        condition: service_healthy
+
+  frontend:
+    build:
+      dockerfile: frontend/Containerfile.dev
+    ports:
+      - "${FRONTEND_PORT:-5173}:5173"
+    environment:
+      - VITE_API_BASE_URL=${VITE_API_BASE_URL:-/api/v1}
+    volumes:
+      - ./frontend/src:/app/src
+      - ./frontend/public:/app/public
+      - ./frontend/index.html:/app/index.html
+      - ./frontend/package.json:/app/package.json
+      - ./frontend/tsconfig.json:/app/tsconfig.json
+      - ./frontend/vite.config.ts:/app/vite.config.ts
+      - ./frontend/tailwind.config.js:/app/tailwind.config.js
+      - ./frontend/postcss.config.js:/app/postcss.config.js
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - caguayo-network
+

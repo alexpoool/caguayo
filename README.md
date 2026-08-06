@@ -9,8 +9,10 @@ This repository contains the Caguayo application, a comprehensive inventory and 
 - `backend/sql/` - SQL schemas (init.sql, new.sql)
 - `backend/Dockerfile` - Backend Docker image (multi-stage)
 - `frontend/Dockerfile.frontend` - Frontend Docker image (multi-stage)
-- `docker-compose.yml` - Docker orchestration
-- `.env.example` - Environment variable template for Docker Compose
+- `compose.yaml` - Orchestration (Podman / Docker Compose)
+- `compose.dev.yaml` - Dev override with hot reload and bind mounts
+- `frontend/Dockerfile.dev` - Dev image for frontend hot reload
+- `.env.example` - Environment variable template for podman-compose
 - `start.sh` - Script de inicio para desarrollo local
 
 ## Tecnologías
@@ -39,7 +41,7 @@ This repository contains the Caguayo application, a comprehensive inventory and 
 - `uv` (instalar: `curl -LsSf https://astral.sh/uv/install.sh | sh`)
 - `pnpm` (instalar: `npm install -g pnpm`)
 - `tmux` (para el script de inicio rápido)
-- Docker y Docker Compose (para despliegue containerizado)
+- Podman y podman-compose (para despliegue containerizado)
 
 ## Configuración inicial de PostgreSQL
 
@@ -95,7 +97,34 @@ Al ejecutar `init.sql` por primera vez, se crea automáticamente un super usuari
 
 The application uses PostgreSQL as the database. The database is automatically created and initialized when using Docker Compose.
 
-### Running with Docker
+### Development with hot reload
+
+For development with live code reloading, use the dev override:
+
+```bash
+# First time: initialize database and build images
+podman-compose up -d
+
+# Development: hot reload (backend + frontend)
+podman-compose -f compose.yaml -f compose.dev.yaml up -d
+
+# After installing new dependencies, rebuild:
+podman-compose build backend frontend
+```
+
+The dev override:
+- Mounts source code as volumes (edits reflect instantly)
+- Backend runs `uvicorn --reload` (restarts on Python changes)
+- Frontend runs Vite dev server (HMR for React components)
+- Skips the entrypoint init (assumes DB is already initialized)
+
+> **Note**: The first `podman-compose up -d` (without override) initializes the database. Subsequent dev sessions only need the override.
+
+### Running with Podman
+
+The application uses three services: PostgreSQL, Python backend, and React frontend.
+
+#### Quick Start
 
 1. Configure environment (first time only):
    ```bash
@@ -105,24 +134,123 @@ The application uses PostgreSQL as the database. The database is automatically c
 
 2. Build and start all services:
    ```bash
-   docker-compose up --build
+   podman-compose up --build
    ```
 
 3. The following services will be available:
-   - Backend: http://localhost:8000
+   - Backend API: http://localhost:8000
    - Frontend: http://localhost:5173
+   - API Docs: http://localhost:8000/docs
 
-4. Database migrations run automatically on backend startup.
+#### Database Initialization
 
-5. To stop the services:
-   ```bash
-   docker-compose down
-   ```
+On the **first run**, the backend automatically detects an empty database and executes `backend/sql/init.sql`, which:
 
-6. To rebuild and restart:
-   ```bash
-   docker-compose up --build -d
-   ```
+- Creates the `v_databases` view
+- Creates all 56 database tables
+- Seeds reference data (monedas, provincias, municipios, tipos de contrato, etc.)
+- Creates the **administrator group** (`ADMINISTRADOR`) with all system permissions
+- Creates the **superuser** account:
+
+  | Campo | Valor |
+  |-------|-------|
+  | **Usuario (alias)** | `admin` |
+  | **Contraseña** | `Admin123@` |
+  | **Grupo** | ADMINISTRADOR |
+  | **Dependencia** | Caguayo Matriz |
+
+- Creates the main dependency (`Caguayo S.A`)
+- Sets up the base reception agreement and annex
+
+> **⚠️ Importante**: Cambiar la contraseña en el primer inicio de sesión.
+
+After `init.sql` completes, Alembic migrations run automatically to apply any schema changes.
+
+#### Managing Services
+
+To stop:
+```bash
+podman-compose down
+```
+
+To rebuild and restart (keeps database data in the persistent volume):
+```bash
+podman-compose up --build -d
+```
+
+To reset the database completely (deletes the volume):
+```bash
+podman-compose down -v
+podman-compose up --build
+```
+
+To view logs:
+```bash
+podman-compose logs -f
+```
+
+### Transferir imágenes a otra PC sin internet
+
+Guardar las imágenes en una carpeta específica:
+```bash
+mkdir -p ~/imagenes-caguayo
+podman save -o ~/imagenes-caguayo/caguayo-backend.tar localhost/caguayo-backend:latest
+podman save -o ~/imagenes-caguayo/caguayo-frontend.tar localhost/caguayo-frontend:latest
+podman save -o ~/imagenes-caguayo/postgres.tar docker.io/library/postgres:16-alpine
+podman save -o ~/imagenes-caguayo/nginx.tar docker.io/library/nginx:alpine
+```
+
+Cargar en la otra PC:
+```bash
+cd ~/Descargas  # o donde tengas los .tar
+podman load -i caguayo-backend.tar
+podman load -i caguayo-frontend.tar
+podman load -i postgres.tar
+podman load -i nginx.tar
+```
+
+Luego levantar normalmente:
+```bash
+podman-compose up
+```
+
+#### Access via custom domain
+
+To access the app at `http://items` instead of `http://localhost:5173`:
+
+```bash
+# 1. Map the name to your PC
+echo "127.0.0.1 items" | sudo tee -a /etc/hosts
+
+# 2. Install nginx on the host
+sudo apt install nginx
+
+# 3. Create a virtual site
+sudo tee /etc/nginx/sites-available/items << 'EOF'
+server {
+    listen 80;
+    server_name items;
+
+    location / {
+        proxy_pass http://localhost:5173;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+EOF
+
+# 4. Enable and reload
+sudo ln -sf /etc/nginx/sites-available/items /etc/nginx/sites-enabled/
+sudo nginx -t && sudo systemctl reload nginx
+```
+
+> **Note**: If you use Fish shell, heredocs (`<< 'EOF'`) are not supported. Use `bash -c 'sudo tee ... << "EOF"...'` instead.
+
+#### Architecture
+
+The frontend is a static SPA served by nginx. It connects to the backend API via `/api/`, which is proxied through nginx. The backend connects to PostgreSQL using asyncpg.
 
 ### Running without Docker
 

@@ -495,7 +495,7 @@ class MovimientoService:
                 ia.id_item_anexo,
                 ia.id_producto,
                 p.nombre,
-                p.codigo,
+                ia.codigo,
                 p.descripcion,
                 (ia.entrada - ia.vendido) AS stock,
                 ia.precio_compra,
