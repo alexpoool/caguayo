@@ -713,23 +713,6 @@ CREATE TABLE persona_etapa (
     PRIMARY KEY (id_etapa, id_persona)
 );
 
--- Facturas asociadas a Etapas
-CREATE TABLE factura_servicio (
-    id_factura_servicio SERIAL PRIMARY KEY,
-    id_etapa INTEGER REFERENCES etapas(id_etapa),
-    id_certificacion INTEGER REFERENCES certificacion(id_certificacion),
-    alcance VARCHAR(20),
-    codigo_factura VARCHAR(50),
-    id_moneda INTEGER REFERENCES moneda(id_moneda),
-    fecha DATE,
-    descripcion TEXT,
-    importe NUMERIC(15,4) DEFAULT 0.00,
-    pagado NUMERIC(15,2) DEFAULT 0.00,
-    observaciones TEXT,
-    cuenta_factura VARCHAR(50),
-    id_usuario INTEGER
-);
-
 -- Certificaciones de Etapas
 CREATE TABLE certificacion (
     id_certificacion SERIAL PRIMARY KEY,
@@ -752,6 +735,23 @@ CREATE TABLE certificacion (
 
 -- Índice para búsquedas por etapa
 CREATE INDEX idx_certificacion_etapa ON certificacion(id_etapa);
+
+-- Facturas asociadas a Etapas
+CREATE TABLE factura_servicio (
+    id_factura_servicio SERIAL PRIMARY KEY,
+    id_etapa INTEGER REFERENCES etapas(id_etapa),
+    id_certificacion INTEGER REFERENCES certificacion(id_certificacion),
+    alcance VARCHAR(20),
+    codigo_factura VARCHAR(50),
+    id_moneda INTEGER REFERENCES moneda(id_moneda),
+    fecha DATE,
+    descripcion TEXT,
+    importe NUMERIC(15,4) DEFAULT 0.00,
+    pagado NUMERIC(15,2) DEFAULT 0.00,
+    observaciones TEXT,
+    cuenta_factura VARCHAR(50),
+    id_usuario INTEGER
+);
 
 -- Items de Factura de Servicio
 CREATE TABLE items_factura_servicio (
@@ -1121,6 +1121,37 @@ SELECT 1, id_funcionalidad FROM funcionalidad;
 INSERT INTO moneda (nombre, denominacion, simbolo) VALUES 
 ('Dólar Americano', 'Dólar Estadounidense', 'USD'),
 ('Euro', 'Euro de la Unión Europea', 'EUR');
+
+INSERT INTO tipo_contrato (nombre, descripcion) VALUES 
+('SERVICIO', 'Contrato de servicios'),
+('OBRA', 'Contrato de obra'),
+('MANTENIMIENTO', 'Contrato de mantenimiento'),
+('ALQUILER', 'Contrato de alquiler'),
+('COMPRA', 'Contrato de compraventa');
+
+INSERT INTO estado_contrato (nombre, descripcion) VALUES 
+('ACTIVO', 'Contrato vigente'),
+('CANCELADO', 'Contrato cancelado'),
+('FINALIZADO', 'Contrato finalizado'),
+('PENDIENTE', 'Contrato pendiente de aprobación');
+
+INSERT INTO tipo_entidad (nombre, descripcion) VALUES 
+('OSDE', 'Organización Superior de Dirección Empresarial'),
+('UEB', 'Unidad Empresarial de Base'),
+('Empresas Presupuestadas', 'Entidades presupuestadas del Estado'),
+('Instituciones MINSAP', 'Instituciones rectoras del Ministerio de Salud Pública');
+
+INSERT INTO tipo_proveedor (nombre, descripcion) VALUES 
+('Nacional', 'Proveedor nacional'),
+('Internacional', 'Proveedor internacional'),
+('Persona Natural', 'Persona física como proveedor'),
+('Persona Jurídica', 'Empresa o entidad jurídica como proveedor');
+
+INSERT INTO categorias (nombre, descripcion) VALUES 
+('General', 'Categoría general de productos');
+
+INSERT INTO subcategorias (id_categoria, nombre, descripcion) VALUES 
+(1, 'General', 'Subcategoría general de productos');
 
 INSERT INTO tipo_convenio (nombre, descripcion) VALUES 
 ('COMPRA VENTA', 'Convenio de compraventa de productos'),

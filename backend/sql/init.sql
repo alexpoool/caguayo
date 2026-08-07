@@ -1065,23 +1065,6 @@ CREATE TABLE persona_etapa (
     PRIMARY KEY (id_etapa, id_persona)
 );
 
--- Facturas asociadas a Etapas
-CREATE TABLE factura_servicio (
-    id_factura_servicio SERIAL PRIMARY KEY,
-    id_etapa INTEGER REFERENCES etapas(id_etapa),
-    id_certificacion INTEGER REFERENCES certificacion(id_certificacion),
-    alcance VARCHAR(20),
-    codigo_factura VARCHAR(50),
-    id_moneda INTEGER REFERENCES moneda(id_moneda),
-    fecha DATE,
-    descripcion TEXT,
-    importe NUMERIC(15,4) DEFAULT 0.00,
-    pagado NUMERIC(15,2) DEFAULT 0.00,
-    observaciones TEXT,
-    cuenta_factura VARCHAR(50),
-    id_usuario INTEGER
-);
-
 -- Certificaciones de Etapas
 CREATE TABLE certificacion (
     id_certificacion SERIAL PRIMARY KEY,
@@ -1104,6 +1087,23 @@ CREATE TABLE certificacion (
 
 -- Índice para búsquedas por etapa
 CREATE INDEX idx_certificacion_etapa ON certificacion(id_etapa);
+
+-- Facturas asociadas a Etapas
+CREATE TABLE factura_servicio (
+    id_factura_servicio SERIAL PRIMARY KEY,
+    id_etapa INTEGER REFERENCES etapas(id_etapa),
+    id_certificacion INTEGER REFERENCES certificacion(id_certificacion),
+    alcance VARCHAR(20),
+    codigo_factura VARCHAR(50),
+    id_moneda INTEGER REFERENCES moneda(id_moneda),
+    fecha DATE,
+    descripcion TEXT,
+    importe NUMERIC(15,4) DEFAULT 0.00,
+    pagado NUMERIC(15,2) DEFAULT 0.00,
+    observaciones TEXT,
+    cuenta_factura VARCHAR(50),
+    id_usuario INTEGER
+);
 
 -- Items de Factura de Servicio
 CREATE TABLE items_factura_servicio (

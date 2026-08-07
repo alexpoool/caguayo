@@ -80,6 +80,29 @@ WHERE datistemplate = false
 ORDER BY datname;
 ```
 
+### 4. Inicializar la base de datos manualmente
+
+Para crear el esquema y los datos iniciales desde cero sin Docker, ejecuta `backend/sql/init.sql`:
+
+```bash
+# 1. Crear la base de datos (si no existe)
+psql -U postgres -h localhost -c "CREATE DATABASE caguayosa;"
+
+# 2. Ejecutar el script de inicialización
+psql -U postgres -h localhost -d caguayosa -f backend/sql/init.sql
+```
+
+**Notas:**
+
+- El nombre de la base de datos (`caguayosa`) debe coincidir con el de `backend/.env` (variable `DATABASE_URL`).
+- `init.sql` crea las tablas, la vista `v_databases`, los índices y los datos iniciales (monedas, provincias/municipios, catálogos, grupo `ADMINISTRADOR` y el usuario `admin`).
+- **No es re-ejecutable**: las tablas usan `CREATE TABLE` sin `IF NOT EXISTS`, así que si el esquema ya existe dará error al repetirlo. Para re-inicializar desde cero:
+
+  ```bash
+  psql -U postgres -h localhost -d caguayosa -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"
+  psql -U postgres -h localhost -d caguayosa -f backend/sql/init.sql
+  ```
+
 ## Usuario Superadministrador
 
 Al ejecutar `init.sql` por primera vez, se crea automáticamente un super usuario:
