@@ -111,7 +111,7 @@ export function LiquidacionesPage() {
     fecha_emision: new Date().toISOString().split('T')[0],
     fecha_liquidacion: '',
     descripcion: '',
-    id_moneda: 277,
+    id_moneda: 0,
     tipo_pago: 'TRANSFERENCIA',
     importe: 0,
     porcentaje_caguayo: 10,
@@ -159,6 +159,14 @@ export function LiquidacionesPage() {
     queryKey: ['monedas'],
     queryFn: () => monedaService.getMonedas(0, 100)
   });
+
+  useEffect(() => {
+    if (monedas.length === 0) return;
+    const valido = monedas.some(m => m.id_moneda === formData.id_moneda);
+    if (!valido) {
+      setFormData(prev => ({ ...prev, id_moneda: monedas[0].id_moneda }));
+    }
+  }, [monedas, formData.id_moneda]);
 
   const { data: personas = [] } = useQuery({
     queryKey: ['clientes'],
@@ -336,7 +344,7 @@ export function LiquidacionesPage() {
       fecha_emision: new Date().toISOString().split('T')[0],
       fecha_liquidacion: '',
       descripcion: '',
-      id_moneda: 277,
+      id_moneda: monedas[0]?.id_moneda ?? 0,
       tipo_pago: 'TRANSFERENCIA',
       importe: 0,
       porcentaje_caguayo: 10,
@@ -529,7 +537,7 @@ export function LiquidacionesPage() {
         fecha_emision: item.fecha_emision,
         fecha_liquidacion: item.fecha_liquidacion || '',
         descripcion: item.descripcion || '',
-        id_moneda: item.id_moneda || 1,
+        id_moneda: item.id_moneda || (monedas[0]?.id_moneda ?? 0),
         tipo_pago: item.tipo_pago || 'TRANSFERENCIA',
         importe: item.importe || 0,
         porcentaje_caguayo: item.porcentaje_caguayo || 10,

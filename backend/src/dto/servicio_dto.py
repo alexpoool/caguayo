@@ -204,6 +204,8 @@ class FacturaServicioBase(SQLModel):
     observaciones: Optional[str] = None
     cuenta_factura: Optional[str] = None
     id_usuario: Optional[int] = None
+    estado: Optional[str] = None
+    tipo: Optional[str] = "FACTURA"
 
 
 class FacturaServicioCreate(FacturaServicioBase):
@@ -229,6 +231,8 @@ class FacturaServicioUpdate(SQLModel):
     observaciones: Optional[str] = None
     cuenta_factura: Optional[str] = None
     id_usuario: Optional[int] = None
+    estado: Optional[str] = None
+    tipo: Optional[str] = None
     tareas_seleccionadas: Optional[List[int]] = None
     tarea_modifiers: Optional[dict] = None
     ajuste_porciento: Optional[Decimal] = None
@@ -261,6 +265,82 @@ class ItemFacturaServicioRead(ItemFacturaServicioBase):
 
 class FacturaServicioWithItems(FacturaServicioRead):
     items: List[ItemFacturaServicioRead] = []
+
+
+# ==========================================
+# OFERTA SERVICIO
+# ==========================================
+class OfertaBase(SQLModel):
+    id_etapa: Optional[int] = None
+    id_certificacion: Optional[int] = None
+    alcance: Optional[str] = None
+    codigo_oferta: Optional[str] = None
+    id_moneda: Optional[int] = None
+    fecha: Optional[date] = None
+    descripcion: Optional[str] = None
+    importe: Decimal = Decimal("0.00")
+    observaciones: Optional[str] = None
+    cuenta_factura: Optional[str] = None
+    id_usuario: Optional[int] = None
+    estado: Optional[str] = None
+
+
+class OfertaCreate(OfertaBase):
+    tareas_seleccionadas: Optional[List[int]] = None
+    tarea_modifiers: Optional[dict] = None
+    ajuste_porciento: Optional[Decimal] = None
+    ajuste_valor: Optional[Decimal] = None
+
+
+class OfertaRead(OfertaBase):
+    id_oferta: int
+
+
+class OfertaUpdate(SQLModel):
+    id_etapa: Optional[int] = None
+    alcance: Optional[str] = None
+    codigo_oferta: Optional[str] = None
+    id_moneda: Optional[int] = None
+    fecha: Optional[date] = None
+    descripcion: Optional[str] = None
+    importe: Optional[Decimal] = None
+    observaciones: Optional[str] = None
+    cuenta_factura: Optional[str] = None
+    id_usuario: Optional[int] = None
+    estado: Optional[str] = None
+    tareas_seleccionadas: Optional[List[int]] = None
+    tarea_modifiers: Optional[dict] = None
+    ajuste_porciento: Optional[Decimal] = None
+    ajuste_valor: Optional[Decimal] = None
+
+
+class ItemOfertaBase(SQLModel):
+    id_oferta: int
+    id_tarea_etapa: int
+    codigo_extendido: Optional[str] = None
+    concepto: Optional[str] = None
+    unidad_medida: Optional[str] = None
+    cantidad: Decimal = Decimal("0.00")
+    precio: Decimal = Decimal("0.00")
+    ajuste_porciento: Decimal = Decimal("0.00")
+    ajuste_valor: Decimal = Decimal("0.00")
+
+
+class ItemOfertaCreate(ItemOfertaBase):
+    pass
+
+
+class ItemOfertaRead(ItemOfertaBase):
+    id_item_oferta: int
+    id_oferta: int
+
+
+class OfertaWithItems(OfertaRead):
+    items: List[ItemOfertaRead] = []
+
+
+class ConfirmarOfertaRequest(SQLModel):
+    tipo: Optional[str] = "FACTURA"
 
 
 # ==========================================

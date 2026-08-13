@@ -951,6 +951,8 @@ INSERT INTO funcionalidad (nombre) VALUES
 ('realizadores'),
 ('proyectos'),
 ('facturas_servicio'),
+('ofertas'),
+('pre_facturas'),
 ('liquidaciones_servicio'),
 ('dependencias'),
 ('reporte_existencias'),
@@ -1109,6 +1111,37 @@ CREATE TABLE factura_servicio (
 CREATE TABLE items_factura_servicio (
     id_item_factura_servicio SERIAL PRIMARY KEY,
     id_factura_servicio INTEGER NOT NULL REFERENCES factura_servicio(id_factura_servicio) ON DELETE CASCADE,
+    codigo_extendido VARCHAR(100),
+    concepto TEXT,
+    unidad_medida VARCHAR(20),
+    cantidad NUMERIC(12,2) DEFAULT 0.00,
+    precio NUMERIC(15,2) DEFAULT 0.00,
+    ajuste_porciento NUMERIC(5,2) DEFAULT 0.00,
+    ajuste_valor NUMERIC(15,2) DEFAULT 0.00,
+    id_tarea_etapa INTEGER NOT NULL REFERENCES tareas_etapa(id_tarea_etapa) ON DELETE CASCADE
+);
+
+-- Ofertas asociadas a Etapas
+CREATE TABLE oferta (
+    id_oferta SERIAL PRIMARY KEY,
+    id_etapa INTEGER REFERENCES etapas(id_etapa),
+    id_certificacion INTEGER REFERENCES certificacion(id_certificacion),
+    alcance VARCHAR(20),
+    codigo_oferta VARCHAR(50),
+    id_moneda INTEGER REFERENCES moneda(id_moneda),
+    fecha DATE,
+    descripcion TEXT,
+    importe NUMERIC(15,2) DEFAULT 0.00,
+    observaciones TEXT,
+    cuenta_factura VARCHAR(50),
+    id_usuario INTEGER,
+    estado VARCHAR(20) DEFAULT 'PENDIENTE'
+);
+
+-- Items de Oferta de Servicio
+CREATE TABLE items_oferta (
+    id_item_oferta SERIAL PRIMARY KEY,
+    id_oferta INTEGER NOT NULL REFERENCES oferta(id_oferta) ON DELETE CASCADE,
     codigo_extendido VARCHAR(100),
     concepto TEXT,
     unidad_medida VARCHAR(20),

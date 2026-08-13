@@ -68,6 +68,8 @@ import type {
   PersonaEtapa, PersonaEtapaCreate,
   FacturaServicio, FacturaServicioCreate, FacturaServicioUpdate,
   ItemFacturaServicio,
+  Oferta, OfertaCreate, OfertaUpdate,
+  ItemOferta,
   PagoFacturaServicio, PagoFacturaServicioCreate,
   PersonaLiquidacion, PersonaLiquidacionCreate, PersonaLiquidacionUpdate,
   PersonaLiquidacionInput, PersonaLiquidacionInputUpdate,
@@ -700,6 +702,41 @@ export const facturasServicioService = {
   },
   async getFacturaWithItems(facturaId: number): Promise<any> {
     return apiClient.get<any>(`/facturas-servicio/${facturaId}/with-items`);
+  },
+  async aprobarFacturaServicio(id: number): Promise<FacturaServicio> {
+    return apiClient.post<FacturaServicio>(`/facturas-servicio/${id}/aprobar`, {});
+  }
+};
+
+export const ofertasService = {
+  async getOfertas(skip = 0, limit = 100, estado?: string): Promise<Oferta[]> {
+    const params = new URLSearchParams({ skip: String(skip), limit: String(limit) });
+    if (estado) params.append('estado', estado);
+    return apiClient.get<Oferta[]>(`/ofertas?${params.toString()}`);
+  },
+  async getOferta(id: number): Promise<Oferta> {
+    return apiClient.get<Oferta>(`/ofertas/${id}`);
+  },
+  async getOfertasByEtapa(etapaId: number): Promise<Oferta[]> {
+    return apiClient.get<Oferta[]>(`/ofertas/etapa/${etapaId}`);
+  },
+  async createOferta(data: OfertaCreate): Promise<Oferta> {
+    return apiClient.post<Oferta>('/ofertas', data);
+  },
+  async updateOferta(id: number, data: OfertaUpdate): Promise<Oferta> {
+    return apiClient.put<Oferta>(`/ofertas/${id}`, data);
+  },
+  async deleteOferta(id: number): Promise<void> {
+    return apiClient.delete<void>(`/ofertas/${id}`);
+  },
+  async getItemsByOferta(ofertaId: number): Promise<ItemOferta[]> {
+    return apiClient.get<ItemOferta[]>(`/ofertas/${ofertaId}/items`);
+  },
+  async getOfertaWithItems(ofertaId: number): Promise<any> {
+    return apiClient.get<any>(`/ofertas/${ofertaId}/with-items`);
+  },
+  async confirmarOferta(id: number, tipo: 'FACTURA' | 'PREFACTURA' = 'FACTURA'): Promise<FacturaServicio> {
+    return apiClient.post<FacturaServicio>(`/ofertas/${id}/confirmar`, { tipo });
   }
 };
 

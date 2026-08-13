@@ -200,9 +200,9 @@ const loadInitialData = async () => {
           id_producto: p.id_producto,
           cantidad: p.cantidad,
           precio_venta: p.precio_venta,
-          id_moneda: formData.id_moneda ? Number(formData.id_moneda) : DEFAULTS.MONEDA_ID,
+          id_moneda: formData.id_moneda ? Number(formData.id_moneda) : monedas[0]?.id_moneda,
           id_item_anexo: p.id_item_anexo,
-          precios: p.precios?.filter(pr => pr.id_moneda !== (formData.id_moneda ? Number(formData.id_moneda) : DEFAULTS.MONEDA_ID)),
+          precios: p.precios?.filter(pr => pr.id_moneda !== (formData.id_moneda ? Number(formData.id_moneda) : monedas[0]?.id_moneda)),
         })),
       };
       editingId

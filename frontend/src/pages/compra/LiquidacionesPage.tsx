@@ -67,7 +67,7 @@ export function LiquidacionesPage() {
   const [formData, setFormData] = useState<LiquidacionCreate>({
     id_cliente: 0,
     id_convenio: undefined,
-    id_moneda: DEFAULTS.MONEDA_ID,
+    id_moneda: 0,
     devengado: 0,
     tributario: 0,
     comision_bancaria: 0,
@@ -166,6 +166,14 @@ export function LiquidacionesPage() {
     queryFn: () => monedaService.getMonedas()
   });
 
+  useEffect(() => {
+    if (monedas.length === 0) return;
+    const valido = monedas.some(m => m.id_moneda === formData.id_moneda);
+    if (!valido) {
+      setFormData(prev => ({ ...prev, id_moneda: monedas[0].id_moneda }));
+    }
+  }, [monedas, formData.id_moneda]);
+
   const { data: productosPendientes = [] } = useQuery({
     queryKey: ['productos-pendientes', filtroCliente, formData.id_moneda],
     queryFn: () => {
@@ -206,7 +214,7 @@ export function LiquidacionesPage() {
     setFormData({
       id_cliente: 0,
       id_convenio: undefined,
-      id_moneda: DEFAULTS.MONEDA_ID,
+id_moneda: 0,
       devengado: 0,
       tributario: 0,
       comision_bancaria: 0,

@@ -1,10 +1,10 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef, useLayoutEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Button, Input, Label, Card, CardContent, CardHeader, CardTitle, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, ConfirmModal } from '../../components/ui';
 import { etapasProyectoService, solicitudesService, monedaService } from '../../services/api';
 import type { Etapa, EtapaCreate, EtapaUpdate } from '../../types/servicio';
 import type { Moneda } from '../../types/moneda';
-import { Plus, Save, Trash2, Edit, ArrowLeft, Search, Layers, DollarSign, Tag, X, FileText, Users, CheckSquare } from 'lucide-react';
+import { Plus, Save, Trash2, Edit, ArrowLeft, Search, Layers, DollarSign, Tag, X, FileText, Users, CheckSquare, MoreVertical, ChevronDown } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 
@@ -15,6 +15,8 @@ export function EtapasPage() {
   const [searchParams] = useSearchParams();
   const solicitudId = searchParams.get('solicitud');
   const [view, setView] = useState<View>('list');
+
+  const hoy = new Date().toISOString().split('T')[0];
 
   const [etapas, setEtapas] = useState<Etapa[]>([]);
   const [monedas, setMonedas] = useState<Moneda[]>([]);
@@ -38,11 +40,6 @@ export function EtapasPage() {
     type: 'danger'
   });
 
-  const [tipoEtapaModal, setTipoEtapaModal] = useState<{
-    isOpen: boolean;
-    editingItem: Etapa | null;
-  }>({ isOpen: false, editingItem: null });
-
   useEffect(() => { loadInitialData(); }, []);
 
   useEffect(() => {
@@ -52,6 +49,45 @@ export function EtapasPage() {
         .catch(() => setSolicitudInfo(null));
     }
   }, [solicitudId]);
+
+  const [menu, setMenu] = useState<{ id: number; x: number; y: number; anchor: { top: number; left: number; right: number; bottom: number } } | null>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const MARGIN = 8;
+
+  useLayoutEffect(() => {
+    if (!menu || !menuRef.current) return;
+    const m = menuRef.current.getBoundingClientRect();
+    let x = menu.x;
+    let y = menu.y;
+    if (x + m.width > window.innerWidth - MARGIN) {
+      x = Math.max(MARGIN, menu.anchor.right - m.width);
+    }
+    if (y + m.height > window.innerHeight - MARGIN) {
+      y = Math.max(MARGIN, menu.anchor.top - m.height - 4);
+    }
+    if (x !== menu.x || y !== menu.y) {
+      setMenu((prev) => (prev ? { ...prev, x, y } : null));
+    }
+  }, [menu]);
+
+  useEffect(() => {
+    if (!menu) return;
+    const onDocClick = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenu(null);
+    };
+    const onEsc = (e: KeyboardEvent) => { if (e.key === 'Escape') setMenu(null); };
+    const onScrollOrResize = () => setMenu(null);
+    document.addEventListener('click', onDocClick);
+    document.addEventListener('keydown', onEsc);
+    window.addEventListener('scroll', onScrollOrResize, true);
+    window.addEventListener('resize', onScrollOrResize);
+    return () => {
+      document.removeEventListener('click', onDocClick);
+      document.removeEventListener('keydown', onEsc);
+      window.removeEventListener('scroll', onScrollOrResize, true);
+      window.removeEventListener('resize', onScrollOrResize);
+    };
+  }, [menu]);
 
   const loadInitialData = async () => {
     try {
@@ -70,6 +106,10 @@ export function EtapasPage() {
 
   const handleSave = async () => {
     try {
+      if (formData.fecha_pago && formData.fecha_entrega && formData.fecha_pago < formData.fecha_entrega) {
+        toast.error('La fecha de pago debe ser mayor o igual a la fecha de entrega');
+        return;
+      }
       if (editingId) {
         const data: EtapaUpdate = {
           nombre_etapa: formData.nombre_etapa,
@@ -122,29 +162,6 @@ export function EtapasPage() {
   const resetForm = () => { setFormData({}); setEditingId(null); };
 
   const openForm = (item?: Etapa) => {
-    if (item?.tipo_etapa) {
-      setEditingId(item.id_etapa);
-      setFormData({
-        numero_etapa: item.numero_etapa,
-        nombre_etapa: item.nombre_etapa,
-        fecha_entrega: item.fecha_entrega,
-        fecha_pago: item.fecha_pago,
-        descripcion: item.descripcion,
-        valor: item.valor,
-        id_moneda: item.id_moneda,
-        pagada: item.pagada,
-        tipo_etapa: item.tipo_etapa
-      });
-      setView('form');
-    } else {
-      setTipoEtapaModal({ isOpen: true, editingItem: item || null });
-    }
-  };
-
-  const handleTipoEtapaSelect = (tipo: 'TAREAS' | 'CERTIFICACIONES') => {
-    const item = tipoEtapaModal.editingItem;
-    setTipoEtapaModal({ isOpen: false, editingItem: null });
-    
     if (item) {
       setEditingId(item.id_etapa);
       setFormData({
@@ -156,17 +173,13 @@ export function EtapasPage() {
         valor: item.valor,
         id_moneda: item.id_moneda,
         pagada: item.pagada,
-        tipo_etapa: tipo
+        tipo_etapa: item.tipo_etapa || 'TAREAS'
       });
     } else {
       resetForm();
-      setFormData({ tipo_etapa: tipo });
+      setFormData({ tipo_etapa: 'TAREAS', fecha_entrega: hoy });
     }
     setView('form');
-  };
-
-  const handleTipoEtapaCancel = () => {
-    setTipoEtapaModal({ isOpen: false, editingItem: null });
   };
 
   const filteredEtapas = useMemo(() => {
@@ -242,12 +255,6 @@ export function EtapasPage() {
           <Table>
             <TableHeader className="bg-gradient-to-r from-teal-50 to-cyan-50">
               <TableRow>
-                <TableHead>
-                  <div className="flex items-center gap-2">
-                    <Tag className="h-4 w-4 text-teal-600" />
-                    Nº Etapa
-                  </div>
-                </TableHead>
                 <TableHead>Nombre</TableHead>
                 <TableHead>
                   <div className="flex items-center gap-2">
@@ -255,17 +262,17 @@ export function EtapasPage() {
                     Valor
                   </div>
                 </TableHead>
+                <TableHead>Moneda</TableHead>
+                <TableHead>Fecha Pago</TableHead>
                 <TableHead>Pagada</TableHead>
-                <TableHead>Facturas</TableHead>
-                <TableHead>Realizadores</TableHead>
-                <TableHead>Trabajo</TableHead>
+                <TableHead>Opciones</TableHead>
                 <TableHead className="text-right">Acciones</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredEtapas.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center py-12 text-gray-500">
+                  <TableCell colSpan={7} className="text-center py-12 text-gray-500">
                     {searchTerm ? 'No se encontraron etapas que coincidan con la búsqueda' : 'No hay etapas'}
                   </TableCell>
                 </TableRow>
@@ -273,15 +280,16 @@ export function EtapasPage() {
                 filteredEtapas.map((item) => (
                   <TableRow key={item.id_etapa} className="hover:bg-gray-50/50 transition-colors cursor-pointer" onClick={() => setDetailModal({ isOpen: true, item })}>
                     <TableCell>
-                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-teal-50 text-teal-700 rounded text-sm font-mono font-medium">
-                        {item.numero_etapa || 'N/A'}
-                      </span>
-                    </TableCell>
-                    <TableCell>
                       <span className="font-medium text-gray-900">{item.nombre_etapa || 'N/A'}</span>
                     </TableCell>
                     <TableCell className="font-medium text-gray-900">
                       ${Number(item.valor).toFixed(2)}
+                    </TableCell>
+                    <TableCell>
+                      {getMonedaNombre(item.id_moneda)}
+                    </TableCell>
+                    <TableCell>
+                      {item.fecha_pago || 'N/A'}
                     </TableCell>
                     <TableCell>
                       {item.pagada ? (
@@ -293,61 +301,27 @@ export function EtapasPage() {
                       )}
                     </TableCell>
                     <TableCell onClick={(e) => e.stopPropagation()}>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => navigate(`/proyectos/facturas-servicio?etapa=${item.id_etapa}`)}
-                        className="gap-1 text-teal-600 border-teal-200 hover:bg-teal-50 hover:text-teal-700"
-                      >
-                        <FileText className="h-3.5 w-3.5" />
-                        Facturas
-                      </Button>
-                    </TableCell>
-                    <TableCell onClick={(e) => e.stopPropagation()}>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => navigate(`/proyectos/realizadores?etapa=${item.id_etapa}`)}
-                        className="gap-1 text-teal-600 border-teal-200 hover:bg-teal-50 hover:text-teal-700"
-                      >
-                        <Users className="h-3.5 w-3.5" />
-                        Realizadores
-                      </Button>
-                    </TableCell>
-                    <TableCell onClick={(e) => e.stopPropagation()}>
-                      {item.tipo_etapa === 'CERTIFICACIONES' ? (
+                      <div className="relative inline-block">
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => navigate(`/proyectos/certificaciones?etapa=${item.id_etapa}`)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const r = (e.currentTarget as HTMLButtonElement).getBoundingClientRect();
+                            setMenu(menu && menu.id === item.id_etapa
+                              ? null
+                              : { id: item.id_etapa, x: r.left, y: r.bottom + 4, anchor: { top: r.top, left: r.left, right: r.right, bottom: r.bottom } });
+                          }}
                           className="gap-1 text-teal-600 border-teal-200 hover:bg-teal-50 hover:text-teal-700"
                         >
-                          <FileText className="h-3.5 w-3.5" />
-                          Certificaciones
+                          <MoreVertical className="h-3.5 w-3.5" />
+                          Opciones
+                          <ChevronDown className="h-3.5 w-3.5" />
                         </Button>
-                      ) : (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => navigate(`/proyectos/tareas-etapa?etapa=${item.id_etapa}`)}
-                          className="gap-1 text-teal-600 border-teal-200 hover:bg-teal-50 hover:text-teal-700"
-                        >
-                          <CheckSquare className="h-3.5 w-3.5" />
-                          Tareas
-                        </Button>
-                      )}
+                      </div>
                     </TableCell>
                     <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                       <div className="flex justify-end gap-2">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => openForm(item)}
-                          className="text-green-600 hover:text-green-800 hover:bg-green-50 h-8 w-8"
-                          title="Editar"
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
                         <Button
                           variant="ghost"
                           size="icon"
@@ -396,17 +370,16 @@ export function EtapasPage() {
         </CardHeader>
         <CardContent className="p-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="md:col-span-2 bg-gray-50 p-4 rounded-lg border border-gray-200">
-              <div className="flex items-center gap-3">
-                <span className="text-sm font-medium text-gray-600">Tipo de etapa:</span>
-                <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                  formData.tipo_etapa === 'CERTIFICACIONES' 
-                    ? 'bg-teal-100 text-teal-800' 
-                    : 'bg-teal-100 text-teal-800'
-                }`}>
-                  {formData.tipo_etapa === 'CERTIFICACIONES' ? 'Certificaciones' : 'Tareas'}
-                </span>
-              </div>
+            <div>
+              <Label className="text-sm font-medium">Tipo de etapa</Label>
+              <select
+                className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white"
+                value={formData.tipo_etapa || 'TAREAS'}
+                onChange={(e: any) => setFormData({ ...formData, tipo_etapa: e.target.value })}
+              >
+                <option value="TAREAS">Tareas</option>
+                <option value="CERTIFICACIONES">Certificaciones</option>
+              </select>
             </div>
             <div>
               <Label className="text-sm font-medium">Nombre Etapa</Label>
@@ -414,39 +387,23 @@ export function EtapasPage() {
             </div>
             <div>
               <Label className="text-sm font-medium">Fecha Entrega</Label>
-              <div className="flex gap-2">
-                <input 
-                  type="date" 
-                  className="flex-1 mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition-colors" 
-                  value={formData.fecha_entrega || ''} 
-                  onChange={(e: any) => setFormData({...formData, fecha_entrega: e.target.value})} 
-                />
-                <button 
-                  type="button" 
-                  onClick={() => setFormData({...formData, fecha_entrega: new Date().toISOString().split('T')[0]})} 
-                  className="mt-1 px-3 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors text-sm font-medium whitespace-nowrap"
-                >
-                  Hoy
-                </button>
-              </div>
+              <input 
+                type="date" 
+                className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition-colors" 
+                value={formData.fecha_entrega || hoy} 
+                min={hoy}
+                onChange={(e: any) => setFormData({...formData, fecha_entrega: e.target.value})} 
+              />
             </div>
             <div>
               <Label className="text-sm font-medium">Fecha Pago</Label>
-              <div className="flex gap-2">
-                <input 
-                  type="date" 
-                  className="flex-1 mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition-colors" 
-                  value={formData.fecha_pago || ''} 
-                  onChange={(e: any) => setFormData({...formData, fecha_pago: e.target.value})} 
-                />
-                <button 
-                  type="button" 
-                  onClick={() => setFormData({...formData, fecha_pago: new Date().toISOString().split('T')[0]})} 
-                  className="mt-1 px-3 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors text-sm font-medium whitespace-nowrap"
-                >
-                  Hoy
-                </button>
-              </div>
+              <input 
+                type="date" 
+                className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition-colors" 
+                value={formData.fecha_pago || ''} 
+                min={formData.fecha_entrega || hoy}
+                onChange={(e: any) => setFormData({...formData, fecha_pago: e.target.value})} 
+              />
             </div>
             <div>
               <Label className="text-sm font-medium">Valor</Label>
@@ -481,60 +438,6 @@ export function EtapasPage() {
       {view === 'list' && renderList()}
       {view === 'form' && renderForm()}
 
-      {tipoEtapaModal.isOpen && createPortal(
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 animate-fade-in">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full animate-scale-in">
-            <div className="p-6 border-b border-gray-200">
-              <h3 className="text-xl font-bold text-gray-900">
-                {tipoEtapaModal.editingItem ? 'Cambiar tipo de etapa' : '¿Qué tipo de trabajo tendrá esta etapa?'}
-              </h3>
-              <p className="text-sm text-gray-500 mt-1">
-                Selecciona el tipo de trabajo para continuar
-              </p>
-            </div>
-            <div className="p-6 space-y-4">
-              <button
-                onClick={() => handleTipoEtapaSelect('TAREAS')}
-                className="w-full p-4 border-2 border-gray-200 rounded-xl hover:border-teal-500 hover:bg-teal-50 transition-all text-left group"
-              >
-                <div className="flex items-center gap-4">
-                  <div className="p-3 rounded-xl bg-teal-100 group-hover:bg-teal-200 transition-colors">
-                    <FileText className="h-6 w-6 text-teal-600" />
-                  </div>
-                  <div>
-                    <h4 className="font-semibold text-gray-900">Tareas</h4>
-                    <p className="text-sm text-gray-500">Servicios específicos con actividades</p>
-                  </div>
-                </div>
-              </button>
-              <button
-                onClick={() => handleTipoEtapaSelect('CERTIFICACIONES')}
-                className="w-full p-4 border-2 border-gray-200 rounded-xl hover:border-teal-500 hover:bg-teal-50 transition-all text-left group"
-              >
-                <div className="flex items-center gap-4">
-                  <div className="p-3 rounded-xl bg-teal-100 group-hover:bg-teal-200 transition-colors">
-                    <FileText className="h-6 w-6 text-teal-600" />
-                  </div>
-                  <div>
-                    <h4 className="font-semibold text-gray-900">Certificaciones</h4>
-                    <p className="text-sm text-gray-500">Obra, inversión y certificación de pagos</p>
-                  </div>
-                </div>
-              </button>
-            </div>
-            <div className="p-4 border-t border-gray-200 flex justify-end">
-              <button
-                onClick={handleTipoEtapaCancel}
-                className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                Cancelar
-              </button>
-            </div>
-          </div>
-        </div>,
-        document.body
-      )}
-
       <ConfirmModal
         isOpen={confirmModal.isOpen}
         title={confirmModal.title}
@@ -557,8 +460,8 @@ export function EtapasPage() {
                     <div className="flex items-center gap-2">
                       <h3 className="text-2xl font-bold text-gray-900">{detailModal.item.nombre_etapa || `Etapa ${detailModal.item.numero_etapa || ''}`}</h3>
                       <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                        detailModal.item.tipo_etapa === 'CERTIFICACIONES' 
-                          ? 'bg-teal-100 text-teal-800' 
+                        detailModal.item.tipo_etapa === 'CERTIFICACIONES'
+                          ? 'bg-teal-100 text-teal-800'
                           : 'bg-teal-100 text-teal-800'
                       }`}>
                         {detailModal.item.tipo_etapa === 'CERTIFICACIONES' ? 'Certificaciones' : 'Tareas'}
@@ -613,6 +516,8 @@ export function EtapasPage() {
               )}
             </div>
             <div className="p-6 border-t border-gray-200 bg-gray-50 flex justify-end gap-3 flex-wrap">
+              <button onClick={() => navigate(`/proyectos/ofertas?etapa=${detailModal.item!.id_etapa}`)} className="px-4 py-2 text-white bg-gradient-to-r from-amber-500 to-orange-600 rounded-xl hover:from-amber-600 hover:to-orange-700 transition-all font-medium text-sm">Ofertas</button>
+              <button onClick={() => navigate(`/proyectos/pre-facturas?etapa=${detailModal.item!.id_etapa}`)} className="px-4 py-2 text-white bg-gradient-to-r from-blue-500 to-cyan-600 rounded-xl hover:from-blue-600 hover:to-cyan-700 transition-all font-medium text-sm">Pre-facturas</button>
               <button onClick={() => navigate(`/proyectos/facturas-servicio?etapa=${detailModal.item!.id_etapa}`)} className="px-4 py-2 text-white bg-gradient-to-r from-teal-500 to-cyan-600 rounded-xl hover:from-teal-600 hover:to-cyan-700 transition-all font-medium text-sm">Facturas</button>
               <button onClick={() => navigate(`/proyectos/realizadores?etapa=${detailModal.item!.id_etapa}`)} className="px-4 py-2 text-white bg-gradient-to-r from-teal-500 to-cyan-600 rounded-xl hover:from-teal-600 hover:to-cyan-700 transition-all font-medium text-sm">Realizadores</button>
               {detailModal.item.tipo_etapa === 'CERTIFICACIONES' ? (
@@ -626,6 +531,52 @@ export function EtapasPage() {
         </div>,
         document.body
       )}
+
+      {menu && (() => {
+        const et = etapas.find(e => e.id_etapa === menu.id);
+        const go = (path: string) => { setMenu(null); navigate(path); };
+        return createPortal(
+          <div
+            ref={menuRef}
+            className="fixed z-[100] w-52 rounded-xl border border-gray-200 bg-white shadow-xl py-1 animate-fade-in max-h-[70vh] overflow-y-auto"
+            style={{ top: menu.y, left: menu.x }}
+          >
+            <button onClick={() => go(`/proyectos/ofertas?etapa=${menu.id}`)} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-amber-50 hover:text-amber-700">
+              <FileText className="h-4 w-4 text-amber-600" />
+              Oferta
+            </button>
+            <button onClick={() => go(`/proyectos/pre-facturas?etapa=${menu.id}`)} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700">
+              <FileText className="h-4 w-4 text-blue-600" />
+              Pre-factura
+            </button>
+            <button onClick={() => go(`/proyectos/facturas-servicio?etapa=${menu.id}`)} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-teal-50 hover:text-teal-700">
+              <FileText className="h-4 w-4 text-teal-600" />
+              Factura
+            </button>
+            {et?.tipo_etapa === 'CERTIFICACIONES' ? (
+              <button onClick={() => go(`/proyectos/certificaciones?etapa=${menu.id}`)} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-teal-50 hover:text-teal-700">
+                <FileText className="h-4 w-4 text-teal-600" />
+                Certificaciones
+              </button>
+            ) : (
+              <button onClick={() => go(`/proyectos/tareas-etapa?etapa=${menu.id}`)} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-teal-50 hover:text-teal-700">
+                <CheckSquare className="h-4 w-4 text-teal-600" />
+                Tareas
+              </button>
+            )}
+            <button onClick={() => go(`/proyectos/realizadores?etapa=${menu.id}`)} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-teal-50 hover:text-teal-700">
+              <Users className="h-4 w-4 text-teal-600" />
+              Realizadores
+            </button>
+            <div className="my-1 border-t border-gray-100" />
+            <button onClick={() => { if (et) { setMenu(null); openForm(et); } }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-green-50 hover:text-green-700">
+              <Edit className="h-4 w-4 text-green-600" />
+              Editar
+            </button>
+          </div>,
+          document.body
+        );
+      })()}
     </div>
   );
 }

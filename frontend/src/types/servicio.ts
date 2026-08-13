@@ -183,6 +183,8 @@ export interface FacturaServicio {
   observaciones?: string;
   cuenta_factura?: string;
   id_usuario?: number;
+  estado?: string;
+  tipo?: string;
 }
 
 export interface FacturaServicioCreate {
@@ -198,6 +200,7 @@ export interface FacturaServicioCreate {
   observaciones?: string;
   cuenta_factura?: string;
   id_usuario?: number;
+  estado?: string;
   tareas_seleccionadas?: number[];
   tarea_modifiers?: Record<number, { cantidad: number; precio: number; ajuste_porciento: number; ajuste_valor: number }>;
   ajuste_porciento?: number;
@@ -217,8 +220,76 @@ export interface FacturaServicioUpdate {
   observaciones?: string;
   cuenta_factura?: string;
   id_usuario?: number;
+  estado?: string;
   tareas_seleccionadas?: number[];
   tarea_modifiers?: Record<number, { cantidad: number; precio: number; ajuste_porciento: number; ajuste_valor: number }>;
+  ajuste_porciento?: number;
+  ajuste_valor?: number;
+}
+
+export interface Oferta {
+  id_oferta: number;
+  id_etapa?: number;
+  id_certificacion?: number;
+  alcance?: string;
+  codigo_oferta?: string;
+  id_moneda?: number;
+  fecha?: string;
+  descripcion?: string;
+  importe: number;
+  observaciones?: string;
+  cuenta_factura?: string;
+  id_usuario?: number;
+  estado?: string;
+}
+
+export interface OfertaCreate {
+  id_etapa?: number;
+  id_certificacion?: number;
+  alcance?: string;
+  codigo_oferta?: string;
+  id_moneda?: number;
+  fecha?: string;
+  descripcion?: string;
+  importe?: number;
+  observaciones?: string;
+  cuenta_factura?: string;
+  id_usuario?: number;
+  estado?: string;
+  tareas_seleccionadas?: number[];
+  tarea_modifiers?: Record<number, { cantidad: number; precio: number; ajuste_porciento: number; ajuste_valor: number }>;
+  ajuste_porciento?: number;
+  ajuste_valor?: number;
+}
+
+export interface OfertaUpdate {
+  id_etapa?: number;
+  id_certificacion?: number;
+  alcance?: string;
+  codigo_oferta?: string;
+  id_moneda?: number;
+  fecha?: string;
+  descripcion?: string;
+  importe?: number;
+  observaciones?: string;
+  cuenta_factura?: string;
+  id_usuario?: number;
+  estado?: string;
+  tareas_seleccionadas?: number[];
+  tarea_modifiers?: Record<number, { cantidad: number; precio: number; ajuste_porciento: number; ajuste_valor: number }>;
+  ajuste_porciento?: number;
+  ajuste_valor?: number;
+}
+
+export interface ItemOferta {
+  id_item_oferta: number;
+  id_oferta: number;
+  id_tarea_etapa: number;
+  codigo_extendido?: string;
+  concepto?: string;
+  unidad_medida?: string;
+  cantidad: number;
+  precio: number;
   ajuste_porciento?: number;
   ajuste_valor?: number;
 }

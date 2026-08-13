@@ -13,6 +13,8 @@ from src.models.servicio import (
     PagoFacturaServicio,
     PersonaLiquidacion,
     ItemFacturaServicio,
+    Oferta,
+    ItemOferta,
 )
 from src.dto.servicio_dto import (
     ServicioCreate,
@@ -31,6 +33,9 @@ from src.dto.servicio_dto import (
     PersonaLiquidacionCreate,
     PersonaLiquidacionUpdate,
     ItemFacturaServicioCreate,
+    OfertaCreate,
+    OfertaUpdate,
+    ItemOfertaCreate,
 )
 from src.repository.base import CRUDBase
 
@@ -213,6 +218,7 @@ class FacturaServicioRepository(
             select(FacturaServicio)
             .options(selectinload(FacturaServicio.pagos))
             .where(FacturaServicio.id_etapa == id_etapa)
+            .where(FacturaServicio.estado == "APROBADA")
             .order_by(FacturaServicio.id_factura_servicio.desc())
             .limit(1)
         )
@@ -383,3 +389,68 @@ class ItemFacturaServicioRepository(
 
 
 item_factura_servicio_repo = ItemFacturaServicioRepository(ItemFacturaServicio)
+
+
+# ==========================================
+# OFERTA SERVICIO
+# ==========================================
+class OfertaRepository(
+    CRUDBase[Oferta, OfertaCreate, OfertaUpdate]
+):
+    async def get_all_with_details(
+        self,
+        db: AsyncSession,
+        skip: int = 0,
+        limit: int = 100,
+        estado: Optional[str] = None,
+    ) -> List[Oferta]:
+        statement = select(Oferta)
+        if estado:
+            statement = statement.where(Oferta.estado == estado)
+        statement = (
+            statement.offset(skip)
+            .limit(limit)
+            .order_by(Oferta.id_oferta.desc())
+        )
+        results = await db.exec(statement)
+        return results.all()
+
+    async def get_by_etapa(self, db: AsyncSession, id_etapa: int) -> List[Oferta]:
+        statement = (
+            select(Oferta)
+            .where(Oferta.id_etapa == id_etapa)
+            .order_by(Oferta.id_oferta.desc())
+        )
+        results = await db.exec(statement)
+        return results.all()
+
+    async def get_by_codigo(self, db: AsyncSession, codigo: str) -> Optional[Oferta]:
+        statement = select(Oferta).where(Oferta.codigo_oferta == codigo)
+        results = await db.exec(statement)
+        return results.one_or_none()
+
+
+oferta_repo = OfertaRepository(Oferta)
+
+
+class ItemOfertaRepository(CRUDBase[ItemOferta, ItemOfertaCreate, ItemOferta]):
+    async def get_by_oferta(self, db: AsyncSession, id_oferta: int) -> List[ItemOferta]:
+        statement = (
+            select(ItemOferta)
+            .where(ItemOferta.id_oferta == id_oferta)
+            .order_by(ItemOferta.id_item_oferta)
+        )
+        results = await db.exec(statement)
+        return results.all()
+
+    async def delete_by_oferta(self, db: AsyncSession, id_oferta: int) -> bool:
+        statement = select(ItemOferta).where(ItemOferta.id_oferta == id_oferta)
+        results = await db.exec(statement)
+        items = results.all()
+        for item in items:
+            await db.delete(item)
+        await db.commit()
+        return True
+
+
+item_oferta_repo = ItemOfertaRepository(ItemOferta)

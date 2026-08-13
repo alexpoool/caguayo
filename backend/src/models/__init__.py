@@ -54,6 +54,8 @@ from .servicio import (
     ItemFacturaServicio,
     PagoFacturaServicio,
     PersonaLiquidacion,
+    Oferta,
+    ItemOferta,
 )
 from .datos_generales_dependencia import DatosGeneralesDependencia
 

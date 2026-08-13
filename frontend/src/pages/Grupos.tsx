@@ -67,6 +67,8 @@ const MODULOS: Modulo[] = [
       "realizadores",
       "proyectos",
       "facturas_servicio",
+      "ofertas",
+      "pre_facturas",
       "liquidaciones_servicio",
     ],
   },

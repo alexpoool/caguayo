@@ -84,6 +84,9 @@ class Etapa(SQLModel, table=True):
     facturas: List["FacturaServicio"] = Relationship(
         back_populates="etapa", sa_relationship_kwargs={"lazy": "selectin"}
     )
+    ofertas: List["Oferta"] = Relationship(
+        back_populates="etapa", sa_relationship_kwargs={"lazy": "selectin"}
+    )
     certificaciones: List["Certificacion"] = Relationship(
         back_populates="etapa", sa_relationship_kwargs={"lazy": "selectin"}
     )
@@ -160,6 +163,8 @@ class FacturaServicio(SQLModel, table=True):
     observaciones: Optional[str] = None
     cuenta_factura: Optional[str] = Field(default=None, max_length=50)
     id_usuario: Optional[int] = Field(default=None, foreign_key="usuarios.id_usuario")
+    estado: str = Field(default="APROBADA", max_length=20)
+    tipo: str = Field(default="FACTURA", max_length=20)
 
     etapa: "Etapa" = Relationship(back_populates="facturas")
     certificacion: Optional["Certificacion"] = Relationship(back_populates="facturas")
@@ -168,6 +173,34 @@ class FacturaServicio(SQLModel, table=True):
     )
     items: List["ItemFacturaServicio"] = Relationship(
         back_populates="factura", sa_relationship_kwargs={"lazy": "selectin"}
+    )
+
+
+class Oferta(SQLModel, table=True):
+    __tablename__ = "oferta"
+
+    id_oferta: Optional[int] = Field(
+        default=None, primary_key=True, sa_column_kwargs={"autoincrement": True}
+    )
+    id_etapa: Optional[int] = Field(default=None, foreign_key="etapas.id_etapa")
+    id_certificacion: Optional[int] = Field(
+        default=None, foreign_key="certificacion.id_certificacion"
+    )
+    alcance: Optional[str] = Field(default=None, max_length=20)
+    codigo_oferta: Optional[str] = Field(default=None, max_length=50)
+    id_moneda: Optional[int] = Field(default=None, foreign_key="moneda.id_moneda")
+    fecha: Optional[date] = None
+    descripcion: Optional[str] = None
+    importe: Decimal = Field(default=Decimal("0.00"))
+    observaciones: Optional[str] = None
+    cuenta_factura: Optional[str] = Field(default=None, max_length=50)
+    id_usuario: Optional[int] = Field(default=None, foreign_key="usuarios.id_usuario")
+    estado: str = Field(default="PENDIENTE", max_length=20)
+
+    etapa: "Etapa" = Relationship(back_populates="ofertas")
+    certificacion: Optional["Certificacion"] = Relationship(back_populates="ofertas")
+    items: List["ItemOferta"] = Relationship(
+        back_populates="oferta", sa_relationship_kwargs={"lazy": "selectin"}
     )
 
 
@@ -262,6 +295,13 @@ class Certificacion(SQLModel, table=True):
             "lazy": "selectin",
         },
     )
+    ofertas: List["Oferta"] = Relationship(
+        back_populates="certificacion",
+        sa_relationship_kwargs={
+            "foreign_keys": "[Oferta.id_certificacion]",
+            "lazy": "selectin",
+        },
+    )
 
 
 class ItemFacturaServicio(SQLModel, table=True):
@@ -295,4 +335,35 @@ class ItemFacturaServicio(SQLModel, table=True):
         sa_relationship_kwargs={
             "foreign_keys": "[ItemFacturaServicio.id_factura_servicio]"
         },
+    )
+
+
+class ItemOferta(SQLModel, table=True):
+    __tablename__ = "items_oferta"
+
+    id_item_oferta: Optional[int] = Field(
+        default=None, primary_key=True, sa_column_kwargs={"autoincrement": True}
+    )
+    id_oferta: int = Field(
+        sa_column=Column(
+            ForeignKey("oferta.id_oferta", ondelete="CASCADE"), nullable=False
+        )
+    )
+    id_tarea_etapa: int = Field(
+        sa_column=Column(
+            ForeignKey("tareas_etapa.id_tarea_etapa", ondelete="CASCADE"),
+            nullable=False,
+        )
+    )
+    codigo_extendido: Optional[str] = Field(default=None, max_length=100)
+    concepto: Optional[str] = None
+    unidad_medida: Optional[str] = Field(default=None, max_length=20)
+    cantidad: Decimal = Field(default=Decimal("0.00"))
+    precio: Decimal = Field(default=Decimal("0.00"))
+    ajuste_porciento: Decimal = Field(default=Decimal("0.00"))
+    ajuste_valor: Decimal = Field(default=Decimal("0.00"))
+
+    oferta: "Oferta" = Relationship(
+        back_populates="items",
+        sa_relationship_kwargs={"foreign_keys": "[ItemOferta.id_oferta]"},
     )

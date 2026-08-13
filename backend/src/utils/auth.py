@@ -3,14 +3,25 @@ from typing import Optional
 from fastapi import Header, Depends, HTTPException
 from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlalchemy.orm import sessionmaker
-from src.database.connection import get_session, AUTH_DATABASE, _get_engine_for_db
-from src.services.auth_service import decode_token
+from src.database.connection import (
+    get_session,
+    _current_db,
+    _get_engine_for_db,
+)
+from src.services.auth_service import decode_token, get_current_user
 
 logger = logging.getLogger(__name__)
 
-_auth_async_session = sessionmaker(
-    _get_engine_for_db(AUTH_DATABASE), class_=AsyncSession, expire_on_commit=False
-)
+
+def _sessionmaker_for_current_db():
+    """Crea un sessionmaker para la BD del request actual (igual que get_session).
+
+    Antes se usaba una sesión fija a AUTH_DATABASE, lo que impedía resolver
+    correctamente la dependencia/denominación del usuario en la BD correcta.
+    """
+    return sessionmaker(
+        _get_engine_for_db(_current_db.get()), class_=AsyncSession, expire_on_commit=False
+    )
 
 
 async def _get_nit_from_token(
@@ -27,7 +38,7 @@ async def _get_nit_from_token(
         return None
     from src.models.usuarios import Usuario
     from src.models.dependencia import Dependencia
-    async with _auth_async_session() as auth_db:
+    async with _sessionmaker_for_current_db()() as auth_db:
         usuario = await auth_db.get(Usuario, int(usuario_id))
         if not usuario or not usuario.id_dependencia:
             return None
@@ -51,13 +62,18 @@ async def _get_denominacion_from_token(
         return None
     from src.models.usuarios import Usuario
     from src.models.dependencia import Dependencia
-    async with _auth_async_session() as auth_db:
+    async with _sessionmaker_for_current_db()() as auth_db:
         usuario = await auth_db.get(Usuario, int(usuario_id))
         if not usuario or not usuario.id_dependencia:
             return None
         dependencia = await auth_db.get(Dependencia, usuario.id_dependencia)
         if dependencia:
-            return dependencia.denominacion
+            prefijo = (dependencia.denominacion or "").strip()
+            if not prefijo:
+                prefijo = (dependencia.nit or "").strip()
+            if not prefijo:
+                prefijo = (dependencia.nombre or "").strip()[:3].upper()
+            return prefijo or None
     return None
 
 
@@ -74,7 +90,7 @@ async def _get_user_dependencia_id(
     if not usuario_id:
         return None
     from src.models.usuarios import Usuario
-    async with _auth_async_session() as auth_db:
+    async with _sessionmaker_for_current_db()() as auth_db:
         usuario = await auth_db.get(Usuario, int(usuario_id))
         if not usuario or not usuario.id_dependencia:
             return None

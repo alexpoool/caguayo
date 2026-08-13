@@ -12,6 +12,7 @@ from src.services.servicio_service import (
     PagoFacturaServicioService,
     PersonaLiquidacionService,
     certificacion_service,
+    OfertaServicioService,
 )
 from src.dto.servicio_dto import (
     ServicioCreate,
@@ -45,6 +46,12 @@ from src.dto.servicio_dto import (
     CertificacionCreate,
     CertificacionRead,
     CertificacionUpdate,
+    OfertaCreate,
+    OfertaRead,
+    OfertaUpdate,
+    ItemOfertaRead,
+    OfertaWithItems,
+    ConfirmarOfertaRequest,
 )
 from src.utils import _get_denominacion_from_token
 
@@ -370,6 +377,117 @@ async def get_factura_servicio_with_items(
     result = await FacturaServicioService.get_with_items(db, id)
     if not result:
         raise HTTPException(status_code=404, detail="Factura no encontrada")
+    return result
+
+
+@facturas_servicio_router.post(
+    "/{id}/aprobar", response_model=FacturaServicioRead
+)
+async def aprobar_factura_servicio(
+    id: int, db: AsyncSession = Depends(get_session)
+):
+    try:
+        result = await FacturaServicioService.aprobar_prefactura(db, id)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    if not result:
+        raise HTTPException(status_code=404, detail="Factura no encontrada")
+    return result
+
+
+# ==========================================
+# OFERTA SERVICIO
+# ==========================================
+ofertas_router = APIRouter(
+    prefix="/ofertas", tags=["ofertas"], redirect_slashes=False
+)
+
+
+@ofertas_router.get("", response_model=List[OfertaRead])
+async def get_ofertas(
+    skip: int = 0,
+    limit: int = 100,
+    estado: Optional[str] = None,
+    db: AsyncSession = Depends(get_session),
+):
+    return await OfertaServicioService.get_all(db, skip, limit, estado=estado)
+
+
+@ofertas_router.get("/{id}", response_model=OfertaRead)
+async def get_oferta(id: int, db: AsyncSession = Depends(get_session)):
+    result = await OfertaServicioService.get(db, id)
+    if not result:
+        raise HTTPException(status_code=404, detail="Oferta no encontrada")
+    return result
+
+
+@ofertas_router.get("/etapa/{etapa_id}", response_model=List[OfertaRead])
+async def get_ofertas_by_etapa(etapa_id: int, db: AsyncSession = Depends(get_session)):
+    return await OfertaServicioService.get_by_etapa(db, etapa_id)
+
+
+@ofertas_router.post("", response_model=OfertaRead, status_code=201)
+async def create_oferta(
+    data: OfertaCreate,
+    db: AsyncSession = Depends(get_session),
+    authorization: Optional[str] = Header(None),
+):
+    denominacion = await _get_denominacion_from_token(authorization)
+    try:
+        return await OfertaServicioService.create(db, data, denominacion=denominacion)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@ofertas_router.put("/{id}", response_model=OfertaRead)
+async def update_oferta(
+    id: int, data: OfertaUpdate, db: AsyncSession = Depends(get_session)
+):
+    try:
+        result = await OfertaServicioService.update(db, id, data)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    if not result:
+        raise HTTPException(status_code=404, detail="Oferta no encontrada")
+    return result
+
+
+@ofertas_router.delete("/{id}", status_code=204)
+async def delete_oferta(id: int, db: AsyncSession = Depends(get_session)):
+    if not await OfertaServicioService.delete(db, id):
+        raise HTTPException(status_code=404, detail="Oferta no encontrada")
+
+
+@ofertas_router.get("/{id}/items", response_model=List[ItemOfertaRead])
+async def get_oferta_items(id: int, db: AsyncSession = Depends(get_session)):
+    return await OfertaServicioService.get_items(db, id)
+
+
+@ofertas_router.get("/{id}/with-items", response_model=OfertaWithItems)
+async def get_oferta_with_items(id: int, db: AsyncSession = Depends(get_session)):
+    result = await OfertaServicioService.get_with_items(db, id)
+    if not result:
+        raise HTTPException(status_code=404, detail="Oferta no encontrada")
+    return result
+
+
+@ofertas_router.post("/{id}/confirmar", response_model=FacturaServicioRead)
+async def confirmar_oferta(
+    id: int,
+    body: ConfirmarOfertaRequest,
+    db: AsyncSession = Depends(get_session),
+    authorization: Optional[str] = Header(None),
+):
+    denominacion = await _get_denominacion_from_token(authorization)
+    tipo = (body.tipo or "FACTURA").upper()
+    if tipo not in ("FACTURA", "PREFACTURA"):
+        raise HTTPException(status_code=400, detail="tipo debe ser FACTURA o PREFACTURA")
+    try:
+        result = await OfertaServicioService.confirmar(db, id, denominacion=denominacion, tipo=tipo)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    if not result:
+        raise HTTPException(status_code=404, detail="Oferta no encontrada")
     return result
 
 

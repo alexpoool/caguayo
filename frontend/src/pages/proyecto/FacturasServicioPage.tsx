@@ -7,7 +7,8 @@ import { facturasServicioService, etapasProyectoService, monedaService, solicitu
 import type { FacturaServicio, FacturaServicioCreate, FacturaServicioUpdate, Etapa, TareaEtapa, SolicitudServicio, ItemFacturaServicio, Certificacion } from '../../types/servicio';
 import type { Cliente, Cuenta } from '../../types/ventas';
 import type { Moneda } from '../../types/moneda';
-import { Plus, Save, Trash2, Edit, ArrowLeft, Search, Receipt, X, Eye, DollarSign, Hash, Tag, FileText, Check, ChevronDown, Printer, ListChecks, List, Percent, Loader2 } from 'lucide-react';
+import { Plus, Save, Trash2, Edit, ArrowLeft, Search, Receipt, X, Eye, DollarSign, Hash, Tag, FileText, Check, ChevronDown, Printer, ListChecks, List, Loader2 } from 'lucide-react';
+import { getFacturaServicioDocument, getCertificacionFacturaDocument } from './facturaDocumento';
 import toast from 'react-hot-toast';
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { authService } from '../../services/auth';
@@ -158,6 +159,7 @@ export function FacturasServicioPage() {
     message: string;
     onConfirm: () => void;
     type: 'danger' | 'warning' | 'info';
+    confirmText?: string;
   }>({
     isOpen: false,
     title: '',
@@ -323,6 +325,9 @@ export function FacturasServicioPage() {
           return;
         }
       }
+      const modifiers = Object.keys(tareaModifiers).length > 0 ? { tarea_modifiers: tareaModifiers } : {};
+      const certAjustes = esCertificaciones ? { ajuste_porciento: certAjustePorciento, ajuste_valor: certAjusteValor } : {};
+
       if (editingId) {
         const data: FacturaServicioUpdate = {
           id_etapa: formData.id_etapa ? Number(formData.id_etapa) : undefined,
@@ -335,8 +340,6 @@ export function FacturasServicioPage() {
           cuenta_factura: formData.cuenta_factura || undefined,
           tareas_seleccionadas: selectedTareas.length > 0 ? selectedTareas : undefined
         };
-        const modifiers = Object.keys(tareaModifiers).length > 0 ? { tarea_modifiers: tareaModifiers } : {};
-        const certAjustes = esCertificaciones ? { ajuste_porciento: certAjustePorciento, ajuste_valor: certAjusteValor } : {};
         await facturasServicioService.updateFacturaServicio(editingId, { ...data, ...modifiers, ...certAjustes });
       } else {
         const data: FacturaServicioCreate = {
@@ -348,29 +351,28 @@ export function FacturasServicioPage() {
           descripcion: formData.descripcion,
           observaciones: formData.observaciones,
           cuenta_factura: formData.cuenta_factura || undefined,
-          tareas_seleccionadas: selectedTareas
+          tareas_seleccionadas: selectedTareas,
+          estado: 'APROBADA'
         };
-        const modifiers = Object.keys(tareaModifiers).length > 0 ? { tarea_modifiers: tareaModifiers } : {};
-        const certAjustes = esCertificaciones ? { ajuste_porciento: certAjustePorciento, ajuste_valor: certAjusteValor } : {};
         await facturasServicioService.createFacturaServicio({ ...data, ...modifiers, ...certAjustes });
       }
       toast.success(editingId ? 'Actualizado' : 'Creado');
       setView('list');
       resetForm();
-      refresh();
+      refreshAll();
     } catch (error: any) { toast.error(error.message || 'Error'); }
   };
 
-  const handleDelete = async (id: number, codigo: string) => {
+  const handleDelete = async (item: FacturaServicio) => {
     setConfirmModal({
       isOpen: true,
       title: '¿Eliminar factura?',
-      message: `¿Está seguro de eliminar la factura "${codigo || 'Sin código'}"?`,
+      message: `¿Está seguro de eliminar la factura "${item.codigo_factura || 'Sin código'}"?`,
       onConfirm: async () => {
         try {
-          await facturasServicioService.deleteFacturaServicio(id);
+          await facturasServicioService.deleteFacturaServicio(item.id_factura_servicio);
           toast.success('Eliminado');
-          refresh();
+          refreshAll();
         } catch (error: any) { toast.error(error.message || 'Error'); }
       },
       type: 'danger'
@@ -378,7 +380,7 @@ export function FacturasServicioPage() {
   };
 
   const resetForm = () => {
-    setFormData({});
+    setFormData({ fecha: new Date().toISOString().split('T')[0] });
     setEditingId(null);
     setTareasDeEtapa([]);
     setSelectedTareas([]);
@@ -404,7 +406,7 @@ export function FacturasServicioPage() {
         try {
           const [tareas, facturaItems] = await Promise.all([
             tareasEtapaService.getTareasByEtapa(item.id_etapa),
-            facturasServicioService.getItemsByFactura(item.id_factura_servicio)
+            loadItemsForDoc(item)
           ]);
           setTareasDeEtapa(tareas);
           setSelectedTareas(facturaItems.map((fi: ItemFacturaServicio) => fi.id_tarea_etapa));
@@ -459,20 +461,20 @@ export function FacturasServicioPage() {
     }
   };
 
-  const filteredFacturas = useMemo(() => {
-    let result = facturasInfinitas;
-    
+  const filteredDocs = useMemo(() => {
+    let result: FacturaServicio[] = facturasInfinitas.filter(f => f.estado === 'APROBADA');
+
     // Filter by etapa if filtroEtapa is set
     if (filtroEtapa) {
       result = result.filter(f => f.id_etapa === filtroEtapa);
     }
-    
+
     // Filter by solicitud (via etapas) if solicitudParam is set
     if (solicitudParam && etapas.length > 0) {
       const etapaIds = etapas.map(e => e.id_etapa).filter(Boolean);
       result = result.filter(f => f.id_etapa && etapaIds.includes(f.id_etapa));
     }
-    
+
     // Filter by search term
     if (searchTerm) {
       const term = searchTerm.toLowerCase();
@@ -480,7 +482,7 @@ export function FacturasServicioPage() {
         f.codigo_factura?.toLowerCase().includes(term)
       );
     }
-    
+
     return result;
   }, [facturasInfinitas, searchTerm, filtroEtapa, solicitudParam, etapas]);
 
@@ -502,381 +504,17 @@ export function FacturasServicioPage() {
     return e?.tipo_etapa === 'CERTIFICACIONES';
   };
 
-  const getEtapaTipo = (item: FacturaServicio) => {
-    if (!item.id_etapa) {
-      return item.id_certificacion ? 'Certificación' : 'N/A';
-    }
-    const e = etapas.find(et => et.id_etapa === item.id_etapa);
-    if (!e?.tipo_etapa) {
-      return item.id_certificacion ? 'Certificación' : 'N/A';
-    }
-    return e.tipo_etapa === 'CERTIFICACIONES' ? 'Certificación' : 'Tareas';
+  const getFormTitle = () => {
+    const prefix = editingId ? 'Editar' : 'Nueva';
+    return `${prefix} Factura`;
   };
 
-  const getFacturaServicioDocument = (
-    factura: FacturaServicio,
-    etapasData: Etapa[],
-    itemsData: ItemFacturaServicio[],
-    solicitudesData: SolicitudServicio[],
-    autorizadoPor: string,
-    revisadoPor: string,
-    cuentaSeleccionada: any,
-    clientesData: Cliente[] = [],
-    cuentasClientesData: any[] = [],
-    monedasData: Moneda[] = [],
-    contratoNombre: string = '',
-    certificacion?: Certificacion
-  ) => {
-    console.log('DEBUG getFacturaServicioDocument INPUT:', { factura, etapasData, solicitudesData, clientesData });
-
-    const etapa = etapasData.find(e => e.id_etapa === factura.id_etapa);
-    console.log('DEBUG etapa:', etapa);
-    const solicitud = solicitudesData.find(s => s.id_solicitud_servicio === etapa?.id_solicitud_servicio);
-    console.log('DEBUG solicitud:', solicitud);
-    const moneda = monedas.find(m => m.id_moneda === factura.id_moneda);
-
-    const user = authService.getUser();
-    const elaboradoPor = user ? `${user.nombre || ''} ${user.primer_apellido || ''}`.trim() : '';
-    const cargoUsuario = user?.cargo || '';
-
-    const empresa = user?.dependencia;
-    const empresaNombre = empresa?.nombre || 'CAGUAYO S.A.';
-    const empresaDireccion = empresa?.direccion || '';
-    const empresaTelefono = empresa?.telefono || '';
-    const empresaWeb = empresa?.web || '';
-    const empresaEmail = empresa?.email || '';
-    const empresaNit = empresa?.nit || '';
-    const empresaReeup = empresa?.reeup || '';
-
-    // Datos del cliente
-    const clienteId = solicitud?.id_cliente;
-    console.log('DEBUG clienteId:', clienteId);
-    const cliente = clientesData.find(c => Number(c.id_cliente) === Number(clienteId));
-    console.log('DEBUG cliente:', cliente);
-    const codigoProyecto = solicitud?.codigo_proyecto || 'N/A';
-    const nombreCliente = cliente?.nombre || 'N/A';
-    const provinciaCliente = cliente?.provincia?.nombre || 'N/A';
-    const municipioCliente = cliente?.municipio?.nombre || 'N/A';
-    const direccionCliente = cliente?.direccion || 'N/A';
-    const codigoCliente = cliente?.id_cliente?.toString() || 'N/A';
-
-    const cuentaCliente = cuentasClientesData && cuentasClientesData.length > 0 ? cuentasClientesData[0] : null;
-
-    const nombreEtapa = etapa?.nombre_etapa || `Etapa #${etapa?.numero_etapa || 'N/A'}`;
-    const codigoSolicitud = solicitud?.codigo_solicitud || 'N/A';
-    const nombreMoneda = moneda?.nombre || '';
-    const simboloMoneda = moneda?.simbolo || '';
-
-    const tituloDocumento = certificacion ? 'Factura de Certificación' : 'Factura de Servicio';
-
-    const tareasRows = itemsData.map(item => {
-      const importe = Number(item.cantidad || 0) * Number(item.precio || 0);
-      return `
-        <tr>
-          <td>${item.concepto || item.codigo_extendido || 'N/A'}</td>
-          <td>${item.unidad_medida || '-'}</td>
-          <td class="cantidad">${item.cantidad || 0}</td>
-          <td class="precio">${simboloMoneda} ${Number(item.precio || 0).toFixed(2)}</td>
-          <td class="importe">${simboloMoneda} ${importe.toFixed(2)}</td>
-        </tr>
-      `;
-    }).join('');
-    const subtotal = itemsData.reduce((sum, item) => sum + (Number(item.cantidad || 0) * Number(item.precio || 0)), 0);
-    const descuento = itemsData.reduce((sum, item) => {
-      const base = Number(item.cantidad || 0) * Number(item.precio || 0);
-      const ajustePorc = Number(item.ajuste_porciento || 0);
-      const ajusteVal = Number(item.ajuste_valor || 0);
-      const ajusteAmount = base * (ajustePorc / 100) + ajusteVal;
-      return sum - ajusteAmount;
-    }, 0);
-    const totalFinal = subtotal - descuento;
-    const aCobrar = certificacion ? Number(certificacion.a_cobrar || 0) : 0;
-    const impuestoOnat = certificacion ? Number(certificacion.impuesto_venta_onat || 0) : 0;
-    const subtotalCert = aCobrar - impuestoOnat;
-    const descuentoCert = certificacion
-      ? -(aCobrar * Number(certificacion.ajuste_porciento || 0) / 100 + Number(certificacion.ajuste_valor || 0))
-      : 0;
-    const totalCert = subtotalCert - descuentoCert;
-
-    const fechaEmision = factura.fecha ? new Date(factura.fecha).toLocaleDateString('es-ES') : 'N/A';
-
-    return `<!DOCTYPE html>
-<html lang="es">
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-  <title>${tituloDocumento} | ${factura.codigo_factura || 'N/A'}</title>
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { background: #dbdbdb; display: flex; justify-content: center; align-items: center; min-height: 100vh; font-family: 'Courier New', 'Monaco', monospace; padding: 30px 20px; }
-    .documento { max-width: 880px; width: 100%; background: white; box-shadow: 0 12px 28px rgba(0, 0, 0, 0.2); padding: 1rem 1.5rem 1.5rem 1.5rem; border-radius: 4px; }
-    .texto { font-family: 'Courier New', 'Monaco', monospace; font-size: 13px; line-height: 1.2; color: #111; }
-    .header-tcp { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0; gap: 15px; }
-    .header-logo { display: flex; align-items: center; gap: 10px; min-width: 120px; }
-    .header-logo img { width: 160px; height: 160px; object-fit: contain; }
-    .header-center { text-align: center; flex: 1; }
-    .tcp-title { font-size: 26px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; color: black; }
-    .nombre-titular { font-size: 15px; font-weight: bold; margin-top: 6px; }
-    .direccion-contacto { font-size: 11.5px; margin-top: 6px; line-height: 1.2; }
-    .telefonos { font-size: 12px; font-weight: 500; margin-top: 4px; }
-    .reeup { font-size: 12px; font-weight: 500; margin-top: 4px; }
-    .web { font-size: 12px; font-weight: 500; margin-top: 4px; }
-    .email { font-size: 12px; color: black; }
-    .header-box { border: 2px solid black; background: white; padding: 10px 15px; min-width: 180px; border-radius: 4px; }
-    .header-box-title { font-size: 14px; font-weight: 800; text-transform: uppercase; color: black; margin-bottom: 6px; border-bottom: 1px solid black; padding-bottom: 4px; }
-    .header-box-row { font-size: 11px; margin-bottom: 3px; }
-    .header-box-row strong { font-weight: 700; }
-
-    .info-pago { background: white; padding: 8px; border: 1px solid black; margin-bottom: 12px; font-size: 11.5px; }
-    .pago-titulo { font-size: 13px; font-weight: 800; text-transform: uppercase; text-align: center; color: black; margin-bottom: 8px; }
-    .pago-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 4px 8px; }
-    .info-cliente { background: white; padding: 8px; border: 1px solid black; margin-bottom: 8px; font-size: 11.5px; }
-    .cliente-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 4px 8px; }
-    .cliente-grid .full-row { grid-column: 1 / -1; }
-    .cliente-cuenta-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 4px 8px; padding-top: 6px; }
-    .cert-data { background: white; padding: 8px; border: 1px solid black; margin-bottom: 12px; font-size: 11.5px; }
-    .cert-titulo { font-size: 13px; font-weight: 800; text-transform: uppercase; text-align: center; color: black; margin-bottom: 8px; }
-    .cert-grid { display: grid; grid-template-columns: 1fr; gap: 4px; }
-    .cert-row { display: flex; gap: 8px; }
-    .cert-label { font-weight: 700; min-width: 140px; }
-    .cert-value { flex: 1; }
-    .tabla-tareas { width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 16px; }
-    .tabla-tareas th, .tabla-tareas td { border: 1px solid #222; padding: 6px 4px; vertical-align: top; }
-    .tabla-tareas th { background-color: #cccccc; font-weight: 700; text-align: center; }
-    .tabla-tareas td:nth-child(1) { width: 50%; }
-    .tabla-tareas td:nth-child(2) { width: 8%; text-align: center; }
-    .tabla-tareas td:nth-child(3) { width: 10%; text-align: center; }
-    .tabla-tareas td:nth-child(4) { width: 15%; text-align: right; }
-    .tabla-tareas td:nth-child(5) { width: 17%; text-align: right; }
-    .tabla-tareas .subtotal-row td,
-    .tabla-tareas .descuento-row td,
-    .tabla-tareas .total-row td { border: none; }
-    .tabla-tareas .subtotal-row td:nth-child(1),
-    .tabla-tareas .descuento-row td:nth-child(1),
-    .tabla-tareas .total-row td:nth-child(1) { border-left: 1px solid #222; }
-    .tabla-tareas .subtotal-row td:nth-child(3) { border-right: 1px solid #222; border-top: 1px solid #222; }
-    .tabla-tareas .descuento-row td:nth-child(3) { border-right: 1px solid #222; }
-    .tabla-tareas .total-row td:nth-child(3) { border-right: 1px solid #222; }
-    .tabla-tareas .subtotal-row td:nth-child(4),
-    .tabla-tareas .descuento-row td:nth-child(4),
-    .tabla-tareas .total-row td:nth-child(4) { border-left: 1px solid #222; border-right: 1px solid #222; border-top: 1px solid #222; }
-    .tabla-tareas .subtotal-row td:nth-child(5),
-    .tabla-tareas .descuento-row td:nth-child(5) { border-left: 1px solid #222; border-right: 1px solid #222; border-top: 1px solid #222; }
-    .tabla-tareas .total-row td:nth-child(1),
-    .tabla-tareas .total-row td:nth-child(2) { border-bottom: 1px solid #222; }
-    .tabla-tareas .total-row td:nth-child(3) { border-right: 1px solid #222; border-bottom: 1px solid #222; }
-    .tabla-tareas .total-row td:nth-child(4) { border-left: 1px solid #222; border-right: 1px solid #222; border-top: 1px solid #222; border-bottom: 1px solid #222; }
-    .tabla-tareas .total-row td:nth-child(5) { border-left: 1px solid #222; border-right: 1px solid #222; border-top: 1px solid #222; border-bottom: 1px solid #222; }
-    .tabla-tareas .subtotal-row td { font-weight: 700; font-size: 13px; }
-    .tabla-tareas .descuento-row td { font-size: 12px; }
-    .tabla-tareas .total-row td { font-weight: 800; font-size: 14px; }
-    .tabla-totales { width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 16px; }
-    .tabla-totales th, .tabla-totales td { border: 1px solid #222; padding: 6px 4px; vertical-align: top; }
-    .tabla-totales th { background-color: #cccccc; font-weight: 700; text-align: center; }
-    .tabla-totales td:nth-child(1) { width: 70%; }
-    .tabla-totales td:nth-child(2) { width: 30%; text-align: right; }
-    .tabla-totales .total-row td { font-weight: 800; font-size: 13px; }
-    .tabla-totales .subtotal-row td { font-weight: 700; font-size: 13px; border-top: 2px solid #222; }
-    .tabla-totales .descuento-row td { font-size: 12px; }
-    .totales { display: flex; justify-content: flex-end; margin-bottom: 20px; }
-    .cuadro-totales { width: 280px; border: 1px solid black; background: white; padding: 12px 15px; font-size: 13px; font-family: monospace; }
-    .linea-total { display: flex; justify-content: space-between; margin-bottom: 6px; }
-    .total-final { font-weight: 800; font-size: 15px; border-top: 1px solid #000; margin-top: 8px; padding-top: 6px; }
-    .firmas { display: flex; flex-direction: column; gap: 8px; margin-top: 16px; margin-bottom: 12px; }
-    .fila-firmas { display: flex; justify-content: space-between; gap: 20px; }
-    .bloque-firma { flex: 1; border-top: none; padding-top: 8px; font-size: 11px; text-align: left; }
-    .bloque-firma p { margin: 2px 0; }
-    .cargo { font-size: 10px; color: black; }
-    @media (max-width: 650px) { .documento { padding: 0.6rem; } .tabla-tareas th, .tabla-tareas td, .tabla-totales th, .tabla-totales td { padding: 3px 2px; font-size: 10px; } .firmas { flex-direction: column; gap: 6px; } .fila-firmas { flex-direction: column; gap: 10px; } .header-tcp { flex-direction: column; } .header-box { width: 100%; margin-top: 10px; } }
-    @page { margin: 0; }
-    @media print {
-      body { background: white; display: block; padding: 0; min-height: auto; align-items: flex-start; }
-      .documento { max-width: none; box-shadow: none; border-radius: 0; padding: 1cm; padding-top: 160px; padding-bottom: 105px; }
-      .tabla-tareas th, .tabla-totales th { background-color: #cccccc !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-      .print-header { position: fixed; top: 0; left: 0; right: 0; z-index: 1000; background: white; padding: 0 1cm 0 1cm; }
-      .print-footer { position: fixed; bottom: 0; left: 0; right: 0; z-index: 1000; background: white; padding: 0 1cm 0.3cm 1cm; }
-    }
-  </style>
-</head>
-<body>
-  <div class="documento texto">
-    <div class="print-header">
-      <div class="header-tcp">
-        <div class="header-logo">
-          <img src="/logo-black.png" alt="Logo CAGUAYO S.A." />
-        </div>
-        <div class="header-center">
-          <div class="tcp-title">CAGUAYO S.A.</div>
-          <div class="nombre-titular">${empresaNombre}</div>
-          <div class="direccion-contacto">${empresaDireccion}</div>
-          <div class="telefonos">Tel: ${empresaTelefono}</div>
-          ${empresaWeb ? `<div class="web">Web: ${empresaWeb}</div>` : ''}
-          ${empresaEmail ? `<div class="email">${empresaEmail}</div>` : ''}
-          ${empresaReeup ? `<div class="reeup">Código: ${empresaReeup}</div>` : ''}
-        </div>
-        <div class="header-box">
-          <div class="header-box-title">${tituloDocumento}</div>
-          <div class="header-box-row"><strong>No.:</strong> ${factura.codigo_factura || 'N/A'}</div>
-          <div class="header-box-row"><strong>Fecha:</strong> ${fechaEmision}</div>
-          <div class="header-box-row"><strong>Moneda:</strong> ${nombreMoneda || 'N/A'}</div>
-        </div>
-      </div>
-    </div>
-
-    ${cuentaSeleccionada ? `
-    <div class="info-pago">
-      <div class="pago-titulo">PAGUESE A: CAGUAYO S.A.</div>
-      <div class="pago-grid">
-        <div><strong>Cuenta:</strong> ${cuentaSeleccionada.numero_cuenta || 'N/A'}</div>
-        <div><strong>Moneda:</strong> ${monedasData.find(m => m.id_moneda === cuentaSeleccionada.id_moneda)?.simbolo || 'N/A'}</div>
-        <div><strong>Titular:</strong> ${cuentaSeleccionada.titular || 'N/A'}</div>
-        <div><strong>Banco:</strong> ${cuentaSeleccionada.banco || 'N/A'}</div>
-        <div><strong>Sucursal:</strong> ${cuentaSeleccionada.sucursal || 'N/A'}</div>
-        <div><strong>Dirección:</strong> ${cuentaSeleccionada.direccion || 'N/A'}</div>
-      </div>
-    </div>
-    ` : ''}
-
-    <div class="info-cliente">
-      <div class="cliente-grid">
-        <div><strong>Cliente:</strong> ${nombreCliente}</div>
-        <div><strong>NIT:</strong> ${cliente?.nit || ''}</div>
-        <div><strong>Código:</strong> ${codigoCliente}</div>
-        <div class="full-row"><strong>Dirección:</strong> ${direccionCliente}, ${municipioCliente}, ${provinciaCliente}</div>
-      </div>
-      ${cuentaCliente ? `
-      <div class="cliente-cuenta-grid">
-        <div><strong>Cuenta:</strong> ${cuentaCliente.numero_cuenta || 'N/A'}</div>
-        <div><strong>Moneda:</strong> ${monedasData.find(m => m.id_moneda === cuentaCliente.id_moneda)?.simbolo || 'N/A'}</div>
-        <div><strong>Titular:</strong> ${cuentaCliente.titular || 'N/A'}</div>
-        <div><strong>Banco:</strong> ${cuentaCliente.banco || 'N/A'}</div>
-        <div><strong>Sucursal:</strong> ${cuentaCliente.sucursal || 'N/A'}</div>
-        <div><strong>Dirección:</strong> ${cuentaCliente.direccion || 'N/A'}</div>
-      </div>
-      ` : ''}
-    </div>
-
-    <div style="margin: 8px 0 6px 0; font-weight: bold; font-size: 14px;">${contratoNombre || nombreEtapa}</div>
-    ${factura.descripcion ? `<div style="margin: 8px 0 6px 0; font-size: 13px;"><strong>Descripción:</strong> ${factura.descripcion}</div>` : ''}
-
-    ${certificacion ? `
-    <table class="tabla-totales">
-      <thead>
-        <tr>
-          <th>Concepto</th>
-          <th>Importe</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td>Actividad</td>
-          <td>${simboloMoneda} ${aCobrar.toFixed(2)}</td>
-        </tr>
-         <tr>
-          <td>Impuesto Venta ONAT</td>
-          <td>${simboloMoneda} ${impuestoOnat.toFixed(2)}</td>
-        </tr>
-        <tr class="subtotal-row">
-          <td><strong>Subtotal</strong></td>
-          <td>${simboloMoneda} ${subtotalCert.toFixed(2)}</td>
-        </tr>
-        ${descuentoCert !== 0 ? `
-        <tr class="descuento-row">
-          <td><strong>Descuento</strong></td>
-          <td>${simboloMoneda} ${descuentoCert.toFixed(2)}</td>
-        </tr>` : ''}
-        <tr class="total-row">
-          <td><strong>Total</strong></td>
-          <td>${simboloMoneda} ${totalCert.toFixed(2)}</td>
-        </tr>
-      </tbody>
-    </table>
-    ` : `
-    <table class="tabla-tareas">
-      <thead>
-        <tr>
-          <th>Descripción</th>
-          <th>Und</th>
-          <th>Cantidad</th>
-          <th>Precio</th>
-          <th>Importe</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${tareasRows || '<tr><td colspan="5" style="text-align:center;">Sin servicios registrados</td></tr>'}
-        <tr class="subtotal-row">
-          <td></td>
-          <td></td>
-          <td></td>
-          <td><strong>Subtotal</strong></td>
-          <td style="text-align: right;">${simboloMoneda} ${subtotal.toFixed(2)}</td>
-        </tr>
-        ${descuento !== 0 ? `
-        <tr class="descuento-row">
-          <td></td>
-          <td></td>
-          <td></td>
-          <td><strong>Descuento</strong></td>
-          <td style="text-align: right;">${simboloMoneda} ${descuento.toFixed(2)}</td>
-        </tr>` : ''}
-        <tr class="total-row">
-          <td></td>
-          <td></td>
-          <td></td>
-          <td><strong>Total</strong></td>
-          <td style="text-align: right;">${simboloMoneda} ${totalFinal.toFixed(2)}</td>
-        </tr>
-      </tbody>
-    </table>
-    `}
-    ${factura.observaciones?.trim() ? `<br><div style="margin: 8px 0 6px 0; font-size: 13px;"><strong>Observaciones:</strong> ${factura.observaciones}</div>` : ''}
-
-    <div class="print-footer">
-      <div class="firmas">
-        <div class="fila-firmas">
-          <div class="bloque-firma">
-            <p><strong>Confeccionado por:</strong></p>
-            <p>${elaboradoPor}</p>
-            <p class="cargo">${cargoUsuario}</p>
-            <br><br>
-            <div style="border-bottom: 1px solid #222; margin-top: 35px;"></div>
-            <p style="margin-top: 8px;">Firma</p>
-          </div>
-          <div class="bloque-firma">
-            <p><strong>Recibido por:</strong></p>
-            <p><strong>Nombre:</strong> </p>
-            <p><strong>Cargo:</strong> </p>
-            <p><strong>Fecha:</strong> </p>
-            <br>
-            <div style="border-bottom: 1px solid #222; margin-top: 35px;"></div>
-            <p style="margin-top: 8px;">Firma</p>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-</body>
-</html>`;
+  const loadItemsForDoc = async (item: FacturaServicio): Promise<ItemFacturaServicio[]> => {
+    return facturasServicioService.getItemsByFactura(item.id_factura_servicio);
   };
 
-  const getCertificacionFacturaDocument = (
-    factura: FacturaServicio,
-    etapasData: Etapa[],
-    solicitudesData: SolicitudServicio[],
-    certificacion: Certificacion,
-    autorizadoPor: string,
-    revisadoPor: string,
-    cuentaSeleccionada: any,
-    clientesData: Cliente[] = [],
-    cuentasClientesData: any[] = [],
-    monedasData: Moneda[] = [],
-    contratoNombre: string = ''
-  ) => {
-    return getFacturaServicioDocument(
-      factura, etapasData, [], solicitudesData,
-      autorizadoPor, revisadoPor, cuentaSeleccionada,
-      clientesData, cuentasClientesData, monedasData,
-      contratoNombre, certificacion
-    );
+  const refreshAll = () => {
+    refresh();
   };
 
   const handlePrintDirect = async (factura: FacturaServicio) => {
@@ -916,7 +554,7 @@ export function FacturasServicioPage() {
       try {
         const certificacion = await certificacionesService.getCertificacion(factura.id_certificacion);
         const html = getCertificacionFacturaDocument(
-          factura, etapas, solicitudes, certificacion, '', '', cuentaSel || null, clientesData, cuentasCliente, monedas, contratoNombre
+          factura, etapas, solicitudes, certificacion, '', '', cuentaSel || null, clientesData, cuentasCliente, monedas, contratoNombre, 'FACTURA'
         );
         printWindow.document.open();
         printWindow.document.write(html);
@@ -930,13 +568,13 @@ export function FacturasServicioPage() {
 
     let itemsFactura: ItemFacturaServicio[] = [];
     try {
-      itemsFactura = await facturasServicioService.getItemsByFactura(factura.id_factura_servicio);
+      itemsFactura = await loadItemsForDoc(factura);
     } catch (e) {
       console.error('Error loading items:', e);
     }
 
     const html = getFacturaServicioDocument(
-      factura, etapas, itemsFactura, solicitudes, '', '', cuentaSel || null, clientesData, cuentasCliente, monedas, contratoNombre
+      factura, etapas, itemsFactura, solicitudes, '', '', cuentaSel || null, clientesData, cuentasCliente, monedas, contratoNombre, undefined, 'FACTURA'
     );
     printWindow.document.open();
     printWindow.document.write(html);
@@ -981,7 +619,7 @@ export function FacturasServicioPage() {
       try {
         const certificacion = await certificacionesService.getCertificacion(factura.id_certificacion);
         const html = getCertificacionFacturaDocument(
-          factura, etapas, solicitudes, certificacion, '', '', cuentaDefault, clientesData, cuentasCliente, monedas, contratoNombre
+          factura, etapas, solicitudes, certificacion, '', '', cuentaDefault, clientesData, cuentasCliente, monedas, contratoNombre, 'FACTURA'
         );
         printWindow.document.open();
         printWindow.document.write(html);
@@ -994,12 +632,12 @@ export function FacturasServicioPage() {
 
     let itemsFactura: ItemFacturaServicio[] = [];
     try {
-      itemsFactura = await facturasServicioService.getItemsByFactura(factura.id_factura_servicio);
+      itemsFactura = await loadItemsForDoc(factura);
     } catch (e) {
       console.error('Error loading items:', e);
     }
 
-    const html = getFacturaServicioDocument(factura, etapas, itemsFactura, solicitudes, '', '', cuentaDefault, clientesData, cuentasCliente, monedas, contratoNombre);
+    const html = getFacturaServicioDocument(factura, etapas, itemsFactura, solicitudes, '', '', cuentaDefault, clientesData, cuentasCliente, monedas, contratoNombre, undefined, 'FACTURA');
     printWindow.document.open();
     printWindow.document.write(html);
     printWindow.document.close();
@@ -1021,17 +659,19 @@ export function FacturasServicioPage() {
             <h1 className="text-2xl font-bold text-gray-900">Facturas de Servicio</h1>
             <p className="text-gray-500 mt-1">
               {currentEtapa ? `Etapa: ${currentEtapa.nombre_etapa || `#${currentEtapa.numero_etapa}`}` : 'Gestión de facturas de servicio'}
-              {` · ${filteredFacturas.length} factura(s)`}
+              {` · ${filteredDocs.length} documento(s)`}
             </p>
           </div>
         </div>
-        <Button
-          onClick={() => openForm()}
-          className="gap-2 bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300"
-        >
-          <Plus className="h-4 w-4" />
-          Nueva Factura
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button
+            onClick={() => openForm()}
+            className="gap-2 bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300"
+          >
+            <Plus className="h-4 w-4" />
+            Nueva Factura
+          </Button>
+        </div>
       </div>
 
       <div className="relative max-w-md">
@@ -1076,6 +716,12 @@ export function FacturasServicioPage() {
                 <TableHead>
                   <div className="flex items-center gap-2">
                     <DollarSign className="h-4 w-4 text-teal-600" />
+                    Pago
+                  </div>
+                </TableHead>
+                <TableHead>
+                  <div className="flex items-center gap-2">
+                    <DollarSign className="h-4 w-4 text-teal-600" />
                     Pagos
                   </div>
                 </TableHead>
@@ -1083,93 +729,114 @@ export function FacturasServicioPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredFacturas.length === 0 ? (
+              {isLoadingFacturas ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-12 text-gray-500">
-                    {searchTerm ? 'No se encontraron facturas que coincidan con la búsqueda' : 'No hay facturas registradas'}
+                  <TableCell colSpan={7} className="text-center py-12 text-gray-500">
+                    <div className="flex items-center justify-center gap-2">
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                      Cargando...
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ) : filteredDocs.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center py-12 text-gray-500">
+                    {searchTerm
+                      ? 'No se encontraron facturas que coincidan con la búsqueda'
+                      : 'No hay facturas registradas'}
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredFacturas.map((item) => (
-                  <TableRow key={item.id_factura_servicio} className="hover:bg-gray-50/50 transition-colors cursor-pointer" onClick={() => setDetailModal({ isOpen: true, item })}>
-                    <TableCell>
-                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-teal-50 text-teal-700 rounded text-sm font-mono font-medium">
-                        <Hash className="h-3 w-3" />
-                        {item.codigo_factura || 'N/A'}
-                      </span>
-                    </TableCell>
-                    <TableCell className="font-medium text-gray-900">
-                      {getEtapaName(item.id_etapa)}
-                    </TableCell>
-                    <TableCell>
-                      <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium ${getEtapaTipo(item) === 'Certificación'
-                          ? 'bg-teal-100 text-teal-700'
-                          : 'bg-teal-100 text-teal-700'
-                        }`}>
-                        {getEtapaTipo(item)}
-                      </span>
-                    </TableCell>
-                    <TableCell onClick={(e) => e.stopPropagation()}>
-                      <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium ${Number(item.pagado || 0) >= Number(item.importe || 0)
-                          ? 'bg-green-100 text-green-700'
-                          : 'bg-red-100 text-red-700'
-                        }`}>
-                        {Number(item.pagado || 0) >= Number(item.importe || 0) ? 'Pagada' : 'Por pagar'}
-                      </span>
-                    </TableCell>
-                    <TableCell onClick={(e) => e.stopPropagation()}>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => navigate(`/proyectos/pagos-factura-servicio?factura=${item.id_factura_servicio}`)}
-                        className="gap-1 text-teal-600 border-teal-200 hover:bg-teal-50 hover:text-teal-700"
-                      >
-                        <DollarSign className="h-3.5 w-3.5" />
-                        Pagos
-                      </Button>
-                    </TableCell>
-                    <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
-                      <div className="flex justify-end gap-2">
+                filteredDocs.map((item) => {
+                  return (
+                    <TableRow key={item.id_factura_servicio} className="hover:bg-gray-50/50 transition-colors cursor-pointer" onClick={() => setDetailModal({ isOpen: true, item })}>
+                      <TableCell>
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-teal-50 text-teal-700 rounded text-sm font-mono font-medium">
+                          <Hash className="h-3 w-3" />
+                          {item.codigo_factura || 'N/A'}
+                        </span>
+                      </TableCell>
+                      <TableCell className="font-medium text-gray-900">
+                        {getEtapaName(item.id_etapa)}
+                      </TableCell>
+                      <TableCell>
+                        {item.tipo === 'PREFACTURA' ? (
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium bg-blue-100 text-blue-700">
+                            Pre-factura
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium bg-teal-100 text-teal-700">
+                            Factura
+                          </span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium bg-green-100 text-green-700">
+                          Aprobada
+                        </span>
+                      </TableCell>
+                      <TableCell onClick={(e) => e.stopPropagation()}>
+                        <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium ${Number(item.pagado || 0) >= Number(item.importe || 0)
+                            ? 'bg-green-100 text-green-700'
+                            : 'bg-red-100 text-red-700'
+                          }`}>
+                          {Number(item.pagado || 0) >= Number(item.importe || 0) ? 'Pagada' : 'Por pagar'}
+                        </span>
+                      </TableCell>
+                      <TableCell onClick={(e) => e.stopPropagation()}>
                         <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleViewDocument(item)}
-                          className="text-teal-600 hover:text-teal-800 hover:bg-teal-50 h-8 w-8"
-                          title="Ver documento"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => navigate(`/proyectos/pagos-factura-servicio?factura=${item.id_factura_servicio}`)}
+                          className="gap-1 text-teal-600 border-teal-200 hover:bg-teal-50 hover:text-teal-700"
                         >
-                          <Eye className="h-4 w-4" />
+                          <DollarSign className="h-3.5 w-3.5" />
+                          Pagos
                         </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handlePrintDirect(item)}
-                          className="text-gray-600 hover:text-gray-800 hover:bg-gray-50 h-8 w-8"
-                          title="Imprimir"
-                        >
-                          <Printer className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => openForm(item)}
-                          className="text-green-600 hover:text-green-800 hover:bg-green-50 h-8 w-8"
-                          title="Editar"
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleDelete(item.id_factura_servicio, item.codigo_factura || '')}
-                          className="text-red-600 hover:text-red-800 hover:bg-red-50 h-8 w-8"
-                          title="Eliminar"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))
+                      </TableCell>
+                      <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleViewDocument(item)}
+                            className="text-teal-600 hover:text-teal-800 hover:bg-teal-50 h-8 w-8"
+                            title="Ver documento"
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handlePrintDirect(item)}
+                            className="text-gray-600 hover:text-gray-800 hover:bg-gray-50 h-8 w-8"
+                            title="Imprimir"
+                          >
+                            <Printer className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => openForm(item)}
+                            className="text-green-600 hover:text-green-800 hover:bg-green-50 h-8 w-8"
+                            title="Editar"
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleDelete(item)}
+                            className="text-red-600 hover:text-red-800 hover:bg-red-50 h-8 w-8"
+                            title="Eliminar"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
               )}
             </TableBody>
           </Table>
@@ -1194,8 +861,8 @@ export function FacturasServicioPage() {
             <Receipt className="h-8 w-8 text-white" />
           </div>
           <div>
-            <h2 className="text-2xl font-bold text-gray-900">{editingId ? 'Editar Factura' : 'Nueva Factura'}</h2>
-            <p className="text-gray-500 mt-1">Complete los datos de la factura de servicio</p>
+            <h2 className="text-2xl font-bold text-gray-900">{getFormTitle()}</h2>
+            <p className="text-gray-500 mt-1">Complete los datos del documento de servicio</p>
           </div>
         </div>
         <Button variant="outline" onClick={() => { setView('list'); resetForm(); }} className="gap-2">
@@ -1215,11 +882,11 @@ export function FacturasServicioPage() {
           {!etapaParam && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <SearchSelect
-                label="Solicitud de Servicio"
-                placeholder="Buscar solicitud..."
+                label="Proyecto"
+                placeholder="Buscar proyecto..."
                 items={solicitudes}
                 selectedId={selectedSolicitudId}
-                getLabel={(s) => s.codigo_solicitud || `Solicitud #${s.id_solicitud_servicio}`}
+                getLabel={(s) => s.codigo_proyecto || `Solicitud #${s.id_solicitud_servicio}`}
                 getId={(s) => s.id_solicitud_servicio}
                 onSelect={handleSelectSolicitud}
               />
@@ -1580,6 +1247,7 @@ export function FacturasServicioPage() {
         title={confirmModal.title}
         message={confirmModal.message}
         type={confirmModal.type}
+        confirmText={confirmModal.confirmText}
         onConfirm={() => confirmModal.onConfirm()}
         onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
       />

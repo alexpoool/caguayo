@@ -25,4 +25,5 @@ async def generar_codigo_con_padre(
 
 def generar_codigo(denominacion: str, anio: int, entity_id: int) -> str:
     """Genera código con patrón {denominacion}.{año_2d}.{entity_id}. Ej: OFI.26.5"""
-    return f"{denominacion}.{str(anio)[-2:]}.{entity_id}"
+    prefijo = (denominacion or "").strip() or "CAG"
+    return f"{prefijo}.{str(anio)[-2:]}.{entity_id}"

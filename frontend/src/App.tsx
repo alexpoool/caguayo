@@ -83,6 +83,8 @@ import { EtapasPage } from './pages/proyecto/EtapasPage';
 import { TareasEtapaPage } from './pages/proyecto/TareasEtapaPage';
 import { RealizadoresPage } from './pages/proyecto/RealizadoresPage';
 import { FacturasServicioPage } from './pages/proyecto/FacturasServicioPage';
+import { OfertasPage } from './pages/proyecto/OfertasPage';
+import { PreFacturasPage } from './pages/proyecto/PreFacturasPage';
 import { PagosFacturaServicioPage } from './pages/proyecto/PagosFacturaServicioPage';
 import { LiquidacionesPage as ProyectoLiquidacionesPage } from './pages/proyecto/LiquidacionesPage';
 import { CertificacionesPage } from './pages/proyecto/CertificacionesPage';
@@ -104,7 +106,7 @@ const rutasPorModulo: Record<Modulo, string[]> = {
   administracion: ['/administracion', '/configuracion', '/monedas', '/usuarios', '/grupos', '/dependencias', '/cuentas', '/perfil'],
   venta: ['/venta', '/ventas', '/clientes', '/ventas/operaciones', '/ventas/contratos', '/ventas/suplementos', '/ventas/facturas', '/ventas/efectivo', '/ventas/registro-clientes', '/perfil'],
   compra: ['/compra', '/compra/clientes', '/compra/convenios', '/compra/anexos', '/compra/liquidaciones', '/compra/productos-liquidacion', '/compra/proveedores', '/perfil'],
-  proyecto: ['/proyecto', '/proyectos', '/proyectos/servicios', '/proyectos/solicitudes', '/proyectos/proyectos', '/proyectos/etapas', '/proyectos/tareas-etapa', '/proyectos/realizadores', '/proyectos/facturas-servicio', '/proyectos/pagos-factura-servicio', '/proyectos/liquidaciones', '/proyectos/registro-proyectos', '/perfil'],
+  proyecto: ['/proyecto', '/proyectos', '/proyectos/servicios', '/proyectos/solicitudes', '/proyectos/proyectos', '/proyectos/etapas', '/proyectos/tareas-etapa', '/proyectos/realizadores', '/proyectos/facturas-servicio', '/proyectos/ofertas', '/proyectos/pre-facturas', '/proyectos/pagos-factura-servicio', '/proyectos/liquidaciones', '/proyectos/registro-proyectos', '/perfil'],
   reportes: ['/reportes', '/reportes/existencias', '/reportes/movimientos-dependencia', '/reportes/movimientos-producto', '/reportes/proveedores', '/reportes/mincult', '/reportes/onat', '/reportes/registro-creadores', '/reportes/informe-desempeno', '/reportes/resumen-liquidaciones', '/reportes/ingresos-retenciones', '/perfil'],
   home: ['/', '/perfil'],
 };
@@ -530,6 +532,22 @@ function App() {
                       </NavLink>
                     </li>
                   )}
+                  {hasFuncionalidad('ofertas') && (
+                    <li>
+                      <NavLink to="/proyectos/ofertas" onClick={handleLinkClick}>
+                        <FilePlus className="w-6 h-6" />
+                        Ofertas
+                      </NavLink>
+                    </li>
+                  )}
+                  {hasFuncionalidad('pre_facturas') && (
+                    <li>
+                      <NavLink to="/proyectos/pre-facturas" onClick={handleLinkClick}>
+                        <FileText className="w-6 h-6" />
+                        Pre-facturas
+                      </NavLink>
+                    </li>
+                  )}
                   {hasFuncionalidad('liquidaciones_servicio') && (
                     <li>
                       <NavLink to="/proyectos/liquidaciones" onClick={handleLinkClick}>
@@ -869,6 +887,22 @@ function App() {
                   element={
                     <ProtectedRoute moduloActivo={moduloActivo} currentPath="/proyectos/facturas-servicio">
                       <FacturasServicioPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/proyectos/ofertas"
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/proyectos/ofertas">
+                      <OfertasPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/proyectos/pre-facturas"
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/proyectos/pre-facturas">
+                      <PreFacturasPage />
                     </ProtectedRoute>
                   }
                 />

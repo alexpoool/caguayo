@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Button, Input, Label, Card, CardContent, CardHeader, CardTitle, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, ConfirmModal } from '../../components/ui';
+import { ClienteForm } from '../clientes/components/form/ClienteForm';
 import { contratosService, clientesService, monedaService, solicitudesService, configuracionService } from '../../services/api';
 import { useInfiniteList } from '../../hooks/useInfiniteList';
 import type { Cliente } from '../../types/ventas';
@@ -30,7 +31,32 @@ export function ContratosPage() {
   const [filtroCliente, setFiltroCliente] = useState<number | null>(initialClienteId ? Number(initialClienteId) : null);
   const [clienteSearch, setClienteSearch] = useState('');
   const [showClienteDropdown, setShowClienteDropdown] = useState(false);
+  const [showNuevoClienteModal, setShowNuevoClienteModal] = useState(false);
   const clienteRef = useRef<HTMLDivElement | null>(null);
+
+  const hoy = new Date().toISOString().split('T')[0];
+
+  const addDays = (dateStr: string, days: number) => {
+    const [y, m, d] = dateStr.split('-').map(Number);
+    const dt = new Date(y, m - 1, d + days);
+    const mm = String(dt.getMonth() + 1).padStart(2, '0');
+    const dd = String(dt.getDate()).padStart(2, '0');
+    return `${dt.getFullYear()}-${mm}-${dd}`;
+  };
+
+  const handleFechaChange = (fecha: string) => {
+    setFormData(prev => {
+      let nuevaVigencia = prev.vigencia;
+      if (fecha) {
+        if (!prev.vigencia || prev.vigencia <= fecha) {
+          nuevaVigencia = addDays(fecha, 1);
+        }
+      } else {
+        nuevaVigencia = '';
+      }
+      return { ...prev, fecha, vigencia: nuevaVigencia };
+    });
+  };
 
   const filteredClientes = useMemo(() => {
     if (!clienteSearch) return clientes;
@@ -123,14 +149,20 @@ export function ContratosPage() {
 
   const handleSave = async () => {
     try {
+      const fecha = formData.fecha || hoy;
+      const vigencia = formData.vigencia || addDays(fecha, 1);
+      if (!fecha || !vigencia || vigencia <= fecha) {
+        toast.error('La fecha de vigencia debe ser posterior a la fecha');
+        return;
+      }
       const data: ContratoCreate = { 
         nombre: formData.nombre || '',
         id_cliente: Number(formData.id_cliente) || 0, 
         id_estado: estados.length > 0 ? estados[0].id_estado_contrato : 1, 
         id_tipo_contrato: Number(formData.id_tipo_contrato) || (tiposContrato.length > 0 ? tiposContrato[0].id_tipo_contrato : 1), 
         id_moneda: Number(formData.id_moneda) || 1,
-        fecha: formData.fecha || new Date().toISOString().split('T')[0],
-        vigencia: formData.vigencia || new Date().toISOString().split('T')[0],
+        fecha,
+        vigencia,
         proforma: formData.proforma,
         documento_final: formData.documento_final
       };
@@ -171,7 +203,7 @@ export function ContratosPage() {
     });
   };
 
-  const resetForm = () => { setFormData({ fecha: new Date().toISOString().split('T')[0] }); setEditingId(null); };
+  const resetForm = () => { setFormData({ fecha: hoy }); setEditingId(null); };
 
   const openForm = (item?: ContratoWithDetails) => {
     if (item) {
@@ -419,103 +451,96 @@ export function ContratosPage() {
         </CardHeader>
         <CardContent className="p-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Fila 1: Nombre */}
             <div className="md:col-span-2">
               <Label className="text-sm font-medium">Nombre *</Label>
               <Input value={formData.nombre || ''} onChange={(e: any) => setFormData({...formData, nombre: e.target.value})} className="mt-1" placeholder="Nombre del contrato" />
             </div>
-            <div ref={clienteRef} className="relative">
-              <Label className="text-sm font-medium">Cliente *</Label>
-              {initialClienteId ? (
-                <div className="mt-1 px-3 py-2 bg-gray-100 border border-gray-300 rounded-lg text-gray-700">
-                  {clientes.find(c => c.id_cliente === Number(initialClienteId))?.nombre || `Cliente #${initialClienteId}`}
-                </div>
-              ) : (
-                <>
-                  <Input
-                    value={
-                      formData.id_cliente
-                        ? (clientes.find(c => c.id_cliente === Number(formData.id_cliente))?.nombre || '')
-                        : clienteSearch
-                    }
-                    onChange={(e) => {
-                      setClienteSearch(e.target.value);
-                      setFormData({ ...formData, id_cliente: '' });
-                      setShowClienteDropdown(true);
-                    }}
-                    onFocus={() => setShowClienteDropdown(true)}
-                    placeholder="Buscar cliente..."
-                    className="mt-1"
-                  />
-                  {showClienteDropdown && (
-                    <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-48 overflow-y-auto">
-                      {filteredClientes.length === 0 ? (
-                        <div className="px-3 py-2 text-sm text-gray-500">No se encontraron clientes</div>
-                      ) : (
-                        filteredClientes.map(c => (
-                          <button
-                            key={c.id_cliente}
-                            type="button"
-                            className="w-full px-3 py-2 text-left text-sm hover:bg-teal-50 transition-colors"
-                            onClick={() => {
-                              setFormData({ ...formData, id_cliente: c.id_cliente });
-                              setClienteSearch('');
-                              setShowClienteDropdown(false);
-                            }}
-                          >
-                            {c.nombre}
-                          </button>
-                        ))
+
+            {/* Fila 2: Cliente (buscador) + Nuevo Cliente */}
+            <div className="md:col-span-2 flex gap-2 items-start">
+              <div ref={clienteRef} className="relative flex-1">
+                <Label className="text-sm font-medium">Cliente *</Label>
+                {initialClienteId ? (
+                  <div className="mt-1 px-3 py-2 bg-gray-100 border border-gray-300 rounded-lg text-gray-700">
+                    {clientes.find(c => c.id_cliente === Number(initialClienteId))?.nombre || `Cliente #${initialClienteId}`}
+                  </div>
+                ) : (
+                  <>
+                    <div className="relative mt-1">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                      <input
+                        type="text"
+                        placeholder="Buscar cliente..."
+                        value={
+                          formData.id_cliente
+                            ? (clientes.find(c => c.id_cliente === Number(formData.id_cliente))?.nombre || '')
+                            : clienteSearch
+                        }
+                        disabled={!!formData.id_cliente}
+                        onChange={(e) => {
+                          setClienteSearch(e.target.value);
+                          setFormData({ ...formData, id_cliente: '' });
+                          setShowClienteDropdown(true);
+                        }}
+                        onFocus={() => setShowClienteDropdown(true)}
+                        className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white disabled:bg-gray-100"
+                      />
+                      {(formData.id_cliente || clienteSearch) && (
+                        <button
+                          type="button"
+                          onClick={() => { setFormData({ ...formData, id_cliente: '' }); setClienteSearch(''); }}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-red-500"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
                       )}
                     </div>
-                  )}
-                </>
-              )}
+                    {showClienteDropdown && (
+                      <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-auto">
+                        {filteredClientes.length === 0 ? (
+                          <div className="px-4 py-3 text-sm text-gray-500">No se encontraron resultados</div>
+                        ) : (
+                          filteredClientes.map(c => (
+                            <button
+                              key={c.id_cliente}
+                              type="button"
+                              className="w-full text-left px-4 py-2 hover:bg-teal-50 transition-colors border-b border-gray-100 last:border-b-0"
+                              onClick={() => {
+                                setFormData({ ...formData, id_cliente: c.id_cliente });
+                                setClienteSearch('');
+                                setShowClienteDropdown(false);
+                              }}
+                            >
+                              <span className="font-medium text-gray-900">{c.nombre}</span>
+                              <span className="text-xs text-gray-400 ml-2">({c.tipo_persona})</span>
+                            </button>
+                          ))
+                        )}
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+              <div className="pt-7">
+                <button
+                  type="button"
+                  onClick={() => setShowNuevoClienteModal(true)}
+                  className="py-2 px-4 bg-teal-500 hover:bg-teal-600 text-white rounded-lg transition-colors font-medium flex items-center gap-2 whitespace-nowrap"
+                >
+                  <Plus className="h-4 w-4" />
+                  Nuevo Cliente
+                </button>
+              </div>
             </div>
-            <div>
-              <Label className="text-sm font-medium">Proforma</Label>
-              <Input value={formData.proforma || ''} onChange={(e: any) => setFormData({...formData, proforma: e.target.value})} className="mt-1" placeholder="Número de proforma" />
-            </div>
+
+            {/* Fila 3: Tipo + Moneda */}
             <div>
               <Label className="text-sm font-medium">Tipo</Label>
               <select className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white" value={formData.id_tipo_contrato || ''} onChange={(e: any) => setFormData({...formData, id_tipo_contrato: e.target.value})}>
+                <option value="">Seleccionar tipo</option>
                 {tiposContrato.map(t => <option key={t.id_tipo_contrato} value={t.id_tipo_contrato}>{t.nombre}</option>)}
               </select>
-            </div>
-            <div>
-              <Label className="text-sm font-medium">Fecha</Label>
-              <div className="flex gap-2">
-                <input 
-                  type="date" 
-                  className="flex-1 mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition-colors" 
-                  value={formData.fecha || ''} 
-                  onChange={(e: any) => setFormData({...formData, fecha: e.target.value})} 
-                />
-                <button 
-                  type="button" 
-                  onClick={() => setFormData({...formData, fecha: new Date().toISOString().split('T')[0]})} 
-                  className="mt-1 px-3 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors text-sm font-medium whitespace-nowrap"
-                >
-                  Hoy
-                </button>
-              </div>
-            </div>
-            <div>
-              <Label className="text-sm font-medium">Vigencia</Label>
-              <div className="flex gap-2">
-                <input 
-                  type="date" 
-                  className="flex-1 mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition-colors" 
-                  value={formData.vigencia || ''} 
-                  onChange={(e: any) => setFormData({...formData, vigencia: e.target.value})} 
-                />
-                <button 
-                  type="button" 
-                  onClick={() => setFormData({...formData, vigencia: new Date().toISOString().split('T')[0]})} 
-                  className="mt-1 px-3 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors text-sm font-medium whitespace-nowrap"
-                >
-                  Hoy
-                </button>
-              </div>
             </div>
             <div>
               <Label className="text-sm font-medium">Moneda</Label>
@@ -523,6 +548,34 @@ export function ContratosPage() {
                 <option value="">Seleccionar moneda</option>
                 {monedas.map(m => <option key={m.id_moneda} value={m.id_moneda}>{m.nombre}</option>)}
               </select>
+            </div>
+
+            {/* Fila 4: Fecha + Vigencia */}
+            <div>
+              <Label className="text-sm font-medium">Fecha</Label>
+              <input
+                type="date"
+                className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition-colors"
+                value={formData.fecha || ''}
+                min={hoy}
+                onChange={(e: any) => handleFechaChange(e.target.value)}
+              />
+            </div>
+            <div>
+              <Label className="text-sm font-medium">Fecha Vigencia</Label>
+              <input
+                type="date"
+                className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition-colors"
+                value={formData.vigencia || ''}
+                min={formData.fecha ? addDays(formData.fecha, 1) : hoy}
+                onChange={(e: any) => setFormData({...formData, vigencia: e.target.value})}
+              />
+            </div>
+
+            {/* Fila 5: Proforma + Documento Final */}
+            <div>
+              <Label className="text-sm font-medium">Proforma</Label>
+              <Input value={formData.proforma || ''} onChange={(e: any) => setFormData({...formData, proforma: e.target.value})} className="mt-1" placeholder="Número de proforma" />
             </div>
             <div>
               <Label className="text-sm font-medium">Documento Final</Label>
@@ -554,6 +607,51 @@ export function ContratosPage() {
         onConfirm={() => confirmModal.onConfirm()}
         onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
       />
+
+      {showNuevoClienteModal && createPortal(
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 animate-fade-in">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-auto animate-scale-in">
+            <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-teal-50 to-cyan-50">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="p-3 rounded-xl bg-gradient-to-br from-teal-500 to-cyan-600 text-white shadow-lg">
+                    <User className="h-7 w-7" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-gray-900">Nuevo Cliente</h3>
+                    <p className="text-sm text-gray-500">Crear nuevo cliente para el contrato</p>
+                  </div>
+                </div>
+                <button onClick={() => setShowNuevoClienteModal(false)} className="p-2 hover:bg-gray-200 rounded-full transition-colors">
+                  <X className="h-6 w-6 text-gray-500" />
+                </button>
+              </div>
+            </div>
+            <div className="p-6">
+              <ClienteForm
+                editingCliente={null}
+                isProveedorView={false}
+                onCancel={() => {
+                  setShowNuevoClienteModal(false);
+                }}
+                onSubmit={async (data: any) => {
+                  try {
+                    const nuevoCliente = await clientesService.createCliente(data);
+                    setClientes(prev => [nuevoCliente, ...prev]);
+                    setFormData(prev => ({ ...prev, id_cliente: nuevoCliente.id_cliente }));
+                    setClienteSearch('');
+                    setShowNuevoClienteModal(false);
+                    toast.success('Cliente creado');
+                  } catch (error: any) {
+                    toast.error(error.message || 'Error al crear cliente');
+                  }
+                }}
+              />
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
 
       {detailModal.isOpen && detailModal.item && createPortal(
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 animate-fade-in">

@@ -2,12 +2,13 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Button, Input, Label, Card, CardContent, CardHeader, CardTitle, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, ConfirmModal } from '../../components/ui';
+import { ClienteForm } from '../clientes/components/form/ClienteForm';
 import { solicitudesService, contratosService, clientesService, monedaService, suplementosService, configuracionService } from '../../services/api';
 import type { SolicitudServicio, SolicitudServicioCreate, SolicitudServicioUpdate } from '../../types/servicio';
 import type { ContratoWithDetails, ContratoCreate, SuplementoWithDetails, SuplementoCreate } from '../../types/contrato';
 import type { Cliente } from '../../types/ventas';
 import type { Moneda } from '../../types/moneda';
-import { Plus, Save, Trash2, Edit, ArrowLeft, Search, ClipboardList, Tag, X, Layers, CheckCircle, CheckSquare, FileText, FilePlus, User, DollarSign, Calendar, Loader2 } from 'lucide-react';
+import { Plus, Save, Trash2, Edit, ArrowLeft, Search, ClipboardList, Tag, X, Layers, CheckCircle, CheckSquare, FileText, FilePlus, Loader2, User } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import { useInfiniteList } from '../../hooks/useInfiniteList';
@@ -43,7 +44,6 @@ export function ProyectosPage() {
 
   const {
     items: solicitudes,
-    isLoading,
     isFetchingMore,
     refresh,
     hasMore,
@@ -82,8 +82,34 @@ export function ProyectosPage() {
   const [formContrato, setFormContrato] = useState<Record<string, any>>({});
   const [clienteSearch, setClienteSearch] = useState('');
   const [showClienteDropdown, setShowClienteDropdown] = useState(false);
+  const [showNuevoClienteModal, setShowNuevoClienteModal] = useState(false);
+  const [nuevoClienteTarget, setNuevoClienteTarget] = useState<'form' | 'contrato'>('form');
   const clienteRef = useRef<HTMLDivElement | null>(null);
   const [clientes, setClientes] = useState<Cliente[]>([]);
+
+  const hoy = new Date().toISOString().split('T')[0];
+
+  const addDays = (dateStr: string, days: number) => {
+    const [y, m, d] = dateStr.split('-').map(Number);
+    const dt = new Date(y, m - 1, d + days);
+    const mm = String(dt.getMonth() + 1).padStart(2, '0');
+    const dd = String(dt.getDate()).padStart(2, '0');
+    return `${dt.getFullYear()}-${mm}-${dd}`;
+  };
+
+  const handleFechaSolicitudChange = (fecha: string) => {
+    setFormData(prev => {
+      let nuevaEntrega = prev.fecha_entrega;
+      if (fecha) {
+        if (!prev.fecha_entrega || prev.fecha_entrega <= fecha) {
+          nuevaEntrega = addDays(fecha, 1);
+        }
+      } else {
+        nuevaEntrega = '';
+      }
+      return { ...prev, fecha_solicitud: fecha, fecha_entrega: nuevaEntrega };
+    });
+  };
 
   const filteredClientes = useMemo(() => {
     if (!clienteSearch) return clientes;
@@ -96,8 +122,6 @@ export function ProyectosPage() {
     queryFn: () => configuracionService.getEstadosContrato(),
   });
   const tiposContrato = [{ id: 1, nombre: 'SERVICIO' }, { id: 2, nombre: 'OBRA' }, { id: 3, nombre: 'MANTENIMIENTO' }, { id: 4, nombre: 'ALQUILER' }, { id: 5, nombre: 'COMPRA' }];
-
-  const estados = ['PENDIENTE', 'EN NEGOCIACION', 'EN PROCESO', 'TERMINADA', 'CANCELADA'];
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -125,45 +149,49 @@ export function ProyectosPage() {
 
   const handleSave = async () => {
     try {
+      if (!formData.id_cliente) {
+        toast.error('Debe seleccionar un cliente');
+        return;
+      }
+      const fechaSolicitud = formData.fecha_solicitud || hoy;
+      const fechaEntrega = formData.fecha_entrega || (fechaSolicitud ? addDays(fechaSolicitud, 1) : '');
+      if (!fechaSolicitud || !fechaEntrega || fechaEntrega <= fechaSolicitud) {
+        toast.error('La fecha de entrega debe ser posterior a la fecha de solicitud');
+        return;
+      }
       if (editingId) {
         const data: SolicitudServicioUpdate = {
-          nombres_rep: formData.nombres_rep,
-          apellido1_rep: formData.apellido1_rep,
-          apellido2_rep: formData.apellido2_rep,
-          ci_rep: formData.ci_rep,
-          telefono_rep: formData.telefono_rep,
-          cargo: formData.cargo,
+          id_cliente: Number(formData.id_cliente) || undefined,
           descripcion: formData.descripcion,
-          fecha_solicitud: formData.fecha_solicitud,
-          fecha_entrega: formData.fecha_entrega,
+          fecha_solicitud: fechaSolicitud,
+          fecha_entrega: fechaEntrega,
           estado: formData.estado,
           observaciones: formData.observaciones,
           material_asumido_x: formData.material_asumido_x === 'true' || formData.material_asumido_x === true,
           aprobado: formData.aprobado === 'true' || formData.aprobado === true
         };
         await solicitudesService.updateSolicitud(editingId, data);
+        toast.success('Actualizado');
+        setView('list');
+        resetForm();
+        refresh();
       } else {
         const data: SolicitudServicioCreate = {
-          nombres_rep: formData.nombres_rep,
-          apellido1_rep: formData.apellido1_rep,
-          apellido2_rep: formData.apellido2_rep,
-          ci_rep: formData.ci_rep,
-          telefono_rep: formData.telefono_rep,
-          cargo: formData.cargo,
+          id_cliente: Number(formData.id_cliente) || undefined,
           descripcion: formData.descripcion,
-          fecha_solicitud: formData.fecha_solicitud || new Date().toISOString().split('T')[0],
-          fecha_entrega: formData.fecha_entrega,
+          fecha_solicitud: fechaSolicitud,
+          fecha_entrega: fechaEntrega,
           estado: formData.estado || 'PENDIENTE',
           observaciones: formData.observaciones,
           material_asumido_x: formData.material_asumido_x === 'true' || formData.material_asumido_x === true,
           aprobado: false
         };
-        await solicitudesService.createSolicitud(data);
+        const nuevoSolicitud = await solicitudesService.createSolicitud(data);
+        toast.success('Creado');
+        resetForm();
+        refresh();
+        handleAsignarContrato(nuevoSolicitud);
       }
-      toast.success(editingId ? 'Actualizado' : 'Creado');
-      setView('list');
-      resetForm();
-      refresh();
     } catch (error: any) { toast.error(error.message || 'Error'); }
   };
 
@@ -242,7 +270,7 @@ export function ProyectosPage() {
     try {
       const data = await contratosService.getContratos(0, 1000);
       setAprobarModal(prev => ({ ...prev, contratos: data, loadingContratos: false }));
-    } catch (error: any) {
+    } catch {
       toast.error('Error al cargar contratos');
       setAprobarModal(prev => ({ ...prev, isOpen: false, loadingContratos: false }));
     }
@@ -261,11 +289,6 @@ export function ProyectosPage() {
   const confirmarAprobacion = async () => {
     if (!aprobarModal.solicitud) return;
     
-    if (!formContrato.id_moneda) {
-      toast.error('Debe seleccionar una moneda');
-      return;
-    }
-    
     try {
       if (aprobarModal.modo === 'crear') {
         if (!formContrato.id_cliente) {
@@ -277,7 +300,7 @@ export function ProyectosPage() {
           id_cliente: Number(formContrato.id_cliente),
           id_estado: Number(formContrato.id_estado) || (estadosContrato[0]?.id_estado_contrato ?? 0),
           id_tipo_contrato: Number(formContrato.id_tipo_contrato) || 1,
-          id_moneda: Number(formContrato.id_moneda) || 1,
+          id_moneda: Number(formContrato.id_moneda) || monedas[0]?.id_moneda,
           fecha: formContrato.fecha || new Date().toISOString().split('T')[0],
           vigencia: formContrato.vigencia || new Date().toISOString().split('T')[0],
           proforma: formContrato.proforma,
@@ -351,6 +374,7 @@ export function ProyectosPage() {
       setAprobarModal({ isOpen: false, solicitud: null, modo: 'seleccionar', contratos: [], loadingContratos: false });
       setFormContrato({});
       setSuplementosPorContrato({});
+      setView('list');
       refresh();
     } catch (error: any) {
       toast.error(error.message || 'Error al aprobar');
@@ -362,7 +386,7 @@ export function ProyectosPage() {
     try {
       const contrato = await contratosService.getContrato(idContrato);
       setContratoModal({ isOpen: true, item: contrato, loading: false });
-    } catch (error: any) {
+    } catch {
       toast.error('Error al cargar contrato');
       setContratoModal({ isOpen: false, item: null, loading: false });
     }
@@ -373,24 +397,19 @@ export function ProyectosPage() {
     try {
       const suplemento = await suplementosService.getSuplemento(idSuplemento);
       setSuplementoModal({ isOpen: true, item: suplemento, loading: false });
-    } catch (error: any) {
+    } catch {
       toast.error('Error al cargar complemento');
       setSuplementoModal({ isOpen: false, item: null, loading: false });
     }
   };
 
-  const resetForm = () => { setFormData({}); setEditingId(null); };
+  const resetForm = () => { setFormData({ fecha_solicitud: hoy }); setEditingId(null); setClienteSearch(''); };
 
   const openForm = (item?: SolicitudServicio) => {
     if (item) {
       setEditingId(item.id_solicitud_servicio);
       setFormData({
-        nombres_rep: item.nombres_rep,
-        apellido1_rep: item.apellido1_rep,
-        apellido2_rep: item.apellido2_rep,
-        ci_rep: item.ci_rep,
-        telefono_rep: item.telefono_rep,
-        cargo: item.cargo,
+        id_cliente: item.id_cliente,
         descripcion: item.descripcion,
         fecha_solicitud: item.fecha_solicitud,
         fecha_entrega: item.fecha_entrega,
@@ -426,6 +445,13 @@ export function ProyectosPage() {
             </p>
           </div>
         </div>
+        <Button
+          onClick={() => openForm()}
+          className="gap-2 bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300"
+        >
+          <Plus className="h-4 w-4" />
+          Nuevo Proyecto
+        </Button>
       </div>
 
       <div className="flex gap-2 mb-4">
@@ -645,7 +671,7 @@ export function ProyectosPage() {
             <ClipboardList className="h-8 w-8 text-white" />
           </div>
           <div>
-            <h2 className="text-2xl font-bold text-gray-900">{editingId ? 'Editar Solicitud' : 'Nueva Solicitud'}</h2>
+            <h2 className="text-2xl font-bold text-gray-900">{editingId ? 'Editar Proyecto' : 'Nuevo Proyecto'}</h2>
             <p className="text-gray-500 mt-1">Complete los datos de la solicitud</p>
           </div>
         </div>
@@ -666,63 +692,90 @@ export function ProyectosPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <Label className="text-sm font-medium">Fecha Solicitud</Label>
-              <div className="flex gap-2">
-                <input 
-                  type="date" 
-                  className="flex-1 mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition-colors" 
-                  value={formData.fecha_solicitud || ''} 
-                  onChange={(e: any) => setFormData({...formData, fecha_solicitud: e.target.value})} 
-                />
-                <button 
-                  type="button" 
-                  onClick={() => setFormData({...formData, fecha_solicitud: new Date().toISOString().split('T')[0]})} 
-                  className="mt-1 px-3 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors text-sm font-medium whitespace-nowrap"
-                >
-                  Hoy
-                </button>
-              </div>
+              <input
+                type="date"
+                className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition-colors"
+                value={formData.fecha_solicitud || ''}
+                min={hoy}
+                onChange={(e: any) => handleFechaSolicitudChange(e.target.value)}
+              />
             </div>
             <div>
               <Label className="text-sm font-medium">Fecha Entrega</Label>
-              <div className="flex gap-2">
-                <input 
-                  type="date" 
-                  className="flex-1 mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition-colors" 
-                  value={formData.fecha_entrega || ''} 
-                  onChange={(e: any) => setFormData({...formData, fecha_entrega: e.target.value})} 
-                />
-                <button 
-                  type="button" 
-                  onClick={() => setFormData({...formData, fecha_entrega: new Date().toISOString().split('T')[0]})} 
-                  className="mt-1 px-3 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors text-sm font-medium whitespace-nowrap"
+              <input
+                type="date"
+                className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition-colors"
+                value={formData.fecha_entrega || ''}
+                min={formData.fecha_solicitud ? addDays(formData.fecha_solicitud, 1) : hoy}
+                onChange={(e: any) => setFormData({...formData, fecha_entrega: e.target.value})}
+              />
+            </div>
+            <div className="md:col-span-2 flex gap-2 items-start">
+              <div ref={clienteRef} className="relative flex-1">
+                <Label className="text-sm font-medium">Cliente *</Label>
+                <div className="relative mt-1">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <input
+                    type="text"
+                    placeholder="Buscar cliente..."
+                    value={
+                      formData.id_cliente
+                        ? (clientes.find(c => c.id_cliente === Number(formData.id_cliente))?.nombre || '')
+                        : clienteSearch
+                    }
+                    disabled={!!formData.id_cliente}
+                    onChange={(e) => {
+                      setClienteSearch(e.target.value);
+                      setFormData({ ...formData, id_cliente: '' });
+                      setShowClienteDropdown(true);
+                    }}
+                    onFocus={() => setShowClienteDropdown(true)}
+                    className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white disabled:bg-gray-100"
+                  />
+                  {(formData.id_cliente || clienteSearch) && (
+                    <button
+                      type="button"
+                      onClick={() => { setFormData({ ...formData, id_cliente: '' }); setClienteSearch(''); }}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-red-500"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
+                {showClienteDropdown && (
+                  <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-auto">
+                    {filteredClientes.length === 0 ? (
+                      <div className="px-4 py-3 text-sm text-gray-500">No se encontraron resultados</div>
+                    ) : (
+                      filteredClientes.map(c => (
+                        <button
+                          key={c.id_cliente}
+                          type="button"
+                          className="w-full text-left px-4 py-2 hover:bg-teal-50 transition-colors border-b border-gray-100 last:border-b-0"
+                          onClick={() => {
+                            setFormData({ ...formData, id_cliente: c.id_cliente });
+                            setClienteSearch('');
+                            setShowClienteDropdown(false);
+                          }}
+                        >
+                          <span className="font-medium text-gray-900">{c.nombre}</span>
+                          <span className="text-xs text-gray-400 ml-2">({c.tipo_persona})</span>
+                        </button>
+                      ))
+                    )}
+                  </div>
+                )}
+              </div>
+              <div className="pt-7">
+                <button
+                  type="button"
+                  onClick={() => { setNuevoClienteTarget('form'); setShowNuevoClienteModal(true); }}
+                  className="py-2 px-4 bg-teal-500 hover:bg-teal-600 text-white rounded-lg transition-colors font-medium flex items-center gap-2 whitespace-nowrap"
                 >
-                  Hoy
+                  <Plus className="h-4 w-4" />
+                  Nuevo Cliente
                 </button>
               </div>
-            </div>
-            <div>
-              <Label className="text-sm font-medium">Nombres Representante</Label>
-              <Input value={formData.nombres_rep || ''} onChange={(e: any) => setFormData({...formData, nombres_rep: e.target.value})} className="mt-1" placeholder="Nombres del representante" />
-            </div>
-            <div>
-              <Label className="text-sm font-medium">Primer Apellido</Label>
-              <Input value={formData.apellido1_rep || ''} onChange={(e: any) => setFormData({...formData, apellido1_rep: e.target.value})} className="mt-1" placeholder="Primer apellido" />
-            </div>
-            <div>
-              <Label className="text-sm font-medium">Segundo Apellido</Label>
-              <Input value={formData.apellido2_rep || ''} onChange={(e: any) => setFormData({...formData, apellido2_rep: e.target.value})} className="mt-1" placeholder="Segundo apellido" />
-            </div>
-            <div>
-              <Label className="text-sm font-medium">CI Representante</Label>
-              <Input value={formData.ci_rep || ''} onChange={(e: any) => setFormData({...formData, ci_rep: e.target.value})} className="mt-1" placeholder="Cédula de identidad" />
-            </div>
-            <div>
-              <Label className="text-sm font-medium">Teléfono Representante</Label>
-              <Input value={formData.telefono_rep || ''} onChange={(e: any) => setFormData({...formData, telefono_rep: e.target.value})} className="mt-1" placeholder="Teléfono de contacto" />
-            </div>
-            <div>
-              <Label className="text-sm font-medium">Cargo</Label>
-              <Input value={formData.cargo || ''} onChange={(e: any) => setFormData({...formData, cargo: e.target.value})} className="mt-1" placeholder="Cargo del representante" />
             </div>
             <div className="md:col-span-2">
               <Label className="text-sm font-medium">Descripción</Label>
@@ -808,18 +861,10 @@ export function ProyectosPage() {
                   <p className="font-bold text-gray-900">{detailModal.item.fecha_entrega || 'N/A'}</p>
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="bg-gray-50 p-4 rounded-xl">
-                  <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Cargo</p>
-                  <p className="font-bold text-gray-900">{detailModal.item.cargo || 'N/A'}</p>
-                </div>
-              </div>
-              {(detailModal.item.nombres_rep || detailModal.item.apellido1_rep) && (
+              {(detailModal.item.id_cliente) && (
                 <div className="bg-gradient-to-br from-teal-50 to-cyan-50 p-4 rounded-xl border border-teal-100">
-                  <p className="text-xs text-teal-600 uppercase tracking-wider mb-1">Representante</p>
-                  <p className="font-bold text-gray-900">{[detailModal.item.nombres_rep, detailModal.item.apellido1_rep, detailModal.item.apellido2_rep].filter(Boolean).join(' ')}</p>
-                  {detailModal.item.ci_rep && <p className="text-sm text-gray-600 mt-1">CI: {detailModal.item.ci_rep}</p>}
-                  {detailModal.item.telefono_rep && <p className="text-sm text-gray-600 mt-1">Tel: {detailModal.item.telefono_rep}</p>}
+                  <p className="text-xs text-teal-600 uppercase tracking-wider mb-1">Cliente</p>
+                  <p className="font-bold text-gray-900">{clientes.find(c => c.id_cliente === detailModal.item?.id_cliente)?.nombre || 'N/A'}</p>
                 </div>
               )}
               {detailModal.item.descripcion && (
@@ -968,7 +1013,7 @@ export function ProyectosPage() {
                     <p className="text-sm text-gray-500">{aprobarModal.solicitud?.codigo_solicitud || 'Sin código'}</p>
                   </div>
                 </div>
-                <button onClick={() => { setAprobarModal({ isOpen: false, solicitud: null, modo: 'seleccionar', contratos: [], loadingContratos: false }); setFormContrato({}); }} className="p-2 hover:bg-gray-200 rounded-full transition-colors">
+                <button onClick={() => { setAprobarModal({ isOpen: false, solicitud: null, modo: 'seleccionar', contratos: [], loadingContratos: false }); setFormContrato({}); setSuplementosPorContrato({}); setView('list'); }} className="p-2 hover:bg-gray-200 rounded-full transition-colors">
                   <X className="h-6 w-6 text-gray-500" />
                 </button>
               </div>
@@ -1045,45 +1090,72 @@ export function ProyectosPage() {
                         placeholder="Nombre del contrato"
                       />
                     </div>
-                    <div ref={clienteRef} className="relative">
-                      <Label className="text-sm font-medium">Cliente *</Label>
-                      <Input
-                        value={
-                          formContrato.id_cliente
-                            ? (clientes.find(c => c.id_cliente === Number(formContrato.id_cliente))?.nombre || '')
-                            : clienteSearch
-                        }
-                        onChange={(e) => {
-                          setClienteSearch(e.target.value);
-                          setFormContrato({ ...formContrato, id_cliente: '' });
-                          setShowClienteDropdown(true);
-                        }}
-                        onFocus={() => setShowClienteDropdown(true)}
-                        placeholder="Buscar cliente..."
-                        className="mt-1"
-                      />
-                      {showClienteDropdown && (
-                        <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-48 overflow-y-auto">
-                          {filteredClientes.length === 0 ? (
-                            <div className="px-3 py-2 text-sm text-gray-500">No se encontraron clientes</div>
-                          ) : (
-                            filteredClientes.map(c => (
-                              <button
-                                key={c.id_cliente}
-                                type="button"
-                                className="w-full px-3 py-2 text-left text-sm hover:bg-teal-50 transition-colors"
-                                onClick={() => {
-                                  setFormContrato({ ...formContrato, id_cliente: c.id_cliente });
-                                  setClienteSearch('');
-                                  setShowClienteDropdown(false);
-                                }}
-                              >
-                                {c.nombre}
-                              </button>
-                            ))
+                    <div className="md:col-span-2 flex gap-2 items-start">
+                      <div ref={clienteRef} className="relative flex-1">
+                        <Label className="text-sm font-medium">Cliente *</Label>
+                        <div className="relative mt-1">
+                          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                          <input
+                            type="text"
+                            placeholder="Buscar cliente..."
+                            value={
+                              formContrato.id_cliente
+                                ? (clientes.find(c => c.id_cliente === Number(formContrato.id_cliente))?.nombre || '')
+                                : clienteSearch
+                            }
+                            disabled={!!formContrato.id_cliente}
+                            onChange={(e) => {
+                              setClienteSearch(e.target.value);
+                              setFormContrato({ ...formContrato, id_cliente: '' });
+                              setShowClienteDropdown(true);
+                            }}
+                            onFocus={() => setShowClienteDropdown(true)}
+                            className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white disabled:bg-gray-100"
+                          />
+                          {(formContrato.id_cliente || clienteSearch) && (
+                            <button
+                              type="button"
+                              onClick={() => { setFormContrato({ ...formContrato, id_cliente: '' }); setClienteSearch(''); }}
+                              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-red-500"
+                            >
+                              <X className="h-4 w-4" />
+                            </button>
                           )}
                         </div>
-                      )}
+                        {showClienteDropdown && (
+                          <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-auto">
+                            {filteredClientes.length === 0 ? (
+                              <div className="px-4 py-3 text-sm text-gray-500">No se encontraron resultados</div>
+                            ) : (
+                              filteredClientes.map(c => (
+                                <button
+                                  key={c.id_cliente}
+                                  type="button"
+                                  className="w-full text-left px-4 py-2 hover:bg-teal-50 transition-colors border-b border-gray-100 last:border-b-0"
+                                  onClick={() => {
+                                    setFormContrato({ ...formContrato, id_cliente: c.id_cliente });
+                                    setClienteSearch('');
+                                    setShowClienteDropdown(false);
+                                  }}
+                                >
+                                  <span className="font-medium text-gray-900">{c.nombre}</span>
+                                  <span className="text-xs text-gray-400 ml-2">({c.tipo_persona})</span>
+                                </button>
+                              ))
+                            )}
+                          </div>
+                        )}
+                      </div>
+                      <div className="pt-7">
+                        <button
+                          type="button"
+                          onClick={() => { setNuevoClienteTarget('contrato'); setShowNuevoClienteModal(true); }}
+                          className="py-2 px-4 bg-teal-500 hover:bg-teal-600 text-white rounded-lg transition-colors font-medium flex items-center gap-2 whitespace-nowrap"
+                        >
+                          <Plus className="h-4 w-4" />
+                          Nuevo Cliente
+                        </button>
+                      </div>
                     </div>
                     <div>
                       <Label className="text-sm font-medium">Tipo</Label>
@@ -1247,8 +1319,57 @@ export function ProyectosPage() {
               ) : null}
             </div>
             <div className="p-6 border-t border-gray-200 bg-gray-50 flex justify-end gap-3">
-              <button onClick={() => { setAprobarModal({ isOpen: false, solicitud: null, modo: 'seleccionar', contratos: [], loadingContratos: false }); setFormContrato({}); setSuplementosPorContrato({}); }} className="px-6 py-3 text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors font-medium">Cancelar</button>
+              <button onClick={() => { setAprobarModal({ isOpen: false, solicitud: null, modo: 'seleccionar', contratos: [], loadingContratos: false }); setFormContrato({}); setSuplementosPorContrato({}); setView('list'); }} className="px-6 py-3 text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors font-medium">Cancelar</button>
               <button onClick={confirmarAprobacion} className="px-6 py-3 text-white bg-gradient-to-r from-teal-500 to-cyan-600 rounded-xl hover:from-teal-600 hover:to-cyan-700 shadow-lg hover:shadow-xl transition-all font-medium">Confirmar Aprobación</button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {showNuevoClienteModal && createPortal(
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 animate-fade-in">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-auto animate-scale-in">
+            <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-teal-50 to-cyan-50">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="p-3 rounded-xl bg-gradient-to-br from-teal-500 to-cyan-600 text-white shadow-lg">
+                    <User className="h-7 w-7" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-gray-900">Nuevo Cliente</h3>
+                    <p className="text-sm text-gray-500">Crear nuevo cliente para el contrato</p>
+                  </div>
+                </div>
+                <button onClick={() => setShowNuevoClienteModal(false)} className="p-2 hover:bg-gray-200 rounded-full transition-colors">
+                  <X className="h-6 w-6 text-gray-500" />
+                </button>
+              </div>
+            </div>
+            <div className="p-6">
+              <ClienteForm
+                editingCliente={null}
+                isProveedorView={false}
+                onCancel={() => {
+                  setShowNuevoClienteModal(false);
+                }}
+                onSubmit={async (data: any) => {
+                  try {
+                    const nuevoCliente = await clientesService.createCliente(data);
+                    setClientes(prev => [nuevoCliente, ...prev]);
+                    if (nuevoClienteTarget === 'form') {
+                      setFormData(prev => ({ ...prev, id_cliente: nuevoCliente.id_cliente }));
+                    } else {
+                      setFormContrato(prev => ({ ...prev, id_cliente: nuevoCliente.id_cliente }));
+                    }
+                    setClienteSearch('');
+                    setShowNuevoClienteModal(false);
+                    toast.success('Cliente creado');
+                  } catch (error: any) {
+                    toast.error(error.message || 'Error al crear cliente');
+                  }
+                }}
+              />
             </div>
           </div>
         </div>,

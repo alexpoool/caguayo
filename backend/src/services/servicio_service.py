@@ -44,6 +44,12 @@ from src.dto.servicio_dto import (
     ItemFacturaServicioCreate,
     ItemFacturaServicioRead,
     FacturaServicioWithItems,
+    OfertaCreate,
+    OfertaRead,
+    OfertaUpdate,
+    ItemOfertaCreate,
+    ItemOfertaRead,
+    OfertaWithItems,
 )
 from src.repository.servicio_repo import (
     servicio_repo,
@@ -55,6 +61,8 @@ from src.repository.servicio_repo import (
     pago_factura_servicio_repo,
     persona_liquidacion_repo,
     item_factura_servicio_repo,
+    oferta_repo,
+    item_oferta_repo,
 )
 
 
@@ -306,6 +314,11 @@ class FacturaServicioService:
                 raise Exception("La certificación ya está facturada")
 
         data.codigo_factura = None
+        if data.estado is None:
+            data.estado = "APROBADA"
+        es_prefactura = data.estado == "PENDIENTE"
+        if data.tipo is None:
+            data.tipo = "PREFACTURA" if es_prefactura else "FACTURA"
         tareas_seleccionadas = data.tareas_seleccionadas or []
         data.tareas_seleccionadas = None
         tarea_modifiers = data.tarea_modifiers or {}
@@ -393,7 +406,8 @@ class FacturaServicioService:
                     )
                     await item_factura_servicio_repo.create(db, obj_in=item_data)
 
-                    tarea.facturada = True
+                    if not es_prefactura:
+                        tarea.facturada = True
 
             await db.commit()
 
@@ -474,7 +488,9 @@ class FacturaServicioService:
                     )
                     await item_factura_servicio_repo.create(db, obj_in=item_data)
 
-                    tarea.facturada = True
+                    estado_efectivo = getattr(data, "estado", None) or f.estado or "APROBADA"
+                    if estado_efectivo != "PENDIENTE":
+                        tarea.facturada = True
                     await db.commit()
                     await db.refresh(tarea)
 
@@ -543,6 +559,45 @@ class FacturaServicioService:
             **f.model_dump(),
             items=[ItemFacturaServicioRead(**i.model_dump()) for i in items],
         )
+
+    @staticmethod
+    async def aprobar_prefactura(db: AsyncSession, id: int) -> FacturaServicioRead:
+        f = await factura_servicio_repo.get(db, id)
+        if not f:
+            return None
+        if f.estado == "APROBADA":
+            raise Exception("La factura ya está aprobada")
+
+        if f.id_certificacion:
+            stmt = select(Certificacion).where(
+                Certificacion.id_certificacion == f.id_certificacion
+            )
+            result = await db.exec(stmt)
+            cert = result.first()
+            if cert and cert.facturado:
+                raise Exception("La certificación ya está facturada")
+
+        if f.id_etapa:
+            etapa = await etapa_repo.get(db, f.id_etapa)
+            if etapa and f.importe > etapa.valor:
+                raise Exception(
+                    f"El importe de la factura ({f.importe:.2f}) no puede ser mayor al valor de la etapa ({etapa.valor:.2f})"
+                )
+
+        f.estado = "APROBADA"
+        f.tipo = "FACTURA"
+        await db.commit()
+        await db.refresh(f)
+
+        items = await item_factura_servicio_repo.get_by_factura(db, id)
+        for item in items:
+            tarea = await tarea_etapa_repo.get(db, item.id_tarea_etapa)
+            if tarea:
+                tarea.facturada = True
+                await db.commit()
+                await db.refresh(tarea)
+
+        return FacturaServicioRead(**f.model_dump())
 
     @staticmethod
     async def validar_pago_etapa(
@@ -1159,3 +1214,342 @@ class CertificacionService:
 
 
 certificacion_service = CertificacionService()
+
+
+class OfertaServicioService:
+    @staticmethod
+    async def create(
+        db: AsyncSession, data: OfertaCreate, denominacion: Optional[str] = None
+    ) -> OfertaRead:
+        etapa = None
+        if data.id_etapa:
+            etapa = await etapa_repo.get(db, data.id_etapa)
+            if etapa and etapa.tipo_etapa == "CERTIFICACIONES":
+                stmt = select(Certificacion).where(
+                    Certificacion.id_etapa == etapa.id_etapa
+                )
+                result = await db.exec(stmt)
+                existing_certs = result.all()
+                if not existing_certs:
+                    raise Exception(
+                        "No hay certificaciones registradas para esta etapa"
+                    )
+                if not data.id_certificacion:
+                    raise Exception(
+                        "Para ofertas de etapas de certificaciones debe seleccionar una certificación"
+                    )
+            elif etapa:
+                tareas = await tarea_etapa_repo.get_by_etapa(db, etapa.id_etapa)
+                if not tareas:
+                    raise Exception("No hay tareas registradas para esta etapa")
+
+        if data.id_certificacion:
+            stmt = select(Certificacion).where(
+                Certificacion.id_certificacion == data.id_certificacion
+            )
+            result = await db.exec(stmt)
+            certificacion = result.first()
+
+            if not certificacion:
+                raise Exception("La certificación seleccionada no existe")
+
+            if certificacion.facturado:
+                raise Exception("La certificación ya está facturada")
+
+        data.codigo_oferta = None
+        if data.estado is None:
+            data.estado = "PENDIENTE"
+        tareas_seleccionadas = data.tareas_seleccionadas or []
+        data.tareas_seleccionadas = None
+        tarea_modifiers = data.tarea_modifiers or {}
+        data.tarea_modifiers = None
+        certificacion_ajuste_porciento = data.ajuste_porciento
+        data.ajuste_porciento = None
+        certificacion_ajuste_valor = data.ajuste_valor
+        data.ajuste_valor = None
+
+        if data.id_certificacion:
+            data.importe = certificacion.a_cobrar
+        else:
+            importe_total = Decimal("0")
+            if tareas_seleccionadas:
+                for tarea_id in tareas_seleccionadas:
+                    tarea = await tarea_etapa_repo.get(db, tarea_id)
+                    if tarea:
+                        modifier = tarea_modifiers.get(str(tarea_id))
+                        if modifier:
+                            cant = Decimal(str(modifier.get("cantidad", 0)))
+                            prec = Decimal(str(modifier.get("precio", 0)))
+                        else:
+                            cant = tarea.cantidad or Decimal("0")
+                            prec = tarea.precio_ajustado or Decimal("0")
+                        importe_total += cant * prec
+            data.importe = importe_total
+
+        if etapa and data.importe > etapa.valor:
+            raise Exception(
+                f"El importe de la oferta ({data.importe:.2f}) no puede ser mayor al valor de la etapa ({etapa.valor:.2f})"
+            )
+
+        oferta = await oferta_repo.create(db, obj_in=data)
+        await db.flush()
+        oferta.codigo_oferta = generar_codigo(
+            denominacion or "", datetime.now().year, oferta.id_oferta
+        )
+        db.add(oferta)
+        await db.commit()
+
+        oferta = await oferta_repo.get(db, oferta.id_oferta)
+
+        if data.id_certificacion and (
+            certificacion_ajuste_porciento is not None
+            or certificacion_ajuste_valor is not None
+        ):
+            stmt = select(Certificacion).where(
+                Certificacion.id_certificacion == data.id_certificacion
+            )
+            result = await db.exec(stmt)
+            cert = result.first()
+            if cert:
+                if certificacion_ajuste_porciento is not None:
+                    cert.ajuste_porciento = certificacion_ajuste_porciento
+                if certificacion_ajuste_valor is not None:
+                    cert.ajuste_valor = certificacion_ajuste_valor
+                await db.commit()
+                await db.refresh(cert)
+
+        if tareas_seleccionadas:
+            for tarea_id in tareas_seleccionadas:
+                tarea = await tarea_etapa_repo.get(db, tarea_id)
+                if tarea:
+                    modifier = tarea_modifiers.get(str(tarea_id))
+                    if modifier:
+                        cant = Decimal(str(modifier.get("cantidad", 0)))
+                        prec = Decimal(str(modifier.get("precio", 0)))
+                        ajuste_pct = Decimal(str(modifier.get("ajuste_porciento", 0)))
+                        ajuste_val = Decimal(str(modifier.get("ajuste_valor", 0)))
+                    else:
+                        cant = tarea.cantidad or Decimal("0")
+                        prec = tarea.precio_ajustado or Decimal("0")
+                        ajuste_pct = Decimal("0.00")
+                        ajuste_val = Decimal("0.00")
+                    item_data = ItemOfertaCreate(
+                        id_oferta=oferta.id_oferta,
+                        id_tarea_etapa=tarea_id,
+                        codigo_extendido=tarea.codigo_extendido,
+                        concepto=tarea.concepto_modificado,
+                        unidad_medida=tarea.unidad_medida,
+                        cantidad=cant,
+                        precio=prec,
+                        ajuste_porciento=ajuste_pct,
+                        ajuste_valor=ajuste_val,
+                    )
+                    await item_oferta_repo.create(db, obj_in=item_data)
+
+            await db.commit()
+
+        return OfertaRead(**oferta.model_dump())
+
+    @staticmethod
+    async def get_all(
+        db: AsyncSession,
+        skip: int = 0,
+        limit: int = 100,
+        estado: Optional[str] = None,
+    ) -> List[OfertaRead]:
+        items = await oferta_repo.get_all_with_details(db, skip, limit, estado=estado)
+        return [OfertaRead(**i.model_dump()) for i in items]
+
+    @staticmethod
+    async def get(db: AsyncSession, id: int) -> OfertaRead:
+        oferta = await oferta_repo.get(db, id)
+        return OfertaRead(**oferta.model_dump()) if oferta else None
+
+    @staticmethod
+    async def get_by_etapa(db: AsyncSession, id_etapa: int) -> List[OfertaRead]:
+        items = await oferta_repo.get_by_etapa(db, id_etapa)
+        return [OfertaRead(**i.model_dump()) for i in items]
+
+    @staticmethod
+    async def get_items(db: AsyncSession, id_oferta: int) -> List[ItemOfertaRead]:
+        items = await item_oferta_repo.get_by_oferta(db, id_oferta)
+        return [ItemOfertaRead(**i.model_dump()) for i in items]
+
+    @staticmethod
+    async def get_with_items(db: AsyncSession, id: int) -> Optional[OfertaWithItems]:
+        oferta = await oferta_repo.get(db, id)
+        if not oferta:
+            return None
+        items = await item_oferta_repo.get_by_oferta(db, id)
+        return OfertaWithItems(
+            **oferta.model_dump(),
+            items=[ItemOfertaRead(**i.model_dump()) for i in items],
+        )
+
+    @staticmethod
+    async def update(db: AsyncSession, id: int, data: OfertaUpdate) -> OfertaRead:
+        oferta = await oferta_repo.get(db, id)
+        if not oferta:
+            return None
+
+        tareas_seleccionadas = data.tareas_seleccionadas
+        delattr(data, "tareas_seleccionadas")
+        tarea_modifiers = data.tarea_modifiers or {}
+        delattr(data, "tarea_modifiers")
+        update_ajuste_porciento = data.ajuste_porciento
+        delattr(data, "ajuste_porciento")
+        update_ajuste_valor = data.ajuste_valor
+        delattr(data, "ajuste_valor")
+
+        if tareas_seleccionadas is not None:
+            existing_items = await item_oferta_repo.get_by_oferta(db, id)
+            for item in existing_items:
+                await db.delete(item)
+            await db.commit()
+
+            importe_total = Decimal("0")
+            for tarea_id in tareas_seleccionadas:
+                tarea = await tarea_etapa_repo.get(db, tarea_id)
+                if tarea:
+                    modifier = tarea_modifiers.get(str(tarea_id))
+                    if modifier:
+                        cant = Decimal(str(modifier.get("cantidad", 0)))
+                        prec = Decimal(str(modifier.get("precio", 0)))
+                        ajuste_pct = Decimal(str(modifier.get("ajuste_porciento", 0)))
+                        ajuste_val = Decimal(str(modifier.get("ajuste_valor", 0)))
+                    else:
+                        cant = tarea.cantidad or Decimal("0")
+                        prec = tarea.precio_ajustado or Decimal("0")
+                        ajuste_pct = Decimal("0.00")
+                        ajuste_val = Decimal("0.00")
+                    item_data = ItemOfertaCreate(
+                        id_oferta=id,
+                        id_tarea_etapa=tarea_id,
+                        codigo_extendido=tarea.codigo_extendido,
+                        concepto=tarea.concepto_modificado,
+                        unidad_medida=tarea.unidad_medida,
+                        cantidad=cant,
+                        precio=prec,
+                        ajuste_porciento=ajuste_pct,
+                        ajuste_valor=ajuste_val,
+                    )
+                    await item_oferta_repo.create(db, obj_in=item_data)
+
+                    importe_total += cant * prec
+
+            data.importe = importe_total
+
+            if oferta.id_etapa:
+                etapa = await etapa_repo.get(db, oferta.id_etapa)
+                if etapa and data.importe > etapa.valor:
+                    raise Exception(
+                        f"El importe de la oferta ({data.importe:.2f}) no puede ser mayor al valor de la etapa ({etapa.valor:.2f})"
+                    )
+
+        if oferta.id_certificacion and (
+            update_ajuste_porciento is not None or update_ajuste_valor is not None
+        ):
+            stmt = select(Certificacion).where(
+                Certificacion.id_certificacion == oferta.id_certificacion
+            )
+            result = await db.exec(stmt)
+            cert = result.first()
+            if cert:
+                if update_ajuste_porciento is not None:
+                    cert.ajuste_porciento = update_ajuste_porciento
+                if update_ajuste_valor is not None:
+                    cert.ajuste_valor = update_ajuste_valor
+                await db.commit()
+                await db.refresh(cert)
+
+        await db.refresh(oferta)
+        updated = await oferta_repo.update(db, db_obj=oferta, obj_in=data)
+        return OfertaRead(**updated.model_dump())
+
+    @staticmethod
+    async def delete(db: AsyncSession, id: int) -> bool:
+        existing_items = await item_oferta_repo.get_by_oferta(db, id)
+        for item in existing_items:
+            await db.delete(item)
+        await db.commit()
+
+        obj = await oferta_repo.remove(db, id=id)
+        return obj is not None
+
+    @staticmethod
+    async def confirmar(
+        db: AsyncSession,
+        id: int,
+        denominacion: Optional[str] = None,
+        tipo: str = "FACTURA",
+    ) -> FacturaServicioRead:
+        oferta = await oferta_repo.get(db, id)
+        if not oferta:
+            return None
+        if oferta.estado == "CONFIRMADA":
+            raise Exception("La oferta ya fue confirmada")
+
+        if oferta.id_certificacion:
+            stmt = select(Certificacion).where(
+                Certificacion.id_certificacion == oferta.id_certificacion
+            )
+            result = await db.exec(stmt)
+            cert = result.first()
+            if cert and cert.facturado:
+                raise Exception("La certificación ya está facturada")
+
+        if oferta.id_etapa:
+            etapa = await etapa_repo.get(db, oferta.id_etapa)
+            if etapa and oferta.importe > etapa.valor:
+                raise Exception(
+                    f"El importe de la factura ({oferta.importe:.2f}) no puede ser mayor al valor de la etapa ({etapa.valor:.2f})"
+                )
+
+        es_prefactura = tipo == "PREFACTURA"
+        factura_data = FacturaServicioCreate(
+            id_etapa=oferta.id_etapa,
+            id_certificacion=oferta.id_certificacion,
+            alcance=oferta.alcance,
+            id_moneda=oferta.id_moneda,
+            fecha=oferta.fecha,
+            descripcion=oferta.descripcion,
+            observaciones=oferta.observaciones,
+            cuenta_factura=oferta.cuenta_factura,
+            id_usuario=oferta.id_usuario,
+            importe=oferta.importe,
+            estado="PENDIENTE" if es_prefactura else "APROBADA",
+            tipo="PREFACTURA" if es_prefactura else "FACTURA",
+        )
+        factura = await factura_servicio_repo.create(db, obj_in=factura_data)
+        await db.flush()
+        factura.codigo_factura = generar_codigo(
+            denominacion or "", datetime.now().year, factura.id_factura_servicio
+        )
+        db.add(factura)
+        await db.commit()
+
+        oferta_items = await item_oferta_repo.get_by_oferta(db, id)
+        for item in oferta_items:
+            item_data = ItemFacturaServicioCreate(
+                id_factura_servicio=factura.id_factura_servicio,
+                id_tarea_etapa=item.id_tarea_etapa,
+                codigo_extendido=item.codigo_extendido,
+                concepto=item.concepto,
+                unidad_medida=item.unidad_medida,
+                cantidad=item.cantidad,
+                precio=item.precio,
+                ajuste_porciento=item.ajuste_porciento,
+                ajuste_valor=item.ajuste_valor,
+            )
+            await item_factura_servicio_repo.create(db, obj_in=item_data)
+
+            if not es_prefactura:
+                tarea = await tarea_etapa_repo.get(db, item.id_tarea_etapa)
+                if tarea:
+                    tarea.facturada = True
+
+        oferta.estado = "CONFIRMADA"
+        await db.commit()
+
+        factura = await factura_servicio_repo.get(db, factura.id_factura_servicio)
+        return FacturaServicioRead(**factura.model_dump())
