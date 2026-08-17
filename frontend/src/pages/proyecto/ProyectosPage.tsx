@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button, Input, Label, Card, CardContent, CardHeader, CardTitle, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, ConfirmModal } from '../../components/ui';
 import { ClienteForm } from '../clientes/components/form/ClienteForm';
 import { solicitudesService, contratosService, clientesService, monedaService, suplementosService, configuracionService } from '../../services/api';
@@ -41,6 +41,8 @@ export function ProyectosPage() {
   });
 
   const loadMoreRef = useRef<HTMLDivElement>(null);
+
+  const queryClient = useQueryClient();
 
   const {
     items: solicitudes,
@@ -175,6 +177,7 @@ export function ProyectosPage() {
         setView('list');
         resetForm();
         refresh();
+        queryClient.invalidateQueries({ queryKey: ['solicitudes-servicio'] });
       } else {
         const data: SolicitudServicioCreate = {
           id_cliente: Number(formData.id_cliente) || undefined,
@@ -190,6 +193,7 @@ export function ProyectosPage() {
         toast.success('Creado');
         resetForm();
         refresh();
+        queryClient.invalidateQueries({ queryKey: ['solicitudes-servicio'] });
         handleAsignarContrato(nuevoSolicitud);
       }
     } catch (error: any) { toast.error(error.message || 'Error'); }
@@ -205,6 +209,7 @@ export function ProyectosPage() {
           await solicitudesService.deleteSolicitud(id);
           toast.success('Eliminado');
           refresh();
+          queryClient.invalidateQueries({ queryKey: ['solicitudes-servicio'] });
         } catch (error: any) { toast.error(error.message || 'Error'); }
       },
       type: 'danger'
@@ -223,6 +228,7 @@ export function ProyectosPage() {
           });
           toast.success('Solicitud cancelada');
           refresh();
+          queryClient.invalidateQueries({ queryKey: ['solicitudes-servicio'] });
         } catch (error: any) { toast.error(error.message || 'Error'); }
       },
       type: 'warning'
@@ -241,6 +247,7 @@ export function ProyectosPage() {
           });
           toast.success('Solicitud terminada');
           refresh();
+          queryClient.invalidateQueries({ queryKey: ['solicitudes-servicio'] });
         } catch (error: any) { toast.error(error.message || 'Error'); }
       },
       type: 'info'
@@ -255,6 +262,7 @@ export function ProyectosPage() {
       });
       toast.success('Solicitud en negociación');
       refresh();
+      queryClient.invalidateQueries({ queryKey: ['solicitudes-servicio'] });
     } catch (error: any) { toast.error(error.message || 'Error'); }
   };
 
@@ -376,6 +384,7 @@ export function ProyectosPage() {
       setSuplementosPorContrato({});
       setView('list');
       refresh();
+      queryClient.invalidateQueries({ queryKey: ['solicitudes-servicio'] });
     } catch (error: any) {
       toast.error(error.message || 'Error al aprobar');
     }
@@ -1357,6 +1366,8 @@ export function ProyectosPage() {
                   try {
                     const nuevoCliente = await clientesService.createCliente(data);
                     setClientes(prev => [nuevoCliente, ...prev]);
+                    queryClient.invalidateQueries({ queryKey: ['clientes-all'] });
+                    queryClient.invalidateQueries({ queryKey: ['clientes'] });
                     if (nuevoClienteTarget === 'form') {
                       setFormData(prev => ({ ...prev, id_cliente: nuevoCliente.id_cliente }));
                     } else {

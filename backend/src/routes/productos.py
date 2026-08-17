@@ -109,6 +109,18 @@ async def get_productos_con_stock(
         )
 
 
+@router.get("/next-codigo/{id_subcategoria}")
+async def next_codigo_producto(
+    id_subcategoria: int, db: AsyncSession = Depends(get_session)
+):
+    """Obtener el próximo código de producto para una subcategoría (XX.YY.ZZZZ)."""
+    try:
+        codigo = await ProductosService.next_codigo(db, id_subcategoria)
+        return {"codigo": codigo}
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
 @router.get("/con-stock-item-anexo")
 async def get_productos_con_stock_item_anexo(
     db: AsyncSession = Depends(get_session),

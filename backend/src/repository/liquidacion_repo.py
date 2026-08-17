@@ -23,6 +23,7 @@ class LiquidacionRepository(CRUDBase[Liquidacion, dict, dict]):
         statement = (
             select(Liquidacion)
             .where(Liquidacion.id_cliente == cliente_id)
+            .order_by(Liquidacion.id_liquidacion.desc())
             .offset(skip)
             .limit(limit)
         )
@@ -85,7 +86,7 @@ class LiquidacionRepository(CRUDBase[Liquidacion, dict, dict]):
         )
         if cliente_id is not None:
             statement = statement.where(Liquidacion.id_cliente == cliente_id)
-        statement = statement.offset(skip).limit(limit)
+        statement = statement.order_by(Liquidacion.id_liquidacion.desc()).offset(skip).limit(limit)
         result = await db.exec(statement)
         return result.all()
 
@@ -110,6 +111,7 @@ class LiquidacionRepository(CRUDBase[Liquidacion, dict, dict]):
                 selectinload(Liquidacion.convenio),
                 selectinload(Liquidacion.anexo),
             )
+            .order_by(Liquidacion.id_liquidacion.desc())
             .offset(skip)
             .limit(limit)
         )
@@ -121,7 +123,8 @@ class LiquidacionRepository(CRUDBase[Liquidacion, dict, dict]):
     ) -> List[Liquidacion]:
         statement = (
             select(Liquidacion)
-            .where(not Liquidacion.liquidada)
+            .where(~Liquidacion.liquidada)
+            .order_by(Liquidacion.id_liquidacion.desc())
             .offset(skip)
             .limit(limit)
         )
@@ -134,7 +137,7 @@ class LiquidacionRepository(CRUDBase[Liquidacion, dict, dict]):
     ) -> List[Liquidacion]:
         statement = (
             select(Liquidacion)
-            .where(Liquidacion.liquidada == False)
+            .where(~Liquidacion.liquidada)
             .options(
                 selectinload(Liquidacion.productos_en_liquidacion).selectinload(
                     ProductosEnLiquidacion.producto
@@ -153,7 +156,7 @@ class LiquidacionRepository(CRUDBase[Liquidacion, dict, dict]):
         )
         if cliente_id is not None:
             statement = statement.where(Liquidacion.id_cliente == cliente_id)
-        statement = statement.offset(skip).limit(limit)
+        statement = statement.order_by(Liquidacion.id_liquidacion.desc()).offset(skip).limit(limit)
         result = await db.exec(statement)
         return result.all()
 
@@ -161,7 +164,9 @@ class LiquidacionRepository(CRUDBase[Liquidacion, dict, dict]):
         self, db: AsyncSession, skip: int = 0, limit: int = 100
     ) -> List[Liquidacion]:
         statement = (
-            select(Liquidacion).where(Liquidacion.liquidada).offset(skip).limit(limit)
+            select(Liquidacion).where(Liquidacion.liquidada).order_by(
+                Liquidacion.id_liquidacion.desc()
+            ).offset(skip).limit(limit)
         )
         result = await db.exec(statement)
         return result.all()
@@ -191,7 +196,7 @@ class LiquidacionRepository(CRUDBase[Liquidacion, dict, dict]):
         )
         if cliente_id is not None:
             statement = statement.where(Liquidacion.id_cliente == cliente_id)
-        statement = statement.offset(skip).limit(limit)
+        statement = statement.order_by(Liquidacion.id_liquidacion.desc()).offset(skip).limit(limit)
         result = await db.exec(statement)
         return result.all()
 

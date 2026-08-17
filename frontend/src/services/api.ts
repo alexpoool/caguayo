@@ -120,6 +120,10 @@ export const productosService = {
 
   async getProductosConStockItemAnexo(): Promise<ProductoConCantidad[]> {
     return apiClient.get<ProductoConCantidad[]>('/productos/con-stock-item-anexo');
+  },
+
+  async getNextCodigo(idSubcategoria: number): Promise<{ codigo: string }> {
+    return apiClient.get<{ codigo: string }>(`/productos/next-codigo/${idSubcategoria}`);
   }
 };
 

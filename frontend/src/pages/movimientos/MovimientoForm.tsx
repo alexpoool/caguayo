@@ -475,6 +475,12 @@ export function MovimientoRecepcionForm({
     queryFn: () => subcategoriasService.getSubcategorias(),
   });
 
+  const { data: nextCodigoData } = useQuery({
+    queryKey: ["next-codigo", nuevoProducto.id_subcategoria],
+    queryFn: () => productosService.getNextCodigo(nuevoProducto.id_subcategoria || 0),
+    enabled: showNuevoProductoModal,
+  });
+
   // Producto seleccionado según el tipo de movimiento
   const selectedProduct =
     tipoMovimiento === "RECEPCION"
@@ -1473,8 +1479,13 @@ export function MovimientoRecepcionForm({
           <div className="fixed inset-0 bg-black/50 z-[9999] flex items-center justify-center p-4">
             <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
               <div className="flex items-center justify-between p-6 border-b">
-                <h3 className="text-lg font-bold text-gray-900">
+                <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
                   Nuevo Producto
+                  {nextCodigoData?.codigo && (
+                    <span className="px-2 py-0.5 text-sm font-mono text-teal-700 bg-teal-50 border border-teal-200 rounded-md">
+                      {nextCodigoData.codigo}
+                    </span>
+                  )}
                 </h3>
                 <button
                   type="button"
@@ -1498,20 +1509,6 @@ export function MovimientoRecepcionForm({
                       })
                     }
                     placeholder="Nombre del producto"
-                  />
-                </div>
-                <div>
-                  <Label className="text-sm font-medium">Código</Label>
-                  <Input
-                    className="mt-1"
-                    value={nuevoProducto.codigo}
-                    onChange={(e) =>
-                      setNuevoProducto({
-                        ...nuevoProducto,
-                        codigo: e.target.value,
-                      })
-                    }
-                    placeholder="Código del producto"
                   />
                 </div>
                 <div>
@@ -1666,9 +1663,10 @@ export function MovimientoRecepcionForm({
                       toast.error("El nombre del producto es obligatorio");
                       return;
                     }
-                    createProductoMutation.mutate(
-                      nuevoProducto as ProductosCreate,
-                    );
+                    createProductoMutation.mutate({
+                      ...(nuevoProducto as ProductosCreate),
+                      codigo: nextCodigoData?.codigo || "",
+                    });
                   }}
                   className="gap-2 bg-gradient-to-r from-green-500 to-emerald-600 hover:opacity-90 text-white"
                 >

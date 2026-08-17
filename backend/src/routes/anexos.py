@@ -17,7 +17,13 @@ from src.models import (
     TipoConvenio,
 )
 from src.dto.convenios_dto import AnexoRead, AnexoCreate, AnexoUpdate
-from src.utils import generar_codigo, _get_denominacion_from_token, verify_auth
+from src.utils import (
+    generar_codigo,
+    generar_codigo_anexo,
+    generar_codigo_item_anexo,
+    _get_denominacion_from_token,
+    verify_auth,
+)
 from sqlmodel import select
 from sqlalchemy import text
 
@@ -56,7 +62,7 @@ async def listar_anexos(
                 (Anexo.nombre_anexo.ilike(f"%{escaped_search}%"))
                 | (Anexo.codigo_anexo.ilike(f"%{escaped_search}%"))
             )
-        statement = statement.offset(skip).limit(limit)
+        statement = statement.order_by(Anexo.id_anexo.desc()).offset(skip).limit(limit)
         results = await db.exec(statement)
         anexos = results.all()
 
@@ -159,11 +165,22 @@ async def crear_anexo(
         if datetime.now().date() > conveni.vigencia:
             raise HTTPException(status_code=400, detail="El convenio no está vigente")
 
-        datos_dict["codigo_anexo"] = ""
+        result_max = await db.exec(
+            text(
+                "SELECT COALESCE(MAX(id_anexo), 0) + 1 FROM anexo "
+                "WHERE id_convenio = :id_convenio"
+            ),
+            params={"id_convenio": datos.id_convenio},
+        )
+        sec_anexo = result_max.one()[0]
+
+        datos_dict["codigo_anexo"] = generar_codigo_anexo(
+            denominacion,
+            datos.fecha.year,
+            datos.id_convenio,
+            sec_anexo,
+        )
         db_anexo = Anexo(**datos_dict)
-        db.add(db_anexo)
-        await db.flush()
-        db_anexo.codigo_anexo = generar_codigo(denominacion, datos.fecha.year, db_anexo.id_anexo)
         db.add(db_anexo)
         await db.flush()
 
@@ -181,7 +198,7 @@ async def crear_anexo(
                 status_code=500, detail="Tipo de movimiento 'compra' no encontrado"
             )
 
-        for idx, item in enumerate(items_data, start=1):
+        for item in items_data:
             producto = await db.get(Productos, item["id_producto"])
             if not producto:
                 continue
@@ -195,7 +212,12 @@ async def crear_anexo(
                 precio_compra=pc_item,
                 precio_venta=item["precio_venta"],
                 id_moneda=item["id_moneda"],
-                codigo=f"{db_anexo.codigo_anexo}-{idx:03d}",
+                codigo=generar_codigo_item_anexo(
+                    db_anexo.id_convenio,
+                    sec_anexo,
+                    producto.codigo,
+                    producto.id_producto,
+                ),
             )
             db.add(db_item)
             await db.flush()
@@ -327,7 +349,14 @@ async def actualizar_anexo(
             result_conv = await db.exec(stmt_conv)
             conveni = result_conv.first()
 
-            for idx, item in enumerate(items_data, start=1):
+            sec_anexo = 0
+            if db_anexo.codigo_anexo:
+                try:
+                    sec_anexo = int(db_anexo.codigo_anexo.rsplit(".", 1)[-1])
+                except ValueError:
+                    sec_anexo = 0
+
+            for item in items_data:
                 producto = await db.get(Productos, item["id_producto"])
                 if not producto:
                     continue
@@ -341,7 +370,12 @@ async def actualizar_anexo(
                     precio_compra=pc_item,
                     precio_venta=item["precio_venta"],
                     id_moneda=item["id_moneda"],
-                    codigo=f"{db_anexo.codigo_anexo}-{idx:03d}",
+                    codigo=generar_codigo_item_anexo(
+                        db_anexo.id_convenio,
+                        sec_anexo,
+                        producto.codigo,
+                        producto.id_producto,
+                    ),
                 )
                 db.add(db_item)
                 await db.flush()

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import type { Productos, ProductosCreate } from '../../types/index';
-import { subcategoriasService, categoriasService, monedaService } from '../../services/api';
+import { subcategoriasService, categoriasService, monedaService, productosService } from '../../services/api';
 import { Button, Input, Label, Card, CardContent, CardHeader, CardTitle } from '../ui';
 import { ArrowLeft, Save, X, Package } from 'lucide-react';
 
@@ -43,6 +43,16 @@ export function ProductForm({ initialData, onSubmit, onCancel, isSubmitting = fa
     queryFn: () => monedaService.getMonedas(),
   });
 
+  const { data: nextCodigoData } = useQuery({
+    queryKey: ['next-codigo', formData.id_subcategoria],
+    queryFn: () => productosService.getNextCodigo(formData.id_subcategoria),
+    enabled: !initialData && formData.id_subcategoria > 0,
+  });
+
+  const codigoGenerado = initialData
+    ? formData.codigo
+    : (nextCodigoData?.codigo ?? '');
+
   const subcategoriasFiltradas = selectedCategoria
     ? subcategorias.filter((sub) => sub.id_categoria === selectedCategoria)
     : [];
@@ -83,6 +93,7 @@ export function ProductForm({ initialData, onSubmit, onCancel, isSubmitting = fa
     // Asegurar que los precios sean números válidos antes de enviar
     const dataToSubmit = {
       ...formData,
+      codigo: initialData ? formData.codigo : (nextCodigoData?.codigo ?? ''),
       precio_compra: formData.precio_compra || 0,
       precio_venta: formData.precio_venta || 0,
       precio_minimo: formData.precio_minimo || 0,
@@ -112,6 +123,11 @@ export function ProductForm({ initialData, onSubmit, onCancel, isSubmitting = fa
         <CardTitle className="flex items-center gap-2 text-lg">
           <Package className="h-5 w-5 text-teal-600" />
           {initialData ? 'Editar Producto' : 'Nuevo Producto'}
+          {codigoGenerado && (
+            <span className="ml-2 px-2 py-0.5 text-sm font-mono text-teal-700 bg-teal-50 border border-teal-200 rounded-md">
+              {codigoGenerado}
+            </span>
+          )}
         </CardTitle>
         <Button variant="ghost" onClick={onCancel} className="gap-2">
           <ArrowLeft className="h-4 w-4" />
@@ -120,32 +136,17 @@ export function ProductForm({ initialData, onSubmit, onCancel, isSubmitting = fa
       </CardHeader>
       <CardContent className="p-6">
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Código y Nombre en una fila */}
-          <div className="grid grid-cols-2 gap-4">
-            {/* Código */}
-            <div>
-              <Label className="text-sm mb-1.5 block">Código</Label>
-              <Input
-                type="text"
-                value={formData.codigo}
-                onChange={(e) => setFormData({ ...formData, codigo: e.target.value })}
-                placeholder="Ej. PROD-001"
-                className="h-11"
-              />
-            </div>
-            
-            {/* Nombre */}
-            <div>
-              <Label className="text-sm mb-1.5 block">Nombre del Producto *</Label>
-              <Input
-                type="text"
-                required
-                value={formData.nombre}
-                onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
-                placeholder="Ej. iPhone 15 Pro"
-                className="h-11"
-              />
-            </div>
+          {/* Nombre */}
+          <div>
+            <Label className="text-sm mb-1.5 block">Nombre del Producto *</Label>
+            <Input
+              type="text"
+              required
+              value={formData.nombre}
+              onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
+              placeholder="Ej. iPhone 15 Pro"
+              className="h-11"
+            />
           </div>
           
           {/* Categoría y Subcategoría en una fila */}

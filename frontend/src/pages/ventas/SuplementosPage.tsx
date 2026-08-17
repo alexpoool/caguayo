@@ -12,6 +12,8 @@ import { required } from '../../utils/validacionFormularios';
 
 type View = 'list' | 'form';
 
+const hoy = new Date().toISOString().split('T')[0];
+
 export function SuplementosPage() {
   const [searchParams] = useSearchParams();
   const initialContratoId = searchParams.get('contrato');
@@ -159,7 +161,7 @@ export function SuplementosPage() {
   };
 
   const resetForm = () => {
-    setFormData({});
+    setFormData({ fecha: hoy });
     setEditingId(null);
     setSelectedContratoId(initialContratoId ? Number(initialContratoId) : null);
   };
@@ -395,21 +397,13 @@ export function SuplementosPage() {
             </div>
             <div>
               <Label className="text-sm font-medium">Fecha</Label>
-              <div className="flex gap-2">
-                <input 
-                  type="date" 
-                  className="flex-1 mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition-colors" 
-                  value={formData.fecha || ''} 
-                  onChange={(e: any) => setFormData({...formData, fecha: e.target.value})} 
-                />
-                <button 
-                  type="button" 
-                  onClick={() => setFormData({...formData, fecha: new Date().toISOString().split('T')[0]})} 
-                  className="mt-1 px-3 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors text-sm font-medium whitespace-nowrap"
-                >
-                  Hoy
-                </button>
-              </div>
+              <input 
+                type="date" 
+                className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition-colors" 
+                value={formData.fecha || hoy} 
+                min={hoy} 
+                onChange={(e: any) => setFormData({...formData, fecha: e.target.value})} 
+              />
             </div>
             <div>
               <Label className="text-sm font-medium">Documento</Label>

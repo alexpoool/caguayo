@@ -9,7 +9,7 @@ from sqlalchemy.orm import selectinload
 from src.database.connection import get_auth_session, get_session
 from src.models import Cliente, Cliente as ClienteModel, Convenio
 from src.dto.convenios_dto import ConvenioCreate, ConvenioRead, ConvenioUpdate
-from src.utils import generar_codigo, _get_denominacion_from_token, verify_auth
+from src.utils import generar_codigo_convenio, _get_denominacion_from_token, verify_auth
 
 logger = logging.getLogger(__name__)
 
@@ -49,7 +49,7 @@ async def listar_convenios(
 async def listar_convenios_simple(db: AsyncSession = Depends(get_session)):
     statement = select(Convenio.id_convenio, ClienteModel.nombre).join(
         ClienteModel, isouter=True
-    )
+    ).order_by(Convenio.id_convenio.desc())
     results = await db.exec(statement)
     return [{"id_convenio": c.id_convenio, "nombre": c.nombre} for c in results.all()]
 
@@ -114,7 +114,9 @@ async def crear_convenio(
         db_convenio = Convenio(**datos_dict, codigo="")
         db.add(db_convenio)
         await db.flush()
-        db_convenio.codigo = generar_codigo(denominacion, datos.fecha.year, db_convenio.id_convenio)
+        db_convenio.codigo = generar_codigo_convenio(
+            denominacion, datos.fecha.year, db_convenio.id_convenio
+        )
         db.add(db_convenio)
         await db.commit()
         await db.refresh(db_convenio)

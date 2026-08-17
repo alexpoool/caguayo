@@ -140,6 +140,8 @@ export function MovimientosPendientesPage() {
       refresh();
       queryClient.invalidateQueries({ queryKey: ['productos-con-stock'] });
       queryClient.invalidateQueries({ queryKey: ['productos-por-dependencia'] });
+      queryClient.invalidateQueries({ queryKey: ['productos-con-stock-item-anexo'] });
+      queryClient.invalidateQueries({ queryKey: ['movimientos'] });
       toast.success('Movimiento confirmado exitosamente');
     },
     onError: (error: any, variables: number) => {
@@ -171,6 +173,8 @@ export function MovimientosPendientesPage() {
       refresh();
       queryClient.invalidateQueries({ queryKey: ['productos-con-stock'] });
       queryClient.invalidateQueries({ queryKey: ['productos-por-dependencia'] });
+      queryClient.invalidateQueries({ queryKey: ['productos-con-stock-item-anexo'] });
+      queryClient.invalidateQueries({ queryKey: ['movimientos'] });
       toast.success('Movimiento eliminado exitosamente');
     },
     onError: (error: any) => {

@@ -7,7 +7,7 @@ import { facturasServicioService, etapasProyectoService, monedaService, solicitu
 import type { FacturaServicio, FacturaServicioCreate, FacturaServicioUpdate, Etapa, TareaEtapa, SolicitudServicio, ItemFacturaServicio, Certificacion } from '../../types/servicio';
 import type { Cliente, Cuenta } from '../../types/ventas';
 import type { Moneda } from '../../types/moneda';
-import { Plus, Save, Trash2, Edit, ArrowLeft, Search, FileText, X, Eye, DollarSign, Hash, Tag, Check, ChevronDown, Printer, ListChecks, List, Loader2, CheckCircle2 } from 'lucide-react';
+import { Plus, Save, Trash2, Edit, ArrowLeft, Search, FileText, X, Eye, DollarSign, Hash, Tag, ChevronDown, Printer, ListChecks, List, Loader2, CheckCircle2 } from 'lucide-react';
 import { getFacturaServicioDocument, getCertificacionFacturaDocument } from './facturaDocumento';
 import toast from 'react-hot-toast';
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
@@ -477,7 +477,7 @@ export function PreFacturasPage() {
   };
 
   const filteredDocs = useMemo(() => {
-    let result: FacturaServicio[] = facturasInfinitas.filter(f => f.estado === 'PENDIENTE');
+    let result: FacturaServicio[] = facturasInfinitas.filter(f => f.estado === 'PENDIENTE' && f.tipo === 'PREFACTURA');
 
     if (filtroEtapa) {
       result = result.filter(f => f.id_etapa === filtroEtapa);
@@ -648,12 +648,6 @@ export function PreFacturasPage() {
                 </TableHead>
                 <TableHead>
                   <div className="flex items-center gap-2">
-                    <Check className="h-4 w-4 text-blue-600" />
-                    Estado
-                  </div>
-                </TableHead>
-                <TableHead>
-                  <div className="flex items-center gap-2">
                     <DollarSign className="h-4 w-4 text-blue-600" />
                     Importe
                   </div>
@@ -664,7 +658,7 @@ export function PreFacturasPage() {
             <TableBody>
               {isLoadingFacturas ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-12 text-gray-500">
+                  <TableCell colSpan={5} className="text-center py-12 text-gray-500">
                     <div className="flex items-center justify-center gap-2">
                       <Loader2 className="h-5 w-5 animate-spin" />
                       Cargando...
@@ -673,7 +667,7 @@ export function PreFacturasPage() {
                 </TableRow>
               ) : filteredDocs.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center py-12 text-gray-500">
+                  <TableCell colSpan={4} className="text-center py-12 text-gray-500">
                     {searchTerm
                       ? 'No se encontraron pre-facturas que coincidan con la búsqueda'
                       : 'No hay pre-facturas registradas'}
@@ -693,19 +687,8 @@ export function PreFacturasPage() {
                         {getEtapaName(item.id_etapa)}
                       </TableCell>
                       <TableCell>
-                        {item.tipo === 'FACTURA' ? (
-                          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium bg-teal-100 text-teal-700">
-                            Factura
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium bg-blue-100 text-blue-700">
-                            Pre-factura
-                          </span>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium bg-amber-100 text-amber-700">
-                          Pendiente
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium bg-blue-100 text-blue-700">
+                          Pre-factura
                         </span>
                       </TableCell>
                       <TableCell className="font-medium text-gray-900">

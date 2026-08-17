@@ -1,11 +1,14 @@
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlalchemy.orm import selectinload
+from sqlalchemy import text
 from typing import List, Optional, Any
 from decimal import Decimal
-from datetime import datetime
 from src.repository.base import CRUDBase
-from src.utils.codigos_entidad import generar_codigo
+from src.utils.codigos_entidad import (
+    generar_codigo_item_factura,
+    generar_codigo_item_venta_efectivo,
+)
 from src.models.contrato import (
     Contrato,
     Suplemento,
@@ -127,6 +130,13 @@ class ContratoRepository(CRUDBase[Contrato, ContratoCreate, ContratoUpdate]):
 
 
 class SuplementoRepository(CRUDBase[Suplemento, SuplementoCreate, SuplementoUpdate]):
+    async def get_all(
+        self, db: AsyncSession, load_options: Optional[List[Any]] = None
+    ) -> List[Suplemento]:
+        statement = select(Suplemento).order_by(Suplemento.id_suplemento.desc())
+        results = await db.exec(statement)
+        return list(results.all())
+
     async def get_all_by_contrato(
         self, db: AsyncSession, id_contrato: int
     ) -> List[Suplemento]:
@@ -384,10 +394,8 @@ class ItemFacturaRepository(CRUDBase[ItemFactura, ItemFacturaCreate, dict]):
         db: AsyncSession,
         id_factura: int,
         items_data: List[ItemFacturaCreate],
-        denominacion: Optional[str] = None,
     ) -> List[ItemFactura]:
         created_items = []
-        anio = datetime.now().year
         for item in items_data:
             producto = await db.get(Productos, item["id_producto"])
             if producto:
@@ -404,10 +412,31 @@ class ItemFacturaRepository(CRUDBase[ItemFactura, ItemFacturaCreate, dict]):
                 db.add(db_item)
                 created_items.append(db_item)
         await db.flush()
-        for db_item in created_items:
-            db_item.codigo = generar_codigo(denominacion or "", anio, db_item.id_item_factura)
-            db.add(db_item)
-        await db.flush()
+
+        factura = await db.get(Factura, id_factura)
+        if factura and created_items:
+            stmt_sec = text(
+                "SELECT rn FROM ("
+                "  SELECT id_factura, "
+                "         ROW_NUMBER() OVER ("
+                "             PARTITION BY id_contrato ORDER BY fecha, id_factura"
+                "         ) AS rn"
+                "  FROM factura"
+                ") t WHERE id_factura = :id_factura"
+            )
+            result_sec = await db.exec(stmt_sec, params={"id_factura": id_factura})
+            sec_factura = result_sec.one()[0]
+
+            for db_item in created_items:
+                producto = await db.get(Productos, db_item.id_producto)
+                db_item.codigo = generar_codigo_item_factura(
+                    factura.id_contrato,
+                    sec_factura,
+                    producto.codigo if producto else None,
+                    db_item.id_producto,
+                )
+                db.add(db_item)
+            await db.flush()
         return created_items
 
 
@@ -430,10 +459,8 @@ class ItemVentaEfectivoRepository(
         db: AsyncSession,
         id_venta_efectivo: int,
         items_data: List[ItemVentaEfectivoCreate],
-        denominacion: Optional[str] = None,
     ) -> List[ItemVentaEfectivo]:
         created_items = []
-        anio = datetime.now().year
         for item in items_data:
             producto = await db.get(Productos, item["id_producto"])
             if producto:
@@ -457,10 +484,32 @@ class ItemVentaEfectivoRepository(
                 db.add(db_item)
                 created_items.append(db_item)
         await db.flush()
-        for db_item in created_items:
-            db_item.codigo = generar_codigo(denominacion or "", anio, db_item.id_item_venta_efectivo)
-            db.add(db_item)
-        await db.flush()
+
+        venta = await db.get(VentaEfectivo, id_venta_efectivo)
+        if venta and created_items:
+            stmt_sec = text(
+                "SELECT rn FROM ("
+                "  SELECT id_venta_efectivo, "
+                "         ROW_NUMBER() OVER ("
+                "             ORDER BY fecha, id_venta_efectivo"
+                "         ) AS rn"
+                "  FROM venta_efectivo"
+                ") t WHERE id_venta_efectivo = :id_venta"
+            )
+            result_sec = await db.exec(
+                stmt_sec, params={"id_venta": id_venta_efectivo}
+            )
+            sec_venta = result_sec.one()[0]
+
+            for db_item in created_items:
+                producto = await db.get(Productos, db_item.id_producto)
+                db_item.codigo = generar_codigo_item_venta_efectivo(
+                    sec_venta,
+                    producto.codigo if producto else None,
+                    db_item.id_producto,
+                )
+                db.add(db_item)
+            await db.flush()
         return created_items
 
 

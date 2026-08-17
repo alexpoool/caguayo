@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button, Input, Label, Card, CardContent, CardHeader, CardTitle, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, ConfirmModal } from '../../components/ui';
 import { SignToggle } from '../../components/ui/SignToggle';
 import { etapasProyectoService, monedaService, solicitudesService, tareasEtapaService, dependenciasService, cuentasService, clientesService, certificacionesService, contratosService, ofertasService } from '../../services/api';
@@ -143,6 +143,8 @@ export function OfertasPage() {
   const [currentEtapa, setCurrentEtapa] = useState<Etapa | null>(null);
 
   const loadMoreRef = useRef<HTMLDivElement>(null);
+
+  const queryClient = useQueryClient();
 
   const {
     items: ofertas,
@@ -432,6 +434,7 @@ export function OfertasPage() {
       await ofertasService.confirmarOferta(item.id_oferta, tipo);
       toast.success(tipo === 'PREFACTURA' ? 'Oferta confirmada como Pre-factura' : 'Oferta confirmada como Factura');
       refresh();
+      queryClient.invalidateQueries({ queryKey: ['facturas-servicio'] });
     } catch (error: any) { toast.error(error.message || 'Error'); }
   };
 

@@ -225,6 +225,7 @@ export function SolicitudesPage() {
           await solicitudesService.deleteSolicitud(id);
           toast.success('Eliminado');
           refresh();
+          queryClient.invalidateQueries({ queryKey: ['solicitudes-proyecto'] });
         } catch (error: any) { toast.error(error.message || 'Error'); }
       },
       type: 'danger'
@@ -243,6 +244,7 @@ export function SolicitudesPage() {
           });
           toast.success('Solicitud cancelada');
           refresh();
+          queryClient.invalidateQueries({ queryKey: ['solicitudes-proyecto'] });
         } catch (error: any) { toast.error(error.message || 'Error'); }
       },
       type: 'warning'
@@ -261,6 +263,7 @@ export function SolicitudesPage() {
           });
           toast.success('Solicitud terminada');
           refresh();
+          queryClient.invalidateQueries({ queryKey: ['solicitudes-proyecto'] });
         } catch (error: any) { toast.error(error.message || 'Error'); }
       },
       type: 'info'
@@ -275,6 +278,7 @@ export function SolicitudesPage() {
       });
       toast.success('Solicitud en negociación');
       refresh();
+      queryClient.invalidateQueries({ queryKey: ['solicitudes-proyecto'] });
     } catch (error: any) { toast.error(error.message || 'Error'); }
   };
 
@@ -1407,6 +1411,8 @@ export function SolicitudesPage() {
                   try {
                     const nuevoCliente = await clientesService.createCliente(data);
                     setClientes(prev => [nuevoCliente, ...prev]);
+                    queryClient.invalidateQueries({ queryKey: ['clientes-all'] });
+                    queryClient.invalidateQueries({ queryKey: ['clientes'] });
                     if (nuevoClienteTarget === 'form') {
                       setFormData(prev => ({ ...prev, id_cliente: nuevoCliente.id_cliente }));
                     } else {

@@ -28,6 +28,7 @@ from src.dto import (
     AjusteCreate,
     MovimientoAjusteRead,
 )
+from src.utils import generar_codigo_item_anexo
 
 logger = logging.getLogger(__name__)
 
@@ -73,8 +74,34 @@ class MovimientoService:
                         select(Anexo).where(Anexo.codigo_anexo == "ANEXO-BASE-REC")
                     )
                 ).first()
-                if base_anexo:
+                if not base_anexo and obj_data.get("id_convenio"):
+                    base_anexo = Anexo(
+                        id_convenio=obj_data["id_convenio"],
+                        nombre_anexo="Anexo Base Recepción",
+                        fecha=datetime.now().date(),
+                        codigo_anexo="ANEXO-BASE-REC",
+                    )
+                    db.add(base_anexo)
+                    await db.flush()
+                if base_anexo and base_anexo.id_anexo:
                     obj_data["id_anexo"] = base_anexo.id_anexo
+
+            # Regenerar el código con los IDs ya resueltos si el entrante
+            # viene vacío o con componentes en cero (convenio/anexo desconocidos)
+            codigo_entrante = obj_data.get("codigo") or ""
+            partes_codigo = codigo_entrante.split(".") if codigo_entrante else []
+            codigo_con_ceros = not codigo_entrante or (
+                len(partes_codigo) == 4 and "0" in partes_codigo[1:3]
+            )
+            if (
+                codigo_con_ceros
+                and obj_data.get("id_convenio")
+                and obj_data.get("id_anexo")
+            ):
+                obj_data["codigo"] = (
+                    f"{datetime.now().year}.{obj_data['id_convenio']}.{obj_data['id_anexo']}.{obj_data['id_producto']}"
+                )
+
             movimiento = MovimientoCreate(**obj_data)
 
         # Crear el movimiento
@@ -256,9 +283,41 @@ class MovimientoService:
                 ItemAnexo.id_producto == db_movimiento.id_producto,
             )
             item_anexo = (await db.exec(stmt)).first()
-            if not item_anexo:
-                pass
-            else:
+
+            # Crear el item_anexo si no existe para que el producto quede
+            # disponible para salidas (MERMA/DONACION/DEVOLUCION)
+            if not item_anexo and db_movimiento.moneda_compra is not None:
+                anexo_crear = await db.get(Anexo, db_movimiento.id_anexo)
+                sec_anexo = 0
+                if anexo_crear and anexo_crear.codigo_anexo:
+                    try:
+                        sec_anexo = int(anexo_crear.codigo_anexo.rsplit(".", 1)[-1])
+                    except ValueError:
+                        sec_anexo = 0
+                codigo_item = generar_codigo_item_anexo(
+                    anexo_crear.id_convenio if anexo_crear else 0,
+                    sec_anexo,
+                    (db_movimiento.producto.codigo if db_movimiento.producto else None),
+                    db_movimiento.id_producto or 0,
+                )
+                item_anexo = ItemAnexo(
+                    id_anexo=db_movimiento.id_anexo,
+                    id_producto=db_movimiento.id_producto,
+                    entrada=db_movimiento.cantidad,
+                    precio_compra=db_movimiento.precio_compra or 0,
+                    precio_venta=db_movimiento.precio_venta or 0,
+                    id_moneda=db_movimiento.moneda_compra,
+                    codigo=codigo_item,
+                )
+                db.add(item_anexo)
+            elif item_anexo and tipo.tipo == "RECEPCION":
+                # Acumular la entrada solo en el anexo base de recepciones
+                # para no duplicar cantidades sobre anexos de compra reales
+                anexo_base = await db.get(Anexo, db_movimiento.id_anexo)
+                if anexo_base and anexo_base.codigo_anexo == "ANEXO-BASE-REC":
+                    item_anexo.entrada += db_movimiento.cantidad
+
+            if item_anexo is not None:
                 # Determinar si el convenio es COMPRA_VENTA
                 es_compra_venta = False
                 proveedor_id_compra = None

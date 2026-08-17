@@ -69,6 +69,9 @@ export function LiquidacionesPage() {
   const [filtroPersona, setFiltroPersona] = useState<number | null>(
     personaParam ? Number(personaParam) : null
   );
+  const [filtroEtapa, setFiltroEtapa] = useState<number | null>(
+    etapaParam ? Number(etapaParam) : null
+  );
   
   const [selectedSolicitud, setSelectedSolicitud] = useState<number | null>(
     solicitudParam ? Number(solicitudParam) : null
@@ -196,8 +199,6 @@ export function LiquidacionesPage() {
           openForm(liq);
         }
       }).catch(console.error);
-    } else if (solicitudParam && etapaParam && personaParam) {
-      setView('form');
     }
   }, [idParam, solicitudParam, etapaParam, personaParam]);
 
@@ -220,32 +221,16 @@ export function LiquidacionesPage() {
 
   useEffect(() => {
     if (selectedEtapa) {
-      personaEtapaService.getPersonasByEtapa(selectedEtapa).then(async (pes) => {
-        const personasDetails = await Promise.all(
-          pes.map(async (pe: PersonaEtapa) => {
-            try {
-              return await clientesService.getCliente(pe.id_persona);
-            } catch {
-              return null;
-            }
-          })
-        );
-        const filtered = personasDetails.filter((p): p is Cliente => p !== null);
-        setPersonasEtapa(filtered);
-        
-        if (personaParam && Number(personaParam) > 0) {
-          setSelectedPersona(Number(personaParam));
-        }
-      }).catch(console.error);
+      cargarPersonasEtapa(selectedEtapa, personaParam ? Number(personaParam) : undefined);
     }
   }, [selectedEtapa]);
 
   useEffect(() => {
-    if (selectedPersona && selectedEtapa) {
+    if (selectedPersona && selectedEtapa && view === 'form') {
       loadPersonaEtapaCobro(selectedEtapa, selectedPersona);
       cargarPagosYDisponible(selectedEtapa, selectedPersona);
     }
-  }, [selectedPersona, selectedEtapa]);
+  }, [selectedPersona, selectedEtapa, view]);
 
   const createMutation = useMutation({
     mutationFn: (data: PersonaLiquidacionInput) => personaLiquidacionService.createLiquidacion(data),
@@ -365,6 +350,32 @@ export function LiquidacionesPage() {
     setPorCobrarPersona(0);
   };
 
+  const cargarPersonasEtapa = async (idEtapa: number, personaId?: number) => {
+    if (!idEtapa) {
+      setPersonasEtapa([]);
+      return;
+    }
+    try {
+      const pes = await personaEtapaService.getPersonasByEtapa(idEtapa);
+      const personasDetails = await Promise.all(
+        pes.map(async (pe: PersonaEtapa) => {
+          try {
+            return await clientesService.getCliente(pe.id_persona);
+          } catch {
+            return null;
+          }
+        })
+      );
+      const filtered = personasDetails.filter((p): p is Cliente => p !== null);
+      setPersonasEtapa(filtered);
+      if (personaId && Number(personaId) > 0) {
+        setSelectedPersona(Number(personaId));
+      }
+    } catch (error) {
+      console.error('Error cargando personas de la etapa:', error);
+    }
+  };
+
   const calculateImporteCaguayo = () => {
     const importe = Number(formData.importe) || 0;
     const porcentaje = Number(formData.porcentaje_caguayo) || 0;
@@ -478,10 +489,7 @@ export function LiquidacionesPage() {
     setPagosDisponibles([]);
     setDisponibleLiquidar(0);
     
-    if (personaId && selectedEtapa) {
-      loadPersonaEtapaCobro(selectedEtapa, personaId);
-      cargarPagosYDisponible(selectedEtapa, personaId);
-    } else {
+    if (!personaId || !selectedEtapa) {
       setFormData(prev => ({ ...prev, importe: 0 }));
     }
   };
@@ -551,11 +559,15 @@ export function LiquidacionesPage() {
         setSelectedEtapa(item.id_etapa);
         setSelectedPersona(item.id_persona);
         setSelectedPago(item.id_pago ?? null);
-        loadPersonaEtapaCobro(item.id_etapa, item.id_persona);
-        cargarPagosYDisponible(item.id_etapa, item.id_persona);
       }
     } else {
       resetForm();
+      if (solicitudParam && etapaParam && personaParam) {
+        setSelectedSolicitud(Number(solicitudParam));
+        setSelectedEtapa(Number(etapaParam));
+        setSelectedPersona(Number(personaParam));
+        cargarPersonasEtapa(Number(etapaParam), Number(personaParam));
+      }
     }
     setView('form');
   };
@@ -866,6 +878,10 @@ export function LiquidacionesPage() {
   const filteredLiquidaciones = useMemo(() => {
     let result = liquidaciones;
     
+    if (filtroEtapa) {
+      result = result.filter((l: PersonaLiquidacion) => l.id_etapa === filtroEtapa);
+    }
+    
     if (filtroPersona) {
       result = result.filter((l: PersonaLiquidacion) => l.id_persona === filtroPersona);
     }
@@ -887,7 +903,7 @@ export function LiquidacionesPage() {
     }
     
     return result;
-  }, [liquidaciones, activeTab, searchTerm, filtroPersona, personas]);
+  }, [liquidaciones, activeTab, searchTerm, filtroPersona, filtroEtapa, personas]);
 
   return (
     <div className="space-y-6">
@@ -895,8 +911,8 @@ export function LiquidacionesPage() {
         <>
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div className="flex items-center gap-4">
-              {filtroPersona && (
-                <Button variant="outline" onClick={() => navigate('/proyectos/realizadores')} className="gap-2">
+              {(filtroPersona || filtroEtapa) && (
+                <Button variant="outline" onClick={() => navigate(filtroEtapa ? `/proyectos/realizadores?etapa=${filtroEtapa}` : '/proyectos/realizadores')} className="gap-2">
                   <ArrowLeft className="h-4 w-4" />
                   Volver a Realizadores
                 </Button>

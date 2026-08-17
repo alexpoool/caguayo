@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 from decimal import Decimal
 from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlmodel import select
+from sqlalchemy import text
 from sqlalchemy.orm import selectinload
 from src.repository.base import CRUDBase
 from src.repository.contratos_repo import (
@@ -57,7 +58,12 @@ from src.dto import (
     ProductoSimpleRead,
     ItemAnexoDisponible,
 )
-from src.utils import generar_codigo_anio, generar_codigo_con_padre, generar_codigo
+from src.utils import (
+    generar_codigo_factura,
+    generar_codigo_venta_efectivo,
+    generar_codigo_contrato,
+    generar_codigo_suplemento,
+)
 from src.core.exceptions import BusinessLogicError
 
 
@@ -197,7 +203,25 @@ class ContratoService:
     ) -> ContratoReadWithDetails:
         contrato = await contrato_repo.create(db, data)
         anio = data.fecha.year
-        contrato.codigo = generar_codigo(denominacion or "", anio, contrato.id_contrato)
+
+        # Secuencia global del contrato (orden por fecha, id)
+        stmt_sec = text(
+            "SELECT rn FROM ("
+            "  SELECT id_contrato, "
+            "         ROW_NUMBER() OVER ("
+            "             ORDER BY fecha, id_contrato"
+            "         ) AS rn"
+            "  FROM contrato"
+            ") t WHERE id_contrato = :id_contrato"
+        )
+        result_sec = await db.exec(
+            stmt_sec, params={"id_contrato": contrato.id_contrato}
+        )
+        secuencia = result_sec.one()[0]
+
+        contrato.codigo = generar_codigo_contrato(
+            denominacion or "", anio, secuencia
+        )
         db.add(contrato)
         await db.commit()
         await db.refresh(contrato)
@@ -365,7 +389,25 @@ class SuplementoService:
     ) -> SuplementoReadWithDetails:
         suplemento = await suplemento_repo.create(db, data)
         anio = data.fecha.year
-        suplemento.codigo = generar_codigo(denominacion or "", anio, suplemento.id_suplemento)
+
+        # Secuencia del suplemento dentro de su contrato (orden por fecha, id)
+        stmt_sec = text(
+            "SELECT rn FROM ("
+            "  SELECT id_suplemento, "
+            "         ROW_NUMBER() OVER ("
+            "             PARTITION BY id_contrato ORDER BY fecha, id_suplemento"
+            "         ) AS rn"
+            "  FROM suplemento"
+            ") t WHERE id_suplemento = :id_suplemento"
+        )
+        result_sec = await db.exec(
+            stmt_sec, params={"id_suplemento": suplemento.id_suplemento}
+        )
+        secuencia = result_sec.one()[0]
+
+        suplemento.codigo = generar_codigo_suplemento(
+            denominacion or "", anio, suplemento.id_contrato, secuencia
+        )
         db.add(suplemento)
         await db.commit()
         await db.refresh(suplemento)
@@ -476,7 +518,23 @@ class FacturaService:
         factura = await factura_repo.create(db, data)
 
         anio = data.fecha.year
-        factura.codigo_factura = generar_codigo(denominacion or "", anio, factura.id_factura)
+
+        # Secuencia de la factura dentro de su contrato (orden por fecha, id)
+        stmt_sec = text(
+            "SELECT rn FROM ("
+            "  SELECT id_factura, "
+            "         ROW_NUMBER() OVER ("
+            "             PARTITION BY id_contrato ORDER BY fecha, id_factura"
+            "         ) AS rn"
+            "  FROM factura"
+            ") t WHERE id_factura = :id_factura"
+        )
+        result_sec = await db.exec(stmt_sec, params={"id_factura": factura.id_factura})
+        secuencia = result_sec.one()[0]
+
+        factura.codigo_factura = generar_codigo_factura(
+            denominacion or "", anio, factura.id_contrato, secuencia
+        )
         db.add(factura)
         await db.flush()
 
@@ -507,7 +565,7 @@ class FacturaService:
 
         if items_data and tipo_mov:
             await item_factura_repo.create_items(
-                db, factura.id_factura, items_data, denominacion=denominacion
+                db, factura.id_factura, items_data
             )
 
             for item in items_data:
@@ -691,7 +749,23 @@ class VentaEfectivoService:
         venta = await venta_efectivo_repo.create(db, data)
 
         anio = data.fecha.year
-        venta.codigo = generar_codigo(denominacion or "", anio, venta.id_venta_efectivo)
+
+        # Secuencia global de la venta (orden por fecha, id)
+        stmt_sec = text(
+            "SELECT rn FROM ("
+            "  SELECT id_venta_efectivo, "
+            "         ROW_NUMBER() OVER ("
+            "             ORDER BY fecha, id_venta_efectivo"
+            "         ) AS rn"
+            "  FROM venta_efectivo"
+            ") t WHERE id_venta_efectivo = :id_venta"
+        )
+        result_sec = await db.exec(stmt_sec, params={"id_venta": venta.id_venta_efectivo})
+        secuencia = result_sec.one()[0]
+
+        venta.codigo = generar_codigo_venta_efectivo(
+            denominacion or "", anio, secuencia
+        )
         db.add(venta)
         await db.flush()
 
@@ -719,7 +793,7 @@ class VentaEfectivoService:
 
         if items_data and tipo_mov:
             await item_venta_efectivo_repo.create_items(
-                db, venta.id_venta_efectivo, items_data, denominacion=denominacion
+                db, venta.id_venta_efectivo, items_data
             )
 
             # Resolver id_anexo desde id_item_anexo

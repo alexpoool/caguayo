@@ -3,7 +3,11 @@ from decimal import Decimal
 from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlmodel import select
 from typing import List, Optional
-from src.utils.codigos_entidad import generar_codigo
+from src.utils.codigos_entidad import (
+    generar_codigo,
+    generar_codigo_correlativo,
+    siguiente_secuencia,
+)
 from src.models.servicio import (
     Etapa,
     PersonaEtapa,
@@ -109,9 +113,10 @@ class SolicitudServicioService:
     async def create(
         db: AsyncSession, data: SolicitudServicioCreate, denominacion: Optional[str] = None
     ) -> SolicitudServicioRead:
+        sec = await siguiente_secuencia(db, "solicitud_servicio", "codigo_solicitud")
         s = await solicitud_servicio_repo.create(db, obj_in=data)
-        año = datetime.now().year
-        s.codigo_solicitud = generar_codigo(denominacion or "", año, s.id_solicitud_servicio)
+        año = (data.fecha_solicitud or date.today()).year
+        s.codigo_solicitud = generar_codigo_correlativo(denominacion or "", año, sec)
         await db.commit()
         await db.refresh(s)
         return SolicitudServicioRead(**s.model_dump())
@@ -162,8 +167,9 @@ class SolicitudServicioService:
         aprobado = getattr(data, "aprobado", None)
         id_contrato = getattr(data, "id_contrato", None)
         if aprobado and id_contrato and not s.codigo_proyecto:
+            sec = await siguiente_secuencia(db, "solicitud_servicio", "codigo_proyecto")
             año = datetime.now().year
-            data.codigo_proyecto = generar_codigo(denominacion or "", año, s.id_solicitud_servicio)
+            data.codigo_proyecto = generar_codigo_correlativo(denominacion or "", año, sec)
 
         updated = await solicitud_servicio_repo.update(db, db_obj=s, obj_in=data)
         return SolicitudServicioRead(**updated.model_dump())

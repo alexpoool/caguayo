@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { Button, Input, Label, Card, CardContent, CardHeader, CardTitle, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, ConfirmModal } from '../../components/ui';
 import { pagosFacturaServicioService, facturasServicioService, monedaService } from '../../services/api';
 import type { PagoFacturaServicio, PagoFacturaServicioCreate, FacturaServicio } from '../../types/servicio';
@@ -15,6 +16,7 @@ export function PagosFacturaServicioPage() {
   const [searchParams] = useSearchParams();
   const facturaId = searchParams.get('factura');
   const [view, setView] = useState<View>('list');
+  const queryClient = useQueryClient();
 
   const [pagos, setPagos] = useState<PagoFacturaServicio[]>([]);
   const [factura, setFactura] = useState<FacturaServicio | null>(null);
@@ -94,6 +96,8 @@ export function PagosFacturaServicioPage() {
       setView('list');
       resetForm();
       loadPagos(Number(facturaId));
+      loadFactura(Number(facturaId));
+      queryClient.invalidateQueries({ queryKey: ['facturas-servicio'] });
     } catch (error: any) {
       toast.error(error.message || 'Error al guardar');
     }
@@ -108,7 +112,11 @@ export function PagosFacturaServicioPage() {
         try {
           await pagosFacturaServicioService.deletePago(id);
           toast.success('Pago eliminado');
-          if (facturaId) loadPagos(Number(facturaId));
+          if (facturaId) {
+            loadPagos(Number(facturaId));
+            loadFactura(Number(facturaId));
+            queryClient.invalidateQueries({ queryKey: ['facturas-servicio'] });
+          }
         } catch (error: any) {
           toast.error(error.message || 'Error al eliminar');
         }

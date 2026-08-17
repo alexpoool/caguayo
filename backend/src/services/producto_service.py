@@ -27,6 +27,10 @@ class ProductosService:
         )
 
     @staticmethod
+    async def next_codigo(db: AsyncSession, id_subcategoria: int) -> str:
+        return await productos_repo.next_codigo(db, id_subcategoria)
+
+    @staticmethod
     async def get_producto(db: AsyncSession, producto_id: int) -> ProductosRead:
         db_producto = await productos_repo.get(db, id=producto_id)
         if not db_producto:

@@ -9,7 +9,7 @@ from src.services.existencia_service import ExistenciaService
 from src.models.liquidacion import Liquidacion
 from src.models.producto import Productos
 from src.models.movimiento import Movimiento
-from src.utils.codigos_entidad import generar_codigo
+from src.utils.codigos_entidad import generar_codigo_liquidacion
 from src.dto import (
     LiquidacionCreate,
     LiquidacionRead,
@@ -170,14 +170,37 @@ class LiquidacionService:
         subtotal = devengado_calculado - tributario_monto
         neto_pagar = subtotal - gasto_empresa - comision_bancaria
 
+        fecha_emision = data.fecha_emision or date.today()
+
+        # Secuencial global por cliente (MAX del secuencial del cliente + 1)
+        from sqlalchemy import text
+
+        stmt_sec = text(
+            "SELECT COALESCE(MAX(NULLIF(SPLIT_PART(codigo, '.', -1), '')::int), 0) "
+            "FROM liquidacion "
+            "WHERE id_cliente = :id_cliente AND codigo IS NOT NULL AND codigo <> ''"
+        )
+        result_sec = await db.exec(
+            stmt_sec,
+            params={
+                "id_cliente": data.id_cliente,
+            },
+        )
+        secuencia = result_sec.one()[0] + 1
+
         db_liquidacion = Liquidacion(
-            codigo="",
+            codigo=generar_codigo_liquidacion(
+                denominacion,
+                fecha_emision.year,
+                data.id_cliente,
+                secuencia,
+            ),
             id_cliente=data.id_cliente,
             id_convenio=id_convenio,
             id_anexo=id_anexo,
             id_moneda=data.id_moneda,
             liquidada=False,
-            fecha_emision=data.fecha_emision or date.today(),
+            fecha_emision=fecha_emision,
             observaciones=data.observaciones,
             devengado=devengado_calculado,
             tributario=tributario,
@@ -191,8 +214,6 @@ class LiquidacionService:
         )
         db.add(db_liquidacion)
         await db.flush()
-        db_liquidacion.codigo = generar_codigo(denominacion, datetime.now().year, db_liquidacion.id_liquidacion)
-        db.add(db_liquidacion)
         await db.commit()
         await db.refresh(db_liquidacion)
 

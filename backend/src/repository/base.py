@@ -31,6 +31,9 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         if load_options:
             for option in load_options:
                 statement = statement.options(option)
+        pk_cols = list(self.model.__table__.primary_key.columns)
+        if pk_cols:
+            statement = statement.order_by(*(c.desc() for c in pk_cols))
         statement = statement.offset(skip).limit(limit)
         results = await db.exec(statement)
         return list(results.all())
@@ -104,5 +107,8 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         if load_options:
             for option in load_options:
                 statement = statement.options(option)
+        pk_cols = list(self.model.__table__.primary_key.columns)
+        if pk_cols:
+            statement = statement.order_by(*(c.desc() for c in pk_cols))
         results = await db.exec(statement)
         return list(results.all())

@@ -226,6 +226,12 @@ export function AnexosPage() {
     queryFn: () => subcategoriasService.getSubcategorias(),
   });
 
+  const { data: nextCodigoData } = useQuery({
+    queryKey: ["next-codigo", nuevoProducto.id_subcategoria],
+    queryFn: () => productosService.getNextCodigo(nuevoProducto.id_subcategoria),
+    enabled: showNuevoProductoModal,
+  });
+
   const createMutation = useMutation({
     mutationFn: (data: Partial<Anexo>) => anexosService.createAnexo(data),
     onSuccess: () => {
@@ -901,7 +907,14 @@ export function AnexosPage() {
                     <div className="p-1.5 bg-white rounded-lg shadow-sm">
                       <Package className="h-5 w-5 text-teal-600" />
                     </div>
-                    <h3 className="text-lg font-bold text-gray-900">Nuevo Producto</h3>
+                    <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                      Nuevo Producto
+                      {nextCodigoData?.codigo && (
+                        <span className="px-2 py-0.5 text-sm font-mono text-teal-700 bg-white border border-teal-200 rounded-md">
+                          {nextCodigoData.codigo}
+                        </span>
+                      )}
+                    </h3>
                   </div>
                   <button
                     type="button"
@@ -920,15 +933,6 @@ export function AnexosPage() {
                       value={nuevoProducto.nombre}
                       onChange={(e) => setNuevoProducto({ ...nuevoProducto, nombre: e.target.value })}
                       placeholder="Nombre del producto"
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-sm font-medium">Código</Label>
-                    <Input
-                      className="mt-1 focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
-                      value={nuevoProducto.codigo}
-                      onChange={(e) => setNuevoProducto({ ...nuevoProducto, codigo: e.target.value })}
-                      placeholder="Código del producto"
                     />
                   </div>
                   <div>
@@ -1193,7 +1197,7 @@ export function AnexosPage() {
                   </TableCell>
                 </TableRow>
               ) : (
-                [...anexos].reverse().map((anexo, index) => (
+                anexos.map((anexo, index) => (
                   <TableRow
                     key={anexo.id_anexo}
                     className={`cursor-pointer transition-all duration-200 hover:bg-teal-50 hover:shadow-sm ${

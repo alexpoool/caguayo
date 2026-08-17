@@ -33,8 +33,36 @@ class ProductosRepository(CRUDBase[Productos, ProductosCreate, ProductosUpdate])
     async def get(self, db: AsyncSession, id: int) -> Optional[Productos]:
         return await self._get_with_relations(db, id)
 
+    async def next_codigo(self, db: AsyncSession, id_subcategoria: int) -> str:
+        """Genera el próximo código XX.YY.ZZZZ para una subcategoría.
+
+        XX = id_categoria (2 dígitos), YY = id_subcategoria (2 dígitos),
+        ZZZZ = siguiente secuencia (4 dígitos) entre los productos de la subcategoría.
+        """
+        subcategoria = await db.get(Subcategorias, id_subcategoria)
+        if not subcategoria:
+            raise ValueError("Subcategoría no encontrada")
+        prefix = (
+            f"{subcategoria.id_categoria:02d}.{subcategoria.id_subcategoria:02d}."
+        )
+        statement = select(self.model.codigo).where(
+            self.model.codigo.like(f"{prefix}%")
+        )
+        results = await db.exec(statement)
+        max_seq = 0
+        for codigo in results:
+            if not codigo:
+                continue
+            try:
+                max_seq = max(max_seq, int(codigo[len(prefix):]))
+            except (ValueError, IndexError):
+                continue
+        return f"{prefix}{max_seq + 1:04d}"
+
     async def create(self, db: AsyncSession, *, obj_in: ProductosCreate) -> Productos:
         obj_data = obj_in.dict()
+        if not obj_data.get("codigo"):
+            obj_data["codigo"] = await self.next_codigo(db, obj_in.id_subcategoria)
         db_obj = self.model(**obj_data)
         db.add(db_obj)
         await db.commit()

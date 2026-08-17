@@ -150,7 +150,7 @@ class ClienteService:
                 elif len(tipos) > 1:
                     statement = statement.where(Cliente.tipo_relacion.in_(tipos))
 
-        statement = statement.offset(skip).limit(limit)
+        statement = statement.order_by(Cliente.id_cliente.desc()).offset(skip).limit(limit)
         results = await db.exec(statement)
         db_clientes = list(results.all())
 
@@ -373,6 +373,20 @@ class ClienteJuridicaService:
     async def get(db: AsyncSession, id_cliente: int) -> Optional[ClienteJuridicaRead]:
         db_obj = await cliente_juridica_repo.get_with_cliente(db, id_cliente=id_cliente)
         return ClienteJuridicaRead.model_validate(db_obj) if db_obj else None
+
+    @staticmethod
+    async def get_all(
+        db: AsyncSession, skip: int = 0, limit: int = 100
+    ) -> List[ClienteJuridicaRead]:
+        from src.models.cliente_juridica import ClienteJuridica
+
+        db_objs = await cliente_juridica_repo.get_multi(
+            db,
+            skip=skip,
+            limit=limit,
+            load_options=[selectinload(ClienteJuridica.tipo_entidad)],
+        )
+        return [ClienteJuridicaRead.model_validate(o) for o in db_objs]
 
     @staticmethod
     async def update(

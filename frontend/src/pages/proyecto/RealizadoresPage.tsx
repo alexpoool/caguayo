@@ -1,12 +1,13 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { Button, Input, Label, Card, CardContent, CardHeader, CardTitle, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, ConfirmModal } from '../../components/ui';
 import { ClienteForm } from '../clientes/components/form/ClienteForm';
-import { personaEtapaService, etapasProyectoService, clientesService, monedaService, solicitudesService, personaLiquidacionService } from '../../services/api';
-import type { PersonaEtapa, PersonaEtapaCreate, Etapa, SolicitudServicio, PersonaLiquidacion } from '../../types/servicio';
+import { personaEtapaService, etapasProyectoService, clientesService, monedaService, solicitudesService } from '../../services/api';
+import type { PersonaEtapa, PersonaEtapaCreate, Etapa, SolicitudServicio } from '../../types/servicio';
 import type { Cliente, ClienteNatural, ClienteNaturalCreate, ClienteJuridicaCreate, ClienteTCPCreate, ClienteTCP, ClienteJuridica } from '../../types/ventas';
 import type { Moneda } from '../../types/moneda';
-import { Plus, Save, Trash2, ArrowLeft, Search, Users, X, DollarSign, Eye, ListFilter, FileText, Check } from 'lucide-react';
+import { Plus, Save, Trash2, ArrowLeft, Search, Users, X, DollarSign, Eye } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
@@ -25,6 +26,7 @@ interface ClienteConDetalles extends Cliente {
 
 export function RealizadoresPage() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [searchParams] = useSearchParams();
   const etapaParam = searchParams.get('etapa');
   const [view, setView] = useState<View>('list');
@@ -56,7 +58,6 @@ export function RealizadoresPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [filtroEtapa, setFiltroEtapa] = useState<number | null>(etapaParam ? Number(etapaParam) : null);
   const [detailModal, setDetailModal] = useState<{ isOpen: boolean; item: PersonaEtapaWithDetails | null }>({ isOpen: false, item: null });
-  const [liquidacionesModal, setLiquidacionesModal] = useState<{ isOpen: boolean; persona: PersonaEtapaWithDetails | null; liquidaciones: PersonaLiquidacion[] }>({ isOpen: false, persona: null, liquidaciones: [] });
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
     title: string;
@@ -221,6 +222,11 @@ setTodosClientes(todosClientesRes);
     return m?.simbolo || '';
   };
 
+  const getSolicitudByEtapa = (idEtapa: number): number | undefined => {
+    const etapa = etapas.find(e => e.id_etapa === idEtapa);
+    return etapa?.id_solicitud_servicio ?? currentEtapa?.id_solicitud_servicio;
+  };
+
   const filteredPersonas = useMemo(() => {
     const uniqueMap = new Map<number, PersonaEtapaWithDetails>();
     personasEtapa.forEach(p => {
@@ -354,6 +360,8 @@ setTodosClientes(todosClientesRes);
       setShowNuevoClienteModal(false);
       setNuevoClienteData({});
       setNuevoClienteTipo('NATURAL');
+      queryClient.invalidateQueries({ queryKey: ['clientes-all'] });
+      queryClient.invalidateQueries({ queryKey: ['clientes'] });
     } catch (error: any) {
       toast.error(error.message || 'Error al crear cliente');
     } finally {
@@ -421,14 +429,13 @@ Nuevo Realizador
                   </div>
                 </TableHead>
                 <TableHead>Liquidaciones</TableHead>
-                <TableHead>Liquidar</TableHead>
                 <TableHead className="text-right">Acciones</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredPersonas.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-12 text-gray-500">
+                  <TableCell colSpan={5} className="text-center py-12 text-gray-500">
                     {searchTerm ? 'No se encontraron realizadores que coincidan con la búsqueda' : 'No hay realizadores registrados'}
                   </TableCell>
                 </TableRow>
@@ -453,38 +460,15 @@ Nuevo Realizador
                         {getMonedaSymbol(item.id_moneda)} {Number(item.cobro).toFixed(2)}
                       </TableCell>
                       <TableCell onClick={(e) => e.stopPropagation()}>
-                        {item.liquidada ? (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={async () => {
-                              try {
-                                const liqs = await personaLiquidacionService.getLiquidacionesByPersona(item.id_persona);
-                                setLiquidacionesModal({ isOpen: true, persona: item, liquidaciones: liqs });
-                              } catch (error) {
-                                console.error('Error loading liquidaciones:', error);
-                                toast.error('Error al cargar liquidaciones');
-                              }
-                            }}
-                            className="gap-1 text-teal-600 border-teal-200 hover:bg-teal-50 hover:text-teal-700"
-                          >
-                            <Eye className="h-3.5 w-3.5" />
-                            Ver
-                          </Button>
-                        ) : null}
-                      </TableCell>
-                      <TableCell onClick={(e) => e.stopPropagation()}>
-                        {!item.liquidada ? (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => navigate(`/proyectos/liquidaciones?solicitud=${currentEtapa?.id_solicitud_servicio}&etapa=${item.id_etapa}&persona=${item.id_persona}`)}
-                            className="gap-1 text-teal-600 border-teal-200 hover:bg-teal-50 hover:text-teal-700"
-                          >
-                            <DollarSign className="h-3.5 w-3.5" />
-                            Liquidar
-                          </Button>
-                        ) : null}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => navigate(`/proyectos/liquidaciones?solicitud=${getSolicitudByEtapa(item.id_etapa) || ''}&etapa=${item.id_etapa}&persona=${item.id_persona}`)}
+                          className="gap-1 text-teal-600 border-teal-200 hover:bg-teal-50 hover:text-teal-700"
+                        >
+                          <DollarSign className="h-3.5 w-3.5" />
+                          Liquidaciones
+                        </Button>
                       </TableCell>
                       <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                         <div className="flex justify-end gap-2">
@@ -761,87 +745,6 @@ Nuevo Realizador
         document.body
       )}
 
-      {liquidacionesModal.isOpen && liquidacionesModal.persona && createPortal(
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-auto">
-            <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-teal-50 to-cyan-50">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <div className="p-3 rounded-xl bg-gradient-to-br from-teal-500 to-cyan-600 text-white shadow-lg">
-                    <FileText className="h-7 w-7" />
-                  </div>
-                  <div>
-                    <h3 className="text-2xl font-bold text-gray-900">Liquidaciones</h3>
-                    <p className="text-sm text-gray-500">Historial de liquidaciones del realizador</p>
-                  </div>
-                </div>
-                <button onClick={() => setLiquidacionesModal({ isOpen: false, persona: null, liquidaciones: [] })} className="p-2 hover:bg-gray-200 rounded-full">
-                  <X className="h-6 w-6 text-gray-500" />
-                </button>
-              </div>
-            </div>
-            <div className="p-6 space-y-4">
-              {liquidacionesModal.liquidaciones.length === 0 ? (
-                <div className="text-center py-8 text-gray-500">
-                  <DollarSign className="h-12 w-12 mx-auto mb-3 text-gray-300" />
-                  <p>No hay liquidaciones registradas</p>
-                </div>
-              ) : (
-                liquidacionesModal.liquidaciones.map((liq) => (
-                  <div key={liq.id_liquidacion} className="bg-gray-50 rounded-xl p-4 border border-gray-200">
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                      <div>
-                        <p className="text-xs text-gray-500 uppercase">Número</p>
-                        <p className="font-semibold text-gray-900">{liq.numero || `LIQ-${liq.id_liquidacion}`}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-gray-500 uppercase">Fecha</p>
-                        <p className="font-semibold text-gray-900">{liq.fecha_emision || 'N/A'}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-gray-500 uppercase">Devengado</p>
-                        <p className="font-semibold text-gray-900">{Number(liq.devengado || 0).toLocaleString()}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-gray-500 uppercase">Neto a Pagar</p>
-                        <p className="font-bold text-green-600">{Number(liq.neto_pagar || 0).toLocaleString()}</p>
-                      </div>
-                    </div>
-                    <div className="mt-3 pt-3 border-t border-gray-200 flex justify-between items-center">
-                      <div>
-                        {liq.confirmado ? (
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Confirmada</span>
-                        ) : (
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">Pendiente</span>
-                        )}
-                      </div>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          setLiquidacionesModal({ isOpen: false, persona: null, liquidaciones: [] });
-                          navigate(`/proyectos/liquidaciones?id=${liq.id_liquidacion}`);
-                        }}
-                        className="text-teal-600 border-teal-200 hover:bg-teal-50"
-                      >
-                        <Eye className="h-3.5 w-3.5 mr-1" />
-                        Ver Detalle
-                      </Button>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-              <div className="p-6 border-t border-gray-200 bg-gray-50 flex justify-end">
-              <button onClick={() => setLiquidacionesModal({ isOpen: false, persona: null, liquidaciones: [] })} className="px-6 py-3 text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors font-medium">
-                Cerrar
-              </button>
-            </div>
-          </div>
-        </div>,
-        document.body
-      )}
-
       {showNuevoClienteModal && createPortal(
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 animate-fade-in">
           <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-auto animate-scale-in">
@@ -874,6 +777,8 @@ Nuevo Realizador
                     handleSeleccionarPersona(nuevoCliente);
                     setShowNuevoClienteModal(false);
                     toast.success('Cliente creado');
+                    queryClient.invalidateQueries({ queryKey: ['clientes-all'] });
+                    queryClient.invalidateQueries({ queryKey: ['clientes'] });
                   } catch (error: any) {
                     toast.error(error.message || 'Error al crear cliente');
                   }

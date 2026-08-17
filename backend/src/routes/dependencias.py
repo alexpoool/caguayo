@@ -109,7 +109,7 @@ async def listar_dependencias(
         statement = statement.where(
             func.lower(Dependencia.nombre).contains(func.lower(search))
         )
-    statement = statement.offset(skip).limit(limit)
+    statement = statement.order_by(Dependencia.id_dependencia.desc()).offset(skip).limit(limit)
     results = await db.exec(statement)
     dependencias = results.all()
     return [DependenciaRead.model_validate(d) for d in dependencias]
@@ -133,6 +133,7 @@ async def listar_dependencias_jerarquia(
         statement = statement.where(Dependencia.codigo_padre == padre_id)
     else:
         statement = statement.where(Dependencia.codigo_padre.is_(None))
+    statement = statement.order_by(Dependencia.nombre.asc())
     results = await db.exec(statement)
     dependencias = results.all()
     return [DependenciaRead.model_validate(d) for d in dependencias]
@@ -145,7 +146,7 @@ async def get_bases_de_datos(
     """Obtiene todas las bases de datos existentes de la tabla conexion_database"""
     from sqlmodel import select
 
-    statement = select(ConexionDatabase)
+    statement = select(ConexionDatabase).order_by(ConexionDatabase.nombre_database.asc())
     results = await db.exec(statement)
     bases_de_datos = results.all()
 
@@ -346,7 +347,7 @@ async def listar_cuentas_dependencias(
         selectinload(CuentaDependencia.dependencia),
     )
 
-    statement = statement.offset(skip).limit(limit)
+    statement = statement.order_by(CuentaDependencia.id_cuenta.desc()).offset(skip).limit(limit)
 
     if search:
         pass
@@ -403,6 +404,7 @@ async def obtener_cuentas_por_dependencia(
         select(CuentaDependencia)
         .options(selectinload(CuentaDependencia.moneda))
         .where(CuentaDependencia.id_dependencia == id_dependencia)
+        .order_by(CuentaDependencia.id_cuenta.desc())
     )
     results = await db.exec(statement)
     return results.all()
@@ -618,7 +620,7 @@ async def listar_provincias(
     limit: int = Query(100, ge=1, le=1000),
     db: AsyncSession = Depends(get_session),
 ):
-    statement = select(Provincia).offset(skip).limit(limit)
+    statement = select(Provincia).order_by(Provincia.nombre.asc()).offset(skip).limit(limit)
     results = await db.exec(statement)
     provincias = results.all()
     return [ProvinciaRead.model_validate(p) for p in provincias]
@@ -634,7 +636,7 @@ async def listar_municipios(
     statement = select(Municipio).options(selectinload(Municipio.provincia))
     if provincia_id:
         statement = statement.where(Municipio.id_provincia == provincia_id)
-    statement = statement.offset(skip).limit(limit)
+    statement = statement.order_by(Municipio.nombre.asc()).offset(skip).limit(limit)
     results = await db.exec(statement)
     municipios = results.all()
     return [MunicipioRead.model_validate(m) for m in municipios]
