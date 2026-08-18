@@ -163,6 +163,7 @@ export function ContratosPage() {
         id_moneda: Number(formData.id_moneda) || 1,
         fecha,
         vigencia,
+        monto: Number(formData.monto) || 0,
         proforma: formData.proforma,
         documento_final: formData.documento_final
       };
@@ -203,7 +204,7 @@ export function ContratosPage() {
     });
   };
 
-  const resetForm = () => { setFormData({ fecha: hoy }); setEditingId(null); };
+  const resetForm = () => { setFormData({ fecha: hoy, monto: '' }); setEditingId(null); };
 
   const openForm = (item?: ContratoWithDetails) => {
     if (item) {
@@ -216,6 +217,7 @@ export function ContratosPage() {
         fecha: item.fecha, 
         vigencia: item.vigencia, 
         id_moneda: item.id_moneda, 
+        monto: item.monto,
         documento_final: item.documento_final 
       });
     } else { 
@@ -294,6 +296,7 @@ export function ContratosPage() {
                     Nombre
                   </div>
                 </TableHead>
+                <TableHead className="text-right">Valor</TableHead>
                 <TableHead>
                   <div className="flex items-center gap-2">
                     <User className="h-4 w-4 text-teal-600" />
@@ -313,7 +316,7 @@ export function ContratosPage() {
             <TableBody>
               {isLoading ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-12 text-gray-500">
+                  <TableCell colSpan={7} className="text-center py-12 text-gray-500">
                     <div className="flex flex-col items-center gap-2">
                       <div className="h-5 w-5 border-2 border-teal-500 border-t-transparent rounded-full animate-spin" />
                       Cargando contratos...
@@ -322,13 +325,13 @@ export function ContratosPage() {
                 </TableRow>
               ) : isError ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-12 text-red-500">
+                  <TableCell colSpan={7} className="text-center py-12 text-red-500">
                     Error al cargar contratos: {(error as Error)?.message || 'Error desconocido'}
                   </TableCell>
                 </TableRow>
               ) : filteredContratos.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-12 text-gray-500">
+                  <TableCell colSpan={7} className="text-center py-12 text-gray-500">
                     {searchTerm ? 'No se encontraron contratos que coincidan con la búsqueda' : 'No hay contratos'}
                   </TableCell>
                 </TableRow>
@@ -344,6 +347,7 @@ export function ContratosPage() {
                     <TableCell>
                       <span className="font-medium text-gray-900">{item.nombre}</span>
                     </TableCell>
+                    <TableCell className="text-right text-gray-700">{Number(item.monto || 0).toFixed(2)}</TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
                         <User className="h-4 w-4 text-gray-400" />
@@ -451,10 +455,17 @@ export function ContratosPage() {
         </CardHeader>
         <CardContent className="p-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Fila 1: Nombre */}
-            <div className="md:col-span-2">
+            {/* Fila 1: Nombre + Tipo */}
+            <div>
               <Label className="text-sm font-medium">Nombre *</Label>
               <Input value={formData.nombre || ''} onChange={(e: any) => setFormData({...formData, nombre: e.target.value})} className="mt-1" placeholder="Nombre del contrato" />
+            </div>
+            <div>
+              <Label className="text-sm font-medium">Tipo</Label>
+              <select className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white" value={formData.id_tipo_contrato || ''} onChange={(e: any) => setFormData({...formData, id_tipo_contrato: e.target.value})}>
+                <option value="">Seleccionar tipo</option>
+                {tiposContrato.map(t => <option key={t.id_tipo_contrato} value={t.id_tipo_contrato}>{t.nombre}</option>)}
+              </select>
             </div>
 
             {/* Fila 2: Cliente (buscador) + Nuevo Cliente */}
@@ -534,13 +545,10 @@ export function ContratosPage() {
               </div>
             </div>
 
-            {/* Fila 3: Tipo + Moneda */}
+            {/* Fila 3: Valor + Moneda */}
             <div>
-              <Label className="text-sm font-medium">Tipo</Label>
-              <select className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white" value={formData.id_tipo_contrato || ''} onChange={(e: any) => setFormData({...formData, id_tipo_contrato: e.target.value})}>
-                <option value="">Seleccionar tipo</option>
-                {tiposContrato.map(t => <option key={t.id_tipo_contrato} value={t.id_tipo_contrato}>{t.nombre}</option>)}
-              </select>
+              <Label className="text-sm font-medium">Valor</Label>
+              <Input type="number" min="0" step="0.01" value={formData.monto ?? ''} onChange={(e: any) => setFormData({...formData, monto: e.target.value})} className="mt-1" placeholder="0.00" />
             </div>
             <div>
               <Label className="text-sm font-medium">Moneda</Label>

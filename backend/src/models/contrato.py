@@ -73,6 +73,7 @@ class Suplemento(SQLModel, table=True):
     nombre: str = Field(max_length=200)
     id_estado: int = Field(foreign_key="estado_contrato.id_estado_contrato")
     fecha: date = Field(default=date.today())
+    fecha_vigencia: date = Field()
     monto: Decimal = Field(default=Decimal("0.00"))
     documento: Optional[str] = Field(default=None, max_length=255)
     codigo: Optional[str] = Field(default=None, max_length=100)

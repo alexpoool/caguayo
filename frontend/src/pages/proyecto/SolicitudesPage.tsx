@@ -328,7 +328,8 @@ export function SolicitudesPage() {
           fecha: formContrato.fecha || new Date().toISOString().split('T')[0],
           vigencia: formContrato.vigencia || new Date().toISOString().split('T')[0],
           proforma: formContrato.proforma,
-          documento_final: formContrato.documento_final
+          documento_final: formContrato.documento_final,
+          monto: Number(formContrato.valor_contrato) || 0,
         };
           const nuevoContrato = await contratosService.createContrato(data);
         await solicitudesService.updateSolicitud(aprobarModal.solicitud.id_solicitud_servicio, {
@@ -347,6 +348,8 @@ export function SolicitudesPage() {
           id_contrato: Number(formContrato.id_contrato_suplemento),
           nombre: formContrato.nombre_suplemento || `Suplemento-${Date.now()}`,
           fecha: formContrato.fecha_suplemento || new Date().toISOString().split('T')[0],
+          fecha_vigencia: formContrato.fecha_vigencia_suplemento || new Date().toISOString().split('T')[0],
+          monto: Number(formContrato.valor_suplemento) || 0,
           documento: formContrato.documento_suplemento,
         };
         const nuevoSuplemento = await suplementosService.createSuplemento(data);
@@ -1278,6 +1281,18 @@ export function SolicitudesPage() {
                         placeholder="Número de documento"
                       />
                     </div>
+                    <div>
+                      <Label className="text-sm font-medium">Valor</Label>
+                      <Input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={formContrato.valor_contrato || ''}
+                        onChange={(e: any) => setFormContrato({ ...formContrato, valor_contrato: e.target.value })}
+                        className="mt-1"
+                        placeholder="0.00"
+                      />
+                    </div>
                   </div>
                 </div>
               ) : aprobarModal.modo === 'seleccionar-suplemento' ? (
@@ -1357,6 +1372,27 @@ export function SolicitudesPage() {
                         value={formContrato.fecha_suplemento || ''}
                         onChange={(e: any) => setFormContrato({ ...formContrato, fecha_suplemento: e.target.value })}
                         className="mt-1"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-sm font-medium">Fecha de vigencia *</Label>
+                      <Input
+                        type="date"
+                        value={formContrato.fecha_vigencia_suplemento || ''}
+                        onChange={(e: any) => setFormContrato({ ...formContrato, fecha_vigencia_suplemento: e.target.value })}
+                        className="mt-1"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-sm font-medium">Valor</Label>
+                      <Input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={formContrato.valor_suplemento || ''}
+                        onChange={(e: any) => setFormContrato({ ...formContrato, valor_suplemento: e.target.value })}
+                        className="mt-1"
+                        placeholder="0.00"
                       />
                     </div>
                     <div>

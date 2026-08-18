@@ -164,6 +164,7 @@ class SuplementoRepository(CRUDBase[Suplemento, SuplementoCreate, SuplementoUpda
             "nombre": suplemento_data.nombre,
             "id_estado": getattr(suplemento_data, "id_estado", None) or 1,
             "fecha": suplemento_data.fecha,
+            "fecha_vigencia": suplemento_data.fecha_vigencia,
             "monto": getattr(suplemento_data, "monto", None) or Decimal("0.00"),
             "documento": suplemento_data.documento,
             "codigo": codigo,

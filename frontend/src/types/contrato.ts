@@ -104,6 +104,8 @@ export interface Suplemento {
   id_contrato: number;
   nombre: string;
   fecha: string;
+  fecha_vigencia: string;
+  monto?: number;
   documento?: string;
   codigo?: string;
 }
@@ -116,6 +118,8 @@ export interface SuplementoCreate {
   id_contrato: number;
   nombre: string;
   fecha: string;
+  fecha_vigencia: string;
+  monto: number;
   documento?: string;
 }
 
@@ -123,6 +127,8 @@ export interface SuplementoUpdate {
   id_contrato?: number;
   nombre?: string;
   fecha?: string;
+  fecha_vigencia?: string;
+  monto?: number;
   documento?: string;
 }
 

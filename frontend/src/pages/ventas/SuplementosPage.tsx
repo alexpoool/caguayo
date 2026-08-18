@@ -129,11 +129,18 @@ export function SuplementosPage() {
       toast.error(nombreErr);
       return;
     }
+    const vigenciaErr = required(formData.fecha_vigencia, 'Fecha de vigencia');
+    if (vigenciaErr) {
+      toast.error(vigenciaErr);
+      return;
+    }
     try {
       const data = { 
         id_contrato: selectedContratoId, 
         nombre: formData.nombre || '',
         fecha: formData.fecha || new Date().toISOString().split('T')[0],
+        fecha_vigencia: formData.fecha_vigencia || new Date().toISOString().split('T')[0],
+        monto: Number(formData.monto) || 0,
         documento: formData.documento
       };
       editingId ? await suplementosService.updateSuplemento(editingId, data as any) : await suplementosService.createSuplemento(data as any);
@@ -161,7 +168,7 @@ export function SuplementosPage() {
   };
 
   const resetForm = () => {
-    setFormData({ fecha: hoy });
+    setFormData({ fecha: hoy, fecha_vigencia: hoy });
     setEditingId(null);
     setSelectedContratoId(initialContratoId ? Number(initialContratoId) : null);
   };
@@ -173,6 +180,8 @@ export function SuplementosPage() {
       setFormData({ 
         nombre: item.nombre, 
         fecha: item.fecha, 
+        fecha_vigencia: item.fecha_vigencia,
+        monto: item.monto ?? '',
         documento: item.documento,
         id_contrato: item.id_contrato
       });
@@ -238,13 +247,15 @@ export function SuplementosPage() {
                       Fecha
                     </div>
                   </TableHead>
+                  <TableHead className="text-right">Valor</TableHead>
+                  <TableHead>Fecha vigencia</TableHead>
                   <TableHead className="text-right">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {isLoading ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center py-12 text-gray-500">
+                    <TableCell colSpan={7} className="text-center py-12 text-gray-500">
                       <div className="flex flex-col items-center gap-2">
                         <div className="h-5 w-5 border-2 border-teal-500 border-t-transparent rounded-full animate-spin" />
                         Cargando suplementos...
@@ -253,13 +264,13 @@ export function SuplementosPage() {
                   </TableRow>
                 ) : isError ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center py-12 text-red-500">
+                    <TableCell colSpan={7} className="text-center py-12 text-red-500">
                       Error al cargar suplementos: {(error as Error)?.message || 'Error desconocido'}
                     </TableCell>
                   </TableRow>
                 ) : filteredSuplementos.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center py-12 text-gray-500">
+                    <TableCell colSpan={7} className="text-center py-12 text-gray-500">
                       {searchTerm ? 'No se encontraron suplementos que coincidan con la búsqueda' : 'No hay suplementos'}
                     </TableCell>
                   </TableRow>
@@ -286,6 +297,8 @@ export function SuplementosPage() {
                         </span>
                       </TableCell>
                       <TableCell className="text-gray-500">{item.fecha}</TableCell>
+                      <TableCell className="text-right text-gray-700">{Number(item.monto || 0).toFixed(2)}</TableCell>
+                      <TableCell className="text-gray-500">{item.fecha_vigencia || 'N/A'}</TableCell>
                       <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                         <div className="flex justify-end gap-2">
                           <Button variant="ghost" size="icon" onClick={() => openForm(item)} className="text-green-600 hover:text-green-800 hover:bg-green-50 h-8 w-8" title="Editar">
@@ -406,6 +419,27 @@ export function SuplementosPage() {
               />
             </div>
             <div>
+              <Label className="text-sm font-medium">Fecha de vigencia *</Label>
+              <input 
+                type="date" 
+                className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition-colors" 
+                value={formData.fecha_vigencia || hoy} 
+                onChange={(e: any) => setFormData({...formData, fecha_vigencia: e.target.value})} 
+              />
+            </div>
+            <div>
+              <Label className="text-sm font-medium">Valor</Label>
+              <Input
+                type="number"
+                min="0"
+                step="0.01"
+                value={formData.monto ?? ''}
+                onChange={(e: any) => setFormData({...formData, monto: e.target.value})}
+                className="mt-1"
+                placeholder="0.00"
+              />
+            </div>
+            <div>
               <Label className="text-sm font-medium">Documento</Label>
               <Input value={formData.documento || ''} onChange={(e: any) => setFormData({...formData, documento: e.target.value})} className="mt-1" placeholder="Número de documento" />
             </div>
@@ -471,6 +505,14 @@ export function SuplementosPage() {
                 <div className="bg-gradient-to-br from-purple-50 to-pink-50 p-4 rounded-xl border border-purple-100">
                   <p className="text-xs text-purple-600 uppercase tracking-wider mb-1">Fecha</p>
                   <p className="font-bold text-gray-900">{detailModal.item.fecha || 'N/A'}</p>
+                </div>
+                <div className="bg-gradient-to-br from-purple-50 to-pink-50 p-4 rounded-xl border border-purple-100">
+                  <p className="text-xs text-purple-600 uppercase tracking-wider mb-1">Fecha de vigencia</p>
+                  <p className="font-bold text-gray-900">{detailModal.item.fecha_vigencia || 'N/A'}</p>
+                </div>
+                <div className="bg-gray-50 p-4 rounded-xl">
+                  <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Valor</p>
+                  <p className="font-bold text-gray-900">{Number(detailModal.item.monto || 0).toFixed(2)}</p>
                 </div>
                 {detailModal.item.documento && (
                   <div className="bg-gray-50 p-4 rounded-xl">

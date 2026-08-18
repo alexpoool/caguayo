@@ -219,6 +219,7 @@ const loadInitialData = async () => {
           vigencia: formData.vigencia || new Date().toISOString().split("T")[0],
           proforma: formData.proforma,
           documento_final: formData.documento_final,
+          monto: Number(formData.monto) || 0,
         };
         editingId
           ? await contratosService.updateContrato(editingId, data)
@@ -296,7 +297,7 @@ const loadInitialData = async () => {
   };
 
   const resetForm = () => {
-    setFormData({ fecha: new Date().toISOString().split("T")[0] });
+    setFormData({ fecha: new Date().toISOString().split("T")[0], monto: "" });
     setEditingId(null);
   };
 
@@ -318,6 +319,7 @@ const loadInitialData = async () => {
           vigencia: item.vigencia,
           id_tipo_contrato: item.id_tipo_contrato,
           id_moneda: item.id_moneda,
+          monto: item.monto,
           documento_final: item.documento_final,
         });
       else if (tab === "suplementos")
@@ -709,6 +711,18 @@ const loadInitialData = async () => {
                       ...formData,
                       documento_final: e.target.value,
                     })
+                  }
+                />
+              </div>
+              <div>
+                <Label className="text-sm font-medium">Valor</Label>
+                <Input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={formData.monto ?? ""}
+                  onChange={(e: any) =>
+                    setFormData({ ...formData, monto: e.target.value })
                   }
                 />
               </div>

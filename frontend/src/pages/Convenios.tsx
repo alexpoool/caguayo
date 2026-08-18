@@ -602,7 +602,7 @@ export function ConveniosPage() {
             <TableHeader className="bg-gradient-to-r from-teal-50 to-cyan-50">
               <TableRow>
                 <TableHead>Código</TableHead>
-                <TableHead>Cliente</TableHead>
+                <TableHead>Proveedores</TableHead>
                 <TableHead>Nombre</TableHead>
                 <TableHead>Tipo</TableHead>
                 <TableHead className="text-center">Anexos</TableHead>

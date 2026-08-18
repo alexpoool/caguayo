@@ -370,6 +370,7 @@ async def map_suplemento_to_read(
         nombre=suplemento.nombre,
         id_estado=suplemento.id_estado,
         fecha=suplemento.fecha,
+        fecha_vigencia=suplemento.fecha_vigencia,
         monto=suplemento.monto,
         documento=suplemento.documento,
         codigo=suplemento.codigo,

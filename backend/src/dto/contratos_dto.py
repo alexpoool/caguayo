@@ -120,6 +120,8 @@ class SuplementoBase(SQLModel):
     id_contrato: int = Field(gt=0)
     nombre: str = Field(min_length=1)
     fecha: date
+    fecha_vigencia: date
+    monto: Decimal = Field(default=Decimal("0.00"), ge=0)
     documento: Optional[str] = None
     codigo: Optional[str] = None
 
@@ -141,6 +143,7 @@ class SuplementoUpdate(SQLModel):
     nombre: Optional[str] = Field(default=None, min_length=1)
     id_estado: Optional[int] = Field(default=None, gt=0)
     fecha: Optional[date] = None
+    fecha_vigencia: Optional[date] = None
     monto: Optional[Decimal] = Field(default=None, ge=0)
     documento: Optional[str] = None
     codigo: Optional[str] = None

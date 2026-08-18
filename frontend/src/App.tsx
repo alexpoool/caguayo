@@ -34,6 +34,7 @@ import {
 import { LoginPage } from './pages/Login';
 import { RegisterPage } from './pages/Register';
 import { HomePage } from './pages/HomePage';
+import { Dashboard } from './pages/Dashboard';
 import { LoggerPage } from './pages/Logger';
 import { PerfilPage } from './pages/Perfil';
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -102,7 +103,7 @@ const queryClient = new QueryClient({
 });
 
 const rutasPorModulo: Record<Modulo, string[]> = {
-  inventario: ['/inventario', '/movimientos', '/movimientos/pendientes', '/movimientos/ajuste', '/movimientos/seleccionar-recepcion', '/productos', '/inventario/existencias', '/inventario/movimientos-dependencia', '/inventario/movimientos-producto', '/perfil'],
+  inventario: ['/inventario', '/movimientos', '/movimientos/pendientes', '/movimientos/ajuste', '/movimientos/seleccionar-recepcion', '/productos', '/inventario/existencias', '/inventario/movimientos-dependencia', '/inventario/movimientos-producto', '/dashboard', '/perfil'],
   administracion: ['/administracion', '/configuracion', '/monedas', '/usuarios', '/grupos', '/dependencias', '/cuentas', '/perfil'],
   venta: ['/venta', '/ventas', '/clientes', '/ventas/operaciones', '/ventas/contratos', '/ventas/suplementos', '/ventas/facturas', '/ventas/efectivo', '/ventas/registro-clientes', '/perfil'],
   compra: ['/compra', '/compra/clientes', '/compra/convenios', '/compra/anexos', '/compra/liquidaciones', '/compra/productos-liquidacion', '/compra/proveedores', '/perfil'],
@@ -114,14 +115,21 @@ const rutasPorModulo: Record<Modulo, string[]> = {
 // Componente para proteger rutas según el módulo
 function ProtectedRoute({
   children,
-  moduloActivo,
-  currentPath
+  currentPath,
 }: {
   children: React.ReactNode;
-  moduloActivo: Modulo;
   currentPath: string;
+  moduloActivo?: Modulo;
 }) {
-  const rutasPermitidas = rutasPorModulo[moduloActivo];
+  const moduloRuta = (
+    Object.entries(rutasPorModulo) as [Modulo, string[]][]
+  ).find(([, rutas]) =>
+    rutas.some(route =>
+      route === '/' ? currentPath === route : currentPath === route || currentPath.startsWith(route)
+    )
+  )?.[0] as Modulo | undefined;
+
+  const rutasPermitidas = rutasPorModulo[moduloRuta ?? 'inventario'];
   const isAllowed = rutasPermitidas.some(route =>
     currentPath === route || (route !== '/' && currentPath.startsWith(route))
   );
@@ -131,6 +139,77 @@ function ProtectedRoute({
   }
 
   return <>{children}</>;
+}
+
+// Componente estable de enlace del sidebar: navega SIEMPRE al destino al hacer
+// click, sin depender del comportamiento por defecto del navegador/router.
+function SidebarLink({
+  to,
+  children,
+  onClick,
+  exact = false,
+  slim = false,
+}: {
+  to: string;
+  children: React.ReactNode;
+  onClick?: () => void;
+  exact?: boolean;
+  slim?: boolean;
+}) {
+  const linkLocation = useLocation();
+  const navigate = useNavigate();
+  const isActive = exact
+    ? linkLocation.pathname === to
+    : linkLocation.pathname === to || (linkLocation.pathname.startsWith(`${to}/`) && to !== '/movimientos');
+
+  const handleClick = (e: React.MouseEvent) => {
+    onClick?.();
+    // Conservar el comportamiento por defecto para clicks de modificación
+    // (abrir en pestaña nueva, etc.)
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) {
+      return;
+    }
+    e.preventDefault();
+    if (linkLocation.pathname === to) {
+      // Ya estamos en la ruta: forzar refresco de datos con query param único
+      navigate(`${to}?_=${Date.now()}`, { replace: true });
+    } else {
+      navigate(to);
+    }
+  };
+
+  return (
+    <Link
+      to={to}
+      onClick={handleClick}
+      className={`
+        group flex items-center ${slim ? 'justify-center' : 'gap-3'} ${slim ? 'px-0' : 'px-3'} py-2.5 rounded-lg 
+        transition-all duration-300 ease-out relative overflow-hidden
+        ${isActive
+          ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30'
+          : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+        }
+      `}
+    >
+      <span className={`
+        absolute left-0 top-1/2 -translate-y-1/2 w-1 h-0 
+        bg-blue-400 rounded-r-full transition-all duration-300
+        group-hover:h-6
+        ${isActive ? 'h-8 bg-white' : ''}
+      `} />
+      <span className={`
+        transition-all duration-300
+        ${isActive ? 'text-white scale-110' : 'text-slate-500 group-hover:text-blue-400 group-hover:scale-110'}
+      `}>
+        {children && React.Children.toArray(children)[0]}
+      </span>
+      {!slim && (
+        <span className="font-medium">
+          {children && React.Children.toArray(children).slice(1)}
+        </span>
+      )}
+    </Link>
+  );
 }
 
 function App() {
@@ -200,58 +279,11 @@ function App() {
 
   // Sidebar and header are always visible
 
-  const NavLink = ({ to, children, onClick, exact = false }: { to: string; children: React.ReactNode; onClick?: () => void; exact?: boolean }) => {
-    const linkLocation = useLocation();
-    const navigate = useNavigate();
-    const isActive = exact
-      ? linkLocation.pathname === to
-      : linkLocation.pathname === to || (linkLocation.pathname.startsWith(`${to}/`) && to !== '/movimientos');
-    const handleClick = (e: React.MouseEvent) => {
-      onClick?.();
-      if (linkLocation.pathname === to) {
-        e.preventDefault();
-        navigate(`${to}?_=${Date.now()}`, { replace: true });
-      }
-    };
-    return (
-      <Link
-        to={to}
-        onClick={handleClick}
-        className={`
-          group flex items-center ${slimSidebar ? 'justify-center' : 'gap-3'} ${slimSidebar ? 'px-0' : 'px-3'} py-2.5 rounded-lg 
-          transition-all duration-300 ease-out relative overflow-hidden
-          ${isActive
-            ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30'
-            : 'text-slate-300 hover:bg-slate-800 hover:text-white'
-          }
-        `}
-      >
-        <span className={`
-          absolute left-0 top-1/2 -translate-y-1/2 w-1 h-0 
-          bg-blue-400 rounded-r-full transition-all duration-300
-          group-hover:h-6
-          ${isActive ? 'h-8 bg-white' : ''}
-        `} />
-        <span className={`
-          transition-all duration-300
-          ${isActive ? 'text-white scale-110' : 'text-slate-500 group-hover:text-blue-400 group-hover:scale-110'}
-        `}>
-          {children && React.Children.toArray(children)[0]}
-        </span>
-        {!slimSidebar && (
-          <span className="font-medium">
-            {children && React.Children.toArray(children).slice(1)}
-          </span>
-        )}
-      </Link>
-    );
-  };
-
   const modulos: { id: Modulo; label: string; icon: React.ElementType }[] = [
-    { id: 'compra', label: 'Compra', icon: UserCircle },
-    { id: 'venta', label: 'Venta', icon: Briefcase },
-    { id: 'proyecto', label: 'Proyectos', icon: Wrench },
     { id: 'inventario', label: 'Inventario', icon: Boxes },
+    { id: 'compra', label: 'Compra', icon: UserCircle },
+    { id: 'venta', label: 'Tienda', icon: Briefcase },
+    { id: 'proyecto', label: 'Proyectos', icon: Wrench },
     { id: 'reportes', label: 'Reportes', icon: BarChart3 },
     { id: 'administracion', label: 'Administración', icon: Settings },
   ];
@@ -281,26 +313,26 @@ function App() {
                 <ul className={`space-y-1 ${slimSidebar ? 'px-0' : 'px-3'}`}>
                   {hasFuncionalidad('movimientos') && (
                     <li>
-                      <NavLink to="/movimientos" onClick={handleLinkClick} exact>
+                      <SidebarLink slim={slimSidebar} to="/movimientos" onClick={handleLinkClick} exact>
                         <ArrowLeftRight className="w-5 h-5" />
                         Movimientos
-                      </NavLink>
+                      </SidebarLink>
                     </li>
                   )}
                   {hasFuncionalidad('pendientes') && (
                     <li>
-                      <NavLink to="/movimientos/pendientes" onClick={handleLinkClick}>
+                      <SidebarLink slim={slimSidebar} to="/movimientos/pendientes" onClick={handleLinkClick}>
                         <Clock className="w-6 h-6" />
                         Pendientes
-                      </NavLink>
+                      </SidebarLink>
                     </li>
                   )}
                   {hasFuncionalidad('productos') && (
                     <li>
-                      <NavLink to="/productos" onClick={handleLinkClick}>
+                      <SidebarLink slim={slimSidebar} to="/productos" onClick={handleLinkClick}>
                         <Boxes className="w-6 h-6" />
                         Productos
-                      </NavLink>
+                      </SidebarLink>
                     </li>
                   )}
                   {!slimSidebar && (
@@ -310,26 +342,26 @@ function App() {
                   )}
                   {hasFuncionalidad('reporte_existencias') && (
                     <li>
-                      <NavLink to="/inventario/existencias" onClick={handleLinkClick}>
+                      <SidebarLink slim={slimSidebar} to="/inventario/existencias" onClick={handleLinkClick}>
                         <Boxes className="w-6 h-6" />
                         Existencias
-                      </NavLink>
+                      </SidebarLink>
                     </li>
                   )}
                   {hasFuncionalidad('reporte_movimientos_dependencia') && (
                     <li>
-                      <NavLink to="/inventario/movimientos-dependencia" onClick={handleLinkClick}>
+                      <SidebarLink slim={slimSidebar} to="/inventario/movimientos-dependencia" onClick={handleLinkClick}>
                         <ArrowLeftRight className="w-6 h-6" />
                         Mov. Dependencia
-                      </NavLink>
+                      </SidebarLink>
                     </li>
                   )}
                   {hasFuncionalidad('reporte_movimientos_producto') && (
                     <li>
-                      <NavLink to="/inventario/movimientos-producto" onClick={handleLinkClick}>
+                      <SidebarLink slim={slimSidebar} to="/inventario/movimientos-producto" onClick={handleLinkClick}>
                         <Package className="w-6 h-6" />
                         Mov. Producto
-                      </NavLink>
+                      </SidebarLink>
                     </li>
                   )}
                 </ul>
@@ -337,42 +369,42 @@ function App() {
               {moduloActivo === 'administracion' && (
                 <ul className="space-y-1 px-3">
                   <li>
-                    <NavLink to="/configuracion" onClick={handleLinkClick}>
+                    <SidebarLink slim={slimSidebar} to="/configuracion" onClick={handleLinkClick}>
                       <Settings className="w-6 h-6" />
                       Configuración
-                    </NavLink>
+                    </SidebarLink>
                   </li>
                   <li>
-                    <NavLink to="/monedas" onClick={handleLinkClick}>
+                    <SidebarLink slim={slimSidebar} to="/monedas" onClick={handleLinkClick}>
                       <Coins className="w-6 h-6" />
                       Monedas
-                    </NavLink>
+                    </SidebarLink>
                   </li>
                   <li>
-                    <NavLink to="/usuarios" onClick={handleLinkClick}>
+                    <SidebarLink slim={slimSidebar} to="/usuarios" onClick={handleLinkClick}>
                       <Users className="w-6 h-6" />
                       Usuarios
-                    </NavLink>
+                    </SidebarLink>
                   </li>
                   <li>
-                    <NavLink to="/grupos" onClick={handleLinkClick}>
+                    <SidebarLink slim={slimSidebar} to="/grupos" onClick={handleLinkClick}>
                       <Shield className="w-6 h-6" />
                       Grupos
-                    </NavLink>
+                    </SidebarLink>
                   </li>
                   {hasFuncionalidad('dependencias') && (
                     <li>
-                      <NavLink to="/dependencias" onClick={handleLinkClick}>
+                      <SidebarLink slim={slimSidebar} to="/dependencias" onClick={handleLinkClick}>
                         <Building className="w-6 h-6" />
                         Dependencias
-                      </NavLink>
+                      </SidebarLink>
                     </li>
                   )}
                   <li>
-                    <NavLink to="/cuentas" onClick={handleLinkClick}>
+                    <SidebarLink slim={slimSidebar} to="/cuentas" onClick={handleLinkClick}>
                       <Wallet className="w-6 h-6" />
                       Cuentas
-                    </NavLink>
+                    </SidebarLink>
                   </li>
                 </ul>
               )}
@@ -380,42 +412,42 @@ function App() {
                 <ul className="space-y-1 px-3">
                   {hasFuncionalidad('proveedores') && (
                     <li>
-                      <NavLink to="/compra/clientes" onClick={handleLinkClick}>
+                      <SidebarLink slim={slimSidebar} to="/compra/clientes" onClick={handleLinkClick}>
                         <UserCircle className="w-6 h-6" />
                         Proveedores
-                      </NavLink>
+                      </SidebarLink>
                     </li>
                   )}
                   {hasFuncionalidad('convenios') && (
                     <li>
-                      <NavLink to="/compra/convenios" onClick={handleLinkClick}>
+                      <SidebarLink slim={slimSidebar} to="/compra/convenios" onClick={handleLinkClick}>
                         <FileText className="w-6 h-6" />
                         Convenios
-                      </NavLink>
+                      </SidebarLink>
                     </li>
                   )}
                   {hasFuncionalidad('anexos') && (
                     <li>
-                      <NavLink to="/compra/anexos" onClick={handleLinkClick}>
+                      <SidebarLink slim={slimSidebar} to="/compra/anexos" onClick={handleLinkClick}>
                         <Boxes className="w-6 h-6" />
                         Anexos
-                      </NavLink>
+                      </SidebarLink>
                     </li>
                   )}
                   {hasFuncionalidad('liquidaciones') && (
                     <li>
-                      <NavLink to="/compra/liquidaciones" onClick={handleLinkClick}>
+                      <SidebarLink slim={slimSidebar} to="/compra/liquidaciones" onClick={handleLinkClick}>
                         <Coins className="w-6 h-6" />
                         Liquidaciones
-                      </NavLink>
+                      </SidebarLink>
                     </li>
                   )}
                   {hasFuncionalidad('productos_liquidacion') && (
                     <li>
-                      <NavLink to="/compra/productos-liquidacion" onClick={handleLinkClick}>
+                      <SidebarLink slim={slimSidebar} to="/compra/productos-liquidacion" onClick={handleLinkClick}>
                         <Coins className="w-6 h-6" />
                         Productos en Liquidación
-                      </NavLink>
+                      </SidebarLink>
                     </li>
                   )}
                   {!slimSidebar && (
@@ -425,10 +457,10 @@ function App() {
                   )}
                   {hasFuncionalidad('reporte_proveedores') && (
                     <li>
-                      <NavLink to="/compra/proveedores" onClick={handleLinkClick}>
+                      <SidebarLink slim={slimSidebar} to="/compra/proveedores" onClick={handleLinkClick}>
                         <UserCircle className="w-6 h-6" />
                         Proveedores
-                      </NavLink>
+                      </SidebarLink>
                     </li>
                   )}
                 </ul>
@@ -437,42 +469,42 @@ function App() {
                 <ul className="space-y-1 px-3">
                   {hasFuncionalidad('clientes') && (
                     <li>
-                      <NavLink to="/clientes" onClick={handleLinkClick}>
+                      <SidebarLink slim={slimSidebar} to="/clientes" onClick={handleLinkClick}>
                         <UserCircle className="w-6 h-6" />
                         Clientes
-                      </NavLink>
+                      </SidebarLink>
                     </li>
                   )}
                   {hasFuncionalidad('contratos') && (
                     <li>
-                      <NavLink to="/ventas/contratos" onClick={handleLinkClick}>
+                      <SidebarLink slim={slimSidebar} to="/ventas/contratos" onClick={handleLinkClick}>
                         <FilePlus className="w-6 h-6" />
                         Contrato
-                      </NavLink>
+                      </SidebarLink>
                     </li>
                   )}
                   {hasFuncionalidad('suplementos') && (
                     <li>
-                      <NavLink to="/ventas/suplementos" onClick={handleLinkClick}>
+                      <SidebarLink slim={slimSidebar} to="/ventas/suplementos" onClick={handleLinkClick}>
                         <FileText className="w-6 h-6" />
                         Suplemento
-                      </NavLink>
+                      </SidebarLink>
                     </li>
                   )}
                   {hasFuncionalidad('facturas') && (
                     <li>
-                      <NavLink to="/ventas/facturas" onClick={handleLinkClick}>
+                      <SidebarLink slim={slimSidebar} to="/ventas/facturas" onClick={handleLinkClick}>
                         <Receipt className="w-6 h-6" />
                         Factura
-                      </NavLink>
+                      </SidebarLink>
                     </li>
                   )}
                   {hasFuncionalidad('venta_efectivo') && (
                     <li>
-                      <NavLink to="/ventas/efectivo" onClick={handleLinkClick}>
+                      <SidebarLink slim={slimSidebar} to="/ventas/efectivo" onClick={handleLinkClick}>
                         <DollarSign className="w-6 h-6" />
                         Efectivo
-                      </NavLink>
+                      </SidebarLink>
                     </li>
                   )}
                   {!slimSidebar && (
@@ -482,10 +514,10 @@ function App() {
                   )}
                   {hasFuncionalidad('reporte_clientes') && (
                     <li>
-                      <NavLink to="/ventas/registro-clientes" onClick={handleLinkClick}>
+                      <SidebarLink slim={slimSidebar} to="/ventas/registro-clientes" onClick={handleLinkClick}>
                         <UserCircle className="w-6 h-6" />
                         Registro de Clientes
-                      </NavLink>
+                      </SidebarLink>
                     </li>
                   )}
                 </ul>
@@ -494,66 +526,66 @@ function App() {
                 <ul className="space-y-1 px-3">
                   {hasFuncionalidad('servicios') && (
                     <li>
-                      <NavLink to="/proyectos/servicios" onClick={handleLinkClick}>
+                      <SidebarLink slim={slimSidebar} to="/proyectos/servicios" onClick={handleLinkClick}>
                         <Wrench className="w-6 h-6" />
                         Servicios
-                      </NavLink>
+                      </SidebarLink>
                     </li>
                   )}
                   {hasFuncionalidad('solicitudes') && (
                     <li>
-                      <NavLink to="/proyectos/solicitudes" onClick={handleLinkClick}>
+                      <SidebarLink slim={slimSidebar} to="/proyectos/solicitudes" onClick={handleLinkClick}>
                         <ClipboardList className="w-6 h-6" />
                         Solicitudes
-                      </NavLink>
+                      </SidebarLink>
                     </li>
                   )}
                   {hasFuncionalidad('proyectos') && (
                     <li>
-                      <NavLink to="/proyectos/proyectos" onClick={handleLinkClick}>
+                      <SidebarLink slim={slimSidebar} to="/proyectos/proyectos" onClick={handleLinkClick}>
                         <Layers className="w-6 h-6" />
                         Proyectos
-                      </NavLink>
+                      </SidebarLink>
                     </li>
                   )}
                   {hasFuncionalidad('realizadores') && (
                     <li>
-                      <NavLink to="/proyectos/realizadores" onClick={handleLinkClick}>
+                      <SidebarLink slim={slimSidebar} to="/proyectos/realizadores" onClick={handleLinkClick}>
                         <Users className="w-6 h-6" />
                         Realizadores
-                      </NavLink>
+                      </SidebarLink>
                     </li>
                   )}
                   {hasFuncionalidad('facturas_servicio') && (
                     <li>
-                      <NavLink to="/proyectos/facturas-servicio" onClick={handleLinkClick}>
+                      <SidebarLink slim={slimSidebar} to="/proyectos/facturas-servicio" onClick={handleLinkClick}>
                         <Receipt className="w-6 h-6" />
                         Facturas
-                      </NavLink>
+                      </SidebarLink>
                     </li>
                   )}
                   {hasFuncionalidad('ofertas') && (
                     <li>
-                      <NavLink to="/proyectos/ofertas" onClick={handleLinkClick}>
+                      <SidebarLink slim={slimSidebar} to="/proyectos/ofertas" onClick={handleLinkClick}>
                         <FilePlus className="w-6 h-6" />
                         Ofertas
-                      </NavLink>
+                      </SidebarLink>
                     </li>
                   )}
                   {hasFuncionalidad('pre_facturas') && (
                     <li>
-                      <NavLink to="/proyectos/pre-facturas" onClick={handleLinkClick}>
+                      <SidebarLink slim={slimSidebar} to="/proyectos/pre-facturas" onClick={handleLinkClick}>
                         <FileText className="w-6 h-6" />
                         Pre-facturas
-                      </NavLink>
+                      </SidebarLink>
                     </li>
                   )}
                   {hasFuncionalidad('liquidaciones_servicio') && (
                     <li>
-                      <NavLink to="/proyectos/liquidaciones" onClick={handleLinkClick}>
+                      <SidebarLink slim={slimSidebar} to="/proyectos/liquidaciones" onClick={handleLinkClick}>
                         <Calculator className="w-6 h-6" />
                         Liquidaciones
-                      </NavLink>
+                      </SidebarLink>
                     </li>
                   )}
                   {!slimSidebar && (
@@ -563,10 +595,10 @@ function App() {
                   )}
                   {hasFuncionalidad('reporte_proyectos') && (
                     <li>
-                      <NavLink to="/proyectos/registro-proyectos" onClick={handleLinkClick}>
+                      <SidebarLink slim={slimSidebar} to="/proyectos/registro-proyectos" onClick={handleLinkClick}>
                         <Layers className="w-6 h-6" />
                         Registro de Proyectos
-                      </NavLink>
+                      </SidebarLink>
                     </li>
                   )}
                 </ul>
@@ -580,26 +612,26 @@ function App() {
                   )}
                   {hasFuncionalidad('reporte_creadores') && (
                     <li>
-                      <NavLink to="/reportes/registro-creadores" onClick={handleLinkClick}>
+                      <SidebarLink slim={slimSidebar} to="/reportes/registro-creadores" onClick={handleLinkClick}>
                         <Users className="w-6 h-6" />
                         Registro de Creadores
-                      </NavLink>
+                      </SidebarLink>
                     </li>
                   )}
                   {hasFuncionalidad('reporte_desempeno') && (
                     <li>
-                      <NavLink to="/reportes/informe-desempeno" onClick={handleLinkClick}>
+                      <SidebarLink slim={slimSidebar} to="/reportes/informe-desempeno" onClick={handleLinkClick}>
                         <BarChart3 className="w-6 h-6" />
                         Informe de Desempeño
-                      </NavLink>
+                      </SidebarLink>
                     </li>
                   )}
                   {hasFuncionalidad('reporte_liquidaciones') && (
                     <li>
-                      <NavLink to="/reportes/resumen-liquidaciones" onClick={handleLinkClick}>
+                      <SidebarLink slim={slimSidebar} to="/reportes/resumen-liquidaciones" onClick={handleLinkClick}>
                         <Calculator className="w-6 h-6" />
                         Resumen de Liquidaciones
-                      </NavLink>
+                      </SidebarLink>
                     </li>
                   )}
 
@@ -610,21 +642,21 @@ function App() {
                   )}
                   {hasFuncionalidad('reporte_onat') && (
                     <li>
-                      <NavLink to="/reportes/onat" onClick={handleLinkClick}>
+                      <SidebarLink slim={slimSidebar} to="/reportes/onat" onClick={handleLinkClick}>
                         <FileText className="w-6 h-6" />
                         Ingreso y Retenciones
-                      </NavLink>
+                      </SidebarLink>
                     </li>
                   )}
                   {hasFuncionalidad('reporte_mincult') && (
                     <li>
-                      <NavLink to="/reportes/mincult" onClick={handleLinkClick}>
+                      <SidebarLink slim={slimSidebar} to="/reportes/mincult" onClick={handleLinkClick}>
                         <FileText className="w-6 h-6" />
                         <span>
                           <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider block leading-tight">MINCULT</span>
                           <span>Escala de ingresos</span>
                         </span>
-                      </NavLink>
+                      </SidebarLink>
                     </li>
                   )}
                 </ul>
@@ -670,7 +702,7 @@ function App() {
               className="flex items-center gap-2 p-2 rounded-lg hover:bg-gray-100 transition-all duration-300 ease-out hover:scale-110 active:scale-95 group"
               title="Perfil"
             >
-              <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center overflow-hidden">
+              <div className="w-9 h-9 rounded-full bg-blue-100 flex items-center justify-center overflow-hidden">
                 {user ? (
                   <span className="text-sm font-medium text-blue-700">
                     {user.nombre[0]}{user.primer_apellido[0]}
@@ -679,9 +711,16 @@ function App() {
                   <UserCircle className="w-5 h-5 text-blue-500" />
                 )}
               </div>
-              <span className="text-sm font-medium text-gray-700 group-hover:text-blue-600 hidden sm:inline">
-                {user ? `${user.nombre} ${user.primer_apellido}` : 'Usuario'}
-              </span>
+              <div className="text-left leading-tight hidden sm:block">
+                <span className="block text-sm font-medium text-gray-700 group-hover:text-blue-600">
+                  {user ? `${user.nombre} ${user.primer_apellido}` : 'Usuario'}
+                </span>
+                {user?.cargo && (
+                  <span className="block text-xs text-gray-400 group-hover:text-blue-500">
+                    {user.cargo}
+                  </span>
+                )}
+              </div>
             </Link>
           </div>
         </header>
@@ -692,6 +731,14 @@ function App() {
                 <Route
                   path="/"
                   element={<HomePage />}
+                />
+                <Route
+                  path="/dashboard"
+                  element={
+                    <ProtectedRoute currentPath="/dashboard">
+                      <Dashboard />
+                    </ProtectedRoute>
+                  }
                 />
                 <Route
                   path="/compra/clientes"
