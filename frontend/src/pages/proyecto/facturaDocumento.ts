@@ -2,6 +2,7 @@ import type { FacturaServicio, ItemFacturaServicio, Etapa, SolicitudServicio, Ce
 import type { Cliente } from '../../types/ventas';
 import type { Moneda } from '../../types/moneda';
 import { authService } from '../../services/auth';
+import { formatCifra } from '../../utils/decimal';
 
 export type TipoDocumento = 'OFERTA' | 'PRE-FACTURA' | 'FACTURA';
 
@@ -66,8 +67,8 @@ export function getFacturaServicioDocument(
           <td>${item.concepto || item.codigo_extendido || 'N/A'}</td>
           <td>${item.unidad_medida || '-'}</td>
           <td class="cantidad">${item.cantidad || 0}</td>
-          <td class="precio">${simboloMoneda} ${Number(item.precio || 0).toFixed(2)}</td>
-          <td class="importe">${simboloMoneda} ${importe.toFixed(2)}</td>
+          <td class="precio">${simboloMoneda} ${formatCifra(item.precio)}</td>
+          <td class="importe">${simboloMoneda} ${formatCifra(importe)}</td>
         </tr>
       `;
   }).join('');
@@ -259,24 +260,24 @@ export function getFacturaServicioDocument(
       <tbody>
         <tr>
           <td>Actividad</td>
-          <td>${simboloMoneda} ${aCobrar.toFixed(2)}</td>
+          <td>${simboloMoneda} ${formatCifra(aCobrar)}</td>
         </tr>
          <tr>
           <td>Impuesto Venta ONAT</td>
-          <td>${simboloMoneda} ${impuestoOnat.toFixed(2)}</td>
+          <td>${simboloMoneda} ${formatCifra(impuestoOnat)}</td>
         </tr>
         <tr class="subtotal-row">
           <td><strong>Subtotal</strong></td>
-          <td>${simboloMoneda} ${subtotalCert.toFixed(2)}</td>
+          <td>${simboloMoneda} ${formatCifra(subtotalCert)}</td>
         </tr>
         ${descuentoCert !== 0 ? `
         <tr class="descuento-row">
           <td><strong>Descuento</strong></td>
-          <td>${simboloMoneda} ${descuentoCert.toFixed(2)}</td>
+          <td>${simboloMoneda} ${formatCifra(descuentoCert)}</td>
         </tr>` : ''}
         <tr class="total-row">
           <td><strong>Total</strong></td>
-          <td>${simboloMoneda} ${totalCert.toFixed(2)}</td>
+          <td>${simboloMoneda} ${formatCifra(totalCert)}</td>
         </tr>
       </tbody>
     </table>
@@ -298,7 +299,7 @@ export function getFacturaServicioDocument(
           <td></td>
           <td></td>
           <td><strong>Subtotal</strong></td>
-          <td style="text-align: right;">${simboloMoneda} ${subtotal.toFixed(2)}</td>
+          <td style="text-align: right;">${simboloMoneda} ${formatCifra(subtotal)}</td>
         </tr>
         ${descuento !== 0 ? `
         <tr class="descuento-row">
@@ -306,14 +307,14 @@ export function getFacturaServicioDocument(
           <td></td>
           <td></td>
           <td><strong>Descuento</strong></td>
-          <td style="text-align: right;">${simboloMoneda} ${descuento.toFixed(2)}</td>
+          <td style="text-align: right;">${simboloMoneda} ${formatCifra(descuento)}</td>
         </tr>` : ''}
         <tr class="total-row">
           <td></td>
           <td></td>
           <td></td>
           <td><strong>Total</strong></td>
-          <td style="text-align: right;">${simboloMoneda} ${totalFinal.toFixed(2)}</td>
+          <td style="text-align: right;">${simboloMoneda} ${formatCifra(totalFinal)}</td>
         </tr>
       </tbody>
     </table>

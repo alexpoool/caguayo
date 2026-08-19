@@ -382,7 +382,7 @@ export function CertificacionesPage() {
                   <TableCell>{cert.inversionista || '-'}</TableCell>
                   <TableCell>{cert.obra || '-'}</TableCell>
                   <TableCell>{cert.fecha ? new Date(cert.fecha).toLocaleDateString() : '-'}</TableCell>
-                  <TableCell className="text-right">${Number(cert.a_cobrar).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+                  <TableCell className="text-right">${Number(cert.a_cobrar).toLocaleString('es-ES', { maximumFractionDigits: 15 })}</TableCell>
                   <TableCell onClick={(e) => e.stopPropagation()}>
                     <div className="flex justify-end gap-2">
                       <Button
@@ -499,13 +499,13 @@ export function CertificacionesPage() {
                 </div>
                 <div className="bg-gradient-to-br from-teal-50 to-cyan-50 p-4 rounded-xl border border-teal-100">
                   <p className="text-xs text-teal-600 uppercase tracking-wider mb-1">Impuesto Venta ONAT</p>
-                  <p className="font-bold text-gray-900 text-lg">${Number(detailModal.item.impuesto_venta_onat || 0).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                  <p className="font-bold text-gray-900 text-lg">${Number(detailModal.item.impuesto_venta_onat || 0).toLocaleString('es-ES', { maximumFractionDigits: 15 })}</p>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="bg-gradient-to-br from-teal-50 to-cyan-50 p-4 rounded-xl border border-teal-100">
                   <p className="text-xs text-teal-600 uppercase tracking-wider mb-1">A Cobrar</p>
-                  <p className="font-bold text-teal-900 text-xl">${Number(detailModal.item.a_cobrar).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                  <p className="font-bold text-teal-900 text-xl">${Number(detailModal.item.a_cobrar).toLocaleString('es-ES', { maximumFractionDigits: 15 })}</p>
                 </div>
               </div>
 

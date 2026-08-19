@@ -9,6 +9,7 @@ import type { Cliente, ClienteNatural, ClienteNaturalCreate, ClienteJuridicaCrea
 import type { Moneda } from '../../types/moneda';
 import { Plus, Save, Trash2, ArrowLeft, Search, Users, X, DollarSign, Eye } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { formatCifra } from '../../utils/decimal';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
 type View = 'list' | 'form';
@@ -477,10 +478,10 @@ Nuevo Realizador
                         </span>
                       </TableCell>
                       <TableCell className="font-medium text-gray-900">
-                        {getMonedaSymbol(item.id_moneda)} {Number(item.cobro).toFixed(2)}
+                        {getMonedaSymbol(item.id_moneda)} {formatCifra(item.cobro)}
                       </TableCell>
                       <TableCell className="font-medium text-teal-700">
-                        {getMonedaSymbol(item.id_moneda)} {Number(totalesPagado.get(`${item.id_etapa}-${item.id_persona}`) || 0).toFixed(2)}
+                        {getMonedaSymbol(item.id_moneda)} {formatCifra(totalesPagado.get(`${item.id_etapa}-${item.id_persona}`) || 0)}
                       </TableCell>
                       <TableCell onClick={(e) => e.stopPropagation()}>
                         <Button
@@ -732,7 +733,7 @@ Nuevo Realizador
               <div className="grid grid-cols-2 gap-4">
                 <div className="bg-gradient-to-br from-teal-50 to-cyan-50 p-4 rounded-xl border border-teal-100">
                   <p className="text-xs text-teal-600 uppercase tracking-wider mb-1">Cobro</p>
-                  <p className="font-bold text-teal-900 text-xl">{getMonedaSymbol(detailModal.item.id_moneda)} {Number(detailModal.item.cobro).toFixed(2)}</p>
+                  <p className="font-bold text-teal-900 text-xl">{getMonedaSymbol(detailModal.item.id_moneda)} {formatCifra(detailModal.item.cobro)}</p>
                 </div>
                 <div className="bg-gray-50 p-4 rounded-xl">
                   <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Moneda</p>
@@ -748,7 +749,7 @@ Nuevo Realizador
                 </div>
                 <div className="bg-gray-50 p-4 rounded-xl">
                   <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Por Cobrar</p>
-                  <p className="font-bold text-gray-900">{getMonedaSymbol(detailModal.item.id_moneda) || ''} {Number(detailModal.item.por_cobrar || 0).toFixed(2)}</p>
+                  <p className="font-bold text-gray-900">{getMonedaSymbol(detailModal.item.id_moneda) || ''} {formatCifra(detailModal.item.por_cobrar)}</p>
                 </div>
               </div>
             </div>

@@ -12,6 +12,7 @@ import { getFacturaServicioDocument, getCertificacionFacturaDocument } from './f
 import toast from 'react-hot-toast';
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { authService } from '../../services/auth';
+import { formatCifra } from '../../utils/decimal';
 import { useInfiniteList } from '../../hooks/useInfiniteList';
 
 type View = 'list' | 'form';
@@ -315,7 +316,7 @@ export function PreFacturasPage() {
           }, 0);
         }
         if (importeCalculado > Number(etapa.valor)) {
-          toast.error(`El importe de la pre-factura (${importeCalculado.toFixed(2)}) no puede ser mayor al valor de la etapa (${Number(etapa.valor).toFixed(2)})`);
+          toast.error(`El importe de la pre-factura (${formatCifra(importeCalculado)}) no puede ser mayor al valor de la etapa (${formatCifra(etapa.valor)})`);
           return;
         }
       }
@@ -692,7 +693,7 @@ export function PreFacturasPage() {
                         </span>
                       </TableCell>
                       <TableCell className="font-medium text-gray-900">
-                        {getMonedaSymbol(item.id_moneda)} {Number(item.importe || 0).toFixed(2)}
+                        {getMonedaSymbol(item.id_moneda)} {formatCifra(item.importe)}
                       </TableCell>
                       <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                         <div className="flex justify-end gap-2">
@@ -889,7 +890,7 @@ export function PreFacturasPage() {
                                 }))}
                               />
                             ) : (
-                              <span className="text-gray-900">{Number(tarea.cantidad || 0).toFixed(2)}</span>
+                              <span className="text-gray-900">{formatCifra(tarea.cantidad)}</span>
                             )}
                           </td>
                           <td className="px-3 py-2 text-right">
@@ -905,7 +906,7 @@ export function PreFacturasPage() {
                                 }))}
                               />
                             ) : (
-                              <span className="text-gray-900">{getMonedaSymbol(formData.id_moneda)} {Number(tarea.precio_ajustado || 0).toFixed(2)}</span>
+                              <span className="text-gray-900">{getMonedaSymbol(formData.id_moneda)} {formatCifra(tarea.precio_ajustado)}</span>
                             )}
                           </td>
                           <td className="px-3 py-2 text-right">
@@ -968,7 +969,7 @@ export function PreFacturasPage() {
                               <span className="text-gray-500">-</span>
                             )}
                           </td>
-                          <td className="px-3 py-2 text-right font-medium text-gray-900">{getMonedaSymbol(formData.id_moneda)} {importe.toFixed(2)}</td>
+                          <td className="px-3 py-2 text-right font-medium text-gray-900">{getMonedaSymbol(formData.id_moneda)} {formatCifra(importe)}</td>
                         </tr>
                       );
                     })}
@@ -979,15 +980,14 @@ export function PreFacturasPage() {
                 <div className="bg-blue-50 border border-blue-200 rounded-lg px-5 py-3 text-right">
                   <span className="text-sm text-blue-700 font-medium">Total seleccionado: </span>
                   <span className="text-lg font-bold text-blue-900">
-                    {getMonedaSymbol(formData.id_moneda)} {tareasDeEtapa
+                    {getMonedaSymbol(formData.id_moneda)} {formatCifra(tareasDeEtapa
                       .filter(t => selectedTareas.includes(t.id_tarea_etapa))
                       .reduce((sum, t) => {
                         const mod = tareaModifiers[t.id_tarea_etapa];
                         const cant = mod?.cantidad ?? Number(t.cantidad || 0);
                         const prec = mod?.precio ?? Number(t.precio_ajustado || 0);
                         return sum + (cant * prec);
-                      }, 0)
-                      .toFixed(2)}
+                      }, 0))}
                   </span>
                 </div>
               </div>
@@ -1040,7 +1040,7 @@ export function PreFacturasPage() {
                             {isYaFacturada && <span className="ml-2 text-xs text-red-500 font-medium">Ya facturada</span>}
                           </td>
                           <td className="px-3 py-2 text-right font-medium text-gray-900">
-                            {getMonedaSymbol(formData.id_moneda)} {Number(cert.a_cobrar || 0).toFixed(2)}
+                            {getMonedaSymbol(formData.id_moneda)} {formatCifra(cert.a_cobrar)}
                           </td>
                           <td className="px-3 py-2 text-right">
                             {isSelected ? (
@@ -1184,11 +1184,11 @@ export function PreFacturasPage() {
               <div className="grid grid-cols-3 gap-4">
                 <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-4 rounded-xl border border-blue-100">
                   <p className="text-xs text-blue-600 uppercase tracking-wider mb-1">Importe Total</p>
-                  <p className="font-bold text-blue-900 text-xl">{getMonedaSymbol(detailModal.item.id_moneda)} {Number(detailModal.item.importe || 0).toFixed(2)}</p>
+                  <p className="font-bold text-blue-900 text-xl">{getMonedaSymbol(detailModal.item.id_moneda)} {formatCifra(detailModal.item.importe)}</p>
                 </div>
                 <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-4 rounded-xl border border-blue-100">
                   <p className="text-xs text-blue-600 uppercase tracking-wider mb-1">Pagado</p>
-                  <p className="font-bold text-blue-900 text-xl">{getMonedaSymbol(detailModal.item.id_moneda)} {Number(detailModal.item.pagado || 0).toFixed(2)}</p>
+                  <p className="font-bold text-blue-900 text-xl">{getMonedaSymbol(detailModal.item.id_moneda)} {formatCifra(detailModal.item.pagado)}</p>
                 </div>
                 <div className="p-4 rounded-xl border bg-amber-50 border-amber-100">
                   <p className="text-xs uppercase tracking-wider mb-1 text-amber-600">Estado</p>

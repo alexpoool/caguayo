@@ -25,6 +25,7 @@ import {
   Loader2
 } from 'lucide-react';
 import { authService } from '../../services/auth';
+import { formatCifra } from '../../utils/decimal';
 import { 
   personaLiquidacionService, 
   monedaService, 
@@ -669,16 +670,16 @@ export function LiquidacionesPage() {
     const docPagoLiquidacion = liquidacion?.doc_pago_liquidacion || '';
     
     const porcentajeCaguayo = Number(liquidacion.porcentaje_caguayo || 10);
-    const importeCaguayo = Number(liquidacion.importe_caguayo || (liquidacion.importe * porcentajeCaguayo / 100)).toFixed(2);
-    const devengado = Number(liquidacion.devengado || 0).toFixed(2);
+    const importeCaguayo = formatCifra(liquidacion.importe_caguayo || (liquidacion.importe * porcentajeCaguayo / 100));
+    const devengado = formatCifra(liquidacion.devengado);
     const tributario = Number(liquidacion.tributario || 5);
-    const tributarioMonto = Number(liquidacion.tributario_monto || (Number(devengado) * tributario / 100)).toFixed(2);
-    const comisionBancaria = Number(liquidacion.comision_bancaria || 0).toFixed(2);
-    const gastoEmpresa = Number(liquidacion.gasto_empresa || 0).toFixed(2);
-    const netoPagar = Number(liquidacion.neto_pagar || 0).toFixed(2);
+    const tributarioMonto = formatCifra(liquidacion.tributario_monto || (Number(devengado) * tributario / 100));
+    const comisionBancaria = formatCifra(liquidacion.comision_bancaria);
+    const gastoEmpresa = formatCifra(liquidacion.gasto_empresa);
+    const netoPagar = formatCifra(liquidacion.neto_pagar);
     
-    const subtotal = (Number(devengado) - Number(tributarioMonto)).toFixed(2);
-    const importe = Number(liquidacion.importe || 0).toFixed(2);
+    const subtotal = formatCifra(Number(devengado) - Number(tributarioMonto));
+    const importe = formatCifra(liquidacion.importe);
     
     if (!liquidacion.fecha_liquidacion && liquidacion.confirmado) {
       liquidacion.fecha_liquidacion = new Date().toISOString().split('T')[0];
@@ -1022,10 +1023,10 @@ export function LiquidacionesPage() {
                         <TableCell>{getPersonaNombre(liquidacion.id_persona)}</TableCell>
                         <TableCell className="text-gray-900">{liquidacion.fecha_emision}</TableCell>
                         <TableCell className="font-medium text-gray-900">
-                          {getMonedaSimbolo(liquidacion.id_moneda)} {Number(liquidacion.importe || 0).toLocaleString()}
+                          {getMonedaSimbolo(liquidacion.id_moneda)} {formatCifra(liquidacion.importe)}
                         </TableCell>
                         <TableCell className="font-medium text-green-700">
-                          {getMonedaSimbolo(liquidacion.id_moneda)} {Number(liquidacion.neto_pagar || 0).toLocaleString()}
+                          {getMonedaSimbolo(liquidacion.id_moneda)} {formatCifra(liquidacion.neto_pagar)}
                         </TableCell>
                         <TableCell>
                           <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
@@ -1222,7 +1223,7 @@ export function LiquidacionesPage() {
                       />
                       <div className="flex-1 flex justify-between items-center">
                         <span className="text-sm font-medium text-gray-900">{pago.fecha || 'S/N'}</span>
-                        <span className="text-sm font-bold text-teal-700">{Number(pago.monto_disponible).toLocaleString()} {getMonedaSimbolo(pago.id_moneda)}</span>
+                        <span className="text-sm font-bold text-teal-700">{formatCifra(pago.monto_disponible)} {getMonedaSimbolo(pago.id_moneda)}</span>
                       </div>
                     </label>
                   ))}
@@ -1234,8 +1235,8 @@ export function LiquidacionesPage() {
                 )}
                 {disponibleLiquidar > 0 && (
                   <div className="flex justify-between text-xs text-blue-600 mt-2 border-t pt-2">
-                    <span>Disponible del pago: <strong>{selectedPago ? Number(pagosDisponibles.find(p => p.id_pago_factura_servicio === selectedPago)?.monto_disponible || 0).toLocaleString() : '0'}</strong></span>
-                    <span>Por cobrar de la persona: <strong>{Number(porCobrarPersona).toLocaleString()}</strong></span>
+                    <span>Disponible del pago: <strong>{selectedPago ? formatCifra(pagosDisponibles.find(p => p.id_pago_factura_servicio === selectedPago)?.monto_disponible || 0) : '0'}</strong></span>
+                    <span>Por cobrar de la persona: <strong>{formatCifra(porCobrarPersona)}</strong></span>
                   </div>
                 )}
               </div>
@@ -1372,7 +1373,7 @@ export function LiquidacionesPage() {
                       porCobrarPersona || Infinity
                     );
                     if (nuevoValor > maxImporte) {
-                      toast.error(`El importe máximo a liquidar es ${maxImporte.toLocaleString()}`);
+                      toast.error(`El importe máximo a liquidar es ${formatCifra(maxImporte)}`);
                       return;
                     }
                     setFormData(prev => ({ ...prev, importe: nuevoValor }));
@@ -1387,35 +1388,35 @@ export function LiquidacionesPage() {
                   <div className="space-y-2">
                     <div className="flex justify-between">
                       <span className="text-gray-600">Importe:</span>
-                      <span className="font-medium">{Number(formData.importe || 0).toLocaleString()}</span>
+                      <span className="font-medium">{formatCifra(formData.importe)}</span>
                     </div>
                     <div className="flex justify-between text-red-600">
                       <span>Importe Caguayo ({formData.porcentaje_caguayo || 10}%):</span>
-                      <span>- {calculateImporteCaguayo().toLocaleString()}</span>
+                      <span>- {formatCifra(calculateImporteCaguayo())}</span>
                     </div>
                     <div className="flex justify-between pt-2 border-t border-gray-300">
                       <span className="font-semibold text-gray-800">Devengado:</span>
-                      <span className="font-bold text-blue-600 text-lg">{calculateDevengado().toLocaleString()}</span>
+                      <span className="font-bold text-blue-600 text-lg">{formatCifra(calculateDevengado())}</span>
                     </div>
                     <div className="flex justify-between text-red-600">
                       <span>Tributario ({Number(formData.tributario) || 5}%):</span>
-                      <span>- {calculateTributarioMonto().toLocaleString()}</span>
+                      <span>- {formatCifra(calculateTributarioMonto())}</span>
                     </div>
                     <div className="flex justify-between pt-2 border-t border-gray-300">
                       <span className="font-semibold text-gray-800">Subtotal:</span>
-                      <span className="font-bold text-purple-600 text-lg">{calculateSubtotal().toLocaleString()}</span>
+                      <span className="font-bold text-purple-600 text-lg">{formatCifra(calculateSubtotal())}</span>
                     </div>
                     <div className="flex justify-between text-red-600">
                       <span>Gasto Empresa:</span>
-                      <span>- {Number(formData.gasto_empresa || 0).toLocaleString()}</span>
+                      <span>- {formatCifra(formData.gasto_empresa)}</span>
                     </div>
                     <div className="flex justify-between text-red-600">
                       <span>Comisión:</span>
-                      <span>- {Number(formData.comision_bancaria || 0).toLocaleString()}</span>
+                      <span>- {formatCifra(formData.comision_bancaria)}</span>
                     </div>
                     <div className="flex justify-between pt-2 border-t border-gray-300">
                       <span className="font-semibold text-gray-800">Neto a Pagar:</span>
-                      <span className="font-bold text-green-600 text-xl">{calculateNetoPagar().toLocaleString()}</span>
+                      <span className="font-bold text-green-600 text-xl">{formatCifra(calculateNetoPagar())}</span>
                     </div>
                   </div>
                 </div>
@@ -1471,7 +1472,7 @@ export function LiquidacionesPage() {
                 </div>
                 <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-4 rounded-xl border border-green-100">
                   <p className="text-xs text-green-600 uppercase tracking-wider mb-1">Neto a Pagar</p>
-                  <p className="font-bold text-green-900 text-xl">{getMonedaSimbolo(detailModal.item.id_moneda)} {Number(detailModal.item.neto_pagar || 0).toLocaleString()}</p>
+                  <p className="font-bold text-green-900 text-xl">{getMonedaSimbolo(detailModal.item.id_moneda)} {formatCifra(detailModal.item.neto_pagar)}</p>
                 </div>
               </div>
               <div className="grid grid-cols-4 gap-4">
@@ -1504,11 +1505,11 @@ export function LiquidacionesPage() {
                 <div className="grid grid-cols-3 gap-4">
                   <div className="bg-teal-50 p-3 rounded-xl border border-teal-100">
                     <p className="text-xs text-teal-600 uppercase tracking-wider mb-1">Importe</p>
-                    <p className="font-bold text-teal-900">{getMonedaSimbolo(detailModal.item.id_moneda)} {Number(detailModal.item.importe || 0).toLocaleString()}</p>
+                    <p className="font-bold text-teal-900">{getMonedaSimbolo(detailModal.item.id_moneda)} {formatCifra(detailModal.item.importe)}</p>
                   </div>
                   <div className="bg-teal-50 p-3 rounded-xl border border-teal-100">
                     <p className="text-xs text-teal-600 uppercase tracking-wider mb-1">Devengado</p>
-                    <p className="font-bold text-teal-900">{getMonedaSimbolo(detailModal.item.id_moneda)} {Number(detailModal.item.devengado || 0).toLocaleString()}</p>
+                    <p className="font-bold text-teal-900">{getMonedaSimbolo(detailModal.item.id_moneda)} {formatCifra(detailModal.item.devengado)}</p>
                   </div>
                   <div className="bg-teal-50 p-3 rounded-xl border border-teal-100">
                     <p className="text-xs text-teal-600 uppercase tracking-wider mb-1">Tributario</p>
@@ -1516,15 +1517,15 @@ export function LiquidacionesPage() {
                   </div>
                   <div className="bg-gray-50 p-3 rounded-xl">
                     <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Comisión</p>
-                    <p className="font-bold text-gray-900">{getMonedaSimbolo(detailModal.item.id_moneda)} {Number(detailModal.item.comision_bancaria || 0).toLocaleString()}</p>
+                    <p className="font-bold text-gray-900">{getMonedaSimbolo(detailModal.item.id_moneda)} {formatCifra(detailModal.item.comision_bancaria)}</p>
                   </div>
                   <div className="bg-teal-50 p-3 rounded-xl border border-teal-100">
                     <p className="text-xs text-teal-600 uppercase tracking-wider mb-1">Gasto Empresa</p>
-                    <p className="font-bold text-teal-900">{getMonedaSimbolo(detailModal.item.id_moneda)} {Number(detailModal.item.gasto_empresa || 0).toLocaleString()}</p>
+                    <p className="font-bold text-teal-900">{getMonedaSimbolo(detailModal.item.id_moneda)} {formatCifra(detailModal.item.gasto_empresa)}</p>
                   </div>
                   <div className="bg-teal-50 p-3 rounded-xl border border-teal-100 col-span-3">
                     <p className="text-xs text-teal-600 uppercase tracking-wider mb-1">Neto a Pagar</p>
-                    <p className="font-bold text-teal-900 text-xl">{getMonedaSimbolo(detailModal.item.id_moneda)} {Number(detailModal.item.neto_pagar || 0).toLocaleString()}</p>
+                    <p className="font-bold text-teal-900 text-xl">{getMonedaSimbolo(detailModal.item.id_moneda)} {formatCifra(detailModal.item.neto_pagar)}</p>
                   </div>
                 </div>
               </div>
@@ -1567,7 +1568,7 @@ export function LiquidacionesPage() {
                   </div>
                   <div>
                     <p className="text-sm text-gray-600">Neto a Pagar</p>
-                    <p className="font-semibold text-green-700">{getMonedaSimbolo(confirmModal.item.id_moneda)} {Number(confirmModal.item.neto_pagar || 0).toLocaleString()}</p>
+                    <p className="font-semibold text-green-700">{getMonedaSimbolo(confirmModal.item.id_moneda)} {formatCifra(confirmModal.item.neto_pagar)}</p>
                   </div>
                 </div>
               </div>
@@ -1643,15 +1644,15 @@ export function LiquidacionesPage() {
                       </div>
                       <div>
                         <p className="text-xs text-gray-500 uppercase">Importe Total</p>
-                        <p className="font-semibold text-gray-900">{Number(validacionModal.validacion.factura.importe || 0).toLocaleString()}</p>
+                        <p className="font-semibold text-gray-900">{formatCifra(validacionModal.validacion.factura.importe)}</p>
                       </div>
                       <div>
                         <p className="text-xs text-gray-500 uppercase">Pagado</p>
-                        <p className="font-semibold text-green-600">{Number(validacionModal.validacion.factura.pagado || 0).toLocaleString()}</p>
+                        <p className="font-semibold text-green-600">{formatCifra(validacionModal.validacion.factura.pagado)}</p>
                       </div>
                       <div className="col-span-2">
                         <p className="text-xs text-gray-500 uppercase">Saldo Pendiente</p>
-                        <p className="font-bold text-red-600 text-xl">{Number(validacionModal.validacion.factura.saldo || 0).toLocaleString()}</p>
+                        <p className="font-bold text-red-600 text-xl">{formatCifra(validacionModal.validacion.factura.saldo)}</p>
                       </div>
                     </div>
                   </div>
@@ -1669,7 +1670,7 @@ export function LiquidacionesPage() {
                               <p className="text-sm font-medium text-gray-900">{pago.fecha || 'Sin fecha'}</p>
                               <p className="text-xs text-gray-500">{getMonedaSimbolo(pago.id_moneda)}</p>
                             </div>
-                            <p className="font-semibold text-green-600">{Number(pago.monto || 0).toLocaleString()}</p>
+                            <p className="font-semibold text-green-600">{formatCifra(pago.monto)}</p>
                           </div>
                         ))}
                       </div>

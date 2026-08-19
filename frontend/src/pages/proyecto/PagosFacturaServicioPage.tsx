@@ -7,6 +7,7 @@ import type { PagoFacturaServicio, PagoFacturaServicioCreate, FacturaServicio } 
 import type { Moneda } from '../../types/moneda';
 import { Plus, Save, Trash2, ArrowLeft, Search, CreditCard, DollarSign, Calendar, FileText, X, Eye, Hash } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { formatCifra } from '../../utils/decimal';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
 type View = 'list' | 'form';
@@ -165,7 +166,7 @@ export function PagosFacturaServicioPage() {
               </div>
               <div>
                 <span className="text-xs text-gray-500 uppercase tracking-wider">Importe</span>
-                <p className="font-bold text-gray-900">${Number(factura.importe).toFixed(2)}</p>
+                <p className="font-bold text-gray-900">${formatCifra(factura.importe)}</p>
               </div>
               {factura.descripcion && (
                 <div>
@@ -268,7 +269,7 @@ export function PagosFacturaServicioPage() {
                       <span className="text-gray-900">{pago.fecha || 'N/A'}</span>
                     </TableCell>
                     <TableCell className="font-medium text-gray-900">
-                      ${Number(pago.monto).toFixed(2)}
+                      ${formatCifra(pago.monto)}
                     </TableCell>
                     <TableCell>{getMonedaNombre(pago.id_moneda)}</TableCell>
                     <TableCell>
@@ -426,7 +427,7 @@ export function PagosFacturaServicioPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="bg-gradient-to-br from-teal-50 to-cyan-50 p-4 rounded-xl border border-teal-100">
                   <p className="text-xs text-teal-600 uppercase tracking-wider mb-1">Monto</p>
-                  <p className="font-bold text-teal-900 text-xl">${Number(detailModal.item.monto).toFixed(2)}</p>
+                  <p className="font-bold text-teal-900 text-xl">${formatCifra(detailModal.item.monto)}</p>
                 </div>
                 <div className="bg-gradient-to-br from-teal-50 to-cyan-50 p-4 rounded-xl border border-teal-100">
                   <p className="text-xs text-teal-600 uppercase tracking-wider mb-1">Moneda</p>

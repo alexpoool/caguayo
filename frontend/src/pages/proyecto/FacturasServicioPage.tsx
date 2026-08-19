@@ -12,6 +12,7 @@ import { getFacturaServicioDocument, getCertificacionFacturaDocument } from './f
 import toast from 'react-hot-toast';
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { authService } from '../../services/auth';
+import { formatCifra } from '../../utils/decimal';
 import { useInfiniteList } from '../../hooks/useInfiniteList';
 
 type View = 'list' | 'form';
@@ -321,7 +322,7 @@ export function FacturasServicioPage() {
           }, 0);
         }
         if (importeCalculado > Number(etapa.valor)) {
-          toast.error(`El importe de la factura (${importeCalculado.toFixed(2)}) no puede ser mayor al valor de la etapa (${Number(etapa.valor).toFixed(2)})`);
+          toast.error(`El importe de la factura (${formatCifra(importeCalculado)}) no puede ser mayor al valor de la etapa (${formatCifra(etapa.valor)})`);
           return;
         }
       }
@@ -980,7 +981,7 @@ export function FacturasServicioPage() {
                                 }))}
                               />
                             ) : (
-                              <span className="text-gray-900">{Number(tarea.cantidad || 0).toFixed(2)}</span>
+                              <span className="text-gray-900">{formatCifra(tarea.cantidad)}</span>
                             )}
                           </td>
                           <td className="px-3 py-2 text-right">
@@ -996,7 +997,7 @@ export function FacturasServicioPage() {
                                 }))}
                               />
                             ) : (
-                              <span className="text-gray-900">{getMonedaSymbol(formData.id_moneda)} {Number(tarea.precio_ajustado || 0).toFixed(2)}</span>
+                              <span className="text-gray-900">{getMonedaSymbol(formData.id_moneda)} {formatCifra(tarea.precio_ajustado)}</span>
                             )}
                           </td>
                           <td className="px-3 py-2 text-right">
@@ -1059,7 +1060,7 @@ export function FacturasServicioPage() {
                               <span className="text-gray-500">-</span>
                             )}
                           </td>
-                          <td className="px-3 py-2 text-right font-medium text-gray-900">{getMonedaSymbol(formData.id_moneda)} {importe.toFixed(2)}</td>
+                          <td className="px-3 py-2 text-right font-medium text-gray-900">{getMonedaSymbol(formData.id_moneda)} {formatCifra(importe)}</td>
                         </tr>
                       );
                     })}
@@ -1070,15 +1071,14 @@ export function FacturasServicioPage() {
                 <div className="bg-teal-50 border border-teal-200 rounded-lg px-5 py-3 text-right">
                   <span className="text-sm text-teal-700 font-medium">Total seleccionado: </span>
                   <span className="text-lg font-bold text-teal-900">
-                    {getMonedaSymbol(formData.id_moneda)} {tareasDeEtapa
+                    {getMonedaSymbol(formData.id_moneda)} {formatCifra(tareasDeEtapa
                       .filter(t => selectedTareas.includes(t.id_tarea_etapa))
                       .reduce((sum, t) => {
                         const mod = tareaModifiers[t.id_tarea_etapa];
                         const cant = mod?.cantidad ?? Number(t.cantidad || 0);
                         const prec = mod?.precio ?? Number(t.precio_ajustado || 0);
                         return sum + (cant * prec);
-                      }, 0)
-                      .toFixed(2)}
+                      }, 0))}
                   </span>
                 </div>
               </div>
@@ -1131,7 +1131,7 @@ export function FacturasServicioPage() {
                             {isYaFacturada && <span className="ml-2 text-xs text-red-500 font-medium">Ya facturada</span>}
                           </td>
                           <td className="px-3 py-2 text-right font-medium text-gray-900">
-                            {getMonedaSymbol(formData.id_moneda)} {Number(cert.a_cobrar || 0).toFixed(2)}
+                            {getMonedaSymbol(formData.id_moneda)} {formatCifra(cert.a_cobrar)}
                           </td>
                           <td className="px-3 py-2 text-right">
                             {isSelected ? (
@@ -1280,15 +1280,15 @@ export function FacturasServicioPage() {
                   <div className="grid grid-cols-3 gap-4">
                     <div className="bg-gradient-to-br from-teal-50 to-cyan-50 p-4 rounded-xl border border-teal-100">
                       <p className="text-xs text-teal-600 uppercase tracking-wider mb-1">Importe Total</p>
-                      <p className="font-bold text-teal-900 text-xl">{getMonedaSymbol(detailModal.item.id_moneda)} {importe.toFixed(2)}</p>
+                      <p className="font-bold text-teal-900 text-xl">{getMonedaSymbol(detailModal.item.id_moneda)} {formatCifra(importe)}</p>
                     </div>
                     <div className="bg-gradient-to-br from-teal-50 to-cyan-50 p-4 rounded-xl border border-teal-100">
                       <p className="text-xs text-teal-600 uppercase tracking-wider mb-1">Pagado</p>
-                      <p className="font-bold text-teal-900 text-xl">{getMonedaSymbol(detailModal.item.id_moneda)} {pagado.toFixed(2)}</p>
+                      <p className="font-bold text-teal-900 text-xl">{getMonedaSymbol(detailModal.item.id_moneda)} {formatCifra(pagado)}</p>
                     </div>
                     <div className={`p-4 rounded-xl border ${saldo > 0 ? 'bg-red-50 border-red-100' : 'bg-gray-50 border-gray-100'}`}>
                       <p className={`text-xs uppercase tracking-wider mb-1 ${saldo > 0 ? 'text-red-600' : 'text-gray-500'}`}>Saldo Pendiente</p>
-                      <p className={`font-bold text-xl ${saldo > 0 ? 'text-red-700' : 'text-gray-900'}`}>{getMonedaSymbol(detailModal.item.id_moneda)} {saldo.toFixed(2)}</p>
+                      <p className={`font-bold text-xl ${saldo > 0 ? 'text-red-700' : 'text-gray-900'}`}>{getMonedaSymbol(detailModal.item.id_moneda)} {formatCifra(saldo)}</p>
                     </div>
                   </div>
                 );
@@ -1382,15 +1382,15 @@ export function FacturasServicioPage() {
                           <tr key={item.id_item_factura_servicio} className="hover:bg-gray-50">
                             <td className="px-3 py-2 border border-gray-300 text-gray-900">{item.concepto || 'N/A'}</td>
                             <td className="px-3 py-2 border border-gray-300 text-center text-gray-600">{item.unidad_medida || '-'}</td>
-                            <td className="px-3 py-2 border border-gray-300 text-right text-gray-900">{Number(item.cantidad || 0).toFixed(2)}</td>
-                            <td className="px-3 py-2 border border-gray-300 text-right text-gray-900">{getMonedaSymbol(itemsModal.factura?.id_moneda)} {Number(item.precio || 0).toFixed(2)}</td>
+                            <td className="px-3 py-2 border border-gray-300 text-right text-gray-900">{formatCifra(item.cantidad)}</td>
+                            <td className="px-3 py-2 border border-gray-300 text-right text-gray-900">{getMonedaSymbol(itemsModal.factura?.id_moneda)} {formatCifra(item.precio)}</td>
                             <td className="px-3 py-2 border border-gray-300 text-right text-gray-600">
                               {item.ajuste_porciento ? `${item.ajuste_porciento > 0 ? '+' : ''}${Number(item.ajuste_porciento).toFixed(2)}%` : '-'}
                             </td>
                             <td className="px-3 py-2 border border-gray-300 text-right text-gray-600">
-                              {item.ajuste_valor ? `${getMonedaSymbol(itemsModal.factura?.id_moneda)} ${Number(item.ajuste_valor).toFixed(2)}` : '-'}
+                              {item.ajuste_valor ? `${getMonedaSymbol(itemsModal.factura?.id_moneda)} ${formatCifra(item.ajuste_valor)}` : '-'}
                             </td>
-                            <td className="px-3 py-2 border border-gray-300 text-right font-medium text-gray-900">{getMonedaSymbol(itemsModal.factura?.id_moneda)} {importe.toFixed(2)}</td>
+                            <td className="px-3 py-2 border border-gray-300 text-right font-medium text-gray-900">{getMonedaSymbol(itemsModal.factura?.id_moneda)} {formatCifra(importe)}</td>
                           </tr>
                         );
                       })}
@@ -1403,7 +1403,7 @@ export function FacturasServicioPage() {
                   <div className="bg-teal-50 border border-teal-200 rounded-lg px-5 py-3 text-right">
                     <span className="text-sm text-teal-700 font-medium">Total: </span>
                     <span className="text-lg font-bold text-teal-900">
-                      {getMonedaSymbol(itemsModal.factura?.id_moneda)} {itemsModal.items.reduce((sum, item) => sum + (Number(item.cantidad || 0) * Number(item.precio || 0)), 0).toFixed(2)}
+                      {getMonedaSymbol(itemsModal.factura?.id_moneda)} {formatCifra(itemsModal.items.reduce((sum, item) => sum + (Number(item.cantidad || 0) * Number(item.precio || 0)), 0))}
                     </span>
                   </div>
                 </div>

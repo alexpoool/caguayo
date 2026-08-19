@@ -46,6 +46,17 @@ export const toFixed = (d: Decimal, places: number = 2): string => {
 };
 
 /**
+ * Format a cifra (amount/quantity) with up to `maxDecimals` decimal places,
+ * trimming trailing zeros (e.g. 100.50 -> '100.5', 0 -> '0').
+ */
+export const formatCifra = (value: number | string | Decimal | null | undefined, maxDecimals: number = 15): string => {
+  if (value === null || value === undefined || value === '') return '0';
+  const d = new Decimal(value);
+  if (d.isNaN()) return '0';
+  return d.toFixed(maxDecimals).replace(/(\.\d*?)0+$/, '$1').replace(/\.$/, '');
+};
+
+/**
  * Convert a Decimal to a number (for API calls that expect number)
  */
 export const toNumber = (d: Decimal): number => {
