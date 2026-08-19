@@ -4,6 +4,7 @@ export * from './Label';
 export * from './Card';
 export * from './Table';
 export * from './ConfirmModal';
+export * from './Modal';
 export * from './Skeleton';
 export * from './AnimatedCard';
 export * from './Avatar';

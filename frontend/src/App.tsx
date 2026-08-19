@@ -51,6 +51,7 @@ import { UsuariosPage } from './pages/Usuarios';
 import { GruposPage } from './pages/Grupos';
 import { DependenciasPage } from './pages/Dependencias';
 import { CuentasPage } from './pages/Cuentas';
+import { CuentasClientePage } from './pages/CuentasCliente';
 import { InventarioHome } from './pages/home/InventarioHome';
 import { VentaHome } from './pages/home/VentaHome';
 import { CompraHome } from './pages/home/CompraHome';
@@ -105,8 +106,8 @@ const queryClient = new QueryClient({
 const rutasPorModulo: Record<Modulo, string[]> = {
   inventario: ['/inventario', '/movimientos', '/movimientos/pendientes', '/movimientos/ajuste', '/movimientos/seleccionar-recepcion', '/productos', '/inventario/existencias', '/inventario/movimientos-dependencia', '/inventario/movimientos-producto', '/dashboard', '/perfil'],
   administracion: ['/administracion', '/configuracion', '/monedas', '/usuarios', '/grupos', '/dependencias', '/cuentas', '/perfil'],
-  venta: ['/venta', '/ventas', '/clientes', '/ventas/operaciones', '/ventas/contratos', '/ventas/suplementos', '/ventas/facturas', '/ventas/efectivo', '/ventas/registro-clientes', '/perfil'],
-  compra: ['/compra', '/compra/clientes', '/compra/convenios', '/compra/anexos', '/compra/liquidaciones', '/compra/productos-liquidacion', '/compra/proveedores', '/perfil'],
+  venta: ['/venta', '/ventas', '/clientes', '/ventas/operaciones', '/ventas/contratos', '/ventas/suplementos', '/ventas/facturas', '/ventas/efectivo', '/ventas/cuentas', '/ventas/registro-clientes', '/perfil'],
+  compra: ['/compra', '/compra/clientes', '/compra/convenios', '/compra/anexos', '/compra/liquidaciones', '/compra/productos-liquidacion', '/compra/cuentas', '/compra/proveedores', '/perfil'],
   proyecto: ['/proyecto', '/proyectos', '/proyectos/servicios', '/proyectos/solicitudes', '/proyectos/proyectos', '/proyectos/etapas', '/proyectos/tareas-etapa', '/proyectos/realizadores', '/proyectos/facturas-servicio', '/proyectos/ofertas', '/proyectos/pre-facturas', '/proyectos/pagos-factura-servicio', '/proyectos/liquidaciones', '/proyectos/registro-proyectos', '/perfil'],
   reportes: ['/reportes', '/reportes/existencias', '/reportes/movimientos-dependencia', '/reportes/movimientos-producto', '/reportes/proveedores', '/reportes/mincult', '/reportes/onat', '/reportes/registro-creadores', '/reportes/informe-desempeno', '/reportes/resumen-liquidaciones', '/reportes/ingresos-retenciones', '/perfil'],
   home: ['/', '/perfil'],
@@ -548,14 +549,6 @@ function App() {
                       </SidebarLink>
                     </li>
                   )}
-                  {hasFuncionalidad('realizadores') && (
-                    <li>
-                      <SidebarLink slim={slimSidebar} to="/proyectos/realizadores" onClick={handleLinkClick}>
-                        <Users className="w-6 h-6" />
-                        Realizadores
-                      </SidebarLink>
-                    </li>
-                  )}
                   {hasFuncionalidad('facturas_servicio') && (
                     <li>
                       <SidebarLink slim={slimSidebar} to="/proyectos/facturas-servicio" onClick={handleLinkClick}>
@@ -864,6 +857,14 @@ function App() {
                   }
                 />
                 <Route
+                  path="/ventas/cuentas"
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/ventas/cuentas">
+                      <CuentasClientePage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
                   path="/ventas/registro-clientes"
                   element={
                     <ProtectedRoute moduloActivo={moduloActivo} currentPath="/ventas">
@@ -1105,6 +1106,15 @@ function App() {
                   element={
                     <ProtectedRoute moduloActivo={moduloActivo} currentPath="/compra/productos-liquidacion">
                       <ProductosEnLiquidacionPage />
+                    </ProtectedRoute>
+                  }
+                />
+
+                <Route
+                  path="/compra/cuentas"
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/compra/cuentas">
+                      <CuentasClientePage />
                     </ProtectedRoute>
                   }
                 />

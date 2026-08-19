@@ -39,7 +39,6 @@ export function useClientesLogic() {
   const defaultTipoRelacion = isProveedorView ? "PROVEEDOR" : "CLIENTE";
 
   const [editingCliente, setEditingCliente] = useState<Cliente | null>(null);
-  const [viewingCliente, setViewingCliente] = useState<Cliente | null>(null);
   const [tipoPersona, setTipoPersona] = useState<TipoPersona>("NATURAL");
   const [datosNatural, setDatosNatural] = useState<ClienteNatural | null>(null);
   const [datosJuridica, setDatosJuridica] = useState<ClienteJuridica | null>(
@@ -59,13 +58,6 @@ export function useClientesLogic() {
     message: "",
     onConfirm: () => {},
     type: "danger",
-  });
-  const [detailModal, setDetailModal] = useState<{
-    isOpen: boolean;
-    cliente: Cliente | null;
-  }>({
-    isOpen: false,
-    cliente: null,
   });
 
   // ── Lista infinita de clientes ────────────────────────────────────────────
@@ -149,17 +141,6 @@ export function useClientesLogic() {
   });
 
   // Handlers
-  const handleViewDetails = async (cliente: Cliente) => {
-    setViewingCliente(cliente);
-
-    try {
-      // API call placeholder for real logic
-      setView("detail");
-    } catch (error) {
-      toast.error("Error al cargar detalles del cliente");
-    }
-  };
-
   const handleEdit = (cliente: Cliente) => {
     setEditingCliente(cliente);
     setTipoPersona(cliente.tipo_persona || "NATURAL");
@@ -203,8 +184,6 @@ export function useClientesLogic() {
     defaultTipoRelacion,
     editingCliente,
     setEditingCliente,
-    viewingCliente,
-    setViewingCliente,
     tipoPersona,
     setTipoPersona,
     datosNatural,
@@ -217,8 +196,6 @@ export function useClientesLogic() {
     setCuentasCliente,
     confirmModal,
     setConfirmModal,
-    detailModal,
-    setDetailModal,
     searchTerm,
     setSearchTerm: setSearch,
     clientes,
@@ -228,7 +205,6 @@ export function useClientesLogic() {
     createMutation,
     updateMutation,
     deleteMutation,
-    handleViewDetails,
     handleEdit,
     handleDelete,
     filteredClientes,

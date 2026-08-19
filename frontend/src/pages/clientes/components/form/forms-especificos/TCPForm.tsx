@@ -1,5 +1,4 @@
 import React from "react";
-import { Card, CardHeader, CardTitle, CardContent } from "../../../../../components/ui"
 import { Label } from "../../../../../components/ui"
 import { Input } from "../../../../../components/ui"
 
@@ -18,11 +17,7 @@ export const TCPForm: React.FC<DatosTCPFormProps> = ({
   const errors = formErrors || {};
   
   return (
-    <Card className="mb-6 shadow-sm border-gray-200">
-      <CardHeader className="border-b bg-gray-50/50">
-        <CardTitle>Datos TCP (Trabajo por Cuenta Propia)</CardTitle>
-      </CardHeader>
-      <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="md:col-span-2">
           <Label>Titular</Label>
           <Input
@@ -113,7 +108,6 @@ export const TCPForm: React.FC<DatosTCPFormProps> = ({
             </button>
           </div>
         </div>
-      </CardContent>
-    </Card>
+    </div>
   );
 };

@@ -293,7 +293,10 @@ export function SolicitudesPage() {
     setSuplementosPorContrato({});
     try {
       const data = await contratosService.getContratos(0, 1000);
-      setAprobarModal(prev => ({ ...prev, contratos: data, loadingContratos: false }));
+      const contratosDelCliente = item.id_cliente
+        ? data.filter(c => c.id_cliente === item.id_cliente)
+        : data;
+      setAprobarModal(prev => ({ ...prev, contratos: contratosDelCliente, loadingContratos: false }));
     } catch (error: any) {
       toast.error('Error al cargar contratos');
       setAprobarModal(prev => ({ ...prev, isOpen: false, loadingContratos: false }));
@@ -317,6 +320,10 @@ export function SolicitudesPage() {
       if (aprobarModal.modo === 'crear') {
         if (!formContrato.id_cliente) {
           toast.error('Debe seleccionar un cliente');
+          return;
+        }
+        if (aprobarModal.solicitud.id_cliente && Number(formContrato.id_cliente) !== aprobarModal.solicitud.id_cliente) {
+          toast.error('El cliente del contrato debe ser el mismo que el de la solicitud');
           return;
         }
         const data: ContratoCreate = {
@@ -354,6 +361,10 @@ export function SolicitudesPage() {
         };
         const nuevoSuplemento = await suplementosService.createSuplemento(data);
         const contratoDelSuplemento = aprobarModal.contratos.find(c => c.id_contrato === Number(formContrato.id_contrato_suplemento));
+        if (aprobarModal.solicitud.id_cliente && contratoDelSuplemento?.id_cliente !== aprobarModal.solicitud.id_cliente) {
+          toast.error('El contrato seleccionado pertenece a un cliente distinto al de la solicitud');
+          return;
+        }
         await solicitudesService.updateSolicitud(aprobarModal.solicitud.id_solicitud_servicio, {
           aprobado: true,
           id_contrato: Number(formContrato.id_contrato_suplemento),
@@ -376,6 +387,10 @@ export function SolicitudesPage() {
           return;
         }
         const contratoDelSuplemento = aprobarModal.contratos.find(c => c.id_contrato === contratoId);
+        if (aprobarModal.solicitud.id_cliente && contratoDelSuplemento?.id_cliente !== aprobarModal.solicitud.id_cliente) {
+          toast.error('El contrato seleccionado pertenece a un cliente distinto al de la solicitud');
+          return;
+        }
         await solicitudesService.updateSolicitud(aprobarModal.solicitud.id_solicitud_servicio, {
           aprobado: true,
           id_contrato: contratoId,
@@ -388,6 +403,10 @@ export function SolicitudesPage() {
         const contratoSeleccionado = aprobarModal.contratos.find(c => c.id_contrato === Number(formContrato.id_contrato_seleccionado));
         if (!contratoSeleccionado) {
           toast.error('Debe seleccionar un contrato');
+          return;
+        }
+        if (aprobarModal.solicitud.id_cliente && contratoSeleccionado.id_cliente !== aprobarModal.solicitud.id_cliente) {
+          toast.error('El contrato seleccionado pertenece a un cliente distinto al de la solicitud');
           return;
         }
         await solicitudesService.updateSolicitud(aprobarModal.solicitud.id_solicitud_servicio, {
@@ -1026,7 +1045,7 @@ export function SolicitudesPage() {
                   </div>
                   <div className="bg-gray-50 p-4 rounded-xl">
                     <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Monto</p>
-                    <p className="font-bold text-gray-900">-</p>
+                    <p className="font-bold text-gray-900">{Number(suplementoModal.item.monto || 0).toFixed(2)}</p>
                   </div>
                   <div className="bg-gray-50 p-4 rounded-xl">
                     <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Fecha</p>
@@ -1045,7 +1064,7 @@ export function SolicitudesPage() {
 
       {aprobarModal.isOpen && createPortal(
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 animate-fade-in">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-auto animate-scale-in">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-auto animate-scale-in">
             <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-teal-50 to-cyan-50">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
@@ -1063,7 +1082,7 @@ export function SolicitudesPage() {
               </div>
             </div>
             <div className="p-6">
-              <div className="flex gap-3 mb-6 flex-wrap">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-6">
                 <button
                   onClick={() => setAprobarModal(prev => ({ ...prev, modo: 'seleccionar' }))}
                   className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-colors ${aprobarModal.modo === 'seleccionar' ? 'bg-teal-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
@@ -1074,7 +1093,7 @@ export function SolicitudesPage() {
                 <button
                   onClick={() => {
                     setAprobarModal(prev => ({ ...prev, modo: 'crear' }));
-                    setFormContrato({ fecha: new Date().toISOString().split('T')[0] });
+                    setFormContrato({ fecha: new Date().toISOString().split('T')[0], id_cliente: aprobarModal.solicitud?.id_cliente });
                     setClienteSearch('');
                   }}
                   className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-colors ${aprobarModal.modo === 'crear' ? 'bg-teal-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
@@ -1108,7 +1127,7 @@ export function SolicitudesPage() {
                       <button
                         onClick={() => {
                           setAprobarModal(prev => ({ ...prev, modo: 'crear' }));
-                          setFormContrato({ fecha: new Date().toISOString().split('T')[0] });
+                          setFormContrato({ fecha: new Date().toISOString().split('T')[0], id_cliente: aprobarModal.solicitud?.id_cliente });
                           setClienteSearch('');
                         }}
                         className="px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors font-medium text-sm inline-flex items-center gap-2"
@@ -1169,7 +1188,7 @@ export function SolicitudesPage() {
                             onFocus={() => setShowClienteDropdown(true)}
                             className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white disabled:bg-gray-100"
                           />
-                          {(formContrato.id_cliente || clienteSearch) && (
+                          {(aprobarModal.modo === 'crear' ? formContrato.id_cliente : (formContrato.id_cliente || clienteSearch)) && (
                             <button
                               type="button"
                               onClick={() => { setFormContrato({ ...formContrato, id_cliente: '' }); setClienteSearch(''); }}
@@ -1204,14 +1223,16 @@ export function SolicitudesPage() {
                         )}
                       </div>
                       <div className="pt-7">
-                        <button
-                          type="button"
-                          onClick={() => { setNuevoClienteTarget('contrato'); setShowNuevoClienteModal(true); }}
-                          className="py-2 px-4 bg-teal-500 hover:bg-teal-600 text-white rounded-lg transition-colors font-medium flex items-center gap-2 whitespace-nowrap"
-                        >
-                          <Plus className="h-4 w-4" />
-                          Nuevo Cliente
-                        </button>
+                        {aprobarModal.modo !== 'crear' && (
+                          <button
+                            type="button"
+                            onClick={() => { setNuevoClienteTarget('contrato'); setShowNuevoClienteModal(true); }}
+                            className="py-2 px-4 bg-teal-500 hover:bg-teal-600 text-white rounded-lg transition-colors font-medium flex items-center gap-2 whitespace-nowrap"
+                          >
+                            <Plus className="h-4 w-4" />
+                            Nuevo Cliente
+                          </button>
+                        )}
                       </div>
                     </div>
                     <div>

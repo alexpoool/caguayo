@@ -81,6 +81,7 @@ export function ProyectosPage() {
   }>({ isOpen: false, solicitud: null, modo: 'seleccionar', contratos: [], loadingContratos: false });
 
   const [suplementosPorContrato, setSuplementosPorContrato] = useState<{ [key: number]: SuplementoWithDetails[] }>({});
+  const [creacionPendiente, setCreacionPendiente] = useState<SolicitudServicioCreate | null>(null);
   const [formContrato, setFormContrato] = useState<Record<string, any>>({});
   const [clienteSearch, setClienteSearch] = useState('');
   const [showClienteDropdown, setShowClienteDropdown] = useState(false);
@@ -189,12 +190,8 @@ export function ProyectosPage() {
           material_asumido_x: formData.material_asumido_x === 'true' || formData.material_asumido_x === true,
           aprobado: false
         };
-        const nuevoSolicitud = await solicitudesService.createSolicitud(data);
-        toast.success('Creado');
         resetForm();
-        refresh();
-        queryClient.invalidateQueries({ queryKey: ['solicitudes-servicio'] });
-        handleAsignarContrato(nuevoSolicitud);
+        abrirAprobacionNuevo(data);
       }
     } catch (error: any) { toast.error(error.message || 'Error'); }
   };
@@ -266,10 +263,10 @@ export function ProyectosPage() {
     } catch (error: any) { toast.error(error.message || 'Error'); }
   };
 
-  const handleAsignarContrato = async (item: SolicitudServicio) => {
+  const openAprobarModal = async (solicitud: SolicitudServicio) => {
     setAprobarModal({
       isOpen: true,
-      solicitud: item,
+      solicitud,
       modo: 'seleccionar',
       contratos: [],
       loadingContratos: true
@@ -277,11 +274,35 @@ export function ProyectosPage() {
     setSuplementosPorContrato({});
     try {
       const data = await contratosService.getContratos(0, 1000);
-      setAprobarModal(prev => ({ ...prev, contratos: data, loadingContratos: false }));
+      const contratosDelCliente = solicitud.id_cliente
+        ? data.filter(c => c.id_cliente === solicitud.id_cliente)
+        : data;
+      setAprobarModal(prev => ({ ...prev, contratos: contratosDelCliente, loadingContratos: false }));
     } catch {
       toast.error('Error al cargar contratos');
       setAprobarModal(prev => ({ ...prev, isOpen: false, loadingContratos: false }));
+      setCreacionPendiente(null);
     }
+  };
+
+  const handleAsignarContrato = async (item: SolicitudServicio) => {
+    setCreacionPendiente(null);
+    await openAprobarModal(item);
+  };
+
+  const abrirAprobacionNuevo = async (data: SolicitudServicioCreate) => {
+    setCreacionPendiente(data);
+    await openAprobarModal({
+      id_solicitud_servicio: 0,
+      id_cliente: data.id_cliente,
+      descripcion: data.descripcion,
+      fecha_solicitud: data.fecha_solicitud,
+      fecha_entrega: data.fecha_entrega,
+      estado: data.estado,
+      observaciones: data.observaciones,
+      material_asumido_x: !!data.material_asumido_x,
+      aprobado: false,
+    });
   };
 
   const cargarSuplementosPorContrato = async (contratoId: number) => {
@@ -298,9 +319,20 @@ export function ProyectosPage() {
     if (!aprobarModal.solicitud) return;
     
     try {
+      const persistirAprobacion = async (patch: SolicitudServicioUpdate) => {
+        if (creacionPendiente) {
+          await solicitudesService.createSolicitud({ ...creacionPendiente, ...patch });
+        } else if (aprobarModal.solicitud) {
+          await solicitudesService.updateSolicitud(aprobarModal.solicitud.id_solicitud_servicio, patch);
+        }
+      };
       if (aprobarModal.modo === 'crear') {
         if (!formContrato.id_cliente) {
           toast.error('Debe seleccionar un cliente');
+          return;
+        }
+        if (aprobarModal.solicitud.id_cliente && Number(formContrato.id_cliente) !== aprobarModal.solicitud.id_cliente) {
+          toast.error('El cliente del contrato debe ser el mismo que el de la solicitud');
           return;
         }
         const data: ContratoCreate = {
@@ -316,7 +348,7 @@ export function ProyectosPage() {
           monto: Number(formContrato.valor_contrato) || 0,
         };
           const nuevoContrato = await contratosService.createContrato(data);
-        await solicitudesService.updateSolicitud(aprobarModal.solicitud.id_solicitud_servicio, {
+        await persistirAprobacion({
           aprobado: true,
           id_contrato: nuevoContrato.id_contrato,
           id_cliente: Number(formContrato.id_cliente),
@@ -338,7 +370,11 @@ export function ProyectosPage() {
         };
         const nuevoSuplemento = await suplementosService.createSuplemento(data);
         const contratoDelSuplemento = aprobarModal.contratos.find(c => c.id_contrato === Number(formContrato.id_contrato_suplemento));
-        await solicitudesService.updateSolicitud(aprobarModal.solicitud.id_solicitud_servicio, {
+        if (aprobarModal.solicitud.id_cliente && contratoDelSuplemento?.id_cliente !== aprobarModal.solicitud.id_cliente) {
+          toast.error('El contrato seleccionado pertenece a un cliente distinto al de la solicitud');
+          return;
+        }
+        await persistirAprobacion({
           aprobado: true,
           id_contrato: Number(formContrato.id_contrato_suplemento),
           id_suplemento: nuevoSuplemento.id_suplemento,
@@ -360,7 +396,11 @@ export function ProyectosPage() {
           return;
         }
         const contratoDelSuplemento = aprobarModal.contratos.find(c => c.id_contrato === contratoId);
-        await solicitudesService.updateSolicitud(aprobarModal.solicitud.id_solicitud_servicio, {
+        if (aprobarModal.solicitud.id_cliente && contratoDelSuplemento?.id_cliente !== aprobarModal.solicitud.id_cliente) {
+          toast.error('El contrato seleccionado pertenece a un cliente distinto al de la solicitud');
+          return;
+        }
+        await persistirAprobacion({
           aprobado: true,
           id_contrato: contratoId,
           id_suplemento: suplementoId,
@@ -374,7 +414,11 @@ export function ProyectosPage() {
           toast.error('Debe seleccionar un contrato');
           return;
         }
-        await solicitudesService.updateSolicitud(aprobarModal.solicitud.id_solicitud_servicio, {
+        if (aprobarModal.solicitud.id_cliente && contratoSeleccionado.id_cliente !== aprobarModal.solicitud.id_cliente) {
+          toast.error('El contrato seleccionado pertenece a un cliente distinto al de la solicitud');
+          return;
+        }
+        await persistirAprobacion({
           aprobado: true,
           id_contrato: Number(formContrato.id_contrato_seleccionado),
           id_cliente: contratoSeleccionado.id_cliente,
@@ -385,6 +429,7 @@ export function ProyectosPage() {
       setAprobarModal({ isOpen: false, solicitud: null, modo: 'seleccionar', contratos: [], loadingContratos: false });
       setFormContrato({});
       setSuplementosPorContrato({});
+      setCreacionPendiente(null);
       setView('list');
       refresh();
       queryClient.invalidateQueries({ queryKey: ['solicitudes-servicio'] });
@@ -994,7 +1039,7 @@ export function ProyectosPage() {
                   </div>
                   <div className="bg-gray-50 p-4 rounded-xl">
                     <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Monto</p>
-                    <p className="font-bold text-gray-900">-</p>
+                    <p className="font-bold text-gray-900">{Number(suplementoModal.item.monto || 0).toFixed(2)}</p>
                   </div>
                   <div className="bg-gray-50 p-4 rounded-xl">
                     <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Fecha</p>
@@ -1013,7 +1058,7 @@ export function ProyectosPage() {
 
       {aprobarModal.isOpen && createPortal(
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 animate-fade-in">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-auto animate-scale-in">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-auto animate-scale-in">
             <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-teal-50 to-cyan-50">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
@@ -1021,17 +1066,17 @@ export function ProyectosPage() {
                     <CheckCircle className="h-7 w-7" />
                   </div>
                   <div>
-                    <h3 className="text-xl font-bold text-gray-900">Aprobar Solicitud</h3>
+                    <h3 className="text-xl font-bold text-gray-900">Aprobar Proyecto</h3>
                     <p className="text-sm text-gray-500">{aprobarModal.solicitud?.codigo_solicitud || 'Sin código'}</p>
                   </div>
                 </div>
-                <button onClick={() => { setAprobarModal({ isOpen: false, solicitud: null, modo: 'seleccionar', contratos: [], loadingContratos: false }); setFormContrato({}); setSuplementosPorContrato({}); setView('list'); }} className="p-2 hover:bg-gray-200 rounded-full transition-colors">
+                <button onClick={() => { setAprobarModal({ isOpen: false, solicitud: null, modo: 'seleccionar', contratos: [], loadingContratos: false }); setFormContrato({}); setSuplementosPorContrato({}); setCreacionPendiente(null); setView('list'); }} className="p-2 hover:bg-gray-200 rounded-full transition-colors">
                   <X className="h-6 w-6 text-gray-500" />
                 </button>
               </div>
             </div>
             <div className="p-6">
-              <div className="flex gap-3 mb-6 flex-wrap">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-6">
                 <button
                   onClick={() => setAprobarModal(prev => ({ ...prev, modo: 'seleccionar' }))}
                   className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-colors ${aprobarModal.modo === 'seleccionar' ? 'bg-teal-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
@@ -1042,7 +1087,7 @@ export function ProyectosPage() {
                 <button
                   onClick={() => {
                     setAprobarModal(prev => ({ ...prev, modo: 'crear' }));
-                    setFormContrato({ fecha: new Date().toISOString().split('T')[0] });
+                    setFormContrato({ fecha: new Date().toISOString().split('T')[0], id_cliente: aprobarModal.solicitud?.id_cliente });
                     setClienteSearch('');
                   }}
                   className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-colors ${aprobarModal.modo === 'crear' ? 'bg-teal-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
@@ -1124,7 +1169,7 @@ export function ProyectosPage() {
                             onFocus={() => setShowClienteDropdown(true)}
                             className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white disabled:bg-gray-100"
                           />
-                          {(formContrato.id_cliente || clienteSearch) && (
+                          {(aprobarModal.modo === 'crear' ? formContrato.id_cliente : (formContrato.id_cliente || clienteSearch)) && (
                             <button
                               type="button"
                               onClick={() => { setFormContrato({ ...formContrato, id_cliente: '' }); setClienteSearch(''); }}
@@ -1159,14 +1204,16 @@ export function ProyectosPage() {
                         )}
                       </div>
                       <div className="pt-7">
-                        <button
-                          type="button"
-                          onClick={() => { setNuevoClienteTarget('contrato'); setShowNuevoClienteModal(true); }}
-                          className="py-2 px-4 bg-teal-500 hover:bg-teal-600 text-white rounded-lg transition-colors font-medium flex items-center gap-2 whitespace-nowrap"
-                        >
-                          <Plus className="h-4 w-4" />
-                          Nuevo Cliente
-                        </button>
+                        {aprobarModal.modo !== 'crear' && (
+                          <button
+                            type="button"
+                            onClick={() => { setNuevoClienteTarget('contrato'); setShowNuevoClienteModal(true); }}
+                            className="py-2 px-4 bg-teal-500 hover:bg-teal-600 text-white rounded-lg transition-colors font-medium flex items-center gap-2 whitespace-nowrap"
+                          >
+                            <Plus className="h-4 w-4" />
+                            Nuevo Cliente
+                          </button>
+                        )}
                       </div>
                     </div>
                     <div>
@@ -1364,7 +1411,7 @@ export function ProyectosPage() {
               ) : null}
             </div>
             <div className="p-6 border-t border-gray-200 bg-gray-50 flex justify-end gap-3">
-              <button onClick={() => { setAprobarModal({ isOpen: false, solicitud: null, modo: 'seleccionar', contratos: [], loadingContratos: false }); setFormContrato({}); setSuplementosPorContrato({}); setView('list'); }} className="px-6 py-3 text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors font-medium">Cancelar</button>
+              <button onClick={() => { setAprobarModal({ isOpen: false, solicitud: null, modo: 'seleccionar', contratos: [], loadingContratos: false }); setFormContrato({}); setSuplementosPorContrato({}); setCreacionPendiente(null); setView('list'); }} className="px-6 py-3 text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors font-medium">Cancelar</button>
               <button onClick={confirmarAprobacion} className="px-6 py-3 text-white bg-gradient-to-r from-teal-500 to-cyan-600 rounded-xl hover:from-teal-600 hover:to-cyan-700 shadow-lg hover:shadow-xl transition-all font-medium">Confirmar Aprobación</button>
             </div>
           </div>

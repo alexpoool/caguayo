@@ -1,5 +1,4 @@
 import React from "react";
-import { Card, CardHeader, CardTitle, CardContent } from "../../../../../components/ui"
 import { Label } from "../../../../../components/ui"
 import { Input } from "../../../../../components/ui"
 
@@ -17,11 +16,7 @@ export const JuridicaForm: React.FC<DatosJuridicaFormProps> = ({
   const data = datos || {};
   
   return (
-    <Card className="mb-6 shadow-sm border-gray-200">
-      <CardHeader className="border-b bg-gray-50/50">
-        <CardTitle>Datos Persona Jurídica</CardTitle>
-      </CardHeader>
-      <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div>
           <Label>Código REEUP</Label>
           <Input
@@ -58,7 +53,6 @@ export const JuridicaForm: React.FC<DatosJuridicaFormProps> = ({
             ))}
           </select>
         </div>
-      </CardContent>
-    </Card>
+    </div>
   );
 };

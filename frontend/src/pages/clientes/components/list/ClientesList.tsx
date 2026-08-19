@@ -1,5 +1,4 @@
 import { useState, RefObject } from "react";
-import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import {
   User,
@@ -7,9 +6,9 @@ import {
   Search,
   ScrollText,
   DollarSign,
+  CreditCard,
   Edit,
   Trash2,
-  X,
   Loader2,
 } from "lucide-react";
 import {
@@ -23,7 +22,8 @@ import {
   TableHead,
   TableCell,
 } from "../../../../components/ui";
-import type { Cliente } from "../../../../types/ventas";
+import { ClienteDetailModal } from "../modals/ClienteDetailModal";
+import type { Cliente, TipoEntidad } from "../../../../types/ventas";
 
 export interface ClientesListProps {
   filteredClientes: Cliente[];
@@ -34,9 +34,9 @@ export interface ClientesListProps {
   onNew: () => void;
   handleEdit: (cliente: Cliente) => void;
   handleDelete: (cliente: Cliente) => void;
-  handleViewDetails: (cliente: Cliente) => void;
   loadMoreRef?: RefObject<HTMLDivElement>;
   isFetchingMore?: boolean;
+  tiposEntidad?: TipoEntidad[];
 }
 
 export function ClientesList({
@@ -48,9 +48,9 @@ export function ClientesList({
   onNew,
   handleEdit,
   handleDelete,
-  handleViewDetails,
   loadMoreRef,
   isFetchingMore,
+  tiposEntidad = [],
 }: ClientesListProps) {
   const navigate = useNavigate();
   const [detailModal, setDetailModal] = useState<{
@@ -114,7 +114,7 @@ export function ClientesList({
                 </TableHead>
                 <TableHead>Código</TableHead>
                 <TableHead>Tipo</TableHead>
-                <TableHead>Estado</TableHead>
+                <TableHead>Cuentas</TableHead>
                 <TableHead>
                   {isProveedorView ? "Convenios" : "Contratos"}
                 </TableHead>
@@ -172,16 +172,22 @@ export function ClientesList({
                         {cliente.tipo_persona || "NATURAL"}
                       </span>
                     </TableCell>
-                    <TableCell>
-                      <span
-                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          cliente.estado === "ACTIVO"
-                            ? "bg-green-100 text-green-800"
-                            : "bg-red-100 text-red-800"
-                        }`}
+                    <TableCell onClick={(e) => e.stopPropagation()}>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() =>
+                          navigate(
+                            isProveedorView
+                              ? `/compra/cuentas?proveedor=${cliente.id_cliente}`
+                              : `/ventas/cuentas?cliente=${cliente.id_cliente}`,
+                          )
+                        }
+                        className="gap-1 text-teal-600 border-teal-200 hover:bg-teal-50 hover:text-teal-700"
                       >
-                        {cliente.estado || "ACTIVO"}
-                      </span>
+                        <CreditCard className="h-3.5 w-3.5" />
+                        Cuentas
+                      </Button>
                     </TableCell>
                     <TableCell onClick={(e) => e.stopPropagation()}>
                       <Button
@@ -267,124 +273,12 @@ export function ClientesList({
         )}
       </Card>
 
-      {detailModal.isOpen &&
-        detailModal.cliente &&
-        createPortal(
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 animate-fade-in">
-            <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-auto animate-scale-in">
-              <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-teal-50 to-cyan-50">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="p-3 rounded-md bg-gradient-to-br from-teal-500 to-cyan-600 text-white shadow-lg">
-                      <User className="h-7 w-7" />
-                    </div>
-                    <div>
-                      <h3 className="text-2xl font-bold text-gray-900">
-                        {detailModal.cliente.nombre || "(Sin nombre)"}
-                      </h3>
-                      <p className="text-sm text-gray-500">
-                        Cliente #{detailModal.cliente.id_cliente}
-                      </p>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() =>
-                      setDetailModal({ isOpen: false, cliente: null })
-                    }
-                    className="p-2 hover:bg-gray-200 rounded-full transition-colors"
-                  >
-                    <X className="h-6 w-6 text-gray-500" />
-                  </button>
-                </div>
-              </div>
-              <div className="p-6 space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-gradient-to-br from-teal-50 to-cyan-50 p-4 rounded-md border border-teal-100">
-                    <p className="text-xs text-teal-600 uppercase tracking-wider mb-1">
-                      Código
-                    </p>
-                    <p className="font-bold text-gray-900">
-                      {detailModal.cliente.codigo || "-"}
-                    </p>
-                  </div>
-                  <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-4 rounded-md border border-blue-100">
-                    <p className="text-xs text-blue-600 uppercase tracking-wider mb-1">
-                      Cédula/RIF
-                    </p>
-                    <p className="font-bold text-gray-900">
-                      {detailModal.cliente.nit || "-"}
-                    </p>
-                  </div>
-                  <div className="bg-gradient-to-br from-purple-50 to-pink-50 p-4 rounded-md border border-purple-100">
-                    <p className="text-xs text-purple-600 uppercase tracking-wider mb-1">
-                      Tipo Persona
-                    </p>
-                    <p className="font-bold text-gray-900">
-                      {detailModal.cliente.tipo_persona || "NATURAL"}
-                    </p>
-                  </div>
-                  <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-4 rounded-md border border-green-100">
-                    <p className="text-xs text-green-600 uppercase tracking-wider mb-1">
-                      Teléfono
-                    </p>
-                    <p className="font-bold text-gray-900">
-                      {detailModal.cliente.telefono || "-"}
-                    </p>
-                  </div>
-                  <div className="bg-gradient-to-br from-orange-50 to-amber-50 p-4 rounded-md border border-orange-100">
-                    <p className="text-xs text-orange-600 uppercase tracking-wider mb-1">
-                      Email
-                    </p>
-                    <p className="font-bold text-gray-900 text-sm break-all">
-                      {detailModal.cliente.email || "-"}
-                    </p>
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-gray-50 p-4 rounded-md">
-                    <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">
-                      Tipo Relación
-                    </p>
-                    <p className="font-bold text-gray-900">
-                      {detailModal.cliente.tipo_relacion || "-"}
-                    </p>
-                  </div>
-                  <div className="bg-gray-50 p-4 rounded-md">
-                    <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">
-                      Estado
-                    </p>
-                    <span
-                      className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium ${detailModal.cliente.estado === "ACTIVO" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}
-                    >
-                      {detailModal.cliente.estado || "ACTIVO"}
-                    </span>
-                  </div>
-                </div>
-                {detailModal.cliente.direccion && (
-                  <div className="bg-gray-50 p-4 rounded-md">
-                    <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">
-                      Dirección
-                    </p>
-                    <p className="text-gray-700">
-                      {detailModal.cliente.direccion}
-                    </p>
-                  </div>
-                )}
-              </div>
-              <div className="p-6 border-t border-gray-200 bg-gray-50 flex justify-end">
-                <button
-                  onClick={() =>
-                    setDetailModal({ isOpen: false, cliente: null })
-                  }
-                  className="px-6 py-3 text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors font-medium"
-                >
-                  Cerrar
-                </button>
-              </div>
-            </div>
-          </div>,
-          document.body,
-        )}
+      <ClienteDetailModal
+        isOpen={detailModal.isOpen}
+        cliente={detailModal.cliente}
+        onClose={() => setDetailModal({ isOpen: false, cliente: null })}
+        tiposEntidad={tiposEntidad}
+      />
     </div>
   );
 }

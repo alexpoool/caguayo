@@ -3,8 +3,8 @@ import { createPortal } from 'react-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { Button, Input, Label, Card, CardContent, CardHeader, CardTitle, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, ConfirmModal } from '../../components/ui';
 import { ClienteForm } from '../clientes/components/form/ClienteForm';
-import { personaEtapaService, etapasProyectoService, clientesService, monedaService, solicitudesService } from '../../services/api';
-import type { PersonaEtapa, PersonaEtapaCreate, Etapa, SolicitudServicio } from '../../types/servicio';
+import { personaEtapaService, etapasProyectoService, clientesService, monedaService, solicitudesService, personaLiquidacionService } from '../../services/api';
+import type { PersonaEtapa, PersonaEtapaCreate, Etapa, SolicitudServicio, PersonaLiquidacion } from '../../types/servicio';
 import type { Cliente, ClienteNatural, ClienteNaturalCreate, ClienteJuridicaCreate, ClienteTCPCreate, ClienteTCP, ClienteJuridica } from '../../types/ventas';
 import type { Moneda } from '../../types/moneda';
 import { Plus, Save, Trash2, ArrowLeft, Search, Users, X, DollarSign, Eye } from 'lucide-react';
@@ -38,6 +38,7 @@ export function RealizadoresPage() {
   const [personasJuridicas, setPersonasJuridicas] = useState<ClienteJuridica[]>([]);
   const [etapas, setEtapas] = useState<Etapa[]>([]);
   const [monedas, setMonedas] = useState<Moneda[]>([]);
+  const [liquidaciones, setLiquidaciones] = useState<PersonaLiquidacion[]>([]);
   const [currentEtapa, setCurrentEtapa] = useState<Etapa | null>(null);
   const [solicitudes, setSolicitudes] = useState<SolicitudServicio[]>([]);
   const [etapasSolicitud, setEtapasSolicitud] = useState<Etapa[]>([]);
@@ -106,20 +107,22 @@ export function RealizadoresPage() {
 
   const loadInitialData = async () => {
     try {
-      const [todosClientesRes, personasRes, monedasRes, solicitudesRes, tcpRes, juridicasRes] = await Promise.all([
+const [todosClientesRes, personasRes, monedasRes, solicitudesRes, tcpRes, juridicasRes, liquidacionesRes] = await Promise.all([
         clientesService.getClientes(0, 10000),
         clientesService.getPersonasNaturales(),
         monedaService.getMonedas(0, 100),
         solicitudesService.getSolicitudes(0, 1000),
         clientesService.getClientes(0, 10000, 'TCP'),
-        clientesService.getClientes(0, 10000, 'JURIDICA')
+        clientesService.getClientes(0, 10000, 'JURIDICA'),
+        personaLiquidacionService.getLiquidaciones(0, 10000)
       ]);
-setTodosClientes(todosClientesRes);
+      setTodosClientes(todosClientesRes);
       setPersonasNaturales(personasRes);
       setPersonasTCP(tcpRes as unknown as ClienteTCP[]);
       setPersonasJuridicas(juridicasRes as unknown as ClienteJuridica[]);
       setMonedas(monedasRes);
       setSolicitudes(solicitudesRes);
+      setLiquidaciones(liquidacionesRes);
       if (etapaParam) {
         const etapaData = await etapasProyectoService.getEtapa(Number(etapaParam));
         setCurrentEtapa(etapaData);
@@ -244,6 +247,17 @@ setTodosClientes(todosClientesRes);
         ci.toLowerCase().includes(searchTerm.toLowerCase());
     });
   }, [personasEtapa, searchTerm, personasNaturales]);
+
+  const totalesPagado = useMemo(() => {
+    const map = new Map<string, number>();
+    liquidaciones.forEach(l => {
+      if (l.confirmado && l.id_persona != null && l.id_etapa != null) {
+        const key = `${l.id_etapa}-${l.id_persona}`;
+        map.set(key, (map.get(key) || 0) + (Number(l.importe) || 0));
+      }
+    });
+    return map;
+  }, [liquidaciones]);
 
   const personasFiltradas = useMemo(() => {
     if (!busquedaPersona) return todosClientes;
@@ -428,6 +442,12 @@ Nuevo Realizador
                     Cobro
                   </div>
                 </TableHead>
+                <TableHead>
+                  <div className="flex items-center gap-2">
+                    <DollarSign className="h-4 w-4 text-teal-600" />
+                    Pagado
+                  </div>
+                </TableHead>
                 <TableHead>Liquidaciones</TableHead>
                 <TableHead className="text-right">Acciones</TableHead>
               </TableRow>
@@ -435,7 +455,7 @@ Nuevo Realizador
             <TableBody>
               {filteredPersonas.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center py-12 text-gray-500">
+                  <TableCell colSpan={6} className="text-center py-12 text-gray-500">
                     {searchTerm ? 'No se encontraron realizadores que coincidan con la búsqueda' : 'No hay realizadores registrados'}
                   </TableCell>
                 </TableRow>
@@ -458,6 +478,9 @@ Nuevo Realizador
                       </TableCell>
                       <TableCell className="font-medium text-gray-900">
                         {getMonedaSymbol(item.id_moneda)} {Number(item.cobro).toFixed(2)}
+                      </TableCell>
+                      <TableCell className="font-medium text-teal-700">
+                        {getMonedaSymbol(item.id_moneda)} {Number(totalesPagado.get(`${item.id_etapa}-${item.id_persona}`) || 0).toFixed(2)}
                       </TableCell>
                       <TableCell onClick={(e) => e.stopPropagation()}>
                         <Button
