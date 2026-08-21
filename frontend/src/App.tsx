@@ -28,7 +28,8 @@ import {
   Package,
   Shield,
   Building,
-  Wallet
+  Wallet,
+  TrendingUp
 } from 'lucide-react';
 
 import { LoginPage } from './pages/Login';
@@ -530,131 +531,41 @@ function App() {
               )}
               {moduloActivo === 'reportes' && (
                 <ul className={`space-y-1 ${slimSidebar ? 'px-0' : 'px-3'}`}>
-                  {/* Inventario */}
                   {!slimSidebar && (
-                    <li className="pt-2">
-                      <p className="text-xs font-semibold text-gray-500 uppercase px-2 mb-1">Inventario</p>
+                    <li className="pt-2 pb-1">
+                      <p className="text-xs font-semibold text-gray-500 uppercase px-2">Módulos</p>
                     </li>
                   )}
-                  {hasFuncionalidad('reporte_existencias') && (
-                    <li>
-                      <SidebarLink slim={slimSidebar} to="/reportes/existencias" onClick={handleLinkClick}>
-                        <Boxes className="w-6 h-6" />
-                        Existencias
-                      </SidebarLink>
-                    </li>
-                  )}
-                  {hasFuncionalidad('reporte_movimientos_dependencia') && (
-                    <li>
-                      <SidebarLink slim={slimSidebar} to="/reportes/movimientos-dependencia" onClick={handleLinkClick}>
-                        <ArrowLeftRight className="w-6 h-6" />
-                        Mov. Dependencia
-                      </SidebarLink>
-                    </li>
-                  )}
-                  {hasFuncionalidad('reporte_movimientos_producto') && (
-                    <li>
-                      <SidebarLink slim={slimSidebar} to="/reportes/movimientos-producto" onClick={handleLinkClick}>
-                        <Package className="w-6 h-6" />
-                        Mov. Producto
-                      </SidebarLink>
-                    </li>
-                  )}
-
-                  {/* Compras */}
-                  {!slimSidebar && (
-                    <li className="pt-2">
-                      <p className="text-xs font-semibold text-gray-500 uppercase px-2 mb-1">Compras</p>
-                    </li>
-                  )}
-                  {hasFuncionalidad('reporte_proveedores') && (
-                    <li>
-                      <SidebarLink slim={slimSidebar} to="/reportes/proveedores" onClick={handleLinkClick}>
-                        <UserCircle className="w-6 h-6" />
-                        Proveedores
-                      </SidebarLink>
-                    </li>
-                  )}
-                  {hasFuncionalidad('reporte_liquidaciones') && (
-                    <li>
-                      <SidebarLink slim={slimSidebar} to="/reportes/resumen-liquidaciones" onClick={handleLinkClick}>
-                        <Calculator className="w-6 h-6" />
-                        Resumen de Liquidaciones
-                      </SidebarLink>
-                    </li>
-                  )}
-
-                  {/* Ventas */}
-                  {!slimSidebar && (
-                    <li className="pt-2">
-                      <p className="text-xs font-semibold text-gray-500 uppercase px-2 mb-1">Ventas</p>
-                    </li>
-                  )}
-                  {hasFuncionalidad('reporte_clientes') && (
-                    <li>
-                      <SidebarLink slim={slimSidebar} to="/reportes/registro-clientes" onClick={handleLinkClick}>
-                        <Users className="w-6 h-6" />
-                        Registro de Clientes
-                      </SidebarLink>
-                    </li>
-                  )}
-
-                  {/* Proyectos */}
-                  {!slimSidebar && (
-                    <li className="pt-2">
-                      <p className="text-xs font-semibold text-gray-500 uppercase px-2 mb-1">Proyectos</p>
-                    </li>
-                  )}
-                  {hasFuncionalidad('reporte_proyectos') && (
-                    <li>
-                      <SidebarLink slim={slimSidebar} to="/reportes/registro-proyectos" onClick={handleLinkClick}>
-                        <Layers className="w-6 h-6" />
-                        Registro de Proyectos
-                      </SidebarLink>
-                    </li>
-                  )}
-                  {hasFuncionalidad('reporte_creadores') && (
-                    <li>
-                      <SidebarLink slim={slimSidebar} to="/reportes/registro-creadores" onClick={handleLinkClick}>
-                        <Users className="w-6 h-6" />
-                        Registro de Creadores
-                      </SidebarLink>
-                    </li>
-                  )}
-                  {hasFuncionalidad('reporte_desempeno') && (
-                    <li>
-                      <SidebarLink slim={slimSidebar} to="/reportes/informe-desempeno" onClick={handleLinkClick}>
-                        <BarChart3 className="w-6 h-6" />
-                        Informe de Desempeño
-                      </SidebarLink>
-                    </li>
-                  )}
-
-                  {/* Ministerios */}
-                  {!slimSidebar && (
-                    <li className="pt-2">
-                      <p className="text-xs font-semibold text-gray-500 uppercase px-2 mb-1">Ministerios</p>
-                    </li>
-                  )}
-                  {hasFuncionalidad('reporte_onat') && (
-                    <li>
-                      <SidebarLink slim={slimSidebar} to="/reportes/onat" onClick={handleLinkClick}>
-                        <FileText className="w-6 h-6" />
-                        Ingreso y Retenciones
-                      </SidebarLink>
-                    </li>
-                  )}
-                  {hasFuncionalidad('reporte_mincult') && (
-                    <li>
-                      <SidebarLink slim={slimSidebar} to="/reportes/mincult" onClick={handleLinkClick}>
-                        <FileText className="w-6 h-6" />
-                        <span>
-                          <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider block leading-tight">MINCULT</span>
-                          <span>Escala de ingresos</span>
-                        </span>
-                      </SidebarLink>
-                    </li>
-                  )}
+                  <li>
+                    <SidebarLink slim={slimSidebar} to="/reportes?module=inventario" onClick={handleLinkClick}>
+                      <Boxes className="w-5 h-5" />
+                      Inventario
+                    </SidebarLink>
+                  </li>
+                  <li>
+                    <SidebarLink slim={slimSidebar} to="/reportes?module=tienda" onClick={handleLinkClick}>
+                      <TrendingUp className="w-5 h-5" />
+                      Tienda
+                    </SidebarLink>
+                  </li>
+                  <li>
+                    <SidebarLink slim={slimSidebar} to="/reportes?module=compra" onClick={handleLinkClick}>
+                      <DollarSign className="w-5 h-5" />
+                      Compra
+                    </SidebarLink>
+                  </li>
+                  <li>
+                    <SidebarLink slim={slimSidebar} to="/reportes?module=proyectos" onClick={handleLinkClick}>
+                      <Layers className="w-5 h-5" />
+                      Proyectos
+                    </SidebarLink>
+                  </li>
+                  <li>
+                    <SidebarLink slim={slimSidebar} to="/reportes?module=ministerios" onClick={handleLinkClick}>
+                      <FileText className="w-5 h-5" />
+                      Ministerios
+                    </SidebarLink>
+                  </li>
                 </ul>
               )}
             </>

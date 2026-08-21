@@ -6,299 +6,111 @@ import { authHelpers } from "../../lib/api";
 import { ArrowLeftRight, Download, Building2, Eye, Loader2 } from "lucide-react";
 import ReportNotes from "../../components/ui/ReportNotes";
 
-// ---------------------------------------------------------------------------
-// Constants
-// ---------------------------------------------------------------------------
-
 const BASE_URL =
   import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api/v1";
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-function formatDateEs(isoDate: string): string {
-  return new Date(isoDate + "T00:00:00").toLocaleDateString("es-ES", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
-}
-
-// ---------------------------------------------------------------------------
-// Component
-// ---------------------------------------------------------------------------
-
 const ReporteMovimientosDependencia: React.FC = () => {
-  // ── State ─────────────────────────────────────────────────────────────────
   const [pdfLoading, setPdfLoading] = useState(false);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [dependencias, setDependencias] = useState<Dependencia[]>([]);
   const [idDependencia, setIdDependencia] = useState<number | null>(null);
   const [fechaInicio, setFechaInicio] = useState("");
   const [fechaFin, setFechaFin] = useState("");
-  const [aprobadoPorNombre, setAprobadoPorNombre] = useState("");
-  const [aprobadoPorCargo, setAprobadoPorCargo] = useState("");
   const [notas, setNotas] = useState("");
 
-  // ── Derived: selected dependencia object ──────────────────────────────────
-  const selectedDependencia = useMemo(
-    () => dependencias.find((d) => d.id_dependencia === idDependencia) ?? null,
-    [dependencias, idDependencia]
-  );
+  const user = useMemo(() => authHelpers.getUser(), []);
+  const userName = user ? `${user.nombre} ${user.primer_apellido}${user.segundo_apellido ? " " + user.segundo_apellido : ""}`.trim() : "";
+  const userCargo = user?.cargo || "";
 
-  // ── Load dependencias on mount ────────────────────────────────────────────
-  useEffect(() => {
-    dependenciasService.getDependencias().then(setDependencias).catch(() => {
-      toast.error("No se pudieron cargar las dependencias.");
-    });
-  }, []);
-
-  // ── Form validation ───────────────────────────────────────────────────────
+  const selectedDep = useMemo(() => dependencias.find(d => d.id_dependencia === idDependencia) ?? null, [dependencias, idDependencia]);
   const isFormValid = Boolean(idDependencia && fechaInicio && fechaFin);
 
-  // ── Build params ──────────────────────────────────────────────────────────
-  const buildParams = () => {
-    return new URLSearchParams({
-      id_dependencia: idDependencia!.toString(),
-      fecha_inicio: fechaInicio,
-      fecha_fin: fechaFin,
-      aprobado_por_nombre: aprobadoPorNombre,
-      aprobado_por_cargo: aprobadoPorCargo,
-      notas: notas,
-    });
-  };
+  useEffect(() => { dependenciasService.getDependencias().then(setDependencias).catch(() => toast.error("Error cargando dependencias")); }, []);
 
-  // ── Preview document in new window ────────────────────────────────────────
+  const buildParams = () => new URLSearchParams({
+    id_dependencia: idDependencia!.toString(), fecha_inicio: fechaInicio, fecha_fin: fechaFin,
+    aprobado_por_nombre: userName, aprobado_por_cargo: userCargo, notas,
+  });
+
   const handlePreview = async () => {
-    if (!isFormValid) {
-      toast.error("Complete todos los campos requeridos.");
-      return;
-    }
+    if (!isFormValid) { toast.error("Complete los campos requeridos"); return; }
     setPreviewLoading(true);
     try {
-      const params = buildParams();
       const token = authHelpers.getToken() || "";
-      const response = await fetch(
-        `${BASE_URL}/reportes/movimientos-dependencia?${params.toString()}`,
-        {
-          method: "GET",
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
-
-      if (!response.ok) throw new Error("Failed to generate report");
-
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      window.open(url, "_blank");
-    } catch (error) {
-      console.error(error);
-      toast.error("Hubo un error al generar la vista previa.");
-    } finally {
-      setPreviewLoading(false);
-    }
+      const r = await fetch(`${BASE_URL}/reportes/movimientos-dependencia?${buildParams()}`, { headers: { Authorization: `Bearer ${token}` } });
+      if (!r.ok) throw new Error(`${r.status}`);
+      window.open(window.URL.createObjectURL(await r.blob()), "_blank");
+    } catch { toast.error("Error al generar vista previa"); } finally { setPreviewLoading(false); }
   };
 
-  // ── PDF export ────────────────────────────────────────────────────────────
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!isFormValid) {
-      toast.error("Complete todos los campos requeridos.");
-      return;
-    }
+  const handleSubmit = async () => {
+    if (!isFormValid) { toast.error("Complete los campos requeridos"); return; }
     setPdfLoading(true);
     try {
-      const params = buildParams();
-
       const token = authHelpers.getToken() || "";
-      const response = await fetch(
-        `${BASE_URL}/reportes/movimientos-dependencia?${params.toString()}`,
-        {
-          method: "GET",
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
-
-      if (!response.ok) throw new Error("Failed to generate report");
-
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const anchor = document.createElement("a");
-      anchor.href = url;
-      anchor.download = `movimientos_dependencia_${idDependencia}.pdf`;
-      document.body.appendChild(anchor);
-      anchor.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(anchor);
-
-      toast.success("Reporte generado exitosamente.");
-    } catch (error) {
-      console.error(error);
-      toast.error("Hubo un error al generar el reporte.");
-    } finally {
-      setPdfLoading(false);
-    }
+      const r = await fetch(`${BASE_URL}/reportes/movimientos-dependencia?${buildParams()}`, { headers: { Authorization: `Bearer ${token}` } });
+      if (!r.ok) throw new Error(`${r.status}`);
+      const blob = await r.blob();
+      const a = document.createElement("a");
+      a.href = window.URL.createObjectURL(blob);
+      a.download = `movimientos_dep_${idDependencia}.pdf`;
+      a.click();
+      toast.success("Reporte generado");
+    } catch { toast.error("Error al generar reporte"); } finally { setPdfLoading(false); }
   };
 
-  // ── Button label ─────────────────────────────────────────────────────────
-  const buttonLabel = pdfLoading ? "Generando PDF..." : "Exportar PDF";
-
-  // ── Render ────────────────────────────────────────────────────────────────
   return (
-    <div className="space-y-6">
-      {/* ── Page header ── */}
-      <div className="flex items-center gap-4">
-        <div className="w-11 h-11 rounded-xl bg-purple-100 flex items-center justify-center flex-shrink-0">
-          <ArrowLeftRight className="w-5 h-5 text-purple-600" />
+    <div className="flex flex-col p-4">
+      <div className="flex items-center justify-between mb-3 flex-shrink-0">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-lg bg-purple-100 flex items-center justify-center">
+            <ArrowLeftRight className="w-4 h-4 text-purple-600" />
+          </div>
+          <div>
+            <h1 className="text-lg font-bold text-gray-900 leading-tight">Movimientos por Dependencia</h1>
+            <p className="text-xs text-gray-500">Historial de movimientos en un rango de fechas</p>
+          </div>
         </div>
-        <div>
-          <h1 className="text-xl font-semibold text-gray-900 leading-tight">
-            Movimientos por Dependencia
-          </h1>
-          <p className="text-sm text-gray-500 mt-0.5">
-            Historial de movimientos en un rango de fechas
-          </p>
+        <div className="flex items-center gap-1">
+          <button type="button" onClick={handlePreview} disabled={!isFormValid || previewLoading} className="p-2 rounded-lg text-purple-600 hover:bg-purple-50 disabled:opacity-50 transition-colors" title="Vista previa del documento">
+            {previewLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Eye className="w-4 h-4" />}
+          </button>
+          <button type="button" onClick={handleSubmit} disabled={!isFormValid || pdfLoading} className="p-2 rounded-lg text-purple-600 hover:bg-purple-50 disabled:opacity-50 transition-colors" title="Exportar PDF">
+            {pdfLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+          </button>
         </div>
       </div>
 
-      {/* ── Form panel (centered) ── */}
-      <div className="max-w-xl mx-auto">
-        <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-6">
-          <form onSubmit={handleSubmit} noValidate className="space-y-6">
-            {/* Section: Filtros */}
-            <div className="space-y-4">
-              <p className="text-xs font-semibold uppercase tracking-widest text-gray-400">
-                Filtros
-              </p>
-
-              {/* Dependencia */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Dependencia <span className="text-red-500">*</span>
-                </label>
-                <select
-                  value={idDependencia ?? ""}
-                  onChange={(e) =>
-                    setIdDependencia(
-                      e.target.value ? Number(e.target.value) : null
-                    )
-                  }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500 bg-white"
-                >
-                  <option value="">Seleccionar dependencia…</option>
-                  {dependencias.map((d) => (
-                    <option key={d.id_dependencia} value={d.id_dependencia}>
-                      {d.nombre}
-                    </option>
-                  ))}
-                </select>
-
-                {/* Direccion hint */}
-                {selectedDependencia?.direccion && (
-                  <p className="flex items-center gap-1.5 mt-1.5 text-xs text-gray-400">
-                    <Building2 className="w-3.5 h-3.5 flex-shrink-0" />
-                    <span className="truncate">{selectedDependencia.direccion}</span>
-                  </p>
-                )}
-              </div>
-
-              {/* Date range */}
-              <div className="grid grid-cols-2 gap-3">
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 w-full max-w-lg mx-auto">
+        <div className="space-y-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 flex-shrink-0">
+            <div>
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Filtros</p>
+              <div className="space-y-2">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Desde <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="date"
-                    value={fechaInicio}
-                    onChange={(e) => setFechaInicio(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                  />
+                  <label className="block text-xs font-medium text-gray-600 mb-0.5">Dependencia <span className="text-red-500">*</span></label>
+                  <select value={idDependencia ?? ""} onChange={e => setIdDependencia(e.target.value ? Number(e.target.value) : null)} className="w-full px-2.5 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 bg-white">
+                    <option value="">Seleccionar…</option>
+                    {dependencias.map(d => <option key={d.id_dependencia} value={d.id_dependencia}>{d.nombre}</option>)}
+                  </select>
+                  {selectedDep?.direccion && <p className="flex items-center gap-1 mt-1 text-[10px] text-gray-400"><Building2 className="w-3 h-3 flex-shrink-0" />{selectedDep.direccion}</p>}
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Hasta <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="date"
-                    value={fechaFin}
-                    onChange={(e) => setFechaFin(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                  />
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-0.5">Desde <span className="text-red-500">*</span></label>
+                    <input type="date" value={fechaInicio} onChange={e => setFechaInicio(e.target.value)} className="w-full px-2.5 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-0.5">Hasta <span className="text-red-500">*</span></label>
+                    <input type="date" value={fechaFin} onChange={e => setFechaFin(e.target.value)} className="w-full px-2.5 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500" />
+                  </div>
                 </div>
               </div>
             </div>
-
-            {/* Divider */}
-            <div className="border-t border-gray-100" />
-
-            {/* Section: Firmas */}
-            <div className="space-y-4">
-              <p className="text-xs font-semibold uppercase tracking-widest text-gray-400">
-                Firmas e Información Adicional
-              </p>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Aprobado por (nombre)
-                </label>
-                <input
-                  type="text"
-                  value={aprobadoPorNombre}
-                  onChange={(e) => setAprobadoPorNombre(e.target.value)}
-                  placeholder="Ej. Juan Pérez"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Cargo del aprobador
-                </label>
-                <input
-                  type="text"
-                  value={aprobadoPorCargo}
-                  onChange={(e) => setAprobadoPorCargo(e.target.value)}
-                  placeholder="Ej. Director General"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                />
-              </div>
-            </div>
-
-            {/* Section: Notas */}
+          </div>
+          <div className="flex-shrink-0">
             <ReportNotes value={notas} onChange={setNotas} />
-
-            {/* Action buttons */}
-            <div className="flex gap-3">
-              <button
-                type="button"
-                onClick={handlePreview}
-                disabled={!isFormValid || previewLoading}
-                className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium text-purple-700 bg-purple-50 border border-purple-200 hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                title="Vista previa del documento"
-              >
-                {previewLoading ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <Eye className="w-4 h-4" />
-                )}
-                Vista previa
-              </button>
-              <button
-                type="submit"
-                disabled={!isFormValid || pdfLoading}
-                className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              >
-                {pdfLoading ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <Download className="w-4 h-4" />
-                )}
-                {buttonLabel}
-              </button>
-            </div>
-          </form>
+          </div>
         </div>
       </div>
     </div>

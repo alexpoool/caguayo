@@ -22,18 +22,13 @@ def generar_pdf_proveedores_dependencia(
 ) -> BytesIO:
     """Genera PDF con listado de proveedores filtrado por dependencia."""
     template = PDFTemplate(title="REPORTE DE PROVEEDORES", landscape_mode=True)
-    template.set_company_header(
-        name="Caguayo",
-        nit="",
-        address=dependencia_info.get("direccion", ""),
-        phone="",
+    template.set_company_header(name="Caguayo")
+    template.set_filters(
+        {
+            "Dependencia": dependencia_info.get("nombre", ""),
+            "Tipo Entidad": tipo_entidad,
+        }
     )
-
-    filters: Dict[str, str] = {
-        "Dependencia": dependencia_info.get("nombre", ""),
-        "Tipo Entidad": tipo_entidad,
-    }
-    template.set_filters(filters)
 
     # ── Build table data ──────────────────────────────────────────────────
     if tipo_entidad == "NATURAL":
@@ -123,17 +118,8 @@ def generar_pdf_existencias(
 ) -> BytesIO:
     """Genera PDF con el listado de existencias en inventario."""
     template = PDFTemplate(title="EXISTENCIAS EN INVENTARIO", landscape_mode=True)
-    template.set_company_header(
-        name="Caguayo",
-        nit="",
-        address=dependencia_info.get("direccion", ""),
-        phone="",
-    )
-    template.set_filters(
-        {
-            "Dependencia": dependencia_info.get("nombre", ""),
-        }
-    )
+    template.set_company_header(name="Caguayo")
+    template.set_filters({"Dependencia": dependencia_info.get("nombre", "")})
 
     headers = ["CÓDIGO", "DESCRIPCIÓN", "CANTIDAD"]
     data = [
@@ -181,16 +167,11 @@ def generar_pdf_movimientos_dependencia(
 ) -> BytesIO:
     """Genera PDF con movimientos de inventario agrupados por dependencia."""
     template = PDFTemplate(title="MOVIMIENTOS DE INVENTARIO", landscape_mode=True)
-    template.set_company_header(
-        name="Caguayo",
-        nit="",
-        address=dependencia_info.get("direccion", ""),
-        phone="",
-    )
+    template.set_company_header(name="Caguayo")
     template.set_filters(
         {
             "Dependencia": dependencia_info.get("nombre", ""),
-            "Período": f"{fecha_inicio} al {fecha_fin}",
+            "Periodo": f"{fecha_inicio} al {fecha_fin}",
         }
     )
 
@@ -242,17 +223,12 @@ def generar_pdf_movimientos_producto(
 ) -> BytesIO:
     """Genera PDF con movimientos de un producto específico."""
     template = PDFTemplate(title="MOVIMIENTOS DE PRODUCTO", landscape_mode=True)
-    template.set_company_header(
-        name="Caguayo",
-        nit="",
-        address=dependencia_info.get("direccion", ""),
-        phone="",
-    )
+    template.set_company_header(name="Caguayo")
     template.set_filters(
         {
             "Dependencia": dependencia_info.get("nombre", ""),
             "Producto": f"{producto_info.get('nombre', '')} ({producto_info.get('codigo', '')})",
-            "Período": f"{fecha_inicio} al {fecha_fin}",
+            "Periodo": f"{fecha_inicio} al {fecha_fin}",
         }
     )
 
@@ -300,7 +276,7 @@ def generar_pdf_clientes(
 ) -> BytesIO:
     """Genera PDF con el registro de clientes."""
     template = PDFTemplate(title="REGISTRO DE CLIENTES", landscape_mode=False)
-    template.set_company_header(name="Caguayo", nit="", address="", phone="")
+    template.set_company_header(name="Caguayo")
     template.set_filters({})
 
     headers = ["No.", "NOMBRE", "REEUP", "NIT", "DIRECCIÓN"]
@@ -352,7 +328,7 @@ def generar_pdf_proyectos(
     template = PDFTemplate(
         title="REGISTRO DE PROYECTOS / CONTRATOS", landscape_mode=False
     )
-    template.set_company_header(name="Caguayo", nit="", address="", phone="")
+    template.set_company_header(name="Caguayo")
 
     filters: Dict[str, str] = {}
     if meta.get("fecha_inicio"):
@@ -411,7 +387,7 @@ def generar_pdf_creadores(
 ) -> BytesIO:
     """Genera PDF con el registro de creadores, agrupado por municipio."""
     template = PDFTemplate(title="REGISTRO DE CREADORES", landscape_mode=False)
-    template.set_company_header(name="Caguayo", nit="", address="", phone="")
+    template.set_company_header(name="Caguayo")
     template.set_filters({})
 
     headers = [
@@ -487,7 +463,7 @@ def generar_pdf_desempeno(
         title="INFORME DE DESEMPEÑO - PROYECTOS POR CREADOR",
         landscape_mode=True,
     )
-    template.set_company_header(name="Caguayo", nit="", address="", phone="")
+    template.set_company_header(name="Caguayo")
 
     filters: Dict[str, str] = {}
     if meta.get("fecha_inicio"):
@@ -611,7 +587,7 @@ def generar_pdf_onat(
         title="INGRESOS Y RETENCIONES DE ARTISTAS (ONAT)",
         landscape_mode=True,
     )
-    template.set_company_header(name="Caguayo", nit="", address="", phone="")
+    template.set_company_header(name="Caguayo")
 
     filters: Dict[str, str] = {}
     if meta.get("fecha_inicio"):
@@ -718,7 +694,7 @@ def generar_pdf_mincult(
         title="RETRIBUCIÓN POR ESCALA DE INGRESOS (MINCULT)",
         landscape_mode=False,
     )
-    template.set_company_header(name="Caguayo", nit="", address="", phone="")
+    template.set_company_header(name="Caguayo")
 
     filters: Dict[str, str] = {}
     if meta.get("fecha_inicio"):
@@ -792,7 +768,7 @@ def generar_pdf_liquidaciones(
         title="RESUMEN DE LIQUIDACIONES",
         landscape_mode=True,
     )
-    template.set_company_header(name="Caguayo", nit="", address="", phone="")
+    template.set_company_header(name="Caguayo")
 
     filters: Dict[str, str] = {}
     if meta.get("fecha_inicio"):

@@ -11,6 +11,7 @@ from io import BytesIO
 from typing import Dict, List, Optional
 from datetime import datetime
 
+import os
 from reportlab.lib.pagesizes import letter, landscape
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.enums import TA_LEFT, TA_RIGHT, TA_CENTER
@@ -21,7 +22,13 @@ from reportlab.platypus import (
     TableStyle,
     Paragraph,
     Spacer,
+    Image,
 )
+
+try:  # Pillow llega transitivamente con ReportLab; se declara explícito en pyproject
+    from PIL import Image as PILImage
+except ImportError:  # pragma: no cover
+    PILImage = None
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -42,6 +49,34 @@ MUTED_COLOR = black  # secondary text also black
 TOTALS_BG = white  # white background for totals row
 TOTALS_LINE = black  # totals line in black
 HR_COLOR = black  # horizontal rule in black
+
+# ─── Company logo rendering ─────────────────────────────────────────────
+LOGO_WIDTH = 90  # pt, rendered proportionally to the source aspect ratio
+_black_logo_cache: Dict[str, Optional[bytes]] = {}
+
+
+def _load_black_logo(logo_path: str) -> Optional[bytes]:
+    """Return the company logo as a pure-black silhouette PNG (cached).
+
+    The source artwork's alpha channel is applied over a black fill so
+    anti-aliasing and transparency are preserved.  Returns ``None`` when
+    Pillow is unavailable or the file cannot be processed.
+    """
+    if logo_path in _black_logo_cache:
+        return _black_logo_cache[logo_path]
+    data: Optional[bytes] = None
+    if PILImage is not None and os.path.exists(logo_path):
+        try:
+            src = PILImage.open(logo_path).convert("RGBA")
+            silhouette = PILImage.new("RGBA", src.size, (0, 0, 0, 0))
+            silhouette.putalpha(src.getchannel("A"))
+            buf = BytesIO()
+            silhouette.save(buf, format="PNG")
+            data = buf.getvalue()
+        except Exception:
+            data = None
+    _black_logo_cache[logo_path] = data
+    return data
 
 
 class PDFTemplate:
@@ -92,21 +127,22 @@ class PDFTemplate:
             ParagraphStyle(
                 "ReportTitle",
                 fontName="Helvetica-Bold",
-                fontSize=12,
-                alignment=TA_CENTER,
+                fontSize=16,
+                leading=20,
+                alignment=TA_LEFT,
                 spaceAfter=2,
                 textColor=TITLE_COLOR,
             )
         )
         styles.add(
             ParagraphStyle(
-                "CompanyInfo",
-                fontName="Helvetica",
-                fontSize=7,
+                "DependenciaLine",
+                fontName="Helvetica-Bold",
+                fontSize=10,
+                leading=13,
                 alignment=TA_CENTER,
                 spaceAfter=2,
                 textColor=SUBTITLE_COLOR,
-                leading=9,
             )
         )
         styles.add(
@@ -378,7 +414,6 @@ class PDFTemplate:
             ("FONTSIZE", (0, 0), (-1, 0), 8),
             ("BOTTOMPADDING", (0, 0), (-1, 0), 5),
             ("TOPPADDING", (0, 0), (-1, 0), 5),
-            ("LINEBELOW", (0, 0), (-1, 0), 1.5, black),
             # ── Grid ────────────────────────────────────────────────────
             ("GRID", (0, 0), (-1, num_rows - 1), 0.3, BORDER_COLOR),
             # ── Zebra striping ──────────────────────────────────────────
@@ -520,40 +555,64 @@ class PDFTemplate:
     # ── Internal helpers ──────────────────────────────────────────────────
 
     def _build_header(self) -> None:
-        """Compose the document header (company, title, date, filters).
+        """Compose the document header (logo, company, title, date, filters).
 
         Builds header elements into a temporary list and prepends them to
         ``self.elements`` so that the header appears *before* tables, notes,
         and signatures that were added earlier.
         """
         header_parts: list = []
-        header_parts.append(Spacer(1, 3))
+        header_parts.append(Spacer(1, 2))
 
-        # Company block
-        if self._company_name:
-            header_parts.append(
-                Paragraph(
-                    f"<b>{self._escape(self._company_name)}</b>",
-                    self.styles["CompanyInfo"],
-                )
-            )
-        details = []
-        if self._company_nit:
-            details.append(f"NIT: {self._escape(self._company_nit)}")
-        if self._company_address:
-            details.append(self._escape(self._company_address))
-        if self._company_phone:
-            details.append(f"Tel: {self._escape(self._company_phone)}")
-        if details:
-            header_parts.append(
-                Paragraph("<br/>".join(details), self.styles["CompanyInfo"])
-            )
-            header_parts.append(Spacer(1, 2))
+        # Company logo (black silhouette, proportional) + company info
+        logo_path = os.path.join(os.path.dirname(__file__), "logo.png")
+        logo = None
+        logo_data = _load_black_logo(logo_path)
+        if logo_data is not None:
+            try:
+                src_size = PILImage.open(logo_path).size
+                logo_height = LOGO_WIDTH * src_size[1] / src_size[0]
+                logo = Image(BytesIO(logo_data), width=LOGO_WIDTH, height=logo_height)
+            except Exception:
+                logo = None
+        elif os.path.exists(logo_path):
+            try:
+                logo = Image(logo_path, width=60, height=60)
+            except Exception:
+                logo = None
 
-        # Title
-        header_parts.append(
-            Paragraph(f"<b>{self._escape(self.title)}</b>", self.styles["ReportTitle"])
+        # ── Logo (left) + Title (right) row ──────────────────────────
+        full_width = self.page_size[0] - 40  # 20+20 margins
+        title_text = Paragraph(
+            f"<b>{self._escape(self.title)}</b>", self.styles["ReportTitle"]
         )
+        if logo:
+            logo_col = LOGO_WIDTH + 10
+            title_col = full_width - logo_col
+            header_table = Table(
+                [[logo, title_text]],
+                colWidths=[logo_col, title_col],
+            )
+            header_table.setStyle(
+                TableStyle([
+                    ("ALIGN", (0, 0), (0, 0), "LEFT"),
+                    ("ALIGN", (1, 0), (1, 0), "LEFT"),
+                    ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                    ("LEFTPADDING", (0, 0), (0, 0), 0),
+                    ("LEFTPADDING", (1, 0), (1, 0), 12),
+                    ("RIGHTPADDING", (0, 0), (-1, -1), 0),
+                    ("TOPPADDING", (0, 0), (-1, -1), 0),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
+                ])
+            )
+            header_parts.append(header_table)
+        else:
+            header_parts.append(title_text)
+
+        # Dependencia directly below the title
+        dependencia = str(self._filters.get("Dependencia") or "").strip()
+        if dependencia:
+            header_parts.append(Paragraph(dependencia, self.styles["DependenciaLine"]))
 
         # Date
         fecha = datetime.now().strftime("%d/%m/%Y %H:%M")
@@ -561,35 +620,18 @@ class PDFTemplate:
             Paragraph(f"Fecha de emisión: {fecha}", self.styles["DateLine"])
         )
 
-        # Filters (inline pipe-separated list)
+        # Filters (inline pipe-separated list; Dependencia shown under title)
         if self._filters:
             parts = [
                 f"<b>{self._escape(k)}:</b> {self._escape(str(v))}"
                 for k, v in self._filters.items()
-                if v
+                if v and k != "Dependencia"
             ]
             if parts:
                 header_parts.append(
                     Paragraph(" | ".join(parts), self.styles["FilterInfo"])
                 )
-                header_parts.append(Spacer(1, 2))
-
-        # Horizontal rule
-        hr_table = Table(
-            [[""]],
-            colWidths=[self.page_size[0] - 60],
-        )
-        hr_table.setStyle(
-            TableStyle(
-                [
-                    ("LINEBELOW", (0, 0), (-1, 0), 1, black),
-                    ("TOPPADDING", (0, 0), (-1, 0), 0),
-                    ("BOTTOMPADDING", (0, 0), (-1, 0), 2),
-                ]
-            )
-        )
-        header_parts.append(hr_table)
-        header_parts.append(Spacer(1, 3))
+        header_parts.append(Spacer(1, 4))
 
         # Prepend header parts so they render before tables, notes, signatures
         self.elements = header_parts + self.elements
