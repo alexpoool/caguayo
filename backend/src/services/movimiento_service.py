@@ -2,6 +2,7 @@ from typing import Dict, List, Optional
 import logging
 import os
 from datetime import datetime, timezone
+from decimal import Decimal
 from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlmodel import select, func
 from sqlalchemy.orm import selectinload
@@ -197,6 +198,12 @@ class MovimientoService:
         if db_movimiento.estado == "confirmado":
             return MovimientoRead.from_orm(db_movimiento)
 
+        # No permitir confirmar movimientos cancelados
+        if db_movimiento.estado == "cancelado":
+            raise ValueError(
+                "No se puede confirmar un movimiento que ha sido cancelado"
+            )
+
         # Validar stock suficiente para movimientos de salida
         tipo = db_movimiento.tipo_movimiento
         if tipo.factor < 0:
@@ -367,7 +374,13 @@ class MovimientoService:
     async def cancelar_movimiento(
         db: AsyncSession, movimiento_id: int
     ) -> MovimientoRead:
-        """Cancelar un movimiento cambiando su estado a 'cancelado'.
+        """Cancelar un movimiento y revertir sus efectos secundarios.
+
+        Revierte:
+        - item_anexo.vendido (para ventas/MERMA/DONACION/DEVOLUCION)
+        - ProductosEnLiquidacion creados
+        - item_anexo.entrada/vendido (para ajustes)
+        - item_anexo.creado (para compras/RECEPCION)
 
         Args:
             db: Sesión de base de datos
@@ -377,24 +390,129 @@ class MovimientoService:
             MovimientoRead: El movimiento cancelado
 
         Raises:
-            ValueError: Si el movimiento no existe
+            ValueError: Si el movimiento no existe o no se puede cancelar
         """
-        # Obtener el movimiento
         db_movimiento = await movimiento_repo.get(db, id=movimiento_id)
         if not db_movimiento:
             raise ValueError("Movimiento no encontrado")
 
-        # Si ya está cancelado, recargar y devolver
         if db_movimiento.estado == "cancelado":
             return MovimientoRead.from_orm(db_movimiento)
 
+        if db_movimiento.estado != "confirmado":
+            raise ValueError(
+                f"Solo se pueden cancelar movimientos confirmados. "
+                f"Estado actual: {db_movimiento.estado}"
+            )
+
+        tipo = db_movimiento.tipo_movimiento
+
+        # Revertir efectos de ventas/MERMA/DONACION/DEVOLUCION en item_anexo
+        if tipo.tipo in ("venta", "DONACION", "MERMA", "DEVOLUCION"):
+            from src.models.item_anexo import ItemAnexo
+            from sqlalchemy import select as sa_select
+
+            cantidad_restante = db_movimiento.cantidad
+            while cantidad_restante > 0:
+                stmt = (
+                    sa_select(ItemAnexo)
+                    .where(
+                        ItemAnexo.id_producto == db_movimiento.id_producto,
+                        ItemAnexo.vendido > 0,
+                    )
+                    .order_by(ItemAnexo.id_item_anexo.desc())
+                    .limit(1)
+                )
+                result = await db.exec(stmt)
+                item = result.scalars().first()
+                if not item:
+                    break
+                revertir = min(cantidad_restante, item.vendido)
+                item.vendido -= revertir
+                cantidad_restante -= revertir
+                db.add(item)
+
+        # Revertir ProductosEnLiquidacion creados para este movimiento
+        if tipo.tipo == "venta":
+            stmt_pel = select(ProductosEnLiquidacion).where(
+                ProductosEnLiquidacion.id_anexo == db_movimiento.id_anexo,
+                ProductosEnLiquidacion.id_producto == db_movimiento.id_producto,
+                ProductosEnLiquidacion.cantidad == db_movimiento.cantidad,
+            )
+            result_pel = await db.exec(stmt_pel)
+            for pel in result_pel.all():
+                await db.delete(pel)
+
+        # Revertir ajustes en item_anexo
+        if tipo.tipo == "AJUSTE_QUITAR" and db_movimiento.id_anexo:
+            from src.models.item_anexo import ItemAnexo
+            from sqlalchemy import select as sa_select
+
+            stmt = (
+                sa_select(ItemAnexo)
+                .where(
+                    ItemAnexo.id_anexo == db_movimiento.id_anexo,
+                    ItemAnexo.id_producto == db_movimiento.id_producto,
+                )
+                .limit(1)
+            )
+            result = await db.exec(stmt)
+            item = result.scalars().first()
+            if item:
+                item.vendido = max(Decimal("0"), item.vendido - db_movimiento.cantidad)
+                db.add(item)
+
+        if tipo.tipo == "AJUSTE_AGREGAR" and db_movimiento.id_anexo:
+            from src.models.item_anexo import ItemAnexo
+            from sqlalchemy import select as sa_select
+
+            stmt = (
+                sa_select(ItemAnexo)
+                .where(
+                    ItemAnexo.id_anexo == db_movimiento.id_anexo,
+                    ItemAnexo.id_producto == db_movimiento.id_producto,
+                )
+                .limit(1)
+            )
+            result = await db.exec(stmt)
+            item = result.scalars().first()
+            if item:
+                item.entrada = max(Decimal("0"), item.entrada - db_movimiento.cantidad)
+                db.add(item)
+
+        # Revertir item_anexo creado para compras/RECEPCION
+        if tipo.tipo in ("compra", "RECEPCION") and db_movimiento.id_anexo:
+            from src.models.item_anexo import ItemAnexo
+            from sqlalchemy import select as sa_select
+
+            stmt = (
+                sa_select(ItemAnexo)
+                .where(
+                    ItemAnexo.id_anexo == db_movimiento.id_anexo,
+                    ItemAnexo.id_producto == db_movimiento.id_producto,
+                )
+                .limit(1)
+            )
+            result = await db.exec(stmt)
+            item = result.scalars().first()
+            if item:
+                # Si es RECEPCION en anexo base, decrementar entrada
+                anexo = await db.get(Anexo, db_movimiento.id_anexo)
+                if anexo and anexo.codigo_anexo == "ANEXO-BASE-REC":
+                    item.entrada = max(Decimal("0"), item.entrada - db_movimiento.cantidad)
+                    db.add(item)
+                else:
+                    # Para compras, reducir entrada o eliminar item si queda en 0
+                    item.entrada -= db_movimiento.cantidad
+                    if item.entrada <= 0:
+                        await db.delete(item)
+                    else:
+                        db.add(item)
+
         # Cambiar el estado a cancelado
         db_movimiento.estado = "cancelado"
-
-        # Guardar cambios
         await db.commit()
 
-        # Recargar con relaciones
         db_movimiento_con_relaciones = await movimiento_repo.get(db, movimiento_id)
         if db_movimiento_con_relaciones is None:
             raise ValueError("No se pudo recargar el movimiento después de cancelar")
@@ -407,21 +525,30 @@ class MovimientoService:
     ) -> Optional[MovimientoRead]:
         """Eliminar un movimiento de la base de datos.
 
+        Solo permite eliminar movimientos pendientes. Los confirmados deben
+        cancelarse primero para revertir sus efectos.
+
         Args:
             db: Sesión de base de datos
             movimiento_id: ID del movimiento a eliminar
 
         Returns:
             MovimientoRead: El movimiento eliminado, o None si no existía
+
+        Raises:
+            ValueError: Si el movimiento está confirmado
         """
-        # Obtener el movimiento
         db_movimiento = await movimiento_repo.get(db, id=movimiento_id)
         if not db_movimiento:
             return None
 
-        # Eliminar el movimiento
-        await movimiento_repo.remove(db, id=movimiento_id)
+        if db_movimiento.estado == "confirmado":
+            raise ValueError(
+                "No se puede eliminar un movimiento confirmado. "
+                "Cancele el movimiento primero para revertir sus efectos."
+            )
 
+        await movimiento_repo.remove(db, id=movimiento_id)
         return MovimientoRead.from_orm(db_movimiento)
 
     @staticmethod
@@ -673,17 +800,18 @@ class MovimientoService:
     async def get_stock_producto_dependencia(
         db: AsyncSession, producto_id: int, dependencia_id: int
     ) -> int:
-        """Obtener la suma de cantidades de movimientos de tipo RECEPCION/compra
-        para un producto en una dependencia específica.
+        """Obtener el stock de un producto en una dependencia específica.
+
+        Calcula usando factor de tipo_movimiento:
+        stock = SUM(cantidad * factor) para movimientos confirmados.
         """
         statement = (
-            select(func.sum(Movimiento.cantidad))
+            select(func.sum(Movimiento.cantidad * TipoMovimiento.factor))
             .join(TipoMovimiento)
             .where(
                 Movimiento.id_producto == producto_id,
                 Movimiento.id_dependencia == dependencia_id,
                 Movimiento.estado == "confirmado",
-                TipoMovimiento.tipo.in_(["RECEPCION", "compra"]),
             )
         )
         result = await db.exec(statement)
@@ -838,12 +966,12 @@ class MovimientoService:
                     anexo_nombre = anexo.nombre_anexo
                     anexo_numero = anexo.numero_anexo
 
-            # Obtener convento
-            convenioconvenio_nombre = None
+            # Obtener convenio
+            convenio_nombre = None
             if mov.id_convenio:
-                convento = await db.get(Convenio, mov.id_convenio)
-                if convento:
-                    convenioconvenio_nombre = convento.nombre_convenio
+                convenio = await db.get(Convenio, mov.id_convenio)
+                if convenio:
+                    convenio_nombre = convenio.nombre_convenio
 
             recepciones.append(
                 {
@@ -857,7 +985,7 @@ class MovimientoService:
                     "id_proveedor": mov.id_cliente,
                     "proveedor_nombre": cliente_nombre,
                     "id_convenio": mov.id_convenio,
-                    "convenio_nombre": convenioconvenio_nombre,
+                    "convenio_nombre": convenio_nombre,
                     "id_anexo": mov.id_anexo,
                     "anexo_nombre": anexo_nombre,
                     "anexo_numero": anexo_numero,
@@ -951,7 +1079,7 @@ class MovimientoService:
         fecha = (
             datetime.now(timezone.utc).replace(tzinfo=None)
             if not ajuste.fecha
-            else datetime.fromisoformat(ajuste.fecha).replace(tzinfo=None)
+            else datetime.fromisoformat(ajuste.fecha).replace(tzinfo=None)
         )
         codigo_ajuste = ajuste.codigo or ""
 

@@ -7,7 +7,7 @@ from sqlalchemy.orm import selectinload
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from src.models import Ventas, DetalleVenta, EstadoVenta
+from src.models import Ventas, DetalleVenta, EstadoVenta, Cliente, Productos
 from src.dto.ventas_dto import (
     VentaCreate,
     VentaRead,
@@ -16,8 +16,16 @@ from src.dto.ventas_dto import (
     DetalleVentaRead,
 )
 from src.repository.ventas_clientes_repo import ventas_repo, detalle_venta_repo
+from src.core.exceptions import BusinessLogicError
 
 logger = logging.getLogger(__name__)
+
+# Máquina de estados válidos para ventas
+TRANSICIONES_VENTA_VALIDAS = {
+    "PENDIENTE": ["COMPLETADA", "ANULADA"],
+    "COMPLETADA": [],  # estado terminal
+    "ANULADA": [],     # estado terminal
+}
 
 
 class VentaService:
@@ -31,6 +39,21 @@ class VentaService:
     ) -> VentaRead:
         """Crear una venta con sus detalles, calculando subtotales y total."""
         try:
+            # Validar que el cliente exista
+            cliente = await db.get(Cliente, venta_data.id_cliente)
+            if not cliente:
+                raise BusinessLogicError(
+                    f"El cliente con ID {venta_data.id_cliente} no existe."
+                )
+
+            # Validar que los productos existan
+            for detalle_data in venta_data.detalles:
+                producto = await db.get(Productos, detalle_data.id_producto)
+                if not producto:
+                    raise BusinessLogicError(
+                        f"El producto con ID {detalle_data.id_producto} no existe."
+                    )
+
             fecha = venta_data.fecha or datetime.now(timezone.utc).replace(tzinfo=None)
 
             # Crear la venta con total inicial 0
@@ -68,6 +91,8 @@ class VentaService:
 
             # Recargar con eager loading
             return await VentaService.get(db, venta.id_venta)
+        except (ValueError, BusinessLogicError):
+            raise
         except Exception as e:
             await db.rollback()
             logger.error("Error al crear venta", exc_info=True)
@@ -139,6 +164,16 @@ class VentaService:
             if not venta:
                 raise ValueError(f"Venta con ID {id_venta} no encontrada")
 
+            # Validar transiciones de estado
+            new_estado = update_data.estado if hasattr(update_data, "estado") and update_data.estado else None
+            if new_estado and new_estado != venta.estado:
+                permitidos = TRANSICIONES_VENTA_VALIDAS.get(venta.estado, [])
+                if new_estado not in permitidos:
+                    raise BusinessLogicError(
+                        f"No se puede cambiar de estado '{venta.estado}' a '{new_estado}'. "
+                        f"Transiciones permitidas: {permitidos or 'ninguna (estado terminal)'}"
+                    )
+
             update_dict = update_data.model_dump(exclude_unset=True)
             for field, value in update_dict.items():
                 if value is not None and hasattr(venta, field):
@@ -150,7 +185,7 @@ class VentaService:
             await db.refresh(venta)
 
             return await VentaService.get(db, venta.id_venta)
-        except ValueError:
+        except (ValueError, BusinessLogicError):
             raise
         except Exception as e:
             await db.rollback()
@@ -165,6 +200,13 @@ class VentaService:
             if not venta:
                 raise ValueError(f"Venta con ID {id_venta} no encontrada")
 
+            # Bloquear eliminación de ventas COMPLETADAS
+            if venta.estado == "COMPLETADA":
+                raise BusinessLogicError(
+                    "No se puede eliminar una venta completada. "
+                    "Primero anule la venta."
+                )
+
             # Eliminar detalles primero
             detalles = await detalle_venta_repo.get_by_venta(db, id_venta)
             for detalle in detalles:
@@ -175,7 +217,7 @@ class VentaService:
             await db.delete(venta)
             await db.commit()
             return True
-        except ValueError:
+        except (ValueError, BusinessLogicError):
             raise
         except Exception as e:
             await db.rollback()

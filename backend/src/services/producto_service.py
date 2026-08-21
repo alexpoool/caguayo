@@ -1,5 +1,6 @@
 from typing import List, Optional
 from sqlmodel.ext.asyncio.session import AsyncSession
+from sqlmodel import select, func
 from src.repository import productos_repo
 from src.dto import (
     ProductosCreate,
@@ -7,6 +8,7 @@ from src.dto import (
     ProductosRead,
 )
 from src.services.existencia_service import ExistenciaService
+from src.core.exceptions import BusinessLogicError
 
 
 class ProductosService:
@@ -64,6 +66,51 @@ class ProductosService:
 
     @staticmethod
     async def delete_producto(db: AsyncSession, producto_id: int) -> bool:
+        from src.models.movimiento import Movimiento
+        from src.models.item_anexo import ItemAnexo
+        from src.models.detalle_compra import DetalleCompra
+        from src.models.detalle_venta import DetalleVenta
+
+        # Verificar movimientos asociados
+        stmt_mov = select(func.count()).select_from(Movimiento).where(
+            Movimiento.id_producto == producto_id
+        )
+        result_mov = await db.exec(stmt_mov)
+        if (result_mov.one() or 0) > 0:
+            raise BusinessLogicError(
+                "No se puede eliminar el producto porque tiene movimientos de inventario asociados."
+            )
+
+        # Verificar items en anexo
+        stmt_ia = select(func.count()).select_from(ItemAnexo).where(
+            ItemAnexo.id_producto == producto_id
+        )
+        result_ia = await db.exec(stmt_ia)
+        if (result_ia.one() or 0) > 0:
+            raise BusinessLogicError(
+                "No se puede eliminar el producto porque tiene items en anexo asociados."
+            )
+
+        # Verificar detalles de compra
+        stmt_dc = select(func.count()).select_from(DetalleCompra).where(
+            DetalleCompra.id_producto == producto_id
+        )
+        result_dc = await db.exec(stmt_dc)
+        if (result_dc.one() or 0) > 0:
+            raise BusinessLogicError(
+                "No se puede eliminar el producto porque tiene detalles de compra asociados."
+            )
+
+        # Verificar detalles de venta
+        stmt_dv = select(func.count()).select_from(DetalleVenta).where(
+            DetalleVenta.id_producto == producto_id
+        )
+        result_dv = await db.exec(stmt_dv)
+        if (result_dv.one() or 0) > 0:
+            raise BusinessLogicError(
+                "No se puede eliminar el producto porque tiene detalles de venta asociados."
+            )
+
         result = await productos_repo.remove(db, id=producto_id)
         return result is not None
 

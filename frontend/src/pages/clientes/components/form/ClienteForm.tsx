@@ -129,6 +129,48 @@ export const ClienteForm: React.FC<ClienteFormProps> = ({
     }
   }, []);
 
+  useEffect(() => {
+    if (
+      editingCliente ||
+      !provincias ||
+      provincias.length === 0 ||
+      formData.id_provincia
+    ) {
+      return;
+    }
+    const provinciaDefault = provincias.find(
+      (p: any) => p.nombre === "Santiago de Cuba",
+    );
+    if (!provinciaDefault) return;
+    let cancelled = false;
+    setLoadingMunicipios(true);
+    dependenciasService
+      .getMunicipios(provinciaDefault.id_provincia)
+      .then((data: any[]) => {
+        if (cancelled) return;
+        const lista = Array.isArray(data) ? data : [];
+        const municipioDefault = lista.find(
+          (m: any) => m.nombre === "Santiago de Cuba",
+        );
+        setMunicipios(lista);
+        setFormData((prev: any) => ({
+          ...prev,
+          id_provincia: provinciaDefault.id_provincia,
+          id_municipio: municipioDefault?.id_municipio,
+        }));
+      })
+      .catch((error: any) => {
+        console.error("Error loading municipios:", error);
+        if (!cancelled) setMunicipios([]);
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingMunicipios(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [editingCliente, provincias]);
+
   const [datosNatural, setDatosNatural] = useState<ClienteNatural | null>(
     editingCliente?.cliente_natural || null,
   );
@@ -172,12 +214,16 @@ export const ClienteForm: React.FC<ClienteFormProps> = ({
 
   const abrirModalTipo = (tipo: TipoPersona) => {
     setModalTipo(tipo);
+    const today = new Date().toISOString().split("T")[0];
     setDatosDraft(
       tipo === "NATURAL"
         ? { ...(datosNatural || {}) }
         : tipo === "JURIDICA"
           ? { ...(datosJuridica || {}) }
-          : { ...(datosTCP || {}) },
+          : {
+              ...(datosTCP || {}),
+              fecha_aprobacion: datosTCP?.fecha_aprobacion || today,
+            },
     );
     setModalAbierto(true);
   };

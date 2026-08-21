@@ -2,10 +2,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import { toast } from "react-hot-toast";
 import { dependenciasService } from "../../services/administracion";
 import { authHelpers } from "../../lib/api";
-import { useReportPreview } from "../../hooks/useReportPreview";
-import ReportPreviewPanel from "../../components/ui/ReportPreviewPanel";
-import type { Column, StatCard } from "../../components/ui/ReportPreviewPanel";
-import { UserCircle, Download, Loader2 } from "lucide-react";
+import { UserCircle, Download, Eye, Loader2 } from "lucide-react";
 import ReportNotes from "../../components/ui/ReportNotes";
 import type { Provincia, Municipio } from "../../types/ubicacion";
 
@@ -17,64 +14,13 @@ const BASE_URL =
   import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api/v1";
 
 // ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
-
-interface CreadorPreviewItem {
-  ci: string;
-  nombre_apellidos: string;
-  direccion: string;
-  registro: string;
-  codigo: string;
-  vigencia: string;
-}
-
-interface CreadoresPreviewData {
-  items: CreadorPreviewItem[];
-  total_items: number;
-}
-
-// ---------------------------------------------------------------------------
-// Column definitions
-// ---------------------------------------------------------------------------
-
-const COLUMNS: Column<CreadorPreviewItem>[] = [
-  {
-    header: "CI",
-    accessor: "ci",
-    className: "font-mono text-xs",
-  },
-  {
-    header: "NOMBRE Y APELLIDOS",
-    accessor: "nombre_apellidos",
-    className: "font-medium",
-  },
-  {
-    header: "DIRECCIÓN",
-    accessor: "direccion",
-  },
-  {
-    header: "REGISTRO",
-    accessor: "registro",
-  },
-  {
-    header: "CÓDIGO",
-    accessor: "codigo",
-    className: "font-mono text-xs",
-  },
-  {
-    header: "VIGENCIA",
-    accessor: "vigencia",
-  },
-];
-
-// ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
 
 const ReporteCreadores: React.FC = () => {
   // ── State ─────────────────────────────────────────────────────────────────
   const [pdfLoading, setPdfLoading] = useState(false);
+  const [previewLoading, setPreviewLoading] = useState(false);
   const [provincias, setProvincias] = useState<Provincia[]>([]);
   const [municipios, setMunicipios] = useState<Municipio[]>([]);
   const [idProvincia, setIdProvincia] = useState<number | null>(null);
@@ -104,54 +50,55 @@ const ReporteCreadores: React.FC = () => {
     });
   }, [idProvincia]);
 
-  // ── Preview URL ───────────────────────────────────────────────────────────
-  const previewUrl = useMemo<string | null>(() => {
-    const params = new URLSearchParams();
+  // ── Build params ──────────────────────────────────────────────────────────
+  const buildParams = () => {
+    const params = new URLSearchParams({
+      aprobado_por_nombre: aprobadoPorNombre,
+      aprobado_por_cargo: aprobadoPorCargo,
+      notas: notas,
+    });
     if (idProvincia) params.append("id_provincia", idProvincia.toString());
     if (idMunicipio) params.append("id_municipio", idMunicipio.toString());
     if (vigencia) params.append("vigencia", vigencia);
     if (textoBusqueda.trim()) params.append("texto_busqueda", textoBusqueda.trim());
+    return params;
+  };
 
-    const qs = params.toString();
-    return `${BASE_URL}/reportes/creadores/preview${qs ? `?${qs}` : ""}`;
-  }, [idProvincia, idMunicipio, vigencia, textoBusqueda]);
+  // ── Preview document in new window ────────────────────────────────────────
+  const handlePreview = async () => {
+    setPreviewLoading(true);
+    try {
+      const params = buildParams();
+      const token = authHelpers.getToken() ?? "";
+      const response = await fetch(
+        `${BASE_URL}/reportes/creadores?${params.toString()}`,
+        {
+          method: "GET",
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
 
-  // ── Live preview data ─────────────────────────────────────────────────────
-  const {
-    data: previewData,
-    loading: previewLoading,
-    error: previewError,
-  } = useReportPreview<CreadoresPreviewData>(previewUrl);
+      if (!response.ok) {
+        throw new Error(`Error ${response.status}: ${response.statusText}`);
+      }
 
-  // ── Stats ─────────────────────────────────────────────────────────────────
-  const stats = useMemo<StatCard[] | undefined>(() => {
-    if (!previewData) return undefined;
-    return [
-      { label: "Total creadores", value: previewData.total_items, color: "green" },
-    ];
-  }, [previewData]);
-
-  // ── Button label ─────────────────────────────────────────────────────────
-  const buttonLabel = pdfLoading
-    ? "Generando PDF..."
-    : previewData && previewData.total_items > 0
-    ? `Exportar ${previewData.total_items} registros como PDF`
-    : "Exportar PDF";
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      window.open(url, "_blank");
+    } catch (error) {
+      console.error(error);
+      toast.error("Hubo un error al generar la vista previa.");
+    } finally {
+      setPreviewLoading(false);
+    }
+  };
 
   // ── PDF export ────────────────────────────────────────────────────────────
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setPdfLoading(true);
     try {
-      const params = new URLSearchParams({
-        aprobado_por_nombre: aprobadoPorNombre,
-        aprobado_por_cargo: aprobadoPorCargo,
-        notas: notas,
-      });
-      if (idProvincia) params.append("id_provincia", idProvincia.toString());
-      if (idMunicipio) params.append("id_municipio", idMunicipio.toString());
-      if (vigencia) params.append("vigencia", vigencia);
-      if (textoBusqueda.trim()) params.append("texto_busqueda", textoBusqueda.trim());
+      const params = buildParams();
 
       const token = authHelpers.getToken() ?? "";
       const response = await fetch(
@@ -185,6 +132,9 @@ const ReporteCreadores: React.FC = () => {
     }
   };
 
+  // ── Button label ─────────────────────────────────────────────────────────
+  const buttonLabel = pdfLoading ? "Generando PDF..." : "Exportar PDF";
+
   // ── Render ────────────────────────────────────────────────────────────────
   return (
     <div className="space-y-6">
@@ -203,9 +153,8 @@ const ReporteCreadores: React.FC = () => {
         </div>
       </div>
 
-      {/* ── Two-column layout ────────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 xl:grid-cols-[380px_1fr] items-start gap-6">
-        {/* ── Left: form panel ──────────────────────────────────────────── */}
+      {/* ── Form panel (centered) ───────────────────────────────────────── */}
+      <div className="max-w-xl mx-auto">
         <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-6">
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* ── FILTROS section ───────────────────────────────────────── */}
@@ -361,34 +310,37 @@ const ReporteCreadores: React.FC = () => {
             {/* ── NOTAS section ──────────────────────────────────────────── */}
             <ReportNotes value={notas} onChange={setNotas} />
 
-            {/* ── Submit button ─────────────────────────────────────────── */}
-            <button
-              type="submit"
-              disabled={pdfLoading}
-              className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium text-white bg-teal-600 hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              {pdfLoading ? (
-                <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
-              ) : (
-                <Download className="w-4 h-4" aria-hidden="true" />
-              )}
-              {buttonLabel}
-            </button>
+            {/* ── Action buttons ─────────────────────────────────────────── */}
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={handlePreview}
+                disabled={previewLoading}
+                className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium text-teal-700 bg-teal-50 border border-teal-200 hover:bg-teal-100 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                title="Vista previa del documento"
+              >
+                {previewLoading ? (
+                  <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
+                ) : (
+                  <Eye className="w-4 h-4" aria-hidden="true" />
+                )}
+                Vista previa
+              </button>
+              <button
+                type="submit"
+                disabled={pdfLoading}
+                className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium text-white bg-teal-600 hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {pdfLoading ? (
+                  <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
+                ) : (
+                  <Download className="w-4 h-4" aria-hidden="true" />
+                )}
+                {buttonLabel}
+              </button>
+            </div>
           </form>
         </div>
-
-        {/* ── Right: live preview panel ──────────────────────────────────── */}
-        <ReportPreviewPanel<CreadorPreviewItem>
-          title="Vista previa del reporte"
-          data={previewData?.items ?? null}
-          loading={previewLoading}
-          error={previewError}
-          columns={COLUMNS}
-          stats={stats}
-          notes={notas}
-          emptyMessage="No se encontraron creadores con los filtros seleccionados"
-          exportFileName="registro_creadores"
-        />
       </div>
     </div>
   );

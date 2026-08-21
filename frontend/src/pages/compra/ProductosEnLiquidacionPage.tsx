@@ -112,8 +112,12 @@ export function ProductosEnLiquidacionPage() {
     } catch (error: any) { toast.error(error.message || 'Error'); }
   };
 
-  const handleDelete = async (id: number) => {
-    if (!confirm('¿Eliminar?')) return;
+  const handleDelete = async (id: number, liquidada: boolean) => {
+    if (liquidada) {
+      toast.error('No se puede eliminar un producto ya liquidado');
+      return;
+    }
+    if (!confirm('¿Está seguro de eliminar este producto pendiente?')) return;
     try {
       await productosEnLiquidacionService.deleteProducto(id);
       toast.success('Eliminado');
@@ -289,9 +293,10 @@ export function ProductosEnLiquidacionPage() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => handleDelete(item.id_producto_en_liquidacion)}
-                          className="text-red-600 hover:text-red-800 hover:bg-red-50 h-8 w-8"
-                          title="Eliminar"
+                          onClick={() => handleDelete(item.id_producto_en_liquidacion, item.liquidada)}
+                          disabled={item.liquidada}
+                          className={`${item.liquidada ? 'text-gray-300 cursor-not-allowed' : 'text-red-600 hover:text-red-800 hover:bg-red-50'} h-8 w-8`}
+                          title={item.liquidada ? 'No se puede eliminar: ya está liquidada' : 'Eliminar'}
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>

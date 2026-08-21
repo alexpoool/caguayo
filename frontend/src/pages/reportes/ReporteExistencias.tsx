@@ -3,10 +3,7 @@ import { toast } from "react-hot-toast";
 import { dependenciasService } from "../../services/administracion";
 import { Dependencia } from "../../types/dependencia";
 import { authHelpers } from "../../lib/api";
-import { useReportPreview } from "../../hooks/useReportPreview";
-import ReportPreviewPanel from "../../components/ui/ReportPreviewPanel";
-import type { Column, StatCard } from "../../components/ui/ReportPreviewPanel";
-import { Boxes, Download, Building2, Loader2 } from "lucide-react";
+import { Boxes, Download, Building2, Eye, Loader2 } from "lucide-react";
 import ReportNotes from "../../components/ui/ReportNotes";
 
 // ---------------------------------------------------------------------------
@@ -17,54 +14,13 @@ const BASE_URL =
   import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api/v1";
 
 // ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
-
-interface ExistenciasPreviewItem {
-  codigo: string;
-  descripcion: string;
-  cantidad: number;
-}
-
-interface ExistenciasPreviewData {
-  dependencia: { nombre: string; direccion: string };
-  items: ExistenciasPreviewItem[];
-  total_items: number;
-  total_cantidad: number;
-}
-
-// ---------------------------------------------------------------------------
-// Columns (defined outside the component to keep a stable reference)
-// ---------------------------------------------------------------------------
-
-// ---------------------------------------------------------------------------
-// Column definitions
-// ---------------------------------------------------------------------------
-
-const COLUMNS: Column<ExistenciasPreviewItem>[] = [
-  {
-    header: "Código",
-    accessor: "codigo",
-    className: "font-mono text-xs",
-  },
-  {
-    header: "Descripción",
-    accessor: "descripcion",
-  },
-  {
-    header: "Cantidad",
-    accessor: "cantidad",
-    align: "right",
-  },
-];
-
-// ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
 
 const ReporteExistencias: React.FC = () => {
   // ── State ─────────────────────────────────────────────────────────────────
   const [pdfLoading, setPdfLoading] = useState(false);
+  const [previewLoading, setPreviewLoading] = useState(false);
   const [dependencias, setDependencias] = useState<Dependencia[]>([]);
   const [idDependencia, setIdDependencia] = useState<number | null>(null);
   const [aprobadoPorNombre, setAprobadoPorNombre] = useState("");
@@ -82,31 +38,49 @@ const ReporteExistencias: React.FC = () => {
     dependenciasService.getDependencias().then(setDependencias);
   }, []);
 
-  // ── Preview URL (only when a dependencia is selected) ─────────────────────
-  const previewUrl = useMemo(() => {
-    if (!idDependencia) return null;
-    return `${BASE_URL}/reportes/existencias/preview?id_dependencia=${idDependencia}`;
-  }, [idDependencia]);
+  // ── Build params ──────────────────────────────────────────────────────────
+  const buildParams = () => {
+    const params = new URLSearchParams({
+      id_dependencia: idDependencia?.toString() ?? "",
+      aprobado_por_nombre: aprobadoPorNombre,
+      aprobado_por_cargo: aprobadoPorCargo,
+      notas: notas,
+    });
+    return params;
+  };
 
-  // ── Live preview data ─────────────────────────────────────────────────────
-  const {
-    data: previewData,
-    loading: previewLoading,
-    error: previewError,
-  } = useReportPreview<ExistenciasPreviewData>(previewUrl);
+  // ── Preview document in new window ────────────────────────────────────────
+  const handlePreview = async () => {
+    if (!idDependencia) {
+      toast.error("Seleccione una dependencia");
+      return;
+    }
+    setPreviewLoading(true);
+    try {
+      const params = buildParams();
+      const token = authHelpers.getToken() ?? "";
+      const response = await fetch(
+        `${BASE_URL}/reportes/existencias?${params.toString()}`,
+        {
+          method: "GET",
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
 
-  // ── Stats (only when preview data is available) ───────────────────────────
-  const stats = useMemo<StatCard[] | undefined>(() => {
-    if (!previewData) return undefined;
-    return [
-      { label: "Total productos", value: previewData.total_items, color: "blue" },
-      {
-        label: "Total unidades",
-        value: previewData.total_cantidad.toLocaleString(),
-        color: "green",
-      },
-    ];
-  }, [previewData]);
+      if (!response.ok) {
+        throw new Error(`Error ${response.status}: ${response.statusText}`);
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      window.open(url, "_blank");
+    } catch (error) {
+      console.error(error);
+      toast.error("Hubo un error al generar la vista previa.");
+    } finally {
+      setPreviewLoading(false);
+    }
+  };
 
   // ── PDF export ────────────────────────────────────────────────────────────
   const handleSubmit = async (e: React.FormEvent) => {
@@ -118,12 +92,7 @@ const ReporteExistencias: React.FC = () => {
 
     setPdfLoading(true);
     try {
-      const params = new URLSearchParams({
-        id_dependencia: idDependencia.toString(),
-        aprobado_por_nombre: aprobadoPorNombre,
-        aprobado_por_cargo: aprobadoPorCargo,
-        notas: notas,
-      });
+      const params = buildParams();
 
       const token = authHelpers.getToken() ?? "";
       const response = await fetch(
@@ -158,11 +127,7 @@ const ReporteExistencias: React.FC = () => {
   };
 
   // ── Button label ──────────────────────────────────────────────────────────
-  const buttonLabel = pdfLoading
-    ? "Generando PDF..."
-    : previewData
-    ? `Exportar ${previewData.total_items} registros como PDF`
-    : "Exportar PDF";
+  const buttonLabel = pdfLoading ? "Generando PDF..." : "Exportar PDF";
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
@@ -180,9 +145,8 @@ const ReporteExistencias: React.FC = () => {
         </div>
       </div>
 
-      {/* ── Two-column layout ────────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 xl:grid-cols-[380px_1fr] items-start gap-6">
-        {/* ── Left: form panel ──────────────────────────────────────────── */}
+      {/* ── Form panel (centered) ───────────────────────────────────────── */}
+      <div className="max-w-xl mx-auto">
         <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-6">
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* ── FILTROS section ───────────────────────────────────────── */}
@@ -272,40 +236,40 @@ const ReporteExistencias: React.FC = () => {
               </div>
             </div>
 
-            {/* ── NOTAS section ────────────────────────────────────────── */}
+            {/* ── NOTAS section ──────────────────────────────────────────── */}
             <ReportNotes value={notas} onChange={setNotas} />
 
-            {/* ── Submit button ─────────────────────────────────────────── */}
-            <button
-              type="submit"
-              disabled={!idDependencia || pdfLoading}
-              className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              {pdfLoading ? (
-                <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
-              ) : (
-                <Download className="w-4 h-4" aria-hidden="true" />
-              )}
-              {buttonLabel}
-            </button>
+            {/* ── Action buttons ─────────────────────────────────────────── */}
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={handlePreview}
+                disabled={!idDependencia || previewLoading}
+                className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium text-blue-700 bg-blue-50 border border-blue-200 hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                title="Vista previa del documento"
+              >
+                {previewLoading ? (
+                  <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
+                ) : (
+                  <Eye className="w-4 h-4" aria-hidden="true" />
+                )}
+                Vista previa
+              </button>
+              <button
+                type="submit"
+                disabled={!idDependencia || pdfLoading}
+                className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {pdfLoading ? (
+                  <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
+                ) : (
+                  <Download className="w-4 h-4" aria-hidden="true" />
+                )}
+                {buttonLabel}
+              </button>
+            </div>
           </form>
         </div>
-
-        {/* ── Right: live preview panel ──────────────────────────────────── */}
-        <ReportPreviewPanel<ExistenciasPreviewItem>
-          title="Vista previa del reporte"
-          subtitle={
-            selectedDep ? `Dependencia: ${selectedDep.nombre}` : undefined
-          }
-          data={previewData?.items ?? null}
-          loading={previewLoading}
-          error={previewError}
-          columns={COLUMNS}
-          stats={stats}
-          notes={notas}
-          emptyMessage="Esta dependencia no tiene productos registrados"
-          exportFileName={`existencias_${idDependencia ?? "dependencia"}`}
-        />
       </div>
     </div>
   );

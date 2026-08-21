@@ -1,10 +1,7 @@
 import React, { useState, useMemo } from "react";
 import { toast } from "react-hot-toast";
 import { authHelpers } from "../../lib/api";
-import { useReportPreview } from "../../hooks/useReportPreview";
-import ReportPreviewPanel from "../../components/ui/ReportPreviewPanel";
-import type { Column, StatCard } from "../../components/ui/ReportPreviewPanel";
-import { Layers, Download, Loader2 } from "lucide-react";
+import { Layers, Download, Eye, Loader2 } from "lucide-react";
 import ReportNotes from "../../components/ui/ReportNotes";
 
 // ---------------------------------------------------------------------------
@@ -13,66 +10,6 @@ import ReportNotes from "../../components/ui/ReportNotes";
 
 const BASE_URL =
   import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api/v1";
-
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
-
-interface ProyectoPreviewItem {
-  numero: number;
-  codigo: string;
-  proyecto: string;
-  cliente: string;
-  fecha: string;
-  valor: number;
-  moneda: string;
-}
-
-interface ProyectosPreviewData {
-  items: ProyectoPreviewItem[];
-  total_items: number;
-}
-
-// ---------------------------------------------------------------------------
-// Column definitions
-// ---------------------------------------------------------------------------
-
-const COLUMNS: Column<ProyectoPreviewItem>[] = [
-  {
-    header: "No.",
-    accessor: "numero",
-    align: "right",
-    className: "w-12",
-  },
-  {
-    header: "CÓDIGO",
-    accessor: "codigo",
-    className: "font-mono text-xs",
-  },
-  {
-    header: "PROYECTO",
-    accessor: "proyecto",
-    className: "font-medium",
-  },
-  {
-    header: "CLIENTE",
-    accessor: "cliente",
-  },
-  {
-    header: "FECHA",
-    accessor: (row) =>
-      new Date(row.fecha + "T00:00:00").toLocaleDateString("es-ES"),
-  },
-  {
-    header: "VALOR",
-    accessor: "valor",
-    align: "right",
-  },
-  {
-    header: "MONEDA",
-    accessor: "moneda",
-  },
-];
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -93,52 +30,59 @@ function formatDateEs(isoDate: string): string {
 const ReporteProyectos: React.FC = () => {
   // ── State ─────────────────────────────────────────────────────────────────
   const [pdfLoading, setPdfLoading] = useState(false);
+  const [previewLoading, setPreviewLoading] = useState(false);
   const [fechaInicio, setFechaInicio] = useState("");
   const [fechaFin, setFechaFin] = useState("");
   const [aprobadoPorNombre, setAprobadoPorNombre] = useState("");
   const [aprobadoPorCargo, setAprobadoPorCargo] = useState("");
   const [notas, setNotas] = useState("");
 
-  // ── Preview URL ───────────────────────────────────────────────────────────
-  const previewUrl = useMemo<string | null>(() => {
-    if (!fechaInicio || !fechaFin) return null;
-    const params = new URLSearchParams({
-      fecha_inicio: fechaInicio,
-      fecha_fin: fechaFin,
-    });
-    return `${BASE_URL}/reportes/proyectos/preview?${params.toString()}`;
-  }, [fechaInicio, fechaFin]);
-
-  // ── Live preview data ─────────────────────────────────────────────────────
-  const {
-    data: previewData,
-    loading: previewLoading,
-    error: previewError,
-  } = useReportPreview<ProyectosPreviewData>(previewUrl);
-
-  // ── Stats ─────────────────────────────────────────────────────────────────
-  const stats = useMemo<StatCard[] | undefined>(() => {
-    if (!previewData) return undefined;
-    return [
-      { label: "Total proyectos", value: previewData.total_items, color: "blue" },
-    ];
-  }, [previewData]);
-
-  // ── Preview subtitle ──────────────────────────────────────────────────────
-  const previewSubtitle =
-    fechaInicio && fechaFin
-      ? `${formatDateEs(fechaInicio)} – ${formatDateEs(fechaFin)}`
-      : undefined;
-
   // ── Form validation ───────────────────────────────────────────────────────
   const isFormValid = Boolean(fechaInicio && fechaFin);
 
-  // ── Button label ─────────────────────────────────────────────────────────
-  const buttonLabel = pdfLoading
-    ? "Generando PDF..."
-    : previewData && previewData.total_items > 0
-    ? `Exportar ${previewData.total_items} registros como PDF`
-    : "Exportar PDF";
+  // ── Build params ──────────────────────────────────────────────────────────
+  const buildParams = () => {
+    return new URLSearchParams({
+      fecha_inicio: fechaInicio,
+      fecha_fin: fechaFin,
+      aprobado_por_nombre: aprobadoPorNombre,
+      aprobado_por_cargo: aprobadoPorCargo,
+      notas: notas,
+    });
+  };
+
+  // ── Preview document in new window ────────────────────────────────────────
+  const handlePreview = async () => {
+    if (!isFormValid) {
+      toast.error("Seleccione un rango de fechas");
+      return;
+    }
+    setPreviewLoading(true);
+    try {
+      const params = buildParams();
+      const token = authHelpers.getToken() ?? "";
+      const response = await fetch(
+        `${BASE_URL}/reportes/proyectos?${params.toString()}`,
+        {
+          method: "GET",
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`Error ${response.status}: ${response.statusText}`);
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      window.open(url, "_blank");
+    } catch (error) {
+      console.error(error);
+      toast.error("Hubo un error al generar la vista previa.");
+    } finally {
+      setPreviewLoading(false);
+    }
+  };
 
   // ── PDF export ────────────────────────────────────────────────────────────
   const handleSubmit = async (e: React.FormEvent) => {
@@ -149,13 +93,7 @@ const ReporteProyectos: React.FC = () => {
     }
     setPdfLoading(true);
     try {
-      const params = new URLSearchParams({
-        fecha_inicio: fechaInicio,
-        fecha_fin: fechaFin,
-        aprobado_por_nombre: aprobadoPorNombre,
-        aprobado_por_cargo: aprobadoPorCargo,
-        notas: notas,
-      });
+      const params = buildParams();
 
       const token = authHelpers.getToken() ?? "";
       const response = await fetch(
@@ -189,6 +127,9 @@ const ReporteProyectos: React.FC = () => {
     }
   };
 
+  // ── Button label ─────────────────────────────────────────────────────────
+  const buttonLabel = pdfLoading ? "Generando PDF..." : "Exportar PDF";
+
   // ── Render ────────────────────────────────────────────────────────────────
   return (
     <div className="space-y-6">
@@ -207,9 +148,8 @@ const ReporteProyectos: React.FC = () => {
         </div>
       </div>
 
-      {/* ── Two-column layout ────────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 xl:grid-cols-[380px_1fr] items-start gap-6">
-        {/* ── Left: form panel ──────────────────────────────────────────── */}
+      {/* ── Form panel (centered) ───────────────────────────────────────── */}
+      <div className="max-w-xl mx-auto">
         <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-6">
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* ── FILTROS section ───────────────────────────────────────── */}
@@ -298,35 +238,37 @@ const ReporteProyectos: React.FC = () => {
             {/* ── NOTAS section ──────────────────────────────────────────── */}
             <ReportNotes value={notas} onChange={setNotas} />
 
-            {/* ── Submit button ─────────────────────────────────────────── */}
-            <button
-              type="submit"
-              disabled={!isFormValid || pdfLoading}
-              className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium text-white bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {pdfLoading ? (
-                <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
-              ) : (
-                <Download className="w-4 h-4" aria-hidden="true" />
-              )}
-              {buttonLabel}
-            </button>
+            {/* ── Action buttons ─────────────────────────────────────────── */}
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={handlePreview}
+                disabled={!isFormValid || previewLoading}
+                className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium text-teal-700 bg-teal-50 border border-teal-200 hover:bg-teal-100 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                title="Vista previa del documento"
+              >
+                {previewLoading ? (
+                  <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
+                ) : (
+                  <Eye className="w-4 h-4" aria-hidden="true" />
+                )}
+                Vista previa
+              </button>
+              <button
+                type="submit"
+                disabled={!isFormValid || pdfLoading}
+                className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium text-white bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {pdfLoading ? (
+                  <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
+                ) : (
+                  <Download className="w-4 h-4" aria-hidden="true" />
+                )}
+                {buttonLabel}
+              </button>
+            </div>
           </form>
         </div>
-
-        {/* ── Right: live preview panel ──────────────────────────────────── */}
-        <ReportPreviewPanel<ProyectoPreviewItem>
-          title="Vista previa del reporte"
-          subtitle={previewSubtitle}
-          data={previewData?.items ?? null}
-          loading={previewLoading}
-          error={previewError}
-          columns={COLUMNS}
-          stats={stats}
-          notes={notas}
-          emptyMessage="No se encontraron proyectos en el rango de fechas seleccionado"
-          exportFileName={`registro_proyectos_${fechaInicio}_${fechaFin}`}
-        />
       </div>
     </div>
   );

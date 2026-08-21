@@ -23,6 +23,7 @@ from src.models import (
     Factura,
     VentaEfectivo,
     Cliente,
+    Dependencia,
     Moneda,
     Movimiento,
     TipoMovimiento,
@@ -263,6 +264,23 @@ class ContratoService:
         contrato = await contrato_repo.get(db, id)
         if not contrato:
             return False
+
+        # Verificar que no tenga facturas asociadas
+        stmt_facturas = select(Factura).where(Factura.id_contrato == id)
+        facturas = (await db.exec(stmt_facturas)).all()
+        if facturas:
+            raise BusinessLogicError(
+                f"No se puede eliminar el contrato: tiene {len(facturas)} factura(s) asociada(s)."
+            )
+
+        # Verificar que no tenga ventas en efectivo asociadas
+        stmt_ventas = select(VentaEfectivo).where(VentaEfectivo.id_contrato == id)
+        ventas = (await db.exec(stmt_ventas)).all()
+        if ventas:
+            raise BusinessLogicError(
+                f"No se puede eliminar el contrato: tiene {len(ventas)} venta(s) en efectivo asociada(s)."
+            )
+
         await contrato_repo.remove(db, id=id)
         return True
 
@@ -455,6 +473,15 @@ class SuplementoService:
         suplemento = await suplemento_repo.get(db, id)
         if not suplemento:
             return False
+
+        # Verificar que no tenga facturas asociadas a través del contrato
+        stmt_facturas = select(Factura).where(Factura.id_contrato == suplemento.id_contrato)
+        facturas = (await db.exec(stmt_facturas)).all()
+        if facturas:
+            raise BusinessLogicError(
+                f"No se puede eliminar el suplemento: el contrato tiene {len(facturas)} factura(s) asociada(s)."
+            )
+
         await suplemento_repo.remove(db, id=id)
         return True
 
@@ -516,6 +543,12 @@ class FacturaService:
         )
 
         data.monto = total_monto
+
+        # Validar que el contrato exista
+        contrato = await db.get(Contrato, data.id_contrato)
+        if not contrato:
+            raise BusinessLogicError(f"El contrato con ID {data.id_contrato} no existe.")
+
         factura = await factura_repo.create(db, data)
 
         anio = data.fecha.year
@@ -539,7 +572,6 @@ class FacturaService:
         db.add(factura)
         await db.flush()
 
-        contrato = await db.get(Contrato, factura.id_contrato)
         id_dependencia = data.id_dependencia or id_dependencia_usuario
 
         stmt_tipo_mov = select(TipoMovimiento).where(TipoMovimiento.tipo == "venta")
@@ -573,10 +605,6 @@ class FacturaService:
                 producto = await db.get(Productos, item["id_producto"])
                 if not producto:
                     continue
-
-                producto.precio_venta = item["precio_venta"]
-                producto.moneda_venta = item["id_moneda"]
-                producto.precio_minimo = item["precio_venta"] * Decimal("0.8")
 
                 db_movimiento = Movimiento(
                     id_tipo_movimiento=tipo_mov.id_tipo_movimiento,
@@ -646,6 +674,12 @@ class FacturaService:
         if "items" in data_dict:
             items_data = data_dict.pop("items", [])
             if items_data:
+                # Eliminar items anteriores antes de crear nuevos
+                existing_items = await item_factura_repo.get_by_factura(db, id)
+                for old_item in existing_items:
+                    await db.delete(old_item)
+                await db.flush()
+
                 await item_factura_repo.create_items(db, id, items_data)
                 total_monto = sum(
                     Decimal(str(item["cantidad"])) * Decimal(str(item["precio_venta"]))
@@ -665,15 +699,28 @@ class FacturaService:
             return False
         from sqlmodel import select
         from src.models import ProductosEnLiquidacion
+        from src.models.item_anexo import ItemAnexo
 
-        # Desvincular productos_en_liquidacion (columna nullable)
+        # 1) Revertir item_anexo.vendido usando los items de la factura
+        items = await item_factura_repo.get_by_factura(db, id)
+        for if_item in items:
+            if if_item.id_producto:
+                stmt_ia = select(ItemAnexo).where(
+                    ItemAnexo.id_producto == if_item.id_producto
+                )
+                for ia in (await db.exec(stmt_ia)).all():
+                    ia.vendido = max(0, ia.vendido - if_item.cantidad)
+                    db.add(ia)
+
+        # 2) Desvincular productos_en_liquidacion (columna nullable)
         stmt_liq = select(ProductosEnLiquidacion).where(
             ProductosEnLiquidacion.id_factura == id
         )
         for liq in (await db.exec(stmt_liq)).all():
             liq.id_factura = None
             db.add(liq)
-        # Cancelar movimientos asociados
+
+        # 3) Cancelar movimientos asociados
         stmt = select(Movimiento).where(Movimiento.id_factura == id)
         result = await db.exec(stmt)
         for mov in result.all():
@@ -681,10 +728,12 @@ class FacturaService:
                 mov.estado = "cancelado"
             mov.id_factura = None
             db.add(mov)
-        # Eliminar items de la factura antes de borrarla (evita NOT NULL en id_factura)
-        items = await item_factura_repo.get_by_factura(db, id)
+
+        # 4) Eliminar items de la factura antes de borrarla
         for item in items:
             await db.delete(item)
+
+        # 5) Eliminar la factura
         await factura_repo.remove(db, id=id)
         return True
 
@@ -746,6 +795,12 @@ class VentaEfectivoService:
     ) -> VentaEfectivoReadWithDetails:
         data_dict = data.model_dump(exclude_none=True)
         items_data = data_dict.pop("items", [])
+
+        # Validar que la dependencia exista
+        if data.id_dependencia:
+            dep = await db.get(Dependencia, data.id_dependencia)
+            if not dep:
+                raise BusinessLogicError(f"La dependencia con ID {data.id_dependencia} no existe.")
 
         venta = await venta_efectivo_repo.create(db, data)
 
@@ -812,10 +867,6 @@ class VentaEfectivoService:
                 if not producto:
                     continue
 
-                producto.precio_venta = item["precio_venta"]
-                producto.moneda_venta = item["id_moneda"]
-                producto.precio_minimo = item["precio_venta"] * Decimal("0.8")
-
                 db_movimiento = Movimiento(
                     id_tipo_movimiento=tipo_mov.id_tipo_movimiento,
                     id_dependencia=venta.id_dependencia,
@@ -874,12 +925,36 @@ class VentaEfectivoService:
         venta = await venta_efectivo_repo.get(db, id)
         if not venta:
             return False
-        # Cancelar movimientos asociados
+
+        from src.models.item_anexo import ItemAnexo
+
+        # 1) Revertir item_anexo.vendido usando los items de la venta
+        stmt_items = select(ItemVentaEfectivo).where(
+            ItemVentaEfectivo.id_venta_efectivo == id
+        )
+        items_venta = (await db.exec(stmt_items)).all()
+        for iv in items_venta:
+            if iv.id_producto:
+                # Buscar item_anexo correspondiente
+                stmt_ia = select(ItemAnexo).where(
+                    ItemAnexo.id_producto == iv.id_producto
+                )
+                for ia in (await db.exec(stmt_ia)).all():
+                    ia.vendido = max(0, ia.vendido - iv.cantidad)
+                    db.add(ia)
+
+        # 2) Eliminar items de la venta
+        for iv in items_venta:
+            await db.delete(iv)
+
+        # 3) Cancelar movimientos asociados
         stmt = select(Movimiento).where(Movimiento.id_venta_efectivo == id)
         result = await db.exec(stmt)
         for mov in result.all():
             if mov.estado != "cancelado":
                 mov.estado = "cancelado"
                 db.add(mov)
+
+        # 4) Eliminar la venta
         await venta_efectivo_repo.remove(db, id=id)
         return True

@@ -1,5 +1,6 @@
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
+from sqlalchemy import func
 from sqlalchemy.orm import selectinload
 from typing import List, Optional
 from decimal import Decimal
@@ -85,6 +86,14 @@ class SolicitudServicioRepository(
         )
         results = await db.exec(statement)
         return results.all()
+
+    async def count_etapas(self, db: AsyncSession, id_solicitud: int) -> int:
+        """Cuenta las etapas de una solicitud."""
+        stmt = select(func.count()).select_from(Etapa).where(
+            Etapa.id_solicitud_servicio == id_solicitud
+        )
+        result = await db.exec(stmt)
+        return result.one() or 0
 
 
 solicitud_servicio_repo = SolicitudServicioRepository(SolicitudServicio)
@@ -235,6 +244,21 @@ class FacturaServicioRepository(
             await db.refresh(factura)
         return factura
 
+    async def get_total_importe_by_etapa(
+        self, db: AsyncSession, id_etapa: int, exclude_id: Optional[int] = None
+    ) -> Decimal:
+        """Suma de importes de todas las facturas aprobadas de una etapa, opcionalmente excluyendo una."""
+        stmt = select(
+            func.coalesce(func.sum(FacturaServicio.importe), Decimal("0"))
+        ).where(
+            FacturaServicio.id_etapa == id_etapa,
+            FacturaServicio.estado != "CANCELADA",
+        )
+        if exclude_id is not None:
+            stmt = stmt.where(FacturaServicio.id_factura_servicio != exclude_id)
+        result = await db.exec(stmt)
+        return result.one() or Decimal("0")
+
 
 factura_servicio_repo = FacturaServicioRepository(FacturaServicio)
 
@@ -376,6 +400,17 @@ class ItemFacturaServicioRepository(
         results = await db.exec(statement)
         return results.one_or_none()
 
+    async def count_other_references_by_tarea(
+        self, db: AsyncSession, id_tarea_etapa: int, exclude_factura_id: int
+    ) -> int:
+        """Cuenta cuántas facturas (distintas de exclude_factura_id) referencian una tarea."""
+        stmt = select(func.count()).select_from(ItemFacturaServicio).where(
+            ItemFacturaServicio.id_tarea_etapa == id_tarea_etapa,
+            ItemFacturaServicio.id_factura_servicio != exclude_factura_id,
+        )
+        result = await db.exec(stmt)
+        return result.one() or 0
+
     async def delete_by_factura(self, db: AsyncSession, id_factura: int) -> bool:
         statement = select(ItemFacturaServicio).where(
             ItemFacturaServicio.id_factura_servicio == id_factura
@@ -423,6 +458,21 @@ class OfertaRepository(
         )
         results = await db.exec(statement)
         return results.all()
+
+    async def get_total_importe_by_etapa(
+        self, db: AsyncSession, id_etapa: int, exclude_id: Optional[int] = None
+    ) -> Decimal:
+        """Suma de importes de todas las ofertas de una etapa, opcionalmente excluyendo una."""
+        stmt = select(
+            func.coalesce(func.sum(Oferta.importe), Decimal("0"))
+        ).where(
+            Oferta.id_etapa == id_etapa,
+            Oferta.estado != "RECHAZADA",
+        )
+        if exclude_id is not None:
+            stmt = stmt.where(Oferta.id_oferta != exclude_id)
+        result = await db.exec(stmt)
+        return result.one() or Decimal("0")
 
     async def get_by_codigo(self, db: AsyncSession, codigo: str) -> Optional[Oferta]:
         statement = select(Oferta).where(Oferta.codigo_oferta == codigo)

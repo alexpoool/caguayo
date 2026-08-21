@@ -1,10 +1,7 @@
-import React, { useState, useMemo } from "react";
+import React, { useState } from "react";
 import { toast } from "react-hot-toast";
 import { authHelpers } from "../../lib/api";
-import { useReportPreview } from "../../hooks/useReportPreview";
-import ReportPreviewPanel from "../../components/ui/ReportPreviewPanel";
-import type { Column, StatCard } from "../../components/ui/ReportPreviewPanel";
-import { Users, Download, Loader2 } from "lucide-react";
+import { Users, Download, Eye, Loader2 } from "lucide-react";
 import ReportNotes from "../../components/ui/ReportNotes";
 
 // ---------------------------------------------------------------------------
@@ -15,95 +12,62 @@ const BASE_URL =
   import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api/v1";
 
 // ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
-
-interface ClientePreviewItem {
-  numero: number;
-  nombre: string;
-  reeup: string;
-  nit: string;
-  direccion: string;
-}
-
-interface ClientesPreviewData {
-  items: ClientePreviewItem[];
-  total_items: number;
-}
-
-// ---------------------------------------------------------------------------
-// Column definitions
-// ---------------------------------------------------------------------------
-
-const COLUMNS: Column<ClientePreviewItem>[] = [
-  {
-    header: "No.",
-    accessor: "numero",
-    align: "right",
-    className: "w-12",
-  },
-  {
-    header: "NOMBRE",
-    accessor: "nombre",
-    className: "font-medium",
-  },
-  {
-    header: "REEUP",
-    accessor: "reeup",
-    className: "font-mono text-xs",
-  },
-  {
-    header: "NIT",
-    accessor: "nit",
-    className: "font-mono text-xs",
-  },
-  {
-    header: "DIRECCIÓN",
-    accessor: "direccion",
-  },
-];
-
-// ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
 
 const ReporteClientes: React.FC = () => {
   // ── State ─────────────────────────────────────────────────────────────────
   const [pdfLoading, setPdfLoading] = useState(false);
+  const [previewLoading, setPreviewLoading] = useState(false);
   const [aprobadoPorNombre, setAprobadoPorNombre] = useState("");
   const [aprobadoPorCargo, setAprobadoPorCargo] = useState("");
   const [notas, setNotas] = useState("");
 
-  // ── Preview URL (no filters needed, always active) ────────────────────────
-  const previewUrl = useMemo(() => {
-    return `${BASE_URL}/reportes/clientes/preview`;
-  }, []);
+  // ── Build params ──────────────────────────────────────────────────────────
+  const buildParams = () => {
+    const params = new URLSearchParams({
+      aprobado_por_nombre: aprobadoPorNombre,
+      aprobado_por_cargo: aprobadoPorCargo,
+      notas: notas,
+    });
+    return params;
+  };
 
-  // ── Live preview data ─────────────────────────────────────────────────────
-  const {
-    data: previewData,
-    loading: previewLoading,
-    error: previewError,
-  } = useReportPreview<ClientesPreviewData>(previewUrl);
+  // ── Preview document in new window ────────────────────────────────────────
+  const handlePreview = async () => {
+    setPreviewLoading(true);
+    try {
+      const params = buildParams();
+      const token = authHelpers.getToken() ?? "";
+      const response = await fetch(
+        `${BASE_URL}/reportes/clientes?${params.toString()}`,
+        {
+          method: "GET",
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
 
-  // ── Stats ─────────────────────────────────────────────────────────────────
-  const stats = useMemo<StatCard[] | undefined>(() => {
-    if (!previewData) return undefined;
-    return [
-      { label: "Total clientes", value: previewData.total_items, color: "blue" },
-    ];
-  }, [previewData]);
+      if (!response.ok) {
+        throw new Error(`Error ${response.status}: ${response.statusText}`);
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      window.open(url, "_blank");
+    } catch (error) {
+      console.error(error);
+      toast.error("Hubo un error al generar la vista previa.");
+    } finally {
+      setPreviewLoading(false);
+    }
+  };
 
   // ── PDF export ────────────────────────────────────────────────────────────
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setPdfLoading(true);
     try {
-      const params = new URLSearchParams({
-        aprobado_por_nombre: aprobadoPorNombre,
-        aprobado_por_cargo: aprobadoPorCargo,
-        notas: notas,
-      });
+      const params = buildParams();
 
       const token = authHelpers.getToken() ?? "";
       const response = await fetch(
@@ -138,11 +102,7 @@ const ReporteClientes: React.FC = () => {
   };
 
   // ── Button label ──────────────────────────────────────────────────────────
-  const buttonLabel = pdfLoading
-    ? "Generando PDF..."
-    : previewData
-    ? `Exportar ${previewData.total_items} registros como PDF`
-    : "Exportar PDF";
+  const buttonLabel = pdfLoading ? "Generando PDF..." : "Exportar PDF";
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
@@ -160,9 +120,8 @@ const ReporteClientes: React.FC = () => {
         </div>
       </div>
 
-      {/* ── Two-column layout ────────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 xl:grid-cols-[380px_1fr] items-start gap-6">
-        {/* ── Left: form panel ──────────────────────────────────────────── */}
+      {/* ── Form panel (centered) ───────────────────────────────────────── */}
+      <div className="max-w-xl mx-auto">
         <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-6">
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* ── FIRMAS section ────────────────────────────────────────── */}
@@ -211,34 +170,37 @@ const ReporteClientes: React.FC = () => {
             {/* ── NOTAS section ──────────────────────────────────────────── */}
             <ReportNotes value={notas} onChange={setNotas} />
 
-            {/* ── Submit button ─────────────────────────────────────────── */}
-            <button
-              type="submit"
-              disabled={pdfLoading}
-              className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              {pdfLoading ? (
-                <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
-              ) : (
-                <Download className="w-4 h-4" aria-hidden="true" />
-              )}
-              {buttonLabel}
-            </button>
+            {/* ── Action buttons ─────────────────────────────────────────── */}
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={handlePreview}
+                disabled={previewLoading}
+                className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium text-indigo-700 bg-indigo-50 border border-indigo-200 hover:bg-indigo-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                title="Vista previa del documento"
+              >
+                {previewLoading ? (
+                  <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
+                ) : (
+                  <Eye className="w-4 h-4" aria-hidden="true" />
+                )}
+                Vista previa
+              </button>
+              <button
+                type="submit"
+                disabled={pdfLoading}
+                className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {pdfLoading ? (
+                  <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
+                ) : (
+                  <Download className="w-4 h-4" aria-hidden="true" />
+                )}
+                {buttonLabel}
+              </button>
+            </div>
           </form>
         </div>
-
-        {/* ── Right: live preview panel ──────────────────────────────────── */}
-        <ReportPreviewPanel<ClientePreviewItem>
-          title="Vista previa del reporte"
-          data={previewData?.items ?? null}
-          loading={previewLoading}
-          error={previewError}
-          columns={COLUMNS}
-          stats={stats}
-          notes={notas}
-          emptyMessage="No hay clientes registrados"
-          exportFileName="registro_clientes"
-        />
       </div>
     </div>
   );

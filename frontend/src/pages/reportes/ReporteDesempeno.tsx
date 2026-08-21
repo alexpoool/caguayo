@@ -1,10 +1,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { toast } from "react-hot-toast";
 import { authHelpers } from "../../lib/api";
-import { useReportPreview } from "../../hooks/useReportPreview";
-import ReportPreviewPanel from "../../components/ui/ReportPreviewPanel";
-import type { Column, StatCard } from "../../components/ui/ReportPreviewPanel";
-import { BarChart3, Download, Loader2 } from "lucide-react";
+import { BarChart3, Download, Eye, Loader2 } from "lucide-react";
 import ReportNotes from "../../components/ui/ReportNotes";
 
 // ---------------------------------------------------------------------------
@@ -23,61 +20,6 @@ interface PersonaSimple {
   nombre: string;
   apellidos: string;
 }
-
-interface DesempenoPreviewItem {
-  numero: number;
-  creador: string;
-  proyecto: string;
-  etapa: string;
-  valor: number;
-  cobro: number;
-  estado: string;
-}
-
-interface DesempenoPreviewData {
-  items: DesempenoPreviewItem[];
-  total_items: number;
-}
-
-// ---------------------------------------------------------------------------
-// Column definitions
-// ---------------------------------------------------------------------------
-
-const COLUMNS: Column<DesempenoPreviewItem>[] = [
-  {
-    header: "No.",
-    accessor: "numero",
-    align: "right",
-    className: "w-12",
-  },
-  {
-    header: "CREADOR",
-    accessor: "creador",
-    className: "font-medium",
-  },
-  {
-    header: "PROYECTO",
-    accessor: "proyecto",
-  },
-  {
-    header: "ETAPA",
-    accessor: "etapa",
-  },
-  {
-    header: "VALOR",
-    accessor: "valor",
-    align: "right",
-  },
-  {
-    header: "COBRO",
-    accessor: "cobro",
-    align: "right",
-  },
-  {
-    header: "ESTADO",
-    accessor: "estado",
-  },
-];
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -98,6 +40,7 @@ function formatDateEs(isoDate: string): string {
 const ReporteDesempeno: React.FC = () => {
   // ── State ─────────────────────────────────────────────────────────────────
   const [pdfLoading, setPdfLoading] = useState(false);
+  const [previewLoading, setPreviewLoading] = useState(false);
   const [personas, setPersonas] = useState<PersonaSimple[]>([]);
   const [fechaInicio, setFechaInicio] = useState("");
   const [fechaFin, setFechaFin] = useState("");
@@ -116,53 +59,59 @@ const ReporteDesempeno: React.FC = () => {
       .then((r) => r.json())
       .then((data: PersonaSimple[]) => setPersonas(data))
       .catch(() => {
-        // fallback: no mostrar error, simplemente no cargar dropdown
         console.warn("No se pudieron cargar las personas");
       });
   }, []);
 
-  // ── Preview URL ───────────────────────────────────────────────────────────
-  const previewUrl = useMemo<string | null>(() => {
-    if (!fechaInicio || !fechaFin) return null;
-    const params = new URLSearchParams({
-      fecha_inicio: fechaInicio,
-      fecha_fin: fechaFin,
-    });
-    if (idPersona) params.append("id_persona", idPersona.toString());
-    if (estado) params.append("estado", estado);
-    return `${BASE_URL}/reportes/desempeno/preview?${params.toString()}`;
-  }, [fechaInicio, fechaFin, idPersona, estado]);
-
-  // ── Live preview data ─────────────────────────────────────────────────────
-  const {
-    data: previewData,
-    loading: previewLoading,
-    error: previewError,
-  } = useReportPreview<DesempenoPreviewData>(previewUrl);
-
-  // ── Stats ─────────────────────────────────────────────────────────────────
-  const stats = useMemo<StatCard[] | undefined>(() => {
-    if (!previewData) return undefined;
-    return [
-      { label: "Total registros", value: previewData.total_items, color: "amber" },
-    ];
-  }, [previewData]);
-
-  // ── Preview subtitle ──────────────────────────────────────────────────────
-  const previewSubtitle =
-    fechaInicio && fechaFin
-      ? `${formatDateEs(fechaInicio)} – ${formatDateEs(fechaFin)}`
-      : undefined;
-
   // ── Form validation ───────────────────────────────────────────────────────
   const isFormValid = Boolean(fechaInicio && fechaFin);
 
-  // ── Button label ─────────────────────────────────────────────────────────
-  const buttonLabel = pdfLoading
-    ? "Generando PDF..."
-    : previewData && previewData.total_items > 0
-    ? `Exportar ${previewData.total_items} registros como PDF`
-    : "Exportar PDF";
+  // ── Build params ──────────────────────────────────────────────────────────
+  const buildParams = () => {
+    const params = new URLSearchParams({
+      fecha_inicio: fechaInicio,
+      fecha_fin: fechaFin,
+      aprobado_por_nombre: aprobadoPorNombre,
+      aprobado_por_cargo: aprobadoPorCargo,
+      notas: notas,
+    });
+    if (idPersona) params.append("id_persona", idPersona.toString());
+    if (estado) params.append("estado", estado);
+    return params;
+  };
+
+  // ── Preview document in new window ────────────────────────────────────────
+  const handlePreview = async () => {
+    if (!isFormValid) {
+      toast.error("Seleccione un rango de fechas");
+      return;
+    }
+    setPreviewLoading(true);
+    try {
+      const params = buildParams();
+      const token = authHelpers.getToken() ?? "";
+      const response = await fetch(
+        `${BASE_URL}/reportes/desempeno?${params.toString()}`,
+        {
+          method: "GET",
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`Error ${response.status}: ${response.statusText}`);
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      window.open(url, "_blank");
+    } catch (error) {
+      console.error(error);
+      toast.error("Hubo un error al generar la vista previa.");
+    } finally {
+      setPreviewLoading(false);
+    }
+  };
 
   // ── PDF export ────────────────────────────────────────────────────────────
   const handleSubmit = async (e: React.FormEvent) => {
@@ -173,15 +122,7 @@ const ReporteDesempeno: React.FC = () => {
     }
     setPdfLoading(true);
     try {
-      const params = new URLSearchParams({
-        fecha_inicio: fechaInicio,
-        fecha_fin: fechaFin,
-        aprobado_por_nombre: aprobadoPorNombre,
-        aprobado_por_cargo: aprobadoPorCargo,
-        notas: notas,
-      });
-      if (idPersona) params.append("id_persona", idPersona.toString());
-      if (estado) params.append("estado", estado);
+      const params = buildParams();
 
       const token = authHelpers.getToken() ?? "";
       const response = await fetch(
@@ -215,6 +156,9 @@ const ReporteDesempeno: React.FC = () => {
     }
   };
 
+  // ── Button label ─────────────────────────────────────────────────────────
+  const buttonLabel = pdfLoading ? "Generando PDF..." : "Exportar PDF";
+
   // ── Render ────────────────────────────────────────────────────────────────
   return (
     <div className="space-y-6">
@@ -233,9 +177,8 @@ const ReporteDesempeno: React.FC = () => {
         </div>
       </div>
 
-      {/* ── Two-column layout ────────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 xl:grid-cols-[380px_1fr] items-start gap-6">
-        {/* ── Left: form panel ──────────────────────────────────────────── */}
+      {/* ── Form panel (centered) ───────────────────────────────────────── */}
+      <div className="max-w-xl mx-auto">
         <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-6">
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* ── FILTROS section ───────────────────────────────────────── */}
@@ -374,35 +317,37 @@ const ReporteDesempeno: React.FC = () => {
             {/* ── NOTAS section ──────────────────────────────────────────── */}
             <ReportNotes value={notas} onChange={setNotas} />
 
-            {/* ── Submit button ─────────────────────────────────────────── */}
-            <button
-              type="submit"
-              disabled={!isFormValid || pdfLoading}
-              className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium text-white bg-orange-600 hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              {pdfLoading ? (
-                <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
-              ) : (
-                <Download className="w-4 h-4" aria-hidden="true" />
-              )}
-              {buttonLabel}
-            </button>
+            {/* ── Action buttons ─────────────────────────────────────────── */}
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={handlePreview}
+                disabled={!isFormValid || previewLoading}
+                className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium text-orange-700 bg-orange-50 border border-orange-200 hover:bg-orange-100 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                title="Vista previa del documento"
+              >
+                {previewLoading ? (
+                  <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
+                ) : (
+                  <Eye className="w-4 h-4" aria-hidden="true" />
+                )}
+                Vista previa
+              </button>
+              <button
+                type="submit"
+                disabled={!isFormValid || pdfLoading}
+                className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium text-white bg-orange-600 hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {pdfLoading ? (
+                  <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
+                ) : (
+                  <Download className="w-4 h-4" aria-hidden="true" />
+                )}
+                {buttonLabel}
+              </button>
+            </div>
           </form>
         </div>
-
-        {/* ── Right: live preview panel ──────────────────────────────────── */}
-        <ReportPreviewPanel<DesempenoPreviewItem>
-          title="Vista previa del reporte"
-          subtitle={previewSubtitle}
-          data={previewData?.items ?? null}
-          loading={previewLoading}
-          error={previewError}
-          columns={COLUMNS}
-          stats={stats}
-          notes={notas}
-          emptyMessage="No se encontraron resultados con los filtros seleccionados"
-          exportFileName={`informe_desempeno_${fechaInicio}_${fechaFin}`}
-        />
       </div>
     </div>
   );

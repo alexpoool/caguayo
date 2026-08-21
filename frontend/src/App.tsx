@@ -104,12 +104,12 @@ const queryClient = new QueryClient({
 });
 
 const rutasPorModulo: Record<Modulo, string[]> = {
-  inventario: ['/inventario', '/movimientos', '/movimientos/pendientes', '/movimientos/ajuste', '/movimientos/seleccionar-recepcion', '/productos', '/inventario/existencias', '/inventario/movimientos-dependencia', '/inventario/movimientos-producto', '/dashboard', '/perfil'],
+  inventario: ['/inventario', '/movimientos', '/movimientos/pendientes', '/movimientos/ajuste', '/movimientos/seleccionar-recepcion', '/productos', '/dashboard', '/perfil'],
   administracion: ['/administracion', '/configuracion', '/monedas', '/usuarios', '/grupos', '/dependencias', '/cuentas', '/perfil'],
-  venta: ['/venta', '/ventas', '/clientes', '/ventas/operaciones', '/ventas/contratos', '/ventas/suplementos', '/ventas/facturas', '/ventas/efectivo', '/ventas/cuentas', '/ventas/registro-clientes', '/perfil'],
-  compra: ['/compra', '/compra/clientes', '/compra/convenios', '/compra/anexos', '/compra/liquidaciones', '/compra/productos-liquidacion', '/compra/cuentas', '/compra/proveedores', '/perfil'],
-  proyecto: ['/proyecto', '/proyectos', '/proyectos/servicios', '/proyectos/solicitudes', '/proyectos/proyectos', '/proyectos/etapas', '/proyectos/tareas-etapa', '/proyectos/realizadores', '/proyectos/facturas-servicio', '/proyectos/ofertas', '/proyectos/pre-facturas', '/proyectos/pagos-factura-servicio', '/proyectos/liquidaciones', '/proyectos/registro-proyectos', '/perfil'],
-  reportes: ['/reportes', '/reportes/existencias', '/reportes/movimientos-dependencia', '/reportes/movimientos-producto', '/reportes/proveedores', '/reportes/mincult', '/reportes/onat', '/reportes/registro-creadores', '/reportes/informe-desempeno', '/reportes/resumen-liquidaciones', '/reportes/ingresos-retenciones', '/perfil'],
+  venta: ['/venta', '/ventas', '/clientes', '/ventas/operaciones', '/ventas/contratos', '/ventas/suplementos', '/ventas/facturas', '/ventas/efectivo', '/ventas/cuentas', '/perfil'],
+  compra: ['/compra', '/compra/clientes', '/compra/convenios', '/compra/anexos', '/compra/liquidaciones', '/compra/productos-liquidacion', '/compra/cuentas', '/perfil'],
+  proyecto: ['/proyecto', '/proyectos', '/proyectos/servicios', '/proyectos/solicitudes', '/proyectos/proyectos', '/proyectos/etapas', '/proyectos/tareas-etapa', '/proyectos/realizadores', '/proyectos/facturas-servicio', '/proyectos/ofertas', '/proyectos/pre-facturas', '/proyectos/pagos-factura-servicio', '/proyectos/liquidaciones', '/perfil'],
+  reportes: ['/reportes', '/reportes/existencias', '/reportes/movimientos-dependencia', '/reportes/movimientos-producto', '/reportes/proveedores', '/reportes/registro-clientes', '/reportes/registro-proyectos', '/reportes/registro-creadores', '/reportes/informe-desempeno', '/reportes/resumen-liquidaciones', '/reportes/ingresos-retenciones', '/reportes/mincult', '/reportes/onat', '/perfil'],
   home: ['/', '/perfil'],
 };
 
@@ -336,35 +336,6 @@ function App() {
                       </SidebarLink>
                     </li>
                   )}
-                  {!slimSidebar && (
-                    <li className="pt-2">
-                      <p className="text-xs font-semibold text-gray-500 uppercase px-2 mb-1">Reportes</p>
-                    </li>
-                  )}
-                  {hasFuncionalidad('reporte_existencias') && (
-                    <li>
-                      <SidebarLink slim={slimSidebar} to="/inventario/existencias" onClick={handleLinkClick}>
-                        <Boxes className="w-6 h-6" />
-                        Existencias
-                      </SidebarLink>
-                    </li>
-                  )}
-                  {hasFuncionalidad('reporte_movimientos_dependencia') && (
-                    <li>
-                      <SidebarLink slim={slimSidebar} to="/inventario/movimientos-dependencia" onClick={handleLinkClick}>
-                        <ArrowLeftRight className="w-6 h-6" />
-                        Mov. Dependencia
-                      </SidebarLink>
-                    </li>
-                  )}
-                  {hasFuncionalidad('reporte_movimientos_producto') && (
-                    <li>
-                      <SidebarLink slim={slimSidebar} to="/inventario/movimientos-producto" onClick={handleLinkClick}>
-                        <Package className="w-6 h-6" />
-                        Mov. Producto
-                      </SidebarLink>
-                    </li>
-                  )}
                 </ul>
               )}
               {moduloActivo === 'administracion' && (
@@ -451,19 +422,6 @@ function App() {
                       </SidebarLink>
                     </li>
                   )}
-                  {!slimSidebar && (
-                    <li className="pt-2">
-                      <p className="text-xs font-semibold text-gray-500 uppercase px-2 mb-1">Reportes</p>
-                    </li>
-                  )}
-                  {hasFuncionalidad('reporte_proveedores') && (
-                    <li>
-                      <SidebarLink slim={slimSidebar} to="/compra/proveedores" onClick={handleLinkClick}>
-                        <UserCircle className="w-6 h-6" />
-                        Proveedores
-                      </SidebarLink>
-                    </li>
-                  )}
                 </ul>
               )}
               {moduloActivo === 'venta' && (
@@ -505,19 +463,6 @@ function App() {
                       <SidebarLink slim={slimSidebar} to="/ventas/efectivo" onClick={handleLinkClick}>
                         <DollarSign className="w-6 h-6" />
                         Efectivo
-                      </SidebarLink>
-                    </li>
-                  )}
-                  {!slimSidebar && (
-                    <li className="pt-2">
-                      <p className="text-xs font-semibold text-gray-500 uppercase px-2 mb-1">Reportes</p>
-                    </li>
-                  )}
-                  {hasFuncionalidad('reporte_clientes') && (
-                    <li>
-                      <SidebarLink slim={slimSidebar} to="/ventas/registro-clientes" onClick={handleLinkClick}>
-                        <UserCircle className="w-6 h-6" />
-                        Registro de Clientes
                       </SidebarLink>
                     </li>
                   )}
@@ -581,26 +526,91 @@ function App() {
                       </SidebarLink>
                     </li>
                   )}
-                  {!slimSidebar && (
-                    <li className="pt-2">
-                      <p className="text-xs font-semibold text-gray-500 uppercase px-2 mb-1">Reportes</p>
-                    </li>
-                  )}
-                  {hasFuncionalidad('reporte_proyectos') && (
-                    <li>
-                      <SidebarLink slim={slimSidebar} to="/proyectos/registro-proyectos" onClick={handleLinkClick}>
-                        <Layers className="w-6 h-6" />
-                        Registro de Proyectos
-                      </SidebarLink>
-                    </li>
-                  )}
                 </ul>
               )}
               {moduloActivo === 'reportes' && (
                 <ul className={`space-y-1 ${slimSidebar ? 'px-0' : 'px-3'}`}>
+                  {/* Inventario */}
                   {!slimSidebar && (
                     <li className="pt-2">
-                      <p className="text-xs font-semibold text-gray-500 uppercase px-2 mb-1">Representación</p>
+                      <p className="text-xs font-semibold text-gray-500 uppercase px-2 mb-1">Inventario</p>
+                    </li>
+                  )}
+                  {hasFuncionalidad('reporte_existencias') && (
+                    <li>
+                      <SidebarLink slim={slimSidebar} to="/reportes/existencias" onClick={handleLinkClick}>
+                        <Boxes className="w-6 h-6" />
+                        Existencias
+                      </SidebarLink>
+                    </li>
+                  )}
+                  {hasFuncionalidad('reporte_movimientos_dependencia') && (
+                    <li>
+                      <SidebarLink slim={slimSidebar} to="/reportes/movimientos-dependencia" onClick={handleLinkClick}>
+                        <ArrowLeftRight className="w-6 h-6" />
+                        Mov. Dependencia
+                      </SidebarLink>
+                    </li>
+                  )}
+                  {hasFuncionalidad('reporte_movimientos_producto') && (
+                    <li>
+                      <SidebarLink slim={slimSidebar} to="/reportes/movimientos-producto" onClick={handleLinkClick}>
+                        <Package className="w-6 h-6" />
+                        Mov. Producto
+                      </SidebarLink>
+                    </li>
+                  )}
+
+                  {/* Compras */}
+                  {!slimSidebar && (
+                    <li className="pt-2">
+                      <p className="text-xs font-semibold text-gray-500 uppercase px-2 mb-1">Compras</p>
+                    </li>
+                  )}
+                  {hasFuncionalidad('reporte_proveedores') && (
+                    <li>
+                      <SidebarLink slim={slimSidebar} to="/reportes/proveedores" onClick={handleLinkClick}>
+                        <UserCircle className="w-6 h-6" />
+                        Proveedores
+                      </SidebarLink>
+                    </li>
+                  )}
+                  {hasFuncionalidad('reporte_liquidaciones') && (
+                    <li>
+                      <SidebarLink slim={slimSidebar} to="/reportes/resumen-liquidaciones" onClick={handleLinkClick}>
+                        <Calculator className="w-6 h-6" />
+                        Resumen de Liquidaciones
+                      </SidebarLink>
+                    </li>
+                  )}
+
+                  {/* Ventas */}
+                  {!slimSidebar && (
+                    <li className="pt-2">
+                      <p className="text-xs font-semibold text-gray-500 uppercase px-2 mb-1">Ventas</p>
+                    </li>
+                  )}
+                  {hasFuncionalidad('reporte_clientes') && (
+                    <li>
+                      <SidebarLink slim={slimSidebar} to="/reportes/registro-clientes" onClick={handleLinkClick}>
+                        <Users className="w-6 h-6" />
+                        Registro de Clientes
+                      </SidebarLink>
+                    </li>
+                  )}
+
+                  {/* Proyectos */}
+                  {!slimSidebar && (
+                    <li className="pt-2">
+                      <p className="text-xs font-semibold text-gray-500 uppercase px-2 mb-1">Proyectos</p>
+                    </li>
+                  )}
+                  {hasFuncionalidad('reporte_proyectos') && (
+                    <li>
+                      <SidebarLink slim={slimSidebar} to="/reportes/registro-proyectos" onClick={handleLinkClick}>
+                        <Layers className="w-6 h-6" />
+                        Registro de Proyectos
+                      </SidebarLink>
                     </li>
                   )}
                   {hasFuncionalidad('reporte_creadores') && (
@@ -619,15 +629,8 @@ function App() {
                       </SidebarLink>
                     </li>
                   )}
-                  {hasFuncionalidad('reporte_liquidaciones') && (
-                    <li>
-                      <SidebarLink slim={slimSidebar} to="/reportes/resumen-liquidaciones" onClick={handleLinkClick}>
-                        <Calculator className="w-6 h-6" />
-                        Resumen de Liquidaciones
-                      </SidebarLink>
-                    </li>
-                  )}
 
+                  {/* Ministerios */}
                   {!slimSidebar && (
                     <li className="pt-2">
                       <p className="text-xs font-semibold text-gray-500 uppercase px-2 mb-1">Ministerios</p>
@@ -872,6 +875,14 @@ function App() {
                     </ProtectedRoute>
                   }
                 />
+                <Route
+                  path="/reportes/registro-clientes"
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/reportes">
+                      <ReporteClientes />
+                    </ProtectedRoute>
+                  }
+                />
 
                 {/* Rutas de Proyectos - protegidas */}
                 <Route
@@ -974,6 +985,14 @@ function App() {
                   path="/proyectos/registro-proyectos"
                   element={
                     <ProtectedRoute moduloActivo={moduloActivo} currentPath="/proyectos">
+                      <ReporteProyectos />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/reportes/registro-proyectos"
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/reportes">
                       <ReporteProyectos />
                     </ProtectedRoute>
                   }

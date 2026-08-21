@@ -12,8 +12,16 @@ from src.models.compra import Compra
 from src.models.detalle_compra import DetalleCompra
 from src.dto.compras_dto import CompraCreate, CompraRead, CompraUpdate
 from src.repository.compras_repo import compras_repo, detalle_compra_repo
+from src.core.exceptions import BusinessLogicError
 
 logger = logging.getLogger(__name__)
+
+# Transiciones de estado válidas para Compra
+TRANSICIONES_COMPRA = {
+    "PENDIENTE": ["COMPLETADA", "ANULADA"],
+    "COMPLETADA": [],  # Terminal
+    "ANULADA": [],     # Terminal
+}
 
 
 class CompraService:
@@ -27,7 +35,28 @@ class CompraService:
     ) -> CompraRead:
         """Crear una compra con sus detalles, calculando subtotales y total."""
         try:
+            from src.models.producto import Productos
+
             fecha = compra_data.fecha or datetime.now(timezone.utc).replace(tzinfo=None)
+
+            # Validar que el cliente exista
+            cliente = await db.get(Cliente, compra_data.id_cliente)
+            if not cliente:
+                raise ValueError(
+                    f"El cliente con id {compra_data.id_cliente} no existe"
+                )
+
+            # Validar que todos los productos existan
+            for detalle_data in compra_data.detalles:
+                producto = await db.get(Productos, detalle_data.id_producto)
+                if not producto:
+                    raise ValueError(
+                        f"El producto con id {detalle_data.id_producto} no existe"
+                    )
+
+            # Validar que no haya detalles vacíos
+            if not compra_data.detalles:
+                raise ValueError("La compra debe tener al menos un detalle")
 
             # Crear la compra con total inicial 0
             compra = Compra(
@@ -40,7 +69,7 @@ class CompraService:
             db.add(compra)
             await db.flush()
 
-            # Crear detalles y acumular total
+            # Crear detalles y acumular total (recalcular subtotal en backend)
             total = Decimal("0")
             for detalle_data in compra_data.detalles:
                 subtotal = (
@@ -145,6 +174,16 @@ class CompraService:
             if not compra:
                 raise ValueError(f"Compra con ID {id_compra} no encontrada")
 
+            # Validar transiciones de estado
+            new_estado = update_data.estado
+            if new_estado and new_estado != compra.estado:
+                permitidos = TRANSICIONES_COMPRA.get(compra.estado, [])
+                if new_estado not in permitidos:
+                    raise BusinessLogicError(
+                        f"No se puede cambiar de '{compra.estado}' a '{new_estado}'. "
+                        f"Transiciones permitidas desde '{compra.estado}': {permitidos or 'ninguna'}"
+                    )
+
             update_dict = update_data.model_dump(exclude_unset=True)
             for field, value in update_dict.items():
                 if value is not None and hasattr(compra, field):
@@ -165,11 +204,21 @@ class CompraService:
 
     @staticmethod
     async def delete(db: AsyncSession, id_compra: int) -> bool:
-        """Eliminar una compra y sus detalles (hard delete con cascada)."""
+        """Eliminar una compra y sus detalles.
+
+        Solo permite eliminar compras en estado PENDIENTE.
+        Las COMPLETADAs o ANULADAs no se pueden eliminar.
+        """
         try:
             compra = await compras_repo.get(db, id_compra)
             if not compra:
                 raise ValueError(f"Compra con ID {id_compra} no encontrada")
+
+            if compra.estado == "COMPLETADA":
+                raise BusinessLogicError(
+                    "No se puede eliminar una compra COMPLETADA. "
+                    "Anule la compra primero si necesita eliminarla."
+                )
 
             # Eliminar detalles primero
             detalles = await detalle_compra_repo.get_by_compra(db, id_compra)

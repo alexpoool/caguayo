@@ -197,11 +197,6 @@ async def crear_ajuste(
                     )
                 except Exception as e:
                     logger.error(f"Error al crear en {destino.nombre_database}: {e}")
-                    logger.info(
-                        f"Movimiento creado en {destino.nombre_database}: {mov_creado}"
-                    )
-                except Exception as e:
-                    logger.error(f"Error al crear en {destino.nombre_database}: {e}")
 
         return result
     except ValueError as e:

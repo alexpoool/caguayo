@@ -3,10 +3,7 @@ import { toast } from "react-hot-toast";
 import { dependenciasService } from "../../services/administracion";
 import { Dependencia } from "../../types/dependencia";
 import { authHelpers } from "../../lib/api";
-import { useReportPreview } from "../../hooks/useReportPreview";
-import ReportPreviewPanel from "../../components/ui/ReportPreviewPanel";
-import type { Column, StatCard, ExportColumn } from "../../components/ui/ReportPreviewPanel";
-import { ArrowLeftRight, Download, Building2, Loader2 } from "lucide-react";
+import { ArrowLeftRight, Download, Building2, Eye, Loader2 } from "lucide-react";
 import ReportNotes from "../../components/ui/ReportNotes";
 
 // ---------------------------------------------------------------------------
@@ -15,85 +12,6 @@ import ReportNotes from "../../components/ui/ReportNotes";
 
 const BASE_URL =
   import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api/v1";
-
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
-
-interface MovimientosDependenciaPreviewItem {
-  fecha: string;
-  operacion: string;
-  producto: string;
-  tipo: "Entrada" | "Salida" | "Neutro";
-  cantidad: number;
-}
-
-interface MovimientosDependenciaPreviewData {
-  dependencia: { nombre: string; direccion: string };
-  items: MovimientosDependenciaPreviewItem[];
-  total_items: number;
-  total_entradas: number;
-  total_salidas: number;
-}
-
-// ---------------------------------------------------------------------------
-// Export columns
-// ---------------------------------------------------------------------------
-
-const EXPORT_COLUMNS: ExportColumn<MovimientosDependenciaPreviewItem>[] = [
-  { header: "Fecha", accessor: "fecha" },
-  { header: "Operación", accessor: "operacion" },
-  { header: "Producto", accessor: "producto" },
-  { header: "Tipo", accessor: "tipo" },
-  { header: "Cantidad", accessor: "cantidad" },
-];
-
-// ---------------------------------------------------------------------------
-// Column definitions
-// ---------------------------------------------------------------------------
-
-const COLUMNS: Column<MovimientosDependenciaPreviewItem>[] = [
-  {
-    header: "Fecha",
-    accessor: (row) =>
-      new Date(row.fecha + "T00:00:00").toLocaleDateString("es-ES"),
-  },
-  {
-    header: "Operación",
-    accessor: "operacion",
-  },
-  {
-    header: "Producto",
-    accessor: "producto",
-  },
-  {
-    header: "Tipo",
-    accessor: (row) => {
-      const styles: Record<
-        MovimientosDependenciaPreviewItem["tipo"],
-        string
-      > = {
-        Entrada: "bg-green-100 text-green-700",
-        Salida: "bg-red-100 text-red-700",
-        Neutro: "bg-gray-100 text-gray-600",
-      };
-      return (
-        <span
-          className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-            styles[row.tipo] ?? "bg-gray-100 text-gray-600"
-          }`}
-        >
-          {row.tipo}
-        </span>
-      );
-    },
-  },
-  {
-    header: "Cantidad",
-    accessor: "cantidad",
-    align: "right",
-  },
-];
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -114,6 +32,7 @@ function formatDateEs(isoDate: string): string {
 const ReporteMovimientosDependencia: React.FC = () => {
   // ── State ─────────────────────────────────────────────────────────────────
   const [pdfLoading, setPdfLoading] = useState(false);
+  const [previewLoading, setPreviewLoading] = useState(false);
   const [dependencias, setDependencias] = useState<Dependencia[]>([]);
   const [idDependencia, setIdDependencia] = useState<number | null>(null);
   const [fechaInicio, setFechaInicio] = useState("");
@@ -135,56 +54,51 @@ const ReporteMovimientosDependencia: React.FC = () => {
     });
   }, []);
 
-  // ── Preview URL (debounced by hook) ───────────────────────────────────────
-  const previewUrl = useMemo(() => {
-    if (!idDependencia || !fechaInicio || !fechaFin) return null;
-    const params = new URLSearchParams({
-      id_dependencia: idDependencia.toString(),
-      fecha_inicio: fechaInicio,
-      fecha_fin: fechaFin,
-    });
-    return `${BASE_URL}/reportes/movimientos-dependencia/preview?${params.toString()}`;
-  }, [idDependencia, fechaInicio, fechaFin]);
-
-  // ── Live preview ──────────────────────────────────────────────────────────
-  const {
-    data: previewData,
-    loading: previewLoading,
-    error: previewError,
-  } = useReportPreview<MovimientosDependenciaPreviewData>(previewUrl);
-
-  // ── Stats ─────────────────────────────────────────────────────────────────
-  const stats: StatCard[] | undefined = previewData
-    ? [
-        { label: "Total registros", value: previewData.total_items, color: "gray" },
-        {
-          label: "Total entradas",
-          value: previewData.total_entradas.toLocaleString(),
-          color: "green",
-        },
-        {
-          label: "Total salidas",
-          value: previewData.total_salidas.toLocaleString(),
-          color: "red",
-        },
-      ]
-    : undefined;
-
-  // ── Preview subtitle ──────────────────────────────────────────────────────
-  const previewSubtitle =
-    selectedDependencia && fechaInicio && fechaFin
-      ? `${selectedDependencia.nombre} · ${formatDateEs(fechaInicio)} – ${formatDateEs(fechaFin)}`
-      : undefined;
-
   // ── Form validation ───────────────────────────────────────────────────────
   const isFormValid = Boolean(idDependencia && fechaInicio && fechaFin);
 
-  // ── Button label ─────────────────────────────────────────────────────────
-  const buttonLabel = pdfLoading
-    ? "Generando PDF..."
-    : previewData && previewData.total_items > 0
-    ? `Exportar ${previewData.total_items} registros como PDF`
-    : "Exportar PDF";
+  // ── Build params ──────────────────────────────────────────────────────────
+  const buildParams = () => {
+    return new URLSearchParams({
+      id_dependencia: idDependencia!.toString(),
+      fecha_inicio: fechaInicio,
+      fecha_fin: fechaFin,
+      aprobado_por_nombre: aprobadoPorNombre,
+      aprobado_por_cargo: aprobadoPorCargo,
+      notas: notas,
+    });
+  };
+
+  // ── Preview document in new window ────────────────────────────────────────
+  const handlePreview = async () => {
+    if (!isFormValid) {
+      toast.error("Complete todos los campos requeridos.");
+      return;
+    }
+    setPreviewLoading(true);
+    try {
+      const params = buildParams();
+      const token = authHelpers.getToken() || "";
+      const response = await fetch(
+        `${BASE_URL}/reportes/movimientos-dependencia?${params.toString()}`,
+        {
+          method: "GET",
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+
+      if (!response.ok) throw new Error("Failed to generate report");
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      window.open(url, "_blank");
+    } catch (error) {
+      console.error(error);
+      toast.error("Hubo un error al generar la vista previa.");
+    } finally {
+      setPreviewLoading(false);
+    }
+  };
 
   // ── PDF export ────────────────────────────────────────────────────────────
   const handleSubmit = async (e: React.FormEvent) => {
@@ -195,14 +109,7 @@ const ReporteMovimientosDependencia: React.FC = () => {
     }
     setPdfLoading(true);
     try {
-      const params = new URLSearchParams({
-        id_dependencia: idDependencia!.toString(),
-        fecha_inicio: fechaInicio,
-        fecha_fin: fechaFin,
-        aprobado_por_nombre: aprobadoPorNombre,
-        aprobado_por_cargo: aprobadoPorCargo,
-        notas: notas,
-      });
+      const params = buildParams();
 
       const token = authHelpers.getToken() || "";
       const response = await fetch(
@@ -234,6 +141,9 @@ const ReporteMovimientosDependencia: React.FC = () => {
     }
   };
 
+  // ── Button label ─────────────────────────────────────────────────────────
+  const buttonLabel = pdfLoading ? "Generando PDF..." : "Exportar PDF";
+
   // ── Render ────────────────────────────────────────────────────────────────
   return (
     <div className="space-y-6">
@@ -252,9 +162,8 @@ const ReporteMovimientosDependencia: React.FC = () => {
         </div>
       </div>
 
-      {/* ── Split layout ── */}
-      <div className="grid grid-cols-1 xl:grid-cols-[400px_1fr] items-start gap-6">
-        {/* ── Form panel ── */}
+      {/* ── Form panel (centered) ── */}
+      <div className="max-w-xl mx-auto">
         <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-6">
           <form onSubmit={handleSubmit} noValidate className="space-y-6">
             {/* Section: Filtros */}
@@ -360,35 +269,37 @@ const ReporteMovimientosDependencia: React.FC = () => {
             {/* Section: Notas */}
             <ReportNotes value={notas} onChange={setNotas} />
 
-            {/* Submit */}
-            <button
-              type="submit"
-              disabled={!isFormValid || pdfLoading}
-              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              {pdfLoading ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <Download className="w-4 h-4" />
-              )}
-              {buttonLabel}
-            </button>
+            {/* Action buttons */}
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={handlePreview}
+                disabled={!isFormValid || previewLoading}
+                className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium text-purple-700 bg-purple-50 border border-purple-200 hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                title="Vista previa del documento"
+              >
+                {previewLoading ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Eye className="w-4 h-4" />
+                )}
+                Vista previa
+              </button>
+              <button
+                type="submit"
+                disabled={!isFormValid || pdfLoading}
+                className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {pdfLoading ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Download className="w-4 h-4" />
+                )}
+                {buttonLabel}
+              </button>
+            </div>
           </form>
         </div>
-
-        {/* ── Preview panel ── */}
-        <ReportPreviewPanel<MovimientosDependenciaPreviewItem>
-          title="Vista Previa"
-          subtitle={previewSubtitle}
-          data={previewData?.items ?? null}
-          loading={previewLoading}
-          error={previewError}
-          columns={COLUMNS}
-          stats={stats}
-          notes={notas}
-          emptyMessage="No se encontraron movimientos para el período seleccionado"
-          exportFileName={`movimientos_dep_${idDependencia ?? "dep"}_${fechaInicio}_${fechaFin}`}
-        />
       </div>
     </div>
   );

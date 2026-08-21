@@ -3,6 +3,7 @@ from decimal import Decimal
 from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlmodel import select
 from typing import List, Optional
+from src.core.exceptions import BusinessLogicError
 from src.utils.codigos_entidad import (
     generar_codigo,
     generar_codigo_correlativo,
@@ -159,10 +160,21 @@ class SolicitudServicioService:
             return None
 
         new_estado = data.estado if hasattr(data, "estado") and data.estado else None
-        if new_estado in ("TERMINADA", "CANCELADA") and s.estado != "EN PROCESO":
-            raise ValueError(
-                f"No se puede cambiar a '{new_estado}' porque la solicitud no está en estado 'EN PROCESO'"
-            )
+        if new_estado and s.estado != new_estado:
+            TRANSICIONES_VALIDAS = {
+                None: ["PENDIENTE"],
+                "PENDIENTE": ["EN NEGOCIACION", "CANCELADA"],
+                "EN NEGOCIACION": ["EN PROCESO", "CANCELADA"],
+                "EN PROCESO": ["TERMINADA", "CANCELADA"],
+                "TERMINADA": [],
+                "CANCELADA": [],
+            }
+            permitidos = TRANSICIONES_VALIDAS.get(s.estado, [])
+            if new_estado not in permitidos:
+                raise BusinessLogicError(
+                    f"No se puede cambiar de '{s.estado}' a '{new_estado}'. "
+                    f"Transiciones permitidas desde '{s.estado}': {permitidos or 'ninguna'}"
+                )
 
         aprobado = getattr(data, "aprobado", None)
         id_contrato = getattr(data, "id_contrato", None)
@@ -176,6 +188,20 @@ class SolicitudServicioService:
 
     @staticmethod
     async def delete(db: AsyncSession, id: int) -> bool:
+        s = await solicitud_servicio_repo.get(db, id)
+        if not s:
+            return False
+
+        etapas = await etapa_repo.get_by_solicitud(db, id)
+        for etapa in etapas:
+            facturas = await factura_servicio_repo.get_by_etapa(db, etapa.id_etapa)
+            for factura in facturas:
+                if factura.estado not in ("CANCELADA",):
+                    raise BusinessLogicError(
+                        f"No se puede eliminar: la etapa '{etapa.nombre_etapa or etapa.numero_etapa}' "
+                        f"tiene facturas activas. Cancele las facturas primero."
+                    )
+
         obj = await solicitud_servicio_repo.remove(db, id=id)
         return obj is not None
 
@@ -353,9 +379,20 @@ class FacturaServicioService:
             data.importe = importe_total
 
         if etapa and data.importe > etapa.valor:
-            raise Exception(
+            raise BusinessLogicError(
                 f"El importe de la factura ({data.importe:.2f}) no puede ser mayor al valor de la etapa ({etapa.valor:.2f})"
             )
+
+        if etapa and not data.id_certificacion:
+            total_existente = await factura_servicio_repo.get_total_importe_by_etapa(
+                db, etapa.id_etapa
+            )
+            if total_existente + data.importe > etapa.valor:
+                raise BusinessLogicError(
+                    f"El total facturado en la etapa ({total_existente + data.importe:.2f}) "
+                    f"excedería el valor de la etapa ({etapa.valor:.2f}). "
+                    f"Ya existen facturas por {total_existente:.2f}."
+                )
 
         data.pagado = Decimal("0")
 
@@ -507,9 +544,19 @@ class FacturaServicioService:
             if f.id_etapa:
                 etapa = await etapa_repo.get(db, f.id_etapa)
                 if etapa and data.importe > etapa.valor:
-                    raise Exception(
+                    raise BusinessLogicError(
                         f"El importe de la factura ({data.importe:.2f}) no puede ser mayor al valor de la etapa ({etapa.valor:.2f})"
                     )
+                if etapa and not f.id_certificacion:
+                    total_existente = await factura_servicio_repo.get_total_importe_by_etapa(
+                        db, f.id_etapa, exclude_id=id
+                    )
+                    if total_existente + data.importe > etapa.valor:
+                        raise BusinessLogicError(
+                            f"El total facturado en la etapa ({total_existente + data.importe:.2f}) "
+                            f"excedería el valor de la etapa ({etapa.valor:.2f}). "
+                            f"Ya existen facturas por {total_existente:.2f}."
+                        )
 
         if f.id_certificacion and (
             update_ajuste_porciento is not None or update_ajuste_valor is not None
@@ -535,11 +582,15 @@ class FacturaServicioService:
     async def delete(db: AsyncSession, id: int) -> bool:
         existing_items = await item_factura_servicio_repo.get_by_factura(db, id)
         for item in existing_items:
-            tarea = await tarea_etapa_repo.get(db, item.id_tarea_etapa)
-            if tarea:
-                tarea.facturada = False
-                await db.commit()
-                await db.refresh(tarea)
+            other_refs = await item_factura_servicio_repo.count_other_references_by_tarea(
+                db, item.id_tarea_etapa, exclude_factura_id=id
+            )
+            if other_refs == 0:
+                tarea = await tarea_etapa_repo.get(db, item.id_tarea_etapa)
+                if tarea:
+                    tarea.facturada = False
+                    await db.commit()
+                    await db.refresh(tarea)
             await db.delete(item)
         await db.commit()
 
@@ -781,10 +832,13 @@ class PersonaLiquidacionService:
 
         if data.id_pago and importe > 0:
             pago = await pago_factura_servicio_repo.get(db, data.id_pago)
-            if pago and pago.monto_disponible:
-                pago.monto_disponible = max(
-                    Decimal("0"), pago.monto_disponible - importe
-                )
+            if pago:
+                disponible = pago.monto_disponible or Decimal("0")
+                if importe > disponible:
+                    raise BusinessLogicError(
+                        f"El importe de la liquidación ({importe:.2f}) excede el monto disponible del pago ({disponible:.2f})"
+                    )
+                pago.monto_disponible = disponible - importe
                 db.add(pago)
 
         await db.commit()
@@ -953,9 +1007,15 @@ class PersonaLiquidacionService:
         if persona_etapa and persona_etapa.cobro:
             cobro = Decimal(str(persona_etapa.cobro))
             disponible = cobro - total_liquidado
+            if disponible <= 0:
+                raise BusinessLogicError(
+                    f"No hay saldo disponible para liquidar. "
+                    f"Cobro: {cobro:.2f}, ya liquidado: {total_liquidado:.2f}"
+                )
             if importe > disponible:
-                importe = disponible
-                liquidacion_obj.importe = importe
+                raise BusinessLogicError(
+                    f"El importe de la liquidación ({importe:.2f}) excede el saldo disponible ({disponible:.2f})"
+                )
 
         if data.porcentaje_caguayo is not None:
             liquidacion_obj.porcentaje_caguayo = Decimal(str(data.porcentaje_caguayo))
@@ -1293,9 +1353,20 @@ class OfertaServicioService:
             data.importe = importe_total
 
         if etapa and data.importe > etapa.valor:
-            raise Exception(
+            raise BusinessLogicError(
                 f"El importe de la oferta ({data.importe:.2f}) no puede ser mayor al valor de la etapa ({etapa.valor:.2f})"
             )
+
+        if etapa and not data.id_certificacion:
+            total_ofertas = await oferta_repo.get_total_importe_by_etapa(
+                db, etapa.id_etapa
+            )
+            if total_ofertas + data.importe > etapa.valor:
+                raise BusinessLogicError(
+                    f"El total de ofertas en la etapa ({total_ofertas + data.importe:.2f}) "
+                    f"excedería el valor de la etapa ({etapa.valor:.2f}). "
+                    f"Ya existen ofertas por {total_ofertas:.2f}."
+                )
 
         oferta = await oferta_repo.create(db, obj_in=data)
         await db.flush()
@@ -1448,9 +1519,19 @@ class OfertaServicioService:
             if oferta.id_etapa:
                 etapa = await etapa_repo.get(db, oferta.id_etapa)
                 if etapa and data.importe > etapa.valor:
-                    raise Exception(
+                    raise BusinessLogicError(
                         f"El importe de la oferta ({data.importe:.2f}) no puede ser mayor al valor de la etapa ({etapa.valor:.2f})"
                     )
+                if etapa and not oferta.id_certificacion:
+                    total_ofertas = await oferta_repo.get_total_importe_by_etapa(
+                        db, oferta.id_etapa, exclude_id=id
+                    )
+                    if total_ofertas + data.importe > etapa.valor:
+                        raise BusinessLogicError(
+                            f"El total de ofertas en la etapa ({total_ofertas + data.importe:.2f}) "
+                            f"excedería el valor de la etapa ({etapa.valor:.2f}). "
+                            f"Ya existen ofertas por {total_ofertas:.2f}."
+                        )
 
         if oferta.id_certificacion and (
             update_ajuste_porciento is not None or update_ajuste_valor is not None
