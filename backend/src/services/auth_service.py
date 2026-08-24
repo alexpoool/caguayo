@@ -1,12 +1,16 @@
 import os
+import logging
 from datetime import datetime, timedelta, timezone
 from typing import Optional, List
 from sqlalchemy import text
+from sqlalchemy.exc import IntegrityError, OperationalError
 from jose import JWTError, jwt
 import bcrypt
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 from dotenv import load_dotenv
+
+logger = logging.getLogger(__name__)
 
 from src.models import (
     Usuario,
@@ -539,6 +543,8 @@ async def register(
     db: AsyncSession, register_data: RegisterRequest
 ) -> Optional[LoginResponse]:
     """Registra un nuevo usuario en la base de datos seleccionada"""
+    logger.info("Registration attempt: alias=%s, base_datos=%s, id_dependencia=%d",
+                register_data.alias, register_data.base_datos, register_data.id_dependencia)
 
     # 1. Buscar la conexión a la base de datos seleccionada
     statement = select(ConexionDatabase).where(
@@ -557,102 +563,123 @@ async def register(
     # 2. Conectarse a la base de datos seleccionada
     from sqlmodel import Session, create_engine
 
-    engine = create_engine(
-        "postgresql://",
-        connect_args={
-            "host": host,
-            "port": puerto,
-            "user": usuario_db,
-            "password": contrasenia_db,
-            "dbname": register_data.base_datos,
-            "client_encoding": "utf8",
-        },
-    )
-
-    with Session(engine) as db_target:
-        db_target.execute(text("SET client_encoding TO 'UTF8'"))
-        # 3. Verificar que el alias no exista en la BD seleccionada
-        statement = select(Usuario).where(Usuario.alias == register_data.alias)
-        results = db_target.exec(statement)
-        existing = results.first()
-        if existing:
-            return None
-
-        # 4. Verificar que la dependencia exista en la BD seleccionada
-        dep = db_target.get(Dependencia, register_data.id_dependencia)
-        if not dep:
-            return None
-
-        # 5. Hashear contraseña con bcrypt
-        hashed_password = get_password_hash(register_data.contrasenia)
-
-        # 6. Buscar grupo ADMINISTRADOR (id_grupo=1)
-        grupo = db_target.get(Grupo, 1)
-        id_grupo = grupo.id_grupo if grupo else 1
-
-        # 7. Crear el usuario
-        usuario = Usuario(
-            ci=register_data.ci,
-            nombre=register_data.nombre,
-            primer_apellido=register_data.primer_apellido,
-            segundo_apellido=register_data.segundo_apellido,
-            cargo=register_data.cargo,
-            alias=register_data.alias,
-            contrasenia=hashed_password,
-            id_grupo=id_grupo,
-            id_dependencia=register_data.id_dependencia,
+    try:
+        engine = create_engine(
+            "postgresql://",
+            connect_args={
+                "host": host,
+                "port": puerto,
+                "user": usuario_db,
+                "password": contrasenia_db,
+                "dbname": register_data.base_datos,
+                "client_encoding": "utf8",
+            },
         )
-        db_target.add(usuario)
-        db_target.commit()
-        db_target.refresh(usuario)
+    except OperationalError as e:
+        logger.error("Error connecting to database %s: %s", register_data.base_datos, e)
+        return None
 
-        # Guardar atributos en locales antes de que la sesión se cierre
-        _id_usuario = usuario.id_usuario
-        _ci = usuario.ci
-        _nombre = usuario.nombre
-        _primer_apellido = usuario.primer_apellido
-        _segundo_apellido = usuario.segundo_apellido
-        _alias = usuario.alias
+    try:
+        with Session(engine) as db_target:
+            db_target.execute(text("SET client_encoding TO 'UTF8'"))
+            # 3. Verificar que el alias no exista en la BD seleccionada
+            statement = select(Usuario).where(Usuario.alias == register_data.alias)
+            results = db_target.exec(statement)
+            existing = results.first()
+            if existing:
+                logger.warning("Registration failed: alias '%s' already exists", register_data.alias)
+                return None
 
-        # 8. Obtener funcionalidades del grupo
-        statement = select(GrupoFuncionalidad).where(
-            GrupoFuncionalidad.id_grupo == id_grupo
-        )
-        results = db_target.exec(statement)
-        grupo_funcionalidades = results.all()
+            # 4. Verificar que la dependencia exista en la BD seleccionada
+            dep = db_target.get(Dependencia, register_data.id_dependencia)
+            if not dep:
+                logger.warning("Registration failed: dependencia %d not found in %s", register_data.id_dependencia, register_data.base_datos)
+                return None
 
-        funcionalidades = []
-        for gf in grupo_funcionalidades:
-            func = db_target.get(Funcionalidad, gf.id_funcionalidad)
-            if func:
-                funcionalidades.append(
-                    FuncionalidadInfo(
-                        id_funcionalidad=func.id_funcionalidad,
-                        nombre=func.nombre,
+            # 5. Hashear contraseña con bcrypt
+            hashed_password = get_password_hash(register_data.contrasenia)
+
+            # 6. Buscar grupo ADMINISTRADOR (id_grupo=1)
+            grupo = db_target.get(Grupo, 1)
+            id_grupo = grupo.id_grupo if grupo else 1
+
+            # 7. Crear el usuario
+            usuario = Usuario(
+                ci=register_data.ci,
+                nombre=register_data.nombre,
+                primer_apellido=register_data.primer_apellido,
+                segundo_apellido=register_data.segundo_apellido,
+                cargo=register_data.cargo,
+                alias=register_data.alias,
+                contrasenia=hashed_password,
+                id_grupo=id_grupo,
+                id_dependencia=register_data.id_dependencia,
+            )
+            db_target.add(usuario)
+
+            try:
+                db_target.commit()
+            except IntegrityError:
+                # CI o alias duplicado
+                db_target.rollback()
+                logger.warning("Registration failed: CI or alias already exists")
+                return None
+
+            db_target.refresh(usuario)
+
+            # Guardar atributos en locales antes de que la sesión se cierre
+            _id_usuario = usuario.id_usuario
+            _ci = usuario.ci
+            _nombre = usuario.nombre
+            _primer_apellido = usuario.primer_apellido
+            _segundo_apellido = usuario.segundo_apellido
+            _alias = usuario.alias
+
+            # 8. Obtener funcionalidades del grupo
+            statement = select(GrupoFuncionalidad).where(
+                GrupoFuncionalidad.id_grupo == id_grupo
+            )
+            results = db_target.exec(statement)
+            grupo_funcionalidades = results.all()
+
+            funcionalidades = []
+            for gf in grupo_funcionalidades:
+                func = db_target.get(Funcionalidad, gf.id_funcionalidad)
+                if func:
+                    funcionalidades.append(
+                        FuncionalidadInfo(
+                            id_funcionalidad=func.id_funcionalidad,
+                            nombre=func.nombre,
+                        )
                     )
-                )
 
-        # 9. Crear token JWT
-        token_data = {
-            "sub": str(_id_usuario),
-            "alias": _alias,
-            "nombre": f"{_nombre} {_primer_apellido}",
-            "base_datos": register_data.base_datos,
-        }
-        token = create_access_token(token_data)
+            # 9. Crear token JWT
+            token_data = {
+                "sub": str(_id_usuario),
+                "alias": _alias,
+                "nombre": f"{_nombre} {_primer_apellido}",
+                "base_datos": register_data.base_datos,
+            }
+            token = create_access_token(token_data)
 
-        # 10. Guardar sesión en la BD destino
-        fecha_expiracion = datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(
-            minutes=ACCESS_TOKEN_EXPIRE_MINUTES
-        )
-        sesion = Sesion(
-            id_usuario=_id_usuario,
-            token=token,
-            base_datos=register_data.base_datos,
-            fecha_expiracion=fecha_expiracion,
-        )
-        db_target.add(sesion)
-        db_target.commit()
+            # 10. Guardar sesión en la BD destino
+            fecha_expiracion = datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(
+                minutes=ACCESS_TOKEN_EXPIRE_MINUTES
+            )
+            sesion = Sesion(
+                id_usuario=_id_usuario,
+                token=token,
+                base_datos=register_data.base_datos,
+                fecha_expiracion=fecha_expiracion,
+            )
+            db_target.add(sesion)
+            db_target.commit()
+    except OperationalError as e:
+        logger.error("Error connecting to database %s: %s", register_data.base_datos, e)
+        return None
+    except Exception as e:
+        logger.error("Error during registration: %s", e)
+        return None
 
     # 11. Obtener dependencia y grupo desde la BD central para la respuesta
     dependencia_central = None

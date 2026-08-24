@@ -955,6 +955,7 @@ INSERT INTO funcionalidad (nombre) VALUES
 ('pre_facturas'),
 ('liquidaciones_servicio'),
 ('dependencias'),
+('cuentas'),
 ('reporte_existencias'),
 ('reporte_movimientos_dependencia'),
 ('reporte_movimientos_producto'),

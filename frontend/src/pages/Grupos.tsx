@@ -78,7 +78,7 @@ const MODULOS: Modulo[] = [
   },
   {
     nombre: "Administración",
-    funcionalidades: ["usuarios", "grupos", "monedas", "dependencias", "configuracion"],
+    funcionalidades: ["usuarios", "grupos", "monedas", "dependencias", "configuracion", "cuentas"],
   },
   {
     nombre: "Reportes",

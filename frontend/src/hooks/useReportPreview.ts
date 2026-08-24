@@ -6,7 +6,7 @@ interface ReportPreviewState<T> {
   error: string | null;
 }
 
-const DEBOUNCE_MS = 600;
+const DEBOUNCE_MS = 300;
 const LOADING_DELAY_MS = 200;
 
 /**
