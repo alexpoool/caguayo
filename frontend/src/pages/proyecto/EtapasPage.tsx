@@ -516,15 +516,15 @@ export function EtapasPage() {
               )}
             </div>
             <div className="p-6 border-t border-gray-200 bg-gray-50 flex justify-end gap-3 flex-wrap">
-              <button onClick={() => navigate(`/proyectos/ofertas?etapa=${detailModal.item!.id_etapa}`)} className="px-4 py-2 text-white bg-gradient-to-r from-amber-500 to-orange-600 rounded-xl hover:from-amber-600 hover:to-orange-700 transition-all font-medium text-sm">Ofertas</button>
-              <button onClick={() => navigate(`/proyectos/pre-facturas?etapa=${detailModal.item!.id_etapa}`)} className="px-4 py-2 text-white bg-gradient-to-r from-blue-500 to-cyan-600 rounded-xl hover:from-blue-600 hover:to-cyan-700 transition-all font-medium text-sm">Pre-facturas</button>
-              <button onClick={() => navigate(`/proyectos/facturas-servicio?etapa=${detailModal.item!.id_etapa}`)} className="px-4 py-2 text-white bg-gradient-to-r from-teal-500 to-cyan-600 rounded-xl hover:from-teal-600 hover:to-cyan-700 transition-all font-medium text-sm">Facturas</button>
-              <button onClick={() => navigate(`/proyectos/realizadores?etapa=${detailModal.item!.id_etapa}`)} className="px-4 py-2 text-white bg-gradient-to-r from-teal-500 to-cyan-600 rounded-xl hover:from-teal-600 hover:to-cyan-700 transition-all font-medium text-sm">Realizadores</button>
               {detailModal.item.tipo_etapa === 'CERTIFICACIONES' ? (
                 <button onClick={() => navigate(`/proyectos/certificaciones?etapa=${detailModal.item!.id_etapa}`)} className="px-4 py-2 text-white bg-gradient-to-r from-teal-500 to-cyan-600 rounded-xl hover:from-teal-600 hover:to-cyan-700 transition-all font-medium text-sm">Certificaciones</button>
               ) : (
                 <button onClick={() => navigate(`/proyectos/tareas-etapa?etapa=${detailModal.item!.id_etapa}`)} className="px-4 py-2 text-white bg-gradient-to-r from-teal-500 to-cyan-600 rounded-xl hover:from-teal-600 hover:to-cyan-700 transition-all font-medium text-sm">Tareas</button>
               )}
+              <button onClick={() => navigate(`/proyectos/realizadores?etapa=${detailModal.item!.id_etapa}`)} className="px-4 py-2 text-white bg-gradient-to-r from-teal-500 to-cyan-600 rounded-xl hover:from-teal-600 hover:to-cyan-700 transition-all font-medium text-sm">Realizadores</button>
+              <button onClick={() => navigate(`/proyectos/ofertas?etapa=${detailModal.item!.id_etapa}`)} className="px-4 py-2 text-white bg-gradient-to-r from-amber-500 to-orange-600 rounded-xl hover:from-amber-600 hover:to-orange-700 transition-all font-medium text-sm">Ofertas</button>
+              <button onClick={() => navigate(`/proyectos/pre-facturas?etapa=${detailModal.item!.id_etapa}`)} className="px-4 py-2 text-white bg-gradient-to-r from-blue-500 to-cyan-600 rounded-xl hover:from-blue-600 hover:to-cyan-700 transition-all font-medium text-sm">Pre-facturas</button>
+              <button onClick={() => navigate(`/proyectos/facturas-servicio?etapa=${detailModal.item!.id_etapa}`)} className="px-4 py-2 text-white bg-gradient-to-r from-teal-500 to-cyan-600 rounded-xl hover:from-teal-600 hover:to-cyan-700 transition-all font-medium text-sm">Facturas</button>
               <button onClick={() => setDetailModal({ isOpen: false, item: null })} className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors font-medium text-sm">Cerrar</button>
             </div>
           </div>
@@ -541,18 +541,6 @@ export function EtapasPage() {
             className="fixed z-[100] w-52 rounded-xl border border-gray-200 bg-white shadow-xl py-1 animate-fade-in max-h-[70vh] overflow-y-auto"
             style={{ top: menu.y, left: menu.x }}
           >
-            <button onClick={() => go(`/proyectos/ofertas?etapa=${menu.id}`)} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-amber-50 hover:text-amber-700">
-              <FileText className="h-4 w-4 text-amber-600" />
-              Oferta
-            </button>
-            <button onClick={() => go(`/proyectos/pre-facturas?etapa=${menu.id}`)} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700">
-              <FileText className="h-4 w-4 text-blue-600" />
-              Pre-factura
-            </button>
-            <button onClick={() => go(`/proyectos/facturas-servicio?etapa=${menu.id}`)} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-teal-50 hover:text-teal-700">
-              <FileText className="h-4 w-4 text-teal-600" />
-              Factura
-            </button>
             {et?.tipo_etapa === 'CERTIFICACIONES' ? (
               <button onClick={() => go(`/proyectos/certificaciones?etapa=${menu.id}`)} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-teal-50 hover:text-teal-700">
                 <FileText className="h-4 w-4 text-teal-600" />
@@ -567,6 +555,18 @@ export function EtapasPage() {
             <button onClick={() => go(`/proyectos/realizadores?etapa=${menu.id}`)} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-teal-50 hover:text-teal-700">
               <Users className="h-4 w-4 text-teal-600" />
               Realizadores
+            </button>
+            <button onClick={() => go(`/proyectos/ofertas?etapa=${menu.id}`)} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-amber-50 hover:text-amber-700">
+              <FileText className="h-4 w-4 text-amber-600" />
+              Oferta
+            </button>
+            <button onClick={() => go(`/proyectos/pre-facturas?etapa=${menu.id}`)} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700">
+              <FileText className="h-4 w-4 text-blue-600" />
+              Pre-factura
+            </button>
+            <button onClick={() => go(`/proyectos/facturas-servicio?etapa=${menu.id}`)} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-teal-50 hover:text-teal-700">
+              <FileText className="h-4 w-4 text-teal-600" />
+              Factura
             </button>
             <div className="my-1 border-t border-gray-100" />
             <button onClick={() => { if (et) { setMenu(null); openForm(et); } }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-green-50 hover:text-green-700">
