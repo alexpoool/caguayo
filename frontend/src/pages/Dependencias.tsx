@@ -375,6 +375,7 @@ export function DependenciasPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    const esNuevaBD = !idConexionExistente && !!formData.base_datos;
     if (
       !formData.nombre ||
       !formData.denominacion ||
@@ -382,7 +383,7 @@ export function DependenciasPage() {
       !formData.direccion ||
       !formData.telefono ||
       !formData.id_tipo_dependencia ||
-      !formData.codigo_padre
+      (!formData.codigo_padre && !esNuevaBD)
     ) {
       const msg = formData.denominacion.length > 3
         ? "La denominación no puede tener más de 3 caracteres"
@@ -761,14 +762,15 @@ export function DependenciasPage() {
                   <div className="flex-1">
                     <input
                       type="text"
-                      placeholder="Nombre de nueva BD..."
+                      placeholder={idConexionExistente ? "Usando BD existente" : "Nombre de nueva BD..."}
                       value={!idConexionExistente ? formData.base_datos : ""}
                       onChange={(e) => {
                         setFormData((prev) => ({ ...prev, base_datos: e.target.value }));
                         setIdConexionExistente(null);
                         setBusquedaBD("");
                       }}
-                      className="w-full pl-3 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none bg-white"
+                      disabled={!!idConexionExistente}
+                      className="w-full pl-3 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none bg-white disabled:bg-gray-100 disabled:cursor-not-allowed"
                     />
                   </div>
                 </div>
@@ -785,7 +787,7 @@ export function DependenciasPage() {
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                     <input
                       type="text"
-                      placeholder="Buscar dependencia padre..."
+                      placeholder={(!idConexionExistente && !!formData.base_datos) ? "No aplica para nueva BD" : "Buscar dependencia padre..."}
                       value={busquedaPadre}
                       onChange={(e) => {
                         setBusquedaPadre(e.target.value);
@@ -796,8 +798,8 @@ export function DependenciasPage() {
                         }
                       }}
                       onFocus={() => setShowDropdownPadre(true)}
-                      disabled={!editingDependencia && !!selectedPadre}
-                      className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none bg-white disabled:bg-gray-100"
+                      disabled={(!editingDependencia && !!selectedPadre) || (!idConexionExistente && !!formData.base_datos)}
+                      className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none bg-white disabled:bg-gray-100 disabled:cursor-not-allowed"
                     />
                     {selectedPadre && (
                       <button

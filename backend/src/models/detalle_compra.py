@@ -1,6 +1,7 @@
 from sqlmodel import SQLModel, Field, Relationship
 from typing import Optional, TYPE_CHECKING
 from decimal import Decimal
+from sqlalchemy import Index
 
 if TYPE_CHECKING:
     from .producto import Productos
@@ -9,6 +10,10 @@ if TYPE_CHECKING:
 
 class DetalleCompra(SQLModel, table=True):
     __tablename__ = "detalle_compras"
+    __table_args__ = (
+        Index("idx_detalle_compras_compra", "id_compra"),
+        Index("idx_detalle_compras_producto", "id_producto"),
+    )
 
     id_detalle: Optional[int] = Field(
         default=None, primary_key=True, sa_column_kwargs={"autoincrement": True}

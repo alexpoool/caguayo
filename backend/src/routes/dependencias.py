@@ -239,7 +239,7 @@ async def crear_dependencia(
     elif data.dependencia.base_datos:
         try:
             tablas_creadas = DatabaseService.crear_base_datos(
-                data.dependencia.base_datos, "new.sql"
+                data.dependencia.base_datos, init_office=False
             )
         except Exception as e:
             await dependencia_repo.remove(db, id=db_obj.id_dependencia)
@@ -248,12 +248,33 @@ async def crear_dependencia(
                 detail=f"Error al crear la base de datos: {str(e)}",
             )
 
-        # Sincronizar datos de referencia desde caguayosa a la nueva BD
-        DatabaseService.replicar_datos_desde_central(data.dependencia.base_datos)
-
-        # Insertar usuario admin con id_dependencia apuntando a la nueva dependencia
+        # Note: replicar_datos_desde_central is already called inside crear_base_datos
+        # First, insert the dependencia in the tenant DB (required for FK)
+        DatabaseService.insertar_dependencia_en_tenant(
+            data.dependencia.base_datos,
+            {
+                "id_dependencia": db_obj.id_dependencia,
+                "id_tipo_dependencia": db_obj.id_tipo_dependencia,
+                "codigo_padre": db_obj.codigo_padre,
+                "nombre": db_obj.nombre,
+                "denominacion": db_obj.denominacion,
+                "direccion": db_obj.direccion,
+                "telefono": db_obj.telefono,
+                "email": db_obj.email,
+                "web": db_obj.web,
+                "id_provincia": db_obj.id_provincia,
+                "id_municipio": db_obj.id_municipio,
+                "descripcion": db_obj.descripcion,
+                "base_datos": db_obj.base_datos,
+                "host": db_obj.host,
+                "puerto": db_obj.puerto,
+                "nit": db_obj.nit,
+                "reeup": db_obj.reeup,
+            },
+        )
+        # Insertar usuario admin con id_dependencia=1 en el tenant (la dependencia siempre es id=1 en su propia BD)
         DatabaseService.insertar_admin_en_db(
-            data.dependencia.base_datos, db_obj.id_dependencia
+            data.dependencia.base_datos, 1
         )
 
     from src.services.replicacion_service import ReplicacionService

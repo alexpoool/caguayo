@@ -2,7 +2,7 @@ from typing import Optional, List
 from datetime import date
 from decimal import Decimal
 from sqlmodel import Field, SQLModel, Relationship
-from sqlalchemy import Column, ForeignKey
+from sqlalchemy import Column, ForeignKey, Index
 
 
 class Servicio(SQLModel, table=True):
@@ -263,6 +263,9 @@ class PersonaLiquidacion(SQLModel, table=True):
 
 class Certificacion(SQLModel, table=True):
     __tablename__ = "certificacion"
+    __table_args__ = (
+        Index("idx_certificacion_etapa", "id_etapa"),
+    )
 
     id_certificacion: Optional[int] = Field(
         default=None, primary_key=True, sa_column_kwargs={"autoincrement": True}

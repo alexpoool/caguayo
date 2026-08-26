@@ -1,5 +1,5 @@
 from sqlmodel import SQLModel, Field, Relationship
-from sqlalchemy import Column, ForeignKey
+from sqlalchemy import Column, ForeignKey, Index
 from typing import Optional, List, TYPE_CHECKING
 from datetime import date
 from decimal import Decimal
@@ -35,6 +35,12 @@ class EstadoContrato(SQLModel, table=True):
 
 class Contrato(SQLModel, table=True):
     __tablename__ = "contrato"
+    __table_args__ = (
+        Index("idx_contrato_cliente", "id_cliente"),
+        Index("idx_contrato_estado", "id_estado"),
+        Index("idx_contrato_moneda", "id_moneda"),
+        Index("idx_contrato_tipo", "id_tipo_contrato"),
+    )
 
     id_contrato: Optional[int] = Field(
         default=None, primary_key=True, sa_column_kwargs={"autoincrement": True}
@@ -65,6 +71,10 @@ class Contrato(SQLModel, table=True):
 
 class Suplemento(SQLModel, table=True):
     __tablename__ = "suplemento"
+    __table_args__ = (
+        Index("idx_suplemento_contrato", "id_contrato"),
+        Index("idx_suplemento_estado", "id_estado"),
+    )
 
     id_suplemento: Optional[int] = Field(
         default=None, primary_key=True, sa_column_kwargs={"autoincrement": True}
@@ -84,6 +94,10 @@ class Suplemento(SQLModel, table=True):
 
 class Factura(SQLModel, table=True):
     __tablename__ = "factura"
+    __table_args__ = (
+        Index("idx_factura_codigo", "codigo_factura"),
+        Index("idx_factura_contrato", "id_contrato"),
+    )
 
     id_factura: Optional[int] = Field(
         default=None, primary_key=True, sa_column_kwargs={"autoincrement": True}
@@ -103,6 +117,10 @@ class Factura(SQLModel, table=True):
 
 class VentaEfectivo(SQLModel, table=True):
     __tablename__ = "venta_efectivo"
+    __table_args__ = (
+        Index("idx_venta_efectivo_dependencia", "id_dependencia"),
+        Index("idx_venta_efectivo_fecha", "fecha"),
+    )
 
     id_venta_efectivo: Optional[int] = Field(
         default=None, primary_key=True, sa_column_kwargs={"autoincrement": True}

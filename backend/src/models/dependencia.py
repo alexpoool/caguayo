@@ -1,5 +1,6 @@
 from sqlmodel import SQLModel, Field, Relationship
 from typing import Optional, List, TYPE_CHECKING
+from sqlalchemy import Index, UniqueConstraint
 
 if TYPE_CHECKING:
     from .cuenta import Cuenta
@@ -24,6 +25,10 @@ class TipoDependencia(SQLModel, table=True):
 
 class Dependencia(SQLModel, table=True):
     __tablename__ = "dependencia"
+    __table_args__ = (
+        Index("idx_dependencia_padre", "codigo_padre"),
+        Index("idx_dependencia_tipo", "id_tipo_dependencia"),
+    )
 
     id_dependencia: Optional[int] = Field(
         default=None, primary_key=True, sa_column_kwargs={"autoincrement": True}
@@ -83,6 +88,9 @@ class Provincia(SQLModel, table=True):
 
 class Municipio(SQLModel, table=True):
     __tablename__ = "municipio"
+    __table_args__ = (
+        UniqueConstraint("id_provincia", "nombre", name="municipio_id_provincia_nombre_key"),
+    )
 
     id_municipio: Optional[int] = Field(
         default=None, primary_key=True, sa_column_kwargs={"autoincrement": True}

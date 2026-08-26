@@ -1,5 +1,6 @@
 from sqlmodel import SQLModel, Field, Relationship
 from typing import Optional, List, TYPE_CHECKING
+from sqlalchemy import Index
 
 if TYPE_CHECKING:
     from .dependencia import Dependencia
@@ -21,6 +22,10 @@ class Grupo(SQLModel, table=True):
 
 class Usuario(SQLModel, table=True):
     __tablename__ = "usuarios"
+    __table_args__ = (
+        Index("idx_usuarios_dependencia", "id_dependencia"),
+        Index("idx_usuarios_grupo", "id_grupo"),
+    )
 
     id_usuario: Optional[int] = Field(
         default=None, primary_key=True, sa_column_kwargs={"autoincrement": True}

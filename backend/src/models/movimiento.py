@@ -2,6 +2,7 @@ from sqlmodel import SQLModel, Field, Relationship
 from typing import Optional, List, TYPE_CHECKING
 from datetime import datetime, timezone
 from decimal import Decimal
+from sqlalchemy import Index
 
 if TYPE_CHECKING:
     from .dependencia import Dependencia
@@ -24,6 +25,16 @@ class TipoMovimiento(SQLModel, table=True):
 
 class Movimiento(SQLModel, table=True):
     __tablename__ = "movimiento"
+    __table_args__ = (
+        Index("idx_movimiento_cliente", "id_cliente"),
+        Index("idx_movimiento_codigo", "codigo"),
+        Index("idx_movimiento_convenio", "id_convenio"),
+        Index("idx_movimiento_dependencia", "id_dependencia"),
+        Index("idx_movimiento_estado", "estado"),
+        Index("idx_movimiento_fecha", "fecha"),
+        Index("idx_movimiento_producto", "id_producto"),
+        Index("idx_movimiento_tipo", "id_tipo_movimiento"),
+    )
 
     id_movimiento: Optional[int] = Field(
         default=None, primary_key=True, sa_column_kwargs={"autoincrement": True}

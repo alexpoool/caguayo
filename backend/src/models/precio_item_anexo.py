@@ -1,6 +1,7 @@
 from sqlmodel import SQLModel, Field, Relationship
 from typing import Optional, TYPE_CHECKING
 from decimal import Decimal
+from sqlalchemy import Index, UniqueConstraint
 
 if TYPE_CHECKING:
     from .item_anexo import ItemAnexo
@@ -9,6 +10,10 @@ if TYPE_CHECKING:
 
 class PrecioItemAnexo(SQLModel, table=True):
     __tablename__ = "precio_item_anexo"
+    __table_args__ = (
+        Index("ix_precio_item_anexo_id_item_anexo", "id_item_anexo"),
+        UniqueConstraint("id_item_anexo", "id_moneda", name="uq_item_anexo_moneda"),
+    )
 
     id_precio_item_anexo: Optional[int] = Field(
         default=None,

@@ -1,5 +1,6 @@
 from sqlmodel import SQLModel, Field, Relationship
 from typing import Optional, List, TYPE_CHECKING
+from sqlalchemy import UniqueConstraint
 
 if TYPE_CHECKING:
     from .producto import Productos
@@ -20,6 +21,9 @@ class Categorias(SQLModel, table=True):
 
 class Subcategorias(SQLModel, table=True):
     __tablename__ = "subcategorias"
+    __table_args__ = (
+        UniqueConstraint("id_categoria", "nombre", name="subcategorias_id_categoria_nombre_key"),
+    )
 
     id_subcategoria: Optional[int] = Field(
         default=None, primary_key=True, sa_column_kwargs={"autoincrement": True}

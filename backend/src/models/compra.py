@@ -1,5 +1,5 @@
 from sqlmodel import SQLModel, Field, Relationship
-from sqlalchemy import Column, ForeignKey, String
+from sqlalchemy import Column, ForeignKey, String, Index
 from typing import Optional, List, TYPE_CHECKING
 from decimal import Decimal
 from datetime import datetime, timezone
@@ -18,6 +18,11 @@ class EstadoCompra(str, Enum):
 
 class Compra(SQLModel, table=True):
     __tablename__ = "compras"
+    __table_args__ = (
+        Index("idx_compras_cliente", "id_cliente"),
+        Index("idx_compras_estado", "estado"),
+        Index("idx_compras_fecha", "fecha"),
+    )
 
     id_compra: Optional[int] = Field(
         default=None, primary_key=True, sa_column_kwargs={"autoincrement": True}

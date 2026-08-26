@@ -1,6 +1,6 @@
 from sqlmodel import SQLModel, Field, Relationship
 from typing import Optional, List, TYPE_CHECKING
-from sqlalchemy import Column, String
+from sqlalchemy import Column, String, Index
 from datetime import date
 
 if TYPE_CHECKING:
@@ -18,13 +18,18 @@ if TYPE_CHECKING:
 
 class Cliente(SQLModel, table=True):
     __tablename__ = "clientes"
+    __table_args__ = (
+        Index("idx_clientes_codigo", "codigo"),
+        Index("idx_clientes_nit", "nit"),
+        Index("idx_convenio_cliente", "id_cliente"),
+    )
 
     id_cliente: Optional[int] = Field(
         default=None, primary_key=True, sa_column_kwargs={"autoincrement": True}
     )
     nombre: str = Field(max_length=200)
     tipo_persona: str = Field(sa_column=Column(String(20)))  # NATURAL, JURIDICA, TCP
-    nit: str = Field(max_length=20)
+    nit: str = Field(max_length=20, unique=True)
     telefono: Optional[str] = Field(default=None, max_length=20)
     email: Optional[str] = Field(default=None, max_length=100)
     fax: Optional[str] = Field(default=None, max_length=20)

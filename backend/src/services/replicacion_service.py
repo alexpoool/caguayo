@@ -38,12 +38,12 @@ def get_db_connection(database: str, host: str = None, port: int = None,
 
 
 class ReplicacionService:
-    CENTRAL_DB = "caguayosa"
+    CENTRAL_DB = os.getenv("CENTRAL_DATABASE", "caguayosa")
 
     @staticmethod
     def get_sucursales() -> List[Dict[str, Any]]:
         try:
-            with get_db_connection("caguayosa") as conn:
+            with get_db_connection(os.getenv("CENTRAL_DATABASE", "caguayosa")) as conn:
                 cur = conn.cursor()
 
                 cur.execute("""
@@ -66,15 +66,16 @@ class ReplicacionService:
                         for row in rows
                     ]
 
+                central = os.getenv("CENTRAL_DATABASE", "caguayosa")
                 cur.execute("""
                     SELECT datname 
                     FROM pg_database 
                     WHERE datistemplate = false 
-                    AND datname != 'caguayosa'
+                    AND datname != %s
                     AND datname != 'postgres'
                     AND datname NOT LIKE 'template%'
                     ORDER BY datname
-                """)
+                """, (central,))
                 rows = cur.fetchall()
                 cur.close()
 

@@ -6,7 +6,7 @@ This repository contains the Caguayo application, a comprehensive inventory and 
 
 - `backend/` - Python backend application
 - `frontend/` - React frontend application
-- `backend/sql/` - SQL schemas (init.sql, new.sql)
+- `backend/scripts/` - Database management scripts
 - `backend/Dockerfile` - Backend Docker image (multi-stage)
 - `frontend/Dockerfile.frontend` - Frontend Docker image (multi-stage)
 - `compose.yaml` - Orchestration (Podman / Docker Compose)
@@ -68,44 +68,39 @@ GRANT SELECT ON ALL TABLES IN SCHEMA public TO usuariolector;
 \du usuariolector
 ```
 
-### 3. Vista v_databases
+### 3. Inicializar la base de datos manualmente
 
-La vista `v_databases` se crea automáticamente al ejecutar `init.sql` o `new.sql`, pero si necesitas crearla manualmente:
-
-```sql
-CREATE OR REPLACE VIEW v_databases AS 
-SELECT datname as nombre_database 
-FROM pg_database 
-WHERE datistemplate = false 
-ORDER BY datname;
-```
-
-### 4. Inicializar la base de datos manualmente
-
-Para crear el esquema y los datos iniciales desde cero sin Docker, ejecuta `backend/sql/init.sql`:
+Para crear el esquema y datos iniciales sin Docker:
 
 ```bash
 # 1. Crear la base de datos (si no existe)
 psql -U postgres -h localhost -c "CREATE DATABASE caguayosa;"
 
-# 2. Ejecutar el script de inicialización
-psql -U postgres -h localhost -d caguayosa -f backend/sql/init.sql
+# 2. Ejecutar migraciones de Alembic (crea tablas + seeds genéricos)
+cd backend
+uv run alembic upgrade head
+
+# 3. Inicializar datos de oficina principal (admin, convenio base)
+uv run python -m scripts.init_office caguayosa
 ```
 
 **Notas:**
 
 - El nombre de la base de datos (`caguayosa`) debe coincidir con el de `backend/.env` (variable `DATABASE_URL`).
-- `init.sql` crea las tablas, la vista `v_databases`, los índices y los datos iniciales (monedas, provincias/municipios, catálogos, grupo `ADMINISTRADOR` y el usuario `admin`).
-- **No es re-ejecutable**: las tablas usan `CREATE TABLE` sin `IF NOT EXISTS`, así que si el esquema ya existe dará error al repetirlo. Para re-inicializar desde cero:
+- Las migraciones de Alembic crean todas las tablas e insertan los seeds genéricos (monedas, provincias, municipios, tipos, etc).
+- `init_office.py` crea los datos específicos de la oficina principal (dependencia matriz, usuario admin, convenio base).
+- Para re-inicializar desde cero:
 
   ```bash
   psql -U postgres -h localhost -d caguayosa -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"
-  psql -U postgres -h localhost -d caguayosa -f backend/sql/init.sql
+  cd backend
+  uv run alembic upgrade head
+  uv run python -m scripts.init_office caguayosa
   ```
 
 ## Usuario Superadministrador
 
-Al ejecutar `init.sql` por primera vez, se crea automáticamente un super usuario:
+Al inicializar la base de datos con `init_office.py`, se crea automáticamente un super usuario:
 
 | Campo | Valor |
 |-------|-------|
@@ -167,13 +162,25 @@ The application uses three services: PostgreSQL, Python backend, and React front
 
 #### Database Initialization
 
-On the **first run**, the backend automatically detects an empty database and executes `backend/sql/init.sql`, which:
+On the **first run**, the backend automatically:
 
-- Creates the `v_databases` view
-- Creates all 56 database tables
-- Seeds reference data (monedas, provincias, municipios, tipos de contrato, etc.)
-- Creates the **administrator group** (`ADMINISTRADOR`) with all system permissions
-- Creates the **superuser** account:
+1. Creates the database
+2. Runs `alembic upgrade head` (creates all tables + generic seeds)
+3. Executes `init_office.py` (creates admin user, main office data)
+
+The seed data is split into two parts:
+
+**Generic seeds** (applied by Alembic migration `seed_generic_data`):
+- Monedas (USD, EUR)
+- Tipos de contrato, convenio, movimiento
+- Estados de contrato
+- Provincias y municipios de Cuba
+- Grupo ADMINISTRADOR with all permissions
+- Funcionalidades del sistema
+
+**Office data** (applied by `scripts/init_office.py`):
+- Main dependency (Caguayo S.A)
+- Superuser account:
 
   | Campo | Valor |
   |-------|-------|
@@ -182,39 +189,24 @@ On the **first run**, the backend automatically detects an empty database and ex
   | **Grupo** | ADMINISTRADOR |
   | **Dependencia** | Caguayo Matriz |
 
-- Creates the main dependency (`Caguayo S.A`)
-- Sets up the base reception agreement and annex
+- Base client and reception agreement
 
 > **⚠️ Importante**: Cambiar la contraseña en el primer inicio de sesión.
 
-After `init.sql` completes, Alembic migrations run automatically to apply any schema changes.
+#### Migrar bases de datos existentes
 
-#### Sincronizar el esquema de una BD existente
-
-Para **actualizar el esquema de una base de datos ya creada** (p.ej. una base vieja que
-le falta lo nuevo que hay en `init.sql`), sin borrar datos, usa el script
-`backend/scripts/sync_schema.py`:
+Si tienes bases de datos creadas con `init.sql` que nunca usaron Alembic:
 
 ```bash
-# Desde backend/
-uv run python -m scripts.sync_schema <nombre_bd>
+# Ver qué BDs faltan por stamp
+cd backend
+uv run python -m scripts.stamp_all_databases --dry-run
+
+# Ejecutar stamp real
+uv run python -m scripts.stamp_all_databases
 ```
 
-Esto compara la BD con `init.sql` y aplica solo lo que falta: vistas, tablas y
-columnas nuevas. Al final marca la BD con `alembic stamp head` para que `alembic
-upgrade head` solo aplique migraciones futuras.
-
-Opciones:
-
-| Comando | Descripción |
-|---|---|
-| `uv run python -m scripts.sync_schema <bd>` | Actualiza el esquema existente y marca alembic en `head`. |
-| `uv run python -m scripts.sync_schema <bd> --seeds` | Además inserta los datos iniciales (solo en tablas vacías, evita duplicados). |
-| `uv run python -m scripts.sync_schema <bd> --sql new.sql` | Sincroniza contra `new.sql` (p.ej. base de un tenant). |
-| `uv run python -m scripts.sync_schema <bd> --no-stamp` | Solo aplica el SQL, no toca `alembic_version`. |
-
-> Las columnas nuevas `NOT NULL` sin valor por defecto se añaden como **nullable**
-> cuando la tabla ya tiene filas, para no romper los datos existentes.
+#### Managing Services
 
 #### Managing Services
 
@@ -339,7 +331,12 @@ Usa el script `start.sh` para iniciar todo automáticamente — verifica prerequ
    uv run alembic upgrade head
    ```
 
-4. Run the backend:
+4. Initialize office data (admin user, main dependency):
+   ```bash
+   uv run python -m scripts.init_office caguayosa
+   ```
+
+5. Run the backend:
    ```bash
    cd backend
    uv run uvicorn main:app --host 0.0.0.0 --port 8000

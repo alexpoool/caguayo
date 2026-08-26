@@ -2,6 +2,7 @@ from sqlmodel import SQLModel, Field, Relationship
 from typing import Optional, List, TYPE_CHECKING
 from datetime import date
 from decimal import Decimal
+from sqlalchemy import Index
 
 if TYPE_CHECKING:
     from .convenio import Convenio
@@ -10,6 +11,11 @@ if TYPE_CHECKING:
 
 class Anexo(SQLModel, table=True):
     __tablename__ = "anexo"
+    __table_args__ = (
+        Index("idx_anexo_codigo", "codigo_anexo"),
+        Index("idx_anexo_convenio", "id_convenio"),
+        Index("idx_anexo_dependencia", "id_dependencia"),
+    )
 
     id_anexo: Optional[int] = Field(
         default=None, primary_key=True, sa_column_kwargs={"autoincrement": True}
