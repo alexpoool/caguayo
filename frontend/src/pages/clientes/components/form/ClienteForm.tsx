@@ -57,12 +57,31 @@ export const ClienteForm: React.FC<ClienteFormProps> = ({
   const [localTiposEntidad, setLocalTiposEntidad] = useState<any[]>(
     tiposEntidad || [],
   );
+  const [loadingProvincias, setLoadingProvincias] = useState(false);
 
   useEffect(() => {
     if (provincias && Array.isArray(provincias) && provincias.length > 0) {
       setLocalProvincias(provincias);
     }
   }, [provincias]);
+
+  // Fetch provincias from API when not provided as prop
+  useEffect(() => {
+    if (localProvincias.length === 0 && !loadingProvincias) {
+      setLoadingProvincias(true);
+      dependenciasService
+        .getProvincias()
+        .then((data: any[]) => {
+          setLocalProvincias(Array.isArray(data) ? data : []);
+        })
+        .catch((error: any) => {
+          console.error("Error loading provincias:", error);
+        })
+        .finally(() => {
+          setLoadingProvincias(false);
+        });
+    }
+  }, []);
 
   useEffect(() => {
     if (
@@ -132,13 +151,12 @@ export const ClienteForm: React.FC<ClienteFormProps> = ({
   useEffect(() => {
     if (
       editingCliente ||
-      !provincias ||
-      provincias.length === 0 ||
-      formData.id_provincia
+      formData.id_provincia ||
+      localProvincias.length === 0
     ) {
       return;
     }
-    const provinciaDefault = provincias.find(
+    const provinciaDefault = localProvincias.find(
       (p: any) => p.nombre === "Santiago de Cuba",
     );
     if (!provinciaDefault) return;
@@ -169,7 +187,7 @@ export const ClienteForm: React.FC<ClienteFormProps> = ({
     return () => {
       cancelled = true;
     };
-  }, [editingCliente, provincias]);
+  }, [editingCliente, localProvincias]);
 
   const [datosNatural, setDatosNatural] = useState<ClienteNatural | null>(
     editingCliente?.cliente_natural || null,

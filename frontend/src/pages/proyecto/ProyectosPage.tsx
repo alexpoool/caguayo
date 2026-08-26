@@ -742,7 +742,7 @@ export function ProyectosPage() {
         <CardHeader className="border-b bg-gray-50/50">
           <CardTitle className="flex items-center gap-2 text-lg">
             <ClipboardList className="h-5 w-5 text-teal-600" />
-            Información de la Solicitud
+            Información del Proyecto
           </CardTitle>
         </CardHeader>
         <CardContent className="p-6">

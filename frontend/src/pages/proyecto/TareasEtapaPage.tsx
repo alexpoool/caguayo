@@ -141,8 +141,7 @@ export function TareasEtapaPage() {
     }
     const servicio = servicios.find(s => s.id_servicio === servicioId);
     if (servicio) {
-      const numeroEtapa = etapa?.numero_etapa || 'X';
-      const codigoExtendido = `ETA${numeroEtapa}-SRV${servicioId}-${servicio.codigo_servicio || ''}`;
+      const codigoExtendido = servicio.codigo_servicio || '';
       
       setFormData({
         ...formData,
@@ -216,8 +215,7 @@ export function TareasEtapaPage() {
       return;
     }
 
-    const numeroEtapa = etapa?.numero_etapa || 'X';
-    const codigoExtendido = `ETA${numeroEtapa}-SRV${s.id_servicio}-${s.codigo_servicio || ''}`;
+    const codigoExtendido = s.codigo_servicio || '';
 
     setFormData(prev => ({
       ...prev,

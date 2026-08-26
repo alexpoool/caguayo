@@ -118,6 +118,12 @@ class SolicitudServicioService:
         s = await solicitud_servicio_repo.create(db, obj_in=data)
         año = (data.fecha_solicitud or date.today()).year
         s.codigo_solicitud = generar_codigo_correlativo(denominacion or "", año, sec)
+
+        # Generar codigo_proyecto si viene aprobado con contrato
+        if data.aprobado and data.id_contrato:
+            sec_proy = await siguiente_secuencia(db, "solicitud_servicio", "codigo_proyecto")
+            s.codigo_proyecto = generar_codigo_correlativo(denominacion or "", año, sec_proy)
+
         await db.commit()
         await db.refresh(s)
         return SolicitudServicioRead(**s.model_dump())
@@ -252,15 +258,10 @@ class EtapaService:
 class TareaEtapaService:
     @staticmethod
     async def create(db: AsyncSession, data: TareaEtapaCreate) -> TareaEtapaRead:
-        if not data.codigo_extendido:
-            etapa = await etapa_repo.get(db, data.id_etapa)
-            if etapa:
-                codigo_sol = (
-                    etapa.solicitud.codigo_solicitud if etapa.solicitud else None
-                ) or f"SOL-{etapa.id_solicitud_servicio}"
-                codigo_eta = f"ETAPA-{etapa.numero_etapa}"
-                codigo_serv = f"SERV-{data.id_servicio}" if data.id_servicio else "SERV"
-                data.codigo_extendido = f"TE-{codigo_sol}-{codigo_eta}-{codigo_serv}"
+        if not data.codigo_extendido and data.id_servicio:
+            servicio = await servicio_repo.get(db, data.id_servicio)
+            if servicio:
+                data.codigo_extendido = servicio.codigo_servicio
 
         t = await tarea_etapa_repo.create(db, obj_in=data)
         return TareaEtapaRead(**t.model_dump())
