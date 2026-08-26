@@ -223,8 +223,13 @@ export function LiquidacionesPage() {
   useEffect(() => {
     if (selectedEtapa) {
       cargarPersonasEtapa(selectedEtapa, personaParam ? Number(personaParam) : undefined);
+      // Autocompletar moneda desde la etapa seleccionada
+      const etapa = (etapas as Etapa[]).find(et => et.id_etapa === selectedEtapa);
+      if (etapa?.id_moneda) {
+        setFormData(prev => ({ ...prev, id_moneda: etapa.id_moneda ?? prev.id_moneda }));
+      }
     }
-  }, [selectedEtapa]);
+  }, [selectedEtapa, etapas]);
 
   useEffect(() => {
     if (selectedPersona && selectedEtapa && view === 'form') {

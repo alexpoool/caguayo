@@ -101,8 +101,30 @@ export function RealizadoresPage() {
 
   const getClienteNombre = (cliente: ClienteNatural | ClienteTCP | ClienteJuridica | undefined): string => {
     if (!cliente) return 'N/A';
-    if ('nombre' in cliente) return cliente.nombre;
-    if ('codigo_reup' in cliente) return `Entidad ${cliente.codigo_reup}`;
+    // ClienteNatural directo (de getPersonasNaturales)
+    if ('primer_apellido' in cliente && 'carnet_identidad' in cliente) {
+      const c = cliente as ClienteNatural;
+      return `${c.nombre || ''} ${c.primer_apellido || ''} ${c.segundo_apellido || ''}`.trim();
+    }
+    // ClienteTCP directo
+    if ('primer_apellido' in cliente && 'numero_registro_proyecto' in cliente) {
+      const c = cliente as ClienteTCP;
+      return `${c.nombre || ''} ${c.primer_apellido || ''} ${c.segundo_apellido || ''}`.trim();
+    }
+    // ClienteJuridica directo
+    if ('codigo_reup' in cliente) return `Entidad ${(cliente as ClienteJuridica).codigo_reup}`;
+    // Cliente con sub-objetos anidados (de getClientes)
+    const cli = cliente as any;
+    if (cli.cliente_natural) {
+      const n = cli.cliente_natural;
+      return `${n.nombre || ''} ${n.primer_apellido || ''} ${n.segundo_apellido || ''}`.trim();
+    }
+    if (cli.cliente_tcp) {
+      const t = cli.cliente_tcp;
+      return `${t.nombre || ''} ${t.primer_apellido || ''} ${t.segundo_apellido || ''}`.trim();
+    }
+    if (cli.cliente_juridica) return `Entidad ${cli.cliente_juridica.codigo_reup || ''}`;
+    if ('nombre' in cliente) return (cliente as { nombre: string }).nombre;
     return 'N/A';
   };
 
@@ -211,13 +233,22 @@ const [todosClientesRes, personasRes, monedasRes, solicitudesRes, tcpRes, juridi
 
   const getPersonaName = (id: number) => {
     const p = personasNaturales.find(pn => pn.id_cliente === id);
-    if (!p) return `Persona #${id}`;
-    return `${p.nombre} ${p.primer_apellido} ${p.segundo_apellido || ''}`.trim();
+    if (p) return `${p.nombre} ${p.primer_apellido} ${p.segundo_apellido || ''}`.trim();
+    const tcp = personasTCP.find(t => t.id_cliente === id);
+    if (tcp) return `${tcp.nombre} ${tcp.primer_apellido} ${tcp.segundo_apellido || ''}`.trim();
+    const jur = personasJuridicas.find(j => j.id_cliente === id);
+    if (jur) return `Entidad ${jur.codigo_reup}`;
+    const cli = todosClientes.find(c => c.id_cliente === id);
+    if (cli) return cli.nombre || `Persona #${id}`;
+    return `Persona #${id}`;
   };
 
   const getPersonaCI = (id: number) => {
     const p = personasNaturales.find(pn => pn.id_cliente === id);
-    return p?.carnet_identidad || 'N/A';
+    if (p?.carnet_identidad) return p.carnet_identidad;
+    const t = personasTCP.find(tcp => tcp.id_cliente === id) as any;
+    if (t?.carnet_identidad) return t.carnet_identidad;
+    return 'N/A';
   };
 
   const getMonedaSymbol = (id?: number) => {
@@ -297,7 +328,14 @@ const [todosClientesRes, personasRes, monedasRes, solicitudesRes, tcpRes, juridi
 
   const handleSeleccionarPersona = (c: Cliente | ClienteConDetalles) => {
     setPersonaSeleccionada(c);
-    setBusquedaPersona(c.nombre || '');
+    const nat = c.cliente_natural;
+    const tcp = (c as any).cliente_tcp;
+    const nombreCompleto = nat
+      ? `${nat.nombre || ''} ${nat.primer_apellido || ''} ${nat.segundo_apellido || ''}`.trim()
+      : tcp
+        ? `${tcp.nombre || ''} ${tcp.primer_apellido || ''} ${tcp.segundo_apellido || ''}`.trim()
+        : c.nombre || '';
+    setBusquedaPersona(nombreCompleto);
     setShowDropdownPersona(false);
     setFormData(prev => ({ ...prev, id_persona: c.id_cliente }));
   };
@@ -466,7 +504,7 @@ Nuevo Realizador
                   return (
                     <TableRow key={`${item.id_etapa}-${item.id_persona}`} className="hover:bg-gray-50/50 transition-colors cursor-pointer" onClick={() => setDetailModal({ isOpen: true, item })}>
                       <TableCell>
-<span className="font-medium text-gray-900">{getClienteNombre(persona)}</span>
+<span className="font-medium text-gray-900">{(persona as any)?.nombre || 'N/A'}</span>
                       </TableCell>
                       <TableCell>
                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
@@ -573,7 +611,14 @@ Nuevo Realizador
                 {showDropdownPersona && personasFiltradas.length > 0 && (
                   <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-auto">
                     {personasFiltradas.map(p => {
-                      const clienteExt = p as ClienteConDetalles;
+                      const nat = p.cliente_natural;
+                      const tcp = (p as any).cliente_tcp;
+                      const nombreCompleto = nat
+                        ? `${nat.nombre || ''} ${nat.primer_apellido || ''} ${nat.segundo_apellido || ''}`.trim()
+                        : tcp
+                          ? `${tcp.nombre || ''} ${tcp.primer_apellido || ''} ${tcp.segundo_apellido || ''}`.trim()
+                          : p.nombre;
+                      const ci = nat?.carnet_identidad || tcp?.carnet_identidad || '';
                       return (
                       <button
                         key={p.id_cliente}
@@ -581,9 +626,8 @@ Nuevo Realizador
                         onClick={() => handleSeleccionarPersona(p)}
                         className="w-full text-left px-4 py-2 hover:bg-teal-50 transition-colors border-b border-gray-100 last:border-b-0"
                       >
-                        <span className="font-medium text-gray-900">{p.nombre}</span>
-                        <span className="text-gray-600"> {clienteExt.primer_apellido} {clienteExt.segundo_apellido || ''}</span>
-                        {clienteExt.carnet_identidad && <span className="text-gray-400 text-sm ml-2">- {clienteExt.carnet_identidad}</span>}
+                        <span className="font-medium text-gray-900">{nombreCompleto}</span>
+                        {ci && <span className="text-gray-400 text-sm ml-2">- {ci}</span>}
                         <span className="text-xs text-gray-400 ml-2">({p.tipo_persona})</span>
                       </button>
                     )})}
@@ -721,7 +765,10 @@ Nuevo Realizador
                   </div>
                   <div>
                     <h3 className="text-2xl font-bold text-gray-900">{getPersonaName(detailModal.item.id_persona)}</h3>
-                    <p className="text-sm text-gray-500 font-mono">CI: {getPersonaCI(detailModal.item.id_persona)}</p>
+                    {(() => {
+                      const cli = getClienteById(detailModal.item.id_persona);
+                      return <p className="text-sm text-gray-500 font-mono">Codigo cliente: {(cli as any)?.codigo || (cli as any)?.nit || 'N/A'}</p>;
+                    })()}
                   </div>
                 </div>
                 <button onClick={() => setDetailModal({ isOpen: false, item: null })} className="p-2 hover:bg-gray-200 rounded-full transition-colors">
