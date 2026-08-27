@@ -232,9 +232,11 @@ export function LiquidacionesPage() {
   }, [selectedEtapa, etapas]);
 
   useEffect(() => {
-    if (selectedPersona && selectedEtapa && view === 'form') {
+    if (selectedPersona && selectedEtapa) {
       loadPersonaEtapaCobro(selectedEtapa, selectedPersona);
-      cargarPagosYDisponible(selectedEtapa, selectedPersona);
+      if (view === 'form') {
+        cargarPagosYDisponible(selectedEtapa, selectedPersona);
+      }
     }
   }, [selectedPersona, selectedEtapa, view]);
 
@@ -573,6 +575,11 @@ export function LiquidacionesPage() {
         setSelectedEtapa(Number(etapaParam));
         setSelectedPersona(Number(personaParam));
         cargarPersonasEtapa(Number(etapaParam), Number(personaParam));
+        // Autocompletar moneda desde la etapa
+        const etapa = (etapas as Etapa[]).find(et => et.id_etapa === Number(etapaParam));
+        if (etapa?.id_moneda) {
+          setFormData(prev => ({ ...prev, id_moneda: etapa.id_moneda! }));
+        }
       }
     }
     setView('form');
@@ -933,10 +940,15 @@ export function LiquidacionesPage() {
             </div>
             <Button
               onClick={() => openForm()}
-              className="gap-2 bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300"
+              disabled={!!(filtroPersona && filtroEtapa) && porCobrarPersona <= 0}
+              className={`gap-2 shadow-lg hover:shadow-xl transition-all duration-300 ${
+                (!!filtroPersona && !!filtroEtapa && porCobrarPersona <= 0)
+                  ? 'bg-gray-400 cursor-not-allowed'
+                  : 'bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 hover:scale-105 active:scale-95'
+              }`}
             >
               <Plus className="h-4 w-4" />
-              Nueva Liquidación
+              {(!!filtroPersona && !!filtroEtapa && porCobrarPersona <= 0) ? 'Liquidado' : 'Nueva Liquidación'}
             </Button>
           </div>
 

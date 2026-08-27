@@ -716,18 +716,6 @@ export function FacturasServicioPage() {
                 </TableHead>
                 <TableHead>
                   <div className="flex items-center gap-2">
-                    <Tag className="h-4 w-4 text-teal-600" />
-                    Tipo
-                  </div>
-                </TableHead>
-                <TableHead>
-                  <div className="flex items-center gap-2">
-                    <Check className="h-4 w-4 text-teal-600" />
-                    Estado
-                  </div>
-                </TableHead>
-                <TableHead>
-                  <div className="flex items-center gap-2">
                     <DollarSign className="h-4 w-4 text-teal-600" />
                     Importe
                   </div>
@@ -741,7 +729,7 @@ export function FacturasServicioPage() {
                 <TableHead>
                   <div className="flex items-center gap-2">
                     <DollarSign className="h-4 w-4 text-red-600" />
-                    Saldo
+                    Por pagar
                   </div>
                 </TableHead>
                 <TableHead>
@@ -756,7 +744,7 @@ export function FacturasServicioPage() {
             <TableBody>
               {isLoadingFacturas ? (
                 <TableRow>
-                  <TableCell colSpan={10} className="text-center py-12 text-gray-500">
+                  <TableCell colSpan={7} className="text-center py-12 text-gray-500">
                     <div className="flex items-center justify-center gap-2">
                       <Loader2 className="h-5 w-5 animate-spin" />
                       Cargando...
@@ -765,7 +753,7 @@ export function FacturasServicioPage() {
                 </TableRow>
               ) : filteredDocs.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={10} className="text-center py-12 text-gray-500">
+                  <TableCell colSpan={7} className="text-center py-12 text-gray-500">
                     {searchTerm
                       ? 'No se encontraron facturas que coincidan con la búsqueda'
                       : 'No hay facturas registradas'}
@@ -783,30 +771,6 @@ export function FacturasServicioPage() {
                       </TableCell>
                       <TableCell className="font-medium text-gray-900">
                         {getEtapaName(item.id_etapa)}
-                      </TableCell>
-                      <TableCell>
-                        {item.tipo === 'PREFACTURA' ? (
-                          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium bg-blue-100 text-blue-700">
-                            Pre-factura
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium bg-teal-100 text-teal-700">
-                            Factura
-                          </span>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium bg-green-100 text-green-700">
-                          Aprobada
-                        </span>
-                      </TableCell>
-                      <TableCell onClick={(e) => e.stopPropagation()}>
-                        <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium ${Number(item.pagado || 0) >= Number(item.importe || 0)
-                            ? 'bg-green-100 text-green-700'
-                            : 'bg-red-100 text-red-700'
-                          }`}>
-                          {Number(item.pagado || 0) >= Number(item.importe || 0) ? 'Pagada' : 'Por pagar'}
-                        </span>
                       </TableCell>
                       <TableCell className="font-medium text-gray-900">
                         {getMonedaSymbol(item.id_moneda)} {formatCifra(item.importe || 0)}

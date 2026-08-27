@@ -487,6 +487,12 @@ Nuevo Realizador
                     Pagado
                   </div>
                 </TableHead>
+                <TableHead>
+                  <div className="flex items-center gap-2">
+                    <DollarSign className="h-4 w-4 text-red-600" />
+                    Por pagar
+                  </div>
+                </TableHead>
                 <TableHead>Liquidaciones</TableHead>
                 <TableHead className="text-right">Acciones</TableHead>
               </TableRow>
@@ -494,7 +500,7 @@ Nuevo Realizador
             <TableBody>
               {filteredPersonas.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-12 text-gray-500">
+                  <TableCell colSpan={7} className="text-center py-12 text-gray-500">
                     {searchTerm ? 'No se encontraron realizadores que coincidan con la búsqueda' : 'No hay realizadores registrados'}
                   </TableCell>
                 </TableRow>
@@ -521,23 +527,27 @@ Nuevo Realizador
                       <TableCell className="font-medium text-teal-700">
                         {getMonedaSymbol(item.id_moneda)} {formatCifra(totalesPagado.get(`${item.id_etapa}-${item.id_persona}`) || 0)}
                       </TableCell>
+                      <TableCell className="font-medium">
+                        {(() => {
+                          const pagado = totalesPagado.get(`${item.id_etapa}-${item.id_persona}`) || 0;
+                          const saldo = Number(item.cobro || 0) - Number(pagado);
+                          return (
+                            <span className={saldo > 0 ? 'text-red-600' : 'text-green-600'}>
+                              {getMonedaSymbol(item.id_moneda)} {formatCifra(saldo)}
+                            </span>
+                          );
+                        })()}
+                      </TableCell>
                       <TableCell onClick={(e) => e.stopPropagation()}>
-                        {Number(item.por_cobrar) <= 0 ? (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-green-100 text-green-700 rounded text-xs font-medium">
-                            <CheckCircle className="h-3.5 w-3.5" />
-                            Liquidado
-                          </span>
-                        ) : (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => navigate(`/proyectos/liquidaciones?solicitud=${getSolicitudByEtapa(item.id_etapa) || ''}&etapa=${item.id_etapa}&persona=${item.id_persona}`)}
-                            className="gap-1 text-teal-600 border-teal-200 hover:bg-teal-50 hover:text-teal-700"
-                          >
-                            <DollarSign className="h-3.5 w-3.5" />
-                            Liquidaciones
-                          </Button>
-                        )}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => navigate(`/proyectos/liquidaciones?solicitud=${getSolicitudByEtapa(item.id_etapa) || ''}&etapa=${item.id_etapa}&persona=${item.id_persona}`)}
+                          className="gap-1 text-teal-600 border-teal-200 hover:bg-teal-50 hover:text-teal-700"
+                        >
+                          <DollarSign className="h-3.5 w-3.5" />
+                          Liquidaciones
+                        </Button>
                       </TableCell>
                       <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                         <div className="flex justify-end gap-2">

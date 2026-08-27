@@ -89,6 +89,7 @@ export function ProyectosPage() {
   const [nuevoClienteTarget, setNuevoClienteTarget] = useState<'form' | 'contrato'>('form');
   const clienteRef = useRef<HTMLDivElement | null>(null);
   const [clientes, setClientes] = useState<Cliente[]>([]);
+  const [pendingClientData, setPendingClientData] = useState<any>(null);
 
   const hoy = new Date().toISOString().split('T')[0];
 
@@ -152,7 +153,7 @@ export function ProyectosPage() {
 
   const handleSave = async () => {
     try {
-      if (!formData.id_cliente) {
+      if (!formData.id_cliente && !pendingClientData) {
         toast.error('Debe seleccionar un cliente');
         return;
       }
@@ -181,7 +182,7 @@ export function ProyectosPage() {
         queryClient.invalidateQueries({ queryKey: ['solicitudes-servicio'] });
       } else {
         const data: SolicitudServicioCreate = {
-          id_cliente: Number(formData.id_cliente) || undefined,
+          id_cliente: pendingClientData ? undefined : (Number(formData.id_cliente) || undefined),
           descripcion: formData.descripcion,
           fecha_solicitud: fechaSolicitud,
           fecha_entrega: fechaEntrega,
@@ -282,11 +283,13 @@ export function ProyectosPage() {
       toast.error('Error al cargar contratos');
       setAprobarModal(prev => ({ ...prev, isOpen: false, loadingContratos: false }));
       setCreacionPendiente(null);
+      setPendingClientData(null);
     }
   };
 
   const handleAsignarContrato = async (item: SolicitudServicio) => {
     setCreacionPendiente(null);
+    setPendingClientData(null);
     await openAprobarModal(item);
   };
 
@@ -319,6 +322,17 @@ export function ProyectosPage() {
     if (!aprobarModal.solicitud) return;
     
     try {
+      // Crear cliente pendiente si existe
+      let resolvedClientId = aprobarModal.solicitud.id_cliente;
+      if (pendingClientData) {
+        const nuevoCliente = await clientesService.createCliente(pendingClientData);
+        setClientes(prev => [nuevoCliente, ...prev]);
+        queryClient.invalidateQueries({ queryKey: ['clientes-all'] });
+        queryClient.invalidateQueries({ queryKey: ['clientes'] });
+        resolvedClientId = nuevoCliente.id_cliente;
+        setPendingClientData(null);
+      }
+
       const persistirAprobacion = async (patch: SolicitudServicioUpdate) => {
         if (creacionPendiente) {
           await solicitudesService.createSolicitud({ ...creacionPendiente, ...patch });
@@ -327,17 +341,18 @@ export function ProyectosPage() {
         }
       };
       if (aprobarModal.modo === 'crear') {
-        if (!formContrato.id_cliente) {
+        if (!pendingClientData && !formContrato.id_cliente) {
           toast.error('Debe seleccionar un cliente');
           return;
         }
-        if (aprobarModal.solicitud.id_cliente && Number(formContrato.id_cliente) !== aprobarModal.solicitud.id_cliente) {
+        const contratoClientId = pendingClientData ? resolvedClientId! : Number(formContrato.id_cliente);
+        if (aprobarModal.solicitud.id_cliente && !pendingClientData && contratoClientId !== aprobarModal.solicitud.id_cliente) {
           toast.error('El cliente del contrato debe ser el mismo que el de la solicitud');
           return;
         }
         const data: ContratoCreate = {
           nombre: formContrato.nombre || `Contrato-${Date.now()}`,
-          id_cliente: Number(formContrato.id_cliente),
+          id_cliente: contratoClientId,
           id_estado: Number(formContrato.id_estado) || (estadosContrato[0]?.id_estado_contrato ?? 0),
           id_tipo_contrato: Number(formContrato.id_tipo_contrato) || 1,
           id_moneda: Number(formContrato.id_moneda) || monedas[0]?.id_moneda,
@@ -351,7 +366,7 @@ export function ProyectosPage() {
         await persistirAprobacion({
           aprobado: true,
           id_contrato: nuevoContrato.id_contrato,
-          id_cliente: Number(formContrato.id_cliente),
+          id_cliente: contratoClientId,
           estado: 'EN PROCESO'
         });
         toast.success('Solicitud aprobada con nuevo contrato');
@@ -430,6 +445,7 @@ export function ProyectosPage() {
       setFormContrato({});
       setSuplementosPorContrato({});
       setCreacionPendiente(null);
+      setPendingClientData(null);
       setView('list');
       refresh();
       queryClient.invalidateQueries({ queryKey: ['solicitudes-servicio'] });
@@ -460,7 +476,7 @@ export function ProyectosPage() {
     }
   };
 
-  const resetForm = () => { setFormData({ fecha_solicitud: hoy }); setEditingId(null); setClienteSearch(''); };
+  const resetForm = () => { setFormData({ fecha_solicitud: hoy }); setEditingId(null); setClienteSearch(''); setPendingClientData(null); };
 
   const openForm = (item?: SolicitudServicio) => {
     if (item) {
@@ -776,9 +792,11 @@ export function ProyectosPage() {
                     type="text"
                     placeholder="Buscar cliente..."
                     value={
-                      formData.id_cliente
-                        ? (clientes.find(c => c.id_cliente === Number(formData.id_cliente))?.nombre || '')
-                        : clienteSearch
+                      pendingClientData && formData.id_cliente === -1
+                        ? pendingClientData.nombre
+                        : formData.id_cliente
+                          ? (clientes.find(c => c.id_cliente === Number(formData.id_cliente))?.nombre || '')
+                          : clienteSearch
                     }
                     disabled={!!formData.id_cliente}
                     onChange={(e) => {
@@ -792,7 +810,7 @@ export function ProyectosPage() {
                   {(formData.id_cliente || clienteSearch) && (
                     <button
                       type="button"
-                      onClick={() => { setFormData({ ...formData, id_cliente: '' }); setClienteSearch(''); }}
+                      onClick={() => { setFormData({ ...formData, id_cliente: '' }); setClienteSearch(''); setPendingClientData(null); }}
                       className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-red-500"
                     >
                       <X className="h-4 w-4" />
@@ -1070,7 +1088,7 @@ export function ProyectosPage() {
                     <p className="text-sm text-gray-500">{aprobarModal.solicitud?.codigo_solicitud || 'Sin código'}</p>
                   </div>
                 </div>
-                <button onClick={() => { setAprobarModal({ isOpen: false, solicitud: null, modo: 'seleccionar', contratos: [], loadingContratos: false }); setFormContrato({}); setSuplementosPorContrato({}); setCreacionPendiente(null); setView('list'); }} className="p-2 hover:bg-gray-200 rounded-full transition-colors">
+                <button onClick={() => { setAprobarModal({ isOpen: false, solicitud: null, modo: 'seleccionar', contratos: [], loadingContratos: false }); setFormContrato({}); setSuplementosPorContrato({}); setCreacionPendiente(null); setPendingClientData(null); setView('list'); }} className="p-2 hover:bg-gray-200 rounded-full transition-colors">
                   <X className="h-6 w-6 text-gray-500" />
                 </button>
               </div>
@@ -1411,7 +1429,7 @@ export function ProyectosPage() {
               ) : null}
             </div>
             <div className="p-6 border-t border-gray-200 bg-gray-50 flex justify-end gap-3">
-              <button onClick={() => { setAprobarModal({ isOpen: false, solicitud: null, modo: 'seleccionar', contratos: [], loadingContratos: false }); setFormContrato({}); setSuplementosPorContrato({}); setCreacionPendiente(null); setView('list'); }} className="px-6 py-3 text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors font-medium">Cancelar</button>
+              <button onClick={() => { setAprobarModal({ isOpen: false, solicitud: null, modo: 'seleccionar', contratos: [], loadingContratos: false }); setFormContrato({}); setSuplementosPorContrato({}); setCreacionPendiente(null); setPendingClientData(null); setView('list'); }} className="px-6 py-3 text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors font-medium">Cancelar</button>
               <button onClick={confirmarAprobacion} className="px-6 py-3 text-white bg-gradient-to-r from-teal-500 to-cyan-600 rounded-xl hover:from-teal-600 hover:to-cyan-700 shadow-lg hover:shadow-xl transition-all font-medium">Confirmar Aprobación</button>
             </div>
           </div>
@@ -1447,20 +1465,17 @@ export function ProyectosPage() {
                 }}
                 onSubmit={async (data: any) => {
                   try {
-                    const nuevoCliente = await clientesService.createCliente(data);
-                    setClientes(prev => [nuevoCliente, ...prev]);
-                    queryClient.invalidateQueries({ queryKey: ['clientes-all'] });
-                    queryClient.invalidateQueries({ queryKey: ['clientes'] });
+                    setPendingClientData(data);
                     if (nuevoClienteTarget === 'form') {
-                      setFormData(prev => ({ ...prev, id_cliente: nuevoCliente.id_cliente }));
+                      setFormData(prev => ({ ...prev, id_cliente: -1 }));
                     } else {
-                      setFormContrato(prev => ({ ...prev, id_cliente: nuevoCliente.id_cliente }));
+                      setFormContrato(prev => ({ ...prev, id_cliente: -1 }));
                     }
                     setClienteSearch('');
                     setShowNuevoClienteModal(false);
-                    toast.success('Cliente creado');
+                    toast.success('Cliente registrado (se creará al aprobar)');
                   } catch (error: any) {
-                    toast.error(error.message || 'Error al crear cliente');
+                    toast.error(error.message || 'Error al registrar cliente');
                   }
                 }}
               />
