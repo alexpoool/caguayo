@@ -346,6 +346,18 @@ class FacturaServicioService:
             if certificacion.facturado:
                 raise Exception("La certificación ya está facturada")
 
+        # Verificar si ya existe una factura para esta etapa que esté completamente pagada
+        if data.id_etapa:
+            existing = await factura_servicio_repo.get_by_etapa_with_pagos(db, data.id_etapa)
+            if existing:
+                pagado = sum((p.monto or Decimal("0")) for p in existing.pagos)
+                importe = existing.importe or Decimal("0")
+                if importe > 0 and pagado >= importe:
+                    raise Exception(
+                        f"La factura {existing.codigo_factura} de esta etapa ya está completamente pagada "
+                        f"(pagado: {pagado}, importe: {importe}). No se puede crear otra factura."
+                    )
+
         data.codigo_factura = None
         if data.estado is None:
             data.estado = "APROBADA"
@@ -705,6 +717,18 @@ class PagoFacturaServicioService:
     async def create(
         db: AsyncSession, data: PagoFacturaServicioCreate
     ) -> PagoFacturaServicioRead:
+        # Verificar si la factura ya está completamente pagada
+        if data.id_factura_servicio:
+            factura_check = await factura_servicio_repo.get(db, data.id_factura_servicio)
+            if factura_check:
+                pagado_actual = factura_check.pagado or Decimal("0")
+                importe = factura_check.importe or Decimal("0")
+                if importe > 0 and pagado_actual >= importe:
+                    raise ValueError(
+                        f"La factura {factura_check.codigo_factura} ya está completamente pagada "
+                        f"(pagado: {pagado_actual}, importe: {importe}). No se puede registrar otro pago."
+                    )
+
         data.monto_disponible = data.monto
         p = await pago_factura_servicio_repo.create(db, obj_in=data)
 
@@ -1083,6 +1107,18 @@ class PersonaLiquidacionService:
         elif not validacion_factura.pagado or validacion_factura.pagado <= 0:
             puede_liquidar = False
             mensaje = "No hay pagos registrados para esta etapa"
+        else:
+            # Verificar si el realizador ya tiene todo liquidado
+            from src.models import PersonaEtapa
+            stmt = select(PersonaEtapa).where(
+                PersonaEtapa.id_etapa == id_etapa,
+                PersonaEtapa.id_persona == id_persona
+            )
+            result = await db.exec(stmt)
+            pe = result.first()
+            if pe and pe.por_cobrar is not None and pe.por_cobrar <= 0:
+                puede_liquidar = False
+                mensaje = "Este realizador ya tiene todo liquidado (por cobrar = 0)"
 
         return PersonaLiquidacionValidacion(
             puede_liquidar=puede_liquidar,

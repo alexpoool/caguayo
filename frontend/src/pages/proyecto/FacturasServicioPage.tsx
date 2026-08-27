@@ -665,13 +665,25 @@ export function FacturasServicioPage() {
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button
-            onClick={() => openForm()}
-            className="gap-2 bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300"
-          >
-            <Plus className="h-4 w-4" />
-            Nueva Factura
-          </Button>
+          {(() => {
+            const etapaActual = selectedEtapaId || filtroEtapa;
+            // Verificar si la etapa seleccionada ya tiene una factura pagada
+            const facturaEtapa = etapaActual ? facturasInfinitas.find(f => f.id_etapa === etapaActual && f.estado === 'APROBADA') : null;
+            const facturaPagada = facturaEtapa && Number(facturaEtapa.pagado || 0) >= Number(facturaEtapa.importe || 0) && Number(facturaEtapa.importe || 0) > 0;
+            // También verificar si hay alguna factura pagada entre las filtradas
+            const algunaPagada = filteredDocs.some(f => Number(f.pagado || 0) >= Number(f.importe || 0) && Number(f.importe || 0) > 0 && f.id_etapa === etapaActual);
+            const botonDeshabilitado = facturaPagada || algunaPagada;
+            return (
+              <Button
+                onClick={() => openForm()}
+                disabled={!!botonDeshabilitado}
+                className={`gap-2 shadow-lg hover:shadow-xl transition-all duration-300 ${botonDeshabilitado ? 'bg-gray-400 cursor-not-allowed' : 'bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 hover:scale-105 active:scale-95'}`}
+              >
+                <Plus className="h-4 w-4" />
+                {botonDeshabilitado ? 'Factura Pagada' : 'Nueva Factura'}
+              </Button>
+            );
+          })()}
         </div>
       </div>
 
@@ -717,7 +729,19 @@ export function FacturasServicioPage() {
                 <TableHead>
                   <div className="flex items-center gap-2">
                     <DollarSign className="h-4 w-4 text-teal-600" />
-                    Pago
+                    Importe
+                  </div>
+                </TableHead>
+                <TableHead>
+                  <div className="flex items-center gap-2">
+                    <DollarSign className="h-4 w-4 text-green-600" />
+                    Pagado
+                  </div>
+                </TableHead>
+                <TableHead>
+                  <div className="flex items-center gap-2">
+                    <DollarSign className="h-4 w-4 text-red-600" />
+                    Saldo
                   </div>
                 </TableHead>
                 <TableHead>
@@ -732,7 +756,7 @@ export function FacturasServicioPage() {
             <TableBody>
               {isLoadingFacturas ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-12 text-gray-500">
+                  <TableCell colSpan={10} className="text-center py-12 text-gray-500">
                     <div className="flex items-center justify-center gap-2">
                       <Loader2 className="h-5 w-5 animate-spin" />
                       Cargando...
@@ -741,7 +765,7 @@ export function FacturasServicioPage() {
                 </TableRow>
               ) : filteredDocs.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-12 text-gray-500">
+                  <TableCell colSpan={10} className="text-center py-12 text-gray-500">
                     {searchTerm
                       ? 'No se encontraron facturas que coincidan con la búsqueda'
                       : 'No hay facturas registradas'}
@@ -783,6 +807,22 @@ export function FacturasServicioPage() {
                           }`}>
                           {Number(item.pagado || 0) >= Number(item.importe || 0) ? 'Pagada' : 'Por pagar'}
                         </span>
+                      </TableCell>
+                      <TableCell className="font-medium text-gray-900">
+                        {getMonedaSymbol(item.id_moneda)} {formatCifra(item.importe || 0)}
+                      </TableCell>
+                      <TableCell className="font-medium text-green-700">
+                        {getMonedaSymbol(item.id_moneda)} {formatCifra(item.pagado || 0)}
+                      </TableCell>
+                      <TableCell className="font-medium">
+                        {(() => {
+                          const saldo = Number(item.importe || 0) - Number(item.pagado || 0);
+                          return (
+                            <span className={saldo > 0 ? 'text-red-600' : 'text-green-600'}>
+                              {getMonedaSymbol(item.id_moneda)} {formatCifra(saldo)}
+                            </span>
+                          );
+                        })()}
                       </TableCell>
                       <TableCell onClick={(e) => e.stopPropagation()}>
                         <Button

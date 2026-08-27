@@ -7,7 +7,7 @@ import { personaEtapaService, etapasProyectoService, clientesService, monedaServ
 import type { PersonaEtapa, PersonaEtapaCreate, Etapa, SolicitudServicio, PersonaLiquidacion } from '../../types/servicio';
 import type { Cliente, ClienteNatural, ClienteNaturalCreate, ClienteJuridicaCreate, ClienteTCPCreate, ClienteTCP, ClienteJuridica } from '../../types/ventas';
 import type { Moneda } from '../../types/moneda';
-import { Plus, Save, Trash2, ArrowLeft, Search, Users, X, DollarSign, Eye } from 'lucide-react';
+import { Plus, Save, Trash2, ArrowLeft, Search, Users, X, DollarSign, Eye, CheckCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { formatCifra } from '../../utils/decimal';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -522,15 +522,22 @@ Nuevo Realizador
                         {getMonedaSymbol(item.id_moneda)} {formatCifra(totalesPagado.get(`${item.id_etapa}-${item.id_persona}`) || 0)}
                       </TableCell>
                       <TableCell onClick={(e) => e.stopPropagation()}>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => navigate(`/proyectos/liquidaciones?solicitud=${getSolicitudByEtapa(item.id_etapa) || ''}&etapa=${item.id_etapa}&persona=${item.id_persona}`)}
-                          className="gap-1 text-teal-600 border-teal-200 hover:bg-teal-50 hover:text-teal-700"
-                        >
-                          <DollarSign className="h-3.5 w-3.5" />
-                          Liquidaciones
-                        </Button>
+                        {Number(item.por_cobrar) <= 0 ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-green-100 text-green-700 rounded text-xs font-medium">
+                            <CheckCircle className="h-3.5 w-3.5" />
+                            Liquidado
+                          </span>
+                        ) : (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => navigate(`/proyectos/liquidaciones?solicitud=${getSolicitudByEtapa(item.id_etapa) || ''}&etapa=${item.id_etapa}&persona=${item.id_persona}`)}
+                            className="gap-1 text-teal-600 border-teal-200 hover:bg-teal-50 hover:text-teal-700"
+                          >
+                            <DollarSign className="h-3.5 w-3.5" />
+                            Liquidaciones
+                          </Button>
+                        )}
                       </TableCell>
                       <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                         <div className="flex justify-end gap-2">

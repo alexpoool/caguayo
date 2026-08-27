@@ -158,24 +158,38 @@ export function PagosFacturaServicioPage() {
             <ArrowLeft className="h-4 w-4" />
             Volver a Facturas
           </Button>
-          {factura && (
-            <div className="flex items-center gap-6 ml-4">
-              <div>
-                <span className="text-xs text-teal-600 uppercase tracking-wider">Factura</span>
-                <p className="font-bold text-gray-900">{factura.codigo_factura || `#${factura.id_factura_servicio}`}</p>
-              </div>
-              <div>
-                <span className="text-xs text-gray-500 uppercase tracking-wider">Importe</span>
-                <p className="font-bold text-gray-900">${formatCifra(factura.importe)}</p>
-              </div>
-              {factura.descripcion && (
+          {factura && (() => {
+            const pagado = Number(factura.pagado || 0);
+            const importe = Number(factura.importe || 0);
+            const saldo = importe - pagado;
+            const estaPagada = saldo <= 0 && importe > 0;
+            return (
+              <div className="flex items-center gap-6 ml-4">
                 <div>
-                  <span className="text-xs text-gray-500 uppercase tracking-wider">Descripción</span>
-                  <p className="text-gray-700">{factura.descripcion}</p>
+                  <span className="text-xs text-teal-600 uppercase tracking-wider">Factura</span>
+                  <p className="font-bold text-gray-900">{factura.codigo_factura || `#${factura.id_factura_servicio}`}</p>
                 </div>
-              )}
-            </div>
-          )}
+                <div>
+                  <span className="text-xs text-gray-500 uppercase tracking-wider">Importe</span>
+                  <p className="font-bold text-gray-900">{getMonedaNombre(factura.id_moneda)} {formatCifra(importe)}</p>
+                </div>
+                <div>
+                  <span className="text-xs text-green-600 uppercase tracking-wider">Pagado</span>
+                  <p className="font-bold text-green-700">{getMonedaNombre(factura.id_moneda)} {formatCifra(pagado)}</p>
+                </div>
+                <div>
+                  <span className={`text-xs uppercase tracking-wider ${saldo > 0 ? 'text-red-600' : 'text-green-600'}`}>Saldo</span>
+                  <p className={`font-bold ${saldo > 0 ? 'text-red-700' : 'text-green-700'}`}>{getMonedaNombre(factura.id_moneda)} {formatCifra(saldo)}</p>
+                </div>
+                {factura.descripcion && (
+                  <div>
+                    <span className="text-xs text-gray-500 uppercase tracking-wider">Descripción</span>
+                    <p className="text-gray-700">{factura.descripcion}</p>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
         </div>
       </div>
     </div>
@@ -198,13 +212,21 @@ export function PagosFacturaServicioPage() {
             </p>
           </div>
         </div>
-        <Button
-          onClick={openForm}
-          className="gap-2 bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300"
-        >
-          <Plus className="h-4 w-4" />
-          Nuevo Pago
-        </Button>
+        {(() => {
+          const pagado = Number(factura?.pagado || 0);
+          const importe = Number(factura?.importe || 0);
+          const estaPagada = importe > 0 && pagado >= importe;
+          return (
+            <Button
+              onClick={openForm}
+              disabled={estaPagada}
+              className={`gap-2 shadow-lg hover:shadow-xl transition-all duration-300 ${estaPagada ? 'bg-gray-400 cursor-not-allowed' : 'bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 hover:scale-105 active:scale-95'}`}
+            >
+              <Plus className="h-4 w-4" />
+              {estaPagada ? 'Factura Pagada' : 'Nuevo Pago'}
+            </Button>
+          );
+        })()}
       </div>
 
       <div className="flex gap-2">
