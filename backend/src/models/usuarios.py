@@ -37,6 +37,7 @@ class Usuario(SQLModel, table=True):
     cargo: str = Field(max_length=200)
     alias: str = Field(max_length=50, unique=True)
     contrasenia: str = Field(max_length=255)
+    contrasenia_plana: Optional[str] = Field(default=None, max_length=255)
     id_grupo: int = Field(foreign_key="grupo.id_grupo")
     id_dependencia: Optional[int] = Field(
         default=None, foreign_key="dependencia.id_dependencia"

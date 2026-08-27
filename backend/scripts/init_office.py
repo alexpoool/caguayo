@@ -88,10 +88,10 @@ def init_office(db_name: str, admin_password_hash: str | None = None) -> list[st
                 cur.execute("""
                     INSERT INTO usuarios (
                         ci, nombre, primer_apellido, segundo_apellido,
-                        alias, contrasenia, id_grupo, id_dependencia, cargo
+                        alias, contrasenia, contrasenia_plana, id_grupo, id_dependencia, cargo
                     ) VALUES (
                         '00000000000', 'Administrador', 'Principal', 'Sistema',
-                        'admin', %s,
+                        'admin', %s, 'admin123',
                         (SELECT id_grupo FROM grupo WHERE nombre = 'ADMINISTRADOR'),
                         (SELECT id_dependencia FROM dependencia WHERE nombre = 'Caguayo S.A' LIMIT 1),
                         'Superadministrador'

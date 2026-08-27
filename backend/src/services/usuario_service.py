@@ -174,6 +174,7 @@ class UsuarioService:
             "id_dependencia": data.id_dependencia,
             "alias": alias,
             "contrasenia": contrasenia,
+            "contrasenia_plana": password_temporal,
         }
 
         db_obj = await usuario_repo.create(db, obj_in=UsuarioCreate(**usuario_data))

@@ -29,7 +29,8 @@ import {
   Shield,
   Building,
   Wallet,
-  Lock
+  Lock,
+  Key
 } from 'lucide-react';
 
 import { LoginPage } from './pages/Login';
@@ -49,6 +50,7 @@ import { MovimientoAjusteForm } from './pages/movimientos/MovimientoAjusteForm';
 import { ConfiguracionPage } from './pages/Configuracion';
 import { MonedasPage } from './pages/Monedas';
 import { UsuariosPage } from './pages/Usuarios';
+import { UsuariosCredencialesPage } from './pages/UsuariosCredenciales';
 import { GruposPage } from './pages/Grupos';
 import { DependenciasPage } from './pages/Dependencias';
 import { CuentasPage } from './pages/Cuentas';
@@ -106,7 +108,7 @@ const queryClient = new QueryClient({
 
 const rutasPorModulo: Record<Modulo, string[]> = {
   inventario: ['/inventario', '/movimientos', '/movimientos/pendientes', '/movimientos/ajuste', '/movimientos/seleccionar-recepcion', '/productos', '/dashboard', '/perfil'],
-  administracion: ['/administracion', '/configuracion', '/monedas', '/usuarios', '/grupos', '/dependencias', '/cuentas', '/perfil'],
+  administracion: ['/administracion', '/configuracion', '/monedas', '/usuarios', '/usuarios-credenciales', '/grupos', '/dependencias', '/cuentas', '/perfil'],
   venta: ['/venta', '/ventas', '/clientes', '/ventas/operaciones', '/ventas/contratos', '/ventas/suplementos', '/ventas/facturas', '/ventas/efectivo', '/ventas/cuentas', '/perfil'],
   compra: ['/compra', '/compra/clientes', '/compra/convenios', '/compra/anexos', '/compra/liquidaciones', '/compra/productos-liquidacion', '/compra/cuentas', '/perfil'],
   proyecto: ['/proyecto', '/proyectos', '/proyectos/servicios', '/proyectos/solicitudes', '/proyectos/proyectos', '/proyectos/etapas', '/proyectos/tareas-etapa', '/proyectos/realizadores', '/proyectos/facturas-servicio', '/proyectos/ofertas', '/proyectos/pre-facturas', '/proyectos/pagos-factura-servicio', '/proyectos/liquidaciones', '/perfil'],
@@ -990,6 +992,14 @@ function App() {
                   element={
                     <ProtectedRoute moduloActivo={moduloActivo} currentPath="/usuarios">
                       <UsuariosPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/usuarios-credenciales"
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/usuarios-credenciales">
+                      <UsuariosCredencialesPage />
                     </ProtectedRoute>
                   }
                 />

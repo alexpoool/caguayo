@@ -287,6 +287,17 @@ def upgrade() -> None:
             {"nombre": "ADMINISTRADOR", "desc": "Grupo con acceso total al sistema"},
         )
 
+    # Grupo LECTOR (solo lectura)
+    check = conn.execute(
+        sa.text("SELECT 1 FROM grupo WHERE nombre = :nombre"),
+        {"nombre": "LECTOR"},
+    )
+    if check.fetchone() is None:
+        conn.execute(
+            sa.text("INSERT INTO grupo (nombre, descripcion) VALUES (:nombre, :desc)"),
+            {"nombre": "LECTOR", "desc": "Grupo de solo lectura para consultas"},
+        )
+
     # Funcionalidades
     for nombre in FUNCIONALIDADES:
         check = conn.execute(
@@ -320,6 +331,43 @@ def upgrade() -> None:
                     sa.text("INSERT INTO grupo_funcionalidad (id_grupo, id_funcionalidad) VALUES (:id_grupo, :id_func)"),
                     {"id_grupo": id_grupo, "id_func": id_func},
                 )
+
+    # Asignar funcionalidades de solo lectura al grupo LECTOR
+    LECTOR_FUNCIONALIDADES = [
+        "movimientos", "productos", "clientes", "convenios", "anexos",
+        "liquidaciones", "contratos", "suplementos", "facturas",
+        "venta_efectivo", "servicios", "solicitudes", "realizadores",
+        "proyectos", "dependencias", "cuentas",
+        "reporte_existencias", "reporte_movimientos_dependencia",
+        "reporte_movimientos_producto", "reporte_proveedores",
+        "reporte_clientes", "reporte_proyectos", "reporte_creadores",
+        "reporte_desempeno", "reporte_liquidaciones", "reporte_onat",
+        "reporte_mincult",
+    ]
+    result = conn.execute(
+        sa.text("SELECT id_grupo FROM grupo WHERE nombre = :nombre"),
+        {"nombre": "LECTOR"},
+    )
+    lector_row = result.fetchone()
+    if lector_row:
+        id_grupo = lector_row[0]
+        for func_name in LECTOR_FUNCIONALIDADES:
+            result_func = conn.execute(
+                sa.text("SELECT id_funcionalidad FROM funcionalidad WHERE nombre = :nombre"),
+                {"nombre": func_name},
+            )
+            func_row = result_func.fetchone()
+            if func_row:
+                id_func = func_row[0]
+                check = conn.execute(
+                    sa.text("SELECT 1 FROM grupo_funcionalidad WHERE id_grupo = :id_grupo AND id_funcionalidad = :id_func"),
+                    {"id_grupo": id_grupo, "id_func": id_func},
+                )
+                if check.fetchone() is None:
+                    conn.execute(
+                        sa.text("INSERT INTO grupo_funcionalidad (id_grupo, id_funcionalidad) VALUES (:id_grupo, :id_func)"),
+                        {"id_grupo": id_grupo, "id_func": id_func},
+                    )
 
     # Tipos de Dependencia
     _insert_if_not_exists(conn, "tipo_dependencia", ["nombre", "descripcion"], TIPOS_DEPENDENCIA, "nombre")

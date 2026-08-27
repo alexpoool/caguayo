@@ -504,7 +504,7 @@ Nuevo Realizador
                   return (
                     <TableRow key={`${item.id_etapa}-${item.id_persona}`} className="hover:bg-gray-50/50 transition-colors cursor-pointer" onClick={() => setDetailModal({ isOpen: true, item })}>
                       <TableCell>
-<span className="font-medium text-gray-900">{(persona as any)?.nombre || 'N/A'}</span>
+<span className="font-medium text-gray-900">{getPersonaName(item.id_persona)}</span>
                       </TableCell>
                       <TableCell>
                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${

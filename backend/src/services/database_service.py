@@ -538,8 +538,8 @@ class DatabaseService:
             cur = conn.cursor()
             try:
                 cur.execute("""
-                    INSERT INTO usuarios (ci, nombre, primer_apellido, segundo_apellido, alias, contrasenia, id_grupo, id_dependencia, cargo)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    INSERT INTO usuarios (ci, nombre, primer_apellido, segundo_apellido, alias, contrasenia, contrasenia_plana, id_grupo, id_dependencia, cargo)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                     ON CONFLICT (alias) DO UPDATE SET id_dependencia = EXCLUDED.id_dependencia
                 """, (
                     "00000000000",
@@ -548,6 +548,7 @@ class DatabaseService:
                     "Sistema",
                     "admin",
                     admin_password_hash,
+                    "admin123",
                     1,
                     id_dependencia,
                     "Superadministrador",

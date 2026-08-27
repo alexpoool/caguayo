@@ -46,6 +46,7 @@ class UsuarioBase(SQLModel):
 class UsuarioCreate(UsuarioBase):
     alias: Optional[str] = None
     contrasenia: Optional[str] = None
+    contrasenia_plana: Optional[str] = None
 
 
 class DependenciaSimpleRead(SQLModel):
@@ -76,3 +77,4 @@ class UsuarioUpdate(SQLModel):
     cargo: Optional[str] = None
     id_grupo: Optional[int] = None
     id_dependencia: Optional[int] = None
+    contrasenia_plana: Optional[str] = None
