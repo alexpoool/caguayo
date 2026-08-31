@@ -123,6 +123,14 @@ PG_PASS="${POSTGRES_PASSWORD:-postgres}"
 AUTH_DB="${AUTH_DATABASE:-caguayo}"
 CENTRAL_DB="${CENTRAL_DATABASE:-caguayosa}"
 
+# Auto-detectar puerto: intentar .env, luego 5432 (por defecto local)
+if ! PGPASSWORD="${PG_PASS}" psql -h "$PG_HOST" -p "$PG_PORT" -U "$PG_USER" -d postgres -c "SELECT 1" &> /dev/null; then
+  if [ "$PG_PORT" != "5432" ]; then
+    warn "Puerto ${PG_PORT} no responde — intentando puerto 5432 (local)"
+    PG_PORT=5432
+  fi
+fi
+
 echo ""
 info "Host: ${UL}${PG_HOST}:${PG_PORT}${D}"
 info "User: ${UL}${PG_USER}${D}"

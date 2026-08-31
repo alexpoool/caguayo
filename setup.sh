@@ -77,12 +77,20 @@ PG_PORT="${DB_PORT:-5433}"
 PG_USER="${POSTGRES_USER:-postgres}"
 PG_PASS_ENV="${POSTGRES_PASSWORD:-postgres}"
 
+# Auto-detectar puerto: intentar .env, luego 5432 (por defecto local)
+if ! PGPASSWORD="${PG_PASS_ENV}" psql -h "$PG_HOST" -p "$PG_PORT" -U "$PG_USER" -d postgres -c "SELECT 1" &> /dev/null; then
+  if [ "$PG_PORT" != "5432" ]; then
+    echo "  [WARN] Puerto ${PG_PORT} no responde — intentando puerto 5432 (local)"
+    PG_PORT=5432
+  fi
+fi
+
 if ! PGPASSWORD="${PG_PASS_ENV}" psql -h "$PG_HOST" -p "$PG_PORT" -U "$PG_USER" -d postgres -c "SELECT 1" &> /dev/null; then
   echo "  [ERROR] No se puede conectar a PostgreSQL en $PG_HOST:$PG_PORT"
   echo "  [INFO] Verificar que PostgreSQL esté corriendo y las credenciales sean correctas."
   exit 1
 fi
-echo "  [OK] Conexión a PostgreSQL exitosa."
+echo "  [OK] Conexión a PostgreSQL exitosa en puerto $PG_PORT"
 echo ""
 
 # ── 4. Crear bases de datos ────────────────────────────────────────────────
