@@ -73,7 +73,7 @@ echo "==> Verificando conexión a PostgreSQL..."
 export $(grep -v '^#' .env | xargs)
 
 PG_HOST="${POSTGRES_HOST:-localhost}"
-PG_PORT="${DB_PORT:-5433}"
+PG_PORT="${DB_PORT:-5432}"
 PG_USER="${POSTGRES_USER:-postgres}"
 PG_PASS_ENV="${POSTGRES_PASSWORD:-postgres}"
 
