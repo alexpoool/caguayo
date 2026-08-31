@@ -72,10 +72,10 @@ echo "==> Verificando conexión a PostgreSQL..."
 # Cargar variables del .env
 export $(grep -v '^#' .env | xargs)
 
-PG_HOST="${ADMIN_DB_HOST:-localhost}"
-PG_PORT="${ADMIN_DB_PORT:-5432}"
-PG_USER="${ADMIN_DB_USER:-postgres}"
-PG_PASS_ENV="${ADMIN_DB_PASSWORD}"
+PG_HOST="${POSTGRES_HOST:-localhost}"
+PG_PORT="${DB_PORT:-5433}"
+PG_USER="${POSTGRES_USER:-postgres}"
+PG_PASS_ENV="${POSTGRES_PASSWORD:-postgres}"
 
 if ! PGPASSWORD="${PG_PASS_ENV}" psql -h "$PG_HOST" -p "$PG_PORT" -U "$PG_USER" -d postgres -c "SELECT 1" &> /dev/null; then
   echo "  [ERROR] No se puede conectar a PostgreSQL en $PG_HOST:$PG_PORT"

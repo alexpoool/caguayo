@@ -116,10 +116,10 @@ else
   fi
 fi
 
-PG_HOST="${ADMIN_DB_HOST:-localhost}"
-PG_PORT="${ADMIN_DB_PORT:-5432}"
-PG_USER="${ADMIN_DB_USER:-postgres}"
-PG_PASS="${ADMIN_DB_PASSWORD:-postgres}"
+PG_HOST="${POSTGRES_HOST:-localhost}"
+PG_PORT="${DB_PORT:-5433}"
+PG_USER="${POSTGRES_USER:-postgres}"
+PG_PASS="${POSTGRES_PASSWORD:-postgres}"
 AUTH_DB="${AUTH_DATABASE:-caguayo}"
 CENTRAL_DB="${CENTRAL_DATABASE:-caguayosa}"
 
