@@ -21,18 +21,26 @@ check_cmd() {
 }
 
 MISSING=0
-check_cmd "podman"           "Instalar: https://podman.io/getting-started/installation" || MISSING=1
-check_cmd "podman-compose"   "Instalar: pip install podman-compose" || MISSING=1
 check_cmd "uv"               "Instalar: curl -LsSf https://astral.sh/uv/install.sh | sh" || MISSING=1
-check_cmd "pnpm"             "Instalar: npm install -g pnpm" || MISSING=1
 check_cmd "psql"             "Instalar: apt install postgresql-client" || MISSING=1
+check_cmd "pnpm"             "Instalar: npm install -g pnpm" || MISSING=1
 
 if [ $MISSING -eq 1 ]; then
   echo ""
   echo "[ERROR] Faltan prerequisitos. Instalarlos y volver a ejecutar."
   exit 1
 fi
-echo "  [OK] Todos los prerequisitos instalados."
+echo "  [OK] prerequisitos base instalados (uv, psql, pnpm)."
+
+# Podman es opcional (solo necesario para despliegue containerizado)
+USE_PODMAN=0
+if command -v podman &> /dev/null && command -v podman-compose &> /dev/null; then
+  USE_PODMAN=1
+  echo "  [OK] Podman detectado (despliegue containerizado disponible)."
+else
+  echo "  [INFO] Podman no encontrado — se ejecutará sin contenedores."
+  echo "         Para despliegue containerizado, instalar: https://podman.io/getting-started/installation"
+fi
 echo ""
 
 # ── 2. Configurar .env ─────────────────────────────────────────────────────
@@ -81,7 +89,7 @@ echo ""
 echo "==> Creando bases de datos..."
 
 AUTH_DB="${AUTH_DATABASE:-caguayo}"
-CENTRAL_DB="${CENTRAL_DATABASE:-caguayosa}"
+CENTRAL_DB="${CENTRAL_DATABASE:-caguayo_sa}"
 
 create_db() {
   local db_name=$1
@@ -147,8 +155,14 @@ echo "  Credenciales de acceso:"
 echo "    - Usuario:     admin"
 echo "    - Contraseña:  Admin123@"
 echo ""
-echo "  Para iniciar el sistema:"
-echo "    podman-compose up --build"
+if [ $USE_PODMAN -eq 1 ]; then
+  echo "  Para iniciar con contenedores:"
+  echo "    podman-compose up --build"
+else
+  echo "  Para iniciar sin contenedores:"
+  echo "    cd backend && uv run uvicorn main:app --host 0.0.0.0 --port 8000 &"
+  echo "    cd frontend && pnpm dev &"
+fi
 echo ""
 echo "  URLs:"
 echo "    - Frontend:    http://localhost:5173"
