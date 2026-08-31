@@ -22,6 +22,7 @@ services:
       - POSTGRES_USER=${POSTGRES_USER:-caguayo}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
       - POSTGRES_DB=${POSTGRES_DB:-caguayo}
+      - CENTRAL_DATABASE=${CENTRAL_DATABASE:-caguayosa}
     healthcheck:
       test: python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"
       interval: 10s

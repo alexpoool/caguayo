@@ -14,6 +14,7 @@ This repository contains the Caguayo application, a comprehensive inventory and 
 - `frontend/Dockerfile.dev` - Dev image for frontend hot reload
 - `.env.example` - Environment variable template for podman-compose
 - `start.sh` - Script de inicio para desarrollo local
+- `setup.sh` - Script de setup para nueva PC (ver sección Setup)
 
 ## Tecnologías
 
@@ -97,6 +98,93 @@ uv run python -m scripts.init_office caguayosa
   uv run alembic upgrade head
   uv run python -m scripts.init_office caguayosa
   ```
+
+## Setup en nueva PC
+
+### Instalación automática (recomendado)
+
+```bash
+git clone <repo-url>
+cd caguayo
+./setup.sh
+```
+
+El script `setup.sh` hace todo automáticamente:
+
+1. Verifica prerequisitos (podman, uv, pnpm, psql)
+2. Crea `.env` con valores generados aleatoriamente
+3. Verifica conexión a PostgreSQL
+4. Crea bases de datos (auth + central)
+5. Ejecuta migraciones Alembic
+6. Inicializa datos de oficina (admin, dependencia matriz)
+
+**Credenciales por defecto:**
+
+| Campo | Valor |
+|-------|-------|
+| Usuario | admin |
+| Contraseña | Admin123@ |
+
+> **Importante**: Cambiar la contraseña del admin en el primer inicio de sesión.
+
+### Instalación manual
+
+```bash
+# 1. Copiar y configurar .env
+cp .env.example .env
+# Editar .env con tus valores (SECRET_KEY, POSTGRES_PASSWORD, etc.)
+
+# 2. Crear bases de datos
+psql -U postgres -c "CREATE DATABASE caguayo;"
+psql -U postgres -c "CREATE DATABASE caguayosa;"
+
+# 3. Aplicar migraciones
+cd backend
+DATABASE_URL="postgresql+asyncpg://user:pass@localhost:5432/caguayosa" uv run alembic upgrade head
+DATABASE_URL="postgresql+asyncpg://user:pass@localhost:5432/caguayo" uv run alembic upgrade head
+
+# 4. Inicializar datos de oficina
+uv run python -m scripts.init_office caguayosa
+uv run python -m scripts.init_office caguayo
+
+# 5. Iniciar el sistema
+cd ..
+podman-compose up --build
+```
+
+### Variables de entorno importantes
+
+| Variable | Descripción | Ejemplo |
+|----------|-------------|---------|
+| `AUTH_DATABASE` | BD principal de autenticación | `caguayo` |
+| `CENTRAL_DATABASE` | BD central para replicar esquema a tenants | `caguayosa` |
+| `SECRET_KEY` | Clave secreta para JWT | `(generada por setup.sh)` |
+| `POSTGRES_PASSWORD` | Contraseña de PostgreSQL | `(generada por setup.sh)` |
+
+### Crear tenant nuevo (multi-tenant)
+
+Para crear una nueva base de datos de tenant (ej: `caguayo_sa`):
+
+**Desde el panel admin:**
+1. Ir a Administración → Dependencias
+2. Crear nueva dependencia con `base_datos = caguayo_sa`
+3. Se crea automáticamente con esquema replicado + catálogos
+
+**Manualmente:**
+```bash
+cd backend
+uv run python -c "
+from src.services.database_service import DatabaseService
+DatabaseService.crear_base_datos('caguayo_sa', init_office=True)
+"
+```
+
+Esto ejecuta:
+1. `CREATE DATABASE caguayo_sa`
+2. `pg_dump --schema-only` desde BD central → crea esquema
+3. `alembic stamp head` (marca sin ejecutar migraciones)
+4. Replicar catálogos (monedas, tipos, provincias, etc.)
+5. `init_office` (admin user, dependencia matriz)
 
 ## Usuario Superadministrador
 
