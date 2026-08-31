@@ -873,8 +873,20 @@ export const tipoConvenioService = {
 };
 
 export const tipoEntidadService = {
-  async getTiposEntidad(): Promise<any[]> {
-    return apiClient.get<any[]>('/tipos-entidad');
+  async getTiposEntidad(): Promise<TipoEntidad[]> {
+    return apiClient.get<TipoEntidad[]>('/tipos-entidad');
+  },
+
+  async createTipoEntidad(data: { nombre: string; descripcion?: string }): Promise<TipoEntidad> {
+    return apiClient.post<TipoEntidad>('/tipos-entidad', data);
+  },
+
+  async updateTipoEntidad(id: number, data: { nombre?: string; descripcion?: string }): Promise<TipoEntidad> {
+    return apiClient.put<TipoEntidad>(`/tipos-entidad/${id}`, data);
+  },
+
+  async deleteTipoEntidad(id: number): Promise<void> {
+    await apiClient.delete<void>(`/tipos-entidad/${id}`);
   }
 };
 

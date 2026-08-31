@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
@@ -21,6 +21,8 @@ import {
   Wallet,
   AlertCircle,
   Search,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import {
@@ -46,6 +48,7 @@ import {
   categoriasService,
   subcategoriasService,
   monedaService,
+  tipoEntidadService,
 } from "../services/api";
 
 
@@ -57,7 +60,8 @@ type ConfigSubTabType =
   | "tipo-proveedores"
   | "tipo-convenios"
   | "tipo-dependencia"
-  | "tipo-cuenta";
+  | "tipo-cuenta"
+  | "tipo-entidad";
 
 const configSubTabs: { id: ConfigSubTabType; label: string }[] = [
   { id: "tipo-contrato", label: "Tipos de Contrato" },
@@ -67,6 +71,7 @@ const configSubTabs: { id: ConfigSubTabType; label: string }[] = [
   { id: "tipo-proveedores", label: "Tipos de Proveedores" },
   { id: "tipo-convenios", label: "Tipos de Convenio" },
   { id: "tipo-dependencia", label: "Tipos de Dependencia" },
+  { id: "tipo-entidad", label: "Tipos de Entidad" },
 ];
 
 interface ConfigCardProps {
@@ -194,6 +199,37 @@ export function ConfiguracionPage() {
     isOpen: boolean;
     item: any | null;
   }>({ isOpen: false, item: null });
+
+  const tabsRef = useRef<HTMLDivElement>(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+
+  const checkScroll = useCallback(() => {
+    const el = tabsRef.current;
+    if (!el) return;
+    setCanScrollLeft(el.scrollLeft > 2);
+    setCanScrollRight(el.scrollLeft < el.scrollWidth - el.clientWidth - 2);
+  }, []);
+
+  useEffect(() => {
+    const el = tabsRef.current;
+    if (!el) return;
+    checkScroll();
+    el.addEventListener("scroll", checkScroll, { passive: true });
+    window.addEventListener("resize", checkScroll);
+    return () => {
+      el.removeEventListener("scroll", checkScroll);
+      window.removeEventListener("resize", checkScroll);
+    };
+  }, [checkScroll]);
+
+  const scrollTabs = (direction: "left" | "right") => {
+    const el = tabsRef.current;
+    if (!el) return;
+    const amount = 180;
+    el.scrollBy({ left: direction === "left" ? -amount : amount, behavior: "smooth" });
+  };
+
   const {
     data: tiposContrato = [],
     isLoading: loadingTiposContrato,
@@ -267,6 +303,15 @@ const {
     staleTime: 1000 * 60 * 5,
   });
 
+  const {
+    data: tiposEntidad = [],
+    isLoading: loadingTiposEntidad,
+    refetch: refetchTiposEntidad,
+  } = useQuery({
+    queryKey: ["tiposEntidad"],
+    queryFn: () => tipoEntidadService.getTiposEntidad(),
+  });
+
   const isAnyLoading =
     loadingTiposContrato ||
     loadingEstadosContrato ||
@@ -275,7 +320,8 @@ const {
     loadingTiposProveedor ||
     loadingTiposConvenio ||
     loadingTiposDependencia ||
-    loadingTiposCuenta;
+    loadingTiposCuenta ||
+    loadingTiposEntidad;
 
   // Mutations para tipos de contrato
   const createTipoContrato = useMutation({
@@ -471,6 +517,37 @@ const {
     },
   });
 
+  // Mutations para tipos de entidad
+  const createTipoEntidad = useMutation({
+    mutationFn: tipoEntidadService.createTipoEntidad,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["tiposEntidad"] });
+      refetchTiposEntidad();
+      toast.success("Tipo de entidad creado");
+      closeModal();
+    },
+  });
+
+  const updateTipoEntidad = useMutation({
+    mutationFn: ({ id, data }: { id: number; data: any }) =>
+      tipoEntidadService.updateTipoEntidad(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["tiposEntidad"] });
+      refetchTiposEntidad();
+      toast.success("Tipo de entidad actualizado");
+      closeModal();
+    },
+  });
+
+  const deleteTipoEntidad = useMutation({
+    mutationFn: tipoEntidadService.deleteTipoEntidad,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["tiposEntidad"] });
+      refetchTiposEntidad();
+      toast.success("Tipo de entidad eliminado");
+    },
+  });
+
   // Mutations para categorías
   const createCategoria = useMutation({
     mutationFn: categoriasService.createCategoria,
@@ -576,6 +653,9 @@ const {
       case "tipo-cuenta":
         refetchTiposCuenta();
         break;
+      case "tipo-entidad":
+        refetchTiposEntidad();
+        break;
     }
   };
 
@@ -672,6 +752,16 @@ const {
           createTipoDependencia.mutate(formData);
         }
         break;
+      case "tipo-entidad":
+        if (editingItem) {
+          updateTipoEntidad.mutate({
+            id: editingItem.id_tipo_entidad,
+            data: formData,
+          });
+        } else {
+          createTipoEntidad.mutate(formData);
+        }
+        break;
     }
   };
 
@@ -705,6 +795,9 @@ const {
         deleteTipoDependencia.mutate(item.id_tipo_dependencia);
         break;
       case "tipo-cuenta":
+        break;
+      case "tipo-entidad":
+        deleteTipoEntidad.mutate(item.id_tipo_entidad);
         break;
     }
     setConfirmDelete({ isOpen: false, type: null, item: null });
@@ -775,6 +868,14 @@ const {
       color: "bg-cyan-500",
       type: "tipo-cuenta",
     },
+    {
+      title: "Tipos de Entidad",
+      icon: <BuildingIcon className="h-8 w-8" />,
+      description: "Tipos de entidad para personas jurídicas",
+      count: tiposEntidad.length,
+      color: "bg-rose-500",
+      type: "tipo-entidad",
+    },
   ];
 
   const getItems = () => {
@@ -795,6 +896,8 @@ const {
         return tiposDependencia;
       case "tipo-cuenta":
         return tiposCuenta;
+      case "tipo-entidad":
+        return tiposEntidad;
       default:
         return [];
     }
@@ -818,6 +921,8 @@ const {
         return item.id_tipo_dependencia;
       case "tipo-cuenta":
         return item.id_tipo_cuenta;
+      case "tipo-entidad":
+        return item.id_tipo_entidad;
       default:
         return item.id;
     }
@@ -844,6 +949,8 @@ const {
         return "Nuevo Tipo de Dependencia";
       case "tipo-cuenta":
         return "Nuevo Tipo de Cuenta";
+      case "tipo-entidad":
+        return "Nuevo Tipo de Entidad";
       default:
         return "Nuevo Elemento";
     }
@@ -868,6 +975,8 @@ const {
         return <BuildingIcon className={`${className} text-indigo-600`} />;
       case "tipo-cuenta":
         return <Wallet className={`${className} text-cyan-600`} />;
+      case "tipo-entidad":
+        return <BuildingIcon className={`${className} text-rose-600`} />;
       default:
         return <Plus className={`${className} text-gray-600`} />;
     }
@@ -891,6 +1000,8 @@ const {
         return "from-indigo-50 to-blue-50";
       case "tipo-cuenta":
         return "from-cyan-50 to-sky-50";
+      case "tipo-entidad":
+        return "from-rose-50 to-pink-50";
       default:
         return "from-gray-50 to-gray-100";
     }
@@ -914,6 +1025,8 @@ const {
         return "bg-gradient-to-r from-indigo-50 to-blue-50";
       case "tipo-cuenta":
         return "bg-gradient-to-r from-cyan-50 to-sky-50";
+      case "tipo-entidad":
+        return "bg-gradient-to-r from-rose-50 to-pink-50";
       default:
         return "bg-gray-50";
     }
@@ -937,6 +1050,8 @@ const {
         return "from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800";
       case "tipo-cuenta":
         return "from-cyan-600 to-cyan-700 hover:from-cyan-700 hover:to-cyan-800";
+      case "tipo-entidad":
+        return "from-rose-600 to-rose-700 hover:from-rose-700 hover:to-rose-800";
       default:
         return "from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800";
     }
@@ -960,6 +1075,8 @@ const {
         return "bg-gradient-to-r from-indigo-50 to-blue-50";
       case "tipo-cuenta":
         return "bg-gradient-to-r from-cyan-50 to-sky-50";
+      case "tipo-entidad":
+        return "bg-gradient-to-r from-rose-50 to-pink-50";
       default:
         return "bg-gray-50";
     }
@@ -983,6 +1100,8 @@ const {
         return { bg: "bg-indigo-100", text: "text-indigo-700" };
       case "tipo-cuenta":
         return { bg: "bg-cyan-100", text: "text-cyan-700" };
+      case "tipo-entidad":
+        return { bg: "bg-rose-100", text: "text-rose-700" };
       default:
         return { bg: "bg-slate-50", text: "text-gray-700" };
     }
@@ -1006,6 +1125,8 @@ const {
         return "text-indigo-600";
       case "tipo-cuenta":
         return "text-cyan-600";
+      case "tipo-entidad":
+        return "text-rose-600";
       default:
         return "text-gray-600";
     }
@@ -1232,7 +1353,9 @@ const {
                             ? "bg-teal-100"
                             : activeConfigSubTab === "tipo-dependencia"
                               ? "bg-indigo-100"
-                              : "bg-cyan-100"
+                              : activeConfigSubTab === "tipo-cuenta"
+                                ? "bg-cyan-100"
+                                : "bg-rose-100"
               }`}
             >
               {activeConfigSubTab === "tipo-contrato" && (
@@ -1258,6 +1381,9 @@ const {
               )}
               {activeConfigSubTab === "tipo-cuenta" && (
                 <Wallet className="w-5 h-5 text-cyan-600" />
+              )}
+              {activeConfigSubTab === "tipo-entidad" && (
+                <BuildingIcon className="w-5 h-5 text-rose-600" />
               )}
             </div>
             <h2 className="text-lg font-bold text-gray-900">
@@ -1441,23 +1567,51 @@ const {
       </div>
 
       {/* Sub-tabs de configuración */}
-      <div className="flex gap-1 border-b bg-white rounded-t-lg px-2 pt-2">
-        {configSubTabs.map((tab) => (
+      <div className="relative flex items-center border-b bg-white rounded-t-lg">
+        {/* Arrow left */}
+        {canScrollLeft && (
           <button
-            key={tab.id}
-            onClick={() => {
-              setActiveConfigSubTab(tab.id);
-              setSearchTerm("");
-            }}
-            className={`px-4 py-2 text-sm font-medium whitespace-nowrap transition-colors ${
-              activeConfigSubTab === tab.id
-                ? "text-blue-600 border-b-2 border-blue-600 bg-blue-50"
-                : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"
-            }`}
+            onClick={() => scrollTabs("left")}
+            className="absolute left-0 z-10 flex items-center justify-center w-8 h-full bg-gradient-to-r from-white via-white/90 to-transparent hover:bg-gray-50 transition-colors"
+            aria-label="Desplazar a la izquierda"
           >
-            {tab.label}
+            <ChevronLeft className="h-4 w-4 text-gray-500" />
           </button>
-        ))}
+        )}
+
+        {/* Tabs container */}
+        <div
+          ref={tabsRef}
+          className="flex gap-1 overflow-x-auto hide-scrollbar px-2 pt-2 flex-1"
+        >
+          {configSubTabs.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => {
+                setActiveConfigSubTab(tab.id);
+                setSearchTerm("");
+              }}
+              className={`px-4 py-2 text-sm font-medium whitespace-nowrap transition-colors ${
+                activeConfigSubTab === tab.id
+                  ? "text-blue-600 border-b-2 border-blue-600 bg-blue-50"
+                  : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Arrow right */}
+        {canScrollRight && (
+          <button
+            onClick={() => scrollTabs("right")}
+            className="absolute right-0 z-10 flex items-center justify-center w-8 h-full bg-gradient-to-l from-white via-white/90 to-transparent hover:bg-gray-50 transition-colors"
+            aria-label="Desplazar a la derecha"
+          >
+            <ChevronRight className="h-4 w-4 text-gray-500" />
+          </button>
+        )}
       </div>
 
       {/* Vista de lista */}

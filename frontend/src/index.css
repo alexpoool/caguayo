@@ -54,3 +54,12 @@
     @apply transition-colors duration-200;
   }
 }
+
+/* Ocultar scrollbar manteniendo scroll */
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.hide-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}

@@ -1307,16 +1307,6 @@ export function LiquidacionesPage() {
                     className="mt-1"
                   />
                 </div>
-                
-                <div>
-                  <Label>Fecha Liquidación</Label>
-                  <Input
-                    type="date"
-                    value={formData.fecha_liquidacion}
-                    onChange={(e) => setFormData(prev => ({ ...prev, fecha_liquidacion: e.target.value }))}
-                    className="mt-1"
-                  />
-                </div>
 
                 <div className="md:col-span-2">
                   <Label>Descripción</Label>

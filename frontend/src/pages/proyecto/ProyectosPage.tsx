@@ -275,9 +275,11 @@ export function ProyectosPage() {
     setSuplementosPorContrato({});
     try {
       const data = await contratosService.getContratos(0, 1000);
-      const contratosDelCliente = solicitud.id_cliente
-        ? data.filter(c => c.id_cliente === solicitud.id_cliente)
-        : data;
+      const contratosDelCliente = pendingClientData
+        ? []  // Nuevo cliente: no puede tener contratos existentes
+        : solicitud.id_cliente
+          ? data.filter(c => c.id_cliente === solicitud.id_cliente)
+          : data;
       setAprobarModal(prev => ({ ...prev, contratos: contratosDelCliente, loadingContratos: false }));
     } catch {
       toast.error('Error al cargar contratos');

@@ -33,6 +33,7 @@ import type {
   ClienteTCP,
 } from "../../../../types/ventas";
 import { dependenciasService } from "../../../../services/administracion";
+import { tipoEntidadService } from "../../../../services/api";
 
 export interface ClienteFormProps {
   editingCliente: any | null;
@@ -58,6 +59,7 @@ export const ClienteForm: React.FC<ClienteFormProps> = ({
     tiposEntidad || [],
   );
   const [loadingProvincias, setLoadingProvincias] = useState(false);
+  const [loadingTiposEntidad, setLoadingTiposEntidad] = useState(false);
 
   useEffect(() => {
     if (provincias && Array.isArray(provincias) && provincias.length > 0) {
@@ -92,6 +94,24 @@ export const ClienteForm: React.FC<ClienteFormProps> = ({
       setLocalTiposEntidad(tiposEntidad);
     }
   }, [tiposEntidad]);
+
+  // Fetch tiposEntidad from API when not provided as prop
+  useEffect(() => {
+    if (localTiposEntidad.length === 0 && !loadingTiposEntidad) {
+      setLoadingTiposEntidad(true);
+      tipoEntidadService
+        .getTiposEntidad()
+        .then((data: any[]) => {
+          setLocalTiposEntidad(Array.isArray(data) ? data : []);
+        })
+        .catch((error: any) => {
+          console.error("Error loading tiposEntidad:", error);
+        })
+        .finally(() => {
+          setLoadingTiposEntidad(false);
+        });
+    }
+  }, []);
 
   const [tipoPersona, setTipoPersona] = useState<TipoPersona | null>(
     editingCliente?.tipo_persona || null,
