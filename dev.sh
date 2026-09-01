@@ -104,44 +104,29 @@ load_env() {
 do_stop() {
   section "🛑 ${W}Deteniendo servicios${D}"
 
+  # 1. Matar por PID file
   if [ -f "$PID_FILE" ]; then
     BACKEND_PID=$(grep "^BACKEND=" "$PID_FILE" | cut -d= -f2)
     FRONTEND_PID=$(grep "^FRONTEND=" "$PID_FILE" | cut -d= -f2)
-
-    if [ -n "$BACKEND_PID" ] && kill -0 "$BACKEND_PID" 2>/dev/null; then
-      kill "$BACKEND_PID" 2>/dev/null
-      ok "Backend detenido ${DIM}(PID: $BACKEND_PID)${D}"
-    else
-      warn "Backend no estaba corriendo"
-    fi
-
-    if [ -n "$FRONTEND_PID" ] && kill -0 "$FRONTEND_PID" 2>/dev/null; then
-      kill "$FRONTEND_PID" 2>/dev/null
-      ok "Frontend detenido ${DIM}(PID: $FRONTEND_PID)${D}"
-    else
-      warn "Frontend no estaba corriendo"
-    fi
-
+    [ -n "$BACKEND_PID" ] && kill "$BACKEND_PID" 2>/dev/null
+    [ -n "$FRONTEND_PID" ] && kill "$FRONTEND_PID" 2>/dev/null
     rm -f "$PID_FILE"
-  else
-    # Intentar matar por puerto
-    BACKEND_FOUND=$(ss -tlnp 2>/dev/null | grep ":8000 " | grep -oP 'pid=\K[0-9]+' | head -1)
-    FRONTEND_FOUND=$(ss -tlnp 2>/dev/null | grep ":5173 " | grep -oP 'pid=\K[0-9]+' | head -1)
-
-    if [ -n "$BACKEND_FOUND" ]; then
-      kill "$BACKEND_FOUND" 2>/dev/null
-      ok "Backend detenido ${DIM}(PID: $BACKEND_FOUND)${D}"
-    else
-      warn "Backend no estaba corriendo en puerto 8000"
-    fi
-
-    if [ -n "$FRONTEND_FOUND" ]; then
-      kill "$FRONTEND_FOUND" 2>/dev/null
-      ok "Frontend detenido ${DIM}(PID: $FRONTEND_FOUND)${D}"
-    else
-      warn "Frontend no estaba corriendo en puerto 5173"
-    fi
   fi
+
+  # 2. Matar por puerto (siempre, por si quedaron procesos huérfanos)
+  for port in 8000 5173; do
+    PIDS=$(ss -tlnp 2>/dev/null | grep ":${port} " | grep -oP 'pid=\K[0-9]+' | tr '\n' ' ')
+    if [ -n "$PIDS" ]; then
+      for pid in $PIDS; do
+        kill "$pid" 2>/dev/null
+      done
+      ok "Puerto ${port} liberado"
+    fi
+  done
+
+  # 3. Matar procesos uvicorn/pnpm huérfanos
+  pkill -f "uvicorn main:app.*8000" 2>/dev/null || true
+  pkill -f "pnpm.*dev" 2>/dev/null || true
 
   echo ""
 }
@@ -150,43 +135,10 @@ do_stop() {
 #  START — Iniciar Backend + Frontend
 # ══════════════════════════════════════════════════════════════════════════
 do_start() {
-  # Verificar que no estén corriendo
-  if [ -f "$PID_FILE" ]; then
-    BACKEND_PID=$(grep "^BACKEND=" "$PID_FILE" | cut -d= -f2)
-    FRONTEND_PID=$(grep "^FRONTEND=" "$PID_FILE" | cut -d= -f2)
-    RUNNING=0
-    [ -n "$BACKEND_PID" ] && kill -0 "$BACKEND_PID" 2>/dev/null && RUNNING=1
-    [ -n "$FRONTEND_PID" ] && kill -0 "$FRONTEND_PID" 2>/dev/null && RUNNING=1
-    if [ $RUNNING -eq 1 ]; then
-      warn "Los servicios ya están corriendo"
-      info "Backend PID: ${BACKEND_PID:-?} | Frontend PID: ${FRONTEND_PID:-?}"
-      echo ""
-      return
-    fi
-  fi
+  # Siempre matar procesos existentes primero
+  do_stop
 
   load_env
-
-  # Verificar puertos
-  PORT_OK=1
-  for port in 8000 5173; do
-    if ss -tlnp 2>/dev/null | grep -q ":${port} " || netstat -tlnp 2>/dev/null | grep -q ":${port} "; then
-      warn "Puerto ${port} ya está en uso"
-      PORT_OK=0
-    fi
-  done
-
-  if [ $PORT_OK -eq 0 ]; then
-    echo -e "   ${Y}¿Detener procesos y continuar? (s/N):${D} "
-    read -r response
-    if [[ "$response" =~ ^[sS]$ ]]; then
-      do_stop
-    else
-      echo -e "   ${R}Cancelado.${D}"
-      echo ""
-      return
-    fi
-  fi
 
   # ── Backend ────────────────────────────────────────────────────────────
   section "🚀 ${W}Iniciando Backend${D}"
