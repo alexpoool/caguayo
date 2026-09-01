@@ -61,15 +61,25 @@ step() {
   echo -e "   ${M}▸${D} ${W}$1${D} ${DIM}...${D}"
 }
 
-spinner() {
+wait_for_port() {
+  local port=$1
+  local label=$2
+  local timeout=${3:-15}
   local chars=("⠋" "⠙" "⠹" "⠸" "⠼" "⠴" "⠦" "⠧" "⠇" "⠏")
   local i=0
-  while kill -0 "$1" 2>/dev/null; do
-    echo -ne "\r   ${M}${chars[$i]}${D} ${DIM}$2${D}  "
+  local elapsed=0
+  while [ $elapsed -lt $timeout ]; do
+    if ss -tlnp 2>/dev/null | grep -q ":${port} " || netstat -tlnp 2>/dev/null | grep -q ":${port} "; then
+      echo -ne "\r\033[K"
+      return 0
+    fi
+    echo -ne "\r   ${M}${chars[$i]}${D} ${DIM}${label}... ${elapsed}s/${timeout}s${D}  "
     i=$(( (i + 1) % ${#chars[@]} ))
-    sleep 0.1
+    sleep 1
+    elapsed=$((elapsed + 1))
   done
   echo -ne "\r\033[K"
+  return 1
 }
 
 # ── Cargar .env ──────────────────────────────────────────────────────────
@@ -192,9 +202,11 @@ do_start() {
     uv run uvicorn main:app --reload --host 0.0.0.0 --port 8000 &
   BACKEND_PID=$!
   cd "$SCRIPT_DIR"
-  spinner $BACKEND_PID "Backend arrancando..."
-  sleep 2
-  ok "Backend iniciado ${DIM}(PID: $BACKEND_PID)${D}"
+  if wait_for_port 8000 "Backend arrancando" 15; then
+    ok "Backend listo ${DIM}(PID: $BACKEND_PID)${D}"
+  else
+    fail "Backend no respondió en puerto 8000 después de 15s"
+  fi
 
   # ── Frontend ───────────────────────────────────────────────────────────
   section "🎨 ${W}Iniciando Frontend${D}"
@@ -209,9 +221,11 @@ do_start() {
   pnpm dev &
   FRONTEND_PID=$!
   cd "$SCRIPT_DIR"
-  spinner $FRONTEND_PID "Frontend arrancando..."
-  sleep 1
-  ok "Frontend iniciado ${DIM}(PID: $FRONTEND_PID)${D}"
+  if wait_for_port 5173 "Frontend arrancando" 15; then
+    ok "Frontend listo ${DIM}(PID: $FRONTEND_PID)${D}"
+  else
+    fail "Frontend no respondió en puerto 5173 después de 15s"
+  fi
 
   # Guardar PIDs
   echo "BACKEND=$BACKEND_PID" > "$PID_FILE"
