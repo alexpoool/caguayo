@@ -94,7 +94,7 @@ load_env() {
   PG_PORT="${DB_PORT:-5432}"
   PG_USER="${POSTGRES_USER:-postgres}"
   PG_PASS="${POSTGRES_PASSWORD:-postgres}"
-  AUTH_DB="${AUTH_DATABASE:-caguayo}"
+  AUTH_DB="${AUTH_DATABASE:-caguayosa}"
   CENTRAL_DB="${CENTRAL_DATABASE:-caguayosa}"
 }
 
