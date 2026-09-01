@@ -56,9 +56,10 @@ def init_office(db_name: str, admin_password_hash: str | None = None) -> list[st
     errors: list[str] = []
     inserted: list[str] = []
 
-    with _connect(db_name) as conn:
-        conn.autocommit = True
-        cur = conn.cursor()
+    conn = _connect(db_name)
+    conn.autocommit = True
+    cur = conn.cursor()
+    try:
 
         # 1. Dependencia matriz (solo si tabla vacía)
         if _table_count(conn, "dependencia") == 0:
@@ -107,10 +108,10 @@ def init_office(db_name: str, admin_password_hash: str | None = None) -> list[st
                 cur.execute("""
                     INSERT INTO clientes (
                         nombre, tipo_persona, nit, codigo, direccion,
-                        tipo_relacion, estado
+                        tipo_relacion, estado, fecha_registro
                     ) VALUES (
                         'Caguayo S.A', 'JURIDICA', 'NIT-CAGUAYO-001',
-                        'CAGUAYO', 'Vista Alegre', 'CLIENTE', 'ACTIVO'
+                        'CAGUAYO', 'Vista Alegre', 'CLIENTE', 'ACTIVO', CURRENT_DATE
                     )
                 """)
                 inserted.append("clientes")
@@ -158,6 +159,8 @@ def init_office(db_name: str, admin_password_hash: str | None = None) -> list[st
                 errors.append(f"anexo: {e}")
 
         cur.close()
+    finally:
+        conn.close()
 
     return inserted, errors
 
