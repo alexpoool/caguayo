@@ -34,10 +34,14 @@ def upgrade() -> None:
     rp = conn.execute(sa.text("SELECT id_moneda FROM moneda ORDER BY id_moneda"))
     moneda_ids = [row[0] for row in rp.fetchall()]
 
+    # On a fresh DB these parent tables are empty — nothing to seed.
+    if not anexo_ids and not factura_ids and not venta_efectivo_ids:
+        return
+
     random.seed(42)
 
     item_anexo_rows = []
-    for _ in range(100):
+    for _ in range(100 if anexo_ids else 0):
         id_anexo = random.choice(anexo_ids)
         id_producto = random.choice(producto_ids)
         cantidad = random.randint(1, 20)
@@ -56,16 +60,17 @@ def upgrade() -> None:
             }
         )
 
-    conn.execute(
-        sa.text("""
-            INSERT INTO item_anexo (id_anexo, id_producto, cantidad, precio_compra, precio_venta, id_moneda)
-            VALUES (:id_anexo, :id_producto, :cantidad, :precio_compra, :precio_venta, :id_moneda)
-        """),
-        item_anexo_rows,
-    )
+    if item_anexo_rows:
+        conn.execute(
+            sa.text("""
+                INSERT INTO item_anexo (id_anexo, id_producto, cantidad, precio_compra, precio_venta, id_moneda)
+                VALUES (:id_anexo, :id_producto, :cantidad, :precio_compra, :precio_venta, :id_moneda)
+            """),
+            item_anexo_rows,
+        )
 
     item_factura_rows = []
-    for _ in range(100):
+    for _ in range(100 if factura_ids else 0):
         id_factura = random.choice(factura_ids)
         id_producto = random.choice(producto_ids)
         cantidad = random.randint(1, 20)
@@ -84,16 +89,17 @@ def upgrade() -> None:
             }
         )
 
-    conn.execute(
-        sa.text("""
-            INSERT INTO item_factura (id_factura, id_producto, cantidad, precio_compra, precio_venta, id_moneda)
-            VALUES (:id_factura, :id_producto, :cantidad, :precio_compra, :precio_venta, :id_moneda)
-        """),
-        item_factura_rows,
-    )
+    if item_factura_rows:
+        conn.execute(
+            sa.text("""
+                INSERT INTO item_factura (id_factura, id_producto, cantidad, precio_compra, precio_venta, id_moneda)
+                VALUES (:id_factura, :id_producto, :cantidad, :precio_compra, :precio_venta, :id_moneda)
+            """),
+            item_factura_rows,
+        )
 
     item_venta_efectivo_rows = []
-    for _ in range(100):
+    for _ in range(100 if venta_efectivo_ids else 0):
         id_venta_efectivo = random.choice(venta_efectivo_ids)
         id_producto = random.choice(producto_ids)
         cantidad = random.randint(1, 20)
@@ -112,13 +118,14 @@ def upgrade() -> None:
             }
         )
 
-    conn.execute(
-        sa.text("""
-            INSERT INTO item_venta_efectivo (id_venta_efectivo, id_producto, cantidad, precio_compra, precio_venta, id_moneda)
-            VALUES (:id_venta_efectivo, :id_producto, :cantidad, :precio_compra, :precio_venta, :id_moneda)
-        """),
-        item_venta_efectivo_rows,
-    )
+    if item_venta_efectivo_rows:
+        conn.execute(
+            sa.text("""
+                INSERT INTO item_venta_efectivo (id_venta_efectivo, id_producto, cantidad, precio_compra, precio_venta, id_moneda)
+                VALUES (:id_venta_efectivo, :id_producto, :cantidad, :precio_compra, :precio_venta, :id_moneda)
+            """),
+            item_venta_efectivo_rows,
+        )
 
 
 def downgrade() -> None:
