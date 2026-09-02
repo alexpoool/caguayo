@@ -10,7 +10,7 @@ load_dotenv()
 
 # Context variable to store the database name for the current request
 _current_db: ContextVar[str] = ContextVar(
-    "current_db", default=os.getenv("AUTH_DATABASE", "caguayosa")
+    "current_db", default=os.getenv("AUTH_DATABASE")
 )
 
 
@@ -31,7 +31,7 @@ elif DATABASE_URL.startswith("postgresql+psycopg://"):
         "postgresql+psycopg://", "postgresql+asyncpg://"
     )
 
-AUTH_DATABASE = os.getenv("AUTH_DATABASE", "caguayosa")
+AUTH_DATABASE = os.environ["AUTH_DATABASE"]
 
 # Default engine for auth database
 engine = create_async_engine(

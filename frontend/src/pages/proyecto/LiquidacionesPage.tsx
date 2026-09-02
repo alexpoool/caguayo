@@ -121,6 +121,7 @@ export function LiquidacionesPage() {
     porcentaje_caguayo: 10,
     tributario: 5,
     comision_bancaria: 0,
+    comision_admin_obra: 0,
     gasto_empresa: 0,
     doc_pago_liquidacion: '',
     observacion: ''
@@ -326,6 +327,7 @@ export function LiquidacionesPage() {
         porcentaje_caguayo: porcentajeCaguayo,
         tributario: item.tributario || 5,
         comision_bancaria: item.comision_bancaria || 0,
+        comision_admin_obra: item.comision_admin_obra || 0,
         gasto_empresa: item.gasto_empresa || 0,
         doc_pago_liquidacion: confirmData.doc_pago_liquidacion || undefined
       } as any
@@ -343,6 +345,7 @@ export function LiquidacionesPage() {
       porcentaje_caguayo: 10,
       tributario: 5,
       comision_bancaria: 0,
+      comision_admin_obra: 0,
       gasto_empresa: 0,
       doc_pago_liquidacion: '',
       observacion: ''
@@ -412,7 +415,8 @@ export function LiquidacionesPage() {
     const subtotal = calculateSubtotal();
     const gasto_empresa = Number(formData.gasto_empresa) || 0;
     const comision = Number(formData.comision_bancaria) || 0;
-    return subtotal - gasto_empresa - comision;
+    const comision_admin = Number(formData.comision_admin_obra) || 0;
+    return subtotal - gasto_empresa - comision - comision_admin;
   };
 
   const loadPersonaEtapaCobro = async (idEtapa: number, idPersona: number) => {
@@ -559,6 +563,7 @@ export function LiquidacionesPage() {
         porcentaje_caguayo: item.porcentaje_caguayo || 10,
         tributario: item.tributario || 5,
         comision_bancaria: item.comision_bancaria || 0,
+        comision_admin_obra: item.comision_admin_obra || 0,
         gasto_empresa: item.gasto_empresa || 0,
         doc_pago_liquidacion: item.doc_pago_liquidacion || '',
         observacion: item.observacion || ''
@@ -625,6 +630,7 @@ export function LiquidacionesPage() {
       porcentaje_caguayo: Number(formData.porcentaje_caguayo) || 10,
       tributario: Number(formData.tributario) || 5,
       comision_bancaria: Number(formData.comision_bancaria) || 0,
+      comision_admin_obra: Number(formData.comision_admin_obra) || 0,
       gasto_empresa: Number(formData.gasto_empresa) || 0,
       observacion: formData.observacion || undefined
     };
@@ -687,6 +693,7 @@ export function LiquidacionesPage() {
     const tributario = Number(liquidacion.tributario || 5);
     const tributarioMonto = formatCifra(liquidacion.tributario_monto || (Number(devengado) * tributario / 100));
     const comisionBancaria = formatCifra(liquidacion.comision_bancaria);
+    const comisionAdminObra = formatCifra(liquidacion.comision_admin_obra);
     const gastoEmpresa = formatCifra(liquidacion.gasto_empresa);
     const netoPagar = formatCifra(liquidacion.neto_pagar);
     
@@ -777,6 +784,7 @@ export function LiquidacionesPage() {
             <div class="header-box-row" style="font-weight: bold; border-bottom: 1px solid #333; padding-bottom: 4px;"><strong>SUBTOTAL:</strong> ${subtotal}</div>
             <div class="header-box-row"><span style="color: #666;">Gasto Empresa:</span> -${gastoEmpresa}</div>
             <div class="header-box-row"><span style="color: #666;">Comisión:</span> -${comisionBancaria}</div>
+            <div class="header-box-row"><span style="color: #666;">Administración de Obra:</span> -${comisionAdminObra}</div>
             <div class="header-box-row total-final"><strong>NETO A PAGAR:</strong> ${netoPagar}</div>
         </div>
     </div>
@@ -1320,7 +1328,7 @@ export function LiquidacionesPage() {
               </div>
 
               <div className="mt-6 pt-6 border-t">
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
                   <div>
                     <Label>% Caguayo</Label>
                     <Input
@@ -1348,6 +1356,17 @@ export function LiquidacionesPage() {
                       step="0.01"
                       value={formData.comision_bancaria || ''}
                       onChange={(e) => setFormData(prev => ({ ...prev, comision_bancaria: e.target.value === '' ? 0 : Number(e.target.value) }))}
+                      className="mt-1"
+                      placeholder="0.00"
+                    />
+                  </div>
+                  <div>
+                    <Label>Administración de obra</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={formData.comision_admin_obra || ''}
+                      onChange={(e) => setFormData(prev => ({ ...prev, comision_admin_obra: e.target.value === '' ? 0 : Number(e.target.value) }))}
                       className="mt-1"
                       placeholder="0.00"
                     />
@@ -1420,6 +1439,10 @@ export function LiquidacionesPage() {
                     <div className="flex justify-between text-red-600">
                       <span>Comisión:</span>
                       <span>- {formatCifra(formData.comision_bancaria)}</span>
+                    </div>
+                    <div className="flex justify-between text-red-600">
+                      <span>Comisión (Admin. Obra):</span>
+                      <span>- {formatCifra(formData.comision_admin_obra)}</span>
                     </div>
                     <div className="flex justify-between pt-2 border-t border-gray-300">
                       <span className="font-semibold text-gray-800">Neto a Pagar:</span>
@@ -1525,6 +1548,10 @@ export function LiquidacionesPage() {
                   <div className="bg-gray-50 p-3 rounded-xl">
                     <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Comisión</p>
                     <p className="font-bold text-gray-900">{getMonedaSimbolo(detailModal.item.id_moneda)} {formatCifra(detailModal.item.comision_bancaria)}</p>
+                  </div>
+                  <div className="bg-gray-50 p-3 rounded-xl">
+                    <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Comisión (Admin. Obra)</p>
+                    <p className="font-bold text-gray-900">{getMonedaSimbolo(detailModal.item.id_moneda)} {formatCifra(detailModal.item.comision_admin_obra)}</p>
                   </div>
                   <div className="bg-teal-50 p-3 rounded-xl border border-teal-100">
                     <p className="text-xs text-teal-600 uppercase tracking-wider mb-1">Gasto Empresa</p>

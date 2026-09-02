@@ -800,6 +800,7 @@ export const personaLiquidacionService = {
     porcentaje_caguayo?: number;
     tributario?: number;
     comision_bancaria?: number;
+    comision_admin_obra?: number;
     gasto_empresa?: number;
     observaciones?: string;
     doc_pago_liquidacion?: string;

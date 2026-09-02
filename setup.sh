@@ -135,8 +135,9 @@ set +a
 PG_HOST="${POSTGRES_HOST:-localhost}"
 PG_PORT="${DB_PORT:-5432}"
 PG_USER="${POSTGRES_USER:-postgres}"
-PG_PASS="${POSTGRES_PASSWORD:-postgres}"AUTH_DB="${AUTH_DATABASE:-caguayosa}"
-  CENTRAL_DB="${CENTRAL_DATABASE:-caguayosa}"
+PG_PASS="${POSTGRES_PASSWORD:-postgres}"
+AUTH_DB="${AUTH_DATABASE:?AUTH_DATABASE not set in .env}"
+CENTRAL_DB="${CENTRAL_DATABASE:?CENTRAL_DATABASE not set in .env}"
 
 # ══════════════════════════════════════════════════════════════════════════
 #  3) FORZAR CONEXIÓN A POSTGRESQL

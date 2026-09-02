@@ -40,7 +40,7 @@ ADMIN_DB_PORT = int(os.getenv("ADMIN_DB_PORT", 5432))
 ADMIN_DB_USER = os.getenv("ADMIN_DB_USER", "postgres")
 ADMIN_DB_PASSWORD = os.getenv("ADMIN_DB_PASSWORD", "")
 ADMIN_DB_NAME = os.getenv("ADMIN_DB_NAME", "postgres")
-CENTRAL_DB = os.getenv("CENTRAL_DATABASE", "caguayosa")
+CENTRAL_DB = os.environ["CENTRAL_DATABASE"]
 
 
 # ── Validación ───────────────────────────────────────────────────────

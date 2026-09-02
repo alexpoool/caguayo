@@ -248,6 +248,7 @@ class PersonaLiquidacion(SQLModel, table=True):
     tributario: Decimal = Field(default=Decimal("0.00"))
     tributario_monto: Decimal = Field(default=Decimal("0.00"))
     comision_bancaria: Decimal = Field(default=Decimal("0.00"))
+    comision_admin_obra: Decimal = Field(default=Decimal("0.00"))
     neto_pagar: Decimal = Field(default=Decimal("0.00"))
     id_tipo_concepto: Optional[int] = None
     doc_pago_liquidacion: Optional[str] = Field(default=None, max_length=100)

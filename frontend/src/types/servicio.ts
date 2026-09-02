@@ -343,6 +343,7 @@ export interface PersonaLiquidacion {
   tributario: number;
   tributario_monto: number;
   comision_bancaria: number;
+  comision_admin_obra: number;
   neto_pagar: number;
   id_tipo_concepto?: number;
   doc_pago_liquidacion?: string;
@@ -369,6 +370,7 @@ export interface PersonaLiquidacionCreate {
   tributario?: number;
   tributario_monto?: number;
   comision_bancaria?: number;
+  comision_admin_obra?: number;
   neto_pagar?: number;
   id_tipo_concepto?: number;
   doc_pago_liquidacion?: string;
@@ -394,6 +396,7 @@ export interface PersonaLiquidacionUpdate {
   tributario?: number;
   tributario_monto?: number;
   comision_bancaria?: number;
+  comision_admin_obra?: number;
   neto_pagar?: number;
   id_tipo_concepto?: number;
   doc_pago_liquidacion?: string;
@@ -416,6 +419,7 @@ export type PersonaLiquidacionInput = {
   tributario?: number;
   gasto_empresa?: number;
   comision_bancaria?: number;
+  comision_admin_obra?: number;
   doc_pago_liquidacion?: string;
   observacion?: string;
 };
@@ -435,6 +439,7 @@ export type PersonaLiquidacionInputUpdate = {
   tributario?: number;
   gasto_empresa?: number;
   comision_bancaria?: number;
+  comision_admin_obra?: number;
   doc_pago_liquidacion?: string;
   observacion?: string;
 };

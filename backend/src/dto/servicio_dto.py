@@ -384,6 +384,7 @@ class PersonaLiquidacionBase(SQLModel):
     tributario: Decimal = Decimal("5.00")
     tributario_monto: Decimal = Decimal("0.00")
     comision_bancaria: Decimal = Decimal("0.00")
+    comision_admin_obra: Decimal = Decimal("0.00")
     neto_pagar: Decimal = Decimal("0.00")
     id_tipo_concepto: Optional[int] = None
     doc_pago_liquidacion: Optional[str] = None
@@ -408,6 +409,7 @@ class PersonaLiquidacionCreateInput(SQLModel):
     tributario: float = 5.0
     gasto_empresa: float = 0.0
     comision_bancaria: float = 0.0
+    comision_admin_obra: float = 0.0
     doc_pago_liquidacion: Optional[str] = Field(default=None, max_length=100)
     observacion: Optional[str] = Field(default=None, max_length=500)
 
@@ -432,7 +434,7 @@ class PersonaLiquidacionCreateInput(SQLModel):
             raise ValueError("tributario debe estar entre 0 y 100")
         return v
 
-    @field_validator("gasto_empresa", "comision_bancaria")
+    @field_validator("gasto_empresa", "comision_bancaria", "comision_admin_obra")
     @classmethod
     def validar_monto_no_negativo(cls, v: float) -> float:
         if v < 0:
@@ -459,6 +461,7 @@ class PersonaLiquidacionUpdateInput(SQLModel):
     tributario: Optional[float] = None
     gasto_empresa: Optional[float] = None
     comision_bancaria: Optional[float] = None
+    comision_admin_obra: Optional[float] = None
     doc_pago_liquidacion: Optional[str] = None
     observacion: Optional[str] = None
 
@@ -486,6 +489,7 @@ class PersonaLiquidacionUpdate(SQLModel):
     tributario: Optional[Decimal] = None
     tributario_monto: Optional[Decimal] = None
     comision_bancaria: Optional[Decimal] = None
+    comision_admin_obra: Optional[Decimal] = None
     neto_pagar: Optional[Decimal] = None
     id_tipo_concepto: Optional[int] = None
     doc_pago_liquidacion: Optional[str] = None
@@ -498,6 +502,7 @@ class PersonaLiquidacionConfirmar(SQLModel):
     porcentaje_caguayo: Optional[float] = Field(default=None, ge=0, le=100)
     tributario: Optional[float] = Field(default=None, ge=0, le=100)
     comision_bancaria: Optional[float] = Field(default=None, ge=0)
+    comision_admin_obra: Optional[float] = Field(default=None, ge=0)
     gasto_empresa: Optional[float] = Field(default=None, ge=0)
     observaciones: Optional[str] = Field(default=None, max_length=500)
     doc_pago_liquidacion: Optional[str] = Field(default=None, max_length=100)

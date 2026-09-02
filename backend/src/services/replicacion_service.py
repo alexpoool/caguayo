@@ -38,12 +38,12 @@ def get_db_connection(database: str, host: str = None, port: int = None,
 
 
 class ReplicacionService:
-    CENTRAL_DB = os.getenv("CENTRAL_DATABASE", "caguayosa")
+    CENTRAL_DB = os.environ["CENTRAL_DATABASE"]
 
     @staticmethod
     def get_sucursales() -> List[Dict[str, Any]]:
         try:
-            with get_db_connection(os.getenv("CENTRAL_DATABASE", "caguayosa")) as conn:
+            with get_db_connection(ReplicacionService.CENTRAL_DB) as conn:
                 cur = conn.cursor()
 
                 cur.execute("""
@@ -66,7 +66,7 @@ class ReplicacionService:
                         for row in rows
                     ]
 
-                central = os.getenv("CENTRAL_DATABASE", "caguayosa")
+                central = ReplicacionService.CENTRAL_DB
                 cur.execute("""
                     SELECT datname 
                     FROM pg_database 

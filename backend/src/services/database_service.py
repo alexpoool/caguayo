@@ -145,7 +145,7 @@ class DatabaseService:
             admin_password = os.getenv("ADMIN_DB_PASSWORD")
             try:
                 cur.execute("DROP SERVER IF EXISTS servidor_central CASCADE;")
-                central_db_fdw = os.getenv("CENTRAL_DATABASE", "caguayosa")
+                central_db_fdw = os.environ["CENTRAL_DATABASE"]
                 cur.execute("""
                     CREATE SERVER servidor_central
                     FOREIGN DATA WRAPPER postgres_fdw
@@ -168,7 +168,7 @@ class DatabaseService:
             cur.close()
 
         # 3. Create schema via pg_dump from central database, then stamp alembic
-        central_db = os.getenv("CENTRAL_DATABASE", "caguayosa")
+        central_db = os.environ["CENTRAL_DATABASE"]
         admin_user = os.getenv("ADMIN_DB_USER", "postgres")
         admin_password = os.getenv("ADMIN_DB_PASSWORD", "")
         admin_host = os.getenv("ADMIN_DB_HOST", "localhost")
@@ -312,7 +312,7 @@ class DatabaseService:
         logger.info("Replicating data from central to %s", base_datos)
 
         # L4 FIX: No usar autocommit en la BD local para poder hacer rollback
-        with get_db_connection(os.getenv("CENTRAL_DATABASE", "caguayosa")) as central_conn:
+        with get_db_connection(os.environ["CENTRAL_DATABASE"]) as central_conn:
             central_conn.autocommit = True
             central_cur = central_conn.cursor()
 
