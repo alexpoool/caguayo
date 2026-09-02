@@ -28,7 +28,6 @@ import {
   ArrowLeft,
   Sparkles,
   CheckCircle2,
-  Database,
   Copy,
   Check,
   Hash,
@@ -186,10 +185,7 @@ export function DependenciasPage() {
   const [databaseCreatedModal, setDatabaseCreatedModal] = useState<{
     isOpen: boolean;
     dependencia: Dependencia | null;
-    tablas: string[];
-  }>({ isOpen: false, dependencia: null, tablas: [] });
-
-  const [copiedTable, setCopiedTable] = useState<string | null>(null);
+  }>({ isOpen: false, dependencia: null });
 
   const { data: dependencias = [] } = useQuery({
     queryKey: ["dependencias"],
@@ -212,19 +208,13 @@ export function DependenciasPage() {
     enabled: !!formData.id_provincia,
   });
 
-  const [idConexionExistente, setIdConexionExistente] = useState<string | null>(null);
-  const [busquedaBD, setBusquedaBD] = useState("");
-  const [showDropdownBD, setShowDropdownBD] = useState(false);
-  const dropdownBDRef = useRef<HTMLDivElement>(null);
+
 
   const [busquedaPadre, setBusquedaPadre] = useState("");
   const [showDropdownPadre, setShowDropdownPadre] = useState(false);
   const padreDropdownRef = useRef<HTMLDivElement>(null);
 
-  const { data: basesDeDatos = [] } = useQuery({
-    queryKey: ["bases-de-datos"],
-    queryFn: () => dependenciasService.getBasesDeDatos(),
-  });
+
 
   // Refetch municipios when provincia changes
   useEffect(() => {
@@ -263,9 +253,7 @@ export function DependenciasPage() {
   // Cerrar dropdowns al hacer clic fuera
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownBDRef.current && !dropdownBDRef.current.contains(event.target as Node)) {
-        setShowDropdownBD(false);
-      }
+
       if (padreDropdownRef.current && !padreDropdownRef.current.contains(event.target as Node)) {
         setShowDropdownPadre(false);
       }
@@ -274,9 +262,7 @@ export function DependenciasPage() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const basesDeDatosFiltradas = basesDeDatos.filter((bd) =>
-    bd.nombre_database.toLowerCase().includes(busquedaBD.toLowerCase()),
-  );
+
 
   const dependenciasPadreFiltradas = dependencias.filter((d) =>
     d.nombre.toLowerCase().includes(busquedaPadre.toLowerCase()),
@@ -290,7 +276,6 @@ export function DependenciasPage() {
       setDatabaseCreatedModal({
         isOpen: true,
         dependencia: data,
-        tablas: data.tablas_creadas ?? [],
       });
       setView("list");
     },
@@ -368,22 +353,17 @@ export function DependenciasPage() {
     setSelectedPadre(null);
     setBusquedaPadre("");
     setShowDropdownPadre(false);
-    setIdConexionExistente(null);
-    setBusquedaBD("");
-    setShowDropdownBD(false);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const esNuevaBD = !idConexionExistente && !!formData.base_datos;
     if (
       !formData.nombre ||
       !formData.denominacion ||
       formData.denominacion.length > 3 ||
       !formData.direccion ||
       !formData.telefono ||
-      !formData.id_tipo_dependencia ||
-      (!formData.codigo_padre && !esNuevaBD)
+      !formData.id_tipo_dependencia
     ) {
       const msg = formData.denominacion.length > 3
         ? "La denominación no puede tener más de 3 caracteres"
@@ -415,7 +395,6 @@ export function DependenciasPage() {
       
       const data: DependenciaConCuentasCreate = {
         dependencia: dependenciaData,
-        base_datos_existente: idConexionExistente ? idConexionExistente : undefined,
       };
       createDependencia.mutate(data);
     }
@@ -447,13 +426,6 @@ export function DependenciasPage() {
       setBusquedaPadre(padre?.nombre || "");
     } else {
       setBusquedaPadre("");
-    }
-    if (dep.base_datos) {
-      setIdConexionExistente(dep.base_datos);
-      setBusquedaBD(dep.base_datos);
-    } else {
-      setIdConexionExistente(null);
-      setBusquedaBD("");
     }
     setView("form");
   };
@@ -570,10 +542,11 @@ export function DependenciasPage() {
                     ? "Editar Dependencia"
                     : "Nueva Dependencia"}
                 </h1>
-                <p className="text-sm text-gray-500">
+                
+                <p className=" text-sm text-gray-500">
                   {editingDependencia
-                    ? "Actualice la información de la dependencia"
-                    : "Complete los datos para crear una nueva dependencia"}
+                    ? "  Actualice la información de la dependencia"
+                    : "  Complete los datos para crear una nueva dependencia"}
                 </p>
               </div>
             </div>
@@ -616,7 +589,7 @@ export function DependenciasPage() {
                 <div className="space-y-2">
                   <Label className="flex items-center gap-2 text-gray-700">
                     <Building className="h-5 w-5 text-blue-500" />
-                    Nombre *
+                    Nombre 
                   </Label>
                   <Input
                     value={formData.nombre}
@@ -630,7 +603,7 @@ export function DependenciasPage() {
                 <div className="space-y-2">
                   <Label className="flex items-center gap-2 text-gray-700">
                     <FileText className="h-5 w-5 text-indigo-500" />
-                    Denom. *
+                    Denominación
                   </Label>
                   <Input
                     value={formData.denominacion}
@@ -690,92 +663,6 @@ export function DependenciasPage() {
                 />
               </div>
 
-              {/* ===== CONFIGURACIÓN ===== */}
-              <div className="col-span-2">
-                <div className="flex items-center gap-2 pt-4 pb-3">
-                  <Database className="h-4 w-4 text-green-500" />
-                  <span className="text-sm font-semibold text-gray-600 uppercase tracking-wider">Configuración</span>
-                  <div className="flex-1 border-t border-gray-200" />
-                </div>
-              </div>
-
-              {/* Base de Datos (col-span-2) */}
-              <div className="col-span-2 space-y-2">
-                <Label className="flex items-center gap-2 text-gray-700">
-                  <Database className="h-5 w-5 text-green-500" />
-                  Base de Datos
-                </Label>
-                <div className="flex gap-2">
-                  <div ref={dropdownBDRef} className="relative flex-1">
-                    <div className="relative">
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                      <input
-                        type="text"
-                        placeholder="Buscar base de datos existente..."
-                        value={busquedaBD}
-                        onChange={(e) => {
-                          setBusquedaBD(e.target.value);
-                          setShowDropdownBD(true);
-                          setIdConexionExistente(null);
-                        }}
-                        onFocus={() => setShowDropdownBD(true)}
-                        className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none bg-white"
-                      />
-                      {idConexionExistente && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setIdConexionExistente(null);
-                            setBusquedaBD("");
-                          }}
-                          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-red-500"
-                        >
-                          <X className="h-4 w-4" />
-                        </button>
-                      )}
-                    </div>
-                    {showDropdownBD && basesDeDatosFiltradas.length > 0 && (
-                      <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-auto">
-                        {basesDeDatosFiltradas.map((bd) => (
-                          <button
-                            key={bd.nombre_database}
-                            type="button"
-                            onClick={() => {
-                              setIdConexionExistente(bd.nombre_database);
-                              setBusquedaBD(bd.nombre_database);
-                              setShowDropdownBD(false);
-                              setFormData((prev) => ({ ...prev, base_datos: "" }));
-                            }}
-                            className="w-full text-left px-4 py-2 hover:bg-green-50 transition-colors border-b border-gray-100 last:border-b-0"
-                          >
-                            <span className="font-medium text-gray-900">{bd.nombre_database}</span>
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                    {showDropdownBD && basesDeDatosFiltradas.length === 0 && busquedaBD && (
-                      <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg p-4 text-center text-gray-500">
-                        No se encontraron resultados
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex-1">
-                    <input
-                      type="text"
-                      placeholder={idConexionExistente ? "Usando BD existente" : "Nombre de nueva BD..."}
-                      value={!idConexionExistente ? formData.base_datos : ""}
-                      onChange={(e) => {
-                        setFormData((prev) => ({ ...prev, base_datos: e.target.value }));
-                        setIdConexionExistente(null);
-                        setBusquedaBD("");
-                      }}
-                      disabled={!!idConexionExistente}
-                      className="w-full pl-3 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none bg-white disabled:bg-gray-100 disabled:cursor-not-allowed"
-                    />
-                  </div>
-                </div>
-              </div>
-
               {/* Dependencia Padre */}
               <div className="space-y-2">
                 <Label className="flex items-center gap-2 text-gray-700">
@@ -787,7 +674,7 @@ export function DependenciasPage() {
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                     <input
                       type="text"
-                      placeholder={(!idConexionExistente && !!formData.base_datos) ? "No aplica para nueva BD" : "Buscar dependencia padre..."}
+                      placeholder="Buscar dependencia padre..."
                       value={busquedaPadre}
                       onChange={(e) => {
                         setBusquedaPadre(e.target.value);
@@ -798,7 +685,7 @@ export function DependenciasPage() {
                         }
                       }}
                       onFocus={() => setShowDropdownPadre(true)}
-                      disabled={(!editingDependencia && !!selectedPadre) || (!idConexionExistente && !!formData.base_datos)}
+                      disabled={!editingDependencia && !!selectedPadre}
                       className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none bg-white disabled:bg-gray-100 disabled:cursor-not-allowed"
                     />
                     {selectedPadre && (
@@ -1259,7 +1146,6 @@ export function DependenciasPage() {
                 setDatabaseCreatedModal({
                   isOpen: false,
                   dependencia: null,
-                  tablas: [],
                 });
                 setView("list");
                 resetForm();
@@ -1277,9 +1163,7 @@ export function DependenciasPage() {
                       Dependencia Creada
                     </h2>
                     <p className="text-sm text-gray-500">
-                      {databaseCreatedModal.tablas.length > 0
-                        ? "La base de datos se ha creado exitosamente"
-                        : "La dependencia se ha creado exitosamente"}
+                      La dependencia se ha creado exitosamente
                     </p>
                   </div>
                 </div>
@@ -1287,11 +1171,10 @@ export function DependenciasPage() {
                   variant="ghost"
                   size="icon"
                   onClick={() => {
-                    setDatabaseCreatedModal({
-                      isOpen: false,
-                      dependencia: null,
-                      tablas: [],
-                    });
+                  setDatabaseCreatedModal({
+                    isOpen: false,
+                    dependencia: null,
+                  });
                     setView("list");
                     resetForm();
                   }}
@@ -1328,92 +1211,7 @@ export function DependenciasPage() {
                     </div>
                   </div>
 
-{databaseCreatedModal.tablas.length > 0 && (
-                    <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-md p-5">
-                      <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                        <Database className="h-5 w-5 text-green-500" />
-                        Base de Datos Creada
-                      </h3>
-                      <div className="bg-white rounded-lg p-4 border border-green-200">
-                        <div className="flex items-center justify-between">
-                        <div className="space-y-1">
-                          <Label className="flex items-center gap-2 text-gray-500 text-sm">
-                            Nombre de la Base de Datos
-                          </Label>
-                          <p className="font-mono font-semibold text-green-700 text-lg">
-                            {databaseCreatedModal.dependencia.base_datos}
-                          </p>
-                        </div>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => {
-                            navigator.clipboard.writeText(
-                              databaseCreatedModal.dependencia?.base_datos ||
-                                "",
-                            );
-                            toast.success("Copiado al portapapeles");
-                          }}
-                          className="text-green-600 hover:text-green-700 hover:bg-green-100"
-                        >
-                          <Copy className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                  )}
-                  {databaseCreatedModal.tablas.length > 0 && (
-                    <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-md p-5">
-                      <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                        <CheckCircle2 className="h-5 w-5 text-blue-500" />
-                        Tablas Creadas ({databaseCreatedModal.tablas.length})
-                      </h3>
-                      <div className="bg-white rounded-lg border border-blue-200 max-h-60 overflow-auto">
-                        <div className="divide-y divide-gray-100">
-                          {databaseCreatedModal.tablas.map((tabla, index) => (
-                            <div
-                              key={tabla}
-                              className="flex items-center justify-between px-4 py-2 hover:bg-gray-50 transition-colors"
-                            >
-                              <div className="flex items-center gap-2">
-                                <span className="text-xs text-gray-400 font-mono w-6">
-                                  {index + 1}
-                                </span>
-                                <span className="font-mono text-sm text-gray-700">
-                                  {tabla}
-                                </span>
-                              </div>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => {
-                                  navigator.clipboard.writeText(tabla);
-                                  setCopiedTable(tabla);
-                                  setTimeout(() => setCopiedTable(null), 2000);
-                                }}
-                                className="text-gray-400 hover:text-gray-600"
-                              >
-                                {copiedTable === tabla ? (
-                                  <Check className="h-4 w-4 text-green-500" />
-                                ) : (
-                                  <Copy className="h-4 w-4" />
-                                )}
-                              </Button>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                  {databaseCreatedModal.tablas.length > 0 && (
-                    <div className="bg-amber-50 border border-amber-200 rounded-md p-4">
-                      <p className="text-sm text-amber-800">
-                        <strong>Nota:</strong> Guarde el nombre de la base de
-                        datos. La conexión se realizara usando las credenciales
-                        configuradas en el servidor.
-                      </p>
-                    </div>
-                  )}
+
                 </div>
               </div>
               <div className="flex-shrink-0 p-6 border-t bg-gray-50 rounded-b-2xl">
@@ -1424,7 +1222,6 @@ export function DependenciasPage() {
                       setDatabaseCreatedModal({
                         isOpen: false,
                         dependencia: null,
-                        tablas: [],
                       });
                       setView("list");
                       resetForm();

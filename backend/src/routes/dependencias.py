@@ -1,4 +1,3 @@
-import os
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlmodel.ext.asyncio.session import AsyncSession
@@ -230,52 +229,9 @@ async def crear_dependencia(
 
             cuentas_creadas.append(cuenta_obj)
 
-    tablas_creadas = None
-
     if data.base_datos_existente:
         db_obj.base_datos = data.base_datos_existente
         db_obj = await dependencia_repo.update(db, db_obj=db_obj, obj_in=db_obj)
-
-    elif data.dependencia.base_datos:
-        try:
-            tablas_creadas = DatabaseService.crear_base_datos(
-                data.dependencia.base_datos, init_office=False
-            )
-        except Exception as e:
-            await dependencia_repo.remove(db, id=db_obj.id_dependencia)
-            raise HTTPException(
-                status_code=500,
-                detail=f"Error al crear la base de datos: {str(e)}",
-            )
-
-        # Note: replicar_datos_desde_central is already called inside crear_base_datos
-        # First, insert the dependencia in the tenant DB (required for FK)
-        DatabaseService.insertar_dependencia_en_tenant(
-            data.dependencia.base_datos,
-            {
-                "id_dependencia": db_obj.id_dependencia,
-                "id_tipo_dependencia": db_obj.id_tipo_dependencia,
-                "codigo_padre": db_obj.codigo_padre,
-                "nombre": db_obj.nombre,
-                "denominacion": db_obj.denominacion,
-                "direccion": db_obj.direccion,
-                "telefono": db_obj.telefono,
-                "email": db_obj.email,
-                "web": db_obj.web,
-                "id_provincia": db_obj.id_provincia,
-                "id_municipio": db_obj.id_municipio,
-                "descripcion": db_obj.descripcion,
-                "base_datos": db_obj.base_datos,
-                "host": db_obj.host,
-                "puerto": db_obj.puerto,
-                "nit": db_obj.nit,
-                "reeup": db_obj.reeup,
-            },
-        )
-        # Insertar usuario admin con id_dependencia=1 en el tenant (la dependencia siempre es id=1 en su propia BD)
-        DatabaseService.insertar_admin_en_db(
-            data.dependencia.base_datos, 1
-        )
 
     from src.services.replicacion_service import ReplicacionService
 
@@ -313,19 +269,7 @@ async def crear_dependencia(
             "INSERT",
         )
 
-    # Registrar la nueva BD en conexion_database DESPUÉS del PUSH,
-    # para que el PUSH no replique duplicados a la BD recién creada
-    if data.dependencia.base_datos:
-        conexion = ConexionDatabase(
-            host="localhost",
-            puerto=5432,
-            nombre_database=data.dependencia.base_datos,
-            usuario=os.getenv("ADMIN_DB_USER", "postgres"),
-            contrasenia=os.getenv("ADMIN_DB_PASSWORD"),
-        )
-        db.add(conexion)
-        await db.commit()
-        await db.refresh(conexion)
+
 
     statement = (
         select(Dependencia)
@@ -343,9 +287,7 @@ async def crear_dependencia(
     )
     results = await db.exec(statement)
     db_obj_full = results.first()
-    response = DependenciaRead.model_validate(db_obj_full)
-    response.tablas_creadas = tablas_creadas
-    return response
+    return DependenciaRead.model_validate(db_obj_full)
 
 
 # =====================================================
