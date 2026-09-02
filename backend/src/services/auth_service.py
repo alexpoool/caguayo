@@ -146,11 +146,16 @@ async def login(db: AsyncSession, login_data: LoginRequest) -> Optional[LoginRes
     """Autentica al usuario en la base de datos seleccionada"""
 
     # 1. Buscar la conexión a la base de datos seleccionada en la BD central
-    statement = select(ConexionDatabase).where(
-        ConexionDatabase.nombre_database == login_data.base_datos
-    )
-    results = await db.exec(statement)
-    conexion = results.first()
+    try:
+        statement = select(ConexionDatabase).where(
+            ConexionDatabase.nombre_database == login_data.base_datos
+        )
+        results = await db.exec(statement)
+        conexion = results.first()
+    except Exception as e:
+        # Si la tabla conexion_database no existe, usar valores por defecto
+        logger.warning("Could not query conexion_database: %s. Using .env defaults.", e)
+        conexion = None
 
     # 2. Si no hay conexión en la BD central, usar valores por defecto del .env
     host = conexion.host if conexion else os.getenv("ADMIN_DB_HOST", "localhost")
@@ -547,11 +552,15 @@ async def register(
                 register_data.alias, register_data.base_datos, register_data.id_dependencia)
 
     # 1. Buscar la conexión a la base de datos seleccionada
-    statement = select(ConexionDatabase).where(
-        ConexionDatabase.nombre_database == register_data.base_datos
-    )
-    results = await db.exec(statement)
-    conexion = results.first()
+    try:
+        statement = select(ConexionDatabase).where(
+            ConexionDatabase.nombre_database == register_data.base_datos
+        )
+        results = await db.exec(statement)
+        conexion = results.first()
+    except Exception as e:
+        logger.warning("Could not query conexion_database: %s. Using .env defaults.", e)
+        conexion = None
 
     host = conexion.host if conexion else "localhost"
     puerto = conexion.puerto if conexion else 5432

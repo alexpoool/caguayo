@@ -143,22 +143,26 @@ async def get_bases_de_datos(
     db: AsyncSession = Depends(get_session),
 ):
     """Obtiene todas las bases de datos existentes de la tabla conexion_database"""
-    from sqlmodel import select
+    try:
+        from sqlmodel import select
 
-    statement = select(ConexionDatabase).order_by(ConexionDatabase.nombre_database.asc())
-    results = await db.exec(statement)
-    bases_de_datos = results.all()
+        statement = select(ConexionDatabase).order_by(ConexionDatabase.nombre_database.asc())
+        results = await db.exec(statement)
+        bases_de_datos = results.all()
 
-    return [
-        {
-            "id_conexion": bd.id_conexion,
-            "nombre_database": bd.nombre_database,
-            "host": bd.host,
-            "puerto": bd.puerto,
-            "usuario": bd.usuario,
-        }
-        for bd in bases_de_datos
-    ]
+        return [
+            {
+                "id_conexion": bd.id_conexion,
+                "nombre_database": bd.nombre_database,
+                "host": bd.host,
+                "puerto": bd.puerto,
+                "usuario": bd.usuario,
+            }
+            for bd in bases_de_datos
+        ]
+    except Exception as e:
+        # Si la tabla conexion_database no existe, retornar lista vacía
+        return []
 
 
 @router.post("", response_model=DependenciaRead, status_code=201)
