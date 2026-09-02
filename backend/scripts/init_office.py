@@ -108,10 +108,13 @@ def init_office(db_name: str, admin_password_hash: str | None = None) -> list[st
                 cur.execute("""
                     INSERT INTO clientes (
                         nombre, tipo_persona, nit, codigo, direccion,
-                        tipo_relacion, estado, fecha_registro
+                        tipo_relacion, estado, fecha_registro,
+                        id_provincia, id_municipio
                     ) VALUES (
                         'Caguayo S.A', 'JURIDICA', 'NIT-CAGUAYO-001',
-                        'CAGUAYO', 'Vista Alegre', 'CLIENTE', 'ACTIVO', CURRENT_DATE
+                        'CAGUAYO', 'Vista Alegre', 'CLIENTE', 'ACTIVO', CURRENT_DATE,
+                        (SELECT id_provincia FROM provincia WHERE nombre = 'Santiago de Cuba'),
+                        (SELECT id_municipio FROM municipio WHERE nombre = 'Santiago de Cuba' AND id_provincia = (SELECT id_provincia FROM provincia WHERE nombre = 'Santiago de Cuba'))
                     )
                 """)
                 inserted.append("clientes")
