@@ -1268,6 +1268,18 @@ export function ProyectosPage() {
                       </select>
                     </div>
                     <div>
+                      <Label className="text-sm font-medium">Valor</Label>
+                      <Input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={formContrato.valor_contrato || ''}
+                        onChange={(e: any) => setFormContrato({ ...formContrato, valor_contrato: e.target.value })}
+                        className="mt-1"
+                        placeholder="0.00"
+                      />
+                    </div>
+                    <div>
                       <Label className="text-sm font-medium">Fecha</Label>
                       <Input
                         type="date"
@@ -1301,18 +1313,6 @@ export function ProyectosPage() {
                         onChange={(e: any) => setFormContrato({ ...formContrato, documento_final: e.target.value })}
                         className="mt-1"
                         placeholder="Número de documento"
-                      />
-                    </div>
-                    <div>
-                      <Label className="text-sm font-medium">Valor</Label>
-                      <Input
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        value={formContrato.valor_contrato || ''}
-                        onChange={(e: any) => setFormContrato({ ...formContrato, valor_contrato: e.target.value })}
-                        className="mt-1"
-                        placeholder="0.00"
                       />
                     </div>
                   </div>
