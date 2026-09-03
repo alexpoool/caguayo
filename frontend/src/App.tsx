@@ -735,7 +735,7 @@ function App() {
           </div>
         </header>
         <div className="col-start-2 col-end-3 row-start-2 row-end-3 min-w-0 flex flex-col overflow-hidden">
-          <main className="flex-1 overflow-auto bg-gray-50 p-8">
+          <main className="flex-1 overflow-hidden bg-gray-50 p-8">
             <div className="animate-fade-in-up animation-fill-both">
               <Routes>
                 <Route
