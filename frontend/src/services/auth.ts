@@ -13,6 +13,7 @@ export interface CuentaDependenciaInfo {
 export interface DependenciaInfo {
   id_dependencia: number;
   nombre: string;
+  denominacion?: string;
   base_datos: string;
   host?: string;
   puerto?: number;
@@ -22,6 +23,8 @@ export interface DependenciaInfo {
   web?: string;
   nit?: string;
   reeup?: string;
+  provincia?: string;
+  municipio?: string;
   cuentas_dependencias?: CuentaDependenciaInfo[];
 }
 

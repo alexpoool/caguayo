@@ -30,7 +30,12 @@ import {
   Building,
   Wallet,
   Lock,
-  Key
+  Key,
+  CreditCard,
+  Database,
+  MapPin,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 
 import { LoginPage } from './pages/Login';
@@ -243,6 +248,15 @@ function SidebarLink({
   );
 }
 
+function InfoRow({ label, value }: { label: string; value?: string | number | null }) {
+  return (
+    <div className="flex items-center justify-between min-w-0">
+      <span className="text-xs font-semibold text-slate-400 uppercase tracking-wide truncate">{label}</span>
+      <span className="text-sm font-bold text-white truncate ml-3">{value || '-'}</span>
+    </div>
+  );
+}
+
 // Map each module to the funcionalidades it requires
 const MODULO_FUNCIONALIDADES: Record<Modulo, string[]> = {
   inventario: ['movimientos', 'pendientes', 'productos'],
@@ -255,7 +269,7 @@ const MODULO_FUNCIONALIDADES: Record<Modulo, string[]> = {
 };
 
 function App() {
-  const { isAuthenticated, isLoading, user, logout, hasFuncionalidad } = useAuth();
+  const { isAuthenticated, isLoading, user, logout, hasFuncionalidad, baseDatos } = useAuth();
   
   // Check if user has access to an entire module (at least one funcionalidad)
   const hasModuloAccess = (moduloId: Modulo): boolean => {
@@ -266,10 +280,9 @@ function App() {
   const [slimSidebar, setSlimSidebar] = useState(false);
   const [showAccountModal, setShowAccountModal] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [empresaOpen, setEmpresaOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
-  const isHomePage = location.pathname === '/' || location.pathname === '/perfil';
-
   // All hooks must be called before any early returns
   useEffect(() => {
     // Only redirect to login if we're not loading and not authenticated, and not already on login or register page
@@ -341,8 +354,8 @@ function App() {
   }
   return (
     <QueryClientProvider client={queryClient}>
-      <div className={`grid ${isHomePage ? 'grid-cols-[0_1fr]' : slimSidebar ? 'grid-cols-[4.5rem_1fr]' : 'grid-cols-[16rem_1fr]'} grid-rows-[auto_1fr] h-screen bg-gray-50`}>
-        <aside className={`row-span-2 col-start-1 col-end-2 h-full bg-slate-900 text-white flex flex-col shadow-xl min-h-screen transition-all duration-300 ${isHomePage ? 'hidden' : slimSidebar ? 'w-[4.5rem]' : 'w-64'}`}>
+      <div className={`grid ${slimSidebar ? 'grid-cols-[4.5rem_1fr]' : 'grid-cols-[16rem_1fr]'} grid-rows-[auto_1fr] h-screen bg-gray-50`}>
+        <aside className={`row-span-2 col-start-1 col-end-2 h-full bg-slate-900 text-white flex flex-col shadow-xl min-h-screen transition-all duration-300 ${slimSidebar ? 'w-[4.5rem]' : 'w-64'}`}>
           <div className={`flex items-center ${slimSidebar ? 'justify-center px-0' : 'px-6'} py-4 border-b border-slate-800`}>
             {!slimSidebar && (
               <h1 className="text-2xl font-bold tracking-wider text-blue-400">CAGUAYO</h1>
@@ -355,8 +368,9 @@ function App() {
               {slimSidebar ? <ChevronRight className="w-6 h-6" /> : <ChevronLeft className="w-6 h-6" />}
             </button>
           </div>
-          <nav className={`flex-1 overflow-y-auto py-4 ${slimSidebar ? 'px-1' : ''}`}>
-            <>
+          {location.pathname !== '/' && (
+            <nav className={`flex-1 overflow-y-auto py-4 ${slimSidebar ? 'px-1' : ''}`}>
+              <>
               {moduloActivo === 'inventario' && (
                 <ul className={`space-y-1 ${slimSidebar ? 'px-0' : 'px-3'}`}>
                   <li>
@@ -607,8 +621,52 @@ function App() {
               )}
             </>
           </nav>
+        )}
+
+        {location.pathname === '/' && (
+          <div className={`flex-1 overflow-y-auto ${slimSidebar ? 'px-2 py-3 flex justify-center' : 'px-5 py-5 space-y-5'}`}>
+            {!slimSidebar && (
+              <div className="space-y-2.5">
+                <div className="flex items-center justify-between min-w-0">
+                  <span className="text-sm font-bold text-white truncate">{user ? `${user.nombre} ${user.primer_apellido}` : '-'}</span>
+                </div>
+                <InfoRow label="Usuario" value={user?.alias} />
+                <InfoRow label="Cédula" value={user?.ci} />
+                <InfoRow label="Grupo" value={user?.grupo?.nombre} />
+                <InfoRow label="Dependencia" value={user?.dependencia?.nombre} />
+                <InfoRow label="Base de Datos" value={baseDatos} />
+              </div>
+            )}
+
+            {!slimSidebar && (
+              <div className="border-t border-slate-800 pt-4">
+                  <button
+                    onClick={() => setEmpresaOpen(!empresaOpen)}
+                    className="w-full flex items-center justify-between py-1 text-xs font-bold text-slate-400 uppercase tracking-wider hover:text-slate-300 transition-colors"
+                  >
+                    <span>Empresa</span>
+                    {empresaOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                  </button>
+                  {empresaOpen && (
+                    <div className="mt-2 space-y-2.5">
+                      <InfoRow label="Nombre" value={user?.dependencia?.nombre} />
+                      <InfoRow label="Denominación" value={user?.dependencia?.denominacion} />
+                      <InfoRow label="REUP" value={user?.dependencia?.reeup} />
+                      <InfoRow label="NIT" value={user?.dependencia?.nit} />
+                      <InfoRow label="Teléfono" value={user?.dependencia?.telefono} />
+                      <InfoRow label="Email" value={user?.dependencia?.email} />
+                      <InfoRow label="Web" value={user?.dependencia?.web} />
+                      <InfoRow label="Dirección" value={user?.dependencia?.direccion} />
+                      <InfoRow label="Provincia" value={user?.dependencia?.provincia} />
+                      <InfoRow label="Municipio" value={user?.dependencia?.municipio} />
+                    </div>
+                  )}
+              </div>
+            )}
+          </div>
+        )}
         </aside>
-        <header className={`${isHomePage ? 'col-start-1 col-end-3' : 'col-start-2 col-end-3'} row-start-1 row-end-2 sticky top-0 z-40 bg-white shadow-sm border-b border-gray-200 px-6 py-4 h-16 flex items-center justify-between`}>
+        <header className="col-start-2 col-end-3 row-start-1 row-end-2 sticky top-0 z-40 bg-white shadow-sm border-b border-gray-200 px-6 py-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Link
               to="/"
@@ -676,7 +734,7 @@ function App() {
             </Link>
           </div>
         </header>
-        <div className={`${isHomePage ? 'col-start-1 col-end-3' : 'col-start-2 col-end-3'} row-start-2 row-end-3 min-w-0 flex flex-col overflow-hidden`}>
+        <div className="col-start-2 col-end-3 row-start-2 row-end-3 min-w-0 flex flex-col overflow-hidden">
           <main className="flex-1 overflow-auto bg-gray-50 p-8">
             <div className="animate-fade-in-up animation-fill-both">
               <Routes>

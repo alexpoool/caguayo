@@ -32,6 +32,9 @@ class DependenciaInfo(BaseModel):
     nit: Optional[str] = None
     reeup: Optional[str] = None
     denominacion: Optional[str] = None
+    web: Optional[str] = None
+    provincia: Optional[str] = None
+    municipio: Optional[str] = None
 
     class Config:
         from_attributes = True

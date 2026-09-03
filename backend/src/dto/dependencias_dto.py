@@ -110,6 +110,7 @@ class DependenciaUpdate(SQLModel):
     nombre: Optional[str] = None
     denominacion: Optional[str] = None
     nit: Optional[str] = None
+    reeup: Optional[str] = None
     direccion: Optional[str] = None
     telefono: Optional[str] = None
     email: Optional[str] = None

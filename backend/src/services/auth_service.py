@@ -3,6 +3,7 @@ import logging
 from datetime import datetime, timedelta, timezone
 from typing import Optional, List
 from sqlalchemy import text
+from sqlalchemy.orm import selectinload
 from sqlalchemy.exc import IntegrityError, OperationalError
 from jose import JWTError, jwt
 import bcrypt
@@ -114,7 +115,12 @@ async def search_by_alias(
     # Obtener dependencia
     dependencia = None
     if usuario.id_dependencia:
-        dependencia = await db.get(Dependencia, usuario.id_dependencia)
+        stmt = select(Dependencia).where(Dependencia.id_dependencia == usuario.id_dependencia).options(
+            selectinload(Dependencia.provincia),
+            selectinload(Dependencia.municipio),
+        )
+        results = await db.exec(stmt)
+        dependencia = results.first()
 
     # Obtener grupo
     grupo = await db.get(Grupo, usuario.id_grupo)
@@ -133,6 +139,9 @@ async def search_by_alias(
             nit=dependencia.nit,
             reeup=dependencia.reeup,
             denominacion=dependencia.denominacion,
+            web=dependencia.web,
+            provincia=dependencia.provincia.nombre if dependencia.provincia else None,
+            municipio=dependencia.municipio.nombre if dependencia.municipio else None,
         )
         if dependencia
         else None,
@@ -205,6 +214,9 @@ async def login(db: AsyncSession, login_data: LoginRequest) -> Optional[LoginRes
         if usuario.id_dependencia:
             statement = select(Dependencia).where(
                 Dependencia.id_dependencia == usuario.id_dependencia
+            ).options(
+                selectinload(Dependencia.provincia),
+                selectinload(Dependencia.municipio),
             )
             results = db_target.exec(statement)
             dependencia = results.first()
@@ -297,6 +309,9 @@ async def login(db: AsyncSession, login_data: LoginRequest) -> Optional[LoginRes
                 nit=dependencia.nit,
                 reeup=dependencia.reeup,
                 denominacion=dep_denominacion,
+                web=dependencia.web,
+                provincia=dependencia.provincia.nombre if dependencia.provincia else None,
+                municipio=dependencia.municipio.nombre if dependencia.municipio else None,
             )
             if dependencia
             else None,
@@ -344,7 +359,12 @@ async def get_current_user(db: AsyncSession, token: str) -> Optional[UsuarioInfo
     # Obtener dependencia
     dependencia = None
     if usuario.id_dependencia:
-        dependencia = await db.get(Dependencia, usuario.id_dependencia)
+        stmt = select(Dependencia).where(Dependencia.id_dependencia == usuario.id_dependencia).options(
+            selectinload(Dependencia.provincia),
+            selectinload(Dependencia.municipio),
+        )
+        results = await db.exec(stmt)
+        dependencia = results.first()
 
     # Obtener grupo
     grupo = await db.get(Grupo, usuario.id_grupo)
@@ -369,6 +389,9 @@ async def get_current_user(db: AsyncSession, token: str) -> Optional[UsuarioInfo
             nit=dependencia.nit,
             reeup=dependencia.reeup,
             denominacion=dependencia.denominacion,
+            web=dependencia.web,
+            provincia=dependencia.provincia.nombre if dependencia.provincia else None,
+            municipio=dependencia.municipio.nombre if dependencia.municipio else None,
         )
         if dependencia
         else None,
