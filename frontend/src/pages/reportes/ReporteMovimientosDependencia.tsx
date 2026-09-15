@@ -3,8 +3,9 @@ import { toast } from "react-hot-toast";
 import { dependenciasService } from "../../services/administracion";
 import { Dependencia } from "../../types/dependencia";
 import { authHelpers } from "../../lib/api";
-import { ArrowLeftRight, Download, Building2, Eye, Loader2 } from "lucide-react";
+import { ArrowLeftRight, Download, Building2, Eye, Loader2, Table2 } from "lucide-react";
 import ReportNotes from "../../components/ui/ReportNotes";
+import { ReportPreviewTable } from "../../components/ui/ReportPreviewTable";
 
 const BASE_URL =
   import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api/v1";
@@ -12,11 +13,13 @@ const BASE_URL =
 const ReporteMovimientosDependencia: React.FC = () => {
   const [pdfLoading, setPdfLoading] = useState(false);
   const [previewLoading, setPreviewLoading] = useState(false);
+  const [tableLoading, setTableLoading] = useState(false);
   const [dependencias, setDependencias] = useState<Dependencia[]>([]);
   const [idDependencia, setIdDependencia] = useState<number | null>(null);
   const [fechaInicio, setFechaInicio] = useState("");
   const [fechaFin, setFechaFin] = useState("");
   const [notas, setNotas] = useState("");
+  const [previewData, setPreviewData] = useState<any[] | null>(null);
 
   const user = useMemo(() => authHelpers.getUser(), []);
   const userName = user ? `${user.nombre} ${user.primer_apellido}${user.segundo_apellido ? " " + user.segundo_apellido : ""}`.trim() : "";
@@ -31,6 +34,21 @@ const ReporteMovimientosDependencia: React.FC = () => {
     id_dependencia: idDependencia!.toString(), fecha_inicio: fechaInicio, fecha_fin: fechaFin,
     aprobado_por_nombre: userName, aprobado_por_cargo: userCargo, notas,
   });
+
+  const handleTablePreview = async () => {
+    if (!isFormValid) { toast.error("Complete los campos requeridos"); return; }
+    setTableLoading(true);
+    setPreviewData(null);
+    try {
+      const token = authHelpers.getToken() || "";
+      const r = await fetch(`${BASE_URL}/reportes/movimientos-dependencia/preview?id_dependencia=${idDependencia}&fecha_inicio=${fechaInicio}&fecha_fin=${fechaFin}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!r.ok) throw new Error(`${r.status}`);
+      const json = await r.json();
+      setPreviewData(json.items || []);
+    } catch { toast.error("Error al cargar vista previa"); } finally { setTableLoading(false); }
+  };
 
   const handlePreview = async () => {
     if (!isFormValid) { toast.error("Complete los campos requeridos"); return; }
@@ -72,6 +90,9 @@ const ReporteMovimientosDependencia: React.FC = () => {
           </div>
         </div>
         <div className="flex items-center gap-1">
+          <button type="button" onClick={handleTablePreview} disabled={!isFormValid || tableLoading} className="p-2 rounded-lg text-green-600 hover:bg-green-50 disabled:opacity-50 transition-colors" title="Vista previa de tabla">
+            {tableLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Table2 className="w-4 h-4" />}
+          </button>
           <button type="button" onClick={handlePreview} disabled={!isFormValid || previewLoading} className="p-2 rounded-lg text-purple-600 hover:bg-purple-50 disabled:opacity-50 transition-colors" title="Vista previa del documento">
             {previewLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Eye className="w-4 h-4" />}
           </button>
@@ -83,13 +104,13 @@ const ReporteMovimientosDependencia: React.FC = () => {
 
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 w-full max-w-lg mx-auto">
         <div className="space-y-3">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 flex-shrink-0">
+          <div className="flex-shrink-0">
             <div>
               <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Filtros</p>
               <div className="space-y-2">
                 <div>
                   <label className="block text-xs font-medium text-gray-600 mb-0.5">Dependencia <span className="text-red-500">*</span></label>
-                  <select value={idDependencia ?? ""} onChange={e => setIdDependencia(e.target.value ? Number(e.target.value) : null)} className="w-full px-2.5 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 bg-white">
+                  <select value={idDependencia ?? ""} onChange={e => { setIdDependencia(e.target.value ? Number(e.target.value) : null); setPreviewData(null); }} className="w-full px-2.5 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 bg-white">
                     <option value="">Seleccionar…</option>
                     {dependencias.map(d => <option key={d.id_dependencia} value={d.id_dependencia}>{d.nombre}</option>)}
                   </select>
@@ -98,11 +119,11 @@ const ReporteMovimientosDependencia: React.FC = () => {
                 <div className="grid grid-cols-2 gap-2">
                   <div>
                     <label className="block text-xs font-medium text-gray-600 mb-0.5">Desde <span className="text-red-500">*</span></label>
-                    <input type="date" value={fechaInicio} onChange={e => setFechaInicio(e.target.value)} className="w-full px-2.5 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500" />
+                    <input type="date" value={fechaInicio} onChange={e => { setFechaInicio(e.target.value); setPreviewData(null); }} className="w-full px-2.5 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500" />
                   </div>
                   <div>
                     <label className="block text-xs font-medium text-gray-600 mb-0.5">Hasta <span className="text-red-500">*</span></label>
-                    <input type="date" value={fechaFin} onChange={e => setFechaFin(e.target.value)} className="w-full px-2.5 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500" />
+                    <input type="date" value={fechaFin} onChange={e => { setFechaFin(e.target.value); setPreviewData(null); }} className="w-full px-2.5 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500" />
                   </div>
                 </div>
               </div>
@@ -113,6 +134,27 @@ const ReporteMovimientosDependencia: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {previewData && (
+        <div className="mt-4">
+          <ReportPreviewTable
+            columns={[
+              { key: "codigo", label: "Código" },
+              { key: "nombre", label: "Nombre" },
+              { key: "saldo_inicial", label: "Saldo Inicial", className: "text-right", render: (v: any) => Number(v ?? 0).toFixed(2) },
+              { key: "recepcion", label: "Recepción", className: "text-right" },
+              { key: "compra", label: "Compra", className: "text-right" },
+              { key: "venta", label: "Venta", className: "text-right" },
+              { key: "merma", label: "Merma", className: "text-right" },
+              { key: "donacion", label: "Donación", className: "text-right" },
+              { key: "devolucion", label: "Devolución", className: "text-right" },
+              { key: "saldo_final", label: "Saldo Final", className: "text-right font-semibold", render: (v: any) => Number(v ?? 0).toFixed(2) },
+            ]}
+            data={previewData}
+            totalItems={previewData.length}
+          />
+        </div>
+      )}
     </div>
   );
 };

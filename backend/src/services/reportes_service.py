@@ -1,7 +1,7 @@
-from datetime import date
+from datetime import date, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
-from sqlalchemy import case, func, select
+from sqlalchemy import and_, case, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.models.cliente import Cliente
@@ -23,57 +23,143 @@ from src.models.servicio import (
 )
 
 
+async def get_registro_clientes(
+    db: AsyncSession,
+) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
+    """Obtiene todos los clientes con tipo_relacion 'CLIENTE' o 'AMBAS',
+    incluyendo el código REEUP para personas jurídicas."""
+    query = (
+        select(
+            Cliente,
+            Provincia.nombre.label("provincia_nombre"),
+            Municipio.nombre.label("municipio_nombre"),
+        )
+        .join(Provincia, Cliente.id_provincia == Provincia.id_provincia, isouter=True)
+        .join(Municipio, Cliente.id_municipio == Municipio.id_municipio, isouter=True)
+        .filter(Cliente.tipo_relacion.in_(["CLIENTE", "AMBAS"]))
+        .order_by(Cliente.nombre)
+    )
+    result = await db.execute(query)
+    rows = result.all()
+
+    # Obtener IDs de clientes jurídicos
+    cliente_ids_juridicos = [
+        r[0].id_cliente for r in rows if r[0].tipo_persona == "JURIDICA"
+    ]
+    reup_map: Dict[int, str] = {}
+    if cliente_ids_juridicos:
+        reup_query = select(ClienteJuridica).filter(
+            ClienteJuridica.id_cliente.in_(cliente_ids_juridicos)
+        )
+        reup_result = await db.execute(reup_query)
+        for rj in reup_result.scalars().all():
+            reup_map[rj.id_cliente] = rj.codigo_reup
+
+    data = []
+    for r in rows:
+        cliente: Cliente = r[0]
+        data.append(
+            {
+                "id_cliente": cliente.id_cliente,
+                "nombre": cliente.nombre,
+                "reeup": reup_map.get(cliente.id_cliente, ""),
+                "nit": cliente.nit or "",
+                "direccion": cliente.direccion or "",
+                "provincia": r.provincia_nombre or "",
+                "municipio": r.municipio_nombre or "",
+            }
+        )
+
+    return data, {"total": len(data)}
+
+
 async def get_proveedores_por_dependencia(
     db: AsyncSession,
-    id_dependencia: int,
-    tipo_entidad: str,
+    id_dependencia: Optional[int] = None,
     id_provincia: Optional[int] = None,
 ):
-    result = await db.execute(
-        select(Dependencia).filter(Dependencia.id_dependencia == id_dependencia)
-    )
-    dependencia = result.scalar_one_or_none()
-    dependencia_info = (
-        {"nombre": dependencia.nombre, "direccion": dependencia.direccion}
-        if dependencia
-        else {}
-    )
+    """Obtiene todos los proveedores (PROVEEDOR o AMBAS) sin filtrar por tipo de persona."""
+    dependencia_info: Dict[str, Any] = {}
+    if id_dependencia is not None:
+        result = await db.execute(
+            select(Dependencia).filter(Dependencia.id_dependencia == id_dependencia)
+        )
+        dependencia = result.scalar_one_or_none()
+        dependencia_info = (
+            {"nombre": dependencia.nombre, "direccion": dependencia.direccion}
+            if dependencia
+            else {}
+        )
 
-    query = select(Cliente).filter(Cliente.tipo_relacion.in_(["PROVEEDOR", "AMBAS"]))
+    query = (
+        select(
+            Cliente,
+            Provincia.nombre.label("provincia_nombre"),
+            Municipio.nombre.label("municipio_nombre"),
+        )
+        .join(Provincia, Cliente.id_provincia == Provincia.id_provincia, isouter=True)
+        .join(Municipio, Cliente.id_municipio == Municipio.id_municipio, isouter=True)
+        .filter(Cliente.tipo_relacion.in_(["PROVEEDOR", "AMBAS"]))
+    )
 
     if id_provincia:
         query = query.filter(Cliente.id_provincia == id_provincia)
 
-    if tipo_entidad == "NATURAL":
-        query = query.join(
-            ClienteNatural, Cliente.id_cliente == ClienteNatural.id_cliente
-        )
-    elif tipo_entidad == "TCP":
-        query = query.join(ClienteTCP, Cliente.id_cliente == ClienteTCP.id_cliente)
-    elif tipo_entidad == "JURIDICA":
-        query = query.join(
-            ClienteJuridica, Cliente.id_cliente == ClienteJuridica.id_cliente
-        )
-
+    query = query.order_by(Cliente.nombre)
     result = await db.execute(query)
     results = result.all()
 
+    # Cargar datos tipo-específicos para enriquecer la información
+    cliente_ids = [row[0].id_cliente for row in results]
+    naturales_map: Dict[int, Any] = {}
+    juridicas_map: Dict[int, Any] = {}
+    tcp_map: Dict[int, Any] = {}
+
+    if cliente_ids:
+        nat_result = await db.execute(
+            select(ClienteNatural).filter(ClienteNatural.id_cliente.in_(cliente_ids))
+        )
+        for n in nat_result.scalars().all():
+            naturales_map[n.id_cliente] = n
+
+        jur_result = await db.execute(
+            select(ClienteJuridica).filter(ClienteJuridica.id_cliente.in_(cliente_ids))
+        )
+        for j in jur_result.scalars().all():
+            juridicas_map[j.id_cliente] = j
+
+        tcp_result = await db.execute(
+            select(ClienteTCP).filter(ClienteTCP.id_cliente.in_(cliente_ids))
+        )
+        for t in tcp_result.scalars().all():
+            tcp_map[t.id_cliente] = t
+
     proveedores = []
     for row in results:
-        cliente_obj = row[0]
-        proveedor_data = {
+        cliente_obj: Cliente = row[0]
+        proveedor_data: Dict[str, Any] = {
             "codigo": cliente_obj.codigo,
             "nombre": cliente_obj.nombre,
-            "direccion": cliente_obj.direccion,
-            "provincia": "",
-            "municipio": "",
+            "direccion": cliente_obj.direccion or "",
+            "provincia": row.provincia_nombre or "",
+            "municipio": row.municipio_nombre or "",
+            "tipo_persona": cliente_obj.tipo_persona or "",
+            "carnet_identidad": "",
+            "vigencia": "",
+            "codigo_reup": "",
+            "nit": cliente_obj.nit or "",
         }
 
-        if tipo_entidad == "NATURAL":
-            proveedor_data["carnet_identidad"] = ""
-            proveedor_data["vigencia"] = ""
-        elif tipo_entidad == "JURIDICA":
-            proveedor_data["codigo_reup"] = ""
+        if cliente_obj.id_cliente in naturales_map:
+            n = naturales_map[cliente_obj.id_cliente]
+            proveedor_data["carnet_identidad"] = n.carnet_identidad or ""
+            proveedor_data["vigencia"] = n.vigencia.isoformat() if n.vigencia else ""
+        elif cliente_obj.id_cliente in juridicas_map:
+            j = juridicas_map[cliente_obj.id_cliente]
+            proveedor_data["codigo_reup"] = j.codigo_reup or ""
+        elif cliente_obj.id_cliente in tcp_map:
+            t = tcp_map[cliente_obj.id_cliente]
+            proveedor_data["carnet_identidad"] = t.numero_registro_proyecto or ""
 
         proveedores.append(proveedor_data)
 
@@ -94,7 +180,7 @@ async def get_existencias(db: AsyncSession, id_dependencia: int):
     query = (
         select(
             Productos.codigo.label("codigo"),
-            Productos.nombre.label("descripcion"),
+            Productos.nombre.label("nombre"),
             func.sum(Movimiento.cantidad * TipoMovimiento.factor).label("cantidad"),
         )
         .join(Productos, Movimiento.id_producto == Productos.id_producto)
@@ -109,8 +195,9 @@ async def get_existencias(db: AsyncSession, id_dependencia: int):
     result = await db.execute(query)
     results = result.all()
 
+    dependencia_nombre = dependencia_info.get("nombre", "")
     existencias = [
-        {"codigo": r.codigo, "descripcion": r.descripcion, "cantidad": r.cantidad or 0}
+        {"codigo": r.codigo, "nombre": r.nombre, "cantidad": r.cantidad or 0, "dependencia": dependencia_nombre}
         for r in results
     ]
     return existencias, dependencia_info
@@ -119,6 +206,20 @@ async def get_existencias(db: AsyncSession, id_dependencia: int):
 async def get_movimientos_dependencia(
     db: AsyncSession, id_dependencia: int, fecha_inicio, fecha_fin
 ):
+    """Obtiene movimientos por dependencia agrupados por producto con saldo inicial y final.
+
+    Solo considera movimientos confirmados. Las columnas de movimientos muestran
+    la MAGNITUD (cantidad); el signo del factor del tipo solo define si es
+    entrada (+) o salida (-).
+
+    Los saldos son MONTOS valorados al precio_compra del producto (igual que el
+    dashboard valoriza el inventario):
+      saldo_inicial = Σ (cantidad × factor × precio_compra) previas al rango
+      saldo_final   = saldo_inicial
+                      + (recepcion + compra) × precio_compra
+                      − (venta + merma + donacion + devolucion) × precio_compra
+                      + ajustes × precio_compra
+    """
     result = await db.execute(
         select(Dependencia).filter(Dependencia.id_dependencia == id_dependencia)
     )
@@ -129,44 +230,135 @@ async def get_movimientos_dependencia(
         else {}
     )
 
-    query = (
+    # ── 1. Obtener TODOS los productos con movimientos confirmados en la dependencia ──
+    productos_base = (
         select(
-            Movimiento.fecha,
-            TipoMovimiento.tipo.label("operacion"),
-            Productos.nombre.label("producto"),
-            case(
-                (TipoMovimiento.factor > 0, "Entrada"),
-                (TipoMovimiento.factor < 0, "Salida"),
-                else_="Neutro",
-            ).label("tipo"),
-            Movimiento.cantidad,
+            Productos.id_producto,
+            Productos.codigo.label("codigo"),
+            Productos.nombre.label("nombre"),
+            Productos.precio_compra.label("precio_compra"),
         )
-        .join(
-            TipoMovimiento,
-            Movimiento.id_tipo_movimiento == TipoMovimiento.id_tipo_movimiento,
+        .join(Movimiento, Movimiento.id_producto == Productos.id_producto)
+        .filter(
+            Movimiento.id_dependencia == id_dependencia,
+            Movimiento.estado == "confirmado",
         )
+        .group_by(Productos.id_producto, Productos.codigo, Productos.nombre)
+    )
+    base_result = await db.execute(productos_base)
+    productos_base_map = {
+        r.id_producto: {
+            "codigo": r.codigo,
+            "nombre": r.nombre,
+            "precio_compra": r.precio_compra,
+        }
+        for r in base_result.all()
+    }
+
+    # ── 2. Saldo inicial (MONTO): movimientos ANTES de fecha_inicio ────────
+    saldo_query = (
+        select(
+            Movimiento.id_producto,
+            func.coalesce(
+                func.sum(
+                    Movimiento.cantidad * TipoMovimiento.factor * Productos.precio_compra
+                ),
+                0,
+            ).label("saldo_inicial"),
+        )
+        .join(TipoMovimiento, Movimiento.id_tipo_movimiento == TipoMovimiento.id_tipo_movimiento)
         .join(Productos, Movimiento.id_producto == Productos.id_producto)
         .filter(
             Movimiento.id_dependencia == id_dependencia,
-            Movimiento.fecha >= fecha_inicio,
-            Movimiento.fecha <= fecha_fin,
+            Movimiento.estado == "confirmado",
+            Movimiento.fecha < fecha_inicio,
         )
-        .order_by(Movimiento.fecha.desc())
+        .group_by(Movimiento.id_producto)
     )
+    saldo_result = await db.execute(saldo_query)
+    saldos = {r.id_producto: float(r.saldo_inicial) for r in saldo_result.all()}
 
-    result = await db.execute(query)
-    results = result.all()
+    # ── 3. Movimientos en el rango, pivoteados por tipo (case-insensitive) ─
+    TIPOS_MOVIMIENTO = ["recepcion", "compra", "venta", "merma", "donacion", "devolucion"]
 
-    movimientos = [
-        {
-            "fecha": r.fecha,
-            "operacion": r.operacion,
-            "producto": r.producto,
-            "tipo": r.tipo,
-            "cantidad": r.cantidad,
+    def _pivot(tipo: str):
+        # Magnitud del movimiento: el signo del factor solo indica
+        # entrada (+) o salida (-), nunca se descuenta dos veces.
+        return func.coalesce(
+            func.sum(
+                case(
+                    (
+                        func.lower(TipoMovimiento.tipo) == tipo,
+                        Movimiento.cantidad * func.abs(TipoMovimiento.factor),
+                    ),
+                    else_=0,
+                )
+            ),
+            0,
+        )
+
+    mov_query = (
+        select(
+            Movimiento.id_producto,
+            *[_pivot(tipo).label(tipo) for tipo in TIPOS_MOVIMIENTO],
+            # Ajustes netos: AGREGAR suma, QUITAR resta
+            func.coalesce(
+                func.sum(
+                    case(
+                        (func.lower(TipoMovimiento.tipo) == "ajuste_agregar", Movimiento.cantidad),
+                        (func.lower(TipoMovimiento.tipo) == "ajuste_quitar", -Movimiento.cantidad),
+                        else_=0,
+                    )
+                ),
+                0,
+            ).label("ajustes"),
+        )
+        .join(TipoMovimiento, Movimiento.id_tipo_movimiento == TipoMovimiento.id_tipo_movimiento)
+        .filter(
+            Movimiento.id_dependencia == id_dependencia,
+            Movimiento.estado == "confirmado",
+            # fecha_fin es date: incluir todo el último día
+            Movimiento.fecha >= fecha_inicio,
+            Movimiento.fecha < fecha_fin + timedelta(days=1),
+        )
+        .group_by(Movimiento.id_producto)
+    )
+    mov_result = await db.execute(mov_query)
+    movimientos_rows = mov_result.all()
+
+    # ── 4. Combinar: base + saldo (monto) + movimientos (cantidades) ──────
+    mov_by_pid = {row.id_producto: row for row in movimientos_rows}
+
+    movimientos = []
+    for pid, info in sorted(productos_base_map.items(), key=lambda x: x[1]["codigo"] or ""):
+        # Monto: cantidad valorizada al precio de compra del producto
+        precio = float(info.get("precio_compra") or 0)
+        saldo_inicial = round(float(saldos.get(pid, 0.0)), 2)
+        row = mov_by_pid.get(pid)
+        mov_data = {
+            tipo: float(getattr(row, tipo) or 0) if row is not None else 0.0
+            for tipo in TIPOS_MOVIMIENTO
         }
-        for r in results
-    ]
+        ajustes = float(getattr(row, "ajustes") or 0) if row is not None else 0.0
+
+        # DEVOLUCION es salida (factor -1 en tipo_movimiento)
+        entradas = (mov_data["recepcion"] + mov_data["compra"]) * precio
+        salidas = (mov_data["venta"] + mov_data["merma"] + mov_data["donacion"] + mov_data["devolucion"]) * precio
+        saldo_final = round(saldo_inicial + entradas - salidas + ajustes * precio, 2)
+
+        movimientos.append({
+            "codigo": info["codigo"],
+            "nombre": info["nombre"],
+            "saldo_inicial": saldo_inicial,
+            "recepcion": mov_data["recepcion"],
+            "compra": mov_data["compra"],
+            "venta": mov_data["venta"],
+            "merma": mov_data["merma"],
+            "donacion": mov_data["donacion"],
+            "devolucion": mov_data["devolucion"],
+            "ajustes": ajustes,
+            "saldo_final": saldo_final,
+        })
 
     return movimientos, dependencia_info
 
@@ -243,16 +435,22 @@ async def get_registro_clientes(
     """Obtiene todos los clientes con tipo_relacion 'CLIENTE' o 'AMBAS',
     incluyendo el código REEUP para personas jurídicas."""
     query = (
-        select(Cliente)
+        select(
+            Cliente,
+            Provincia.nombre.label("provincia_nombre"),
+            Municipio.nombre.label("municipio_nombre"),
+        )
+        .join(Provincia, Cliente.id_provincia == Provincia.id_provincia, isouter=True)
+        .join(Municipio, Cliente.id_municipio == Municipio.id_municipio, isouter=True)
         .filter(Cliente.tipo_relacion.in_(["CLIENTE", "AMBAS"]))
         .order_by(Cliente.nombre)
     )
     result = await db.execute(query)
-    clientes = result.scalars().all()
+    rows = result.all()
 
-    # Obtener REEUP para jurídicos en un solo query
+    # Obtener IDs de clientes jurídicos
     cliente_ids_juridicos = [
-        c.id_cliente for c in clientes if c.tipo_persona == "JURIDICA"
+        r[0].id_cliente for r in rows if r[0].tipo_persona == "JURIDICA"
     ]
     reup_map: Dict[int, str] = {}
     if cliente_ids_juridicos:
@@ -264,14 +462,17 @@ async def get_registro_clientes(
             reup_map[rj.id_cliente] = rj.codigo_reup
 
     data = []
-    for c in clientes:
+    for r in rows:
+        cliente: Cliente = r[0]
         data.append(
             {
-                "id_cliente": c.id_cliente,
-                "nombre": c.nombre,
-                "reeup": reup_map.get(c.id_cliente, ""),
-                "nit": c.nit or "",
-                "direccion": c.direccion or "",
+                "id_cliente": cliente.id_cliente,
+                "nombre": cliente.nombre,
+                "reeup": reup_map.get(cliente.id_cliente, ""),
+                "nit": cliente.nit or "",
+                "direccion": cliente.direccion or "",
+                "provincia": r.provincia_nombre or "",
+                "municipio": r.municipio_nombre or "",
             }
         )
 
@@ -353,22 +554,27 @@ async def get_registro_creadores(
     vigencia: Optional[str] = None,
     texto_busqueda: Optional[str] = None,
 ) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
-    """Obtiene creadores (ClienteNatural + Cliente) con filtros."""
+    """Obtiene realizadores desde persona_etapa, con datos del cliente."""
+    # Subquery: clientes únicos que aparecen en persona_etapa
+    subq = (
+        select(PersonaEtapa.id_persona)
+        .group_by(PersonaEtapa.id_persona)
+        .subquery()
+    )
+
     query = (
         select(
             Cliente,
-            ClienteNatural,
             Municipio.nombre.label("municipio_nombre"),
             Provincia.nombre.label("provincia_nombre"),
         )
-        .join(ClienteNatural, Cliente.id_cliente == ClienteNatural.id_cliente)
+        .join(subq, Cliente.id_cliente == subq.c.id_persona)
         .join(Municipio, Cliente.id_municipio == Municipio.id_municipio, isouter=True)
         .join(
             Provincia,
             Cliente.id_provincia == Provincia.id_provincia,
             isouter=True,
         )
-        .filter(Cliente.tipo_persona == "NATURAL")
     )
 
     if id_provincia is not None:
@@ -376,59 +582,35 @@ async def get_registro_creadores(
     if id_municipio is not None:
         query = query.filter(Cliente.id_municipio == id_municipio)
     if vigencia == "activo":
-        query = query.filter(
-            (ClienteNatural.vigencia >= date.today())
-            | (ClienteNatural.vigencia.is_(None))
-        )
+        query = query.filter(Cliente.estado == "ACTIVO")
     elif vigencia == "inactivo":
-        query = query.filter(ClienteNatural.vigencia < date.today())
+        query = query.filter(Cliente.estado == "INACTIVO")
     if texto_busqueda:
         pattern = f"%{texto_busqueda}%"
         query = query.filter(
-            (ClienteNatural.nombre.ilike(pattern))
-            | (ClienteNatural.primer_apellido.ilike(pattern))
-            | (ClienteNatural.segundo_apellido.ilike(pattern))
-            | (ClienteNatural.carnet_identidad.ilike(pattern))
-            | (Cliente.nombre.ilike(pattern))
+            Cliente.nombre.ilike(pattern)
+            | Cliente.nit.ilike(pattern)
+            | Cliente.codigo.ilike(pattern)
         )
 
-    query = query.order_by(
-        Municipio.nombre, ClienteNatural.primer_apellido, ClienteNatural.nombre
-    )
+    query = query.order_by(Cliente.nombre)
     result = await db.execute(query)
     rows = result.all()
 
     data = []
     for r in rows:
         cliente: Cliente = r[0]
-        natural: ClienteNatural = r[1]
-        nombre_completo = (
-            f"{natural.nombre} {natural.primer_apellido}"
-            f"{' ' + natural.segundo_apellido if natural.segundo_apellido else ''}"
-        )
-        vigente = (
-            "SÍ"
-            if (natural.vigencia is None or natural.vigencia >= date.today())
-            else "NO"
-        )
         data.append(
             {
                 "id_cliente": cliente.id_cliente,
-                "carnet_identidad": natural.carnet_identidad,
-                "nombre_completo": nombre_completo,
+                "nombre_completo": cliente.nombre,
                 "direccion": cliente.direccion or "",
                 "municipio": r.municipio_nombre or "",
                 "provincia": r.provincia_nombre or "",
-                "numero_registro": natural.numero_registro or "",
                 "codigo": cliente.codigo,
-                "vigencia": vigente,
-                "vigencia_fecha": natural.vigencia.isoformat()
-                if natural.vigencia
-                else "",
-                "fecha_baja": natural.fecha_baja.isoformat()
-                if natural.fecha_baja
-                else "",
-                "en_baja": natural.en_baja,
+                "nit": cliente.nit or "",
+                "tipo_persona": cliente.tipo_persona or "",
+                "estado": cliente.estado or "",
             }
         )
 
@@ -754,6 +936,7 @@ async def get_resumen_liquidaciones(
     fecha_fin: Optional[date] = None,
     id_cliente: Optional[int] = None,
     tipo_concepto: Optional[int] = None,
+    id_moneda: Optional[int] = None,
 ) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
     """Obtiene resumen de liquidaciones con cliente, moneda, productos."""
     query = (
@@ -775,6 +958,8 @@ async def get_resumen_liquidaciones(
         query = query.filter(Liquidacion.fecha_emision <= fecha_fin)
     if id_cliente is not None:
         query = query.filter(Liquidacion.id_cliente == id_cliente)
+    if id_moneda is not None:
+        query = query.filter(Liquidacion.id_moneda == id_moneda)
 
     query = query.order_by(Liquidacion.fecha_emision.desc())
     result = await db.execute(query)

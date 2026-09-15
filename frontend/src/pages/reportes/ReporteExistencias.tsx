@@ -3,8 +3,9 @@ import { toast } from "react-hot-toast";
 import { dependenciasService } from "../../services/administracion";
 import { Dependencia } from "../../types/dependencia";
 import { authHelpers } from "../../lib/api";
-import { Boxes, Download, Building2, Eye, Loader2 } from "lucide-react";
+import { Boxes, Download, Building2, Eye, Loader2, Table2 } from "lucide-react";
 import ReportNotes from "../../components/ui/ReportNotes";
+import { ReportPreviewTable } from "../../components/ui/ReportPreviewTable";
 
 const BASE_URL =
   import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api/v1";
@@ -12,9 +13,11 @@ const BASE_URL =
 const ReporteExistencias: React.FC = () => {
   const [pdfLoading, setPdfLoading] = useState(false);
   const [previewLoading, setPreviewLoading] = useState(false);
+  const [tableLoading, setTableLoading] = useState(false);
   const [dependencias, setDependencias] = useState<Dependencia[]>([]);
   const [idDependencia, setIdDependencia] = useState<number | null>(null);
   const [notas, setNotas] = useState("");
+  const [previewData, setPreviewData] = useState<any[] | null>(null);
 
   const user = useMemo(() => authHelpers.getUser(), []);
   const userName = user ? `${user.nombre} ${user.primer_apellido}${user.segundo_apellido ? " " + user.segundo_apellido : ""}`.trim() : "";
@@ -27,6 +30,21 @@ const ReporteExistencias: React.FC = () => {
     id_dependencia: idDependencia?.toString() ?? "",
     aprobado_por_nombre: userName, aprobado_por_cargo: userCargo, notas,
   });
+
+  const handleTablePreview = async () => {
+    if (!idDependencia) { toast.error("Seleccione una dependencia"); return; }
+    setTableLoading(true);
+    setPreviewData(null);
+    try {
+      const token = authHelpers.getToken() ?? "";
+      const r = await fetch(`${BASE_URL}/reportes/existencias/preview?id_dependencia=${idDependencia}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!r.ok) throw new Error(`${r.status}`);
+      const json = await r.json();
+      setPreviewData(json.items || []);
+    } catch { toast.error("Error al cargar vista previa"); } finally { setTableLoading(false); }
+  };
 
   const handlePreview = async () => {
     if (!idDependencia) { toast.error("Seleccione una dependencia"); return; }
@@ -68,6 +86,9 @@ const ReporteExistencias: React.FC = () => {
           </div>
         </div>
         <div className="flex items-center gap-1">
+          <button type="button" onClick={handleTablePreview} disabled={!idDependencia || tableLoading} className="p-2 rounded-lg text-green-600 hover:bg-green-50 disabled:opacity-50 transition-colors" title="Vista previa de tabla">
+            {tableLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Table2 className="w-4 h-4" />}
+          </button>
           <button type="button" onClick={handlePreview} disabled={!idDependencia || previewLoading} className="p-2 rounded-lg text-blue-600 hover:bg-blue-50 disabled:opacity-50 transition-colors" title="Vista previa del documento">
             {previewLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Eye className="w-4 h-4" />}
           </button>
@@ -77,13 +98,14 @@ const ReporteExistencias: React.FC = () => {
         </div>
       </div>
 
-      <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 w-full max-w-lg mx-auto">
+      <div className="w-full flex justify-center">
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 w-full max-w-lg">
         <div className="space-y-3">
           <div className="flex-shrink-0">
               <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Filtros</p>
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-0.5">Dependencia <span className="text-red-500">*</span></label>
-                <select value={idDependencia ?? ""} onChange={e => setIdDependencia(e.target.value ? Number(e.target.value) : null)} className="w-full px-2.5 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 bg-white" required>
+                <select value={idDependencia ?? ""} onChange={e => { setIdDependencia(e.target.value ? Number(e.target.value) : null); setPreviewData(null); }} className="w-full px-2.5 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 bg-white" required>
                   <option value="">Seleccionar dependencia</option>
                   {dependencias.map(d => <option key={d.id_dependencia} value={d.id_dependencia}>{d.nombre}</option>)}
                 </select>
@@ -100,6 +122,22 @@ const ReporteExistencias: React.FC = () => {
           </div>
         </div>
       </div>
+      </div>
+
+      {previewData && (
+        <div className="mt-4">
+          <ReportPreviewTable
+            columns={[
+              { key: "codigo", label: "Código" },
+              { key: "nombre", label: "Nombre" },
+              { key: "cantidad", label: "Cantidad", className: "text-right" },
+              { key: "dependencia", label: "Dependencia" },
+            ]}
+            data={previewData}
+            totalItems={previewData.length}
+          />
+        </div>
+      )}
     </div>
   );
 };

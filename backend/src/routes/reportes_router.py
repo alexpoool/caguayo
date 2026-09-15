@@ -99,11 +99,8 @@ async def listar_personas(
 
 @router.get("/proveedores-dependencia")
 async def obtener_reporte_proveedores_dependencia(
-    id_dependencia: int = Query(..., description="ID de la Dependencia"),
-    tipo_entidad: str = Query(
-        ..., description="Tipo de Entidad (NATURAL, TCP, JURIDICA)"
-    ),
-    id_provincia: int = Query(None, description="Filtrar por provincia (opcional)"),
+    id_dependencia: Optional[int] = Query(None, description="ID de la Dependencia (opcional)"),
+    id_provincia: Optional[int] = Query(None, description="Filtrar por provincia (opcional)"),
     aprobado_por_nombre: str = Query("", description="Nombre de quien aprueba"),
     aprobado_por_cargo: str = Query("", description="Cargo de quien aprueba"),
     notas: str = Query("", description="Observaciones para incluir en el PDF"),
@@ -112,7 +109,7 @@ async def obtener_reporte_proveedores_dependencia(
 ):
     try:
         proveedores, dependencia_info = await get_proveedores_por_dependencia(
-            db, id_dependencia, tipo_entidad, id_provincia
+            db, id_dependencia, id_provincia
         )
 
         usuario_actual = f"{current_user.nombre} {current_user.primer_apellido}"
@@ -122,7 +119,6 @@ async def obtener_reporte_proveedores_dependencia(
             accion="export_proveedores_dependencia",
             detalle={
                 "id_dependencia": id_dependencia,
-                "tipo_entidad": tipo_entidad,
                 "id_provincia": id_provincia,
             },
             usuario_id=current_user.id_usuario,
@@ -132,7 +128,6 @@ async def obtener_reporte_proveedores_dependencia(
         pdf_buffer = generar_pdf_proveedores_dependencia(
             proveedores,
             dependencia_info,
-            tipo_entidad,
             usuario_actual,
             aprobado_por_nombre,
             aprobado_por_cargo,
@@ -143,7 +138,7 @@ async def obtener_reporte_proveedores_dependencia(
             pdf_buffer,
             media_type="application/pdf",
             headers={
-                "Content-Disposition": f"attachment; filename=proveedores_{id_dependencia}.pdf"
+                "Content-Disposition": "attachment; filename=proveedores.pdf"
             },
         )
     except Exception as e:
@@ -592,6 +587,7 @@ async def obtener_reporte_liquidaciones(
     tipo_concepto: Optional[int] = Query(
         None, description="Filtrar por tipo de concepto"
     ),
+    id_moneda: Optional[int] = Query(None, description="Filtrar por moneda"),
     aprobado_por_nombre: str = Query("", description="Nombre de quien aprueba"),
     aprobado_por_cargo: str = Query("", description="Cargo de quien aprueba"),
     notas: str = Query("", description="Observaciones para incluir en el PDF"),
@@ -600,7 +596,7 @@ async def obtener_reporte_liquidaciones(
 ):
     try:
         data, meta = await get_resumen_liquidaciones(
-            db, fecha_inicio, fecha_fin, id_cliente, tipo_concepto
+            db, fecha_inicio, fecha_fin, id_cliente, tipo_concepto, id_moneda
         )
         usuario_actual = f"{current_user.nombre} {current_user.primer_apellido}"
 
@@ -693,21 +689,19 @@ async def preview_movimientos_dependencia(
             db, id_dependencia, fecha_inicio, fecha_fin
         )
 
-        items = [
-            {
-                **r,
-                "fecha": r["fecha"].isoformat()
-                if hasattr(r["fecha"], "isoformat")
-                else str(r["fecha"]),
-            }
-            for r in movimientos
-        ]
-
+        total_saldo_inicial = sum(float(r.get("saldo_inicial", 0)) for r in movimientos)
+        total_saldo_final = sum(float(r.get("saldo_final", 0)) for r in movimientos)
         total_entradas = sum(
-            float(r["cantidad"]) for r in movimientos if r["tipo"] == "Entrada"
+            float(r.get("recepcion", 0))
+            + float(r.get("compra", 0))
+            for r in movimientos
         )
         total_salidas = sum(
-            float(r["cantidad"]) for r in movimientos if r["tipo"] == "Salida"
+            float(r.get("venta", 0))
+            + float(r.get("merma", 0))
+            + float(r.get("donacion", 0))
+            + float(r.get("devolucion", 0))
+            for r in movimientos
         )
 
         usuario_actual = f"{current_user.nombre} {current_user.primer_apellido}"
@@ -725,8 +719,10 @@ async def preview_movimientos_dependencia(
 
         return {
             "dependencia": dependencia_info,
-            "items": items,
-            "total_items": len(items),
+            "items": movimientos,
+            "total_items": len(movimientos),
+            "total_saldo_inicial": total_saldo_inicial,
+            "total_saldo_final": total_saldo_final,
             "total_entradas": total_entradas,
             "total_salidas": total_salidas,
         }
@@ -799,17 +795,14 @@ async def preview_movimientos_producto(
 
 @router.get("/proveedores-dependencia/preview")
 async def preview_proveedores_dependencia(
-    id_dependencia: int = Query(..., description="ID de la Dependencia"),
-    tipo_entidad: str = Query(
-        ..., description="Tipo de Entidad (NATURAL, TCP, JURIDICA)"
-    ),
-    id_provincia: int = Query(None, description="Filtrar por provincia (opcional)"),
+    id_dependencia: Optional[int] = Query(None, description="ID de la Dependencia (opcional)"),
+    id_provincia: Optional[int] = Query(None, description="Filtrar por provincia (opcional)"),
     db: AsyncSession = Depends(get_session),
     current_user: UsuarioInfo = Depends(get_optional_user),
 ):
     try:
         proveedores, dependencia_info = await get_proveedores_por_dependencia(
-            db, id_dependencia, tipo_entidad, id_provincia
+            db, id_dependencia, id_provincia
         )
 
         usuario_actual = f"{current_user.nombre} {current_user.primer_apellido}"
@@ -818,7 +811,6 @@ async def preview_proveedores_dependencia(
             accion="preview_proveedores_dependencia",
             detalle={
                 "id_dependencia": id_dependencia,
-                "tipo_entidad": tipo_entidad,
                 "id_provincia": id_provincia,
             },
             usuario_id=current_user.id_usuario,
@@ -1089,12 +1081,13 @@ async def preview_liquidaciones(
     tipo_concepto: Optional[int] = Query(
         None, description="Filtrar por tipo de concepto"
     ),
+    id_moneda: Optional[int] = Query(None, description="Filtrar por moneda"),
     db: AsyncSession = Depends(get_session),
     current_user: UsuarioInfo = Depends(get_optional_user),
 ):
     try:
         data, meta = await get_resumen_liquidaciones(
-            db, fecha_inicio, fecha_fin, id_cliente, tipo_concepto
+            db, fecha_inicio, fecha_fin, id_cliente, tipo_concepto, id_moneda
         )
 
         items = [

@@ -58,6 +58,8 @@ class ClienteBase(SQLModel):
     @field_validator("email")
     @classmethod
     def validar_email(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None and v.strip() == "":
+            return None
         if v is not None and not re.match(EMAIL_REGEX, v):
             raise ValueError("Email inválido")
         return v
@@ -83,6 +85,8 @@ class ClienteUpdate(SQLModel):
     @field_validator("email")
     @classmethod
     def validar_email(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None and v.strip() == "":
+            return None
         if v is not None and not re.match(EMAIL_REGEX, v):
             raise ValueError("Email inválido")
         return v

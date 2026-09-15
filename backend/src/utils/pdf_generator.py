@@ -14,78 +14,52 @@ from src.utils.pdf_template import PDFTemplate, format_quantity
 def generar_pdf_proveedores_dependencia(
     proveedores: List[Dict[str, Any]],
     dependencia_info: Dict[str, Any],
-    tipo_entidad: str,
     usuario_actual: str,
     aprobado_por_nombre: str = "",
     aprobado_por_cargo: str = "",
     notas: str = "",
 ) -> BytesIO:
-    """Genera PDF con listado de proveedores filtrado por dependencia."""
+    """Genera PDF con listado de todos los proveedores (sin filtro de tipo)."""
     template = PDFTemplate(title="REPORTE DE PROVEEDORES", landscape_mode=True)
     template.set_company_header(name="Caguayo")
-    template.set_filters(
-        {
-            "Dependencia": dependencia_info.get("nombre", ""),
-            "Tipo Entidad": tipo_entidad,
-        }
-    )
+    filters: Dict[str, str] = {}
+    if dependencia_info.get("nombre"):
+        filters["Dependencia"] = dependencia_info["nombre"]
+    template.set_filters(filters)
 
-    # ── Build table data ──────────────────────────────────────────────────
-    if tipo_entidad == "NATURAL":
-        headers = [
-            "CÓDIGO",
-            "CI",
-            "NOMBRE Y APELLIDOS",
-            "DIRECCIÓN",
-            "MUNICIPIO",
-            "VIGENCIA",
-        ]
-        data = [
-            [
-                p.get("codigo", ""),
-                p.get("carnet_identidad", ""),
-                p.get("nombre", ""),
-                p.get("direccion", ""),
-                p.get("municipio", ""),
-                str(p.get("vigencia", "")),
-            ]
-            for p in proveedores
-        ]
-        code_cols = [0, 1]
-        num_cols: List[int] = []
+    # ── Build table data (unified columns for all types) ──────────────────
+    headers = [
+        "CÓDIGO",
+        "TIPO",
+        "NOMBRE",
+        "NIT/CI/REEUP",
+        "DIRECCIÓN",
+        "PROVINCIA",
+        "MUNICIPIO",
+    ]
+    data = []
+    for p in proveedores:
+        tipo = p.get("tipo_persona", "")
+        if tipo == "NATURAL":
+            id_val = p.get("carnet_identidad", "")
+        elif tipo == "JURIDICA":
+            id_val = p.get("codigo_reup", "") or p.get("nit", "")
+        elif tipo == "TCP":
+            id_val = p.get("carnet_identidad", "")
+        else:
+            id_val = p.get("nit", "")
 
-    elif tipo_entidad == "TCP":
-        headers = ["CÓDIGO", "NOMBRE Y APELLIDOS", "DIRECCIÓN"]
-        data = [
-            [p.get("codigo", ""), p.get("nombre", ""), p.get("direccion", "")]
-            for p in proveedores
-        ]
-        code_cols = [0]
-        num_cols = []
-
-    elif tipo_entidad == "JURIDICA":
-        headers = ["CÓDIGO", "NIT", "NOMBRE", "DIRECCIÓN", "MUNICIPIO"]
-        data = [
-            [
-                p.get("codigo", ""),
-                p.get("codigo_reup", ""),
-                p.get("nombre", ""),
-                p.get("direccion", ""),
-                p.get("municipio", ""),
-            ]
-            for p in proveedores
-        ]
-        code_cols = [0, 1]
-        num_cols = []
-
-    else:  # Fallback default
-        headers = ["CÓDIGO", "NOMBRE", "DIRECCIÓN"]
-        data = [
-            [p.get("codigo", ""), p.get("nombre", ""), p.get("direccion", "")]
-            for p in proveedores
-        ]
-        code_cols = [0]
-        num_cols = []
+        data.append([
+            p.get("codigo", ""),
+            tipo,
+            p.get("nombre", ""),
+            id_val,
+            p.get("direccion", ""),
+            p.get("provincia", ""),
+            p.get("municipio", ""),
+        ])
+    code_cols = [0]
+    num_cols: List[int] = []
 
     template.add_table(headers, data, code_columns=code_cols, numeric_columns=num_cols)
 
@@ -121,11 +95,11 @@ def generar_pdf_existencias(
     template.set_company_header(name="Caguayo")
     template.set_filters({"Dependencia": dependencia_info.get("nombre", "")})
 
-    headers = ["CÓDIGO", "DESCRIPCIÓN", "CANTIDAD"]
+    headers = ["CÓDIGO", "NOMBRE", "CANTIDAD"]
     data = [
         [
             str(e.get("codigo", "")),
-            str(e.get("descripcion", "")),
+            str(e.get("nombre", "")),
             format_quantity(e.get("cantidad", 0)),
         ]
         for e in existencias
@@ -175,22 +149,27 @@ def generar_pdf_movimientos_dependencia(
         }
     )
 
-    headers = ["FECHA", "OPERACIÓN", "PRODUCTO", "TIPO", "CANTIDAD"]
+    headers = ["CÓDIGO", "NOMBRE", "S. INICIAL", "RECEP.", "COMPRA", "VENTA", "MERMA", "DONAC.", "DEVOL.", "S. FINAL"]
     data = [
         [
-            str(m.get("fecha", "")),
-            str(m.get("operacion", "")),
-            str(m.get("producto", "")),
-            str(m.get("tipo", "")),
-            format_quantity(m.get("cantidad", 0)),
+            str(m.get("codigo", "")),
+            str(m.get("nombre", "")),
+            format_quantity(m.get("saldo_inicial", 0)),
+            format_quantity(m.get("recepcion", 0)),
+            format_quantity(m.get("compra", 0)),
+            format_quantity(m.get("venta", 0)),
+            format_quantity(m.get("merma", 0)),
+            format_quantity(m.get("donacion", 0)),
+            format_quantity(m.get("devolucion", 0)),
+            format_quantity(m.get("saldo_final", 0)),
         ]
         for m in movimientos
     ]
 
     template.add_table(
         headers,
-        data,
-        numeric_columns=[4],
+        data,        code_columns=[0],
+        numeric_columns=[2, 3, 4, 5, 6, 7, 8, 9],
     )
 
     if notas:
@@ -206,6 +185,8 @@ def generar_pdf_movimientos_dependencia(
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
+
+
 #  MOVIMIENTOS POR PRODUCTO
 # ═══════════════════════════════════════════════════════════════════════════════
 

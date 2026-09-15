@@ -301,6 +301,9 @@ class ClienteService:
         else:
             print("[DEBUG] update_cliente: No se procesan cuentas (None)")
 
+        # Commit all changes
+        await db.commit()
+
         # Cargar relaciones para retornar
         result = await db.exec(
             select(Cliente)

@@ -554,15 +554,12 @@ function App() {
                     <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-2 pt-2 pb-1">Inventario</p>
                   )}
                   <SidebarLink slim={slimSidebar} to="/reportes?report=existencias" onClick={handleLinkClick} disabled={!hasFuncionalidad('reporte_existencias')}>
-                    <Boxes className="w-5 h-5" />
                     Existencias
                   </SidebarLink>
                   <SidebarLink slim={slimSidebar} to="/reportes?report=movimientos-dependencia" onClick={handleLinkClick} disabled={!hasFuncionalidad('reporte_movimientos_dependencia')}>
-                    <ArrowLeftRight className="w-5 h-5" />
                     Mov. por Dependencia
                   </SidebarLink>
                   <SidebarLink slim={slimSidebar} to="/reportes?report=movimientos-producto" onClick={handleLinkClick} disabled={!hasFuncionalidad('reporte_movimientos_producto')}>
-                    <Package className="w-5 h-5" />
                     Mov. por Producto
                   </SidebarLink>
 
@@ -571,7 +568,6 @@ function App() {
                     <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-2 pt-3 pb-1">Tienda</p>
                   )}
                   <SidebarLink slim={slimSidebar} to="/reportes?report=clientes" onClick={handleLinkClick} disabled={!hasFuncionalidad('reporte_clientes')}>
-                    <Users className="w-5 h-5" />
                     Registro Clientes
                   </SidebarLink>
 
@@ -580,11 +576,9 @@ function App() {
                     <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-2 pt-3 pb-1">Compra</p>
                   )}
                   <SidebarLink slim={slimSidebar} to="/reportes?report=proveedores" onClick={handleLinkClick} disabled={!hasFuncionalidad('reporte_proveedores')}>
-                    <UserCircle className="w-5 h-5" />
-                    Proveedores
+                    Registro de Proveedores
                   </SidebarLink>
                   <SidebarLink slim={slimSidebar} to="/reportes?report=liquidaciones" onClick={handleLinkClick} disabled={!hasFuncionalidad('reporte_liquidaciones')}>
-                    <Calculator className="w-5 h-5" />
                     Resumen Liquidaciones
                   </SidebarLink>
 
@@ -593,15 +587,12 @@ function App() {
                     <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-2 pt-3 pb-1">Proyectos</p>
                   )}
                   <SidebarLink slim={slimSidebar} to="/reportes?report=proyectos" onClick={handleLinkClick} disabled={!hasFuncionalidad('reporte_proyectos')}>
-                    <Layers className="w-5 h-5" />
                     Registro Proyectos
                   </SidebarLink>
                   <SidebarLink slim={slimSidebar} to="/reportes?report=creadores" onClick={handleLinkClick} disabled={!hasFuncionalidad('reporte_creadores')}>
-                    <Users className="w-5 h-5" />
-                    Registro Creadores
+                    Registro de Realizadores
                   </SidebarLink>
                   <SidebarLink slim={slimSidebar} to="/reportes?report=desempeno" onClick={handleLinkClick} disabled={!hasFuncionalidad('reporte_desempeno')}>
-                    <BarChart3 className="w-5 h-5" />
                     Informe Desempeño
                   </SidebarLink>
 
@@ -610,11 +601,9 @@ function App() {
                     <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-2 pt-3 pb-1">Ministerios</p>
                   )}
                   <SidebarLink slim={slimSidebar} to="/reportes?report=onat" onClick={handleLinkClick} disabled={!hasFuncionalidad('reporte_onat')}>
-                    <FileText className="w-5 h-5" />
                     ONAT Retenciones
                   </SidebarLink>
                   <SidebarLink slim={slimSidebar} to="/reportes?report=mincult" onClick={handleLinkClick} disabled={!hasFuncionalidad('reporte_mincult')}>
-                    <ClipboardList className="w-5 h-5" />
                     MINCULT Ingresos
                   </SidebarLink>
                 </div>

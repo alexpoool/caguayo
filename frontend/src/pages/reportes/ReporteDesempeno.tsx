@@ -92,7 +92,7 @@ const ReporteDesempeno: React.FC = () => {
 
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 w-full max-w-lg mx-auto">
         <div className="space-y-3">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 flex-shrink-0">
+          <div className="flex-shrink-0">
             <div>
               <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Filtros</p>
               <div className="space-y-2">

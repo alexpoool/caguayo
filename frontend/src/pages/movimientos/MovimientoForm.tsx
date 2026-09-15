@@ -8,7 +8,6 @@ import {
   dependenciasService,
   subcategoriasService,
 } from "../../services/api";
-import { useDependenciasFiltradas } from "../../hooks/useDependenciasFiltradas";
 import type {
   MovimientoCreate,
   Productos,
@@ -109,38 +108,36 @@ function SearchableSelect<T extends Record<string, any>>({
     return label.includes(searchTerm.toLowerCase());
   });
 
-  // Calcular la posición del dropdown cuando se abre
+  // Calcular la posición del dropdown cuando se abre (position: fixed = viewport-relative)
   useEffect(() => {
     if (isOpen && containerRef.current) {
       const rect = containerRef.current.getBoundingClientRect();
-      const scrollY = window.scrollY || window.pageYOffset;
       setDropdownPosition({
-        top: rect.bottom + scrollY + 4,
+        top: rect.bottom + 4,
         left: rect.left,
         width: rect.width,
       });
     }
   }, [isOpen]);
 
-  // Actualizar posición cuando cambia el tamaño de la ventana
+  // Actualizar posición cuando cambia el tamaño de la ventana o scroll
   useEffect(() => {
-    function handleResize() {
+    function updatePosition() {
       if (isOpen && containerRef.current) {
         const rect = containerRef.current.getBoundingClientRect();
-        const scrollY = window.scrollY || window.pageYOffset;
         setDropdownPosition({
-          top: rect.bottom + scrollY + 4,
+          top: rect.bottom + 4,
           left: rect.left,
           width: rect.width,
         });
       }
     }
 
-    window.addEventListener("resize", handleResize);
-    window.addEventListener("scroll", handleResize, true);
+    window.addEventListener("resize", updatePosition);
+    window.addEventListener("scroll", updatePosition, true);
     return () => {
-      window.removeEventListener("resize", handleResize);
-      window.removeEventListener("scroll", handleResize, true);
+      window.removeEventListener("resize", updatePosition);
+      window.removeEventListener("scroll", updatePosition, true);
     };
   }, [isOpen]);
 
@@ -447,7 +444,10 @@ export function MovimientoRecepcionForm({
   });
 
   const { data: dependencias = [], isLoading: isLoadingDependencias } =
-    useDependenciasFiltradas();
+    useQuery({
+      queryKey: ["dependencias"],
+      queryFn: () => dependenciasService.getDependencias(),
+    });
 
   const { data: tiposMovimiento = [] } = useQuery({
     queryKey: ["tipos-movimiento"],

@@ -74,8 +74,8 @@ const ReporteCreadores: React.FC = () => {
             <UserCircle className="w-4 h-4 text-teal-600" />
           </div>
           <div>
-            <h1 className="text-lg font-bold text-gray-900 leading-tight">Registro de Creadores</h1>
-            <p className="text-xs text-gray-500">Filtrado por ubicación y vigencia</p>
+            <h1 className="text-lg font-bold text-gray-900 leading-tight">Registro de Realizadores</h1>
+            <p className="text-xs text-gray-500">Listado de realizadores asignados a etapas</p>
           </div>
         </div>
         <div className="flex items-center gap-1">
@@ -90,7 +90,7 @@ const ReporteCreadores: React.FC = () => {
 
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 w-full max-w-lg mx-auto">
         <div className="space-y-3">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 flex-shrink-0">
+          <div className="flex-shrink-0">
             <div>
               <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Filtros</p>
               <div className="space-y-2">
@@ -114,14 +114,15 @@ const ReporteCreadores: React.FC = () => {
                     </select>
                   </div>
                 </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-0.5">Vigencia</label>
-                  <select value={vigencia} onChange={e => setVigencia(e.target.value)} className="w-full px-2.5 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 bg-white">
-                    <option value="">Todos</option>
-                    <option value="activo">Activo</option>
-                    <option value="inactivo">Inactivo</option>
-                  </select>
-                </div>
+
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-0.5">Vigencia</label>
+                <select value={vigencia} onChange={e => setVigencia(e.target.value)} className="w-full px-2.5 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 bg-white">
+                  <option value="">Todos</option>
+                  <option value="activo">Activo</option>
+                  <option value="inactivo">Inactivo</option>
+                </select>
               </div>
             </div>
           </div>

@@ -43,7 +43,9 @@ import { toast } from "react-hot-toast";
 import { authHelpers } from "../../lib/api";
 
 import { dependenciasService } from "../../services/administracion";
+import { monedaService } from "../../services/api";
 import type { Dependencia } from "../../types/dependencia";
+import type { Moneda } from "../../types/moneda";
 
 
 
@@ -63,13 +65,23 @@ interface ReportConfig {
   moduleLabel: string;
   previewEndpoint: string;
   buildPreviewParams: (filters: FilterState) => Record<string, string>;
-  transformChartData: (data: any) => { name: string; monto: number; cantidad: number }[];
+  transformChartData: (data: any) => Record<string, any>[];
   computeStats: (data: any) => ChartStats;
   pdfEndpoint: string;
   pdfFilename: string;
   buildPdfParams: (filters: FilterState) => Record<string, string>;
   needsDependencia: boolean;
   needsFechas: boolean;
+  showTable?: boolean;
+  showStats?: boolean;
+  needsMoneda?: boolean;
+  chartSeries?: { key: string; name: string; color: string }[];
+  tableColumns?: {
+    key: string;
+    label: string;
+    className?: string;
+    render?: (value: any, row: Record<string, any>) => React.ReactNode;
+  }[];
 }
 
 interface FilterState {
@@ -77,6 +89,7 @@ interface FilterState {
   fecha_inicio: string;
   fecha_fin: string;
   notas: string;
+  id_moneda: string;
 }
 
 interface ChartStats {
@@ -96,6 +109,7 @@ function getDefaultFilters(userDepId?: number): FilterState {
     fecha_inicio: oneMonthAgo.toISOString().split("T")[0],
     fecha_fin: now.toISOString().split("T")[0],
     notas: "",
+    id_moneda: "",
   };
 }
 
@@ -129,6 +143,13 @@ const REPORTS: ReportConfig[] = [
     buildPdfParams: (f) => ({ id_dependencia: f.id_dependencia || "1", aprobado_por_nombre: "", aprobado_por_cargo: "", notas: f.notas }),
     needsDependencia: true,
     needsFechas: false,
+    showTable: true,
+    tableColumns: [
+      { key: "codigo", label: "Código" },
+      { key: "nombre", label: "Nombre" },
+      { key: "cantidad", label: "Cantidad", className: "text-right" },
+      { key: "dependencia", label: "Dependencia" },
+    ],
   },
   {
     id: "movimientos-dependencia",
@@ -146,19 +167,35 @@ const REPORTS: ReportConfig[] = [
       fecha_fin: f.fecha_fin,
     }),
     transformChartData: (data) => {
-      const e = Number(data?.total_entradas || 0);
-      const s = Number(data?.total_salidas || 0);
-      return [
-        { name: "Entradas", monto: e, cantidad: e },
-        { name: "Salidas", monto: s, cantidad: s },
-      ];
+      const items = data?.items || [];
+      return items.slice(0, 10).map((item: any) => ({
+        name: (item.nombre || "Producto").substring(0, 12),
+        monto: Number(item.saldo_final || 0),
+        cantidad: Number(item.saldo_final || 0),
+      }));
     },
-    computeStats: (data) => computeBasicStats([Number(data?.total_entradas || 0), Number(data?.total_salidas || 0)]),
+    computeStats: (data) => {
+      const items = data?.items || [];
+      return computeBasicStats(items.map((i: any) => Number(i.saldo_final || 0)));
+    },
     pdfEndpoint: "/reportes/movimientos-dependencia",
     pdfFilename: "movimientos_dependencia.pdf",
     buildPdfParams: (f) => ({ id_dependencia: f.id_dependencia || "1", fecha_inicio: f.fecha_inicio, fecha_fin: f.fecha_fin, aprobado_por_nombre: "", aprobado_por_cargo: "", notas: f.notas }),
     needsDependencia: true,
     needsFechas: true,
+    showTable: true,
+    tableColumns: [
+      { key: "codigo", label: "Código" },
+      { key: "nombre", label: "Nombre" },
+      { key: "saldo_inicial", label: "Saldo Inicial", className: "text-right", render: (v: any) => Number(v ?? 0).toFixed(2) },
+      { key: "recepcion", label: "Recepción", className: "text-right" },
+      { key: "compra", label: "Compra", className: "text-right" },
+      { key: "venta", label: "Venta", className: "text-right" },
+      { key: "merma", label: "Merma", className: "text-right" },
+      { key: "donacion", label: "Donación", className: "text-right" },
+      { key: "devolucion", label: "Devolución", className: "text-right" },
+      { key: "saldo_final", label: "Saldo Final", className: "text-right font-semibold", render: (v: any) => Number(v ?? 0).toFixed(2) },
+    ],
   },
   {
     id: "movimientos-producto",
@@ -177,24 +214,34 @@ const REPORTS: ReportConfig[] = [
       fecha_fin: f.fecha_fin,
     }),
     transformChartData: (data) => {
-      const e = Number(data?.total_entradas || 0);
-      const s = Number(data?.total_salidas || 0);
-      return [
-        { name: "Entradas", monto: e, cantidad: e },
-        { name: "Salidas", monto: s, cantidad: s },
-      ];
+      const items = data?.items || [];
+      return items.slice(0, 10).map((item: any) => ({
+        name: (item.nombre || "Producto").substring(0, 12),
+        monto: Number(item.saldo_final || 0),
+        cantidad: Number(item.saldo_final || 0),
+      }));
     },
-    computeStats: (data) => computeBasicStats([Number(data?.total_entradas || 0), Number(data?.total_salidas || 0)]),
+    computeStats: (data) => {
+      const items = data?.items || [];
+      return computeBasicStats(items.map((i: any) => Number(i.saldo_final || 0)));
+    },
     pdfEndpoint: "/reportes/movimientos-producto",
     pdfFilename: "movimientos_producto.pdf",
     buildPdfParams: (f) => ({ id_dependencia: f.id_dependencia || "1", id_producto: "1", fecha_inicio: f.fecha_inicio, fecha_fin: f.fecha_fin, aprobado_por_nombre: "", aprobado_por_cargo: "", notas: f.notas }),
     needsDependencia: true,
     needsFechas: true,
+    showTable: true,
+    tableColumns: [
+      { key: "fecha", label: "Fecha" },
+      { key: "tipo", label: "Tipo" },
+      { key: "producto", label: "Producto" },
+      { key: "cantidad", label: "Cantidad", className: "text-right" },
+    ],
   },
   {
     id: "clientes",
     title: "Registro de Clientes",
-    description: "Listado de clientes registrados con historial de compras.",
+    description: "Listado de clientes registrados por provincia.",
     icon: <Users className="h-4 w-4" />,
     color: "bg-cyan-50",
     colorHex: "#06b6d4",
@@ -204,9 +251,15 @@ const REPORTS: ReportConfig[] = [
     buildPreviewParams: () => ({}),
     transformChartData: (data) => {
       const items = data?.items || [];
-      const tipos: Record<string, number> = {};
-      items.forEach((c: any) => { tipos[c.tipo_entidad || "Otro"] = (tipos[c.tipo_entidad || "Otro"] || 0) + 1; });
-      return Object.entries(tipos).slice(0, 7).map(([name, cantidad]) => ({ name: name.substring(0, 12), monto: cantidad * 100, cantidad }));
+      const provincias: Record<string, number> = {};
+      items.forEach((c: any) => {
+        const prov = c.provincia || "(Sin provincia)";
+        provincias[prov] = (provincias[prov] || 0) + 1;
+      });
+      return Object.entries(provincias)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 15)
+        .map(([name, cantidad]) => ({ name, cantidad }));
     },
     computeStats: (data) => { const items = data?.items || []; return { total: items.length, promedio: 0, max: items.length, min: 0, count: items.length }; },
     pdfEndpoint: "/reportes/clientes",
@@ -218,46 +271,73 @@ const REPORTS: ReportConfig[] = [
   {
     id: "proveedores",
     title: "Proveedores",
-    description: "Listado de proveedores registrados con información de contacto.",
+    description: "Listado de proveedores registrados por provincia.",
     icon: <UserCircle className="h-4 w-4" />,
     color: "bg-amber-50",
     colorHex: "#f59e0b",
     module: "compra",
     moduleLabel: "Compra",
     previewEndpoint: "/reportes/proveedores-dependencia/preview",
-    buildPreviewParams: (f) => ({ id_dependencia: f.id_dependencia || "1", tipo_entidad: "NATURAL" }),
+    buildPreviewParams: () => ({}),
     transformChartData: (data) => {
       const items = data?.items || [];
-      return items.slice(0, 7).map((item: any) => ({ name: (item.nombre || "Proveedor").substring(0, 12), monto: Number(item.monto_total || 0), cantidad: 1 }));
+      const provincias: Record<string, number> = {};
+      items.forEach((p: any) => {
+        const prov = p.provincia || "(Sin provincia)";
+        provincias[prov] = (provincias[prov] || 0) + 1;
+      });
+      return Object.entries(provincias)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 15)
+        .map(([name, cantidad]) => ({ name, cantidad }));
     },
     computeStats: (data) => { const items = data?.items || []; return { total: items.length, promedio: 0, max: items.length, min: 0, count: items.length }; },
     pdfEndpoint: "/reportes/proveedores-dependencia",
     pdfFilename: "proveedores.pdf",
-    buildPdfParams: (f) => ({ id_dependencia: f.id_dependencia || "1", tipo_entidad: "NATURAL", aprobado_por_nombre: "", aprobado_por_cargo: "", notas: f.notas }),
+    buildPdfParams: (f) => ({ aprobado_por_nombre: "", aprobado_por_cargo: "", notas: f.notas }),
     needsDependencia: true,
     needsFechas: false,
   },
   {
     id: "liquidaciones",
     title: "Resumen de Liquidaciones",
-    description: "Resumen de liquidaciones realizadas por período y proveedor.",
+    description: "Pagado y pendiente por pagar por cliente.",
     icon: <Calculator className="h-4 w-4" />,
     color: "bg-pink-50",
     colorHex: "#ec4899",
     module: "compra",
     moduleLabel: "Compra",
     previewEndpoint: "/reportes/liquidaciones/preview",
-    buildPreviewParams: (f) => ({ fecha_inicio: f.fecha_inicio, fecha_fin: f.fecha_fin }),
+    buildPreviewParams: (f) => ({
+      fecha_inicio: f.fecha_inicio,
+      fecha_fin: f.fecha_fin,
+      id_moneda: f.id_moneda,
+    }),
     transformChartData: (data) => {
+      // Barras apiladas por cliente: pendiente (neto_pagar de liquidaciones no
+      // pagadas) + pagado (neto_pagar de liquidaciones liquidadas)
       const items = data?.items || [];
-      return items.slice(0, 7).map((item: any) => ({ name: (item.cliente_nombre || item.concepto || "Liq.").substring(0, 12), monto: Number(item.monto_total || item.total || 0), cantidad: Number(item.cantidad_productos || 1) }));
+      const porCliente: Record<string, { pendiente: number; pagado: number }> = {};
+      items.forEach((it: any) => {
+        const name = (it.cliente_nombre || "Sin cliente").substring(0, 14);
+        const monto = Number(it.neto_pagar || 0);
+        if (!porCliente[name]) porCliente[name] = { pendiente: 0, pagado: 0 };
+        if (it.liquidada) porCliente[name].pagado += monto;
+        else porCliente[name].pendiente += monto;
+      });
+      return Object.entries(porCliente).map(([name, v]) => ({ name, ...v }));
     },
-    computeStats: (data) => { const items = data?.items || []; return computeBasicStats(items.map((i: any) => Number(i.monto_total || i.total || 0))); },
+    computeStats: (data) => { const items = data?.items || []; return computeBasicStats(items.map((i: any) => Number(i.neto_pagar || 0))); },
+    chartSeries: [
+      { key: "pagado", name: "Pagado", color: "#10b981" },
+      { key: "pendiente", name: "Falta por pagar", color: "#ef4444" },
+    ],
     pdfEndpoint: "/reportes/liquidaciones",
     pdfFilename: "resumen_liquidaciones.pdf",
     buildPdfParams: (f) => ({ fecha_inicio: f.fecha_inicio, fecha_fin: f.fecha_fin, aprobado_por_nombre: "", aprobado_por_cargo: "", notas: f.notas }),
     needsDependencia: false,
     needsFechas: true,
+    needsMoneda: true,
   },
   {
     id: "proyectos",
@@ -270,21 +350,27 @@ const REPORTS: ReportConfig[] = [
     moduleLabel: "Proyectos",
     previewEndpoint: "/reportes/proyectos/preview",
     buildPreviewParams: (f) => ({ fecha_inicio: f.fecha_inicio, fecha_fin: f.fecha_fin }),
-    transformChartData: (data) => {
-      const items = data?.items || [];
-      return items.slice(0, 7).map((item: any) => ({ name: (item.nombre || item.titulo || "Proy.").substring(0, 12), monto: Number(item.monto_total || item.presupuesto || 0), cantidad: 1 }));
-    },
-    computeStats: (data) => { const items = data?.items || []; return computeBasicStats(items.map((i: any) => Number(i.monto_total || i.presupuesto || 0))); },
+    transformChartData: () => [],
+    computeStats: () => ({ total: 0, promedio: 0, max: 0, min: 0, count: 0 }),
     pdfEndpoint: "/reportes/proyectos",
     pdfFilename: "registro_proyectos.pdf",
     buildPdfParams: (f) => ({ fecha_inicio: f.fecha_inicio, fecha_fin: f.fecha_fin, aprobado_por_nombre: "", aprobado_por_cargo: "", notas: f.notas }),
     needsDependencia: false,
     needsFechas: true,
+    showTable: true,
+    showStats: false,
+    tableColumns: [
+      { key: "codigo", label: "Código" },
+      { key: "nombre", label: "Nombre" },
+      { key: "cliente", label: "Cliente" },
+      { key: "fecha", label: "Fecha", render: (v: any) => (typeof v === "string" ? v.slice(0, 10) : (v ?? "—")) },
+      { key: "valor", label: "Valor", className: "text-right", render: (v: any) => Number(v ?? 0).toFixed(2) },
+    ],
   },
   {
     id: "creadores",
-    title: "Registro de Creadores",
-    description: "Listado de creadores participantes en proyectos.",
+    title: "Registro de Realizadores",
+    description: "Listado de realizadores asignados a etapas de proyecto.",
     icon: <Users className="h-4 w-4" />,
     color: "bg-violet-50",
     colorHex: "#8b5cf6",
@@ -294,7 +380,15 @@ const REPORTS: ReportConfig[] = [
     buildPreviewParams: () => ({}),
     transformChartData: (data) => {
       const items = Array.isArray(data) ? data : [];
-      return items.slice(0, 7).map((item: any) => ({ name: (item.nombre || "Creador").substring(0, 12), monto: Number(item.proyectos_count || 1) * 100, cantidad: Number(item.proyectos_count || 1) }));
+      const provincias: Record<string, number> = {};
+      items.forEach((item: any) => {
+        const prov = item.provincia || "(Sin provincia)";
+        provincias[prov] = (provincias[prov] || 0) + 1;
+      });
+      return Object.entries(provincias)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 15)
+        .map(([name, cantidad]) => ({ name, cantidad }));
     },
     computeStats: (data) => { const items = Array.isArray(data) ? data : []; return { total: items.length, promedio: 0, max: items.length, min: 0, count: items.length }; },
     pdfEndpoint: "/reportes/desempeno",
@@ -421,6 +515,7 @@ export function ReportesHome() {
   // Filter state with smart defaults
   const [filters, setFilters] = useState<FilterState>(() => getDefaultFilters(userDepId));
   const [dependencias, setDependencias] = useState<Dependencia[]>([]);
+  const [monedas, setMonedas] = useState<Moneda[]>([]);
 
   // Load dependencias
   useEffect(() => {
@@ -431,6 +526,12 @@ export function ReportesHome() {
     () => REPORTS.find((r) => r.id === reportId) ?? REPORTS[0],
     [reportId]
   );
+
+  // Load monedas (solo cuando el reporte filtrable por moneda está activo)
+  useEffect(() => {
+    if (!activeReport.needsMoneda) return;
+    monedaService.getMonedas().then((data: any) => setMonedas(Array.isArray(data) ? data : [])).catch(() => {});
+  }, [activeReport.needsMoneda]);
 
   // Reset filters with smart defaults when report changes
   useEffect(() => {
@@ -449,6 +550,11 @@ export function ReportesHome() {
   const [chartLoading, setChartLoading] = useState(false);
   const [chartError, setChartError] = useState<string | null>(null);
   const fetchControllerRef = useRef<AbortController | null>(null);
+
+  // Table pagination
+  const TABLE_PAGE_SIZE = 10;
+  const [tablePage, setTablePage] = useState(1);
+  useEffect(() => { setTablePage(1); }, [previewUrl, activeReport.id]);
 
   useEffect(() => {
     // Cancel previous request
@@ -559,28 +665,114 @@ export function ReportesHome() {
 
   const handlePrint = useCallback(() => { window.print(); }, []);
 
-  const displayData = chartData && chartData.length > 0 ? chartData : FALLBACK_DATA;
+  const displayData = chartData && chartData.length > 0 ? chartData : [];
+
+  // Table data for inventory reports
+  const tableData = useMemo(() => {
+    if (!activeReport.showTable || !previewData) return null;
+    const items = previewData?.items || [];
+    return items;
+  }, [activeReport, previewData]);
+
+  const renderTable = () => {
+    if (chartLoading) return <div className="h-[300px] flex items-center justify-center"><Loader2 className="w-8 h-8 text-blue-500 animate-spin" /></div>;
+    if (chartError) return <div className="h-[300px] flex flex-col items-center justify-center text-gray-400 gap-2"><AlertCircle className="w-8 h-8" /><p className="text-sm">No se pudieron cargar los datos</p></div>;
+    if (!tableData || tableData.length === 0) return <div className="h-[200px] flex items-center justify-center text-gray-400 text-sm">No hay datos para mostrar</div>;
+
+    const columns = activeReport.tableColumns || [];
+
+    // Paginación local
+    const totalRows = tableData.length;
+    const totalPages = Math.max(1, Math.ceil(totalRows / TABLE_PAGE_SIZE));
+    const safePage = Math.min(tablePage, totalPages);
+    const startIdx = (safePage - 1) * TABLE_PAGE_SIZE;
+    const pageRows = tableData.slice(startIdx, startIdx + TABLE_PAGE_SIZE);
+    const from = totalRows === 0 ? 0 : startIdx + 1;
+    const to = Math.min(startIdx + TABLE_PAGE_SIZE, totalRows);
+
+    return (
+      <div>
+        <div className="overflow-x-auto max-h-[400px] overflow-y-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-gray-50 sticky top-0">
+              <tr>
+                {columns.map((col) => (
+                  <th key={col.key} className={`px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider ${col.className || ''}`}>
+                    {col.label}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {pageRows.map((row: any, idx: number) => (
+                <tr key={idx} className="hover:bg-gray-50 transition-colors">
+                  {columns.map((col) => (
+                    <td key={col.key} className={`px-4 py-3 text-gray-700 ${col.className || ''}`}>
+                      {col.render ? col.render(row[col.key], row) : (row[col.key] ?? '—')}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Paginación */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between border-t border-gray-100 pt-3 mt-3">
+            <p className="text-xs text-gray-500">
+              Mostrando <span className="font-semibold text-gray-700">{from}</span>–<span className="font-semibold text-gray-700">{to}</span> de <span className="font-semibold text-gray-700">{totalRows}</span> registros
+            </p>
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => setTablePage((p) => Math.max(1, p - 1))}
+                disabled={safePage <= 1}
+                className="px-3 py-1.5 rounded-lg text-xs font-medium text-gray-600 bg-white border border-gray-200 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                Anterior
+              </button>
+              <span className="px-2 text-xs text-gray-500">
+                Página <span className="font-semibold text-gray-700">{safePage}</span> de {totalPages}
+              </span>
+              <button
+                type="button"
+                onClick={() => setTablePage((p) => Math.min(totalPages, p + 1))}
+                disabled={safePage >= totalPages}
+                className="px-3 py-1.5 rounded-lg text-xs font-medium text-gray-600 bg-white border border-gray-200 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                Siguiente
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
 
   const renderChart = () => {
     if (chartLoading) return <div className="h-[300px] flex items-center justify-center"><Loader2 className="w-8 h-8 text-blue-500 animate-spin" /></div>;
-    if (chartError) return <div className="h-[300px] flex flex-col items-center justify-center text-gray-400 gap-2"><AlertCircle className="w-8 h-8" /><p className="text-sm">No se pudieron cargar los datos</p><p className="text-xs text-gray-300">Mostrando datos de ejemplo</p></div>;
+    if (chartError) return <div className="h-[300px] flex flex-col items-center justify-center text-gray-400 gap-2"><AlertCircle className="w-8 h-8" /><p className="text-sm">No se pudieron cargar los datos</p></div>;
+    if (!displayData || displayData.length === 0) return <div className="h-[300px] flex items-center justify-center text-gray-400 text-sm">No hay datos para mostrar</div>;
 
     const gridAndAxis = (
       <>
         <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-        <XAxis dataKey="name" stroke="#6b7280" fontSize={12} tickLine={false} />
+        <XAxis dataKey="name" stroke="#6b7280" fontSize={11} tickLine={false} interval={0} angle={-30} textAnchor="end" height={60} />
         <YAxis stroke="#6b7280" fontSize={12} tickLine={false} />
         <Tooltip contentStyle={{ borderRadius: "8px", border: "1px solid #e5e7eb", boxShadow: "0 4px 6px rgba(0,0,0,0.07)" }} />
         <Legend />
       </>
     );
 
+    const hasMonto = displayData.some((d: any) => d.monto !== undefined && d.monto !== null);
+
     if (chartType === "line") {
       return (
         <ResponsiveContainer width="100%" height={300}>
           <LineChart data={displayData}>
             {gridAndAxis}
-            <Line type="monotone" dataKey="monto" stroke={activeReport.colorHex} strokeWidth={3} dot={{ fill: activeReport.colorHex, r: 4 }} activeDot={{ r: 6 }} name="Monto" animationDuration={500} />
+            {hasMonto && <Line type="monotone" dataKey="monto" stroke={activeReport.colorHex} strokeWidth={3} dot={{ fill: activeReport.colorHex, r: 4 }} activeDot={{ r: 6 }} name="Monto" animationDuration={500} />}
             <Line type="monotone" dataKey="cantidad" stroke="#10b981" strokeWidth={2} dot={{ fill: "#10b981", r: 3 }} name="Cantidad" animationDuration={500} />
           </LineChart>
         </ResponsiveContainer>
@@ -590,7 +782,7 @@ export function ReportesHome() {
       return (
         <ResponsiveContainer width="100%" height={300}>
           <PieChart>
-            <Pie data={displayData} cx="50%" cy="50%" innerRadius={60} outerRadius={120} paddingAngle={3} dataKey="monto" label={({ name, percent }) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`} animationDuration={500}>
+            <Pie data={displayData} cx="50%" cy="50%" innerRadius={60} outerRadius={120} paddingAngle={3} dataKey={hasMonto ? "monto" : "cantidad"} label={({ name, percent }) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`} animationDuration={500}>
               {displayData.map((_, index) => <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />)}
             </Pie>
             <Tooltip contentStyle={{ borderRadius: "8px", border: "1px solid #e5e7eb" }} />
@@ -602,8 +794,16 @@ export function ReportesHome() {
       <ResponsiveContainer width="100%" height={300}>
         <BarChart data={displayData}>
           {gridAndAxis}
-          <Bar dataKey="monto" fill={activeReport.colorHex} radius={[4, 4, 0, 0]} name="Monto" animationDuration={500} />
-          <Bar dataKey="cantidad" fill="#10b981" radius={[4, 4, 0, 0]} name="Cantidad" animationDuration={500} />
+          {activeReport.chartSeries ? (
+            activeReport.chartSeries.map((s) => (
+              <Bar key={s.key} dataKey={s.key} stackId="stack" fill={s.color} name={s.name} animationDuration={500} />
+            ))
+          ) : (
+            <>
+              {hasMonto && <Bar dataKey="monto" fill={activeReport.colorHex} radius={[4, 4, 0, 0]} name="Monto" animationDuration={500} />}
+              <Bar dataKey="cantidad" fill="#10b981" radius={[4, 4, 0, 0]} name="Cantidad" animationDuration={500} />
+            </>
+          )}
         </BarChart>
       </ResponsiveContainer>
     );
@@ -620,8 +820,8 @@ export function ReportesHome() {
       <div className="max-w-6xl mx-auto">
         {/* Toolbar */}
         <div className="flex items-center justify-between mb-5">
-          {/* Left: Chart type icons */}
-          <div className="flex items-center gap-1 bg-white rounded-xl border border-gray-200 p-1 shadow-sm">
+          {/* Left: Chart type icons (invisible spacer for table reports to keep filter centered) */}
+          <div className={`flex items-center gap-1 bg-white rounded-xl border border-gray-200 p-1 shadow-sm ${activeReport.showTable ? 'invisible' : ''}`}>
             {chartButtons.map((btn) => (
               <button key={btn.type} onClick={() => setChartType(btn.type)} title={btn.label}
                 className={`p-2 rounded-lg transition-all duration-150 ${chartType === btn.type ? "bg-blue-50 text-blue-600 shadow-sm ring-1 ring-blue-200" : "text-gray-400 hover:bg-gray-50 hover:text-gray-600"}`}>
@@ -655,6 +855,16 @@ export function ReportesHome() {
                         className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none">
                         <option value="">Seleccionar dependencia</option>
                         {dependencias.map((d) => <option key={d.id_dependencia} value={d.id_dependencia}>{d.nombre}</option>)}
+                      </select>
+                    </div>
+                  )}
+                  {activeReport.needsMoneda && (
+                    <div>
+                      <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Moneda</label>
+                      <select value={filters.id_moneda} onChange={(e) => updateFilter("id_moneda", e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none">
+                        <option value="">Todas las monedas</option>
+                        {monedas.map((m) => <option key={m.id_moneda} value={m.id_moneda}>{m.simbolo ? `${m.simbolo} - ${m.nombre}` : m.nombre}</option>)}
                       </select>
                     </div>
                   )}
@@ -709,15 +919,17 @@ export function ReportesHome() {
                 <p className="text-xs text-gray-400">{activeReport.description}</p>
               </div>
             </div>
-            <div className="flex items-center gap-4 text-xs text-gray-400">
-              <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full" style={{ background: activeReport.colorHex }} />Monto</span>
-              <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />Cantidad</span>
-            </div>
+            {!activeReport.showTable && !activeReport.chartSeries && (
+              <div className="flex items-center gap-4 text-xs text-gray-400">
+                <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full" style={{ background: activeReport.colorHex }} />Monto</span>
+                <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />Cantidad</span>
+              </div>
+            )}
           </div>
-          <div className="border-t border-gray-100 pt-4">{renderChart()}</div>
+          <div className="border-t border-gray-100 pt-4">{activeReport.showTable ? renderTable() : renderChart()}</div>
 
           {/* Summary statistics */}
-          <div className="border-t border-gray-100 pt-4 mt-4">
+          <div className={`border-t border-gray-100 pt-4 mt-4 ${activeReport.showStats === false ? "hidden" : ""}`}>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               {[
                 { label: "Total", value: stats.total, icon: <DollarSign className="w-4 h-4 text-blue-600" />, bg: "bg-blue-100" },

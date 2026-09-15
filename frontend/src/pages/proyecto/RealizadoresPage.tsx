@@ -112,7 +112,7 @@ export function RealizadoresPage() {
       return `${c.nombre || ''} ${c.primer_apellido || ''} ${c.segundo_apellido || ''}`.trim();
     }
     // ClienteJuridica directo
-    if ('codigo_reup' in cliente) return `Entidad ${(cliente as ClienteJuridica).codigo_reup}`;
+    if ('codigo_reup' in cliente && (cliente as ClienteJuridica).codigo_reup) return `Entidad ${(cliente as ClienteJuridica).codigo_reup}`;
     // Cliente con sub-objetos anidados (de getClientes)
     const cli = cliente as any;
     if (cli.cliente_natural) {
@@ -123,8 +123,8 @@ export function RealizadoresPage() {
       const t = cli.cliente_tcp;
       return `${t.nombre || ''} ${t.primer_apellido || ''} ${t.segundo_apellido || ''}`.trim();
     }
-    if (cli.cliente_juridica) return `Entidad ${cli.cliente_juridica.codigo_reup || ''}`;
-    if ('nombre' in cliente) return (cliente as { nombre: string }).nombre;
+    if (cli.cliente_juridica) return cli.nombre || `Entidad ${cli.cliente_juridica.codigo_reup || ''}`;
+    if ('nombre' in cliente) return (cliente as { nombre: string }).nombre || 'N/A';
     return 'N/A';
   };
 
@@ -237,7 +237,7 @@ const [todosClientesRes, personasRes, monedasRes, solicitudesRes, tcpRes, juridi
     const tcp = personasTCP.find(t => t.id_cliente === id);
     if (tcp) return `${tcp.nombre} ${tcp.primer_apellido} ${tcp.segundo_apellido || ''}`.trim();
     const jur = personasJuridicas.find(j => j.id_cliente === id);
-    if (jur) return `Entidad ${jur.codigo_reup}`;
+    if (jur) return (jur as any).nombre || `Persona #${id}`;
     const cli = todosClientes.find(c => c.id_cliente === id);
     if (cli) return cli.nombre || `Persona #${id}`;
     return `Persona #${id}`;

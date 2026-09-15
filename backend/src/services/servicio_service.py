@@ -292,6 +292,24 @@ class PersonaEtapaService:
     async def create(db: AsyncSession, data: PersonaEtapaCreate) -> PersonaEtapaRead:
         if data.por_cobrar is None or data.por_cobrar == Decimal("0"):
             data.por_cobrar = data.cobro
+
+        # Verificar si ya existe la combinación (id_etapa, id_persona)
+        from sqlmodel import select as sel
+        statement = sel(PersonaEtapa).where(
+            PersonaEtapa.id_etapa == data.id_etapa,
+            PersonaEtapa.id_persona == data.id_persona,
+        )
+        result = await db.exec(statement)
+        existing = result.first()
+
+        if existing:
+            # Actualizar registro existente
+            for field, value in data.model_dump(exclude_unset=True).items():
+                setattr(existing, field, value)
+            await db.commit()
+            await db.refresh(existing)
+            return PersonaEtapaRead(**existing.model_dump())
+
         pe = await persona_etapa_repo.create(db, obj_in=data)
         return PersonaEtapaRead(**pe.model_dump())
 
