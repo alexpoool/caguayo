@@ -125,20 +125,18 @@ class ProductosEnLiquidacionRepository(CRUDBase[ProductosEnLiquidacion, dict, di
         return result.one()
 
     async def get_codigo_anio(self, db: AsyncSession, anio: int) -> int:
-        from sqlalchemy import Integer
-
-        statement = select(
-            func.max(
-                func.cast(
-                    func.split_part(
-                        ProductosEnLiquidacion.codigo, ".", -1
-                    ),
-                    Integer,
-                )
-            )
-        ).where(func.extract("YEAR", ProductosEnLiquidacion.fecha) == anio)
+        statement = select(ProductosEnLiquidacion.codigo).where(
+            func.extract("YEAR", ProductosEnLiquidacion.fecha) == anio
+        )
         result = await db.exec(statement)
-        max_codigo = result.one() or 0
+        max_codigo = 0
+        for codigo in result.all():
+            if not codigo:
+                continue
+            try:
+                max_codigo = max(max_codigo, int(codigo.rsplit(".", 1)[-1]))
+            except ValueError:
+                continue
         return max_codigo + 1
 
     async def get_pendientes_by_cliente(

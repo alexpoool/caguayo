@@ -24,16 +24,6 @@ from src.dto.convenios_dto import ConvenioSimpleRead
 
 class LiquidacionService:
     @staticmethod
-    async def generate_codigo_liquidacion(
-        db: AsyncSession, denominacion: Optional[str] = None
-    ) -> str:
-        anio = datetime.now().year
-        cantidad = await liquidacion_repo.get_codigo_anio(db, anio)
-        if denominacion:
-            return f"{denominacion}.{anio % 100}.L.{cantidad}"
-        return f"{anio % 100}.L.{cantidad}"
-
-    @staticmethod
     async def create_liquidacion(
         db: AsyncSession, data: LiquidacionCreate, denominacion: Optional[str] = None
     ) -> LiquidacionRead:

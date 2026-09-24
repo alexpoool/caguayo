@@ -157,3 +157,7 @@ class ClienteSimpleRead(SQLModel):
     nombre: Optional[str] = None
     tipo_persona: Optional[str] = None
     estado: Optional[str] = None
+    nit: Optional[str] = None
+    direccion: Optional[str] = None
+    telefono: Optional[str] = None
+    email: Optional[str] = None
