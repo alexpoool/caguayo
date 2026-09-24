@@ -337,30 +337,6 @@ export function AnexosPage() {
     setView("form");
   };
 
-  const handleEdit = (anexo: Anexo) => {
-    setEditingAnexo(anexo);
-    setFormData({
-      id_convenio: anexo.id_convenio,
-      nombre_anexo: anexo.nombre_anexo,
-      fecha: anexo.fecha,
-      comision: anexo.comision || 0,
-      productos: (anexo.items_anexo || []).map((item) => ({
-        id_producto: item.id_producto,
-        entrada: item.entrada,
-        precio_compra: Number(item.precio_compra),
-        precio_venta: Number(item.precio_venta),
-        id_moneda: item.id_moneda,
-        nombre_producto: item.producto?.nombre,
-        precios: (item.precios || []).map((p) => ({
-          id_moneda: p.id_moneda,
-          precio_venta: Number(p.precio_venta),
-          precio_compra: p.precio_compra ? Number(p.precio_compra) : undefined,
-        })),
-      })),
-    });
-    setView("form");
-  };
-
   const handleDelete = (anexo: Anexo) => {
     setConfirmModal({
       isOpen: true,
@@ -1227,15 +1203,6 @@ export function AnexosPage() {
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={(e) => { e.stopPropagation(); handleEdit(anexo); }}
-                          className="text-gray-400 hover:text-green-600 hover:bg-green-50 h-8 w-8"
-                          title="Editar"
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
                         <Button
                           variant="ghost"
                           size="icon"

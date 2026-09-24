@@ -335,7 +335,9 @@ id_moneda: 0,
   };
 
   const generateLiquidacionHTML = (liquidacion: Liquidacion, autorizadoPor: string, cargoAutorizado: string, revisadoPor: string, cuentas: any[] = []) => {
-    const cliente = liquidacion.cliente || clientes.find((c: Cliente) => c.id_cliente === liquidacion.id_cliente);
+    const cliente = clientes.find((c: Cliente) => c.id_cliente === liquidacion.id_cliente)
+      || liquidacion.cliente
+      || { nombre: 'N/A', codigo: 'N/A' };
     const user = authService.getUser();
     const confectionadoPor = user ? `${user.nombre || ''} ${user.primer_apellido || ''}`.trim() : '';
     const cargoUsuario = user?.cargo || '';

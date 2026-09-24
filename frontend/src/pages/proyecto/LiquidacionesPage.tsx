@@ -1184,7 +1184,7 @@ export function LiquidacionesPage() {
                 </div>
                 
                 <div>
-                  <Label>Etapa *</Label>
+                  <Label>Etapa</Label>
                   <select
                     value={selectedEtapa || ''}
                     onChange={handleEtapaChange}
@@ -1307,7 +1307,7 @@ export function LiquidacionesPage() {
                 </div>
                 
                 <div>
-                  <Label>Fecha Emisión *</Label>
+                  <Label>Fecha Emisión</Label>
                   <Input
                     type="date"
                     value={formData.fecha_emision}
