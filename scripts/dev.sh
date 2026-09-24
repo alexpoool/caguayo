@@ -21,8 +21,10 @@ BG_B='\033[44m'   # Background azul
 BG_M='\033[45m'   # Background magenta
 BG_C='\033[46m'   # Background cian
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PID_FILE="${SCRIPT_DIR}/.dev_pids"
+# ── Resolver la raíz del proyecto (funciona desde cualquier CWD) ───────────
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$ROOT_DIR"
+PID_FILE="${TMPDIR:-/tmp}/caguayo-dev.pids"
 
 # ── Funciones auxiliares ──────────────────────────────────────────────────
 print_banner() {
@@ -149,11 +151,11 @@ do_start() {
   echo -e "   ${B}└───────────────────────────────────────────────────────┘${D}"
   echo ""
 
-  cd "$SCRIPT_DIR/backend"
+  cd "$ROOT_DIR/backend"
   DATABASE_URL="postgresql+asyncpg://${PG_USER}:${PG_PASS}@${PG_HOST}:${PG_PORT}/${AUTH_DB}" \
     uv run uvicorn main:app --reload --host 0.0.0.0 --port 8000 &
   BACKEND_PID=$!
-  cd "$SCRIPT_DIR"
+  cd "$ROOT_DIR"
   if wait_for_port 8000 "Backend arrancando" 15; then
     ok "Backend listo ${DIM}(PID: $BACKEND_PID)${D}"
   else
@@ -169,10 +171,10 @@ do_start() {
   echo -e "   ${C}└───────────────────────────────────────────────────────┘${D}"
   echo ""
 
-  cd "$SCRIPT_DIR/frontend"
+  cd "$ROOT_DIR/frontend"
   pnpm dev &
   FRONTEND_PID=$!
-  cd "$SCRIPT_DIR"
+  cd "$ROOT_DIR"
   if wait_for_port 5173 "Frontend arrancando" 15; then
     ok "Frontend listo ${DIM}(PID: $FRONTEND_PID)${D}"
   else

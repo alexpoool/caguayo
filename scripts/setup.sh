@@ -1,10 +1,14 @@
 #!/bin/bash
 # =============================================================================
 #  🌴 Caguayo — Script de Setup para nueva PC
-#  Ejecutar desde la raíz del proyecto: ./setup.sh
+#  Ejecutar: ./scripts/setup.sh
 # =============================================================================
 
 set -e
+
+# ── Resolver la raíz del proyecto (funciona desde cualquier CWD) ───────────
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$ROOT_DIR"
 
 # ── Colores y formato ──────────────────────────────────────────────────────
 R='\033[1;31m'    # Rojo bold
@@ -323,7 +327,7 @@ if [ $USE_PODMAN -eq 1 ]; then
   echo -e "   ${W}   podman-compose up --build${D}"
 else
   echo -e "   ${C}Para iniciar el servidor de desarrollo:${D}"
-  echo -e "   ${W}   ./dev.sh${D}"
+  echo -e "   ${W}   ./scripts/dev.sh${D}"
 fi
 echo ""
 echo -e "   ${DIM}¡Listo para trabajar! 🌴${D}"

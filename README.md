@@ -13,8 +13,8 @@ This repository contains the Caguayo application, a comprehensive inventory and 
 - `compose.dev.yaml` - Dev override with hot reload and bind mounts
 - `frontend/Dockerfile.dev` - Dev image for frontend hot reload
 - `.env.example` - Environment variable template for podman-compose
-- `start.sh` - Script de inicio para desarrollo local
-- `setup.sh` - Script de setup para nueva PC (ver sección Setup)
+- `scripts/setup.sh` - Script de setup para nueva PC (ver sección Setup)
+- `scripts/dev.sh` - Script de desarrollo (menú start / stop / restart / status)
 
 ## Tecnologías
 
@@ -106,7 +106,7 @@ uv run python -m scripts.init_office caguayosa
 ```bash
 git clone <repo-url>
 cd caguayo
-./setup.sh
+./scripts/setup.sh
 ```
 
 El script `setup.sh` hace todo automáticamente:
