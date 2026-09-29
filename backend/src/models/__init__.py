@@ -58,6 +58,8 @@ from .servicio import (
     ItemOferta,
 )
 from .datos_generales_dependencia import DatosGeneralesDependencia
+from .ficha_costo import FichaCosto, FichaInsumo, FichaManoObra
+from .ficha_tarifa import FichaTarifa
 
 __all__ = [
     "SQLModel",
@@ -123,4 +125,8 @@ __all__ = [
     "PagoFacturaServicio",
     "PersonaLiquidacion",
     "DatosGeneralesDependencia",
+    "FichaCosto",
+    "FichaTarifa",
+    "FichaInsumo",
+    "FichaManoObra",
 ]

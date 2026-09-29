@@ -46,6 +46,8 @@ from .existencias import existencias_router
 from .ventas import router as ventas_router
 from .compras import router as compras_router
 from .usuarios_lista import router as usuarios_lista_router
+from .fichas_costo import router as fichas_costo_router
+from .fichas_tarifas import router as fichas_tarifas_router
 
 api_router = APIRouter(prefix="/api/v1")
 
@@ -92,6 +94,8 @@ api_router.include_router(existencias_router)
 api_router.include_router(ventas_router)
 api_router.include_router(compras_router)
 api_router.include_router(usuarios_lista_router)
+api_router.include_router(fichas_costo_router)
+api_router.include_router(fichas_tarifas_router)
 
 
 @api_router.get("/")

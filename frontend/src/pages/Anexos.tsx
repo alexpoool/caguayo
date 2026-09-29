@@ -11,6 +11,7 @@ import {
   monedaService,
   subcategoriasService,
 } from "../services/api";
+import { FichaCostoModal } from "../components/fichas/FichaCostoModal";
 import {
   Plus,
   Edit,
@@ -129,6 +130,7 @@ export function AnexosPage() {
   const [cantidad, setCantidad] = useState(1);
   const [precioCompra, setPrecioCompra] = useState(0);
   const [precioVenta, setPrecioVenta] = useState(0);
+  const [showFichaModal, setShowFichaModal] = useState(false);
   const [monedaCompra, setMonedaCompra] = useState(0);
   const [preciosExtra, setPreciosExtra] = useState<PrecioExtraForm[]>([]);
   const dropdownProductoRef = useRef<HTMLDivElement>(null);
@@ -676,10 +678,37 @@ export function AnexosPage() {
                           onChange={(e) => setPrecioVenta(parseFloat(e.target.value) || 0)}
                           placeholder="0.00"
                         />
+                        <button
+                          type="button"
+                          onClick={() => setShowFichaModal(true)}
+                          disabled={!productoSeleccionado}
+                          className="mt-2 w-full inline-flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-medium text-teal-700 bg-teal-50 border border-teal-300 rounded-lg hover:bg-teal-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          <Sparkles className="h-3.5 w-3.5" />
+                          Sugerir precio
+                        </button>
                       </div>
                     </div>
                   </div>
                 </div>
+              )}
+
+              {showFichaModal && productoSeleccionado && (
+                <FichaCostoModal
+                  isOpen={showFichaModal}
+                  producto={{
+                    id_producto: productoSeleccionado.id_producto,
+                    nombre: productoSeleccionado.nombre,
+                    codigo: productoSeleccionado.codigo,
+                  }}
+                  cantidad={cantidad}
+                  fecha={formData.fecha}
+                  onClose={() => setShowFichaModal(false)}
+                  onAccept={(precio) => {
+                    setPrecioVenta(precio);
+                    toast.success(`Precio aplicado: $${precio.toFixed(2)}`);
+                  }}
+                />
               )}
 
               {/* ── Precios Adicionales ── */}

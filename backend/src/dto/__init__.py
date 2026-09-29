@@ -209,6 +209,16 @@ from .compras_dto import (
     CompraRead,
     CompraUpdate,
 )
+from .ficha_costo_dto import (
+    FichaCostoBase,
+    FichaCostoCreate,
+    FichaCostoUpdate,
+    FichaCostoRead,
+    FichaInsumoCreate,
+    FichaInsumoRead,
+    FichaManoObraCreate,
+    FichaManoObraRead,
+)
 
 
 __all__ = [
@@ -388,6 +398,14 @@ __all__ = [
     "CompraUpdate",
     "ItemAnexoDisponible",
     "GrupoSimpleRead",
+    "FichaCostoBase",
+    "FichaCostoCreate",
+    "FichaCostoUpdate",
+    "FichaCostoRead",
+    "FichaInsumoCreate",
+    "FichaInsumoRead",
+    "FichaManoObraCreate",
+    "FichaManoObraRead",
 ]
 VentaRead.model_rebuild(
     _types_namespace={

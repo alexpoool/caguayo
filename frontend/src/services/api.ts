@@ -1,6 +1,7 @@
 import { apiClient } from '../lib/api';
 import { configuracionService as configService } from './administracion';
 import { authHelpers } from '../lib/api';
+import type { FichaCostoInput, FichaCostoRead, FichaTarifa, FichaTarifaInput } from '../types/fichaCosto';
 import type { CuentaDependenciaInfo } from './auth';
 import type {
   Productos, 
@@ -1172,5 +1173,113 @@ export const existenciaService = {
   async getResumen(idDependencia?: number): Promise<any> {
     const query = idDependencia ? `?id_dependencia=${idDependencia}` : '';
     return apiClient.get<any>(`/existencias/resumen${query}`);
+  },
+};
+export const fichasTarifasService = {
+  async getTarifas(params?: { search?: string; skip?: number; limit?: number }): Promise<FichaTarifa[]> {
+    const query = new URLSearchParams();
+    if (params?.search) query.append('search', params.search);
+    query.append('skip', String(params?.skip ?? 0));
+    query.append('limit', String(params?.limit ?? 200));
+    return apiClient.get<FichaTarifa[]>(`/fichas-tarifas?${query.toString()}`);
+  },
+
+  async getTarifa(id: number): Promise<FichaTarifa> {
+    return apiClient.get<FichaTarifa>(`/fichas-tarifas/${id}`);
+  },
+
+  async createTarifa(data: FichaTarifaInput): Promise<FichaTarifa> {
+    return apiClient.post<FichaTarifa>('/fichas-tarifas', data);
+  },
+
+  async updateTarifa(id: number, data: Partial<FichaTarifaInput>): Promise<FichaTarifa> {
+    return apiClient.put<FichaTarifa>(`/fichas-tarifas/${id}`, data);
+  },
+
+  async deleteTarifa(id: number): Promise<void> {
+    return apiClient.delete<void>(`/fichas-tarifas/${id}`);
+  },
+};
+
+export const fichasCostoService = {
+  async getFichas(params?: {
+    id_producto?: number;
+    search?: string;
+    skip?: number;
+    limit?: number;
+  }): Promise<FichaCostoRead[]> {
+    const query = new URLSearchParams();
+    if (params?.id_producto) query.append('id_producto', String(params.id_producto));
+    if (params?.search) query.append('search', params.search);
+    query.append('skip', String(params?.skip ?? 0));
+    query.append('limit', String(params?.limit ?? 100));
+    return apiClient.get<FichaCostoRead[]>(`/fichas-costo?${query.toString()}`);
+  },
+
+  async getFicha(id: number): Promise<FichaCostoRead> {
+    return apiClient.get<FichaCostoRead>(`/fichas-costo/${id}`);
+  },
+
+  async getUltimaPorProducto(idProducto: number): Promise<FichaCostoRead> {
+    return apiClient.get<FichaCostoRead>(`/fichas-costo/producto/${idProducto}/ultima`);
+  },
+
+  async createFicha(data: FichaCostoInput): Promise<FichaCostoRead> {
+    return apiClient.post<FichaCostoRead>('/fichas-costo', data);
+  },
+
+  async updateFicha(id: number, data: Partial<FichaCostoInput>): Promise<FichaCostoRead> {
+    return apiClient.put<FichaCostoRead>(`/fichas-costo/${id}`, data);
+  },
+
+  async deleteFicha(id: number): Promise<void> {
+    return apiClient.delete<void>(`/fichas-costo/${id}`);
+  },
+
+  // Descarga el documento Excel de la ficha (blob autenticado).
+  // Los datos de firmas se solicitan al usuario en el momento de exportar.
+  async exportarExcel(
+    id: number,
+    firmas: { elaborado_por?: string | null; aprobado_por?: string | null; fecha_aprobacion?: string | null }
+  ): Promise<{ blob: Blob; nombre: string }> {
+    const token = localStorage.getItem('auth_token');
+    const base = (import.meta as any).env.VITE_API_BASE_URL;
+    const resp = await fetch(`${base}/fichas-costo/${id}/exportar`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify(firmas),
+    });
+    if (!resp.ok) throw new Error('Error al exportar la ficha');
+    const blob = await resp.blob();
+    const disp = resp.headers.get('Content-Disposition') || '';
+    const m = /filename\*?=(?:"([^"]+)"|([^;]+))/.exec(disp);
+    const nombre = (m && (m[1] || m[2])?.replace(/"/g, '').trim()) || `FICHA ${id}.xlsx`;
+    return { blob, nombre };
+  },
+
+  // Genera el PDF de la ficha (Ficha + Materiales + Mano de obra)
+  async exportarPdf(
+    id: number,
+    firmas: { elaborado_por?: string | null; aprobado_por?: string | null; fecha_aprobacion?: string | null }
+  ): Promise<{ blob: Blob; nombre: string }> {
+    const token = localStorage.getItem('auth_token');
+    const base = (import.meta as any).env.VITE_API_BASE_URL;
+    const resp = await fetch(`${base}/fichas-costo/${id}/exportar-pdf`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify(firmas),
+    });
+    if (!resp.ok) throw new Error('Error al exportar la ficha a PDF');
+    const blob = await resp.blob();
+    const disp = resp.headers.get('Content-Disposition') || '';
+    const m = /filename\*?=(?:"([^"]+)"|([^;]+))/.exec(disp);
+    const nombre = (m && (m[1] || m[2])?.replace(/"/g, '').trim()) || `FICHA ${id}.pdf`;
+    return { blob, nombre };
   },
 };

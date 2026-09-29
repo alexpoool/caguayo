@@ -9,3 +9,4 @@ export * from './Skeleton';
 export * from './AnimatedCard';
 export * from './Avatar';
 export * from './Select';
+export * from './SearchSelect';
