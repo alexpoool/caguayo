@@ -23,6 +23,11 @@ from src.models.servicio import (
 )
 
 
+# ═══════════════════════════════════════════════════════════════════════════════
+#  REPORTE 1: REGISTRO DE CLIENTES
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
 async def get_registro_clientes(
     db: AsyncSession,
 ) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
@@ -188,7 +193,11 @@ async def get_existencias(db: AsyncSession, id_dependencia: int):
             TipoMovimiento,
             Movimiento.id_tipo_movimiento == TipoMovimiento.id_tipo_movimiento,
         )
-        .filter(Movimiento.id_dependencia == id_dependencia)
+        .filter(
+            Movimiento.id_dependencia == id_dependencia,
+            # Solo los movimientos confirmados alteran el stock real.
+            Movimiento.estado == "confirmado",
+        )
         .group_by(Productos.codigo, Productos.nombre)
     )
 
@@ -402,8 +411,11 @@ async def get_movimientos_producto(
         .filter(
             Movimiento.id_dependencia == id_dependencia,
             Movimiento.id_producto == id_producto,
+            # Solo los movimientos confirmados son movimientos reales.
+            Movimiento.estado == "confirmado",
             Movimiento.fecha >= fecha_inicio,
-            Movimiento.fecha <= fecha_fin,
+            # fecha_fin es date: incluir todo el último día
+            Movimiento.fecha < fecha_fin + timedelta(days=1),
         )
         .order_by(Movimiento.fecha.desc())
     )
@@ -422,61 +434,6 @@ async def get_movimientos_producto(
     ]
 
     return movimientos, dependencia_info, producto_info
-
-
-# ═══════════════════════════════════════════════════════════════════════════════
-#  REPORTE 1: REGISTRO DE CLIENTES
-# ═══════════════════════════════════════════════════════════════════════════════
-
-
-async def get_registro_clientes(
-    db: AsyncSession,
-) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
-    """Obtiene todos los clientes con tipo_relacion 'CLIENTE' o 'AMBAS',
-    incluyendo el código REEUP para personas jurídicas."""
-    query = (
-        select(
-            Cliente,
-            Provincia.nombre.label("provincia_nombre"),
-            Municipio.nombre.label("municipio_nombre"),
-        )
-        .join(Provincia, Cliente.id_provincia == Provincia.id_provincia, isouter=True)
-        .join(Municipio, Cliente.id_municipio == Municipio.id_municipio, isouter=True)
-        .filter(Cliente.tipo_relacion.in_(["CLIENTE", "AMBAS"]))
-        .order_by(Cliente.nombre)
-    )
-    result = await db.execute(query)
-    rows = result.all()
-
-    # Obtener IDs de clientes jurídicos
-    cliente_ids_juridicos = [
-        r[0].id_cliente for r in rows if r[0].tipo_persona == "JURIDICA"
-    ]
-    reup_map: Dict[int, str] = {}
-    if cliente_ids_juridicos:
-        reup_query = select(ClienteJuridica).filter(
-            ClienteJuridica.id_cliente.in_(cliente_ids_juridicos)
-        )
-        reup_result = await db.execute(reup_query)
-        for rj in reup_result.scalars().all():
-            reup_map[rj.id_cliente] = rj.codigo_reup
-
-    data = []
-    for r in rows:
-        cliente: Cliente = r[0]
-        data.append(
-            {
-                "id_cliente": cliente.id_cliente,
-                "nombre": cliente.nombre,
-                "reeup": reup_map.get(cliente.id_cliente, ""),
-                "nit": cliente.nit or "",
-                "direccion": cliente.direccion or "",
-                "provincia": r.provincia_nombre or "",
-                "municipio": r.municipio_nombre or "",
-            }
-        )
-
-    return data, {"total": len(data)}
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -935,10 +892,13 @@ async def get_resumen_liquidaciones(
     fecha_inicio: Optional[date] = None,
     fecha_fin: Optional[date] = None,
     id_cliente: Optional[int] = None,
-    tipo_concepto: Optional[int] = None,
     id_moneda: Optional[int] = None,
 ) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
-    """Obtiene resumen de liquidaciones con cliente, moneda, productos."""
+    """Obtiene resumen de liquidaciones con cliente, moneda, productos.
+
+    Los productos de todas las liquidaciones se traen en una sola consulta y se
+    agrupan en memoria: antes se hacía una consulta por liquidación (N+1).
+    """
     query = (
         select(
             Liquidacion,
@@ -965,6 +925,35 @@ async def get_resumen_liquidaciones(
     result = await db.execute(query)
     rows = result.all()
 
+    # ── Productos de TODAS las liquidaciones en una sola consulta ────────────
+    liquidacion_ids = [r[0].id_liquidacion for r in rows]
+    productos_por_liquidacion: Dict[int, List[Dict[str, Any]]] = {}
+    if liquidacion_ids:
+        prod_result = await db.execute(
+            select(
+                ProductosEnLiquidacion,
+                Productos.nombre.label("producto_nombre"),
+                Productos.codigo.label("producto_codigo"),
+            )
+            .join(
+                Productos,
+                ProductosEnLiquidacion.id_producto == Productos.id_producto,
+                isouter=True,
+            )
+            .filter(ProductosEnLiquidacion.id_liquidacion.in_(liquidacion_ids))
+            .order_by(ProductosEnLiquidacion.id_producto_en_liquidacion)
+        )
+        for pr in prod_result.all():
+            pel: ProductosEnLiquidacion = pr[0]
+            productos_por_liquidacion.setdefault(pel.id_liquidacion, []).append(
+                {
+                    "codigo": pr.producto_codigo or "",
+                    "nombre": pr.producto_nombre or "",
+                    "cantidad": pel.cantidad,
+                    "precio": float(pel.precio),
+                }
+            )
+
     data = []
     totales_acum = {
         "total_devengado": 0.0,
@@ -979,35 +968,7 @@ async def get_resumen_liquidaciones(
 
     for r in rows:
         liq: Liquidacion = r[0]
-
-        # Obtener productos asociados
-        prod_query = (
-            select(
-                ProductosEnLiquidacion,
-                Productos.nombre.label("producto_nombre"),
-                Productos.codigo.label("producto_codigo"),
-            )
-            .join(
-                Productos,
-                ProductosEnLiquidacion.id_producto == Productos.id_producto,
-                isouter=True,
-            )
-            .filter(ProductosEnLiquidacion.id_liquidacion == liq.id_liquidacion)
-        )
-        prod_result = await db.execute(prod_query)
-        prod_rows = prod_result.all()
-
-        productos = []
-        for pr in prod_rows:
-            pel: ProductosEnLiquidacion = pr[0]
-            productos.append(
-                {
-                    "codigo": pr.producto_codigo or "",
-                    "nombre": pr.producto_nombre or "",
-                    "cantidad": pel.cantidad,
-                    "precio": float(pel.precio),
-                }
-            )
+        productos = productos_por_liquidacion.get(liq.id_liquidacion, [])
 
         item = {
             "id_liquidacion": liq.id_liquidacion,

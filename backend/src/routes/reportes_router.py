@@ -584,9 +584,6 @@ async def obtener_reporte_liquidaciones(
     fecha_inicio: Optional[date] = Query(None, description="Fecha Inicio"),
     fecha_fin: Optional[date] = Query(None, description="Fecha Fin"),
     id_cliente: Optional[int] = Query(None, description="Filtrar por cliente"),
-    tipo_concepto: Optional[int] = Query(
-        None, description="Filtrar por tipo de concepto"
-    ),
     id_moneda: Optional[int] = Query(None, description="Filtrar por moneda"),
     aprobado_por_nombre: str = Query("", description="Nombre de quien aprueba"),
     aprobado_por_cargo: str = Query("", description="Cargo de quien aprueba"),
@@ -596,7 +593,7 @@ async def obtener_reporte_liquidaciones(
 ):
     try:
         data, meta = await get_resumen_liquidaciones(
-            db, fecha_inicio, fecha_fin, id_cliente, tipo_concepto, id_moneda
+            db, fecha_inicio, fecha_fin, id_cliente, id_moneda
         )
         usuario_actual = f"{current_user.nombre} {current_user.primer_apellido}"
 
@@ -1078,16 +1075,13 @@ async def preview_liquidaciones(
     fecha_inicio: Optional[date] = Query(None, description="Fecha Inicio"),
     fecha_fin: Optional[date] = Query(None, description="Fecha Fin"),
     id_cliente: Optional[int] = Query(None, description="Filtrar por cliente"),
-    tipo_concepto: Optional[int] = Query(
-        None, description="Filtrar por tipo de concepto"
-    ),
     id_moneda: Optional[int] = Query(None, description="Filtrar por moneda"),
     db: AsyncSession = Depends(get_session),
     current_user: UsuarioInfo = Depends(get_optional_user),
 ):
     try:
         data, meta = await get_resumen_liquidaciones(
-            db, fecha_inicio, fecha_fin, id_cliente, tipo_concepto, id_moneda
+            db, fecha_inicio, fecha_fin, id_cliente, id_moneda
         )
 
         items = [
