@@ -10,6 +10,8 @@ import type { ContratoWithDetails, ContratoCreate } from '../../types/contrato';
 import { Plus, Save, Trash2, Edit, ArrowLeft, Search, FileText, User, DollarSign, Calendar, Tag, X, Eye, Layers, Receipt } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { formatFecha } from '../../utils/fecha';
+import { DateInput } from '../../components/ui';
 
 type View = 'list' | 'form';
 
@@ -377,7 +379,7 @@ export function ContratosPage() {
                               : 'bg-gray-100 text-gray-700'
                           }`}>
                             <Calendar className="h-3 w-3" />
-                            {vigencia || 'N/A'}
+                            {formatFecha(vigencia) || 'N/A'}
                           </span>
                         );
                       })()}
@@ -571,29 +573,27 @@ export function ContratosPage() {
               <Label className="text-sm font-medium">Moneda</Label>
               <select className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white" value={formData.id_moneda || ''} onChange={(e: any) => setFormData({...formData, id_moneda: e.target.value})}>
                 <option value="">Seleccionar moneda</option>
-                {monedas.map(m => <option key={m.id_moneda} value={m.id_moneda}>{m.nombre}</option>)}
+                {monedas.map(m => <option key={m.id_moneda} value={m.id_moneda}>{m.denominacion}</option>)}
               </select>
             </div>
 
             {/* Fila 4: Fecha + Vigencia */}
             <div>
               <Label className="text-sm font-medium">Fecha</Label>
-              <input
-                type="date"
-                className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition-colors"
+              <DateInput
+                className="mt-1 focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
                 value={formData.fecha || ''}
                 min={hoy}
-                onChange={(e: any) => handleFechaChange(e.target.value)}
+                onChange={(fecha) => handleFechaChange(fecha)}
               />
             </div>
             <div>
               <Label className="text-sm font-medium">Fecha Vigencia</Label>
-              <input
-                type="date"
-                className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition-colors"
+              <DateInput
+                className="mt-1 focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
                 value={formData.vigencia || ''}
                 min={formData.fecha ? addDays(formData.fecha, 1) : hoy}
-                onChange={(e: any) => setFormData({...formData, vigencia: e.target.value})}
+                onChange={(vigencia) => setFormData({...formData, vigencia})}
               />
             </div>
 
@@ -726,11 +726,11 @@ export function ContratosPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="bg-gradient-to-br from-purple-50 to-pink-50 p-4 rounded-xl border border-purple-100">
                   <p className="text-xs text-purple-600 uppercase tracking-wider mb-1">Fecha</p>
-                  <p className="font-bold text-gray-900">{detailModal.item.fecha || 'N/A'}</p>
+                  <p className="font-bold text-gray-900">{formatFecha(detailModal.item.fecha) || 'N/A'}</p>
                 </div>
                 <div className="bg-gradient-to-br from-orange-50 to-amber-50 p-4 rounded-xl border border-orange-100">
                   <p className="text-xs text-orange-600 uppercase tracking-wider mb-1">Vigencia</p>
-                  <p className="font-bold text-gray-900">{detailModal.item.vigencia || 'N/A'}</p>
+                  <p className="font-bold text-gray-900">{formatFecha(detailModal.item.vigencia) || 'N/A'}</p>
                 </div>
               </div>
               {detailModal.item.proforma && (

@@ -10,6 +10,7 @@ import { useInfiniteList } from '../../hooks/useInfiniteList';
 import { Plus, Save, Trash2, Edit, X, ArrowLeft, Search, Check, Package, Tag, DollarSign, ClipboardList, Eye, Boxes, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { esNumeroPositivo, esPorcentaje } from '../../utils/validacionFormularios';
+import { formatFecha } from '../../utils/fecha';
 
 type View = 'list' | 'form';
 type TabType = 'todas' | 'pendientes' | 'liquidadas';
@@ -395,7 +396,7 @@ export function ProductosEnLiquidacionPage() {
                 onChange={(e) => { setFormData({...formData, id_moneda: Number(e.target.value)}); setErrors(prev => ({...prev, id_moneda: ''})); }}
               >
                 <option value="">Seleccionar</option>
-                {monedas.map(m => <option key={m.id_moneda} value={m.id_moneda}>{m.nombre}</option>)}
+                {monedas.map(m => <option key={m.id_moneda} value={m.id_moneda}>{m.denominacion}</option>)}
               </select>
               {errors.id_moneda && <p className="text-red-500 text-sm mt-1">{errors.id_moneda}</p>}
             </div>
@@ -472,11 +473,11 @@ export function ProductosEnLiquidacionPage() {
                 </div>
                 <div className="bg-gradient-to-br from-purple-50 to-pink-50 p-4 rounded-xl border border-purple-100">
                   <p className="text-xs text-purple-600 uppercase tracking-wider mb-1">Fecha</p>
-                  <p className="font-bold text-gray-900">{new Date(detailModal.item.fecha).toLocaleDateString()}</p>
+                  <p className="font-bold text-gray-900">{formatFecha(detailModal.item.fecha)}</p>
                 </div>
                 <div className="bg-gray-50 p-4 rounded-xl">
                   <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Moneda</p>
-                  <p className="font-bold text-gray-900">{detailModal.item.moneda?.nombre || 'N/A'}</p>
+                  <p className="font-bold text-gray-900">{detailModal.item.moneda?.denominacion || 'N/A'}</p>
                 </div>
               </div>
               <div className="bg-gradient-to-br from-indigo-50 to-violet-50 p-4 rounded-xl border border-indigo-100">

@@ -63,7 +63,9 @@ import {
   TableHead,
   TableCell,
   ConfirmModal,
+  DateInput,
 } from "../components/ui";
+import { formatFecha } from "../utils/fecha";
 
 export function ConveniosPage() {
   const [view, setView] = useState<"list" | "form" | "detail">("list");
@@ -396,12 +398,9 @@ export function ConveniosPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <Label>Fecha *</Label>
-                  <Input
-                    type="date"
+                  <DateInput
                     value={formData.fecha}
-                    onChange={(e) =>
-                      setFormData({ ...formData, fecha: e.target.value })
-                    }
+                    onChange={(fecha) => setFormData({ ...formData, fecha })}
                   />
                   {formErrors.fecha && (
                     <p className="text-red-500 text-sm mt-1">
@@ -411,12 +410,9 @@ export function ConveniosPage() {
                 </div>
                 <div>
                   <Label>Vigencia *</Label>
-                  <Input
-                    type="date"
+                  <DateInput
                     value={formData.vigencia}
-                    onChange={(e) =>
-                      setFormData({ ...formData, vigencia: e.target.value })
-                    }
+                    onChange={(vigencia) => setFormData({ ...formData, vigencia })}
                   />
                   {formErrors.vigencia && (
                     <p className="text-red-500 text-sm mt-1">
@@ -521,7 +517,7 @@ export function ConveniosPage() {
                   Fecha
                 </p>
                 <p className="font-bold text-gray-900">
-                  {viewingConvenio.fecha}
+                  {formatFecha(viewingConvenio.fecha)}
                 </p>
               </div>
               <div className="bg-gradient-to-br from-rose-50 to-red-50 p-4 rounded-md border border-rose-100">
@@ -529,7 +525,7 @@ export function ConveniosPage() {
                   Vigencia
                 </p>
                 <p className="font-bold text-gray-900">
-                  {viewingConvenio.vigencia}
+                  {formatFecha(viewingConvenio.vigencia)}
                 </p>
               </div>
             </div>
@@ -731,7 +727,7 @@ export function ConveniosPage() {
                   <div>
                     <p className="font-semibold text-red-800 text-sm">Vencido</p>
                     <p className="text-sm text-red-700">
-                      Este convenio ha excedido su fecha de vigencia. Vigencia original: {detailModal.convenio.vigencia}
+                      Este convenio ha excedido su fecha de vigencia. Vigencia original: {formatFecha(detailModal.convenio.vigencia)}
                     </p>
                   </div>
                 </div>
@@ -780,7 +776,7 @@ export function ConveniosPage() {
                   </div>
                   <div>
                     <p className="text-[10px] uppercase tracking-wider text-gray-400 font-medium">Fecha</p>
-                    <p className="text-sm font-medium text-gray-800">{detailModal.convenio.fecha}</p>
+                    <p className="text-sm font-medium text-gray-800">{formatFecha(detailModal.convenio.fecha)}</p>
                   </div>
                 </div>
                 <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
@@ -789,7 +785,7 @@ export function ConveniosPage() {
                   </div>
                   <div>
                     <p className="text-[10px] uppercase tracking-wider text-gray-400 font-medium">Vigencia</p>
-                    <p className="text-sm font-medium text-gray-800">{detailModal.convenio.vigencia}</p>
+                    <p className="text-sm font-medium text-gray-800">{formatFecha(detailModal.convenio.vigencia)}</p>
                   </div>
                 </div>
               </div>

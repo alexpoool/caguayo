@@ -36,6 +36,7 @@ import { useFacturas } from "./hooks/useFacturas";
 import { usePagos } from "./hooks/usePagos";
 import { useProductSelection } from "./hooks/useProductSelection";
 import { useStock } from "../../../hooks/useStock";
+import { formatFecha } from "../../../utils/fecha";
 
 type View = "list" | "form";
 
@@ -99,9 +100,7 @@ export function getFacturaDocument(
     .join("");
 
   const total = Number(factura.monto || 0).toFixed(2);
-  const fechaEmision = factura.fecha
-    ? new Date(factura.fecha).toLocaleDateString("es-ES")
-    : "N/A";
+  const fechaEmision = formatFecha(factura.fecha) || "N/A";
 
   const nombreUsuario = user
     ? [user.nombre, user.primer_apellido, user.segundo_apellido]

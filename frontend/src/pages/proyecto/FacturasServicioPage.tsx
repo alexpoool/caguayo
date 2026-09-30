@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Button, Input, Label, Card, CardContent, CardHeader, CardTitle, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, ConfirmModal } from '../../components/ui';
+import { Button, Input, Label, DateInput, Card, CardContent, CardHeader, CardTitle, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, ConfirmModal } from '../../components/ui';
 import { SignToggle } from '../../components/ui/SignToggle';
 import { facturasServicioService, etapasProyectoService, monedaService, solicitudesService, tareasEtapaService, dependenciasService, cuentasService, clientesService, certificacionesService, contratosService } from '../../services/api';
 import type { FacturaServicio, FacturaServicioCreate, FacturaServicioUpdate, Etapa, TareaEtapa, SolicitudServicio, ItemFacturaServicio, Certificacion } from '../../types/servicio';
@@ -14,6 +14,7 @@ import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { authService } from '../../services/auth';
 import { formatCifra } from '../../utils/decimal';
 import { useInfiniteList } from '../../hooks/useInfiniteList';
+import { formatFecha } from '../../utils/fecha';
 
 type View = 'list' | 'form';
 
@@ -1213,12 +1214,12 @@ export function FacturasServicioPage() {
                 });
               }}>
                 <option value="">Seleccionar cuenta</option>
-                {cuentasDependencia.map(c => <option key={c.id_cuenta} value={c.numero_cuenta}>{c.numero_cuenta} - {c.banco} ({monedas.find(m => m.id_moneda === c.id_moneda)?.simbolo || 'N/A'})</option>)}
+                {cuentasDependencia.map(c => <option key={c.id_cuenta} value={c.numero_cuenta}>{c.numero_cuenta} - {c.banco} ({monedas.find(m => m.id_moneda === c.id_moneda)?.denominacion || 'N/A'})</option>)}
               </select>
             </div>
             <div>
               <Label className="text-sm font-medium">Fecha</Label>
-              <Input type="date" value={formData.fecha || ''} onChange={(e: any) => setFormData({ ...formData, fecha: e.target.value })} className="mt-1" />
+              <DateInput value={formData.fecha || ''} onChange={(fecha: string) => setFormData({ ...formData, fecha })} className="mt-1" />
             </div>
             <div className="md:col-span-2">
               <Label className="text-sm font-medium">Descripción</Label>
@@ -1308,7 +1309,7 @@ export function FacturasServicioPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="bg-gray-50 p-4 rounded-xl">
                   <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Fecha</p>
-                  <p className="font-bold text-gray-900">{detailModal.item.fecha || 'N/A'}</p>
+                  <p className="font-bold text-gray-900">{formatFecha(detailModal.item.fecha) || 'N/A'}</p>
                 </div>
               </div>
               {detailModal.item.descripcion && (

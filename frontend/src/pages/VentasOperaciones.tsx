@@ -4,6 +4,7 @@ import {
   Button,
   Input,
   Label,
+  DateInput,
   Card,
   CardContent,
   CardHeader,
@@ -666,22 +667,16 @@ const loadInitialData = async () => {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label className="text-sm font-medium">Fecha</Label>
-                  <Input
-                    type="date"
+                  <DateInput
                     value={formData.fecha || ""}
-                    onChange={(e: any) =>
-                      setFormData({ ...formData, fecha: e.target.value })
-                    }
+                    onChange={(fecha) => setFormData({ ...formData, fecha })}
                   />
                 </div>
                 <div>
                   <Label className="text-sm font-medium">Vigencia</Label>
-                  <Input
-                    type="date"
+                  <DateInput
                     value={formData.vigencia || ""}
-                    onChange={(e: any) =>
-                      setFormData({ ...formData, vigencia: e.target.value })
-                    }
+                    onChange={(vigencia) => setFormData({ ...formData, vigencia })}
                   />
                 </div>
               </div>
@@ -697,7 +692,7 @@ const loadInitialData = async () => {
                   <option value="">Seleccionar</option>
                   {monedas.map((m) => (
                     <option key={m.id_moneda} value={m.id_moneda}>
-                      {m.nombre}
+                      {m.denominacion}
                     </option>
                   ))}
                 </select>
@@ -741,12 +736,9 @@ const loadInitialData = async () => {
               </div>
               <div>
                 <Label className="text-sm font-medium">Fecha</Label>
-                <Input
-                  type="date"
+                <DateInput
                   value={formData.fecha || ""}
-                  onChange={(e: any) =>
-                    setFormData({ ...formData, fecha: e.target.value })
-                  }
+                  onChange={(fecha) => setFormData({ ...formData, fecha })}
                 />
               </div>
               <div>
@@ -783,12 +775,9 @@ const loadInitialData = async () => {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label className="text-sm font-medium">Fecha</Label>
-                  <Input
-                    type="date"
+                  <DateInput
                     value={formData.fecha || ""}
-                    onChange={(e: any) =>
-                      setFormData({ ...formData, fecha: e.target.value })
-                    }
+                    onChange={(fecha) => setFormData({ ...formData, fecha })}
                   />
                 </div>
                 <div>
@@ -819,12 +808,9 @@ const loadInitialData = async () => {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label className="text-sm font-medium">Fecha</Label>
-                  <Input
-                    type="date"
+                  <DateInput
                     value={formData.fecha || ""}
-                    onChange={(e: any) =>
-                      setFormData({ ...formData, fecha: e.target.value })
-                    }
+                    onChange={(fecha) => setFormData({ ...formData, fecha })}
                   />
                 </div>
                 <div>

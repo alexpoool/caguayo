@@ -9,6 +9,8 @@ import { Plus, Save, Trash2, Edit, ArrowLeft, Search, Layers, FileText, Calendar
 import toast from 'react-hot-toast';
 import { useSearchParams } from 'react-router-dom';
 import { required } from '../../utils/validacionFormularios';
+import { formatFecha } from '../../utils/fecha';
+import { DateInput } from '../../components/ui';
 
 type View = 'list' | 'form';
 
@@ -296,9 +298,9 @@ export function SuplementosPage() {
                           {item.estado?.nombre || 'N/A'}
                         </span>
                       </TableCell>
-                      <TableCell className="text-gray-500">{item.fecha}</TableCell>
+                      <TableCell className="text-gray-500">{formatFecha(item.fecha)}</TableCell>
                       <TableCell className="text-right text-gray-700">{Number(item.monto || 0).toFixed(2)}</TableCell>
-                      <TableCell className="text-gray-500">{item.fecha_vigencia || 'N/A'}</TableCell>
+                      <TableCell className="text-gray-500">{formatFecha(item.fecha_vigencia) || 'N/A'}</TableCell>
                       <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                         <div className="flex justify-end gap-2">
                           <Button variant="ghost" size="icon" onClick={() => openForm(item)} className="text-green-600 hover:text-green-800 hover:bg-green-50 h-8 w-8" title="Editar">
@@ -410,21 +412,19 @@ export function SuplementosPage() {
             </div>
             <div>
               <Label className="text-sm font-medium">Fecha</Label>
-              <input 
-                type="date" 
-                className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition-colors" 
-                value={formData.fecha || hoy} 
-                min={hoy} 
-                onChange={(e: any) => setFormData({...formData, fecha: e.target.value})} 
+              <DateInput
+                className="mt-1 focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                value={formData.fecha || hoy}
+                min={hoy}
+                onChange={(fecha) => setFormData({...formData, fecha})}
               />
             </div>
             <div>
               <Label className="text-sm font-medium">Fecha de vigencia *</Label>
-              <input 
-                type="date" 
-                className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition-colors" 
-                value={formData.fecha_vigencia || hoy} 
-                onChange={(e: any) => setFormData({...formData, fecha_vigencia: e.target.value})} 
+              <DateInput
+                className="mt-1 focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                value={formData.fecha_vigencia || hoy}
+                onChange={(fecha_vigencia) => setFormData({...formData, fecha_vigencia})}
               />
             </div>
             <div>
@@ -504,11 +504,11 @@ export function SuplementosPage() {
                 </div>
                 <div className="bg-gradient-to-br from-purple-50 to-pink-50 p-4 rounded-xl border border-purple-100">
                   <p className="text-xs text-purple-600 uppercase tracking-wider mb-1">Fecha</p>
-                  <p className="font-bold text-gray-900">{detailModal.item.fecha || 'N/A'}</p>
+                  <p className="font-bold text-gray-900">{formatFecha(detailModal.item.fecha) || 'N/A'}</p>
                 </div>
                 <div className="bg-gradient-to-br from-purple-50 to-pink-50 p-4 rounded-xl border border-purple-100">
                   <p className="text-xs text-purple-600 uppercase tracking-wider mb-1">Fecha de vigencia</p>
-                  <p className="font-bold text-gray-900">{detailModal.item.fecha_vigencia || 'N/A'}</p>
+                  <p className="font-bold text-gray-900">{formatFecha(detailModal.item.fecha_vigencia) || 'N/A'}</p>
                 </div>
                 <div className="bg-gray-50 p-4 rounded-xl">
                   <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Valor</p>

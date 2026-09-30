@@ -16,7 +16,11 @@ from src.models import (
     Productos,
     TipoConvenio,
 )
-from src.dto.convenios_dto import AnexoRead, AnexoCreate, AnexoUpdate
+from src.dto.convenios_dto import (
+    AnexoRead,
+    AnexoCreate,
+    AnexoOperaciones,
+)
 from src.utils import (
     generar_codigo,
     generar_codigo_anexo,
@@ -295,148 +299,231 @@ async def crear_anexo(
         raise HTTPException(status_code=500, detail="Error interno del servidor")
 
 
-@router.patch("/{anexo_id}")
-async def actualizar_anexo(
+@router.post("/{anexo_id}/operaciones")
+async def operaciones_anexo(
     anexo_id: int,
-    datos: AnexoUpdate,
+    datos: AnexoOperaciones,
     authorization: Optional[str] = Header(None),
     db: AsyncSession = Depends(get_session),
 ):
-    """Actualizar un anexo."""
+    """Agregar productos nuevos o devolver unidades de un anexo existente.
+
+    No modifica los datos del encabezado. Ambas operaciones se aplican en una
+    sola transaccion y generan movimientos `pendiente` que habra que confirmar
+    desde el modulo de Movimientos.
+
+    Las devoluciones descuentan la `entrada` del item de inmediato para que no se
+    puedan devolver dos veces las mismas unidades; el movimiento guarda el item
+    exacto en `id_item_anexo` para que confirmar no lo cuente de nuevo y
+    cancelar/eliminar lo restauren.
+    """
     try:
         await verify_auth(authorization=authorization, db=db)
         denominacion = await _get_denominacion_from_token(authorization)
 
-        statement = select(Anexo).where(Anexo.id_anexo == anexo_id)
-        results = await db.exec(statement)
-        db_anexo = results.first()
+        stmt_anexo = select(Anexo).where(Anexo.id_anexo == anexo_id)
+        db_anexo = (await db.exec(stmt_anexo)).first()
         if not db_anexo:
             raise HTTPException(status_code=404, detail="Anexo no encontrado")
 
-        update_data = datos.model_dump(exclude_unset=True)
-        items_data = update_data.pop("items", None)
-        db_anexo.sqlmodel_update(update_data)
-        await db.flush()
+        productos = [p for p in (datos.productos or [])]
+        devoluciones = [d for d in (datos.devoluciones or []) if d.cantidad > 0]
+        if not productos and not devoluciones:
+            raise HTTPException(
+                status_code=400,
+                detail="No hay operaciones para aplicar",
+            )
 
-        if items_data is not None:
-            stmt_del_mov = select(Movimiento).where(Movimiento.id_anexo == anexo_id)
-            result_mov = await db.exec(stmt_del_mov)
-            for mov in result_mov.all():
-                await db.delete(mov)
+        stmt_conv = select(Convenio).where(Convenio.id_convenio == db_anexo.id_convenio)
+        conveni = (await db.exec(stmt_conv)).first()
 
-            stmt_del_items = select(ItemAnexo).where(ItemAnexo.id_anexo == anexo_id)
-            result_items = await db.exec(stmt_del_items)
-            for item in result_items.all():
-                stmt_del_precios = select(PrecioItemAnexo).where(
-                    PrecioItemAnexo.id_item_anexo == item.id_item_anexo
+        sec_anexo = 0
+        if db_anexo.codigo_anexo:
+            try:
+                sec_anexo = int(db_anexo.codigo_anexo.rsplit(".", 1)[-1])
+            except ValueError:
+                sec_anexo = 0
+
+        stmt_tipo = select(TipoMovimiento).where(
+            TipoMovimiento.tipo.in_(("compra", "DEVOLUCION"))
+        )
+        tipos = {t.tipo: t for t in (await db.exec(stmt_tipo)).all()}
+        tipo_compra = tipos.get("compra")
+        tipo_devolucion = tipos.get("DEVOLUCION")
+        if not tipo_compra or not tipo_devolucion:
+            raise HTTPException(
+                status_code=500,
+                detail="Tipos de movimiento 'compra' o 'DEVOLUCION' no encontrados",
+            )
+
+        anio = datetime.now(timezone.utc).year
+        agregados: List[dict] = []
+        devueltas: List[dict] = []
+
+        # ── Agregar productos nuevos ────────────────────────────────────────────
+        for item in productos:
+            producto = await db.get(Productos, item.id_producto)
+            if not producto:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Producto {item.id_producto} no encontrado",
                 )
-                result_precios = await db.exec(stmt_del_precios)
-                for p in result_precios.all():
-                    await db.delete(p)
-                await db.delete(item)
 
+            pc_item = item.precio_compra or producto.precio_compra
+
+            db_item = ItemAnexo(
+                id_anexo=db_anexo.id_anexo,
+                id_producto=item.id_producto,
+                entrada=item.entrada,
+                precio_compra=pc_item,
+                precio_venta=item.precio_venta,
+                id_moneda=item.id_moneda,
+                codigo=generar_codigo_item_anexo(
+                    db_anexo.id_convenio,
+                    sec_anexo,
+                    producto.codigo,
+                    producto.id_producto,
+                ),
+            )
+            db.add(db_item)
             await db.flush()
 
-            stmt_tipo_mov = select(TipoMovimiento).where(TipoMovimiento.tipo == "compra")
-            result_tipo = await db.exec(stmt_tipo_mov)
-            tipo_mov = result_tipo.first()
-            if not tipo_mov or tipo_mov.id_tipo_movimiento is None:
-                raise HTTPException(
-                    status_code=500, detail="Tipo de movimiento 'compra' no encontrado"
+            for p in (item.precios or []):
+                if p.id_moneda == item.id_moneda:
+                    continue
+                db.add(
+                    PrecioItemAnexo(
+                        id_item_anexo=db_item.id_item_anexo,
+                        id_moneda=p.id_moneda,
+                        precio_venta=p.precio_venta,
+                        precio_compra=p.precio_compra,
+                    )
                 )
 
-            stmt_conv = select(Convenio).where(Convenio.id_convenio == db_anexo.id_convenio)
-            result_conv = await db.exec(stmt_conv)
-            conveni = result_conv.first()
+            producto.moneda_compra = item.id_moneda
+            producto.precio_venta = item.precio_venta
+            producto.moneda_venta = item.id_moneda
+            producto.precio_minimo = item.precio_venta * Decimal("0.8")
+            db.add(producto)
 
-            sec_anexo = 0
-            if db_anexo.codigo_anexo:
-                try:
-                    sec_anexo = int(db_anexo.codigo_anexo.rsplit(".", 1)[-1])
-                except ValueError:
-                    sec_anexo = 0
+            db_mov = Movimiento(
+                id_tipo_movimiento=tipo_compra.id_tipo_movimiento,
+                id_dependencia=db_anexo.id_dependencia or 1,
+                id_anexo=db_anexo.id_anexo,
+                id_convenio=db_anexo.id_convenio,
+                id_cliente=conveni.id_cliente if conveni else None,
+                id_producto=item.id_producto,
+                cantidad=item.entrada,
+                fecha=datetime.now(timezone.utc).replace(tzinfo=None),
+                precio_compra=pc_item,
+                moneda_compra=item.id_moneda,
+                precio_venta=item.precio_venta,
+                moneda_venta=item.id_moneda,
+                estado="pendiente",
+            )
+            db.add(db_mov)
+            await db.flush()
+            db_mov.codigo = generar_codigo(
+                denominacion or "", anio, db_mov.id_movimiento
+            )
 
-            for item in items_data:
-                producto = await db.get(Productos, item["id_producto"])
-                if not producto:
-                    continue
+            agregados.append(
+                {
+                    "id_item_anexo": db_item.id_item_anexo,
+                    "id_movimiento": db_mov.id_movimiento,
+                    "codigo": db_mov.codigo,
+                    "id_producto": item.id_producto,
+                    "entrada": item.entrada,
+                }
+            )
 
-                pc_item = item.get("precio_compra") or producto.precio_compra
+        # ── Devolver unidades ya cargadas ──────────────────────────────────────
+        # Un mismo item no puede repetirse: se descontaria dos veces.
+        vistos = set()
+        for dev in devoluciones:
+            if dev.id_item_anexo in vistos:
+                raise HTTPException(
+                    status_code=400,
+                    detail="El mismo producto aparece mas de una vez en las devoluciones",
+                )
+            vistos.add(dev.id_item_anexo)
 
-                db_item = ItemAnexo(
-                    id_anexo=db_anexo.id_anexo,
-                    id_producto=item["id_producto"],
-                    entrada=item["entrada"],
-                    precio_compra=pc_item,
-                    precio_venta=item["precio_venta"],
-                    id_moneda=item["id_moneda"],
-                    codigo=generar_codigo_item_anexo(
-                        db_anexo.id_convenio,
-                        sec_anexo,
-                        producto.codigo,
-                        producto.id_producto,
+        for dev in devoluciones:
+            stmt_item = select(ItemAnexo).where(
+                ItemAnexo.id_item_anexo == dev.id_item_anexo
+            )
+            db_item = (await db.exec(stmt_item)).first()
+            if not db_item or db_item.id_anexo != db_anexo.id_anexo:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"El producto indicado no pertenece a este anexo",
+                )
+
+            disponible = db_item.entrada - db_item.vendido
+            if disponible <= 0:
+                raise HTTPException(
+                    status_code=400,
+                    detail="El producto no tiene unidades disponibles para devolver",
+                )
+            if dev.cantidad > disponible:
+                raise HTTPException(
+                    status_code=400,
+                    detail=(
+                        "No se pueden devolver mas unidades de las disponibles "
+                        f"({disponible})"
                     ),
                 )
-                db.add(db_item)
-                await db.flush()
 
-                for p in item.get("precios", []):
-                    if p["id_moneda"] == item["id_moneda"]:
-                        continue
-                    db.add(
-                        PrecioItemAnexo(
-                            id_item_anexo=db_item.id_item_anexo,
-                            id_moneda=p["id_moneda"],
-                            precio_venta=p["precio_venta"],
-                            precio_compra=p.get("precio_compra"),
-                        )
-                    )
+            # Descuento inmediato: impide devolver dos veces las mismas unidades.
+            db_item.entrada -= dev.cantidad
+            db.add(db_item)
 
-                producto.moneda_compra = item["id_moneda"]
-                producto.precio_venta = item["precio_venta"]
-                producto.moneda_venta = item["id_moneda"]
-                producto.precio_minimo = item["precio_venta"] * Decimal("0.8")
+            db_mov = Movimiento(
+                id_tipo_movimiento=tipo_devolucion.id_tipo_movimiento,
+                id_dependencia=db_anexo.id_dependencia or 1,
+                id_anexo=db_anexo.id_anexo,
+                id_item_anexo=db_item.id_item_anexo,
+                id_convenio=db_anexo.id_convenio,
+                id_cliente=conveni.id_cliente if conveni else None,
+                id_producto=db_item.id_producto,
+                cantidad=dev.cantidad,
+                fecha=datetime.now(timezone.utc).replace(tzinfo=None),
+                observacion="Devolucion desde edicion de anexo",
+                precio_compra=db_item.precio_compra,
+                moneda_compra=db_item.id_moneda,
+                precio_venta=db_item.precio_venta,
+                moneda_venta=db_item.id_moneda,
+                estado="pendiente",
+            )
+            db.add(db_mov)
+            await db.flush()
+            db_mov.codigo = generar_codigo(
+                denominacion or "", anio, db_mov.id_movimiento
+            )
 
-                db_movimiento = Movimiento(
-                    id_tipo_movimiento=tipo_mov.id_tipo_movimiento,
-                    id_dependencia=db_anexo.id_dependencia or 1,
-                    id_anexo=db_anexo.id_anexo,
-                    id_convenio=db_anexo.id_convenio,
-                    id_cliente=conveni.id_cliente if conveni else None,
-                    id_producto=item["id_producto"],
-                    cantidad=item["entrada"],
-                    fecha=datetime.now(timezone.utc).replace(tzinfo=None),
-                    precio_compra=pc_item,
-                    moneda_compra=item["id_moneda"],
-                    precio_venta=item["precio_venta"],
-                    moneda_venta=item["id_moneda"],
-                    estado="pendiente",
-                )
-                db.add(db_movimiento)
-                await db.flush()
-
-                if db_movimiento.id_movimiento is None:
-                    raise HTTPException(status_code=500, detail="Error al crear movimiento")
-
-                anio = datetime.now(timezone.utc).year
-                db_movimiento.codigo = generar_codigo(denominacion, anio, db_movimiento.id_movimiento)
+            devueltas.append(
+                {
+                    "id_item_anexo": db_item.id_item_anexo,
+                    "id_movimiento": db_mov.id_movimiento,
+                    "codigo": db_mov.codigo,
+                    "id_producto": db_item.id_producto,
+                    "cantidad": dev.cantidad,
+                    "disponible_restante": db_item.entrada - db_item.vendido,
+                }
+            )
 
         await db.commit()
-        await db.refresh(db_anexo)
+
         return {
             "id_anexo": db_anexo.id_anexo,
-            "codigo_anexo": db_anexo.codigo_anexo,
-            "id_convenio": db_anexo.id_convenio,
-            "nombre_anexo": db_anexo.nombre_anexo,
-            "fecha": str(db_anexo.fecha),
-            "id_dependencia": db_anexo.id_dependencia,
-            "comision": float(db_anexo.comision) if db_anexo.comision else None,
+            "agregados": agregados,
+            "devoluciones": devueltas,
         }
     except HTTPException:
         raise
     except Exception as e:
         await db.rollback()
-        logger.error("Error al actualizar anexo", exc_info=True)
+        logger.error("Error al aplicar operaciones al anexo", exc_info=True)
         raise HTTPException(status_code=500, detail="Error interno del servidor")
 
 

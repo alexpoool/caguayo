@@ -149,7 +149,7 @@ export function ServiciosPage() {
 
   const getMonedaNombre = (id?: number) => {
     if (!id) return 'N/A';
-    return monedas.find(m => m.id_moneda === id)?.nombre || 'N/A';
+    return monedas.find(m => m.id_moneda === id)?.denominacion || 'N/A';
   };
 
   const renderList = () => (
@@ -331,7 +331,7 @@ export function ServiciosPage() {
               <Label className="text-sm font-medium">Moneda</Label>
               <select className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white" value={formData.id_moneda || ''} onChange={(e: any) => setFormData({...formData, id_moneda: e.target.value})}>
                 <option value="">Seleccionar moneda</option>
-                {monedas.map(m => <option key={m.id_moneda} value={m.id_moneda}>{m.nombre}</option>)}
+                {monedas.map(m => <option key={m.id_moneda} value={m.id_moneda}>{m.denominacion}</option>)}
               </select>
             </div>
             <div className="md:col-span-2">

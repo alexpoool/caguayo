@@ -40,6 +40,7 @@ class MovimientoBase(SQLModel):
     precio_venta: Optional[Decimal] = Field(default=None, ge=0)
     moneda_venta: Optional[int] = None
     id_anexo: Optional[int] = None
+    id_item_anexo: Optional[int] = None
     id_convenio: Optional[int] = None
     id_factura: Optional[int] = None
 

@@ -3,6 +3,7 @@ import { X, Receipt, DollarSign, Calendar, Printer } from 'lucide-react';
 import type { FacturaWithDetails, ItemFactura } from '../../../../../types/contrato';
 import { contratosService, dependenciasService, clientesService, cuentasService } from '../../../../../services/api';
 import { getFacturaDocument } from '../../FacturasPage';
+import { formatFecha } from '../../../../../utils/fecha';
 
 interface FacturaDetailModalProps {
   isOpen: boolean;
@@ -69,7 +70,7 @@ export function FacturaDetailModal({
                 <Calendar className="h-3 w-3 inline mr-1" />
                 Fecha
               </p>
-              <p className="font-bold text-gray-900">{factura.fecha || 'N/A'}</p>
+              <p className="font-bold text-gray-900">{formatFecha(factura.fecha) || 'N/A'}</p>
             </div>
           </div>
 

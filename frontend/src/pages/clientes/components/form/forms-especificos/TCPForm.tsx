@@ -1,6 +1,7 @@
 import React from "react";
 import { Label } from "../../../../../components/ui"
 import { Input } from "../../../../../components/ui"
+import { DateInput } from "../../../../../components/ui"
 
 export interface DatosTCPFormProps {
   datos: any;
@@ -81,14 +82,13 @@ export const TCPForm: React.FC<DatosTCPFormProps> = ({
         </div>
         <div>
           <Label>Fecha de Aprobación</Label>
-          <input
-            type="date"
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-violet-500 outline-none transition-colors"
+          <DateInput
+            className="focus:ring-violet-500 focus:border-violet-500"
             value={data.fecha_aprobacion || ""}
-            onChange={(e) =>
+            onChange={(fecha_aprobacion) =>
               setDatos({
                 ...data,
-                fecha_aprobacion: e.target.value,
+                fecha_aprobacion,
               })
             }
           />

@@ -118,7 +118,7 @@ export function ProductSelector({
                     </td>
                     <td className="px-4 py-2.5 text-center text-xs text-gray-500">
                       {p.id_moneda
-                        ? (monedas?.find((m: any) => m.id_moneda === p.id_moneda)?.simbolo || `#${p.id_moneda}`)
+                        ? (monedas?.find((m: any) => m.id_moneda === p.id_moneda)?.denominacion || `#${p.id_moneda}`)
                         : '-'}
                     </td>
                     <td className="px-4 py-2.5 text-right text-sm font-medium tabular-nums text-gray-800">
@@ -195,7 +195,7 @@ export function ProductSelector({
                   <span className="truncate text-sm font-medium text-gray-800 min-w-0 flex-1">{p.nombre}</span>
                   <span className="text-xs text-gray-400 w-16 truncate">{p.codigo || '-'}</span>
                   <span className={`text-xs font-medium w-16 text-center ${stockStatus}`}>{stockText}</span>
-                  <span className="text-xs text-gray-400 w-8 text-center">{(p as any).moneda_simbolo || '-'}</span>
+                  <span className="text-xs text-gray-400 w-8 text-center">{monedas?.find((m: any) => m.id_moneda === (p as any).id_moneda)?.denominacion || '-'}</span>
                   <span className="text-sm font-medium text-gray-700 tabular-nums w-24 text-right">
                     ${Number(p.precio_venta).toFixed(2)}
                   </span>
@@ -255,7 +255,7 @@ export function ProductSelector({
                       <span className="truncate text-sm font-medium text-gray-800 min-w-0 flex-1">{p.nombre}</span>
                       <span className="text-xs text-gray-400 w-16 truncate">{p.codigo || '-'}</span>
                       <span className={`text-xs font-medium w-16 text-center ${stockColor}`}>{stockText}</span>
-                      <span className="text-xs text-gray-400 w-8 text-center">{(p as any).moneda_simbolo || '-'}</span>
+                      <span className="text-xs text-gray-400 w-8 text-center">{monedas?.find((m: any) => m.id_moneda === (p as any).id_moneda)?.denominacion || '-'}</span>
                       <span className="text-sm font-medium text-gray-700 tabular-nums w-24 text-right">
                         ${Number(p.precio_venta).toFixed(2)}
                       </span>

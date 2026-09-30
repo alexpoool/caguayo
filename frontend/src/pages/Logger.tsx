@@ -26,6 +26,7 @@ import {
   TableHead, 
   TableCell 
 } from '../components/ui';
+import { formatFechaHora } from '../utils/fecha';
 
 interface LogEntry {
   id: number;
@@ -183,16 +184,7 @@ export function LoggerPage() {
     return 'bg-green-100 text-green-700 border-green-200';
   };
 
-  const formatTimestamp = (ts: string) => {
-    const date = new Date(ts);
-    return date.toLocaleString('es-CU', {
-      day: '2-digit',
-      month: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-    });
-  };
+  const formatTimestamp = (ts: string) => formatFechaHora(ts, true);
 
   if (isLoading) {
     return (

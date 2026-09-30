@@ -1,12 +1,13 @@
 import { useState, useEffect, useMemo, useRef, useLayoutEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Button, Input, Label, Card, CardContent, CardHeader, CardTitle, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, ConfirmModal } from '../../components/ui';
+import { Button, Input, Label, DateInput, Card, CardContent, CardHeader, CardTitle, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, ConfirmModal } from '../../components/ui';
 import { etapasProyectoService, solicitudesService, monedaService } from '../../services/api';
 import type { Etapa, EtapaCreate, EtapaUpdate } from '../../types/servicio';
 import type { Moneda } from '../../types/moneda';
 import { Plus, Save, Trash2, Edit, ArrowLeft, Search, Layers, DollarSign, Tag, X, FileText, Users, CheckSquare, MoreVertical, ChevronDown } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useSearchParams, useNavigate } from 'react-router-dom';
+import { formatFecha } from '../../utils/fecha';
 
 type View = 'list' | 'form';
 
@@ -193,7 +194,7 @@ export function EtapasPage() {
 
   const getMonedaNombre = (id?: number) => {
     if (!id) return 'N/A';
-    return monedas.find(m => m.id_moneda === id)?.nombre || 'N/A';
+    return monedas.find(m => m.id_moneda === id)?.denominacion || 'N/A';
   };
 
   const renderList = () => (
@@ -289,7 +290,7 @@ export function EtapasPage() {
                       {getMonedaNombre(item.id_moneda)}
                     </TableCell>
                     <TableCell>
-                      {item.fecha_pago || 'N/A'}
+                      {formatFecha(item.fecha_pago) || 'N/A'}
                     </TableCell>
                     <TableCell>
                       {item.pagada ? (
@@ -387,22 +388,20 @@ export function EtapasPage() {
             </div>
             <div>
               <Label className="text-sm font-medium">Fecha Entrega</Label>
-              <input 
-                type="date" 
-                className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition-colors" 
-                value={formData.fecha_entrega || hoy} 
+              <DateInput
+                className="mt-1 focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                value={formData.fecha_entrega || hoy}
                 min={hoy}
-                onChange={(e: any) => setFormData({...formData, fecha_entrega: e.target.value})} 
+                onChange={(fecha_entrega) => setFormData({...formData, fecha_entrega})}
               />
             </div>
             <div>
               <Label className="text-sm font-medium">Fecha Pago</Label>
-              <input 
-                type="date" 
-                className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition-colors" 
-                value={formData.fecha_pago || ''} 
+              <DateInput
+                className="mt-1 focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                value={formData.fecha_pago || ''}
                 min={formData.fecha_entrega || hoy}
-                onChange={(e: any) => setFormData({...formData, fecha_pago: e.target.value})} 
+                onChange={(fecha_pago) => setFormData({...formData, fecha_pago})}
               />
             </div>
             <div>
@@ -413,7 +412,7 @@ export function EtapasPage() {
               <Label className="text-sm font-medium">Moneda</Label>
               <select className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white" value={formData.id_moneda || ''} onChange={(e: any) => setFormData({...formData, id_moneda: e.target.value})}>
                 <option value="">Seleccionar moneda</option>
-                {monedas.map(m => <option key={m.id_moneda} value={m.id_moneda}>{m.nombre}</option>)}
+                {monedas.map(m => <option key={m.id_moneda} value={m.id_moneda}>{m.denominacion}</option>)}
               </select>
             </div>
             <div className="md:col-span-2">
@@ -501,11 +500,11 @@ export function EtapasPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="bg-gradient-to-br from-teal-50 to-cyan-50 p-4 rounded-xl border border-teal-100">
                   <p className="text-xs text-teal-600 uppercase tracking-wider mb-1">Fecha Entrega</p>
-                  <p className="font-bold text-gray-900">{detailModal.item.fecha_entrega || 'N/A'}</p>
+                  <p className="font-bold text-gray-900">{formatFecha(detailModal.item.fecha_entrega) || 'N/A'}</p>
                 </div>
                 <div className="bg-gradient-to-br from-teal-50 to-cyan-50 p-4 rounded-xl border border-teal-100">
                   <p className="text-xs text-teal-600 uppercase tracking-wider mb-1">Fecha Pago</p>
-                  <p className="font-bold text-gray-900">{detailModal.item.fecha_pago || 'N/A'}</p>
+                  <p className="font-bold text-gray-900">{formatFecha(detailModal.item.fecha_pago) || 'N/A'}</p>
                 </div>
               </div>
               {detailModal.item.descripcion && (

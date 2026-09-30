@@ -257,6 +257,12 @@ const [todosClientesRes, personasRes, monedasRes, solicitudesRes, tcpRes, juridi
     return m?.simbolo || '';
   };
 
+  const getMonedaDenominacion = (id?: number) => {
+    if (!id) return '';
+    const m = monedas.find(mo => mo.id_moneda === id);
+    return m?.denominacion || '';
+  };
+
   const getSolicitudByEtapa = (idEtapa: number): number | undefined => {
     const etapa = etapas.find(e => e.id_etapa === idEtapa);
     return etapa?.id_solicitud_servicio ?? currentEtapa?.id_solicitud_servicio;
@@ -740,7 +746,7 @@ Nuevo Realizador
                 <Label className="text-sm font-medium">Moneda</Label>
                 <select className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white" value={formData.id_moneda || currentEtapa?.id_moneda || ''} onChange={(e: any) => setFormData({ ...formData, id_moneda: e.target.value })}>
                   <option value="">Seleccionar moneda</option>
-                  {monedas.map(m => <option key={m.id_moneda} value={m.id_moneda}>{m.nombre}</option>)}
+                  {monedas.map(m => <option key={m.id_moneda} value={m.id_moneda}>{m.denominacion}</option>)}
                 </select>
               </div>
             </div>
@@ -801,7 +807,7 @@ Nuevo Realizador
                 </div>
                 <div className="bg-gray-50 p-4 rounded-xl">
                   <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Moneda</p>
-                  <p className="font-bold text-gray-900">{getMonedaSymbol(detailModal.item.id_moneda) || 'N/A'}</p>
+                  <p className="font-bold text-gray-900">{getMonedaDenominacion(detailModal.item.id_moneda) || 'N/A'}</p>
                 </div>
                 <div className="bg-gray-50 p-4 rounded-xl">
                   <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Liquidada</p>

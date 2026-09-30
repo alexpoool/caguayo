@@ -42,6 +42,10 @@ class Movimiento(SQLModel, table=True):
     id_tipo_movimiento: int = Field(foreign_key="tipo_movimiento.id_tipo_movimiento")
     id_dependencia: int = Field(foreign_key="dependencia.id_dependencia")
     id_anexo: Optional[int] = Field(default=None, foreign_key="anexo.id_anexo")
+    # Cuando esta presente, la devolucion ya desconto `entrada` de ese item al
+    # crearse: confirmar no debe volver a aplicarlo y cancelar/eliminar deben
+    # restaurarla. Sin FK a proposito (ver migracion add_id_item_anexo_to_movimiento).
+    id_item_anexo: Optional[int] = Field(default=None)
     id_producto: int = Field(foreign_key="productos.id_producto")
     cantidad: int
     fecha: datetime = Field(default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None))

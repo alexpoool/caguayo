@@ -19,6 +19,9 @@ import type {
   TipoMovimiento,
   Convenio,
   Anexo,
+  AnexoOperacionesProducto,
+  AnexoOperacionesDevolucion,
+  AnexoOperacionesResultado,
   Dependencia,
   OrigenRecepcion
 } from '../types/index';
@@ -463,12 +466,22 @@ export const anexosService = {
     return apiClient.post<Anexo>('/anexos', data);
   },
 
-  async updateAnexo(id: number, data: Partial<Anexo>): Promise<Anexo> {
-    return apiClient.patch<Anexo>(`/anexos/${id}`, data);
-  },
-
-  async deleteAnexo(id: number): Promise<void> {
-    return apiClient.delete(`/anexos/${id}`);
+  /**
+   * Agregar productos nuevos y/o devolver unidades de un anexo existente.
+   * Cada operacion genera un movimiento `pendiente` a confirmar despues.
+   */
+  async operacionesAnexo(
+    id: number,
+    data: {
+      productos?: AnexoOperacionesProducto[];
+      devoluciones?: AnexoOperacionesDevolucion[];
+    },
+  ): Promise<{
+    id_anexo: number;
+    agregados: AnexoOperacionesResultado[];
+    devoluciones: AnexoOperacionesResultado[];
+  }> {
+    return apiClient.post(`/anexos/${id}/operaciones`, data);
   }
 };
 

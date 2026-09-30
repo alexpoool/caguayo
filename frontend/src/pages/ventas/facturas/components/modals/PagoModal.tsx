@@ -1,8 +1,9 @@
 import { createPortal } from 'react-dom';
 import { X, CreditCard, Plus, Trash2 } from 'lucide-react';
-import { Button, Input, Label, Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../../../../../components/ui';
+import { Button, Input, Label, DateInput, Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../../../../../components/ui';
 import type { FacturaWithDetails } from '../../../../../types/contrato';
 import type { Pago } from '../../../../../types/pago';
+import { formatFecha } from '../../../../../utils/fecha';
 
 interface PagoModalProps {
   isOpen: boolean;
@@ -67,11 +68,10 @@ export function PagoModal({
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label className="text-sm font-medium">Fecha</Label>
-              <Input
-                type="date"
+              <DateInput
                 value={pagoForm.fecha}
-                onChange={(e: any) =>
-                  onPagoFormChange({ ...pagoForm, fecha: e.target.value })
+                onChange={(fecha: string) =>
+                  onPagoFormChange({ ...pagoForm, fecha })
                 }
                 className="mt-1"
               />
@@ -148,7 +148,7 @@ export function PagoModal({
                 <TableBody>
                   {pagos.map((pago: any) => (
                     <TableRow key={pago.id_pago}>
-                      <TableCell className="text-gray-500">{pago.fecha}</TableCell>
+                      <TableCell className="text-gray-500">{formatFecha(pago.fecha)}</TableCell>
                       <TableCell className="font-medium">
                         ${Number(pago.monto).toFixed(2)}
                       </TableCell>

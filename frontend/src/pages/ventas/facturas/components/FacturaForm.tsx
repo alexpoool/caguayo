@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { Save, ArrowLeft, Receipt, Search } from 'lucide-react';
-import { Button, Label, Input, Card, CardHeader, CardTitle, CardContent } from '../../../../components/ui';
+import { Button, Label, Input, DateInput, Card, CardHeader, CardTitle, CardContent } from '../../../../components/ui';
 import { ProductSelector } from './ProductSelector';
 import type { SelectedProduct } from '../hooks/useProductSelection';
 import type { Productos } from '../../../../types';
@@ -243,13 +243,12 @@ export function FacturaForm({
                 Fecha
               </Label>
               <div className="flex gap-2 mt-1">
-                <input
-                  type="date"
+                <DateInput
                   id="fecha"
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-violet-500 outline-none transition-colors"
+                  className="flex-1 focus:ring-2 focus:ring-violet-500 focus:border-violet-500"
                   value={formData.fecha || new Date().toISOString().split('T')[0]}
-                  onChange={(e: any) =>
-                    onFormDataChange({ ...formData, fecha: e.target.value })
+                  onChange={(fecha: string) =>
+                    onFormDataChange({ ...formData, fecha })
                   }
                 />
                 <button

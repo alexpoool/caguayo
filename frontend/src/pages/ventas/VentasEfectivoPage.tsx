@@ -51,6 +51,8 @@ import { required, seleccionValida } from "../../utils/validacionFormularios";
 import { Decimal } from "decimal.js";
 import { mul, add, toNumber, toFixed } from "../../utils/decimal";
 import { DEFAULTS } from "../../config/defaults";
+import { formatFecha } from "../../utils/fecha";
+import { DateInput } from "../../components/ui";
 
 type View = "list" | "form";
 
@@ -455,7 +457,7 @@ const loadInitialData = async () => {
                       ${Number(item.monto).toFixed(2)}
                     </TableCell>
                     <TableCell className="text-gray-500">
-                      {item.fecha}
+                      {formatFecha(item.fecha)}
                     </TableCell>
                     <TableCell className="text-gray-500">
                       {item.dependencia?.nombre || "N/A"}
@@ -555,13 +557,10 @@ const loadInitialData = async () => {
             <div>
               <Label className="text-sm font-medium">Fecha</Label>
               <div className="flex gap-2">
-                <input
-                  type="date"
-                  className="flex-1 mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition-colors"
+                <DateInput
+                  className="flex-1 mt-1 focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
                   value={formData.fecha || ""}
-                  onChange={(e: any) =>
-                    setFormData({ ...formData, fecha: e.target.value })
-                  }
+                  onChange={(fecha: string) => setFormData({ ...formData, fecha })}
                 />
                 <button
                   type="button"
@@ -612,7 +611,7 @@ const loadInitialData = async () => {
                 <option value="">Seleccionar moneda</option>
                 {monedas.map((m) => (
                   <option key={m.id_moneda} value={m.id_moneda}>
-                    {m.nombre}
+                    {m.denominacion}
                   </option>
                 ))}
               </select>
@@ -734,7 +733,7 @@ const loadInitialData = async () => {
                       Fecha
                     </p>
                     <p className="font-bold text-gray-900">
-                      {detailModal.item.fecha || "N/A"}
+                      {formatFecha(detailModal.item.fecha) || "N/A"}
                     </p>
                   </div>
                   <div className="bg-gradient-to-br from-orange-50 to-amber-50 p-4 rounded-md border border-orange-100 col-span-2">

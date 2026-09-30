@@ -29,6 +29,7 @@ import {
   Label,
   Input,
   SearchSelect,
+  DateInput,
 } from "../ui";
 import type { SearchSelectOption } from "../ui";
 import {
@@ -37,6 +38,7 @@ import {
   productosService,
 } from "../../services/api";
 import { calcularFicha } from "../../utils/fichaCostoCalculo";
+import { formatFecha, formatFechaMesLargo } from "../../utils/fecha";
 import type {
   FichaCostoRead,
   FichaInsumoInput,
@@ -155,11 +157,7 @@ export function FichaCostoModal({ isOpen, producto, cantidad = 1, fecha, onClose
 
   const today = new Date().toISOString().split("T")[0];
   const fechaAnexo = fecha || today;
-  const fechaFmt = new Date(fechaAnexo + "T00:00:00").toLocaleDateString("es-ES", {
-    day: "2-digit",
-    month: "long",
-    year: "numeric",
-  });
+  const fechaFmt = formatFechaMesLargo(fechaAnexo);
 
   // No. de ficha estimado (último id + 1); al guardar, el backend asigna el id real
   const { data: ultimaFichaLista } = useQuery({
@@ -738,7 +736,7 @@ export function FichaCostoModal({ isOpen, producto, cantidad = 1, fecha, onClose
                         <div>
                           <p className="text-sm font-bold text-gray-900">Ficha No.{f.id_ficha}</p>
                           <p className="text-xs text-gray-400">
-                            Elaborada: {f.fecha_elaboracion ? new Date(f.fecha_elaboracion + "T00:00:00").toLocaleDateString("es-ES") : "—"}
+                            Elaborada: {formatFecha(f.fecha_elaboracion) || "—"}
                             {f.elaborado_por ? ` · ${f.elaborado_por}` : ""}
                           </p>
                         </div>
@@ -1344,8 +1342,8 @@ export function FichaCostoModal({ isOpen, producto, cantidad = 1, fecha, onClose
               </div>
               <div>
                 <Label>Fecha de aprobación</Label>
-                <Input type="date" className="mt-1" value={firmasForm.fecha_aprobacion}
-                  onChange={(e) => setFirmasForm({ ...firmasForm, fecha_aprobacion: e.target.value })} />
+                <DateInput className="mt-1" value={firmasForm.fecha_aprobacion}
+                  onChange={(fecha_aprobacion) => setFirmasForm({ ...firmasForm, fecha_aprobacion })} />
               </div>
             </div>
             <div className="flex justify-end gap-3 px-6 py-4 border-t bg-gray-50">

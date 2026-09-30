@@ -42,6 +42,7 @@ import { mul, add, sub, percentToMultiplier, toNumber, toFixed } from '../../uti
 import { escapeHtml } from '../../utils/sanitize';
 import { DEFAULTS } from '../../config/defaults';
 import { useInfiniteList } from '../../hooks/useInfiniteList';
+import { formatFecha } from '../../utils/fecha';
 
 type TabType = 'todas' | 'pendientes' | 'liquidadas';
 
@@ -418,8 +419,8 @@ id_moneda: 0,
     const valorComision = toFixed(comisionDec, 2);
     const netoCobrar = toFixed(netoDec, 2);
 
-    const fechaEmision = liquidacion.fecha_emision ? new Date(liquidacion.fecha_emision).toLocaleDateString('es-ES') : 'N/A';
-    const fechaLiquidacion = liquidacion.fecha_liquidacion ? new Date(liquidacion.fecha_liquidacion).toLocaleDateString('es-ES') : 'N/A';
+    const fechaEmision = formatFecha(liquidacion.fecha_emision) || 'N/A';
+    const fechaLiquidacion = formatFecha(liquidacion.fecha_liquidacion) || 'N/A';
 
     return `<!DOCTYPE html>
 <html lang="es">
@@ -888,7 +889,7 @@ id_moneda: 0,
                       >
                         {monedas.map((moneda: Moneda) => (
                           <option key={moneda.id_moneda} value={moneda.id_moneda}>
-                            {moneda.nombre}
+                            {moneda.denominacion}
                           </option>
                         ))}
                       </select>
@@ -1181,12 +1182,12 @@ id_moneda: 0,
                 </div>
                 <div>
                   <p className="text-sm text-gray-500">Fecha Emisión</p>
-                  <p className="font-medium">{new Date(selectedLiquidacion.fecha_emision).toLocaleDateString()}</p>
+                  <p className="font-medium">{formatFecha(selectedLiquidacion.fecha_emision)}</p>
                 </div>
                 {selectedLiquidacion.fecha_liquidacion && (
                   <div>
                     <p className="text-sm text-gray-500">Fecha Liquidación</p>
-                    <p className="font-medium">{new Date(selectedLiquidacion.fecha_liquidacion).toLocaleDateString()}</p>
+                    <p className="font-medium">{formatFecha(selectedLiquidacion.fecha_liquidacion)}</p>
                   </div>
                 )}
               </div>
@@ -1284,7 +1285,7 @@ id_moneda: 0,
                 </div>
                 <div className="bg-gradient-to-br from-purple-50 to-pink-50 p-4 rounded-xl border border-purple-100">
                   <p className="text-xs text-purple-600 uppercase tracking-wider mb-1">Fecha Emisión</p>
-                  <p className="font-bold text-gray-900">{new Date(detailModal.item.fecha_emision).toLocaleDateString()}</p>
+                  <p className="font-bold text-gray-900">{formatFecha(detailModal.item.fecha_emision)}</p>
                 </div>
               </div>
               {(detailModal.item.tributario || detailModal.item.comision_bancaria || detailModal.item.gasto_empresa) && (

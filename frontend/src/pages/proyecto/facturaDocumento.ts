@@ -3,6 +3,7 @@ import type { Cliente } from '../../types/ventas';
 import type { Moneda } from '../../types/moneda';
 import { authService } from '../../services/auth';
 import { formatCifra } from '../../utils/decimal';
+import { formatFecha } from '../../utils/fecha';
 
 export type TipoDocumento = 'OFERTA' | 'PRE-FACTURA' | 'FACTURA';
 
@@ -89,7 +90,7 @@ export function getFacturaServicioDocument(
     : 0;
   const totalCert = subtotalCert - descuentoCert;
 
-  const fechaEmision = factura.fecha ? new Date(factura.fecha).toLocaleDateString('es-ES') : 'N/A';
+  const fechaEmision = formatFecha(factura.fecha) || 'N/A';
 
   return `<!DOCTYPE html>
 <html lang="es">

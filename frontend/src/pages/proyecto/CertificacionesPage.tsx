@@ -1,12 +1,13 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Button, Input, Label, Card, CardContent, CardHeader, CardTitle, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, ConfirmModal } from '../../components/ui';
+import { Button, Input, Label, DateInput, Card, CardContent, CardHeader, CardTitle, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, ConfirmModal } from '../../components/ui';
 import { certificacionesService, etapasProyectoService, solicitudesService } from '../../services/api';
 import type { Certificacion, CertificacionCreate, CertificacionUpdate, Etapa } from '../../types/servicio';
 import { Plus, Save, Trash2, Edit, ArrowLeft, Search, FileText, X, Check, DollarSign, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useInfiniteList } from '../../hooks/useInfiniteList';
+import { formatFecha } from '../../utils/fecha';
 
 type View = 'list' | 'form';
 
@@ -254,7 +255,7 @@ export function CertificacionesPage() {
 
               <div className="md:col-span-2">
                 <Label>Fecha</Label>
-                <Input type="date" value={formData.fecha || ''} onChange={e => setFormData({...formData, fecha: e.target.value})} />
+                <DateInput value={formData.fecha || ''} onChange={(fecha) => setFormData({...formData, fecha})} />
               </div>
 
               <div className="md:col-span-2">
@@ -381,7 +382,7 @@ export function CertificacionesPage() {
                   <TableCell>{cert.constructor || '-'}</TableCell>
                   <TableCell>{cert.inversionista || '-'}</TableCell>
                   <TableCell>{cert.obra || '-'}</TableCell>
-                  <TableCell>{cert.fecha ? new Date(cert.fecha).toLocaleDateString() : '-'}</TableCell>
+                  <TableCell>{formatFecha(cert.fecha) || '-'}</TableCell>
                   <TableCell className="text-right">${Number(cert.a_cobrar).toLocaleString('es-ES', { maximumFractionDigits: 15 })}</TableCell>
                   <TableCell onClick={(e) => e.stopPropagation()}>
                     <div className="flex justify-end gap-2">
@@ -495,7 +496,7 @@ export function CertificacionesPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="bg-gradient-to-br from-teal-50 to-cyan-50 p-4 rounded-xl border border-teal-100">
                   <p className="text-xs text-teal-600 uppercase tracking-wider mb-1">Fecha</p>
-                  <p className="font-bold text-gray-900 text-lg">{detailModal.item.fecha ? new Date(detailModal.item.fecha).toLocaleDateString() : 'N/A'}</p>
+                  <p className="font-bold text-gray-900 text-lg">{formatFecha(detailModal.item.fecha) || 'N/A'}</p>
                 </div>
                 <div className="bg-gradient-to-br from-teal-50 to-cyan-50 p-4 rounded-xl border border-teal-100">
                   <p className="text-xs text-teal-600 uppercase tracking-wider mb-1">Impuesto Venta ONAT</p>

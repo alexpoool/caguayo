@@ -38,6 +38,7 @@ import {
   TableHead,
   TableCell,
 } from '../components/ui';
+import { formatFecha, formatFechaHora } from "../utils/fecha";
 
 type TipoFiltro = 'todos';
 
@@ -444,7 +445,7 @@ export function MovimientosPage() {
                           </span>
                         </TableCell>
                         <TableCell className="text-gray-500">
-                          {new Date(mov.fecha).toLocaleDateString('es-ES')}
+                          {formatFecha(mov.fecha)}
                         </TableCell>
                         <TableCell className="text-gray-500">
                           {mov.dependencia?.nombre || 'Sin dependencia'}
@@ -586,13 +587,7 @@ export function MovimientosPage() {
                         Fecha
                       </p>
                       <p className="font-bold text-gray-900">
-                        {new Date(detailModal.movimiento?.fecha || '').toLocaleDateString('es-ES', {
-                          year: 'numeric',
-                          month: 'long',
-                          day: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        })}
+                        {formatFechaHora(detailModal.movimiento?.fecha)}
                       </p>
                     </div>
                     <div className="bg-gradient-to-br from-red-50 to-rose-50 p-4 rounded-xl border border-red-100">

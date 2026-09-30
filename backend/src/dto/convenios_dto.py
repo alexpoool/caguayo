@@ -227,21 +227,22 @@ class AnexoRead(AnexoBase):
     items_anexo: Optional[List[ItemAnexoRead]] = None
 
 
-class AnexoUpdate(SQLModel):
-    id_convenio: Optional[int] = Field(default=None, gt=0)
-    nombre_anexo: Optional[str] = Field(default=None, min_length=1)
-    fecha: Optional[date] = None
-    codigo_anexo: Optional[str] = None
-    id_dependencia: Optional[int] = None
-    comision: Optional[Decimal] = Field(default=None, ge=0, le=100)
-    items: Optional[List[ItemAnexoCreate]] = None
+class DevolucionAnexo(SQLModel):
+    """Unidad a devolver de un producto ya existente en el anexo."""
 
-    @field_validator("fecha")
-    @classmethod
-    def fecha_no_futura(cls, v: Optional[date]) -> Optional[date]:
-        if v is not None and v > date.today():
-            raise ValueError("La fecha no puede ser futura")
-        return v
+    id_item_anexo: int = Field(gt=0)
+    cantidad: int = Field(gt=0)
+
+
+class AnexoOperaciones(SQLModel):
+    """Operaciones permitidas al editar un anexo existente.
+
+    Solo se admiten agregar productos nuevos o devolver unidades ya cargadas.
+    Los datos del encabezado (nombre, fecha, comision, convenio) no se modifican.
+    """
+
+    productos: Optional[List[ItemAnexoCreate]] = None
+    devoluciones: Optional[List[DevolucionAnexo]] = None
 
 
 class ClienteSimpleRead(SQLModel):

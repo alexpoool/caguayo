@@ -1,6 +1,7 @@
 import { Receipt, DollarSign, Calendar, CreditCard, Edit, Trash2, Eye, Printer } from 'lucide-react';
 import { Button, Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../../../../components/ui';
 import type { FacturaWithDetails } from '../../../../types/contrato';
+import { formatFecha } from '../../../../utils/fecha';
 
 interface FacturasTableProps {
   facturas: FacturaWithDetails[];
@@ -91,7 +92,7 @@ export function FacturasTable({
                 <TableCell className="font-medium text-gray-900">
                   ${Number(item.pago_actual).toFixed(2)}
                 </TableCell>
-                <TableCell className="text-gray-500">{item.fecha}</TableCell>
+                <TableCell className="text-gray-500">{formatFecha(item.fecha)}</TableCell>
                 <TableCell onClick={(e) => e.stopPropagation()}>
                   <Button
                     variant="outline"

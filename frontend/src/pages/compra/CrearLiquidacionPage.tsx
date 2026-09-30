@@ -289,7 +289,7 @@ if (!filtroCliente) {
 
   const getMonedaNombre = (monedaId: number) => {
     const moneda = monedas.find((m: Moneda) => m.id_moneda === monedaId);
-    return moneda?.nombre || '';
+    return moneda?.denominacion || '';
   };
 
   return (
@@ -384,7 +384,7 @@ if (!filtroCliente) {
               >
                 {monedas.map((moneda: Moneda) => (
                   <option key={moneda.id_moneda} value={moneda.id_moneda}>
-                    {moneda.nombre}
+                    {moneda.denominacion}
                   </option>
                 ))}
               </select>

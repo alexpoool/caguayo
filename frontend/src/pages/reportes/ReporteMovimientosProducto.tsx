@@ -7,6 +7,7 @@ import type { Productos } from "../../types/index";
 import { Package, Download, Eye, Loader2, Table2 } from "lucide-react";
 import ReportNotes from "../../components/ui/ReportNotes";
 import { ReportPreviewTable } from "../../components/ui/ReportPreviewTable";
+import { formatFecha } from "../../utils/fecha";
 
 const BASE_URL =
   import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api/v1";
@@ -131,11 +132,11 @@ const ReporteMovimientosProducto: React.FC = () => {
                 <div className="grid grid-cols-2 gap-2">
                   <div>
                     <label className="block text-xs font-medium text-gray-600 mb-0.5">Desde <span className="text-red-500">*</span></label>
-                    <input type="date" value={fechaInicio} onChange={e => { setFechaInicio(e.target.value); setPreviewData(null); }} className="w-full px-2.5 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500" />
+                    <DateInput className="h-8 focus:ring-2 focus:ring-amber-500" value={fechaInicio} onChange={(fecha) => { setFechaInicio(fecha); setPreviewData(null); }} />
                   </div>
                   <div>
                     <label className="block text-xs font-medium text-gray-600 mb-0.5">Hasta <span className="text-red-500">*</span></label>
-                    <input type="date" value={fechaFin} onChange={e => { setFechaFin(e.target.value); setPreviewData(null); }} className="w-full px-2.5 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500" />
+                    <DateInput className="h-8 focus:ring-2 focus:ring-amber-500" value={fechaFin} onChange={(fecha) => { setFechaFin(fecha); setPreviewData(null); }} />
                   </div>
                 </div>
               </div>
@@ -151,7 +152,7 @@ const ReporteMovimientosProducto: React.FC = () => {
         <div className="mt-4">
           <ReportPreviewTable
             columns={[
-              { key: "fecha", label: "Fecha" },
+              { key: "fecha", label: "Fecha", render: (v: any) => formatFecha(v) || "—" },
               { key: "tipo", label: "Tipo" },
               { key: "producto", label: "Producto" },
               { key: "cantidad", label: "Cantidad", className: "text-right" },
@@ -166,3 +167,4 @@ const ReporteMovimientosProducto: React.FC = () => {
 };
 
 export default ReporteMovimientosProducto;
+import { DateInput } from "../../components/ui";

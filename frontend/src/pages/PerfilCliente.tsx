@@ -30,6 +30,7 @@ import {
   TableHead,
   TableCell,
 } from "../components/ui";
+import { formatFecha, formatFechaMesLargo } from "../utils/fecha";
 
 export function PerfilClientePage() {
   const { id } = useParams<{ id: string }>();
@@ -138,7 +139,7 @@ export function PerfilClientePage() {
                 </CardTitle>
                 <p className="text-sm text-gray-500">
                   Cliente desde{" "}
-                  {new Date(cliente.fecha_registro).toLocaleDateString("es-ES")}
+                  {formatFecha(cliente.fecha_registro)}
                 </p>
               </div>
             </div>
@@ -345,11 +346,7 @@ export function PerfilClientePage() {
                         #{venta.id_venta}
                       </TableCell>
                       <TableCell>
-                        {new Date(venta.fecha).toLocaleDateString("es-ES", {
-                          year: "numeric",
-                          month: "long",
-                          day: "numeric",
-                        })}
+                        {formatFechaMesLargo(venta.fecha)}
                       </TableCell>
                       <TableCell>
                         {venta.detalles?.length || 0} productos

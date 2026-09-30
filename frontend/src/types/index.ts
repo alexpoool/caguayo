@@ -179,6 +179,7 @@ export interface Anexo {
     id_item_anexo: number;
     id_producto: number;
     entrada: number;
+    vendido?: number;
     precio_compra: number;
     precio_venta: number;
     id_moneda: number;
@@ -186,6 +187,32 @@ export interface Anexo {
     producto?: { id_producto: number; nombre: string; codigo?: string };
     precios?: { id_moneda: number; precio_venta: number; precio_compra?: number }[];
   }[];
+}
+
+/** Producto a agregar a un anexo existente durante la edicion. */
+export interface AnexoOperacionesProducto {
+  id_producto: number;
+  entrada: number;
+  precio_compra: number;
+  precio_venta: number;
+  id_moneda: number;
+  precios?: { id_moneda: number; precio_venta: number; precio_compra?: number }[];
+}
+
+/** Unidades a devolver de un producto ya cargado en el anexo. */
+export interface AnexoOperacionesDevolucion {
+  id_item_anexo: number;
+  cantidad: number;
+}
+
+export interface AnexoOperacionesResultado {
+  id_item_anexo: number;
+  id_movimiento: number;
+  codigo?: string;
+  id_producto: number;
+  entrada?: number;
+  cantidad?: number;
+  disponible_restante?: number;
 }
 
 // Dependencia se importa desde dependencia.ts

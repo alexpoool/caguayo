@@ -15,6 +15,7 @@ import {
   clienteTCPService,
   cuentasService,
 } from "../../../../services/api";
+import { formatFecha } from "../../../../utils/fecha";
 import type {
   Cliente,
   ClienteNatural,
@@ -30,17 +31,6 @@ interface ClienteDetailModalProps {
   onClose: () => void;
   tiposEntidad?: TipoEntidad[];
 }
-
-const formatFecha = (fecha?: string) => {
-  if (!fecha) return "N/A";
-  const d = new Date(fecha);
-  if (isNaN(d.getTime())) return fecha;
-  return d.toLocaleDateString("es-ES", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  });
-};
 
 export const ClienteDetailModal: React.FC<ClienteDetailModalProps> = ({
   isOpen,
@@ -211,7 +201,7 @@ export const ClienteDetailModal: React.FC<ClienteDetailModalProps> = ({
               />
               <Campo
                 label="Fecha Registro"
-                value={formatFecha(cliente.fecha_registro)}
+                value={formatFecha(cliente.fecha_registro) || "N/A"}
               />
               <div className="col-span-2 md:col-span-3">
                 <Campo label="Dirección" value={cliente.direccion || "N/A"} />
@@ -279,14 +269,14 @@ export const ClienteDetailModal: React.FC<ClienteDetailModalProps> = ({
                       label="Teléfono Trabajo"
                       value={datosNatural.telefono_trabajo || "N/A"}
                     />
-                    <Campo label="Vigencia" value={datosNatural.vigencia || "N/A"} />
+                    <Campo label="Vigencia" value={formatFecha(datosNatural.vigencia) || "N/A"} />
                   </>
                 )}
                 <Campo label="¿En Baja?" value={datosNatural.en_baja ? "Sí" : "No"} />
                 {datosNatural.en_baja && (
                   <Campo
                     label="Fecha de Baja"
-                    value={datosNatural.fecha_baja || "N/A"}
+                    value={formatFecha(datosNatural.fecha_baja) || "N/A"}
                   />
                 )}
               </div>
@@ -322,7 +312,7 @@ export const ClienteDetailModal: React.FC<ClienteDetailModalProps> = ({
                 />
                 <Campo
                   label="Fecha Aprobación"
-                  value={formatFecha(datosTCP.fecha_aprobacion)}
+                  value={formatFecha(datosTCP.fecha_aprobacion) || "N/A"}
                 />
               </div>
             ) : (

@@ -214,7 +214,7 @@ export function ProductForm({ initialData, onSubmit, onCancel, isSubmitting = fa
                   ) : (
                     monedas.map((moneda) => (
                       <option key={moneda.id_moneda} value={moneda.id_moneda}>
-                        {moneda.simbolo || moneda.denominacion}
+                        {moneda.denominacion}
                       </option>
                     ))
                   )}
@@ -246,7 +246,7 @@ export function ProductForm({ initialData, onSubmit, onCancel, isSubmitting = fa
                   ) : (
                     monedas.map((moneda) => (
                       <option key={moneda.id_moneda} value={moneda.id_moneda}>
-                        {moneda.simbolo || moneda.denominacion}
+                        {moneda.denominacion}
                       </option>
                     ))
                   )}

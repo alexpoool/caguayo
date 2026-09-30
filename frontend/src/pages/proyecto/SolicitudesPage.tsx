@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Button, Input, Label, Card, CardContent, CardHeader, CardTitle, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, ConfirmModal } from '../../components/ui';
+import { Button, Input, Label, DateInput, Card, CardContent, CardHeader, CardTitle, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, ConfirmModal } from '../../components/ui';
 import { ClienteForm } from '../clientes/components/form/ClienteForm';
 import { solicitudesService, contratosService, clientesService, monedaService, suplementosService, configuracionService, etapasProyectoService, ofertasService } from '../../services/api';
 import type { SolicitudServicio, SolicitudServicioCreate, SolicitudServicioUpdate, Etapa, Oferta } from '../../types/servicio';
@@ -12,6 +12,7 @@ import { Plus, Save, Trash2, Edit, ArrowLeft, Search, ClipboardList, Tag, X, Lay
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import { useInfiniteList } from '../../hooks/useInfiniteList';
+import { formatFecha } from '../../utils/fecha';
 
 type View = 'list' | 'form';
 
@@ -602,7 +603,7 @@ export function SolicitudesPage() {
                         {item.codigo_solicitud || 'N/A'}
                       </span>
                     </TableCell>
-<TableCell>{item.fecha_solicitud || 'N/A'}</TableCell>
+<TableCell>{formatFecha(item.fecha_solicitud) || 'N/A'}</TableCell>
                     <TableCell>
 {item.estado ? (
                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
@@ -755,22 +756,20 @@ export function SolicitudesPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <Label className="text-sm font-medium">Fecha Solicitud</Label>
-              <input
-                type="date"
-                className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition-colors"
+              <DateInput
+                className="mt-1 focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
                 value={formData.fecha_solicitud || ''}
                 min={hoy}
-                onChange={(e: any) => handleFechaSolicitudChange(e.target.value)}
+                onChange={(fecha_solicitud) => handleFechaSolicitudChange(fecha_solicitud)}
               />
             </div>
             <div>
               <Label className="text-sm font-medium">Fecha Entrega</Label>
-              <input
-                type="date"
-                className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition-colors"
+              <DateInput
+                className="mt-1 focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
                 value={formData.fecha_entrega || ''}
                 min={formData.fecha_solicitud ? addDays(formData.fecha_solicitud, 1) : hoy}
-                onChange={(e: any) => setFormData({...formData, fecha_entrega: e.target.value})}
+                onChange={(fecha_entrega) => setFormData({...formData, fecha_entrega})}
               />
             </div>
             <div className="md:col-span-2 flex gap-2 items-start">
@@ -917,11 +916,11 @@ export function SolicitudesPage() {
                 </div>
                 <div className="bg-gray-50 p-4 rounded-xl">
                   <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Fecha Solicitud</p>
-                  <p className="font-bold text-gray-900">{detailModal.item.fecha_solicitud || 'N/A'}</p>
+                  <p className="font-bold text-gray-900">{formatFecha(detailModal.item.fecha_solicitud) || 'N/A'}</p>
                 </div>
                 <div className="bg-gray-50 p-4 rounded-xl">
                   <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Fecha Entrega</p>
-                  <p className="font-bold text-gray-900">{detailModal.item.fecha_entrega || 'N/A'}</p>
+                  <p className="font-bold text-gray-900">{formatFecha(detailModal.item.fecha_entrega) || 'N/A'}</p>
                 </div>
               </div>
               {(detailModal.item.id_cliente) && (
@@ -994,11 +993,11 @@ export function SolicitudesPage() {
                   </div>
                   <div className="bg-gray-50 p-4 rounded-xl">
                     <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Fecha</p>
-                    <p className="font-bold text-gray-900">{contratoModal.item.fecha || 'N/A'}</p>
+                    <p className="font-bold text-gray-900">{formatFecha(contratoModal.item.fecha) || 'N/A'}</p>
                   </div>
                   <div className="bg-gray-50 p-4 rounded-xl">
                     <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Vigencia</p>
-                    <p className="font-bold text-gray-900">{contratoModal.item.vigencia || 'N/A'}</p>
+                    <p className="font-bold text-gray-900">{formatFecha(contratoModal.item.vigencia) || 'N/A'}</p>
                   </div>
                 </div>
               </div>
@@ -1049,7 +1048,7 @@ export function SolicitudesPage() {
                   </div>
                   <div className="bg-gray-50 p-4 rounded-xl">
                     <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Fecha</p>
-                    <p className="font-bold text-gray-900">{suplementoModal.item.fecha || 'N/A'}</p>
+                    <p className="font-bold text-gray-900">{formatFecha(suplementoModal.item.fecha) || 'N/A'}</p>
                   </div>
                 </div>
               </div>
@@ -1263,24 +1262,22 @@ export function SolicitudesPage() {
                         onChange={(e: any) => setFormContrato({ ...formContrato, id_moneda: e.target.value })}
                       >
                         <option value="">Seleccionar</option>
-                        {monedas.map(m => <option key={m.id_moneda} value={m.id_moneda}>{m.nombre}</option>)}
+                        {monedas.map(m => <option key={m.id_moneda} value={m.id_moneda}>{m.denominacion}</option>)}
                       </select>
                     </div>
                     <div>
                       <Label className="text-sm font-medium">Fecha</Label>
-                      <Input
-                        type="date"
+                      <DateInput
                         value={formContrato.fecha || ''}
-                        onChange={(e: any) => setFormContrato({ ...formContrato, fecha: e.target.value })}
+                        onChange={(fecha) => setFormContrato({ ...formContrato, fecha })}
                         className="mt-1"
                       />
                     </div>
                     <div>
                       <Label className="text-sm font-medium">Vigencia</Label>
-                      <Input
-                        type="date"
+                      <DateInput
                         value={formContrato.vigencia || ''}
-                        onChange={(e: any) => setFormContrato({ ...formContrato, vigencia: e.target.value })}
+                        onChange={(vigencia) => setFormContrato({ ...formContrato, vigencia })}
                         className="mt-1"
                       />
                     </div>
@@ -1388,19 +1385,17 @@ export function SolicitudesPage() {
                     </div>
                     <div>
                       <Label className="text-sm font-medium">Fecha</Label>
-                      <Input
-                        type="date"
+                      <DateInput
                         value={formContrato.fecha_suplemento || ''}
-                        onChange={(e: any) => setFormContrato({ ...formContrato, fecha_suplemento: e.target.value })}
+                        onChange={(fecha_suplemento) => setFormContrato({ ...formContrato, fecha_suplemento })}
                         className="mt-1"
                       />
                     </div>
                     <div>
                       <Label className="text-sm font-medium">Fecha de vigencia *</Label>
-                      <Input
-                        type="date"
+                      <DateInput
                         value={formContrato.fecha_vigencia_suplemento || ''}
-                        onChange={(e: any) => setFormContrato({ ...formContrato, fecha_vigencia_suplemento: e.target.value })}
+                        onChange={(fecha_vigencia_suplemento) => setFormContrato({ ...formContrato, fecha_vigencia_suplemento })}
                         className="mt-1"
                       />
                     </div>

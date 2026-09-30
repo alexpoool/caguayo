@@ -12,6 +12,10 @@ import {
   subcategoriasService,
 } from "../services/api";
 import { FichaCostoModal } from "../components/fichas/FichaCostoModal";
+import type {
+  AnexoOperacionesProducto,
+  AnexoOperacionesDevolucion,
+} from "../types/index";
 import {
   Plus,
   Edit,
@@ -30,6 +34,7 @@ import {
   Percent,
   Calendar,
   MoreHorizontal,
+  RotateCcw,
 } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -52,6 +57,7 @@ interface Anexo {
     id_item_anexo: number;
     id_producto: number;
     entrada: number;
+    vendido?: number;
     precio_compra: number;
     precio_venta: number;
     id_moneda: number;
@@ -81,6 +87,7 @@ import {
   Button,
   Input,
   Label,
+  DateInput,
   Card,
   CardContent,
   CardHeader,
@@ -91,25 +98,12 @@ import {
   TableRow,
   TableHead,
   TableCell,
-  ConfirmModal,
 } from "../components/ui";
+import { formatFecha } from "../utils/fecha";
 
 export function AnexosPage() {
   const [view, setView] = useState<"list" | "form">("list");
   const [editingAnexo, setEditingAnexo] = useState<Anexo | null>(null);
-  const [confirmModal, setConfirmModal] = useState<{
-    isOpen: boolean;
-    title: string;
-    message: string;
-    onConfirm: () => void;
-    type: "danger" | "warning" | "info";
-  }>({
-    isOpen: false,
-    title: "",
-    message: "",
-    onConfirm: () => {},
-    type: "danger",
-  });
   const [anexoDetailModal, setAnexoDetailModal] = useState<{
     isOpen: boolean;
     anexo: Anexo | null;
@@ -133,6 +127,8 @@ export function AnexosPage() {
   const [showFichaModal, setShowFichaModal] = useState(false);
   const [monedaCompra, setMonedaCompra] = useState(0);
   const [preciosExtra, setPreciosExtra] = useState<PrecioExtraForm[]>([]);
+  // Unidades a devolver de productos ya cargados (solo en modo edición)
+  const [devoluciones, setDevoluciones] = useState<AnexoOperacionesDevolucion[]>([]);
   const dropdownProductoRef = useRef<HTMLDivElement>(null);
 
   // ── Estado para modales ─────────────────────────────────────────────────────
@@ -245,26 +241,34 @@ export function AnexosPage() {
     onError: () => toast.error("Error al crear anexo"),
   });
 
-  const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: number; data: Partial<Anexo> }) =>
-      anexosService.updateAnexo(id, data),
-    onSuccess: () => {
+  const operacionesMutation = useMutation({
+    mutationFn: ({
+      id,
+      data,
+    }: {
+      id: number;
+      data: {
+        productos: AnexoOperacionesProducto[];
+        devoluciones: AnexoOperacionesDevolucion[];
+      };
+    }) => anexosService.operacionesAnexo(id, data),
+    onSuccess: (res) => {
       refresh();
-      toast.success("Anexo actualizado");
       setView("list");
+      const agregados = res.agregados?.length ?? 0;
+      const devoluciones = res.devoluciones?.length ?? 0;
+      const partes: string[] = [];
+      if (agregados) partes.push(`${agregados} producto${agregados > 1 ? "s" : ""} agregado${agregados > 1 ? "s" : ""}`);
+      if (devoluciones) partes.push(`${devoluciones} devolucion${devoluciones > 1 ? "es" : ""} registrada${devoluciones > 1 ? "s" : ""}`);
+      toast.success(
+        `${partes.join(" y ")}. Los movimientos quedaron pendientes de confirmar.`,
+      );
       resetForm();
     },
-    onError: () => toast.error("Error al actualizar anexo"),
-  });
-
-  const deleteMutation = useMutation({
-    mutationFn: (id: number) => anexosService.deleteAnexo(id),
-    onSuccess: () => {
-      refresh();
-      toast.success("Anexo eliminado");
-      setConfirmModal((prev) => ({ ...prev, isOpen: false }));
-    },
-    onError: () => toast.error("Error al eliminar anexo"),
+    onError: (error) =>
+      toast.error(
+        error instanceof Error ? error.message : "Error al aplicar operaciones",
+      ),
   });
 
   const resetTempProduct = () => {
@@ -287,6 +291,7 @@ export function AnexosPage() {
     });
     resetTempProduct();
     setFormErrors({});
+    setDevoluciones([]);
     setEditingAnexo(null);
   };
 
@@ -339,20 +344,95 @@ export function AnexosPage() {
     setView("form");
   };
 
-  const handleDelete = (anexo: Anexo) => {
-    setConfirmModal({
-      isOpen: true,
-      title: "Eliminar Anexo",
-      message: `¿Está seguro de eliminar el anexo "${anexo.nombre_anexo}"?`,
-      onConfirm: () => deleteMutation.mutate(anexo.id_anexo),
-      type: "danger",
+  const handleEdit = (anexo: Anexo) => {
+    resetForm();
+    setEditingAnexo(anexo);
+    // El input de convenio resuelve por id; se precarga el nombre para que muestre
+    // el texto correcto aunque `convenios` aun no haya cargado.
+    setConvenioSearch(
+      anexo.convenios?.nombre_convenio || `Convenio #${anexo.id_convenio}`,
+    );
+    setFormData((prev) => ({
+      ...prev,
+      id_convenio: anexo.id_convenio,
+      nombre_anexo: anexo.nombre_anexo,
+      fecha: anexo.fecha,
+      comision: anexo.comision ?? 0,
+    }));
+    setView("form");
+  };
+
+  /** Unidades que el anexo puede entregar: `entrada - vendido`. */
+  const baseDisponibleDe = (
+    item: NonNullable<Anexo["items_anexo"]>[number],
+  ): number => Math.max(0, item.entrada - (item.vendido ?? 0));
+
+  /** Unidades que quedan tras descontar lo que ya se marcaron en este formulario. */
+  const disponibleDe = (item: NonNullable<Anexo["items_anexo"]>[number]): number => {
+    const pendiente = devoluciones.find((d) => d.id_item_anexo === item.id_item_anexo);
+    return Math.max(0, baseDisponibleDe(item) - (pendiente?.cantidad ?? 0));
+  };
+
+  const setDevolucion = (id_item_anexo: number, cantidad: number) => {
+    setDevoluciones((prev) => {
+      if (cantidad <= 0) return prev.filter((d) => d.id_item_anexo !== id_item_anexo);
+      const resto = prev.filter((d) => d.id_item_anexo !== id_item_anexo);
+      return [...resto, { id_item_anexo, cantidad }];
     });
   };
+
+  const totalADevolver = devoluciones.reduce((s, d) => s + d.cantidad, 0);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const errors: Record<string, string> = {};
 
+    // ── Edición: solo agregar productos y devolver unidades ──
+    if (editingAnexo) {
+      if (formData.productos.length === 0 && devoluciones.length === 0) {
+        setFormErrors({
+          operaciones:
+            "Agregue al menos un producto nuevo o registre una devolución",
+        });
+        return;
+      }
+      for (const d of devoluciones) {
+        const item = editingAnexo.items_anexo?.find(
+          (i) => i.id_item_anexo === d.id_item_anexo,
+        );
+        if (!item) {
+          setFormErrors({ operaciones: "Hay una devolución sin producto válido" });
+          return;
+        }
+        const disponible = item.entrada - (item.vendido ?? 0);
+        if (d.cantidad > disponible) {
+          setFormErrors({
+            operaciones: `No se pueden devolver más de ${disponible} unidades de "${
+              item.producto?.nombre ?? `Producto #${item.id_producto}`
+            }"`,
+          });
+          return;
+        }
+      }
+      setFormErrors({});
+      operacionesMutation.mutate({
+        id: editingAnexo.id_anexo,
+        data: {
+          productos: formData.productos.map((p) => ({
+            id_producto: p.id_producto,
+            entrada: p.entrada,
+            precio_venta: p.precio_venta,
+            id_moneda: p.id_moneda,
+            precio_compra: p.precio_compra,
+            precios: p.precios || [],
+          })),
+          devoluciones,
+        },
+      });
+      return;
+    }
+
+    // ── Creación ──
     if (!formData.id_convenio) errors.id_convenio = "Seleccione un convenio";
     if (!formData.nombre_anexo) errors.nombre_anexo = "Ingrese el nombre";
     if (!formData.fecha) errors.fecha = "Ingrese la fecha";
@@ -377,11 +457,8 @@ export function AnexosPage() {
       })),
     };
 
-    if (editingAnexo) {
-      updateMutation.mutate({ id: editingAnexo.id_anexo, data: payload });
-    } else {
-      createMutation.mutate(payload);
-    }
+    // Creación únicamente: en edición se retornó antes al aplicar operaciones.
+    createMutation.mutate(payload);
   };
 
   if (view === "form") {
@@ -407,6 +484,8 @@ export function AnexosPage() {
         </div>
 
         <form onSubmit={handleSubmit}>
+          {/* Encabezado: mismo formulario para crear y editar. Al editar los campos
+              quedan deshabilitados porque el endpoint no los modifica. */}
           <Card className="shadow-md border-gray-200 border-l-4 border-l-teal-500">
             <CardContent className="pt-6 space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -416,6 +495,7 @@ export function AnexosPage() {
                     value={formData.id_convenio
                       ? (convenios.find((c: any) => c.id_convenio === formData.id_convenio)?.nombre_convenio || convenioSearch)
                       : convenioSearch}
+                    disabled={!!editingAnexo}
                     onChange={(e) => {
                       setConvenioSearch(e.target.value);
                       setFormData({ ...formData, id_convenio: 0 });
@@ -460,6 +540,7 @@ export function AnexosPage() {
                   <Label>Nombre del Anexo *</Label>
                   <Input
                     value={formData.nombre_anexo}
+                    disabled={!!editingAnexo}
                     onChange={(e) =>
                       setFormData({ ...formData, nombre_anexo: e.target.value })
                     }
@@ -474,10 +555,10 @@ export function AnexosPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <Label>Fecha *</Label>
-                  <Input
-                    type="date"
+                  <DateInput
                     value={formData.fecha}
-                    onChange={(e) => setFormData({ ...formData, fecha: e.target.value })}
+                    disabled={!!editingAnexo}
+                    onChange={(fecha) => setFormData({ ...formData, fecha })}
                   />
                   {formErrors.fecha && (
                     <p className="text-red-500 text-sm mt-1">{formErrors.fecha}</p>
@@ -491,6 +572,7 @@ export function AnexosPage() {
                     min="0"
                     max="100"
                     value={formData.comision}
+                    disabled={!!editingAnexo}
                     onChange={(e) => {
                       const val = parseFloat(e.target.value);
                       if (isNaN(val) || val < 0) {
@@ -508,13 +590,19 @@ export function AnexosPage() {
             </CardContent>
           </Card>
 
+          {formErrors.operaciones && (
+            <p className="mb-4 rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-sm text-red-600">
+              {formErrors.operaciones}
+            </p>
+          )}
+
           <Card className="mb-6 shadow-md border-gray-200 border-l-4 border-l-teal-500">
             <CardHeader className="border-b bg-gradient-to-r from-teal-50/80 to-cyan-50/40">
               <CardTitle className="flex items-center gap-2 text-lg">
                 <div className="p-1 bg-teal-100 rounded-lg">
                   <Package className="h-4 w-4 text-teal-600" />
                 </div>
-                Productos del Anexo *
+                {editingAnexo ? "Agregar productos al Anexo" : "Productos del Anexo *"}
               </CardTitle>
             </CardHeader>
             <CardContent className="mt-4">
@@ -650,7 +738,7 @@ export function AnexosPage() {
                           <option value="">Seleccionar</option>
                           {monedas.map((m: any) => (
                             <option key={m.id_moneda} value={m.id_moneda}>
-                              {m.simbolo} - {m.denominacion || m.nombre}
+                              {m.denominacion}
                             </option>
                           ))}
                         </select>
@@ -761,9 +849,8 @@ export function AnexosPage() {
                                 <tr key={i} className="transition-colors hover:bg-amber-50/50 group">
                                   <td className="px-4 py-2.5">
                                     <span className="inline-flex items-center gap-1.5 px-2 py-1 bg-blue-50 text-blue-700 rounded-md text-xs font-semibold">
-                                      {moneda?.simbolo || "?"}
+                                      {moneda?.denominacion || "?"}
                                     </span>
-                                    <span className="ml-2 text-gray-500 text-xs">{moneda?.denominacion || ""}</span>
                                   </td>
                                   <td className="px-4 py-2.5 text-right font-medium text-gray-700">
                                     {p.precio_compra ? Number(p.precio_compra).toFixed(2) : "-"}
@@ -847,7 +934,7 @@ export function AnexosPage() {
                           </TableCell>
                           <TableCell>
                             <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-gray-100 text-gray-700 rounded-md text-xs font-medium">
-                              {monedas.find((m: any) => m.id_moneda === prod.id_moneda)?.simbolo || `#${prod.id_moneda}`}
+                              {monedas.find((m: any) => m.id_moneda === prod.id_moneda)?.denominacion || `#${prod.id_moneda}`}
                             </span>
                             {prod.precios && prod.precios.length > 0 && (
                               <span className="ml-1.5 inline-flex items-center px-1.5 py-0.5 text-[10px] font-semibold text-amber-700 bg-amber-50 rounded-full">
@@ -884,13 +971,102 @@ export function AnexosPage() {
             </CardContent>
           </Card>
 
+          {/* ── Devolver productos (solo edición) ── */}
+          {editingAnexo && (
+            <Card className="mb-6 shadow-md border-gray-200 border-l-4 border-l-orange-500">
+              <CardHeader className="border-b bg-gradient-to-r from-orange-50/80 to-amber-50/40">
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <div className="p-1 bg-orange-100 rounded-lg">
+                    <RotateCcw className="h-4 w-4 text-orange-600" />
+                  </div>
+                  Devolver productos
+                  {totalADevolver > 0 && (
+                    <span className="inline-flex items-center justify-center h-5 min-w-[1.25rem] px-1.5 text-xs font-bold text-orange-700 bg-orange-100 rounded-full">
+                      {totalADevolver}
+                    </span>
+                  )}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="mt-4">
+                <p className="text-xs text-gray-500 mb-3">
+                  Al guardar se genera un movimiento de devoluci&oacute;n <strong>pendiente</strong>.
+                  Las unidades se descuentan del anexo de inmediato; el stock global
+                  baja cuando se confirme desde Movimientos. Si se cancela o elimina,
+                  las unidades vuelven al anexo.
+                </p>
+                {editingAnexo.items_anexo && editingAnexo.items_anexo.length > 0 ? (
+                  <div className="border rounded-lg overflow-hidden shadow-sm">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="bg-gradient-to-r from-orange-50 to-amber-50">
+                          <TableHead className="text-xs uppercase tracking-wider">Producto</TableHead>
+                          <TableHead className="text-xs uppercase tracking-wider text-center">Disponible</TableHead>
+                          <TableHead className="text-xs uppercase tracking-wider text-center w-40">Devolver</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {editingAnexo.items_anexo.map((item) => {
+                          const disponible = disponibleDe(item);
+                          const maximo = baseDisponibleDe(item);
+                          const pedido = devoluciones.find(
+                            (d) => d.id_item_anexo === item.id_item_anexo,
+                          )?.cantidad ?? 0;
+                          return (
+                            <tr key={item.id_item_anexo} className="transition-colors hover:bg-orange-50/40">
+                              <td className="px-4 py-2.5 font-medium text-gray-800">
+                                {item.producto?.nombre ?? `Producto #${item.id_producto}`}
+                              </td>
+                              <td className="px-4 py-2.5 text-center">
+                                <span
+                                  className={`inline-flex items-center justify-center min-w-[2.5rem] px-2 py-0.5 rounded-md text-xs font-bold ${
+                                    disponible > 0
+                                      ? "bg-blue-50 text-blue-700"
+                                      : "bg-gray-100 text-gray-400"
+                                  }`}
+                                >
+                                  {disponible}
+                                </span>
+                              </td>
+                              <td className="px-4 py-2.5">
+                                <Input
+                                  type="number"
+                                  min={0}
+                                  max={maximo}
+                                  step="1"
+                                  disabled={maximo <= 0}
+                                  value={pedido}
+                                  onChange={(e) => {
+                                    const raw = parseInt(e.target.value, 10);
+                                    const valor = isNaN(raw) ? 0 : Math.min(Math.max(raw, 0), maximo);
+                                    setDevolucion(item.id_item_anexo, valor);
+                                  }}
+                                  className="h-9 text-center text-sm"
+                                  placeholder="0"
+                                />
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-400 text-center py-6">
+                    Este anexo no tiene productos para devolver
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
           <div className="flex gap-3 pt-2 pb-8">
             <Button
               type="submit"
+              disabled={operacionesMutation.isPending || createMutation.isPending}
               className="gap-2 bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300"
             >
               <Save className="h-4 w-4" />
-              {editingAnexo ? "Actualizar" : "Crear"}
+              {editingAnexo ? "Aplicar operaciones" : "Crear"}
             </Button>
             <Button
               type="button"
@@ -978,7 +1154,7 @@ export function AnexosPage() {
                           className="w-24 px-2 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white"
                         >
                           {monedas.map((m: any) => (
-                            <option key={m.id_moneda} value={m.id_moneda}>{m.simbolo}</option>
+                            <option key={m.id_moneda} value={m.id_moneda}>{m.denominacion}</option>
                           ))}
                         </select>
                       </div>
@@ -998,7 +1174,7 @@ export function AnexosPage() {
                           className="w-24 px-2 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white"
                         >
                           {monedas.map((m: any) => (
-                            <option key={m.id_moneda} value={m.id_moneda}>{m.simbolo}</option>
+                            <option key={m.id_moneda} value={m.id_moneda}>{m.denominacion}</option>
                           ))}
                         </select>
                       </div>
@@ -1074,7 +1250,7 @@ export function AnexosPage() {
                       <option value={0}>Seleccionar moneda</option>
                       {monedas.map((m: any) => (
                         <option key={m.id_moneda} value={m.id_moneda}>
-                          {m.simbolo} - {m.denominacion || m.nombre}
+                          {m.denominacion}
                         </option>
                       ))}
                     </select>
@@ -1222,7 +1398,7 @@ export function AnexosPage() {
                       {anexo.codigo_anexo || "-"}
                     </TableCell>
                     <TableCell className="text-gray-700">{anexo.nombre_anexo}</TableCell>
-                    <TableCell className="text-gray-500 text-sm">{anexo.fecha}</TableCell>
+                    <TableCell className="text-gray-500 text-sm">{formatFecha(anexo.fecha)}</TableCell>
                     <TableCell>
                       {anexo.comision ? (
                         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-teal-100 text-teal-700">
@@ -1235,11 +1411,11 @@ export function AnexosPage() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={(e) => { e.stopPropagation(); handleDelete(anexo); }}
-                          className="text-gray-400 hover:text-red-600 hover:bg-red-50 h-8 w-8"
-                          title="Eliminar"
+                          onClick={(e) => { e.stopPropagation(); handleEdit(anexo); }}
+                          className="text-gray-400 hover:text-teal-600 hover:bg-teal-50 h-8 w-8"
+                          title="Editar anexo"
                         >
-                          <Trash2 className="h-4 w-4" />
+                          <Edit className="h-4 w-4" />
                         </Button>
                       </div>
                     </TableCell>
@@ -1259,15 +1435,6 @@ export function AnexosPage() {
           )}
         </div>
       </Card>
-
-      <ConfirmModal
-        isOpen={confirmModal.isOpen}
-        title={confirmModal.title}
-        message={confirmModal.message}
-        type={confirmModal.type}
-        onConfirm={confirmModal.onConfirm}
-        onClose={() => setConfirmModal((prev) => ({ ...prev, isOpen: false }))}
-      />
 
       {anexoDetailModal.isOpen && anexoDetailModal.anexo && createPortal(
         <div className="fixed inset-0 bg-black/50 z-[9999] flex items-center justify-center p-4 animate-in fade-in duration-200">
@@ -1307,7 +1474,7 @@ export function AnexosPage() {
                   </div>
                   <div>
                     <p className="text-[10px] uppercase tracking-wider text-gray-400 font-medium">Fecha</p>
-                    <p className="text-sm font-medium text-gray-800">{anexoDetailModal.anexo.fecha}</p>
+                    <p className="text-sm font-medium text-gray-800">{formatFecha(anexoDetailModal.anexo.fecha)}</p>
                   </div>
                 </div>
                 <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
@@ -1344,7 +1511,8 @@ export function AnexosPage() {
                       <thead>
                         <tr className="bg-gradient-to-r from-teal-50 to-cyan-50 border-b border-gray-200">
                           <th className="px-4 py-2.5 text-left font-semibold text-gray-600 text-xs uppercase tracking-wider">Producto</th>
-                          <th className="px-4 py-2.5 text-center font-semibold text-gray-600 text-xs uppercase tracking-wider">Cant</th>
+                          <th className="px-4 py-2.5 text-center font-semibold text-gray-600 text-xs uppercase tracking-wider">Entrada</th>
+                          <th className="px-4 py-2.5 text-center font-semibold text-gray-600 text-xs uppercase tracking-wider">Disponible</th>
                           <th className="px-4 py-2.5 text-right font-semibold text-gray-600 text-xs uppercase tracking-wider">P. Venta</th>
                           <th className="px-4 py-2.5 text-right font-semibold text-gray-600 text-xs uppercase tracking-wider">P. Compra</th>
                         </tr>
@@ -1357,6 +1525,22 @@ export function AnexosPage() {
                               <span className="inline-flex items-center justify-center min-w-[2rem] px-2 py-0.5 bg-blue-50 text-blue-700 rounded-md text-xs font-bold">
                                 {item.entrada}
                               </span>
+                            </td>
+                            <td className="px-4 py-2.5 text-center">
+                              {(() => {
+                                const disp = item.entrada - (item.vendido ?? 0);
+                                return (
+                                  <span
+                                    className={`inline-flex items-center justify-center min-w-[2rem] px-2 py-0.5 rounded-md text-xs font-bold ${
+                                      disp > 0
+                                        ? "bg-emerald-50 text-emerald-700"
+                                        : "bg-gray-100 text-gray-400"
+                                    }`}
+                                  >
+                                    {disp}
+                                  </span>
+                                );
+                              })()}
                             </td>
                             <td className="px-4 py-2.5 text-right font-medium text-teal-700">${Number(item.precio_venta).toFixed(2)}</td>
                             <td className="px-4 py-2.5 text-right font-medium text-gray-700">${Number(item.precio_compra).toFixed(2)}</td>

@@ -36,6 +36,41 @@ logger = logging.getLogger(__name__)
 
 class MovimientoService:
     @staticmethod
+    async def _revertir_devolucion_anexo(
+        db: AsyncSession, movimiento: Movimiento
+    ) -> bool:
+        """Restaura la `entrada` de un item cuando la devolucion ya la habia descontado.
+
+        Las devoluciones creadas desde la edicion de un anexo descuentan la
+        `entrada` de `item_anexo` en el momento de crearse y guardan el item
+        exacto en `movimiento.id_item_anexo`. Por eso confirmar NO debe volver a
+        aplicar el efecto, y cancelar o eliminar el movimiento deben devolver la
+        cantidad al item original (no mediante el FIFO de `vendido`, que puede
+        caer en otro anexo).
+
+        Returns True si se restauro algo.
+        """
+        if not movimiento.id_item_anexo:
+            return False
+
+        stmt = select(ItemAnexo).where(
+            ItemAnexo.id_item_anexo == movimiento.id_item_anexo
+        )
+        item = (await db.exec(stmt)).first()
+        if not item:
+            # El item fue borrado por mantenimiento: no hay nada que restaurar.
+            logger.warning(
+                "Devolucion %s referencia el item %s que ya no existe",
+                movimiento.id_movimiento,
+                movimiento.id_item_anexo,
+            )
+            return False
+
+        item.entrada += movimiento.cantidad
+        db.add(item)
+        return True
+
+    @staticmethod
     async def create_movimiento(
         db: AsyncSession, movimiento: MovimientoCreate
     ) -> MovimientoRead:
@@ -224,8 +259,14 @@ class MovimientoService:
                     f"Solicitado: {db_movimiento.cantidad}"
                 )
 
-        # Registrar venta en item_anexo (incrementa vendido)
-        if tipo.tipo in ("venta", "DONACION", "MERMA", "DEVOLUCION"):
+        # Registrar venta en item_anexo (incrementa vendido).
+        # Las devoluciones creadas desde la edicion de un anexo ya descontaron la
+        # `entrada` de su item al crearse, asi que aqui se saltan para no
+        # contarlas dos veces. El stock global sigue bajando por el factor -1.
+        if (
+            tipo.tipo in ("venta", "DONACION", "MERMA", "DEVOLUCION")
+            and not db_movimiento.id_item_anexo
+        ):
             await ExistenciaService.registrar_venta_en_anexo(
                 db, db_movimiento.id_producto, db_movimiento.cantidad, commit=False
             )
@@ -407,8 +448,12 @@ class MovimientoService:
 
         tipo = db_movimiento.tipo_movimiento
 
+        # Devolucion creada desde la edicion del anexo: restaurar la `entrada` del
+        # item exacto, no el FIFO de `vendido`.
+        if db_movimiento.id_item_anexo:
+            await MovimientoService._revertir_devolucion_anexo(db, db_movimiento)
         # Revertir efectos de ventas/MERMA/DONACION/DEVOLUCION en item_anexo
-        if tipo.tipo in ("venta", "DONACION", "MERMA", "DEVOLUCION"):
+        elif tipo.tipo in ("venta", "DONACION", "MERMA", "DEVOLUCION"):
             from src.models.item_anexo import ItemAnexo
             from sqlalchemy import select as sa_select
 
@@ -547,6 +592,11 @@ class MovimientoService:
                 "No se puede eliminar un movimiento confirmado. "
                 "Cancele el movimiento primero para revertir sus efectos."
             )
+
+        # Una devolucion pendiente ya habia descontado la `entrada` de su item al
+        # crearse, asi que hay que devolverla antes de borrar el movimiento.
+        if db_movimiento.estado == "pendiente":
+            await MovimientoService._revertir_devolucion_anexo(db, db_movimiento)
 
         await movimiento_repo.remove(db, id=movimiento_id)
         return MovimientoRead.from_orm(db_movimiento)

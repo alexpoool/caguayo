@@ -218,7 +218,7 @@ export function CuentasPage() {
   };
 
   const getMonedaNombre = (cuenta: CuentaDependencia) => {
-    if (cuenta.moneda) return `${cuenta.moneda.nombre} (${cuenta.moneda.simbolo})`;
+    if (cuenta.moneda) return cuenta.moneda.denominacion;
     return "-";
   };
 
@@ -308,7 +308,7 @@ export function CuentasPage() {
                   <option value="">Seleccione una moneda</option>
                   {monedas.map((m) => (
                     <option key={m.id_moneda} value={m.id_moneda}>
-                      {m.nombre} ({m.simbolo})
+                      {m.denominacion}
                     </option>
                   ))}
                 </select>

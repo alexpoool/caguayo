@@ -82,11 +82,11 @@ const ReporteMincult: React.FC = () => {
                 <div className="grid grid-cols-2 gap-2">
                   <div>
                     <label className="block text-xs font-medium text-gray-600 mb-0.5">Desde <span className="text-red-500">*</span></label>
-                    <input type="date" value={fechaInicio} onChange={e => setFechaInicio(e.target.value)} className="w-full px-2.5 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500" />
+                    <DateInput className="h-8 focus:ring-2 focus:ring-pink-500" value={fechaInicio} onChange={(fecha) => setFechaInicio(fecha)} />
                   </div>
                   <div>
                     <label className="block text-xs font-medium text-gray-600 mb-0.5">Hasta <span className="text-red-500">*</span></label>
-                    <input type="date" value={fechaFin} onChange={e => setFechaFin(e.target.value)} className="w-full px-2.5 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-pink-500" />
+                    <DateInput className="h-8 focus:ring-2 focus:ring-pink-500" value={fechaFin} onChange={(fecha) => setFechaFin(fecha)} />
                   </div>
                 </div>
                 <div>
@@ -106,3 +106,4 @@ const ReporteMincult: React.FC = () => {
 };
 
 export default ReporteMincult;
+import { DateInput } from "../../components/ui";

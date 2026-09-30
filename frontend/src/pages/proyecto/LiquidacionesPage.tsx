@@ -3,7 +3,7 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { createPortal } from 'react-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
-import { Button, Card, CardHeader, CardTitle, CardContent, Label, Input, Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../../components/ui';
+import { Button, Card, CardHeader, CardTitle, CardContent, Label, Input, DateInput, Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../../components/ui';
 import { 
   Search, 
   Plus, 
@@ -48,6 +48,7 @@ import type {
   Moneda,
   Cliente
 } from '../../services/api';
+import { formatFecha } from '../../utils/fecha';
 
 type View = 'list' | 'form';
 type TabType = 'todas' | 'pendientes' | 'liquidadas';
@@ -703,8 +704,8 @@ export function LiquidacionesPage() {
     if (!liquidacion.fecha_liquidacion && liquidacion.confirmado) {
       liquidacion.fecha_liquidacion = new Date().toISOString().split('T')[0];
     }
-    const fechaEmision = liquidacion.fecha_emision ? new Date(liquidacion.fecha_emision).toLocaleDateString('es-ES') : 'N/A';
-    const fechaLiquidacion = liquidacion.fecha_liquidacion ? new Date(liquidacion.fecha_liquidacion).toLocaleDateString('es-ES') : 'N/A';
+    const fechaEmision = formatFecha(liquidacion.fecha_emision) || 'N/A';
+    const fechaLiquidacion = formatFecha(liquidacion.fecha_liquidacion) || 'N/A';
     
     return `<!DOCTYPE html>
 <html lang="es">
@@ -1046,7 +1047,7 @@ export function LiquidacionesPage() {
                           </span>
                         </TableCell>
                         <TableCell>{getPersonaNombre(liquidacion.id_persona)}</TableCell>
-                        <TableCell className="text-gray-900">{liquidacion.fecha_emision}</TableCell>
+                        <TableCell className="text-gray-900">{formatFecha(liquidacion.fecha_emision)}</TableCell>
                         <TableCell className="font-medium text-gray-900">
                           {getMonedaSimbolo(liquidacion.id_moneda)} {formatCifra(liquidacion.importe)}
                         </TableCell>
@@ -1247,7 +1248,7 @@ export function LiquidacionesPage() {
                         className="h-4 w-4 text-teal-600 border-gray-300 focus:ring-teal-500"
                       />
                       <div className="flex-1 flex justify-between items-center">
-                        <span className="text-sm font-medium text-gray-900">{pago.fecha || 'S/N'}</span>
+                        <span className="text-sm font-medium text-gray-900">{formatFecha(pago.fecha) || 'S/N'}</span>
                         <span className="text-sm font-bold text-teal-700">{formatCifra(pago.monto_disponible)} {getMonedaSimbolo(pago.id_moneda)}</span>
                       </div>
                     </label>
@@ -1287,7 +1288,7 @@ export function LiquidacionesPage() {
                   >
                     {monedas.map((moneda: Moneda) => (
                       <option key={moneda.id_moneda} value={moneda.id_moneda}>
-                        {moneda.nombre} ({moneda.simbolo})
+                        {moneda.denominacion}
                       </option>
                     ))}
                   </select>
@@ -1308,10 +1309,9 @@ export function LiquidacionesPage() {
                 
                 <div>
                   <Label>Fecha Emisión</Label>
-                  <Input
-                    type="date"
+                  <DateInput
                     value={formData.fecha_emision}
-                    onChange={(e) => setFormData(prev => ({ ...prev, fecha_emision: e.target.value }))}
+                    onChange={(fecha_emision) => setFormData(prev => ({ ...prev, fecha_emision }))}
                     className="mt-1"
                   />
                 </div>
@@ -1508,11 +1508,11 @@ export function LiquidacionesPage() {
               <div className="grid grid-cols-4 gap-4">
                 <div className="bg-gray-50 p-4 rounded-xl">
                   <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Fecha Emisión</p>
-                  <p className="font-bold text-gray-900">{detailModal.item.fecha_emision}</p>
+                  <p className="font-bold text-gray-900">{formatFecha(detailModal.item.fecha_emision)}</p>
                 </div>
                 <div className="bg-gray-50 p-4 rounded-xl">
                   <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Fecha Liquidación</p>
-                  <p className="font-bold text-gray-900">{detailModal.item.fecha_liquidacion || '-'}</p>
+                  <p className="font-bold text-gray-900">{formatFecha(detailModal.item.fecha_liquidacion) || '-'}</p>
                 </div>
                 <div className="bg-gray-50 p-4 rounded-xl">
                   <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Estado</p>
@@ -1701,7 +1701,7 @@ export function LiquidacionesPage() {
                         {validacionModal.validacion.factura.pagos.map((pago: any) => (
                           <div key={pago.id_pago_factura_servicio} className="flex justify-between items-center p-2 bg-white rounded-lg border">
                             <div>
-                              <p className="text-sm font-medium text-gray-900">{pago.fecha || 'Sin fecha'}</p>
+                              <p className="text-sm font-medium text-gray-900">{formatFecha(pago.fecha) || 'Sin fecha'}</p>
                               <p className="text-xs text-gray-500">{getMonedaSimbolo(pago.id_moneda)}</p>
                             </div>
                             <p className="font-semibold text-green-600">{formatCifra(pago.monto)}</p>

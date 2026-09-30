@@ -46,6 +46,8 @@ import { dependenciasService } from "../../services/administracion";
 import { monedaService } from "../../services/api";
 import type { Dependencia } from "../../types/dependencia";
 import type { Moneda } from "../../types/moneda";
+import { formatFecha } from "../../utils/fecha";
+import { DateInput } from "../../components/ui";
 
 
 
@@ -232,7 +234,7 @@ const REPORTS: ReportConfig[] = [
     needsFechas: true,
     showTable: true,
     tableColumns: [
-      { key: "fecha", label: "Fecha" },
+      { key: "fecha", label: "Fecha", render: (v: any) => formatFecha(v) || "—" },
       { key: "tipo", label: "Tipo" },
       { key: "producto", label: "Producto" },
       { key: "cantidad", label: "Cantidad", className: "text-right" },
@@ -363,7 +365,7 @@ const REPORTS: ReportConfig[] = [
       { key: "codigo", label: "Código" },
       { key: "nombre", label: "Nombre" },
       { key: "cliente", label: "Cliente" },
-      { key: "fecha", label: "Fecha", render: (v: any) => (typeof v === "string" ? v.slice(0, 10) : (v ?? "—")) },
+      { key: "fecha", label: "Fecha", render: (v: any) => formatFecha(v) || "—" },
       { key: "valor", label: "Valor", className: "text-right", render: (v: any) => Number(v ?? 0).toFixed(2) },
     ],
   },
@@ -864,7 +866,7 @@ export function ReportesHome() {
                       <select value={filters.id_moneda} onChange={(e) => updateFilter("id_moneda", e.target.value)}
                         className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none">
                         <option value="">Todas las monedas</option>
-                        {monedas.map((m) => <option key={m.id_moneda} value={m.id_moneda}>{m.simbolo ? `${m.simbolo} - ${m.nombre}` : m.nombre}</option>)}
+                        {monedas.map((m) => <option key={m.id_moneda} value={m.id_moneda}>{m.denominacion}</option>)}
                       </select>
                     </div>
                   )}
@@ -872,13 +874,11 @@ export function ReportesHome() {
                     <div className="grid grid-cols-2 gap-3">
                       <div>
                         <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Desde</label>
-                        <input type="date" value={filters.fecha_inicio} onChange={(e) => updateFilter("fecha_inicio", e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none" />
+                        <DateInput className="border-gray-200 focus:ring-2 focus:ring-blue-500" value={filters.fecha_inicio} onChange={(fecha) => updateFilter("fecha_inicio", fecha)} />
                       </div>
                       <div>
                         <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Hasta</label>
-                        <input type="date" value={filters.fecha_fin} onChange={(e) => updateFilter("fecha_fin", e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none" />
+                        <DateInput className="border-gray-200 focus:ring-2 focus:ring-blue-500" value={filters.fecha_fin} onChange={(fecha) => updateFilter("fecha_fin", fecha)} />
                       </div>
                     </div>
                   )}

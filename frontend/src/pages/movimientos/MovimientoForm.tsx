@@ -24,6 +24,7 @@ import {
   CardTitle,
   Input,
   Label,
+  DateInput,
 } from "../../components/ui";
 import {
   Truck,
@@ -960,7 +961,7 @@ export function MovimientoRecepcionForm({
                                         key={moneda.id_moneda}
                                         value={moneda.id_moneda}
                                       >
-                                        {moneda.simbolo} - {moneda.denominacion}
+                                        {moneda.denominacion}
                                       </option>
                                     ))}
                                   </select>
@@ -1086,10 +1087,7 @@ export function MovimientoRecepcionForm({
                                       >
                                         <td className="px-4 py-2.5">
                                           <span className="inline-flex items-center gap-1.5 px-2 py-1 bg-blue-50 text-blue-700 rounded-md text-xs font-medium">
-                                            {moneda?.simbolo || "?"}
-                                          </span>
-                                          <span className="ml-2 text-gray-500 text-xs">
-                                            {moneda?.denominacion || ""}
+                                            {moneda?.denominacion || "?"}
                                           </span>
                                         </td>
                                         <td className="px-4 py-2.5 text-right font-medium text-gray-700">
@@ -1275,7 +1273,7 @@ export function MovimientoRecepcionForm({
                                         </span>
                                       )}
                                       <span className="text-gray-400 text-xs">
-                                        {p.moneda_simbolo || ""}
+                                        {p.moneda_nombre || ""}
                                       </span>
                                     </div>
                                   </div>
@@ -1365,10 +1363,7 @@ export function MovimientoRecepcionForm({
                             <tr className="bg-gray-50/30">
                               <td className="px-4 py-2.5">
                                 <span className="inline-flex items-center gap-1.5 px-2 py-1 bg-blue-50 text-blue-700 rounded-md text-xs font-medium">
-                                  {selectedItemAnexo.moneda_simbolo || "?"}
-                                </span>
-                                <span className="ml-2 text-gray-500 text-xs">
-                                  {selectedItemAnexo.moneda_nombre || ""}
+                                  {selectedItemAnexo.moneda_nombre || "?"}
                                 </span>
                               </td>
                               <td className="px-4 py-2.5 font-medium text-gray-700">
@@ -1405,14 +1400,11 @@ export function MovimientoRecepcionForm({
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <Label className="text-sm font-medium">Fecha *</Label>
-                  <Input
-                    type="date"
+                  <DateInput
                     required
-                    className="mt-1 focus:ring-2 focus:ring-blue-500 outline-none"
+                    className="mt-1 focus:ring-2 focus:ring-blue-500"
                     value={formData.fecha || ""}
-                    onChange={(e) =>
-                      setFormData({ ...formData, fecha: e.target.value })
-                    }
+                    onChange={(fecha) => setFormData({ ...formData, fecha })}
                   />
                 </div>
                 <div>
@@ -1581,7 +1573,7 @@ export function MovimientoRecepcionForm({
                       >
                         {monedas.map((m) => (
                           <option key={m.id_moneda} value={m.id_moneda}>
-                            {m.simbolo}
+                            {m.denominacion}
                           </option>
                         ))}
                       </select>
@@ -1619,7 +1611,7 @@ export function MovimientoRecepcionForm({
                       >
                         {monedas.map((m) => (
                           <option key={m.id_moneda} value={m.id_moneda}>
-                            {m.simbolo}
+                            {m.denominacion}
                           </option>
                         ))}
                       </select>
@@ -1715,7 +1707,7 @@ export function MovimientoRecepcionForm({
                     <option value={0}>Seleccionar moneda</option>
                     {monedas.map((m) => (
                       <option key={m.id_moneda} value={m.id_moneda}>
-                        {m.simbolo} - {m.denominacion}
+                        {m.denominacion}
                       </option>
                     ))}
                   </select>

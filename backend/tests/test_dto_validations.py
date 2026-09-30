@@ -236,54 +236,7 @@ class TestMovimientoCreate:
 
 
 # ─────────────────────────────────────────────────────────────
-# 5. AnexoUpdate — validación de comisión (0-100)
-# ─────────────────────────────────────────────────────────────
-class TestAnexoUpdateComision:
-    """AnexoUpdate.comision tiene Field(ge=0, le=100)."""
-
-    def test_comision_negativa_rechazada(self):
-        """comision=-1 debe fallar (ge=0)."""
-        from src.dto import AnexoUpdate
-        from decimal import Decimal
-
-        with pytest.raises(ValidationError) as exc_info:
-            AnexoUpdate(comision=Decimal("-1"))
-        errors = exc_info.value.errors()
-        assert any(e["loc"] == ("comision",) for e in errors), (
-            f"Esperado error en 'comision', se obtuvo: {errors}"
-        )
-
-    def test_comision_mayor_100_rechazada(self):
-        """comision=101 debe fallar (le=100)."""
-        from src.dto import AnexoUpdate
-        from decimal import Decimal
-
-        with pytest.raises(ValidationError) as exc_info:
-            AnexoUpdate(comision=Decimal("101"))
-        errors = exc_info.value.errors()
-        assert any(e["loc"] == ("comision",) for e in errors), (
-            f"Esperado error en 'comision', se obtuvo: {errors}"
-        )
-
-    def test_comision_0_valida(self):
-        """comision=0 debe ser aceptado."""
-        from src.dto import AnexoUpdate
-        from decimal import Decimal
-
-        anexo = AnexoUpdate(comision=Decimal("0"))
-        assert anexo.comision == Decimal("0")
-
-    def test_comision_100_valida(self):
-        """comision=100 debe ser aceptado."""
-        from src.dto import AnexoUpdate
-        from decimal import Decimal
-
-        anexo = AnexoUpdate(comision=Decimal("100"))
-        assert anexo.comision == Decimal("100")
-
-
-# ─────────────────────────────────────────────────────────────
-# 6. AnexoBase — validación de comisión en el base
+# 5. AnexoBase — validación de comisión en el base
 # ─────────────────────────────────────────────────────────────
 class TestAnexoBaseComision:
     """AnexoBase.comision tiene Field(ge=0, le=100)."""

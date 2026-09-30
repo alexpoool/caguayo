@@ -1,6 +1,7 @@
 import React from "react";
 import { Label } from "../../../../../components/ui"
 import { Input } from "../../../../../components/ui"
+import { DateInput } from "../../../../../components/ui"
 
 export interface DatosNaturalFormProps {
   datos: any;
@@ -178,13 +179,12 @@ export const NaturalForm: React.FC<DatosNaturalFormProps> = ({
             </div>
             <div>
               <Label>Vigencia</Label>
-              <Input
-                type="date"
+              <DateInput
                 value={data.vigencia || ""}
-                onChange={(e) =>
+                onChange={(vigencia) =>
                   setDatos({
                     ...data,
-                    vigencia: e.target.value,
+                    vigencia,
                   })
                 }
               />
@@ -208,13 +208,12 @@ export const NaturalForm: React.FC<DatosNaturalFormProps> = ({
         {data.en_baja && (
           <div>
             <Label>Fecha de Baja</Label>
-            <Input
-              type="date"
+            <DateInput
               value={data.fecha_baja || ""}
-              onChange={(e) =>
+              onChange={(fecha_baja) =>
                 setDatos({
                   ...data,
-                  fecha_baja: e.target.value,
+                  fecha_baja,
                 })
               }
             />

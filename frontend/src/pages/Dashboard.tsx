@@ -32,6 +32,7 @@ import type {
   VentasTrends,
   MovimientosTrends,
 } from "../types/dashboard";
+import { formatFecha, formatFechaDiaSemana } from "../utils/fecha";
 import {
   LineChart,
   Line,
@@ -132,10 +133,7 @@ function TrendChart({ data }: { data: VentasTrends | undefined }) {
   }
 
   const chartData = data.fechas.map((fecha, index) => ({
-    fecha: new Date(fecha).toLocaleDateString("es-ES", {
-      weekday: "short",
-      day: "numeric",
-    }),
+    fecha: formatFechaDiaSemana(fecha),
     monto: Number(data.montos[index]) || 0,
     cantidad: data.cantidades[index] || 0,
   }));
@@ -196,10 +194,7 @@ function MovimientosTrendChart({
   }
 
   const chartData = data.fechas.map((fecha, index) => ({
-    fecha: new Date(fecha).toLocaleDateString("es-ES", {
-      weekday: "short",
-      day: "numeric",
-    }),
+    fecha: formatFechaDiaSemana(fecha),
     recepciones: data.recepciones[index] || 0,
     mermas: data.mermas[index] || 0,
     donaciones: data.donaciones[index] || 0,
@@ -697,7 +692,7 @@ export function Dashboard() {
                         </p>
                         <p className="text-xs text-gray-500">
                           {venta.cliente?.nombre || "Cliente no registrado"} •{" "}
-                          {new Date(venta.fecha).toLocaleDateString("es-ES")}
+                          {formatFecha(venta.fecha)}
                         </p>
                       </div>
                     </div>
@@ -830,11 +825,7 @@ export function Dashboard() {
                       {cliente.nombre}
                     </p>
                     <p className="text-xs text-gray-500">
-                      {cliente.fecha_registro
-                        ? new Date(cliente.fecha_registro).toLocaleDateString(
-                            "es-ES",
-                          )
-                        : "Fecha no disponible"}
+                      {formatFecha(cliente.fecha_registro) || "Fecha no disponible"}
                     </p>
                   </div>
                 </div>

@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { useQueryClient } from '@tanstack/react-query';
-import { Button, Input, Label, Card, CardContent, CardHeader, CardTitle, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, ConfirmModal } from '../../components/ui';
+import { Button, Input, Label, DateInput, Card, CardContent, CardHeader, CardTitle, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, ConfirmModal } from '../../components/ui';
 import { pagosFacturaServicioService, facturasServicioService, monedaService } from '../../services/api';
 import type { PagoFacturaServicio, PagoFacturaServicioCreate, FacturaServicio } from '../../types/servicio';
 import type { Moneda } from '../../types/moneda';
@@ -9,6 +9,7 @@ import { Plus, Save, Trash2, ArrowLeft, Search, CreditCard, DollarSign, Calendar
 import toast from 'react-hot-toast';
 import { formatCifra } from '../../utils/decimal';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { formatFecha } from '../../utils/fecha';
 
 type View = 'list' | 'form';
 
@@ -138,7 +139,7 @@ export function PagosFacturaServicioPage() {
   const getMonedaNombre = (id?: number) => {
     if (!id) return 'N/A';
     const moneda = monedas.find(m => m.id_moneda === id);
-    return moneda ? `${moneda.nombre} (${moneda.simbolo})` : `Moneda #${id}`;
+    return moneda ? moneda.denominacion : `Moneda #${id}`;
   };
 
   const filteredPagos = useMemo(() => {
@@ -288,7 +289,7 @@ export function PagosFacturaServicioPage() {
                     onClick={() => setDetailModal({ isOpen: true, item: pago })}
                   >
                     <TableCell>
-                      <span className="text-gray-900">{pago.fecha || 'N/A'}</span>
+                      <span className="text-gray-900">{formatFecha(pago.fecha) || 'N/A'}</span>
                     </TableCell>
                     <TableCell className="font-medium text-gray-900">
                       ${formatCifra(pago.monto)}
@@ -376,16 +377,15 @@ export function PagosFacturaServicioPage() {
               >
                 <option value="">Seleccionar moneda</option>
                 {monedas.map(m => (
-                  <option key={m.id_moneda} value={m.id_moneda}>{m.nombre} ({m.simbolo})</option>
+                  <option key={m.id_moneda} value={m.id_moneda}>{m.denominacion}</option>
                 ))}
               </select>
             </div>
             <div>
               <Label className="text-sm font-medium">Fecha</Label>
-              <Input
-                type="date"
+              <DateInput
                 value={formData.fecha || ''}
-                onChange={(e: any) => setFormData({ ...formData, fecha: e.target.value })}
+                onChange={(fecha: string) => setFormData({ ...formData, fecha })}
                 className="mt-1"
               />
             </div>
@@ -458,7 +458,7 @@ export function PagosFacturaServicioPage() {
               </div>
               <div className="bg-gray-50 p-4 rounded-xl">
                 <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Fecha</p>
-                <p className="font-bold text-gray-900">{detailModal.item.fecha || 'N/A'}</p>
+                <p className="font-bold text-gray-900">{formatFecha(detailModal.item.fecha) || 'N/A'}</p>
               </div>
               <div className="bg-gray-50 p-4 rounded-xl">
                 <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Documento de traza</p>
