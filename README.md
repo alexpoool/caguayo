@@ -430,6 +430,21 @@ Usa el script `start.sh` para iniciar todo automáticamente — verifica prerequ
    uv run uvicorn main:app --host 0.0.0.0 --port 8000
    ```
 
+### Access log: qué se oculta
+
+El access log de Uvicorn se mantiene activo, pero un filtro registrado en
+`backend/src/access_log_filter.py` descarta las peticiones de bajo ruido:
+
+| Ruta | Motivo |
+|---|---|
+| `/api/v1/logs` y subrutas | El frontend reporta cada llamada a la API con un `POST /logs` (`frontend/src/lib/api.ts:20`). Sin el filtro, estas líneas superan a las del tráfico real de negocio. |
+| `/health` | Sondas de healthcheck. |
+| `/` | Endpoint raíz de comprobación. |
+
+El resto del tráfico de API sigue apareciendo con normalidad. El filtro se registra
+al importar `backend/main.py`, por lo que aplica a todos los entornos de ejecución.
+Para desactivar el filtrado, comentá la llamada a `install_access_log_filter()` en `main.py`.
+
 #### Manual — Frontend
 
 1. Install dependencies:

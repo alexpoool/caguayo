@@ -9,6 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from src.routes import api_router
 from src.database.connection import set_current_db
 from src.middleware.logging import LoggingMiddleware
+from src.access_log_filter import install_access_log_filter
 from src.core.exceptions import (
     AppError,
     NotFoundError,
@@ -43,6 +44,11 @@ logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     handlers=[logging.StreamHandler(sys.stdout)],
 )
+
+# Oculta del access log las peticiones de bajo ruido.
+# Debe ejecutarse después de la importación de la app (que es este momento),
+# porque uvicorn ya configuró el logger uvicorn.access para entonces.
+install_access_log_filter()
 
 load_dotenv(override=True)
 
