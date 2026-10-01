@@ -559,7 +559,7 @@ function App() {
                   <SidebarLink slim={slimSidebar} to="/reportes?report=movimientos-dependencia" onClick={handleLinkClick} disabled={!hasFuncionalidad('reporte_movimientos_dependencia')}>
                     Mov. por Dependencia
                   </SidebarLink>
-                  <SidebarLink slim={slimSidebar} to="/reportes?report=movimientos-producto" onClick={handleLinkClick} disabled={!hasFuncionalidad('reporte_movimientos_producto')}>
+                  <SidebarLink slim={slimSidebar} to="/reportes/movimientos-producto" onClick={handleLinkClick} disabled={!hasFuncionalidad('reporte_movimientos_producto')}>
                     Mov. por Producto
                   </SidebarLink>
 

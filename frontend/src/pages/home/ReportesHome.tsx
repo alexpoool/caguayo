@@ -15,7 +15,6 @@ import {
   TrendingDown,
   DollarSign,
   Boxes,
-  Package,
   ArrowLeftRight,
   Users,
   UserCircle,
@@ -197,47 +196,6 @@ const REPORTS: ReportConfig[] = [
       { key: "donacion", label: "Donación", className: "text-right" },
       { key: "devolucion", label: "Devolución", className: "text-right" },
       { key: "saldo_final", label: "Saldo Final", className: "text-right font-semibold", render: (v: any) => Number(v ?? 0).toFixed(2) },
-    ],
-  },
-  {
-    id: "movimientos-producto",
-    title: "Movimientos por Producto",
-    description: "Seguimiento detallado de un producto específico en el tiempo.",
-    icon: <Package className="h-4 w-4" />,
-    color: "bg-purple-50",
-    colorHex: "#8b5cf6",
-    module: "inventario",
-    moduleLabel: "Inventario",
-    previewEndpoint: "/reportes/movimientos-producto/preview",
-    buildPreviewParams: (f) => ({
-      id_dependencia: f.id_dependencia || "1",
-      id_producto: "1",
-      fecha_inicio: f.fecha_inicio,
-      fecha_fin: f.fecha_fin,
-    }),
-    transformChartData: (data) => {
-      const items = data?.items || [];
-      return items.slice(0, 10).map((item: any) => ({
-        name: (item.nombre || "Producto").substring(0, 12),
-        monto: Number(item.saldo_final || 0),
-        cantidad: Number(item.saldo_final || 0),
-      }));
-    },
-    computeStats: (data) => {
-      const items = data?.items || [];
-      return computeBasicStats(items.map((i: any) => Number(i.saldo_final || 0)));
-    },
-    pdfEndpoint: "/reportes/movimientos-producto",
-    pdfFilename: "movimientos_producto.pdf",
-    buildPdfParams: (f) => ({ id_dependencia: f.id_dependencia || "1", id_producto: "1", fecha_inicio: f.fecha_inicio, fecha_fin: f.fecha_fin, aprobado_por_nombre: "", aprobado_por_cargo: "", notas: f.notas }),
-    needsDependencia: true,
-    needsFechas: true,
-    showTable: true,
-    tableColumns: [
-      { key: "fecha", label: "Fecha", render: (v: any) => formatFecha(v) || "—" },
-      { key: "tipo", label: "Tipo" },
-      { key: "producto", label: "Producto" },
-      { key: "cantidad", label: "Cantidad", className: "text-right" },
     ],
   },
   {

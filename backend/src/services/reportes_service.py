@@ -1,7 +1,7 @@
 from datetime import date, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
-from sqlalchemy import and_, case, func, select
+from sqlalchemy import case, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.models.cliente import Cliente
@@ -12,6 +12,7 @@ from src.models.contrato import Contrato, EstadoContrato, TipoContrato
 from src.models.dependencia import Dependencia, Municipio, Provincia
 from src.models.liquidacion import Liquidacion
 from src.models.moneda import Moneda
+from src.models.item_anexo import ItemAnexo
 from src.models.producto import Productos
 from src.models.movimiento import Movimiento, TipoMovimiento
 from src.models.saldo import Saldo
@@ -445,6 +446,48 @@ async def get_movimientos_producto(
     ]
 
     return movimientos, dependencia_info, producto_info
+
+
+async def buscar_productos_item_anexo(
+    db: AsyncSession, q: Optional[str] = None, limite: int = 20
+) -> List[Dict[str, Any]]:
+    """Buscador de productos para el reporte de movimientos por producto.
+
+    Busca sobre `item_anexo`: devuelve productos únicos que al menos tienen
+    (o tuvieron) un registro en algún anexo, incluidos los agotados, que no
+    aparecen en los listados de stock.
+
+    Args:
+        db: Sesión asíncrona.
+        q: Texto a buscar en nombre, código de producto o código de item.
+        limite: Máximo de sugerencias a devolver.
+    """
+    query = (
+        select(Productos.id_producto, Productos.nombre, Productos.codigo)
+        .join(ItemAnexo, ItemAnexo.id_producto == Productos.id_producto)
+        .distinct()
+    )
+
+    texto = (q or "").strip()
+    if texto:
+        patron = f"%{texto}%"
+        query = query.where(
+            or_(
+                Productos.nombre.ilike(patron),
+                Productos.codigo.ilike(patron),
+                ItemAnexo.codigo.ilike(patron),
+            )
+        )
+
+    query = query.order_by(Productos.nombre).limit(limite)
+
+    result = await db.execute(query)
+    rows = result.all()
+
+    return [
+        {"id_producto": r.id_producto, "nombre": r.nombre, "codigo": r.codigo}
+        for r in rows
+    ]
 
 
 # ═══════════════════════════════════════════════════════════════════════════════

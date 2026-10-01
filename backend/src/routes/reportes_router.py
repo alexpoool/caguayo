@@ -10,6 +10,7 @@ from src.database.connection import get_auth_session, get_session
 from src.dto.auth_dto import UsuarioInfo
 from src.services.auth_service import get_current_user
 from src.services.reportes_service import (
+    buscar_productos_item_anexo,
     get_existencias,
     get_informe_desempeno,
     get_movimientos_dependencia,
@@ -90,6 +91,29 @@ async def listar_personas(
     except Exception as e:
         logger.error(f"Error al listar personas: {e}")
         raise HTTPException(status_code=500, detail="Error interno al listar personas")
+
+
+# ---------------------------------------------------------------------------
+# Endpoint auxiliar: buscador de productos (item_anexo) para el reporte de
+# movimientos por producto
+# ---------------------------------------------------------------------------
+
+
+@router.get("/productos-item-anexo")
+async def buscar_productos_item_anexo_endpoint(
+    q: str = Query("", description="Texto a buscar (nombre o código)"),
+    db: AsyncSession = Depends(get_session),
+    current_user: UsuarioInfo = Depends(get_optional_user),
+):
+    """Sugiere productos únicos registrados en item_anexo."""
+    try:
+        productos = await buscar_productos_item_anexo(db, q)
+        return productos
+    except Exception as e:
+        logger.error(f"Error en buscador de productos (item_anexo): {e}")
+        raise HTTPException(
+            status_code=500, detail="Error interno al buscar productos"
+        )
 
 
 # ---------------------------------------------------------------------------

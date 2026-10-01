@@ -1,27 +1,43 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { toast } from "react-hot-toast";
-import { dependenciasService, productosService } from "../../services/api";
+import { dependenciasService } from "../../services/api";
 import { Dependencia } from "../../types/dependencia";
 import { authHelpers } from "../../lib/api";
 import type { Productos } from "../../types/index";
-import { Package, Download, Eye, Loader2, Table2 } from "lucide-react";
+import { Package, Download, Eye, Loader2, Table2, Search } from "lucide-react";
 import ReportNotes from "../../components/ui/ReportNotes";
 import { ReportPreviewTable } from "../../components/ui/ReportPreviewTable";
 import { formatFecha } from "../../utils/fecha";
+import { DateInput } from "../../components/ui";
 
 const BASE_URL =
   import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api/v1";
+
+// Fecha por defecto: último mes (mismo criterio que ReportesHome)
+const FECHA_INICIO_DEFECTO = (() => {
+  const d = new Date();
+  d.setMonth(d.getMonth() - 1);
+  return d.toISOString().split("T")[0];
+})();
+const FECHA_FIN_DEFECTO = new Date().toISOString().split("T")[0];
 
 const ReporteMovimientosProducto: React.FC = () => {
   const [pdfLoading, setPdfLoading] = useState(false);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [tableLoading, setTableLoading] = useState(false);
   const [dependencias, setDependencias] = useState<Dependencia[]>([]);
-  const [productos, setProductos] = useState<Productos[]>([]);
   const [idDependencia, setIdDependencia] = useState<number | null>(null);
+
+  // Buscador de productos (item_anexo)
+  const [busqueda, setBusqueda] = useState("");
+  const [sugerencias, setSugerencias] = useState<Productos[]>([]);
+  const [buscando, setBuscando] = useState(false);
+  const [sugAbiertas, setSugAbiertas] = useState(false);
   const [idProducto, setIdProducto] = useState<number | null>(null);
-  const [fechaInicio, setFechaInicio] = useState("");
-  const [fechaFin, setFechaFin] = useState("");
+  const [productoSel, setProductoSel] = useState<Productos | null>(null);
+
+  const [fechaInicio, setFechaInicio] = useState(FECHA_INICIO_DEFECTO);
+  const [fechaFin, setFechaFin] = useState(FECHA_FIN_DEFECTO);
   const [notas, setNotas] = useState("");
   const [previewData, setPreviewData] = useState<any[] | null>(null);
 
@@ -33,8 +49,58 @@ const ReporteMovimientosProducto: React.FC = () => {
 
   useEffect(() => {
     dependenciasService.getDependencias().then(setDependencias).catch(() => toast.error("Error cargando dependencias"));
-    productosService.getProductos(0, 1000).then(setProductos).catch(() => toast.error("Error cargando productos"));
   }, []);
+
+  // Búsqueda con debounce contra /reportes/productos-item-anexo
+  useEffect(() => {
+    const texto = busqueda.trim();
+    if (!texto) {
+      setSugerencias([]);
+      setBuscando(false);
+      return;
+    }
+    const controller = new AbortController();
+    const timer = setTimeout(async () => {
+      setBuscando(true);
+      try {
+        const token = authHelpers.getToken() ?? "";
+        const r = await fetch(`${BASE_URL}/reportes/productos-item-anexo?q=${encodeURIComponent(texto)}`, {
+          headers: { Authorization: `Bearer ${token}` },
+          signal: controller.signal,
+        });
+        if (!r.ok) throw new Error(`${r.status}`);
+        const data = await r.json();
+        setSugerencias(Array.isArray(data) ? data : []);
+        setSugAbiertas(true);
+      } catch (err: any) {
+        if (err?.name !== "AbortError") {
+          setSugerencias([]);
+          setSugAbiertas(true);
+        }
+      } finally {
+        setBuscando(false);
+      }
+    }, 250);
+    return () => { clearTimeout(timer); controller.abort(); };
+  }, [busqueda]);
+
+  const seleccionarProducto = (p: Productos) => {
+    setProductoSel(p);
+    setIdProducto(p.id_producto);
+    setBusqueda(p.nombre);
+    setSugAbiertas(false);
+    setPreviewData(null);
+  };
+
+  const handleChangeBusqueda = (valor: string) => {
+    setBusqueda(valor);
+    // Cualquier cambio invalida la selección anterior
+    if (idProducto) {
+      setIdProducto(null);
+      setProductoSel(null);
+    }
+    setPreviewData(null);
+  };
 
   const buildParams = () => new URLSearchParams({
     id_dependencia: idDependencia!.toString(), id_producto: idProducto!.toString(),
@@ -117,17 +183,65 @@ const ReporteMovimientosProducto: React.FC = () => {
               <div className="space-y-2">
                 <div>
                   <label className="block text-xs font-medium text-gray-600 mb-0.5">Dependencia <span className="text-red-500">*</span></label>
-                  <select value={idDependencia ?? ""} onChange={e => { setIdDependencia(e.target.value ? Number(e.target.value) : null); setIdProducto(null); setPreviewData(null); }} className="w-full px-2.5 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 bg-white">
+                  <select value={idDependencia ?? ""} onChange={e => { setIdDependencia(e.target.value ? Number(e.target.value) : null); setPreviewData(null); }} className="w-full px-2.5 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 bg-white">
                     <option value="">Seleccionar…</option>
                     {dependencias.map(d => <option key={d.id_dependencia} value={d.id_dependencia}>{d.nombre}</option>)}
                   </select>
                 </div>
-                <div>
+                <div className="relative">
                   <label className="block text-xs font-medium text-gray-600 mb-0.5">Producto <span className="text-red-500">*</span></label>
-                  <select value={idProducto ?? ""} onChange={e => { setIdProducto(e.target.value ? Number(e.target.value) : null); setPreviewData(null); }} disabled={!idDependencia} className="w-full px-2.5 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 bg-white disabled:bg-gray-50 disabled:text-gray-400">
-                    <option value="">{idDependencia ? "Seleccionar producto" : "Primero seleccione dependencia"}</option>
-                    {productos.map(p => <option key={p.id_producto} value={p.id_producto}>{p.codigo ? p.codigo : `#${p.id_producto}`} - {p.nombre}</option>)}
-                  </select>
+                  <div className="relative">
+                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" />
+                    <input
+                      type="text"
+                      value={busqueda}
+                      onChange={e => handleChangeBusqueda(e.target.value)}
+                      onFocus={() => { if (sugerencias.length > 0) setSugAbiertas(true); }}
+                      onBlur={() => setSugAbiertas(false)}
+                      onKeyDown={e => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          if (sugerencias.length > 0) seleccionarProducto(sugerencias[0]);
+                        } else if (e.key === "Escape") {
+                          setSugAbiertas(false);
+                        }
+                      }}
+                      placeholder={idProducto ? "" : "Buscar por nombre o código…"}
+                      autoComplete="off"
+                      className="w-full pl-8 pr-8 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 bg-white"
+                    />
+                    {buscando && (
+                      <Loader2 className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 animate-spin" />
+                    )}
+                  </div>
+
+                  {sugAbiertas && (
+                    <div className="absolute z-20 mt-1 w-full max-h-56 overflow-auto rounded-lg border border-gray-200 bg-white shadow-lg">
+                      {sugerencias.length === 0 ? (
+                        <p className="px-3 py-2 text-xs text-gray-400">
+                          {buscando ? "Buscando…" : "Sin productos encontrados"}
+                        </p>
+                      ) : (
+                        sugerencias.map(p => (
+                          <button
+                            key={p.id_producto}
+                            type="button"
+                            onMouseDown={e => { e.preventDefault(); seleccionarProducto(p); }}
+                            className={`w-full text-left px-3 py-2 text-sm hover:bg-amber-50 transition-colors ${p.id_producto === idProducto ? "bg-amber-50" : ""}`}
+                          >
+                            <span className="font-medium text-gray-800">{p.nombre}</span>
+                            {p.codigo && <span className="ml-2 text-xs text-gray-400">{p.codigo}</span>}
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  )}
+
+                  {productoSel && (
+                    <p className="mt-1 text-[11px] text-green-600">
+                      Seleccionado: {productoSel.nombre}{productoSel.codigo ? ` (${productoSel.codigo})` : ""}
+                    </p>
+                  )}
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   <div>
@@ -154,7 +268,7 @@ const ReporteMovimientosProducto: React.FC = () => {
             columns={[
               { key: "fecha", label: "Fecha", render: (v: any) => formatFecha(v) || "—" },
               { key: "tipo", label: "Tipo" },
-              { key: "producto", label: "Producto" },
+              { key: "producto", label: "Producto", render: () => productoSel?.nombre || "—" },
               { key: "cantidad", label: "Cantidad", className: "text-right" },
             ]}
             data={previewData}
@@ -167,4 +281,3 @@ const ReporteMovimientosProducto: React.FC = () => {
 };
 
 export default ReporteMovimientosProducto;
-import { DateInput } from "../../components/ui";
