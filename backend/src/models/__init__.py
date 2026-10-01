@@ -12,6 +12,7 @@ from .detalle_venta import DetalleVenta
 from .compra import Compra, EstadoCompra
 from .detalle_compra import DetalleCompra
 from .movimiento import TipoMovimiento, Movimiento
+from .saldo import Saldo
 from .dependencia import TipoDependencia, Dependencia, Provincia, Municipio
 from .anexo import Anexo
 from .liquidacion import Liquidacion
@@ -79,6 +80,7 @@ __all__ = [
     "DetalleCompra",
     "TipoMovimiento",
     "Movimiento",
+    "Saldo",
     "TipoDependencia",
     "Dependencia",
     "Provincia",

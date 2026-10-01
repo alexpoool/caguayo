@@ -10,6 +10,7 @@ import psycopg2
 from src.repository import movimiento_repo
 from src.repository.existencia_repo import existencia_repo
 from src.services.existencia_service import ExistenciaService
+from src.services.saldo_service import SaldoService
 from src.services.productos_en_liquidacion_service import ProductosEnLiquidacionService
 from src.models import (
     Movimiento,
@@ -401,6 +402,12 @@ class MovimientoService:
         # Cambiar el estado a confirmado
         db_movimiento.estado = "confirmado"
 
+        # Snapshot de saldos: en la MISMA transacción que el estado, para que
+        # nunca exista un movimiento confirmado sin su fila en `saldos`.
+        await SaldoService.registrar_confirmacion(
+            db, db_movimiento, tipo.factor
+        )
+
         # Guardar cambios
         await db.commit()
 
@@ -556,6 +563,12 @@ class MovimientoService:
 
         # Cambiar el estado a cancelado
         db_movimiento.estado = "cancelado"
+
+        # Los snapshots acumulados hasta la fecha de este movimiento quedan
+        # inválidos: reconstruir la cadena del par en la MISMA transacción.
+        await SaldoService.recalcular_cadena(
+            db, db_movimiento.id_producto, db_movimiento.id_dependencia
+        )
         await db.commit()
 
         db_movimiento_con_relaciones = await movimiento_repo.get(db, movimiento_id)

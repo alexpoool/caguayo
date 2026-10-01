@@ -14,6 +14,7 @@ from src.models.liquidacion import Liquidacion
 from src.models.moneda import Moneda
 from src.models.producto import Productos
 from src.models.movimiento import Movimiento, TipoMovimiento
+from src.models.saldo import Saldo
 from src.models.productos_en_liquidacion import ProductosEnLiquidacion
 from src.models.servicio import (
     Etapa,
@@ -222,8 +223,11 @@ async def get_movimientos_dependencia(
     entrada (+) o salida (-).
 
     Los saldos son MONTOS valorados al precio_compra del producto (igual que el
-    dashboard valoriza el inventario):
-      saldo_inicial = Σ (cantidad × factor × precio_compra) previas al rango
+    dashboard valoriza el inventario). El saldo inicial NO recorre el histórico:
+    se lee de la tabla `saldos` (snapshot escrito al confirmar cada movimiento,
+    en unidades) tomando la fila más reciente con fecha < fecha_inicio, y se
+    valoriza con el precio_compra ACTUAL:
+      saldo_inicial = saldos.saldo (último snapshot previo) × precio_compra
       saldo_final   = saldo_inicial
                       + (recepcion + compra) × precio_compra
                       − (venta + merma + donacion + devolucion) × precio_compra
@@ -264,28 +268,35 @@ async def get_movimientos_dependencia(
         for r in base_result.all()
     }
 
-    # ── 2. Saldo inicial (MONTO): movimientos ANTES de fecha_inicio ────────
-    saldo_query = (
+    # ── 2. Saldo inicial: último snapshot de `saldos` anterior al rango ────
+    # `saldos.saldo` guarda unidades; se valoriza al leer (× precio_compra
+    # actual), que es equivalente al cálculo histórico anterior:
+    # Σ (cantidad × factor) × precio_compra.
+    snapshot_subq = (
         select(
-            Movimiento.id_producto,
-            func.coalesce(
-                func.sum(
-                    Movimiento.cantidad * TipoMovimiento.factor * Productos.precio_compra
-                ),
-                0,
-            ).label("saldo_inicial"),
+            Saldo.id_producto,
+            Saldo.saldo,
+            func.row_number()
+            .over(
+                partition_by=Saldo.id_producto,
+                order_by=[Saldo.fecha.desc(), Saldo.id_saldo.desc()],
+            )
+            .label("rn"),
         )
-        .join(TipoMovimiento, Movimiento.id_tipo_movimiento == TipoMovimiento.id_tipo_movimiento)
-        .join(Productos, Movimiento.id_producto == Productos.id_producto)
         .filter(
-            Movimiento.id_dependencia == id_dependencia,
-            Movimiento.estado == "confirmado",
-            Movimiento.fecha < fecha_inicio,
+            Saldo.id_dependencia == id_dependencia,
+            # Límite estricto: un movimiento del propio día cae dentro de las
+            # columnas del rango, no en el saldo inicial (misma regla que antes).
+            Saldo.fecha < fecha_inicio,
         )
-        .group_by(Movimiento.id_producto)
+        .subquery()
     )
-    saldo_result = await db.execute(saldo_query)
-    saldos = {r.id_producto: float(r.saldo_inicial) for r in saldo_result.all()}
+    saldo_result = await db.execute(
+        select(snapshot_subq.c.id_producto, snapshot_subq.c.saldo).where(
+            snapshot_subq.c.rn == 1
+        )
+    )
+    saldos = {r[0]: float(r[1] or 0) for r in saldo_result.all()}
 
     # ── 3. Movimientos en el rango, pivoteados por tipo (case-insensitive) ─
     TIPOS_MOVIMIENTO = ["recepcion", "compra", "venta", "merma", "donacion", "devolucion"]
@@ -340,9 +351,9 @@ async def get_movimientos_dependencia(
 
     movimientos = []
     for pid, info in sorted(productos_base_map.items(), key=lambda x: x[1]["codigo"] or ""):
-        # Monto: cantidad valorizada al precio de compra del producto
+        # Monto: unidades del snapshot valorizadas al precio de compra actual
         precio = float(info.get("precio_compra") or 0)
-        saldo_inicial = round(float(saldos.get(pid, 0.0)), 2)
+        saldo_inicial = round(float(saldos.get(pid, 0.0)) * precio, 2)
         row = mov_by_pid.get(pid)
         mov_data = {
             tipo: float(getattr(row, tipo) or 0) if row is not None else 0.0

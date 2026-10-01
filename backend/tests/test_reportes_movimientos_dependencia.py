@@ -7,6 +7,8 @@ Valida el comportamiento aritmético del reporte de movimientos por dependencia:
   - Los ajustes (AJUSTE_AGREGAR/AJUSTE_QUITAR) se muestran netos.
   - Solo cuentan movimientos confirmados (pendientes y cancelados excluidos).
   - El rango incluye todo el día de fecha_fin.
+  - El saldo inicial se lee de la tabla `saldos` (snapshot que escribe
+    SaldoService al confirmar), valorizado al precio_compra actual.
 """
 
 import pytest
@@ -18,7 +20,9 @@ from src.models.categoria import Categorias, Subcategorias
 from src.models.dependencia import Dependencia
 from src.models.movimiento import Movimiento, TipoMovimiento
 from src.models.producto import Productos
+from src.models.saldo import Saldo
 from src.services.reportes_service import get_movimientos_dependencia
+from src.services.saldo_service import SaldoService
 
 
 @pytest.fixture
@@ -35,6 +39,7 @@ async def db():
                     TipoMovimiento.__table__,
                     Movimiento.__table__,
                     Productos.__table__,
+                    Saldo.__table__,
                 ],
             )
         )
@@ -78,11 +83,18 @@ async def datos_base(db):
     return tipo_ids
 
 
-def _crear_mov(db, tipo_ids, pid, tipo, cantidad, fecha, estado="confirmado"):
-    db.add(Movimiento(
+async def _crear_mov(db, tipo_ids, pid, tipo, cantidad, fecha, estado="confirmado"):
+    """Crea el movimiento y, si queda confirmado, registra su snapshot de
+    saldos con el mismo servicio que usa el hook de confirmación real."""
+    mov = Movimiento(
         id_tipo_movimiento=tipo_ids[tipo], id_dependencia=1,
         id_producto=pid, cantidad=cantidad, fecha=fecha, estado=estado,
-    ))
+    )
+    db.add(mov)
+    if estado == "confirmado":
+        await db.flush()
+        factor = (await db.get(TipoMovimiento, tipo_ids[tipo])).factor
+        await SaldoService.registrar_confirmacion(db, mov, factor)
 
 
 async def test_saldo_inicial_entradas_salidas_y_ajustes(db, datos_base):
@@ -92,12 +104,12 @@ async def test_saldo_inicial_entradas_salidas_y_ajustes(db, datos_base):
     tipo_ids = datos_base
     base = datetime(2026, 9, 10, 12, 0, 0)
 
-    _crear_mov(db, tipo_ids, 1, "RECEPCION", 10, base - timedelta(days=5))
-    _crear_mov(db, tipo_ids, 1, "venta", 3, base)
-    _crear_mov(db, tipo_ids, 1, "compra", 2, base + timedelta(days=1))
-    _crear_mov(db, tipo_ids, 1, "DONACION", 1, base + timedelta(days=2))
-    _crear_mov(db, tipo_ids, 1, "AJUSTE_AGREGAR", 5, base + timedelta(days=2))
-    _crear_mov(db, tipo_ids, 1, "venta", 99, base + timedelta(days=3), estado="cancelado")
+    await _crear_mov(db, tipo_ids, 1, "RECEPCION", 10, base - timedelta(days=5))
+    await _crear_mov(db, tipo_ids, 1, "venta", 3, base)
+    await _crear_mov(db, tipo_ids, 1, "compra", 2, base + timedelta(days=1))
+    await _crear_mov(db, tipo_ids, 1, "DONACION", 1, base + timedelta(days=2))
+    await _crear_mov(db, tipo_ids, 1, "AJUSTE_AGREGAR", 5, base + timedelta(days=2))
+    await _crear_mov(db, tipo_ids, 1, "venta", 99, base + timedelta(days=3), estado="cancelado")
     await db.commit()
 
     fi = (base - timedelta(days=1)).date()
@@ -120,8 +132,8 @@ async def test_devolucion_es_salida_y_pendientes_no_cuentan(db, datos_base):
     tipo_ids = datos_base
     base = datetime(2026, 9, 10, 12, 0, 0)
 
-    _crear_mov(db, tipo_ids, 2, "DEVOLUCION", 4, base + timedelta(days=1))
-    _crear_mov(db, tipo_ids, 2, "venta", 50, base + timedelta(days=1), estado="pendiente")
+    await _crear_mov(db, tipo_ids, 2, "DEVOLUCION", 4, base + timedelta(days=1))
+    await _crear_mov(db, tipo_ids, 2, "venta", 50, base + timedelta(days=1), estado="pendiente")
     await db.commit()
 
     fi = base.date()
@@ -140,7 +152,7 @@ async def test_incluye_todo_el_dia_de_fecha_fin(db, datos_base):
     tipo_ids = datos_base
     base = datetime(2026, 9, 10, 23, 59, 0)
 
-    _crear_mov(db, tipo_ids, 1, "compra", 7, base)
+    await _crear_mov(db, tipo_ids, 1, "compra", 7, base)
     await db.commit()
 
     fi = base.date()
@@ -157,8 +169,8 @@ async def test_ajuste_quitar_resta(db, datos_base):
     tipo_ids = datos_base
     base = datetime(2026, 9, 10, 12, 0, 0)
 
-    _crear_mov(db, tipo_ids, 1, "compra", 10, base)
-    _crear_mov(db, tipo_ids, 1, "AJUSTE_QUITAR", 4, base + timedelta(days=1))
+    await _crear_mov(db, tipo_ids, 1, "compra", 10, base)
+    await _crear_mov(db, tipo_ids, 1, "AJUSTE_QUITAR", 4, base + timedelta(days=1))
     await db.commit()
 
     fi = base.date()
