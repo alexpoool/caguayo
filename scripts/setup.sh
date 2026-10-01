@@ -100,17 +100,6 @@ fi
 
 ok "Todos los prerequisitos instalados"
 
-# Podman es opcional (despliegue containerizado)
-step "Verificando podman"
-USE_PODMAN=0
-if command -v podman &> /dev/null && command -v podman-compose &> /dev/null; then
-  USE_PODMAN=1
-  ok "Podman detectado ${DIM}(despliegue containerizado disponible)${D}"
-else
-  warn "Podman no encontrado — se ejecutará sin contenedores"
-  info "Para containerizar: https://podman.io/getting-started/installation"
-fi
-
 # ══════════════════════════════════════════════════════════════════════════
 #  2) CONFIGURAR .env
 # ══════════════════════════════════════════════════════════════════════════
@@ -190,7 +179,6 @@ else
   echo -e "   ${C}┌──────────────────────────────────────────────────────┐${D}"
   echo -e "   ${C}│${D}  ${W}Linux:${D}  sudo systemctl start postgresql             ${C}│${D}"
   echo -e "   ${C}│${D}  ${W}Mac:${D}    brew services start postgresql               ${C}│${D}"
-  echo -e "   ${C}│${D}  ${W}Docker:${D} podman run -d -p 5432:5432 postgres:16    ${C}│${D}"
   echo -e "   ${C}└──────────────────────────────────────────────────────┘${D}"
   echo ""
   exit 1
@@ -322,13 +310,8 @@ echo -e "   ${G}║${D}  ${R}  en el primer inicio de sesión.${D}              
 echo -e "   ${G}║${D}                                                       ${G}║${D}"
 echo -e "   ${G}╚═══════════════════════════════════════════════════════╝${D}"
 echo ""
-if [ $USE_PODMAN -eq 1 ]; then
-  echo -e "   ${C}Para iniciar con contenedores:${D}"
-  echo -e "   ${W}   podman-compose up --build${D}"
-else
-  echo -e "   ${C}Para iniciar el servidor de desarrollo:${D}"
-  echo -e "   ${W}   ./scripts/dev.sh${D}"
-fi
+echo -e "   ${C}Para iniciar el servidor de desarrollo:${D}"
+echo -e "   ${W}   ./scripts/dev.sh${D}"
 echo ""
 echo -e "   ${DIM}¡Listo para trabajar! 🌴${D}"
 echo ""

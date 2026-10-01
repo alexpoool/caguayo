@@ -7,12 +7,7 @@ This repository contains the Caguayo application, a comprehensive inventory and 
 - `backend/` - Python backend application
 - `frontend/` - React frontend application
 - `backend/scripts/` - Database management scripts
-- `backend/Dockerfile` - Backend Docker image (multi-stage)
-- `frontend/Dockerfile.frontend` - Frontend Docker image (multi-stage)
-- `compose.yaml` - Orchestration (Podman / Docker Compose)
-- `compose.dev.yaml` - Dev override with hot reload and bind mounts
-- `frontend/Dockerfile.dev` - Dev image for frontend hot reload
-- `.env.example` - Environment variable template for podman-compose
+- `.env.example` - Plantilla de variables de entorno
 - `scripts/setup.sh` - Script de setup para nueva PC (ver sección Setup)
 - `scripts/dev.sh` - Script de desarrollo (menú start / stop / restart / status)
 
@@ -42,7 +37,6 @@ This repository contains the Caguayo application, a comprehensive inventory and 
 - `uv` (instalar: `curl -LsSf https://astral.sh/uv/install.sh | sh`)
 - `pnpm` (instalar: `npm install -g pnpm`)
 - `tmux` (para el script de inicio rápido)
-- Podman y podman-compose (para despliegue containerizado)
 
 ## Configuración inicial de PostgreSQL
 
@@ -71,7 +65,7 @@ GRANT SELECT ON ALL TABLES IN SCHEMA public TO usuariolector;
 
 ### 3. Inicializar la base de datos manualmente
 
-Para crear el esquema y datos iniciales sin Docker:
+Para crear el esquema y datos iniciales:
 
 ```bash
 # 1. Crear la base de datos (si no existe)
@@ -111,7 +105,7 @@ cd caguayo
 
 El script `setup.sh` hace todo automáticamente:
 
-1. Verifica prerequisitos (podman, uv, pnpm, psql)
+1. Verifica prerequisitos (uv, pnpm, psql)
 2. Crea `.env` con valores generados aleatoriamente
 3. Verifica conexión a PostgreSQL
 4. Crea bases de datos (auth + central)
@@ -149,7 +143,7 @@ uv run python -m scripts.init_office caguayo
 
 # 5. Iniciar el sistema
 cd ..
-podman-compose up --build
+./scripts/dev.sh
 ```
 
 ### Variables de entorno importantes
@@ -201,36 +195,9 @@ Al inicializar la base de datos con `init_office.py`, se crea automáticamente u
 
 ## Database Setup
 
-The application uses PostgreSQL as the database. The database is automatically created and initialized when using Docker Compose.
+The application uses PostgreSQL as the database. The schema and seed data are created with Alembic and `scripts/init_office.py`.
 
-### Development with hot reload
-
-For development with live code reloading, use the dev override:
-
-```bash
-# First time: initialize database and build images
-podman-compose up -d
-
-# Development: hot reload (backend + frontend)
-podman-compose -f compose.yaml -f compose.dev.yaml up -d
-
-# After installing new dependencies, rebuild:
-podman-compose build backend frontend
-```
-
-The dev override:
-- Mounts source code as volumes (edits reflect instantly)
-- Backend runs `uvicorn --reload` (restarts on Python changes)
-- Frontend runs Vite dev server (HMR for React components)
-- Skips the entrypoint init (assumes DB is already initialized)
-
-> **Note**: The first `podman-compose up -d` (without override) initializes the database. Subsequent dev sessions only need the override.
-
-### Running with Podman
-
-The application uses three services: PostgreSQL, Python backend, and React frontend.
-
-#### Quick Start
+### Inicio rápido
 
 1. Configure environment (first time only):
    ```bash
@@ -238,19 +205,18 @@ The application uses three services: PostgreSQL, Python backend, and React front
    # Edit .env and set SECRET_KEY and POSTGRES_PASSWORD
    ```
 
-2. Build and start all services:
-   ```bash
-   podman-compose up --build
-   ```
+2. Aplicar migraciones e inicializar datos de oficina (ver *Database Initialization* más abajo).
 
-3. The following services will be available:
+3. Levantar el sistema con `./scripts/dev.sh` (ver *Ejecutar el sistema*).
+
+   Servicios disponibles:
    - Backend API: http://localhost:8000
    - Frontend: http://localhost:5173
    - API Docs: http://localhost:8000/docs
 
-#### Database Initialization
+### Database Initialization
 
-On the **first run**, the backend automatically:
+During setup, the following runs automatically:
 
 1. Creates the database
 2. Runs `alembic upgrade head` (creates all tables + generic seeds)
@@ -294,111 +260,15 @@ uv run python -m scripts.stamp_all_databases --dry-run
 uv run python -m scripts.stamp_all_databases
 ```
 
-#### Managing Services
-
-#### Managing Services
-
-To stop:
-```bash
-podman-compose down
-```
-
-To rebuild and restart (keeps database data in the persistent volume):
-```bash
-podman-compose up --build -d
-```
-
-To reset the database completely (deletes the volume):
-```bash
-podman-compose down -v
-podman-compose up --build
-```
-
-To view logs:
-```bash
-podman-compose logs -f
-```
-
-### Transferir imágenes a otra PC sin internet
-
-Guardar las imágenes en una carpeta específica:
-```bash
-mkdir -p ~/imagenes-caguayo
-podman save -o ~/imagenes-caguayo/caguayo-backend.tar localhost/caguayo-backend:latest
-podman save -o ~/imagenes-caguayo/caguayo-frontend.tar localhost/caguayo-frontend:latest
-podman save -o ~/imagenes-caguayo/postgres.tar docker.io/library/postgres:16-alpine
-podman save -o ~/imagenes-caguayo/nginx.tar docker.io/library/nginx:alpine
-```
-
-Cargar en la otra PC:
-```bash
-cd ~/Descargas  # o donde tengas los .tar
-podman load -i caguayo-backend.tar
-podman load -i caguayo-frontend.tar
-podman load -i postgres.tar
-podman load -i nginx.tar
-```
-
-Luego levantar normalmente:
-```bash
-podman-compose up
-```
-
-#### Access via custom domain
-
-To access the app at `http://items` instead of `http://localhost:5173`:
-
-```bash
-# 1. Map the name to your PC
-echo "127.0.0.1 items" | sudo tee -a /etc/hosts
-
-# 2. Install nginx on the host
-sudo apt install nginx
-
-# 3. Create a virtual site
-sudo tee /etc/nginx/sites-available/items << 'EOF'
-server {
-    listen 80;
-    server_name items;
-
-    location / {
-        proxy_pass http://localhost:5173;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-}
-EOF
-
-# 4. Enable and reload
-sudo ln -sf /etc/nginx/sites-available/items /etc/nginx/sites-enabled/
-sudo nginx -t && sudo systemctl reload nginx
-```
-
-> **Note**: If you use Fish shell, heredocs (`<< 'EOF'`) are not supported. Use `bash -c 'sudo tee ... << "EOF"...'` instead.
-
-#### Architecture
-
-The frontend is a static SPA served by nginx. It connects to the backend API via `/api/`, which is proxied through nginx. The backend connects to PostgreSQL using asyncpg.
-
-### Running without Docker
+### Ejecutar el sistema
 
 #### Inicio rápido (recomendado)
 
-Usa el script `start.sh` para iniciar todo automáticamente — verifica prerequisitos, instala dependencias, crea la base de datos si no existe, corre migraciones, y levanta backend + frontend en una sesión de tmux:
+Usa el script interactivo `scripts/dev.sh` — menú con Start / Stop / Restart / Status para backend + frontend:
 
 ```bash
-./start.sh
+./scripts/dev.sh
 ```
-
-**Comandos útiles para tmux:**
-
-| Acción | Comando |
-|--------|---------|
-| Ver logs en vivo | `tmux attach -t caguayo` |
-| Salir sin detener servicios | `Ctrl+B`, luego `d` |
-| Detener todo | `tmux kill-session -t caguayo` |
 
 #### Manual — Backend
 

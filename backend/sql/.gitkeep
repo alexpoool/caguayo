@@ -1,2 +1,0 @@
-# This directory is referenced by the Docker Containerfile.
-# It can contain SQL scripts for database initialization if needed.
