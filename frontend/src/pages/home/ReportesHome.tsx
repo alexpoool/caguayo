@@ -567,7 +567,7 @@ export function ReportesHome() {
   }, [previewData, activeReport]);
 
   useEffect(() => {
-    if (!reportId) setSearchParams({ report: "existencias" }, { replace: true });
+    if (!reportId) return;
   }, [reportId, setSearchParams]);
 
   useEffect(() => {
