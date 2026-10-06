@@ -483,26 +483,26 @@ export function ReportesHome() {
   }, []);
 
   const activeReport = useMemo(
-    () => REPORTS.find((r) => r.id === reportId) ?? REPORTS[0],
+    () => (reportId ? REPORTS.find((r) => r.id === reportId) : null),
     [reportId]
   );
 
   // Load monedas (solo cuando el reporte filtrable por moneda está activo)
   useEffect(() => {
-    if (!activeReport.needsMoneda) return;
+    if (!activeReport?.needsMoneda) return;
     monedaService.getMonedas().then((data: any) => setMonedas(Array.isArray(data) ? data : [])).catch(() => {});
   }, [activeReport.needsMoneda]);
 
   // Reset filters with smart defaults when report changes
   useEffect(() => {
     setFilters(getDefaultFilters(userDepId));
-  }, [activeReport.id, userDepId]);
+  }, [activeReport?.id, userDepId]);
 
   // Build preview URL
   const previewUrl = useMemo(() => {
-    const params = activeReport.buildPreviewParams(filters);
+    const params = activeReport?.buildPreviewParams(filters);
     const qs = buildQueryString(params);
-    return `${BASE_URL}${activeReport.previewEndpoint}${qs ? `?${qs}` : ""}`;
+    return `${BASE_URL}${activeReport?.previewEndpoint}${qs ? `?${qs}` : ""}`;
   }, [activeReport, filters]);
 
   // Fetch chart data directly with full control
@@ -514,7 +514,7 @@ export function ReportesHome() {
   // Table pagination
   const TABLE_PAGE_SIZE = 10;
   const [tablePage, setTablePage] = useState(1);
-  useEffect(() => { setTablePage(1); }, [previewUrl, activeReport.id]);
+  useEffect(() => { setTablePage(1); }, [previewUrl, activeReport?.id]);
 
   useEffect(() => {
     // Cancel previous request
@@ -550,11 +550,32 @@ export function ReportesHome() {
     return () => { controller.abort(); clearTimeout(timer); };
   }, [previewUrl]);
 
+  if (!activeReport) {
+    return (
+      <div className="flex min-h-[calc(100vh-8rem)] flex-col items-center justify-center overflow-hidden p-4">
+        <div className="w-full max-w-2xl space-y-5">
+          <div className="rounded-2xl bg-gradient-to-r from-panel-900 via-panel-700 to-brand-500 px-6 py-6 text-white shadow-lg">
+            <div className="flex flex-col items-center gap-3 text-center">
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl border-2 border-brand-400/60 bg-brand-500/20 shadow-inner">
+                <BarChart3 className="h-6 w-6" />
+              </div>
+              <h1 className="text-xl font-bold tracking-wide md:text-2xl">MÓDULO DE REPORTES</h1>
+              <p className="text-sm text-slate-200">Selecciona un reporte del menú lateral para comenzar</p>
+            </div>
+          </div>
+          <div className="rounded-xl border border-slate-100 bg-white p-6 text-center shadow-sm">
+            <p className="text-sm text-slate-600">Utiliza la barra lateral para elegir el reporte que deseas visualizar.</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // Transform chart data
   const chartData = useMemo(() => {
     if (!previewData) return null;
     try {
-      const transformed = activeReport.transformChartData(previewData);
+      const transformed = activeReport?.transformChartData(previewData);
       return transformed && transformed.length > 0 ? transformed : null;
     } catch { return null; }
   }, [previewData, activeReport]);
@@ -562,7 +583,7 @@ export function ReportesHome() {
   // Compute summary stats
   const stats = useMemo<ChartStats>(() => {
     if (!previewData) return { total: 0, promedio: 0, max: 0, min: 0, count: 0 };
-    try { return activeReport.computeStats(previewData); }
+    try { return activeReport?.computeStats(previewData); }
     catch { return { total: 0, promedio: 0, max: 0, min: 0, count: 0 }; }
   }, [previewData, activeReport]);
 
@@ -595,9 +616,9 @@ export function ReportesHome() {
   const updateFilter = useCallback((key: string, value: string) => { setFilters((prev) => ({ ...prev, [key]: value })); }, []);
 
   const handleDownload = useCallback(async () => {
-    const params = activeReport.buildPdfParams(filters);
+    const params = activeReport?.buildPdfParams(filters);
     const qs = buildQueryString(params);
-    const url = `${BASE_URL}${activeReport.pdfEndpoint}${qs ? `?${qs}` : ""}`;
+    const url = `${BASE_URL}${activeReport?.pdfEndpoint}${qs ? `?${qs}` : ""}`;
     try {
       const token = authHelpers.getToken() ?? "";
       const r = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
@@ -605,16 +626,16 @@ export function ReportesHome() {
       const blob = await r.blob();
       const a = document.createElement("a");
       a.href = window.URL.createObjectURL(blob);
-      a.download = activeReport.pdfFilename;
+      a.download = activeReport?.pdfFilename;
       a.click();
       toast.success("Reporte descargado");
     } catch { toast.error("Error al descargar reporte"); }
   }, [activeReport, filters]);
 
   const handlePreview = useCallback(async () => {
-    const params = activeReport.buildPdfParams(filters);
+    const params = activeReport?.buildPdfParams(filters);
     const qs = buildQueryString(params);
-    const url = `${BASE_URL}${activeReport.pdfEndpoint}${qs ? `?${qs}` : ""}`;
+    const url = `${BASE_URL}${activeReport?.pdfEndpoint}${qs ? `?${qs}` : ""}`;
     try {
       const token = authHelpers.getToken() ?? "";
       const r = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
@@ -629,7 +650,7 @@ export function ReportesHome() {
 
   // Table data for inventory reports
   const tableData = useMemo(() => {
-    if (!activeReport.showTable || !previewData) return null;
+    if (!activeReport?.showTable || !previewData) return null;
     const items = previewData?.items || [];
     return items;
   }, [activeReport, previewData]);
@@ -732,7 +753,7 @@ export function ReportesHome() {
         <ResponsiveContainer width="100%" height={300}>
           <LineChart data={displayData}>
             {gridAndAxis}
-            {hasMonto && <Line type="monotone" dataKey="monto" stroke={activeReport.colorHex} strokeWidth={3} dot={{ fill: activeReport.colorHex, r: 4 }} activeDot={{ r: 6 }} name="Monto" animationDuration={500} />}
+            {hasMonto && <Line type="monotone" dataKey="monto" stroke={activeReport?.colorHex} strokeWidth={3} dot={{ fill: activeReport?.colorHex, r: 4 }} activeDot={{ r: 6 }} name="Monto" animationDuration={500} />}
             <Line type="monotone" dataKey="cantidad" stroke="#10b981" strokeWidth={2} dot={{ fill: "#10b981", r: 3 }} name="Cantidad" animationDuration={500} />
           </LineChart>
         </ResponsiveContainer>
@@ -754,13 +775,13 @@ export function ReportesHome() {
       <ResponsiveContainer width="100%" height={300}>
         <BarChart data={displayData}>
           {gridAndAxis}
-          {activeReport.chartSeries ? (
-            activeReport.chartSeries.map((s) => (
+          {activeReport?.chartSeries ? (
+            activeReport?.chartSeries.map((s) => (
               <Bar key={s.key} dataKey={s.key} stackId="stack" fill={s.color} name={s.name} animationDuration={500} />
             ))
           ) : (
             <>
-              {hasMonto && <Bar dataKey="monto" fill={activeReport.colorHex} radius={[4, 4, 0, 0]} name="Monto" animationDuration={500} />}
+              {hasMonto && <Bar dataKey="monto" fill={activeReport?.colorHex} radius={[4, 4, 0, 0]} name="Monto" animationDuration={500} />}
               <Bar dataKey="cantidad" fill="#10b981" radius={[4, 4, 0, 0]} name="Cantidad" animationDuration={500} />
             </>
           )}
@@ -781,7 +802,7 @@ export function ReportesHome() {
         {/* Toolbar */}
         <div className="flex items-center justify-between mb-5">
           {/* Left: Chart type icons (invisible spacer for table reports to keep filter centered) */}
-          <div className={`flex items-center gap-1 bg-white rounded-xl border border-gray-200 p-1 shadow-sm ${activeReport.showTable ? 'invisible' : ''}`}>
+          <div className={`flex items-center gap-1 bg-white rounded-xl border border-gray-200 p-1 shadow-sm ${activeReport?.showTable ? 'invisible' : ''}`}>
             {chartButtons.map((btn) => (
               <button key={btn.type} onClick={() => setChartType(btn.type)} title={btn.label}
                 className={`p-2 rounded-lg transition-all duration-150 ${chartType === btn.type ? "bg-brand-50 text-brand-600 shadow-sm ring-1 ring-brand-200" : "text-gray-400 hover:bg-gray-50 hover:text-gray-600"}`}>
@@ -800,7 +821,7 @@ export function ReportesHome() {
             {filterOpen && (
               <div className="absolute top-full left-1/2 -translate-x-1/2 mt-3 w-[420px] bg-white rounded-2xl border border-gray-200 shadow-2xl p-5 z-50">
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-sm font-bold text-gray-900">Filtros — {activeReport.title}</h3>
+                  <h3 className="text-sm font-bold text-gray-900">Filtros — {activeReport?.title}</h3>
                   <button onClick={() => setFilterOpen(false)} className="p-1 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors">
                     <X className="w-4 h-4" />
                   </button>
@@ -869,25 +890,25 @@ export function ReportesHome() {
         <div className={`bg-white rounded-2xl border border-gray-200 shadow-sm p-6 mb-5 transition-all duration-300 ease-in-out ${isTransitioning ? "opacity-0 scale-[0.98]" : "opacity-100 scale-100"}`}>
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
-              <div className={`w-9 h-9 rounded-xl ${activeReport.color} flex items-center justify-center`} style={{ color: activeReport.colorHex }}>
-                {activeReport.icon}
+              <div className={`w-9 h-9 rounded-xl ${activeReport?.color} flex items-center justify-center`} style={{ color: activeReport?.colorHex }}>
+                {activeReport?.icon}
               </div>
               <div>
-                <h2 className="text-sm font-bold text-gray-900">{activeReport.title}</h2>
-                <p className="text-xs text-gray-400">{activeReport.description}</p>
+                <h2 className="text-sm font-bold text-gray-900">{activeReport?.title}</h2>
+                <p className="text-xs text-gray-400">{activeReport?.description}</p>
               </div>
             </div>
-            {!activeReport.showTable && !activeReport.chartSeries && (
+            {!activeReport?.showTable && !activeReport?.chartSeries && (
               <div className="flex items-center gap-4 text-xs text-gray-400">
-                <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full" style={{ background: activeReport.colorHex }} />Monto</span>
+                <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full" style={{ background: activeReport?.colorHex }} />Monto</span>
                 <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />Cantidad</span>
               </div>
             )}
           </div>
-          <div className="border-t border-gray-100 pt-4">{activeReport.showTable ? renderTable() : renderChart()}</div>
+          <div className="border-t border-gray-100 pt-4">{activeReport?.showTable ? renderTable() : renderChart()}</div>
 
           {/* Summary statistics */}
-          <div className={`border-t border-gray-100 pt-4 mt-4 ${activeReport.showStats === false ? "hidden" : ""}`}>
+          <div className={`border-t border-gray-100 pt-4 mt-4 ${activeReport?.showStats === false ? "hidden" : ""}`}>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               {[
                 { label: "Total", value: stats.total, icon: <DollarSign className="w-4 h-4 text-brand-600" />, bg: "bg-brand-100" },
@@ -913,11 +934,11 @@ export function ReportesHome() {
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
             {REPORTS.map((report) => (
               <button key={report.id} onClick={() => handleSelectReport(report.id)}
-                className={`flex items-center gap-2.5 p-3 rounded-xl text-left transition-all duration-150 ${activeReport.id === report.id ? "bg-brand-50 border-2 border-brand-200 shadow-sm" : "bg-gray-50 border-2 border-transparent hover:bg-gray-100 hover:border-gray-200"}`}>
+                className={`flex items-center gap-2.5 p-3 rounded-xl text-left transition-all duration-150 ${activeReport?.id === report.id ? "bg-brand-50 border-2 border-brand-200 shadow-sm" : "bg-gray-50 border-2 border-transparent hover:bg-gray-100 hover:border-gray-200"}`}>
                 <div className={`w-7 h-7 rounded-lg ${report.color} flex items-center justify-center flex-shrink-0`} style={{ color: report.colorHex }}>
                   {report.icon}
                 </div>
-                <span className={`text-xs font-medium truncate ${activeReport.id === report.id ? "text-brand-700" : "text-gray-600"}`}>{report.title}</span>
+                <span className={`text-xs font-medium truncate ${activeReport?.id === report.id ? "text-brand-700" : "text-gray-600"}`}>{report.title}</span>
               </button>
             ))}
           </div>
