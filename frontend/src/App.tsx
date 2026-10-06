@@ -341,10 +341,10 @@ function App() {
   // Sidebar and header are always visible
 
   const modulos: { id: Modulo; label: string; icon: React.ElementType }[] = [
-    { id: 'inventario', label: 'Inventario', icon: Boxes },
     { id: 'compra', label: 'Compra', icon: UserCircle },
     { id: 'venta', label: 'Tienda', icon: Briefcase },
     { id: 'proyecto', label: 'Proyectos', icon: Wrench },
+    { id: 'inventario', label: 'Inventario', icon: Boxes },
     { id: 'reportes', label: 'Reportes', icon: BarChart3 },
     { id: 'administracion', label: 'Administración', icon: Settings },
   ];
