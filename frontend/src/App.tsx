@@ -66,7 +66,7 @@ import { CompraHome } from './pages/home/CompraHome';
 import { ReportesHome } from './pages/home/ReportesHome';
 import { ProyectosHome } from './pages/home/ProyectosHome';
 import { AdministracionHome } from './pages/home/AdministracionHome';
-import Reporte<Boxes className="w-4 h-4" /> Existencias from './pages/reportes/Reporte<Boxes className="w-4 h-4" /> Existencias';
+import ReporteExistencias from './pages/reportes/ReporteExistencias';
 import ReporteMovimientosDependencia from './pages/reportes/ReporteMovimientosDependencia';
 import ReporteMovimientosProducto from './pages/reportes/ReporteMovimientosProducto';
 import ReporteProveedores from './pages/reportes/ReporteProveedores';
@@ -196,7 +196,7 @@ function SidebarLink({
   if (disabled) {
     return (
       <span className={`
-        group flex items-center ${slim ? 'justify-center' : 'gap-3'} ${slim ? 'px-0' : 'px-3'} py-2.5 rounded-lg 
+        group flex items-center ${slim ? 'justify-center' : 'gap-3'} ${slim ? 'px-0' : 'px-3'} py-2.5 rounded-lg
         transition-all duration-300 ease-out relative overflow-hidden
         text-slate-600 opacity-40 cursor-not-allowed
       `}>
@@ -219,7 +219,7 @@ function SidebarLink({
       to={to}
       onClick={handleClick}
       className={`
-        group flex items-center ${slim ? 'justify-center' : 'gap-3'} ${slim ? 'px-0' : 'px-3'} py-2.5 rounded-lg 
+        group flex items-center ${slim ? 'justify-center' : 'gap-3'} ${slim ? 'px-0' : 'px-3'} py-2.5 rounded-lg
         transition-all duration-300 ease-out relative overflow-hidden
         ${isActive
           ? 'bg-panel-800 text-white shadow-none border-l-4 border-brand-500'
@@ -228,7 +228,7 @@ function SidebarLink({
       `}
     >
       <span className={`
-        absolute left-0 top-1/2 -translate-y-1/2 w-1 h-0 
+        absolute left-0 top-1/2 -translate-y-1/2 w-1 h-0
         bg-blue-400 rounded-r-full transition-all duration-300
         group-hover:h-6
         ${isActive ? 'h-8 bg-white' : ''}
@@ -270,7 +270,7 @@ const MODULO_FUNCIONALIDADES: Record<Modulo, string[]> = {
 
 function App() {
   const { isAuthenticated, isLoading, user, logout, hasFuncionalidad, baseDatos } = useAuth();
-  
+
   // Check if user has access to an entire module (at least one funcionalidad)
   const hasModuloAccess = (moduloId: Modulo): boolean => {
     const funcs = MODULO_FUNCIONALIDADES[moduloId] || [];
@@ -1156,7 +1156,7 @@ function App() {
                   path="/inventario/existencias"
                   element={
                     <ProtectedRoute moduloActivo={moduloActivo} currentPath="/inventario">
-                      <Reporte<Boxes className="w-4 h-4" /> Existencias />
+                      <ReporteExistencias />
                     </ProtectedRoute>
                   }
                 />
@@ -1196,7 +1196,7 @@ function App() {
                   path="/reportes/existencias"
                   element={
                     <ProtectedRoute moduloActivo={moduloActivo} currentPath="/reportes/existencias">
-                      <Reporte<Boxes className="w-4 h-4" /> Existencias />
+                      <ReporteExistencias />
                     </ProtectedRoute>
                   }
                 />

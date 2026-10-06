@@ -491,7 +491,7 @@ export function ReportesHome() {
   useEffect(() => {
     if (!activeReport?.needsMoneda) return;
     monedaService.getMonedas().then((data: any) => setMonedas(Array.isArray(data) ? data : [])).catch(() => {});
-  }, [activeReport.needsMoneda]);
+  }, [activeReport?.needsMoneda]);
 
   // Reset filters with smart defaults when report changes
   useEffect(() => {
@@ -500,7 +500,7 @@ export function ReportesHome() {
 
   // Build preview URL
   const previewUrl = useMemo(() => {
-    const params = activeReport?.buildPreviewParams(filters);
+    const params = activeReport?.buildPreviewParams(filters) || {};
     const qs = buildQueryString(params);
     return `${BASE_URL}${activeReport?.previewEndpoint}${qs ? `?${qs}` : ""}`;
   }, [activeReport, filters]);
@@ -548,6 +548,13 @@ export function ReportesHome() {
     }, 300);
 
     return () => { controller.abort(); clearTimeout(timer); };
+  }, [previewUrl]);
+
+  useEffect(() => {
+    if (!previewUrl) {
+      setPreviewData(null);
+      setChartLoading(false);
+    }
   }, [previewUrl]);
 
   if (!activeReport) {
