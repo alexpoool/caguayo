@@ -778,13 +778,30 @@ export function ReportesHome() {
   return (
     <div className="h-[calc(100vh-8rem)] overflow-auto p-6">
       <div className="max-w-6xl mx-auto">
+        <div className="mb-5 rounded-2xl bg-gradient-to-r from-panel-900 via-panel-700 to-brand-500 px-6 py-6 text-white shadow-lg">
+          <div className="flex flex-col items-center gap-4 md:flex-row md:items-center md:justify-between">
+            <div className="text-center md:text-left">
+              <div className="flex items-center justify-center gap-2 md:justify-start">
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl border-2 border-brand-400/60 bg-brand-500/20 shadow-inner">
+                  <BarChart3 className="h-6 w-6" />
+                </div>
+                <h1 className="text-xl font-bold tracking-wide md:text-2xl">
+                  MÓDULO DE REPORTES
+                </h1>
+              </div>
+              <p className="mt-2 text-sm text-slate-200 md:text-base">
+                Generación, visualización y exportación de reportes del sistema
+              </p>
+            </div>
+          </div>
+        </div>
         {/* Toolbar */}
         <div className="flex items-center justify-between mb-5">
           {/* Left: Chart type icons (invisible spacer for table reports to keep filter centered) */}
           <div className={`flex items-center gap-1 bg-white rounded-xl border border-gray-200 p-1 shadow-sm ${activeReport.showTable ? 'invisible' : ''}`}>
             {chartButtons.map((btn) => (
               <button key={btn.type} onClick={() => setChartType(btn.type)} title={btn.label}
-                className={`p-2 rounded-lg transition-all duration-150 ${chartType === btn.type ? "bg-blue-50 text-blue-600 shadow-sm ring-1 ring-blue-200" : "text-gray-400 hover:bg-gray-50 hover:text-gray-600"}`}>
+                className={`p-2 rounded-lg transition-all duration-150 ${chartType === btn.type ? "bg-brand-50 text-brand-600 shadow-sm ring-1 ring-brand-200" : "text-gray-400 hover:bg-gray-50 hover:text-gray-600"}`}>
                 {btn.icon}
               </button>
             ))}
@@ -793,7 +810,7 @@ export function ReportesHome() {
           {/* Center: Filter icon with dropdown */}
           <div className="relative" ref={filterRef}>
             <button onClick={() => setFilterOpen((prev) => !prev)} title="Filtros"
-              className={`p-2.5 rounded-xl border transition-all duration-150 ${filterOpen ? "bg-blue-50 text-blue-600 border-blue-300 shadow-sm ring-2 ring-blue-100" : "bg-white text-gray-500 border-gray-200 shadow-sm hover:bg-gray-50 hover:text-gray-700 hover:border-gray-300"}`}>
+              className={`p-2.5 rounded-xl border transition-all duration-150 ${filterOpen ? "bg-brand-50 text-brand-600 border-brand-300 shadow-sm ring-2 ring-brand-100" : "bg-white text-gray-500 border-gray-200 shadow-sm hover:bg-gray-50 hover:text-gray-700 hover:border-gray-300"}`}>
               <SlidersHorizontal className="w-5 h-5" />
             </button>
 
@@ -812,7 +829,7 @@ export function ReportesHome() {
                     <div>
                       <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Dependencia</label>
                       <select value={filters.id_dependencia} onChange={(e) => updateFilter("id_dependencia", e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none">
+                        className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white focus:ring-2 focus:ring-brand-500 outline-none">
                         <option value="">Seleccionar dependencia</option>
                         {dependencias.map((d) => <option key={d.id_dependencia} value={d.id_dependencia}>{d.nombre}</option>)}
                       </select>
@@ -822,7 +839,7 @@ export function ReportesHome() {
                     <div>
                       <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Moneda</label>
                       <select value={filters.id_moneda} onChange={(e) => updateFilter("id_moneda", e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none">
+                        className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white focus:ring-2 focus:ring-brand-500 outline-none">
                         <option value="">Todas las monedas</option>
                         {monedas.map((m) => <option key={m.id_moneda} value={m.id_moneda}>{m.denominacion}</option>)}
                       </select>
@@ -890,7 +907,7 @@ export function ReportesHome() {
           <div className={`border-t border-gray-100 pt-4 mt-4 ${activeReport.showStats === false ? "hidden" : ""}`}>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               {[
-                { label: "Total", value: stats.total, icon: <DollarSign className="w-4 h-4 text-blue-600" />, bg: "bg-blue-100" },
+                { label: "Total", value: stats.total, icon: <DollarSign className="w-4 h-4 text-brand-600" />, bg: "bg-brand-100" },
                 { label: "Promedio", value: stats.promedio, icon: <TrendingUp className="w-4 h-4 text-emerald-600" />, bg: "bg-emerald-100" },
                 { label: "Máximo", value: stats.max, icon: <TrendingUp className="w-4 h-4 text-amber-600" />, bg: "bg-amber-100" },
                 { label: "Mínimo", value: stats.min, icon: <TrendingDown className="w-4 h-4 text-red-600" />, bg: "bg-red-100" },
@@ -913,11 +930,11 @@ export function ReportesHome() {
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
             {REPORTS.map((report) => (
               <button key={report.id} onClick={() => handleSelectReport(report.id)}
-                className={`flex items-center gap-2.5 p-3 rounded-xl text-left transition-all duration-150 ${activeReport.id === report.id ? "bg-blue-50 border-2 border-blue-200 shadow-sm" : "bg-gray-50 border-2 border-transparent hover:bg-gray-100 hover:border-gray-200"}`}>
+                className={`flex items-center gap-2.5 p-3 rounded-xl text-left transition-all duration-150 ${activeReport.id === report.id ? "bg-brand-50 border-2 border-brand-200 shadow-sm" : "bg-gray-50 border-2 border-transparent hover:bg-gray-100 hover:border-gray-200"}`}>
                 <div className={`w-7 h-7 rounded-lg ${report.color} flex items-center justify-center flex-shrink-0`} style={{ color: report.colorHex }}>
                   {report.icon}
                 </div>
-                <span className={`text-xs font-medium truncate ${activeReport.id === report.id ? "text-blue-700" : "text-gray-600"}`}>{report.title}</span>
+                <span className={`text-xs font-medium truncate ${activeReport.id === report.id ? "text-brand-700" : "text-gray-600"}`}>{report.title}</span>
               </button>
             ))}
           </div>
