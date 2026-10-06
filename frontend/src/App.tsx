@@ -66,7 +66,7 @@ import { CompraHome } from './pages/home/CompraHome';
 import { ReportesHome } from './pages/home/ReportesHome';
 import { ProyectosHome } from './pages/home/ProyectosHome';
 import { AdministracionHome } from './pages/home/AdministracionHome';
-import ReporteExistencias from './pages/reportes/ReporteExistencias';
+import Reporte<Boxes className="w-4 h-4" /> Existencias from './pages/reportes/Reporte<Boxes className="w-4 h-4" /> Existencias';
 import ReporteMovimientosDependencia from './pages/reportes/ReporteMovimientosDependencia';
 import ReporteMovimientosProducto from './pages/reportes/ReporteMovimientosProducto';
 import ReporteProveedores from './pages/reportes/ReporteProveedores';
@@ -557,13 +557,13 @@ function App() {
                     <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-2 pt-2 pb-1">Inventario</p>
                   )}
                   <SidebarLink slim={slimSidebar} to="/reportes?report=existencias" onClick={handleLinkClick} disabled={!hasFuncionalidad('reporte_existencias')}>
-                    Existencias
+                    <Boxes className="w-4 h-4" /> Existencias
                   </SidebarLink>
                   <SidebarLink slim={slimSidebar} to="/reportes?report=movimientos-dependencia" onClick={handleLinkClick} disabled={!hasFuncionalidad('reporte_movimientos_dependencia')}>
-                    Mov. por Dependencia
+                    <ArrowLeftRight className="w-4 h-4" /> Mov. por Dependencia
                   </SidebarLink>
                   <SidebarLink slim={slimSidebar} to="/reportes/movimientos-producto" onClick={handleLinkClick} disabled={!hasFuncionalidad('reporte_movimientos_producto')}>
-                    Mov. por Producto
+                    <Package className="w-4 h-4" /> Mov. por Producto
                   </SidebarLink>
 
                   {/* Tienda */}
@@ -571,7 +571,7 @@ function App() {
                     <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-2 pt-3 pb-1">Tienda</p>
                   )}
                   <SidebarLink slim={slimSidebar} to="/reportes?report=clientes" onClick={handleLinkClick} disabled={!hasFuncionalidad('reporte_clientes')}>
-                    Registro Clientes
+                    <Users className="w-4 h-4" /> Registro Clientes
                   </SidebarLink>
 
                   {/* Compra */}
@@ -579,10 +579,10 @@ function App() {
                     <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-2 pt-3 pb-1">Compra</p>
                   )}
                   <SidebarLink slim={slimSidebar} to="/reportes?report=proveedores" onClick={handleLinkClick} disabled={!hasFuncionalidad('reporte_proveedores')}>
-                    Registro de Proveedores
+                    <UserCircle className="w-4 h-4" /> Registro de Proveedores
                   </SidebarLink>
                   <SidebarLink slim={slimSidebar} to="/reportes?report=liquidaciones" onClick={handleLinkClick} disabled={!hasFuncionalidad('reporte_liquidaciones')}>
-                    Resumen Liquidaciones
+                    <Calculator className="w-4 h-4" /> Resumen Liquidaciones
                   </SidebarLink>
 
                   {/* Proyectos */}
@@ -590,13 +590,13 @@ function App() {
                     <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-2 pt-3 pb-1">Proyectos</p>
                   )}
                   <SidebarLink slim={slimSidebar} to="/reportes?report=proyectos" onClick={handleLinkClick} disabled={!hasFuncionalidad('reporte_proyectos')}>
-                    Registro Proyectos
+                    <Layers className="w-4 h-4" /> Registro Proyectos
                   </SidebarLink>
                   <SidebarLink slim={slimSidebar} to="/reportes?report=creadores" onClick={handleLinkClick} disabled={!hasFuncionalidad('reporte_creadores')}>
-                    Registro de Realizadores
+                    <Users className="w-4 h-4" /> Registro de Realizadores
                   </SidebarLink>
                   <SidebarLink slim={slimSidebar} to="/reportes?report=desempeno" onClick={handleLinkClick} disabled={!hasFuncionalidad('reporte_desempeno')}>
-                    Informe Desempeño
+                    <BarChart3 className="w-4 h-4" /> Informe Desempeño
                   </SidebarLink>
 
                   {/* Ministerios */}
@@ -604,10 +604,10 @@ function App() {
                     <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-2 pt-3 pb-1">Ministerios</p>
                   )}
                   <SidebarLink slim={slimSidebar} to="/reportes?report=onat" onClick={handleLinkClick} disabled={!hasFuncionalidad('reporte_onat')}>
-                    ONAT Retenciones
+                    <FileText className="w-4 h-4" /> ONAT Retenciones
                   </SidebarLink>
                   <SidebarLink slim={slimSidebar} to="/reportes?report=mincult" onClick={handleLinkClick} disabled={!hasFuncionalidad('reporte_mincult')}>
-                    MINCULT Ingresos
+                    <ClipboardList className="w-4 h-4" /> MINCULT Ingresos
                   </SidebarLink>
                 </div>
               )}
@@ -1156,7 +1156,7 @@ function App() {
                   path="/inventario/existencias"
                   element={
                     <ProtectedRoute moduloActivo={moduloActivo} currentPath="/inventario">
-                      <ReporteExistencias />
+                      <Reporte<Boxes className="w-4 h-4" /> Existencias />
                     </ProtectedRoute>
                   }
                 />
@@ -1196,7 +1196,7 @@ function App() {
                   path="/reportes/existencias"
                   element={
                     <ProtectedRoute moduloActivo={moduloActivo} currentPath="/reportes/existencias">
-                      <ReporteExistencias />
+                      <Reporte<Boxes className="w-4 h-4" /> Existencias />
                     </ProtectedRoute>
                   }
                 />
