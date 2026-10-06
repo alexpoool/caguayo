@@ -6,6 +6,22 @@ export default {
   ],
   theme: {
     extend: {
+      colors: {
+        brand: {
+          50: '#ffe9ee',
+          100: '#ffd2dc',
+          400: '#ff6b85',
+          500: '#e94560',
+          600: '#d63550',
+        },
+        panel: {
+          600: '#3a3a55',
+          700: '#2d2d44',
+          800: '#2a2a40',
+          900: '#1e1e2f',
+        },
+        surface: '#f4f6f9',
+      },
       animation: {
         'fade-in': 'fadeIn 0.3s ease-out',
         'fade-in-up': 'fadeInUp 0.4s ease-out',

@@ -222,8 +222,8 @@ function SidebarLink({
         group flex items-center ${slim ? 'justify-center' : 'gap-3'} ${slim ? 'px-0' : 'px-3'} py-2.5 rounded-lg 
         transition-all duration-300 ease-out relative overflow-hidden
         ${isActive
-          ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30'
-          : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+          ? 'bg-panel-800 text-white shadow-none border-l-4 border-brand-500'
+          : 'text-slate-300 hover:bg-panel-800 hover:text-white'
         }
       `}
     >
@@ -354,16 +354,19 @@ function App() {
   }
   return (
     <QueryClientProvider client={queryClient}>
-      <div className={`grid ${slimSidebar ? 'grid-cols-[4.5rem_1fr]' : 'grid-cols-[16rem_1fr]'} grid-rows-[auto_1fr] h-screen bg-gray-50`}>
-        <aside className={`row-span-2 col-start-1 col-end-2 h-full bg-slate-900 text-white flex flex-col shadow-xl min-h-screen transition-all duration-300 ${slimSidebar ? 'w-[4.5rem]' : 'w-64'}`}>
-          <div className={`flex items-center ${slimSidebar ? 'justify-center px-0' : 'px-6'} py-4 border-b border-slate-800`}>
+      <div className={`grid ${slimSidebar ? 'grid-cols-[4.5rem_1fr]' : 'grid-cols-[16rem_1fr]'} grid-rows-[auto_1fr] h-screen bg-surface`}>
+        <aside className={`row-span-2 col-start-1 col-end-2 h-full bg-gradient-to-b from-panel-900 to-panel-800 text-white flex flex-col shadow-xl min-h-screen transition-all duration-300 ${slimSidebar ? 'w-[4.5rem]' : 'w-64'}`}>
+          <div className={`flex items-center ${slimSidebar ? 'justify-center px-0' : 'px-6'} py-4 border-b border-panel-800`}>
             {!slimSidebar && (
-              <h1 className="text-2xl font-bold tracking-wider text-blue-400">CAGUAYO</h1>
+              <div className="flex items-center gap-2">
+                <div className="w-9 h-9 rounded-lg bg-brand-500 flex items-center justify-center text-white font-bold text-lg">C</div>
+                <h1 className="text-2xl font-bold tracking-wider text-white">CAGUAYO</h1>
+              </div>
             )}
             <button
               onClick={handleToggleSlim}
               title={slimSidebar ? 'Expandir sidebar' : 'Contraer sidebar'}
-              className={`p-1 rounded-full hover:bg-slate-800 transition-colors ${slimSidebar ? '' : 'ml-2'}`}
+              className={`p-1 rounded-full hover:bg-white/10 transition-colors ${slimSidebar ? '' : 'ml-2'}`}
             >
               {slimSidebar ? <ChevronRight className="w-6 h-6" /> : <ChevronLeft className="w-6 h-6" />}
             </button>
@@ -655,7 +658,7 @@ function App() {
           </div>
         )}
         </aside>
-        <header className="col-start-2 col-end-3 row-start-1 row-end-2 sticky top-0 z-40 bg-white shadow-sm border-b border-gray-200 px-6 py-4 h-16 flex items-center justify-between">
+        <header className="col-start-2 col-end-3 row-start-1 row-end-2 sticky top-0 z-40 bg-gradient-to-r from-panel-900 via-panel-700 to-panel-900 text-white shadow-md px-6 py-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Link
               to="/"
@@ -663,7 +666,7 @@ function App() {
               className="p-2 rounded-lg hover:bg-gray-100 transition-all duration-300 ease-out hover:scale-110 active:scale-95 group"
               title="Inicio"
             >
-              <Home className="w-6 h-6 text-gray-700 group-hover:text-blue-600 transition-colors" />
+              <Home className="w-6 h-6 text-slate-200 group-hover:text-white transition-colors" />
             </Link>
           </div>
 
@@ -680,10 +683,10 @@ function App() {
                   title={isBlocked ? 'No tienes acceso a este módulo' : undefined}
                   className={`text-sm font-medium transition-all duration-300 ease-out hover:-translate-y-0.5 pb-1 flex items-center gap-1.5
                     ${isBlocked
-                      ? 'text-gray-300 cursor-not-allowed hover:translate-y-0'
+                      ? 'text-slate-500 cursor-not-allowed hover:translate-y-0'
                       : isActive
-                        ? 'text-blue-900 font-semibold border-b-2 border-blue-600'
-                        : 'text-blue-600 hover:text-blue-800'
+                        ? 'text-white font-semibold border-b-2 border-brand-500'
+                        : 'text-slate-300 hover:text-white'
                     }
                   `}
                 >
@@ -701,21 +704,21 @@ function App() {
               className="flex items-center gap-2 p-2 rounded-lg hover:bg-gray-100 transition-all duration-300 ease-out hover:scale-110 active:scale-95 group"
               title="Perfil"
             >
-              <div className="w-9 h-9 rounded-full bg-blue-100 flex items-center justify-center overflow-hidden">
+              <div className="w-9 h-9 rounded-full bg-brand-500/90 flex items-center justify-center overflow-hidden">
                 {user ? (
-                  <span className="text-sm font-medium text-blue-700">
+                  <span className="text-sm font-medium text-white">
                     {user.nombre[0]}{user.primer_apellido[0]}
                   </span>
                 ) : (
-                  <UserCircle className="w-5 h-5 text-blue-500" />
+                  <UserCircle className="w-5 h-5 text-white" />
                 )}
               </div>
               <div className="text-left leading-tight hidden sm:block">
-                <span className="block text-sm font-medium text-gray-700 group-hover:text-blue-600">
+                <span className="block text-sm font-medium text-slate-200 group-hover:text-white">
                   {user ? `${user.nombre} ${user.primer_apellido}` : 'Usuario'}
                 </span>
                 {user?.cargo && (
-                  <span className="block text-xs text-gray-400 group-hover:text-blue-500">
+                  <span className="block text-xs text-slate-400 group-hover:text-slate-300">
                     {user.cargo}
                   </span>
                 )}
