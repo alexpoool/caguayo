@@ -8,69 +8,80 @@ import {
 
 export function VentaHome() {
   return (
-    <div className="h-[calc(100vh-8rem)] overflow-hidden flex flex-col items-center justify-center p-4">
-      <div className="w-full max-w-3xl">
-        <div className="text-center mb-4">
-          <div className="inline-flex p-3 rounded bg-gradient-to-br from-teal-500 to-cyan-600 text-white shadow-lg mb-3 animate-bounce-subtle">
+    <div className="flex min-h-[calc(100vh-8rem)] flex-col items-center justify-center overflow-hidden p-4">
+      <div className="w-full max-w-3xl space-y-5">
+        <div className="rounded-2xl bg-gradient-to-r from-panel-900 via-panel-700 to-brand-500 px-8 py-8 text-center text-white shadow-lg md:px-10">
+          <div className="mx-auto mb-3 inline-flex h-16 w-16 items-center justify-center rounded-2xl border-2 border-brand-400/60 bg-brand-500/20 shadow-inner">
             <Briefcase className="h-8 w-8" />
           </div>
-          <h1 className="text-xl font-bold text-gray-900">Módulo de Ventas</h1>
-          <p className="text-sm text-gray-500 mt-1">
+          <h1 className="text-xl font-bold tracking-wide md:text-2xl">
+            MÓDULO DE VENTAS
+          </h1>
+          <p className="mt-1 text-sm text-slate-200 md:text-base">
             Gestión comercial y atención al cliente
           </p>
         </div>
 
-        <div className="bg-white rounded-md shadow-lg p-4 border border-gray-200">
-          <p className="text-sm text-gray-700 mb-4">
+        <div className="rounded-xl border border-slate-100 bg-white p-6 shadow-sm">
+          <p className="mb-5 text-sm leading-relaxed text-slate-700">
             El módulo de Ventas gestiona todas las operaciones comerciales del
             sistema, desde el registro de ventas hasta el control de clientes y
             el seguimiento detallado de cada transacción.
           </p>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div className="flex items-start gap-2 p-3 bg-gradient-to-br from-teal-50 to-cyan-50 rounded-lg border border-teal-100">
-              <ShoppingCart className="h-4 w-4 text-teal-600 mt-0.5 flex-shrink-0" />
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="flex items-start gap-3 rounded-lg border border-slate-100 bg-slate-50/60 p-4 transition-shadow hover:shadow-sm">
+              <div className="mt-0.5 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-600">
+                <ShoppingCart className="h-4 w-4" />
+              </div>
               <div>
-                <h3 className="font-bold text-sm text-gray-800">Ventas</h3>
-                <p className="text-xs text-gray-600 mt-0.5">
+                <h3 className="text-sm font-semibold text-slate-900">Ventas</h3>
+                <p className="mt-0.5 text-xs leading-relaxed text-slate-600">
                   Registro de operaciones con productos, cantidades, precios y
                   totales.
                 </p>
               </div>
             </div>
 
-            <div className="flex items-start gap-2 p-3 bg-gradient-to-br from-teal-50 to-cyan-50 rounded-lg border border-teal-100">
-              <Users className="h-4 w-4 text-teal-600 mt-0.5 flex-shrink-0" />
+            <div className="flex items-start gap-3 rounded-lg border border-slate-100 bg-slate-50/60 p-4 transition-shadow hover:shadow-sm">
+              <div className="mt-0.5 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-600">
+                <Users className="h-4 w-4" />
+              </div>
               <div>
-                <h3 className="font-bold text-sm text-gray-800">Clientes</h3>
-                <p className="text-xs text-gray-600 mt-0.5">
+                <h3 className="text-sm font-semibold text-slate-900">
+                  Clientes
+                </h3>
+                <p className="mt-0.5 text-xs leading-relaxed text-slate-600">
                   Base de datos con contacto, historial de compras y
                   preferencias.
                 </p>
               </div>
             </div>
 
-            <div className="flex items-start gap-2 p-3 bg-gradient-to-br from-teal-50 to-cyan-50 rounded-lg border border-teal-100">
-              <FileText className="h-4 w-4 text-teal-600 mt-0.5 flex-shrink-0" />
+            <div className="flex items-start gap-3 rounded-lg border border-slate-100 bg-slate-50/60 p-4 transition-shadow hover:shadow-sm">
+              <div className="mt-0.5 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-600">
+                <FileText className="h-4 w-4" />
+              </div>
               <div>
-                <h3 className="font-bold text-sm text-gray-800">
-                  Estados de Venta
+                <h3 className="text-sm font-semibold text-slate-900">
+                  Contratos y Suplementos
                 </h3>
-                <p className="text-xs text-gray-600 mt-0.5">
-                  Pendiente, confirmada o cancelada. El sistema controla cada
-                  estado.
+                <p className="mt-0.5 text-xs leading-relaxed text-slate-600">
+                  Gestión de contratos, suplementos y documentación asociada.
                 </p>
               </div>
             </div>
 
-            <div className="flex items-start gap-2 p-3 bg-gradient-to-br from-teal-50 to-cyan-50 rounded-lg border border-teal-100">
-              <DollarSign className="h-4 w-4 text-teal-600 mt-0.5 flex-shrink-0" />
+            <div className="flex items-start gap-3 rounded-lg border border-slate-100 bg-slate-50/60 p-4 transition-shadow hover:shadow-sm">
+              <div className="mt-0.5 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-600">
+                <DollarSign className="h-4 w-4" />
+              </div>
               <div>
-                <h3 className="font-bold text-sm text-gray-800">
+                <h3 className="text-sm font-semibold text-slate-900">
                   Control Financiero
                 </h3>
-                <p className="text-xs text-gray-600 mt-0.5">
-                  Totales por venta, cálculo automático y registro histórico.
+                <p className="mt-0.5 text-xs leading-relaxed text-slate-600">
+                  Facturación, cuentas por cobrar y seguimiento financiero.
                 </p>
               </div>
             </div>

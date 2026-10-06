@@ -2,85 +2,110 @@ import { Settings, Coins, Users, Shield, Building, Wallet } from "lucide-react";
 
 export function AdministracionHome() {
   return (
-    <div className="h-[calc(100vh-8rem)] overflow-hidden flex flex-col items-center justify-center p-4">
-      <div className="w-full max-w-3xl">
-        <div className="text-center mb-4">
-          <div className="inline-flex p-3 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white shadow-md mb-3">
+    <div className="flex min-h-[calc(100vh-8rem)] flex-col items-center justify-center overflow-hidden p-4">
+      <div className="w-full max-w-3xl space-y-5">
+        <div className="rounded-2xl bg-gradient-to-r from-panel-900 via-panel-700 to-brand-500 px-8 py-8 text-center text-white shadow-lg md:px-10">
+          <div className="mx-auto mb-3 inline-flex h-16 w-16 items-center justify-center rounded-2xl border-2 border-brand-400/60 bg-brand-500/20 shadow-inner">
             <Settings className="h-8 w-8" />
           </div>
-          <h1 className="text-xl font-bold text-gray-800">
+          <h1 className="text-xl font-bold tracking-wide md:text-2xl">
             MÓDULO DE ADMINISTRACIÓN
           </h1>
-          <p className="text-sm text-gray-600 mt-1">
+          <p className="mt-1 text-sm text-slate-200 md:text-base">
             Configuración y gestión del sistema
           </p>
         </div>
 
-        <div className="bg-white rounded-md shadow-lg p-4">
-          <p className="text-sm text-gray-700 mb-4">
-            El módulo de Administración permite configurar y gestionar
-            todos los aspectos del sistema. Accede a cada sección
-            para administrar monedas, usuarios, grupos, dependencias
-            y cuentas bancarias.
+        <div className="rounded-xl border border-slate-100 bg-white p-6 shadow-sm">
+          <p className="mb-5 text-sm leading-relaxed text-slate-700">
+            El módulo de Administración permite configurar y gestionar todos los
+            aspectos del sistema. Desde parámetros generales hasta usuarios,
+            permisos, dependencias y cuentas bancarias.
           </p>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div className="flex items-start gap-2 p-3 bg-indigo-50 rounded-lg">
-              <Settings className="h-4 w-4 text-indigo-600 mt-0.5 flex-shrink-0" />
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="flex items-start gap-3 rounded-lg border border-slate-100 bg-slate-50/60 p-4 transition-shadow hover:shadow-sm">
+              <div className="mt-0.5 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-600">
+                <Settings className="h-4 w-4" />
+              </div>
               <div>
-                <h3 className="font-bold text-sm text-gray-800">Configuración</h3>
-                <p className="text-xs text-gray-600 mt-0.5">
-                  Tipos de contrato, estados, categorías, proveedores, convenios, dependencias y cuentas.
+                <h3 className="text-sm font-semibold text-slate-900">
+                  Configuración
+                </h3>
+                <p className="mt-0.5 text-xs leading-relaxed text-slate-600">
+                  Parámetros del sistema, catálogos, tipos y configuraciones
+                  generales.
                 </p>
               </div>
             </div>
 
-            <div className="flex items-start gap-2 p-3 bg-amber-50 rounded-lg">
-              <Coins className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
+            <div className="flex items-start gap-3 rounded-lg border border-slate-100 bg-slate-50/60 p-4 transition-shadow hover:shadow-sm">
+              <div className="mt-0.5 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-600">
+                <Coins className="h-4 w-4" />
+              </div>
               <div>
-                <h3 className="font-bold text-sm text-gray-800">Monedas</h3>
-                <p className="text-xs text-gray-600 mt-0.5">
+                <h3 className="text-sm font-semibold text-slate-900">
+                  Monedas
+                </h3>
+                <p className="mt-0.5 text-xs leading-relaxed text-slate-600">
                   Gestión de monedas y tasas de cambio del sistema.
                 </p>
               </div>
             </div>
 
-            <div className="flex items-start gap-2 p-3 bg-blue-50 rounded-lg">
-              <Users className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
+            <div className="flex items-start gap-3 rounded-lg border border-slate-100 bg-slate-50/60 p-4 transition-shadow hover:shadow-sm">
+              <div className="mt-0.5 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-600">
+                <Users className="h-4 w-4" />
+              </div>
               <div>
-                <h3 className="font-bold text-sm text-gray-800">Usuarios</h3>
-                <p className="text-xs text-gray-600 mt-0.5">
-                  Administración de usuarios del sistema.
+                <h3 className="text-sm font-semibold text-slate-900">
+                  Usuarios
+                </h3>
+                <p className="mt-0.5 text-xs leading-relaxed text-slate-600">
+                  Administración de usuarios, credenciales y acceso al sistema.
                 </p>
               </div>
             </div>
 
-            <div className="flex items-start gap-2 p-3 bg-purple-50 rounded-lg">
-              <Shield className="h-4 w-4 text-purple-600 mt-0.5 flex-shrink-0" />
+            <div className="flex items-start gap-3 rounded-lg border border-slate-100 bg-slate-50/60 p-4 transition-shadow hover:shadow-sm">
+              <div className="mt-0.5 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-600">
+                <Shield className="h-4 w-4" />
+              </div>
               <div>
-                <h3 className="font-bold text-sm text-gray-800">Grupos</h3>
-                <p className="text-xs text-gray-600 mt-0.5">
-                  Gestión de grupos y permisos de acceso.
+                <h3 className="text-sm font-semibold text-slate-900">
+                  Grupos y Permisos
+                </h3>
+                <p className="mt-0.5 text-xs leading-relaxed text-slate-600">
+                  Gestión de grupos, roles y permisos por funcionalidad.
                 </p>
               </div>
             </div>
 
-            <div className="flex items-start gap-2 p-3 bg-green-50 rounded-lg">
-              <Building className="h-4 w-4 text-green-600 mt-0.5 flex-shrink-0" />
+            <div className="flex items-start gap-3 rounded-lg border border-slate-100 bg-slate-50/60 p-4 transition-shadow hover:shadow-sm">
+              <div className="mt-0.5 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-600">
+                <Building className="h-4 w-4" />
+              </div>
               <div>
-                <h3 className="font-bold text-sm text-gray-800">Dependencias</h3>
-                <p className="text-xs text-gray-600 mt-0.5">
-                  Configuración de dependencias y sus datos.
+                <h3 className="text-sm font-semibold text-slate-900">
+                  Dependencias
+                </h3>
+                <p className="mt-0.5 text-xs leading-relaxed text-slate-600">
+                  Configuración de dependencias, datos fiscales y estructura
+                  organizativa.
                 </p>
               </div>
             </div>
 
-            <div className="flex items-start gap-2 p-3 bg-cyan-50 rounded-lg">
-              <Wallet className="h-4 w-4 text-cyan-600 mt-0.5 flex-shrink-0" />
+            <div className="flex items-start gap-3 rounded-lg border border-slate-100 bg-slate-50/60 p-4 transition-shadow hover:shadow-sm">
+              <div className="mt-0.5 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-600">
+                <Wallet className="h-4 w-4" />
+              </div>
               <div>
-                <h3 className="font-bold text-sm text-gray-800">Cuentas</h3>
-                <p className="text-xs text-gray-600 mt-0.5">
-                  Cuentas bancarias de las dependencias.
+                <h3 className="text-sm font-semibold text-slate-900">
+                  Cuentas Bancarias
+                </h3>
+                <p className="mt-0.5 text-xs leading-relaxed text-slate-600">
+                  Gestión de cuentas bancarias asociadas a dependencias.
                 </p>
               </div>
             </div>
