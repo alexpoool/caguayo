@@ -778,23 +778,6 @@ export function ReportesHome() {
   return (
     <div className="h-[calc(100vh-8rem)] overflow-auto p-6">
       <div className="max-w-6xl mx-auto">
-        <div className="mb-5 rounded-2xl bg-gradient-to-r from-panel-900 via-panel-700 to-brand-500 px-6 py-6 text-white shadow-lg">
-          <div className="flex flex-col items-center gap-4 md:flex-row md:items-center md:justify-between">
-            <div className="text-center md:text-left">
-              <div className="flex items-center justify-center gap-2 md:justify-start">
-                <div className="flex h-12 w-12 items-center justify-center rounded-xl border-2 border-brand-400/60 bg-brand-500/20 shadow-inner">
-                  <BarChart3 className="h-6 w-6" />
-                </div>
-                <h1 className="text-xl font-bold tracking-wide md:text-2xl">
-                  MÓDULO DE REPORTES
-                </h1>
-              </div>
-              <p className="mt-2 text-sm text-slate-200 md:text-base">
-                Generación, visualización y exportación de reportes del sistema
-              </p>
-            </div>
-          </div>
-        </div>
         {/* Toolbar */}
         <div className="flex items-center justify-between mb-5">
           {/* Left: Chart type icons (invisible spacer for table reports to keep filter centered) */}
