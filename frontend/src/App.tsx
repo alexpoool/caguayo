@@ -509,12 +509,6 @@ function App() {
               {moduloActivo === 'proyecto' && (
                 <ul className="space-y-1 px-3">
                   <li>
-                    <SidebarLink slim={slimSidebar} to="/proyectos/servicios" onClick={handleLinkClick} disabled={!hasFuncionalidad('servicios')}>
-                      <Wrench className="w-6 h-6" />
-                      Servicios
-                    </SidebarLink>
-                  </li>
-                  <li>
                     <SidebarLink slim={slimSidebar} to="/proyectos/solicitudes" onClick={handleLinkClick} disabled={!hasFuncionalidad('solicitudes')}>
                       <ClipboardList className="w-6 h-6" />
                       Solicitudes
@@ -533,21 +527,27 @@ function App() {
                     </SidebarLink>
                   </li>
                   <li>
-                    <SidebarLink slim={slimSidebar} to="/proyectos/ofertas" onClick={handleLinkClick} disabled={!hasFuncionalidad('ofertas')}>
-                      <FilePlus className="w-6 h-6" />
-                      Ofertas
-                    </SidebarLink>
-                  </li>
-                  <li>
                     <SidebarLink slim={slimSidebar} to="/proyectos/pre-facturas" onClick={handleLinkClick} disabled={!hasFuncionalidad('pre_facturas')}>
                       <FileText className="w-6 h-6" />
                       Pre-facturas
                     </SidebarLink>
                   </li>
                   <li>
+                    <SidebarLink slim={slimSidebar} to="/proyectos/ofertas" onClick={handleLinkClick} disabled={!hasFuncionalidad('ofertas')}>
+                      <FilePlus className="w-6 h-6" />
+                      Ofertas
+                    </SidebarLink>
+                  </li>
+                  <li>
                     <SidebarLink slim={slimSidebar} to="/proyectos/liquidaciones" onClick={handleLinkClick} disabled={!hasFuncionalidad('liquidaciones_servicio')}>
                       <Calculator className="w-6 h-6" />
                       Liquidaciones
+                    </SidebarLink>
+                  </li>
+                  <li>
+                    <SidebarLink slim={slimSidebar} to="/proyectos/servicios" onClick={handleLinkClick} disabled={!hasFuncionalidad('servicios')}>
+                      <Wrench className="w-6 h-6" />
+                      Servicios
                     </SidebarLink>
                   </li>
                 </ul>
