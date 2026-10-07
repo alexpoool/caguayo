@@ -1,18 +1,65 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
-import { createPortal } from 'react-dom';
-import { useQueryClient } from '@tanstack/react-query';
-import { Button, Input, Label, Card, CardContent, CardHeader, CardTitle, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, ConfirmModal } from '../../components/ui';
-import { ClienteForm } from '../clientes/components/form/ClienteForm';
-import { personaEtapaService, etapasProyectoService, clientesService, monedaService, solicitudesService, personaLiquidacionService } from '../../services/api';
-import type { PersonaEtapa, PersonaEtapaCreate, Etapa, SolicitudServicio, PersonaLiquidacion } from '../../types/servicio';
-import type { Cliente, ClienteNatural, ClienteNaturalCreate, ClienteJuridicaCreate, ClienteTCPCreate, ClienteTCP, ClienteJuridica } from '../../types/ventas';
-import type { Moneda } from '../../types/moneda';
-import { Plus, Save, Trash2, ArrowLeft, Search, Users, X, DollarSign, Eye, CheckCircle } from 'lucide-react';
-import toast from 'react-hot-toast';
-import { formatCifra } from '../../utils/decimal';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useState, useEffect, useMemo, useRef } from "react";
+import { createPortal } from "react-dom";
+import { useQueryClient } from "@tanstack/react-query";
+import {
+  Button,
+  Input,
+  Label,
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+  ConfirmModal,
+} from "../../components/ui";
+import { ClienteForm } from "../clientes/components/form/ClienteForm";
+import {
+  personaEtapaService,
+  etapasProyectoService,
+  clientesService,
+  monedaService,
+  solicitudesService,
+  personaLiquidacionService,
+} from "../../services/api";
+import type {
+  PersonaEtapa,
+  PersonaEtapaCreate,
+  Etapa,
+  SolicitudServicio,
+  PersonaLiquidacion,
+} from "../../types/servicio";
+import type {
+  Cliente,
+  ClienteNatural,
+  ClienteNaturalCreate,
+  ClienteJuridicaCreate,
+  ClienteTCPCreate,
+  ClienteTCP,
+  ClienteJuridica,
+} from "../../types/ventas";
+import type { Moneda } from "../../types/moneda";
+import {
+  Plus,
+  Save,
+  Trash2,
+  ArrowLeft,
+  Search,
+  Users,
+  X,
+  DollarSign,
+  Eye,
+  CheckCircle,
+} from "lucide-react";
+import toast from "react-hot-toast";
+import { formatCifra } from "../../utils/decimal";
+import { useNavigate, useSearchParams } from "react-router-dom";
 
-type View = 'list' | 'form';
+type View = "list" | "form";
 
 interface PersonaEtapaWithDetails extends PersonaEtapa {
   persona?: ClienteNatural;
@@ -29,115 +76,152 @@ export function RealizadoresPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [searchParams] = useSearchParams();
-  const etapaParam = searchParams.get('etapa');
-  const [view, setView] = useState<View>('list');
+  const etapaParam = searchParams.get("etapa");
+  const [view, setView] = useState<View>("list");
 
-  const [personasEtapa, setPersonasEtapa] = useState<PersonaEtapaWithDetails[]>([]);
+  const [personasEtapa, setPersonasEtapa] = useState<PersonaEtapaWithDetails[]>(
+    [],
+  );
   const [todosClientes, setTodosClientes] = useState<Cliente[]>([]);
-  const [personasNaturales, setPersonasNaturales] = useState<ClienteNatural[]>([]);
+  const [personasNaturales, setPersonasNaturales] = useState<ClienteNatural[]>(
+    [],
+  );
   const [personasTCP, setPersonasTCP] = useState<ClienteTCP[]>([]);
-  const [personasJuridicas, setPersonasJuridicas] = useState<ClienteJuridica[]>([]);
+  const [personasJuridicas, setPersonasJuridicas] = useState<ClienteJuridica[]>(
+    [],
+  );
   const [etapas, setEtapas] = useState<Etapa[]>([]);
   const [monedas, setMonedas] = useState<Moneda[]>([]);
   const [liquidaciones, setLiquidaciones] = useState<PersonaLiquidacion[]>([]);
   const [currentEtapa, setCurrentEtapa] = useState<Etapa | null>(null);
   const [solicitudes, setSolicitudes] = useState<SolicitudServicio[]>([]);
   const [etapasSolicitud, setEtapasSolicitud] = useState<Etapa[]>([]);
-  const [busquedaPersona, setBusquedaPersona] = useState('');
-  const [personaSeleccionada, setPersonaSeleccionada] = useState<Cliente | ClienteConDetalles | null>(null);
-  const [busquedaSolicitud, setBusquedaSolicitud] = useState('');
-  const [solicitudSeleccionada, setSolicitudSeleccionada] = useState<SolicitudServicio | null>(null);
+  const [busquedaPersona, setBusquedaPersona] = useState("");
+  const [personaSeleccionada, setPersonaSeleccionada] = useState<
+    Cliente | ClienteConDetalles | null
+  >(null);
+  const [busquedaSolicitud, setBusquedaSolicitud] = useState("");
+  const [solicitudSeleccionada, setSolicitudSeleccionada] =
+    useState<SolicitudServicio | null>(null);
   const [showDropdownPersona, setShowDropdownPersona] = useState(false);
   const [showDropdownSolicitud, setShowDropdownSolicitud] = useState(false);
   const [showNuevoClienteModal, setShowNuevoClienteModal] = useState(false);
-  const [nuevoClienteTipo, setNuevoClienteTipo] = useState<string>('NATURAL');
-  const [nuevoClienteData, setNuevoClienteData] = useState<Record<string, any>>({});
+  const [nuevoClienteTipo, setNuevoClienteTipo] = useState<string>("NATURAL");
+  const [nuevoClienteData, setNuevoClienteData] = useState<Record<string, any>>(
+    {},
+  );
   const [guardandoCliente, setGuardandoCliente] = useState(false);
   const dropdownPersonaRef = useRef<HTMLDivElement>(null);
   const dropdownSolicitudRef = useRef<HTMLDivElement>(null);
 
   const [formData, setFormData] = useState<Record<string, any>>({});
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filtroEtapa, setFiltroEtapa] = useState<number | null>(etapaParam ? Number(etapaParam) : null);
-  const [detailModal, setDetailModal] = useState<{ isOpen: boolean; item: PersonaEtapaWithDetails | null }>({ isOpen: false, item: null });
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filtroEtapa, setFiltroEtapa] = useState<number | null>(
+    etapaParam ? Number(etapaParam) : null,
+  );
+  const [detailModal, setDetailModal] = useState<{
+    isOpen: boolean;
+    item: PersonaEtapaWithDetails | null;
+  }>({ isOpen: false, item: null });
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
     title: string;
     message: string;
     onConfirm: () => void;
-    type: 'danger' | 'warning' | 'info';
+    type: "danger" | "warning" | "info";
   }>({
     isOpen: false,
-    title: '',
-    message: '',
+    title: "",
+    message: "",
     onConfirm: () => {},
-    type: 'danger'
+    type: "danger",
   });
 
-  useEffect(() => { loadInitialData(); }, []);
+  useEffect(() => {
+    loadInitialData();
+  }, []);
 
   const getTipoPersona = (idPersona: number): string => {
-    if (personasNaturales.find(p => p.id_cliente === idPersona)) return 'natural';
-    if (personasTCP.find(p => p.id_cliente === idPersona)) return 'tcp';
-    if (personasJuridicas.find(p => p.id_cliente === idPersona)) return 'juridica';
-    return 'natural';
+    if (personasNaturales.find((p) => p.id_cliente === idPersona))
+      return "natural";
+    if (personasTCP.find((p) => p.id_cliente === idPersona)) return "tcp";
+    if (personasJuridicas.find((p) => p.id_cliente === idPersona))
+      return "juridica";
+    return "natural";
   };
 
   const getLabelTipo = (idPersona: number): string => {
     const tipo = getTipoPersona(idPersona);
     const labels: Record<string, string> = {
-      natural: 'Natural',
-      tcp: 'TCP',
-      juridica: 'Jurídica'
+      natural: "Natural",
+      tcp: "TCP",
+      juridica: "Jurídica",
     };
-    return labels[tipo] || 'Natural';
+    return labels[tipo] || "Natural";
   };
 
-  const getClienteById = (idPersona: number): ClienteNatural | ClienteTCP | ClienteJuridica | undefined => {
-    return personasNaturales.find(p => p.id_cliente === idPersona) || 
-           personasTCP.find(p => p.id_cliente === idPersona) ||
-           personasJuridicas.find(p => p.id_cliente === idPersona);
+  const getClienteById = (
+    idPersona: number,
+  ): ClienteNatural | ClienteTCP | ClienteJuridica | undefined => {
+    return (
+      personasNaturales.find((p) => p.id_cliente === idPersona) ||
+      personasTCP.find((p) => p.id_cliente === idPersona) ||
+      personasJuridicas.find((p) => p.id_cliente === idPersona)
+    );
   };
 
-  const getClienteNombre = (cliente: ClienteNatural | ClienteTCP | ClienteJuridica | undefined): string => {
-    if (!cliente) return 'N/A';
+  const getClienteNombre = (
+    cliente: ClienteNatural | ClienteTCP | ClienteJuridica | undefined,
+  ): string => {
+    if (!cliente) return "N/A";
     // ClienteNatural directo (de getPersonasNaturales)
-    if ('primer_apellido' in cliente && 'carnet_identidad' in cliente) {
+    if ("primer_apellido" in cliente && "carnet_identidad" in cliente) {
       const c = cliente as ClienteNatural;
-      return `${c.nombre || ''} ${c.primer_apellido || ''} ${c.segundo_apellido || ''}`.trim();
+      return `${c.nombre || ""} ${c.primer_apellido || ""} ${c.segundo_apellido || ""}`.trim();
     }
     // ClienteTCP directo
-    if ('primer_apellido' in cliente && 'numero_registro_proyecto' in cliente) {
+    if ("primer_apellido" in cliente && "numero_registro_proyecto" in cliente) {
       const c = cliente as ClienteTCP;
-      return `${c.nombre || ''} ${c.primer_apellido || ''} ${c.segundo_apellido || ''}`.trim();
+      return `${c.nombre || ""} ${c.primer_apellido || ""} ${c.segundo_apellido || ""}`.trim();
     }
     // ClienteJuridica directo
-    if ('codigo_reup' in cliente && (cliente as ClienteJuridica).codigo_reup) return `Entidad ${(cliente as ClienteJuridica).codigo_reup}`;
+    if ("codigo_reup" in cliente && (cliente as ClienteJuridica).codigo_reup)
+      return `Entidad ${(cliente as ClienteJuridica).codigo_reup}`;
     // Cliente con sub-objetos anidados (de getClientes)
     const cli = cliente as any;
     if (cli.cliente_natural) {
       const n = cli.cliente_natural;
-      return `${n.nombre || ''} ${n.primer_apellido || ''} ${n.segundo_apellido || ''}`.trim();
+      return `${n.nombre || ""} ${n.primer_apellido || ""} ${n.segundo_apellido || ""}`.trim();
     }
     if (cli.cliente_tcp) {
       const t = cli.cliente_tcp;
-      return `${t.nombre || ''} ${t.primer_apellido || ''} ${t.segundo_apellido || ''}`.trim();
+      return `${t.nombre || ""} ${t.primer_apellido || ""} ${t.segundo_apellido || ""}`.trim();
     }
-    if (cli.cliente_juridica) return cli.nombre || `Entidad ${cli.cliente_juridica.codigo_reup || ''}`;
-    if ('nombre' in cliente) return (cliente as { nombre: string }).nombre || 'N/A';
-    return 'N/A';
+    if (cli.cliente_juridica)
+      return cli.nombre || `Entidad ${cli.cliente_juridica.codigo_reup || ""}`;
+    if ("nombre" in cliente)
+      return (cliente as { nombre: string }).nombre || "N/A";
+    return "N/A";
   };
 
   const loadInitialData = async () => {
     try {
-const [todosClientesRes, personasRes, monedasRes, solicitudesRes, tcpRes, juridicasRes, liquidacionesRes] = await Promise.all([
+      const [
+        todosClientesRes,
+        personasRes,
+        monedasRes,
+        solicitudesRes,
+        tcpRes,
+        juridicasRes,
+        liquidacionesRes,
+      ] = await Promise.all([
         clientesService.getClientes(0, 10000),
         clientesService.getPersonasNaturales(),
         monedaService.getMonedas(0, 100),
         solicitudesService.getSolicitudes(0, 1000),
-        clientesService.getClientes(0, 10000, 'TCP'),
-        clientesService.getClientes(0, 10000, 'JURIDICA'),
-        personaLiquidacionService.getLiquidaciones(0, 10000)
+        clientesService.getClientes(0, 10000, "TCP"),
+        clientesService.getClientes(0, 10000, "JURIDICA"),
+        personaLiquidacionService.getLiquidaciones(0, 10000),
       ]);
       setTodosClientes(todosClientesRes);
       setPersonasNaturales(personasRes);
@@ -147,77 +231,98 @@ const [todosClientesRes, personasRes, monedasRes, solicitudesRes, tcpRes, juridi
       setSolicitudes(solicitudesRes);
       setLiquidaciones(liquidacionesRes);
       if (etapaParam) {
-        const etapaData = await etapasProyectoService.getEtapa(Number(etapaParam));
+        const etapaData = await etapasProyectoService.getEtapa(
+          Number(etapaParam),
+        );
         setCurrentEtapa(etapaData);
       }
-    } catch (error) { console.error('Error:', error); }
+    } catch (error) {
+      console.error("Error:", error);
+    }
   };
 
   const loadPersonas = async () => {
     try {
       let allPersonas: PersonaEtapaWithDetails[] = [];
       if (etapaParam) {
-        const data = await personaEtapaService.getPersonasByEtapa(Number(etapaParam));
-        allPersonas = data.map(p => ({ ...p }));
+        const data = await personaEtapaService.getPersonasByEtapa(
+          Number(etapaParam),
+        );
+        allPersonas = data.map((p) => ({ ...p }));
       } else {
         const solicitudes = await solicitudesService.getSolicitudes(0, 1000);
         const allEtapas: Etapa[] = [];
         for (const sol of solicitudes) {
-          const etapasData = await etapasProyectoService.getEtapasBySolicitud(sol.id_solicitud_servicio).catch(() => []);
+          const etapasData = await etapasProyectoService
+            .getEtapasBySolicitud(sol.id_solicitud_servicio)
+            .catch(() => []);
           allEtapas.push(...etapasData);
         }
         setEtapas(allEtapas);
         const results = await Promise.all(
-          allEtapas.map(e => personaEtapaService.getPersonasByEtapa(e.id_etapa).catch(() => []))
+          allEtapas.map((e) =>
+            personaEtapaService.getPersonasByEtapa(e.id_etapa).catch(() => []),
+          ),
         );
-        allPersonas = results.flat().map(p => ({ ...p }));
+        allPersonas = results.flat().map((p) => ({ ...p }));
       }
       setPersonasEtapa(allPersonas);
-    } catch (error) { console.error('Error:', error); }
+    } catch (error) {
+      console.error("Error:", error);
+    }
   };
 
   useEffect(() => {
-    if (view === 'list') loadPersonas();
+    if (view === "list") loadPersonas();
   }, [view]);
 
   const handleSave = async () => {
     try {
       const data: PersonaEtapaCreate = {
-        id_etapa: Number(formData.id_etapa) || (etapaParam ? Number(etapaParam) : 0),
+        id_etapa:
+          Number(formData.id_etapa) || (etapaParam ? Number(etapaParam) : 0),
         id_persona: Number(formData.id_persona) || 0,
         cobro: formData.cobro ? Number(formData.cobro) : 0,
-        id_moneda: formData.id_moneda ? Number(formData.id_moneda) : undefined
+        id_moneda: formData.id_moneda ? Number(formData.id_moneda) : undefined,
       };
       await personaEtapaService.createPersonaEtapa(data);
-      toast.success('Creado');
-      setView('list');
+      toast.success("Creado");
+      setView("list");
       resetForm();
       loadPersonas();
-    } catch (error: any) { toast.error(error.message || 'Error'); }
+    } catch (error: any) {
+      toast.error(error.message || "Error");
+    }
   };
 
-  const handleDelete = async (etapaId: number, personaId: number, nombre: string) => {
+  const handleDelete = async (
+    etapaId: number,
+    personaId: number,
+    nombre: string,
+  ) => {
     setConfirmModal({
       isOpen: true,
-      title: '¿Eliminar realizador?',
+      title: "¿Eliminar realizador?",
       message: `¿Está seguro de eliminar a "${nombre}" de esta etapa?`,
       onConfirm: async () => {
         try {
           await personaEtapaService.deletePersonaEtapa(etapaId, personaId);
-          toast.success('Eliminado');
+          toast.success("Eliminado");
           loadPersonas();
-        } catch (error: any) { toast.error(error.message || 'Error'); }
+        } catch (error: any) {
+          toast.error(error.message || "Error");
+        }
       },
-      type: 'danger'
+      type: "danger",
     });
   };
 
   const resetForm = () => {
     setFormData({});
     setPersonaSeleccionada(null);
-    setBusquedaPersona('');
+    setBusquedaPersona("");
     setSolicitudSeleccionada(null);
-    setBusquedaSolicitud('');
+    setBusquedaSolicitud("");
     setEtapasSolicitud([]);
     setShowDropdownPersona(false);
     setShowDropdownSolicitud(false);
@@ -226,69 +331,114 @@ const [todosClientesRes, personasRes, monedasRes, solicitudesRes, tcpRes, juridi
   const openForm = () => {
     resetForm();
     if (etapaParam) {
-      setFormData({ id_etapa: Number(etapaParam), id_moneda: currentEtapa?.id_moneda || '' });
+      setFormData({
+        id_etapa: Number(etapaParam),
+        id_moneda: currentEtapa?.id_moneda || "",
+      });
     }
-    setView('form');
+    setView("form");
   };
 
-  const getPersonaName = (id: number) => {
-    const p = personasNaturales.find(pn => pn.id_cliente === id);
-    if (p) return `${p.nombre} ${p.primer_apellido} ${p.segundo_apellido || ''}`.trim();
-    const tcp = personasTCP.find(t => t.id_cliente === id);
-    if (tcp) return `${tcp.nombre} ${tcp.primer_apellido} ${tcp.segundo_apellido || ''}`.trim();
-    const jur = personasJuridicas.find(j => j.id_cliente === id);
-    if (jur) return (jur as any).nombre || `Persona #${id}`;
-    const cli = todosClientes.find(c => c.id_cliente === id);
+  const componerNombre = (
+    ...partes: Array<string | null | undefined>
+  ): string =>
+    partes
+      .filter((parte): parte is string => !!parte && parte.trim() !== "")
+      .join(" ");
+
+  const getPersonaName = (id: number): string => {
+    const p = personasNaturales.find((pn) => pn.id_cliente === id);
+    if (p) {
+      const nombre = componerNombre(
+        p.nombre,
+        p.primer_apellido,
+        p.segundo_apellido,
+      );
+      if (nombre) return nombre;
+    }
+
+    // getClientes(..., "TCP"|"JURIDICA") devuelve objetos Cliente con los
+    // datos anidados en cliente_tcp / cliente_juridica (no tipos planos),
+    // por eso no existen primer_apellido/segundo_apellido en el nivel raíz.
+    const tcp = personasTCP.find(
+      (t) => t.id_cliente === id,
+    ) as unknown as Cliente;
+    if (tcp) {
+      const anidado = tcp.cliente_tcp
+        ? componerNombre(
+            tcp.cliente_tcp.nombre,
+            tcp.cliente_tcp.primer_apellido,
+            tcp.cliente_tcp.segundo_apellido,
+          )
+        : "";
+      return anidado || tcp.nombre || `Persona #${id}`;
+    }
+
+    const jur = personasJuridicas.find(
+      (j) => j.id_cliente === id,
+    ) as unknown as Cliente;
+    if (jur) {
+      return (
+        jur.nombre ||
+        (jur.cliente_juridica?.codigo_reup
+          ? `Entidad ${jur.cliente_juridica.codigo_reup}`
+          : `Persona #${id}`)
+      );
+    }
+
+    const cli = todosClientes.find((c) => c.id_cliente === id);
     if (cli) return cli.nombre || `Persona #${id}`;
     return `Persona #${id}`;
   };
 
   const getPersonaCI = (id: number) => {
-    const p = personasNaturales.find(pn => pn.id_cliente === id);
+    const p = personasNaturales.find((pn) => pn.id_cliente === id);
     if (p?.carnet_identidad) return p.carnet_identidad;
-    const t = personasTCP.find(tcp => tcp.id_cliente === id) as any;
+    const t = personasTCP.find((tcp) => tcp.id_cliente === id) as any;
     if (t?.carnet_identidad) return t.carnet_identidad;
-    return 'N/A';
+    return "N/A";
   };
 
   const getMonedaSymbol = (id?: number) => {
-    if (!id) return '';
-    const m = monedas.find(mo => mo.id_moneda === id);
-    return m?.simbolo || '';
+    if (!id) return "";
+    const m = monedas.find((mo) => mo.id_moneda === id);
+    return m?.simbolo || "";
   };
 
   const getMonedaDenominacion = (id?: number) => {
-    if (!id) return '';
-    const m = monedas.find(mo => mo.id_moneda === id);
-    return m?.denominacion || '';
+    if (!id) return "";
+    const m = monedas.find((mo) => mo.id_moneda === id);
+    return m?.denominacion || "";
   };
 
   const getSolicitudByEtapa = (idEtapa: number): number | undefined => {
-    const etapa = etapas.find(e => e.id_etapa === idEtapa);
+    const etapa = etapas.find((e) => e.id_etapa === idEtapa);
     return etapa?.id_solicitud_servicio ?? currentEtapa?.id_solicitud_servicio;
   };
 
   const filteredPersonas = useMemo(() => {
     const uniqueMap = new Map<number, PersonaEtapaWithDetails>();
-    personasEtapa.forEach(p => {
+    personasEtapa.forEach((p) => {
       if (!uniqueMap.has(p.id_persona)) {
         uniqueMap.set(p.id_persona, p);
       }
     });
     const uniquePersonas = Array.from(uniqueMap.values());
-    
+
     if (!searchTerm) return uniquePersonas;
-    return uniquePersonas.filter(p => {
+    return uniquePersonas.filter((p) => {
       const name = getPersonaName(p.id_persona);
       const ci = getPersonaCI(p.id_persona);
-      return name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        ci.toLowerCase().includes(searchTerm.toLowerCase());
+      return (
+        name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        ci.toLowerCase().includes(searchTerm.toLowerCase())
+      );
     });
   }, [personasEtapa, searchTerm, personasNaturales]);
 
   const totalesPagado = useMemo(() => {
     const map = new Map<string, number>();
-    liquidaciones.forEach(l => {
+    liquidaciones.forEach((l) => {
       if (l.confirmado && l.id_persona != null && l.id_etapa != null) {
         const key = `${l.id_etapa}-${l.id_persona}`;
         map.set(key, (map.get(key) || 0) + (Number(l.importe) || 0));
@@ -300,36 +450,44 @@ const [todosClientesRes, personasRes, monedasRes, solicitudesRes, tcpRes, juridi
   const personasFiltradas = useMemo(() => {
     if (!busquedaPersona) return todosClientes;
     const term = busquedaPersona.toLowerCase();
-    return todosClientes.filter(c =>
-      (c.nombre || '').toLowerCase().includes(term) ||
-      (c.nit || '').toLowerCase().includes(term)
+    return todosClientes.filter(
+      (c) =>
+        (c.nombre || "").toLowerCase().includes(term) ||
+        (c.nit || "").toLowerCase().includes(term),
     );
   }, [todosClientes, busquedaPersona]);
 
   const solicitudesFiltradas = useMemo(() => {
     if (!busquedaSolicitud) return solicitudes;
     const term = busquedaSolicitud.toLowerCase();
-    return solicitudes.filter(s =>
-      (s.numero || '').toLowerCase().includes(term) ||
-      (s.codigo_solicitud || '').toLowerCase().includes(term) ||
-      (s.nombres_rep || '').toLowerCase().includes(term) ||
-      (s.apellido1_rep || '').toLowerCase().includes(term) ||
-      (s.ci_rep || '').toLowerCase().includes(term) ||
-      (s.descripcion || '').toLowerCase().includes(term)
+    return solicitudes.filter(
+      (s) =>
+        (s.numero || "").toLowerCase().includes(term) ||
+        (s.codigo_solicitud || "").toLowerCase().includes(term) ||
+        (s.nombres_rep || "").toLowerCase().includes(term) ||
+        (s.apellido1_rep || "").toLowerCase().includes(term) ||
+        (s.ci_rep || "").toLowerCase().includes(term) ||
+        (s.descripcion || "").toLowerCase().includes(term),
     );
   }, [solicitudes, busquedaSolicitud]);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      if (dropdownPersonaRef.current && !dropdownPersonaRef.current.contains(e.target as Node)) {
+      if (
+        dropdownPersonaRef.current &&
+        !dropdownPersonaRef.current.contains(e.target as Node)
+      ) {
         setShowDropdownPersona(false);
       }
-      if (dropdownSolicitudRef.current && !dropdownSolicitudRef.current.contains(e.target as Node)) {
+      if (
+        dropdownSolicitudRef.current &&
+        !dropdownSolicitudRef.current.contains(e.target as Node)
+      ) {
         setShowDropdownSolicitud(false);
       }
     };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
   const handleSeleccionarPersona = (c: Cliente | ClienteConDetalles) => {
@@ -337,23 +495,25 @@ const [todosClientesRes, personasRes, monedasRes, solicitudesRes, tcpRes, juridi
     const nat = c.cliente_natural;
     const tcp = (c as any).cliente_tcp;
     const nombreCompleto = nat
-      ? `${nat.nombre || ''} ${nat.primer_apellido || ''} ${nat.segundo_apellido || ''}`.trim()
+      ? `${nat.nombre || ""} ${nat.primer_apellido || ""} ${nat.segundo_apellido || ""}`.trim()
       : tcp
-        ? `${tcp.nombre || ''} ${tcp.primer_apellido || ''} ${tcp.segundo_apellido || ''}`.trim()
-        : c.nombre || '';
+        ? `${tcp.nombre || ""} ${tcp.primer_apellido || ""} ${tcp.segundo_apellido || ""}`.trim()
+        : c.nombre || "";
     setBusquedaPersona(nombreCompleto);
     setShowDropdownPersona(false);
-    setFormData(prev => ({ ...prev, id_persona: c.id_cliente }));
+    setFormData((prev) => ({ ...prev, id_persona: c.id_cliente }));
   };
 
   const handleSeleccionarSolicitud = async (s: SolicitudServicio) => {
     setSolicitudSeleccionada(s);
-    setBusquedaSolicitud(s.numero || s.codigo_solicitud || '');
+    setBusquedaSolicitud(s.numero || s.codigo_solicitud || "");
     setShowDropdownSolicitud(false);
-    setFormData(prev => ({ ...prev, id_etapa: '' }));
+    setFormData((prev) => ({ ...prev, id_etapa: "" }));
     setEtapasSolicitud([]);
     try {
-      const etapas = await etapasProyectoService.getEtapasBySolicitud(s.id_solicitud_servicio);
+      const etapas = await etapasProyectoService.getEtapasBySolicitud(
+        s.id_solicitud_servicio,
+      );
       setEtapasSolicitud(etapas);
     } catch (error) {
       setEtapasSolicitud([]);
@@ -362,67 +522,68 @@ const [todosClientesRes, personasRes, monedasRes, solicitudesRes, tcpRes, juridi
 
   const handleCrearCliente = async () => {
     if (!nuevoClienteData.nombre) {
-      toast.error('El nombre es requerido');
+      toast.error("El nombre es requerido");
       return;
     }
     try {
       setGuardandoCliente(true);
-      if (nuevoClienteTipo === 'NATURAL') {
+      if (nuevoClienteTipo === "NATURAL") {
         const data = await clientesService.createCliente({
           codigo: `CLI-${Date.now()}`,
           nombre: nuevoClienteData.nombre,
-          tipo_persona: 'NATURAL',
-          nit: nuevoClienteData.carnet_identidad || '',
-          telefono: nuevoClienteData.telefono || '',
-          email: nuevoClienteData.correo || '',
-          direccion: '',
-          tipo_relacion: 'CLIENTE',
-          estado: 'ACTIVO'
+          tipo_persona: "NATURAL",
+          nit: nuevoClienteData.carnet_identidad || "",
+          telefono: nuevoClienteData.telefono || "",
+          email: nuevoClienteData.correo || "",
+          direccion: "",
+          tipo_relacion: "CLIENTE",
+          estado: "ACTIVO",
         });
-        setFormData(prev => ({ ...prev, id_persona: data.id_cliente }));
-        setBusquedaPersona(data.nombre || '');
+        setFormData((prev) => ({ ...prev, id_persona: data.id_cliente }));
+        setBusquedaPersona(data.nombre || "");
         setPersonaSeleccionada(data);
-        toast.success('Cliente creado');
-      } else if (nuevoClienteTipo === 'JURIDICA') {
+        toast.success("Cliente creado");
+      } else if (nuevoClienteTipo === "JURIDICA") {
         const data = await clientesService.createCliente({
           codigo: `CLI-${Date.now()}`,
           nombre: nuevoClienteData.nombre,
-          tipo_persona: 'JURIDICA',
-          nit: nuevoClienteData.codigo_nit || nuevoClienteData.codigo_reup || '',
-          telefono: nuevoClienteData.telefono || '',
-          email: nuevoClienteData.correo || '',
-          direccion: '',
-          tipo_relacion: 'CLIENTE',
-          estado: 'ACTIVO'
+          tipo_persona: "JURIDICA",
+          nit:
+            nuevoClienteData.codigo_nit || nuevoClienteData.codigo_reup || "",
+          telefono: nuevoClienteData.telefono || "",
+          email: nuevoClienteData.correo || "",
+          direccion: "",
+          tipo_relacion: "CLIENTE",
+          estado: "ACTIVO",
         });
-        setFormData(prev => ({ ...prev, id_persona: data.id_cliente }));
-        setBusquedaPersona(data.nombre || '');
+        setFormData((prev) => ({ ...prev, id_persona: data.id_cliente }));
+        setBusquedaPersona(data.nombre || "");
         setPersonaSeleccionada(data);
-        toast.success('Cliente creado');
-      } else if (nuevoClienteTipo === 'TCP') {
+        toast.success("Cliente creado");
+      } else if (nuevoClienteTipo === "TCP") {
         const data = await clientesService.createCliente({
           codigo: `CLI-${Date.now()}`,
           nombre: nuevoClienteData.nombre,
-          tipo_persona: 'TCP',
-          nit: nuevoClienteData.carnet_identidad || '',
-          telefono: nuevoClienteData.telefono || '',
-          email: nuevoClienteData.correo || '',
-          direccion: '',
-          tipo_relacion: 'CLIENTE',
-          estado: 'ACTIVO'
+          tipo_persona: "TCP",
+          nit: nuevoClienteData.carnet_identidad || "",
+          telefono: nuevoClienteData.telefono || "",
+          email: nuevoClienteData.correo || "",
+          direccion: "",
+          tipo_relacion: "CLIENTE",
+          estado: "ACTIVO",
         });
-        setFormData(prev => ({ ...prev, id_persona: data.id_cliente }));
-        setBusquedaPersona(data.nombre || '');
+        setFormData((prev) => ({ ...prev, id_persona: data.id_cliente }));
+        setBusquedaPersona(data.nombre || "");
         setPersonaSeleccionada(data);
-        toast.success('Cliente creado');
+        toast.success("Cliente creado");
       }
       setShowNuevoClienteModal(false);
       setNuevoClienteData({});
-      setNuevoClienteTipo('NATURAL');
-      queryClient.invalidateQueries({ queryKey: ['clientes-all'] });
-      queryClient.invalidateQueries({ queryKey: ['clientes'] });
+      setNuevoClienteTipo("NATURAL");
+      queryClient.invalidateQueries({ queryKey: ["clientes-all"] });
+      queryClient.invalidateQueries({ queryKey: ["clientes"] });
     } catch (error: any) {
-      toast.error(error.message || 'Error al crear cliente');
+      toast.error(error.message || "Error al crear cliente");
     } finally {
       setGuardandoCliente(false);
     }
@@ -433,7 +594,11 @@ const [todosClientesRes, personasRes, monedasRes, solicitudesRes, tcpRes, juridi
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div className="flex items-center gap-4">
           {etapaParam && (
-            <Button variant="outline" onClick={() => navigate(-1)} className="gap-2">
+            <Button
+              variant="outline"
+              onClick={() => navigate(-1)}
+              className="gap-2"
+            >
               <ArrowLeft className="h-4 w-4" />
             </Button>
           )}
@@ -443,7 +608,9 @@ const [todosClientesRes, personasRes, monedasRes, solicitudesRes, tcpRes, juridi
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Realizadores</h1>
             <p className="text-gray-500 mt-1">
-              {currentEtapa ? `Etapa: ${currentEtapa.nombre_etapa || `#${currentEtapa.numero_etapa}`}` : 'Gestión de realizadores'}
+              {currentEtapa
+                ? `Etapa: ${currentEtapa.nombre_etapa || `#${currentEtapa.numero_etapa}`}`
+                : "Gestión de realizadores"}
               {` · ${filteredPersonas.length} persona(s)`}
             </p>
           </div>
@@ -453,7 +620,7 @@ const [todosClientesRes, personasRes, monedasRes, solicitudesRes, tcpRes, juridi
           className="gap-2 bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300"
         >
           <Plus className="h-4 w-4" />
-Nuevo Realizador
+          Nuevo Realizador
         </Button>
       </div>
 
@@ -506,40 +673,70 @@ Nuevo Realizador
             <TableBody>
               {filteredPersonas.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-12 text-gray-500">
-                    {searchTerm ? 'No se encontraron realizadores que coincidan con la búsqueda' : 'No hay realizadores registrados'}
+                  <TableCell
+                    colSpan={7}
+                    className="text-center py-12 text-gray-500"
+                  >
+                    {searchTerm
+                      ? "No se encontraron realizadores que coincidan con la búsqueda"
+                      : "No hay realizadores registrados"}
                   </TableCell>
                 </TableRow>
               ) : (
                 filteredPersonas.map((item) => {
                   const persona = getClienteById(item.id_persona);
                   return (
-                    <TableRow key={`${item.id_etapa}-${item.id_persona}`} className="hover:bg-gray-50/50 transition-colors cursor-pointer" onClick={() => setDetailModal({ isOpen: true, item })}>
+                    <TableRow
+                      key={`${item.id_etapa}-${item.id_persona}`}
+                      className="hover:bg-gray-50/50 transition-colors cursor-pointer"
+                      onClick={() => setDetailModal({ isOpen: true, item })}
+                    >
                       <TableCell>
-<span className="font-medium text-gray-900">{getPersonaName(item.id_persona)}</span>
+                        <span className="font-medium text-gray-900">
+                          {getPersonaName(item.id_persona)}
+                        </span>
                       </TableCell>
                       <TableCell>
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          getTipoPersona(item.id_persona) === 'natural' ? 'bg-blue-100 text-blue-800' :
-                          getTipoPersona(item.id_persona) === 'tcp' ? 'bg-purple-100 text-purple-800' :
-                          'bg-green-100 text-green-800'
-                        }`}>
+                        <span
+                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                            getTipoPersona(item.id_persona) === "natural"
+                              ? "bg-blue-100 text-blue-800"
+                              : getTipoPersona(item.id_persona) === "tcp"
+                                ? "bg-purple-100 text-purple-800"
+                                : "bg-green-100 text-green-800"
+                          }`}
+                        >
                           {getLabelTipo(item.id_persona)}
                         </span>
                       </TableCell>
                       <TableCell className="font-medium text-gray-900">
-                        {getMonedaSymbol(item.id_moneda)} {formatCifra(item.cobro)}
+                        {getMonedaSymbol(item.id_moneda)}{" "}
+                        {formatCifra(item.cobro)}
                       </TableCell>
                       <TableCell className="font-medium text-teal-700">
-                        {getMonedaSymbol(item.id_moneda)} {formatCifra(totalesPagado.get(`${item.id_etapa}-${item.id_persona}`) || 0)}
+                        {getMonedaSymbol(item.id_moneda)}{" "}
+                        {formatCifra(
+                          totalesPagado.get(
+                            `${item.id_etapa}-${item.id_persona}`,
+                          ) || 0,
+                        )}
                       </TableCell>
                       <TableCell className="font-medium">
                         {(() => {
-                          const pagado = totalesPagado.get(`${item.id_etapa}-${item.id_persona}`) || 0;
-                          const saldo = Number(item.cobro || 0) - Number(pagado);
+                          const pagado =
+                            totalesPagado.get(
+                              `${item.id_etapa}-${item.id_persona}`,
+                            ) || 0;
+                          const saldo =
+                            Number(item.cobro || 0) - Number(pagado);
                           return (
-                            <span className={saldo > 0 ? 'text-red-600' : 'text-green-600'}>
-                              {getMonedaSymbol(item.id_moneda)} {formatCifra(saldo)}
+                            <span
+                              className={
+                                saldo > 0 ? "text-red-600" : "text-green-600"
+                              }
+                            >
+                              {getMonedaSymbol(item.id_moneda)}{" "}
+                              {formatCifra(saldo)}
                             </span>
                           );
                         })()}
@@ -548,19 +745,32 @@ Nuevo Realizador
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => navigate(`/proyectos/liquidaciones?solicitud=${getSolicitudByEtapa(item.id_etapa) || ''}&etapa=${item.id_etapa}&persona=${item.id_persona}`)}
+                          onClick={() =>
+                            navigate(
+                              `/proyectos/liquidaciones?solicitud=${getSolicitudByEtapa(item.id_etapa) || ""}&etapa=${item.id_etapa}&persona=${item.id_persona}`,
+                            )
+                          }
                           className="gap-1 text-teal-600 border-teal-200 hover:bg-teal-50 hover:text-teal-700"
                         >
                           <DollarSign className="h-3.5 w-3.5" />
                           Liquidaciones
                         </Button>
                       </TableCell>
-                      <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                      <TableCell
+                        className="text-right"
+                        onClick={(e) => e.stopPropagation()}
+                      >
                         <div className="flex justify-end gap-2">
                           <Button
                             variant="ghost"
                             size="icon"
-                            onClick={() => handleDelete(item.id_etapa, item.id_persona, getPersonaName(item.id_persona))}
+                            onClick={() =>
+                              handleDelete(
+                                item.id_etapa,
+                                item.id_persona,
+                                getPersonaName(item.id_persona),
+                              )
+                            }
                             className="text-red-600 hover:text-red-800 hover:bg-red-50 h-8 w-8"
                             title="Eliminar"
                           >
@@ -587,11 +797,24 @@ Nuevo Realizador
             <Users className="h-8 w-8 text-white" />
           </div>
           <div>
-            <h2 className="text-2xl font-bold text-gray-900">Nuevo Realizador</h2>
-            <p className="text-gray-500 mt-1">{currentEtapa ? `Etapa: ${currentEtapa.nombre_etapa || `#${currentEtapa.numero_etapa}`}` : 'Asignar realizador a etapa'}</p>
+            <h2 className="text-2xl font-bold text-gray-900">
+              Nuevo Realizador
+            </h2>
+            <p className="text-gray-500 mt-1">
+              {currentEtapa
+                ? `Etapa: ${currentEtapa.nombre_etapa || `#${currentEtapa.numero_etapa}`}`
+                : "Asignar realizador a etapa"}
+            </p>
           </div>
         </div>
-        <Button variant="outline" onClick={() => { setView('list'); resetForm(); }} className="gap-2">
+        <Button
+          variant="outline"
+          onClick={() => {
+            setView("list");
+            resetForm();
+          }}
+          className="gap-2"
+        >
           <ArrowLeft className="h-4 w-4" />
           Volver
         </Button>
@@ -617,14 +840,22 @@ Nuevo Realizador
                     placeholder="Buscar persona..."
                     value={busquedaPersona}
                     disabled={!!personaSeleccionada}
-                    onChange={(e) => { setBusquedaPersona(e.target.value); setShowDropdownPersona(true); setPersonaSeleccionada(null); }}
+                    onChange={(e) => {
+                      setBusquedaPersona(e.target.value);
+                      setShowDropdownPersona(true);
+                      setPersonaSeleccionada(null);
+                    }}
                     onFocus={() => setShowDropdownPersona(true)}
                     className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white disabled:bg-gray-100"
                   />
                   {personaSeleccionada && (
                     <button
                       type="button"
-                      onClick={() => { setPersonaSeleccionada(null); setBusquedaPersona(''); setFormData(prev => ({ ...prev, id_persona: '' })); }}
+                      onClick={() => {
+                        setPersonaSeleccionada(null);
+                        setBusquedaPersona("");
+                        setFormData((prev) => ({ ...prev, id_persona: "" }));
+                      }}
                       className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-red-500"
                     >
                       <X className="h-4 w-4" />
@@ -633,34 +864,46 @@ Nuevo Realizador
                 </div>
                 {showDropdownPersona && personasFiltradas.length > 0 && (
                   <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-auto">
-                    {personasFiltradas.map(p => {
+                    {personasFiltradas.map((p) => {
                       const nat = p.cliente_natural;
                       const tcp = (p as any).cliente_tcp;
                       const nombreCompleto = nat
-                        ? `${nat.nombre || ''} ${nat.primer_apellido || ''} ${nat.segundo_apellido || ''}`.trim()
+                        ? `${nat.nombre || ""} ${nat.primer_apellido || ""} ${nat.segundo_apellido || ""}`.trim()
                         : tcp
-                          ? `${tcp.nombre || ''} ${tcp.primer_apellido || ''} ${tcp.segundo_apellido || ''}`.trim()
+                          ? `${tcp.nombre || ""} ${tcp.primer_apellido || ""} ${tcp.segundo_apellido || ""}`.trim()
                           : p.nombre;
-                      const ci = nat?.carnet_identidad || tcp?.carnet_identidad || '';
+                      const ci =
+                        nat?.carnet_identidad || tcp?.carnet_identidad || "";
                       return (
-                      <button
-                        key={p.id_cliente}
-                        type="button"
-                        onClick={() => handleSeleccionarPersona(p)}
-                        className="w-full text-left px-4 py-2 hover:bg-teal-50 transition-colors border-b border-gray-100 last:border-b-0"
-                      >
-                        <span className="font-medium text-gray-900">{nombreCompleto}</span>
-                        {ci && <span className="text-gray-400 text-sm ml-2">- {ci}</span>}
-                        <span className="text-xs text-gray-400 ml-2">({p.tipo_persona})</span>
-                      </button>
-                    )})}
+                        <button
+                          key={p.id_cliente}
+                          type="button"
+                          onClick={() => handleSeleccionarPersona(p)}
+                          className="w-full text-left px-4 py-2 hover:bg-teal-50 transition-colors border-b border-gray-100 last:border-b-0"
+                        >
+                          <span className="font-medium text-gray-900">
+                            {nombreCompleto}
+                          </span>
+                          {ci && (
+                            <span className="text-gray-400 text-sm ml-2">
+                              - {ci}
+                            </span>
+                          )}
+                          <span className="text-xs text-gray-400 ml-2">
+                            ({p.tipo_persona})
+                          </span>
+                        </button>
+                      );
+                    })}
                   </div>
                 )}
-                {showDropdownPersona && personasFiltradas.length === 0 && busquedaPersona && (
-                  <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg p-4 text-center text-gray-500">
-                    No se encontraron resultados
-                  </div>
-                )}
+                {showDropdownPersona &&
+                  personasFiltradas.length === 0 &&
+                  busquedaPersona && (
+                    <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg p-4 text-center text-gray-500">
+                      No se encontraron resultados
+                    </div>
+                  )}
               </div>
               <div className="pt-7">
                 <button
@@ -674,7 +917,7 @@ Nuevo Realizador
               </div>
             </div>
 
-{/* Fila 2: Solicitud + Etapa (solo sin etapaParam) - lado a lado */}
+            {/* Fila 2: Solicitud + Etapa (solo sin etapaParam) - lado a lado */}
             {!etapaParam && (
               <div className="flex gap-2 items-start">
                 <div ref={dropdownSolicitudRef} className="relative flex-1">
@@ -685,51 +928,68 @@ Nuevo Realizador
                       type="text"
                       placeholder="Buscar solicitud..."
                       value={busquedaSolicitud}
-                      onChange={(e) => { setBusquedaSolicitud(e.target.value); setShowDropdownSolicitud(true); setSolicitudSeleccionada(null); }}
+                      onChange={(e) => {
+                        setBusquedaSolicitud(e.target.value);
+                        setShowDropdownSolicitud(true);
+                        setSolicitudSeleccionada(null);
+                      }}
                       onFocus={() => setShowDropdownSolicitud(true)}
                       className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white"
                     />
                   </div>
                   {showDropdownSolicitud && solicitudesFiltradas.length > 0 && (
                     <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-auto">
-                      {solicitudesFiltradas.map(s => (
+                      {solicitudesFiltradas.map((s) => (
                         <button
                           key={s.id_solicitud_servicio}
                           type="button"
                           onClick={() => handleSeleccionarSolicitud(s)}
                           className="w-full text-left px-4 py-2 hover:bg-teal-50 transition-colors border-b border-gray-100 last:border-b-0"
                         >
-                          <span className="font-medium text-gray-900">{s.numero || s.codigo_solicitud}</span>
-                          {s.descripcion && <span className="text-gray-500 text-sm ml-2">- {s.descripcion}</span>}
+                          <span className="font-medium text-gray-900">
+                            {s.numero || s.codigo_solicitud}
+                          </span>
+                          {s.descripcion && (
+                            <span className="text-gray-500 text-sm ml-2">
+                              - {s.descripcion}
+                            </span>
+                          )}
                         </button>
                       ))}
                     </div>
                   )}
-                  {showDropdownSolicitud && solicitudesFiltradas.length === 0 && busquedaSolicitud && (
-                    <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg p-4 text-center text-gray-500">
-                      No se encontraron resultados
-                    </div>
-                  )}
+                  {showDropdownSolicitud &&
+                    solicitudesFiltradas.length === 0 &&
+                    busquedaSolicitud && (
+                      <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg p-4 text-center text-gray-500">
+                        No se encontraron resultados
+                      </div>
+                    )}
                 </div>
                 <div className="flex-1">
                   <Label className="text-sm font-medium">Etapa *</Label>
                   <select
                     className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white"
-                    value={formData.id_etapa || ''}
+                    value={formData.id_etapa || ""}
                     onChange={(e: any) => {
                       const etapaId = Number(e.target.value);
-                      const etapaSel = etapasSolicitud.find(et => et.id_etapa === etapaId);
-                      setFormData({ 
-                        ...formData, 
+                      const etapaSel = etapasSolicitud.find(
+                        (et) => et.id_etapa === etapaId,
+                      );
+                      setFormData({
+                        ...formData,
                         id_etapa: etapaId,
-                        id_moneda: etapaSel?.id_moneda || formData.id_moneda || ''
+                        id_moneda:
+                          etapaSel?.id_moneda || formData.id_moneda || "",
                       });
                     }}
                     disabled={!solicitudSeleccionada}
                   >
                     <option value="">Seleccionar etapa</option>
-                    {etapasSolicitud.map(e => (
-                      <option key={e.id_etapa} value={e.id_etapa}>{e.nombre_etapa || `Etapa #${e.numero_etapa}`}</option>
+                    {etapasSolicitud.map((e) => (
+                      <option key={e.id_etapa} value={e.id_etapa}>
+                        {e.nombre_etapa || `Etapa #${e.numero_etapa}`}
+                      </option>
                     ))}
                   </select>
                 </div>
@@ -740,23 +1000,53 @@ Nuevo Realizador
             <div className="flex gap-2 items-start">
               <div className="flex-1">
                 <Label className="text-sm font-medium">Cobro</Label>
-                <Input type="number" step="0.01" value={formData.cobro || ''} onChange={(e: any) => setFormData({ ...formData, cobro: e.target.value })} className="mt-1" placeholder="0.00" />
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={formData.cobro || ""}
+                  onChange={(e: any) =>
+                    setFormData({ ...formData, cobro: e.target.value })
+                  }
+                  className="mt-1"
+                  placeholder="0.00"
+                />
               </div>
               <div className="flex-1">
                 <Label className="text-sm font-medium">Moneda</Label>
-                <select className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white" value={formData.id_moneda || currentEtapa?.id_moneda || ''} onChange={(e: any) => setFormData({ ...formData, id_moneda: e.target.value })}>
+                <select
+                  className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white"
+                  value={formData.id_moneda || currentEtapa?.id_moneda || ""}
+                  onChange={(e: any) =>
+                    setFormData({ ...formData, id_moneda: e.target.value })
+                  }
+                >
                   <option value="">Seleccionar moneda</option>
-                  {monedas.map(m => <option key={m.id_moneda} value={m.id_moneda}>{m.denominacion}</option>)}
+                  {monedas.map((m) => (
+                    <option key={m.id_moneda} value={m.id_moneda}>
+                      {m.denominacion}
+                    </option>
+                  ))}
                 </select>
               </div>
             </div>
           </div>
           <div className="flex gap-3 mt-8 pt-6 border-t">
-            <Button onClick={handleSave} className="gap-2 bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300">
+            <Button
+              onClick={handleSave}
+              className="gap-2 bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300"
+            >
               <Save className="h-4 w-4" />
               Guardar
             </Button>
-            <Button variant="outline" onClick={() => { setView('list'); resetForm(); }}>Cancelar</Button>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setView("list");
+                resetForm();
+              }}
+            >
+              Cancelar
+            </Button>
           </div>
         </CardContent>
       </Card>
@@ -765,8 +1055,8 @@ Nuevo Realizador
 
   return (
     <div className="p-6">
-      {view === 'list' && renderList()}
-      {view === 'form' && renderForm()}
+      {view === "list" && renderList()}
+      {view === "form" && renderForm()}
 
       <ConfirmModal
         isOpen={confirmModal.isOpen}
@@ -777,112 +1067,168 @@ Nuevo Realizador
         onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
       />
 
-      {detailModal.isOpen && detailModal.item && createPortal(
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 animate-fade-in">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-auto animate-scale-in">
-            <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-teal-50 to-cyan-50">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <div className="p-3 rounded-xl bg-gradient-to-br from-teal-500 to-cyan-600 text-white shadow-lg">
-                    <Users className="h-7 w-7" />
+      {detailModal.isOpen &&
+        detailModal.item &&
+        createPortal(
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 animate-fade-in">
+            <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-auto animate-scale-in">
+              <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-teal-50 to-cyan-50">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="p-3 rounded-xl bg-gradient-to-br from-teal-500 to-cyan-600 text-white shadow-lg">
+                      <Users className="h-7 w-7" />
+                    </div>
+                    <div>
+                      <h3 className="text-2xl font-bold text-gray-900">
+                        {getPersonaName(detailModal.item.id_persona)}
+                      </h3>
+                      {(() => {
+                        const cli = getClienteById(detailModal.item.id_persona);
+                        return (
+                          <p className="text-sm text-gray-500 font-mono">
+                            Codigo cliente:{" "}
+                            {(cli as any)?.codigo || (cli as any)?.nit || "N/A"}
+                          </p>
+                        );
+                      })()}
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="text-2xl font-bold text-gray-900">{getPersonaName(detailModal.item.id_persona)}</h3>
-                    {(() => {
-                      const cli = getClienteById(detailModal.item.id_persona);
-                      return <p className="text-sm text-gray-500 font-mono">Codigo cliente: {(cli as any)?.codigo || (cli as any)?.nit || 'N/A'}</p>;
-                    })()}
-                  </div>
-                </div>
-                <button onClick={() => setDetailModal({ isOpen: false, item: null })} className="p-2 hover:bg-gray-200 rounded-full transition-colors">
-                  <X className="h-6 w-6 text-gray-500" />
-                </button>
-              </div>
-            </div>
-            <div className="p-6 space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="bg-gradient-to-br from-teal-50 to-cyan-50 p-4 rounded-xl border border-teal-100">
-                  <p className="text-xs text-teal-600 uppercase tracking-wider mb-1">Cobro</p>
-                  <p className="font-bold text-teal-900 text-xl">{getMonedaSymbol(detailModal.item.id_moneda)} {formatCifra(detailModal.item.cobro)}</p>
-                </div>
-                <div className="bg-gray-50 p-4 rounded-xl">
-                  <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Moneda</p>
-                  <p className="font-bold text-gray-900">{getMonedaDenominacion(detailModal.item.id_moneda) || 'N/A'}</p>
-                </div>
-                <div className="bg-gray-50 p-4 rounded-xl">
-                  <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Liquidada</p>
-                  {detailModal.item.liquidada ? (
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Sí</span>
-                  ) : (
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">No</span>
-                  )}
-                </div>
-                <div className="bg-gray-50 p-4 rounded-xl">
-                  <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Por Cobrar</p>
-                  <p className="font-bold text-gray-900">{getMonedaSymbol(detailModal.item.id_moneda) || ''} {formatCifra(detailModal.item.por_cobrar)}</p>
+                  <button
+                    onClick={() =>
+                      setDetailModal({ isOpen: false, item: null })
+                    }
+                    className="p-2 hover:bg-gray-200 rounded-full transition-colors"
+                  >
+                    <X className="h-6 w-6 text-gray-500" />
+                  </button>
                 </div>
               </div>
-            </div>
-            <div className="p-6 border-t border-gray-200 bg-gray-50 flex justify-end gap-2">
-              <Button
-                variant="outline"
-                onClick={() => detailModal.item && navigate(`/proyectos/liquidaciones?persona=${detailModal.item.id_persona}`)}
-                className="gap-2 text-teal-600 border-teal-200 hover:bg-teal-50"
-              >
-                <Eye className="h-4 w-4" />
-                Ver Liquidaciones
-              </Button>
-              <button onClick={() => setDetailModal({ isOpen: false, item: null })} className="px-6 py-3 text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors font-medium">Cerrar</button>
-            </div>
-          </div>
-        </div>,
-        document.body
-      )}
-
-      {showNuevoClienteModal && createPortal(
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 animate-fade-in">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-auto animate-scale-in">
-            <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-teal-50 to-cyan-50">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <div className="p-3 rounded-xl bg-gradient-to-br from-teal-500 to-cyan-600 text-white shadow-lg">
-                    <Users className="h-7 w-7" />
+              <div className="p-6 space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="bg-gradient-to-br from-teal-50 to-cyan-50 p-4 rounded-xl border border-teal-100">
+                    <p className="text-xs text-teal-600 uppercase tracking-wider mb-1">
+                      Cobro
+                    </p>
+                    <p className="font-bold text-teal-900 text-xl">
+                      {getMonedaSymbol(detailModal.item.id_moneda)}{" "}
+                      {formatCifra(detailModal.item.cobro)}
+                    </p>
                   </div>
-                  <div>
-                    <h3 className="text-xl font-bold text-gray-900">Nuevo Cliente</h3>
-                    <p className="text-sm text-gray-500">Crear nuevo cliente para asignar como realizador</p>
+                  <div className="bg-gray-50 p-4 rounded-xl">
+                    <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">
+                      Moneda
+                    </p>
+                    <p className="font-bold text-gray-900">
+                      {getMonedaDenominacion(detailModal.item.id_moneda) ||
+                        "N/A"}
+                    </p>
+                  </div>
+                  <div className="bg-gray-50 p-4 rounded-xl">
+                    <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">
+                      Liquidada
+                    </p>
+                    {detailModal.item.liquidada ? (
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                        Sí
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                        No
+                      </span>
+                    )}
+                  </div>
+                  <div className="bg-gray-50 p-4 rounded-xl">
+                    <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">
+                      Por Cobrar
+                    </p>
+                    <p className="font-bold text-gray-900">
+                      {getMonedaSymbol(detailModal.item.id_moneda) || ""}{" "}
+                      {formatCifra(detailModal.item.por_cobrar)}
+                    </p>
                   </div>
                 </div>
-                <button onClick={() => setShowNuevoClienteModal(false)} className="p-2 hover:bg-gray-200 rounded-full transition-colors">
-                  <X className="h-6 w-6 text-gray-500" />
-                </button>
               </div>
-            </div>
-            <div className="p-6">
-              <ClienteForm
-                editingCliente={null}
-                isProveedorView={false}
-                onCancel={() => {
-                  setShowNuevoClienteModal(false);
-                }}
-                onSubmit={async (data: any) => {
-                  try {
-                    const nuevoCliente = await clientesService.createCliente(data);
-                    handleSeleccionarPersona(nuevoCliente);
-                    setShowNuevoClienteModal(false);
-                    toast.success('Cliente creado');
-                    queryClient.invalidateQueries({ queryKey: ['clientes-all'] });
-                    queryClient.invalidateQueries({ queryKey: ['clientes'] });
-                  } catch (error: any) {
-                    toast.error(error.message || 'Error al crear cliente');
+              <div className="p-6 border-t border-gray-200 bg-gray-50 flex justify-end gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() =>
+                    detailModal.item &&
+                    navigate(
+                      `/proyectos/liquidaciones?persona=${detailModal.item.id_persona}`,
+                    )
                   }
-                }}
-              />
+                  className="gap-2 text-teal-600 border-teal-200 hover:bg-teal-50"
+                >
+                  <Eye className="h-4 w-4" />
+                  Ver Liquidaciones
+                </Button>
+                <button
+                  onClick={() => setDetailModal({ isOpen: false, item: null })}
+                  className="px-6 py-3 text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors font-medium"
+                >
+                  Cerrar
+                </button>
+              </div>
             </div>
-          </div>
-        </div>,
-        document.body
-      )}
+          </div>,
+          document.body,
+        )}
+
+      {showNuevoClienteModal &&
+        createPortal(
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 animate-fade-in">
+            <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-auto animate-scale-in">
+              <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-teal-50 to-cyan-50">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="p-3 rounded-xl bg-gradient-to-br from-teal-500 to-cyan-600 text-white shadow-lg">
+                      <Users className="h-7 w-7" />
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-bold text-gray-900">
+                        Nuevo Cliente
+                      </h3>
+                      <p className="text-sm text-gray-500">
+                        Crear nuevo cliente para asignar como realizador
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setShowNuevoClienteModal(false)}
+                    className="p-2 hover:bg-gray-200 rounded-full transition-colors"
+                  >
+                    <X className="h-6 w-6 text-gray-500" />
+                  </button>
+                </div>
+              </div>
+              <div className="p-6">
+                <ClienteForm
+                  editingCliente={null}
+                  isProveedorView={false}
+                  onCancel={() => {
+                    setShowNuevoClienteModal(false);
+                  }}
+                  onSubmit={async (data: any) => {
+                    try {
+                      const nuevoCliente =
+                        await clientesService.createCliente(data);
+                      handleSeleccionarPersona(nuevoCliente);
+                      setShowNuevoClienteModal(false);
+                      toast.success("Cliente creado");
+                      queryClient.invalidateQueries({
+                        queryKey: ["clientes-all"],
+                      });
+                      queryClient.invalidateQueries({ queryKey: ["clientes"] });
+                    } catch (error: any) {
+                      toast.error(error.message || "Error al crear cliente");
+                    }
+                  }}
+                />
+              </div>
+            </div>
+          </div>,
+          document.body,
+        )}
     </div>
   );
 }
