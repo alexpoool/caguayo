@@ -89,3 +89,19 @@ class TestValidacionStockPropio:
         )
         assert response.status_code == 200
         assert "valido" in response.json()
+
+
+class TestCalculoMonto:
+    def test_calcular_monto_items(self):
+        from src.services.contrato_service import _calcular_monto_items
+
+        assert _calcular_monto_items([]) == Decimal("0.00")
+        assert _calcular_monto_items(
+            [
+                {"cantidad": 2, "precio_venta": 10.5},
+                {"cantidad": 1, "precio_venta": 3},
+            ]
+        ) == Decimal("24.00")
+        assert _calcular_monto_items(
+            [{"cantidad": 3, "precio_venta": "7.33"}]
+        ) == Decimal("21.99")

@@ -788,6 +788,17 @@ async def map_venta_efectivo_to_read(
     )
 
 
+def _calcular_monto_items(items_data: list) -> Decimal:
+    """Monto total de una venta: Σ cantidad × precio de venta."""
+    return sum(
+        (
+            Decimal(str(item["cantidad"])) * Decimal(str(item["precio_venta"]))
+            for item in items_data
+        ),
+        Decimal("0.00"),
+    )
+
+
 class VentaEfectivoService:
     @staticmethod
     async def create(
@@ -795,6 +806,9 @@ class VentaEfectivoService:
     ) -> VentaEfectivoReadWithDetails:
         data_dict = data.model_dump(exclude_none=True)
         items_data = data_dict.pop("items", [])
+
+        # El monto se calcula siempre desde los items (mismo criterio que FacturaService)
+        data.monto = _calcular_monto_items(items_data)
 
         # Validar que la dependencia exista
         if data.id_dependencia:
