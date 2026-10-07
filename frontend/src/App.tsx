@@ -661,7 +661,7 @@ function App() {
         )}
         </aside>
         )}
-        <header className={`col-start-${hideSidebar ? '1' : '2'} col-end-${hideSidebar ? '2' : '3'} row-start-1 row-end-2 sticky top-0 z-40 bg-gradient-to-r from-panel-900 via-panel-700 to-panel-900 text-white shadow-md px-6 py-4 h-16 flex items-center justify-between`}>
+        <header className={`${hideSidebar ? 'col-start-1 col-end-2' : 'col-start-2 col-end-3'} row-start-1 row-end-2 sticky top-0 z-40 bg-gradient-to-r from-panel-900 via-panel-700 to-panel-900 text-white shadow-md px-6 py-4 h-16 flex items-center justify-between`}>
           <div className="flex items-center gap-2">
             <Link
               to="/"
@@ -729,8 +729,8 @@ function App() {
             </Link>
           </div>
         </header>
-        <div className={`col-start-${hideSidebar ? '1' : '2'} col-end-${hideSidebar ? '2' : '3'} row-start-2 row-end-3 min-w-0 flex flex-col`}>
-          <main className={`flex-1 overflow-y-auto ${hideSidebar ? 'bg-surface' : 'bg-gray-50'} p-8`}>
+        <div className={`${hideSidebar ? 'col-start-1 col-end-2' : 'col-start-2 col-end-3'} row-start-2 row-end-3 min-w-0 flex flex-col`}>
+          <main className={`flex-1 overflow-y-auto ${hideSidebar ? 'bg-surface' : 'bg-gray-50'} ${hideSidebar ? 'p-6' : 'p-8'}`}>
             <div className="animate-fade-in-up animation-fill-both">
               <Routes>
                 <Route
