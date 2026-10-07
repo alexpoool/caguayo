@@ -240,12 +240,17 @@ class ExistenciaRepository:
         id_dependencia: Optional[int] = None,
         id_anexo: Optional[int] = None,
         movimiento_id: Optional[int] = None,
+        id_venta_efectivo: Optional[int] = None,
     ) -> Dict[str, Any]:
         """Valida si hay suficiente existencia para una transacción.
 
         Considera:
         - Stock físico (consignación o movimientos confirmados)
         - Stock comprometido (movimientos pendientes de tipo salida excepto el propio)
+
+        `id_venta_efectivo`: al editar una venta en efectivo, excluye sus
+        propios movimientos pendientes del comprometido y devuelve su cantidad
+        ya confirmada, para no auto-descontarse dos veces.
         """
 
         data = await self.get_existencia_producto(
@@ -275,11 +280,41 @@ class ExistenciaRepository:
                 f"{comprometido_query.text} AND m.id_movimiento != :movimiento_id"
             )
             comprometido_params["movimiento_id"] = movimiento_id
+        if id_venta_efectivo is not None:
+            # Excluir los movimientos pendientes de la propia venta en edición
+            comprometido_query = text(
+                f"{comprometido_query.text}"
+                " AND (m.id_venta_efectivo IS NULL"
+                " OR m.id_venta_efectivo != :id_venta_efectivo)"
+            )
+            comprometido_params["id_venta_efectivo"] = id_venta_efectivo
 
         comp_result = await db.exec(comprometido_query, params=comprometido_params)
         stock_comprometido = comp_result.scalar() or 0
 
-        disponible = stock_total - stock_comprometido
+        # Cantidad que esta venta ya tiene confirmada (ya descuenta del stock
+        # físico); se suma de vuelta para no auto-descontarla al revalidarla.
+        own_confirmado = 0
+        if id_venta_efectivo is not None:
+            own_query = text("""
+                SELECT COALESCE(SUM(m.cantidad), 0)
+                FROM movimiento m
+                JOIN tipo_movimiento tm ON m.id_tipo_movimiento = tm.id_tipo_movimiento
+                WHERE m.id_producto = :id_producto
+                  AND m.id_venta_efectivo = :id_venta_efectivo
+                  AND m.estado = 'confirmado'
+                  AND tm.factor < 0
+            """)
+            own_result = await db.exec(
+                own_query,
+                params={
+                    "id_producto": id_producto,
+                    "id_venta_efectivo": id_venta_efectivo,
+                },
+            )
+            own_confirmado = own_result.scalar() or 0
+
+        disponible = stock_total + own_confirmado - stock_comprometido
 
         return {
             "id_producto": id_producto,

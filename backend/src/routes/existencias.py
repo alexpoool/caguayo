@@ -20,6 +20,7 @@ class ValidarMultipleRequest(BaseModel):
     productos: List[dict]
     id_dependencia: Optional[int] = None
     id_anexo: Optional[int] = None
+    id_venta_efectivo: Optional[int] = None
 
 
 class ExistenciaResponse(BaseModel):
@@ -131,7 +132,8 @@ async def validar_multiple(
     """Valida disponibilidad de múltiples productos."""
     try:
         return await ExistenciaService.validar_multiple(
-            db, data.productos, data.id_dependencia, data.id_anexo
+            db, data.productos, data.id_dependencia, data.id_anexo,
+            id_venta_efectivo=data.id_venta_efectivo,
         )
     except Exception as e:
         raise HTTPException(

@@ -55,3 +55,37 @@ class TestVentaEfectivoDTOs:
             id_anexo=9,
         )
         assert i.id_anexo == 9
+
+
+class TestValidacionStockPropio:
+    async def test_repo_validar_acepta_id_venta_efectivo(self, db_session):
+        """El parámetro existe y una venta inexistente no altera el resultado."""
+        from src.repository.existencia_repo import ExistenciaRepository
+
+        repo = ExistenciaRepository()
+        r1 = await repo.validar_disponibilidad(db_session, 1, 1)
+        r2 = await repo.validar_disponibilidad(
+            db_session, 1, 1, id_venta_efectivo=999999
+        )
+        assert r2["disponible"] == r1["disponible"]
+
+    async def test_service_validar_multiple_acepta_id_venta_efectivo(self, db_session):
+        from src.services.existencia_service import ExistenciaService
+
+        r = await ExistenciaService.validar_multiple(
+            db_session,
+            [{"id_producto": 1, "cantidad": 1}],
+            id_venta_efectivo=999999,
+        )
+        assert "valido" in r
+
+    def test_endpoint_validar_multiples_acepta_id_venta_efectivo(self, client):
+        response = client.post(
+            "/api/v1/existencias/validar-multiples",
+            json={
+                "productos": [{"id_producto": 1, "cantidad": 1}],
+                "id_venta_efectivo": 999999,
+            },
+        )
+        assert response.status_code == 200
+        assert "valido" in response.json()

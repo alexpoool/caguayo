@@ -55,6 +55,7 @@ class ExistenciaService:
         cantidad: int,
         id_dependencia: Optional[int] = None,
         id_anexo: Optional[int] = None,
+        id_venta_efectivo: Optional[int] = None,
     ) -> Dict[str, Any]:
         """Valida si hay suficiente existencia.
 
@@ -63,7 +64,8 @@ class ExistenciaService:
             mensaje: str - Descripción del resultado
         """
         return await existencia_repo.validar_disponibilidad(
-            db, id_producto, cantidad, id_dependencia, id_anexo
+            db, id_producto, cantidad, id_dependencia, id_anexo,
+            id_venta_efectivo=id_venta_efectivo,
         )
 
     @staticmethod
@@ -72,6 +74,7 @@ class ExistenciaService:
         productos: List[Dict[str, Any]],
         id_dependencia: Optional[int] = None,
         id_anexo: Optional[int] = None,
+        id_venta_efectivo: Optional[int] = None,
     ) -> Dict[str, Any]:
         """Valida disponibilidad de múltiples productos.
 
@@ -86,7 +89,8 @@ class ExistenciaService:
 
         for prod in productos:
             resultado = await existencia_repo.validar_disponibilidad(
-                db, prod["id_producto"], prod["cantidad"], id_dependencia, id_anexo
+                db, prod["id_producto"], prod["cantidad"], id_dependencia, id_anexo,
+                id_venta_efectivo=id_venta_efectivo,
             )
 
             if not resultado["disponible"]:
