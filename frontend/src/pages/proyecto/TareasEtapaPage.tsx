@@ -318,14 +318,13 @@ export function TareasEtapaPage() {
                   </div>
                 </TableHead>
                 <TableHead>Moneda</TableHead>
-                <TableHead>Servicios</TableHead>
                 <TableHead className="text-right">Acciones</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredTareas.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-12 text-gray-500">
+                  <TableCell colSpan={6} className="text-center py-12 text-gray-500">
                     {searchTerm ? 'No se encontraron tareas que coincidan con la búsqueda' : 'No hay tareas registradas'}
                   </TableCell>
                 </TableRow>
@@ -346,21 +345,7 @@ export function TareasEtapaPage() {
                       {getMonedaSymbol(item.id_moneda)} {Number(item.precio_ajustado).toFixed(2)}
                     </TableCell>
                     <TableCell>
-                      <span className="text-sm text-gray-600">{getMonedaSymbol(item.id_moneda)}</span>
-                    </TableCell>
-                    <TableCell onClick={(e) => e.stopPropagation()}>
-                      {item.id_servicio ? (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => navigate(`/proyectos/servicios?servicio=${item.id_servicio}`)}
-                          className="text-teal-600 border-teal-200 hover:bg-teal-50 hover:text-teal-700"
-                        >
-                          Ver
-                        </Button>
-                      ) : (
-                        <span className="text-gray-400 text-sm">Sin servicio</span>
-                      )}
+                      <span className="text-sm text-gray-600">{getMonedaDenominacion(item.id_moneda) || 'N/A'}</span>
                     </TableCell>
                     <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                       <div className="flex justify-end gap-2">
