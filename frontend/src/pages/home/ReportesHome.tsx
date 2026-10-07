@@ -498,11 +498,12 @@ export function ReportesHome() {
     setFilters(getDefaultFilters(userDepId));
   }, [activeReport?.id, userDepId]);
 
-  // Build preview URL
+  // Build preview URL (vacío mientras no haya reporte activo: evita petición a `undefined`)
   const previewUrl = useMemo(() => {
-    const params = activeReport?.buildPreviewParams(filters) || {};
+    if (!activeReport) return "";
+    const params = activeReport.buildPreviewParams(filters);
     const qs = buildQueryString(params);
-    return `${BASE_URL}${activeReport?.previewEndpoint}${qs ? `?${qs}` : ""}`;
+    return `${BASE_URL}${activeReport.previewEndpoint}${qs ? `?${qs}` : ""}`;
   }, [activeReport, filters]);
 
   // Fetch chart data directly with full control
@@ -557,27 +558,6 @@ export function ReportesHome() {
     }
   }, [previewUrl]);
 
-  if (!activeReport) {
-    return (
-      <div className="flex min-h-[calc(100vh-8rem)] flex-col items-center justify-center overflow-hidden p-4">
-        <div className="w-full max-w-2xl space-y-5">
-          <div className="rounded-2xl bg-gradient-to-r from-panel-900 via-panel-700 to-brand-500 px-6 py-6 text-white shadow-lg">
-            <div className="flex flex-col items-center gap-3 text-center">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl border-2 border-brand-400/60 bg-brand-500/20 shadow-inner">
-                <BarChart3 className="h-6 w-6" />
-              </div>
-              <h1 className="text-xl font-bold tracking-wide md:text-2xl">MÓDULO DE REPORTES</h1>
-              <p className="text-sm text-slate-200">Selecciona un reporte del menú lateral para comenzar</p>
-            </div>
-          </div>
-          <div className="rounded-xl border border-slate-100 bg-white p-6 text-center shadow-sm">
-            <p className="text-sm text-slate-600">Utiliza la barra lateral para elegir el reporte que deseas visualizar.</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   // Transform chart data
   const chartData = useMemo(() => {
     if (!previewData) return null;
@@ -590,7 +570,7 @@ export function ReportesHome() {
   // Compute summary stats
   const stats = useMemo<ChartStats>(() => {
     if (!previewData) return { total: 0, promedio: 0, max: 0, min: 0, count: 0 };
-    try { return activeReport?.computeStats(previewData); }
+    try { return activeReport?.computeStats(previewData) ?? { total: 0, promedio: 0, max: 0, min: 0, count: 0 }; }
     catch { return { total: 0, promedio: 0, max: 0, min: 0, count: 0 }; }
   }, [previewData, activeReport]);
 
@@ -623,9 +603,10 @@ export function ReportesHome() {
   const updateFilter = useCallback((key: string, value: string) => { setFilters((prev) => ({ ...prev, [key]: value })); }, []);
 
   const handleDownload = useCallback(async () => {
-    const params = activeReport?.buildPdfParams(filters);
+    if (!activeReport) return;
+    const params = activeReport.buildPdfParams(filters) || {};
     const qs = buildQueryString(params);
-    const url = `${BASE_URL}${activeReport?.pdfEndpoint}${qs ? `?${qs}` : ""}`;
+    const url = `${BASE_URL}${activeReport.pdfEndpoint}${qs ? `?${qs}` : ""}`;
     try {
       const token = authHelpers.getToken() ?? "";
       const r = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
@@ -633,16 +614,17 @@ export function ReportesHome() {
       const blob = await r.blob();
       const a = document.createElement("a");
       a.href = window.URL.createObjectURL(blob);
-      a.download = activeReport?.pdfFilename;
+      a.download = activeReport.pdfFilename ?? "reporte.pdf";
       a.click();
       toast.success("Reporte descargado");
     } catch { toast.error("Error al descargar reporte"); }
   }, [activeReport, filters]);
 
   const handlePreview = useCallback(async () => {
-    const params = activeReport?.buildPdfParams(filters);
+    if (!activeReport) return;
+    const params = activeReport.buildPdfParams(filters) || {};
     const qs = buildQueryString(params);
-    const url = `${BASE_URL}${activeReport?.pdfEndpoint}${qs ? `?${qs}` : ""}`;
+    const url = `${BASE_URL}${activeReport.pdfEndpoint}${qs ? `?${qs}` : ""}`;
     try {
       const token = authHelpers.getToken() ?? "";
       const r = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
@@ -661,6 +643,31 @@ export function ReportesHome() {
     const items = previewData?.items || [];
     return items;
   }, [activeReport, previewData]);
+
+  // Pantalla de selección cuando aún no hay reporte activo.
+  // IMPORTANTE: debe ir DESPUÉS de todos los hooks (reglas de React); un return
+  // antes provocaría "Rendered more/fewer hooks than during the previous render"
+  // al alternar entre pantalla de selección y un reporte.
+  if (!activeReport) {
+    return (
+      <div className="flex min-h-[calc(100vh-8rem)] flex-col items-center justify-center overflow-hidden p-4">
+        <div className="w-full max-w-2xl space-y-5">
+          <div className="rounded-2xl bg-gradient-to-r from-panel-900 via-panel-700 to-brand-500 px-6 py-6 text-white shadow-lg">
+            <div className="flex flex-col items-center justify-center gap-3 text-center">
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl border-2 border-brand-400/60 bg-brand-500/20 shadow-inner">
+                <BarChart3 className="h-6 w-6" />
+              </div>
+              <h1 className="text-xl font-bold tracking-wide md:text-2xl">MÓDULO DE REPORTES</h1>
+              <p className="text-sm text-slate-200">Selecciona un reporte del menú lateral para comenzar</p>
+            </div>
+          </div>
+          <div className="rounded-xl border border-slate-100 bg-white p-6 text-center shadow-sm">
+            <p className="text-sm text-slate-600">Utiliza la barra lateral para elegir el reporte que deseas visualizar.</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const renderTable = () => {
     if (chartLoading) return <div className="h-[300px] flex items-center justify-center"><Loader2 className="w-8 h-8 text-blue-500 animate-spin" /></div>;
