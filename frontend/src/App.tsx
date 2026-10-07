@@ -355,7 +355,7 @@ function App() {
   }
   return (
     <QueryClientProvider client={queryClient}>
-      <div className={`grid ${hideSidebar ? 'grid-cols-1' : slimSidebar ? 'grid-cols-[4.5rem_1fr]' : 'grid-cols-[16rem_1fr]'} grid-rows-[auto_1fr] h-screen bg-surface`}>
+      <div className={`grid ${hideSidebar ? 'grid-cols-1' : slimSidebar ? 'grid-cols-[4.5rem_1fr]' : 'grid-cols-[16rem_1fr]'} grid-rows-[auto_1fr] h-screen bg-surface w-full`}>
         {!hideSidebar && (
         <aside className={`row-span-2 col-start-1 col-end-2 h-full bg-gradient-to-b from-panel-900 to-panel-800 text-white flex flex-col shadow-xl min-h-screen transition-all duration-300 ${slimSidebar ? 'w-[4.5rem]' : 'w-64'}`}>
           <div className={`flex items-center ${slimSidebar ? 'justify-center px-0' : 'px-6'} py-4 border-b border-panel-800`}>
@@ -661,7 +661,7 @@ function App() {
         )}
         </aside>
         )}
-        <header className={`${hideSidebar ? 'col-start-1 col-end-2' : 'col-start-2 col-end-3'} row-start-1 row-end-2 sticky top-0 z-40 bg-gradient-to-r from-panel-900 via-panel-700 to-panel-900 text-white shadow-md px-6 py-4 h-16 flex items-center justify-between`}>
+        <header className={`${hideSidebar ? 'col-span-1 col-start-1 col-end-2' : 'col-start-2 col-end-3'} row-start-1 row-end-2 sticky top-0 z-40 bg-gradient-to-r from-panel-900 via-panel-700 to-panel-900 text-white shadow-md px-6 py-4 h-16 flex items-center justify-between`}>
           <div className="flex items-center gap-2">
             <Link
               to="/"
@@ -729,8 +729,8 @@ function App() {
             </Link>
           </div>
         </header>
-        <div className={`${hideSidebar ? 'col-start-1 col-end-2' : 'col-start-2 col-end-3'} row-start-2 row-end-3 min-w-0 flex flex-col`}>
-          <main className={`flex-1 overflow-y-auto ${hideSidebar ? 'bg-surface' : 'bg-gray-50'} ${hideSidebar ? 'p-6' : 'p-8'}`}>
+        <div className={`${hideSidebar ? 'col-span-1 col-start-1 col-end-2' : 'col-start-2 col-end-3'} row-start-2 row-end-3 min-w-0 flex flex-col w-full`}>
+          <main className={`flex-1 overflow-y-auto ${hideSidebar ? 'bg-surface' : 'bg-gray-50'} ${hideSidebar ? 'p-6' : 'p-8'} w-full`}>
             <div className="animate-fade-in-up animation-fill-both">
               <Routes>
                 <Route
