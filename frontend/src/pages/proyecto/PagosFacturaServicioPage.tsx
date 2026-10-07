@@ -10,6 +10,7 @@ import toast from 'react-hot-toast';
 import { formatCifra } from '../../utils/decimal';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { formatFecha } from '../../utils/fecha';
+import { useMonedaContratoDeEtapa } from '../../hooks/useMonedaContrato';
 
 type View = 'list' | 'form';
 
@@ -26,6 +27,15 @@ export function PagosFacturaServicioPage() {
 
   const [formData, setFormData] = useState<Record<string, any>>({});
   const [searchTerm, setSearchTerm] = useState('');
+
+  // Moneda del contrato de la etapa de la factura: fija, no se puede cambiar
+  const { data: monedaContrato } = useMonedaContratoDeEtapa(factura?.id_etapa);
+  useEffect(() => {
+    if (monedaContrato) {
+      setFormData(prev => ({ ...prev, id_moneda: monedaContrato }));
+    }
+  }, [monedaContrato]);
+
   const [detailModal, setDetailModal] = useState<{ isOpen: boolean; item: PagoFacturaServicio | null }>({ isOpen: false, item: null });
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
@@ -89,7 +99,7 @@ export function PagosFacturaServicioPage() {
       const data: PagoFacturaServicioCreate = {
         id_factura_servicio: Number(facturaId),
         monto: Number(formData.monto) || 0,
-        id_moneda: formData.id_moneda ? Number(formData.id_moneda) : undefined,
+        id_moneda: monedaContrato ?? (formData.id_moneda ? Number(formData.id_moneda) : undefined),
         fecha: formData.fecha || undefined,
         doc_traza: formData.doc_traza || undefined
       };
@@ -128,7 +138,7 @@ export function PagosFacturaServicioPage() {
   };
 
   const resetForm = () => {
-    setFormData({ fecha: new Date().toISOString().split('T')[0], id_moneda: factura?.id_moneda || '' });
+    setFormData({ fecha: new Date().toISOString().split('T')[0], id_moneda: monedaContrato || factura?.id_moneda || '' });
   };
 
   const openForm = () => {
@@ -371,8 +381,9 @@ export function PagosFacturaServicioPage() {
             <div>
               <Label className="text-sm font-medium">Moneda</Label>
               <select
-                className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white"
+                className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white disabled:bg-gray-50 disabled:text-gray-600 disabled:cursor-not-allowed"
                 value={formData.id_moneda || ''}
+                disabled={!!monedaContrato}
                 onChange={(e: any) => setFormData({ ...formData, id_moneda: e.target.value })}
               >
                 <option value="">Seleccionar moneda</option>
@@ -380,6 +391,9 @@ export function PagosFacturaServicioPage() {
                   <option key={m.id_moneda} value={m.id_moneda}>{m.denominacion}</option>
                 ))}
               </select>
+              {monedaContrato && (
+                <p className="mt-1 text-xs text-gray-500">Moneda del contrato (no se puede cambiar)</p>
+              )}
             </div>
             <div>
               <Label className="text-sm font-medium">Fecha</Label>

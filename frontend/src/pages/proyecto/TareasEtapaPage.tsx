@@ -7,6 +7,7 @@ import type { Moneda } from '../../types/moneda';
 import { Plus, Save, Trash2, Edit, ArrowLeft, Search, ListChecks, X, Eye, DollarSign, Hash, FileText, Wrench } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useMonedaContrato } from '../../hooks/useMonedaContrato';
 
 type View = 'list' | 'form';
 
@@ -31,6 +32,14 @@ export function TareasEtapaPage() {
 
   const [editingId, setEditingId] = useState<number | null>(null);
   const [formData, setFormData] = useState<Record<string, any>>({});
+
+  // Moneda del contrato de la solicitud de la etapa: fija, no se puede cambiar
+  const { data: monedaContrato } = useMonedaContrato(etapa?.id_solicitud_servicio);
+  useEffect(() => {
+    if (monedaContrato) {
+      setFormData(prev => ({ ...prev, id_moneda: monedaContrato }));
+    }
+  }, [monedaContrato]);
   const [searchTerm, setSearchTerm] = useState('');
   const [detailModal, setDetailModal] = useState<{ isOpen: boolean; item: TareaEtapa | null }>({ isOpen: false, item: null });
   const [confirmModal, setConfirmModal] = useState<{
@@ -93,7 +102,7 @@ export function TareasEtapaPage() {
           unidad_medida: formData.unidad_medida,
           cantidad: formData.cantidad ? Number(formData.cantidad) : undefined,
           precio_ajustado: formData.precio_ajustado ? Number(formData.precio_ajustado) : undefined,
-          id_moneda: formData.id_moneda ? Number(formData.id_moneda) : undefined,
+          id_moneda: monedaContrato ?? (formData.id_moneda ? Number(formData.id_moneda) : undefined),
           observaciones_ajustadas: formData.observaciones_ajustadas
         };
         await tareasEtapaService.updateTareaEtapa(editingId, data);
@@ -106,7 +115,7 @@ export function TareasEtapaPage() {
           unidad_medida: formData.unidad_medida,
           cantidad: formData.cantidad ? Number(formData.cantidad) : 0,
           precio_ajustado: formData.precio_ajustado ? Number(formData.precio_ajustado) : 0,
-          id_moneda: formData.id_moneda ? Number(formData.id_moneda) : undefined,
+          id_moneda: monedaContrato ?? (formData.id_moneda ? Number(formData.id_moneda) : undefined),
           observaciones_ajustadas: formData.observaciones_ajustadas
         };
         await tareasEtapaService.createTareaEtapa(data);
@@ -150,14 +159,14 @@ export function TareasEtapaPage() {
         concepto_modificado: servicio.concepto || '',
         unidad_medida: servicio.unidad_medida || 'unidades',
         precio_ajustado: servicio.precio || 0,
-        id_moneda: servicio.id_moneda || '',
+        id_moneda: monedaContrato || etapa?.id_moneda || servicio.id_moneda || '',
         observaciones_ajustadas: servicio.observaciones || ''
       });
     }
   };
 
   const resetForm = () => {
-    setFormData({ unidad_medida: 'unidades', cantidad: 1, id_moneda: etapa?.id_moneda || '' });
+    setFormData({ unidad_medida: 'unidades', cantidad: 1, id_moneda: monedaContrato || etapa?.id_moneda || '' });
     setEditingId(null);
     setServicioSeleccionado(null);
     setBusquedaServicio('');
@@ -174,7 +183,7 @@ export function TareasEtapaPage() {
         unidad_medida: item.unidad_medida,
         cantidad: item.cantidad,
         precio_ajustado: item.precio_ajustado,
-        id_moneda: item.id_moneda,
+        id_moneda: monedaContrato ?? etapa?.id_moneda ?? item.id_moneda,
         observaciones_ajustadas: item.observaciones_ajustadas
       });
       const servicio = servicios.find(s => s.id_servicio === item.id_servicio);
@@ -224,7 +233,7 @@ export function TareasEtapaPage() {
       concepto_modificado: s.concepto || '',
       unidad_medida: s.unidad_medida || 'unidades',
       precio_ajustado: s.precio || 0,
-      id_moneda: s.id_moneda || '',
+      id_moneda: monedaContrato || etapa?.id_moneda || s.id_moneda || '',
       observaciones_ajustadas: s.observaciones || ''
     }));
   };
@@ -481,10 +490,18 @@ export function TareasEtapaPage() {
             </div>
             <div>
               <Label className="text-sm font-medium">Moneda</Label>
-              <select className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white" value={formData.id_moneda || ''} onChange={(e: any) => setFormData({ ...formData, id_moneda: e.target.value })}>
+              <select
+                className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white disabled:bg-gray-50 disabled:text-gray-600 disabled:cursor-not-allowed"
+                value={formData.id_moneda || ''}
+                disabled={!!monedaContrato}
+                onChange={(e: any) => setFormData({ ...formData, id_moneda: e.target.value })}
+              >
                 <option value="">Seleccionar moneda</option>
                 {monedas.map(m => <option key={m.id_moneda} value={m.id_moneda}>{m.denominacion}</option>)}
               </select>
+              {monedaContrato && (
+                <p className="mt-1 text-xs text-gray-500">Moneda del contrato (no se puede cambiar)</p>
+              )}
             </div>
             <div className="md:col-span-2">
               <Label className="text-sm font-medium">Observaciones Ajustadas</Label>

@@ -14,6 +14,7 @@ import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { authService } from '../../services/auth';
 import { formatCifra } from '../../utils/decimal';
 import { useInfiniteList } from '../../hooks/useInfiniteList';
+import { useMonedaContratoDeEtapa } from '../../hooks/useMonedaContrato';
 import { formatFecha } from '../../utils/fecha';
 
 type View = 'list' | 'form';
@@ -179,6 +180,13 @@ export function OfertasPage() {
 
   const [editingId, setEditingId] = useState<number | null>(null);
   const [formData, setFormData] = useState<Record<string, any>>({});
+
+  // Moneda del contrato de la etapa seleccionada: fija, no se puede cambiar
+  const { data: monedaContrato } = useMonedaContratoDeEtapa(selectedEtapaId);
+  useEffect(() => {
+    if (monedaContrato) setFormData(prev => ({ ...prev, id_moneda: monedaContrato }));
+  }, [monedaContrato]);
+
   const [searchTerm, setSearchTerm] = useState('');
   const [filtroEtapa, setFiltroEtapa] = useState<number | null>(etapaParam ? Number(etapaParam) : null);
   const [detailModal, setDetailModal] = useState<{ isOpen: boolean; item: Oferta | null }>({ isOpen: false, item: null });
@@ -378,7 +386,7 @@ export function OfertasPage() {
           id_etapa: formData.id_etapa ? Number(formData.id_etapa) : undefined,
           id_certificacion: selectedCertificacion || undefined,
           alcance: 'TOTAL',
-          id_moneda: formData.id_moneda ? Number(formData.id_moneda) : undefined,
+          id_moneda: monedaContrato ?? (formData.id_moneda ? Number(formData.id_moneda) : undefined),
           fecha: formData.fecha,
           descripcion: formData.descripcion,
           observaciones: formData.observaciones,
@@ -391,7 +399,7 @@ export function OfertasPage() {
           id_etapa: selectedEtapaId || (etapaParam ? Number(etapaParam) : undefined),
           id_certificacion: selectedCertificacion || undefined,
           alcance: 'TOTAL',
-          id_moneda: formData.id_moneda ? Number(formData.id_moneda) : undefined,
+          id_moneda: monedaContrato ?? (formData.id_moneda ? Number(formData.id_moneda) : undefined),
           fecha: formData.fecha || new Date().toISOString().split('T')[0],
           descripcion: formData.descripcion,
           observaciones: formData.observaciones,
@@ -1165,15 +1173,13 @@ export function OfertasPage() {
             </div>
           )}
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div>
               <Label className="text-sm font-medium">Cuenta</Label>
               <select className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none bg-white" value={formData.cuenta_factura || ''} onChange={(e: any) => {
-                const selectedCuenta = cuentasDependencia.find(c => c.numero_cuenta === e.target.value);
                 setFormData({
                   ...formData,
-                  cuenta_factura: e.target.value,
-                  id_moneda: selectedCuenta?.id_moneda || null
+                  cuenta_factura: e.target.value
                 });
               }}>
                 <option value="">Seleccionar cuenta</option>
@@ -1181,14 +1187,26 @@ export function OfertasPage() {
               </select>
             </div>
             <div>
+              <Label className="text-sm font-medium">Moneda</Label>
+              <Input
+                readOnly
+                className="mt-1 bg-gray-50 cursor-not-allowed"
+                value={monedas.find(m => m.id_moneda === Number(formData.id_moneda))?.denominacion || ''}
+                placeholder="Se define por la etapa"
+              />
+              {monedaContrato && (
+                <p className="mt-1 text-xs text-gray-500">Moneda del contrato (no se puede cambiar)</p>
+              )}
+            </div>
+            <div>
               <Label className="text-sm font-medium">Fecha</Label>
               <DateInput value={formData.fecha || ''} onChange={(fecha: string) => setFormData({ ...formData, fecha })} className="mt-1" />
             </div>
-            <div className="md:col-span-2">
+            <div className="md:col-span-3">
               <Label className="text-sm font-medium">Descripción</Label>
               <Input value={formData.descripcion || ''} onChange={(e: any) => setFormData({ ...formData, descripcion: e.target.value })} className="mt-1" placeholder="Descripción de la oferta" />
             </div>
-            <div className="md:col-span-2">
+            <div className="md:col-span-3">
               <Label className="text-sm font-medium">Observaciones</Label>
               <Input value={formData.observaciones || ''} onChange={(e: any) => setFormData({ ...formData, observaciones: e.target.value })} className="mt-1" placeholder="Observaciones" />
             </div>

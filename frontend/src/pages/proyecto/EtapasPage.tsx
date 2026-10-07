@@ -8,6 +8,7 @@ import { Plus, Save, Trash2, Edit, ArrowLeft, Search, Layers, DollarSign, Tag, X
 import toast from 'react-hot-toast';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { formatFecha } from '../../utils/fecha';
+import { useMonedaContrato } from '../../hooks/useMonedaContrato';
 
 type View = 'list' | 'form';
 
@@ -25,6 +26,14 @@ export function EtapasPage() {
 
   const [editingId, setEditingId] = useState<number | null>(null);
   const [formData, setFormData] = useState<Record<string, any>>({});
+
+  // Moneda del contrato de la solicitud: se usa fija y no se puede cambiar
+  const { data: monedaContrato } = useMonedaContrato(solicitudId ? Number(solicitudId) : null);
+  useEffect(() => {
+    if (monedaContrato) {
+      setFormData(prev => ({ ...prev, id_moneda: monedaContrato }));
+    }
+  }, [monedaContrato]);
   const [searchTerm, setSearchTerm] = useState('');
   const [detailModal, setDetailModal] = useState<{ isOpen: boolean; item: Etapa | null }>({ isOpen: false, item: null });
   const [confirmModal, setConfirmModal] = useState<{
@@ -118,7 +127,7 @@ export function EtapasPage() {
           fecha_pago: formData.fecha_pago,
           descripcion: formData.descripcion,
           valor: formData.valor ? Number(formData.valor) : undefined,
-          id_moneda: formData.id_moneda ? Number(formData.id_moneda) : undefined,
+          id_moneda: monedaContrato ?? (formData.id_moneda ? Number(formData.id_moneda) : undefined),
           pagada: formData.pagada === 'true' || formData.pagada === true,
           tipo_etapa: formData.tipo_etapa || 'TAREAS'
         };
@@ -131,7 +140,7 @@ export function EtapasPage() {
           fecha_pago: formData.fecha_pago,
           descripcion: formData.descripcion,
           valor: formData.valor ? Number(formData.valor) : 0,
-          id_moneda: formData.id_moneda ? Number(formData.id_moneda) : undefined,
+          id_moneda: monedaContrato ?? (formData.id_moneda ? Number(formData.id_moneda) : undefined),
           pagada: formData.pagada === 'true' || formData.pagada === true,
           tipo_etapa: formData.tipo_etapa || 'TAREAS'
         };
@@ -172,13 +181,13 @@ export function EtapasPage() {
         fecha_pago: item.fecha_pago,
         descripcion: item.descripcion,
         valor: item.valor,
-        id_moneda: item.id_moneda,
+        id_moneda: monedaContrato ?? item.id_moneda,
         pagada: item.pagada,
         tipo_etapa: item.tipo_etapa || 'TAREAS'
       });
     } else {
       resetForm();
-      setFormData({ tipo_etapa: 'TAREAS', fecha_entrega: hoy });
+      setFormData({ tipo_etapa: 'TAREAS', fecha_entrega: hoy, id_moneda: monedaContrato || '' });
     }
     setView('form');
   };
@@ -410,10 +419,18 @@ export function EtapasPage() {
             </div>
             <div>
               <Label className="text-sm font-medium">Moneda</Label>
-              <select className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white" value={formData.id_moneda || ''} onChange={(e: any) => setFormData({...formData, id_moneda: e.target.value})}>
+              <select
+                className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white disabled:bg-gray-50 disabled:text-gray-600 disabled:cursor-not-allowed"
+                value={formData.id_moneda || ''}
+                disabled={!!monedaContrato}
+                onChange={(e: any) => setFormData({...formData, id_moneda: e.target.value})}
+              >
                 <option value="">Seleccionar moneda</option>
                 {monedas.map(m => <option key={m.id_moneda} value={m.id_moneda}>{m.denominacion}</option>)}
               </select>
+              {monedaContrato && (
+                <p className="mt-1 text-xs text-gray-500">Moneda del contrato (no se puede cambiar)</p>
+              )}
             </div>
             <div className="md:col-span-2">
               <Label className="text-sm font-medium">Descripción</Label>

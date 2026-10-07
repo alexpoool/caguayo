@@ -38,6 +38,7 @@ import {
 } from '../../services/api';
 import { administracionService } from '../../services/administracion';
 import { useInfiniteList } from '../../hooks/useInfiniteList';
+import { useMonedaContrato, useMonedaContratoDeEtapa } from '../../hooks/useMonedaContrato';
 import type { Usuario } from '../../types/usuario';
 import type { PersonaLiquidacionInput, PersonaLiquidacionInputUpdate, FacturaPagoValidacion, PersonaLiquidacionValidacion } from '../../types/servicio';
 import type { 
@@ -129,6 +130,19 @@ export function LiquidacionesPage() {
   });
 
   const [selectedPago, setSelectedPago] = useState<number | null>(null);
+
+  // Moneda del contrato: fija, no se puede cambiar
+  const { data: monedaDeEtapa } = useMonedaContratoDeEtapa(selectedEtapa);
+  const { data: monedaDeSolicitud } = useMonedaContrato(
+    solicitudParam ? Number(solicitudParam) : null,
+  );
+  const monedaContrato = monedaDeEtapa ?? monedaDeSolicitud;
+  useEffect(() => {
+    if (monedaContrato) {
+      setFormData(prev => ({ ...prev, id_moneda: monedaContrato }));
+    }
+  }, [monedaContrato]);
+
   const [pagosDisponibles, setPagosDisponibles] = useState<{id_pago_factura_servicio: number; monto: number; monto_disponible: number; id_moneda?: number; fecha: string; doc_traza?: string}[]>([]);
   const [disponibleLiquidar, setDisponibleLiquidar] = useState<number>(0);
   const [porCobrarPersona, setPorCobrarPersona] = useState<number>(0);
@@ -626,7 +640,7 @@ export function LiquidacionesPage() {
       fecha_emision: formData.fecha_emision || new Date().toISOString().split('T')[0],
       fecha_liquidacion: formData.fecha_liquidacion || undefined,
       descripcion: formData.descripcion || undefined,
-      id_moneda: formData.id_moneda || undefined,
+      id_moneda: monedaContrato || formData.id_moneda || undefined,
       tipo_pago: formData.tipo_pago,
       porcentaje_caguayo: Number(formData.porcentaje_caguayo) || 10,
       tributario: Number(formData.tributario) || 5,
@@ -1283,15 +1297,20 @@ export function LiquidacionesPage() {
                   <Label>Moneda</Label>
                   <select
                     value={formData.id_moneda}
+                    disabled={!!monedaContrato}
                     onChange={(e) => setFormData(prev => ({ ...prev, id_moneda: Number(e.target.value) }))}
-                    className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white"
+                    className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white disabled:bg-gray-50 disabled:text-gray-600 disabled:cursor-not-allowed"
                   >
+                    <option value={0}>Seleccionar moneda</option>
                     {monedas.map((moneda: Moneda) => (
                       <option key={moneda.id_moneda} value={moneda.id_moneda}>
                         {moneda.denominacion}
                       </option>
                     ))}
                   </select>
+                  {monedaContrato && (
+                    <p className="mt-1 text-xs text-gray-500">Moneda del contrato (no se puede cambiar)</p>
+                  )}
                 </div>
                 
                 <div>

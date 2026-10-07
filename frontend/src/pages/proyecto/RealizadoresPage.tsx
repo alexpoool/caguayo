@@ -58,6 +58,7 @@ import {
 import toast from "react-hot-toast";
 import { formatCifra } from "../../utils/decimal";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { useMonedaContratoDeEtapa } from "../../hooks/useMonedaContrato";
 
 type View = "list" | "form";
 
@@ -116,6 +117,21 @@ export function RealizadoresPage() {
 
   const [formData, setFormData] = useState<Record<string, any>>({});
   const [searchTerm, setSearchTerm] = useState("");
+
+  // Moneda del contrato de la etapa: fija, no se puede cambiar
+  const { data: monedaContrato } = useMonedaContratoDeEtapa(
+    formData.id_etapa
+      ? Number(formData.id_etapa)
+      : etapaParam
+        ? Number(etapaParam)
+        : null,
+  );
+  useEffect(() => {
+    if (monedaContrato) {
+      setFormData((prev) => ({ ...prev, id_moneda: monedaContrato }));
+    }
+  }, [monedaContrato]);
+
   const [filtroEtapa, setFiltroEtapa] = useState<number | null>(
     etapaParam ? Number(etapaParam) : null,
   );
@@ -283,7 +299,7 @@ export function RealizadoresPage() {
           Number(formData.id_etapa) || (etapaParam ? Number(etapaParam) : 0),
         id_persona: Number(formData.id_persona) || 0,
         cobro: formData.cobro ? Number(formData.cobro) : 0,
-        id_moneda: formData.id_moneda ? Number(formData.id_moneda) : undefined,
+        id_moneda: monedaContrato ?? (formData.id_moneda ? Number(formData.id_moneda) : undefined),
       };
       await personaEtapaService.createPersonaEtapa(data);
       toast.success("Creado");
@@ -333,7 +349,7 @@ export function RealizadoresPage() {
     if (etapaParam) {
       setFormData({
         id_etapa: Number(etapaParam),
-        id_moneda: currentEtapa?.id_moneda || "",
+        id_moneda: monedaContrato || currentEtapa?.id_moneda || "",
       });
     }
     setView("form");
@@ -980,7 +996,10 @@ export function RealizadoresPage() {
                         ...formData,
                         id_etapa: etapaId,
                         id_moneda:
-                          etapaSel?.id_moneda || formData.id_moneda || "",
+                          monedaContrato ||
+                          etapaSel?.id_moneda ||
+                          formData.id_moneda ||
+                          "",
                       });
                     }}
                     disabled={!solicitudSeleccionada}
@@ -1014,8 +1033,9 @@ export function RealizadoresPage() {
               <div className="flex-1">
                 <Label className="text-sm font-medium">Moneda</Label>
                 <select
-                  className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white"
+                  className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white disabled:bg-gray-50 disabled:text-gray-600 disabled:cursor-not-allowed"
                   value={formData.id_moneda || currentEtapa?.id_moneda || ""}
+                  disabled={!!monedaContrato}
                   onChange={(e: any) =>
                     setFormData({ ...formData, id_moneda: e.target.value })
                   }
@@ -1027,6 +1047,11 @@ export function RealizadoresPage() {
                     </option>
                   ))}
                 </select>
+                {monedaContrato && (
+                  <p className="mt-1 text-xs text-gray-500">
+                    Moneda del contrato (no se puede cambiar)
+                  </p>
+                )}
               </div>
             </div>
           </div>
