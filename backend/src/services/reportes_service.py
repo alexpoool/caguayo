@@ -500,48 +500,48 @@ async def get_registro_proyectos(
     fecha_inicio: Optional[date] = None,
     fecha_fin: Optional[date] = None,
 ) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
-    """Obtiene contratos/proyectos con datos de cliente, moneda, tipo y estado."""
+    """Obtiene solicitudes de servicio (proyectos) con datos de cliente y moneda."""
     query = (
         select(
-            Contrato,
+            SolicitudServicio,
             Cliente.nombre.label("cliente_nombre"),
             Moneda.nombre.label("moneda_nombre"),
             Moneda.simbolo.label("moneda_simbolo"),
-            TipoContrato.nombre.label("tipo_contrato_nombre"),
-            EstadoContrato.nombre.label("estado_contrato_nombre"),
         )
-        .join(Cliente, Contrato.id_cliente == Cliente.id_cliente)
-        .join(Moneda, Contrato.id_moneda == Moneda.id_moneda)
-        .join(TipoContrato, Contrato.id_tipo_contrato == TipoContrato.id_tipo_contrato)
-        .join(
-            EstadoContrato,
-            Contrato.id_estado == EstadoContrato.id_estado_contrato,
+        .join(Cliente, SolicitudServicio.id_cliente == Cliente.id_cliente, isouter=True)
+        .outerjoin(Contrato, SolicitudServicio.id_contrato == Contrato.id_contrato)
+        .join(Moneda, Moneda.id_moneda == Contrato.id_moneda, isouter=True)
+        .order_by(
+            SolicitudServicio.fecha_solicitud.desc(),
+            SolicitudServicio.codigo_solicitud,
         )
-        .order_by(Contrato.fecha.desc(), Contrato.nombre)
     )
 
     if fecha_inicio:
-        query = query.filter(Contrato.fecha >= fecha_inicio)
+        query = query.filter(SolicitudServicio.fecha_solicitud >= fecha_inicio)
     if fecha_fin:
-        query = query.filter(Contrato.fecha <= fecha_fin)
+        query = query.filter(SolicitudServicio.fecha_solicitud <= fecha_fin)
 
     result = await db.execute(query)
     rows = result.all()
 
     data = []
     for r in rows:
-        contrato: Contrato = r[0]
+        solicitud: SolicitudServicio = r[0]
+        moneda_str = ""
+        if r.moneda_simbolo and r.moneda_nombre:
+            moneda_str = f"{r.moneda_simbolo} ({r.moneda_nombre})"
+        elif r.moneda_nombre:
+            moneda_str = r.moneda_nombre
         data.append(
             {
-                "id_contrato": contrato.id_contrato,
-                "codigo": contrato.codigo or "",
-                "nombre": contrato.nombre,
-                "cliente": r.cliente_nombre,
-                "fecha": contrato.fecha,
-                "valor": float(contrato.monto),
-                "moneda": f"{r.moneda_simbolo} ({r.moneda_nombre})",
-                "tipo_contrato": r.tipo_contrato_nombre,
-                "estado": r.estado_contrato_nombre,
+                "id_solicitud": solicitud.id_solicitud_servicio,
+                "codigo": solicitud.codigo_solicitud or solicitud.codigo_proyecto or "",
+                "nombre": solicitud.descripcion or solicitud.codigo_solicitud or "",
+                "cliente": r.cliente_nombre or "",
+                "fecha": solicitud.fecha_solicitud,
+                "valor": float(0),
+                "moneda": moneda_str,
             }
         )
 
