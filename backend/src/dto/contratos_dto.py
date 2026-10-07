@@ -217,7 +217,7 @@ class ItemVentaEfectivoBase(SQLModel):
 
 
 class ItemVentaEfectivoCreate(ItemVentaEfectivoBase):
-    pass
+    id_anexo: Optional[int] = None
 
 
 class ItemVentaEfectivoRead(ItemVentaEfectivoBase):
@@ -258,6 +258,7 @@ class VentaEfectivoUpdate(SQLModel):
     cajero: Optional[str] = Field(default=None, min_length=1)
     monto: Optional[Decimal] = Field(default=None, ge=0)
     codigo: Optional[str] = None
+    items: Optional[List[ItemVentaEfectivoCreate]] = None
 
 
 class DependenciaSimpleRead(SQLModel):
