@@ -322,9 +322,9 @@ const REPORTS: ReportConfig[] = [
     tableColumns: [
       { key: "codigo", label: "Código" },
       { key: "nombre", label: "Nombre" },
+      { key: "contrato", label: "Contrato" },
       { key: "cliente", label: "Cliente" },
       { key: "fecha", label: "Fecha", render: (v: any) => formatFecha(v) || "—" },
-      { key: "valor", label: "Valor", className: "text-right", render: (v: any) => Number(v ?? 0).toFixed(2) },
     ],
   },
   {

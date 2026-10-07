@@ -319,7 +319,15 @@ def generar_pdf_proyectos(
     if filters:
         template.set_filters(filters)
 
-    headers = ["No.", "CÓDIGO", "PROYECTO", "CLIENTE", "FECHA", "VALOR", "MONEDA"]
+    headers = [
+        "No.",
+        "CÓDIGO",
+        "PROYECTO",
+        "CONTRATO",
+        "CLIENTE",
+        "FECHA",
+        "MONEDA",
+    ]
     data = []
     for idx, p in enumerate(proyectos, start=1):
         data.append(
@@ -327,9 +335,9 @@ def generar_pdf_proyectos(
                 str(idx),
                 str(p.get("codigo", "")),
                 str(p.get("nombre", "")),
+                str(p.get("contrato", "")),
                 str(p.get("cliente", "")),
                 str(p.get("fecha", "")),
-                format_quantity(p.get("valor", 0)),
                 str(p.get("moneda", "")),
             ]
         )
@@ -338,7 +346,7 @@ def generar_pdf_proyectos(
         headers,
         data,
         code_columns=[0, 1],
-        numeric_columns=[5],
+        numeric_columns=[],
     )
 
     if notas:

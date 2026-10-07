@@ -504,6 +504,7 @@ async def get_registro_proyectos(
     query = (
         select(
             SolicitudServicio,
+            Contrato.nombre.label("contrato_nombre"),
             Cliente.nombre.label("cliente_nombre"),
             Moneda.nombre.label("moneda_nombre"),
             Moneda.simbolo.label("moneda_simbolo"),
@@ -538,6 +539,7 @@ async def get_registro_proyectos(
                 "id_solicitud": solicitud.id_solicitud_servicio,
                 "codigo": solicitud.codigo_solicitud or solicitud.codigo_proyecto or "",
                 "nombre": solicitud.descripcion or solicitud.codigo_solicitud or "",
+                "contrato": r.contrato_nombre or "",
                 "cliente": r.cliente_nombre or "",
                 "fecha": solicitud.fecha_solicitud,
                 "valor": float(0),
