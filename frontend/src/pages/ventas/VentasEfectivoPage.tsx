@@ -47,7 +47,7 @@ import {
 } from "lucide-react";
 import { ProductSelector } from "./facturas/components/ProductSelector";
 import toast from "react-hot-toast";
-import { required, seleccionValida } from "../../utils/validacionFormularios";
+import { required, seleccionValida, esFechaValida, fechaNoAnteriorA } from "../../utils/validacionFormularios";
 import { Decimal } from "decimal.js";
 import { mul, add, toNumber, toFixed } from "../../utils/decimal";
 import { DEFAULTS } from "../../config/defaults";
@@ -81,6 +81,12 @@ export function VentasEfectivoPage() {
   const [monedas, setMonedas] = useState<any[]>([]);
   const user = authHelpers.getUser() ?? {};
   const currentDependenciaId = user.dependencia?.id_dependencia ?? null;
+  const hoy = new Date().toISOString().split("T")[0];
+  const nombreCajero = [user.nombre, user.primer_apellido, user.segundo_apellido]
+    .filter(Boolean)
+    .join(" ")
+    .trim();
+  const userDependenciaId = user.dependencia?.id_dependencia ?? "";
   const { data: stockData = [] } = useStock({ idDependencia: currentDependenciaId });
 
   // Scroll infinito con IntersectionObserver
@@ -156,6 +162,12 @@ const loadInitialData = async () => {
     if (cajeroErr) fieldErrors.push(cajeroErr);
     const depErr = seleccionValida(formData.id_dependencia, 'Dependencia');
     if (depErr) fieldErrors.push(depErr);
+    const fechaErr = esFechaValida(formData.fecha, 'Fecha');
+    if (fechaErr) fieldErrors.push(fechaErr);
+    else {
+      const fechaAnterior = fechaNoAnteriorA(formData.fecha, hoy, 'Fecha');
+      if (fechaAnterior) fieldErrors.push(fechaAnterior);
+    }
     if (fieldErrors.length > 0) {
       toast.error(fieldErrors.join('\n• '));
       return;
@@ -194,7 +206,7 @@ const loadInitialData = async () => {
 
       const data = {
         slip: formData.slip || "",
-        fecha: formData.fecha || new Date().toISOString().split("T")[0],
+        fecha: formData.fecha || hoy,
         cajero: formData.cajero || "",
         id_dependencia: Number(formData.id_dependencia) || DEFAULTS.DEPENDENCIA_ID,
         id_moneda: formData.id_moneda ? Number(formData.id_moneda) : undefined,
@@ -241,7 +253,11 @@ const loadInitialData = async () => {
   };
 
   const resetForm = () => {
-    setFormData({});
+    setFormData({
+      fecha: hoy,
+      cajero: nombreCajero,
+      id_dependencia: userDependenciaId,
+    });
     setSelectedProducts([]);
     setEditingId(null);
     setProductSearch("");
@@ -253,8 +269,9 @@ const loadInitialData = async () => {
       setFormData({
         slip: item.slip,
         fecha: item.fecha,
-        cajero: item.cajero,
-        id_dependencia: item.id_dependencia,
+        // Se reautocompletan siempre con el usuario logueado
+        cajero: nombreCajero || item.cajero,
+        id_dependencia: userDependenciaId || item.id_dependencia,
         id_moneda: item.id_moneda || "",
       });
       setSelectedProducts(
@@ -556,20 +573,12 @@ const loadInitialData = async () => {
             </div>
             <div>
               <Label className="text-sm font-medium">Fecha</Label>
-              <div className="flex gap-2">
-                <DateInput
-                  className="flex-1 mt-1 focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
-                  value={formData.fecha || ""}
-                  onChange={(fecha: string) => setFormData({ ...formData, fecha })}
-                />
-                <button
-                  type="button"
-                  onClick={() => setFormData({ ...formData, fecha: new Date().toISOString().split('T')[0] })}
-                  className="mt-1 px-3 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors text-sm font-medium whitespace-nowrap"
-                >
-                  Hoy
-                </button>
-              </div>
+              <DateInput
+                className="mt-1 focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                value={formData.fecha || ""}
+                min={hoy}
+                onChange={(fecha: string) => setFormData({ ...formData, fecha })}
+              />
             </div>
             <div>
               <Label className="text-sm font-medium">Cajero</Label>

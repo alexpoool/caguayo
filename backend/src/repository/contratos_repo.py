@@ -465,9 +465,9 @@ class ItemVentaEfectivoRepository(
         for item in items_data:
             producto = await db.get(Productos, item["id_producto"])
             if producto:
-                id_anexo = None
+                id_anexo = item.get("id_anexo")
                 id_item_anexo = item.get("id_item_anexo")
-                if id_item_anexo is not None:
+                if id_anexo is None and id_item_anexo is not None:
                     item_anexo = await db.get(ItemAnexo, id_item_anexo)
                     if item_anexo:
                         id_anexo = item_anexo.id_anexo

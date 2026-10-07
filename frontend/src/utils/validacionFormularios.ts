@@ -39,6 +39,16 @@ export function fechaNoAnterior(fecha: any, fechaMinima: any, label: string): Va
   return null;
 }
 
+/** Impide elegir una fecha anterior a la fecha limite (ej. hoy). */
+export function fechaNoAnteriorA(fecha: any, fechaLimite: any, label: string): ValidationResult {
+  if (!fecha || !fechaLimite) return null;
+  const d1 = new Date(fecha);
+  const d2 = new Date(fechaLimite);
+  if (isNaN(d1.getTime()) || isNaN(d2.getTime())) return null;
+  if (d1 < d2) return `${label} no puede ser anterior a hoy`;
+  return null;
+}
+
 export function seleccionValida(value: any, label: string): ValidationResult {
   const num = Number(value);
   if (!value || isNaN(num) || num <= 0) return `Seleccione un ${label.toLowerCase()}`;

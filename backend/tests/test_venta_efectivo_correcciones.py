@@ -105,3 +105,162 @@ class TestCalculoMonto:
         assert _calcular_monto_items(
             [{"cantidad": 3, "precio_venta": "7.33"}]
         ) == Decimal("21.99")
+
+
+class TestVentaEfectivoUpdateHTTP:
+    def test_put_items_cantidad_invalida_retorna_422(self, client):
+        """Pydantic valida 'items' (cantidad gt=0) — antes se ignoraba el campo."""
+        response = client.put(
+            "/api/v1/ventas-efectivo/1",
+            json={
+                "slip": "S",
+                "items": [
+                    {"id_producto": 1, "cantidad": 0, "precio_venta": 1, "id_moneda": 1}
+                ],
+            },
+        )
+        assert response.status_code == 422, (
+            f"esperado 422 por cantidad=0 en items, obtenido {response.status_code}"
+        )
+
+    def test_put_items_validos_sin_token_retorna_401(self, client):
+        response = client.put(
+            "/api/v1/ventas-efectivo/1",
+            json={
+                "slip": "S",
+                "items": [
+                    {"id_producto": 1, "cantidad": 1, "precio_venta": 1, "id_moneda": 1}
+                ],
+            },
+        )
+        assert response.status_code == 401
+
+    def test_put_solo_slip_sin_token_retorna_401(self, client):
+        response = client.put("/api/v1/ventas-efectivo/1", json={"slip": "S"})
+        assert response.status_code == 401
+
+    def test_delete_sin_token_retorna_401(self, client):
+        response = client.delete("/api/v1/ventas-efectivo/1")
+        assert response.status_code == 401
+
+
+class TestVentaEfectivoFlujoCompleto:
+    """Integración real: crear → monto calculado → editar → items persisten."""
+
+    @staticmethod
+    def _login(client):
+        conexiones = client.get("/api/v1/conexiones").json()
+        nombre_db = conexiones[0]["nombre_database"]
+        r = client.post(
+            "/api/v1/auth/login",
+            json={"alias": "admin", "contrasenia": "admin123", "base_datos": nombre_db},
+        )
+        assert r.status_code == 200, r.text
+        return r.json()["token"]
+
+    def test_crear_editar_venta_persiste_items_y_monto(self, client):
+        token = self._login(client)
+        headers = {"Authorization": f"Bearer {token}"}
+
+        r = client.post(
+            "/api/v1/ventas-efectivo",
+            headers=headers,
+            json={
+                "slip": "PYTEST-EFEC",
+                "fecha": "2026-10-07",
+                "id_dependencia": 1,
+                "cajero": "pytest",
+                "id_moneda": 1,
+                "items": [
+                    {
+                        "id_producto": 1,
+                        "cantidad": 2,
+                        "precio_venta": 1200,
+                        "id_moneda": 1,
+                        "id_item_anexo": 4,
+                    }
+                ],
+            },
+        )
+        assert r.status_code in (200, 201), r.text
+        venta = r.json()
+        id_ve = venta["id_venta_efectivo"]
+
+        try:
+            # Observación 1: el monto se calcula desde los items
+            assert Decimal(str(venta["monto"])) == Decimal("2400.00"), (
+                f"monto debe ser 2400.00, obtenido {venta['monto']}"
+            )
+            # Observación 4/round-trip: id_anexo viaja en la respuesta
+            assert venta["items"][0]["id_anexo"] == 4, (
+                f"id_anexo debe ser 4, obtenido {venta['items'][0].get('id_anexo')}"
+            )
+
+            # Observación 3: el PUT persiste los items y recalcula monto
+            r = client.put(
+                f"/api/v1/ventas-efectivo/{id_ve}",
+                headers=headers,
+                json={
+                    "slip": "PYTEST-EFEC",
+                    "fecha": "2026-10-07",
+                    "id_dependencia": 1,
+                    "cajero": "pytest",
+                    "items": [
+                        {
+                            "id_producto": 1,
+                            "cantidad": 1,
+                            "precio_venta": 1200,
+                            "id_moneda": 1,
+                            "id_anexo": 4,
+                        }
+                    ],
+                },
+            )
+            assert r.status_code == 200, r.text
+            actualizada = r.json()
+            assert actualizada["items"][0]["cantidad"] == 1, (
+                "los items deben persistirse en update"
+            )
+            assert Decimal(str(actualizada["monto"])) == Decimal("1200.00"), (
+                f"monto debe recalcularse a 1200.00, obtenido {actualizada['monto']}"
+            )
+
+            # Persistencia real (GET)
+            r = client.get(f"/api/v1/ventas-efectivo/{id_ve}")
+            assert r.status_code == 200
+            assert Decimal(str(r.json()["monto"])) == Decimal("1200.00")
+
+            # Validación de stock en edición (excluye movimientos propios)
+            r = client.put(
+                f"/api/v1/ventas-efectivo/{id_ve}",
+                headers=headers,
+                json={
+                    "items": [
+                        {
+                            "id_producto": 1,
+                            "cantidad": 999999,
+                            "precio_venta": 1200,
+                            "id_moneda": 1,
+                            "id_anexo": 4,
+                        }
+                    ],
+                },
+            )
+            assert r.status_code == 400, (
+                f"esperado 400 por stock insuficiente, obtenido {r.status_code}: {r.text}"
+            )
+            assert "Stock insuficiente" in r.json()["detail"]
+
+            # Solo cabecera (sin items) debe seguir funcionando
+            r = client.put(
+                f"/api/v1/ventas-efectivo/{id_ve}",
+                headers=headers,
+                json={"slip": "PYTEST-EFEC-EDIT"},
+            )
+            assert r.status_code == 200, r.text
+        finally:
+            client.delete(f"/api/v1/ventas-efectivo/{id_ve}", headers=headers)
+
+        # La venta quedó limpia
+        r = client.get(f"/api/v1/ventas-efectivo/{id_ve}")
+        assert r.status_code == 404

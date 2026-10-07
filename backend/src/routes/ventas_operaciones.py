@@ -25,6 +25,7 @@ from src.dto import (
     ItemAnexoDisponible,
 )
 from src.utils import _get_denominacion_from_token, _get_user_dependencia_id, verify_auth
+from src.core.exceptions import AppError
 
 logger = logging.getLogger(__name__)
 
@@ -364,6 +365,8 @@ async def crear_venta_efectivo(
         return await VentaEfectivoService.create(db, venta, denominacion=denominacion)
     except HTTPException:
         raise
+    except AppError as e:
+        raise HTTPException(status_code=e.status_code, detail=e.message)
     except Exception as e:
         logger.error("Error al crear venta en efectivo", exc_info=True)
         raise HTTPException(status_code=500, detail="Error interno del servidor")
@@ -405,7 +408,10 @@ async def actualizar_venta_efectivo(
     """Actualizar una venta en efectivo."""
     try:
         await verify_auth(authorization=authorization, db=db)
-        venta = await VentaEfectivoService.update(db, venta_id, update_data)
+        denominacion = await _get_denominacion_from_token(authorization)
+        venta = await VentaEfectivoService.update(
+            db, venta_id, update_data, denominacion=denominacion
+        )
         if not venta:
             raise HTTPException(
                 status_code=404, detail="Venta en efectivo no encontrada"
@@ -413,6 +419,8 @@ async def actualizar_venta_efectivo(
         return venta
     except HTTPException:
         raise
+    except AppError as e:
+        raise HTTPException(status_code=e.status_code, detail=e.message)
     except Exception as e:
         logger.error("Error al actualizar venta en efectivo", exc_info=True)
         raise HTTPException(status_code=500, detail="Error interno del servidor")

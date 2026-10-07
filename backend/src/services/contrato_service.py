@@ -31,6 +31,7 @@ from src.models import (
     Productos,
     ItemAnexo,
     Convenio,
+    ItemVentaEfectivo,
 )
 from src.dto import (
     TipoContratoCreate,
@@ -757,6 +758,7 @@ async def map_venta_efectivo_to_read(
                 precio_compra=item.precio_compra,
                 id_moneda=item.id_moneda,
                 codigo=item.codigo,
+                id_anexo=item.id_anexo,
                 producto=ProductoSimpleRead(
                     id_producto=item.producto.id_producto,
                     codigo=item.producto.codigo,
@@ -927,9 +929,107 @@ class VentaEfectivoService:
 
     @staticmethod
     async def update(
-        db: AsyncSession, id: int, data: VentaEfectivoUpdate
+        db: AsyncSession,
+        id: int,
+        data: VentaEfectivoUpdate,
+        denominacion: Optional[str] = None,
     ) -> VentaEfectivoReadWithDetails:
-        venta = await venta_efectivo_repo.update(db, id, data)
+        data_dict = data.model_dump(exclude_none=True)
+        items_data = data_dict.pop("items", None)
+
+        venta = await db.get(VentaEfectivo, id)
+        if not venta:
+            return None
+
+        if items_data is not None:
+            # 1) No permitir editar productos si ya hay movimientos confirmados
+            #    (el stock físico ya los aplicó; recrearlos duplicaría el efecto)
+            stmt_movs = select(Movimiento).where(
+                Movimiento.id_venta_efectivo == id
+            )
+            movs = (await db.exec(stmt_movs)).all()
+            n_confirmados = sum(1 for m in movs if m.estado == "confirmado")
+            if n_confirmados:
+                raise BusinessLogicError(
+                    "No se pueden modificar los productos: la venta tiene "
+                    "movimientos confirmados. Elimine la venta para volver a crearla."
+                )
+
+            # 2) Validar existencias excluyendo los movimientos propios de la venta
+            if items_data:
+                productos_validar = [
+                    {"id_producto": i["id_producto"], "cantidad": i["cantidad"]}
+                    for i in items_data
+                ]
+                resultado_validacion = await ExistenciaService.validar_multiple(
+                    db, productos_validar, venta.id_dependencia,
+                    id_venta_efectivo=id,
+                )
+                if not resultado_validacion["valido"]:
+                    errores = resultado_validacion["errores"]
+                    mensaje = "\n".join(
+                        f"Producto {e['id_producto']}: {e['mensaje']}"
+                        for e in errores
+                    )
+                    raise BusinessLogicError(f"Stock insuficiente:\n{mensaje}")
+
+            # 3) Cancelar los movimientos pendientes propios (se recrean abajo)
+            for mov in movs:
+                if mov.estado == "pendiente":
+                    mov.estado = "cancelado"
+                    db.add(mov)
+
+            # 4) Reemplazar items
+            existing_items = await item_venta_efectivo_repo.get_by_venta(db, id)
+            for old_item in existing_items:
+                await db.delete(old_item)
+            await db.flush()
+
+            created_items = []
+            if items_data:
+                created_items = await item_venta_efectivo_repo.create_items(
+                    db, id, items_data
+                )
+
+            # 5) Recalcular monto
+            data_dict["monto"] = _calcular_monto_items(items_data)
+
+            # 6) Recrear movimientos pendientes con los nuevos items
+            if created_items:
+                stmt_tipo_mov = select(TipoMovimiento).where(
+                    TipoMovimiento.tipo == "venta"
+                )
+                tipo_mov = (await db.exec(stmt_tipo_mov)).first()
+                if tipo_mov:
+                    for db_item in created_items:
+                        producto = await db.get(Productos, db_item.id_producto)
+                        if not producto:
+                            continue
+                        db_movimiento = Movimiento(
+                            id_tipo_movimiento=tipo_mov.id_tipo_movimiento,
+                            id_dependencia=venta.id_dependencia,
+                            id_venta_efectivo=id,
+                            id_producto=db_item.id_producto,
+                            cantidad=db_item.cantidad,
+                            fecha=datetime.now(timezone.utc).replace(tzinfo=None),
+                            precio_compra=producto.precio_compra,
+                            moneda_compra=producto.moneda_compra,
+                            precio_venta=db_item.precio_venta,
+                            moneda_venta=db_item.id_moneda,
+                            id_anexo=db_item.id_anexo,
+                            estado="pendiente",
+                        )
+                        db.add(db_movimiento)
+                        await db.flush()
+                        if db_movimiento.id_movimiento:
+                            anio = datetime.now(timezone.utc).year
+                            db_movimiento.codigo = (
+                                f"{denominacion or ''}.{str(anio)[-2:]}"
+                                f".VE{id}.{db_item.id_producto}"
+                            )
+
+        # 7) Actualizar cabecera (el repo hace commit de todo el flujo)
+        venta = await venta_efectivo_repo.update(db, id, VentaEfectivoUpdate(**data_dict))
         if not venta:
             return None
         return await map_venta_efectivo_to_read(db, venta)
@@ -961,13 +1061,16 @@ class VentaEfectivoService:
         for iv in items_venta:
             await db.delete(iv)
 
-        # 3) Cancelar movimientos asociados
+        # 3) Cancelar y desvincular movimientos asociados: si se dejan con
+        #    id_venta_efectivo la FK bloquea el DELETE de la venta.
         stmt = select(Movimiento).where(Movimiento.id_venta_efectivo == id)
         result = await db.exec(stmt)
         for mov in result.all():
             if mov.estado != "cancelado":
                 mov.estado = "cancelado"
-                db.add(mov)
+            if mov.id_venta_efectivo is not None:
+                mov.id_venta_efectivo = None
+            db.add(mov)
 
         # 4) Eliminar la venta
         await venta_efectivo_repo.remove(db, id=id)
