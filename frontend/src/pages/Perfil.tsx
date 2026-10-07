@@ -76,8 +76,8 @@ export function PerfilPage() {
   if (!user) return null;
 
   return (
-    <div className="min-h-screen bg-surface p-6">
-      <div className="max-w-5xl mx-auto">
+    <div className="w-full">
+      <div className="w-full max-w-6xl mx-auto">
         <div className="flex items-center gap-4 mb-6">
           <button
             onClick={() => navigate('/')}
