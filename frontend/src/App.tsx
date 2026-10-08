@@ -35,7 +35,8 @@ import {
   Database,
   MapPin,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  ScrollText
 } from 'lucide-react';
 
 import { LoginPage } from './pages/Login';
@@ -98,8 +99,9 @@ import { PreFacturasPage } from './pages/proyecto/PreFacturasPage';
 import { PagosFacturaServicioPage } from './pages/proyecto/PagosFacturaServicioPage';
 import { LiquidacionesPage as ProyectoLiquidacionesPage } from './pages/proyecto/LiquidacionesPage';
 import { CertificacionesPage } from './pages/proyecto/CertificacionesPage';
+import { DJ08Page } from './pages/dj08/DJ08Page';
 
-type Modulo = 'administracion' | 'venta' | 'compra' | 'inventario' | 'reportes' | 'home' | 'proyecto';
+type Modulo = 'administracion' | 'venta' | 'compra' | 'inventario' | 'reportes' | 'home' | 'proyecto' | 'dj08';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -119,6 +121,7 @@ const rutasPorModulo: Record<Modulo, string[]> = {
   proyecto: ['/proyecto', '/proyectos', '/proyectos/servicios', '/proyectos/solicitudes', '/proyectos/proyectos', '/proyectos/etapas', '/proyectos/tareas-etapa', '/proyectos/realizadores', '/proyectos/facturas-servicio', '/proyectos/ofertas', '/proyectos/pre-facturas', '/proyectos/pagos-factura-servicio', '/proyectos/liquidaciones', '/perfil'],
   reportes: ['/reportes', '/reportes/existencias', '/reportes/movimientos-dependencia', '/reportes/movimientos-producto', '/reportes/proveedores', '/reportes/registro-clientes', '/reportes/registro-proyectos', '/reportes/registro-creadores', '/reportes/informe-desempeno', '/reportes/resumen-liquidaciones', '/reportes/ingresos-retenciones', '/reportes/mincult', '/reportes/onat', '/perfil'],
   home: ['/', '/perfil'],
+  dj08: ['/dj08', '/perfil'],
 };
 
 // Componente para proteger rutas según el módulo
@@ -266,6 +269,7 @@ const MODULO_FUNCIONALIDADES: Record<Modulo, string[]> = {
   reportes: ['reporte_existencias', 'reporte_movimientos_dependencia', 'reporte_movimientos_producto', 'reporte_proveedores', 'reporte_clientes', 'reporte_proyectos', 'reporte_creadores', 'reporte_desempeno', 'reporte_liquidaciones', 'reporte_onat', 'reporte_mincult'],
   administracion: ['configuracion', 'monedas', 'usuarios', 'grupos', 'dependencias', 'cuentas'],
   home: [],
+  dj08: [],
 };
 
 function App() {
@@ -348,6 +352,7 @@ function App() {
     { id: 'inventario', label: 'Inventario', icon: Boxes },
     { id: 'reportes', label: 'Reportes', icon: BarChart3 },
     { id: 'administracion', label: 'Administración', icon: Settings },
+    { id: 'dj08', label: 'DJ-08', icon: ScrollText },
   ];
 
   function handleToggleSlim(): void {
@@ -394,6 +399,16 @@ function App() {
                     <SidebarLink slim={slimSidebar} to="/productos" onClick={handleLinkClick} disabled={!hasFuncionalidad('productos')}>
                       <Boxes className="w-6 h-6" />
                       Productos
+                    </SidebarLink>
+                  </li>
+                </ul>
+              )}
+              {moduloActivo === 'dj08' && (
+                <ul className="space-y-1 px-3">
+                  <li>
+                    <SidebarLink slim={slimSidebar} to="/dj08" onClick={handleLinkClick} exact>
+                      <ScrollText className="w-6 h-6" />
+                      Declaración Jurada
                     </SidebarLink>
                   </li>
                 </ul>
@@ -676,7 +691,7 @@ function App() {
           <div className="flex items-center gap-6">
             {modulos.map((modulo) => {
               const isActive = moduloActivo === modulo.id;
-              const isBlocked = modulo.id !== 'home' && !hasModuloAccess(modulo.id);
+              const isBlocked = modulo.id !== 'home' && modulo.id !== 'dj08' && !hasModuloAccess(modulo.id);
               const Icon = modulo.icon;
               return (
                 <button
@@ -1029,6 +1044,14 @@ function App() {
                   element={
                     <ProtectedRoute moduloActivo={moduloActivo} currentPath="/configuracion">
                       <ConfiguracionPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/dj08"
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/dj08">
+                      <DJ08Page />
                     </ProtectedRoute>
                   }
                 />

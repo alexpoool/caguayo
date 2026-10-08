@@ -1,3 +1,9 @@
+import os
+
+# Los tests que importan src.services arrastran auth_service, que exige
+# SECRET_KEY al importarse. Default solo para el entorno de pruebas.
+os.environ.setdefault("SECRET_KEY", "test-secret")
+
 import pytest
 import pytest_asyncio
 from sqlmodel.ext.asyncio.session import AsyncSession

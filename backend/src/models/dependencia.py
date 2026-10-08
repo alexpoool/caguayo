@@ -55,6 +55,7 @@ class Dependencia(SQLModel, table=True):
         default=None, foreign_key="municipio.id_municipio"
     )
     descripcion: Optional[str] = None
+    codigo_postal: Optional[str] = Field(default=None, max_length=10)
 
     tipo_dependencia: "TipoDependencia" = Relationship(back_populates="dependencias")
     padre: Optional["Dependencia"] = Relationship(

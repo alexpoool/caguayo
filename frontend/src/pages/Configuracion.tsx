@@ -6,6 +6,9 @@ import {
   Tag,
   FolderTree,
   Truck,
+  Briefcase,
+  Coins,
+  Calendar,
   Plus,
   Edit,
   Trash2,
@@ -39,6 +42,7 @@ import {
   TableRow,
   TableHead,
   TableCell,
+  DateInput,
 } from "../components/ui";
 import {
   configuracionService,
@@ -49,7 +53,12 @@ import {
   subcategoriasService,
   monedaService,
   tipoEntidadService,
+  dj08Service,
 } from "../services/api";
+import type {
+  ActividadEconomicaInput,
+  TributoInput,
+} from "../types/dj08";
 
 
 type ConfigSubTabType =
@@ -61,7 +70,9 @@ type ConfigSubTabType =
   | "tipo-convenios"
   | "tipo-dependencia"
   | "tipo-cuenta"
-  | "tipo-entidad";
+  | "tipo-entidad"
+  | "dj08-actividades"
+  | "dj08-tributos";
 
 const configSubTabs: { id: ConfigSubTabType; label: string }[] = [
   { id: "tipo-contrato", label: "Tipos de Contrato" },
@@ -72,7 +83,20 @@ const configSubTabs: { id: ConfigSubTabType; label: string }[] = [
   { id: "tipo-convenios", label: "Tipos de Convenio" },
   { id: "tipo-dependencia", label: "Tipos de Dependencia" },
   { id: "tipo-entidad", label: "Tipos de Entidad" },
+  { id: "dj08-actividades", label: "Actividades Económicas" },
+  { id: "dj08-tributos", label: "Tributos" },
 ];
+
+/** 1234.5 -> "1.234,50" (montos de los catálogos DJ-08). */
+const fmtMonto = (valor: unknown) =>
+  Number(valor || 0).toLocaleString("es-ES", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+
+/** "2025-01-31" -> "31/01/2025". */
+const fmtFechaCorta = (iso?: string) =>
+  iso ? iso.split("-").reverse().join("/") : "-";
 
 interface ConfigCardProps {
   title: string;
@@ -312,6 +336,24 @@ const {
     queryFn: () => tipoEntidadService.getTiposEntidad(),
   });
 
+  const {
+    data: dj08Actividades = [],
+    isLoading: loadingDj08Actividades,
+    refetch: refetchDj08Actividades,
+  } = useQuery({
+    queryKey: ["dj08Actividades"],
+    queryFn: () => dj08Service.listarActividades(),
+  });
+
+  const {
+    data: dj08Tributos = [],
+    isLoading: loadingDj08Tributos,
+    refetch: refetchDj08Tributos,
+  } = useQuery({
+    queryKey: ["dj08Tributos"],
+    queryFn: () => dj08Service.listarTributos(),
+  });
+
   const isAnyLoading =
     loadingTiposContrato ||
     loadingEstadosContrato ||
@@ -321,7 +363,9 @@ const {
     loadingTiposConvenio ||
     loadingTiposDependencia ||
     loadingTiposCuenta ||
-    loadingTiposEntidad;
+    loadingTiposEntidad ||
+    loadingDj08Actividades ||
+    loadingDj08Tributos;
 
   // Mutations para tipos de contrato
   const createTipoContrato = useMutation({
@@ -616,6 +660,67 @@ const {
     },
   });
 
+  // Mutations para los catálogos de la DJ-08
+  const createDj08Actividad = useMutation({
+    mutationFn: dj08Service.crearActividad,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["dj08Actividades"] });
+      refetchDj08Actividades();
+      toast.success("Actividad económica creada");
+      closeModal();
+    },
+  });
+
+  const updateDj08Actividad = useMutation({
+    mutationFn: ({ id, data }: { id: number; data: ActividadEconomicaInput }) =>
+      dj08Service.actualizarActividad(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["dj08Actividades"] });
+      refetchDj08Actividades();
+      toast.success("Actividad económica actualizada");
+      closeModal();
+    },
+  });
+
+  const deleteDj08Actividad = useMutation({
+    mutationFn: dj08Service.eliminarActividad,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["dj08Actividades"] });
+      refetchDj08Actividades();
+      toast.success("Actividad económica eliminada");
+    },
+  });
+
+  const createDj08Tributo = useMutation({
+    mutationFn: dj08Service.crearTributo,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["dj08Tributos"] });
+      refetchDj08Tributos();
+      toast.success("Tributo creado");
+      closeModal();
+    },
+  });
+
+  const updateDj08Tributo = useMutation({
+    mutationFn: ({ id, data }: { id: number; data: TributoInput }) =>
+      dj08Service.actualizarTributo(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["dj08Tributos"] });
+      refetchDj08Tributos();
+      toast.success("Tributo actualizado");
+      closeModal();
+    },
+  });
+
+  const deleteDj08Tributo = useMutation({
+    mutationFn: dj08Service.eliminarTributo,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["dj08Tributos"] });
+      refetchDj08Tributos();
+      toast.success("Tributo eliminado");
+    },
+  });
+
   const openModal = (type: string, item?: any) => {
     setModalType(type);
     setEditingItem(item || null);
@@ -623,6 +728,18 @@ const {
       setFormData({ nombre: "", descripcion: "", id_categoria: "" });
     } else if (type === "subcategorias" && item) {
       setFormData({ ...item });
+    } else if (type === "dj08-actividades" && !item) {
+      setFormData({
+        codigo: "",
+        nombre: "",
+        fecha_inicio: "",
+        fecha_fin: "",
+        ingresos: "",
+        gastos: "",
+        orden: 0,
+      });
+    } else if (type === "dj08-tributos" && !item) {
+      setFormData({ nombre: "", importe: "" });
     } else {
       setFormData(item || { nombre: "", descripcion: "" });
     }
@@ -655,6 +772,12 @@ const {
         break;
       case "tipo-entidad":
         refetchTiposEntidad();
+        break;
+      case "dj08-actividades":
+        refetchDj08Actividades();
+        break;
+      case "dj08-tributos":
+        refetchDj08Tributos();
         break;
     }
   };
@@ -762,6 +885,53 @@ const {
           createTipoEntidad.mutate(formData);
         }
         break;
+      case "dj08-actividades": {
+        if (!formData.codigo?.trim()) {
+          toast.error("El código es requerido");
+          return;
+        }
+        if (!formData.fecha_inicio || !formData.fecha_fin) {
+          toast.error("Las fechas Desde y Hasta son requeridas");
+          return;
+        }
+        if (formData.fecha_fin < formData.fecha_inicio) {
+          toast.error("La fecha Hasta no puede ser anterior a Desde");
+          return;
+        }
+        const actividadData: ActividadEconomicaInput = {
+          codigo: formData.codigo,
+          nombre: formData.nombre,
+          fecha_inicio: formData.fecha_inicio,
+          fecha_fin: formData.fecha_fin,
+          ingresos: parseFloat(formData.ingresos) || 0,
+          gastos: parseFloat(formData.gastos) || 0,
+          orden: parseInt(formData.orden, 10) || 0,
+        };
+        if (editingItem) {
+          updateDj08Actividad.mutate({
+            id: editingItem.id_actividad,
+            data: actividadData,
+          });
+        } else {
+          createDj08Actividad.mutate(actividadData);
+        }
+        break;
+      }
+      case "dj08-tributos": {
+        const tributoData: TributoInput = {
+          nombre: formData.nombre,
+          importe: parseFloat(formData.importe) || 0,
+        };
+        if (editingItem) {
+          updateDj08Tributo.mutate({
+            id: editingItem.id_tributo,
+            data: tributoData,
+          });
+        } else {
+          createDj08Tributo.mutate(tributoData);
+        }
+        break;
+      }
     }
   };
 
@@ -798,6 +968,12 @@ const {
         break;
       case "tipo-entidad":
         deleteTipoEntidad.mutate(item.id_tipo_entidad);
+        break;
+      case "dj08-actividades":
+        deleteDj08Actividad.mutate(item.id_actividad);
+        break;
+      case "dj08-tributos":
+        deleteDj08Tributo.mutate(item.id_tributo);
         break;
     }
     setConfirmDelete({ isOpen: false, type: null, item: null });
@@ -876,6 +1052,22 @@ const {
       color: "bg-rose-500",
       type: "tipo-entidad",
     },
+    {
+      title: "Actividades Económicas",
+      icon: <Briefcase className="h-8 w-8" />,
+      description: "Catálogo DJ-08: ingresos y gastos por actividad",
+      count: dj08Actividades.length,
+      color: "bg-amber-500",
+      type: "dj08-actividades",
+    },
+    {
+      title: "Tributos",
+      icon: <Coins className="h-8 w-8" />,
+      description: "Catálogo DJ-08: tributos pagados (Sección F)",
+      count: dj08Tributos.length,
+      color: "bg-cyan-500",
+      type: "dj08-tributos",
+    },
   ];
 
   const getItems = () => {
@@ -898,6 +1090,10 @@ const {
         return tiposCuenta;
       case "tipo-entidad":
         return tiposEntidad;
+      case "dj08-actividades":
+        return dj08Actividades;
+      case "dj08-tributos":
+        return dj08Tributos;
       default:
         return [];
     }
@@ -923,12 +1119,19 @@ const {
         return item.id_tipo_cuenta;
       case "tipo-entidad":
         return item.id_tipo_entidad;
+      case "dj08-actividades":
+        return item.id_actividad;
+      case "dj08-tributos":
+        return item.id_tributo;
       default:
         return item.id;
     }
   };
 
   const isSubcategoria = activeConfigSubTab === "subcategorias";
+  const isDj08Catalogo =
+    activeConfigSubTab === "dj08-actividades" ||
+    activeConfigSubTab === "dj08-tributos";
 
   const getFormTitle = () => {
     if (editingItem) return "Editar Elemento";
@@ -951,6 +1154,10 @@ const {
         return "Nuevo Tipo de Cuenta";
       case "tipo-entidad":
         return "Nuevo Tipo de Entidad";
+      case "dj08-actividades":
+        return "Nueva Actividad Económica";
+      case "dj08-tributos":
+        return "Nuevo Tributo";
       default:
         return "Nuevo Elemento";
     }
@@ -977,6 +1184,10 @@ const {
         return <Wallet className={`${className} text-cyan-600`} />;
       case "tipo-entidad":
         return <BuildingIcon className={`${className} text-rose-600`} />;
+      case "dj08-actividades":
+        return <Briefcase className={`${className} text-amber-600`} />;
+      case "dj08-tributos":
+        return <Coins className={`${className} text-cyan-600`} />;
       default:
         return <Plus className={`${className} text-gray-600`} />;
     }
@@ -1002,6 +1213,10 @@ const {
         return "from-cyan-50 to-sky-50";
       case "tipo-entidad":
         return "from-rose-50 to-pink-50";
+      case "dj08-actividades":
+        return "from-amber-50 to-orange-50";
+      case "dj08-tributos":
+        return "from-cyan-50 to-teal-50";
       default:
         return "from-gray-50 to-gray-100";
     }
@@ -1027,6 +1242,10 @@ const {
         return "bg-gradient-to-r from-cyan-50 to-sky-50";
       case "tipo-entidad":
         return "bg-gradient-to-r from-rose-50 to-pink-50";
+      case "dj08-actividades":
+        return "bg-gradient-to-r from-amber-50 to-orange-50";
+      case "dj08-tributos":
+        return "bg-gradient-to-r from-cyan-50 to-teal-50";
       default:
         return "bg-gray-50";
     }
@@ -1052,6 +1271,10 @@ const {
         return "from-cyan-600 to-cyan-700 hover:from-cyan-700 hover:to-cyan-800";
       case "tipo-entidad":
         return "from-rose-600 to-rose-700 hover:from-rose-700 hover:to-rose-800";
+      case "dj08-actividades":
+        return "from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700";
+      case "dj08-tributos":
+        return "from-cyan-600 to-teal-600 hover:from-cyan-700 hover:to-teal-700";
       default:
         return "from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800";
     }
@@ -1077,6 +1300,10 @@ const {
         return "bg-gradient-to-r from-cyan-50 to-sky-50";
       case "tipo-entidad":
         return "bg-gradient-to-r from-rose-50 to-pink-50";
+      case "dj08-actividades":
+        return "bg-gradient-to-r from-amber-50 to-orange-50";
+      case "dj08-tributos":
+        return "bg-gradient-to-r from-cyan-50 to-teal-50";
       default:
         return "bg-gray-50";
     }
@@ -1102,6 +1329,10 @@ const {
         return { bg: "bg-cyan-100", text: "text-cyan-700" };
       case "tipo-entidad":
         return { bg: "bg-rose-100", text: "text-rose-700" };
+      case "dj08-actividades":
+        return { bg: "bg-amber-100", text: "text-amber-700" };
+      case "dj08-tributos":
+        return { bg: "bg-cyan-100", text: "text-cyan-700" };
       default:
         return { bg: "bg-slate-50", text: "text-gray-700" };
     }
@@ -1127,6 +1358,10 @@ const {
         return "text-cyan-600";
       case "tipo-entidad":
         return "text-rose-600";
+      case "dj08-actividades":
+        return "text-amber-600";
+      case "dj08-tributos":
+        return "text-cyan-600";
       default:
         return "text-gray-600";
     }
@@ -1159,6 +1394,19 @@ const {
                     className="mt-1 focus:ring-2 focus:ring-blue-500 outline-none"
                   />
                 </div>
+                {activeConfigSubTab === "dj08-actividades" && (
+                  <div className="space-y-1">
+                    <Label className="text-sm font-medium">Código *</Label>
+                    <Input
+                      placeholder="Ej: 0002"
+                      value={formData.codigo || ""}
+                      onChange={(e) =>
+                        setFormData({ ...formData, codigo: e.target.value })
+                      }
+                      className="mt-1 focus:ring-2 focus:ring-blue-500 outline-none"
+                    />
+                  </div>
+                )}
                 {isSubcategoria && (
                   <div className="space-y-1">
                     <Label className="text-sm font-medium">Categoría *</Label>
@@ -1183,17 +1431,84 @@ const {
                 )}
               </div>
 
-              <div className="space-y-1">
-                <Label className="text-sm font-medium">Descripción</Label>
-                <Input
-                  placeholder="Descripción opcional"
-                  value={formData.descripcion || ""}
-                  onChange={(e) =>
-                    setFormData({ ...formData, descripcion: e.target.value })
-                  }
-                  className="mt-1 focus:ring-2 focus:ring-blue-500 outline-none"
-                />
-              </div>
+              {activeConfigSubTab === "dj08-actividades" && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <Label className="text-sm font-medium">Desde *</Label>
+                    <DateInput
+                      value={formData.fecha_inicio || ""}
+                      onChange={(iso) =>
+                        setFormData({ ...formData, fecha_inicio: iso })
+                      }
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-sm font-medium">Hasta *</Label>
+                    <DateInput
+                      value={formData.fecha_fin || ""}
+                      onChange={(iso) =>
+                        setFormData({ ...formData, fecha_fin: iso })
+                      }
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-sm font-medium">Ingresos obtenidos</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      placeholder="0.00"
+                      value={formData.ingresos ?? ""}
+                      onChange={(e) =>
+                        setFormData({ ...formData, ingresos: e.target.value })
+                      }
+                      className="mt-1 focus:ring-2 focus:ring-blue-500 outline-none"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-sm font-medium">Gastos deducibles</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      placeholder="0.00"
+                      value={formData.gastos ?? ""}
+                      onChange={(e) =>
+                        setFormData({ ...formData, gastos: e.target.value })
+                      }
+                      className="mt-1 focus:ring-2 focus:ring-blue-500 outline-none"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {activeConfigSubTab === "dj08-tributos" && (
+                <div className="space-y-1">
+                  <Label className="text-sm font-medium">Importe total pagado</Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    placeholder="0.00"
+                    value={formData.importe ?? ""}
+                    onChange={(e) =>
+                      setFormData({ ...formData, importe: e.target.value })
+                    }
+                    className="mt-1 focus:ring-2 focus:ring-blue-500 outline-none"
+                  />
+                </div>
+              )}
+
+              {!isDj08Catalogo && (
+                <div className="space-y-1">
+                  <Label className="text-sm font-medium">Descripción</Label>
+                  <Input
+                    placeholder="Descripción opcional"
+                    value={formData.descripcion || ""}
+                    onChange={(e) =>
+                      setFormData({ ...formData, descripcion: e.target.value })
+                    }
+                    className="mt-1 focus:ring-2 focus:ring-blue-500 outline-none"
+                  />
+                </div>
+              )}
 
               <div className="flex gap-3 mt-6 pt-4 border-t">
                 <Button
@@ -1218,7 +1533,8 @@ const {
           </CardContent>
         </Card>
 
-        {/* Tabla */}
+        {/* Tabla (oculta para catálogos DJ-08: la lista se ve en la vista principal) */}
+        {!isDj08Catalogo && (
         <div className="rounded-md border border-gray-200 overflow-hidden shadow-sm">
           <Table>
             <TableHeader className={getTableHeaderGradient()}>
@@ -1241,12 +1557,14 @@ const {
                     </div>
                   </TableHead>
                 )}
-                <TableHead>
-                  <div className="flex items-center gap-2">
-                    <FileText className="h-4 w-4 text-gray-600" />
-                    Descripción
-                  </div>
-                </TableHead>
+                {!isDj08Catalogo && (
+                  <TableHead>
+                    <div className="flex items-center gap-2">
+                      <FileText className="h-4 w-4 text-gray-600" />
+                      Descripción
+                    </div>
+                  </TableHead>
+                )}
                 <TableHead className="text-right">Acciones</TableHead>
               </TableRow>
             </TableHeader>
@@ -1270,7 +1588,9 @@ const {
                       </span>
                     </TableCell>
                   )}
-                  <TableCell>{item.descripcion || "-"}</TableCell>
+                  {!isDj08Catalogo && (
+                    <TableCell>{item.descripcion || "-"}</TableCell>
+                  )}
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
                       <Button
@@ -1298,9 +1618,8 @@ const {
               ))}
               {items.length === 0 && (
                 <TableRow>
-                  <TableCell
-                    colSpan={isSubcategoria ? 5 : 4}
-                    className="text-center py-12"
+                  <TableCell                      colSpan={isSubcategoria ? 5 : 4}
+                      className="text-center py-12"
                   >
                     <div className="flex flex-col items-center justify-center text-gray-400">
                       <AlertCircle className="h-12 w-12 mb-3 opacity-50" />
@@ -1317,6 +1636,7 @@ const {
             </TableBody>
           </Table>
         </div>
+        )}
       </div>
     );
   };
@@ -1326,6 +1646,7 @@ const {
     const filteredItems = currentItems.filter(
       (item: any) =>
         item.nombre?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.codigo?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         item.descripcion?.toLowerCase().includes(searchTerm.toLowerCase()),
     );
     const currentSubTab = configSubTabs.find(
@@ -1352,10 +1673,13 @@ const {
                           : activeConfigSubTab === "tipo-convenios"
                             ? "bg-teal-100"
                             : activeConfigSubTab === "tipo-dependencia"
-                              ? "bg-indigo-100"
-                              : activeConfigSubTab === "tipo-cuenta"
-                                ? "bg-cyan-100"
-                                : "bg-rose-100"
+                              ? "bg-indigo-100"                            : activeConfigSubTab === "tipo-cuenta"
+                              ? "bg-cyan-100"
+                              : activeConfigSubTab === "dj08-actividades"
+                                ? "bg-amber-100"
+                                : activeConfigSubTab === "dj08-tributos"
+                                  ? "bg-cyan-100"
+                                  : "bg-rose-100"
               }`}
             >
               {activeConfigSubTab === "tipo-contrato" && (
@@ -1384,6 +1708,12 @@ const {
               )}
               {activeConfigSubTab === "tipo-entidad" && (
                 <BuildingIcon className="w-5 h-5 text-rose-600" />
+              )}
+              {activeConfigSubTab === "dj08-actividades" && (
+                <Briefcase className="w-5 h-5 text-amber-600" />
+              )}
+              {activeConfigSubTab === "dj08-tributos" && (
+                <Coins className="w-5 h-5 text-cyan-600" />
               )}
             </div>
             <h2 className="text-lg font-bold text-gray-900">
@@ -1435,6 +1765,17 @@ const {
                         Nombre
                       </div>
                     </TableHead>
+                    {activeConfigSubTab === "dj08-actividades" && (
+                      <>
+                        <TableHead>Código</TableHead>
+                        <TableHead>Período</TableHead>
+                        <TableHead className="text-right">Ingresos</TableHead>
+                        <TableHead className="text-right">Gastos</TableHead>
+                      </>
+                    )}
+                    {activeConfigSubTab === "dj08-tributos" && (
+                      <TableHead className="text-right">Importe</TableHead>
+                    )}
                     {activeConfigSubTab === "subcategorias" && (
                       <TableHead>
                         <div className="flex items-center gap-2">
@@ -1445,12 +1786,14 @@ const {
                         </div>
                       </TableHead>
                     )}
-                    <TableHead>
-                      <div className="flex items-center gap-2">
-                        <FileText className={`h-4 w-4 ${getListIconColor()}`} />
-                        Descripción
-                      </div>
-                    </TableHead>
+                    {!isDj08Catalogo && (
+                      <TableHead>
+                        <div className="flex items-center gap-2">
+                          <FileText className={`h-4 w-4 ${getListIconColor()}`} />
+                          Descripción
+                        </div>
+                      </TableHead>
+                    )}
                     <TableHead className="text-right">Acciones</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -1458,7 +1801,13 @@ const {
                   {filteredItems.length === 0 ? (
                     <TableRow>
                       <TableCell
-                        colSpan={activeConfigSubTab === "subcategorias" ? 5 : 4}
+                        colSpan={
+                          activeConfigSubTab === "subcategorias"
+                            ? 5
+                            : activeConfigSubTab === "dj08-actividades"
+                              ? 7
+                              : 4
+                        }
                         className="text-center py-12"
                       >
                         <div className="flex flex-col items-center justify-center text-gray-400">
@@ -1491,6 +1840,26 @@ const {
                         <TableCell className="font-semibold">
                           {item.nombre}
                         </TableCell>
+                        {activeConfigSubTab === "dj08-actividades" && (
+                          <>
+                            <TableCell>{item.codigo}</TableCell>
+                            <TableCell className="whitespace-nowrap">
+                              {fmtFechaCorta(item.fecha_inicio)} — {" "}
+                              {fmtFechaCorta(item.fecha_fin)}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              {fmtMonto(item.ingresos)}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              {fmtMonto(item.gastos)}
+                            </TableCell>
+                          </>
+                        )}
+                        {activeConfigSubTab === "dj08-tributos" && (
+                          <TableCell className="text-right">
+                            {fmtMonto(item.importe)}
+                          </TableCell>
+                        )}
                         {activeConfigSubTab === "subcategorias" && (
                           <TableCell>
                             <span className="inline-flex items-center gap-1 px-2 py-1 bg-purple-100 text-purple-700 rounded text-sm">
@@ -1499,9 +1868,11 @@ const {
                             </span>
                           </TableCell>
                         )}
-                        <TableCell className="text-gray-500">
-                          {item.descripcion || "-"}
-                        </TableCell>
+                        {!isDj08Catalogo && (
+                          <TableCell className="text-gray-500">
+                            {item.descripcion || "-"}
+                          </TableCell>
+                        )}
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-2">
                             <Button
@@ -1724,6 +2095,53 @@ const {
                     </p>
                   </div>
                 </div>
+                {activeConfigSubTab === "dj08-actividades" && (
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="bg-gradient-to-br from-amber-50 to-orange-50 p-4 rounded-md border border-amber-100">
+                      <p className="text-xs text-amber-600 uppercase tracking-wider mb-1">
+                        Código
+                      </p>
+                      <p className="font-bold text-gray-900">
+                        {detailModal.item.codigo || "-"}
+                      </p>
+                    </div>
+                    <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-4 rounded-md border border-blue-100">
+                      <p className="text-xs text-blue-600 uppercase tracking-wider mb-1">
+                        Período
+                      </p>
+                      <p className="font-bold text-gray-900 text-sm">
+                        {fmtFechaCorta(detailModal.item.fecha_inicio)} — {" "}
+                        {fmtFechaCorta(detailModal.item.fecha_fin)}
+                      </p>
+                    </div>
+                    <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-4 rounded-md border border-green-100">
+                      <p className="text-xs text-green-600 uppercase tracking-wider mb-1">
+                        Ingresos
+                      </p>
+                      <p className="font-bold text-gray-900">
+                        {fmtMonto(detailModal.item.ingresos)}
+                      </p>
+                    </div>
+                    <div className="bg-gradient-to-br from-cyan-50 to-teal-50 p-4 rounded-md border border-cyan-100">
+                      <p className="text-xs text-cyan-600 uppercase tracking-wider mb-1">
+                        Gastos
+                      </p>
+                      <p className="font-bold text-gray-900">
+                        {fmtMonto(detailModal.item.gastos)}
+                      </p>
+                    </div>
+                  </div>
+                )}
+                {activeConfigSubTab === "dj08-tributos" && (
+                  <div className="bg-gradient-to-br from-cyan-50 to-teal-50 p-4 rounded-md border border-cyan-100">
+                    <p className="text-xs text-cyan-600 uppercase tracking-wider mb-1">
+                      Importe total pagado
+                    </p>
+                    <p className="font-bold text-gray-900">
+                      {fmtMonto(detailModal.item.importe)}
+                    </p>
+                  </div>
+                )}
                 {activeConfigSubTab === "subcategorias" &&
                   detailModal.item.categoria && (
                     <div className="bg-gradient-to-br from-purple-50 to-pink-50 p-4 rounded-md border border-purple-100">
@@ -1735,14 +2153,16 @@ const {
                       </p>
                     </div>
                   )}
-                <div className="bg-gray-50 p-4 rounded-md">
-                  <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">
-                    Descripción
-                  </p>
-                  <p className="text-gray-700">
-                    {detailModal.item.descripcion || "Sin descripción"}
-                  </p>
-                </div>
+                {!isDj08Catalogo && (
+                  <div className="bg-gray-50 p-4 rounded-md">
+                    <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">
+                      Descripción
+                    </p>
+                    <p className="text-gray-700">
+                      {detailModal.item.descripcion || "Sin descripción"}
+                    </p>
+                  </div>
+                )}
               </div>
               <div className="p-6 border-t border-gray-200 bg-gray-50 flex justify-end gap-3">
                 <Button

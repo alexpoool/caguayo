@@ -61,6 +61,13 @@ from .servicio import (
 from .datos_generales_dependencia import DatosGeneralesDependencia
 from .ficha_costo import FichaCosto, FichaInsumo, FichaManoObra
 from .ficha_tarifa import FichaTarifa
+from .dj08 import (
+    ActividadEconomica,
+    Tributo,
+    DeclaracionJurada,
+    DeclaracionActividad,
+    DeclaracionTributo,
+)
 
 __all__ = [
     "SQLModel",
@@ -131,4 +138,9 @@ __all__ = [
     "FichaTarifa",
     "FichaInsumo",
     "FichaManoObra",
+    "ActividadEconomica",
+    "Tributo",
+    "DeclaracionJurada",
+    "DeclaracionActividad",
+    "DeclaracionTributo",
 ]

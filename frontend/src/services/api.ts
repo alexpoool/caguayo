@@ -1,6 +1,15 @@
 import { apiClient } from '../lib/api';
 import { configuracionService as configService } from './administracion';
 import { authHelpers } from '../lib/api';
+import type {
+  ActividadEconomica,
+  ActividadEconomicaInput,
+  Tributo,
+  TributoInput,
+  DJ08Input,
+  DJ08Calculado,
+  DeclaracionJurada,
+} from '../types/dj08';
 import type { FichaCostoInput, FichaCostoRead, FichaTarifa, FichaTarifaInput } from '../types/fichaCosto';
 import type { CuentaDependenciaInfo } from './auth';
 import type {
@@ -1293,6 +1302,97 @@ export const fichasCostoService = {
     const disp = resp.headers.get('Content-Disposition') || '';
     const m = /filename\*?=(?:"([^"]+)"|([^;]+))/.exec(disp);
     const nombre = (m && (m[1] || m[2])?.replace(/"/g, '').trim()) || `FICHA ${id}.pdf`;
+    return { blob, nombre };
+  },
+};
+
+export const dj08Service = {
+  async listarActividades(): Promise<ActividadEconomica[]> {
+    return apiClient.get<ActividadEconomica[]>('/dj08/actividades');
+  },
+  async crearActividad(data: ActividadEconomicaInput): Promise<ActividadEconomica> {
+    return apiClient.post<ActividadEconomica>('/dj08/actividades', data);
+  },
+  async actualizarActividad(id: number, data: ActividadEconomicaInput): Promise<ActividadEconomica> {
+    return apiClient.put<ActividadEconomica>(`/dj08/actividades/${id}`, data);
+  },
+  async eliminarActividad(id: number): Promise<void> {
+    return apiClient.delete<void>(`/dj08/actividades/${id}`);
+  },
+
+  async listarTributos(): Promise<Tributo[]> {
+    return apiClient.get<Tributo[]>('/dj08/tributos');
+  },
+  async crearTributo(data: TributoInput): Promise<Tributo> {
+    return apiClient.post<Tributo>('/dj08/tributos', data);
+  },
+  async actualizarTributo(id: number, data: TributoInput): Promise<Tributo> {
+    return apiClient.put<Tributo>(`/dj08/tributos/${id}`, data);
+  },
+  async eliminarTributo(id: number): Promise<void> {
+    return apiClient.delete<void>(`/dj08/tributos/${id}`);
+  },
+
+  async calcular(entrada: DJ08Input): Promise<DJ08Calculado> {
+    return apiClient.post<DJ08Calculado>('/dj08/calcular', entrada);
+  },
+
+  async listarDeclaraciones(params?: {
+    ano_fiscal?: number;
+    estado?: string;
+  }): Promise<DeclaracionJurada[]> {
+    const query = new URLSearchParams();
+    if (params?.ano_fiscal) query.append('ano_fiscal', String(params.ano_fiscal));
+    if (params?.estado) query.append('estado', params.estado);
+    const qs = query.toString();
+    return apiClient.get<DeclaracionJurada[]>(`/dj08/declaraciones${qs ? `?${qs}` : ''}`);
+  },
+
+  async guardarDeclaracion(entrada: DJ08Input): Promise<DeclaracionJurada> {
+    return apiClient.post<DeclaracionJurada>('/dj08/declaraciones', entrada);
+  },
+
+  async presentarDeclaracion(id: number): Promise<DeclaracionJurada> {
+    return apiClient.put<DeclaracionJurada>(`/dj08/declaraciones/${id}/presentar`, {});
+  },
+
+  async eliminarDeclaracion(id: number): Promise<void> {
+    return apiClient.delete<void>(`/dj08/declaraciones/${id}`);
+  },
+
+  // Descarga el PDF de la declaración (blob autenticado), mismo patrón que fichasCostoService
+  async exportarPdf(entrada: DJ08Input): Promise<{ blob: Blob; nombre: string }> {
+    const token = localStorage.getItem('auth_token');
+    const base = (import.meta as any).env.VITE_API_BASE_URL;
+    const resp = await fetch(`${base}/dj08/exportar-pdf`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify(entrada),
+    });
+    if (!resp.ok) throw new Error('Error al exportar la DJ-08');
+    const blob = await resp.blob();
+    const disp = resp.headers.get('Content-Disposition') || '';
+    const m = /filename\*?=(?:"([^"]+)"|([^;]+))/.exec(disp);
+    const nombre = (m && (m[1] || m[2])?.replace(/"/g, '').trim()) || 'DJ08.pdf';
+    return { blob, nombre };
+  },
+
+  // Re-exporta el PDF de una declaración guardada (desde el snapshot)
+  async exportarDeclaracionPdf(id: number): Promise<{ blob: Blob; nombre: string }> {
+    const token = localStorage.getItem('auth_token');
+    const base = (import.meta as any).env.VITE_API_BASE_URL;
+    const resp = await fetch(`${base}/dj08/declaraciones/${id}/exportar-pdf`, {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+    if (!resp.ok) throw new Error('Error al exportar la declaración');
+    const blob = await resp.blob();
+    const disp = resp.headers.get('Content-Disposition') || '';
+    const m = /filename\*?=(?:"([^"]+)"|([^;]+))/.exec(disp);
+    const nombre = (m && (m[1] || m[2])?.replace(/"/g, '').trim()) || `DJ08-${id}.pdf`;
     return { blob, nombre };
   },
 };
