@@ -49,7 +49,7 @@ type TabType = 'todas' | 'pendientes' | 'liquidadas';
 export function LiquidacionesPage() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const initialProveedorId = searchParams.get('proveedor');
 
   const [activeTab, setActiveTab] = useState<TabType>('todas');
@@ -328,6 +328,15 @@ id_moneda: 0,
   const getClienteNombre = (clienteId: number) => {
     const cliente = clientes.find((c: Cliente) => c.id_cliente === clienteId);
     return cliente?.nombre || 'N/A';
+  };
+
+  // Quita el filtro por proveedor que llega desde la lista de Proveedores
+  // (?proveedor=id) y vuelve a mostrar todas las liquidaciones.
+  const limpiarFiltroProveedor = () => {
+    setFiltroCliente(null);
+    const params = new URLSearchParams(searchParams);
+    params.delete('proveedor');
+    setSearchParams(params, { replace: true });
   };
 
   const getAnexoInfo = (anexoId: number) => {
@@ -673,6 +682,27 @@ id_moneda: 0,
         </div>
       </div>
 
+      {filtroCliente && (
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="inline-flex items-center gap-2 pl-3 pr-1.5 py-1.5 rounded-full bg-teal-50 border border-teal-200 text-sm font-medium text-teal-700">
+            <User className="h-3.5 w-3.5" />
+            Proveedor: {getClienteNombre(filtroCliente)}
+            <button
+              type="button"
+              onClick={limpiarFiltroProveedor}
+              aria-label="Quitar filtro por proveedor"
+              title="Quitar filtro por proveedor"
+              className="p-0.5 rounded-full text-teal-600 hover:bg-teal-100 hover:text-teal-900 transition-colors"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </span>
+          <span className="text-xs text-gray-500">
+            Solo se muestran las liquidaciones de este proveedor
+          </span>
+        </div>
+      )}
+
       <Card className="overflow-hidden shadow-sm border-gray-200">
         <div className="overflow-x-auto">
           <Table>
@@ -708,7 +738,7 @@ id_moneda: 0,
                 </TableRow>
               ) : filteredLiquidaciones.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-12 text-gray-500">No hay liquidaciones</TableCell>
+                  <TableCell colSpan={6} className="text-center py-12 text-gray-500">{filtroCliente ? 'No hay liquidaciones de este proveedor' : 'No hay liquidaciones'}</TableCell>
                 </TableRow>
               ) : (
                 filteredLiquidaciones.map((liquidacion: Liquidacion) => (
