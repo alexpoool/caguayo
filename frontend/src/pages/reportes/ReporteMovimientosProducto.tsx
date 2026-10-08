@@ -1,10 +1,10 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { toast } from "react-hot-toast";
 import { dependenciasService } from "../../services/api";
 import { Dependencia } from "../../types/dependencia";
 import { authHelpers } from "../../lib/api";
 import type { Productos } from "../../types/index";
-import { Package, Download, Eye, Loader2, Table2, Search } from "lucide-react";
+import { Package, Download, Eye, Loader2, Search, AlertCircle } from "lucide-react";
 import ReportNotes from "../../components/ui/ReportNotes";
 import { ReportPreviewTable } from "../../components/ui/ReportPreviewTable";
 import { formatFecha } from "../../utils/fecha";
@@ -25,8 +25,12 @@ const ReporteMovimientosProducto: React.FC = () => {
   const [pdfLoading, setPdfLoading] = useState(false);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [tableLoading, setTableLoading] = useState(false);
+  const [previewError, setPreviewError] = useState(false);
   const [dependencias, setDependencias] = useState<Dependencia[]>([]);
-  const [idDependencia, setIdDependencia] = useState<number | null>(null);
+  // Dependencia por defecto: la del usuario logueado
+  const [idDependencia, setIdDependencia] = useState<number | null>(
+    () => authHelpers.getUser()?.dependencia?.id_dependencia ?? null
+  );
 
   // Buscador de productos (item_anexo)
   const [busqueda, setBusqueda] = useState("");
@@ -35,6 +39,9 @@ const ReporteMovimientosProducto: React.FC = () => {
   const [sugAbiertas, setSugAbiertas] = useState(false);
   const [idProducto, setIdProducto] = useState<number | null>(null);
   const [productoSel, setProductoSel] = useState<Productos | null>(null);
+  // Petición del listado completo (al enfocar el campo vacío)
+  const focusControllerRef = useRef<AbortController | null>(null);
+  const inputRef = useRef<HTMLInputElement | null>(null);
 
   const [fechaInicio, setFechaInicio] = useState(FECHA_INICIO_DEFECTO);
   const [fechaFin, setFechaFin] = useState(FECHA_FIN_DEFECTO);
@@ -51,14 +58,60 @@ const ReporteMovimientosProducto: React.FC = () => {
     dependenciasService.getDependencias().then(setDependencias).catch(() => toast.error("Error cargando dependencias"));
   }, []);
 
+  // ── Tabla automática: se carga sola cuando el formulario es válido ──────────
+  useEffect(() => {
+    if (!idDependencia || !idProducto || !fechaInicio || !fechaFin) {
+      setPreviewData(null);
+      setPreviewError(false);
+      setTableLoading(false);
+      return;
+    }
+
+    const controller = new AbortController();
+    setTableLoading(true);
+    setPreviewError(false);
+
+    const timer = setTimeout(async () => {
+      try {
+        const token = authHelpers.getToken() ?? "";
+        const r = await fetch(
+          `${BASE_URL}/reportes/movimientos-producto/preview?id_dependencia=${idDependencia}&id_producto=${idProducto}&fecha_inicio=${fechaInicio}&fecha_fin=${fechaFin}`,
+          { headers: { Authorization: `Bearer ${token}` }, signal: controller.signal }
+        );
+        if (!r.ok) throw new Error(`${r.status}`);
+        const json = await r.json();
+        if (controller.signal.aborted) return;
+        setPreviewData(Array.isArray(json?.items) ? json.items : []);
+      } catch (err: any) {
+        if (err?.name === "AbortError" || controller.signal.aborted) return;
+        setPreviewData(null);
+        setPreviewError(true);
+        toast.error("Error al cargar la tabla");
+      } finally {
+        if (!controller.signal.aborted) setTableLoading(false);
+      }
+    }, 300);
+
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
+  }, [idDependencia, idProducto, fechaInicio, fechaFin]);
+
   // Búsqueda con debounce contra /reportes/productos-item-anexo
   useEffect(() => {
     const texto = busqueda.trim();
+    // Tras seleccionar un producto no volvemos a buscar (evita reabrir el listado)
+    if (productoSel && texto === productoSel.nombre) return;
     if (!texto) {
       setSugerencias([]);
       setBuscando(false);
       return;
     }
+
+    // Cualquier tecleo invalida la carga del listado completo
+    focusControllerRef.current?.abort();
+
     const controller = new AbortController();
     const timer = setTimeout(async () => {
       setBuscando(true);
@@ -70,19 +123,61 @@ const ReporteMovimientosProducto: React.FC = () => {
         });
         if (!r.ok) throw new Error(`${r.status}`);
         const data = await r.json();
+        if (controller.signal.aborted) return;
         setSugerencias(Array.isArray(data) ? data : []);
-        setSugAbiertas(true);
+        if (inputRef.current === document.activeElement) setSugAbiertas(true);
       } catch (err: any) {
-        if (err?.name !== "AbortError") {
-          setSugerencias([]);
-          setSugAbiertas(true);
-        }
+        if (err?.name === "AbortError" || controller.signal.aborted) return;
+        setSugerencias([]);
+        if (inputRef.current === document.activeElement) setSugAbiertas(true);
+        toast.error("Error buscando productos");
       } finally {
-        setBuscando(false);
+        if (!controller.signal.aborted) setBuscando(false);
       }
     }, 250);
-    return () => { clearTimeout(timer); controller.abort(); };
-  }, [busqueda]);
+
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
+  }, [busqueda, productoSel]);
+
+  // Al enfocar el campo: si no hay texto (o el texto es la selección actual)
+  // cargamos el listado completo, como el antiguo select.
+  const handleFocusBusqueda = () => {
+    const texto = busqueda.trim();
+    const esSeleccion = Boolean(productoSel && texto === productoSel.nombre);
+    if (texto && !esSeleccion) {
+      setSugAbiertas(true);
+      return;
+    }
+
+    focusControllerRef.current?.abort();
+    const controller = new AbortController();
+    focusControllerRef.current = controller;
+    setBuscando(true);
+
+    (async () => {
+      try {
+        const token = authHelpers.getToken() ?? "";
+        const r = await fetch(`${BASE_URL}/reportes/productos-item-anexo`, {
+          headers: { Authorization: `Bearer ${token}` },
+          signal: controller.signal,
+        });
+        if (!r.ok) throw new Error(`${r.status}`);
+        const data = await r.json();
+        if (controller.signal.aborted) return;
+        setSugerencias(Array.isArray(data) ? data : []);
+        if (inputRef.current === document.activeElement) setSugAbiertas(true);
+      } catch (err: any) {
+        if (err?.name === "AbortError" || controller.signal.aborted) return;
+        setSugerencias([]);
+        toast.error("Error cargando productos");
+      } finally {
+        if (!controller.signal.aborted) setBuscando(false);
+      }
+    })();
+  };
 
   const seleccionarProducto = (p: Productos) => {
     setProductoSel(p);
@@ -107,21 +202,6 @@ const ReporteMovimientosProducto: React.FC = () => {
     fecha_inicio: fechaInicio, fecha_fin: fechaFin,
     aprobado_por_nombre: userName, aprobado_por_cargo: userCargo, notas,
   });
-
-  const handleTablePreview = async () => {
-    if (!isFormValid) { toast.error("Complete los campos requeridos"); return; }
-    setTableLoading(true);
-    setPreviewData(null);
-    try {
-      const token = authHelpers.getToken() ?? "";
-      const r = await fetch(`${BASE_URL}/reportes/movimientos-producto/preview?id_dependencia=${idDependencia}&id_producto=${idProducto}&fecha_inicio=${fechaInicio}&fecha_fin=${fechaFin}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!r.ok) throw new Error(`${r.status}`);
-      const json = await r.json();
-      setPreviewData(json.items || []);
-    } catch { toast.error("Error al cargar vista previa"); } finally { setTableLoading(false); }
-  };
 
   const handlePreview = async () => {
     if (!isFormValid) { toast.error("Complete los campos requeridos"); return; }
@@ -150,6 +230,52 @@ const ReporteMovimientosProducto: React.FC = () => {
     } catch { toast.error("Error al generar reporte"); } finally { setPdfLoading(false); }
   };
 
+  const renderTabla = () => {
+    if (!isFormValid) {
+      const faltantes = [
+        !idDependencia && "la dependencia",
+        !idProducto && "el producto",
+        (!fechaInicio || !fechaFin) && "el rango de fechas",
+      ].filter(Boolean) as string[];
+      const texto = faltantes.length > 1
+        ? `${faltantes.slice(0, -1).join(", ")} y ${faltantes[faltantes.length - 1]}`
+        : faltantes[0];
+      return (
+        <div className="border border-dashed border-gray-300 rounded-xl bg-white px-4 py-8 text-center text-sm text-gray-500">
+          Selecciona {texto} para ver la tabla
+        </div>
+      );
+    }
+    if (tableLoading) {
+      return (
+        <div className="flex items-center justify-center py-10">
+          <Loader2 className="w-6 h-6 text-amber-500 animate-spin" />
+        </div>
+      );
+    }
+    if (previewError) {
+      return (
+        <div className="flex flex-col items-center gap-2 py-8 text-gray-400">
+          <AlertCircle className="w-6 h-6" />
+          <p className="text-sm">No se pudo cargar la tabla</p>
+        </div>
+      );
+    }
+    if (!previewData) return null;
+    return (
+      <ReportPreviewTable
+        columns={[
+          { key: "fecha", label: "Fecha", render: (v: any) => formatFecha(v) || "—" },
+          { key: "tipo", label: "Tipo" },
+          { key: "producto", label: "Producto", render: () => productoSel?.nombre || "—" },
+          { key: "cantidad", label: "Cantidad", className: "text-right" },
+        ]}
+        data={previewData}
+        totalItems={previewData.length}
+      />
+    );
+  };
+
   return (
     <div className="flex flex-col p-4">
       <div className="flex items-center justify-between mb-3 flex-shrink-0">
@@ -163,9 +289,6 @@ const ReporteMovimientosProducto: React.FC = () => {
           </div>
         </div>
         <div className="flex items-center gap-1">
-          <button type="button" onClick={handleTablePreview} disabled={!isFormValid || tableLoading} className="p-2 rounded-lg text-green-600 hover:bg-green-50 disabled:opacity-50 transition-colors" title="Vista previa de tabla">
-            {tableLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Table2 className="w-4 h-4" />}
-          </button>
           <button type="button" onClick={handlePreview} disabled={!isFormValid || previewLoading} className="p-2 rounded-lg text-amber-600 hover:bg-amber-50 disabled:opacity-50 transition-colors" title="Vista previa del documento">
             {previewLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Eye className="w-4 h-4" />}
           </button>
@@ -186,6 +309,9 @@ const ReporteMovimientosProducto: React.FC = () => {
                   <select value={idDependencia ?? ""} onChange={e => { setIdDependencia(e.target.value ? Number(e.target.value) : null); setPreviewData(null); }} className="w-full px-2.5 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 bg-white">
                     <option value="">Seleccionar…</option>
                     {dependencias.map(d => <option key={d.id_dependencia} value={d.id_dependencia}>{d.nombre}</option>)}
+                    {dependencias.length > 0 && idDependencia && !dependencias.some(d => d.id_dependencia === idDependencia) && (
+                      <option value={idDependencia}>Dependencia #{idDependencia}</option>
+                    )}
                   </select>
                 </div>
                 <div className="relative">
@@ -193,10 +319,11 @@ const ReporteMovimientosProducto: React.FC = () => {
                   <div className="relative">
                     <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" />
                     <input
+                      ref={inputRef}
                       type="text"
                       value={busqueda}
                       onChange={e => handleChangeBusqueda(e.target.value)}
-                      onFocus={() => { if (sugerencias.length > 0) setSugAbiertas(true); }}
+                      onFocus={handleFocusBusqueda}
                       onBlur={() => setSugAbiertas(false)}
                       onKeyDown={e => {
                         if (e.key === "Enter") {
@@ -262,20 +389,9 @@ const ReporteMovimientosProducto: React.FC = () => {
         </div>
       </div>
 
-      {previewData && (
-        <div className="mt-4">
-          <ReportPreviewTable
-            columns={[
-              { key: "fecha", label: "Fecha", render: (v: any) => formatFecha(v) || "—" },
-              { key: "tipo", label: "Tipo" },
-              { key: "producto", label: "Producto", render: () => productoSel?.nombre || "—" },
-              { key: "cantidad", label: "Cantidad", className: "text-right" },
-            ]}
-            data={previewData}
-            totalItems={previewData.length}
-          />
-        </div>
-      )}
+      <div className="mt-4">
+        {renderTabla()}
+      </div>
     </div>
   );
 };
