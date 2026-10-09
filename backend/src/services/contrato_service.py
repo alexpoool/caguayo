@@ -15,6 +15,7 @@ from src.repository.contratos_repo import (
     item_venta_efectivo_repo,
 )
 from src.services.existencia_service import ExistenciaService
+from src.services.saldo_service import SaldoService
 from src.models import (
     TipoContrato,
     EstadoContrato,
@@ -721,14 +722,20 @@ class FacturaService:
             liq.id_factura = None
             db.add(liq)
 
-        # 3) Cancelar movimientos asociados
+        # 3) Cancelar movimientos asociados. Si alguno estaba confirmado, sus
+        #    snapshots de `saldos` quedan inválidos: se reconstruyen abajo.
         stmt = select(Movimiento).where(Movimiento.id_factura == id)
         result = await db.exec(stmt)
+        pares_saldo: set[tuple[int, int]] = set()
         for mov in result.all():
+            if mov.estado == "confirmado":
+                pares_saldo.add((mov.id_producto, mov.id_dependencia))
             if mov.estado != "cancelado":
                 mov.estado = "cancelado"
             mov.id_factura = None
             db.add(mov)
+        for id_producto, id_dep in pares_saldo:
+            await SaldoService.recalcular_cadena(db, id_producto, id_dep)
 
         # 4) Eliminar items de la factura antes de borrarla
         for item in items:
@@ -1063,14 +1070,21 @@ class VentaEfectivoService:
 
         # 3) Cancelar y desvincular movimientos asociados: si se dejan con
         #    id_venta_efectivo la FK bloquea el DELETE de la venta.
+        #    Los confirmados dejaban snapshots obsoletos en `saldos`: se
+        #    reconstruyen abajo.
         stmt = select(Movimiento).where(Movimiento.id_venta_efectivo == id)
         result = await db.exec(stmt)
+        pares_saldo: set[tuple[int, int]] = set()
         for mov in result.all():
+            if mov.estado == "confirmado":
+                pares_saldo.add((mov.id_producto, mov.id_dependencia))
             if mov.estado != "cancelado":
                 mov.estado = "cancelado"
             if mov.id_venta_efectivo is not None:
                 mov.id_venta_efectivo = None
             db.add(mov)
+        for id_producto, id_dep in pares_saldo:
+            await SaldoService.recalcular_cadena(db, id_producto, id_dep)
 
         # 4) Eliminar la venta
         await venta_efectivo_repo.remove(db, id=id)

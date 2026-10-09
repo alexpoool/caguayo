@@ -251,3 +251,82 @@ async def test_confirmar_escribe_snapshot_y_cancelar_recalcula(db_full):
 
     filas = await _snapshots(db_full)
     assert filas == [(base + timedelta(days=1), Decimal(3))]
+
+
+# ── Cancelaciones masivas: FacturaService / VentaEfectivoService / Liquidación ──
+
+
+async def test_delete_venta_efectivo_reconstruye_snapshots(db_full):
+    """VentaEfectivoService.delete cancela los movimientos vinculados y debe
+    reconstruir `saldos`: antes los snapshots confirmados quedaban obsoletos."""
+    from src.models.contrato import VentaEfectivo
+    from src.services.contrato_service import VentaEfectivoService
+
+    _datos_base(db_full)
+    await db_full.commit()
+    base = datetime(2026, 9, 10, 12, 0, 0)
+
+    venta = VentaEfectivo(
+        slip="S1", fecha=base.date(), id_dependencia=1, cajero="C1"
+    )
+    db_full.add(venta)
+    await db_full.flush()
+
+    # Confirmado vinculado a la venta → tiene snapshot que debe reconstruirse
+    mov_venta = Movimiento(
+        id_tipo_movimiento=1, id_dependencia=1, id_producto=1,
+        cantidad=7, fecha=base, estado="confirmado",
+        id_venta_efectivo=venta.id_venta_efectivo,
+    )
+    db_full.add(mov_venta)
+    await db_full.flush()
+    await SaldoService.registrar_confirmacion(db_full, mov_venta, 1)
+
+    # Sobreviviente: confirmado, sin vínculo con la venta
+    mov_otro = _mov(db_full, {"compra": 1}, "compra", 3,
+                    base + timedelta(days=1))
+    await db_full.flush()
+    await SaldoService.registrar_confirmacion(db_full, mov_otro, 1)
+    await db_full.commit()
+
+    ok = await VentaEfectivoService.delete(db_full, venta.id_venta_efectivo)
+    assert ok
+
+    assert mov_venta.estado == "cancelado"
+    # La cadena ya no incluye las 7 uds de la venta cancelada: queda solo 3
+    filas = await _snapshots(db_full)
+    assert filas == [(base + timedelta(days=1), Decimal(3))]
+
+
+async def test_delete_liquidacion_reconstruye_snapshots(db_full):
+    """LiquidacionService.delete_liquidacion cancela los movimientos de la
+    liquidación y reconstruye `saldos` en la MISMA transacción."""
+    from src.models.liquidacion import Liquidacion
+    from src.services.liquidacion_service import liquidacion_service
+
+    _datos_base(db_full)
+    await db_full.commit()
+    base = datetime(2026, 9, 10, 12, 0, 0)
+
+    liq = Liquidacion(codigo="LIQ-TEST-1", id_cliente=1, id_moneda=1)
+    db_full.add(liq)
+    await db_full.flush()
+
+    mov_liq = Movimiento(
+        id_tipo_movimiento=1, id_dependencia=1, id_producto=1,
+        cantidad=7, fecha=base, estado="confirmado",
+        id_liquidacion=liq.id_liquidacion,
+    )
+    db_full.add(mov_liq)
+    await db_full.flush()
+    await SaldoService.registrar_confirmacion(db_full, mov_liq, 1)
+    await db_full.commit()
+
+    ok = await liquidacion_service.delete_liquidacion(
+        db_full, liq.id_liquidacion
+    )
+    assert ok
+
+    assert mov_liq.estado == "cancelado"
+    filas = await _snapshots(db_full)
+    assert filas == []  # sin confirmados → cadena vacía (no el 7 obsoleto)

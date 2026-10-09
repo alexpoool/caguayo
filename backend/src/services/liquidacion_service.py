@@ -2,10 +2,11 @@ from typing import List, Optional
 from datetime import date, datetime, timezone
 from decimal import Decimal
 from sqlmodel.ext.asyncio.session import AsyncSession
-from sqlalchemy import select
+from sqlmodel import select
 from src.repository.liquidacion_repo import liquidacion_repo
 from src.repository.productos_en_liquidacion_repo import productos_en_liquidacion_repo
 from src.services.existencia_service import ExistenciaService
+from src.services.saldo_service import SaldoService
 from src.models.liquidacion import Liquidacion
 from src.models.producto import Productos
 from src.models.movimiento import Movimiento
@@ -438,13 +439,19 @@ class LiquidacionService:
             prod.fecha_liquidacion = None
             db.add(prod)
 
-        # Cancelar movimientos asociados a la liquidación
+        # Cancelar movimientos asociados a la liquidación. Los confirmados
+        # dejaban snapshots obsoletos en `saldos`: se reconstruyen abajo.
         stmt = select(Movimiento).where(Movimiento.id_liquidacion == liquidacion_id)
         result = await db.exec(stmt)
+        pares_saldo: set[tuple[int, int]] = set()
         for mov in result.all():
+            if mov.estado == "confirmado":
+                pares_saldo.add((mov.id_producto, mov.id_dependencia))
             if mov.estado != "cancelado":
                 mov.estado = "cancelado"
                 db.add(mov)
+        for id_producto, id_dep in pares_saldo:
+            await SaldoService.recalcular_cadena(db, id_producto, id_dep)
 
         await db.delete(db_liquidacion)
         await db.commit()
