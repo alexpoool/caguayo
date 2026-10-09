@@ -265,8 +265,12 @@ async def get_movimientos_dependencia(
     dashboard valoriza el inventario). El saldo inicial NO recorre el histórico:
     se lee de la tabla `saldos` (snapshot escrito al confirmar cada movimiento,
     en unidades) tomando la fila más reciente con fecha < fecha_inicio, y se
-    valoriza con el precio_compra ACTUAL:
+    valoriza con el precio_compra ACTUAL. Si un producto no tiene snapshot
+    previo (dato que no pasó por SaldoService), se calcula desde `movimiento`
+    (fuente de verdad) con Σ cantidad × factor de los confirmados anteriores
+    al rango:
       saldo_inicial = saldos.saldo (último snapshot previo) × precio_compra
+                      [o Σ movimientos previos × precio_compra, sin snapshot]
       saldo_final   = saldo_inicial
                       + (recepcion + compra) × precio_compra
                       − (venta + merma + donacion + devolucion) × precio_compra
@@ -336,6 +340,36 @@ async def get_movimientos_dependencia(
         )
     )
     saldos = {r[0]: float(r[1] or 0) for r in saldo_result.all()}
+
+    # Fallback: producto con movimientos confirmados anteriores al rango pero
+    # sin snapshot (dato importado/insertado sin pasar por SaldoService).
+    # `movimiento` es la fuente de verdad; solo se consulta para los pares
+    # que no quedaron cubiertos por `saldos`.
+    sin_snapshot = [
+        pid for pid in productos_base_map if pid not in saldos
+    ]
+    if sin_snapshot:
+        fallback_q = (
+            select(
+                Movimiento.id_producto,
+                func.coalesce(
+                    func.sum(Movimiento.cantidad * TipoMovimiento.factor), 0
+                ).label("saldo"),
+            )
+            .join(
+                TipoMovimiento,
+                Movimiento.id_tipo_movimiento == TipoMovimiento.id_tipo_movimiento,
+            )
+            .filter(
+                Movimiento.id_dependencia == id_dependencia,
+                Movimiento.estado == "confirmado",
+                Movimiento.id_producto.in_(sin_snapshot),
+                Movimiento.fecha < fecha_inicio,
+            )
+            .group_by(Movimiento.id_producto)
+        )
+        for pid, saldo in (await db.execute(fallback_q)).all():
+            saldos[pid] = float(saldo or 0)
 
     # ── 3. Movimientos en el rango, pivoteados por tipo (case-insensitive) ─
     TIPOS_MOVIMIENTO = ["recepcion", "compra", "venta", "merma", "donacion", "devolucion"]

@@ -13,6 +13,7 @@ Valida el comportamiento aritmético del reporte de movimientos por dependencia:
 
 import pytest
 from datetime import datetime, timedelta
+from decimal import Decimal
 
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
@@ -180,3 +181,63 @@ async def test_ajuste_quitar_resta(db, datos_base):
     p1 = next(m for m in movimientos if m["codigo"] == "P001")
     assert p1["ajustes"] == -4
     assert p1["saldo_final"] == 12  # (10 − 4) × 2
+
+
+async def test_saldo_inicial_sin_snapshot_calcula_desde_movimientos(db, datos_base):
+    """Fallback: producto con movimientos confirmados previos al rango pero
+    SIN filas en `saldos` (dato que no pasó por SaldoService) → el saldo
+    inicial se calcula desde `movimiento` (fuente de verdad), no 0."""
+    tipo_ids = datos_base
+    base = datetime(2026, 9, 10, 12, 0, 0)
+
+    # Previos al rango, insertados sin snapshot (simula SQL directo/migración)
+    db.add(Movimiento(
+        id_tipo_movimiento=tipo_ids["RECEPCION"], id_dependencia=1,
+        id_producto=1, cantidad=10, fecha=base - timedelta(days=5),
+        estado="confirmado",
+    ))
+    db.add(Movimiento(
+        id_tipo_movimiento=tipo_ids["venta"], id_dependencia=1,
+        id_producto=1, cantidad=4, fecha=base - timedelta(days=3),
+        estado="confirmado",
+    ))
+    # Uno en el rango con snapshot normal, para verificar que no se mezclan
+    await _crear_mov(db, tipo_ids, 1, "compra", 2, base)
+    await db.commit()
+
+    fi = (base - timedelta(days=1)).date()
+    ff = (base + timedelta(days=3)).date()
+    movimientos, _ = await get_movimientos_dependencia(db, 1, fi, ff)
+
+    p1 = next(m for m in movimientos if m["codigo"] == "P001")
+    # Previos: (10 − 4) = 6 uds × precio_compra 2 = 12
+    assert p1["saldo_inicial"] == 12
+    assert p1["compra"] == 2
+    # sf = 12 + 2×2 = 16
+    assert p1["saldo_final"] == 16
+
+
+async def test_saldo_inicial_snapshot_tiene_prioridad_sobre_fallback(db, datos_base):
+    """Si existe snapshot previo, se usa él (el fallback no lo pisa):
+    snapshot dice 3 uds aunque los movimientos previos suman 10."""
+    tipo_ids = datos_base
+    base = datetime(2026, 9, 10, 12, 0, 0)
+
+    # Snapshot previo "manual" con saldo arbitrario (3 uds)
+    db.add(Saldo(id_producto=1, id_dependencia=1,
+                 fecha=base - timedelta(days=5), saldo=Decimal("3")))
+    # Movimientos previos sin snapshot que sumarían 10 (no deben usarse)
+    db.add(Movimiento(
+        id_tipo_movimiento=tipo_ids["RECEPCION"], id_dependencia=1,
+        id_producto=1, cantidad=10, fecha=base - timedelta(days=4),
+        estado="confirmado",
+    ))
+    await _crear_mov(db, tipo_ids, 1, "venta", 1, base)
+    await db.commit()
+
+    fi = (base - timedelta(days=1)).date()
+    ff = (base + timedelta(days=3)).date()
+    movimientos, _ = await get_movimientos_dependencia(db, 1, fi, ff)
+
+    p1 = next(m for m in movimientos if m["codigo"] == "P001")
+    assert p1["saldo_inicial"] == 6  # 3 uds del snapshot × 2
