@@ -47,6 +47,7 @@ import type { Dependencia } from "../../types/dependencia";
 import type { Moneda } from "../../types/moneda";
 import { formatFecha } from "../../utils/fecha";
 import { DateInput } from "../../components/ui";
+import { DependenciaTreeSelect } from "../../components/ui/DependenciaTreeSelect";
 
 
 
@@ -846,11 +847,18 @@ export function ReportesHome() {
                   {activeReport.needsDependencia && (
                     <div>
                       <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Dependencia</label>
-                      <select value={filters.id_dependencia} onChange={(e) => updateFilter("id_dependencia", e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white focus:ring-2 focus:ring-brand-500 outline-none">
-                        <option value="">Seleccionar dependencia</option>
-                        {dependencias.map((d) => <option key={d.id_dependencia} value={d.id_dependencia}>{d.nombre}</option>)}
-                      </select>
+                      <DependenciaTreeSelect
+                        dependencias={dependencias}
+                        value={filters.id_dependencia}
+                        onChange={(v) => updateFilter("id_dependencia", v)}
+                        rootId={userDepId}
+                        placeholder="Seleccionar dependencia"
+                      />
+                      {userDepId != null && (
+                        <p className="text-[10px] text-gray-400 mt-1">
+                          Por defecto: su dependencia y toda su descendencia
+                        </p>
+                      )}
                     </div>
                   )}
                   {activeReport.needsMoneda && (
