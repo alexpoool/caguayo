@@ -173,6 +173,22 @@ async def get_proveedores_por_dependencia(
     return proveedores, dependencia_info
 
 
+async def get_ids_dependencia_con_hijos(
+    db: AsyncSession, id_dependencia: int
+) -> List[int]:
+    """IDs cubiertos por el reporte: la dependencia + sus HIJOS DIRECTOS.
+
+    Los nietos NO se incluyen: el reporte de existencias solo baja un nivel
+    en la jerarquía (el filtro, en cambio, sí muestra toda la descendencia).
+    """
+    hijos = await db.execute(
+        select(Dependencia.id_dependencia).where(
+            Dependencia.codigo_padre == id_dependencia
+        )
+    )
+    return [id_dependencia, *list(hijos.scalars().all())]
+
+
 async def get_existencias(db: AsyncSession, id_dependencia: int):
     result = await db.execute(
         select(Dependencia).filter(Dependencia.id_dependencia == id_dependencia)
