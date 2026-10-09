@@ -3,6 +3,7 @@ from typing import Optional
 from datetime import date
 
 
+
 class ClienteNaturalBase(SQLModel):
     nombre: str
     primer_apellido: str
@@ -20,6 +21,7 @@ class ClienteNaturalBase(SQLModel):
     en_baja: bool = False
     fecha_baja: Optional[date] = None
     vigencia: Optional[date] = None
+    id_especialidad: Optional[int] = None
 
 
 class ClienteNaturalCreate(ClienteNaturalBase):
@@ -47,3 +49,4 @@ class ClienteNaturalUpdate(SQLModel):
     en_baja: Optional[bool] = None
     fecha_baja: Optional[date] = None
     vigencia: Optional[date] = None
+    id_especialidad: Optional[int] = None

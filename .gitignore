@@ -48,3 +48,11 @@ docs
 .code-review-graph
 .opencode
 .ruff_cache
+# ETL de migración (legacy MariaDB -> PostgreSQL)
+etl/__pycache__/
+etl/.venv/
+etl/data/tmp/
+# salida generada, no es fuente
+etl/data/migracion_rechazos.csv
+# ficheros del legacy que sube Configuración -> Migración. Son de varios MB
+etl/data/subidas/

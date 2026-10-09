@@ -3,6 +3,7 @@ from typing import Optional, List, Any
 from datetime import date, datetime
 from .ventas_dto import VentaRead
 from .cuentas_dto import CuentaCreate, CuentaRead
+from .especialidad_dto import EspecialidadRead
 
 
 class ClienteNaturalRead(SQLModel):
@@ -23,6 +24,7 @@ class ClienteNaturalRead(SQLModel):
     en_baja: Optional[bool] = False
     fecha_baja: Optional[date] = None
     vigencia: Optional[date] = None
+    id_especialidad: Optional[int] = None
 
 
 class ClienteJuridicaRead(SQLModel):
@@ -52,6 +54,7 @@ class MunicipioInfo(SQLModel):
 
 
 class ClienteNaturalData(SQLModel):
+    id_especialidad: Optional[int] = None
     nombre: Optional[str] = None
     primer_apellido: Optional[str] = None
     segundo_apellido: Optional[str] = None
@@ -102,6 +105,9 @@ class ClienteBase(SQLModel):
     tipo_relacion: Optional[str] = None
     estado: Optional[str] = None
     fecha_registro: Optional[datetime] = None
+    valido: Optional[bool] = True
+    campo: Optional[str] = None
+    razon: Optional[str] = None
 
 
 class ClienteCreate(ClienteBase):
@@ -145,6 +151,9 @@ class ClienteUpdate(SQLModel):
     tipo_relacion: Optional[str] = None
     estado: Optional[str] = None
     fecha_registro: Optional[datetime] = None
+    valido: Optional[bool] = None
+    campo: Optional[str] = None
+    razon: Optional[str] = None
     cuentas: Optional[List[CuentaCreate]] = None
     cliente_natural: Optional[Any] = None
     cliente_juridica: Optional[Any] = None

@@ -47,6 +47,13 @@ class Cliente(SQLModel, table=True):
     estado: str = Field(max_length=20)  # ACTIVO, INACTIVO
     fecha_registro: date = Field(default=date.today())
 
+    # Marcaje de datos que necesitaron un arreglo para migrarse: `valido` es
+    # False cuando el registro entró con algún campo corregido, y `campo`/`razon`
+    # indican cuál y por qué, para que se corrija a mano.
+    valido: bool = Field(default=True)
+    campo: Optional[str] = Field(default=None, max_length=50)
+    razon: Optional[str] = Field(default=None)
+
     provincia: Optional["Provincia"] = Relationship(
         back_populates="clientes",
         sa_relationship_kwargs={

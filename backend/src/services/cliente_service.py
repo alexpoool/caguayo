@@ -208,6 +208,7 @@ class ClienteService:
         from src.models.cliente_natural import ClienteNatural
         from src.models.cliente_juridica import ClienteJuridica
         from src.models.cliente_tcp import ClienteTCP
+        from src.utils.validacion_migracion import correccion_valida, valor_actual
 
         tipo = update_data.get("tipo_persona") or db_cliente.tipo_persona
 
@@ -219,6 +220,23 @@ class ClienteService:
             cliente_natural_data = cliente_update.cliente_natural
             cliente_juridica_data = cliente_update.cliente_juridica
             cliente_tcp_data = cliente_update.cliente_tcp
+
+        # Guardar el valor del campo marcado antes de que se reescriba la fila,
+        # para poder decidir si la marca se retira tras la actualización.
+        campo_marcado = db_cliente.campo
+        valor_antes = (
+            await valor_actual(db, cliente_id, campo_marcado) if campo_marcado else None
+        )
+
+        # La fila tipo-específica se borra y se reinserta desde el payload. Si el
+        # payload no trae la especialidad, se arrastra la que ya tenía para no
+        # perderla al guardar cualquier otro dato del artista.
+        especialidad_antes = await db.execute(
+            text("SELECT id_especialidad FROM clientes_persona_natural"
+                 " WHERE id_cliente = :id"),
+            {"id": cliente_id},
+        )
+        especialidad_previa = especialidad_antes.scalar()
 
         # Limpiar todas las tablas tipo-específicas
         await db.execute(
@@ -240,6 +258,8 @@ class ClienteService:
                 else cliente_natural_data.model_dump()
             )
             nat_dict["id_cliente"] = cliente_id
+            if nat_dict.get("id_especialidad") is None:
+                nat_dict["id_especialidad"] = especialidad_previa
             db.add(ClienteNatural(**nat_dict))
         elif tipo == "JURIDICA" and cliente_juridica_data:
             jur_dict = (
@@ -259,6 +279,15 @@ class ClienteService:
             db.add(ClienteTCP(**tcp_dict))
 
         await db.flush()
+
+        # --- Retirar la marca de datos migrados si el campo ya está correcto ---
+        if campo_marcado:
+            valor_despues = await valor_actual(db, cliente_id, campo_marcado)
+            if correccion_valida(campo_marcado, valor_antes, valor_despues):
+                db_cliente.valido = True
+                db_cliente.campo = None
+                db_cliente.razon = None
+                await db.flush()
 
         # --- Procesar cuentas bancarias ---
         print(f"[DEBUG] update_cliente: cuentas_data={cuentas_data}")

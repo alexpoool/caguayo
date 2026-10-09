@@ -1,5 +1,13 @@
-from typing import List
-from fastapi import APIRouter, Depends, HTTPException, Query
+import logging
+from typing import List, Optional
+from fastapi import (
+    APIRouter,
+    Depends,
+    Header,
+    HTTPException,
+    Query,
+    Request,
+)
 from sqlmodel.ext.asyncio.session import AsyncSession
 from src.database.connection import get_session
 from src.services.contrato_service import TipoContratoService, EstadoContratoService
@@ -9,7 +17,12 @@ from src.services.proveedor_convenio_service import (
     TipoProveedorService,
 )
 from src.services.tipo_dependencia_service import tipo_dependencia_service
+from src.services import especialidad_service, migracion_service
 from src.dto import (
+    EstadoMigracion,
+    FicheroLegacyInfo,
+    FicherosSubidos,
+    InformeMigracion,
     TipoContratoCreate,
     TipoContratoRead,
     TipoContratoUpdate,
@@ -25,6 +38,9 @@ from src.dto import (
     TipoConvenioCreate,
     TipoConvenioRead,
     TipoConvenioUpdate,
+    EspecialidadCreate,
+    EspecialidadRead,
+    EspecialidadUpdate,
     TipoDependenciaCreate,
     TipoDependenciaRead,
     TipoDependenciaUpdate,
@@ -33,6 +49,8 @@ from src.dto import (
 router = APIRouter(
     prefix="/configuracion", tags=["configuracion"], redirect_slashes=False
 )
+
+logger = logging.getLogger(__name__)
 
 
 @router.get("/tipos-contrato", response_model=List[TipoContratoRead])
@@ -350,3 +368,129 @@ async def eliminar_tipo_dependencia(
     success = await tipo_dependencia_service.delete(db, tipo_id)
     if not success:
         raise HTTPException(status_code=404, detail="Tipo de dependencia no encontrado")
+
+
+# --- Especialidades del artista -------------------------------------------
+#
+# Sin DELETE duro a propósito: la FK de clientes_persona_natural es
+# ON DELETE SET NULL, así que borrar una especialidad en uso vaciaría en
+# silencio el campo de todos sus artistas. DELETE desactiva; PUT reactiva.
+
+@router.get("/especialidades", response_model=List[EspecialidadRead])
+async def listar_especialidades(
+    solo_activas: bool = Query(
+        False, description="Omitir las especialidades desactivadas"
+    ),
+    db: AsyncSession = Depends(get_session),
+):
+    return await especialidad_service.get_all(db, solo_activas=solo_activas)
+
+
+@router.post("/especialidades", response_model=EspecialidadRead, status_code=201)
+async def crear_especialidad(
+    data: EspecialidadCreate,
+    db: AsyncSession = Depends(get_session),
+):
+    return await especialidad_service.create(db, data)
+
+
+@router.get("/especialidades/{especialidad_id}", response_model=EspecialidadRead)
+async def obtener_especialidad(
+    especialidad_id: int,
+    db: AsyncSession = Depends(get_session),
+):
+    result = await especialidad_service.get(db, especialidad_id)
+    if not result:
+        raise HTTPException(status_code=404, detail="Especialidad no encontrada")
+    return result
+
+
+@router.put("/especialidades/{especialidad_id}", response_model=EspecialidadRead)
+async def actualizar_especialidad(
+    especialidad_id: int,
+    data: EspecialidadUpdate,
+    db: AsyncSession = Depends(get_session),
+):
+    result = await especialidad_service.update(db, especialidad_id, data)
+    if not result:
+        raise HTTPException(status_code=404, detail="Especialidad no encontrada")
+    return result
+
+
+@router.delete("/especialidades/{especialidad_id}", response_model=EspecialidadRead)
+async def desactivar_especialidad(
+    especialidad_id: int,
+    db: AsyncSession = Depends(get_session),
+):
+    """Desactiva la especialidad; conserva el enlace de los artistas."""
+    result = await especialidad_service.desactivar(db, especialidad_id)
+    if not result:
+        raise HTTPException(status_code=404, detail="Especialidad no encontrada")
+    return result
+
+
+@router.post("/especialidades/{especialidad_id}/reactivar", response_model=EspecialidadRead)
+async def reactivar_especialidad(
+    especialidad_id: int,
+    db: AsyncSession = Depends(get_session),
+):
+    result = await especialidad_service.reactivar(db, especialidad_id)
+    if not result:
+        raise HTTPException(status_code=404, detail="Especialidad no encontrada")
+    return result
+
+
+# --- Migración del legacy --------------------------------------------------
+#
+# El legacy está en dos bases distintas, así que se suben dos ficheros. El
+# comercial no tiene ni una fila de tipo_convenio, así que con el primero solo
+# no se puede migrar todo.
+#
+# Nada de esto borra datos: se limita a lanzar el ETL, que es idempotente. Si la
+# base ya está migrada, sale con 0 inserciones.
+
+@router.get("/migracion/estado", response_model=EstadoMigracion)
+async def estado_migracion(db: AsyncSession = Depends(get_session)):
+    """Recuentos, salud de la base y qué ficheros hay subidos."""
+    return await migracion_service.estado(db)
+
+
+@router.get("/migracion/fichero", response_model=FicherosSubidos)
+async def listar_ficheros():
+    return {"ficheros": migracion_service.ficheros_subidos()}
+
+
+@router.post("/migracion/fichero", response_model=FicheroLegacyInfo)
+async def subir_fichero(
+    rol: str = Query(..., description="comercial | principal"),
+    x_nombre_fichero: Optional[str] = Header(None, alias="X-Nombre-Fichero"),
+    request: Request = None,
+):
+    """Recibe los bytes crudos del fichero.
+
+    Se leen con `request.body()` y no con `UploadFile` a propósito: el backend
+    no tiene python-multipart y esta forma no lo necesita.
+    """
+    crudo = await request.body()
+    info = migracion_service.guardar_fichero(rol, crudo)
+    if x_nombre_fichero:
+        logger.info("Migración: fichero '%s' subido para el rol %s",
+                    x_nombre_fichero, rol)
+    return info
+
+
+@router.delete("/migracion/fichero", status_code=204)
+async def quitar_fichero(rol: str = Query(...)):
+    migracion_service.quitar_fichero(rol)
+
+
+@router.post("/migracion/analizar", response_model=InformeMigracion)
+async def analizar_migracion(db: AsyncSession = Depends(get_session)):
+    """Corre el ETL en seco. No escribe nada. Habilita el botón de ejecutar."""
+    return await migracion_service.migrar(db, commit=False)
+
+
+@router.post("/migracion/ejecutar", response_model=InformeMigracion)
+async def ejecutar_migracion(db: AsyncSession = Depends(get_session)):
+    """Corre el ETL con --commit. Sólo insertar, nunca borra."""
+    return await migracion_service.migrar(db, commit=True)

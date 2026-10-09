@@ -26,6 +26,8 @@ import {
   Search,
   ChevronLeft,
   ChevronRight,
+  Palette,
+  Database,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import {
@@ -55,10 +57,15 @@ import {
   tipoEntidadService,
   dj08Service,
 } from "../services/api";
+import { MigracionLegacy } from "./migracion/MigracionLegacy";
 import type {
   ActividadEconomicaInput,
   TributoInput,
 } from "../types/dj08";
+import type {
+  EspecialidadCreate,
+  EspecialidadUpdate,
+} from "../types/index";
 
 
 type ConfigSubTabType =
@@ -72,7 +79,9 @@ type ConfigSubTabType =
   | "tipo-cuenta"
   | "tipo-entidad"
   | "dj08-actividades"
-  | "dj08-tributos";
+  | "dj08-tributos"
+  | "especialidades"
+  | "migracion";
 
 const configSubTabs: { id: ConfigSubTabType; label: string }[] = [
   { id: "tipo-contrato", label: "Tipos de Contrato" },
@@ -85,6 +94,8 @@ const configSubTabs: { id: ConfigSubTabType; label: string }[] = [
   { id: "tipo-entidad", label: "Tipos de Entidad" },
   { id: "dj08-actividades", label: "Actividades Económicas" },
   { id: "dj08-tributos", label: "Tributos" },
+  { id: "especialidades", label: "Especialidades" },
+  { id: "migracion", label: "Migración" },
 ];
 
 /** 1234.5 -> "1.234,50" (montos de los catálogos DJ-08). */
@@ -309,6 +320,15 @@ export function ConfiguracionPage() {
   });
 
   const {
+    data: especialidades = [],
+    isLoading: loadingEspecialidades,
+    refetch: refetchEspecialidades,
+  } = useQuery({
+    queryKey: ["especialidades"],
+    queryFn: () => configuracionService.getEspecialidades(false),
+  });
+
+  const {
     data: tiposDependencia = [],
     isLoading: loadingTiposDependencia,
     refetch: refetchTiposDependencia,
@@ -365,7 +385,8 @@ const {
     loadingTiposCuenta ||
     loadingTiposEntidad ||
     loadingDj08Actividades ||
-    loadingDj08Tributos;
+    loadingDj08Tributos ||
+    loadingEspecialidades;
 
   // Mutations para tipos de contrato
   const createTipoContrato = useMutation({
@@ -433,6 +454,66 @@ const {
       refetchEstadosContrato();
       toast.success("Estado de contrato eliminado");
     },
+  });
+
+  // Mutations para especialidades
+  //
+  // "delete" desactiva en vez de borrar: una especialidad puede estar enlazada
+  // a artistas y el enlace tiene que sobrevivir. Se trae onError porque el
+  // backend responde 409 con un mensaje claro si el nombre ya existe, y sin
+  // esto el usuario no vería nada.
+  const createEspecialidad = useMutation({
+    mutationFn: (data: EspecialidadCreate) =>
+      configuracionService.createEspecialidad(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["especialidades"] });
+      refetchEspecialidades();
+      toast.success("Especialidad creada");
+      closeModal();
+    },
+    onError: (e) =>
+      toast.error(e instanceof Error ? e.message : "No se pudo crear"),
+  });
+
+  const updateEspecialidad = useMutation({
+    mutationFn: ({ id, data }: { id: number; data: EspecialidadUpdate }) =>
+      configuracionService.updateEspecialidad(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["especialidades"] });
+      refetchEspecialidades();
+      toast.success("Especialidad actualizada");
+      closeModal();
+    },
+    onError: (e) =>
+      toast.error(e instanceof Error ? e.message : "No se pudo actualizar"),
+  });
+
+  const desactivarEspecialidad = useMutation({
+    mutationFn: (id: number) =>
+      configuracionService.desactivarEspecialidad(id),
+    onSuccess: (esp) => {
+      queryClient.invalidateQueries({ queryKey: ["especialidades"] });
+      refetchEspecialidades();
+      toast.success(
+        esp.artistas > 0
+          ? `Especialidad desactivada. Los ${esp.artistas} artistas que la tienen la conservan.`
+          : "Especialidad desactivada"
+      );
+    },
+    onError: (e) =>
+      toast.error(e instanceof Error ? e.message : "No se pudo desactivar"),
+  });
+
+  const reactivarEspecialidad = useMutation({
+    mutationFn: (id: number) =>
+      configuracionService.reactivarEspecialidad(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["especialidades"] });
+      refetchEspecialidades();
+      toast.success("Especialidad reactivada");
+    },
+    onError: (e) =>
+      toast.error(e instanceof Error ? e.message : "No se pudo reactivar"),
   });
 
   // Mutations para tipos de proveedor
@@ -779,6 +860,9 @@ const {
       case "dj08-tributos":
         refetchDj08Tributos();
         break;
+      case "especialidades":
+        refetchEspecialidades();
+        break;
     }
   };
 
@@ -932,6 +1016,23 @@ const {
         }
         break;
       }
+      case "especialidades": {
+        const data: EspecialidadUpdate = {
+          nombre: formData.nombre,
+          descripcion: formData.descripcion,
+        };
+        if (editingItem) {
+          // Editar una desactivada la vuelve a estar disponible: si el usuario
+          // la está corrigiendo es que la quiere de vuelta.
+          updateEspecialidad.mutate({
+            id: editingItem.id_especialidad,
+            data: { ...data, activo: true },
+          });
+        } else {
+          createEspecialidad.mutate(data as EspecialidadCreate);
+        }
+        break;
+      }
     }
   };
 
@@ -974,6 +1075,10 @@ const {
         break;
       case "dj08-tributos":
         deleteDj08Tributo.mutate(item.id_tributo);
+        break;
+      case "especialidades":
+        // desactivar, no borrar: el enlace de los artistas se conserva
+        desactivarEspecialidad.mutate(item.id_especialidad);
         break;
     }
     setConfirmDelete({ isOpen: false, type: null, item: null });
@@ -1094,6 +1199,8 @@ const {
         return dj08Actividades;
       case "dj08-tributos":
         return dj08Tributos;
+      case "especialidades":
+        return especialidades;
       default:
         return [];
     }
@@ -1123,12 +1230,16 @@ const {
         return item.id_actividad;
       case "dj08-tributos":
         return item.id_tributo;
+      case "especialidades":
+        return item.id_especialidad;
       default:
         return item.id;
     }
   };
 
   const isSubcategoria = activeConfigSubTab === "subcategorias";
+  const isEspecialidades = activeConfigSubTab === "especialidades";
+  const isMigracion = activeConfigSubTab === "migracion";
   const isDj08Catalogo =
     activeConfigSubTab === "dj08-actividades" ||
     activeConfigSubTab === "dj08-tributos";
@@ -1158,6 +1269,8 @@ const {
         return "Nueva Actividad Económica";
       case "dj08-tributos":
         return "Nuevo Tributo";
+      case "especialidades":
+        return "Nueva Especialidad";
       default:
         return "Nuevo Elemento";
     }
@@ -1188,6 +1301,8 @@ const {
         return <Briefcase className={`${className} text-amber-600`} />;
       case "dj08-tributos":
         return <Coins className={`${className} text-cyan-600`} />;
+      case "especialidades":
+        return <Palette className={`${className} text-fuchsia-600`} />;
       default:
         return <Plus className={`${className} text-gray-600`} />;
     }
@@ -1246,6 +1361,8 @@ const {
         return "bg-gradient-to-r from-amber-50 to-orange-50";
       case "dj08-tributos":
         return "bg-gradient-to-r from-cyan-50 to-teal-50";
+      case "especialidades":
+        return "bg-gradient-to-r from-fuchsia-50 to-purple-50";
       default:
         return "bg-gray-50";
     }
@@ -1275,6 +1392,8 @@ const {
         return "from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700";
       case "dj08-tributos":
         return "from-cyan-600 to-teal-600 hover:from-cyan-700 hover:to-teal-700";
+      case "especialidades":
+        return "from-fuchsia-600 to-purple-700 hover:from-fuchsia-700 hover:to-purple-800";
       default:
         return "from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800";
     }
@@ -1304,6 +1423,8 @@ const {
         return "bg-gradient-to-r from-amber-50 to-orange-50";
       case "dj08-tributos":
         return "bg-gradient-to-r from-cyan-50 to-teal-50";
+      case "especialidades":
+        return "bg-gradient-to-r from-fuchsia-50 to-purple-50";
       default:
         return "bg-gray-50";
     }
@@ -1333,6 +1454,8 @@ const {
         return { bg: "bg-amber-100", text: "text-amber-700" };
       case "dj08-tributos":
         return { bg: "bg-cyan-100", text: "text-cyan-700" };
+      case "especialidades":
+        return { bg: "bg-fuchsia-100", text: "text-fuchsia-700" };
       default:
         return { bg: "bg-slate-50", text: "text-gray-700" };
     }
@@ -1362,6 +1485,8 @@ const {
         return "text-amber-600";
       case "dj08-tributos":
         return "text-cyan-600";
+      case "especialidades":
+        return "text-fuchsia-600";
       default:
         return "text-gray-600";
     }
@@ -1557,6 +1682,12 @@ const {
                     </div>
                   </TableHead>
                 )}
+                {isEspecialidades && (
+                  <>
+                    <TableHead>Artistas</TableHead>
+                    <TableHead>Estado</TableHead>
+                  </>
+                )}
                 {!isDj08Catalogo && (
                   <TableHead>
                     <div className="flex items-center gap-2">
@@ -1588,6 +1719,26 @@ const {
                       </span>
                     </TableCell>
                   )}
+                  {isEspecialidades && (
+                    <>
+                      <TableCell>
+                        <span className="inline-flex items-center gap-1 px-2 py-1 bg-slate-50 text-gray-700 rounded text-sm">
+                          {item.artistas ?? 0}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <span
+                          className={`inline-flex px-2 py-1 rounded text-sm ${
+                            item.activo
+                              ? "bg-green-100 text-green-700"
+                              : "bg-slate-200 text-slate-600"
+                          }`}
+                        >
+                          {item.activo ? "Activa" : "Desactivada"}
+                        </span>
+                      </TableCell>
+                    </>
+                  )}
                   {!isDj08Catalogo && (
                     <TableCell>{item.descripcion || "-"}</TableCell>
                   )}
@@ -1604,21 +1755,38 @@ const {
                       >
                         <Edit className="h-4 w-4" />
                       </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleDelete(modalType!, item)}
-                        className="text-red-600 hover:bg-red-50 hover:scale-110 transition-all"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      {isEspecialidades && !item.activo ? (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          title="Reactivar"
+                          onClick={() =>
+                            reactivarEspecialidad.mutate(item.id_especialidad)
+                          }
+                          className="text-green-600 hover:bg-green-50 hover:scale-110 transition-all"
+                        >
+                          <ToggleLeft className="h-4 w-4" />
+                        </Button>
+                      ) : (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          title={
+                            isEspecialidades ? "Desactivar" : "Eliminar"
+                          }
+                          onClick={() => handleDelete(modalType!, item)}
+                          className="text-red-600 hover:bg-red-50 hover:scale-110 transition-all"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
                     </div>
                   </TableCell>
                 </TableRow>
               ))}
               {items.length === 0 && (
                 <TableRow>
-                  <TableCell                      colSpan={isSubcategoria ? 5 : 4}
+                  <TableCell                      colSpan={isSubcategoria ? 5 : isEspecialidades ? 6 : 4}
                       className="text-center py-12"
                   >
                     <div className="flex flex-col items-center justify-center text-gray-400">
@@ -1642,6 +1810,24 @@ const {
   };
 
   const renderConfigListView = () => {
+    // La sub-pestaña Importar no es un catálogo más: no tiene tabla, buscador,
+    // botón "Nuevo" ni modal de edición. Devolviendo aquí antes de todo eso, no
+    // hay que añadir una condición en cada uno.
+    if (isMigracion) {
+      return (
+        <div className="space-y-4">
+          <div className="flex items-center gap-2">
+            <Database className="w-5 h-5 text-slate-600" />
+            <h2 className="text-lg font-bold text-gray-900">Migración</h2>
+          </div>
+          <p className="text-sm text-gray-500">
+            Migra el legacy completo. Sólo inserta: nunca borra ni actualiza.
+          </p>
+          <MigracionLegacy />
+        </div>
+      );
+    }
+
     const currentItems = getItems();
     const filteredItems = currentItems.filter(
       (item: any) =>
@@ -1715,6 +1901,10 @@ const {
               {activeConfigSubTab === "dj08-tributos" && (
                 <Coins className="w-5 h-5 text-cyan-600" />
               )}
+              {activeConfigSubTab === "especialidades" && (
+                <Palette className="w-5 h-5 text-fuchsia-600" />
+              )}
+              {isMigracion && <Database className="w-5 h-5 text-slate-600" />}
             </div>
             <h2 className="text-lg font-bold text-gray-900">
               {currentSubTab?.label}
@@ -1804,9 +1994,11 @@ const {
                         colSpan={
                           activeConfigSubTab === "subcategorias"
                             ? 5
-                            : activeConfigSubTab === "dj08-actividades"
-                              ? 7
-                              : 4
+                            : activeConfigSubTab === "especialidades"
+                              ? 6
+                              : activeConfigSubTab === "dj08-actividades"
+                                ? 7
+                                : 4
                         }
                         className="text-center py-12"
                       >

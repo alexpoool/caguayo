@@ -21,6 +21,7 @@ import {
   Pencil,
   Trash2,
   Check,
+  AlertTriangle,
 } from "lucide-react";
 
 import { TipoPersona, TipoRelacion, EstadoCliente } from "./types";
@@ -358,6 +359,28 @@ export const ClienteForm: React.FC<ClienteFormProps> = ({
 
   return (
     <>
+      {editingCliente?.valido === false && (
+        <div className="mb-6 rounded-lg border border-amber-300 bg-amber-50 p-4">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-semibold text-amber-900">
+                Este registro migró con un dato corregido
+              </p>
+              <p className="text-sm text-amber-800 mt-1">
+                Campo a revisar:{" "}
+                <span className="font-medium">{editingCliente.campo || "(sin especificar)"}</span>
+              </p>
+              {editingCliente.razon && (
+                <p className="text-sm text-amber-700 mt-1">{editingCliente.razon}</p>
+              )}
+              <p className="text-xs text-amber-700 mt-2">
+                La marca se retira sola cuando guardes un valor válido para ese campo.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 relative z-10">
         <div>
           <div className="flex items-center gap-3">
@@ -729,7 +752,12 @@ export const ClienteForm: React.FC<ClienteFormProps> = ({
           </div>
           <div className="p-6">
             {modalTipo === "NATURAL" && (
-              <NaturalForm datos={datosDraft} setDatos={setDatosDraft} />
+              <NaturalForm
+                datos={datosDraft}
+                setDatos={setDatosDraft}
+                campoACorregir={editingCliente?.valido === false ? editingCliente.campo : null}
+                razon={editingCliente?.razon}
+              />
             )}
             {modalTipo === "JURIDICA" && (
               <JuridicaForm

@@ -100,6 +100,8 @@ async def listar_clientes_naturales(
     ]
 
 
+
+
 @router.get("/{cliente_id}", response_model=ClienteRead)
 async def obtener_cliente(
     cliente_id: int,

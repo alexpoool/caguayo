@@ -2,17 +2,42 @@ import React from "react";
 import { Label } from "../../../../../components/ui"
 import { Input } from "../../../../../components/ui"
 import { DateInput } from "../../../../../components/ui"
+import { Select } from "../../../../../components/ui"
+import { AlertTriangle } from "lucide-react"
+import { useQuery } from "@tanstack/react-query"
+import { configuracionService } from "../../../../../services/administracion"
+import type { Especialidad } from "../../../../../types/index"
 
 export interface DatosNaturalFormProps {
   datos: any;
   setDatos: React.Dispatch<React.SetStateAction<any>>;
+  /** marca el campo que hay que corregir tras la migración */
+  campoACorregir?: string | null;
+  razon?: string | null;
 }
 
 export const NaturalForm: React.FC<DatosNaturalFormProps> = ({
   datos,
   setDatos,
+  campoACorregir,
+  razon,
 }) => {
   const data = datos || {};
+  const ciMarcado = campoACorregir === "carnet_identidad";
+
+  const { data: especialidades = [] } = useQuery<Especialidad[]>({
+    queryKey: ["especialidades"],
+    queryFn: () => configuracionService.getEspecialidades(false),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  // Se piden todas, no sólo las activas: si el artista ya tiene asignada una
+  // especialidad desactivada, tiene que seguir viéndose (marcada) en lugar de
+  // aparecer como si no tuviera ninguna.
+  const asignada = data.id_especialidad ?? null;
+  const opciones = especialidades.filter(
+    (e) => e.activo || e.id_especialidad === asignada
+  );
   
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -52,7 +77,7 @@ export const NaturalForm: React.FC<DatosNaturalFormProps> = ({
             }
           />
         </div>
-        <div>
+        <div className={ciMarcado ? "md:col-span-3" : ""}>
           <Label>Carnet de Identidad</Label>
           <Input
             value={data.carnet_identidad || ""}
@@ -62,7 +87,37 @@ export const NaturalForm: React.FC<DatosNaturalFormProps> = ({
                 carnet_identidad: e.target.value,
               })
             }
+            className={ciMarcado ? "border-amber-500 bg-amber-50/60 ring-1 ring-amber-300" : ""}
           />
+          {ciMarcado && (
+            <p className="mt-1 flex items-start gap-1 text-xs text-amber-700">
+              <AlertTriangle className="h-3 w-3 mt-0.5 shrink-0" />
+              <span>
+                Campo pendiente de corrección: debe tener 11 dígitos.
+                {razon ? ` ${razon}` : ""}
+              </span>
+            </p>
+          )}
+        </div>
+        <div>
+          <Label>Especialidad</Label>
+          <Select
+            value={data.id_especialidad ?? ""}
+            onChange={(e) =>
+              setDatos({
+                ...data,
+                id_especialidad: e.target.value ? Number(e.target.value) : null,
+              })
+            }
+          >
+            <option value="">Sin especificar</option>
+            {opciones.map((esp) => (
+              <option key={esp.id_especialidad} value={esp.id_especialidad}>
+                {esp.nombre}
+                {esp.activo ? "" : " (desactivada)"}
+              </option>
+            ))}
+          </Select>
         </div>
         <div>
           <Label>Código Expediente</Label>

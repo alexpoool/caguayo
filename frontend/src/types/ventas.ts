@@ -63,6 +63,12 @@ export interface Cliente {
   tipo_relacion: 'CLIENTE' | 'PROVEEDOR' | 'AMBAS';
   estado: 'ACTIVO' | 'INACTIVO';
   fecha_registro: string;
+  /** false cuando el registro migró con algún campo corregido: hay que revisarlo */
+  valido?: boolean;
+  /** campo que hay que corregir, p. ej. 'carnet_identidad' */
+  campo?: string | null;
+  /** por qué hay que corregirlo */
+  razon?: string | null;
   provincia?: Provincia;
   municipio?: Municipio;
   cuentas?: Cuenta[];
@@ -148,6 +154,7 @@ export interface ClienteNatural {
   en_baja: boolean;
   fecha_baja?: string;
   vigencia?: string;
+  id_especialidad?: number | null;
 }
 
 export interface ClienteNaturalCreate {

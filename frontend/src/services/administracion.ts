@@ -1,7 +1,20 @@
 import { apiClient } from '../lib/api';
 import type { TipoContrato, TipoContratoCreate, TipoContratoUpdate } from '../types/contrato';
 import type { EstadoContrato, EstadoContratoCreate, EstadoContratoUpdate } from '../types/contrato';
-import type { TipoProveedor, TipoProveedorCreate, TipoProveedorUpdate, TipoConvenio, TipoConvenioCreate, TipoConvenioUpdate } from '../types/index';
+import type {
+  TipoProveedor,
+  TipoProveedorCreate,
+  TipoProveedorUpdate,
+  TipoConvenio,
+  TipoConvenioCreate,
+  TipoConvenioUpdate,
+  Especialidad,
+  EspecialidadCreate,
+  EspecialidadUpdate,
+  FicheroLegacy,
+  EstadoMigracion,
+  InformeMigracion,
+} from '../types/index';
 import type { Cuenta, CuentaCreate, CuentaUpdate, CuentaDependencia, CuentaDependenciaCreate, CuentaDependenciaUpdate } from '../types/cuenta';
 import type { Grupo, GrupoCreate, GrupoUpdate, Funcionalidad, Usuario, UsuarioCreate, UsuarioUpdate } from '../types/usuario';
 import type { TipoDependencia, TipoDependenciaCreate, TipoDependenciaUpdate, Dependencia, DependenciaConCuentasCreate, DependenciaUpdate, ConexionDatabase } from '../types/dependencia';
@@ -71,6 +84,33 @@ export const configuracionService = {
 
   deleteTipoConvenio: async (id: number): Promise<void> => {
     await apiClient.delete(`/configuracion/tipos-convenios/${id}`);
+  },
+
+  // "delete" desactiva, no borra: la especialidad puede estar enlazada a
+  // artistas y el enlace debe sobrevivir.
+  getEspecialidades: async (soloActivas = false): Promise<Especialidad[]> => {
+    return await apiClient.get(
+      `/configuracion/especialidades?solo_activas=${soloActivas}`
+    );
+  },
+
+  createEspecialidad: async (data: EspecialidadCreate): Promise<Especialidad> => {
+    return await apiClient.post('/configuracion/especialidades', data);
+  },
+
+  updateEspecialidad: async (
+    id: number,
+    data: EspecialidadUpdate
+  ): Promise<Especialidad> => {
+    return await apiClient.put(`/configuracion/especialidades/${id}`, data);
+  },
+
+  desactivarEspecialidad: async (id: number): Promise<Especialidad> => {
+    return await apiClient.delete(`/configuracion/especialidades/${id}`);
+  },
+
+  reactivarEspecialidad: async (id: number): Promise<Especialidad> => {
+    return await apiClient.post(`/configuracion/especialidades/${id}/reactivar`, {});
   },
 };
 
@@ -208,5 +248,43 @@ export const dependenciasService = {
 
   deleteCuentaDependencia: async (id: number): Promise<void> => {
     await apiClient.delete(`/dependencias/cuentas/${id}`);
+  },
+};
+
+
+export const migracionService = {
+  getEstado: async (): Promise<EstadoMigracion> => {
+    return await apiClient.get('/configuracion/migracion/estado');
+  },
+
+  /**
+   * El fichero va como cuerpo crudo, no como multipart. El backend no tiene
+   * python-multipart y no lo necesita: FastAPI lee el cuerpo con request.body().
+   */
+  subirFichero: async (rol: string, fichero: File): Promise<FicheroLegacy> => {
+    const contenido = await fichero.arrayBuffer();
+    return await apiClient.post(
+      `/configuracion/migracion/fichero?rol=${rol}`,
+      contenido,
+      {
+        raw: true,
+        headers: {
+          'Content-Type': 'application/octet-stream',
+          'X-Nombre-Fichero': fichero.name,
+        },
+      }
+    );
+  },
+
+  quitarFichero: async (rol: string): Promise<void> => {
+    await apiClient.delete(`/configuracion/migracion/fichero?rol=${rol}`);
+  },
+
+  analizar: async (): Promise<InformeMigracion> => {
+    return await apiClient.post('/configuracion/migracion/analizar');
+  },
+
+  ejecutar: async (): Promise<InformeMigracion> => {
+    return await apiClient.post('/configuracion/migracion/ejecutar');
   },
 };

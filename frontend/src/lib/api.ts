@@ -52,9 +52,13 @@ class ApiClient {
       ...(options.headers as Record<string, string>),
     };
 
+    // `headers` va DESPUÉS del resto a propósito. Con `{ headers, ...options }`
+    // las cabeceras propias de la llamada se impongan sobre las ya calculadas y
+    // se pierden el Content-Type y, sobre todo, el Authorization: la subida de
+    // ficheros salía sin autenticar.
     const config: RequestInit = {
-      headers,
       ...options,
+      headers,
     };
 
     try {
@@ -117,10 +121,21 @@ class ApiClient {
     return this.request<T>(url);
   }
 
-  async post<T>(endpoint: string, data: any): Promise<T> {
+  /**
+   * `opts.raw` envía el cuerpo tal cual, sin pasar por JSON.stringify. Hace
+   * falta para la subida de ficheros: un ArrayBuffer pasado por JSON.stringify
+   * sale convertido en un objeto con las claves "0", "1"... en vez de los
+   * bytes. Por defecto sigue haciendo JSON, como antes.
+   */
+  async post<T>(
+    endpoint: string,
+    data?: any,
+    opts: { raw?: boolean; headers?: Record<string, string> } = {}
+  ): Promise<T> {
     return this.request<T>(endpoint, {
       method: 'POST',
-      body: JSON.stringify(data),
+      body: opts.raw ? data : JSON.stringify(data),
+      ...(opts.headers ? { headers: opts.headers } : {}),
     });
   }
 

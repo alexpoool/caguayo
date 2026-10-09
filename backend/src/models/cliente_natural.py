@@ -4,6 +4,7 @@ from datetime import date
 
 if TYPE_CHECKING:
     from .cliente import Cliente
+    from .especialidades_artisticas import EspecialidadesArtisticas
 
 
 class ClienteNatural(SQLModel, table=True):
@@ -29,4 +30,12 @@ class ClienteNatural(SQLModel, table=True):
     fecha_baja: Optional[date] = Field(default=None)
     vigencia: Optional[date] = Field(default=None)
 
+    # Especialidad del artista. Viene de `artista.especialidad`, que la
+    # migración inicial había descartado. Un artista sin especialidad
+    # queda con NULL.
+    id_especialidad: Optional[int] = Field(
+        default=None, foreign_key="especialidades_artisticas.id_especialidad"
+    )
+
     cliente: "Cliente" = Relationship(back_populates="cliente_natural")
+    especialidad: Optional["EspecialidadesArtisticas"] = Relationship()

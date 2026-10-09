@@ -16,6 +16,9 @@ import {
   cuentasService,
 } from "../../../../services/api";
 import { formatFecha } from "../../../../utils/fecha";
+import { useQuery } from "@tanstack/react-query";
+import { configuracionService } from "../../../../services/administracion";
+import type { Especialidad } from "../../../../types/index";
 import type {
   Cliente,
   ClienteNatural,
@@ -38,11 +41,23 @@ export const ClienteDetailModal: React.FC<ClienteDetailModalProps> = ({
   onClose,
   tiposEntidad = [],
 }) => {
+  const { data: especialidades = [] } = useQuery<Especialidad[]>({
+    queryKey: ["especialidades"],
+    queryFn: () => configuracionService.getEspecialidades(false),
+    staleTime: 5 * 60 * 1000,
+  });
+
   const [datosNatural, setDatosNatural] = useState<ClienteNatural | null>(null);
   const [datosJuridica, setDatosJuridica] = useState<ClienteJuridica | null>(
     null
   );
   const [datosTCP, setDatosTCP] = useState<ClienteTCP | null>(null);
+  const nombreEspecialidad = React.useMemo(() => {
+    const id = datosNatural?.id_especialidad;
+    if (id == null) return null;
+    return especialidades.find((e) => e.id_especialidad === id) ?? null;
+  }, [datosNatural?.id_especialidad, especialidades]);
+
   const [cuentas, setCuentas] = useState<Cuenta[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -236,6 +251,22 @@ export const ClienteDetailModal: React.FC<ClienteDetailModalProps> = ({
                 <Campo
                   label="Carnet de Identidad"
                   value={datosNatural.carnet_identidad || "N/A"}
+                />
+                <Campo
+                  label="Especialidad"
+                  value={
+                    !nombreEspecialidad ? (
+                      datosNatural.id_especialidad == null ? (
+                        "—"
+                      ) : (
+                        `#${datosNatural.id_especialidad}`
+                      )
+                    ) : (
+                      `${nombreEspecialidad.nombre}${
+                        nombreEspecialidad.activo ? "" : " (desactivada)"
+                      }`
+                    )
+                  }
                 />
                 <Campo
                   label="Código Expediente"

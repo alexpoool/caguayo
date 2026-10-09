@@ -38,6 +38,20 @@ from .clientes_dto import (
     ClienteUpdate,
     ClienteSimpleRead,
 )
+from .migracion_dto import (
+    EstadoMigracion,
+    FaseInforme,
+    FicheroLegacyInfo,
+    FicherosSubidos,
+    IdentidadBase,
+    InformeMigracion,
+)
+from .especialidad_dto import (
+    EspecialidadBase,
+    EspecialidadCreate,
+    EspecialidadRead,
+    EspecialidadUpdate,
+)
 from .cliente_natural_dto import (
     ClienteNaturalBase,
     ClienteNaturalCreate,

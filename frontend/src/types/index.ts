@@ -141,6 +141,72 @@ export interface TipoConvenioUpdate {
   descripcion?: string;
 }
 
+export interface Especialidad {
+  id_especialidad: number;
+  nombre: string;
+  descripcion?: string | null;
+  categoria?: string | null;
+  activo: boolean;
+  /** Artistas enlazados. Se muestra para no desactivar a ciegas. */
+  artistas: number;
+}
+
+export interface EspecialidadCreate {
+  nombre: string;
+  descripcion?: string;
+  categoria?: string;
+}
+
+export interface EspecialidadUpdate {
+  nombre?: string;
+  descripcion?: string;
+  categoria?: string;
+  activo?: boolean;
+}
+
+/** Un fichero del legacy pendiente de subir. */
+export interface FicheroLegacy {
+  rol: "comercial" | "principal";
+  etiqueta: string;
+  descripcion: string;
+  subido: boolean;
+  bytes: number;
+  ruta?: string | null;
+}
+
+export interface IdentidadBase {
+  base_etl: string;
+  base_app: string;
+  coherente: boolean;
+  detalle: string[];
+}
+
+export interface EstadoMigracion {
+  recuentos: Record<string, number>;
+  errores_migracion: number;
+  revision?: string | null;
+  identidad: IdentidadBase;
+  operacion_en_curso: boolean;
+  ficheros: Record<string, FicheroLegacy>;
+}
+
+export interface FaseInforme {
+  letra: string;
+  titulo: string;
+  a_insertar: number;
+  detalle: string[];
+}
+
+export interface InformeMigracion {
+  ok: boolean;
+  commit: boolean;
+  codigo: number;
+  total_a_insertar: number;
+  resultado?: string | null;
+  fases: FaseInforme[];
+  log: string[];
+}
+
 export interface ClienteSimple {
   id_cliente: number;
   codigo: string;

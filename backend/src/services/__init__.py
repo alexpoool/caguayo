@@ -4,6 +4,7 @@ from .movimiento_service import MovimientoService
 from .dashboard_service import DashboardService
 from .cliente_service import ClienteService
 from .auth_service import auth_service
+from . import especialidad_service, migracion_service
 
 __all__ = [
     "ProductosService",
@@ -12,4 +13,6 @@ __all__ = [
     "MovimientoService",
     "DashboardService",
     "auth_service",
+    "especialidad_service",
+    "migracion_service",
 ]

@@ -10,6 +10,7 @@ import {
   Edit,
   Trash2,
   Loader2,
+  AlertTriangle,
 } from "lucide-react";
 import {
   Button,
@@ -88,7 +89,7 @@ export function ClientesList({
         </Button>
       </div>
 
-      <div className="flex gap-2">
+      <div className="flex gap-2 items-center flex-wrap">
         <div className="flex-1 relative max-w-md">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
           <Input
@@ -138,7 +139,11 @@ export function ClientesList({
                 filteredClientes.map((cliente) => (
                   <TableRow
                     key={cliente.id_cliente}
-                    className="hover:bg-gray-50/50 transition-colors cursor-pointer"
+                    className={`transition-colors cursor-pointer border-l-4 ${
+                      cliente.valido === false
+                        ? "bg-amber-50/70 border-l-amber-500 hover:bg-amber-100/70"
+                        : "border-l-transparent hover:bg-gray-50/50"
+                    }`}
                     onClick={() => setDetailModal({ isOpen: true, cliente })}
                   >
                     <TableCell>
@@ -146,11 +151,23 @@ export function ClientesList({
                         <div className="p-2 bg-teal-50 rounded-lg text-teal-600">
                           <User className="h-4 w-4" />
                         </div>
+                        {cliente.valido === false && (
+                          <span
+                            title={cliente.razon || undefined}
+                            className="text-amber-500 shrink-0 cursor-help"
+                          >
+                            <AlertTriangle className="h-4 w-4" />
+                          </span>
+                        )}
                         <div>
                           <span className="font-medium text-gray-900 block">
                             {cliente.nombre || "(Sin nombre)"}
                           </span>
-
+                          {cliente.valido === false && (
+                            <span className="text-xs text-amber-700">
+                              CI/NIT: {cliente.nit}
+                            </span>
+                          )}
                         </div>
                       </div>
                     </TableCell>
