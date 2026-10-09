@@ -248,6 +248,7 @@ async def get_existencias(db: AsyncSession, id_dependencia: int):
         }
         for r in results
     ]
+    dependencia_info["alcance"] = len(ids_cubiertos)
     return existencias, dependencia_info
 
 

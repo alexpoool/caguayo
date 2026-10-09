@@ -17,6 +17,7 @@ from src.services.reportes_service import (
     get_existencias,
     get_ids_dependencia_con_hijos,
 )
+from src.utils.pdf_generator import generar_pdf_existencias
 
 
 @pytest.fixture
@@ -125,3 +126,20 @@ async def test_existencias_dependencia_sin_hijos(db, arbol):
     """Una dependencia hoja solo reporta su propio stock."""
     filas, _ = await get_existencias(db, 3)
     assert filas == []
+
+
+def test_pdf_existencias_incluye_columna_dependencia():
+    """El PDF debe listar 4 columnas: la dependencia de cada fila."""
+    filas = [
+        {"codigo": "P001", "nombre": "Producto Uno", "cantidad": 100,
+         "dependencia": "Caguayo S.A"},
+        {"codigo": "P001", "nombre": "Producto Uno", "cantidad": 50,
+         "dependencia": "Sucursal Norte"},
+    ]
+    buf = generar_pdf_existencias(
+        filas,
+        {"nombre": "Caguayo S.A", "direccion": "Matriz", "alcance": 2},
+        "Admin",
+    )
+    data = buf.getvalue()
+    assert data[:5] == b"%PDF-", "generar_pdf_existencias debe devolver un PDF"

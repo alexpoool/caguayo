@@ -90,17 +90,27 @@ def generar_pdf_existencias(
     aprobado_por_cargo: str = "",
     notas: str = "",
 ) -> BytesIO:
-    """Genera PDF con el listado de existencias en inventario."""
+    """Genera PDF con el listado de existencias en inventario.
+
+    Cubre la dependencia seleccionada + sus hijos directos, por lo que cada
+    fila indica la dependencia a la que pertenece.
+    """
     template = PDFTemplate(title="EXISTENCIAS EN INVENTARIO", landscape_mode=True)
     template.set_company_header(name="Caguayo")
-    template.set_filters({"Dependencia": dependencia_info.get("nombre", "")})
 
-    headers = ["CÓDIGO", "NOMBRE", "CANTIDAD"]
+    filtros = {"Dependencia": dependencia_info.get("nombre", "")}
+    alcance = dependencia_info.get("alcance")
+    if alcance and alcance > 1:
+        filtros["Alcance"] = f"Dependencia + {alcance - 1} hijo(s)"
+    template.set_filters(filtros)
+
+    headers = ["CÓDIGO", "NOMBRE", "CANTIDAD", "DEPENDENCIA"]
     data = [
         [
             str(e.get("codigo", "")),
             str(e.get("nombre", "")),
             format_quantity(e.get("cantidad", 0)),
+            str(e.get("dependencia", "")),
         ]
         for e in existencias
     ]
