@@ -99,3 +99,29 @@ async def test_ids_no_incluye_nietos(db, arbol):
 async def test_ids_dependencia_hoja_es_sola(db, arbol):
     ids = await get_ids_dependencia_con_hijos(db, 3)
     assert ids == [3]
+
+
+async def test_existencias_incluye_hijos_directos(db, arbol):
+    """Padre (100) + hijo directo (50) entran; nieto (999) no."""
+    filas, _ = await get_existencias(db, 1)
+    assert sorted(f["cantidad"] for f in filas) == [50, 100]
+
+
+async def test_existencias_excluye_nietos(db, arbol):
+    filas, _ = await get_existencias(db, 1)
+    nombres = {f["dependencia"] for f in filas}
+    assert "Almacen Norte" not in nombres
+
+
+async def test_existencias_una_fila_por_dependencia(db, arbol):
+    """Cada fila lleva el nombre de SU dependencia."""
+    filas, _ = await get_existencias(db, 1)
+    por_dep = {f["dependencia"]: f for f in filas}
+    assert por_dep["Caguayo S.A"]["cantidad"] == 100
+    assert por_dep["Sucursal Norte"]["cantidad"] == 50
+
+
+async def test_existencias_dependencia_sin_hijos(db, arbol):
+    """Una dependencia hoja solo reporta su propio stock."""
+    filas, _ = await get_existencias(db, 3)
+    assert filas == []

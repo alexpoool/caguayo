@@ -190,6 +190,11 @@ async def get_ids_dependencia_con_hijos(
 
 
 async def get_existencias(db: AsyncSession, id_dependencia: int):
+    """Stock por producto de la dependencia seleccionada + sus hijos directos.
+
+    Una fila por dependencia: si el mismo producto tiene stock en el padre y
+    en un hijo, salen dos filas con su nombre de dependencia correspondiente.
+    """
     result = await db.execute(
         select(Dependencia).filter(Dependencia.id_dependencia == id_dependencia)
     )
@@ -199,11 +204,16 @@ async def get_existencias(db: AsyncSession, id_dependencia: int):
         if dependencia
         else {}
     )
+    if not dependencia:
+        return [], dependencia_info
+
+    ids_cubiertos = await get_ids_dependencia_con_hijos(db, id_dependencia)
 
     query = (
         select(
             Productos.codigo.label("codigo"),
             Productos.nombre.label("nombre"),
+            Dependencia.nombre.label("dependencia"),
             func.sum(Movimiento.cantidad * TipoMovimiento.factor).label("cantidad"),
         )
         .join(Productos, Movimiento.id_producto == Productos.id_producto)
@@ -211,20 +221,31 @@ async def get_existencias(db: AsyncSession, id_dependencia: int):
             TipoMovimiento,
             Movimiento.id_tipo_movimiento == TipoMovimiento.id_tipo_movimiento,
         )
+        .join(Dependencia, Movimiento.id_dependencia == Dependencia.id_dependencia)
         .filter(
-            Movimiento.id_dependencia == id_dependencia,
+            Movimiento.id_dependencia.in_(ids_cubiertos),
             # Solo los movimientos confirmados alteran el stock real.
             Movimiento.estado == "confirmado",
         )
-        .group_by(Productos.codigo, Productos.nombre)
+        .group_by(
+            Productos.codigo,
+            Productos.nombre,
+            Dependencia.id_dependencia,
+            Dependencia.nombre,
+        )
+        .order_by(Dependencia.nombre.asc(), Productos.codigo.asc())
     )
 
     result = await db.execute(query)
     results = result.all()
 
-    dependencia_nombre = dependencia_info.get("nombre", "")
     existencias = [
-        {"codigo": r.codigo, "nombre": r.nombre, "cantidad": r.cantidad or 0, "dependencia": dependencia_nombre}
+        {
+            "codigo": r.codigo,
+            "nombre": r.nombre,
+            "cantidad": r.cantidad or 0,
+            "dependencia": r.dependencia,
+        }
         for r in results
     ]
     return existencias, dependencia_info
