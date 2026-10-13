@@ -7,6 +7,7 @@ import React from 'react';
 import {
   ArrowLeftRight,
   Boxes,
+  Building2,
   Clock,
   Home,
   Briefcase,
@@ -101,6 +102,8 @@ import { LiquidacionesPage as ProyectoLiquidacionesPage } from './pages/proyecto
 import { CertificacionesPage } from './pages/proyecto/CertificacionesPage';
 import { DJ08Page } from './pages/dj08/DJ08Page';
 import { RrhhHome } from './pages/home/RrhhHome';
+import { DepartamentosPage } from './pages/rrhh/DepartamentosPage';
+import { PuestosPage } from './pages/rrhh/PuestosPage';
 
 type Modulo = 'administracion' | 'venta' | 'compra' | 'inventario' | 'reportes' | 'home' | 'proyecto' | 'dj08' | 'rrhh';
 
@@ -423,6 +426,28 @@ function App() {
                     <SidebarLink slim={slimSidebar} to="/rrhh" onClick={handleLinkClick} exact>
                       <Users className="w-6 h-6" />
                       Recursos Humanos
+                    </SidebarLink>
+                  </li>
+                  <li>
+                    <SidebarLink
+                      slim={slimSidebar}
+                      to="/rrhh/departamentos"
+                      onClick={handleLinkClick}
+                      disabled={!hasFuncionalidad('rrhh_departamentos')}
+                    >
+                      <Building2 className="w-6 h-6" />
+                      Departamentos
+                    </SidebarLink>
+                  </li>
+                  <li>
+                    <SidebarLink
+                      slim={slimSidebar}
+                      to="/rrhh/puestos"
+                      onClick={handleLinkClick}
+                      disabled={!hasFuncionalidad('rrhh_puestos')}
+                    >
+                      <Briefcase className="w-6 h-6" />
+                      Puestos
                     </SidebarLink>
                   </li>
                 </ul>
@@ -1074,6 +1099,22 @@ function App() {
                   element={
                     <ProtectedRoute moduloActivo={moduloActivo} currentPath="/rrhh">
                       <RrhhHome />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/rrhh/departamentos"
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/rrhh/departamentos">
+                      <DepartamentosPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/rrhh/puestos"
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/rrhh/puestos">
+                      <PuestosPage />
                     </ProtectedRoute>
                   }
                 />

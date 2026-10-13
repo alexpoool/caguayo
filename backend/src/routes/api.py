@@ -50,6 +50,7 @@ from .fichas_costo import router as fichas_costo_router
 from .fichas_tarifas import router as fichas_tarifas_router
 from .dj08 import router as dj08_router
 from .rrhh import rrhh_router
+from .rrhh_departamentos import rrhh_departamentos_router, rrhh_puestos_router
 
 api_router = APIRouter(prefix="/api/v1")
 
@@ -100,6 +101,8 @@ api_router.include_router(fichas_costo_router)
 api_router.include_router(fichas_tarifas_router)
 api_router.include_router(dj08_router)
 api_router.include_router(rrhh_router)
+api_router.include_router(rrhh_departamentos_router)
+api_router.include_router(rrhh_puestos_router)
 
 
 @api_router.get("/")

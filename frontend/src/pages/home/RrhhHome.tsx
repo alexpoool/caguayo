@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import {
   Users,
   Building2,
@@ -19,6 +20,8 @@ interface SubmoduloCard {
   descripcion: string;
   icon: React.ReactNode;
   fase: number;
+  /** Ruta de la página del submódulo; null si aún no está implementado. */
+  ruta: string | null;
 }
 
 const SUBMODULOS: SubmoduloCard[] = [
@@ -29,6 +32,7 @@ const SUBMODULOS: SubmoduloCard[] = [
       'Tipos de contrato, deducciones, bonificaciones, pago y calificaciones.',
     icon: <Settings className="h-5 w-5" />,
     fase: 1,
+    ruta: null,
   },
   {
     id: 'departamentos',
@@ -36,6 +40,7 @@ const SUBMODULOS: SubmoduloCard[] = [
     descripcion: 'Estructura de departamentos y sus responsables.',
     icon: <Building2 className="h-5 w-5" />,
     fase: 2,
+    ruta: '/rrhh/departamentos',
   },
   {
     id: 'puestos',
@@ -43,6 +48,7 @@ const SUBMODULOS: SubmoduloCard[] = [
     descripcion: 'Puestos de trabajo y rangos salariales.',
     icon: <Briefcase className="h-5 w-5" />,
     fase: 2,
+    ruta: '/rrhh/puestos',
   },
   {
     id: 'empleados',
@@ -50,6 +56,7 @@ const SUBMODULOS: SubmoduloCard[] = [
     descripcion: 'Ficha del personal, asignaciones y organigrama.',
     icon: <Users className="h-5 w-5" />,
     fase: 3,
+    ruta: null,
   },
   {
     id: 'asistencia',
@@ -57,6 +64,7 @@ const SUBMODULOS: SubmoduloCard[] = [
     descripcion: 'Registro de entrada y salida, tardanzas y horas extras.',
     icon: <Clock className="h-5 w-5" />,
     fase: 4,
+    ruta: null,
   },
   {
     id: 'deducciones',
@@ -64,6 +72,7 @@ const SUBMODULOS: SubmoduloCard[] = [
     descripcion: 'Deducciones por empleado y periodo.',
     icon: <TrendingUp className="h-5 w-5" />,
     fase: 5,
+    ruta: null,
   },
   {
     id: 'bonificaciones',
@@ -71,6 +80,7 @@ const SUBMODULOS: SubmoduloCard[] = [
     descripcion: 'Bonificaciones por empleado y periodo.',
     icon: <Award className="h-5 w-5" />,
     fase: 5,
+    ruta: null,
   },
   {
     id: 'nomina',
@@ -78,6 +88,7 @@ const SUBMODULOS: SubmoduloCard[] = [
     descripcion: 'Generación de nómina, recibos y control de estados.',
     icon: <FileText className="h-5 w-5" />,
     fase: 6,
+    ruta: null,
   },
   {
     id: 'pagos',
@@ -85,6 +96,7 @@ const SUBMODULOS: SubmoduloCard[] = [
     descripcion: 'Registro de pagos y comprobantes.',
     icon: <Wallet className="h-5 w-5" />,
     fase: 6,
+    ruta: null,
   },
   {
     id: 'solicitudes',
@@ -92,6 +104,7 @@ const SUBMODULOS: SubmoduloCard[] = [
     descripcion: 'Vacaciones y permisos con flujo de aprobación.',
     icon: <CalendarDays className="h-5 w-5" />,
     fase: 7,
+    ruta: null,
   },
   {
     id: 'evaluaciones',
@@ -99,6 +112,7 @@ const SUBMODULOS: SubmoduloCard[] = [
     descripcion: 'Evaluaciones de desempeño, objetivos y metas.',
     icon: <ClipboardList className="h-5 w-5" />,
     fase: 8,
+    ruta: null,
   },
   {
     id: 'reportes',
@@ -106,6 +120,7 @@ const SUBMODULOS: SubmoduloCard[] = [
     descripcion: 'Dashboards y reportes exportables del módulo.',
     icon: <BarChart3 className="h-5 w-5" />,
     fase: 9,
+    ruta: null,
   },
 ];
 
@@ -134,27 +149,45 @@ export function RrhhHome() {
           </p>
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            {SUBMODULOS.map((sub) => (
-              <div
-                key={sub.id}
-                className="flex items-start gap-3 rounded-lg border border-slate-100 bg-slate-50/60 p-4 transition-shadow hover:shadow-sm"
-              >
-                <div className="mt-0.5 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-600">
-                  {sub.icon}
+            {SUBMODULOS.map((sub) => {
+              const contenido = (
+                <>
+                  <div className="mt-0.5 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-600">
+                    {sub.icon}
+                  </div>
+                  <div className="min-w-0">
+                    <h3 className="text-sm font-semibold text-slate-900">
+                      {sub.nombre}
+                    </h3>
+                    <p className="mt-0.5 text-xs leading-relaxed text-slate-600">
+                      {sub.descripcion}
+                    </p>
+                    <span
+                      className={`mt-1.5 inline-block rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${
+                        sub.ruta
+                          ? 'bg-green-100 text-green-700'
+                          : 'bg-slate-200 text-slate-600'
+                      }`}
+                    >
+                      {sub.ruta ? 'Disponible' : `Fase ${sub.fase} · próximamente`}
+                    </span>
+                  </div>
+                </>
+              );
+
+              const clases =
+                'flex w-full items-start gap-3 rounded-lg border border-slate-100 bg-slate-50/60 p-4 text-left transition-shadow hover:shadow-sm';
+
+              return sub.ruta ? (
+                <Link key={sub.id} to={sub.ruta} className={clases}>
+                  {contenido}
+                </Link>
+              ) : (
+                <div key={sub.id} className={`${clases} opacity-70`} aria-disabled>
+                  {contenido}
                 </div>
-                <div className="min-w-0">
-                  <h3 className="text-sm font-semibold text-slate-900">
-                    {sub.nombre}
-                  </h3>
-                  <p className="mt-0.5 text-xs leading-relaxed text-slate-600">
-                    {sub.descripcion}
-                  </p>
-                  <span className="mt-1.5 inline-block rounded-full bg-slate-200 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-600">
-                    Fase {sub.fase} · próximamente
-                  </span>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
 

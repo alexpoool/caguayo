@@ -234,6 +234,20 @@ from .ficha_costo_dto import (
     FichaManoObraCreate,
     FichaManoObraRead,
 )
+from .rrhh_dto import (
+    RrhhDepartamentoBase,
+    RrhhDepartamentoCreate,
+    RrhhDepartamentoUpdate,
+    RrhhDepartamentoRead,
+    RrhhDepartamentoListado,
+    RrhhDepartamentoDetalle,
+    RrhhPuestoBase,
+    RrhhPuestoCreate,
+    RrhhPuestoUpdate,
+    RrhhPuestoRead,
+    RrhhPuestoListado,
+    RrhhPuestoDetalle,
+)
 
 
 __all__ = [
@@ -422,6 +436,18 @@ __all__ = [
     "FichaInsumoRead",
     "FichaManoObraCreate",
     "FichaManoObraRead",
+    "RrhhDepartamentoBase",
+    "RrhhDepartamentoCreate",
+    "RrhhDepartamentoUpdate",
+    "RrhhDepartamentoRead",
+    "RrhhDepartamentoListado",
+    "RrhhDepartamentoDetalle",
+    "RrhhPuestoBase",
+    "RrhhPuestoCreate",
+    "RrhhPuestoUpdate",
+    "RrhhPuestoRead",
+    "RrhhPuestoListado",
+    "RrhhPuestoDetalle",
 ]
 VentaRead.model_rebuild(
     _types_namespace={
