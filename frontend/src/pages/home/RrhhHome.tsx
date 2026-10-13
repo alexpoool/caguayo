@@ -64,7 +64,7 @@ const SUBMODULOS: SubmoduloCard[] = [
     descripcion: 'Registro de entrada y salida, tardanzas y horas extras.',
     icon: <Clock className="h-5 w-5" />,
     fase: 4,
-    ruta: null,
+    ruta: '/rrhh/asistencia',
   },
   {
     id: 'deducciones',

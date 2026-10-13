@@ -276,6 +276,16 @@ from .rrhh_empleado_dto import (
     ESTADOS_EMPLEADO,
     TIPOS_ASISTENCIA,
 )
+from .rrhh_asistencia_dto import (
+    RrhhAsistenciaBase,
+    RrhhAsistenciaCreate,
+    RrhhAsistenciaUpdate,
+    RrhhAsistenciaRead,
+    RrhhAsistenciaListado,
+    RrhhAsistenciaMarcacion,
+    RrhhAsistenciaResumenDia,
+    ESTADOS_ASISTENCIA,
+)
 
 
 __all__ = [
@@ -500,6 +510,14 @@ __all__ = [
     "RrhhEmpleadoBusqueda",
     "ESTADOS_EMPLEADO",
     "TIPOS_ASISTENCIA",
+    "RrhhAsistenciaBase",
+    "RrhhAsistenciaCreate",
+    "RrhhAsistenciaUpdate",
+    "RrhhAsistenciaRead",
+    "RrhhAsistenciaListado",
+    "RrhhAsistenciaMarcacion",
+    "RrhhAsistenciaResumenDia",
+    "ESTADOS_ASISTENCIA",
 ]
 VentaRead.model_rebuild(
     _types_namespace={

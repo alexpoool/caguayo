@@ -21,6 +21,13 @@ import type {
   RrhhEmpleadoDetalle,
   RrhhEmpleadoBusqueda,
   RrhhTipoContrato,
+  RrhhAsistencia,
+  RrhhAsistenciaCreate,
+  RrhhAsistenciaUpdate,
+  RrhhAsistenciaListado,
+  RrhhAsistenciaMarcacion,
+  RrhhAsistenciaResumenDia,
+  RrhhEstadoAsistencia,
 } from '../types/rrhh';
 
 export const rrhhService = {
@@ -170,5 +177,59 @@ export const rrhhService = {
 
   empleadosDelPuesto: async (id: number): Promise<RrhhEmpleadoLite[]> => {
     return await apiClient.get(`/rrhh/puestos/${id}/empleados`);
+  },
+
+  // ── Asistencia (Fase 4) ─────────────────────────────────────────────────
+  listarAsistencias: async (params?: {
+    skip?: number;
+    limit?: number;
+    empleado_id?: number;
+    departamento_id?: number;
+    desde?: string;
+    hasta?: string;
+    estado?: string;
+    buscar?: string;
+  }): Promise<RrhhAsistenciaListado[]> => {
+    return await apiClient.get('/rrhh/asistencia', params);
+  },
+
+  /** Catálogo de estados de asistencia. */
+  listarEstadosAsistencia: async (): Promise<RrhhEstadoAsistencia[]> => {
+    return await apiClient.get('/rrhh/asistencia/estados');
+  },
+
+  /** Conteo de asistencias por estado para una fecha. */
+  resumenAsistenciaDia: async (params: {
+    fecha: string;
+    departamento_id?: number;
+  }): Promise<RrhhAsistenciaResumenDia> => {
+    return await apiClient.get('/rrhh/asistencia/resumen', params);
+  },
+
+  getAsistencia: async (id: number): Promise<RrhhAsistenciaListado> => {
+    return await apiClient.get(`/rrhh/asistencia/${id}`);
+  },
+
+  /** Marcación rápida de entrada o salida del día. */
+  marcarAsistencia: async (
+    data: RrhhAsistenciaMarcacion
+  ): Promise<RrhhAsistencia> => {
+    return await apiClient.post('/rrhh/asistencia/marcar', data);
+  },
+
+  /** Alta o corrección: si ya existe ese día, la sobrescribe. */
+  createAsistencia: async (data: RrhhAsistenciaCreate): Promise<RrhhAsistencia> => {
+    return await apiClient.post('/rrhh/asistencia', data);
+  },
+
+  updateAsistencia: async (
+    id: number,
+    data: RrhhAsistenciaUpdate
+  ): Promise<RrhhAsistencia> => {
+    return await apiClient.put(`/rrhh/asistencia/${id}`, data);
+  },
+
+  deleteAsistencia: async (id: number): Promise<RrhhEliminarResponse> => {
+    return await apiClient.delete(`/rrhh/asistencia/${id}`);
   },
 };

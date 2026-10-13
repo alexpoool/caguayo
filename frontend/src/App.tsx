@@ -106,6 +106,7 @@ import { DepartamentosPage } from './pages/rrhh/DepartamentosPage';
 import { PuestosPage } from './pages/rrhh/PuestosPage';
 import { CatalogosPage } from './pages/rrhh/CatalogosPage';
 import { EmpleadosPage } from './pages/rrhh/EmpleadosPage';
+import { AsistenciaPage } from './pages/rrhh/AsistenciaPage';
 
 type Modulo = 'administracion' | 'venta' | 'compra' | 'inventario' | 'reportes' | 'home' | 'proyecto' | 'dj08' | 'rrhh';
 
@@ -450,6 +451,17 @@ function App() {
                     >
                       <Users className="w-6 h-6" />
                       Empleados
+                    </SidebarLink>
+                  </li>
+                  <li>
+                    <SidebarLink
+                      slim={slimSidebar}
+                      to="/rrhh/asistencia"
+                      onClick={handleLinkClick}
+                      disabled={!hasFuncionalidad('rrhh_asistencia')}
+                    >
+                      <Clock className="w-6 h-6" />
+                      Asistencia
                     </SidebarLink>
                   </li>
                   <li>
@@ -1155,6 +1167,14 @@ function App() {
                   element={
                     <ProtectedRoute moduloActivo={moduloActivo} currentPath="/rrhh/empleados">
                       <EmpleadosPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/rrhh/asistencia"
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/rrhh/asistencia">
+                      <AsistenciaPage />
                     </ProtectedRoute>
                   }
                 />

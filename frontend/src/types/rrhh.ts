@@ -180,6 +180,121 @@ export const RRHH_ESTADOS_EMPLEADO: {
   { valor: 'terminado', etiqueta: 'Terminado' },
 ];
 
+// ── Asistencia (Fase 4) ────────────────────────────────────────────────────
+
+/**
+ * Estados del catálogo de asistencia. Coinciden con el CHECK de la BD.
+ * `presente` y `tardanza` exigen hora de entrada.
+ */
+export type RrhhEstadoAsistencia =
+  | 'presente'
+  | 'ausente'
+  | 'tardanza'
+  | 'permiso'
+  | 'vacaciones'
+  | 'feriado'
+  | 'incapacidad';
+
+export interface RrhhAsistencia {
+  id: number;
+  empleado_id: number;
+  fecha: string;
+  hora_entrada: string | null;
+  hora_salida: string | null;
+  estado: RrhhEstadoAsistencia;
+  observaciones: string | null;
+}
+
+export interface RrhhAsistenciaListado extends RrhhAsistencia {
+  empleado_codigo: string | null;
+  empleado_nombre: string | null;
+  departamento_nombre: string | null;
+  /** Horario pactado del empleado, para dar contexto en la tabla. */
+  horario_inicio: string | null;
+  horario_final: string | null;
+  /** Cálculos derivados del horario (no persistidos en la BD). */
+  tardanza_minutos: number;
+  horas_trabajadas_minutos: number;
+  horas_extras_minutos: number;
+}
+
+export interface RrhhAsistenciaCreate {
+  empleado_id: number;
+  fecha: string;
+  hora_entrada?: string | null;
+  hora_salida?: string | null;
+  estado?: RrhhEstadoAsistencia;
+  observaciones?: string | null;
+}
+
+export type RrhhAsistenciaUpdate = Partial<
+  Omit<RrhhAsistenciaCreate, 'empleado_id' | 'fecha'>
+>;
+
+/** Payload de marcación rápida de entrada/salida. */
+export interface RrhhAsistenciaMarcacion {
+  empleado_id: number;
+  /** Si se omite, usa la fecha de hoy en el servidor. */
+  fecha?: string | null;
+  /** Si se omite, usa la hora actual en el servidor. */
+  hora?: string | null;
+  observaciones?: string | null;
+}
+
+export interface RrhhAsistenciaResumenDia {
+  fecha: string;
+  total_empleados: number;
+  presentes: number;
+  ausentes: number;
+  tardanzas: number;
+  permisos: number;
+  vacaciones: number;
+  feriados: number;
+  incapacidades: number;
+  total_tardanza_minutos: number;
+  total_horas_extras_minutos: number;
+}
+
+export const RRHH_ESTADOS_ASISTENCIA: {
+  valor: RrhhEstadoAsistencia;
+  etiqueta: string;
+}[] = [
+  { valor: 'presente', etiqueta: 'Presente' },
+  { valor: 'ausente', etiqueta: 'Ausente' },
+  { valor: 'tardanza', etiqueta: 'Tardanza' },
+  { valor: 'permiso', etiqueta: 'Permiso' },
+  { valor: 'vacaciones', etiqueta: 'Vacaciones' },
+  { valor: 'feriado', etiqueta: 'Feriado' },
+  { valor: 'incapacidad', etiqueta: 'Incapacidad' },
+];
+
+/** Estados que exigen hora de entrada (según el CHECK de BD). */
+export const RRHH_ESTADOS_CON_HORAS: RrhhEstadoAsistencia[] = [
+  'presente',
+  'tardanza',
+];
+
+/** Colores de la insignia de cada estado de asistencia. */
+export const RRHH_ESTADO_ASISTENCIA_BADGE: Record<RrhhEstadoAsistencia, string> = {
+  presente: 'bg-green-100 text-green-700',
+  ausente: 'bg-red-100 text-red-700',
+  tardanza: 'bg-amber-100 text-amber-700',
+  permiso: 'bg-purple-100 text-purple-700',
+  vacaciones: 'bg-blue-100 text-blue-700',
+  feriado: 'bg-slate-200 text-slate-600',
+  incapacidad: 'bg-orange-100 text-orange-700',
+};
+
+/**
+ * Formatea minutos como `H:MM` para mostrar en pantalla.
+ * Equivale a `minutos_a_horas_minutos` del backend.
+ */
+export function formatearMinutos(minutos: number): string {
+  const signo = minutos < 0 ? '-' : '';
+  const total = Math.abs(minutos);
+  return `${signo}${Math.floor(total / 60)}:${String(total % 60).padStart(2, '0')}`;
+}
+
 // ── Catálogos base (Fase 1) ────────────────────────────────────────────────
 
 export interface RrhhTipoContrato {
