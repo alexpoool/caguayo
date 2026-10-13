@@ -36,7 +36,7 @@ aislada. Sin flags se ejecutan todas en orden.
 | `--solo-usuarios` | F | Usuarios, con la contraseña hasheada a bcrypt |
 | `--solo-cuentas-dep` | G | Cuentas de las dependencias |
 | `--solo-especialidades` | H | Especialidades del artista y su enlace al cliente |
-| `--solo-catalogo` | I | Catálogos `tipo_contrato` y `tipo_convenio` |
+| `--solo-catalogo` | I | Catálogo `tipo_contrato` |
 | `--solo-grupos` | J | Grupos del legacy y reasignación de usuarios |
 
 ## Variables de entorno
@@ -47,8 +47,7 @@ configurar nada. Se leen de `../.env` (el del proyecto) o del entorno.
 | Variable | Por defecto | Para qué |
 |---|---|---|
 | `PROYECTO_DIR` | `/home/admin/caguayo` | Dónde está el `.env` del proyecto |
-| `DUMP_MARIADB` | ruta absoluta de esta máquina | Dump de `caguayo_comercial` |
-| `DUMP_CAGUAYO` | ruta absoluta de esta máquina | Dump de la base principal `caguayo` |
+| `DUMP_MARIADB` | `legacy/caguayo_comercial.sql` | Dump de `caguayo_comercial` |
 | `PG_HOST` / `DB_HOST` | `127.0.0.1` | Servidor PostgreSQL |
 | `PG_PORT` / `DB_PORT` | `5432` | Puerto |
 | `PG_USER` / `POSTGRES_USER` | `postgres` | Usuario |
@@ -56,23 +55,29 @@ configurar nada. Se leen de `../.env` (el del proyecto) o del entorno.
 | `PG_DB` / `POSTGRES_DB` | `caguayo_sa` | Base de destino |
 | `TAMANO_LOTE` | `200` | Filas por lote al insertar |
 
-**Las rutas de los dumps por defecto son absolutas y de esta máquina.** En
-otro equipo hay que exportarlas; no hay lógica para descubrirlas.
+**El dump se lee de `legacy/`, junto a este README.** Ahí se copia
+`caguayo_comercial.sql`, el único fichero del que necesita el ETL. La ruta es
+relativa al propio ETL, así que en otra máquina funciona sin configurar nada;
+`DUMP_MARIADB` sigue estando para apuntar a otro sitio.
+
+`legacy/*.sql` está en `.gitignore`: son varios MB de datos de clientes y no van
+al repositorio. Lo que sí se versiona es el ETL que los lee.
 
 ## De dónde salen los datos
 
-Los catálogos no están en una sola base, y esto es lo más fácil de equivocar:
+Un solo dump: `caguayo_comercial.sql`. Trae las siete tablas de las que depende
+el ETL — `artista`, `cliente`, `empresa`, `grupo`, `usuario`, `tipo_contrato`, y
+las filas TCP/MIPYME que la Fase C saca de la propia `cliente`.
 
-- `caguayo_comercial` (el `DUMP_MARIADB` de siempre) **no tiene ni una fila de
-  `tipo_convenio`**, y su `tipo_contrato` sólo llega hasta el id 7.
-- La base principal `caguayo` (`DUMP_CAGUAYO`) es la que aporta los cuatro
-  tipos de convenio y los cuatro tipos de contrato que faltan.
+Una cosa no está: **`tipo_convenio` no existe en ese dump**, así que no se
+migra. En PostgreSQL quedan los dos valores de la semilla y sólo `COMPRA VENTA`
+está en uso, con un convenio apuntando. Si algún día hace falta otro tipo de
+convenio, se añade a mano; las nueve fases restantes no dependen de él.
 
-Los ids de ambas se solapan **con significado distinto**: `tipo_contrato`
-id 7 es "CONTRATO DE OBRA POR ENCARGO" en una y "Prestación de Servicios -
-Impresión" en la otra. Por eso los catálogos se unen por **nombre
-normalizado** y el id lo asigna PostgreSQL. Migrar por id dejaría mal
-clasificados 201 de los 214 contratos legacy.
+El `tipo_contrato` sí migra, y entra **por nombre normalizado, no por id**: el
+id del legacy no se transporta y lo asigna PostgreSQL. Así un "Compra-Venta"
+del legacy y un "compra venta" ya cargado se reconocen como el mismo tipo en
+vez de insertar un duplicado por el guion.
 
 ## Correcciones a mano
 
@@ -98,19 +103,23 @@ explícitas, con el motivo escrito al lado, y dejan un `WARNING` en
 
 ## Desde la aplicación
 
-Configuración → Migración sube los dos ficheros del legacy (uno por base) y
-lanza este ETL. La operación **sólo inserta**: no borra ni actualiza, y como
-todo aquí es idempotente, si la base ya está migrada sale con 0 inserciones.
+Configuración → Migración lanza este ETL. La pantalla sólo tiene un botón: el
+dump viene en `legacy/` y no se sube nada desde la interfaz. Para migrar otro
+legacy se reemplaza ese fichero.
 
-Sirve sobre todo para migrar un dump distinto del que se migró la vez
-anterior, o para montar un entorno nuevo.
+La operación **sólo inserta**: no borra ni actualiza, y como todo aquí es
+idempotente, si la base ya está migrada sale con 0 inserciones.
+
+`legacy/*.sql` está en `.gitignore`, así que un clon recién hecho **no trae el
+dump**. La pantalla avisa de que falta y dice dónde esperarlo; el backend
+devuelve un 400 con lo mismo en vez de dejar que el subproceso reviente.
 
 **Depende de que la aplicación vea el disco.** El backend lanza este ETL como
-subproceso y le pasa por entorno las rutas de los ficheros subidos. Eso sólo
-funciona si el ETL y `etl/data/subidas/` están en el mismo sistema de ficheros
-que el backend, y la aplicación **no está en un contenedor** (corre con
-`uv run uvicorn`). Si algún día se contenedoriza, esta pantalla deja de
-funcionar tal cual y necesita un volumen montado o una vía de servicio aparte.
+subproceso con `cwd` en esta carpeta, así que sólo funciona si el ETL está en el
+mismo sistema de ficheros que el backend, y la aplicación **no está en un
+contenedor** (corre con `uv run uvicorn`). Si algún día se contenedoriza, esta
+pantalla deja de funcionar tal cual y necesita un volumen montado o una vía de
+servicio aparte.
 
 Antes de hacer nada comprueba que la base del ETL y la que sirve la aplicación
 son la misma (`AUTH_DATABASE`, `POSTGRES_DB` y la de `DATABASE_URL`): si

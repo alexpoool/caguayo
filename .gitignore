@@ -54,5 +54,6 @@ etl/.venv/
 etl/data/tmp/
 # salida generada, no es fuente
 etl/data/migracion_rechazos.csv
-# ficheros del legacy que sube Configuración -> Migración. Son de varios MB
-etl/data/subidas/
+# dump del legacy que lee el ETL. Varios MB de datos de clientes: nunca al repo.
+# Un clon recién hecho no lo trae; la pantalla de migración lo avisa.
+etl/legacy/*.sql

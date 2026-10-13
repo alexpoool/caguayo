@@ -8,6 +8,7 @@ BASE_DIR = Path(__file__).resolve().parent
 DIR_DATA = BASE_DIR / "data"
 DIR_TMP = DIR_DATA / "tmp"
 DIR_SQL = BASE_DIR / "sql"
+DIR_LEGACY = BASE_DIR / "legacy"
 
 PROYECTO = Path(os.getenv("PROYECTO_DIR", "/home/admin/caguayo"))
 
@@ -61,37 +62,23 @@ POSTGRES = PGConfig(
     database=_valor("PG_DB", "POSTGRES_DB", defecto="caguayo_sa"),
 )
 
+# El dump del legacy vive en `etl/legacy/`, junto al ETL, para que la migración
+# se pueda relanzar sin depender de una ruta absoluta de otra máquina.
+#
+# Es un solo fichero y trae todo lo que la Fase I necesita. La base principal
+# `caguayo` también tenía catálogos, pero no se usa: `caguayo_comercial` trae
+# los 9 tipos de contrato y ninguna otra tabla de la que dependen las fases.
 DUMP_MARIADB = Path(
-    os.getenv(
-        "DUMP_MARIADB",
-        "/home/admin/AGC RESPALDO/CAGUAYO FINAL VLADIMIR/OFICINA COMERCIAL"
-        "/comercialOFFICE/php/db/migrar/dumpCaguayo.sql",
-    )
-)
-
-# Segunda base del legacy. No es una copia de la anterior: es otra base con
-# otros catálogos.
-#
-# `caguayo_comercial` (DUMP_MARIADB) no tiene ni una fila de tipo_convenio, y
-# su tipo_contrato sólo llega hasta el id 7. La base principal `caguayo` es la
-# que tiene los cuatro valores de tipo_convenio y los cuatro de tipo_contrato
-# que le faltan a la otra.
-#
-# Los ids de ambas se solapan CON SIGNIFICADO DISTINTO. tipo_contrato id=7 es
-# "CONTRATO DE OBRA POR ENCARGO." aquí y "Prestación de Servicios - Impresión"
-# en la base principal, así que los catálogos se unen por nombre y nunca por
-# id. Ver migrar_catalogo.py.
-DUMP_CAGUAYO = Path(
-    os.getenv(
-        "DUMP_CAGUAYO",
-        "/home/admin/AGC RESPALDO/AGC/CAGUAYO/BD AGC CN ultima 11_9_2026/tkla.sql",
-    )
+    os.getenv("DUMP_MARIADB", str(DIR_LEGACY / "caguayo_comercial.sql"))
 )
 
 # Catálogos que se migran en la Fase I, con las bases de las que se leen.
+#
+# `tipo_convenio` no está y no se migra: `caguayo_comercial` no tiene esa tabla,
+# y en PostgreSQL los 2 valores de la semilla ya cubren el único tipo en uso
+# (COMPRA VENTA). Si algún día hace falta otro, se añade a mano.
 CATALOGOS = (
-    ("tipo_contrato", (DUMP_MARIADB, DUMP_CAGUAYO)),
-    ("tipo_convenio", (DUMP_CAGUAYO,)),
+    ("tipo_contrato", (DUMP_MARIADB,)),
 )
 
 CSV_RECHAZOS = DIR_DATA / "migracion_rechazos.csv"
@@ -107,6 +94,5 @@ TABLA_CUENTA = "cuenta"
 TABLA_CUENTA_DEP = "cuenta_dependencias"
 TABLA_ESPECIALIDAD = "especialidades_artisticas"
 TABLA_TIPO_CONTRATO = "tipo_contrato"
-TABLA_TIPO_CONVENIO = "tipo_convenio"
 TABLA_USUARIO = "usuarios"
 TABLA_LOG = "migracion_log"

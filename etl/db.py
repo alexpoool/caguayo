@@ -198,6 +198,22 @@ def valores_existentes(conn, tabla, columna):
         return {f[0] for f in cur.fetchall()}
 
 
+def nombres_geografia(conn):
+    """{id: nombre} de `provincia` y de `municipio`, para contrastar geo.py.
+
+    Los mapas de `geo.py` son ids fijos que dependen del orden de siembra. Esta
+    función existe para que ese supuesto se pueda comprobar contra la base viva
+    en vez de confiar en él.
+    """
+    salida = {}
+    with conn.cursor() as cur:
+        for tabla, clave in (("provincia", "id_provincia"),
+                             ("municipio", "id_municipio")):
+            cur.execute("SELECT {c}, nombre FROM {t}".format(c=clave, t=tabla))
+            salida[tabla] = {f[0]: f[1] for f in cur.fetchall()}
+    return salida
+
+
 def pares_existentes_cuenta(conn, tabla=TABLA_CUENTA):
     """Pares (id_cliente, numero_cuenta) ya presentes en `cuenta`.
 

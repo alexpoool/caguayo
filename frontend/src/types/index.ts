@@ -164,16 +164,6 @@ export interface EspecialidadUpdate {
   activo?: boolean;
 }
 
-/** Un fichero del legacy pendiente de subir. */
-export interface FicheroLegacy {
-  rol: "comercial" | "principal";
-  etiqueta: string;
-  descripcion: string;
-  subido: boolean;
-  bytes: number;
-  ruta?: string | null;
-}
-
 export interface IdentidadBase {
   base_etl: string;
   base_app: string;
@@ -187,7 +177,9 @@ export interface EstadoMigracion {
   revision?: string | null;
   identidad: IdentidadBase;
   operacion_en_curso: boolean;
-  ficheros: Record<string, FicheroLegacy>;
+  /** El dump viene en el repositorio; esto sólo dice si está en su sitio. */
+  dump_disponible: boolean;
+  dump_ruta?: string | null;
 }
 
 export interface FaseInforme {

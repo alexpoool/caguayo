@@ -41,8 +41,6 @@ from .clientes_dto import (
 from .migracion_dto import (
     EstadoMigracion,
     FaseInforme,
-    FicheroLegacyInfo,
-    FicherosSubidos,
     IdentidadBase,
     InformeMigracion,
 )

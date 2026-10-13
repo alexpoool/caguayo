@@ -7,6 +7,7 @@
 import sys
 
 import db
+import geo
 from config import TABLA_CLIENTES
 from deduplicacion import valores_de
 from log import Registro, imprimir_resumen
@@ -84,6 +85,27 @@ def main(argv=None):
 
     registro = Registro()
 
+    # Se comprueba antes de nada, incluso en simulación: si los ids fijos de
+    # geo.py no apuntan a lo que deben, las fases siguientes escriben la
+    # provincia equivocada sin que ninguna salte. Mejor pararse aquí con el
+    # nombre de los dos municipios que no cuadran que migrar 1371 clientes mal.
+    print("=== COMPROBACIÓN GEOGRÁFICA ===")
+    with db.conexion() as conn:
+        geografia = db.nombres_geografia(conn)
+    problemas_geo = geo.verificar_mapas(
+        geografia["provincia"], geografia["municipio"])
+    if problemas_geo:
+        print("  FALLO: geo.py y el destino no coinciden. No se migra nada.")
+        print("  Los ids de provincia/municipio están reasignados; revisa el")
+        print("  orden de siembra de alembic/env.py antes de seguir.")
+        for etiqueta, id_legacy, id_destino, esperado, encontrado in problemas_geo:
+            print("    - %s legacy %-3s -> destino %-4s  esperaba %r, hay %r"
+                  % (etiqueta, id_legacy, id_destino, esperado, encontrado))
+        return 1
+    print("  geo.py coincide con el destino: %d municipios de referencia OK"
+          % len(geo.MUN_MAP))
+    print()
+
     if solo_grupos:
         print("=== FASE J: GRUPOS DEL LEGACY (aislada) ===")
         cargar_grupos(registro=registro, dry_run=dry_run)
@@ -104,7 +126,7 @@ def main(argv=None):
         return 0
 
     if solo_catalogo:
-        print("=== FASE I: CATÁLOGOS TIPO_CONTRATO / TIPO_CONVENIO (aislada) ===")
+        print("=== FASE I: CATÁLOGO TIPO_CONTRATO (aislada) ===")
         cargar_catalogo(registro=registro, dry_run=dry_run)
         print()
         imprimir_resumen(registro)
@@ -248,7 +270,7 @@ def main(argv=None):
     cargar_especialidades(registro=registro, dry_run=dry_run)
     print()
 
-    print("=== FASE I: CATÁLOGOS TIPO_CONTRATO / TIPO_CONVENIO ===")
+    print("=== FASE I: CATÁLOGO TIPO_CONTRATO ===")
     cargar_catalogo(registro=registro, dry_run=dry_run)
     print()
 

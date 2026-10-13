@@ -1,33 +1,23 @@
 # -*- coding: utf-8 -*-
 """Migración del legacy desde la aplicación.
 
-El legacy no está en un fichero sino en dos bases distintas:
-
-    caguayo_comercial   artistas, clientes, usuarios, grupos   (el fichero grande)
-    caguayo             tipos de convenio, contratos, solicitudes (el pequeño)
-
-Por eso se suben dos ficheros y no uno. El comercial no tiene ni una sola
-fila de tipo_convenio, así que con el primero solo no se puede migrar todo.
+El dump del legacy viene en el repositorio, en `etl/legacy/caguayo_comercial.sql`.
+Antes se subía desde la pantalla de configuración; ya no: el ETL resuelve la ruta
+por su cuenta y este servicio se limita a lanzarlo. Para migrar otro legacy basta
+con reemplazar ese fichero.
 
 Lo que hace este servicio NO es destruir nada: se limita a lanzar el ETL, que
-desde ayer es idempotente. Si la base ya está migrada, el resultado es 0
-inserciones. Sirve sobre todo para migrar un dump distinto del que se migró la
-vez anterior.
+es idempotente. Si la base ya está migrada, el resultado es 0 inserciones.
 
-Decisiones de seguridad que conviene no saltarse al leer esto:
+Decisiones que conviene no saltarse al leer esto:
 
-* El ETL NUNCA recibe una ruta del cliente. `DUMP_MARIADB` y `DUMP_CAGUAYO` se
-  apuntan a ficheros que genera este servicio con nombre propio. Una petición
-  no puede decir "lee este otro fichero del disco".
-* El nombre original del fichero sólo se usa para mostrarlo. Se guarda con un
-  nombre generado, en un directorio de subidas.
-* `rol` es un valor de dos. Cualquier otra cosa es 400.
+* El ETL NUNCA recibe una ruta del cliente. No hay ninguna petición que pueda
+  decir "lee este otro fichero del disco": la ruta la resuelve el propio ETL
+  desde su carpeta `legacy/`.
 * Antes de nada se comprueba que la base del ETL y la que sirve la aplicación
   son la misma. Si difieren, no se hace nada: migrar una base que nadie está
   viendo es un trabajo perdido.
 * Hay un advisory lock, porque dos migraciones simultáneas se pisan.
-* Analizar es obligatorio antes de ejecutar, y la UI no habilita el botón
-  hasta que hay informe.
 """
 import os
 import re
@@ -41,20 +31,11 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 
 from src.database.connection import get_session
 
-#: Los dos ficheros del legacy. El rol es lo único que acepta el cliente.
-ROLES = {
-    "comercial": {
-        "etiqueta": "Base caguayo_comercial",
-        "descripcion": "Artistas, clientes, usuarios y grupos",
-    },
-    "principal": {
-        "etiqueta": "Base caguayo (principal)",
-        "descripcion": "Tipos de convenio, contratos y solicitudes",
-    },
-}
-
-#: Margen holgado sobre los ficheros reales (4,6 MB y 108 KB).
-TAMANO_MAXIMO = 20 * 1024 * 1024
+#: Dónde vive el dump del legacy. Es el mismo valor que el ETL tiene por
+#: defecto, pero se comprueba aquí para poder decir "falta el fichero" con un 400
+#: claro en vez de dejar que reviente un FileNotFoundError dentro del subproceso.
+DIRECTORIO_LEGACY = Path(__file__).resolve().parents[3] / "etl" / "legacy"
+DUMP_LEGACY = DIRECTORIO_LEGACY / "caguayo_comercial.sql"
 
 #: Clave del advisory lock.
 #:
@@ -71,7 +52,6 @@ def _clave_lock() -> int:
     return LOCK_BASE + (zlib.crc32(base.encode("utf-8")) % 100000)
 
 ETL_DIR = Path(__file__).resolve().parents[3] / "etl"
-DIRECTORIO_SUBIDAS = ETL_DIR / "data" / "subidas"
 
 #: Resultado de una ejecución, indexado por sección del log del ETL.
 SECCIONES = ("A", "B", "C", "D", "E", "F", "G", "H", "I", "J")
@@ -79,7 +59,7 @@ _TITULOS = {
     "A": "Artistas", "B": "Clientes", "C": "TCP / MIPYME",
     "D": "Artistas con CI normalizado", "E": "Cuentas bancarias",
     "F": "Usuarios", "G": "Cuentas de la dependencia",
-    "H": "Especialidades del artista", "I": "Catálogos",
+    "H": "Especialidades del artista", "I": "Tipos de contrato",
     "J": "Grupos del legacy",
 }
 
@@ -91,75 +71,34 @@ RE_RESULTADO = re.compile(r"RESULTADO:\s*(.+)")
 
 
 # --------------------------------------------------------------------------
-# Ficheros subidos
+# El dump del legacy
 # --------------------------------------------------------------------------
-def _ruta_de(rol: str) -> Path:
-    return DIRECTORIO_SUBIDAS / f"{rol}.sql"
+def dump_legacy() -> dict:
+    """Si el fichero del legacy está en su sitio y qué pese.
 
-
-def _comprobar_rol(rol: str) -> str:
-    if rol not in ROLES:
-        raise HTTPException(
-            status_code=400,
-            detail="rol desconocido. admitting: %s" % ", ".join(sorted(ROLES)),
-        )
-    return rol
-
-
-def guardar_fichero(rol: str, contenido: bytes) -> dict:
-    """Guarda el fichero del legacy con nombre generado.
-
-    El nombre que manda el cliente no se usa para construir la ruta: sólo se
-    guarda como texto para poder mostrarlo.
+    El ETL resuelve la ruta por su cuenta (ver config.DUMP_MARIADB), pero
+    comprobarlo aquí convierte "no hay dump" en un 400 que dice exactamente
+    dónde debería estar, en vez de un FileNotFoundError dentro del subproceso
+    que el usuario no puede interpretar.
     """
-    _comprobar_rol(rol)
-    if not contenido:
-        raise HTTPException(status_code=400, detail="El fichero viene vacío")
-    if len(contenido) > TAMANO_MAXIMO:
-        raise HTTPException(
-            status_code=400,
-            detail="El fichero ocupa %.1f MB y el máximo es %d MB"
-                   % (len(contenido) / 1e6, TAMANO_MAXIMO // (1024 * 1024)),
-        )
-    # Un dump sin un solo INSERT no sirve para nada. Se comprueba antes de
-    # escribir, para no dejar basura en disco.
-    if not re.search(rb"INSERT\s+INTO", contenido, re.I):
-        raise HTTPException(
-            status_code=400,
-            detail="El fichero no parece un dump SQL: no contiene ningún INSERT",
-        )
-
-    DIRECTORIO_SUBIDAS.mkdir(parents=True, exist_ok=True)
-    ruta = _ruta_de(rol)
-    ruta.write_bytes(contenido)
-    return _info(rol, ruta, len(contenido), None)
-
-
-def quitar_fichero(rol: str) -> None:
-    _comprobar_rol(rol)
-    ruta = _ruta_de(rol)
-    if ruta.exists():
-        ruta.unlink()
-
-
-def ficheros_subidos() -> Dict[str, dict]:
-    """Lo que hay en disco ahora mismo, indexado por rol."""
-    return {rol: _info(rol, _ruta_de(rol)) for rol in sorted(ROLES)}
-
-
-def _info(rol: str, ruta: Path, tamano: Optional[int] = None,
-          nombre: Optional[str] = None) -> dict:
-    existe = ruta.exists()
-    if tamano is None:
-        tamano = ruta.stat().st_size if existe else 0
+    existe = DUMP_LEGACY.exists()
     return {
-        "rol": rol,
-        "etiqueta": ROLES[rol]["etiqueta"],
-        "descripcion": ROLES[rol]["descripcion"],
-        "subido": existe,
-        "bytes": tamano,
-        "ruta": str(ruta) if existe else None,
+        "disponible": existe,
+        "ruta": str(DUMP_LEGACY),
+        "bytes": DUMP_LEGACY.stat().st_size if existe else 0,
     }
+
+
+def _exigir_dump() -> str:
+    info = dump_legacy()
+    if not info["disponible"]:
+        raise HTTPException(
+            status_code=400,
+            detail="Falta el dump del legacy en %s. Cópialo ahí y vuelve a "
+                   "intentar; el ETL no busca en ningún otro sitio."
+                   % DUMP_LEGACY,
+        )
+    return str(DUMP_LEGACY)
 
 
 # --------------------------------------------------------------------------
@@ -217,21 +156,14 @@ async def _liberar_lock(conn: AsyncSession) -> None:
 # --------------------------------------------------------------------------
 # Ejecución del ETL
 # --------------------------------------------------------------------------
-def _ficheros_listos() -> Dict[str, str]:
-    faltan = [rol for rol in sorted(ROLES) if not _ruta_de(rol).exists()]
-    if faltan:
-        raise HTTPException(
-            status_code=400,
-            detail="Falta subir el fichero de: %s" % ", ".join(
-                ROLES[r]["etiqueta"] for r in faltan),
-        )
-    return {rol: str(_ruta_de(rol)) for rol in sorted(ROLES)}
+def _entorno() -> dict:
+    """Entorno para el subproceso.
 
-
-def _entorno(rutas: Dict[str, str]) -> dict:
+    No se fija `DUMP_MARIADB`: el ETL ya sabe encontrar el dump en su carpeta
+    `legacy/`. Cuanto menos le pase este servicio, menos formas hay de que la
+    ruta y lo que de verdad lee el ETL se desincronicen.
+    """
     env = os.environ.copy()
-    env["DUMP_MARIADB"] = rutas["comercial"]
-    env["DUMP_CAGUAYO"] = rutas["principal"]
     env.setdefault("PROYECTO_DIR", str(ETL_DIR.parent))
     return env
 
@@ -295,14 +227,14 @@ def _interpretar(salida: str, codigo: int, commit: bool) -> dict:
 
 def ejecutar_etl(commit: bool, timeout: int = 900) -> dict:
     """Lanza el ETL. `commit=False` es el análisis."""
-    rutas = _ficheros_listos()
+    _exigir_dump()
     comando = [sys.executable, "main.py"]
     if commit:
         comando.append("--commit")
 
     try:
         proc = subprocess.run(
-            comando, cwd=str(ETL_DIR), env=_entorno(rutas),
+            comando, cwd=str(ETL_DIR), env=_entorno(),
             capture_output=True, text=True, timeout=timeout,
         )
     except subprocess.TimeoutExpired:
@@ -368,11 +300,13 @@ async def estado(conn: AsyncSession) -> dict:
     )
     en_curso = (r.scalar() or 0) > 0
 
+    dump = dump_legacy()
     return {
         "recuentos": consulta,
         "errores_migracion": errores,
         "revision": revision,
         "identidad": comprobar_identidad(),
         "operacion_en_curso": en_curso,
-        "ficheros": ficheros_subidos(),
+        "dump_disponible": dump["disponible"],
+        "dump_ruta": dump["ruta"],
     }
