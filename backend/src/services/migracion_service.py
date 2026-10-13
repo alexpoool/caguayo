@@ -32,13 +32,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 
 from src.database.connection import get_session
 
-#: Dónde vive el dump del legacy. Es el mismo valor que el ETL tiene por
-#: defecto, pero se comprueba aquí para poder decir "falta el fichero" con un 400
-#: claro en vez de dejar que reviente un FileNotFoundError dentro del subproceso.
-DIRECTORIO_LEGACY = Path(__file__).resolve().parents[3] / "etl" / "legacy"
-DUMP_LEGACY = DIRECTORIO_LEGACY / "caguayo_comercial.sql"
-
-#: Clave del advisory lock.
+# Clave del advisory lock.
 #:
 #: El sufijo se deriva del nombre de la base con crc32 y NO con hash() de
 #: Python, que va salted por proceso: con hash() cada worker sacaría una clave
@@ -77,34 +71,51 @@ RE_RESULTADO = re.compile(r"RESULTADO:\s*(.+)")
 
 
 # --------------------------------------------------------------------------
-# El dump del legacy
+# El volcado del legacy
 # --------------------------------------------------------------------------
 def dump_legacy() -> dict:
-    """Si el fichero del legacy está en su sitio y qué pese.
+    """Si el volcado del legacy está en su sitio, y cuál es.
 
-    El ETL resuelve la ruta por su cuenta (ver config.DUMP_MARIADB), pero
-    comprobarlo aquí convierte "no hay dump" en un 400 que dice exactamente
-    dónde debería estar, en vez de un FileNotFoundError dentro del subproceso
-    que el usuario no puede interpretar.
+    La ruta la contesta `etl/config.py` —el mismo módulo que va a leer el
+    subproceso—, no una constante repetida aquí. Duplicarla es justo lo que
+    rompió esto: `config.py` pasó a leer `etl/dumps/comercial.sql` y el backend
+    siguió mirando `etl/legacy/caguayo_comercial.sql`, así que la pantalla decía
+    que no había volcado con el volcado de 6 MB en su sitio y el botón de
+    ejecutar quedaba deshabilitado sin explicación.
+
+    Si la config no se puede cargar, `disponible` sale False y `motivo` lo dice:
+    sin poder preguntar, tampoco se puede afirmar que esté.
     """
-    existe = DUMP_LEGACY.exists()
+    modulo, motivo = cargar_config_etl()
+    if modulo is None:
+        return {
+            "disponible": False,
+            "ruta": None,
+            "bytes": 0,
+            "motivo": "No se pudo leer la configuración del ETL: %s" % motivo,
+        }
+
+    ruta = Path(modulo.DUMP_MARIADB)
+    existe = ruta.exists()
     return {
         "disponible": existe,
-        "ruta": str(DUMP_LEGACY),
-        "bytes": DUMP_LEGACY.stat().st_size if existe else 0,
+        "ruta": str(ruta),
+        "bytes": ruta.stat().st_size if existe else 0,
+        "motivo": None if existe else (
+            "No existe %s. Se deja ahí con `main.py --generar-dumps` (mysqldump "
+            "contra el legacy), o con `main.py --adoptar` si ya tienes un .sql."
+            % ruta),
     }
 
 
-def _exigir_dump() -> str:
+def _exigir_dump() -> None:
     info = dump_legacy()
-    if not info["disponible"]:
-        raise HTTPException(
-            status_code=400,
-            detail="Falta el dump del legacy en %s. Cópialo ahí y vuelve a "
-                   "intentar; el ETL no busca en ningún otro sitio."
-                   % DUMP_LEGACY,
-        )
-    return str(DUMP_LEGACY)
+    if info["disponible"]:
+        return
+    raise HTTPException(
+        status_code=400,
+        detail=info.get("motivo") or "No se pudo determinar la ruta del volcado",
+    )
 
 
 # --------------------------------------------------------------------------
@@ -394,4 +405,5 @@ async def estado(conn: AsyncSession) -> dict:
         "operacion_en_curso": en_curso,
         "dump_disponible": dump["disponible"],
         "dump_ruta": dump["ruta"],
+        "dump_motivo": dump.get("motivo"),
     }

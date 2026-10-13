@@ -108,12 +108,16 @@ export const MigracionLegacy: React.FC = () => {
           <FileWarning className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
           <div className="text-sm text-amber-900">
             <p className="font-medium">No está el volcado del legacy</p>
-            <p className="mt-1">
-              El ETL lee el volcado que deja{" "}
-              <code className="font-mono text-xs">main.py --generar-dumps</code>{" "}
-              o <code className="font-mono text-xs">--adoptar</code>, no uno que
-              se suba desde aquí.
-            </p>
+            {estado.dump_motivo ? (
+              <p className="mt-1">{estado.dump_motivo}</p>
+            ) : (
+              <p className="mt-1">
+                El ETL lee el volcado que deja{" "}
+                <code className="font-mono text-xs">main.py --generar-dumps</code>{" "}
+                o <code className="font-mono text-xs">--adoptar</code>, no uno que
+                se suba desde aquí.
+              </p>
+            )}
             {estado.dump_ruta && (
               <p className="mt-2 font-mono text-xs break-all">
                 {estado.dump_ruta}

@@ -181,9 +181,10 @@ export interface EstadoMigracion {
   revision?: string | null;
   identidad: IdentidadBase;
   operacion_en_curso: boolean;
-  /** El dump viene en el repositorio; esto sólo dice si está en su sitio. */
+  /** El volcado se fabrica antes con `--generar-dumps`/`--adoptar`. */
   dump_disponible: boolean;
   dump_ruta?: string | null;
+  dump_motivo?: string | null;
 }
 
 export interface FaseInforme {

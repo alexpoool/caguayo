@@ -25,9 +25,11 @@ class EstadoMigracion(BaseModel):
     operacion_en_curso: bool = False
     # `dump_disponible` sustituye a los ficheros que se subían antes: ahora el
     # legacy viene en el repositorio y lo único que hay que poder responder es si
-    # está en su sitio.
+    # está en su sitio. `dump_motivo` explica por qué no, porque un botón
+    # deshabilitado sin razón no ayuda a nadie.
     dump_disponible: bool = True
     dump_ruta: Optional[str] = None
+    dump_motivo: Optional[str] = None
 
 
 class FaseInforme(BaseModel):
