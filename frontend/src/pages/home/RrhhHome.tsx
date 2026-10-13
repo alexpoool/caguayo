@@ -32,7 +32,7 @@ const SUBMODULOS: SubmoduloCard[] = [
       'Tipos de contrato, deducciones, bonificaciones, pago y calificaciones.',
     icon: <Settings className="h-5 w-5" />,
     fase: 1,
-    ruta: null,
+    ruta: '/rrhh/catalogos',
   },
   {
     id: 'departamentos',

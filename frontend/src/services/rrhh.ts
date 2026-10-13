@@ -12,9 +12,48 @@ import type {
   RrhhPuestoDetalle,
   RrhhEmpleadoLite,
   RrhhEliminarResponse,
+  RrhhCatalogo,
+  RrhhCatalogoConfig,
 } from '../types/rrhh';
 
 export const rrhhService = {
+  // ── Catálogos (Fase 1) ──────────────────────────────────────────────────
+  listarCatalogo: async (
+    config: RrhhCatalogoConfig,
+    params?: { skip?: number; limit?: number; activo?: boolean; buscar?: string }
+  ): Promise<RrhhCatalogo[]> => {
+    return await apiClient.get(config.ruta, params);
+  },
+
+  getCatalogo: async (
+    config: RrhhCatalogoConfig,
+    id: number
+  ): Promise<RrhhCatalogo> => {
+    return await apiClient.get(`${config.ruta}/${id}`);
+  },
+
+  createCatalogo: async (
+    config: RrhhCatalogoConfig,
+    data: Record<string, unknown>
+  ): Promise<RrhhCatalogo> => {
+    return await apiClient.post(config.ruta, data);
+  },
+
+  updateCatalogo: async (
+    config: RrhhCatalogoConfig,
+    id: number,
+    data: Record<string, unknown>
+  ): Promise<RrhhCatalogo> => {
+    return await apiClient.put(`${config.ruta}/${id}`, data);
+  },
+
+  deleteCatalogo: async (
+    config: RrhhCatalogoConfig,
+    id: number
+  ): Promise<RrhhEliminarResponse> => {
+    return await apiClient.delete(`${config.ruta}/${id}`);
+  },
+
   // ── Departamentos ────────────────────────────────────────────────────────
   listarDepartamentos: async (params?: {
     skip?: number;

@@ -104,6 +104,7 @@ import { DJ08Page } from './pages/dj08/DJ08Page';
 import { RrhhHome } from './pages/home/RrhhHome';
 import { DepartamentosPage } from './pages/rrhh/DepartamentosPage';
 import { PuestosPage } from './pages/rrhh/PuestosPage';
+import { CatalogosPage } from './pages/rrhh/CatalogosPage';
 
 type Modulo = 'administracion' | 'venta' | 'compra' | 'inventario' | 'reportes' | 'home' | 'proyecto' | 'dj08' | 'rrhh';
 
@@ -426,6 +427,17 @@ function App() {
                     <SidebarLink slim={slimSidebar} to="/rrhh" onClick={handleLinkClick} exact>
                       <Users className="w-6 h-6" />
                       Recursos Humanos
+                    </SidebarLink>
+                  </li>
+                  <li>
+                    <SidebarLink
+                      slim={slimSidebar}
+                      to="/rrhh/catalogos"
+                      onClick={handleLinkClick}
+                      disabled={!hasFuncionalidad('rrhh_catalogos')}
+                    >
+                      <Settings className="w-6 h-6" />
+                      Catálogos
                     </SidebarLink>
                   </li>
                   <li>
@@ -1115,6 +1127,14 @@ function App() {
                   element={
                     <ProtectedRoute moduloActivo={moduloActivo} currentPath="/rrhh/puestos">
                       <PuestosPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/rrhh/catalogos"
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/rrhh/catalogos">
+                      <CatalogosPage />
                     </ProtectedRoute>
                   }
                 />

@@ -248,6 +248,23 @@ from .rrhh_dto import (
     RrhhPuestoListado,
     RrhhPuestoDetalle,
 )
+from .rrhh_catalogos_dto import (
+    RrhhTipoContratoCreate,
+    RrhhTipoContratoUpdate,
+    RrhhTipoContratoRead,
+    RrhhTipoDeduccionCreate,
+    RrhhTipoDeduccionUpdate,
+    RrhhTipoDeduccionRead,
+    RrhhTipoBonificacionCreate,
+    RrhhTipoBonificacionUpdate,
+    RrhhTipoBonificacionRead,
+    RrhhTipoPagoCreate,
+    RrhhTipoPagoUpdate,
+    RrhhTipoPagoRead,
+    RrhhCalificacionCreate,
+    RrhhCalificacionUpdate,
+    RrhhCalificacionRead,
+)
 
 
 __all__ = [
@@ -448,6 +465,21 @@ __all__ = [
     "RrhhPuestoRead",
     "RrhhPuestoListado",
     "RrhhPuestoDetalle",
+    "RrhhTipoContratoCreate",
+    "RrhhTipoContratoUpdate",
+    "RrhhTipoContratoRead",
+    "RrhhTipoDeduccionCreate",
+    "RrhhTipoDeduccionUpdate",
+    "RrhhTipoDeduccionRead",
+    "RrhhTipoBonificacionCreate",
+    "RrhhTipoBonificacionUpdate",
+    "RrhhTipoBonificacionRead",
+    "RrhhTipoPagoCreate",
+    "RrhhTipoPagoUpdate",
+    "RrhhTipoPagoRead",
+    "RrhhCalificacionCreate",
+    "RrhhCalificacionUpdate",
+    "RrhhCalificacionRead",
 ]
 VentaRead.model_rebuild(
     _types_namespace={
