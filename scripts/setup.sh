@@ -120,8 +120,20 @@ else
   ok "Archivo .env ya existe"
 fi
 
-# Cargar variables del .env
+# El .env de la raíz ya no lleva la configuración de PostgreSQL. Su sitio es
+# backend/.env, que es donde la leen el backend (load_dotenv) y el ETL de
+# migración. Sin este fichero, ambos arrancarían con los valores de ejemplo.
+CREADO_BACKEND_ENV=0
+if [ ! -f backend/.env ]; then
+  step "Creando backend/.env desde backend/.env.example"
+  cp backend/.env.example backend/.env
+  CREADO_BACKEND_ENV=1
+fi
+
+# Cargar variables del .env. backend/.env va primero y el .env de la raíz
+# después, de modo que lo que esté en ambos lo gane la raíz, como antes.
 set -a
+source backend/.env
 source .env
 set +a
 
@@ -131,6 +143,16 @@ PG_USER="${POSTGRES_USER:-postgres}"
 PG_PASS="${POSTGRES_PASSWORD:-postgres}"
 AUTH_DB="${AUTH_DATABASE:?AUTH_DATABASE not set in .env}"
 CENTRAL_DB="${CENTRAL_DATABASE:?CENTRAL_DATABASE not set in .env}"
+
+# En backend/.env recién creado se escriben los valores ya resueltos, no los
+# del ejemplo: una contraseña inventada por el ejemplo no conecta con nada.
+if [ "$CREADO_BACKEND_ENV" = "1" ]; then
+  sed -i "s|^POSTGRES_USER=.*|POSTGRES_USER=${PG_USER}|; \
+          s|^POSTGRES_PASSWORD=.*|POSTGRES_PASSWORD=${PG_PASS}|; \
+          s|^POSTGRES_DB=.*|POSTGRES_DB=${CENTRAL_DB}|; \
+          s|^DB_PORT=.*|DB_PORT=${PG_PORT}|" backend/.env
+  ok "backend/.env creado con la configuración de base resuelta"
+fi
 
 # ══════════════════════════════════════════════════════════════════════════
 #  3) FORZAR CONEXIÓN A POSTGRESQL

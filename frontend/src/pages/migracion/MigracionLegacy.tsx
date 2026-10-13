@@ -210,6 +210,24 @@ export const MigracionLegacy: React.FC = () => {
         </div>
       )}
 
+      {/* ---- Base del ETL sin comprobar ----------------------------------- */}
+      {estado && estado.identidad.coherente && !estado.identidad.verificado && (
+        <div className="flex items-start gap-3 rounded-md border border-amber-300 bg-amber-50 p-3">
+          <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+          <div className="text-sm text-amber-900">
+            <p className="font-medium">La migración sale sin comprobar la base</p>
+            <ul className="mt-1 list-disc list-inside">
+              {estado.identidad.detalle.map((d, i) => (
+                <li key={i}>{d}</li>
+              ))}
+            </ul>
+            <p className="mt-1">
+              La aplicación está sirviendo <strong>{estado.identidad.base_app}</strong>.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* ---- Ejecutar ---------------------------------------------------- */}
       <Card className="p-4">
         <h3 className="text-sm font-semibold text-gray-800 mb-1">Ejecutar</h3>

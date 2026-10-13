@@ -23,6 +23,68 @@ Por omisión es simulación. Nada se escribe en la base hasta pasar `--commit`.
 Una fase ya ejecutada se puede volver a lanzar: todas son idempotentes y la
 segunda pasada no inserta nada.
 
+## Los volcados del legacy
+
+El ETL no lee del legacy: lee **volcados** suyos, dos. Sin ellos no arranca, y
+el error dice dónde los buscó. Se dejan en `etl/dumps/`, que es donde se
+buscan por defecto, así que una vez preparado eso no hay que exportar nada
+nunca más.
+
+```bash
+cd etl
+../backend/.venv/bin/python main.py --instrucciones  # qué hace falta, cómo
+../backend/.venv/bin/python main.py --generar-dumps  # los saca del MariaDB
+../backend/.venv/bin/python main.py --adoptar A.sql B.sql   # instala los que ya tengas
+```
+
+`--instrucciones` imprime el manual completo: requisitos, los dos comandos
+`mysqldump` con sus flags obligatorios, y el orden de la migración en una
+máquina nueva. No toca disco ni base.
+
+`--generar-dumps` usa `mysqldump` (o `mariadb-dump`), que tiene que estar en el
+PATH. Configura el legacy con `LEGACY_HOST`, `LEGACY_PORT`, `LEGACY_USER`,
+`LEGACY_PASSWORD`, `LEGACY_DB_COMERCIAL` y `LEGACY_DB_PRINCIPAL`. Si no hay
+contraseña y hay terminal, la pregunta; si no hay terminal, se dice en vez de
+esperar en balde.
+
+`--adoptar` es el camino cuando el legacy ya no está y sólo quedan los
+respaldos. Los dos caminos terminan igual: **el volcado se valida con el mismo
+parser que usa la migración** y, sólo si sale bien, se mueve a su sitio. Un
+volcado a medias, sin alguna tabla o con una vacía, no se queda instalado.
+
+Sólo hacen falta 7 tablas, ni una más:
+
+| Volcado | De qué base | Tablas |
+|---|---|---|
+| `comercial.sql` | `caguayo_comercial` | `artista`, `cliente`, `usuario`, `grupo`, `empresa` |
+| `principal.sql` | `caguayo` (principal) | `tipo_contrato`, `tipo_convenio` |
+
+`provincia` y `municipio` no hacen falta: su mapeo de ids está en `geo.py`.
+Exportar sólo esas 7 da un volcado mucho más pequeño y no arrastra facturas ni
+movimientos que nadie va a migrar.
+
+`etl/dumps/` está en `.gitignore`: estos ficheros llevan CI y NITs de personas.
+
+### Pruebas
+
+```bash
+cd etl && ../backend/.venv/bin/python -m pytest tests -q
+```
+
+Usan el pytest del venv del backend, que ya está. Hay un test de sincronía que
+escanea las fases y falla si una lee una tabla que `generar_dumps` no exporta:
+sin él, un volcado validado podría quedarse sin la tabla que una fase nueva
+necesite, y reventaría en pleno `--commit`.
+
+Lo que **no** cubren: que un MariaDB real acepte los flags y devuelva los
+datos. En una máquina con el legacy a mano:
+
+```bash
+export LEGACY_HOST=... LEGACY_USER=... LEGACY_PASSWORD=...
+../backend/.venv/bin/python main.py --generar-dumps
+../backend/.venv/bin/python main.py     # debe decir "Filas a migrar: N"
+```
+
 ## Fases
 
 Cada fase tiene su módulo `migrar_*.py` y su flag `--solo-*` para lanzarla
@@ -39,25 +101,46 @@ aislada. Sin flags se ejecutan todas en orden.
 | `--solo-catalogo` | I | Catálogos `tipo_contrato` y `tipo_convenio` |
 | `--solo-grupos` | J | Grupos del legacy y reasignación de usuarios |
 
+Un `--solo-*` sólo exige el volcado que esa fase lee. La excepción es
+`--solo-catalogo`, que lee `tipo_contrato` en los dos ficheros.
+
 ## Variables de entorno
 
-Todas tienen valor por defecto, así que en esta máquina funciona sin
-configurar nada. Se leen de `../.env` (el del proyecto) o del entorno.
+Todas tienen valor por defecto. Se leen del entorno y, si no están ahí, de los
+ficheros de configuración:
 
 | Variable | Por defecto | Para qué |
 |---|---|---|
-| `PROYECTO_DIR` | `/home/admin/caguayo` | Dónde está el `.env` del proyecto |
-| `DUMP_MARIADB` | ruta absoluta de esta máquina | Dump de `caguayo_comercial` |
-| `DUMP_CAGUAYO` | ruta absoluta de esta máquina | Dump de la base principal `caguayo` |
+| `PROYECTO_DIR` | la raíz del repo | Dónde se buscan los `.env` |
+| `DUMP_DIR` | `etl/dumps` | Carpeta donde viven los volcados |
+| `DUMP_MARIADB` | `$DUMP_DIR/comercial.sql` | Dump de `caguayo_comercial` |
+| `DUMP_CAGUAYO` | `$DUMP_DIR/principal.sql` | Dump de la base principal `caguayo` |
 | `PG_HOST` / `DB_HOST` | `127.0.0.1` | Servidor PostgreSQL |
 | `PG_PORT` / `DB_PORT` | `5432` | Puerto |
 | `PG_USER` / `POSTGRES_USER` | `postgres` | Usuario |
 | `PG_PASSWORD` / `POSTGRES_PASSWORD` | `postgres` | Contraseña |
 | `PG_DB` / `POSTGRES_DB` | `caguayo_sa` | Base de destino |
 | `TAMANO_LOTE` | `200` | Filas por lote al insertar |
+| `LEGACY_HOST` | `127.0.0.1` | MariaDB del legacy (sólo `--generar-dumps`) |
+| `LEGACY_PORT` | `3306` | Puerto del legacy |
+| `LEGACY_USER` | `root` | Usuario del legacy |
+| `LEGACY_PASSWORD` | *(preguntada)* | Contraseña del legacy |
+| `LEGACY_DB_COMERCIAL` | `caguayo_comercial` | Base del volcado comercial |
+| `LEGACY_DB_PRINCIPAL` | `caguayo` | Base del volcado principal |
 
-**Las rutas de los dumps por defecto son absolutas y de esta máquina.** En
-otro equipo hay que exportarlas; no hay lógica para descubrirlas.
+El orden es: **entorno real** y, si una variable no aparece ahí,
+`PROYECTO_DIR/backend/.env` y después `PROYECTO_DIR/.env`. El primero gana; el
+segundo sólo rellena lo que falte.
+
+La configuración de PostgreSQL vive en `backend/.env`, que es su sitio: es el
+fichero que la aplicación lee con `load_dotenv()`, de modo que el ETL y el
+backend leen la misma configuración de la misma fuente. El `.env` de la raíz
+se conserva porque `scripts/dev.sh` y `scripts/setup.sh` lo sourcean.
+
+`PROYECTO_DIR` se deduce de dónde está el propio ETL, así que no hay que
+exportarlo en ningún sitio salvo para moverlo. Las variables `DUMP_*` y
+`LEGACY_*` también salen de los `.env`, así que se pueden dejar escritas ahí
+en vez de exportarlas en cada uso.
 
 ## De dónde salen los datos
 
@@ -113,9 +196,15 @@ que el backend, y la aplicación **no está en un contenedor** (corre con
 funcionar tal cual y necesita un volumen montado o una vía de servicio aparte.
 
 Antes de hacer nada comprueba que la base del ETL y la que sirve la aplicación
-son la misma (`AUTH_DATABASE`, `POSTGRES_DB` y la de `DATABASE_URL`): si
-difieren devuelve 409 y no migra. Y hay un advisory lock, porque dos
-migraciones simultáneas se pisan.
+son la misma: si difieren devuelve 409 y no migra. Y hay un advisory lock,
+porque dos migraciones simultáneas se pisan.
+
+La comprobación no adivina: el backend carga este mismo `etl/config.py` y le
+pregunta a qué base va a escribir, y del lado de la aplicación usa la base de
+la sesión. Las dos son distintas a propósito —una viene del `POSTGRES_DB` del
+ETL, la otra de la sesión—, para que el guard pueda detectar que se han
+separado. Si la base del ETL no se puede determinar (un despliegue sin el
+directorio `etl/`, por ejemplo), no bloquea: avisa en pantalla y deja migrar.
 
 ## Salvaguardas
 

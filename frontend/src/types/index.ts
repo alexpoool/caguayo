@@ -178,6 +178,10 @@ export interface IdentidadBase {
   base_etl: string;
   base_app: string;
   coherente: boolean;
+  /** false cuando no se pudo determinar la base del ETL. No bloquea: avisa. */
+  verificado: boolean;
+  fuente_etl?: string | null;
+  fuente_app?: string | null;
   detalle: string[];
 }
 

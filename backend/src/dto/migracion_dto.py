@@ -22,6 +22,11 @@ class IdentidadBase(BaseModel):
     base_etl: str
     base_app: str
     coherente: bool
+    #: False cuando no se pudo determinar la base del ETL. No bloquea la
+    #: migración (coherente sigue en True); sólo dice que nadie lo comprobó.
+    verificado: bool = True
+    fuente_etl: Optional[str] = None
+    fuente_app: Optional[str] = None
     detalle: List[str] = []
 
 

@@ -1,11 +1,16 @@
 # -*- coding: utf-8 -*-
 """Orquestador del ETL de migración MariaDB -> PostgreSQL.
 
-    python main.py              simulación: no escribe nada en la base
-    python main.py --commit     ejecuta la migración por lotes
+    python main.py                simulación: no escribe nada en la base
+    python main.py --commit       ejecuta la migración por lotes
+
+    python main.py --instrucciones   qué hace falta para sacar los volcados
+    python main.py --generar-dumps   los extrae del MariaDB del legacy
+    python main.py --adoptar A B     instala dos volcados que ya tienes
 """
 import sys
 
+import config
 import db
 from config import TABLA_CLIENTES
 from deduplicacion import valores_de
@@ -21,6 +26,69 @@ from migrar_cuentas_dependencia import cargar_cuentas_dependencia
 from migrar_tcp import cargar_tcp
 from migrar_usuarios import cargar_usuarios
 from verificar import verificar
+
+SOLO = ("--solo-corregidos", "--solo-cuentas", "--solo-usuarios",
+        "--solo-cuentas-dep", "--solo-especialidades", "--solo-catalogo",
+        "--solo-grupos")
+
+
+def _dumps_necesarios(argv):
+    """Qué volcados hace falta para esta ejecución.
+
+    Sin flags corren todas las fases, y la I (catálogos) lee los dos ficheros.
+    Con un `--solo-*` sólo se exige el que esa fase lee, salvo `--solo-catalogo`
+    que lee `tipo_contrato` en los dos.
+    """
+    usa_solo = [flag for flag in SOLO if flag in argv]
+    if not usa_solo:
+        return ("comercial", "principal")
+    if "--solo-catalogo" in usa_solo:
+        return ("comercial", "principal")
+    return ("comercial",)
+
+
+def _volcados(argv):
+    """`--generar-dumps` y `--adoptar`: preparar los ficheros del legacy."""
+    import generar_dumps
+
+    if "--instrucciones" in argv:
+        return generar_dumps.imprimir_instrucciones()
+
+    solo = [rol for flag, rol in (("--solo-comercial", "comercial"),
+                                  ("--solo-principal", "principal"))
+            if flag in argv]
+    roles = tuple(solo) if solo else ("comercial", "principal")
+    forzar = "--forzar" in argv
+
+    if "--adoptar" in argv:
+        origenes = argv[argv.index("--adoptar") + 1:argv.index("--adoptar") + 3]
+        if len(origenes) < 2:
+            print("--adoptar necesita dos rutas: COMERCIAL PRINCIPAL")
+            return 1
+        print("ADOPTANDO VOLCADOS EXISTENTES")
+        try:
+            for origen, rol in zip(origenes, roles):
+                generar_dumps.adoptar(origen, rol, forzar=forzar)
+        except generar_dumps.DumpInvalido as exc:
+            print("\nERROR: %s" % exc)
+            return 1
+        print("\nVolcados en %s. Ya se puede migrar sin exportar nada."
+              % config.DIR_DUMPS)
+        return 0
+
+    if "--generar-dumps" in argv:
+        print("GENERANDO VOLCADOS DEL LEGACY")
+        try:
+            for rol in roles:
+                generar_dumps.volcar(rol, forzar=forzar)
+        except generar_dumps.DumpInvalido as exc:
+            print("\nERROR: %s" % exc)
+            return 1
+        print("\nVolcados en %s. Siguiente paso: python main.py"
+              % config.DIR_DUMPS)
+        return 0
+
+    return None
 
 
 def _valores_migrados(pares):
@@ -67,6 +135,17 @@ def _fase_d_solo(registro, dry_run):
 def main(argv=None):
     argv = sys.argv[1:] if argv is None else argv
     dry_run = "--commit" not in argv
+
+    volcados = _volcados(argv)
+    if volcados is not None:
+        return volcados
+
+    try:
+        config.comprobar_dumps(_dumps_necesarios(argv))
+    except config.DumpAusente as exc:
+        print("\nERROR: %s" % exc)
+        return 1
+
     solo_corregidos = "--solo-corregidos" in argv
     solo_cuentas = "--solo-cuentas" in argv
     solo_usuarios = "--solo-usuarios" in argv

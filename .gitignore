@@ -56,3 +56,6 @@ etl/data/tmp/
 etl/data/migracion_rechazos.csv
 # ficheros del legacy que sube Configuración -> Migración. Son de varios MB
 etl/data/subidas/
+# volcados del legacy que deja main.py --generar-dumps/--adoptar. Llevan CI y
+# NITs de personas: no deben entrar en un commit nunca
+etl/dumps/
