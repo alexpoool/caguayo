@@ -265,6 +265,17 @@ from .rrhh_catalogos_dto import (
     RrhhCalificacionUpdate,
     RrhhCalificacionRead,
 )
+from .rrhh_empleado_dto import (
+    RrhhEmpleadoBase,
+    RrhhEmpleadoCreate,
+    RrhhEmpleadoUpdate,
+    RrhhEmpleadoRead,
+    RrhhEmpleadoListado,
+    RrhhEmpleadoDetalle,
+    RrhhEmpleadoBusqueda,
+    ESTADOS_EMPLEADO,
+    TIPOS_ASISTENCIA,
+)
 
 
 __all__ = [
@@ -480,6 +491,15 @@ __all__ = [
     "RrhhCalificacionCreate",
     "RrhhCalificacionUpdate",
     "RrhhCalificacionRead",
+    "RrhhEmpleadoBase",
+    "RrhhEmpleadoCreate",
+    "RrhhEmpleadoUpdate",
+    "RrhhEmpleadoRead",
+    "RrhhEmpleadoListado",
+    "RrhhEmpleadoDetalle",
+    "RrhhEmpleadoBusqueda",
+    "ESTADOS_EMPLEADO",
+    "TIPOS_ASISTENCIA",
 ]
 VentaRead.model_rebuild(
     _types_namespace={

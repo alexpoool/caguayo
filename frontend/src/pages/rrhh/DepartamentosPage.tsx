@@ -38,6 +38,7 @@ import {
   TableCell,
   ConfirmModal,
   Modal,
+  SearchSelect,
 } from '../../components/ui';
 
 interface Props {
@@ -60,8 +61,10 @@ export function DepartamentosPage({ onIrADetalle }: Props) {
   const [formData, setFormData] = useState<RrhhDepartamentoCreate>({
     nombre: '',
     descripcion: '',
+    responsable: null,
   });
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  const [busquedaResponsable, setBusquedaResponsable] = useState('');
 
   const { data: departamentos = [], isLoading, isError, error, refetch } = useQuery({
     queryKey: ['rrhh', 'departamentos', searchTerm, filtroEstado],
@@ -74,12 +77,19 @@ export function DepartamentosPage({ onIrADetalle }: Props) {
       }),
   });
 
+  // Candidatos a responsable: se buscan bajo demanda desde el formulario
+  const { data: candidatosResponsable = [] } = useQuery({
+    queryKey: ['rrhh', 'empleados', 'buscar', busquedaResponsable],
+    queryFn: () => rrhhService.buscarEmpleados(busquedaResponsable),
+    enabled: view === 'form' && busquedaResponsable.length >= 2,
+  });
+
   const invalidate = () =>
     queryClient.invalidateQueries({ queryKey: ['rrhh', 'departamentos'] });
 
   const handleNuevo = () => {
     setEditing(null);
-    setFormData({ nombre: '', descripcion: '' });
+    setFormData({ nombre: '', descripcion: '', responsable: null });
     setFormErrors({});
     setView('form');
   };
@@ -141,6 +151,16 @@ export function DepartamentosPage({ onIrADetalle }: Props) {
     if (!validar()) return;
     saveMutation.mutate();
   };
+
+  const opcionesResponsable = [
+    { value: 0, label: 'Sin responsable' },
+    ...candidatosResponsable.map((c) => ({
+      value: c.id,
+      label: `${c.apellido}, ${c.nombre}`,
+      description: c.codigo_empleado ?? undefined,
+      disabled: !c.activo,
+    })),
+  ];
 
   return (
     <div className="space-y-4">
@@ -322,9 +342,24 @@ export function DepartamentosPage({ onIrADetalle }: Props) {
                 />
               </div>
 
-              <p className="rounded-md bg-slate-50 p-3 text-xs text-slate-500">
-                El responsable se asigna desde la ficha del empleado (Fase 3).
-              </p>
+              <div className="space-y-2">
+                <Label htmlFor="responsable">Responsable</Label>
+                <SearchSelect
+                  options={opcionesResponsable}
+                  value={formData.responsable}
+                  onChange={(v) =>
+                    setFormData({
+                      ...formData,
+                      responsable: v === 0 ? null : v,
+                    })
+                  }
+                  placeholder="Buscar empleado responsable..."
+                  emptyMessage="Escribe al menos 2 letras"
+                />
+                <p className="text-xs text-slate-400">
+                  Se busca por nombre o código. Debe ser un empleado activo.
+                </p>
+              </div>
 
               <div className="flex items-center gap-2 pt-2">
                 <Button type="submit" disabled={saveMutation.isPending}>

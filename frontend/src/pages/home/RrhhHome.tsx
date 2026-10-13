@@ -56,7 +56,7 @@ const SUBMODULOS: SubmoduloCard[] = [
     descripcion: 'Ficha del personal, asignaciones y organigrama.',
     icon: <Users className="h-5 w-5" />,
     fase: 3,
-    ruta: null,
+    ruta: '/rrhh/empleados',
   },
   {
     id: 'asistencia',

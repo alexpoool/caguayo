@@ -80,6 +80,106 @@ export interface RrhhEliminarResponse {
   motivo: string | null;
 }
 
+// ── Empleados (Fase 3) ─────────────────────────────────────────────────────
+
+export type RrhhEstadoEmpleado =
+  | 'activo'
+  | 'suspendido'
+  | 'vacaciones'
+  | 'terminado';
+
+export type RrhhTipoAsistencia = 'LIBRE' | 'NO_LIBRE';
+
+export interface RrhhEmpleado {
+  id: number;
+  codigo_empleado: string | null;
+  nombre: string;
+  apellido: string;
+  fecha_nacimiento: string | null;
+  carnet_identidad: string | null;
+  direccion: string | null;
+  telefono: string | null;
+  correo: string | null;
+  puesto_id: number | null;
+  puesto_descripcion: string | null;
+  departamento_id: number | null;
+  fecha_contratacion: string | null;
+  tipo_contrato_id: number | null;
+  salario: string | number | null;
+  supervisor: number | null;
+  estado: RrhhEstadoEmpleado;
+  tipo_asistencia: RrhhTipoAsistencia;
+  horas_a_trabajar: number | null;
+  dias_a_trabajar: number | null;
+  horario_inicio: string | null;
+  horario_final: string | null;
+  activo: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface RrhhEmpleadoCreate {
+  nombre: string;
+  apellido: string;
+  fecha_nacimiento?: string | null;
+  carnet_identidad?: string | null;
+  direccion?: string | null;
+  telefono?: string | null;
+  correo?: string | null;
+  puesto_id?: number | null;
+  puesto_descripcion?: string | null;
+  departamento_id?: number | null;
+  fecha_contratacion?: string | null;
+  tipo_contrato_id?: number | null;
+  salario?: number | null;
+  supervisor?: number | null;
+  estado?: RrhhEstadoEmpleado;
+  tipo_asistencia?: RrhhTipoAsistencia;
+  horas_a_trabajar?: number | null;
+  dias_a_trabajar?: number | null;
+  horario_inicio?: string | null;
+  horario_final?: string | null;
+  activo?: boolean;
+}
+
+export type RrhhEmpleadoUpdate = Partial<RrhhEmpleadoCreate>;
+
+export interface RrhhEmpleadoListado extends RrhhEmpleado {
+  puesto_nombre: string | null;
+  departamento_nombre: string | null;
+  tipo_contrato_nombre: string | null;
+  supervisor_nombre: string | null;
+}
+
+export interface RrhhEmpleadoDetalle extends RrhhEmpleado {
+  puesto_nombre: string | null;
+  departamento_nombre: string | null;
+  tipo_contrato_nombre: string | null;
+  supervisor_nombre: string | null;
+  /** Alias del usuario del sistema vinculado por carnet de identidad. */
+  usuario_vinculado: string | null;
+}
+
+/** Resultado del selector abreviado `/rrhh/empleados/buscar`. */
+export interface RrhhEmpleadoBusqueda {
+  id: number;
+  codigo_empleado: string | null;
+  nombre: string;
+  apellido: string;
+  estado: RrhhEstadoEmpleado;
+  activo: boolean;
+}
+
+export const RRHH_ESTADOS_EMPLEADO: {
+  valor: RrhhEstadoEmpleado;
+  etiqueta: string;
+}[] = [
+  { valor: 'activo', etiqueta: 'Activo' },
+  { valor: 'suspendido', etiqueta: 'Suspendido' },
+  { valor: 'vacaciones', etiqueta: 'Vacaciones' },
+  { valor: 'terminado', etiqueta: 'Terminado' },
+];
+
 // ── Catálogos base (Fase 1) ────────────────────────────────────────────────
 
 export interface RrhhTipoContrato {
