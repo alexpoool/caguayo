@@ -19,6 +19,7 @@ Decisiones que conviene no saltarse al leer esto:
   viendo es un trabajo perdido.
 * Hay un advisory lock, porque dos migraciones simultáneas se pisan.
 """
+import importlib.util
 import os
 import re
 import subprocess
@@ -52,6 +53,11 @@ def _clave_lock() -> int:
     return LOCK_BASE + (zlib.crc32(base.encode("utf-8")) % 100000)
 
 ETL_DIR = Path(__file__).resolve().parents[3] / "etl"
+
+#: Config del ETL: `etl/config.py` no es un paquete y el directorio del ETL
+#: tiene módulos (`db`, `log`) que colisionarían con los del backend si se
+#: añadiera a `sys.path`. Se carga por ruta, bajo un nombre privado.
+CONFIG_ETL = ETL_DIR / "config.py"
 
 #: Resultado de una ejecución, indexado por sección del log del ETL.
 SECCIONES = ("A", "B", "C", "D", "E", "F", "G", "H", "I", "J")
@@ -104,31 +110,110 @@ def _exigir_dump() -> str:
 # --------------------------------------------------------------------------
 # Guardas
 # --------------------------------------------------------------------------
+def cargar_config_etl():
+    """Carga `etl/config.py` y devuelve (módulo, motivo_del_fallo).
+
+    Se ejecuta en proceso, con el mismo PROYECTO_DIR que prepara `_entorno()`
+    para el subproceso, para que lo que se ve aquí sea exactamente lo que verá
+    el ETL. PROYECTO_DIR se restaura al terminar: no es asunto del resto de la
+    aplicación.
+
+    Ante cualquier fallo devuelve (None, motivo). El guard avisa y deja pasar:
+    quedarse sin pantalla de migración por un `etl/` no desplegado sería peor
+    que avisar de lo que no se ha verificado.
+    """
+    if not CONFIG_ETL.exists():
+        return None, "no existe %s" % CONFIG_ETL
+
+    previo = os.environ.get("PROYECTO_DIR")
+    os.environ["PROYECTO_DIR"] = previo or str(ETL_DIR.parent)
+    try:
+        spec = importlib.util.spec_from_file_location("_caguayo_etl_config",
+                                                       CONFIG_ETL)
+        if spec is None or spec.loader is None:
+            return None, "no se pudo crear el loader de %s" % CONFIG_ETL
+        modulo = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(modulo)
+        return modulo, None
+    except Exception as exc:  # noqa: BLE001 - el motivo va al aviso
+        return None, "%s: %s" % (type(exc).__name__, exc)
+    finally:
+        if previo is None:
+            os.environ.pop("PROYECTO_DIR", None)
+        else:
+            os.environ["PROYECTO_DIR"] = previo
+
+
+def _base_destino_etl():
+    """La base a la que va a escribir el ETL, según su propia configuración.
+
+    Devuelve (base, motivo_del_fallo). `base` es None si no se pudo saber.
+    """
+    modulo, motivo = cargar_config_etl()
+    if modulo is None:
+        return None, motivo
+    return getattr(modulo.POSTGRES, "database", None), None
+
+
 def comprobar_identidad() -> dict:
     """Que la base del ETL y la que sirve la app sean la misma.
 
-    El ETL lee POSTGRES_DB; la app usa AUTH_DATABASE y la de DATABASE_URL. Si
-    no coinciden, migrar produce una base que nadie está viendo.
-    """
-    etl = os.getenv("POSTGRES_DB") or os.getenv("PG_DB") or "caguayo_sa"
-    auth = os.getenv("AUTH_DATABASE")
-    central = os.getenv("CENTRAL_DATABASE")
-    url = os.getenv("DATABASE_URL", "")
-    activa = ""
-    if url:
-        activa = url.rsplit("/", 1)[-1].split("?")[0]
+    El ETL no lee POSTGRES_DB del entorno del backend: lo saca de `etl/config.py`,
+    que a su vez lo lee de los `.env`. El backend nunca lo tuvo en `os.environ`,
+    así que este guard comparaba el literal "caguayo_sa" contra la base de la
+    aplicación. Siempre coherente, y un ETL apuntado a otra base —cambiando el
+    `.env`, que es como se documenta retargetizarlo— pasaba inadvertido.
 
-    incoherencias = []
-    for nombre, valor in (("AUTH_DATABASE", auth), ("CENTRAL_DATABASE", central),
-                         ("DATABASE_URL", activa)):
-        if valor and valor != etl:
-            incoherencias.append("%s apunta a %s y el ETL a %s"
-                                  % (nombre, valor, etl))
+    Ahora lo pregunta al ETL. Del lado de la app se usa la base de la sesión,
+    que es la que atienden los endpoints: hoy siempre AUTH_DATABASE, porque
+    `set_current_db()` todavía no lo llama nadie.
+
+    Si la base del ETL no se puede determinar, `coherente` sigue en True para
+    no bloquear la migración; `verificado` en False y `detalle` lo dicen. Sólo
+    bloquea cuando sabe que difieren.
+    """
+    from src.database.connection import get_current_db
+
+    base_etl, motivo = _base_destino_etl()
+    base_app = get_current_db() or "(sin definir)"
+
+    if base_etl is None:
+        return {
+            "base_etl": "(desconocida)",
+            "base_app": base_app,
+            "coherente": True,
+            "verificado": False,
+            "fuente_etl": "etl/config.py (no se pudo cargar)",
+            "fuente_app": "sesión de la aplicación",
+            "detalle": [
+                "No se pudo determinar la base del ETL: %s. La migración va a "
+                "salir sin comprobar contra qué base escribe." % motivo
+            ],
+        }
+
+    if base_etl == base_app:
+        return {
+            "base_etl": base_etl,
+            "base_app": base_app,
+            "coherente": True,
+            "verificado": True,
+            "fuente_etl": "etl/config.py (backend/.env, luego .env)",
+            "fuente_app": "sesión de la aplicación",
+            "detalle": [],
+        }
+
     return {
-        "base_etl": etl,
-        "base_app": activa or auth or "(sin definir)",
-        "coherente": not incoherencias,
-        "detalle": incoherencias,
+        "base_etl": base_etl,
+        "base_app": base_app,
+        "coherente": False,
+        "verificado": True,
+        "fuente_etl": "etl/config.py (backend/.env, luego .env)",
+        "fuente_app": "sesión de la aplicación",
+        "detalle": [
+            "El ETL migraría a %s (su config) y la aplicación está sirviendo %s "
+            "(su sesión). Migrar produce una base que nadie está viendo."
+            % (base_etl, base_app)
+        ],
     }
 
 

@@ -84,15 +84,35 @@ export const MigracionLegacy: React.FC = () => {
         </div>
       )}
 
-      {/* ---- Falta el dump del legacy ------------------------------------ */}
+{/* ---- Base del ETL sin comprobar ----------------------------------- */}
+      {estado && estado.identidad.coherente && !estado.identidad.verificado && (
+        <div className="flex items-start gap-3 rounded-md border border-amber-300 bg-amber-50 p-3">
+          <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+          <div className="text-sm text-amber-900">
+            <p className="font-medium">La migración sale sin comprobar la base</p>
+            <ul className="mt-1 list-disc list-inside">
+              {estado.identidad.detalle.map((d, i) => (
+                <li key={i}>{d}</li>
+              ))}
+            </ul>
+            <p className="mt-1">
+              La aplicación está sirviendo <strong>{estado.identidad.base_app}</strong>.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* ---- Falta el volcado del legacy ---------------------------------- */}
       {estado && !estado.dump_disponible && (
         <div className="flex items-start gap-3 rounded-md border border-amber-300 bg-amber-50 p-3">
           <FileWarning className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
           <div className="text-sm text-amber-900">
-            <p className="font-medium">No está el dump del legacy</p>
+            <p className="font-medium">No está el volcado del legacy</p>
             <p className="mt-1">
-              El ETL lee el fichero que viene en el repositorio, no uno que se
-              suba desde aquí. Cópialo en su sitio y vuelve a intentarlo.
+              El ETL lee el volcado que deja{" "}
+              <code className="font-mono text-xs">main.py --generar-dumps</code>{" "}
+              o <code className="font-mono text-xs">--adoptar</code>, no uno que
+              se suba desde aquí.
             </p>
             {estado.dump_ruta && (
               <p className="mt-2 font-mono text-xs break-all">

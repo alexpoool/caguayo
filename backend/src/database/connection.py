@@ -19,6 +19,15 @@ def set_current_db(db_name: str):
     _current_db.set(db_name)
 
 
+def get_current_db() -> str:
+    """La base a la que atiende la sesión actual.
+
+    Todo lo que `get_session()` abre pasa por aquí, así que es la base que de
+    verdad está viendo la aplicación.
+    """
+    return _current_db.get()
+
+
 # Ensure we use the async driver
 DATABASE_URL = os.getenv("DATABASE_URL")
 if not DATABASE_URL:
