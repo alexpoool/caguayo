@@ -100,8 +100,9 @@ import { PagosFacturaServicioPage } from './pages/proyecto/PagosFacturaServicioP
 import { LiquidacionesPage as ProyectoLiquidacionesPage } from './pages/proyecto/LiquidacionesPage';
 import { CertificacionesPage } from './pages/proyecto/CertificacionesPage';
 import { DJ08Page } from './pages/dj08/DJ08Page';
+import { RrhhHome } from './pages/home/RrhhHome';
 
-type Modulo = 'administracion' | 'venta' | 'compra' | 'inventario' | 'reportes' | 'home' | 'proyecto' | 'dj08';
+type Modulo = 'administracion' | 'venta' | 'compra' | 'inventario' | 'reportes' | 'home' | 'proyecto' | 'dj08' | 'rrhh';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -122,6 +123,7 @@ const rutasPorModulo: Record<Modulo, string[]> = {
   reportes: ['/reportes', '/reportes/existencias', '/reportes/movimientos-dependencia', '/reportes/movimientos-producto', '/reportes/proveedores', '/reportes/registro-clientes', '/reportes/registro-proyectos', '/reportes/registro-creadores', '/reportes/informe-desempeno', '/reportes/resumen-liquidaciones', '/reportes/ingresos-retenciones', '/reportes/mincult', '/reportes/onat', '/perfil'],
   home: ['/', '/perfil'],
   dj08: ['/dj08', '/perfil'],
+  rrhh: ['/rrhh', '/rrhh/catalogos', '/rrhh/departamentos', '/rrhh/puestos', '/rrhh/empleados', '/rrhh/asistencia', '/rrhh/deducciones', '/rrhh/bonificaciones', '/rrhh/nomina', '/rrhh/pagos', '/rrhh/solicitudes', '/rrhh/evaluaciones', '/rrhh/reportes', '/perfil'],
 };
 
 // Componente para proteger rutas según el módulo
@@ -270,6 +272,7 @@ const MODULO_FUNCIONALIDADES: Record<Modulo, string[]> = {
   administracion: ['configuracion', 'monedas', 'usuarios', 'grupos', 'dependencias', 'cuentas'],
   home: [],
   dj08: [],
+  rrhh: ['rrhh_empleados', 'rrhh_departamentos', 'rrhh_puestos', 'rrhh_asistencia', 'rrhh_solicitudes', 'rrhh_deducciones', 'rrhh_bonificaciones', 'rrhh_nomina', 'rrhh_pagos', 'rrhh_evaluaciones', 'rrhh_catalogos', 'rrhh_reportes'],
 };
 
 function App() {
@@ -353,6 +356,7 @@ function App() {
     { id: 'reportes', label: 'Reportes', icon: BarChart3 },
     { id: 'administracion', label: 'Administración', icon: Settings },
     { id: 'dj08', label: 'DJ-08', icon: ScrollText },
+    { id: 'rrhh', label: 'RRHH', icon: Users },
   ];
 
   function handleToggleSlim(): void {
@@ -409,6 +413,16 @@ function App() {
                     <SidebarLink slim={slimSidebar} to="/dj08" onClick={handleLinkClick} exact>
                       <ScrollText className="w-6 h-6" />
                       Declaración Jurada
+                    </SidebarLink>
+                  </li>
+                </ul>
+              )}
+              {moduloActivo === 'rrhh' && (
+                <ul className="space-y-1 px-3">
+                  <li>
+                    <SidebarLink slim={slimSidebar} to="/rrhh" onClick={handleLinkClick} exact>
+                      <Users className="w-6 h-6" />
+                      Recursos Humanos
                     </SidebarLink>
                   </li>
                 </ul>
@@ -1052,6 +1066,14 @@ function App() {
                   element={
                     <ProtectedRoute moduloActivo={moduloActivo} currentPath="/dj08">
                       <DJ08Page />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/rrhh"
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/rrhh">
+                      <RrhhHome />
                     </ProtectedRoute>
                   }
                 />
