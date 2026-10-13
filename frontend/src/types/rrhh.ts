@@ -295,6 +295,106 @@ export function formatearMinutos(minutos: number): string {
   return `${signo}${Math.floor(total / 60)}:${String(total % 60).padStart(2, '0')}`;
 }
 
+// ── Deducciones y bonificaciones (Fase 5) ──────────────────────────────────
+
+/**
+ * Movimiento de nómina por empleado. El `valor` es un importe fijo o un
+ * porcentaje del salario, según `es_porcentaje` del tipo.
+ */
+export interface RrhhMovimiento {
+  empleado_id: number;
+  tipo_deducciones_id?: number;
+  tipo_bonificaciones_id?: number;
+  valor: number;
+  inicio_periodo: string;
+  fin_periodo: string;
+  observaciones: string | null;
+}
+
+export interface RrhhDeduccion extends RrhhMovimiento {
+  id_deducciones: number;
+  tipo_deducciones_id: number;
+}
+
+export interface RrhhBonificacion extends RrhhMovimiento {
+  id_bonificaciones: number;
+  tipo_bonificaciones_id: number;
+}
+
+/** Fila del listado, con el empleado/tipo resueltos y el monto calculado. */
+export interface RrhhMovimientoListado {
+  empleado_id: number;
+  valor: number;
+  inicio_periodo: string;
+  fin_periodo: string;
+  observaciones: string | null;
+  empleado_codigo: string | null;
+  empleado_nombre: string | null;
+  departamento_nombre: string | null;
+  tipo_nombre: string | null;
+  es_porcentaje: boolean;
+  salario: number | null;
+  /** Dinero efectivo: el `valor` o, si es porcentual, el % del salario. */
+  monto: number | string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface RrhhDeduccionListado extends RrhhMovimientoListado {
+  id_deducciones: number;
+  tipo_deducciones_id: number;
+}
+
+export interface RrhhBonificacionListado extends RrhhMovimientoListado {
+  id_bonificaciones: number;
+  tipo_bonificaciones_id: number;
+}
+
+export interface RrhhMovimientoCreate {
+  empleado_id: number;
+  valor: number;
+  inicio_periodo: string;
+  fin_periodo: string;
+  observaciones?: string | null;
+}
+
+export interface RrhhDeduccionCreate extends RrhhMovimientoCreate {
+  tipo_deducciones_id: number;
+}
+
+export interface RrhhBonificacionCreate extends RrhhMovimientoCreate {
+  tipo_bonificaciones_id: number;
+}
+
+export type RrhhMovimientoUpdate = Partial<Omit<RrhhMovimientoCreate, 'empleado_id'>> & {
+  tipo_deducciones_id?: number;
+  tipo_bonificaciones_id?: number;
+};
+
+/** Totales por empleado de los movimientos que cubren un rango. */
+export interface RrhhConsolidadoEmpleado {
+  empleado_id: number;
+  empleado_codigo: string | null;
+  empleado_nombre: string;
+  departamento_nombre: string | null;
+  salario: number | null;
+  total_deducciones: number | string;
+  total_bonificaciones: number | string;
+  saldo: number | string;
+  cantidad_deducciones: number;
+  cantidad_bonificaciones: number;
+}
+
+export interface RrhhConsolidado {
+  desde: string | null;
+  hasta: string | null;
+  total_deducciones: number | string;
+  total_bonificaciones: number | string;
+  saldo: number | string;
+  cantidad_empleados: number;
+  empleados: RrhhConsolidadoEmpleado[];
+}
+
 // ── Catálogos base (Fase 1) ────────────────────────────────────────────────
 
 export interface RrhhTipoContrato {

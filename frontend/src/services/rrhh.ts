@@ -21,6 +21,8 @@ import type {
   RrhhEmpleadoDetalle,
   RrhhEmpleadoBusqueda,
   RrhhTipoContrato,
+  RrhhTipoDeduccion,
+  RrhhTipoBonificacion,
   RrhhAsistencia,
   RrhhAsistenciaCreate,
   RrhhAsistenciaUpdate,
@@ -28,6 +30,14 @@ import type {
   RrhhAsistenciaMarcacion,
   RrhhAsistenciaResumenDia,
   RrhhEstadoAsistencia,
+  RrhhDeduccionListado,
+  RrhhBonificacionListado,
+  RrhhDeduccion,
+  RrhhBonificacion,
+  RrhhDeduccionCreate,
+  RrhhBonificacionCreate,
+  RrhhMovimientoUpdate,
+  RrhhConsolidado,
 } from '../types/rrhh';
 
 export const rrhhService = {
@@ -112,6 +122,26 @@ export const rrhhService = {
     buscar?: string;
   }): Promise<RrhhTipoContrato[]> => {
     return await apiClient.get('/rrhh/catalogos/tipos-contrato', params);
+  },
+
+  /** Listado tipado de tipos de deducción (para los selectores). */
+  listarTiposDeduccion: async (params?: {
+    skip?: number;
+    limit?: number;
+    activo?: boolean;
+    buscar?: string;
+  }): Promise<RrhhTipoDeduccion[]> => {
+    return await apiClient.get('/rrhh/catalogos/tipos-deducciones', params);
+  },
+
+  /** Listado tipado de tipos de bonificación (para los selectores). */
+  listarTiposBonificacion: async (params?: {
+    skip?: number;
+    limit?: number;
+    activo?: boolean;
+    buscar?: string;
+  }): Promise<RrhhTipoBonificacion[]> => {
+    return await apiClient.get('/rrhh/catalogos/tipos-bonificaciones', params);
   },
 
   // ── Departamentos ────────────────────────────────────────────────────────
@@ -231,5 +261,71 @@ export const rrhhService = {
 
   deleteAsistencia: async (id: number): Promise<RrhhEliminarResponse> => {
     return await apiClient.delete(`/rrhh/asistencia/${id}`);
+  },
+
+  // ── Deducciones (Fase 5) ────────────────────────────────────────────────
+  listarDeducciones: async (params?: {
+    skip?: number;
+    limit?: number;
+    empleado_id?: number;
+    tipo_id?: number;
+    desde?: string;
+    hasta?: string;
+    buscar?: string;
+  }): Promise<RrhhDeduccionListado[]> => {
+    return await apiClient.get('/rrhh/deducciones', params);
+  },
+
+  createDeduccion: async (data: RrhhDeduccionCreate): Promise<RrhhDeduccion> => {
+    return await apiClient.post('/rrhh/deducciones', data);
+  },
+
+  updateDeduccion: async (
+    id: number,
+    data: RrhhMovimientoUpdate
+  ): Promise<RrhhDeduccion> => {
+    return await apiClient.put(`/rrhh/deducciones/${id}`, data);
+  },
+
+  deleteDeduccion: async (id: number): Promise<RrhhEliminarResponse> => {
+    return await apiClient.delete(`/rrhh/deducciones/${id}`);
+  },
+
+  // ── Bonificaciones (Fase 5) ─────────────────────────────────────────────
+  listarBonificaciones: async (params?: {
+    skip?: number;
+    limit?: number;
+    empleado_id?: number;
+    tipo_id?: number;
+    desde?: string;
+    hasta?: string;
+    buscar?: string;
+  }): Promise<RrhhBonificacionListado[]> => {
+    return await apiClient.get('/rrhh/bonificaciones', params);
+  },
+
+  createBonificacion: async (
+    data: RrhhBonificacionCreate
+  ): Promise<RrhhBonificacion> => {
+    return await apiClient.post('/rrhh/bonificaciones', data);
+  },
+
+  updateBonificacion: async (
+    id: number,
+    data: RrhhMovimientoUpdate
+  ): Promise<RrhhBonificacion> => {
+    return await apiClient.put(`/rrhh/bonificaciones/${id}`, data);
+  },
+
+  deleteBonificacion: async (id: number): Promise<RrhhEliminarResponse> => {
+    return await apiClient.delete(`/rrhh/bonificaciones/${id}`);
+  },
+
+  /** Totales por empleado de deducciones y bonificaciones en un rango. */
+  consolidadoMovimientos: async (params?: {
+    desde?: string;
+    hasta?: string;
+  }): Promise<RrhhConsolidado> => {
+    return await apiClient.get('/rrhh/movimientos/consolidado', params);
   },
 };

@@ -72,7 +72,7 @@ const SUBMODULOS: SubmoduloCard[] = [
     descripcion: 'Deducciones por empleado y periodo.',
     icon: <TrendingUp className="h-5 w-5" />,
     fase: 5,
-    ruta: null,
+    ruta: '/rrhh/movimientos',
   },
   {
     id: 'bonificaciones',
@@ -80,7 +80,7 @@ const SUBMODULOS: SubmoduloCard[] = [
     descripcion: 'Bonificaciones por empleado y periodo.',
     icon: <Award className="h-5 w-5" />,
     fase: 5,
-    ruta: null,
+    ruta: '/rrhh/movimientos',
   },
   {
     id: 'nomina',

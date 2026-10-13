@@ -60,6 +60,11 @@ from .rrhh_catalogos import (
 )
 from .rrhh_empleados import rrhh_empleados_router
 from .rrhh_asistencia import rrhh_asistencia_router
+from .rrhh_movimientos import (
+    rrhh_deducciones_router,
+    rrhh_bonificaciones_router,
+    rrhh_movimientos_router,
+)
 
 api_router = APIRouter(prefix="/api/v1")
 
@@ -119,6 +124,9 @@ api_router.include_router(tipos_pago_router)
 api_router.include_router(calificaciones_router)
 api_router.include_router(rrhh_empleados_router)
 api_router.include_router(rrhh_asistencia_router)
+api_router.include_router(rrhh_deducciones_router)
+api_router.include_router(rrhh_bonificaciones_router)
+api_router.include_router(rrhh_movimientos_router)
 
 
 @api_router.get("/")

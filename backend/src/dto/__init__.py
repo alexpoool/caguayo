@@ -286,6 +286,22 @@ from .rrhh_asistencia_dto import (
     RrhhAsistenciaResumenDia,
     ESTADOS_ASISTENCIA,
 )
+from .rrhh_movimiento_dto import (
+    RrhhMovimientoBase,
+    RrhhDeduccionBase,
+    RrhhBonificacionBase,
+    RrhhDeduccionCreate,
+    RrhhBonificacionCreate,
+    RrhhDeduccionUpdate,
+    RrhhBonificacionUpdate,
+    RrhhDeduccionRead,
+    RrhhBonificacionRead,
+    RrhhMovimientoListado,
+    RrhhDeduccionListado,
+    RrhhBonificacionListado,
+    RrhhConsolidadoEmpleado,
+    RrhhConsolidado,
+)
 
 
 __all__ = [
@@ -518,6 +534,20 @@ __all__ = [
     "RrhhAsistenciaMarcacion",
     "RrhhAsistenciaResumenDia",
     "ESTADOS_ASISTENCIA",
+    "RrhhMovimientoBase",
+    "RrhhDeduccionBase",
+    "RrhhBonificacionBase",
+    "RrhhDeduccionCreate",
+    "RrhhBonificacionCreate",
+    "RrhhDeduccionUpdate",
+    "RrhhBonificacionUpdate",
+    "RrhhDeduccionRead",
+    "RrhhBonificacionRead",
+    "RrhhMovimientoListado",
+    "RrhhDeduccionListado",
+    "RrhhBonificacionListado",
+    "RrhhConsolidadoEmpleado",
+    "RrhhConsolidado",
 ]
 VentaRead.model_rebuild(
     _types_namespace={

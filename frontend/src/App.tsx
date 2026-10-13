@@ -107,6 +107,7 @@ import { PuestosPage } from './pages/rrhh/PuestosPage';
 import { CatalogosPage } from './pages/rrhh/CatalogosPage';
 import { EmpleadosPage } from './pages/rrhh/EmpleadosPage';
 import { AsistenciaPage } from './pages/rrhh/AsistenciaPage';
+import { MovimientosPage as RrhhMovimientosPage } from './pages/rrhh/MovimientosPage';
 
 type Modulo = 'administracion' | 'venta' | 'compra' | 'inventario' | 'reportes' | 'home' | 'proyecto' | 'dj08' | 'rrhh';
 
@@ -462,6 +463,17 @@ function App() {
                     >
                       <Clock className="w-6 h-6" />
                       Asistencia
+                    </SidebarLink>
+                  </li>
+                  <li>
+                    <SidebarLink
+                      slim={slimSidebar}
+                      to="/rrhh/movimientos"
+                      onClick={handleLinkClick}
+                      disabled={!hasFuncionalidad('rrhh_deducciones')}
+                    >
+                      <ArrowLeftRight className="w-6 h-6" />
+                      Movimientos
                     </SidebarLink>
                   </li>
                   <li>
@@ -1175,6 +1187,14 @@ function App() {
                   element={
                     <ProtectedRoute moduloActivo={moduloActivo} currentPath="/rrhh/asistencia">
                       <AsistenciaPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/rrhh/movimientos"
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/rrhh/movimientos">
+                      <RrhhMovimientosPage />
                     </ProtectedRoute>
                   }
                 />
