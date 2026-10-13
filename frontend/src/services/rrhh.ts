@@ -23,6 +23,7 @@ import type {
   RrhhTipoContrato,
   RrhhTipoDeduccion,
   RrhhTipoBonificacion,
+  RrhhTipoPago,
   RrhhAsistencia,
   RrhhAsistenciaCreate,
   RrhhAsistenciaUpdate,
@@ -38,6 +39,13 @@ import type {
   RrhhBonificacionCreate,
   RrhhMovimientoUpdate,
   RrhhConsolidado,
+  RrhhNomina,
+  RrhhNominaListado,
+  RrhhNominaDetalle,
+  RrhhNominaGenerar,
+  RrhhNominaGenerada,
+  RrhhPagoInput,
+  RrhhReporteCosto,
 } from '../types/rrhh';
 
 export const rrhhService = {
@@ -142,6 +150,16 @@ export const rrhhService = {
     buscar?: string;
   }): Promise<RrhhTipoBonificacion[]> => {
     return await apiClient.get('/rrhh/catalogos/tipos-bonificaciones', params);
+  },
+
+  /** Listado tipado de tipos de pago (para el modal de pago de nómina). */
+  listarTiposPago: async (params?: {
+    skip?: number;
+    limit?: number;
+    activo?: boolean;
+    buscar?: string;
+  }): Promise<RrhhTipoPago[]> => {
+    return await apiClient.get('/rrhh/catalogos/tipos-pago', params);
   },
 
   // ── Departamentos ────────────────────────────────────────────────────────
@@ -327,5 +345,63 @@ export const rrhhService = {
     hasta?: string;
   }): Promise<RrhhConsolidado> => {
     return await apiClient.get('/rrhh/movimientos/consolidado', params);
+  },
+
+  // ── Nómina (Fase 6) ─────────────────────────────────────────────────────
+  listarNominas: async (params?: {
+    skip?: number;
+    limit?: number;
+    empleado_id?: number;
+    estado?: string;
+    desde?: string;
+    hasta?: string;
+  }): Promise<RrhhNominaListado[]> => {
+    return await apiClient.get('/rrhh/nomina', params);
+  },
+
+  obtenerNomina: async (id: number): Promise<RrhhNominaDetalle> => {
+    return await apiClient.get(`/rrhh/nomina/${id}`);
+  },
+
+  generarNominas: async (data: RrhhNominaGenerar): Promise<RrhhNominaGenerada> => {
+    return await apiClient.post('/rrhh/nomina/generar', data);
+  },
+
+  pagarNomina: async (id: number, data: RrhhPagoInput): Promise<RrhhNominaDetalle> => {
+    return await apiClient.post(`/rrhh/nomina/${id}/pagar`, data);
+  },
+
+  anularNomina: async (
+    id: number
+  ): Promise<{ accion: string; era_pagada: boolean; motivo: string | null }> => {
+    return await apiClient.post(`/rrhh/nomina/${id}/anular`, {});
+  },
+
+  reporteCosto: async (params?: {
+    desde?: string;
+    hasta?: string;
+    departamento_id?: number;
+  }): Promise<RrhhReporteCosto> => {
+    return await apiClient.get('/rrhh/nomina/costo', params);
+  },
+
+  /**
+   * Descarga el recibo de una nómina en PDF.
+   *
+   * Usa `fetch` directamente porque `apiClient` devuelve JSON; aquí la
+   * respuesta es un blob, igual que en la exportación de fichas de costo.
+   */
+  descargarRecibo: async (id: number): Promise<{ blob: Blob; nombre: string }> => {
+    const token = localStorage.getItem('auth_token');
+    const base = (import.meta as any).env.VITE_API_BASE_URL;
+    const resp = await fetch(`${base}/rrhh/nomina/${id}/recibo`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+    if (!resp.ok) throw new Error('No se pudo generar el recibo');
+    const blob = await resp.blob();
+    const disp = resp.headers.get('Content-Disposition') || '';
+    const m = /filename\*?=(?:"([^"]+)"|([^;]+))/.exec(disp);
+    const nombre = (m && (m[1] || m[2])?.replace(/"/g, '').trim()) || `RECIBO-NOMINA-${id}.pdf`;
+    return { blob, nombre };
   },
 };

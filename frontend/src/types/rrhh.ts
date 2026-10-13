@@ -395,6 +395,114 @@ export interface RrhhConsolidado {
   empleados: RrhhConsolidadoEmpleado[];
 }
 
+// ── Nómina y pagos (Fase 6) ────────────────────────────────────────────────
+
+export type RrhhEstadoNomina = 'pendiente' | 'pagada' | 'anulada';
+
+export const ESTADOS_NOMINA: RrhhEstadoNomina[] = ['pendiente', 'pagada', 'anulada'];
+
+/** Colores de la insignia de estado de una nómina. */
+export const COLOR_ESTADO_NOMINA: Record<RrhhEstadoNomina, string> = {
+  pendiente: 'bg-amber-100 text-amber-700',
+  pagada: 'bg-green-100 text-green-700',
+  anulada: 'bg-slate-200 text-slate-600',
+};
+
+export interface RrhhNomina {
+  id: number;
+  empleado_id: number;
+  periodo: string;
+  inicio_periodo: string;
+  fin_periodo: string;
+  salario_base: number | string;
+  horas_extras: number | string;
+  deducciones: number | string;
+  bonificaciones: number | string;
+  salario_neto: number | string | null;
+  estado: RrhhEstadoNomina;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface RrhhNominaListado extends RrhhNomina {
+  empleado_codigo: string | null;
+  empleado_nombre: string | null;
+  departamento_nombre: string | null;
+  total_pagado: number | string;
+  cantidad_pagos: number;
+}
+
+/** Una deducción/bonificación congelada en la nómina. */
+export interface RrhhDetalleNomina {
+  tipo_nombre: string | null;
+  es_porcentaje: boolean;
+  valor_original: number | string | null;
+  monto_aplicado: number | string;
+}
+
+export interface RrhhPago {
+  id: number;
+  nomina_id: number;
+  metodo_id: number;
+  monto: number | string;
+  fecha_pago: string;
+  referencia: string | null;
+  observaciones: string | null;
+  metodo_nombre: string | null;
+  created_at?: string;
+}
+
+export interface RrhhNominaDetalle extends RrhhNominaListado {
+  deducciones_aplicadas: RrhhDetalleNomina[];
+  bonificaciones_aplicadas: RrhhDetalleNomina[];
+  pagos: RrhhPago[];
+}
+
+export interface RrhhNominaGenerar {
+  inicio_periodo: string;
+  fin_periodo: string;
+  empleado_id?: number | null;
+  departamento_id?: number | null;
+  periodo?: string | null;
+}
+
+export interface RrhhNominaGenerada {
+  creadas: number;
+  omitidas: number;
+  detalle: string[];
+}
+
+export interface RrhhPagoInput {
+  metodo_id: number;
+  monto: number | string;
+  fecha_pago?: string | null;
+  referencia?: string | null;
+  observaciones?: string | null;
+}
+
+export interface RrhhCostoDepartamento {
+  departamento_id: number | null;
+  departamento_nombre: string | null;
+  cantidad_empleados: number;
+  salario_base: number | string;
+  horas_extras: number | string;
+  deducciones: number | string;
+  bonificaciones: number | string;
+  salario_neto: number | string;
+}
+
+export interface RrhhReporteCosto {
+  desde: string | null;
+  hasta: string | null;
+  total_salario_base: number | string;
+  total_horas_extras: number | string;
+  total_deducciones: number | string;
+  total_bonificaciones: number | string;
+  total_neto: number | string;
+  cantidad_nominas: number;
+  departamentos: RrhhCostoDepartamento[];
+}
+
 // ── Catálogos base (Fase 1) ────────────────────────────────────────────────
 
 export interface RrhhTipoContrato {

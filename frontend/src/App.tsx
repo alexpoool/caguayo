@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import React from 'react';
 import {
   ArrowLeftRight,
+  Banknote,
   Boxes,
   Building2,
   Clock,
@@ -108,6 +109,7 @@ import { CatalogosPage } from './pages/rrhh/CatalogosPage';
 import { EmpleadosPage } from './pages/rrhh/EmpleadosPage';
 import { AsistenciaPage } from './pages/rrhh/AsistenciaPage';
 import { MovimientosPage as RrhhMovimientosPage } from './pages/rrhh/MovimientosPage';
+import { NominaPage } from './pages/rrhh/NominaPage';
 
 type Modulo = 'administracion' | 'venta' | 'compra' | 'inventario' | 'reportes' | 'home' | 'proyecto' | 'dj08' | 'rrhh';
 
@@ -474,6 +476,17 @@ function App() {
                     >
                       <ArrowLeftRight className="w-6 h-6" />
                       Movimientos
+                    </SidebarLink>
+                  </li>
+                  <li>
+                    <SidebarLink
+                      slim={slimSidebar}
+                      to="/rrhh/nomina"
+                      onClick={handleLinkClick}
+                      disabled={!hasFuncionalidad('rrhh_nomina')}
+                    >
+                      <Banknote className="w-6 h-6" />
+                      Nómina
                     </SidebarLink>
                   </li>
                   <li>
@@ -1195,6 +1208,14 @@ function App() {
                   element={
                     <ProtectedRoute moduloActivo={moduloActivo} currentPath="/rrhh/movimientos">
                       <RrhhMovimientosPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/rrhh/nomina"
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/rrhh/nomina">
+                      <NominaPage />
                     </ProtectedRoute>
                   }
                 />

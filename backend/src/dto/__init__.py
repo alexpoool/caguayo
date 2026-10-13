@@ -302,6 +302,20 @@ from .rrhh_movimiento_dto import (
     RrhhConsolidadoEmpleado,
     RrhhConsolidado,
 )
+from .rrhh_nomina_dto import (
+    ESTADOS_NOMINA,
+    RrhhNominaGenerar,
+    RrhhNominaGenerada,
+    RrhhPagoBase,
+    RrhhPagoRead,
+    RrhhDetalleNomina,
+    RrhhNominaBase,
+    RrhhNominaRead,
+    RrhhNominaListado,
+    RrhhNominaDetalle,
+    RrhhCostoDepartamento,
+    RrhhReporteCosto,
+)
 
 
 __all__ = [
@@ -548,6 +562,18 @@ __all__ = [
     "RrhhBonificacionListado",
     "RrhhConsolidadoEmpleado",
     "RrhhConsolidado",
+    "ESTADOS_NOMINA",
+    "RrhhNominaGenerar",
+    "RrhhNominaGenerada",
+    "RrhhPagoBase",
+    "RrhhPagoRead",
+    "RrhhDetalleNomina",
+    "RrhhNominaBase",
+    "RrhhNominaRead",
+    "RrhhNominaListado",
+    "RrhhNominaDetalle",
+    "RrhhCostoDepartamento",
+    "RrhhReporteCosto",
 ]
 VentaRead.model_rebuild(
     _types_namespace={

@@ -88,7 +88,7 @@ const SUBMODULOS: SubmoduloCard[] = [
     descripcion: 'Generación de nómina, recibos y control de estados.',
     icon: <FileText className="h-5 w-5" />,
     fase: 6,
-    ruta: null,
+    ruta: '/rrhh/nomina',
   },
   {
     id: 'pagos',
@@ -96,7 +96,7 @@ const SUBMODULOS: SubmoduloCard[] = [
     descripcion: 'Registro de pagos y comprobantes.',
     icon: <Wallet className="h-5 w-5" />,
     fase: 6,
-    ruta: null,
+    ruta: '/rrhh/nomina',
   },
   {
     id: 'solicitudes',

@@ -65,6 +65,7 @@ from .rrhh_movimientos import (
     rrhh_bonificaciones_router,
     rrhh_movimientos_router,
 )
+from .rrhh_nomina import rrhh_nomina_router
 
 api_router = APIRouter(prefix="/api/v1")
 
@@ -127,6 +128,7 @@ api_router.include_router(rrhh_asistencia_router)
 api_router.include_router(rrhh_deducciones_router)
 api_router.include_router(rrhh_bonificaciones_router)
 api_router.include_router(rrhh_movimientos_router)
+api_router.include_router(rrhh_nomina_router)
 
 
 @api_router.get("/")
