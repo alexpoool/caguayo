@@ -123,12 +123,12 @@ export function EmpleadosPage() {
       }),
   });
 
-  // Selector de supervisor: se busca bajo demanda
+  // Selector de supervisor: lista inicial al abrir, busca bajo demanda
   const [busquedaSupervisor, setBusquedaSupervisor] = useState('');
-  const { data: candidatosSupervisor = [] } = useQuery({
-    queryKey: ['rrhh', 'empleados', 'buscar', busquedaSupervisor],
-    queryFn: () => rrhhService.buscarEmpleados(busquedaSupervisor),
-    enabled: view === 'form' && busquedaSupervisor.length >= 2,
+  const { data: candidatosSupervisor = [], isFetching: buscandoSupervisor } = useQuery({
+    queryKey: ['rrhh', 'empleados', 'candidatos', busquedaSupervisor],
+    queryFn: () => rrhhService.candidatosEmpleados(busquedaSupervisor),
+    enabled: view === 'form',
   });
 
   const invalidate = () =>
@@ -569,8 +569,10 @@ export function EmpleadosPage() {
                       options={opcionesSupervisor}
                       value={formData.supervisor}
                       onChange={(v) => set('supervisor', v === 0 ? null : v)}
+                      onSearch={setBusquedaSupervisor}
                       placeholder="Buscar supervisor..."
-                      emptyMessage="Escribe al menos 2 letras"
+                      loading={buscandoSupervisor}
+                      emptyMessage="Sin resultados"
                     />
                     <p className="text-xs text-slate-400">
                       Se busca por nombre o código. El propio empleado no puede

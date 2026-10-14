@@ -235,10 +235,11 @@ function TablaMovimientos({ tipo }: { tipo: 'deducciones' | 'bonificaciones' }) 
     queryFn: () => cfg.tipos(),
   });
 
-  const { data: candidatosEmpleado = [] } = useQuery({
-    queryKey: ['rrhh', 'empleados', 'buscar', busquedaEmpleado],
-    queryFn: () => rrhhService.buscarEmpleados(busquedaEmpleado),
-    enabled: busquedaEmpleado.length >= 2,
+  // Candidatos del selector: lista inicial al abrir el modal, busca bajo demanda
+  const { data: candidatosEmpleado = [], isFetching: buscandoEmpleado } = useQuery({
+    queryKey: ['rrhh', 'empleados', 'candidatos', busquedaEmpleado],
+    queryFn: () => rrhhService.candidatosEmpleados(busquedaEmpleado),
+    enabled: modalAbierto,
   });
 
   const {
@@ -543,8 +544,10 @@ function TablaMovimientos({ tipo }: { tipo: 'deducciones' | 'bonificaciones' }) 
               options={opcionesEmpleado}
               value={formData.empleado_id}
               onChange={(v) => setFormData({ ...formData, empleado_id: v })}
+              onSearch={setBusquedaEmpleado}
               placeholder="Buscar empleado..."
-              emptyMessage="Escribe al menos 2 letras"
+              loading={buscandoEmpleado}
+              emptyMessage="Sin resultados"
             />
           </div>
           <div className="space-y-2">

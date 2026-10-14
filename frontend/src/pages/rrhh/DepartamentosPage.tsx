@@ -77,11 +77,11 @@ export function DepartamentosPage({ onIrADetalle }: Props) {
       }),
   });
 
-  // Candidatos a responsable: se buscan bajo demanda desde el formulario
-  const { data: candidatosResponsable = [] } = useQuery({
-    queryKey: ['rrhh', 'empleados', 'buscar', busquedaResponsable],
-    queryFn: () => rrhhService.buscarEmpleados(busquedaResponsable),
-    enabled: view === 'form' && busquedaResponsable.length >= 2,
+  // Candidatos del responsable: lista inicial al abrir el formulario, busca bajo demanda
+  const { data: candidatosResponsable = [], isFetching: buscandoResponsable } = useQuery({
+    queryKey: ['rrhh', 'empleados', 'candidatos', busquedaResponsable],
+    queryFn: () => rrhhService.candidatosEmpleados(busquedaResponsable),
+    enabled: view === 'form',
   });
 
   const invalidate = () =>
@@ -353,8 +353,10 @@ export function DepartamentosPage({ onIrADetalle }: Props) {
                       responsable: v === 0 ? null : v,
                     })
                   }
+                  onSearch={setBusquedaResponsable}
                   placeholder="Buscar empleado responsable..."
-                  emptyMessage="Escribe al menos 2 letras"
+                  loading={buscandoResponsable}
+                  emptyMessage="Sin resultados"
                 />
                 <p className="text-xs text-slate-400">
                   Se busca por nombre o código. Debe ser un empleado activo.

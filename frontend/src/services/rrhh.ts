@@ -85,6 +85,27 @@ export const rrhhService = {
     return await apiClient.get('/rrhh/empleados/buscar', { q });
   },
 
+  /**
+   * Candidatos para un selector con buscador: con menos de 2 letras
+   * devuelve una lista inicial (los primeros activos, para poder elegir
+   * sin escribir); desde 2 letras busca por nombre/código/carnet.
+   */
+  candidatosEmpleados: async (q: string): Promise<RrhhEmpleadoBusqueda[]> => {
+    if (q.trim().length >= 2) return await apiClient.get('/rrhh/empleados/buscar', { q });
+    const activos: RrhhEmpleadoListado[] = await apiClient.get('/rrhh/empleados', {
+      activo: true,
+      limit: 20,
+    });
+    return activos.map((e) => ({
+      id: e.id,
+      codigo_empleado: e.codigo_empleado,
+      nombre: e.nombre,
+      apellido: e.apellido,
+      estado: e.estado,
+      activo: e.activo,
+    }));
+  },
+
   getEmpleado: async (id: number): Promise<RrhhEmpleadoDetalle> => {
     return await apiClient.get(`/rrhh/empleados/${id}`);
   },

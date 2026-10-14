@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { ChevronDown, Check, Search } from "lucide-react";
+import { ChevronDown, Check, Loader2, Search } from "lucide-react";
 import { cn } from "../../lib/utils";
 
 export interface SearchSelectOption {
@@ -14,8 +14,16 @@ interface SearchSelectProps {
   options: SearchSelectOption[];
   value?: number | null;
   onChange: (value: number) => void;
+  /**
+   * Informa del texto escrito en el buscador, para alimentar una carga
+   * remota de opciones (p. ej. `buscarEmpleados` desde el padre). El
+   * filtro local se aplica igual sobre `options`.
+   */
+  onSearch?: (term: string) => void;
   placeholder?: string;
   emptyMessage?: string;
+  /** Hay una carga de opciones en curso (p. ej. búsqueda remota). */
+  loading?: boolean;
   disabled?: boolean;
   className?: string;
 }
@@ -24,13 +32,17 @@ interface SearchSelectProps {
  * Selector con buscador integrado (combobox).
  * Abre un panel con campo de búsqueda que filtra por label/description;
  * soporta navegación con flechas, Enter para elegir y Escape para cerrar.
+ * Con `onSearch` informa al padre del texto escrito (carga remota) y con
+ * `loading` muestra el estado de esa carga mientras llega.
  */
 export function SearchSelect({
   options,
   value = null,
   onChange,
+  onSearch,
   placeholder = "Seleccionar…",
   emptyMessage = "Sin resultados",
+  loading = false,
   disabled = false,
   className,
 }: SearchSelectProps) {
@@ -69,7 +81,7 @@ export function SearchSelect({
     panelRef.current?.setAttribute("data-open-up", openUp ? "true" : "false");
   }, [open]);
 
-  // Cerrar al hacer clic fuera o con Escape
+  // Cerrar al hacer clic fuera, con Escape o al hacer scroll de la página
   useEffect(() => {
     if (!open) return;
     const onDown = (e: MouseEvent) => {
@@ -85,11 +97,22 @@ export function SearchSelect({
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") setOpen(false);
     };
+    // El panel va en `position: fixed` con coordenadas del momento de abrir:
+    // al moverse la página deja de apuntar al botón, así que se cierra.
+    // (Captura: así se detecta el scroll de cualquier contenedor ancestro;
+    // el scroll de la propia lista no cierra porque el panel lo contiene.)
+    const onScroll = (e: Event) => {
+      const target = e.target;
+      if (target instanceof Node && panelRef.current?.contains(target)) return;
+      setOpen(false);
+    };
     document.addEventListener("mousedown", onDown);
     document.addEventListener("keydown", onKey);
+    window.addEventListener("scroll", onScroll, true);
     return () => {
       document.removeEventListener("mousedown", onDown);
       document.removeEventListener("keydown", onKey);
+      window.removeEventListener("scroll", onScroll, true);
     };
   }, [open]);
 
@@ -173,15 +196,27 @@ export function SearchSelect({
                   onChange={(e) => {
                     setBusqueda(e.target.value);
                     setResaltado(0);
+                    onSearch?.(e.target.value);
                   }}
                   onKeyDown={onInputKey}
                   placeholder="Buscar…"
-                  className="w-full pl-7 pr-2 py-1.5 border border-gray-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                  className="w-full pl-7 pr-8 py-1.5 border border-gray-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
                 />
+                {loading && (
+                  <Loader2
+                    className="absolute right-4 top-1/2 -translate-y-1/2 h-3.5 w-3.5 animate-spin text-teal-500 pointer-events-none"
+                    aria-label="Buscando"
+                  />
+                )}
               </div>
               {/* Opciones */}
               <div className="max-h-56 overflow-y-auto">
-                {filtradas.length === 0 ? (
+                {loading && filtradas.length === 0 ? (
+                  <p className="flex items-center justify-center gap-2 px-3 py-6 text-center text-sm text-gray-400">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Buscando…
+                  </p>
+                ) : filtradas.length === 0 ? (
                   <p className="px-3 py-6 text-center text-sm text-gray-400">{emptyMessage}</p>
                 ) : (
                   filtradas.map((o, idx) => {

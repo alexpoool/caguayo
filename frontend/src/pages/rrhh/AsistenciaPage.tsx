@@ -88,10 +88,11 @@ export function AsistenciaPage() {
     queryFn: () => rrhhService.listarDepartamentos({ limit: 500, activo: true }),
   });
 
-  const { data: candidatosEmpleado = [] } = useQuery({
-    queryKey: ['rrhh', 'empleados', 'buscar', busquedaEmpleado],
-    queryFn: () => rrhhService.buscarEmpleados(busquedaEmpleado),
-    enabled: busquedaEmpleado.length >= 2,
+  // Candidatos del selector: lista inicial al abrir el modal, busca bajo demanda
+  const { data: candidatosEmpleado = [], isFetching: buscandoEmpleado } = useQuery({
+    queryKey: ['rrhh', 'empleados', 'candidatos', busquedaEmpleado],
+    queryFn: () => rrhhService.candidatosEmpleados(busquedaEmpleado),
+    enabled: modalMarcar,
   });
 
   const {
@@ -508,8 +509,10 @@ export function AsistenciaPage() {
               options={opcionesEmpleado}
               value={formMarcar.empleado_id}
               onChange={(v) => setFormMarcar({ ...formMarcar, empleado_id: v })}
+              onSearch={setBusquedaEmpleado}
               placeholder="Buscar empleado..."
-              emptyMessage="Escribe al menos 2 letras"
+              loading={buscandoEmpleado}
+              emptyMessage="Sin resultados"
             />
             <p className="text-xs text-slate-400">
               La primera marca del día es la <strong>entrada</strong>; la segunda, la{' '}
