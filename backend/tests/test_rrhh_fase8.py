@@ -24,10 +24,25 @@ from src.domain.rrhh_evaluacion_calc import (
 
 BASE = "/api/v1/rrhh/evaluaciones"
 CATALOGOS = "/api/v1/rrhh/catalogos/calificaciones"
+TIPOS_EVAL = "/api/v1/rrhh/catalogos/tipos-evaluacion"
 
 
 def _sufijo():
     return uuid.uuid4().hex[:8]
+
+
+_TIPOS_CACHE: dict = {}
+
+
+def _tipo_id(client, nombre: str) -> int:
+    """Id de un tipo del catálogo `tipos_evaluaciones` por su nombre visible."""
+    if not _TIPOS_CACHE:
+        response = client.get(TIPOS_EVAL)
+        assert response.status_code == 200, response.text
+        _TIPOS_CACHE.update(
+            {t["nombre"]: t["id_tipos_evaluaciones"] for t in response.json()}
+        )
+    return _TIPOS_CACHE[nombre]
 
 
 # ── Helpers ─────────────────────────────────────────────────────────────────
@@ -69,7 +84,7 @@ def _crear_evaluacion(client, empleado_id, **kwargs):
     payload = {
         "empleado_id": empleado_id,
         "periodo": "2098-06",
-        "tipo_evaluacion": "formal",
+        "tipo_evaluacion_id": _tipo_id(client, "Formal"),
         "inicio_periodo": "2098-06-01",
         "fin_periodo": "2098-06-30",
     }
@@ -256,12 +271,30 @@ class TestValidacionesAlta:
                 json={
                     "empleado_id": empleado["id"],
                     "periodo": "2098-06",
-                    "tipo_evaluacion": "inventado",
+                    "tipo_evaluacion_id": "inventado",
                     "inicio_periodo": "2098-06-01",
                     "fin_periodo": "2098-06-30",
                 },
             )
             assert response.status_code == 422
+        finally:
+            _limpiar_empleado(client, empleado["id"])
+
+    def test_tipo_id_inexistente_es_404(self, client):
+        empleado = _crear_empleado(client)
+        try:
+            response = client.post(
+                BASE,
+                json={
+                    "empleado_id": empleado["id"],
+                    "periodo": "2098-06",
+                    "tipo_evaluacion_id": 999999,
+                    "inicio_periodo": "2098-06-01",
+                    "fin_periodo": "2098-06-30",
+                },
+            )
+            assert response.status_code == 404
+            assert "tipo de evaluación" in response.json()["detail"]
         finally:
             _limpiar_empleado(client, empleado["id"])
 
@@ -314,7 +347,7 @@ class TestValidacionesAlta:
                 json={
                     "empleado_id": empleado["id"],
                     "periodo": "2098-06",
-                    "tipo_evaluacion": "formal",
+                    "tipo_evaluacion_id": _tipo_id(client, "Formal"),
                     "inicio_periodo": "2098-06-01",
                     "fin_periodo": "2098-06-30",
                 },
@@ -327,11 +360,15 @@ class TestValidacionesAlta:
     def test_mismo_periodo_pero_otro_tipo_si_cabe(self, client):
         empleado = _crear_empleado(client)
         try:
-            _crear_evaluacion(client, empleado["id"], tipo_evaluacion="formal")
-            data = _crear_evaluacion(
-                client, empleado["id"], tipo_evaluacion="autoevaluacion"
+            _crear_evaluacion(
+                client, empleado["id"], tipo_evaluacion_id=_tipo_id(client, "Formal")
             )
-            assert data["tipo_evaluacion"] == "autoevaluacion"
+            data = _crear_evaluacion(
+                client,
+                empleado["id"],
+                tipo_evaluacion_id=_tipo_id(client, "Autoevaluación"),
+            )
+            assert data["tipo_evaluacion"] == "Autoevaluación"
         finally:
             _limpiar_empleado(client, empleado["id"])
 
@@ -481,7 +518,7 @@ class TestObjetivosYMetas:
 
             # Sin ninguna valoración el promedio es nulo.
             evaluacion2 = _crear_evaluacion(
-                client, empleado["id"], tipo_evaluacion="parcial"
+                client, empleado["id"], tipo_evaluacion_id=_tipo_id(client, "Parcial")
             )
             _crear_objetivo(client, evaluacion2["id"])
             detalle2 = client.get(f"{BASE}/{evaluacion2['id']}").json()
@@ -627,7 +664,8 @@ class TestListado:
         otro = _crear_empleado(client)
         try:
             primera = _crear_evaluacion(client, empleado["id"])
-            _crear_evaluacion(client, otro["id"], tipo_evaluacion="parcial")
+            parcial = _tipo_id(client, "Parcial")
+            _crear_evaluacion(client, otro["id"], tipo_evaluacion_id=parcial)
 
             # `limit` alto: la BD acumula residuo de tests y el límite por
             # defecto (100) truncaría el listado por orden de id ascendente.
@@ -640,9 +678,13 @@ class TestListado:
             assert response.status_code == 200
             assert {e["empleado_id"] for e in response.json()} == {empleado["id"]}
 
-            response = client.get(f"{BASE}?tipo=parcial")
+            response = client.get(f"{BASE}?tipo_evaluacion_id={parcial}")
             assert response.status_code == 200
-            assert {e["tipo_evaluacion"] for e in response.json()} == {"parcial"}
+            assert {e["tipo_evaluacion"] for e in response.json()} == {"Parcial"}
+
+            # Un id fuera del catálogo es 400 (paridad con `tipo=<texto>`).
+            response = client.get(f"{BASE}?tipo_evaluacion_id=999999")
+            assert response.status_code == 400
 
             response = client.get(f"{BASE}?estado=no_existe")
             assert response.status_code == 400
@@ -766,7 +808,7 @@ class TestSubRecursosYReporte:
             client.post(f"{BASE}/{primera['id']}/finalizar")
 
             _crear_evaluacion(
-                client, otro["id"], tipo_evaluacion="parcial",
+                client, otro["id"], tipo_evaluacion_id=_tipo_id(client, "Parcial"),
                 inicio_periodo="2098-07-01", fin_periodo="2098-07-31",
             )
 
@@ -825,3 +867,31 @@ class TestSubRecursosYReporte:
         assert reporte["promedio_criterios"] is None
         assert reporte["promedio_objetivos"] is None
         assert reporte["empleados"] == []
+
+
+# ── Catálogo de tipos de evaluación ─────────────────────────────────────────
+
+
+def test_tipo_en_uso_no_se_elimina(client):
+    """DELETE de un tipo en uso da baja lógica (la FK es `ON DELETE RESTRICT`)."""
+    creado = client.post(
+        TIPOS_EVAL,
+        json={"nombre": f"EVAL-TIPO-{_sufijo()}", "descripcion": "de prueba"},
+    )
+    assert creado.status_code == 201, creado.text
+    id_tipo = creado.json()["id_tipos_evaluaciones"]
+    empleado = _crear_empleado(client)
+    try:
+        _crear_evaluacion(client, empleado["id"], tipo_evaluacion_id=id_tipo)
+
+        r_del = client.delete(f"{TIPOS_EVAL}/{id_tipo}")
+        assert r_del.status_code == 200
+        assert r_del.json()["accion"] == "desactivado"
+
+        r_det = client.get(f"{TIPOS_EVAL}/{id_tipo}")
+        assert r_det.status_code == 200
+        assert r_det.json()["activo"] is False
+    finally:
+        _limpiar_empleado(client, empleado["id"])
+        # Con la evaluación fuera (CASCADE), ya se puede borrar de verdad.
+        client.delete(f"{TIPOS_EVAL}/{id_tipo}")

@@ -13,7 +13,6 @@ import {
 import { rrhhService } from '../../services/rrhh';
 import {
   COLOR_ESTADO_EVALUACION,
-  ETIQUETA_TIPO_EVALUACION,
 } from '../../types/rrhh';
 import {
   AlertCircle,
@@ -119,7 +118,7 @@ export function EvaluacionDetallePage() {
               {evaluacion.empleado_nombre || 'Evaluación'}
             </h1>
             <p className="mt-1 text-sm text-slate-500">
-              {evaluacion.empleado_codigo} · {ETIQUETA_TIPO_EVALUACION[evaluacion.tipo_evaluacion]} ·
+              {evaluacion.empleado_codigo} · {evaluacion.tipo_evaluacion ?? '—'} ·
               Periodo {evaluacion.periodo} · {evaluacion.inicio_periodo} → {evaluacion.fin_periodo}
             </p>
           </div>

@@ -48,6 +48,7 @@ from .rrhh_catalogos import (
     RrhhTipoContrato,
     RrhhTipoDeduccion,
     RrhhTipoBonificacion,
+    RrhhTipoEvaluacion,
     RrhhCalificacion,
     RrhhTipoPago,
 )
@@ -164,6 +165,7 @@ __all__ = [
     "RrhhTipoContrato",
     "RrhhTipoDeduccion",
     "RrhhTipoBonificacion",
+    "RrhhTipoEvaluacion",
     "RrhhCalificacion",
     "RrhhTipoPago",
     "RrhhEmpleado",

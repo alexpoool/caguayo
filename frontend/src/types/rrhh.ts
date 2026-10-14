@@ -574,6 +574,16 @@ export interface RrhhTipoPago {
   updated_at?: string;
 }
 
+/** Fila del catálogo `tipos_evaluaciones` (del que tira el formulario de Evaluaciones). */
+export interface RrhhTipoEvaluacion {
+  id_tipos_evaluaciones: number;
+  nombre: string;
+  descripcion: string | null;
+  activo: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
 export interface RrhhCalificacion {
   id_calificaciones: number;
   nombre: string;
@@ -588,6 +598,7 @@ export type RrhhCatalogo =
   | RrhhTipoDeduccion
   | RrhhTipoBonificacion
   | RrhhTipoPago
+  | RrhhTipoEvaluacion
   | RrhhCalificacion;
 
 /** Metadatos por catálogo, para generar la UI de forma genérica. */
@@ -609,6 +620,11 @@ export interface RrhhCatalogoConfig {
   /** Longitud máxima del nombre según la restricción de BD. */
   maxNombre: number;
   descripcion: string;
+  /**
+   * Pestaña con UI propia (formularios con FK que el CRUD genérico no cubre):
+   * se embebe la página completa de la sección en vez de la lista genérica.
+   */
+  custom?: 'departamentos' | 'puestos';
 }
 
 export const RRHH_CATALOGOS: RrhhCatalogoConfig[] = [
@@ -624,17 +640,6 @@ export const RRHH_CATALOGOS: RrhhCatalogoConfig[] = [
     descripcion: 'Modalidades de contratación (indefinido, por obra, etc.).',
   },
   {
-    id: 'tipos-deducciones',
-    nombre: 'Tipos de deducción',
-    ruta: '/rrhh/catalogos/tipos-deducciones',
-    pk: 'id_tipos_deducciones',
-    tieneActivo: true,
-    tienePorcentaje: true,
-    tieneValor: false,
-    maxNombre: 100,
-    descripcion: 'Conceptos que se restan del salario.',
-  },
-  {
     id: 'tipos-bonificaciones',
     nombre: 'Tipos de bonificación',
     ruta: '/rrhh/catalogos/tipos-bonificaciones',
@@ -646,6 +651,17 @@ export const RRHH_CATALOGOS: RrhhCatalogoConfig[] = [
     descripcion: 'Conceptos que se suman al salario.',
   },
   {
+    id: 'tipos-deducciones',
+    nombre: 'Tipos de deducción',
+    ruta: '/rrhh/catalogos/tipos-deducciones',
+    pk: 'id_tipos_deducciones',
+    tieneActivo: true,
+    tienePorcentaje: true,
+    tieneValor: false,
+    maxNombre: 100,
+    descripcion: 'Conceptos que se restan del salario.',
+  },
+  {
     id: 'tipos-pago',
     nombre: 'Tipos de pago',
     ruta: '/rrhh/catalogos/tipos-pago',
@@ -655,6 +671,41 @@ export const RRHH_CATALOGOS: RrhhCatalogoConfig[] = [
     tieneValor: false,
     maxNombre: 30,
     descripcion: 'Formas en que se entrega el salario.',
+  },
+  {
+    id: 'departamentos',
+    nombre: 'Departamentos',
+    ruta: '/rrhh/departamentos',
+    pk: 'id_departamento',
+    tieneActivo: true,
+    tienePorcentaje: false,
+    tieneValor: false,
+    maxNombre: 100,
+    descripcion: 'Estructura organizativa (con responsable y puestos).',
+    custom: 'departamentos',
+  },
+  {
+    id: 'puestos',
+    nombre: 'Puestos',
+    ruta: '/rrhh/puestos',
+    pk: 'id_puesto',
+    tieneActivo: true,
+    tienePorcentaje: false,
+    tieneValor: false,
+    maxNombre: 100,
+    descripcion: 'Puestos de cada departamento, con rango salarial.',
+    custom: 'puestos',
+  },
+  {
+    id: 'tipos-evaluacion',
+    nombre: 'Tipos de evaluación',
+    ruta: '/rrhh/catalogos/tipos-evaluacion',
+    pk: 'id_tipos_evaluaciones',
+    tieneActivo: true,
+    tienePorcentaje: false,
+    tieneValor: false,
+    maxNombre: 50,
+    descripcion: 'Clasificación de las evaluaciones (formal, parcial, etc.).',
   },
   {
     id: 'calificaciones',
@@ -757,23 +808,9 @@ export interface RrhhSolicitudResumen {
 
 // ── Evaluaciones, objetivos y metas (Fase 8) ────────────────────────────────
 
-export type RrhhTipoEvaluacion = 'formal' | 'autoevaluacion' | 'parcial' | 'final';
 export type RrhhEstadoEvaluacion = 'borrador' | 'finalizada';
 
-export const TIPOS_EVALUACION: RrhhTipoEvaluacion[] = [
-  'formal',
-  'autoevaluacion',
-  'parcial',
-  'final',
-];
 export const ESTADOS_EVALUACION: RrhhEstadoEvaluacion[] = ['borrador', 'finalizada'];
-
-export const ETIQUETA_TIPO_EVALUACION: Record<RrhhTipoEvaluacion, string> = {
-  formal: 'Formal',
-  autoevaluacion: 'Autoevaluación',
-  parcial: 'Parcial',
-  final: 'Final',
-};
 
 /** Insignias de estado: el borrador se edita, la finalizada está congelada. */
 export const COLOR_ESTADO_EVALUACION: Record<RrhhEstadoEvaluacion, string> = {
@@ -820,7 +857,8 @@ export interface RrhhObjetivo {
 export interface RrhhObjetivoDetalle extends RrhhObjetivo {
   evaluacion_estado: RrhhEstadoEvaluacion;
   periodo: string | null;
-  tipo_evaluacion: RrhhTipoEvaluacion | null;
+  /** Nombre del tipo de evaluación, resuelto del catálogo. */
+  tipo_evaluacion: string | null;
   empleado_nombre: string | null;
   promedio_objetivos: string | null;
 }
@@ -830,7 +868,10 @@ export interface RrhhEvaluacion {
   empleado_id: number;
   evaluador_id: number | null;
   periodo: string;
-  tipo_evaluacion: RrhhTipoEvaluacion;
+  /** FK al catálogo `tipos_evaluaciones`. */
+  tipo_evaluacion_id: number;
+  /** Nombre del tipo, resuelto del catálogo (solo lectura). */
+  tipo_evaluacion: string | null;
   estado: RrhhEstadoEvaluacion;
   inicio_periodo: string;
   fin_periodo: string;
@@ -878,7 +919,8 @@ export interface RrhhEvaluacionCreate {
   empleado_id: number;
   evaluador_id?: number | null;
   periodo: string;
-  tipo_evaluacion: RrhhTipoEvaluacion;
+  /** FK al catálogo `tipos_evaluaciones` (selector del formulario). */
+  tipo_evaluacion_id: number;
   inicio_periodo: string;
   fin_periodo: string;
   puntualidad?: number | null;

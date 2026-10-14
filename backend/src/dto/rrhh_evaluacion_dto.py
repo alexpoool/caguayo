@@ -31,13 +31,8 @@ from src.domain.rrhh_evaluacion_calc import (
     validar_fechas,
 )
 
-
-def _validar_tipo(v: str) -> str:
-    if v not in TIPOS_EVALUACION:
-        raise ValueError(
-            f"Tipo inválido. Debe ser uno de: {', '.join(TIPOS_EVALUACION)}"
-        )
-    return v
+# `TIPOS_EVALUACION` se reexporta aquí por compatibilidad: la validación real
+# vive ahora en el catálogo `tipos_evaluaciones` (FK desde `evaluaciones`).
 
 
 # ── Objetivos y metas ───────────────────────────────────────────────────────
@@ -129,7 +124,9 @@ class RrhhEvaluacionCreate(SQLModel):
     empleado_id: int
     evaluador_id: Optional[int] = None
     periodo: str = Field(min_length=1, max_length=20)
-    tipo_evaluacion: str = "formal"
+    # FK al catálogo `tipos_evaluaciones` (el servicio exige que exista y esté activo).
+    # Default 1 = «Formal», id fijo de la semilla de `add_tipos_evaluaciones`.
+    tipo_evaluacion_id: int = Field(default=1)
     inicio_periodo: date
     fin_periodo: date
     # Criterios: ids de `calificaciones` (1–5 resueltos en el servicio).
@@ -139,11 +136,6 @@ class RrhhEvaluacionCreate(SQLModel):
     calidad: Optional[int] = None
     comentarios: Optional[str] = None
     fecha: Optional[date] = None
-
-    @field_validator("tipo_evaluacion")
-    @classmethod
-    def _tipo_valido(cls, v: str) -> str:
-        return _validar_tipo(v)
 
     @field_validator("fin_periodo")
     @classmethod
@@ -161,7 +153,7 @@ class RrhhEvaluacionUpdate(SQLModel):
 
     evaluador_id: Optional[int] = None
     periodo: Optional[str] = Field(default=None, min_length=1, max_length=20)
-    tipo_evaluacion: Optional[str] = None
+    tipo_evaluacion_id: Optional[int] = None
     inicio_periodo: Optional[date] = None
     fin_periodo: Optional[date] = None
     puntualidad: Optional[int] = None
@@ -170,13 +162,6 @@ class RrhhEvaluacionUpdate(SQLModel):
     calidad: Optional[int] = None
     comentarios: Optional[str] = None
     fecha: Optional[date] = None
-
-    @field_validator("tipo_evaluacion")
-    @classmethod
-    def _tipo_valido(cls, v: Optional[str]) -> Optional[str]:
-        if v is None:
-            return v
-        return _validar_tipo(v)
 
 
 class RrhhCriterioEvaluacion(SQLModel):
@@ -193,7 +178,9 @@ class RrhhEvaluacionBase(SQLModel):
     empleado_id: int
     evaluador_id: Optional[int] = None
     periodo: str
-    tipo_evaluacion: str
+    tipo_evaluacion_id: int
+    # Nombre resuelto del catálogo `tipos_evaluaciones` (solo lectura).
+    tipo_evaluacion: Optional[str] = None
     estado: str
     inicio_periodo: date
     fin_periodo: date

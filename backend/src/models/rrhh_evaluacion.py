@@ -26,10 +26,6 @@ class RrhhEvaluacion(SQLModel, table=True):
     __table_args__ = (
         CheckConstraint("fin_periodo >= inicio_periodo", name="chk_evaluacion_fechas"),
         CheckConstraint(
-            "tipo_evaluacion IN ('formal','autoevaluacion','parcial','final')",
-            name="chk_evaluacion_tipo",
-        ),
-        CheckConstraint(
             "promedio_objetivos IS NULL OR promedio_objetivos BETWEEN 0 AND 100",
             name="chk_evaluacion_promedio_objetivos",
         ),
@@ -59,7 +55,18 @@ class RrhhEvaluacion(SQLModel, table=True):
         ),
     )
     periodo: str = Field(max_length=20)
-    tipo_evaluacion: str = Field(default="formal", max_length=20)
+    # FK al catálogo `tipos_evaluaciones` (antes VARCHAR con CHECK de 4 valores).
+    tipo_evaluacion_id: int = Field(
+        sa_column=Column(
+            Integer,
+            ForeignKey(
+                "tipos_evaluaciones.id_tipos_evaluaciones",
+                ondelete="RESTRICT",
+                name="fk_evaluaciones_tipo",
+            ),
+            nullable=False,
+        )
+    )
     estado: str = Field(default="borrador", max_length=20)
     inicio_periodo: date
     fin_periodo: date

@@ -57,6 +57,25 @@ class RrhhTipoBonificacion(SQLModel, table=True):
     updated_at: datetime = Field(default_factory=_now, sa_column_kwargs={"server_default": "CURRENT_TIMESTAMP"})
 
 
+class RrhhTipoEvaluacion(SQLModel, table=True):
+    """Tipos de evaluación (catálogo nuevo, sembrado por su migración).
+
+    `evaluaciones.tipo_evaluacion_id` es FK con `ON DELETE RESTRICT` a esta
+    tabla: los tipos en uso se desactivan en vez de eliminarse.
+    """
+
+    __tablename__ = "tipos_evaluaciones"
+
+    id_tipos_evaluaciones: Optional[int] = Field(
+        default=None, primary_key=True, sa_column_kwargs={"autoincrement": True}
+    )
+    nombre: str = Field(max_length=50, unique=True)
+    descripcion: Optional[str] = None
+    activo: bool = Field(default=True)
+    created_at: datetime = Field(default_factory=_now, sa_column_kwargs={"server_default": "CURRENT_TIMESTAMP"})
+    updated_at: datetime = Field(default_factory=_now, sa_column_kwargs={"server_default": "CURRENT_TIMESTAMP"})
+
+
 class RrhhCalificacion(SQLModel, table=True):
     __tablename__ = "calificaciones"
 
@@ -88,6 +107,7 @@ __all__ = [
     "RrhhTipoContrato",
     "RrhhTipoDeduccion",
     "RrhhTipoBonificacion",
+    "RrhhTipoEvaluacion",
     "RrhhCalificacion",
     "RrhhTipoPago",
     "Decimal",

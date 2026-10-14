@@ -38,7 +38,8 @@ import {
   MapPin,
   ChevronDown,
   ChevronUp,
-  ScrollText
+  ScrollText,
+  Library
 } from 'lucide-react';
 
 import { LoginPage } from './pages/Login';
@@ -103,8 +104,6 @@ import { LiquidacionesPage as ProyectoLiquidacionesPage } from './pages/proyecto
 import { CertificacionesPage } from './pages/proyecto/CertificacionesPage';
 import { DJ08Page } from './pages/dj08/DJ08Page';
 import { RrhhHome } from './pages/home/RrhhHome';
-import { DepartamentosPage } from './pages/rrhh/DepartamentosPage';
-import { PuestosPage } from './pages/rrhh/PuestosPage';
 import { CatalogosPage } from './pages/rrhh/CatalogosPage';
 import { EmpleadosPage } from './pages/rrhh/EmpleadosPage';
 import { AsistenciaPage } from './pages/rrhh/AsistenciaPage';
@@ -379,9 +378,9 @@ function App() {
   }
   return (
     <QueryClientProvider client={queryClient}>
-      <div className={`grid ${hideSidebar ? 'grid-cols-1' : slimSidebar ? 'grid-cols-[4.5rem_1fr]' : 'grid-cols-[16rem_1fr]'} grid-rows-[auto_1fr] h-screen bg-surface w-full`}>
+      <div className={`grid ${hideSidebar ? 'grid-cols-1' : slimSidebar ? 'grid-cols-[4.5rem_1fr]' : 'grid-cols-[16rem_1fr]'} grid-rows-[auto_minmax(0,1fr)] h-screen overflow-hidden bg-surface w-full`}>
         {!hideSidebar && (
-        <aside className={`row-span-2 col-start-1 col-end-2 h-full bg-gradient-to-b from-panel-900 to-panel-800 text-white flex flex-col shadow-xl min-h-screen transition-all duration-300 ${slimSidebar ? 'w-[4.5rem]' : 'w-64'}`}>
+        <aside className={`row-span-2 col-start-1 col-end-2 h-full overflow-hidden bg-gradient-to-b from-panel-900 to-panel-800 text-white flex flex-col shadow-xl transition-all duration-300 ${slimSidebar ? 'w-[4.5rem]' : 'w-64'}`}>
           <div className={`flex items-center ${slimSidebar ? 'justify-center px-0' : 'px-6'} py-4 border-b border-panel-800`}>
             {!slimSidebar && (
               <div className="flex items-center gap-2">
@@ -398,7 +397,7 @@ function App() {
             </button>
           </div>
           {location.pathname !== '/' && (
-            <nav className={`flex-1 overflow-y-auto py-4 ${slimSidebar ? 'px-1' : ''}`}>
+            <nav className={`min-h-0 flex-1 overflow-y-auto overflow-x-hidden py-4 ${slimSidebar ? 'px-1' : ''}`}>
               <>
               {moduloActivo === 'inventario' && (
                 <ul className={`space-y-1 ${slimSidebar ? 'px-0' : 'px-3'}`}>
@@ -487,6 +486,17 @@ function App() {
                     >
                       <Users className="w-6 h-6" />
                       Empleados
+                    </SidebarLink>
+                  </li>
+                  <li>
+                    <SidebarLink
+                      slim={slimSidebar}
+                      to="/rrhh/catalogos"
+                      onClick={handleLinkClick}
+                      disabled={!hasFuncionalidad('rrhh_catalogos')}
+                    >
+                      <Library className="w-6 h-6" />
+                      Catálogos
                     </SidebarLink>
                   </li>
                 </ul>
@@ -711,7 +721,7 @@ function App() {
         )}
 
         {location.pathname === '/' && (
-          <div className={`flex-1 overflow-y-auto ${slimSidebar ? 'px-2 py-3 flex justify-center' : 'px-5 py-5 space-y-5'}`}>
+          <div className={`min-h-0 flex-1 overflow-y-auto ${slimSidebar ? 'px-2 py-3 flex justify-center' : 'px-5 py-5 space-y-5'}`}>
             {!slimSidebar && (
               <div className="space-y-2.5">
                 <div className="flex items-center justify-between min-w-0">
@@ -823,7 +833,7 @@ function App() {
           </div>
         </header>
         <div className={`${hideSidebar ? 'col-span-1 col-start-1 col-end-2' : 'col-start-2 col-end-3'} row-start-2 row-end-3 min-w-0 flex flex-col w-full`}>
-          <main className={`flex-1 overflow-y-auto ${hideSidebar ? 'bg-surface' : 'bg-gray-50'} ${hideSidebar ? 'p-6' : 'p-8'} w-full`}>
+          <main className={`min-h-0 flex-1 overflow-y-auto ${hideSidebar ? 'bg-surface' : 'bg-gray-50'} ${hideSidebar ? 'p-6' : 'p-8'} w-full`}>
             <div className="animate-fade-in-up animation-fill-both">
               <Routes>
                 <Route
@@ -1145,7 +1155,8 @@ function App() {
                   path="/rrhh/departamentos"
                   element={
                     <ProtectedRoute moduloActivo={moduloActivo} currentPath="/rrhh/departamentos">
-                      <DepartamentosPage />
+                      {/* Unificación: la sección vive como pestaña de Catálogos. */}
+                      <Navigate to="/rrhh/catalogos?tab=departamentos" replace />
                     </ProtectedRoute>
                   }
                 />
@@ -1153,7 +1164,7 @@ function App() {
                   path="/rrhh/puestos"
                   element={
                     <ProtectedRoute moduloActivo={moduloActivo} currentPath="/rrhh/puestos">
-                      <PuestosPage />
+                      <Navigate to="/rrhh/catalogos?tab=puestos" replace />
                     </ProtectedRoute>
                   }
                 />

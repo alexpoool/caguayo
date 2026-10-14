@@ -4,7 +4,6 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { rrhhService } from '../../services/rrhh';
 import {
   COLOR_ESTADO_EVALUACION,
-  ETIQUETA_TIPO_EVALUACION,
   type RrhhObjetivo,
 } from '../../types/rrhh';
 import {
@@ -197,7 +196,7 @@ export function ObjetivosPage() {
             </h1>
             <p className="mt-1 text-sm text-slate-500">
               {evaluacion.empleado_codigo} ·{' '}
-              {ETIQUETA_TIPO_EVALUACION[evaluacion.tipo_evaluacion]} · Periodo{' '}
+              {evaluacion.tipo_evaluacion ?? '—'} · Periodo{' '}
               {evaluacion.periodo} · Promedio objetivos{' '}
               {evaluacion.promedio_objetivos === null
                 ? '—'

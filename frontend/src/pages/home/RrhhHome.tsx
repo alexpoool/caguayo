@@ -29,7 +29,7 @@ const SUBMODULOS: SubmoduloCard[] = [
     id: 'catalogos',
     nombre: 'Catálogos',
     descripcion:
-      'Tipos de contrato, deducciones, bonificaciones, pago y calificaciones.',
+      'Contratos, bonificaciones, deducciones, pagos, departamentos, puestos, tipos de evaluación y calificaciones.',
     icon: <Settings className="h-5 w-5" />,
     fase: 1,
     ruta: '/rrhh/catalogos',
@@ -40,7 +40,7 @@ const SUBMODULOS: SubmoduloCard[] = [
     descripcion: 'Estructura de departamentos y sus responsables.',
     icon: <Building2 className="h-5 w-5" />,
     fase: 2,
-    ruta: '/rrhh/departamentos',
+    ruta: '/rrhh/catalogos?tab=departamentos',
   },
   {
     id: 'puestos',
@@ -48,7 +48,7 @@ const SUBMODULOS: SubmoduloCard[] = [
     descripcion: 'Puestos de trabajo y rangos salariales.',
     icon: <Briefcase className="h-5 w-5" />,
     fase: 2,
-    ruta: '/rrhh/puestos',
+    ruta: '/rrhh/catalogos?tab=puestos',
   },
   {
     id: 'empleados',

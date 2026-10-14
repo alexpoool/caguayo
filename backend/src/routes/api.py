@@ -56,6 +56,7 @@ from .rrhh_catalogos import (
     tipos_deducciones_router,
     tipos_bonificaciones_router,
     tipos_pago_router,
+    tipos_evaluacion_router,
     calificaciones_router,
 )
 from .rrhh_empleados import rrhh_empleados_router
@@ -124,6 +125,7 @@ api_router.include_router(tipos_contrato_router)
 api_router.include_router(tipos_deducciones_router)
 api_router.include_router(tipos_bonificaciones_router)
 api_router.include_router(tipos_pago_router)
+api_router.include_router(tipos_evaluacion_router)
 api_router.include_router(calificaciones_router)
 api_router.include_router(rrhh_empleados_router)
 api_router.include_router(rrhh_asistencia_router)

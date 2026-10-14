@@ -6,6 +6,10 @@ Reglas de negocio de esta fase:
   objetivos y metas) mientras está en `borrador`; al finalizar se congela.
 - **Única por (empleado, periodo, tipo)**: no se puede tener dos evaluaciones
   iguales para el mismo periodo; el alta devuelve `409`.
+- **Tipos en catálogo**: `evaluaciones.tipo_evaluacion_id` es FK a
+  `tipos_evaluaciones` (sembrado con Formal, Autoevaluación, Parcial y Final);
+  el servicio exige que el id exista (404) y esté activo (400), y resuelve su
+  `nombre` para las respuestas.
 - **Criterios**: los 4 campos (`puntualidad`, `productividad`,
   `trabajo_equipo`, `calidad`) son FK a `calificaciones`; el servicio exige que
   cada id exista y resuelve su `valor` (1–5) para calcular el promedio **al
@@ -31,7 +35,6 @@ from src.domain.rrhh_evaluacion_calc import (
     CRITERIOS,
     CRITERIOS_ETIQUETA,
     ESTADOS_EVALUACION,
-    TIPOS_EVALUACION,
     escala_a_100,
     puede_editar,
     promedio_criterios,
@@ -62,6 +65,7 @@ from src.models import (
     RrhhCalificacion,
     RrhhEmpleado,
     RrhhDepartamento,
+    RrhhTipoEvaluacion,
 )
 
 CERO = Decimal("0.00")
@@ -77,6 +81,39 @@ class RrhhEvaluacionService:
             return {}
         res = await db.exec(select(RrhhEmpleado).where(RrhhEmpleado.id.in_(ids)))
         return {e.id: e for e in res.all()}
+
+    async def _tipos_por_id(self, db: AsyncSession, ids) -> dict:
+        """Nombres del catálogo `tipos_evaluaciones` por id, en lote."""
+        if not ids:
+            return {}
+        res = await db.exec(
+            select(RrhhTipoEvaluacion).where(
+                RrhhTipoEvaluacion.id_tipos_evaluaciones.in_(ids)
+            )
+        )
+        return {t.id_tipos_evaluaciones: t.nombre for t in res.all()}
+
+    async def _validar_tipo(self, db: AsyncSession, tipo_id: int) -> str:
+        """Exige que el tipo exista (404) o esté activo (400); devuelve su nombre."""
+        res = await db.exec(
+            select(RrhhTipoEvaluacion).where(
+                RrhhTipoEvaluacion.id_tipos_evaluaciones == tipo_id
+            )
+        )
+        tipo = res.first()
+        if not tipo:
+            raise HTTPException(
+                status_code=404, detail="El tipo de evaluación no existe"
+            )
+        if not tipo.activo:
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    f"El tipo de evaluación «{tipo.nombre}» está inactivo; "
+                    "reactívalo en Catálogos para usarlo"
+                ),
+            )
+        return tipo.nombre
 
     async def _departamentos_por_id(self, db: AsyncSession, ids) -> dict:
         if not ids:
@@ -165,22 +202,24 @@ class RrhhEvaluacionService:
         db: AsyncSession,
         empleado_id: int,
         periodo: str,
-        tipo: str,
+        tipo_id: int,
         excluir_id: Optional[int] = None,
     ) -> None:
         statement = select(RrhhEvaluacion).where(
             RrhhEvaluacion.empleado_id == empleado_id,
             RrhhEvaluacion.periodo == periodo,
-            RrhhEvaluacion.tipo_evaluacion == tipo,
+            RrhhEvaluacion.tipo_evaluacion_id == tipo_id,
         )
         if excluir_id is not None:
             statement = statement.where(RrhhEvaluacion.id != excluir_id)
         result = await db.exec(statement)
         if result.first():
+            nombres = await self._tipos_por_id(db, {tipo_id})
             raise HTTPException(
                 status_code=409,
                 detail=(
-                    f"El empleado ya tiene una evaluación «{tipo}» para el "
+                    f"El empleado ya tiene una evaluación "
+                    f"«{nombres.get(tipo_id, f'#{tipo_id}')}» para el "
                     f"periodo «{periodo}»"
                 ),
             )
@@ -263,6 +302,7 @@ class RrhhEvaluacionService:
             **RrhhEvaluacion.model_validate(
                 evaluacion, from_attributes=True
             ).model_dump(),
+            tipo_evaluacion=resolucion["tipos"].get(evaluacion.tipo_evaluacion_id),
             empleado_codigo=empleado.codigo_empleado if empleado else None,
             empleado_nombre=self._nombre_completo(empleado),
             departamento_nombre=nombre_depto,
@@ -286,6 +326,10 @@ class RrhhEvaluacionService:
 
         calif_ids = {getattr(f, c) for f in filas for c in CRITERIOS if getattr(f, c)}
         calificaciones = await self._calificaciones_por_id(db, calif_ids)
+
+        tipos = await self._tipos_por_id(
+            db, {f.tipo_evaluacion_id for f in filas}
+        )
 
         # Conteo de objetivos y metas en dos consultas fijas (sin N+1).
         evaluacion_ids = [f.id for f in filas]
@@ -313,6 +357,7 @@ class RrhhEvaluacionService:
             "empleados": empleados,
             "departamentos": departamentos,
             "calificaciones": calificaciones,
+            "tipos": tipos,
             "conteos": conteos,
         }
 
@@ -326,7 +371,7 @@ class RrhhEvaluacionService:
         empleado_id: Optional[int] = None,
         departamento_id: Optional[int] = None,
         estado: Optional[str] = None,
-        tipo: Optional[str] = None,
+        tipo_evaluacion_id: Optional[int] = None,
         desde: Optional[date] = None,
         hasta: Optional[date] = None,
         buscar: Optional[str] = None,
@@ -336,19 +381,29 @@ class RrhhEvaluacionService:
                 status_code=400,
                 detail=f"Estado inválido. Debe ser uno de: {', '.join(ESTADOS_EVALUACION)}",
             )
-        if tipo is not None and tipo not in TIPOS_EVALUACION:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Tipo inválido. Debe ser uno de: {', '.join(TIPOS_EVALUACION)}",
+        if tipo_evaluacion_id is not None:
+            # Exige que el id exista en el catálogo (paridad con el antiguo
+            # filtro `tipo=<texto inválido>` → 400); un tipo inactivo sí filtra.
+            res = await db.exec(
+                select(RrhhTipoEvaluacion.id_tipos_evaluaciones).where(
+                    RrhhTipoEvaluacion.id_tipos_evaluaciones == tipo_evaluacion_id
+                )
             )
+            if res.first() is None:
+                raise HTTPException(
+                    status_code=400,
+                    detail="El tipo de evaluación solicitado no existe",
+                )
 
         statement = select(RrhhEvaluacion)
         if empleado_id is not None:
             statement = statement.where(RrhhEvaluacion.empleado_id == empleado_id)
         if estado is not None:
             statement = statement.where(RrhhEvaluacion.estado == estado)
-        if tipo is not None:
-            statement = statement.where(RrhhEvaluacion.tipo_evaluacion == tipo)
+        if tipo_evaluacion_id is not None:
+            statement = statement.where(
+                RrhhEvaluacion.tipo_evaluacion_id == tipo_evaluacion_id
+            )
         # Periodos que se solapan con el rango consultado.
         if desde is not None:
             statement = statement.where(RrhhEvaluacion.fin_periodo >= desde)
@@ -467,15 +522,16 @@ class RrhhEvaluacionService:
                 "calidad": obj_in.calidad,
             },
         )
+        await self._validar_tipo(db, obj_in.tipo_evaluacion_id)
         await self._exigir_unica(
-            db, obj_in.empleado_id, obj_in.periodo, obj_in.tipo_evaluacion
+            db, obj_in.empleado_id, obj_in.periodo, obj_in.tipo_evaluacion_id
         )
 
         evaluacion = RrhhEvaluacion(
             empleado_id=obj_in.empleado_id,
             evaluador_id=obj_in.evaluador_id,
             periodo=obj_in.periodo,
-            tipo_evaluacion=obj_in.tipo_evaluacion,
+            tipo_evaluacion_id=obj_in.tipo_evaluacion_id,
             estado="borrador",
             inicio_periodo=obj_in.inicio_periodo,
             fin_periodo=obj_in.fin_periodo,
@@ -516,12 +572,14 @@ class RrhhEvaluacionService:
             inicio = datos.get("inicio_periodo", evaluacion.inicio_periodo)
             fin = datos.get("fin_periodo", evaluacion.fin_periodo)
             self._validar_rango(inicio, fin)
-        if "periodo" in datos or "tipo_evaluacion" in datos:
+        if "periodo" in datos or "tipo_evaluacion_id" in datos:
+            if "tipo_evaluacion_id" in datos:
+                await self._validar_tipo(db, datos["tipo_evaluacion_id"])
             await self._exigir_unica(
                 db,
                 evaluacion.empleado_id,
                 datos.get("periodo", evaluacion.periodo),
-                datos.get("tipo_evaluacion", evaluacion.tipo_evaluacion),
+                datos.get("tipo_evaluacion_id", evaluacion.tipo_evaluacion_id),
                 excluir_id=evaluacion.id,
             )
         if any(k in datos for k in CRITERIOS):

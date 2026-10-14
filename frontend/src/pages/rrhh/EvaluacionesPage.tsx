@@ -6,8 +6,6 @@ import {
   COLOR_ESTADO_EVALUACION,
   CRITERIOS_EVALUACION,
   ESTADOS_EVALUACION,
-  ETIQUETA_TIPO_EVALUACION,
-  TIPOS_EVALUACION,
   type RrhhEvaluacionCreate,
   type RrhhEvaluacionListado,
   type RrhhEstadoEvaluacion,
@@ -69,14 +67,14 @@ export function EvaluacionesPage() {
 
   const [searchTerm, setSearchTerm] = useState('');
   const [filtroEstado, setFiltroEstado] = useState<RrhhEstadoEvaluacion | ''>('');
-  const [filtroTipo, setFiltroTipo] = useState('');
+  const [filtroTipo, setFiltroTipo] = useState<number | ''>('');
   const [formOpen, setFormOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<RrhhEvaluacionListado | null>(null);
 
   const [formData, setFormData] = useState<RrhhEvaluacionCreate>({
     empleado_id: 0,
     periodo: '',
-    tipo_evaluacion: 'formal',
+    tipo_evaluacion_id: 0,
     inicio_periodo: hoyISO(),
     fin_periodo: hoyISO(),
     puntualidad: null,
@@ -97,6 +95,12 @@ export function EvaluacionesPage() {
     queryFn: () => rrhhService.listarCalificaciones({ limit: 100 }),
   });
 
+  // El selector de tipo tira del catálogo `tipos_evaluaciones` (solo activos).
+  const { data: tiposEvaluacion = [] } = useQuery({
+    queryKey: ['rrhh', 'catalogos', 'tipos-evaluacion', 'activos'],
+    queryFn: () => rrhhService.listarTiposEvaluacion({ limit: 500, activo: true }),
+  });
+
   const {
     data: evaluaciones = [],
     isLoading,
@@ -110,7 +114,7 @@ export function EvaluacionesPage() {
         limit: 500,
         buscar: searchTerm || undefined,
         estado: filtroEstado || undefined,
-        tipo: filtroTipo || undefined,
+        tipo_evaluacion_id: filtroTipo || undefined,
       }),
   });
 
@@ -126,6 +130,9 @@ export function EvaluacionesPage() {
     const errs: Record<string, string> = {};
     if (!formData.empleado_id) errs.empleado_id = 'Selecciona el empleado a evaluar';
     if (!formData.periodo.trim()) errs.periodo = 'El periodo es obligatorio (ej. 2026-1)';
+    if (!formData.tipo_evaluacion_id) {
+      errs.tipo_evaluacion_id = 'Selecciona el tipo de evaluación';
+    }
     if (formData.fin_periodo < formData.inicio_periodo) {
       errs.fin_periodo = 'El fin debe ser posterior o igual al inicio';
     }
@@ -194,7 +201,7 @@ export function EvaluacionesPage() {
               setFormData({
                 empleado_id: 0,
                 periodo: '',
-                tipo_evaluacion: 'formal',
+                tipo_evaluacion_id: 0,
                 inicio_periodo: hoyISO(),
                 fin_periodo: hoyISO(),
                 puntualidad: null,
@@ -239,13 +246,15 @@ export function EvaluacionesPage() {
             </select>
             <select
               value={filtroTipo}
-              onChange={(e) => setFiltroTipo(e.target.value)}
+              onChange={(e) =>
+                setFiltroTipo(e.target.value ? Number(e.target.value) : '')
+              }
               className="rounded-md border border-slate-300 px-3 py-2 text-sm"
             >
               <option value="">Todos los tipos</option>
-              {TIPOS_EVALUACION.map((t) => (
-                <option key={t} value={t}>
-                  {ETIQUETA_TIPO_EVALUACION[t]}
+              {tiposEvaluacion.map((t) => (
+                <option key={t.id_tipos_evaluaciones} value={t.id_tipos_evaluaciones}>
+                  {t.nombre}
                 </option>
               ))}
             </select>
@@ -298,7 +307,7 @@ export function EvaluacionesPage() {
                       </div>
                     </TableCell>
                     <TableCell className="text-slate-600">
-                      {ETIQUETA_TIPO_EVALUACION[ev.tipo_evaluacion]}
+                      {ev.tipo_evaluacion ?? '—'}
                     </TableCell>
                     <TableCell className="text-center">
                       <span
@@ -421,21 +430,32 @@ export function EvaluacionesPage() {
                 <Label htmlFor="tipo_evaluacion">Tipo</Label>
                 <select
                   id="tipo_evaluacion"
-                  value={formData.tipo_evaluacion}
+                  value={formData.tipo_evaluacion_id}
                   onChange={(e) =>
                     setFormData({
                       ...formData,
-                      tipo_evaluacion: e.target.value as RrhhEvaluacionCreate['tipo_evaluacion'],
+                      tipo_evaluacion_id: Number(e.target.value),
                     })
                   }
-                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                  className={`w-full rounded-md border px-3 py-2 text-sm ${
+                    formErrors.tipo_evaluacion_id ? 'border-red-500' : 'border-slate-300'
+                  }`}
                 >
-                  {TIPOS_EVALUACION.map((t) => (
-                    <option key={t} value={t}>
-                      {ETIQUETA_TIPO_EVALUACION[t]}
+                  <option value={0} disabled>
+                    Selecciona un tipo
+                  </option>
+                  {tiposEvaluacion.map((t) => (
+                    <option key={t.id_tipos_evaluaciones} value={t.id_tipos_evaluaciones}>
+                      {t.nombre}
                     </option>
                   ))}
                 </select>
+                {formErrors.tipo_evaluacion_id && (
+                  <p className="flex items-center gap-1 text-xs text-red-600">
+                    <AlertCircle className="h-3 w-3" />
+                    {formErrors.tipo_evaluacion_id}
+                  </p>
+                )}
               </div>
             </div>
 

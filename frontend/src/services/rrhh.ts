@@ -24,6 +24,7 @@ import type {
   RrhhTipoDeduccion,
   RrhhTipoBonificacion,
   RrhhTipoPago,
+  RrhhTipoEvaluacion,
   RrhhCalificacion,
   RrhhAsistencia,
   RrhhAsistenciaCreate,
@@ -178,6 +179,16 @@ export const rrhhService = {
     buscar?: string;
   }): Promise<RrhhTipoPago[]> => {
     return await apiClient.get('/rrhh/catalogos/tipos-pago', params);
+  },
+
+  /** Tipos de evaluación: de aquí tira el formulario de Evaluaciones. */
+  listarTiposEvaluacion: async (params?: {
+    skip?: number;
+    limit?: number;
+    activo?: boolean;
+    buscar?: string;
+  }): Promise<RrhhTipoEvaluacion[]> => {
+    return await apiClient.get('/rrhh/catalogos/tipos-evaluacion', params);
   },
 
   /** Calificaciones (1–5): de aquí salen los valores de los 4 criterios. */
@@ -522,7 +533,7 @@ export const rrhhService = {
     empleado_id?: number;
     departamento_id?: number;
     estado?: string;
-    tipo?: string;
+    tipo_evaluacion_id?: number;
     desde?: string;
     hasta?: string;
     buscar?: string;

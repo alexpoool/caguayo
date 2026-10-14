@@ -1,7 +1,7 @@
 """DTOs del submódulo RRHH — Catálogos base (Fase 1).
 
-Los cinco catálogos (`tipos_contrato`, `tipos_deducciones`,
-`tipos_bonificaciones`, `tipos_pago`, `calificaciones`) comparten la misma
+Los catálogos (`tipos_contrato`, `tipos_deducciones`, `tipos_bonificaciones`,
+`tipos_pago`, `tipos_evaluaciones` y `calificaciones`) comparten la misma
 forma: un nombre único, una descripción opcional y, salvo `calificaciones`,
 un flag `activo`. Se modela con una base genérica y una clase concreta por
 catálogo, para que cada endpoint tenga su `response_model` explícito.
@@ -102,6 +102,23 @@ class RrhhTipoPagoUpdate(SQLModel):
 
 class RrhhTipoPagoRead(_RrhhCatalogoConActivo, _RrhhCatalogoRead):
     id_tipo_pago: int
+
+
+# ── Tipo de evaluación ──────────────────────────────────────────────────────
+
+
+class RrhhTipoEvaluacionCreate(_RrhhCatalogoConActivo):
+    pass
+
+
+class RrhhTipoEvaluacionUpdate(SQLModel):
+    nombre: Optional[str] = None
+    descripcion: Optional[str] = None
+    activo: Optional[bool] = None
+
+
+class RrhhTipoEvaluacionRead(_RrhhCatalogoConActivo, _RrhhCatalogoRead):
+    id_tipos_evaluaciones: int
 
 
 # ── Calificación ────────────────────────────────────────────────────────────

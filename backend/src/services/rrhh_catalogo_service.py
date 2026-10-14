@@ -1,9 +1,9 @@
 """Servicios del submódulo RRHH — Catálogos base (Fase 1).
 
-Los cinco catálogos comparten la misma lógica: nombre único, baja/soft
-delete y verificación de que no estén en uso antes de eliminar. Se modela
-con una base genérica parametrizable y una instancia concreta por catálogo,
-evitando repetir el CRUD cinco veces.
+Los catálogos comparten la misma lógica: nombre único, baja/soft delete y
+verificación de que no estén en uso antes de eliminar. Se modela con una base
+genérica parametrizable y una instancia concreta por catálogo, evitando
+repetir el CRUD seis veces.
 
 Reglas comunes:
 - `nombre` único por catálogo (también lo garantiza el índice UNIQUE de BD).
@@ -30,6 +30,9 @@ from src.dto import (
     RrhhTipoPagoCreate,
     RrhhTipoPagoUpdate,
     RrhhTipoPagoRead,
+    RrhhTipoEvaluacionCreate,
+    RrhhTipoEvaluacionUpdate,
+    RrhhTipoEvaluacionRead,
     RrhhCalificacionCreate,
     RrhhCalificacionUpdate,
     RrhhCalificacionRead,
@@ -38,6 +41,7 @@ from src.models import (
     RrhhTipoContrato,
     RrhhTipoDeduccion,
     RrhhTipoBonificacion,
+    RrhhTipoEvaluacion,
     RrhhTipoPago,
     RrhhCalificacion,
     RrhhEmpleado,
@@ -219,6 +223,19 @@ class _TipoPagoService(RrhhCatalogoService):
         ]
 
 
+class _TipoEvaluacionService(RrhhCatalogoService):
+    """`tipos_evaluaciones` es referenciado por `evaluaciones.tipo_evaluacion_id`."""
+
+    def _usos(self, id: int) -> List:
+        from src.models.rrhh_evaluacion import RrhhEvaluacion
+
+        return [
+            select(func.count())
+            .select_from(RrhhEvaluacion)
+            .where(RrhhEvaluacion.tipo_evaluacion_id == id)
+        ]
+
+
 class _CalificacionService(RrhhCatalogoService):
     """`calificaciones` es referenciada por 4 columnas de `evaluaciones`."""
 
@@ -275,6 +292,16 @@ rrhh_tipo_pago_service = _TipoPagoService(
     pk="id_tipo_pago",
     etiqueta="tipo de pago",
     max_nombre=30,
+)
+
+rrhh_tipo_evaluacion_service = _TipoEvaluacionService(
+    model=RrhhTipoEvaluacion,
+    create_model=RrhhTipoEvaluacionCreate,
+    update_model=RrhhTipoEvaluacionUpdate,
+    read_model=RrhhTipoEvaluacionRead,
+    pk="id_tipos_evaluaciones",
+    etiqueta="tipo de evaluación",
+    max_nombre=50,
 )
 
 rrhh_calificacion_service = _CalificacionService(

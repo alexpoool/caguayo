@@ -1,9 +1,9 @@
 """Rutas RRHH — Catálogos base (Fase 1).
 
 Prefijos `/rrhh/catalogos/tipos-contrato`, `/rrhh/catalogos/tipos-deducciones`,
-`/rrhh/catalogos/tipos-bonificaciones`, `/rrhh/catalogos/tipos-pago` y
-`/rrhh/catalogos/calificaciones`. Comparten la lógica de CRUD del servicio
-genérico `RrhhCatalogoService`.
+`/rrhh/catalogos/tipos-bonificaciones`, `/rrhh/catalogos/tipos-pago`,
+`/rrhh/catalogos/tipos-evaluacion` y `/rrhh/catalogos/calificaciones`.
+Comparten la lógica de CRUD del servicio genérico `RrhhCatalogoService`.
 """
 
 from typing import List, Optional
@@ -25,6 +25,9 @@ from src.dto import (
     RrhhTipoPagoCreate,
     RrhhTipoPagoUpdate,
     RrhhTipoPagoRead,
+    RrhhTipoEvaluacionCreate,
+    RrhhTipoEvaluacionUpdate,
+    RrhhTipoEvaluacionRead,
     RrhhCalificacionCreate,
     RrhhCalificacionUpdate,
     RrhhCalificacionRead,
@@ -34,6 +37,7 @@ from src.services.rrhh_catalogo_service import (
     rrhh_tipo_deduccion_service,
     rrhh_tipo_bonificacion_service,
     rrhh_tipo_pago_service,
+    rrhh_tipo_evaluacion_service,
     rrhh_calificacion_service,
 )
 
@@ -284,6 +288,60 @@ async def eliminar_calificacion(
 ):
     """Elimina la calificación; si está en uso por evaluaciones, devuelve 409."""
     return await rrhh_calificacion_service.eliminar(db, calificacion_id)
+
+
+# ── Tipos de evaluación ─────────────────────────────────────────────────────
+
+tipos_evaluacion_router = _router(
+    "/rrhh/catalogos/tipos-evaluacion", "rrhh-catalogos"
+)
+
+
+@tipos_evaluacion_router.get("", response_model=List[RrhhTipoEvaluacionRead])
+async def listar_tipos_evaluacion(
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=1000),
+    activo: Optional[bool] = None,
+    buscar: Optional[str] = None,
+    db: AsyncSession = Depends(get_session),
+):
+    """Lista tipos de evaluación con filtros opcionales de estado y búsqueda."""
+    return await rrhh_tipo_evaluacion_service.listar(
+        db, skip=skip, limit=limit, activo=activo, buscar=buscar
+    )
+
+
+@tipos_evaluacion_router.get("/{tipo_id}", response_model=RrhhTipoEvaluacionRead)
+async def obtener_tipo_evaluacion(
+    tipo_id: int, db: AsyncSession = Depends(get_session)
+):
+    return await rrhh_tipo_evaluacion_service.get(db, tipo_id)
+
+
+@tipos_evaluacion_router.post(
+    "", response_model=RrhhTipoEvaluacionRead, status_code=201
+)
+async def crear_tipo_evaluacion(
+    tipo: RrhhTipoEvaluacionCreate, db: AsyncSession = Depends(get_session)
+):
+    return await rrhh_tipo_evaluacion_service.create(db, tipo)
+
+
+@tipos_evaluacion_router.put("/{tipo_id}", response_model=RrhhTipoEvaluacionRead)
+async def actualizar_tipo_evaluacion(
+    tipo_id: int,
+    tipo: RrhhTipoEvaluacionUpdate,
+    db: AsyncSession = Depends(get_session),
+):
+    return await rrhh_tipo_evaluacion_service.update(db, tipo_id, tipo)
+
+
+@tipos_evaluacion_router.delete("/{tipo_id}")
+async def eliminar_tipo_evaluacion(
+    tipo_id: int, db: AsyncSession = Depends(get_session)
+):
+    """Elimina el tipo; si está en uso por evaluaciones, lo desactiva."""
+    return await rrhh_tipo_evaluacion_service.eliminar(db, tipo_id)
 
 
 # Router agregado en `routes/api.py`. Se exportan los routers individuales para

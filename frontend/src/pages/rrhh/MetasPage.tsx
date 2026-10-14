@@ -4,7 +4,6 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { rrhhService } from '../../services/rrhh';
 import {
   COLOR_ESTADO_EVALUACION,
-  ETIQUETA_TIPO_EVALUACION,
   type RrhhMeta,
 } from '../../types/rrhh';
 import {
@@ -199,9 +198,7 @@ export function MetasPage() {
             </h1>
             <p className="mt-1 text-sm text-slate-500">
               {objetivo.empleado_nombre ?? '—'} · Periodo {objetivo.periodo ?? '—'} ·{' '}
-              {objetivo.tipo_evaluacion
-                ? `${ETIQUETA_TIPO_EVALUACION[objetivo.tipo_evaluacion]} · `
-                : ''}
+              {objetivo.tipo_evaluacion ? `${objetivo.tipo_evaluacion} · ` : ''}
               Aporte del objetivo{' '}
               {objetivo.aporte === null ? '—' : `${Number(objetivo.aporte).toFixed(0)}%`}
             </p>

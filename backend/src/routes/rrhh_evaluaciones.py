@@ -20,7 +20,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from src.database.connection import get_session
-from src.domain.rrhh_evaluacion_calc import ESTADOS_EVALUACION, TIPOS_EVALUACION
+from src.domain.rrhh_evaluacion_calc import ESTADOS_EVALUACION
 from src.dto import (
     RrhhEvaluacionCreate,
     RrhhEvaluacionUpdate,
@@ -42,7 +42,6 @@ rrhh_evaluaciones_router = APIRouter(
 )
 
 _ESTADOS_DESC = ", ".join(ESTADOS_EVALUACION)
-_TIPOS_DESC = ", ".join(TIPOS_EVALUACION)
 
 
 # ── Evaluaciones (rutas literales primero) ──────────────────────────────────
@@ -55,7 +54,9 @@ async def listar_evaluaciones(
     empleado_id: Optional[int] = None,
     departamento_id: Optional[int] = None,
     estado: Optional[str] = Query(None, description=f"Uno de: {_ESTADOS_DESC}"),
-    tipo: Optional[str] = Query(None, description=f"Uno de: {_TIPOS_DESC}"),
+    tipo_evaluacion_id: Optional[int] = Query(
+        None, description="Id de un tipo del catálogo `tipos_evaluaciones`"
+    ),
     desde: Optional[date] = None,
     hasta: Optional[date] = None,
     buscar: Optional[str] = None,
@@ -63,8 +64,9 @@ async def listar_evaluaciones(
 ):
     """Listado de evaluaciones con empleado, promedios y conteos.
 
-    Filtros: empleado, departamento, estado, tipo, periodo que toca el rango
-    `desde`/`hasta` y búsqueda por nombre, apellido o código.
+    Filtros: empleado, departamento, estado, tipo de evaluación (id del
+    catálogo), periodo que toca el rango `desde`/`hasta` y búsqueda por
+    nombre, apellido o código.
     """
     return await rrhh_evaluacion_service.listar(
         db,
@@ -73,7 +75,7 @@ async def listar_evaluaciones(
         empleado_id=empleado_id,
         departamento_id=departamento_id,
         estado=estado,
-        tipo=tipo,
+        tipo_evaluacion_id=tipo_evaluacion_id,
         desde=desde,
         hasta=hasta,
         buscar=buscar,

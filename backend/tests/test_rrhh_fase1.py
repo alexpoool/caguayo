@@ -1,8 +1,9 @@
 """Tests de la Fase 1 del módulo RRHH — Catálogos base.
 
-Cubren los cinco catálogos (tipos de contrato, deducciones, bonificaciones,
-pago y calificaciones): listado, crear, nombre duplicado, actualizar,
-eliminar y reglas particulares (rango de calificación, `es_porcentaje`).
+Cubren los seis catálogos (tipos de contrato, deducciones, bonificaciones,
+pago, evaluación y calificaciones): listado, crear, nombre duplicado,
+actualizar, eliminar y reglas particulares (rango de calificación,
+`es_porcentaje`).
 
 Usan el patrón `client` de conftest.py (TestClient contra la BD real).
 Los tests crean y limpian sus propios registros.
@@ -21,6 +22,7 @@ CATALOGOS = [
     ("tipos-deducciones", "id_tipos_deducciones", True),
     ("tipos-bonificaciones", "id_tipos_bonificaciones", True),
     ("tipos-pago", "id_tipo_pago", True),
+    ("tipos-evaluacion", "id_tipos_evaluaciones", True),
     ("calificaciones", "id_calificaciones", False),
 ]
 
@@ -31,7 +33,7 @@ def _url(slug: str, sufijo: str = "") -> str:
     return f"{BASE}/{slug}{sufijo}"
 
 
-# ── Comunes a los 5 catálogos ───────────────────────────────────────────────
+# ── Comunes a los 6 catálogos ───────────────────────────────────────────────
 
 
 def test_listar_ok(client):

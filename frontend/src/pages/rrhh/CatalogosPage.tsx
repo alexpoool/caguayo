@@ -1,6 +1,9 @@
 import { useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { rrhhService } from '../../services/rrhh';
+import { DepartamentosPage } from './DepartamentosPage';
+import { PuestosPage } from './PuestosPage';
 import {
   RRHH_CATALOGOS,
   type RrhhCatalogo,
@@ -59,7 +62,13 @@ const comoRegistro = (item: RrhhCatalogo): Record<string, unknown> =>
 
 export function CatalogosPage() {
   const queryClient = useQueryClient();
-  const [tabId, setTabId] = useState<string>(RRHH_CATALOGOS[0].id);
+  // La pestaña vive en la URL (`?tab=`): así las tarjetas de la portada y los
+  // enlaces externos abren directamente la sección pedida.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabParam = searchParams.get('tab');
+  const tabId = RRHH_CATALOGOS.some((c) => c.id === tabParam)
+    ? (tabParam as string)
+    : RRHH_CATALOGOS[0].id;
   const config = RRHH_CATALOGOS.find((c) => c.id === tabId) as RrhhCatalogoConfig;
 
   const [view, setView] = useState<'list' | 'form'>('list');
@@ -93,13 +102,16 @@ export function CatalogosPage() {
             ? undefined
             : filtroEstado === 'activo',
       }),
+    // Las pestañas con UI propia (Departamentos/Puestos) gestionan sus datos
+    // con sus propias páginas: aquí no se pide nada.
+    enabled: !config.custom,
   });
 
   const invalidate = () =>
     queryClient.invalidateQueries({ queryKey: ['rrhh', 'catalogos', tabId] });
 
   const cambiarTab = (id: string) => {
-    setTabId(id);
+    setSearchParams({ tab: id });
     setView('list');
     setEditing(null);
     setSearchTerm('');
@@ -205,20 +217,25 @@ export function CatalogosPage() {
             Catálogos
           </h1>
           <p className="mt-1 text-sm text-slate-500">
-            Listas base del módulo: contratos, deducciones, bonificaciones,
-            pagos y calificaciones.
+            Todo el catálogo del módulo: contratos, bonificaciones,
+            deducciones, pagos, departamentos, puestos, tipos de evaluación y
+            calificaciones.
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => refetch()}
-            disabled={isLoading}
-          >
-            <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-          </Button>
-          {view === 'list' && (
+          {!config.custom && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => refetch()}
+              disabled={isLoading}
+            >
+              <RefreshCw
+                className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`}
+              />
+            </Button>
+          )}
+          {view === 'list' && !config.custom && (
             <Button size="sm" onClick={handleNuevo}>
               <Plus className="h-4 w-4" />
               Nuevo
@@ -251,7 +268,12 @@ export function CatalogosPage() {
         ))}
       </div>
 
-      {view === 'list' ? (
+      {/* Contenido: pestañas con UI propia o CRUD genérico */}
+      {config.custom === 'departamentos' ? (
+        <DepartamentosPage />
+      ) : config.custom === 'puestos' ? (
+        <PuestosPage />
+      ) : view === 'list' ? (
         <Card>
           <CardHeader className="pb-3">
             <p className="text-sm text-slate-500">{config.descripcion}</p>
