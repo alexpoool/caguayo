@@ -46,6 +46,7 @@ import type {
   RrhhNominaGenerar,
   RrhhNominaGenerada,
   RrhhPagoInput,
+  RrhhPagoListado,
   RrhhReporteCosto,
   RrhhSolicitud,
   RrhhSolicitudListado,
@@ -59,6 +60,7 @@ import type {
   RrhhEvaluacionUpdate,
   RrhhObjetivo,
   RrhhObjetivoCreate,
+  RrhhObjetivoDetalle,
   RrhhMeta,
   RrhhMetaCreate,
   RrhhEvaluacionReporte,
@@ -388,6 +390,19 @@ export const rrhhService = {
     return await apiClient.get(`/rrhh/nomina/${id}`);
   },
 
+  /** Pagos registrados, con su nómina y empleado resueltos. */
+  listarPagos: async (params?: {
+    skip?: number;
+    limit?: number;
+    nomina_id?: number;
+    empleado_id?: number;
+    metodo_id?: number;
+    desde?: string;
+    hasta?: string;
+  }): Promise<RrhhPagoListado[]> => {
+    return await apiClient.get('/rrhh/nomina/pagos', params);
+  },
+
   generarNominas: async (data: RrhhNominaGenerar): Promise<RrhhNominaGenerada> => {
     return await apiClient.post('/rrhh/nomina/generar', data);
   },
@@ -557,6 +572,11 @@ export const rrhhService = {
 
   eliminarObjetivo: async (objetivoId: number): Promise<RrhhEliminarResponse> => {
     return await apiClient.delete(`/rrhh/evaluaciones/objetivos/${objetivoId}`);
+  },
+
+  /** Detalle de un objetivo con sus metas y el resumen de su evaluación. */
+  obtenerObjetivo: async (objetivoId: number): Promise<RrhhObjetivoDetalle> => {
+    return await apiClient.get(`/rrhh/evaluaciones/objetivos/${objetivoId}`);
   },
 
   crearMeta: async (

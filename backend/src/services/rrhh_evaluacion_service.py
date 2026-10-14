@@ -50,6 +50,7 @@ from src.dto import (
     RrhhObjetivoCreate,
     RrhhObjetivoUpdate,
     RrhhObjetivoRead,
+    RrhhObjetivoDetalle,
     RrhhMetaCreate,
     RrhhMetaUpdate,
     RrhhMetaRead,
@@ -594,6 +595,30 @@ class RrhhEvaluacionService:
                 status_code=404, detail="La evaluación del objetivo no existe"
             )
         return evaluacion
+
+    async def get_objetivo(
+        self, db: AsyncSession, objetivo_id: int
+    ) -> RrhhObjetivoDetalle:
+        """Detalle de un objetivo con sus metas y el resumen de su evaluación.
+
+        Alimenta la página de metas: cabecera, estado (para habilitar el CRUD
+        solo en `borrador`) y el enlace de vuelta a los objetivos.
+        """
+        objetivo = await self._buscar_objetivo_o_404(db, objetivo_id)
+        detalle = await self.get(db, objetivo.evaluacion_id)
+        fila = next(
+            (o for o in detalle.objetivos if o.id_objetivos == objetivo_id), None
+        )
+        if fila is None:
+            raise HTTPException(status_code=404, detail="El objetivo no existe")
+        return RrhhObjetivoDetalle(
+            **fila.model_dump(),
+            evaluacion_estado=detalle.estado,
+            periodo=detalle.periodo,
+            tipo_evaluacion=detalle.tipo_evaluacion,
+            empleado_nombre=detalle.empleado_nombre,
+            promedio_objetivos=detalle.promedio_objetivos,
+        )
 
     async def crear_objetivo(
         self, db: AsyncSession, evaluacion_id: int, obj_in: RrhhObjetivoCreate

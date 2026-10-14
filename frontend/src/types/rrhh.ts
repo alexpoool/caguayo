@@ -458,12 +458,22 @@ export interface RrhhNominaDetalle extends RrhhNominaListado {
   pagos: RrhhPago[];
 }
 
+/** Un concepto (tipo del catálogo + valor) definido en el formulario. */
+export interface RrhhConceptoGenerar {
+  tipo_id: number;
+  valor: number | string;
+}
+
 export interface RrhhNominaGenerar {
   inicio_periodo: string;
   fin_periodo: string;
   empleado_id?: number | null;
   departamento_id?: number | null;
   periodo?: string | null;
+  deducciones?: RrhhConceptoGenerar[];
+  bonificaciones?: RrhhConceptoGenerar[];
+  /** Aplica también los movimientos ya registrados (por defecto sí). */
+  incluir_movimientos_existentes?: boolean;
 }
 
 export interface RrhhNominaGenerada {
@@ -478,6 +488,27 @@ export interface RrhhPagoInput {
   fecha_pago?: string | null;
   referencia?: string | null;
   observaciones?: string | null;
+}
+
+/** Fila del listado de pagos, con su nómina y empleado resueltos. */
+export interface RrhhPagoListado {
+  id: number;
+  nomina_id: number;
+  fecha_pago: string;
+  monto: number | string;
+  metodo_id: number;
+  metodo_nombre: string | null;
+  referencia: string | null;
+  observaciones: string | null;
+  empleado_id: number;
+  empleado_codigo: string | null;
+  empleado_nombre: string | null;
+  departamento_nombre: string | null;
+  periodo: string;
+  inicio_periodo: string;
+  fin_periodo: string;
+  estado_nomina: RrhhEstadoNomina;
+  created_at?: string;
 }
 
 export interface RrhhCostoDepartamento {
@@ -783,6 +814,15 @@ export interface RrhhObjetivo {
   metas: RrhhMeta[];
   created_at?: string;
   updated_at?: string;
+}
+
+/** Detalle de un objetivo para la página de metas, con su evaluación resumida. */
+export interface RrhhObjetivoDetalle extends RrhhObjetivo {
+  evaluacion_estado: RrhhEstadoEvaluacion;
+  periodo: string | null;
+  tipo_evaluacion: RrhhTipoEvaluacion | null;
+  empleado_nombre: string | null;
+  promedio_objetivos: string | null;
 }
 
 export interface RrhhEvaluacion {

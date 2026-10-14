@@ -105,6 +105,21 @@ class RrhhObjetivoRead(SQLModel):
     updated_at: Optional[datetime] = None
 
 
+class RrhhObjetivoDetalle(RrhhObjetivoRead):
+    """Detalle de un objetivo para su página de metas.
+
+    Reutiliza la fila del objetivo (con sus metas anidadas) y añade el
+    resumen de su evaluación: cabecera, estado (para habilitar el CRUD) y
+    el enlace de vuelta.
+    """
+
+    evaluacion_estado: str = "borrador"
+    periodo: Optional[str] = None
+    tipo_evaluacion: Optional[str] = None
+    empleado_nombre: Optional[str] = None
+    promedio_objetivos: Optional[Decimal] = None
+
+
 # ── Evaluación ──────────────────────────────────────────────────────────────
 
 
@@ -254,6 +269,7 @@ __all__ = [
     "RrhhMetaUpdate",
     "RrhhMetaRead",
     "RrhhObjetivoRead",
+    "RrhhObjetivoDetalle",
     "RrhhEvaluacionCreate",
     "RrhhEvaluacionUpdate",
     "RrhhCriterioEvaluacion",

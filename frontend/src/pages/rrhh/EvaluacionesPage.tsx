@@ -21,6 +21,7 @@ import {
   Plus,
   RefreshCw,
   Search,
+  Target,
   Trash2,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -274,7 +275,7 @@ export function EvaluacionesPage() {
                   <TableHead className="text-center">Estado</TableHead>
                   <TableHead className="text-right">Criterios (1–5)</TableHead>
                   <TableHead className="text-right">Objetivos (0–100)</TableHead>
-                  <TableHead className="text-center">Obj./Metas</TableHead>
+                  <TableHead className="text-center">Objetivos</TableHead>
                   <TableHead className="text-right">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
@@ -312,8 +313,18 @@ export function EvaluacionesPage() {
                     <TableCell className="text-right tabular-nums">
                       {fmtPromedio(ev.promedio_objetivos, '0-100')}
                     </TableCell>
-                    <TableCell className="text-center text-slate-600">
-                      {ev.cantidad_objetivos} / {ev.cantidad_metas}
+                    <TableCell className="text-center">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        title={`${ev.cantidad_objetivos} objetivo(s) · ${ev.cantidad_metas} meta(s)`}
+                        onClick={() =>
+                          navigate(`/rrhh/objetivos?evaluacion_id=${ev.id}`)
+                        }
+                      >
+                        <Target className="h-4 w-4" />
+                        Ver objetivos
+                      </Button>
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center justify-end gap-1">

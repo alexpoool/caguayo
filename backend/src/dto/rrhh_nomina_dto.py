@@ -21,6 +21,18 @@ from sqlmodel import Field, SQLModel
 ESTADOS_NOMINA = ("pendiente", "pagada", "anulada")
 
 
+class RrhhConceptoGenerar(SQLModel):
+    """Un concepto (tipo del catálogo + valor) definido en el formulario.
+
+    Cada concepto se materializa como un movimiento por empleado al generar
+    (decidido: se crean/reusan registros reales en `deducciones` /
+    `bonificaciones`, que es lo que la tabla puente exige para trazabilidad).
+    """
+
+    tipo_id: int = Field(ge=1)
+    valor: Decimal = Field(decimal_places=2, max_digits=10, ge=0)
+
+
 class RrhhNominaGenerar(SQLModel):
     """Entrada de la generación individual o masiva de nóminas."""
 
@@ -31,6 +43,13 @@ class RrhhNominaGenerar(SQLModel):
     departamento_id: Optional[int] = None
     # Fecha que identifica al periodo en la columna `nomina.periodo`.
     periodo: Optional[date] = None
+    # Conceptos definidos en el propio formulario de generación; se aplican
+    # a todas las nóminas del lote (repetibles: son una lista).
+    deducciones: list[RrhhConceptoGenerar] = Field(default_factory=list)
+    bonificaciones: list[RrhhConceptoGenerar] = Field(default_factory=list)
+    # Los movimientos ya registrados que solapan el periodo se aplican por
+    # defecto; con `False` solo aplican los conceptos definidos arriba.
+    incluir_movimientos_existentes: bool = True
 
     @field_validator("fin_periodo")
     @classmethod
@@ -62,6 +81,29 @@ class RrhhPagoRead(RrhhPagoBase):
     nomina_id: int
     fecha_pago: date
     metodo_nombre: Optional[str] = None
+    created_at: Optional[datetime] = None
+
+
+class RrhhPagoListado(SQLModel):
+    """Fila del listado de pagos, con su nómina y su empleado resueltos."""
+
+    id: int
+    nomina_id: int
+    fecha_pago: date
+    monto: Decimal
+    metodo_id: int
+    metodo_nombre: Optional[str] = None
+    referencia: Optional[str] = None
+    observaciones: Optional[str] = None
+    empleado_id: int
+    empleado_codigo: Optional[str] = None
+    empleado_nombre: Optional[str] = None
+    departamento_nombre: Optional[str] = None
+    # Datos de la nómina a la que pertenece el pago.
+    periodo: date
+    inicio_periodo: date
+    fin_periodo: date
+    estado_nomina: str
     created_at: Optional[datetime] = None
 
 
@@ -142,10 +184,12 @@ class RrhhReporteCosto(SQLModel):
 
 __all__ = [
     "ESTADOS_NOMINA",
+    "RrhhConceptoGenerar",
     "RrhhNominaGenerar",
     "RrhhNominaGenerada",
     "RrhhPagoBase",
     "RrhhPagoRead",
+    "RrhhPagoListado",
     "RrhhDetalleNomina",
     "RrhhNominaBase",
     "RrhhNominaRead",

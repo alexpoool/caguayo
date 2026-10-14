@@ -96,7 +96,7 @@ const SUBMODULOS: SubmoduloCard[] = [
     descripcion: 'Registro de pagos y comprobantes.',
     icon: <Wallet className="h-5 w-5" />,
     fase: 6,
-    ruta: '/rrhh/nomina',
+    ruta: '/rrhh/pagos',
   },
   {
     id: 'solicitudes',

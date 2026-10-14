@@ -629,7 +629,9 @@ class TestListado:
             primera = _crear_evaluacion(client, empleado["id"])
             _crear_evaluacion(client, otro["id"], tipo_evaluacion="parcial")
 
-            response = client.get(BASE)
+            # `limit` alto: la BD acumula residuo de tests y el límite por
+            # defecto (100) truncaría el listado por orden de id ascendente.
+            response = client.get(f"{BASE}?limit=1000")
             assert response.status_code == 200
             ids = {e["id"] for e in response.json()}
             assert {primera["id"]} <= ids
@@ -707,6 +709,39 @@ class TestSubRecursosYReporte:
             assert len(objetivos[0]["metas"]) == 1
         finally:
             _limpiar_empleado(client, empleado["id"])
+
+    def test_get_objetivo_detalle_con_metas_y_evaluacion(self, client):
+        """Detalle de un objetivo: metas anidadas + resumen de la evaluación."""
+        empleado = _crear_empleado(client)
+        try:
+            evaluacion = _crear_evaluacion(client, empleado["id"])
+            objetivo = _crear_objetivo(
+                client, evaluacion["id"], valoracion=4, resultado_objetivo="90 %"
+            )
+            _crear_meta(client, objetivo["id_objetivos"], valoracion=3)
+
+            response = client.get(
+                f"{BASE}/objetivos/{objetivo['id_objetivos']}"
+            )
+            assert response.status_code == 200, response.text
+            data = response.json()
+            assert data["id_objetivos"] == objetivo["id_objetivos"]
+            assert data["evaluacion_id"] == evaluacion["id"]
+            assert data["nombre"] == objetivo["nombre"]
+            assert len(data["metas"]) == 1
+            assert data["metas"][0]["valoracion"] == 3
+            # Contexto para la página de metas.
+            assert data["evaluacion_estado"] == "borrador"
+            assert data["periodo"] == "2098-06"
+            assert data["empleado_nombre"] is not None
+            # Aporte del objetivo (4/5 → 80) y promedio de la evaluación.
+            assert Decimal(data["aporte"]) == Decimal("80.00")
+            assert data["promedio_objetivos"] is not None
+        finally:
+            _limpiar_empleado(client, empleado["id"])
+
+    def test_get_objetivo_inexistente_404(self, client):
+        assert client.get(f"{BASE}/objetivos/999999").status_code == 404
 
     def test_ruta_reporte_no_captura_get_id(self, client):
         # `/reporte` debe resolverse antes que `/{evaluacion_id}` (orden de rutas).

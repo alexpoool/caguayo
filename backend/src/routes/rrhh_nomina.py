@@ -3,8 +3,9 @@
 Prefijo `/rrhh/nomina`. Siguen el patrón del proyecto: `APIRouter` con
 `get_session` inyectado y servicios en `src/services/`.
 
-El orden de las rutas importa: `/costo` y `/generar` se declaran antes de
-`/{nomina_id}` para que no las capture el parámetro de ruta.
+El orden de las rutas importa: `/costo`, `/generar` y `/pagos` se declaran
+antes de `/{nomina_id}` para que no las capture el parámetro de ruta (si no,
+FastAPI devuelve `422` al fallar el conversor `int`).
 """
 
 from datetime import date
@@ -21,6 +22,7 @@ from src.dto import (
     RrhhNominaListado,
     RrhhNominaDetalle,
     RrhhPagoBase,
+    RrhhPagoListado,
     RrhhReporteCosto,
 )
 from src.services.rrhh_nomina_service import rrhh_nomina_service
@@ -73,9 +75,36 @@ async def generar_nominas(
 
     Cada nómina congela el salario base, las horas extras y el detalle de
     deducciones y bonificaciones vigentes. Los empleados que ya tengan nómina
-    para ese periodo se omiten.
+    para ese periodo se omiten (y no acumulan los conceptos del formulario).
     """
     return await rrhh_nomina_service.generar(db, entrada)
+
+
+@rrhh_nomina_router.get("/pagos", response_model=List[RrhhPagoListado])
+async def listar_pagos(
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=1000),
+    nomina_id: Optional[int] = None,
+    empleado_id: Optional[int] = None,
+    metodo_id: Optional[int] = None,
+    desde: Optional[date] = None,
+    hasta: Optional[date] = None,
+    db: AsyncSession = Depends(get_session),
+):
+    """Listado de pagos registrados, con su nómina y su empleado resueltos.
+
+    Filtros: nómina, empleado, método de pago y rango de fecha de pago.
+    """
+    return await rrhh_nomina_service.listar_pagos(
+        db,
+        skip=skip,
+        limit=limit,
+        nomina_id=nomina_id,
+        empleado_id=empleado_id,
+        metodo_id=metodo_id,
+        desde=desde,
+        hasta=hasta,
+    )
 
 
 @rrhh_nomina_router.get("/{nomina_id}", response_model=RrhhNominaDetalle)

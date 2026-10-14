@@ -8,7 +8,6 @@ import {
   ArrowLeftRight,
   Banknote,
   Boxes,
-  Building2,
   Clock,
   Home,
   Briefcase,
@@ -111,9 +110,12 @@ import { EmpleadosPage } from './pages/rrhh/EmpleadosPage';
 import { AsistenciaPage } from './pages/rrhh/AsistenciaPage';
 import { MovimientosPage as RrhhMovimientosPage } from './pages/rrhh/MovimientosPage';
 import { NominaPage } from './pages/rrhh/NominaPage';
+import { PagosPage } from './pages/rrhh/PagosPage';
 import { SolicitudesPage as RrhhSolicitudesPage } from './pages/rrhh/SolicitudesPage';
 import { EvaluacionesPage } from './pages/rrhh/EvaluacionesPage';
 import { EvaluacionDetallePage } from './pages/rrhh/EvaluacionDetallePage';
+import { ObjetivosPage } from './pages/rrhh/ObjetivosPage';
+import { MetasPage } from './pages/rrhh/MetasPage';
 
 type Modulo = 'administracion' | 'venta' | 'compra' | 'inventario' | 'reportes' | 'home' | 'proyecto' | 'dj08' | 'rrhh';
 
@@ -136,7 +138,7 @@ const rutasPorModulo: Record<Modulo, string[]> = {
   reportes: ['/reportes', '/reportes/existencias', '/reportes/movimientos-dependencia', '/reportes/movimientos-producto', '/reportes/proveedores', '/reportes/registro-clientes', '/reportes/registro-proyectos', '/reportes/registro-creadores', '/reportes/informe-desempeno', '/reportes/resumen-liquidaciones', '/reportes/ingresos-retenciones', '/reportes/mincult', '/reportes/onat', '/perfil'],
   home: ['/', '/perfil'],
   dj08: ['/dj08', '/perfil'],
-  rrhh: ['/rrhh', '/rrhh/catalogos', '/rrhh/departamentos', '/rrhh/puestos', '/rrhh/empleados', '/rrhh/asistencia', '/rrhh/deducciones', '/rrhh/bonificaciones', '/rrhh/nomina', '/rrhh/pagos', '/rrhh/solicitudes', '/rrhh/evaluaciones', '/rrhh/reportes', '/perfil'],
+  rrhh: ['/rrhh', '/rrhh/catalogos', '/rrhh/departamentos', '/rrhh/puestos', '/rrhh/empleados', '/rrhh/asistencia', '/rrhh/deducciones', '/rrhh/bonificaciones', '/rrhh/nomina', '/rrhh/pagos', '/rrhh/solicitudes', '/rrhh/evaluaciones', '/rrhh/objetivos', '/rrhh/metas', '/rrhh/reportes', '/perfil'],
 };
 
 // Componente para proteger rutas según el módulo
@@ -433,34 +435,6 @@ function App() {
               {moduloActivo === 'rrhh' && (
                 <ul className="space-y-1 px-3">
                   <li>
-                    <SidebarLink slim={slimSidebar} to="/rrhh" onClick={handleLinkClick} exact>
-                      <Users className="w-6 h-6" />
-                      Recursos Humanos
-                    </SidebarLink>
-                  </li>
-                  <li>
-                    <SidebarLink
-                      slim={slimSidebar}
-                      to="/rrhh/catalogos"
-                      onClick={handleLinkClick}
-                      disabled={!hasFuncionalidad('rrhh_catalogos')}
-                    >
-                      <Settings className="w-6 h-6" />
-                      Catálogos
-                    </SidebarLink>
-                  </li>
-                  <li>
-                    <SidebarLink
-                      slim={slimSidebar}
-                      to="/rrhh/empleados"
-                      onClick={handleLinkClick}
-                      disabled={!hasFuncionalidad('rrhh_empleados')}
-                    >
-                      <Users className="w-6 h-6" />
-                      Empleados
-                    </SidebarLink>
-                  </li>
-                  <li>
                     <SidebarLink
                       slim={slimSidebar}
                       to="/rrhh/asistencia"
@@ -469,17 +443,6 @@ function App() {
                     >
                       <Clock className="w-6 h-6" />
                       Asistencia
-                    </SidebarLink>
-                  </li>
-                  <li>
-                    <SidebarLink
-                      slim={slimSidebar}
-                      to="/rrhh/movimientos"
-                      onClick={handleLinkClick}
-                      disabled={!hasFuncionalidad('rrhh_deducciones')}
-                    >
-                      <ArrowLeftRight className="w-6 h-6" />
-                      Movimientos
                     </SidebarLink>
                   </li>
                   <li>
@@ -496,17 +459,6 @@ function App() {
                   <li>
                     <SidebarLink
                       slim={slimSidebar}
-                      to="/rrhh/solicitudes"
-                      onClick={handleLinkClick}
-                      disabled={!hasFuncionalidad('rrhh_solicitudes')}
-                    >
-                      <ClipboardList className="w-6 h-6" />
-                      Solicitudes
-                    </SidebarLink>
-                  </li>
-                  <li>
-                    <SidebarLink
-                      slim={slimSidebar}
                       to="/rrhh/evaluaciones"
                       onClick={handleLinkClick}
                       disabled={!hasFuncionalidad('rrhh_evaluaciones')}
@@ -518,23 +470,23 @@ function App() {
                   <li>
                     <SidebarLink
                       slim={slimSidebar}
-                      to="/rrhh/departamentos"
+                      to="/rrhh/solicitudes"
                       onClick={handleLinkClick}
-                      disabled={!hasFuncionalidad('rrhh_departamentos')}
+                      disabled={!hasFuncionalidad('rrhh_solicitudes')}
                     >
-                      <Building2 className="w-6 h-6" />
-                      Departamentos
+                      <ClipboardList className="w-6 h-6" />
+                      Solicitudes
                     </SidebarLink>
                   </li>
                   <li>
                     <SidebarLink
                       slim={slimSidebar}
-                      to="/rrhh/puestos"
+                      to="/rrhh/empleados"
                       onClick={handleLinkClick}
-                      disabled={!hasFuncionalidad('rrhh_puestos')}
+                      disabled={!hasFuncionalidad('rrhh_empleados')}
                     >
-                      <Briefcase className="w-6 h-6" />
-                      Puestos
+                      <Users className="w-6 h-6" />
+                      Empleados
                     </SidebarLink>
                   </li>
                 </ul>
@@ -1246,6 +1198,14 @@ function App() {
                   }
                 />
                 <Route
+                  path="/rrhh/pagos"
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/rrhh/pagos">
+                      <PagosPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
                   path="/rrhh/solicitudes"
                   element={
                     <ProtectedRoute moduloActivo={moduloActivo} currentPath="/rrhh/solicitudes">
@@ -1266,6 +1226,22 @@ function App() {
                   element={
                     <ProtectedRoute moduloActivo={moduloActivo} currentPath="/rrhh/evaluaciones">
                       <EvaluacionDetallePage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/rrhh/objetivos"
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/rrhh/objetivos">
+                      <ObjetivosPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/rrhh/metas"
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/rrhh/metas">
+                      <MetasPage />
                     </ProtectedRoute>
                   }
                 />

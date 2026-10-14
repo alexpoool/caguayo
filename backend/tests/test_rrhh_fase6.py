@@ -52,6 +52,20 @@ def _limpiar_tipo_pago(client, id_tipo):
     client.delete(f"/api/v1/rrhh/catalogos/tipos-pago/{id_tipo}")
 
 
+def _crear_tipo_bonificacion(client, **kwargs):
+    payload = {"nombre": f"Bonificacion-{_sufijo()}"}
+    payload.update(kwargs)
+    response = client.post(
+        "/api/v1/rrhh/catalogos/tipos-bonificaciones", json=payload
+    )
+    assert response.status_code == 201, response.text
+    return response.json()
+
+
+def _limpiar_tipo_bonificacion(client, id_tipo):
+    client.delete(f"/api/v1/rrhh/catalogos/tipos-bonificaciones/{id_tipo}")
+
+
 def _crear_tipo_deduccion(client, **kwargs):
     payload = {"nombre": f"Deduccion-{_sufijo()}"}
     payload.update(kwargs)
@@ -657,3 +671,335 @@ def test_reporte_costo_excluye_anuladas(client):
         assert antes["cantidad_nominas"] - despues["cantidad_nominas"] == 1
     finally:
         _limpiar_empleado(client, emp["id"])
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Conceptos definidos en el formulario de generación
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+def test_generar_concepto_deduccion(client):
+    """El concepto se materializa como movimiento y se congela en la nómina."""
+    emp = _crear_empleado(client, salario=1000)
+    tipo = _crear_tipo_deduccion(client)
+    try:
+        response = _generar(
+            client,
+            empleado_id=emp["id"],
+            deducciones=[{"tipo_id": tipo["id_tipos_deducciones"], "valor": 150}],
+        )
+        assert response.status_code == 201, response.text
+
+        nomina = _nomina_de(client, emp["id"])
+        assert Decimal(nomina["deducciones"]) == Decimal("150.00")
+        assert Decimal(nomina["salario_neto"]) == Decimal("850.00")
+
+        # Opción 1: existe el registro real en `deducciones`.
+        movimientos = client.get(
+            f"/api/v1/rrhh/deducciones?empleado_id={emp['id']}"
+        ).json()
+        assert len(movimientos) == 1
+        assert movimientos[0]["tipo_deducciones_id"] == tipo["id_tipos_deducciones"]
+        assert Decimal(movimientos[0]["valor"]) == Decimal("150.00")
+        assert movimientos[0]["inicio_periodo"] == PERIODO_INICIO
+
+        # Y quedó congelado en el detalle de la nómina.
+        detalle = client.get(f"/api/v1/rrhh/nomina/{nomina['id']}").json()
+        assert len(detalle["deducciones_aplicadas"]) == 1
+        assert detalle["deducciones_aplicadas"][0]["tipo_nombre"] == tipo["nombre"]
+    finally:
+        _limpiar_nominas_de(client, emp["id"])
+        _limpiar_empleado(client, emp["id"])
+        _limpiar_tipo_deduccion(client, tipo["id_tipos_deducciones"])
+
+
+def test_generar_concepto_bonificacion_porcentual(client):
+    """Los conceptos repetibles se aplican a todo el lote (aquí, uno solo)."""
+    emp = _crear_empleado(client, salario=1000)
+    tipo = _crear_tipo_bonificacion(client, es_porcentaje=True)
+    try:
+        response = _generar(
+            client,
+            empleado_id=emp["id"],
+            bonificaciones=[{"tipo_id": tipo["id_tipos_bonificaciones"], "valor": 10}],
+        )
+        assert response.status_code == 201, response.text
+        nomina = _nomina_de(client, emp["id"])
+        # 10 % de 1000 = 100, aplicado sobre el salario del empleado.
+        assert Decimal(nomina["bonificaciones"]) == Decimal("100.00")
+        assert Decimal(nomina["salario_neto"]) == Decimal("1100.00")
+
+        movimientos = client.get(
+            f"/api/v1/rrhh/bonificaciones?empleado_id={emp['id']}"
+        ).json()
+        assert len(movimientos) == 1
+    finally:
+        _limpiar_nominas_de(client, emp["id"])
+        _limpiar_empleado(client, emp["id"])
+        _limpiar_tipo_bonificacion(client, tipo["id_tipos_bonificaciones"])
+
+
+def test_generar_varios_conceptos(client):
+    emp = _crear_empleado(client, salario=1000)
+    tipo_d = _crear_tipo_deduccion(client)
+    tipo_b = _crear_tipo_bonificacion(client)
+    try:
+        response = _generar(
+            client,
+            empleado_id=emp["id"],
+            deducciones=[
+                {"tipo_id": tipo_d["id_tipos_deducciones"], "valor": 100},
+                {"tipo_id": tipo_d["id_tipos_deducciones"], "valor": 50},
+            ],
+            bonificaciones=[{"tipo_id": tipo_b["id_tipos_bonificaciones"], "valor": 300}],
+        )
+        assert response.status_code == 201, response.text
+        nomina = _nomina_de(client, emp["id"])
+        assert Decimal(nomina["deducciones"]) == Decimal("150.00")
+        assert Decimal(nomina["bonificaciones"]) == Decimal("300.00")
+        # 1000 + 300 - 150
+        assert Decimal(nomina["salario_neto"]) == Decimal("1150.00")
+    finally:
+        _limpiar_nominas_de(client, emp["id"])
+        _limpiar_empleado(client, emp["id"])
+        _limpiar_tipo_deduccion(client, tipo_d["id_tipos_deducciones"])
+        _limpiar_tipo_bonificacion(client, tipo_b["id_tipos_bonificaciones"])
+
+
+def test_concepto_reutiliza_movimiento_existente(client):
+    """Mismo tipo, valor y periodo → no se duplica el cobro."""
+    emp = _crear_empleado(client, salario=1000)
+    tipo = _crear_tipo_deduccion(client)
+    try:
+        _crear_deduccion(client, emp["id"], tipo["id_tipos_deducciones"], 200)
+        response = _generar(
+            client,
+            empleado_id=emp["id"],
+            deducciones=[{"tipo_id": tipo["id_tipos_deducciones"], "valor": 200}],
+        )
+        assert response.status_code == 201, response.text
+
+        movimientos = client.get(
+            f"/api/v1/rrhh/deducciones?empleado_id={emp['id']}"
+        ).json()
+        assert len(movimientos) == 1
+        assert Decimal(_nomina_de(client, emp["id"])["deducciones"]) == Decimal("200.00")
+    finally:
+        _limpiar_nominas_de(client, emp["id"])
+        _limpiar_empleado(client, emp["id"])
+        _limpiar_tipo_deduccion(client, tipo["id_tipos_deducciones"])
+
+
+def test_conceptos_identicos_no_se_duplican(client):
+    """Dos conceptos idénticos en la misma generación cobran una sola vez."""
+    emp = _crear_empleado(client, salario=1000)
+    tipo = _crear_tipo_deduccion(client)
+    try:
+        response = _generar(
+            client,
+            empleado_id=emp["id"],
+            deducciones=[
+                {"tipo_id": tipo["id_tipos_deducciones"], "valor": 200},
+                {"tipo_id": tipo["id_tipos_deducciones"], "valor": 200},
+            ],
+        )
+        assert response.status_code == 201, response.text
+        detalle = client.get(
+            f"/api/v1/rrhh/nomina/{_nomina_de(client, emp['id'])['id']}"
+        ).json()
+        assert len(detalle["deducciones_aplicadas"]) == 1
+        assert Decimal(detalle["deducciones"]) == Decimal("200.00")
+    finally:
+        _limpiar_nominas_de(client, emp["id"])
+        _limpiar_empleado(client, emp["id"])
+        _limpiar_tipo_deduccion(client, tipo["id_tipos_deducciones"])
+
+
+def test_generar_sin_movimientos_existentes(client):
+    """La casilla apagada deja fuera los movimientos ya registrados."""
+    emp = _crear_empleado(client, salario=1000)
+    tipo_d = _crear_tipo_deduccion(client)
+    tipo_b = _crear_tipo_bonificacion(client)
+    try:
+        _crear_deduccion(client, emp["id"], tipo_d["id_tipos_deducciones"], 200)
+        response = _generar(
+            client,
+            empleado_id=emp["id"],
+            bonificaciones=[{"tipo_id": tipo_b["id_tipos_bonificaciones"], "valor": 50}],
+            incluir_movimientos_existentes=False,
+        )
+        assert response.status_code == 201, response.text
+        nomina = _nomina_de(client, emp["id"])
+        assert Decimal(nomina["deducciones"]) == Decimal("0.00")
+        assert Decimal(nomina["bonificaciones"]) == Decimal("50.00")
+        assert Decimal(nomina["salario_neto"]) == Decimal("1050.00")
+    finally:
+        _limpiar_nominas_de(client, emp["id"])
+        _limpiar_empleado(client, emp["id"])
+        _limpiar_tipo_deduccion(client, tipo_d["id_tipos_deducciones"])
+        _limpiar_tipo_bonificacion(client, tipo_b["id_tipos_bonificaciones"])
+
+
+def test_concepto_tipo_inexistente_404(client):
+    """La validación ocurre antes de crear nóminas o movimientos."""
+    emp = _crear_empleado(client, salario=1000)
+    try:
+        response = _generar(
+            client,
+            empleado_id=emp["id"],
+            deducciones=[{"tipo_id": 999999, "valor": 100}],
+        )
+        assert response.status_code == 404
+        assert client.get(f"/api/v1/rrhh/nomina?empleado_id={emp['id']}").json() == []
+        assert (
+            client.get(f"/api/v1/rrhh/deducciones?empleado_id={emp['id']}").json() == []
+        )
+    finally:
+        _limpiar_empleado(client, emp["id"])
+
+
+def test_concepto_valor_negativo_422(client):
+    emp = _crear_empleado(client, salario=1000)
+    tipo = _crear_tipo_deduccion(client)
+    try:
+        response = _generar(
+            client,
+            empleado_id=emp["id"],
+            deducciones=[{"tipo_id": tipo["id_tipos_deducciones"], "valor": -10}],
+        )
+        assert response.status_code == 422
+        assert client.get(f"/api/v1/rrhh/nomina?empleado_id={emp['id']}").json() == []
+    finally:
+        _limpiar_empleado(client, emp["id"])
+        _limpiar_tipo_deduccion(client, tipo["id_tipos_deducciones"])
+
+
+def test_concepto_no_se_crea_en_empleado_omitido(client):
+    """Quien ya tiene nómina para el periodo no acumula movimientos del lote."""
+    emp = _crear_empleado(client, salario=1000)
+    tipo = _crear_tipo_deduccion(client)
+    try:
+        assert _generar(client, empleado_id=emp["id"]).json()["creadas"] == 1
+        response = _generar(
+            client,
+            empleado_id=emp["id"],
+            deducciones=[{"tipo_id": tipo["id_tipos_deducciones"], "valor": 100}],
+        )
+        assert response.status_code == 201
+        assert response.json()["omitidas"] == 1
+        assert (
+            client.get(f"/api/v1/rrhh/deducciones?empleado_id={emp['id']}").json() == []
+        )
+    finally:
+        _limpiar_nominas_de(client, emp["id"])
+        _limpiar_empleado(client, emp["id"])
+        _limpiar_tipo_deduccion(client, tipo["id_tipos_deducciones"])
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Listado de pagos
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+def test_listar_pagos_ok(client):
+    """`GET /nomina/pagos` no lo captura `/{nomina_id}` (orden de rutas)."""
+    response = client.get("/api/v1/rrhh/nomina/pagos")
+    assert response.status_code == 200
+    assert isinstance(response.json(), list)
+
+
+def test_pagos_resuelve_nomina_y_empleado(client):
+    emp = _crear_empleado(client, salario=1000)
+    tipo_pago = _crear_tipo_pago(client)
+    try:
+        _generar(client, empleado_id=emp["id"])
+        nomina = _nomina_de(client, emp["id"])
+        client.post(
+            f"/api/v1/rrhh/nomina/{nomina['id']}/pagar",
+            json={
+                "metodo_id": tipo_pago["id_tipo_pago"],
+                "monto": nomina["salario_neto"],
+                "fecha_pago": "2098-02-01",
+                "referencia": "REF-LISTADO",
+            },
+        )
+        pagos = client.get(
+            f"/api/v1/rrhh/nomina/pagos?nomina_id={nomina['id']}"
+        ).json()
+        assert len(pagos) == 1
+        fila = pagos[0]
+        assert fila["empleado_id"] == emp["id"]
+        assert fila["empleado_codigo"] == emp["codigo_empleado"]
+        assert fila["metodo_nombre"] == tipo_pago["nombre"]
+        assert fila["referencia"] == "REF-LISTADO"
+        assert fila["estado_nomina"] == "pagada"
+        assert fila["inicio_periodo"] == PERIODO_INICIO
+        assert Decimal(fila["monto"]) == Decimal("1000.00")
+    finally:
+        _limpiar_nominas_de(client, emp["id"])
+        _limpiar_empleado(client, emp["id"])
+        _limpiar_tipo_pago(client, tipo_pago["id_tipo_pago"])
+
+
+def test_pagos_filtro_por_empleado(client):
+    emp_a = _crear_empleado(client, salario=1000)
+    emp_b = _crear_empleado(client, salario=2000)
+    tipo_pago = _crear_tipo_pago(client)
+    try:
+        for emp in (emp_a, emp_b):
+            _generar(client, empleado_id=emp["id"])
+            nomina = _nomina_de(client, emp["id"])
+            client.post(
+                f"/api/v1/rrhh/nomina/{nomina['id']}/pagar",
+                json={
+                    "metodo_id": tipo_pago["id_tipo_pago"],
+                    "monto": nomina["salario_neto"],
+                },
+            )
+        pagos = client.get(
+            f"/api/v1/rrhh/nomina/pagos?empleado_id={emp_a['id']}"
+        ).json()
+        assert pagos
+        assert all(p["empleado_id"] == emp_a["id"] for p in pagos)
+        assert not any(p["empleado_id"] == emp_b["id"] for p in pagos)
+    finally:
+        for emp in (emp_a, emp_b):
+            _limpiar_nominas_de(client, emp["id"])
+            _limpiar_empleado(client, emp["id"])
+        _limpiar_tipo_pago(client, tipo_pago["id_tipo_pago"])
+
+
+def test_pagos_rango_de_fecha(client):
+    emp = _crear_empleado(client, salario=1000)
+    tipo_pago = _crear_tipo_pago(client)
+    try:
+        _generar(client, empleado_id=emp["id"])
+        nomina = _nomina_de(client, emp["id"])
+        client.post(
+            f"/api/v1/rrhh/nomina/{nomina['id']}/pagar",
+            json={
+                "metodo_id": tipo_pago["id_tipo_pago"],
+                "monto": nomina["salario_neto"],
+                "fecha_pago": "2098-02-01",
+            },
+        )
+        # Rango anterior al pago: no lo encuentra.
+        antes = client.get(
+            "/api/v1/rrhh/nomina/pagos?hasta=2098-01-31"
+        ).json()
+        assert not any(p["nomina_id"] == nomina["id"] for p in antes)
+        # Rango que lo incluye: sí.
+        dentro = client.get(
+            "/api/v1/rrhh/nomina/pagos?desde=2098-02-01&hasta=2098-02-28"
+        ).json()
+        assert any(p["nomina_id"] == nomina["id"] for p in dentro)
+    finally:
+        _limpiar_nominas_de(client, emp["id"])
+        _limpiar_empleado(client, emp["id"])
+        _limpiar_tipo_pago(client, tipo_pago["id_tipo_pago"])
+
+
+def test_pagos_filtro_nomina_sin_resultados(client):
+    response = client.get("/api/v1/rrhh/nomina/pagos?nomina_id=999999")
+    assert response.status_code == 200
+    assert response.json() == []

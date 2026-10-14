@@ -30,6 +30,7 @@ from src.dto import (
     RrhhObjetivoCreate,
     RrhhObjetivoUpdate,
     RrhhObjetivoRead,
+    RrhhObjetivoDetalle,
     RrhhMetaCreate,
     RrhhMetaUpdate,
     RrhhMetaRead,
@@ -138,6 +139,16 @@ async def eliminar_meta(
 
 
 # ── Objetivos (literales, antes de /{evaluacion_id}) ────────────────────────
+
+
+@rrhh_evaluaciones_router.get(
+    "/objetivos/{objetivo_id}", response_model=RrhhObjetivoDetalle
+)
+async def obtener_objetivo(
+    objetivo_id: int, db: AsyncSession = Depends(get_session)
+):
+    """Detalle de un objetivo con sus metas y el resumen de su evaluación."""
+    return await rrhh_evaluacion_service.get_objetivo(db, objetivo_id)
 
 
 @rrhh_evaluaciones_router.put(

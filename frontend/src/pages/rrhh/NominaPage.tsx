@@ -1,13 +1,17 @@
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import { rrhhService } from '../../services/rrhh';
 import {
   COLOR_ESTADO_NOMINA,
+  type RrhhConceptoGenerar,
   type RrhhEstadoNomina,
   type RrhhNominaListado,
   type RrhhNominaDetalle,
 } from '../../types/rrhh';
 import {
+  AlertCircle,
+  Award,
   Banknote,
   Calculator,
   Eye,
@@ -17,7 +21,7 @@ import {
   RefreshCw,
   Search,
   Trash2,
-  AlertCircle,
+  TrendingUp,
   Wallet,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -100,6 +104,7 @@ export function NominaPage() {
 
 function ListaNominas() {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
   const [estado, setEstado] = useState<RrhhEstadoNomina | ''>('');
   const [desde, setDesde] = useState('');
@@ -218,6 +223,7 @@ function ListaNominas() {
                   <TableHead className="text-right">Neto</TableHead>
                   <TableHead className="text-right">Pagado</TableHead>
                   <TableHead>Estado</TableHead>
+                  <TableHead className="text-center">Pagos</TableHead>
                   <TableHead className="text-right">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
@@ -250,6 +256,17 @@ function ListaNominas() {
                       >
                         {fila.estado}
                       </span>
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        title={`Ver los pagos de la nómina #${fila.id}`}
+                        onClick={() => navigate(`/rrhh/pagos?nomina_id=${fila.id}`)}
+                      >
+                        <Wallet className="h-4 w-4" />
+                        Ver pagos
+                      </Button>
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center justify-end gap-1">
@@ -327,6 +344,12 @@ function ModalGenerar({
   const queryClient = useQueryClient();
   const [inicio, setInicio] = useState('');
   const [fin, setFin] = useState('');
+  const [deducciones, setDeducciones] = useState<RrhhConceptoGenerar[]>([]);
+  const [bonificaciones, setBonificaciones] = useState<RrhhConceptoGenerar[]>([]);
+  const [incluirExistentes, setIncluirExistentes] = useState(true);
+  const [conceptoAbierto, setConceptoAbierto] = useState<
+    'deducciones' | 'bonificaciones' | null
+  >(null);
 
   const { data: departamentos = [] } = useQuery({
     queryKey: ['rrhh', 'departamentos', 'activos'],
@@ -335,18 +358,31 @@ function ModalGenerar({
   });
   const [departamentoId, setDepartamentoId] = useState<number | ''>('');
 
+  const tipos = useTiposConceptos();
+
+  const cerrar = () => {
+    setDeducciones([]);
+    setBonificaciones([]);
+    setIncluirExistentes(true);
+    setConceptoAbierto(null);
+    onClose();
+  };
+
   const mutation = useMutation({
     mutationFn: () =>
       rrhhService.generarNominas({
         inicio_periodo: inicio,
         fin_periodo: fin,
         departamento_id: departamentoId === '' ? null : departamentoId,
+        deducciones,
+        bonificaciones,
+        incluir_movimientos_existentes: incluirExistentes,
       }),
     onSuccess: (res) => {
       toast.success(`Nóminas creadas: ${res.creadas}. Omitidas: ${res.omitidas}.`);
       queryClient.invalidateQueries({ queryKey: ['rrhh', 'nomina'] });
       onListo();
-      onClose();
+      cerrar();
     },
     onError: (err: unknown) => {
       toast.error(err instanceof Error ? err.message : 'No se pudo generar');
@@ -366,8 +402,27 @@ function ModalGenerar({
     mutation.mutate();
   };
 
+  const nombreTipo = (
+    clase: 'deducciones' | 'bonificaciones',
+    tipoId: number
+  ): string => {
+    const catalogo = clase === 'deducciones' ? tipos.deducciones : tipos.bonificaciones;
+    return catalogo.find((t) => t.id === tipoId)?.nombre ?? `#${tipoId}`;
+  };
+
+  const valorFormateado = (
+    clase: 'deducciones' | 'bonificaciones',
+    concepto: RrhhConceptoGenerar
+  ): string => {
+    const catalogo = clase === 'deducciones' ? tipos.deducciones : tipos.bonificaciones;
+    const tipo = catalogo.find((t) => t.id === concepto.tipo_id);
+    return tipo?.es_porcentaje
+      ? `${Number(concepto.valor)} %`
+      : fmtMoneda(concepto.valor);
+  };
+
   return (
-    <Modal isOpen={isOpen} onClose={onClose} className="max-w-md">
+    <Modal isOpen={isOpen} onClose={cerrar} className="max-w-md">
       <div className="border-b p-6 pb-5">
         <h2 className="text-lg font-semibold text-slate-900">Generar nómina</h2>
         <p className="mt-1 text-sm text-slate-500">
@@ -408,6 +463,66 @@ function ModalGenerar({
             ))}
           </select>
         </div>
+
+        <div className="space-y-2">
+          <Label>Conceptos de esta generación</Label>
+          <div className="flex gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setConceptoAbierto('deducciones')}
+            >
+              <TrendingUp className="h-4 w-4" />
+              Deducciones{deducciones.length > 0 ? ` (${deducciones.length})` : ''}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setConceptoAbierto('bonificaciones')}
+            >
+              <Award className="h-4 w-4" />
+              Bonificaciones{bonificaciones.length > 0 ? ` (${bonificaciones.length})` : ''}
+            </Button>
+          </div>
+          {(deducciones.length > 0 || bonificaciones.length > 0) && (
+            <ul className="space-y-1 rounded-md bg-slate-50 p-3 text-xs">
+              {deducciones.map((c, i) => (
+                <li key={`ded-${i}`} className="flex justify-between gap-3">
+                  <span className="text-red-600">− {nombreTipo('deducciones', c.tipo_id)}</span>
+                  <span className="tabular-nums text-slate-700">
+                    {valorFormateado('deducciones', c)}
+                  </span>
+                </li>
+              ))}
+              {bonificaciones.map((c, i) => (
+                <li key={`bon-${i}`} className="flex justify-between gap-3">
+                  <span className="text-green-600">+ {nombreTipo('bonificaciones', c.tipo_id)}</span>
+                  <span className="tabular-nums text-slate-700">
+                    {valorFormateado('bonificaciones', c)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+          <label className="flex cursor-pointer items-start gap-2 text-sm text-slate-600">
+            <input
+              type="checkbox"
+              checked={incluirExistentes}
+              onChange={(e) => setIncluirExistentes(e.target.checked)}
+              className="mt-0.5 h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
+            />
+            <span>
+              Aplicar también los movimientos ya registrados
+              <span className="block text-xs text-slate-400">
+                Deducciones y bonificaciones dadas de alta que solapan el periodo.
+                Desactívalo para aplicar solo los conceptos definidos arriba.
+              </span>
+            </span>
+          </label>
+        </div>
+
         <div className="flex items-center gap-2 border-t border-slate-100 pt-4">
           <Button type="submit" disabled={mutation.isPending}>
             {mutation.isPending ? (
@@ -417,11 +532,195 @@ function ModalGenerar({
             )}
             Generar
           </Button>
-          <Button type="button" variant="outline" onClick={onClose}>
+          <Button type="button" variant="outline" onClick={cerrar}>
             Cancelar
           </Button>
         </div>
       </form>
+
+      {conceptoAbierto !== null && (
+        <ModalConceptos
+          clase={conceptoAbierto}
+          iniciales={conceptoAbierto === 'deducciones' ? deducciones : bonificaciones}
+          onGuardar={(conceptos) =>
+            conceptoAbierto === 'deducciones'
+              ? setDeducciones(conceptos)
+              : setBonificaciones(conceptos)
+          }
+          onCerrar={() => setConceptoAbierto(null)}
+        />
+      )}
+    </Modal>
+  );
+}
+
+// ── Modal de conceptos (deducciones / bonificaciones de la generación) ──────
+
+type TipoConcepto = { id: number; nombre: string; es_porcentaje: boolean };
+
+/** Catálogos de tipos de deducción y bonificación, normalizados por `id`. */
+function useTiposConceptos() {
+  const { data: tiposD = [] } = useQuery({
+    queryKey: ['rrhh', 'catalogos', 'tipos-deducciones'],
+    queryFn: () => rrhhService.listarTiposDeduccion({ activo: true }),
+  });
+  const { data: tiposB = [] } = useQuery({
+    queryKey: ['rrhh', 'catalogos', 'tipos-bonificaciones'],
+    queryFn: () => rrhhService.listarTiposBonificacion({ activo: true }),
+  });
+
+  const deducciones: TipoConcepto[] = tiposD.map((t) => ({
+    id: t.id_tipos_deducciones,
+    nombre: t.nombre,
+    es_porcentaje: t.es_porcentaje,
+  }));
+  const bonificaciones: TipoConcepto[] = tiposB.map((t) => ({
+    id: t.id_tipos_bonificaciones,
+    nombre: t.nombre,
+    es_porcentaje: t.es_porcentaje,
+  }));
+  return { deducciones, bonificaciones };
+}
+
+/**
+ * Formulario de conceptos: varias filas *tipo + valor* que se aplican a todas
+ * las nóminas del lote. Edita un borrador; «Guardar» lo vuelca al formulario
+ * principal y «Cancelar» lo descarta.
+ */
+function ModalConceptos({
+  clase,
+  iniciales,
+  onGuardar,
+  onCerrar,
+}: {
+  clase: 'deducciones' | 'bonificaciones';
+  iniciales: RrhhConceptoGenerar[];
+  onGuardar: (conceptos: RrhhConceptoGenerar[]) => void;
+  onCerrar: () => void;
+}) {
+  const esDeduccion = clase === 'deducciones';
+  const { deducciones: tiposD, bonificaciones: tiposB } = useTiposConceptos();
+  const catalogo = esDeduccion ? tiposD : tiposB;
+
+  const [filas, setFilas] = useState<{ tipo_id: number; valor: string }[]>(
+    iniciales.map((c) => ({ tipo_id: c.tipo_id, valor: String(c.valor) }))
+  );
+  const [tipoId, setTipoId] = useState<number | ''>('');
+  const [valor, setValor] = useState('');
+
+  const tipoSeleccionado = catalogo.find((t) => t.id === tipoId);
+
+  const agregar = () => {
+    if (tipoId === '') {
+      toast.error('Elige el tipo de concepto');
+      return;
+    }
+    const numero = Number(valor);
+    if (valor.trim() === '' || Number.isNaN(numero) || numero < 0) {
+      toast.error('Indica un valor válido (0 o más)');
+      return;
+    }
+    setFilas([...filas, { tipo_id: tipoId, valor: valor.trim() }]);
+    setTipoId('');
+    setValor('');
+  };
+
+  const guardar = () => {
+    onGuardar(filas.map((f) => ({ tipo_id: f.tipo_id, valor: Number(f.valor) })));
+    onCerrar();
+  };
+
+  return (
+    <Modal isOpen onClose={onCerrar} className="max-w-md">
+      <div className="border-b p-6 pb-5">
+        <h3 className="text-lg font-semibold text-slate-900">
+          {esDeduccion ? 'Deducciones' : 'Bonificaciones'} de la generación
+        </h3>
+        <p className="mt-1 text-sm text-slate-500">
+          Se aplican a todas las nóminas del lote. Si un empleado ya tiene ese
+          mismo movimiento, se reutiliza en lugar de duplicarlo.
+        </p>
+      </div>
+      <div className="space-y-4 p-6">
+        <div className="space-y-2">
+          <Label>Tipo de concepto</Label>
+          <select
+            value={tipoId}
+            onChange={(e) => setTipoId(e.target.value === '' ? '' : Number(e.target.value))}
+            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+          >
+            <option value="">Elegir tipo...</option>
+            {catalogo.map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.nombre}
+                {t.es_porcentaje ? ' (porcentaje)' : ''}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="flex items-end gap-2">
+          <div className="flex-1 space-y-2">
+            <Label htmlFor="valor-concepto">
+              Valor {tipoSeleccionado?.es_porcentaje ? '(%)' : '(monto)'}
+            </Label>
+            <Input
+              id="valor-concepto"
+              type="number"
+              min={0}
+              step="0.01"
+              value={valor}
+              onChange={(e) => setValor(e.target.value)}
+              placeholder={tipoSeleccionado?.es_porcentaje ? 'Ej. 10' : 'Ej. 200.00'}
+            />
+          </div>
+          <Button type="button" variant="outline" onClick={agregar}>
+            <Plus className="h-4 w-4" />
+            Añadir
+          </Button>
+        </div>
+
+        {filas.length === 0 ? (
+          <p className="rounded-md bg-slate-50 px-3 py-2 text-xs text-slate-500">
+            Sin conceptos. Al guardar, la generación se aplica solo con los
+            movimientos ya registrados (si dejaste activada esa casilla).
+          </p>
+        ) : (
+          <ul className="divide-y divide-slate-100 rounded-md border border-slate-200">
+            {filas.map((fila, i) => {
+              const tipo = catalogo.find((t) => t.id === fila.tipo_id);
+              return (
+                <li key={`${fila.tipo_id}-${i}`} className="flex items-center justify-between gap-2 px-3 py-2 text-sm">
+                  <span className="min-w-0 truncate text-slate-700">
+                    {tipo?.nombre ?? `#${fila.tipo_id}`}
+                  </span>
+                  <span className="flex items-center gap-2">
+                    <span className="tabular-nums text-slate-900">
+                      {tipo?.es_porcentaje ? `${Number(fila.valor)} %` : fmtMoneda(fila.valor)}
+                    </span>
+                    <ActionButton
+                      titulo="Quitar"
+                      danger
+                      onClick={() => setFilas(filas.filter((_, j) => j !== i))}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </ActionButton>
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+
+        <div className="flex items-center gap-2 border-t border-slate-100 pt-4">
+          <Button type="button" onClick={guardar}>
+            Guardar
+          </Button>
+          <Button type="button" variant="outline" onClick={onCerrar}>
+            Cancelar
+          </Button>
+        </div>
+      </div>
     </Modal>
   );
 }

@@ -21,6 +21,14 @@ Ciclo de vida (decidido):
 Regla de solvencia: las deducciones se **cotan al bruto** en la generación, de
 manera que el salario neto nunca es negativo (un préstamo grande no puede dejar
 al empleado con la nómina en negativo).
+
+Conceptos del formulario (decidido): la generación admite deducciones y
+bonificaciones propias del lote. Cada concepto se materializa como un
+movimiento por empleado (opción 1: se crean registros reales en `deducciones`
+/ `bonificaciones`, que es lo que exige la tabla puente) y se aplican a las
+nóminas generadas; si el empleado ya tiene un movimiento equivalente, se
+reutiliza en lugar de duplicarlo. Los movimientos ya registrados siguen
+aplicándose por defecto (`incluir_movimientos_existentes`).
 """
 
 from datetime import date, datetime
@@ -40,12 +48,14 @@ from src.domain.rrhh_nomina_calc import (
     tarifa_hora,
 )
 from src.dto import (
+    RrhhConceptoGenerar,
     RrhhNominaGenerar,
     RrhhNominaGenerada,
     RrhhNominaListado,
     RrhhNominaDetalle,
     RrhhDetalleNomina,
     RrhhPagoRead,
+    RrhhPagoListado,
     RrhhCostoDepartamento,
     RrhhReporteCosto,
 )
@@ -182,6 +192,87 @@ class RrhhNominaService:
         resolucion = await self._resolucion_listado(db, filas)
         return [self._construir_listado(f, resolucion) for f in filas]
 
+    async def listar_pagos(
+        self,
+        db: AsyncSession,
+        skip: int = 0,
+        limit: int = 100,
+        nomina_id: Optional[int] = None,
+        empleado_id: Optional[int] = None,
+        metodo_id: Optional[int] = None,
+        desde: Optional[date] = None,
+        hasta: Optional[date] = None,
+    ) -> List[RrhhPagoListado]:
+        """Listado de pagos registrados, con su nómina y empleado resueltos."""
+        statement = select(RrhhPago)
+        if empleado_id is not None:
+            statement = statement.join(
+                RrhhNomina, RrhhPago.nomina_id == RrhhNomina.id
+            ).where(RrhhNomina.empleado_id == empleado_id)
+        if nomina_id is not None:
+            statement = statement.where(RrhhPago.nomina_id == nomina_id)
+        if metodo_id is not None:
+            statement = statement.where(RrhhPago.metodo_id == metodo_id)
+        if desde is not None:
+            statement = statement.where(RrhhPago.fecha_pago >= desde)
+        if hasta is not None:
+            statement = statement.where(RrhhPago.fecha_pago <= hasta)
+
+        statement = (
+            statement.order_by(RrhhPago.fecha_pago.desc(), RrhhPago.id.desc())
+            .offset(skip)
+            .limit(limit)
+        )
+        filas = list((await db.exec(statement)).all())
+        if not filas:
+            return []
+
+        # Resolución en lote: nóminas → empleados → departamentos → métodos.
+        res = await db.exec(
+            select(RrhhNomina).where(RrhhNomina.id.in_({f.nomina_id for f in filas}))
+        )
+        nominas = {n.id: n for n in res.all()}
+        empleados = await self._empleados_por_id(
+            db, {n.empleado_id for n in nominas.values()}
+        )
+        departamentos = await self._departamentos_por_id(
+            db, {e.departamento_id for e in empleados.values() if e.departamento_id}
+        )
+        tipos = await self._tipos_pago(db, {f.metodo_id for f in filas})
+
+        salida: List[RrhhPagoListado] = []
+        for fila in filas:
+            nomina = nominas.get(fila.nomina_id)
+            if not nomina:
+                continue
+            empleado = empleados.get(nomina.empleado_id)
+            salida.append(
+                RrhhPagoListado(
+                    id=fila.id,
+                    nomina_id=fila.nomina_id,
+                    fecha_pago=fila.fecha_pago,
+                    monto=fila.monto,
+                    metodo_id=fila.metodo_id,
+                    metodo_nombre=tipos.get(fila.metodo_id),
+                    referencia=fila.referencia,
+                    observaciones=fila.observaciones,
+                    empleado_id=nomina.empleado_id,
+                    empleado_codigo=empleado.codigo_empleado if empleado else None,
+                    empleado_nombre=self._nombre_completo(empleado),
+                    departamento_nombre=(
+                        departamentos.get(empleado.departamento_id)
+                        if empleado and empleado.departamento_id
+                        else None
+                    ),
+                    periodo=nomina.periodo,
+                    inicio_periodo=nomina.inicio_periodo,
+                    fin_periodo=nomina.fin_periodo,
+                    estado_nomina=nomina.estado,
+                    created_at=fila.created_at,
+                )
+            )
+        return salida
+
     async def get(self, db: AsyncSession, id: int) -> RrhhNominaDetalle:
         fila = await db.get(RrhhNomina, id)
         if not fila:
@@ -292,14 +383,21 @@ class RrhhNominaService:
     # ── Generación ──────────────────────────────────────────────────────────
 
     async def generar(self, db: AsyncSession, entrada: RrhhNominaGenerar) -> RrhhNominaGenerada:
-        """Genera las nóminas de un periodo, individual o masivamente."""
+        """Genera las nóminas de un periodo, individual o masivamente.
+
+        Los conceptos definidos en el formulario (`entrada.deducciones` y
+        `entrada.bonificaciones`) se materializan como movimientos por
+        empleado y se aplican a las nóminas de este lote; los movimientos ya
+        registrados que solapan el periodo se aplican además, salvo que
+        `incluir_movimientos_existentes` venga en `False`.
+        """
+        await self._validar_conceptos(db, entrada)
         empleados = await self._empleados_a_generar(db, entrada)
         if not empleados:
             return RrhhNominaGenerada(creadas=0, omitidas=0, detalle=["No hay empleados activos que cumplan los criterios."])
 
         periodo = entrada.periodo or entrada.fin_periodo
         extras = await self._extras_por_empleado(db, empleados, entrada)
-        movimientos = await self._movimientos_por_empleado(db, empleados, entrada)
 
         creadas, omitidas, detalle = 0, 0, []
         for empleado in empleados:
@@ -311,8 +409,11 @@ class RrhhNominaService:
                 detalle.append(f"{self._nombre_completo(empleado)}: ya tiene nómina para ese periodo.")
                 continue
 
+            # Los conceptos solo se crean para los empleados que efectivamente
+            # generan (los omitidos no acumulan movimientos).
+            movimientos = await self._movimientos_de(db, empleado, entrada)
             nomina = await self._construir_y_persistir(
-                db, empleado, periodo, entrada, extras.get(empleado.id, 0), movimientos.get(empleado.id, ([], []))
+                db, empleado, periodo, entrada, extras.get(empleado.id, 0), movimientos
             )
             creadas += 1
             detalle.append(f"{self._nombre_completo(empleado)}: nómina #{nomina.id} por {nomina.salario_neto}.")
@@ -372,32 +473,187 @@ class RrhhNominaService:
             montos[empleado.id] = monto_horas_extras(acumulado.get(empleado.id, 0), tarifa)
         return montos
 
-    async def _movimientos_por_empleado(
-        self, db: AsyncSession, empleados: List, entrada: RrhhNominaGenerar
-    ) -> dict:
-        """Deducciones y bonificaciones que cubren el periodo, por empleado."""
-        salida: dict[int, tuple] = {}
-        for empleado in empleados:
-            res_d = await db.exec(
-                select(RrhhDeduccion).where(
-                    RrhhDeduccion.empleados_id == empleado.id,
+    async def _validar_conceptos(
+        self, db: AsyncSession, entrada: RrhhNominaGenerar
+    ) -> None:
+        """Comprueba los tipos de los conceptos del formulario antes de crear nada."""
+        for clase, conceptos in (
+            ("deduccion", entrada.deducciones),
+            ("bonificacion", entrada.bonificaciones),
+        ):
+            ids = {c.tipo_id for c in conceptos}
+            if not ids:
+                continue
+            if clase == "deduccion":
+                res = await db.exec(
+                    select(RrhhTipoDeduccion).where(
+                        RrhhTipoDeduccion.id_tipos_deducciones.in_(ids)
+                    )
+                )
+                encontrados = {t.id_tipos_deducciones for t in res.all()}
+                etiqueta = "deducción"
+            else:
+                res = await db.exec(
+                    select(RrhhTipoBonificacion).where(
+                        RrhhTipoBonificacion.id_tipos_bonificaciones.in_(ids)
+                    )
+                )
+                encontrados = {t.id_tipos_bonificaciones for t in res.all()}
+                etiqueta = "bonificación"
+
+            faltantes = sorted(ids - encontrados)
+            if faltantes:
+                raise HTTPException(
+                    status_code=404,
+                    detail=(
+                        f"Tipos de {etiqueta} inexistentes: "
+                        f"{', '.join(str(i) for i in faltantes)}"
+                    ),
+                )
+
+    async def _movimientos_de(
+        self, db: AsyncSession, empleado, entrada: RrhhNominaGenerar
+    ) -> tuple:
+        """Movimientos que aplican a la nómina que se está generando.
+
+        Combina los ya registrados que solapan el periodo (si el formulario no
+        los excluyó) con los conceptos definidos en él.
+        """
+        existentes_d: List = []
+        existentes_b: List = []
+        if entrada.incluir_movimientos_existentes:
+            existentes_d, existentes_b = await self._existentes_por_empleado(
+                db, empleado, entrada
+            )
+
+        conceptos_d = await self._asegurar_conceptos(
+            db, empleado, entrada.deducciones, "deduccion", entrada
+        )
+        conceptos_b = await self._asegurar_conceptos(
+            db, empleado, entrada.bonificaciones, "bonificacion", entrada
+        )
+
+        deducciones = self._fusionar_movimientos(existentes_d, conceptos_d, "deduccion")
+        bonificaciones = self._fusionar_movimientos(
+            existentes_b, conceptos_b, "bonificacion"
+        )
+
+        monto_d = await self._montos_movimientos(db, deducciones, "deduccion", empleado)
+        monto_b = await self._montos_movimientos(db, bonificaciones, "bonificacion", empleado)
+        return (deducciones, bonificaciones, monto_d, monto_b)
+
+    async def _existentes_por_empleado(
+        self, db: AsyncSession, empleado, entrada: RrhhNominaGenerar
+    ) -> tuple:
+        """Deducciones y bonificaciones ya registradas que cubren el periodo."""
+        res_d = await db.exec(
+            select(RrhhDeduccion).where(
+                RrhhDeduccion.empleados_id == empleado.id,
+                RrhhDeduccion.fin_periodo >= entrada.inicio_periodo,
+                RrhhDeduccion.inicio_periodo <= entrada.fin_periodo,
+            )
+        )
+        res_b = await db.exec(
+            select(RrhhBonificacion).where(
+                RrhhBonificacion.empleados_id == empleado.id,
+                RrhhBonificacion.fin_periodo >= entrada.inicio_periodo,
+                RrhhBonificacion.inicio_periodo <= entrada.fin_periodo,
+            )
+        )
+        return list(res_d.all()), list(res_b.all())
+
+    async def _asegurar_conceptos(
+        self,
+        db: AsyncSession,
+        empleado,
+        conceptos: List[RrhhConceptoGenerar],
+        clase: str,
+        entrada: RrhhNominaGenerar,
+    ) -> List:
+        """Materializa los conceptos del formulario como movimientos del empleado.
+
+        Si el empleado ya tiene un movimiento equivalente (mismo tipo, mismo
+        valor y periodo solapado) se reutiliza: no se duplica el cobro.
+        """
+        salida: List = []
+        for concepto in conceptos:
+            equivalente = await self._concepto_equivalente(
+                db, empleado.id, concepto, clase, entrada
+            )
+            if equivalente is not None:
+                salida.append(equivalente)
+                continue
+
+            if clase == "deduccion":
+                fila = RrhhDeduccion(
+                    empleados_id=empleado.id,
+                    tipo_deducciones_id=concepto.tipo_id,
+                    valor=Decimal(concepto.valor),
+                    inicio_periodo=entrada.inicio_periodo,
+                    fin_periodo=entrada.fin_periodo,
+                )
+            else:
+                fila = RrhhBonificacion(
+                    empleados_id=empleado.id,
+                    tipo_bonificaciones_id=concepto.tipo_id,
+                    valor=Decimal(concepto.valor),
+                    inicio_periodo=entrada.inicio_periodo,
+                    fin_periodo=entrada.fin_periodo,
+                )
+            db.add(fila)
+            # Solo `flush`: el commit lo hace la nómina, así que el movimiento
+            # y su puente se cierran juntos en la misma transacción.
+            await db.flush()
+            salida.append(fila)
+        return salida
+
+    async def _concepto_equivalente(
+        self,
+        db: AsyncSession,
+        empleado_id: int,
+        concepto: RrhhConceptoGenerar,
+        clase: str,
+        entrada: RrhhNominaGenerar,
+    ):
+        """Movimiento ya registrado idéntico (tipo + valor) que solape el periodo."""
+        if clase == "deduccion":
+            statement = (
+                select(RrhhDeduccion)
+                .where(
+                    RrhhDeduccion.empleados_id == empleado_id,
+                    RrhhDeduccion.tipo_deducciones_id == concepto.tipo_id,
+                    RrhhDeduccion.valor == Decimal(concepto.valor),
                     RrhhDeduccion.fin_periodo >= entrada.inicio_periodo,
                     RrhhDeduccion.inicio_periodo <= entrada.fin_periodo,
                 )
+                .order_by(RrhhDeduccion.id_deducciones)
             )
-            deducciones = list(res_d.all())
-            res_b = await db.exec(
-                select(RrhhBonificacion).where(
-                    RrhhBonificacion.empleados_id == empleado.id,
+        else:
+            statement = (
+                select(RrhhBonificacion)
+                .where(
+                    RrhhBonificacion.empleados_id == empleado_id,
+                    RrhhBonificacion.tipo_bonificaciones_id == concepto.tipo_id,
+                    RrhhBonificacion.valor == Decimal(concepto.valor),
                     RrhhBonificacion.fin_periodo >= entrada.inicio_periodo,
                     RrhhBonificacion.inicio_periodo <= entrada.fin_periodo,
                 )
+                .order_by(RrhhBonificacion.id_bonificaciones)
             )
-            bonificaciones = list(res_b.all())
+        result = await db.exec(statement)
+        return result.first()
 
-            monto_d = await self._montos_movimientos(db, deducciones, "deduccion", empleado)
-            monto_b = await self._montos_movimientos(db, bonificaciones, "bonificacion", empleado)
-            salida[empleado.id] = (deducciones, bonificaciones, monto_d, monto_b)
+    @staticmethod
+    def _fusionar_movimientos(existentes: List, conceptos: List, clase: str) -> List:
+        """Une los movimientos existentes con los recién creados, sin duplicar."""
+        campo_pk = "id_deducciones" if clase == "deduccion" else "id_bonificaciones"
+        vistos = {getattr(m, campo_pk) for m in existentes}
+        salida = list(existentes)
+        for movimiento in conceptos:
+            clave = getattr(movimiento, campo_pk)
+            if clave not in vistos:
+                vistos.add(clave)
+                salida.append(movimiento)
         return salida
 
     async def _montos_movimientos(
