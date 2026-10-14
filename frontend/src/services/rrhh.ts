@@ -24,6 +24,7 @@ import type {
   RrhhTipoDeduccion,
   RrhhTipoBonificacion,
   RrhhTipoPago,
+  RrhhCalificacion,
   RrhhAsistencia,
   RrhhAsistenciaCreate,
   RrhhAsistenciaUpdate,
@@ -52,6 +53,15 @@ import type {
   RrhhSolicitudAccion,
   RrhhSolicitudCalendario,
   RrhhSolicitudResumen,
+  RrhhEvaluacionListado,
+  RrhhEvaluacionDetalle,
+  RrhhEvaluacionCreate,
+  RrhhEvaluacionUpdate,
+  RrhhObjetivo,
+  RrhhObjetivoCreate,
+  RrhhMeta,
+  RrhhMetaCreate,
+  RrhhEvaluacionReporte,
 } from '../types/rrhh';
 
 export const rrhhService = {
@@ -166,6 +176,15 @@ export const rrhhService = {
     buscar?: string;
   }): Promise<RrhhTipoPago[]> => {
     return await apiClient.get('/rrhh/catalogos/tipos-pago', params);
+  },
+
+  /** Calificaciones (1–5): de aquí salen los valores de los 4 criterios. */
+  listarCalificaciones: async (params?: {
+    skip?: number;
+    limit?: number;
+    buscar?: string;
+  }): Promise<RrhhCalificacion[]> => {
+    return await apiClient.get('/rrhh/catalogos/calificaciones', params);
   },
 
   // ── Departamentos ────────────────────────────────────────────────────────
@@ -478,5 +497,93 @@ export const rrhhService = {
 
   estadosSolicitud: async (): Promise<string[]> => {
     return await apiClient.get('/rrhh/solicitudes/estados');
+  },
+
+  // ── Evaluaciones, objetivos y metas (Fase 8) ────────────────────────────
+
+  listarEvaluaciones: async (params?: {
+    skip?: number;
+    limit?: number;
+    empleado_id?: number;
+    departamento_id?: number;
+    estado?: string;
+    tipo?: string;
+    desde?: string;
+    hasta?: string;
+    buscar?: string;
+  }): Promise<RrhhEvaluacionListado[]> => {
+    return await apiClient.get('/rrhh/evaluaciones', params);
+  },
+
+  obtenerEvaluacion: async (id: number): Promise<RrhhEvaluacionDetalle> => {
+    return await apiClient.get(`/rrhh/evaluaciones/${id}`);
+  },
+
+  crearEvaluacion: async (
+    data: RrhhEvaluacionCreate
+  ): Promise<RrhhEvaluacionListado> => {
+    return await apiClient.post('/rrhh/evaluaciones', data);
+  },
+
+  editarEvaluacion: async (
+    id: number,
+    data: RrhhEvaluacionUpdate
+  ): Promise<RrhhEvaluacionListado> => {
+    return await apiClient.put(`/rrhh/evaluaciones/${id}`, data);
+  },
+
+  /** `borrador → finalizada`: congela la evaluación. */
+  finalizarEvaluacion: async (id: number): Promise<RrhhEvaluacionListado> => {
+    return await apiClient.post(`/rrhh/evaluaciones/${id}/finalizar`, {});
+  },
+
+  eliminarEvaluacion: async (id: number): Promise<RrhhEliminarResponse> => {
+    return await apiClient.delete(`/rrhh/evaluaciones/${id}`);
+  },
+
+  crearObjetivo: async (
+    evaluacionId: number,
+    data: RrhhObjetivoCreate
+  ): Promise<RrhhObjetivo> => {
+    return await apiClient.post(`/rrhh/evaluaciones/${evaluacionId}/objetivos`, data);
+  },
+
+  editarObjetivo: async (
+    objetivoId: number,
+    data: RrhhObjetivoCreate
+  ): Promise<RrhhObjetivo> => {
+    return await apiClient.put(`/rrhh/evaluaciones/objetivos/${objetivoId}`, data);
+  },
+
+  eliminarObjetivo: async (objetivoId: number): Promise<RrhhEliminarResponse> => {
+    return await apiClient.delete(`/rrhh/evaluaciones/objetivos/${objetivoId}`);
+  },
+
+  crearMeta: async (
+    objetivoId: number,
+    data: RrhhMetaCreate
+  ): Promise<RrhhMeta> => {
+    return await apiClient.post(`/rrhh/evaluaciones/objetivos/${objetivoId}/metas`, data);
+  },
+
+  editarMeta: async (
+    metaId: number,
+    data: RrhhMetaCreate
+  ): Promise<RrhhMeta> => {
+    return await apiClient.put(`/rrhh/evaluaciones/metas/${metaId}`, data);
+  },
+
+  eliminarMeta: async (metaId: number): Promise<RrhhEliminarResponse> => {
+    return await apiClient.delete(`/rrhh/evaluaciones/metas/${metaId}`);
+  },
+
+  /** Reporte consolidado (totales globales y promedios por empleado). */
+  reporteEvaluaciones: async (params?: {
+    empleado_id?: number;
+    departamento_id?: number;
+    desde?: string;
+    hasta?: string;
+  }): Promise<RrhhEvaluacionReporte> => {
+    return await apiClient.get('/rrhh/evaluaciones/reporte', params);
   },
 };

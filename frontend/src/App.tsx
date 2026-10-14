@@ -24,6 +24,7 @@ import {
   DollarSign,
   Wrench,
   ClipboardList,
+  ClipboardCheck,
   Layers,
   Users,
   Calculator,
@@ -111,6 +112,8 @@ import { AsistenciaPage } from './pages/rrhh/AsistenciaPage';
 import { MovimientosPage as RrhhMovimientosPage } from './pages/rrhh/MovimientosPage';
 import { NominaPage } from './pages/rrhh/NominaPage';
 import { SolicitudesPage as RrhhSolicitudesPage } from './pages/rrhh/SolicitudesPage';
+import { EvaluacionesPage } from './pages/rrhh/EvaluacionesPage';
+import { EvaluacionDetallePage } from './pages/rrhh/EvaluacionDetallePage';
 
 type Modulo = 'administracion' | 'venta' | 'compra' | 'inventario' | 'reportes' | 'home' | 'proyecto' | 'dj08' | 'rrhh';
 
@@ -499,6 +502,17 @@ function App() {
                     >
                       <ClipboardList className="w-6 h-6" />
                       Solicitudes
+                    </SidebarLink>
+                  </li>
+                  <li>
+                    <SidebarLink
+                      slim={slimSidebar}
+                      to="/rrhh/evaluaciones"
+                      onClick={handleLinkClick}
+                      disabled={!hasFuncionalidad('rrhh_evaluaciones')}
+                    >
+                      <ClipboardCheck className="w-6 h-6" />
+                      Evaluaciones
                     </SidebarLink>
                   </li>
                   <li>
@@ -1236,6 +1250,22 @@ function App() {
                   element={
                     <ProtectedRoute moduloActivo={moduloActivo} currentPath="/rrhh/solicitudes">
                       <RrhhSolicitudesPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/rrhh/evaluaciones"
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/rrhh/evaluaciones">
+                      <EvaluacionesPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/rrhh/evaluaciones/:id"
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/rrhh/evaluaciones">
+                      <EvaluacionDetallePage />
                     </ProtectedRoute>
                   }
                 />

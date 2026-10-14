@@ -109,7 +109,7 @@ class RrhhEvaluacion(SQLModel, table=True):
         ),
     )
     promedio_objetivos: Optional[Decimal] = Field(
-        default=None, decimal_places=2, max_digits=4
+        default=None, decimal_places=2, max_digits=5
     )
     comentarios: Optional[str] = None
     fecha: date = Field(default_factory=_today)

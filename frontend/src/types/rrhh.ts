@@ -723,3 +723,164 @@ export interface RrhhSolicitudResumen {
   estado: RrhhEstadoSolicitud;
   cantidad: number;
 }
+
+// ── Evaluaciones, objetivos y metas (Fase 8) ────────────────────────────────
+
+export type RrhhTipoEvaluacion = 'formal' | 'autoevaluacion' | 'parcial' | 'final';
+export type RrhhEstadoEvaluacion = 'borrador' | 'finalizada';
+
+export const TIPOS_EVALUACION: RrhhTipoEvaluacion[] = [
+  'formal',
+  'autoevaluacion',
+  'parcial',
+  'final',
+];
+export const ESTADOS_EVALUACION: RrhhEstadoEvaluacion[] = ['borrador', 'finalizada'];
+
+export const ETIQUETA_TIPO_EVALUACION: Record<RrhhTipoEvaluacion, string> = {
+  formal: 'Formal',
+  autoevaluacion: 'Autoevaluación',
+  parcial: 'Parcial',
+  final: 'Final',
+};
+
+/** Insignias de estado: el borrador se edita, la finalizada está congelada. */
+export const COLOR_ESTADO_EVALUACION: Record<RrhhEstadoEvaluacion, string> = {
+  borrador: 'bg-amber-100 text-amber-700',
+  finalizada: 'bg-green-100 text-green-700',
+};
+
+/** Los 4 criterios son columnas FK fijas a `calificaciones`. */
+export const CRITERIOS_EVALUACION = [
+  'puntualidad',
+  'productividad',
+  'trabajo_equipo',
+  'calidad',
+] as const;
+
+export type RrhhCriterio = (typeof CRITERIOS_EVALUACION)[number];
+
+export interface RrhhMeta {
+  id_metas: number;
+  objetivo_id: number;
+  nombre: string;
+  resultado_meta: number | null;
+  valoracion: number | null;
+  observaciones: string | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface RrhhObjetivo {
+  id_objetivos: number;
+  evaluacion_id: number;
+  nombre: string;
+  resultado_objetivo: string | null;
+  valoracion: number | null;
+  observaciones: string | null;
+  /** Aporte al promedio global, en 0–100. */
+  aporte: string | null;
+  metas: RrhhMeta[];
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface RrhhEvaluacion {
+  id: number;
+  empleado_id: number;
+  evaluador_id: number | null;
+  periodo: string;
+  tipo_evaluacion: RrhhTipoEvaluacion;
+  estado: RrhhEstadoEvaluacion;
+  inicio_periodo: string;
+  fin_periodo: string;
+  /** Criterios: ids de `calificaciones` (no valores). */
+  puntualidad: number | null;
+  productividad: number | null;
+  trabajo_equipo: number | null;
+  calidad: number | null;
+  /** Escala 0–100, persistido y recalculado en cada cambio de objetivo/meta. */
+  promedio_objetivos: string | null;
+  comentarios: string | null;
+  fecha: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface RrhhEvaluacionListado extends RrhhEvaluacion {
+  empleado_codigo: string | null;
+  empleado_nombre: string | null;
+  departamento_nombre: string | null;
+  evaluador_nombre: string | null;
+  /** Escala 1–5, calculado al leer (no persistido en el backend). */
+  promedio_criterios: string | null;
+  cantidad_objetivos: number;
+  cantidad_metas: number;
+}
+
+/** Criterio con su calificación resuelta, listo para el radar. */
+export interface RrhhCriterioEvaluacion {
+  criterio: RrhhCriterio;
+  etiqueta: string;
+  /** `calificaciones.valor` (1–5) o 0 si todavía no está puntuado. */
+  valor: number;
+  calificacion_nombre: string | null;
+}
+
+export interface RrhhEvaluacionDetalle extends RrhhEvaluacionListado {
+  criterios: RrhhCriterioEvaluacion[];
+  objetivos: RrhhObjetivo[];
+  /** Valoración media de objetivos+metas en 1–5. */
+  promedio_valoracion_1a5: string | null;
+}
+
+export interface RrhhEvaluacionCreate {
+  empleado_id: number;
+  evaluador_id?: number | null;
+  periodo: string;
+  tipo_evaluacion: RrhhTipoEvaluacion;
+  inicio_periodo: string;
+  fin_periodo: string;
+  puntualidad?: number | null;
+  productividad?: number | null;
+  trabajo_equipo?: number | null;
+  calidad?: number | null;
+  comentarios?: string | null;
+  fecha?: string | null;
+}
+
+export type RrhhEvaluacionUpdate = Partial<
+  Omit<RrhhEvaluacionCreate, 'empleado_id'>
+>;
+
+export interface RrhhObjetivoCreate {
+  nombre: string;
+  resultado_objetivo?: string | null;
+  valoracion?: number | null;
+  observaciones?: string | null;
+}
+
+export interface RrhhMetaCreate extends RrhhObjetivoCreate {
+  resultado_meta?: number | null;
+}
+
+export interface RrhhEvaluacionEmpleadoReporte {
+  empleado_id: number;
+  empleado_codigo: string | null;
+  empleado_nombre: string | null;
+  departamento_nombre: string | null;
+  cantidad_evaluaciones: number;
+  promedio_criterios: string | null;
+  promedio_objetivos: string | null;
+}
+
+export interface RrhhEvaluacionReporte {
+  desde: string | null;
+  hasta: string | null;
+  cantidad_evaluaciones: number;
+  cantidad_borradores: number;
+  cantidad_finalizadas: number;
+  promedio_criterios: string | null;
+  promedio_objetivos: string | null;
+  empleados: RrhhEvaluacionEmpleadoReporte[];
+}

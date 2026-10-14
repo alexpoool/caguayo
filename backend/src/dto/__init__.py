@@ -325,6 +325,23 @@ from .rrhh_solicitud_dto import (
     RrhhSolicitudCalendario,
     RrhhSolicitudResumenEstado,
 )
+from .rrhh_evaluacion_dto import (
+    RrhhObjetivoCreate,
+    RrhhObjetivoUpdate,
+    RrhhMetaCreate,
+    RrhhMetaUpdate,
+    RrhhMetaRead,
+    RrhhObjetivoRead,
+    RrhhEvaluacionCreate,
+    RrhhEvaluacionUpdate,
+    RrhhCriterioEvaluacion,
+    RrhhEvaluacionBase,
+    RrhhEvaluacionRead,
+    RrhhEvaluacionListado,
+    RrhhEvaluacionDetalle,
+    RrhhEvaluacionEmpleadoReporte,
+    RrhhEvaluacionReporte,
+)
 
 
 __all__ = [
@@ -590,6 +607,21 @@ __all__ = [
     "RrhhSolicitudListado",
     "RrhhSolicitudCalendario",
     "RrhhSolicitudResumenEstado",
+    "RrhhObjetivoCreate",
+    "RrhhObjetivoUpdate",
+    "RrhhMetaCreate",
+    "RrhhMetaUpdate",
+    "RrhhMetaRead",
+    "RrhhObjetivoRead",
+    "RrhhEvaluacionCreate",
+    "RrhhEvaluacionUpdate",
+    "RrhhCriterioEvaluacion",
+    "RrhhEvaluacionBase",
+    "RrhhEvaluacionRead",
+    "RrhhEvaluacionListado",
+    "RrhhEvaluacionDetalle",
+    "RrhhEvaluacionEmpleadoReporte",
+    "RrhhEvaluacionReporte",
 ]
 VentaRead.model_rebuild(
     _types_namespace={
