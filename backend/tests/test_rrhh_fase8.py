@@ -714,6 +714,34 @@ class TestListado:
         finally:
             _limpiar_empleado(client, empleado["id"])
 
+    def test_listado_incluye_criterios_para_el_radar(self, client):
+        """La fila del listado trae los 4 criterios resueltos (columna
+        «Desempeño»): valor 0 cuando el criterio aún no está puntuado."""
+        empleado = _crear_empleado(client)
+        calificaciones = []
+        try:
+            ids = [_crear_calificacion(client, v) for v in (1, 5)]
+            calificaciones += ids
+            evaluacion = _crear_evaluacion(
+                client, empleado["id"], puntualidad=ids[0], calidad=ids[1]
+            )
+
+            response = client.get(f"{BASE}?empleado_id={empleado['id']}")
+            assert response.status_code == 200
+            fila = next(
+                e for e in response.json() if e["id"] == evaluacion["id"]
+            )
+            assert [c["criterio"] for c in fila["criterios"]] == [
+                "puntualidad",
+                "productividad",
+                "trabajo_equipo",
+                "calidad",
+            ]
+            assert [c["valor"] for c in fila["criterios"]] == [1, 0, 0, 5]
+        finally:
+            _limpiar_empleado(client, empleado["id"])
+            _limpiar_calificaciones(client, calificaciones)
+
     def test_listado_vacio(self, client):
         response = client.get(f"{BASE}?empleado_id=999999")
         assert response.status_code == 200

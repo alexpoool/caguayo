@@ -893,6 +893,9 @@ export interface RrhhEvaluacionListado extends RrhhEvaluacion {
   empleado_nombre: string | null;
   departamento_nombre: string | null;
   evaluador_nombre: string | null;
+  /** Los 4 criterios resueltos (valor 0 = sin puntuar): alimentan el radar
+   * de la columna «Desempeño» y el del detalle. */
+  criterios: RrhhCriterioEvaluacion[];
   /** Escala 1–5, calculado al leer (no persistido en el backend). */
   promedio_criterios: string | null;
   cantidad_objetivos: number;
@@ -909,7 +912,6 @@ export interface RrhhCriterioEvaluacion {
 }
 
 export interface RrhhEvaluacionDetalle extends RrhhEvaluacionListado {
-  criterios: RrhhCriterioEvaluacion[];
   objetivos: RrhhObjetivo[];
   /** Valoración media de objetivos+metas en 1–5. */
   promedio_valoracion_1a5: string | null;

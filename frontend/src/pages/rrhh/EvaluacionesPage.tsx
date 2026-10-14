@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
+import { RadarCriterios } from '../../components/rrhh/RadarCriterios';
 import { rrhhService } from '../../services/rrhh';
 import {
   COLOR_ESTADO_EVALUACION,
@@ -282,7 +283,7 @@ export function EvaluacionesPage() {
                   <TableHead>Periodo</TableHead>
                   <TableHead>Tipo</TableHead>
                   <TableHead className="text-center">Estado</TableHead>
-                  <TableHead className="text-right">Criterios (1–5)</TableHead>
+                  <TableHead className="text-center">Desempeño (1–5)</TableHead>
                   <TableHead className="text-right">Objetivos (0–100)</TableHead>
                   <TableHead className="text-center">Objetivos</TableHead>
                   <TableHead className="text-right">Acciones</TableHead>
@@ -316,8 +317,23 @@ export function EvaluacionesPage() {
                         {ev.estado === 'borrador' ? 'Borrador' : 'Finalizada'}
                       </span>
                     </TableCell>
-                    <TableCell className="text-right tabular-nums">
-                      {fmtPromedio(ev.promedio_criterios, '1-5')}
+                    <TableCell className="text-center">
+                      {ev.criterios.some((c) => c.valor > 0) ? (
+                        <div className="flex flex-col items-center">
+                          <RadarCriterios
+                            compact
+                            data={ev.criterios.map((c) => ({
+                              criterio: c.etiqueta,
+                              valor: c.valor,
+                            }))}
+                          />
+                          <span className="text-xs tabular-nums text-slate-600">
+                            {fmtPromedio(ev.promedio_criterios, '1-5')}
+                          </span>
+                        </div>
+                      ) : (
+                        <span className="text-slate-400">—</span>
+                      )}
                     </TableCell>
                     <TableCell className="text-right tabular-nums">
                       {fmtPromedio(ev.promedio_objetivos, '0-100')}

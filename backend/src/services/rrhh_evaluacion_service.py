@@ -307,6 +307,7 @@ class RrhhEvaluacionService:
             empleado_nombre=self._nombre_completo(empleado),
             departamento_nombre=nombre_depto,
             evaluador_nombre=self._nombre_completo(evaluador),
+            criterios=self._criterios_resueltos(evaluacion, calificaciones),
             promedio_criterios=promedio_criterios(valores),
             cantidad_objetivos=cantidad_objetivos,
             cantidad_metas=cantidad_metas,
@@ -500,9 +501,6 @@ class RrhhEvaluacionService:
 
         return RrhhEvaluacionDetalle(
             **base.model_dump(),
-            criterios=self._criterios_resueltos(
-                evaluacion, resolucion["calificaciones"]
-            ),
             objetivos=objetivos_dto,
             promedio_valoracion_1a5=prom_1a5,
         )

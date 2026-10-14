@@ -1,15 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useParams } from 'react-router-dom';
-import {
-  Legend,
-  PolarAngleAxis,
-  PolarGrid,
-  PolarRadiusAxis,
-  Radar,
-  RadarChart,
-  ResponsiveContainer,
-  Tooltip,
-} from 'recharts';
+import { RadarCriterios } from '../../components/rrhh/RadarCriterios';
 import { rrhhService } from '../../services/rrhh';
 import {
   COLOR_ESTADO_EVALUACION,
@@ -176,29 +167,7 @@ export function EvaluacionDetallePage() {
             </p>
           </CardHeader>
           <CardContent>
-            <div className="h-72">
-              <ResponsiveContainer width="100%" height="100%">
-                <RadarChart data={radarData} outerRadius="75%">
-                  <PolarGrid stroke="#e2e8f0" />
-                  <PolarAngleAxis dataKey="criterio" tick={{ fontSize: 12 }} />
-                  <PolarRadiusAxis
-                    angle={30}
-                    domain={[0, 5]}
-                    tick={{ fontSize: 10 }}
-                    tickCount={6}
-                  />
-                  <Radar
-                    name="Puntuación"
-                    dataKey="valor"
-                    stroke="#0d9488"
-                    fill="#0d9488"
-                    fillOpacity={0.35}
-                  />
-                  <Tooltip />
-                  <Legend />
-                </RadarChart>
-              </ResponsiveContainer>
-            </div>
+            <RadarCriterios data={radarData} />
           </CardContent>
         </Card>
 

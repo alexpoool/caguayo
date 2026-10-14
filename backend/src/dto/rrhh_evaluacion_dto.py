@@ -206,6 +206,9 @@ class RrhhEvaluacionListado(RrhhEvaluacionRead):
     empleado_nombre: Optional[str] = None
     departamento_nombre: Optional[str] = None
     evaluador_nombre: Optional[str] = None
+    # Los 4 criterios resueltos (valor 0 = sin puntuar): alimentan el radar
+    # de la columna «Desempeño» del listado y el del detalle.
+    criterios: list[RrhhCriterioEvaluacion] = Field(default_factory=list)
     # Calculados al leer (no persistidos).
     promedio_criterios: Optional[Decimal] = None
     cantidad_objetivos: int = 0
@@ -213,9 +216,9 @@ class RrhhEvaluacionListado(RrhhEvaluacionRead):
 
 
 class RrhhEvaluacionDetalle(RrhhEvaluacionListado):
-    """Detalle completo: criterios para el radar y objetivos/metas anidados."""
+    """Detalle completo: objetivos y metas anidados (los criterios vienen del
+    listado, que ya los resuelve en lote)."""
 
-    criterios: list[RrhhCriterioEvaluacion] = Field(default_factory=list)
     objetivos: list[RrhhObjetivoRead] = Field(default_factory=list)
     # Valoración media de objetivos+metas en 1–5 (el persistido va en 0–100).
     promedio_valoracion_1a5: Optional[Decimal] = None
