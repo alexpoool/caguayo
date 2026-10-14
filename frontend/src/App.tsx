@@ -110,6 +110,7 @@ import { EmpleadosPage } from './pages/rrhh/EmpleadosPage';
 import { AsistenciaPage } from './pages/rrhh/AsistenciaPage';
 import { MovimientosPage as RrhhMovimientosPage } from './pages/rrhh/MovimientosPage';
 import { NominaPage } from './pages/rrhh/NominaPage';
+import { SolicitudesPage as RrhhSolicitudesPage } from './pages/rrhh/SolicitudesPage';
 
 type Modulo = 'administracion' | 'venta' | 'compra' | 'inventario' | 'reportes' | 'home' | 'proyecto' | 'dj08' | 'rrhh';
 
@@ -487,6 +488,17 @@ function App() {
                     >
                       <Banknote className="w-6 h-6" />
                       Nómina
+                    </SidebarLink>
+                  </li>
+                  <li>
+                    <SidebarLink
+                      slim={slimSidebar}
+                      to="/rrhh/solicitudes"
+                      onClick={handleLinkClick}
+                      disabled={!hasFuncionalidad('rrhh_solicitudes')}
+                    >
+                      <ClipboardList className="w-6 h-6" />
+                      Solicitudes
                     </SidebarLink>
                   </li>
                   <li>
@@ -1216,6 +1228,14 @@ function App() {
                   element={
                     <ProtectedRoute moduloActivo={moduloActivo} currentPath="/rrhh/nomina">
                       <NominaPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/rrhh/solicitudes"
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/rrhh/solicitudes">
+                      <RrhhSolicitudesPage />
                     </ProtectedRoute>
                   }
                 />

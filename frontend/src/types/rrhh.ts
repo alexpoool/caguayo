@@ -637,3 +637,89 @@ export const RRHH_CATALOGOS: RrhhCatalogoConfig[] = [
     descripcion: 'Escala de valoración usada en las evaluaciones (1 a 5).',
   },
 ];
+
+// ── Solicitudes de vacaciones y permisos (Fase 7) ───────────────────────────
+
+export type RrhhTipoSolicitud = 'vacaciones' | 'permiso';
+export type RrhhEstadoSolicitud = 'pendiente' | 'aprobada' | 'rechazada' | 'cancelada';
+
+export const TIPOS_SOLICITUD: RrhhTipoSolicitud[] = ['vacaciones', 'permiso'];
+export const ESTADOS_SOLICITUD: RrhhEstadoSolicitud[] = [
+  'pendiente',
+  'aprobada',
+  'rechazada',
+  'cancelada',
+];
+
+/** Colores de la insignia de estado de una solicitud. */
+export const COLOR_ESTADO_SOLICITUD: Record<RrhhEstadoSolicitud, string> = {
+  pendiente: 'bg-amber-100 text-amber-700',
+  aprobada: 'bg-green-100 text-green-700',
+  rechazada: 'bg-red-100 text-red-700',
+  cancelada: 'bg-slate-200 text-slate-600',
+};
+
+/** Colores por tipo, para el calendario. */
+export const COLOR_TIPO_SOLICITUD: Record<RrhhTipoSolicitud, string> = {
+  vacaciones: 'bg-blue-500',
+  permiso: 'bg-violet-500',
+};
+
+export interface RrhhSolicitud {
+  id: number;
+  empleado_id: number;
+  tipo: RrhhTipoSolicitud;
+  fecha_inicio: string;
+  fecha_fin: string;
+  motivo: string | null;
+  estado: RrhhEstadoSolicitud;
+  aprobado_por: number | null;
+  fecha_aprobacion: string | null;
+  observaciones: string | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface RrhhSolicitudListado extends RrhhSolicitud {
+  empleado_codigo: string | null;
+  empleado_nombre: string | null;
+  departamento_nombre: string | null;
+  aprobador_nombre: string | null;
+  /** Supervisor del solicitante: quién debe aprobar (se precarga). */
+  supervisor_id: number | null;
+  supervisor_nombre: string | null;
+  /** Días naturales que cubre (calculado). */
+  dias: number;
+}
+
+export interface RrhhSolicitudCreate {
+  empleado_id: number;
+  tipo: RrhhTipoSolicitud;
+  fecha_inicio: string;
+  fecha_fin: string;
+  motivo?: string | null;
+}
+
+/** Quién ejecuta aprobar/rechazar/cancelar (sin auth en backend). */
+export interface RrhhSolicitudAccion {
+  empleado_id: number;
+  observaciones?: string | null;
+}
+
+export interface RrhhSolicitudCalendario {
+  id: number;
+  empleado_id: number;
+  empleado_nombre: string | null;
+  departamento_nombre: string | null;
+  tipo: RrhhTipoSolicitud;
+  estado: RrhhEstadoSolicitud;
+  fecha_inicio: string;
+  fecha_fin: string;
+  dias: number;
+  motivo: string | null;
+}
+
+export interface RrhhSolicitudResumen {
+  estado: RrhhEstadoSolicitud;
+  cantidad: number;
+}

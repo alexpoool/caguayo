@@ -316,6 +316,15 @@ from .rrhh_nomina_dto import (
     RrhhCostoDepartamento,
     RrhhReporteCosto,
 )
+from .rrhh_solicitud_dto import (
+    RrhhSolicitudCreate,
+    RrhhSolicitudAccion,
+    RrhhSolicitudBase,
+    RrhhSolicitudRead,
+    RrhhSolicitudListado,
+    RrhhSolicitudCalendario,
+    RrhhSolicitudResumenEstado,
+)
 
 
 __all__ = [
@@ -574,6 +583,13 @@ __all__ = [
     "RrhhNominaDetalle",
     "RrhhCostoDepartamento",
     "RrhhReporteCosto",
+    "RrhhSolicitudCreate",
+    "RrhhSolicitudAccion",
+    "RrhhSolicitudBase",
+    "RrhhSolicitudRead",
+    "RrhhSolicitudListado",
+    "RrhhSolicitudCalendario",
+    "RrhhSolicitudResumenEstado",
 ]
 VentaRead.model_rebuild(
     _types_namespace={

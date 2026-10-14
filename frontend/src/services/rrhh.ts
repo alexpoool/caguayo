@@ -46,6 +46,12 @@ import type {
   RrhhNominaGenerada,
   RrhhPagoInput,
   RrhhReporteCosto,
+  RrhhSolicitud,
+  RrhhSolicitudListado,
+  RrhhSolicitudCreate,
+  RrhhSolicitudAccion,
+  RrhhSolicitudCalendario,
+  RrhhSolicitudResumen,
 } from '../types/rrhh';
 
 export const rrhhService = {
@@ -403,5 +409,74 @@ export const rrhhService = {
     const m = /filename\*?=(?:"([^"]+)"|([^;]+))/.exec(disp);
     const nombre = (m && (m[1] || m[2])?.replace(/"/g, '').trim()) || `RECIBO-NOMINA-${id}.pdf`;
     return { blob, nombre };
+  },
+
+  // ── Solicitudes (Fase 7) ─────────────────────────────────────────────────
+  listarSolicitudes: async (params?: {
+    skip?: number;
+    limit?: number;
+    empleado_id?: number;
+    departamento_id?: number;
+    estado?: string;
+    tipo?: string;
+    desde?: string;
+    hasta?: string;
+    buscar?: string;
+  }): Promise<RrhhSolicitudListado[]> => {
+    return await apiClient.get('/rrhh/solicitudes', params);
+  },
+
+  obtenerSolicitud: async (id: number): Promise<RrhhSolicitudListado> => {
+    return await apiClient.get(`/rrhh/solicitudes/${id}`);
+  },
+
+  crearSolicitud: async (data: RrhhSolicitudCreate): Promise<RrhhSolicitudListado> => {
+    return await apiClient.post('/rrhh/solicitudes', data);
+  },
+
+  aprobarSolicitud: async (
+    id: number,
+    data: RrhhSolicitudAccion
+  ): Promise<RrhhSolicitudListado> => {
+    return await apiClient.put(`/rrhh/solicitudes/${id}/aprobar`, data);
+  },
+
+  rechazarSolicitud: async (
+    id: number,
+    data: RrhhSolicitudAccion
+  ): Promise<RrhhSolicitudListado> => {
+    return await apiClient.put(`/rrhh/solicitudes/${id}/rechazar`, data);
+  },
+
+  cancelarSolicitud: async (
+    id: number,
+    data: RrhhSolicitudAccion
+  ): Promise<RrhhSolicitudListado> => {
+    return await apiClient.put(`/rrhh/solicitudes/${id}/cancelar`, data);
+  },
+
+  resumenSolicitudes: async (params?: {
+    empleado_id?: number;
+  }): Promise<RrhhSolicitudResumen[]> => {
+    return await apiClient.get('/rrhh/solicitudes/resumen', params);
+  },
+
+  /** Ausencias aprobadas y pendientes de un rango (calendario de equipo). */
+  solicitudesCalendario: async (params: {
+    desde: string;
+    hasta: string;
+    departamento_id?: number;
+    empleado_id?: number;
+  }): Promise<RrhhSolicitudCalendario[]> => {
+    return await apiClient.get('/rrhh/solicitudes/calendario', params);
+  },
+
+  /** El tipo de la solicitud: se reexporta para los selectores. */
+  tiposSolicitud: async (): Promise<string[]> => {
+    return await apiClient.get('/rrhh/solicitudes/tipos');
+  },
+
+  estadosSolicitud: async (): Promise<string[]> => {
+    return await apiClient.get('/rrhh/solicitudes/estados');
   },
 };

@@ -104,7 +104,7 @@ const SUBMODULOS: SubmoduloCard[] = [
     descripcion: 'Vacaciones y permisos con flujo de aprobación.',
     icon: <CalendarDays className="h-5 w-5" />,
     fase: 7,
-    ruta: null,
+    ruta: '/rrhh/solicitudes',
   },
   {
     id: 'evaluaciones',
