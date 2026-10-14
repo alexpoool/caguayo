@@ -342,9 +342,9 @@ export function EvaluacionesPage() {
                       <Button
                         variant="outline"
                         size="sm"
-                        title={`${ev.cantidad_objetivos} objetivo(s) · ${ev.cantidad_metas} meta(s)`}
+                        title={`Objetivos en alcance del periodo: ${ev.cantidad_objetivos} · ${ev.cantidad_metas} meta(s)`}
                         onClick={() =>
-                          navigate(`/rrhh/objetivos?evaluacion_id=${ev.id}`)
+                          navigate(`/rrhh/objetivos?empleado_id=${ev.empleado_id}`)
                         }
                       >
                         <Target className="h-4 w-4" />

@@ -833,7 +833,10 @@ export interface RrhhMeta {
   objetivo_id: number;
   nombre: string;
   resultado_meta: number | null;
+  /** 1–5: se puntúa en la evaluación; en la pantalla de metas es lectura. */
   valoracion: number | null;
+  fecha_inicio: string | null;
+  fecha_fin: string | null;
   observaciones: string | null;
   created_at?: string;
   updated_at?: string;
@@ -841,26 +844,27 @@ export interface RrhhMeta {
 
 export interface RrhhObjetivo {
   id_objetivos: number;
-  evaluacion_id: number;
+  /** Se define en el empleado (siempre editable), se califica en la evaluación. */
+  empleado_id: number;
   nombre: string;
+  /** Media (1–5) de las valoraciones de sus metas; null sin puntuar. */
   resultado_objetivo: string | null;
-  valoracion: number | null;
+  /** Rango en el que cuenta para las evaluaciones; sin fechas cuenta siempre. */
+  fecha_inicio: string | null;
+  fecha_fin: string | null;
   observaciones: string | null;
   /** Aporte al promedio global, en 0–100. */
   aporte: string | null;
+  total_metas: number;
   metas: RrhhMeta[];
   created_at?: string;
   updated_at?: string;
 }
 
-/** Detalle de un objetivo para la página de metas, con su evaluación resumida. */
+/** Detalle de un objetivo para la página de metas, con su empleado resumido. */
 export interface RrhhObjetivoDetalle extends RrhhObjetivo {
-  evaluacion_estado: RrhhEstadoEvaluacion;
-  periodo: string | null;
-  /** Nombre del tipo de evaluación, resuelto del catálogo. */
-  tipo_evaluacion: string | null;
   empleado_nombre: string | null;
-  promedio_objetivos: string | null;
+  empleado_codigo: string | null;
 }
 
 export interface RrhhEvaluacion {
@@ -880,7 +884,8 @@ export interface RrhhEvaluacion {
   productividad: number | null;
   trabajo_equipo: number | null;
   calidad: number | null;
-  /** Escala 0–100, persistido y recalculado en cada cambio de objetivo/meta. */
+  /** Escala 0–100, persistido: promedio de los `resultado_objetivo` de los
+   * objetivos en alcance del periodo (recalculado en borradores). */
   promedio_objetivos: string | null;
   comentarios: string | null;
   fecha: string;
@@ -912,8 +917,9 @@ export interface RrhhCriterioEvaluacion {
 }
 
 export interface RrhhEvaluacionDetalle extends RrhhEvaluacionListado {
+  /** Objetivos del empleado en alcance del periodo, con metas para calificar. */
   objetivos: RrhhObjetivo[];
-  /** Valoración media de objetivos+metas en 1–5. */
+  /** Valoración media (1–5) de las metas puntuadas en alcance. */
   promedio_valoracion_1a5: string | null;
 }
 
@@ -938,14 +944,19 @@ export type RrhhEvaluacionUpdate = Partial<
 >;
 
 export interface RrhhObjetivoCreate {
+  empleado_id: number;
   nombre: string;
-  resultado_objetivo?: string | null;
-  valoracion?: number | null;
+  fecha_inicio?: string | null;
+  fecha_fin?: string | null;
   observaciones?: string | null;
 }
 
-export interface RrhhMetaCreate extends RrhhObjetivoCreate {
+export interface RrhhMetaCreate {
+  nombre: string;
   resultado_meta?: number | null;
+  fecha_inicio?: string | null;
+  fecha_fin?: string | null;
+  observaciones?: string | null;
 }
 
 export interface RrhhEvaluacionEmpleadoReporte {

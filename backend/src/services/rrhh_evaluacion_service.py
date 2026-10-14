@@ -2,8 +2,10 @@
 
 Reglas de negocio de esta fase:
 
-- **Ciclo**: `borrador → finalizada`. Solo se **edita** (evaluación, criterios,
-  objetivos y metas) mientras está en `borrador`; al finalizar se congela.
+- **Ciclo**: `borrador → finalizada`. Solo la **evaluación** (cabecera y
+  criterios) y la **calificación de metas** exigen `borrador`; la definición
+  de objetivos y metas vive en el empleado y es siempre editable
+  (`rrhh_objetivo_service`).
 - **Única por (empleado, periodo, tipo)**: no se puede tener dos evaluaciones
   iguales para el mismo periodo; el alta devuelve `409`.
 - **Tipos en catálogo**: `evaluaciones.tipo_evaluacion_id` es FK a
@@ -14,11 +16,15 @@ Reglas de negocio de esta fase:
   `trabajo_equipo`, `calidad`) son FK a `calificaciones`; el servicio exige que
   cada id exista y resuelve su `valor` (1–5) para calcular el promedio **al
   leer** (no está persistido).
-- **`promedio_objetivos`** (0–100) **sí se persiste** y se **recalcula** en
-  cada cambio de objetivo o meta, y al finalizar. Ignora los campos sin
-  valoración.
+- **`promedio_objetivos`** (0–100) **sí se persiste**: es el promedio de los
+  `resultado_objetivo` (media 1–5 de las valoraciones de las metas de cada
+  objetivo) de los objetivos del empleado **en alcance** del periodo (solape
+  de fechas; sin fechas cuenta siempre). Se recalcula en las evaluaciones en
+  `borrador` al calificar/editar metas, al crear la evaluación y al
+  finalizar; las finalizadas quedan congeladas.
 - **Objetivos y metas anidados**: `metas` cuelgan de `objetivos`, que cuelgan
-  de `evaluaciones` (ambas FK `CASCADE`).
+  de `empleados` (FK `CASCADE` en ambos); el detalle
+  de la evaluación muestra los del empleado en alcance de su periodo.
 - **Sin autenticación en backend** (decisión del módulo; deuda Fase 10): el
   `evaluador_id` viene en el payload.
 """
@@ -35,11 +41,10 @@ from src.domain.rrhh_evaluacion_calc import (
     CRITERIOS,
     CRITERIOS_ETIQUETA,
     ESTADOS_EVALUACION,
-    escala_a_100,
     puede_editar,
     promedio_criterios,
-    promedio_objetivos,
     redondear,
+    solapa_fechas,
     validar_fechas,
 )
 from src.dto import (
@@ -50,13 +55,8 @@ from src.dto import (
     RrhhEvaluacionReporte,
     RrhhEvaluacionEmpleadoReporte,
     RrhhCriterioEvaluacion,
-    RrhhObjetivoCreate,
-    RrhhObjetivoUpdate,
-    RrhhObjetivoRead,
-    RrhhObjetivoDetalle,
-    RrhhMetaCreate,
-    RrhhMetaUpdate,
     RrhhMetaRead,
+    RrhhMetaValoracion,
 )
 from src.models import (
     RrhhEvaluacion,
@@ -67,6 +67,7 @@ from src.models import (
     RrhhDepartamento,
     RrhhTipoEvaluacion,
 )
+from src.services.rrhh_objetivo_service import rrhh_objetivo_service
 
 CERO = Decimal("0.00")
 
@@ -244,35 +245,6 @@ class RrhhEvaluacionService:
             )
         return salida
 
-    async def _valoraciones_de(
-        self, db: AsyncSession, evaluacion_id: int
-    ) -> List[Optional[int]]:
-        """Valoraciones (1–5) de los objetivos Y de sus metas, en una lista."""
-        res = await db.exec(
-            select(RrhhObjetivo).where(RrhhObjetivo.evaluacion_id == evaluacion_id)
-        )
-        objetivos = list(res.all())
-        valoraciones: List[Optional[int]] = [o.valoracion for o in objetivos]
-
-        if objetivos:
-            ids = [o.id_objetivos for o in objetivos]
-            res = await db.exec(select(RrhhMeta).where(RrhhMeta.objetivo_id.in_(ids)))
-            valoraciones.extend(m.valoracion for m in res.all())
-        return valoraciones
-
-    async def _recalcular_promedio_objetivos(
-        self, db: AsyncSession, evaluacion_id: int
-    ) -> Optional[Decimal]:
-        """Recalcula y persiste `promedio_objetivos` (0–100) de la evaluación."""
-        valoraciones = await self._valoraciones_de(db, evaluacion_id)
-        promedio = promedio_objetivos(valoraciones)
-        res = await db.get(RrhhEvaluacion, evaluacion_id)
-        if res:
-            res.promedio_objetivos = promedio
-            res.updated_at = datetime.now()
-            db.add(res)
-        return promedio
-
     def _construir_listado(
         self,
         evaluacion: RrhhEvaluacion,
@@ -332,27 +304,39 @@ class RrhhEvaluacionService:
             db, {f.tipo_evaluacion_id for f in filas}
         )
 
-        # Conteo de objetivos y metas en dos consultas fijas (sin N+1).
-        evaluacion_ids = [f.id for f in filas]
-        conteos: dict[int, tuple] = {eid: (0, 0) for eid in evaluacion_ids}
-        if evaluacion_ids:
+        # Objetivos en alcance y sus metas, en dos consultas fijas (sin N+1):
+        # se cuentan por empleado y solape de fechas con el periodo de cada
+        # fila (los objetivos sin fechas cuentan siempre).
+        conteos: dict[int, tuple] = {}
+        empleado_ids = {f.empleado_id for f in filas}
+        res = await db.exec(
+            select(RrhhObjetivo).where(RrhhObjetivo.empleado_id.in_(empleado_ids))
+        )
+        objetivos = list(res.all())
+        metas_por_objetivo: dict[int, int] = {}
+        if objetivos:
             res = await db.exec(
-                select(RrhhObjetivo.evaluacion_id, func.count().label("c"))
-                .where(RrhhObjetivo.evaluacion_id.in_(evaluacion_ids))
-                .group_by(RrhhObjetivo.evaluacion_id)
+                select(RrhhMeta.objetivo_id, func.count().label("c"))
+                .where(
+                    RrhhMeta.objetivo_id.in_([o.id_objetivos for o in objetivos])
+                )
+                .group_by(RrhhMeta.objetivo_id)
             )
-            obj_por_eval = {row[0]: row[1] for row in res.all()}
+            metas_por_objetivo = {row[0]: row[1] for row in res.all()}
 
-            res = await db.exec(
-                select(RrhhObjetivo.evaluacion_id, func.count().label("c"))
-                .join(RrhhMeta, RrhhMeta.objetivo_id == RrhhObjetivo.id_objetivos)
-                .where(RrhhObjetivo.evaluacion_id.in_(evaluacion_ids))
-                .group_by(RrhhObjetivo.evaluacion_id)
+        for f in filas:
+            en_alcance = [
+                o
+                for o in objetivos
+                if o.empleado_id == f.empleado_id
+                and solapa_fechas(
+                    o.fecha_inicio, o.fecha_fin, f.inicio_periodo, f.fin_periodo
+                )
+            ]
+            conteos[f.id] = (
+                len(en_alcance),
+                sum(metas_por_objetivo.get(o.id_objetivos, 0) for o in en_alcance),
             )
-            metas_por_eval = {row[0]: row[1] for row in res.all()}
-
-            for eid in evaluacion_ids:
-                conteos[eid] = (obj_por_eval.get(eid, 0), metas_por_eval.get(eid, 0))
 
         return {
             "empleados": empleados,
@@ -458,41 +442,18 @@ class RrhhEvaluacionService:
             resolucion["conteos"],
         )
 
-        # Objetivos con sus metas anidadas.
-        res = await db.exec(
-            select(RrhhObjetivo)
-            .where(RrhhObjetivo.evaluacion_id == id)
-            .order_by(RrhhObjetivo.id_objetivos)
+        # Objetivos del empleado en alcance del periodo, con sus metas
+        # anidadas: aquí es donde se califican.
+        objetivos_dto = await rrhh_objetivo_service.objetivos_con_metas_en_alcance(
+            db,
+            evaluacion.empleado_id,
+            evaluacion.inicio_periodo,
+            evaluacion.fin_periodo,
         )
-        objetivos = list(res.all())
-        metas_por_objetivo: dict[int, list] = {}
-        if objetivos:
-            res = await db.exec(
-                select(RrhhMeta)
-                .where(RrhhMeta.objetivo_id.in_([o.id_objetivos for o in objetivos]))
-                .order_by(RrhhMeta.id_metas)
-            )
-            for meta in res.all():
-                metas_por_objetivo.setdefault(meta.objetivo_id, []).append(meta)
 
-        objetivos_dto = []
-        for objetivo in objetivos:
-            metas = [
-                RrhhMetaRead.model_validate(m, from_attributes=True)
-                for m in metas_por_objetivo.get(objetivo.id_objetivos, [])
-            ]
-            objetivos_dto.append(
-                RrhhObjetivoRead(
-                    **RrhhObjetivo.model_validate(
-                        objetivo, from_attributes=True
-                    ).model_dump(),
-                    aporte=escala_a_100(objetivo.valoracion),
-                    metas=metas,
-                )
-            )
-
-        valoraciones = await self._valoraciones_de(db, id)
-        puntuadas = [v for v in valoraciones if v is not None]
+        # Valoración media (1–5) de las metas puntuadas en alcance.
+        metas = [m for o in objetivos_dto for m in o.metas]
+        puntuadas = [m.valoracion for m in metas if m.valoracion is not None]
         prom_1a5 = (
             redondear(sum(Decimal(v) for v in puntuadas) / Decimal(len(puntuadas)))
             if puntuadas
@@ -542,8 +503,11 @@ class RrhhEvaluacionService:
         )
         db.add(evaluacion)
         await db.flush()
-        # Sin objetivos todavía: el promedio queda nulo.
-        await self._recalcular_promedio_objetivos(db, evaluacion.id)
+        # El promedio de objetivos se recalcula con los objetivos en alcance
+        # que el empleado ya tenga puntuados (None si ninguno).
+        await rrhh_objetivo_service.recalcular_evaluaciones_borrador(
+            db, obj_in.empleado_id
+        )
         await db.commit()
         await db.refresh(evaluacion)
 
@@ -592,7 +556,10 @@ class RrhhEvaluacionService:
             setattr(evaluacion, campo, valor)
         evaluacion.updated_at = datetime.now()
         db.add(evaluacion)
-        await self._recalcular_promedio_objetivos(db, evaluacion.id)
+        # Cambiar el periodo puede sacar/entrar objetivos del alcance.
+        await rrhh_objetivo_service.recalcular_evaluaciones_borrador(
+            db, evaluacion.empleado_id
+        )
         await db.commit()
         await db.refresh(evaluacion)
 
@@ -605,15 +572,19 @@ class RrhhEvaluacionService:
         )
 
     async def finalizar(self, db: AsyncSession, id: int) -> RrhhEvaluacionListado:
-        """`borrador → finalizada`: congela la evaluación y recalcula."""
+        """`borrador → finalizada`: recalcula y congela la evaluación."""
         evaluacion = await self._buscar_o_404(db, id)
         if evaluacion.estado == "finalizada":
             raise HTTPException(status_code=409, detail="La evaluación ya está finalizada")
 
+        # El cálculo definitivo se hace mientras sigue en `borrador`
+        # (recalcular solo toca borradores); después ya queda congelado.
+        await rrhh_objetivo_service.recalcular_evaluaciones_borrador(
+            db, evaluacion.empleado_id
+        )
         evaluacion.estado = "finalizada"
         evaluacion.updated_at = datetime.now()
         db.add(evaluacion)
-        await self._recalcular_promedio_objetivos(db, evaluacion.id)
         await db.commit()
         await db.refresh(evaluacion)
 
@@ -632,156 +603,27 @@ class RrhhEvaluacionService:
         await db.commit()
         return {"mensaje": f"{self.model_name} eliminada", "id": id}
 
-    # ── Objetivos ───────────────────────────────────────────────────────────
+    # ── Calificación de metas (solo desde aquí) ─────────────────────────────
 
-    async def _buscar_objetivo_o_404(
-        self, db: AsyncSession, objetivo_id: int
-    ) -> RrhhObjetivo:
-        objetivo = await db.get(RrhhObjetivo, objetivo_id)
-        if not objetivo:
-            raise HTTPException(status_code=404, detail="El objetivo no existe")
-        return objetivo
+    async def valorar_meta(
+        self,
+        db: AsyncSession,
+        evaluacion_id: int,
+        meta_id: int,
+        obj_in: RrhhMetaValoracion,
+    ) -> RrhhMetaRead:
+        """Puntúa una meta (1–5) mientras la evaluación esté en `borrador`.
 
-    async def _evaluacion_del_objetivo(
-        self, db: AsyncSession, objetivo: RrhhObjetivo
-    ) -> RrhhEvaluacion:
-        evaluacion = await db.get(RrhhEvaluacion, objetivo.evaluacion_id)
-        if not evaluacion:
-            raise HTTPException(
-                status_code=404, detail="La evaluación del objetivo no existe"
-            )
-        return evaluacion
-
-    async def get_objetivo(
-        self, db: AsyncSession, objetivo_id: int
-    ) -> RrhhObjetivoDetalle:
-        """Detalle de un objetivo con sus metas y el resumen de su evaluación.
-
-        Alimenta la página de metas: cabecera, estado (para habilitar el CRUD
-        solo en `borrador`) y el enlace de vuelta a los objetivos.
+        La definición (objetivos y metas) vive en el empleado y es siempre
+        editable; lo que exige `borrador` es la **calificación**: al puntuar,
+        se recalcula `resultado_objetivo` del objetivo y `promedio_objetivos`
+        de las evaluaciones en borrador del empleado.
         """
-        objetivo = await self._buscar_objetivo_o_404(db, objetivo_id)
-        detalle = await self.get(db, objetivo.evaluacion_id)
-        fila = next(
-            (o for o in detalle.objetivos if o.id_objetivos == objetivo_id), None
-        )
-        if fila is None:
-            raise HTTPException(status_code=404, detail="El objetivo no existe")
-        return RrhhObjetivoDetalle(
-            **fila.model_dump(),
-            evaluacion_estado=detalle.estado,
-            periodo=detalle.periodo,
-            tipo_evaluacion=detalle.tipo_evaluacion,
-            empleado_nombre=detalle.empleado_nombre,
-            promedio_objetivos=detalle.promedio_objetivos,
-        )
-
-    async def crear_objetivo(
-        self, db: AsyncSession, evaluacion_id: int, obj_in: RrhhObjetivoCreate
-    ) -> RrhhObjetivoRead:
         evaluacion = await self._buscar_o_404(db, evaluacion_id)
-        self._exigir_borrador(evaluacion, "añadir objetivos")
-
-        objetivo = RrhhObjetivo(evaluacion_id=evaluacion_id, **obj_in.model_dump())
-        db.add(objetivo)
-        await db.flush()
-        await self._recalcular_promedio_objetivos(db, evaluacion_id)
-        await db.commit()
-        await db.refresh(objetivo)
-
-        return RrhhObjetivoRead(
-            **RrhhObjetivo.model_validate(objetivo, from_attributes=True).model_dump(),
-            aporte=escala_a_100(objetivo.valoracion),
-            metas=[],
+        self._exigir_borrador(evaluacion, "calificar metas")
+        return await rrhh_objetivo_service.valorar_meta(
+            db, evaluacion, meta_id, obj_in
         )
-
-    async def update_objetivo(
-        self, db: AsyncSession, objetivo_id: int, obj_in: RrhhObjetivoUpdate
-    ) -> RrhhObjetivoRead:
-        objetivo = await self._buscar_objetivo_o_404(db, objetivo_id)
-        evaluacion = await self._evaluacion_del_objetivo(db, objetivo)
-        self._exigir_borrador(evaluacion, "editar objetivos")
-
-        for campo, valor in obj_in.model_dump(exclude_unset=True).items():
-            setattr(objetivo, campo, valor)
-        objetivo.updated_at = datetime.now()
-        db.add(objetivo)
-        await self._recalcular_promedio_objetivos(db, evaluacion.id)
-        await db.commit()
-        await db.refresh(objetivo)
-
-        # Devuelve con sus metas.
-        detalle = await self.get(db, evaluacion.id)
-        coincide = next(
-            (o for o in detalle.objetivos if o.id_objetivos == objetivo.id_objetivos),
-            None,
-        )
-        return coincide or RrhhObjetivoRead(
-            **RrhhObjetivo.model_validate(objetivo, from_attributes=True).model_dump(),
-            aporte=escala_a_100(objetivo.valoracion),
-            metas=[],
-        )
-
-    async def eliminar_objetivo(self, db: AsyncSession, objetivo_id: int) -> dict:
-        objetivo = await self._buscar_objetivo_o_404(db, objetivo_id)
-        evaluacion = await self._evaluacion_del_objetivo(db, objetivo)
-        self._exigir_borrador(evaluacion, "eliminar objetivos")
-
-        await db.delete(objetivo)  # las metas caen por CASCADE
-        await self._recalcular_promedio_objetivos(db, evaluacion.id)
-        await db.commit()
-        return {"mensaje": "Objetivo eliminado", "id": objetivo_id}
-
-    # ── Metas ───────────────────────────────────────────────────────────────
-
-    async def _buscar_meta_o_404(self, db: AsyncSession, meta_id: int) -> RrhhMeta:
-        meta = await db.get(RrhhMeta, meta_id)
-        if not meta:
-            raise HTTPException(status_code=404, detail="La meta no existe")
-        return meta
-
-    async def crear_meta(
-        self, db: AsyncSession, objetivo_id: int, obj_in: RrhhMetaCreate
-    ) -> RrhhMetaRead:
-        objetivo = await self._buscar_objetivo_o_404(db, objetivo_id)
-        evaluacion = await self._evaluacion_del_objetivo(db, objetivo)
-        self._exigir_borrador(evaluacion, "añadir metas")
-
-        meta = RrhhMeta(objetivo_id=objetivo_id, **obj_in.model_dump())
-        db.add(meta)
-        await db.flush()
-        await self._recalcular_promedio_objetivos(db, evaluacion.id)
-        await db.commit()
-        await db.refresh(meta)
-        return RrhhMetaRead.model_validate(meta, from_attributes=True)
-
-    async def update_meta(
-        self, db: AsyncSession, meta_id: int, obj_in: RrhhMetaUpdate
-    ) -> RrhhMetaRead:
-        meta = await self._buscar_meta_o_404(db, meta_id)
-        objetivo = await self._buscar_objetivo_o_404(db, meta.objetivo_id)
-        evaluacion = await self._evaluacion_del_objetivo(db, objetivo)
-        self._exigir_borrador(evaluacion, "editar metas")
-
-        for campo, valor in obj_in.model_dump(exclude_unset=True).items():
-            setattr(meta, campo, valor)
-        meta.updated_at = datetime.now()
-        db.add(meta)
-        await self._recalcular_promedio_objetivos(db, evaluacion.id)
-        await db.commit()
-        await db.refresh(meta)
-        return RrhhMetaRead.model_validate(meta, from_attributes=True)
-
-    async def eliminar_meta(self, db: AsyncSession, meta_id: int) -> dict:
-        meta = await self._buscar_meta_o_404(db, meta_id)
-        objetivo = await self._buscar_objetivo_o_404(db, meta.objetivo_id)
-        evaluacion = await self._evaluacion_del_objetivo(db, objetivo)
-        self._exigir_borrador(evaluacion, "eliminar metas")
-
-        await db.delete(meta)
-        await self._recalcular_promedio_objetivos(db, evaluacion.id)
-        await db.commit()
-        return {"mensaje": "Meta eliminada", "id": meta_id}
 
     # ── Reporte ─────────────────────────────────────────────────────────────
 

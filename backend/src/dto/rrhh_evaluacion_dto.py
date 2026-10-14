@@ -1,21 +1,24 @@
-"""DTOs del submódulo RRHH — Evaluaciones, objetivos y metas (Fase 8).
+"""DTOs del submódulo RRHH — Evaluaciones (Fase 8).
 
 Ciclo de vida (decidido):
 
     borrador ──finalizar──▶ finalizada   (estado final)
 
-Solo se **edita** mientras está en `borrador` (regla de la funcionalidad
-«Editar evaluación mientras esté en borrador»): los criterios, comentarios y
-los objetivos/metas son modificables solo ahí. Al finalizar se congela y se
-recalcula `promedio_objetivos`.
+Mientras está en `borrador` se edita la cabecera, los criterios y la
+**calificación** de las metas (1–5). Al finalizar se recalcula
+`promedio_objetivos` y todo queda congelado. La *definición* de objetivos y
+metas (nombre, fechas) vive en el empleado y es siempre editable: véase
+`dto/rrhh_objetivo_dto.py`.
 
 Como el módulo no usa autenticación en backend (decisión; deuda Fase 10), el
 `evaluador_id` viene en el payload.
 
 Dos promedios con escalas distintas:
 - `promedio_criterios` (1–5) se **calcula al leer** y no está en la BD.
-- `promedio_objetivos` (0–100) **sí está persistido** y se recalcula en cada
-  cambio de objetivo/meta.
+- `promedio_objetivos` (0–100) **sí está persistido**: promedio de los
+  `resultado_objetivo` (media 1–5 de las valoraciones de las metas de cada
+  objetivo) de los objetivos en alcance del periodo; se recalcula en las
+  borradores al calificar/editar metas y al finalizar.
 """
 
 from datetime import date, datetime
@@ -34,85 +37,14 @@ from src.domain.rrhh_evaluacion_calc import (
 # `TIPOS_EVALUACION` se reexporta aquí por compatibilidad: la validación real
 # vive ahora en el catálogo `tipos_evaluaciones` (FK desde `evaluaciones`).
 
+# Objetivos y metas viven en su propio módulo (se definen en el empleado).
+from src.dto.rrhh_objetivo_dto import RrhhObjetivoRead
+
 
 # ── Objetivos y metas ───────────────────────────────────────────────────────
-
-
-class RrhhObjetivoCreate(SQLModel):
-    """Alta de un objetivo dentro de una evaluación (solo en borrador)."""
-
-    nombre: str = Field(min_length=1, max_length=255)
-    resultado_objetivo: Optional[str] = None
-    # 1–5; si no se envía, el objetivo queda sin puntuar y no entra al promedio.
-    valoracion: Optional[int] = Field(default=None, ge=1, le=5)
-    observaciones: Optional[str] = None
-
-
-class RrhhObjetivoUpdate(SQLModel):
-    """Edición parcial de un objetivo (solo en borrador)."""
-
-    nombre: Optional[str] = Field(default=None, min_length=1, max_length=255)
-    resultado_objetivo: Optional[str] = None
-    valoracion: Optional[int] = Field(default=None, ge=1, le=5)
-    observaciones: Optional[str] = None
-
-
-class RrhhMetaCreate(SQLModel):
-    """Alta de una meta dentro de un objetivo (solo en borrador)."""
-
-    nombre: str = Field(min_length=1, max_length=255)
-    resultado_meta: Optional[int] = None
-    valoracion: Optional[int] = Field(default=None, ge=1, le=5)
-    observaciones: Optional[str] = None
-
-
-class RrhhMetaUpdate(SQLModel):
-    """Edición parcial de una meta (solo en borrador)."""
-
-    nombre: Optional[str] = Field(default=None, min_length=1, max_length=255)
-    resultado_meta: Optional[int] = None
-    valoracion: Optional[int] = Field(default=None, ge=1, le=5)
-    observaciones: Optional[str] = None
-
-
-class RrhhMetaRead(SQLModel):
-    id_metas: int
-    objetivo_id: int
-    nombre: str
-    resultado_meta: Optional[int] = None
-    valoracion: Optional[int] = None
-    observaciones: Optional[str] = None
-    created_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
-
-
-class RrhhObjetivoRead(SQLModel):
-    id_objetivos: int
-    evaluacion_id: int
-    nombre: str
-    resultado_objetivo: Optional[str] = None
-    valoracion: Optional[int] = None
-    observaciones: Optional[str] = None
-    # Aporte al promedio global (0–100) de este objetivo suelto.
-    aporte: Optional[Decimal] = None
-    metas: list[RrhhMetaRead] = Field(default_factory=list)
-    created_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
-
-
-class RrhhObjetivoDetalle(RrhhObjetivoRead):
-    """Detalle de un objetivo para su página de metas.
-
-    Reutiliza la fila del objetivo (con sus metas anidadas) y añade el
-    resumen de su evaluación: cabecera, estado (para habilitar el CRUD) y
-    el enlace de vuelta.
-    """
-
-    evaluacion_estado: str = "borrador"
-    periodo: Optional[str] = None
-    tipo_evaluacion: Optional[str] = None
-    empleado_nombre: Optional[str] = None
-    promedio_objetivos: Optional[Decimal] = None
+# Se gestionan en `dto/rrhh_objetivo_dto.py` (se definen en el empleado y se
+# califican en la evaluación); aquí solo se referencia el Read, que alimenta
+# `RrhhEvaluacionDetalle.objetivos` con los objetivos en alcance del periodo.
 
 
 # ── Evaluación ──────────────────────────────────────────────────────────────
@@ -253,13 +185,9 @@ class RrhhEvaluacionReporte(SQLModel):
 
 
 __all__ = [
-    "RrhhObjetivoCreate",
-    "RrhhObjetivoUpdate",
-    "RrhhMetaCreate",
-    "RrhhMetaUpdate",
-    "RrhhMetaRead",
+    # Los objetivos/metas se exportan desde `rrhh_objetivo_dto`; aquí solo
+    # queda `RrhhObjetivoRead`, que alimenta `RrhhEvaluacionDetalle`.
     "RrhhObjetivoRead",
-    "RrhhObjetivoDetalle",
     "RrhhEvaluacionCreate",
     "RrhhEvaluacionUpdate",
     "RrhhCriterioEvaluacion",

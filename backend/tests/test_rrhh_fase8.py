@@ -4,10 +4,16 @@ Usan el patrón `client` de conftest.py (TestClient contra la BD real).
 
 Cada test crea su propio empleado y sus propias `calificaciones` (los 4
 criterios son FK a ese catálogo), usa periodos en **2098-06** (libre de las
-demás fases) y al final limpia: la FK de `evaluaciones.empleado_id` es
-`ondelete=CASCADE`, así que las evaluaciones (y con ellas sus objetivos y
-metas) se van al borrar el empleado. Las `calificaciones` se borran aparte:
-su FK es `SET NULL`, así que no queda ninguna referencia colgando.
+demás fases) y al final limpia: al borrar de verdad el empleado se van sus
+evaluaciones (FK `CASCADE`) y también sus objetivos (FK `CASCADE` desde
+`empleados`; si hay historial el DELETE es baja lógica y queda residuo, que
+por eso los asertos nunca cuentan filas globales). Las `calificaciones` se
+borran aparte: su FK es `SET NULL`, así que no queda ninguna referencia
+colgando.
+
+Los objetivos **se definen en el empleado** (`/api/v1/rrhh/objetivos`, siempre
+editables) y **se califican en la evaluación**
+(`PUT /rrhh/evaluaciones/{id}/metas/{meta_id}/valoracion`, solo `borrador`).
 """
 
 import uuid
@@ -19,10 +25,12 @@ from src.domain.rrhh_evaluacion_calc import (
     puede_editar,
     promedio_criterios,
     promedio_objetivos,
+    solapa_fechas,
     validar_fechas,
 )
 
 BASE = "/api/v1/rrhh/evaluaciones"
+OBJETIVOS = "/api/v1/rrhh/objetivos"
 CATALOGOS = "/api/v1/rrhh/catalogos/calificaciones"
 TIPOS_EVAL = "/api/v1/rrhh/catalogos/tipos-evaluacion"
 
@@ -94,10 +102,10 @@ def _crear_evaluacion(client, empleado_id, **kwargs):
     return response.json()
 
 
-def _crear_objetivo(client, evaluacion_id, **kwargs):
-    payload = {"nombre": f"Objetivo {_sufijo()}"}
+def _crear_objetivo(client, empleado_id, **kwargs):
+    payload = {"empleado_id": empleado_id, "nombre": f"Objetivo {_sufijo()}"}
     payload.update(kwargs)
-    response = client.post(f"{BASE}/{evaluacion_id}/objetivos", json=payload)
+    response = client.post(OBJETIVOS, json=payload)
     assert response.status_code == 201, response.text
     return response.json()
 
@@ -105,10 +113,18 @@ def _crear_objetivo(client, evaluacion_id, **kwargs):
 def _crear_meta(client, objetivo_id, **kwargs):
     payload = {"nombre": f"Meta {_sufijo()}"}
     payload.update(kwargs)
-    response = client.post(
-        f"{BASE}/objetivos/{objetivo_id}/metas", json=payload
-    )
+    response = client.post(f"{OBJETIVOS}/{objetivo_id}/metas", json=payload)
     assert response.status_code == 201, response.text
+    return response.json()
+
+
+def _valorar_meta(client, evaluacion_id, meta_id, valoracion):
+    """Califica una meta (1–5) desde la evaluación (solo en `borrador`)."""
+    response = client.put(
+        f"{BASE}/{evaluacion_id}/metas/{meta_id}/valoracion",
+        json={"valoracion": valoracion},
+    )
+    assert response.status_code == 200, response.text
     return response.json()
 
 
@@ -130,7 +146,7 @@ class TestDominioEvaluacion:
         assert promedio_criterios([1, 2, 2]) == Decimal("1.67")
 
     def test_promedio_objetivos_convierte_a_escala_100(self):
-        # valoraciones [4, 2] → media 3 → 3/5×100 = 60
+        # resultados [4, 2] → media 3 → 3/5×100 = 60
         assert promedio_objetivos([4, 2]) == Decimal("60.00")
 
     def test_promedio_objetivos_sin_valoraciones_devuelve_none(self):
@@ -140,9 +156,32 @@ class TestDominioEvaluacion:
     def test_promedio_objetivos_maximo(self):
         assert promedio_objetivos([5, 5, 5]) == Decimal("100.00")
 
+    def test_promedio_objetivos_acepta_resultados_decimales(self):
+        # `resultado_objetivo` es la media (1–5) de las metas de cada objetivo.
+        assert promedio_objetivos(
+            [Decimal("4.50"), Decimal("3.00")]
+        ) == Decimal("75.00")
+        assert promedio_objetivos([Decimal("3.50"), None]) == Decimal("70.00")
+
     def test_escala_a_100(self):
         assert escala_a_100(3) == Decimal("60.00")
         assert escala_a_100(None) is None
+        assert escala_a_100(Decimal("3.50")) == Decimal("70.00")
+
+    def test_solapa_fechas(self):
+        junio = (date(2098, 6, 1), date(2098, 6, 30))
+        julio = (date(2098, 7, 1), date(2098, 7, 31))
+
+        # Un objetivo sin fechas cuenta siempre.
+        assert solapa_fechas(None, None, *junio)
+        # Solape completo y solape a medias.
+        assert solapa_fechas(*junio, *junio)
+        assert solapa_fechas(date(2098, 6, 15), date(2098, 7, 5), *junio)
+        # Fuera de rango y extremos abiertos.
+        assert not solapa_fechas(*julio, *junio)
+        assert not solapa_fechas(date(2098, 5, 1), date(2098, 5, 31), *junio)
+        assert solapa_fechas(date(2098, 6, 15), None, *junio)
+        assert solapa_fechas(None, date(2098, 6, 15), *junio)
 
     def test_validar_fechas(self):
         assert validar_fechas(date(2098, 6, 1), date(2098, 6, 30)) is None
@@ -473,31 +512,43 @@ class TestPromedioCriterios:
             _limpiar_calificaciones(client, calificaciones)
 
 
-# ── Objetivos y metas anidados ──────────────────────────────────────────────
+# ── Objetivos y metas (definición en el empleado, calificación en la evaluación) ──
 
 
 class TestObjetivosYMetas:
-    def test_objetivo_y_meta_anidados(self, client):
+    def test_valoracion_de_metas_alimenta_los_promedios(self, client):
+        """La meta se puntúa desde la evaluación: `resultado_objetivo` es la
+        media de las metas del objetivo y `promedio_objetivos` (0–100) el
+        promedio de esos resultados."""
         empleado = _crear_empleado(client)
         try:
             evaluacion = _crear_evaluacion(client, empleado["id"])
             objetivo = _crear_objetivo(
-                client, evaluacion["id"], valoracion=4,
-                resultado_objetivo="Logrado al 90%",
+                client,
+                empleado["id"],
+                fecha_inicio="2098-06-01",
+                fecha_fin="2098-06-15",
             )
-            assert Decimal(objetivo["aporte"]) == Decimal("80.00")  # 4/5×100
-            assert objetivo["metas"] == []
-
             meta = _crear_meta(
-                client, objetivo["id_objetivos"], valoracion=2,
-                resultado_meta=75,
+                client, objetivo["id_objetivos"], resultado_meta=75
             )
-            assert meta["objetivo_id"] == objetivo["id_objetivos"]
 
-            # promedio_objetivos = (4+2)/2 = 3 → 60.00
+            valorada = _valorar_meta(
+                client, evaluacion["id"], meta["id_metas"], 4
+            )
+            assert valorada["valoracion"] == 4
+
+            # resultado_objetivo = media de sus metas = 4 → aporte 80.00
+            fila = client.get(f"{OBJETIVOS}/{objetivo['id_objetivos']}").json()
+            assert Decimal(fila["resultado_objetivo"]) == Decimal("4.00")
+            assert Decimal(fila["aporte"]) == Decimal("80.00")
+            assert fila["empleado_id"] == empleado["id"]
+            assert len(fila["metas"]) == 1
+
+            # promedio_objetivos = 4/5×100 = 80.00
             detalle = client.get(f"{BASE}/{evaluacion['id']}").json()
-            assert Decimal(detalle["promedio_objetivos"]) == Decimal("60.00")
-            assert Decimal(detalle["promedio_valoracion_1a5"]) == Decimal("3.00")
+            assert Decimal(detalle["promedio_objetivos"]) == Decimal("80.00")
+            assert Decimal(detalle["promedio_valoracion_1a5"]) == Decimal("4.00")
             assert len(detalle["objetivos"]) == 1
             assert len(detalle["objetivos"][0]["metas"]) == 1
             assert detalle["cantidad_objetivos"] == 1
@@ -505,24 +556,24 @@ class TestObjetivosYMetas:
         finally:
             _limpiar_empleado(client, empleado["id"])
 
-    def test_promedio_ignora_sin_valorar(self, client):
+    def test_promedio_ignora_objetivos_sin_puntuar(self, client):
+        """La meta sin valorar y el objetivo sin metas no aportan nada."""
         empleado = _crear_empleado(client)
         try:
             evaluacion = _crear_evaluacion(client, empleado["id"])
-            # Uno valorado, otro sin valorar: solo entra el valorado.
-            _crear_objetivo(client, evaluacion["id"], valoracion=5)
-            _crear_objetivo(client, evaluacion["id"])  # valoracion None
+
+            sin_valorar = _crear_objetivo(client, empleado["id"])
+            _crear_meta(client, sin_valorar["id_objetivos"])  # sin puntuar
+            _crear_objetivo(client, empleado["id"])  # sin metas
+
+            graduado = _crear_objetivo(client, empleado["id"])
+            meta = _crear_meta(client, graduado["id_objetivos"])
+            _valorar_meta(client, evaluacion["id"], meta["id_metas"], 5)
 
             detalle = client.get(f"{BASE}/{evaluacion['id']}").json()
             assert Decimal(detalle["promedio_objetivos"]) == Decimal("100.00")
-
-            # Sin ninguna valoración el promedio es nulo.
-            evaluacion2 = _crear_evaluacion(
-                client, empleado["id"], tipo_evaluacion_id=_tipo_id(client, "Parcial")
-            )
-            _crear_objetivo(client, evaluacion2["id"])
-            detalle2 = client.get(f"{BASE}/{evaluacion2['id']}").json()
-            assert detalle2["promedio_objetivos"] is None
+            assert detalle["cantidad_objetivos"] == 3
+            assert detalle["cantidad_metas"] == 2
         finally:
             _limpiar_empleado(client, empleado["id"])
 
@@ -530,31 +581,27 @@ class TestObjetivosYMetas:
         empleado = _crear_empleado(client)
         try:
             evaluacion = _crear_evaluacion(client, empleado["id"])
-            objetivo = _crear_objetivo(client, evaluacion["id"], valoracion=5)
-            meta = _crear_meta(client, objetivo["id_objetivos"], valoracion=1)
+            objetivo = _crear_objetivo(client, empleado["id"])
+            meta = _crear_meta(client, objetivo["id_objetivos"])
+            _valorar_meta(client, evaluacion["id"], meta["id_metas"], 1)
 
-            # (5+1)/2 = 3 → 60.00
+            # resultado = 1 → 20.00
+            detalle = client.get(f"{BASE}/{evaluacion['id']}").json()
+            assert Decimal(detalle["promedio_objetivos"]) == Decimal("20.00")
+
+            # Puntuar otra meta del mismo objetivo: (1+5)/2 = 3 → 60.00
+            otra = _crear_meta(client, objetivo["id_objetivos"])
+            _valorar_meta(client, evaluacion["id"], otra["id_metas"], 5)
             detalle = client.get(f"{BASE}/{evaluacion['id']}").json()
             assert Decimal(detalle["promedio_objetivos"]) == Decimal("60.00")
+            assert detalle["cantidad_metas"] == 2
 
-            # Subir la meta a 5: (5+5)/2 = 5 → 100.00
-            response = client.put(
-                f"{BASE}/metas/{meta['id_metas']}", json={"valoracion": 5}
-            )
-            assert response.status_code == 200, response.text
-            assert response.json()["valoracion"] == 5
-
-            detalle = client.get(f"{BASE}/{evaluacion['id']}").json()
-            assert Decimal(detalle["promedio_objetivos"]) == Decimal("100.00")
-            assert detalle["cantidad_metas"] == 1
-
-            # Quitar la meta: solo queda el objetivo valorado en 5 → 100.00
-            response = client.delete(f"{BASE}/metas/{meta['id_metas']}")
+            # Quitar la meta de 5: solo queda la de 1 → 20.00
+            response = client.delete(f"{OBJETIVOS}/metas/{otra['id_metas']}")
             assert response.status_code == 200
-
             detalle = client.get(f"{BASE}/{evaluacion['id']}").json()
-            assert detalle["cantidad_metas"] == 0
-            assert Decimal(detalle["promedio_objetivos"]) == Decimal("100.00")
+            assert detalle["cantidad_metas"] == 1
+            assert Decimal(detalle["promedio_objetivos"]) == Decimal("20.00")
         finally:
             _limpiar_empleado(client, empleado["id"])
 
@@ -562,12 +609,11 @@ class TestObjetivosYMetas:
         empleado = _crear_empleado(client)
         try:
             evaluacion = _crear_evaluacion(client, empleado["id"])
-            objetivo = _crear_objetivo(client, evaluacion["id"], valoracion=4)
-            _crear_meta(client, objetivo["id_objetivos"], valoracion=5)
+            objetivo = _crear_objetivo(client, empleado["id"])
+            meta = _crear_meta(client, objetivo["id_objetivos"])
+            _valorar_meta(client, evaluacion["id"], meta["id_metas"], 5)
 
-            response = client.delete(
-                f"{BASE}/objetivos/{objetivo['id_objetivos']}"
-            )
+            response = client.delete(f"{OBJETIVOS}/{objetivo['id_objetivos']}")
             assert response.status_code == 200
 
             detalle = client.get(f"{BASE}/{evaluacion['id']}").json()
@@ -582,53 +628,170 @@ class TestObjetivosYMetas:
         empleado = _crear_empleado(client)
         try:
             evaluacion = _crear_evaluacion(client, empleado["id"])
+            objetivo = _crear_objetivo(client, empleado["id"])
+            meta = _crear_meta(client, objetivo["id_objetivos"])
 
-            response = client.post(
-                f"{BASE}/{evaluacion['id']}/objetivos",
-                json={"nombre": "Malo", "valoracion": 6},
-            )
-            assert response.status_code == 422
-
-            objetivo = _crear_objetivo(client, evaluacion["id"])
-            response = client.post(
-                f"{BASE}/objetivos/{objetivo['id_objetivos']}/metas",
-                json={"nombre": "Mala", "valoracion": 0},
-            )
-            assert response.status_code == 422
+            for fuera in (6, 0):
+                response = client.put(
+                    f"{BASE}/{evaluacion['id']}/metas/{meta['id_metas']}/valoracion",
+                    json={"valoracion": fuera},
+                )
+                assert response.status_code == 422
         finally:
             _limpiar_empleado(client, empleado["id"])
 
-    def test_objetivos_no_se_tocan_en_finalizada(self, client):
+    def test_no_calificar_en_finalizada_ni_de_otro_empleado(self, client):
         empleado = _crear_empleado(client)
+        otro = _crear_empleado(client)
         try:
             evaluacion = _crear_evaluacion(client, empleado["id"])
-            objetivo = _crear_objetivo(client, evaluacion["id"], valoracion=3)
-            meta = _crear_meta(client, objetivo["id_objetivos"], valoracion=3)
-            client.post(f"{BASE}/{evaluacion['id']}/finalizar")
+            objetivo = _crear_objetivo(client, empleado["id"])
+            meta = _crear_meta(client, objetivo["id_objetivos"])
+            _valorar_meta(client, evaluacion["id"], meta["id_metas"], 3)
 
-            response = client.post(
-                f"{BASE}/{evaluacion['id']}/objetivos",
-                json={"nombre": "Nuevo"},
-            )
-            assert response.status_code == 409
-
+            # La meta de otro empleado no existe para esta evaluación.
+            ajeno = _crear_objetivo(client, otro["id"])
+            ajena = _crear_meta(client, ajeno["id_objetivos"])
             response = client.put(
-                f"{BASE}/objetivos/{objetivo['id_objetivos']}",
+                f"{BASE}/{evaluacion['id']}/metas/{ajena['id_metas']}/valoracion",
+                json={"valoracion": 5},
+            )
+            assert response.status_code == 404
+
+            # En finalizada la calificación queda congelada.
+            client.post(f"{BASE}/{evaluacion['id']}/finalizar")
+            response = client.put(
+                f"{BASE}/{evaluacion['id']}/metas/{meta['id_metas']}/valoracion",
                 json={"valoracion": 5},
             )
             assert response.status_code == 409
 
-            response = client.put(
-                f"{BASE}/metas/{meta['id_metas']}", json={"valoracion": 5}
-            )
-            assert response.status_code == 409
-
-            response = client.delete(f"{BASE}/objetivos/{objetivo['id_objetivos']}")
-            assert response.status_code == 409
-
-            # El promedio se congeló con lo que había al finalizar.
             detalle = client.get(f"{BASE}/{evaluacion['id']}").json()
             assert Decimal(detalle["promedio_objetivos"]) == Decimal("60.00")
+        finally:
+            _limpiar_empleado(client, empleado["id"])
+            _limpiar_empleado(client, otro["id"])
+
+    def test_definicion_editable_aun_finalizada(self, client):
+        """Los objetivos y metas se definen en el empleado: la definición
+        (nombre, fechas, altas y bajas) se edita siempre; lo que se congela
+        al finalizar es la calificación."""
+        empleado = _crear_empleado(client)
+        try:
+            evaluacion = _crear_evaluacion(client, empleado["id"])
+            objetivo = _crear_objetivo(client, empleado["id"])
+            meta = _crear_meta(client, objetivo["id_objetivos"])
+            _valorar_meta(client, evaluacion["id"], meta["id_metas"], 3)
+            client.post(f"{BASE}/{evaluacion['id']}/finalizar")
+
+            response = client.put(
+                f"{OBJETIVOS}/{objetivo['id_objetivos']}",
+                json={"nombre": "Renombrado"},
+            )
+            assert response.status_code == 200, response.text
+
+            response = client.put(
+                f"{OBJETIVOS}/metas/{meta['id_metas']}", json={"nombre": "Cambiada"}
+            )
+            assert response.status_code == 200, response.text
+
+            response = client.post(
+                f"{OBJETIVOS}/{objetivo['id_objetivos']}/metas",
+                json={"nombre": "Extra"},
+            )
+            assert response.status_code == 201, response.text
+
+            response = client.delete(f"{OBJETIVOS}/{objetivo['id_objetivos']}")
+            assert response.status_code == 200
+
+            # La evaluación finalizada conserva su promedio congelado (60.00),
+            # aunque el objetivo ya no exista.
+            detalle = client.get(f"{BASE}/{evaluacion['id']}").json()
+            assert detalle["estado"] == "finalizada"
+            assert Decimal(detalle["promedio_objetivos"]) == Decimal("60.00")
+        finally:
+            _limpiar_empleado(client, empleado["id"])
+
+    def test_fechas_delimitan_el_alcance(self, client):
+        """Un objetivo cuyo rango no solapa el periodo de la evaluación no
+        cuenta en su detalle ni se puede puntuar desde ella."""
+        empleado = _crear_empleado(client)
+        try:
+            # Junio: la evaluación va de 2098-06-01 a 2098-06-30.
+            evaluacion = _crear_evaluacion(client, empleado["id"])
+            fuera = _crear_objetivo(
+                client,
+                empleado["id"],
+                fecha_inicio="2098-07-01",
+                fecha_fin="2098-07-31",
+            )
+            meta_fuera = _crear_meta(client, fuera["id_objetivos"])
+
+            detalle = client.get(f"{BASE}/{evaluacion['id']}").json()
+            assert detalle["objetivos"] == []
+            assert detalle["cantidad_objetivos"] == 0
+
+            response = client.put(
+                f"{BASE}/{evaluacion['id']}/metas/{meta_fuera['id_metas']}/valoracion",
+                json={"valoracion": 5},
+            )
+            assert response.status_code == 400
+
+            # En una evaluación de julio sí entra (solape exacto).
+            julio = _crear_evaluacion(
+                client,
+                empleado["id"],
+                tipo_evaluacion_id=_tipo_id(client, "Parcial"),
+                periodo="2098-07",
+                inicio_periodo="2098-07-01",
+                fin_periodo="2098-07-31",
+            )
+            response = client.put(
+                f"{BASE}/{julio['id']}/metas/{meta_fuera['id_metas']}/valoracion",
+                json={"valoracion": 5},
+            )
+            assert response.status_code == 200, response.text
+
+            detalle_julio = client.get(f"{BASE}/{julio['id']}").json()
+            assert Decimal(detalle_julio["promedio_objetivos"]) == Decimal(
+                "100.00"
+            )
+
+            # La de junio no se ve afectada: su objetivo sigue fuera de alcance.
+            assert client.get(f"{BASE}/{evaluacion['id']}").json()[
+                "promedio_objetivos"
+            ] is None
+        finally:
+            _limpiar_empleado(client, empleado["id"])
+
+    def test_alta_de_objetivo_valida_al_empleado(self, client):
+        response = client.post(
+            OBJETIVOS, json={"empleado_id": 999999, "nombre": "Huérfano"}
+        )
+        assert response.status_code == 404
+
+        empleado = _crear_empleado(client)
+        try:
+            # Fechas invertidas: validación del DTO → 422.
+            response = client.post(
+                OBJETIVOS,
+                json={
+                    "empleado_id": empleado["id"],
+                    "nombre": "Al revés",
+                    "fecha_inicio": "2098-06-30",
+                    "fecha_fin": "2098-06-01",
+                },
+            )
+            assert response.status_code == 422
+
+            # Edición con fechas invertidas: validación del servicio → 422.
+            objetivo = _crear_objetivo(client, empleado["id"])
+            meta = _crear_meta(client, objetivo["id_objetivos"])
+            response = client.put(
+                f"{OBJETIVOS}/metas/{meta['id_metas']}",
+                json={"fecha_inicio": "2098-06-30", "fecha_fin": "2098-06-01"},
+            )
+            assert response.status_code == 422
         finally:
             _limpiar_empleado(client, empleado["id"])
 
@@ -637,10 +800,13 @@ class TestObjetivosYMetas:
         empleado = _crear_empleado(client)
         try:
             evaluacion = _crear_evaluacion(client, empleado["id"])
-            objetivo = _crear_objetivo(client, evaluacion["id"], valoracion=4)
-            _crear_meta(client, objetivo["id_objetivos"], valoracion=3)
+            objetivo = _crear_objetivo(client, empleado["id"])
+            primera = _crear_meta(client, objetivo["id_objetivos"])
+            segunda = _crear_meta(client, objetivo["id_objetivos"])
+            _valorar_meta(client, evaluacion["id"], primera["id_metas"], 4)
+            _valorar_meta(client, evaluacion["id"], segunda["id_metas"], 3)
 
-            # (4+3)/2 = 3.5 → 70.00 antes de finalizar.
+            # resultado = (4+3)/2 = 3.5 → 70.00 antes de finalizar.
             antes = client.get(f"{BASE}/{evaluacion['id']}").json()
             assert Decimal(antes["promedio_objetivos"]) == Decimal("70.00")
 
@@ -700,11 +866,12 @@ class TestListado:
         empleado = _crear_empleado(client)
         try:
             evaluacion = _crear_evaluacion(client, empleado["id"])
-            objetivo = _crear_objetivo(client, evaluacion["id"])
+            objetivo = _crear_objetivo(client, empleado["id"])
             _crear_meta(client, objetivo["id_objetivos"])
 
             response = client.get(f"{BASE}?empleado_id={empleado['id']}")
             fila = response.json()[0]
+            assert fila["id"] == evaluacion["id"]
             assert fila["cantidad_objetivos"] == 1
             assert fila["cantidad_metas"] == 1
             assert fila["empleado_codigo"] == empleado["codigo_empleado"]
@@ -752,66 +919,86 @@ class TestListado:
         assert client.put(f"{BASE}/999999", json={}).status_code == 404
         assert client.delete(f"{BASE}/999999").status_code == 404
         assert client.post(f"{BASE}/999999/finalizar").status_code == 404
-        assert client.post(f"{BASE}/999999/objetivos", json={"nombre": "X"}).status_code == 404
-        assert client.put(f"{BASE}/objetivos/999999", json={}).status_code == 404
-        assert client.delete(f"{BASE}/objetivos/999999").status_code == 404
-        assert client.put(f"{BASE}/metas/999999", json={}).status_code == 404
-        assert client.delete(f"{BASE}/metas/999999").status_code == 404
-        assert client.post(f"{BASE}/objetivos/999999/metas", json={"nombre": "X"}).status_code == 404
+        assert (
+            client.put(
+                f"{BASE}/999999/metas/999999/valoracion",
+                json={"valoracion": 3},
+            ).status_code
+            == 404
+        )
+        assert client.get(f"{OBJETIVOS}/999999").status_code == 404
+        assert client.put(f"{OBJETIVOS}/999999", json={}).status_code == 404
+        assert client.delete(f"{OBJETIVOS}/999999").status_code == 404
+        assert client.put(f"{OBJETIVOS}/metas/999999", json={}).status_code == 404
+        assert client.delete(f"{OBJETIVOS}/metas/999999").status_code == 404
+        assert (
+            client.post(f"{OBJETIVOS}/999999/metas", json={"nombre": "X"}).status_code
+            == 404
+        )
 
 
-# ── Sub-recurso de objetivos y reporte ──────────────────────────────────────
+# ── Listado de objetivos por empleado y reporte ─────────────────────────────
 
 
 class TestSubRecursosYReporte:
-    def test_listar_objetivos_de_la_evaluacion(self, client):
+    def test_listar_objetivos_por_empleado(self, client):
         empleado = _crear_empleado(client)
+        otro = _crear_empleado(client)
         try:
-            evaluacion = _crear_evaluacion(client, empleado["id"])
-            objetivo = _crear_objetivo(client, evaluacion["id"], valoracion=2)
+            objetivo = _crear_objetivo(client, empleado["id"])
             _crear_meta(client, objetivo["id_objetivos"])
+            ajeno = _crear_objetivo(client, otro["id"])
 
-            response = client.get(f"{BASE}/{evaluacion['id']}/objetivos")
+            response = client.get(f"{OBJETIVOS}?empleado_id={empleado['id']}")
             assert response.status_code == 200
             objetivos = response.json()
-            assert len(objetivos) == 1
-            assert objetivos[0]["id_objetivos"] == objetivo["id_objetivos"]
+            assert [o["id_objetivos"] for o in objetivos] == [
+                objetivo["id_objetivos"]
+            ]
+            assert objetivos[0]["empleado_id"] == empleado["id"]
+            assert objetivos[0]["total_metas"] == 1
             assert len(objetivos[0]["metas"]) == 1
+            assert ajeno["id_objetivos"] not in {
+                o["id_objetivos"] for o in objetivos
+            }
         finally:
             _limpiar_empleado(client, empleado["id"])
+            _limpiar_empleado(client, otro["id"])
 
-    def test_get_objetivo_detalle_con_metas_y_evaluacion(self, client):
-        """Detalle de un objetivo: metas anidadas + resumen de la evaluación."""
+    def test_get_objetivo_detalle_con_metas_y_empleado(self, client):
+        """Detalle de un objetivo: metas anidadas + datos del empleado
+        (cabecera de la pantalla de metas)."""
         empleado = _crear_empleado(client)
         try:
             evaluacion = _crear_evaluacion(client, empleado["id"])
             objetivo = _crear_objetivo(
-                client, evaluacion["id"], valoracion=4, resultado_objetivo="90 %"
+                client, empleado["id"], fecha_inicio="2098-06-01"
             )
-            _crear_meta(client, objetivo["id_objetivos"], valoracion=3)
+            meta = _crear_meta(client, objetivo["id_objetivos"], resultado_meta=90)
+            _valorar_meta(client, evaluacion["id"], meta["id_metas"], 3)
 
-            response = client.get(
-                f"{BASE}/objetivos/{objetivo['id_objetivos']}"
-            )
+            response = client.get(f"{OBJETIVOS}/{objetivo['id_objetivos']}")
             assert response.status_code == 200, response.text
             data = response.json()
             assert data["id_objetivos"] == objetivo["id_objetivos"]
-            assert data["evaluacion_id"] == evaluacion["id"]
+            assert data["empleado_id"] == empleado["id"]
             assert data["nombre"] == objetivo["nombre"]
+            assert data["fecha_inicio"] == "2098-06-01"
             assert len(data["metas"]) == 1
             assert data["metas"][0]["valoracion"] == 3
-            # Contexto para la página de metas.
-            assert data["evaluacion_estado"] == "borrador"
-            assert data["periodo"] == "2098-06"
-            assert data["empleado_nombre"] is not None
-            # Aporte del objetivo (4/5 → 80) y promedio de la evaluación.
-            assert Decimal(data["aporte"]) == Decimal("80.00")
-            assert data["promedio_objetivos"] is not None
+            assert data["metas"][0]["resultado_meta"] == 90
+            # Contexto del empleado y nota derivada (3 → aporte 60.00).
+            assert data["empleado_nombre"] == (
+                f"{empleado['nombre']} {empleado['apellido']}"
+            )
+            assert data["empleado_codigo"] == empleado["codigo_empleado"]
+            assert Decimal(data["resultado_objetivo"]) == Decimal("3.00")
+            assert Decimal(data["aporte"]) == Decimal("60.00")
         finally:
             _limpiar_empleado(client, empleado["id"])
 
     def test_get_objetivo_inexistente_404(self, client):
-        assert client.get(f"{BASE}/objetivos/999999").status_code == 404
+        assert client.get(f"{OBJETIVOS}/999999").status_code == 404
 
     def test_ruta_reporte_no_captura_get_id(self, client):
         # `/reporte` debe resolverse antes que `/{evaluacion_id}` (orden de rutas).
@@ -832,7 +1019,9 @@ class TestSubRecursosYReporte:
             primera = _crear_evaluacion(
                 client, empleado["id"], puntualidad=uno, productividad=dos
             )
-            _crear_objetivo(client, primera["id"], valoracion=5)
+            objetivo = _crear_objetivo(client, empleado["id"])
+            meta = _crear_meta(client, objetivo["id_objetivos"])
+            _valorar_meta(client, primera["id"], meta["id_metas"], 5)
             client.post(f"{BASE}/{primera['id']}/finalizar")
 
             _crear_evaluacion(

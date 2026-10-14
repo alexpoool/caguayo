@@ -1,9 +1,11 @@
+import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useParams } from 'react-router-dom';
 import { RadarCriterios } from '../../components/rrhh/RadarCriterios';
 import { rrhhService } from '../../services/rrhh';
 import {
   COLOR_ESTADO_EVALUACION,
+  type RrhhMeta,
 } from '../../types/rrhh';
 import {
   AlertCircle,
@@ -43,8 +45,10 @@ export function EvaluacionDetallePage() {
     enabled: !Number.isNaN(evaluacionId),
   });
 
-  const invalidate = () =>
+  const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: ['rrhh', 'evaluaciones'] });
+    queryClient.invalidateQueries({ queryKey: ['rrhh', 'objetivos'] });
+  };
 
   const esBorrador = evaluacion?.estado === 'borrador';
 
@@ -55,6 +59,21 @@ export function EvaluacionDetallePage() {
       invalidate();
     },
     onError: (err: any) => toast.error(err?.message || 'No se pudo finalizar'),
+  });
+
+  /** Califica una meta (1–5): recalcula `resultado_objetivo` y
+   * `promedio_objetivos`. Solo disponible en `borrador`. */
+  const [valorando, setValorando] = useState<number | null>(null);
+  const valorarMutation = useMutation({
+    mutationFn: ({ metaId, valoracion }: { metaId: number; valoracion: number }) =>
+      rrhhService.valorarMeta(evaluacionId, metaId, valoracion),
+    onMutate: ({ metaId }) => setValorando(metaId),
+    onSuccess: () => {
+      toast.success('Meta puntuada');
+      invalidate();
+    },
+    onError: (err: any) => toast.error(err?.message || 'No se pudo puntuar la meta'),
+    onSettled: () => setValorando(null),
   });
 
   if (isLoading) {
@@ -123,8 +142,8 @@ export function EvaluacionDetallePage() {
           <Button
             variant="outline"
             size="sm"
-            title="Ver los objetivos y metas de esta evaluación"
-            onClick={() => navigate(`/rrhh/objetivos?evaluacion_id=${evaluacionId}`)}
+            title="Ver los objetivos y metas definidos para este empleado"
+            onClick={() => navigate(`/rrhh/objetivos?empleado_id=${evaluacion.empleado_id}`)}
           >
             <Target className="h-4 w-4" />
             Ver objetivos
@@ -151,7 +170,9 @@ export function EvaluacionDetallePage() {
 
       {!esBorrador && (
         <div className="rounded-md bg-slate-100 px-4 py-2 text-xs text-slate-600">
-          Evaluación finalizada: los criterios, objetivos y metas quedan congelados.
+          Evaluación finalizada: los criterios y la puntuación de las metas
+          quedan congelados (la definición de objetivos y metas sigue siendo
+          editable desde Empleados).
         </div>
       )}
 
@@ -242,6 +263,142 @@ export function EvaluacionDetallePage() {
         </Card>
       </div>
 
+      {/* Objetivos y metas en alcance: aquí se califican */}
+      <Card>
+        <CardHeader className="pb-2">
+          <h2 className="text-sm font-semibold text-slate-700">
+            Objetivos y metas del periodo (escala 1–5)
+          </h2>
+          <p className="text-xs text-slate-500">
+            Se puntúan aquí las metas mientras la evaluación esté en borrador;
+            su media es el resultado de cada objetivo y el promedio de esos
+            resultados es «Promedio objetivos (0–100)».
+          </p>
+        </CardHeader>
+        <CardContent>
+          {evaluacion.objetivos.length === 0 ? (
+            <div className="flex flex-col items-center gap-2 py-8 text-center">
+              <Target className="h-8 w-8 text-slate-300" />
+              <p className="max-w-md text-sm text-slate-500">
+                Este empleado no tiene objetivos en alcance del periodo{' '}
+                {evaluacion.inicio_periodo} → {evaluacion.fin_periodo}.
+                Defínelos desde su ficha (su rango de fechas debe solapar el
+                periodo, o quedarse sin fechas).
+              </p>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() =>
+                  navigate(`/rrhh/objetivos?empleado_id=${evaluacion.empleado_id}`)
+                }
+              >
+                <Target className="h-4 w-4" />
+                Ver objetivos del empleado
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {evaluacion.objetivos.map((obj) => (
+                <div
+                  key={obj.id_objetivos}
+                  className="overflow-hidden rounded-lg border border-slate-200"
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 bg-slate-50 px-3 py-2">
+                    <div>
+                      <p className="text-sm font-semibold text-slate-800">
+                        {obj.nombre}
+                      </p>
+                      <p className="text-xs text-slate-500">
+                        {obj.fecha_inicio || obj.fecha_fin
+                          ? `${obj.fecha_inicio ?? '…'} → ${obj.fecha_fin ?? '…'}`
+                          : 'Sin fechas · cuenta siempre'}
+                      </p>
+                    </div>
+                    <p className="text-sm tabular-nums text-slate-700">
+                      Resultado{' '}
+                      <strong>
+                        {obj.resultado_objetivo === null
+                          ? '—'
+                          : `${Number(obj.resultado_objetivo).toFixed(1)}/5`}
+                      </strong>
+                      {obj.aporte !== null &&
+                        ` · aporte ${Number(obj.aporte).toFixed(0)}%`}
+                    </p>
+                  </div>
+                  <ul className="divide-y divide-slate-100">
+                    {obj.metas.map((meta) => (
+                      <li
+                        key={meta.id_metas}
+                        className="flex flex-wrap items-center justify-between gap-2 px-3 py-2"
+                      >
+                        <div>
+                          <p className="text-sm text-slate-700">{meta.nombre}</p>
+                          <p className="text-xs text-slate-400">
+                            Resultado: {meta.resultado_meta ?? '—'}
+                          </p>
+                        </div>
+                        <SelectorValoracion
+                          meta={meta}
+                          esBorrador={esBorrador}
+                          valorando={valorando === meta.id_metas}
+                          onValorar={(v) =>
+                            valorarMutation.mutate({ metaId: meta.id_metas, valoracion: v })
+                          }
+                        />
+                      </li>
+                    ))}
+                    {obj.metas.length === 0 && (
+                      <li className="px-3 py-2 text-xs text-slate-400">
+                        Sin metas definidas.
+                      </li>
+                    )}
+                  </ul>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+    </div>
+  );
+}
+
+// ── Subcomponentes ─────────────────────────────────────────────────────────
+
+function SelectorValoracion({
+  meta,
+  esBorrador,
+  valorando,
+  onValorar,
+}: {
+  meta: RrhhMeta;
+  esBorrador: boolean;
+  valorando: boolean;
+  onValorar: (valoracion: number) => void;
+}) {
+  return (
+    <div className="flex items-center gap-2">
+      <span className="text-xs text-slate-400">Valoración</span>
+      <select
+        value={meta.valoracion ?? ''}
+        disabled={!esBorrador || valorando}
+        onChange={(e) => e.target.value && onValorar(Number(e.target.value))}
+        title={
+          esBorrador
+            ? 'Puntuar esta meta (1–5)'
+            : 'Solo se puntúa mientras la evaluación está en borrador'
+        }
+        className="rounded-md border border-slate-300 px-2 py-1 text-sm tabular-nums disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
+      >
+        <option value="">—</option>
+        {[1, 2, 3, 4, 5].map((v) => (
+          <option key={v} value={v}>
+            {v}
+          </option>
+        ))}
+      </select>
+      {valorando && <Loader2 className="h-4 w-4 animate-spin text-slate-400" />}
     </div>
   );
 }

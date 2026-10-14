@@ -2,13 +2,11 @@ import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { rrhhService } from '../../services/rrhh';
-import {
-  COLOR_ESTADO_EVALUACION,
-  type RrhhMeta,
-} from '../../types/rrhh';
+import { type RrhhMeta } from '../../types/rrhh';
 import {
   AlertCircle,
   ArrowLeft,
+  CalendarRange,
   ListChecks,
   Loader2,
   Pencil,
@@ -34,15 +32,27 @@ import {
   Modal,
 } from '../../components/ui';
 
-/** Valoración 1–5 → aporte en 0–100 (misma conversión que el backend). */
-const aporte = (valoracion: number | null) =>
-  valoracion === null ? null : (valoracion / 5) * 100;
+/** Rango de fechas de la meta; sin fechas sigue a su objetivo. */
+function rangoFechas(inicio: string | null, fin: string | null): string {
+  if (!inicio && !fin) return 'Sin fechas';
+  const fmt = (f: string) =>
+    new Date(`${f}T00:00:00`).toLocaleDateString('es-CU', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+    });
+  if (inicio && fin) return `${fmt(inicio)} – ${fmt(fin)}`;
+  if (inicio) return `Desde ${fmt(inicio)}`;
+  if (fin) return `Hasta ${fmt(fin)}`;
+  return 'Sin fechas';
+}
 
 /**
- * Metas de un objetivo, con su CRUD (solo si la evaluación está en `borrador`).
+ * Metas de un objetivo, con su CRUD (siempre editable).
  *
  * Llega `?objetivo_id=N` desde la columna «Metas» de la página de objetivos y
- * devuelve a ella mediante el enlace de cabecera.
+ * devuelve a ella mediante el enlace de cabecera. La **valoración** (1–5) no
+ * se edita aquí: se pone al calificar la evaluación del empleado.
  */
 export function MetasPage() {
   const [searchParams] = useSearchParams();
@@ -57,7 +67,8 @@ export function MetasPage() {
   const [metaForm, setMetaForm] = useState({
     nombre: '',
     resultado_meta: '' as string,
-    valoracion: '' as string,
+    fecha_inicio: '',
+    fecha_fin: '',
     observaciones: '',
   });
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
@@ -69,15 +80,15 @@ export function MetasPage() {
     error,
     refetch,
   } = useQuery({
-    queryKey: ['rrhh', 'evaluaciones', 'objetivo', objetivoId],
+    queryKey: ['rrhh', 'objetivos', 'detalle', objetivoId],
     queryFn: () => rrhhService.obtenerObjetivo(objetivoId),
     enabled: objetivoId > 0,
   });
 
-  const invalidate = () =>
+  const invalidate = () => {
+    queryClient.invalidateQueries({ queryKey: ['rrhh', 'objetivos'] });
     queryClient.invalidateQueries({ queryKey: ['rrhh', 'evaluaciones'] });
-
-  const esBorrador = objetivo?.evaluacion_estado === 'borrador';
+  };
 
   const metaMutation = useMutation({
     mutationFn: (id: number | undefined) => {
@@ -85,7 +96,8 @@ export function MetasPage() {
         nombre: metaForm.nombre.trim(),
         resultado_meta:
           metaForm.resultado_meta === '' ? null : Number(metaForm.resultado_meta),
-        valoracion: metaForm.valoracion === '' ? null : Number(metaForm.valoracion),
+        fecha_inicio: metaForm.fecha_inicio || null,
+        fecha_fin: metaForm.fecha_fin || null,
         observaciones: metaForm.observaciones.trim() ? metaForm.observaciones : null,
       };
       return id
@@ -116,7 +128,8 @@ export function MetasPage() {
     setMetaForm({
       nombre: m?.nombre ?? '',
       resultado_meta: m?.resultado_meta != null ? String(m.resultado_meta) : '',
-      valoracion: m?.valoracion != null ? String(m.valoracion) : '',
+      fecha_inicio: m?.fecha_inicio ?? '',
+      fecha_fin: m?.fecha_fin ?? '',
       observaciones: m?.observaciones ?? '',
     });
     setFormErrors({});
@@ -124,27 +137,36 @@ export function MetasPage() {
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!metaForm.nombre.trim()) {
-      setFormErrors({ nombre: 'El nombre es obligatorio' });
+    const errs: Record<string, string> = {};
+    if (!metaForm.nombre.trim()) errs.nombre = 'El nombre es obligatorio';
+    if (
+      metaForm.fecha_inicio &&
+      metaForm.fecha_fin &&
+      metaForm.fecha_fin < metaForm.fecha_inicio
+    ) {
+      errs.fecha_fin = 'El fin no puede ser anterior al inicio';
+    }
+    if (Object.keys(errs).length) {
+      setFormErrors(errs);
       return;
     }
     metaMutation.mutate(formAbierto?.editando?.id_metas);
   };
 
   const volverAObjetivos = () =>
-    navigate(`/rrhh/objetivos?evaluacion_id=${objetivo?.evaluacion_id ?? ''}`);
+    navigate(`/rrhh/objetivos?empleado_id=${objetivo?.empleado_id ?? ''}`);
 
   if (!objetivoId) {
     return (
       <div className="flex flex-col items-center gap-3 py-16 text-center">
         <ListChecks className="h-10 w-10 text-slate-300" />
         <p className="max-w-sm text-sm text-slate-500">
-          Esta página muestra las metas de un objetivo concreto. Elige un objetivo
-          desde su listado de evaluaciones.
+          Esta página muestra las metas de un objetivo concreto. Elige un
+          objetivo desde su listado de empleados.
         </p>
-        <Button variant="outline" size="sm" onClick={() => navigate('/rrhh/evaluaciones')}>
+        <Button variant="outline" size="sm" onClick={() => navigate('/rrhh/empleados')}>
           <ArrowLeft className="h-4 w-4" />
-          Ir a evaluaciones
+          Ir a empleados
         </Button>
       </div>
     );
@@ -170,7 +192,7 @@ export function MetasPage() {
           <Button variant="outline" size="sm" onClick={() => refetch()}>
             Reintentar
           </Button>
-          <Button variant="outline" size="sm" onClick={() => navigate('/rrhh/evaluaciones')}>
+          <Button variant="outline" size="sm" onClick={() => navigate('/rrhh/empleados')}>
             <ArrowLeft className="h-4 w-4" />
             Volver
           </Button>
@@ -197,19 +219,16 @@ export function MetasPage() {
               Metas de «{objetivo.nombre}»
             </h1>
             <p className="mt-1 text-sm text-slate-500">
-              {objetivo.empleado_nombre ?? '—'} · Periodo {objetivo.periodo ?? '—'} ·{' '}
-              {objetivo.tipo_evaluacion ? `${objetivo.tipo_evaluacion} · ` : ''}
-              Aporte del objetivo{' '}
-              {objetivo.aporte === null ? '—' : `${Number(objetivo.aporte).toFixed(0)}%`}
+              {objetivo.empleado_nombre ?? '—'}
+              {objetivo.empleado_codigo ? ` · ${objetivo.empleado_codigo}` : ''} ·
+              Resultado del objetivo{' '}
+              {objetivo.resultado_objetivo === null
+                ? '—'
+                : `${Number(objetivo.resultado_objetivo).toFixed(1)}/5`}
             </p>
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <span
-            className={`inline-block rounded-full px-2.5 py-1 text-xs font-semibold ${COLOR_ESTADO_EVALUACION[objetivo.evaluacion_estado]}`}
-          >
-            {objetivo.evaluacion_estado === 'borrador' ? 'Borrador' : 'Finalizada'}
-          </span>
           <Button variant="outline" size="sm" onClick={volverAObjetivos}>
             <Target className="h-4 w-4" />
             Ver objetivos
@@ -217,20 +236,18 @@ export function MetasPage() {
           <Button variant="outline" size="sm" onClick={() => refetch()}>
             <RefreshCw className="h-4 w-4" />
           </Button>
-          {esBorrador && (
-            <Button size="sm" onClick={() => abrir()}>
-              <Plus className="h-4 w-4" />
-              Nueva meta
-            </Button>
-          )}
+          <Button size="sm" onClick={() => abrir()}>
+            <Plus className="h-4 w-4" />
+            Nueva meta
+          </Button>
         </div>
       </div>
 
-      {!esBorrador && (
-        <div className="rounded-md bg-slate-100 px-4 py-2 text-xs text-slate-600">
-          Evaluación finalizada: los objetivos y sus metas quedan congelados.
-        </div>
-      )}
+      <div className="rounded-md bg-slate-100 px-4 py-2 text-xs text-slate-600">
+        Las metas se definen aquí y siempre son editables. Su valoración (1–5)
+        se pone al calificar la evaluación del empleado (mientras esté en
+        borrador) y promedia al resultado del objetivo.
+      </div>
 
       <Card>
         <CardContent className="pt-6">
@@ -238,23 +255,22 @@ export function MetasPage() {
             <div className="flex flex-col items-center gap-2 py-10 text-center">
               <ListChecks className="h-10 w-10 text-slate-300" />
               <p className="max-w-sm text-sm text-slate-500">
-                Este objetivo aún no tiene metas. Las metas se puntúan del 1 al 5 y
-                también alimentan el promedio de objetivos.
+                Este objetivo aún no tiene metas. Las metas se puntúan del 1 al 5
+                desde la evaluación y alimentan el resultado del objetivo.
               </p>
-              {esBorrador && (
-                <Button size="sm" onClick={() => abrir()}>
-                  <Plus className="h-4 w-4" />
-                  Nueva meta
-                </Button>
-              )}
+              <Button size="sm" onClick={() => abrir()}>
+                <Plus className="h-4 w-4" />
+                Nueva meta
+              </Button>
             </div>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Meta</TableHead>
+                  <TableHead>Rango</TableHead>
                   <TableHead className="w-40">Resultado</TableHead>
-                  <TableHead className="w-32">Valoración</TableHead>
+                  <TableHead className="w-44">Valoración</TableHead>
                   <TableHead className="text-right">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
@@ -269,6 +285,12 @@ export function MetasPage() {
                         </p>
                       )}
                     </TableCell>
+                    <TableCell className="whitespace-nowrap text-xs text-slate-500">
+                      <span className="inline-flex items-center gap-1">
+                        <CalendarRange className="h-3.5 w-3.5 text-slate-400" />
+                        {rangoFechas(meta.fecha_inicio, meta.fecha_fin)}
+                      </span>
+                    </TableCell>
                     <TableCell className="tabular-nums text-slate-700">
                       {meta.resultado_meta != null ? meta.resultado_meta : (
                         <span className="text-slate-400">Sin resultado</span>
@@ -277,32 +299,30 @@ export function MetasPage() {
                     <TableCell className="tabular-nums text-slate-700">
                       {meta.valoracion != null ? (
                         <>
-                          {meta.valoracion}/5 ·{' '}
                           <strong className="text-slate-900">
-                            {aporte(meta.valoracion)?.toFixed(0)}%
+                            {meta.valoracion}/5
                           </strong>
+                          <span className="ml-1 text-xs text-slate-400">
+                            en evaluación
+                          </span>
                         </>
                       ) : (
                         <span className="text-slate-400">Sin puntuar</span>
                       )}
                     </TableCell>
                     <TableCell className="text-right">
-                      {esBorrador ? (
-                        <div className="flex items-center justify-end gap-1">
-                          <ActionButton titulo="Editar meta" onClick={() => abrir(meta)}>
-                            <Pencil className="h-4 w-4" />
-                          </ActionButton>
-                          <ActionButton
-                            titulo="Eliminar meta"
-                            danger
-                            onClick={() => setConfirm(meta)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </ActionButton>
-                        </div>
-                      ) : (
-                        <span className="text-xs text-slate-400">—</span>
-                      )}
+                      <div className="flex items-center justify-end gap-1">
+                        <ActionButton titulo="Editar meta" onClick={() => abrir(meta)}>
+                          <Pencil className="h-4 w-4" />
+                        </ActionButton>
+                        <ActionButton
+                          titulo="Eliminar meta"
+                          danger
+                          onClick={() => setConfirm(meta)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </ActionButton>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -349,21 +369,32 @@ export function MetasPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="meta-valoracion">Valoración (1–5)</Label>
-                <select
-                  id="meta-valoracion"
-                  value={metaForm.valoracion}
-                  onChange={(e) => setMetaForm({ ...metaForm, valoracion: e.target.value })}
-                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
-                >
-                  <option value="">Sin puntuar</option>
-                  {[1, 2, 3, 4, 5].map((v) => (
-                    <option key={v} value={v}>
-                      {v}
-                    </option>
-                  ))}
-                </select>
+                <Label htmlFor="meta-inicio">Fecha de inicio</Label>
+                <Input
+                  id="meta-inicio"
+                  type="date"
+                  value={metaForm.fecha_inicio}
+                  onChange={(e) =>
+                    setMetaForm({ ...metaForm, fecha_inicio: e.target.value })
+                  }
+                />
               </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="meta-fin">Fecha de fin</Label>
+              <Input
+                id="meta-fin"
+                type="date"
+                value={metaForm.fecha_fin}
+                onChange={(e) => setMetaForm({ ...metaForm, fecha_fin: e.target.value })}
+                className={formErrors.fecha_fin ? 'border-red-500' : ''}
+              />
+              {formErrors.fecha_fin && (
+                <p className="flex items-center gap-1 text-xs text-red-600">
+                  <AlertCircle className="h-3 w-3" />
+                  {formErrors.fecha_fin}
+                </p>
+              )}
             </div>
             <div className="space-y-2">
               <Label htmlFor="meta-obs">Observaciones</Label>
@@ -392,7 +423,7 @@ export function MetasPage() {
         isOpen={confirm !== null}
         title="Eliminar meta"
         message={
-          confirm ? `¿Seguro que quieres eliminar «${confirm.nombre}»? El promedio se recalculará.` : ''
+          confirm ? `¿Seguro que quieres eliminar «${confirm.nombre}»? Los promedios se recalcularán.` : ''
         }
         type="danger"
         onConfirm={() => confirm && eliminarMutation.mutate(confirm.id_metas)}

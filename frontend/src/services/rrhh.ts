@@ -588,45 +588,65 @@ export const rrhhService = {
     return await apiClient.delete(`/rrhh/evaluaciones/${id}`);
   },
 
-  crearObjetivo: async (
+  /** Califica una meta (1–5) desde la evaluación (solo `borrador`): mueve
+   * `resultado_objetivo` y `promedio_objetivos`. */
+  valorarMeta: async (
     evaluacionId: number,
-    data: RrhhObjetivoCreate
-  ): Promise<RrhhObjetivo> => {
-    return await apiClient.post(`/rrhh/evaluaciones/${evaluacionId}/objetivos`, data);
+    metaId: number,
+    valoracion: number
+  ): Promise<RrhhMeta> => {
+    return await apiClient.put(
+      `/rrhh/evaluaciones/${evaluacionId}/metas/${metaId}/valoracion`,
+      { valoracion }
+    );
+  },
+
+  // ── Objetivos y metas (definición en el empleado, siempre editable) ────
+
+  listarObjetivos: async (params?: {
+    empleado_id?: number;
+    skip?: number;
+    limit?: number;
+  }): Promise<RrhhObjetivo[]> => {
+    return await apiClient.get('/rrhh/objetivos', params);
+  },
+
+  crearObjetivo: async (data: RrhhObjetivoCreate): Promise<RrhhObjetivo> => {
+    return await apiClient.post('/rrhh/objetivos', data);
   },
 
   editarObjetivo: async (
     objetivoId: number,
-    data: RrhhObjetivoCreate
+    data: Partial<RrhhObjetivoCreate>
   ): Promise<RrhhObjetivo> => {
-    return await apiClient.put(`/rrhh/evaluaciones/objetivos/${objetivoId}`, data);
+    return await apiClient.put(`/rrhh/objetivos/${objetivoId}`, data);
   },
 
   eliminarObjetivo: async (objetivoId: number): Promise<RrhhEliminarResponse> => {
-    return await apiClient.delete(`/rrhh/evaluaciones/objetivos/${objetivoId}`);
+    return await apiClient.delete(`/rrhh/objetivos/${objetivoId}`);
   },
 
-  /** Detalle de un objetivo con sus metas y el resumen de su evaluación. */
+  /** Detalle de un objetivo con sus metas y los datos de su empleado. */
   obtenerObjetivo: async (objetivoId: number): Promise<RrhhObjetivoDetalle> => {
-    return await apiClient.get(`/rrhh/evaluaciones/objetivos/${objetivoId}`);
+    return await apiClient.get(`/rrhh/objetivos/${objetivoId}`);
   },
 
   crearMeta: async (
     objetivoId: number,
     data: RrhhMetaCreate
   ): Promise<RrhhMeta> => {
-    return await apiClient.post(`/rrhh/evaluaciones/objetivos/${objetivoId}/metas`, data);
+    return await apiClient.post(`/rrhh/objetivos/${objetivoId}/metas`, data);
   },
 
   editarMeta: async (
     metaId: number,
     data: RrhhMetaCreate
   ): Promise<RrhhMeta> => {
-    return await apiClient.put(`/rrhh/evaluaciones/metas/${metaId}`, data);
+    return await apiClient.put(`/rrhh/objetivos/metas/${metaId}`, data);
   },
 
   eliminarMeta: async (metaId: number): Promise<RrhhEliminarResponse> => {
-    return await apiClient.delete(`/rrhh/evaluaciones/metas/${metaId}`);
+    return await apiClient.delete(`/rrhh/objetivos/metas/${metaId}`);
   },
 
   /** Reporte consolidado (totales globales y promedios por empleado). */

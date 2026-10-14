@@ -9,7 +9,7 @@ from datetime import date, datetime
 from decimal import Decimal
 from typing import Optional
 
-from sqlalchemy import Column, ForeignKey, CheckConstraint, Integer
+from sqlalchemy import Column, ForeignKey, CheckConstraint, Integer, Numeric
 from sqlmodel import Field, SQLModel
 
 
@@ -129,27 +129,31 @@ class RrhhEvaluacion(SQLModel, table=True):
 
 
 class RrhhObjetivo(SQLModel, table=True):
+    """Objetivo de un empleado: se **define** aquí (siempre editable) y se
+    **califica** en la evaluación (la valoración de sus metas promedia a
+    `resultado_objetivo`)."""
+
     __tablename__ = "objetivos"
-    __table_args__ = (
-        CheckConstraint(
-            "valoracion IS NULL OR valoracion BETWEEN 1 AND 5",
-            name="chk_objetivos_valoracion",
-        ),
-    )
 
     id_objetivos: Optional[int] = Field(
         default=None, primary_key=True, sa_column_kwargs={"autoincrement": True}
     )
-    evaluacion_id: int = Field(
+    empleado_id: int = Field(
         sa_column=Column(
             Integer,
-            ForeignKey("evaluaciones.id", ondelete="CASCADE", name="fk_objetivos_evaluacion"),
+            ForeignKey("empleados.id", ondelete="CASCADE", name="fk_objetivos_empleado"),
             nullable=False,
         )
     )
     nombre: str = Field(max_length=255)
-    resultado_objetivo: Optional[str] = None
-    valoracion: Optional[int] = None
+    # Media (1–5) de las valoraciones de sus metas; None sin metas puntuadas.
+    resultado_objetivo: Optional[Decimal] = Field(
+        default=None, sa_column=Column(Numeric(3, 2))
+    )
+    # Rango en el que el objetivo cuenta para las evaluaciones cuyo periodo
+    # lo solape; sin fechas cuenta siempre.
+    fecha_inicio: Optional[date] = None
+    fecha_fin: Optional[date] = None
     observaciones: Optional[str] = None
     created_at: datetime = Field(
         default_factory=_now, sa_column_kwargs={"server_default": "CURRENT_TIMESTAMP"}
@@ -180,7 +184,11 @@ class RrhhMeta(SQLModel, table=True):
     )
     nombre: str = Field(max_length=255)
     resultado_meta: Optional[int] = None
+    # 1–5: se puntúa en la evaluación (su promedio por objetivo es el
+    # `resultado_objetivo`).
     valoracion: Optional[int] = None
+    fecha_inicio: Optional[date] = None
+    fecha_fin: Optional[date] = None
     observaciones: Optional[str] = None
     created_at: datetime = Field(
         default_factory=_now, sa_column_kwargs={"server_default": "CURRENT_TIMESTAMP"}

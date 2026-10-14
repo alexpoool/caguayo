@@ -330,14 +330,17 @@ from .rrhh_solicitud_dto import (
     RrhhSolicitudCalendario,
     RrhhSolicitudResumenEstado,
 )
-from .rrhh_evaluacion_dto import (
+from .rrhh_objetivo_dto import (
     RrhhObjetivoCreate,
     RrhhObjetivoUpdate,
     RrhhMetaCreate,
     RrhhMetaUpdate,
     RrhhMetaRead,
+    RrhhMetaValoracion,
     RrhhObjetivoRead,
     RrhhObjetivoDetalle,
+)
+from .rrhh_evaluacion_dto import (
     RrhhEvaluacionCreate,
     RrhhEvaluacionUpdate,
     RrhhCriterioEvaluacion,
@@ -623,6 +626,7 @@ __all__ = [
     "RrhhMetaCreate",
     "RrhhMetaUpdate",
     "RrhhMetaRead",
+    "RrhhMetaValoracion",
     "RrhhObjetivoRead",
     "RrhhObjetivoDetalle",
     "RrhhEvaluacionCreate",

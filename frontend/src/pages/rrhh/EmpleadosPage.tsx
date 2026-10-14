@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import { rrhhService } from '../../services/rrhh';
 import {
   RRHH_ESTADOS_EMPLEADO,
@@ -19,6 +20,7 @@ import {
   Loader2,
   Search,
   BadgeCheck,
+  Target,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import {
@@ -59,6 +61,7 @@ const fmtHora = (v: string | null | undefined) =>
 
 export function EmpleadosPage() {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const [view, setView] = useState<'list' | 'form'>('list');
   const [editing, setEditing] = useState<RrhhEmpleado | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -366,6 +369,7 @@ export function EmpleadosPage() {
                     <TableHead>Departamento</TableHead>
                     <TableHead className="text-right">Salario</TableHead>
                     <TableHead className="text-center">Estado</TableHead>
+                    <TableHead className="text-center">Objetivos</TableHead>
                     <TableHead className="text-right">Acciones</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -401,6 +405,19 @@ export function EmpleadosPage() {
                           {RRHH_ESTADOS_EMPLEADO.find((e) => e.valor === emp.estado)
                             ?.etiqueta ?? emp.estado}
                         </span>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          title={`Ver los objetivos y metas de ${emp.apellido}, ${emp.nombre}`}
+                          onClick={() =>
+                            navigate(`/rrhh/objetivos?empleado_id=${emp.id}`)
+                          }
+                        >
+                          <Target className="h-4 w-4" />
+                          Ver objetivos
+                        </Button>
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center justify-end gap-1">

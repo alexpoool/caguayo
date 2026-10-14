@@ -20,6 +20,7 @@ criterio puntuado no tiene promedio (`None`), y una con dos de cuatro criterios
 usa solo esos dos.
 """
 
+from datetime import date
 from decimal import ROUND_HALF_UP, Decimal
 from typing import Iterable, Optional
 
@@ -71,26 +72,44 @@ def promedio_criterios(valores: Iterable[Optional[int]]) -> Optional[Decimal]:
     return redondear(sum(puntuados) / Decimal(len(puntuados)))
 
 
-def promedio_objetivos(valoraciones: Iterable[Optional[int]]) -> Optional[Decimal]:
-    """Promedio de las valoraciones de objetivos y metas convertido a 0–100.
+def promedio_objetivos(
+    resultados: Iterable[Optional[Decimal | int]]
+) -> Optional[Decimal]:
+    """Promedio de los `resultado_objetivo` (1–5) convertido a 0–100.
 
-    Cada valoración es 1–5, así que el resultado es `media / 5 × 100`. Devuelve
-    `None` si no hay ninguna valoración todavía (el campo queda nulo en la BD).
+    Cada resultado es la media de las valoraciones de las metas de su
+    objetivo, así que el promedio es `media / 5 × 100`. Devuelve `None` si
+    ningún objetivo está puntuado todavía (el campo queda nulo en la BD).
     """
-    valoradas = [Decimal(v) for v in valoraciones if v is not None]
-    if not valoradas:
+    puntuados = [Decimal(v) for v in resultados if v is not None]
+    if not puntuados:
         return None
-    media = sum(valoradas) / Decimal(len(valoradas))
+    media = sum(puntuados) / Decimal(len(puntuados))
     return redondear(media * Decimal(ESCALA_OBJETIVOS) / Decimal(ESCALA_CRITERIOS))
 
 
-def escala_a_100(valoracion: Optional[int]) -> Optional[Decimal]:
+def escala_a_100(valoracion: Optional[Decimal | int]) -> Optional[Decimal]:
     """Convierte una valoración 1–5 suelta a la escala 0–100 del promedio."""
     if valoracion is None:
         return None
     return redondear(
         Decimal(valoracion) * Decimal(ESCALA_OBJETIVOS) / Decimal(ESCALA_CRITERIOS)
     )
+
+
+def solapa_fechas(
+    ini_a: Optional[date],
+    fin_a: Optional[date],
+    ini_b: Optional[date],
+    fin_b: Optional[date],
+) -> bool:
+    """True si los rangos [ini, fin] se solapan; un extremo sin fecha cuenta
+    como abierto (un objetivo sin fechas siempre está en alcance)."""
+    if ini_a and fin_b and ini_a > fin_b:
+        return False
+    if ini_b and fin_a and ini_b > fin_a:
+        return False
+    return True
 
 
 __all__ = [
@@ -106,4 +125,5 @@ __all__ = [
     "promedio_criterios",
     "promedio_objetivos",
     "escala_a_100",
+    "solapa_fechas",
 ]
