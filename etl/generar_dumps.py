@@ -37,21 +37,41 @@ class DumpInvalido(Exception):
 
 #: Tablas que hay que extraer de cada base. Son las únicas que lee el ETL.
 #:
-#: De `caguayo_comercial` se leen estas cinco. De la base principal, dos: los
+#: De `caguayo_comercial` se leen estas trece. De la base principal, dos: los
 #: catálogos. El ETL NO lee `provincia` ni `municipio` — su mapeo de ids está en
 #: geo.py — ni ninguna otra cosa.
 #:
 #: Exportar sólo esto, en vez de la base entera, da un volcado mucho más
 #: pequeño y no arrastra facturas ni movimientos que nadie va a migrar.
+#:
+#: Cuatro de estas no se migran a una tabla propia; se leen para resolver ids:
+#: `solicitud_sc` es el puente de `contrato` a `clientes` (el legacy guarda ahí el
+#: `id_cliente`, no en el contrato), `estado_cs` traduce el estado del legacy al
+#: del destino y `tipo_concepto` da el nombre del concepto de una liquidación.
 TABLAS = {
-    "comercial": ("artista", "cliente", "usuario", "grupo", "empresa"),
+    "comercial": (
+        "artista",
+        "cliente",
+        "usuario",
+        "grupo",
+        "empresa",
+        "artista_liquidacion",
+        "tipo_concepto",
+        "contrato",
+        "suplemento",
+        "solicitud_sc",
+        "estado_cs",
+        "etapas_cs",
+        "artista_contrato",
+    ),
     "principal": ("tipo_contrato", "tipo_convenio"),
 }
 
 BASES = {"comercial": LEGACY_DB_COMERCIAL, "principal": LEGACY_DB_PRINCIPAL}
 
 ETIQUETAS = {
-    "comercial": "caguayo_comercial (artistas, clientes, usuarios, grupos)",
+    "comercial": "caguayo_comercial (artistas, clientes, usuarios, grupos, "
+                 "liquidaciones, contratos, suplementos, solicitudes y etapas)",
     "principal": "caguayo principal (tipos de contrato y de convenio)",
 }
 
@@ -332,10 +352,19 @@ Para migrar:
     abajo el apartado 4.""")
     partes.append("""\
 
-Sólo hacen falta 7 tablas del legacy, ni una más:
+Sólo hacen falta 15 tablas del legacy, ni una más:
 
-  caguayo_comercial   artista, cliente, usuario, grupo, empresa
+  caguayo_comercial   artista, cliente, usuario, grupo, empresa,
+                      artista_liquidacion, tipo_concepto, contrato,
+                      suplemento, solicitud_sc, estado_cs, etapas_cs,
+                      artista_contrato
   caguayo (principal) tipo_contrato, tipo_convenio
+
+Cuatro de las de la comercial no se migran a una tabla propia: se leen para
+resolver ids. `solicitud_sc` es el puente de `contrato` a `clientes` —en el
+legacy el contrato no guarda el cliente, lo guarda la solicitud—, `estado_cs`
+traduce el estado y `tipo_concepto` da el nombre del concepto de una
+liquidación.
 
 El ETL no lee `provincia` ni `municipio` del volcado: su mapeo de ids está en
 `geo.py`. Exportar sólo estas tablas da un volcado mucho más pequeño y no
@@ -349,7 +378,9 @@ Si prefieres sacarlos tú, o si mysqldump no está disponible:
     mysqldump --single-transaction --skip-lock-tables --complete-insert \\
       --no-create-info --default-character-set=utf8mb4 \\
       -h HOST -u USUARIO -p caguayo_comercial \\
-      artista cliente usuario grupo empresa > %s
+      artista cliente usuario grupo empresa artista_liquidacion tipo_concepto \\
+      contrato suplemento solicitud_sc estado_cs etapas_cs \\
+      artista_contrato > %s
 
   caguayo (principal):
     mysqldump --single-transaction --skip-lock-tables --complete-insert \\

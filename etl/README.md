@@ -52,15 +52,21 @@ respaldos. Los dos caminos terminan igual: **el volcado se valida con el mismo
 parser que usa la migración** y, sólo si sale bien, se mueve a su sitio. Un
 volcado a medias, sin alguna tabla o con una vacía, no se queda instalado.
 
-Sólo hacen falta 7 tablas, ni una más:
+Sólo hacen falta 15 tablas, ni una más:
 
 | Volcado | De qué base | Tablas |
 |---|---|---|
-| `comercial.sql` | `caguayo_comercial` | `artista`, `cliente`, `usuario`, `grupo`, `empresa` |
+| `comercial.sql` | `caguayo_comercial` | `artista`, `cliente`, `usuario`, `grupo`, `empresa`, `artista_liquidacion`, `tipo_concepto`, `contrato`, `suplemento`, `solicitud_sc`, `estado_cs`, `etapas_cs`, `artista_contrato` |
 | `principal.sql` | `caguayo` (principal) | `tipo_contrato`, `tipo_convenio` |
 
+Cuatro de las de la comercial no se migran a una tabla propia: se leen sólo para
+resolver ids. `solicitud_sc` es el puente de `contrato` a `clientes` —en el
+legacy el contrato no guarda el cliente, lo guarda la solicitud—, `estado_cs`
+traduce el estado del legacy al del destino y `tipo_concepto` da el nombre del
+concepto de una liquidación.
+
 `provincia` y `municipio` no hacen falta: su mapeo de ids está en `geo.py`.
-Exportar sólo esas 7 da un volcado mucho más pequeño y no arrastra facturas ni
+Exportar sólo esas 13 da un volcado mucho más pequeño y no arrastra facturas ni
 movimientos que nadie va a migrar.
 
 `etl/dumps/` está en `.gitignore`: estos ficheros llevan CI y NITs de personas.
@@ -100,9 +106,19 @@ aislada. Sin flags se ejecutan todas en orden.
 | `--solo-especialidades` | H | Especialidades del artista y su enlace al cliente |
 | `--solo-catalogo` | I | Catálogo `tipo_contrato` |
 | `--solo-grupos` | J | Grupos del legacy y reasignación de usuarios |
+| `--solo-liquidaciones` | K | Liquidaciones del legacy, por artista |
+| `--solo-contratos` | L | Contratos del legacy, resueltos por su solicitud |
+| `--solo-suplementos` | M | Suplementos del legacy, colgados de sus contratos |
+| `--solo-solicitudes` | N | Solicitudes del legacy, enlazadas a su contrato |
+| `--solo-etapas` | O | Etapas del legacy, con su tarea y sus realizadores |
 
 Un `--solo-*` sólo exige el volcado que esa fase lee. La excepción es
 `--solo-catalogo`, que lee `tipo_contrato` en los dos ficheros.
+
+`--solo-etapas` sin la fase N previa sólo localiza las solicitudes con código
+propio del legacy: las 324 que no lo traen necesitan el mapa que pasa la N, y sin
+él sus contratos se quedan sin realizadores. En la cadena completa no pasa,
+porque la N va siempre antes.
 
 ## Variables de entorno
 
@@ -181,6 +197,20 @@ explícitas, con el motivo escrito al lado, y dejan un `WARNING` en
 - `FUSIONES` en `migrar_especialidades.py`. Une etiquetas que son la misma
   especialidad con otro plural o en femenino. No es heurística difusa: es una
   lista cerrada y revisada.
+- **`reglas_legacy.py`** (fases K, L y M). Cuatro cosas que el legacy no puede
+  responder, aplicadas fila a fila y siempre con `WARNING`:
+  - **CUC se traduce a USD.** El destino no tiene CUC y no hay tipo de cambio con
+    el que convertirlo. Son 3.828 liquidaciones y 2.535 contratos: el importe no
+    cambia, la etiqueta sí, y eso hay que saberlo antes de fiarse de un histórico.
+  - **`vigencia` y `fecha_vigencia` se rellenan con `fecha`.** El legacy no las
+    guarda y el destino las tiene NOT NULL. Quedan 3.387 contratos con la
+    vigencia igual a su inicio, que en la interfaz puede leerse como vencido.
+  - **Un documento sin fecha** (8 liquidaciones, 4 contratos) toma la fecha más
+    antigua de los documentos de su mismo grupo: del mismo artista o el mismo
+    cliente.
+  - **Sin tipo o sin estado** (82 y 14 contratos) va al tipo más usado y a
+    PENDIENTE. Sin estado no significa vigente: significa que nadie lo dijo
+    todavía.
 
 ## Trazabilidad
 

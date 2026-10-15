@@ -24,7 +24,7 @@ class Registro:
         self.entradas.append({
             "tabla_origen": str(tabla_origen)[:50],
             "id_origen": int(id_origen),
-            "nombre": (nombre or None),
+            "nombre": (str(nombre)[:200] if nombre else None),
             "motivo": str(motivo)[:200],
             "detalle": detalle,
             "severidad": severidad,
@@ -46,17 +46,20 @@ class Registro:
         return Counter((e["tabla_origen"], e["motivo"], e["severidad"])
                        for e in self.entradas)
 
-    def volcar_db(self, cur):
+    def volcar_db(self, cur, lote=500):
         if not self.entradas:
             return 0
-        filas = [(e["tabla_origen"], e["id_origen"], e["nombre"], e["motivo"],
-                  e["detalle"], e["severidad"]) for e in self.entradas]
-        cur.executemany(
-            "INSERT INTO %s (tabla_origen, id_origen, nombre, motivo, detalle, severidad)"
-            " VALUES (%%s, %%s, %%s, %%s, %%s, %%s)" % TABLA_LOG,
-            filas,
-        )
-        return len(filas)
+        sql = ("INSERT INTO %s (tabla_origen, id_origen, nombre, motivo, detalle,"
+               " severidad) VALUES (%%s, %%s, %%s, %%s, %%s, %%s)" % TABLA_LOG)
+        # Por lotes y no de una vez: con ~10.000 filas en un solo executemany la
+        # transacción se hace larga y se queda sin aire si algo la interrumpe.
+        for inicio in range(0, len(self.entradas), lote):
+            cur.executemany(sql, [
+                (e["tabla_origen"], e["id_origen"], e["nombre"], e["motivo"],
+                 e["detalle"], e["severidad"])
+                for e in self.entradas[inicio:inicio + lote]
+            ])
+        return len(self.entradas)
 
     def volcar_csv(self, ruta=None):
         ruta = ruta or CSV_RECHAZOS

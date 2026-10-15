@@ -8,7 +8,7 @@ import type { SolicitudServicio, SolicitudServicioCreate, SolicitudServicioUpdat
 import type { ContratoWithDetails, ContratoCreate, SuplementoWithDetails, SuplementoCreate } from '../../types/contrato';
 import type { Cliente } from '../../types/ventas';
 import type { Moneda } from '../../types/moneda';
-import { Plus, Save, Trash2, Edit, ArrowLeft, Search, ClipboardList, Tag, X, Layers, CheckCircle, CheckSquare, FileText, FilePlus, Loader2, User } from 'lucide-react';
+import { Plus, Save, Trash2, Edit, ArrowLeft, Search, ClipboardList, Tag, X, Layers, CheckCircle, CheckSquare, FileText, FilePlus, Loader2, User, AlertTriangle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import { useInfiniteList } from '../../hooks/useInfiniteList';
@@ -507,8 +507,27 @@ export function ProyectosPage() {
     );
   }, [solicitudes, searchTerm, estadoFiltro]);
 
-  const renderList = () => (
+  const renderList = () => {
+    // Las que la migración del legacy dejó con estado provisional. Se cuentan
+    // sobre lo que se está viendo, no sobre todo: el aviso tiene que estar
+    // donde uno está mirando la fila.
+    const paraRevisar = useMemo(
+      () => filteredSolicitudes.filter((s) => s.estado_por_revisar).length,
+      [filteredSolicitudes],
+    );
+    return (
     <div className="space-y-6">
+      {paraRevisar > 0 && (
+        <div className="flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-900">
+          <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+          <span>
+            <strong>{paraRevisar}</strong> de las solicitudes que ves (migradas
+            del legacy) quedaron en <em>EN PROCESO</em> sin que se pudiera saber
+            si estaban aprobadas: el legacy no lo guarda. El triángulo ámbar
+            marca cuáles. Corrige su estado cuando las revises.
+          </span>
+        </div>
+      )}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div className="flex items-center gap-4">
           <div className="p-3 bg-gradient-to-br from-teal-500 to-cyan-600 rounded-xl shadow-lg animate-bounce-subtle">
@@ -591,6 +610,14 @@ export function ProyectosPage() {
                         <Tag className="h-3 w-3" />
                         {item.codigo_proyecto || 'N/A'}
                       </span>
+                      {item.estado_por_revisar && (
+                        <span
+                          className="inline-flex items-center ml-1 align-middle text-amber-500 cursor-help"
+                          title={item.motivo_revision || 'El estado de esta solicitud fue puesto a EN PROCESO por la migración del legacy.'}
+                        >
+                          <AlertTriangle className="h-3.5 w-3.5" />
+                        </span>
+                      )}
                     </TableCell>
 <TableCell>{formatFecha(item.fecha_solicitud) || 'N/A'}</TableCell>
                     <TableCell>
@@ -737,7 +764,8 @@ export function ProyectosPage() {
         </div>
       </Card>
     </div>
-  );
+    );
+  };
 
   const renderForm = () => (
     <div className="space-y-6">

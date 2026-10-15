@@ -14,23 +14,30 @@ import config
 import db
 import geo
 from config import TABLA_CLIENTES
+from diagnostico import Diagnostico
 from deduplicacion import valores_de
 from log import Registro, imprimir_resumen
 from migrar_artistas import cargar_artistas
 from migrar_catalogo import cargar_catalogo
+from migrar_contratos import cargar_contratos
 from migrar_grupos import cargar_grupos
 from migrar_clientes import cargar_clientes
 from migrar_corregidos import cargar_corregidos
 from migrar_cuentas import cargar_cuentas
 from migrar_especialidades import cargar_especialidades
 from migrar_cuentas_dependencia import cargar_cuentas_dependencia
+from migrar_liquidaciones import cargar_liquidaciones
+from migrar_solicitudes import cargar_solicitudes
+from migrar_etapas import cargar_etapas
+from migrar_suplementos import cargar_suplementos
 from migrar_tcp import cargar_tcp
 from migrar_usuarios import cargar_usuarios
 from verificar import verificar
 
 SOLO = ("--solo-corregidos", "--solo-cuentas", "--solo-usuarios",
         "--solo-cuentas-dep", "--solo-especialidades", "--solo-catalogo",
-        "--solo-grupos")
+        "--solo-grupos", "--solo-liquidaciones", "--solo-contratos",
+        "--solo-suplementos", "--solo-solicitudes", "--solo-etapas")
 
 
 def _dumps_necesarios(argv):
@@ -129,8 +136,34 @@ def _fase_d_solo(registro, dry_run):
     print("CSV de rechazos: %s (%d filas)" % (ruta, total))
     print()
     print("=== VERIFICACIÓN POST-MIGRACIÓN ===")
-    verificar()
-    return 0
+    return 0 if verificar() else 1
+
+
+def _fase_aislada(titulo, correr, registro, dry_run):
+    """Imprime la fase, la ejecuta, y cierra el ciclo de log y verificación.
+
+    Es lo mismo que hacen las siete fases que ya tenían su `--solo-*`, pero en
+    una función. No se unifican con aquéllas porque cada una tiene algo
+    particular —la D lee el destino antes, la J además mueve usuarios— y tocar
+    siete bloques que hoy funcionan no compensa. Esto es sólo para las tres
+    nuevas, que sí son idénticas entre sí.
+    """
+    print(titulo)
+    correr()
+    print()
+    imprimir_resumen(registro)
+    print()
+    if dry_run:
+        print("Simulación completada. No se ha escrito nada.")
+        return 0
+    with db.conexion() as conn:
+        db.crear_log(conn)
+        with conn.cursor() as cur:
+            registro.volcar_db(cur)
+        conn.commit()
+    print("CSV de rechazos: %s (%d filas)" % registro.volcar_csv())
+    print()
+    return 0 if verificar() else 1
 
 
 def main(argv=None):
@@ -154,6 +187,11 @@ def main(argv=None):
     solo_especialidades = "--solo-especialidades" in argv
     solo_catalogo = "--solo-catalogo" in argv
     solo_grupos = "--solo-grupos" in argv
+    solo_liquidaciones = "--solo-liquidaciones" in argv
+    solo_contratos = "--solo-contratos" in argv
+    solo_suplementos = "--solo-suplementos" in argv
+    solo_solicitudes = "--solo-solicitudes" in argv
+    solo_etapas = "--solo-etapas" in argv
 
     print("=" * 66)
     print("  MIGRACIÓN MariaDB → PostgreSQL  (artista, cliente)")
@@ -163,6 +201,9 @@ def main(argv=None):
     print()
 
     registro = Registro()
+    # El autodiagnóstico se acumula en toda la ejecución y se imprime una vez, al
+    # final. Cada fase lo recibe por si quiere añadir sus comprobaciones.
+    diagnostico = Diagnostico()
 
     # Se comprueba antes de nada, incluso en simulación: si los ids fijos de
     # geo.py no apuntan a lo que deben, las fases siguientes escriben la
@@ -185,6 +226,36 @@ def main(argv=None):
           % len(geo.MUN_MAP))
     print()
 
+    if solo_etapas:
+        return _fase_aislada(
+            "=== FASE O: ETAPAS, TAREAS Y REALIZADORES (aislada) ===",
+            lambda: cargar_etapas(registro=registro, dry_run=dry_run),
+            registro, dry_run)
+
+    if solo_solicitudes:
+        return _fase_aislada(
+            "=== FASE N: SOLICITUDES DEL LEGACY (aislada) ===",
+            lambda: cargar_solicitudes(registro=registro, dry_run=dry_run),
+            registro, dry_run)
+
+    if solo_suplementos:
+        return _fase_aislada(
+            "=== FASE M: SUPLEMENTOS DEL LEGACY (aislada) ===",
+            lambda: cargar_suplementos(registro=registro, dry_run=dry_run),
+            registro, dry_run)
+
+    if solo_contratos:
+        return _fase_aislada(
+            "=== FASE L: CONTRATOS DEL LEGACY (aislada) ===",
+            lambda: cargar_contratos(registro=registro, dry_run=dry_run),
+            registro, dry_run)
+
+    if solo_liquidaciones:
+        return _fase_aislada(
+            "=== FASE K: LIQUIDACIONES DEL LEGACY (aislada) ===",
+            lambda: cargar_liquidaciones(registro=registro, dry_run=dry_run),
+            registro, dry_run)
+
     if solo_grupos:
         print("=== FASE J: GRUPOS DEL LEGACY (aislada) ===")
         cargar_grupos(registro=registro, dry_run=dry_run)
@@ -201,8 +272,7 @@ def main(argv=None):
             conn.commit()
         print("CSV de rechazos: %s (%d filas)" % registro.volcar_csv())
         print()
-        verificar()
-        return 0
+        return 0 if verificar() else 1
 
     if solo_catalogo:
         print("=== FASE I: CATÁLOGO TIPO_CONTRATO (aislada) ===")
@@ -220,8 +290,7 @@ def main(argv=None):
             conn.commit()
         print("CSV de rechazos: %s (%d filas)" % registro.volcar_csv())
         print()
-        verificar()
-        return 0
+        return 0 if verificar() else 1
 
     if solo_especialidades:
         print("=== FASE H: ESPECIALIDADES DEL ARTISTA (aislada) ===")
@@ -239,8 +308,7 @@ def main(argv=None):
             conn.commit()
         print("CSV de rechazos: %s (%d filas)" % registro.volcar_csv())
         print()
-        verificar()
-        return 0
+        return 0 if verificar() else 1
 
     if solo_cuentas_dep:
         print("=== FASE G: CUENTAS DE LA DEPENDENCIA (aislada) ===")
@@ -258,8 +326,7 @@ def main(argv=None):
             conn.commit()
         print("CSV de rechazos: %s (%d filas)" % registro.volcar_csv())
         print()
-        verificar()
-        return 0
+        return 0 if verificar() else 1
 
     if solo_usuarios:
         print("=== FASE F: USUARIOS (aislada) ===")
@@ -277,8 +344,7 @@ def main(argv=None):
             conn.commit()
         print("CSV de rechazos: %s (%d filas)" % registro.volcar_csv())
         print()
-        verificar()
-        return 0
+        return 0 if verificar() else 1
 
     if solo_cuentas:
         print("=== FASE E: CUENTAS BANCARIAS (aislada) ===")
@@ -296,8 +362,7 @@ def main(argv=None):
             conn.commit()
         print("CSV de rechazos: %s (%d filas)" % registro.volcar_csv())
         print()
-        verificar()
-        return 0
+        return 0 if verificar() else 1
 
     if solo_corregidos:
         return _fase_d_solo(registro, dry_run)
@@ -357,14 +422,61 @@ def main(argv=None):
     cargar_grupos(registro=registro, dry_run=dry_run)
     print()
 
+    # K, L y M son el bloque de documentos comerciales del legacy. Las
+    # dependencias:
+    #   K -> clientes de la Fase A (artistas).   No depende de L.
+    #   L -> clientes de la Fase B.              No depende de K.
+    #   M -> los contratos de la L.              Ésta sí es una dependencia
+    #                                             real: el supplements cuelga
+    #                                             de un id_contrato que
+    #                                             asigna PostgreSQL, y sin L no
+    #                                             hay a qué colgarlo.
+    # K y L pueden ir en cualquier orden entre sí; M tiene que ir la última.
+    print("=== FASE K: LIQUIDACIONES DEL LEGACY ===")
+    cargar_liquidaciones(registro=registro, dry_run=dry_run)
+    print()
+
+    print("=== FASE L: CONTRATOS DEL LEGACY ===")
+    cargar_contratos(registro=registro, dry_run=dry_run)
+    print()
+
+    print("=== FASE M: SUPLEMENTOS DEL LEGACY ===")
+    cargar_suplementos(registro=registro, dry_run=dry_run)
+    print()
+
+    # N tiene que ir antes que O por los datos, no sólo por el orden: las etapas
+    # cuelgan de `solicitud_servicio`, y para llegar a la solicitud hay que pasar
+    # por el contrato con `id_solicitudsc`. Sin el mapa que devuelve la N, la O
+    # sólo encuentra las solicitudes que traían código propio en el legacy y
+    # deja 1.893 contratos sin artistas.
+    print("=== FASE N: SOLICITUDES DEL LEGACY ===")
+    resultado_n = cargar_solicitudes(registro=registro, dry_run=dry_run,
+                                     diag=diagnostico)
+    codigo_a_id_legacy = resultado_n[3]
+    print()
+
+    print("=== FASE O: ETAPAS, TAREAS Y REALIZADORES ===")
+    cargar_etapas(registro=registro, dry_run=dry_run,
+                  codigo_a_id_legacy=codigo_a_id_legacy, diag=diagnostico)
+    print()
+
     print("=== RESUMEN DE LA MIGRACIÓN ===")
     imprimir_resumen(registro)
+    print()
+
+    diagnostico.imprimir()
     print()
 
     if dry_run:
         print("Simulación completada. No se ha escrito nada.")
         print("Ejecuta `python main.py --commit` para migrar.")
-        return 0
+        # En simulación el destino no se ha tocado, así que su estado no dice
+        # nada del resultado de esta migración. Se enseña igualmente, que es
+        # como se ve si arrastra restos de una pasada anterior, pero no cambia
+        # el código de salida: informa la simulación, falla la migración.
+        print("\n=== ESTADO ACTUAL DEL DESTINO (no es el resultado de esta "
+              "migración) ===")
+        return 0 if verificar() else 1
 
     with db.conexion() as conn:
         db.crear_log(conn)
@@ -377,8 +489,10 @@ def main(argv=None):
     print()
 
     print("=== VERIFICACIÓN POST-MIGRACIÓN ===")
-    verificar()
-    return 0
+    # El código de salida tiene que reflejar el resultado: antes se llamaba a
+    # verificar() y se devolvía 0 igual, así que un exit code 0 no significaba
+    # que la migración estuviera bien.
+    return 0 if verificar() else 1
 
 
 if __name__ == "__main__":

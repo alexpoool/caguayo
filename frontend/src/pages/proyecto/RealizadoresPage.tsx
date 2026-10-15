@@ -54,6 +54,7 @@ import {
   DollarSign,
   Eye,
   CheckCircle,
+  AlertTriangle,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { formatCifra } from "../../utils/decimal";
@@ -728,6 +729,17 @@ export function RealizadoresPage() {
                       <TableCell className="font-medium text-gray-900">
                         {getMonedaSymbol(item.id_moneda)}{" "}
                         {formatCifra(item.cobro)}
+                        {item.asignada_por_migracion && (
+                          <span
+                            className="inline-flex items-center ml-1.5 align-middle text-amber-500 cursor-help"
+                            title={
+                              item.motivo_asignacion ||
+                              "La etapa de esta persona fue asignada por la migración del legacy."
+                            }
+                          >
+                            <AlertTriangle className="h-4 w-4" />
+                          </span>
+                        )}
                       </TableCell>
                       <TableCell className="font-medium text-teal-700">
                         {getMonedaSymbol(item.id_moneda)}{" "}
@@ -1138,6 +1150,15 @@ export function RealizadoresPage() {
                       {getMonedaSymbol(detailModal.item.id_moneda)}{" "}
                       {formatCifra(detailModal.item.cobro)}
                     </p>
+                    {detailModal.item.asignada_por_migracion && (
+                      <p className="mt-2 flex items-start gap-1.5 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-2">
+                        <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                        <span>
+                          {detailModal.item.motivo_asignacion ||
+                            "La etapa de esta persona fue asignada por la migración del legacy."}
+                        </span>
+                      </p>
+                    )}
                   </div>
                   <div className="bg-gray-50 p-4 rounded-xl">
                     <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">

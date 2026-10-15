@@ -30,7 +30,7 @@ class TestRegisterEndpoint:
             "cargo": "Operador",
             "alias": unique_alias,
             "contrasenia": "password123",
-            "base_datos": "caguayosa",
+            "base_datos": "caguayo_sa",
             "id_dependencia": 1,
         })
 
@@ -48,7 +48,7 @@ class TestRegisterEndpoint:
         assert data["usuario"]["alias"] == unique_alias
         assert data["usuario"]["nombre"] == "Juan"
         assert data["usuario"]["primer_apellido"] == "Perez"
-        assert data["base_datos"] == "caguayosa"
+        assert data["base_datos"] == "caguayo_sa"
 
         # Verify token is a string
         assert isinstance(data["token"], str)
@@ -67,7 +67,7 @@ class TestRegisterEndpoint:
             port=int(os.getenv('ADMIN_DB_PORT', 5432)),
             user=os.getenv('ADMIN_DB_USER', 'postgres'),
             password=os.getenv('ADMIN_DB_PASSWORD'),
-            database='caguayosa',
+            database='caguayo_sa',
             client_encoding='utf8'
         )
         conn.autocommit = True
@@ -88,7 +88,7 @@ class TestRegisterEndpoint:
             "cargo": "Tester2",
             "alias": unique_alias,
             "contrasenia": "password456",
-            "base_datos": "caguayosa",
+            "base_datos": "caguayo_sa",
             "id_dependencia": 1,
         })
 
@@ -105,7 +105,7 @@ class TestRegisterEndpoint:
             "cargo": "Tester",
             "alias": f"invaliddep_{int(time.time())}",
             "contrasenia": "password123",
-            "base_datos": "caguayosa",
+            "base_datos": "caguayo_sa",
             "id_dependencia": 99999,  # Non-existent
         })
 
@@ -122,7 +122,7 @@ class TestRegisterEndpoint:
             "cargo": "Tester",
             "alias": f"missing_{int(time.time())}",
             "contrasenia": "password123",
-            "base_datos": "caguayosa",
+            "base_datos": "caguayo_sa",
             "id_dependencia": 1,
         })
 
@@ -160,7 +160,7 @@ class TestRegisterEndpoint:
             "cargo": "Administrador",
             "alias": unique_alias,
             "contrasenia": "admin123",
-            "base_datos": "caguayosa",
+            "base_datos": "caguayo_sa",
             "id_dependencia": 1,
         })
 

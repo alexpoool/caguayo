@@ -21,6 +21,7 @@ depends_on: Union[str, Sequence[str], None] = None
 MONEDAS = [
     ("Dólar Americano", "Dólar Estadounidense", "USD"),
     ("Euro", "Euro de la Unión Europea", "EUR"),
+    ("Peso Cubano", "Peso Cubano", "CUP"),
 ]
 
 TIPOS_CONTRATO = [

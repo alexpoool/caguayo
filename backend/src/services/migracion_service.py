@@ -61,6 +61,10 @@ _TITULOS = {
     "F": "Usuarios", "G": "Cuentas de la dependencia",
     "H": "Especialidades del artista", "I": "Tipos de contrato",
     "J": "Grupos del legacy",
+    "K": "Liquidaciones del legacy", "L": "Contratos del legacy",
+    "M": "Suplementos del legacy",
+    "N": "Solicitudes del legacy",
+    "O": "Etapas, tareas y realizadores",
 }
 
 #: Números que el ETL imprime y que resumen lo que va a hacer.
@@ -271,7 +275,7 @@ def _interpretar(salida: str, codigo: int, commit: bool) -> dict:
     resultado = None
 
     for linea in salida.splitlines():
-        cabecera = re.match(r"=== FASE ([A-J]):", linea.strip())
+        cabecera = re.match(r"=== FASE ([A-O]):", linea.strip())
         if cabecera:
             fase_actual = {"letra": cabecera.group(1),
                            "titulo": _TITULOS[cabecera.group(1)],

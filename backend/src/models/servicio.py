@@ -47,6 +47,13 @@ class SolicitudServicio(SQLModel, table=True):
     aprobado: bool = Field(default=False)
     codigo_proyecto: Optional[str] = Field(default=None, max_length=50)
 
+    #: La Fase O pone TODAS las solicitudes en `EN PROCESO` para que aparezcan en
+    #: la pantalla de proyectos, que filtra por ese estado. En 337 de ellas el
+    #: legacy no decía si estaban aprobadas, así que el estado es provisional y
+    #: esto lo dice. `aprobado` conserva el valor real del legacy.
+    estado_por_revisar: bool = Field(default=False)
+    motivo_revision: Optional[str] = None
+
     etapas: List["Etapa"] = Relationship(
         back_populates="solicitud", sa_relationship_kwargs={"lazy": "selectin"}
     )
@@ -139,6 +146,13 @@ class PersonaEtapa(SQLModel, table=True):
     id_moneda: Optional[int] = Field(default=None, foreign_key="moneda.id_moneda")
     liquidada: bool = Field(default=False)
     por_cobrar: Decimal = Field(default=Decimal("0.00"))
+
+    #: La migración del legacy no sabe en qué etapa va cada artista: `artista_
+    #: contrato` dice el contrato y el cobro, no la etapa. La Fase O los concentra
+    #: todos en la primera etapa del contrato y marca la fila para que se vea y se
+    #: rectifique. Es el mismo patrón que `clientes.valido` + `clientes.razon`.
+    asignada_por_migracion: bool = Field(default=False)
+    motivo_asignacion: Optional[str] = None
 
     etapa: "Etapa" = Relationship(back_populates="personas")
 

@@ -48,6 +48,11 @@ export interface SolicitudServicio {
   id_usuario?: number;
   aprobado: boolean;
   codigo_proyecto?: string;
+  // Los escribe la migración del legacy, no la aplicación. Todas las
+  // solicitudes van en EN PROCESO para que aparezcan en la pantalla de
+  // proyectos, y estas dos dicen cuáles de esas no lo tenían así.
+  estado_por_revisar?: boolean;
+  motivo_revision?: string;
 }
 
 export interface SolicitudServicioCreate {
@@ -158,6 +163,11 @@ export interface PersonaEtapa {
   id_moneda?: number;
   liquidada: boolean;
   por_cobrar: number;
+  // La migración del legacy no sabe en qué etapa va cada artista y los
+  // concentró en la primera. Esto lo dice, para que el triángulo de aviso
+  // aparezca en vez de un cobro que parece entregado a la etapa correcta.
+  asignada_por_migracion?: boolean;
+  motivo_asignacion?: string;
 }
 
 export interface PersonaEtapaCreate {
