@@ -12,11 +12,11 @@ INSERT: se inserta la solicitud sin él y se enlaza después con un UPDATE, que 
 en su propia transacción. Tirar la constraint y reponerla obligaría a saber su
 nombre y a que nadie la toque en medio.
 
-Las 3.426 solicitudes van en `EN PROCESO` para que aparezcan en la pantalla de
-proyectos, que filtra por ese estado. En 337 el legacy no decía si estaban
-aprobadas, así que el estado es provisional y se marcan con `estado_por_revisar`
-para que alguien las rectifique. `aprobado` conserva el valor real del legacy: el
-estado lo inventamos, el booleano es dato.
+Todas las solicitudes van en `EN PROCESO` para que aparezcan en la pantalla de
+proyectos, que filtra por ese estado, y además se dan por **aprobadas**
+(`aprobado = true`). El legacy sólo trae un `aprobada` de dos letras, así que el
+estado y el booleano son ambos decisión de la migración; no queda nada pendiente
+de revisión, y por eso `estado_por_revisar` queda siempre en `False`.
 
 Del legacy sin destino: `nombre_rec`, `primerapellido_rec`,
 `segundoapellido_rec` (3.101 filas los tienen), `cta` (3) y `numero` (el destino
@@ -42,8 +42,9 @@ TABLA = "solicitud_servicio"
 LARGO_CARGO = 100
 
 #: Se pone en todas para que la fila se vea en la pantalla de proyectos, que
-#: filtra por este estado. El legacy no guarda un estado de solicitud: sólo un
-#: `aprobada` de dos letras.
+#: filtra por este estado. El legacy no guarda un estado de solicitud (sólo un
+#: `aprobada` de dos letras), así que el estado se inventa; lo mismo pasa con
+#: `aprobado`, que se fuerza a `true` en todas.
 ESTADO_MIGRACION = "EN PROCESO"
 
 
@@ -116,21 +117,15 @@ def _material_asumido(valor):
     )]
 
 
-def _revision(estado_aprobada):
-    """(aprobado, estado_por_revisar, motivo_revision) desde el `aprobada` legacy.
+def _revision():
+    """(aprobado, estado_por_revisar, motivo_revision): siempre aprobada.
 
-    El estado va a `EN PROCESO` en todas para que la fila se vea en la pantalla
-    de proyectos, pero eso sólo es una traducción fiel cuando el legacy decía
-    'Si'. Con 'No' o sin dato el estado es inventado, y eso se marca para que
-    alguien lo rectifique. `aprobado` conserva el valor real del legacy: el
-    estado se inventa, el booleano es dato.
+    Todas las solicitudes se dan por aprobadas. El legacy sólo trae un
+    `aprobada` de dos letras ('Si'/'No') y el resto ya se migra como proyecto en
+    curso, así que se fuerza `aprobado=True` y no queda nada por revisar: ni
+    `estado_por_revisar` ni `motivo_revision`.
     """
-    clave = (texto(estado_aprobada) or "").strip().lower()
-    if clave == "si":
-        return True, False, None
-    if clave == "no":
-        return False, True, "el legacy la tiene aprobada=No"
-    return False, True, "el legacy no guarda si esta solicitud estaba aprobada"
+    return True, False, None
 
 
 def _codigo(codigo_legacy, id_legacy, fecha_iso):
@@ -206,7 +201,7 @@ def preparar(registro: Registro, codigos_cliente, codigos_existentes=()):
         material, avisos_material = _material_asumido(f.get("mat_asumidos"))
         avisos += avisos_material
 
-        aprobada, revisar, motivo = _revision(f.get("aprobada"))
+        aprobada, revisar, motivo = _revision()
 
         payloads.append({
             "codigo_solicitud": codigo,

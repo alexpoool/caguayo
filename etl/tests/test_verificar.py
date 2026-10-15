@@ -54,11 +54,12 @@ def _etiquetas():
 def test_los_cortes_cuadran_con_los_controles():
     total = len(_controles_declarados())
 
-    assert verificar.FIN_CONTEO == 11, (
-        "conteos: 4 de clientes + 3 de las fases K y L + 4 de las fases N y O")
-    assert verificar.FIN_INTEGRIDAD == 32, (
+    assert verificar.FIN_CONTEO == 12, (
+        "conteos: 4 de clientes + 3 de las fases K y L + 5 de las fases N, O y P")
+    assert verificar.FIN_INTEGRIDAD == 35, (
         "integridad: 9 antiguos + 4 de las fases K y L + 9 de las fases N y O"
-        " (codigo_proyecto, servicio generico y codigo_extendido al final)")
+        " (codigo_proyecto, servicio generico y codigo_extendido al final)"
+        " + 3 de la Fase P")
     assert verificar.FIN_REGISTRO == total, (
         "el último control se quedaría sin imprimir: la lista tiene %d y "
         "FIN_REGISTRO dice %d" % (total, verificar.FIN_REGISTRO)

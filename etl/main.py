@@ -27,6 +27,7 @@ from migrar_cuentas import cargar_cuentas
 from migrar_especialidades import cargar_especialidades
 from migrar_cuentas_dependencia import cargar_cuentas_dependencia
 from migrar_liquidaciones import cargar_liquidaciones
+from migrar_liquidaciones_etapa import cargar_liquidaciones_etapa
 from migrar_solicitudes import cargar_solicitudes
 from migrar_etapas import cargar_etapas
 from migrar_suplementos import cargar_suplementos
@@ -37,7 +38,8 @@ from verificar import verificar
 SOLO = ("--solo-corregidos", "--solo-cuentas", "--solo-usuarios",
         "--solo-cuentas-dep", "--solo-especialidades", "--solo-catalogo",
         "--solo-grupos", "--solo-liquidaciones", "--solo-contratos",
-        "--solo-suplementos", "--solo-solicitudes", "--solo-etapas")
+        "--solo-suplementos", "--solo-solicitudes", "--solo-etapas",
+        "--solo-liquidaciones-etapa")
 
 
 def _dumps_necesarios(argv):
@@ -188,6 +190,7 @@ def main(argv=None):
     solo_catalogo = "--solo-catalogo" in argv
     solo_grupos = "--solo-grupos" in argv
     solo_liquidaciones = "--solo-liquidaciones" in argv
+    solo_liquidaciones_etapa = "--solo-liquidaciones-etapa" in argv
     solo_contratos = "--solo-contratos" in argv
     solo_suplementos = "--solo-suplementos" in argv
     solo_solicitudes = "--solo-solicitudes" in argv
@@ -225,6 +228,12 @@ def main(argv=None):
     print("  geo.py coincide con el destino: %d municipios de referencia OK"
           % len(geo.MUN_MAP))
     print()
+
+    if solo_liquidaciones_etapa:
+        return _fase_aislada(
+            "=== FASE P: LIQUIDACIONES DE LAS ETAPAS (aislada) ===",
+            lambda: cargar_liquidaciones_etapa(registro=registro, dry_run=dry_run),
+            registro, dry_run)
 
     if solo_etapas:
         return _fase_aislada(
@@ -458,6 +467,14 @@ def main(argv=None):
     print("=== FASE O: ETAPAS, TAREAS Y REALIZADORES ===")
     cargar_etapas(registro=registro, dry_run=dry_run,
                   codigo_a_id_legacy=codigo_a_id_legacy, diag=diagnostico)
+    print()
+
+    # P tiene que ir después de la O por los datos, no sólo por el orden: cada
+    # liquidación cuelga de una etapa y dice qué realizador se lleva el dinero. La
+    # etapa y el realizador los pone la O; la P los lee, no los decide. Sin la O
+    # antes no hay dónde colocar nada y las 4.362 salen descartadas.
+    print("=== FASE P: LIQUIDACIONES DE LAS ETAPAS ===")
+    cargar_liquidaciones_etapa(registro=registro, dry_run=dry_run)
     print()
 
     print("=== RESUMEN DE LA MIGRACIÓN ===")

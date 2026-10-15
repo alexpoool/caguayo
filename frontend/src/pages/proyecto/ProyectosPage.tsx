@@ -507,14 +507,15 @@ export function ProyectosPage() {
     );
   }, [solicitudes, searchTerm, estadoFiltro]);
 
+  // Las que la migración del legacy dejó con estado provisional. Se cuentan
+  // sobre lo que se está viendo, no sobre todo: el aviso tiene que estar
+  // donde uno está mirando la fila.
+  const paraRevisar = useMemo(
+    () => filteredSolicitudes.filter((s) => s.estado_por_revisar).length,
+    [filteredSolicitudes],
+  );
+
   const renderList = () => {
-    // Las que la migración del legacy dejó con estado provisional. Se cuentan
-    // sobre lo que se está viendo, no sobre todo: el aviso tiene que estar
-    // donde uno está mirando la fila.
-    const paraRevisar = useMemo(
-      () => filteredSolicitudes.filter((s) => s.estado_por_revisar).length,
-      [filteredSolicitudes],
-    );
     return (
     <div className="space-y-6">
       {paraRevisar > 0 && (

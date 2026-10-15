@@ -250,13 +250,23 @@ def test_adoptar_rechaza_uno_que_no_sirve(tmp_path, monkeypatch):
 def test_las_tablas_del_generador_cubren_las_que_lee_el_etl():
     """Si una fase nueva lee una tabla, tiene que estar aquí.
 
-    Sin este test, un volcado podría no bringing esa tabla y la migración
+    Sin este test, un volcado podría no traer esa tabla y la migración
     reventaría en pleno `--commit`, con el volcado ya en su sitio y validado.
+
+    El escaneo tiene que cubrir las dos formas de pedir una tabla: el literal
+    en `leer_tabla(...)` y el que pasa por el envoltorio `_leer("tabla")`.
+    Sólo con el primero se coló `artista_suplemento`, que la Fase O lee por
+    `_leer` y el generador no exportaba.
     """
-    patron = re.compile(r'leer_tabla\([^,]+,\s*"(\w+)"')
+    patrones = (
+        re.compile(r'leer_tabla\([^,]+,\s*"(\w+)"'),
+        re.compile(r'_leer\("(\w+)"'),
+    )
     leidas = set()
     for modulo in sorted(ETL.glob("migrar_*.py")):
-        leidas |= set(patron.findall(modulo.read_text(encoding="utf-8")))
+        texto = modulo.read_text(encoding="utf-8")
+        for patron in patrones:
+            leidas |= set(patron.findall(texto))
 
     # Los catálogos no pasan por leer_tabla con un literal: salen de CATALOGOS.
     leidas |= {nombre for nombre, _rutas in config.CATALOGOS}

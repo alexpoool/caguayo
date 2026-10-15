@@ -24,9 +24,11 @@ etapa no existe hasta que se insertan las etapas.
    y se marcan con `asignada_por_migracion` para que la pantalla avise. Sólo 18
    etapas tienen artista real, vía `artista_suplemento`.
 
-Lo que NO se migra y sigue vacío: `certificacion`, `oferta`, `factura_servicio`,
-`pago_factura_servicio` y `persona_liquidacion`. El legacy tiene 15 facturas y 35
+Lo que NO se migra aquí y sigue vacío: `certificacion`, `oferta`,
+`factura_servicio` y `pago_factura_servicio`. El legacy tiene 15 facturas y 35
 `items_factura`, pero cuelgan de `factura`, que no cuelga de ninguna etapa.
+`persona_liquidacion` la migra la Fase P, que lee estas etapas y estos
+realizadores y cuelga de ellos las liquidaciones del legacy.
 """
 import db
 import reglas_legacy as rl

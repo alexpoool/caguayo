@@ -111,6 +111,11 @@ aislada. Sin flags se ejecutan todas en orden.
 | `--solo-suplementos` | M | Suplementos del legacy, colgados de sus contratos |
 | `--solo-solicitudes` | N | Solicitudes del legacy, enlazadas a su contrato |
 | `--solo-etapas` | O | Etapas del legacy, con su tarea y sus realizadores |
+| `--solo-liquidaciones-etapa` | P | Las mismas liquidaciones de la K, pero colgadas de su etapa y su realizador |
+
+`--solo-liquidaciones-etapa` necesita la O previa: cada liquidación cuelga de
+una etapa y dice qué realizador se lleva el dinero, y las dos cosas las pone la
+O. Sin ella no hay dónde colocar nada y las 4.362 salen descartadas.
 
 Un `--solo-*` sólo exige el volcado que esa fase lee. La excepción es
 `--solo-catalogo`, que lee `tipo_contrato` en los dos ficheros.
@@ -122,7 +127,7 @@ porque la N va siempre antes.
 
 ### Los códigos que se generan
 
-Tres columnas salen del ETL con un valor, y conviene saber de dónde:
+Cuatro columnas salen del ETL con un valor, y conviene saber de dónde:
 
 - **`solicitud_servicio.codigo_solicitud`** — el del legacy tal cual (`2014.001`)
   en las que lo traen; `CAG.AA.id_solicitudsc` en las que no. El `id_solicitudsc`
@@ -140,18 +145,28 @@ Tres columnas salen del ETL con un valor, y conviene saber de dónde:
   de insertar porque `codigo_servicio` es UNIQUE, y le cuelga todas las tareas.
   `concepto_modificado` no se toca: sigue siendo el nombre de la etapa, que es lo
   que muestran la tabla y los PDF.
+- **`persona_liquidacion.numero`** — `CAG.AA.<id_liquidacion del legacy>`. No se
+  copia `numero_liquidacion`: sólo tiene 903 valores distintos en 4.362 filas y
+  no puede ser clave. El año sale de la fecha de la liquidación y no del reloj
+  como en la aplicación (`servicio_service.py:875`), porque este número es lo
+  que permite reconocer en la segunda pasada lo que escribió la primera.
 
 Las etapas **no tienen código**. La columna no existe en la tabla y nadie la lee;
 si algún día hace falta, sale al vuelo de `{codigo_solicitud}.{numero_etapa}`
 sin tocar la base.
 
-Las tres son idempotentes: la segunda pasada no cambia nada.
+Las cuatro son idempotentes: la segunda pasada no cambia nada.
 
-`verificar.py` lo comprueba con tres controles —`codigo_proyecto inconsistente`,
-`servicio generico GEN inconsistente` y `codigo_extendido inconsistente con su
-servicio`—. El tercero es el que avisaría si alguien asigna un servicio real a
-una tarea y el código no se mueve con él, porque `TareaEtapaService.update` no lo
-recalcula.
+`verificar.py` lo comprueba con cuatro controles —`codigo_proyecto inconsistente`,
+`servicio generico GEN inconsistente`, `codigo_extendido inconsistente con su
+servicio` e `importe descuadrado con por_cobrar`—. El tercero es el que avisaría si
+alguien asigna un servicio real a una tarea y el código no se mueve con él, porque
+`TareaEtapaService.update` no lo recalcula. El cuarto es el que agarra a las dos
+mitades de la fase O y la P: `persona_etapa.por_cobrar` no es un dato propio sino
+que la aplicación lo recalcula sumando el `importe` de las liquidaciones
+confirmadas de esa persona en esa etapa (`servicio_repo.py:358-371`), así que si
+las dos no dan el mismo número, el primero que edite una liquidación mueve el
+`por_cobrar` por debajo de la vista.
 
 ## Variables de entorno
 

@@ -37,7 +37,7 @@ class DumpInvalido(Exception):
 
 #: Tablas que hay que extraer de cada base. Son las únicas que lee el ETL.
 #:
-#: De `caguayo_comercial` se leen estas trece. De la base principal, dos: los
+#: De `caguayo_comercial` se leen estas catorce. De la base principal, dos: los
 #: catálogos. El ETL NO lee `provincia` ni `municipio` — su mapeo de ids está en
 #: geo.py — ni ninguna otra cosa.
 #:
@@ -48,6 +48,13 @@ class DumpInvalido(Exception):
 #: `solicitud_sc` es el puente de `contrato` a `clientes` (el legacy guarda ahí el
 #: `id_cliente`, no en el contrato), `estado_cs` traduce el estado del legacy al
 #: del destino y `tipo_concepto` da el nombre del concepto de una liquidación.
+#:
+#: `artista_suplemento` entra aquí porque la Fase O la lee para saber a qué
+#: artistas se les reparte un suplemento. Antes se leía igual y no estaba en esta
+#: lista: el escaneo de tablas que lee el ETL (el test de este módulo) sólo
+#: veía los literales de `leer_tabla(...)` y esta tabla se pide por el envoltorio
+#: `_leer`, así que su ausencia pasó inadvertida y un volcado nuevo habría
+#: reventado la migración a mitad del `--commit`.
 TABLAS = {
     "comercial": (
         "artista",
@@ -63,6 +70,7 @@ TABLAS = {
         "estado_cs",
         "etapas_cs",
         "artista_contrato",
+        "artista_suplemento",
     ),
     "principal": ("tipo_contrato", "tipo_convenio"),
 }

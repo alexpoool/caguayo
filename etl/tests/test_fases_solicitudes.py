@@ -156,20 +156,14 @@ def test_los_tres_valores_de_material_asumido():
     assert len(avisos) == 1
 
 
-def test_el_estado_siempre_en_proceso_y_el_aprobado_real():
-    """El estado se inventa para que la fila se vea; `aprobado` es dato."""
+def test_el_estado_siempre_en_proceso():
+    """El estado se inventa para que la fila se vea en proyectos."""
     assert ms.ESTADO_MIGRACION == "EN PROCESO"
 
 
-@pytest.mark.parametrize("legado,aprobado,revisar,motivo", [
-    ("Si", True, False, None),
-    ("No", False, True, "el legacy la tiene aprobada=No"),
-    ("", False, True, "el legacy no guarda si esta solicitud estaba aprobada"),
-])
-def test_la_revision_distingue_no_de_nada(legado, aprobado, revisar, motivo):
-    """'No aprobada' y 'no lo dice' no son lo mismo, y quien rectifique
-    necesita saber cuál de las dos es."""
-    assert ms._revision(legado) == (aprobado, revisar, motivo)
+def test_la_revision_aprueba_siempre():
+    """Todas las solicitudes se dan por aprobadas y ninguna queda para revisar."""
+    assert ms._revision() == (True, False, None)
 
 
 # --------------------------------------------------------------------------
@@ -282,13 +276,11 @@ def test_el_mapeo_completo_no_tiene_duplicados_ni_huerfanos():
 
 
 @necesita_dump
-def test_las_solicitudes_sin_aprobacion_se_marcan_para_revisar():
+def test_las_solicitudes_vienen_todas_aprobadas():
     ids_cliente, _ = _arnes()
     solicitudes, _ = ms.preparar(Registro(), ids_cliente, set())
 
-    revisables = [p for p in solicitudes if p["estado_por_revisar"]]
-    no_marcadas = [p for p in solicitudes if not p["aprobado"]]
-
-    assert len(revisables) == len(no_marcadas), (
-        "toda solicitud sin `aprobada='Si'` tiene que quedar marcada")
-    assert all(p["motivo_revision"] for p in revisables)
+    assert solicitudes, "el dump no trajo solicitudes"
+    assert all(p["aprobado"] for p in solicitudes)
+    assert not [p for p in solicitudes if p["estado_por_revisar"]]
+    assert all(p["motivo_revision"] is None for p in solicitudes)

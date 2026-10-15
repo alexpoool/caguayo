@@ -7,6 +7,7 @@ from config import (
     TABLA_ETAPA,
     TABLA_JURIDICA,
     TABLA_LIQUIDACION,
+    TABLA_LIQUIDACION_PERSONA,
     TABLA_LOG,
     TABLA_NATURAL,
     TABLA_PERSONA_ETAPA,
@@ -30,9 +31,9 @@ def _uno(cur, sql, params=None):
 #: Los tres números se comprueban contra la lista en `test_verificar.py`: es un
 #: dato que se escribe a mano y se descoloca con cada control nuevo, que es
 #: justo cuando nadie lo mira.
-FIN_CONTEO = 11
-FIN_INTEGRIDAD = 32
-FIN_REGISTRO = 35
+FIN_CONTEO = 12
+FIN_INTEGRIDAD = 35
+FIN_REGISTRO = 39
 
 #: La comprobación que hace fallar la migración. Se busca por nombre y no por
 #: posición: si mañana se añade un control, el índice se desplaza solo y esto no.
@@ -65,6 +66,8 @@ def _consultas(conn):
              _uno(cur, "SELECT count(*) FROM %s" % TABLA_TAREA_ETAPA)),
             ("persona_etapa: filas",
              _uno(cur, "SELECT count(*) FROM %s" % TABLA_PERSONA_ETAPA)),
+            ("persona_liquidacion: filas",
+             _uno(cur, "SELECT count(*) FROM %s" % TABLA_LIQUIDACION_PERSONA)),
             ("clientes.nit duplicados",
              _uno(cur, "SELECT count(*) FROM (SELECT nit FROM %s GROUP BY nit"
                        " HAVING count(*) > 1) d" % TABLA_CLIENTES)),
@@ -148,6 +151,53 @@ def _consultas(conn):
             ("persona_etapa: huérfanos",
              _uno(cur, "SELECT count(*) FROM %s p LEFT JOIN %s e USING (id_etapa)"
                        " WHERE e.id_etapa IS NULL" % (TABLA_PERSONA_ETAPA, TABLA_ETAPA))),
+            ("persona_liquidacion: huérfanos",
+             _uno(cur, "SELECT count(*) FROM %s l LEFT JOIN %s e USING (id_etapa)"
+                       " WHERE e.id_etapa IS NULL"
+                       % (TABLA_LIQUIDACION_PERSONA, TABLA_ETAPA))),
+            ("persona_liquidacion: personas que no existen",
+             _uno(cur, "SELECT count(*) FROM %s l"
+                       " LEFT JOIN %s c ON c.id_cliente = l.id_persona"
+                       " WHERE c.id_cliente IS NULL"
+                       % (TABLA_LIQUIDACION_PERSONA, TABLA_CLIENTES))),
+            # La coherencia entre las dos mitades de la Fase O y la Fase P.
+            # `por_cobrar` no es un dato propio de `persona_etapa`: la
+            # aplicación lo recalcula como `max(0, cobro - importe liquidado)`
+            # sumando el `importe` de las liquidaciones confirmadas de esa
+            # persona en esa etapa (`servicio_repo.py:358-371`). Es un `max`, no
+            # una resta, y por eso la comprobación reproduce el `max`: si una
+            # liquidación suma más que el cobro, `por_cobrar` se queda en 0 y un
+            # `cobro - por_cobrar = importe` daría un falso positivo.
+            #
+            # Se excluyen las etapas cuya solicitud no tiene contrato: la Fase P
+            # coloca cada liquidación partiendo de un contrato, así que a una
+            # etapa sin contrato no llega, y el invariante no le es exigible.
+            # Queda exactamente una fila así en toda la base —la etapa 3113 con
+            # su realizador—, que la Fase O puso por la vía del suplemento y a la
+            # que descontó el total liquidado de un contrato que la solicitud no
+            # tiene. Es un artefacto de la O, no de la P, y no se comprueba aquí.
+            #
+            # La tolerancia es de un céntimo y no cero porque los dos lados no
+            # redondean igual: la Fase O restó la suma sin recortar y aquí cada
+            # importe llega ya redondeado a la columna, de modo que la diferencia
+            # llega a 0,0048 —medio céntimo— en los 18 pares afectados, y
+            # ninguno pasa de ahí.
+            ("persona_liquidacion: importe descuadrado con por_cobrar",
+             _uno(cur,
+                  "SELECT count(*) FROM ("
+                  "  SELECT pe.por_cobrar,"
+                  "         greatest(0, pe.cobro - coalesce("
+                  "           (SELECT sum(pl.importe) FROM %s pl"
+                  "             WHERE pl.id_etapa = pe.id_etapa"
+                  "               AND pl.id_persona = pe.id_persona"
+                  "               AND pl.confirmado), 0)) AS esperado"
+                  "    FROM %s pe"
+                  "    JOIN etapas e ON e.id_etapa = pe.id_etapa"
+                  "    JOIN solicitud_servicio s"
+                  "      ON s.id_solicitud_servicio = e.id_solicitud_servicio"
+                  "   WHERE s.id_contrato IS NOT NULL"
+                  ") d WHERE abs(d.por_cobrar - d.esperado) > 0.01"
+                  % (TABLA_LIQUIDACION_PERSONA, TABLA_PERSONA_ETAPA))),
             ("migracion_log: descartes",
              _uno(cur, "SELECT count(*) FROM %s WHERE severidad='DESCARTE'" % TABLA_LOG)),
             ("migracion_log: warnings",
@@ -181,7 +231,9 @@ def verificar():
     print("\n=== Integridad ===")
     integridad = controles[FIN_CONTEO:FIN_INTEGRIDAD]
     for etiqueta, valor in integridad:
-        debe_ser_cero = "duplicados" in etiqueta or "huérfanos" in etiqueta or "fuera de rango" in etiqueta or "inconsistente" in etiqueta
+        debe_ser_cero = ("duplicados" in etiqueta or "huérfanos" in etiqueta
+                         or "fuera de rango" in etiqueta or "inconsistente" in etiqueta
+                         or "descuadrado" in etiqueta)
         estado = "OK" if (valor == 0 or not debe_ser_cero) else "FALLA"
         if estado == "FALLA":
             fallos += 1
