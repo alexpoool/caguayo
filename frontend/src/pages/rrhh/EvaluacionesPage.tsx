@@ -1,10 +1,8 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { RadarCriterios } from '../../components/rrhh/RadarCriterios';
 import { rrhhService } from '../../services/rrhh';
 import {
-  COLOR_ESTADO_EVALUACION,
   CRITERIOS_EVALUACION,
   ESTADOS_EVALUACION,
   type RrhhEvaluacionCreate,
@@ -20,7 +18,6 @@ import {
   Plus,
   RefreshCw,
   Search,
-  Target,
   Trash2,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -41,10 +38,15 @@ import {
   Modal,
 } from '../../components/ui';
 
-const fmtPromedio = (v: string | null, escala: '1-5' | '0-100') => {
-  if (v === null || v === undefined) return '—';
-  const n = Number(v);
-  return escala === '1-5' ? n.toFixed(2) : `${n.toFixed(1)}%`;
+/** Rango del periodo (inicio – fin) en formato legible. */
+const fmtRango = (inicio: string, fin: string) => {
+  const f = (iso: string) =>
+    new Date(`${iso}T00:00:00`).toLocaleDateString('es-CU', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+    });
+  return `${f(inicio)} – ${f(fin)}`;
 };
 
 /** Fecha ISO local (sin desfase de UTC) para los inputs tipo date. */
@@ -278,78 +280,25 @@ export function EvaluacionesPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Empleado</TableHead>
-                  <TableHead>Departamento</TableHead>
-                  <TableHead>Periodo</TableHead>
+                  <TableHead>Nombre</TableHead>
+                  <TableHead>Rango</TableHead>
                   <TableHead>Tipo</TableHead>
-                  <TableHead className="text-center">Estado</TableHead>
-                  <TableHead className="text-center">Desempeño (1–5)</TableHead>
-                  <TableHead className="text-right">Objetivos (0–100)</TableHead>
-                  <TableHead className="text-center">Objetivos</TableHead>
                   <TableHead className="text-right">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {evaluaciones.map((ev) => (
                   <TableRow key={ev.id}>
-                    <TableCell>
-                      <div className="font-medium text-slate-900">
-                        {ev.empleado_nombre || '—'}
-                      </div>
-                      <div className="text-xs text-slate-500">{ev.empleado_codigo}</div>
+                    <TableCell className="font-medium text-slate-900">
+                      {ev.empleado_nombre || '—'}
                     </TableCell>
                     <TableCell className="text-slate-600">
-                      {ev.departamento_nombre || 'Sin departamento'}
-                    </TableCell>
-                    <TableCell className="text-slate-600">
-                      <div>{ev.periodo}</div>
-                      <div className="text-xs text-slate-400">
-                        {ev.inicio_periodo} → {ev.fin_periodo}
-                      </div>
+                      {ev.inicio_periodo && ev.fin_periodo
+                        ? fmtRango(ev.inicio_periodo, ev.fin_periodo)
+                        : '—'}
                     </TableCell>
                     <TableCell className="text-slate-600">
                       {ev.tipo_evaluacion ?? '—'}
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <span
-                        className={`inline-block rounded-full px-2 py-0.5 text-xs font-semibold ${COLOR_ESTADO_EVALUACION[ev.estado]}`}
-                      >
-                        {ev.estado === 'borrador' ? 'Borrador' : 'Finalizada'}
-                      </span>
-                    </TableCell>
-                    <TableCell className="text-center">
-                      {ev.criterios.some((c) => c.valor > 0) ? (
-                        <div className="flex flex-col items-center">
-                          <RadarCriterios
-                            compact
-                            data={ev.criterios.map((c) => ({
-                              criterio: c.etiqueta,
-                              valor: c.valor,
-                            }))}
-                          />
-                          <span className="text-xs tabular-nums text-slate-600">
-                            {fmtPromedio(ev.promedio_criterios, '1-5')}
-                          </span>
-                        </div>
-                      ) : (
-                        <span className="text-slate-400">—</span>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-right tabular-nums">
-                      {fmtPromedio(ev.promedio_objetivos, '0-100')}
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        title={`Objetivos en alcance del periodo: ${ev.cantidad_objetivos} · ${ev.cantidad_metas} meta(s)`}
-                        onClick={() =>
-                          navigate(`/rrhh/objetivos?empleado_id=${ev.empleado_id}`)
-                        }
-                      >
-                        <Target className="h-4 w-4" />
-                        Ver objetivos
-                      </Button>
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center justify-end gap-1">
