@@ -411,17 +411,21 @@ export function ObjetivosPage() {
       </Card>
 
       {/* Modal de objetivo */}
-      <Modal isOpen={formAbierto !== null} onClose={() => setFormAbierto(null)}>
-        <div className="space-y-4 p-1">
-          <div className="flex items-center gap-2">
-            <div className="p-2 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-lg">
-              <Target className="h-4 w-4 text-white" />
-            </div>
-            <h2 className="text-lg font-bold text-slate-900">
-              {formAbierto?.editando ? 'Editar objetivo' : 'Nuevo objetivo'}
-            </h2>
+      <Modal
+        isOpen={formAbierto !== null}
+        onClose={() => setFormAbierto(null)}
+        className="overflow-hidden"
+      >
+        {/* Cabecera con el degradado de la página */}
+        <div className="sticky top-0 flex items-center gap-3 border-b bg-gradient-to-r from-emerald-50 to-emerald-100 px-6 py-4">
+          <div className="p-2 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-lg">
+            <Target className="h-5 w-5 text-white" />
           </div>
-          <form onSubmit={submit} className="space-y-4">
+          <h2 className="text-lg font-bold text-gray-900">
+            {formAbierto?.editando ? 'Editar objetivo' : 'Nuevo objetivo'}
+          </h2>
+        </div>
+        <form onSubmit={submit} className="px-6 pt-5 space-y-4">
             <div className="space-y-2">
               <Label
                 htmlFor="obj-nombre"
@@ -506,7 +510,8 @@ export function ObjetivosPage() {
                 className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-all duration-200"
               />
             </div>
-            <div className="flex items-center gap-2 pt-2 border-t">
+            {/* Pie fijo: siempre visible aunque el formulario haga scroll */}
+            <div className="sticky bottom-0 -mx-6 flex items-center gap-2 border-t bg-white px-6 pb-5 pt-4">
               <Button
                 type="submit"
                 className={`gap-2 ${GRADIENTE}`}
@@ -530,7 +535,6 @@ export function ObjetivosPage() {
               </Button>
             </div>
           </form>
-        </div>
       </Modal>
 
       <ConfirmModal

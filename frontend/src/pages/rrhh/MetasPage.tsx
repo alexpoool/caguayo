@@ -9,7 +9,6 @@ import {
   Calendar,
   CalendarRange,
   FileText,
-  Hash,
   ListChecks,
   Loader2,
   Pencil,
@@ -62,8 +61,9 @@ const GRADIENTE =
  * Metas de un objetivo, con su CRUD (siempre editable).
  *
  * Llega `?objetivo_id=N` desde la columna «Metas» de la página de objetivos y
- * devuelve a ella mediante el enlace de cabecera. La **valoración** (1–5) no
- * se edita aquí: se pone al calificar la evaluación del empleado.
+ * devuelve a ella mediante el enlace de cabecera. Tampoco se define aquí el
+ * **resultado** numérico de la meta: se rellena después, al evaluar. La
+ * **valoración** (1–5) solo se pone al calificar la evaluación del empleado.
  */
 export function MetasPage() {
   const [searchParams] = useSearchParams();
@@ -77,7 +77,6 @@ export function MetasPage() {
   const [confirm, setConfirm] = useState<RrhhMeta | null>(null);
   const [metaForm, setMetaForm] = useState({
     nombre: '',
-    resultado_meta: '' as string,
     fecha_inicio: '',
     fecha_fin: '',
     observaciones: '',
@@ -103,10 +102,10 @@ export function MetasPage() {
 
   const metaMutation = useMutation({
     mutationFn: (id: number | undefined) => {
+      // `resultado_meta` no se envía: se rellena después, al evaluar.
+      // En edición, omitirlo conserva el valor guardado (exclude_unset).
       const payload = {
         nombre: metaForm.nombre.trim(),
-        resultado_meta:
-          metaForm.resultado_meta === '' ? null : Number(metaForm.resultado_meta),
         fecha_inicio: metaForm.fecha_inicio || null,
         fecha_fin: metaForm.fecha_fin || null,
         observaciones: metaForm.observaciones.trim() ? metaForm.observaciones : null,
@@ -138,7 +137,6 @@ export function MetasPage() {
     setFormAbierto({ editando: m ?? null });
     setMetaForm({
       nombre: m?.nombre ?? '',
-      resultado_meta: m?.resultado_meta != null ? String(m.resultado_meta) : '',
       fecha_inicio: m?.fecha_inicio ?? '',
       fecha_fin: m?.fecha_fin ?? '',
       observaciones: m?.observaciones ?? '',
@@ -389,17 +387,21 @@ export function MetasPage() {
       </Card>
 
       {/* Modal de meta */}
-      <Modal isOpen={formAbierto !== null} onClose={() => setFormAbierto(null)}>
-        <div className="space-y-4 p-1">
-          <div className="flex items-center gap-2">
-            <div className="p-2 bg-gradient-to-br from-violet-500 to-violet-600 rounded-lg">
-              <ListChecks className="h-4 w-4 text-white" />
-            </div>
-            <h2 className="text-lg font-bold text-slate-900">
-              {formAbierto?.editando ? 'Editar meta' : 'Nueva meta'}
-            </h2>
+      <Modal
+        isOpen={formAbierto !== null}
+        onClose={() => setFormAbierto(null)}
+        className="overflow-hidden"
+      >
+        {/* Cabecera con el degradado de la página */}
+        <div className="sticky top-0 flex items-center gap-3 border-b bg-gradient-to-r from-violet-50 to-violet-100 px-6 py-4">
+          <div className="p-2 bg-gradient-to-br from-violet-500 to-violet-600 rounded-lg">
+            <ListChecks className="h-5 w-5 text-white" />
           </div>
-          <form onSubmit={submit} className="space-y-4">
+          <h2 className="text-lg font-bold text-gray-900">
+            {formAbierto?.editando ? 'Editar meta' : 'Nueva meta'}
+          </h2>
+        </div>
+        <form onSubmit={submit} className="px-6 pt-5 space-y-4">
             <div className="space-y-2">
               <Label
                 htmlFor="meta-nombre"
@@ -425,25 +427,6 @@ export function MetasPage() {
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label
-                  htmlFor="meta-resultado"
-                  className="flex items-center gap-2 text-gray-700"
-                >
-                  <Hash className="h-4 w-4 text-emerald-500" />
-                  Resultado (número)
-                </Label>
-                <Input
-                  id="meta-resultado"
-                  type="number"
-                  value={metaForm.resultado_meta}
-                  onChange={(e) =>
-                    setMetaForm({ ...metaForm, resultado_meta: e.target.value })
-                  }
-                  placeholder="Ej. 9"
-                  className="transition-all duration-200 focus:ring-2 focus:ring-violet-500 focus:border-violet-500"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label
                   htmlFor="meta-inicio"
                   className="flex items-center gap-2 text-gray-700"
                 >
@@ -460,28 +443,28 @@ export function MetasPage() {
                   className="transition-all duration-200 focus:ring-2 focus:ring-violet-500 focus:border-violet-500"
                 />
               </div>
-            </div>
-            <div className="space-y-2">
-              <Label
-                htmlFor="meta-fin"
-                className="flex items-center gap-2 text-gray-700"
-              >
-                <Calendar className="h-4 w-4 text-rose-500" />
-                Fecha de fin
-              </Label>
-              <Input
-                id="meta-fin"
-                type="date"
-                value={metaForm.fecha_fin}
-                onChange={(e) => setMetaForm({ ...metaForm, fecha_fin: e.target.value })}
-                className={`transition-all duration-200 focus:ring-2 focus:ring-violet-500 focus:border-violet-500 ${formErrors.fecha_fin ? 'border-red-500' : ''}`}
-              />
-              {formErrors.fecha_fin && (
-                <p className="flex items-center gap-1 text-xs text-red-600">
-                  <AlertCircle className="h-3 w-3" />
-                  {formErrors.fecha_fin}
-                </p>
-              )}
+              <div className="space-y-2">
+                <Label
+                  htmlFor="meta-fin"
+                  className="flex items-center gap-2 text-gray-700"
+                >
+                  <Calendar className="h-4 w-4 text-rose-500" />
+                  Fecha de fin
+                </Label>
+                <Input
+                  id="meta-fin"
+                  type="date"
+                  value={metaForm.fecha_fin}
+                  onChange={(e) => setMetaForm({ ...metaForm, fecha_fin: e.target.value })}
+                  className={`transition-all duration-200 focus:ring-2 focus:ring-violet-500 focus:border-violet-500 ${formErrors.fecha_fin ? 'border-red-500' : ''}`}
+                />
+                {formErrors.fecha_fin && (
+                  <p className="flex items-center gap-1 text-xs text-red-600">
+                    <AlertCircle className="h-3 w-3" />
+                    {formErrors.fecha_fin}
+                  </p>
+                )}
+              </div>
             </div>
             <div className="space-y-2">
               <Label
@@ -499,7 +482,8 @@ export function MetasPage() {
                 className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500 transition-all duration-200"
               />
             </div>
-            <div className="flex items-center gap-2 pt-2 border-t">
+            {/* Pie fijo: siempre visible aunque el formulario haga scroll */}
+            <div className="sticky bottom-0 -mx-6 flex items-center gap-2 border-t bg-white px-6 pb-5 pt-4">
               <Button
                 type="submit"
                 className={`gap-2 ${GRADIENTE}`}
@@ -523,7 +507,6 @@ export function MetasPage() {
               </Button>
             </div>
           </form>
-        </div>
       </Modal>
 
       <ConfirmModal
