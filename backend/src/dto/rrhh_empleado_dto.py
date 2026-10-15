@@ -14,6 +14,7 @@ from sqlmodel import Field, SQLModel
 
 ESTADOS_EMPLEADO = ("activo", "suspendido", "vacaciones", "terminado")
 TIPOS_ASISTENCIA = ("LIBRE", "NO_LIBRE")
+ORDENES_LISTADO = ("apellido", "recientes")
 
 
 class RrhhEmpleadoBase(SQLModel):

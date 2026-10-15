@@ -314,6 +314,33 @@ def test_filtro_estado_invalido_400(client):
     assert response.status_code == 400
 
 
+def test_orden_recientes_descendente(client):
+    """?orden=recientes lista por creación descendente (scroll tipo feed)."""
+    primero = _crear_empleado(client, nombre=f"OrdenA{_sufijo()}")
+    assert primero.status_code == 201, primero.text
+    id_a = primero.json()["id"]
+    segundo = _crear_empleado(client, nombre=f"OrdenB{_sufijo()}")
+    assert segundo.status_code == 201, segundo.text
+    id_b = segundo.json()["id"]
+    try:
+        response = client.get("/api/v1/rrhh/empleados?orden=recientes&limit=1000")
+        assert response.status_code == 200
+        ids = [e["id"] for e in response.json()]
+        # El creado después (B) aparece antes que el primero (A)
+        assert ids.index(id_b) < ids.index(id_a)
+        # Sin orden explícito sigue siendo apellido/nombre (comportamiento previo)
+        por_defecto = client.get("/api/v1/rrhh/empleados?limit=1000")
+        assert por_defecto.status_code == 200
+    finally:
+        _limpiar(client, id_b)
+        _limpiar(client, id_a)
+
+
+def test_orden_invalido_400(client):
+    response = client.get("/api/v1/rrhh/empleados?orden=inventado")
+    assert response.status_code == 400
+
+
 def test_endpoint_buscar_selector(client):
     """GET /rrhh/empleados/buscar devuelve el selector abreviado."""
     marca = f"Select{_sufijo()}"

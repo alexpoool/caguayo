@@ -35,6 +35,10 @@ async def listar_empleados(
     departamento_id: Optional[int] = None,
     puesto_id: Optional[int] = None,
     activo: Optional[bool] = None,
+    orden: Optional[str] = Query(
+        None,
+        description="apellido (por defecto) o recientes (creación descendente)",
+    ),
     db: AsyncSession = Depends(get_session),
 ):
     """Lista empleados con filtros de búsqueda, estado, departamento y puesto.
@@ -50,6 +54,7 @@ async def listar_empleados(
         departamento_id=departamento_id,
         puesto_id=puesto_id,
         activo=activo,
+        orden=orden,
     )
 
 

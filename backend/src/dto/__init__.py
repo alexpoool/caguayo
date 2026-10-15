@@ -278,6 +278,7 @@ from .rrhh_empleado_dto import (
     RrhhEmpleadoBusqueda,
     ESTADOS_EMPLEADO,
     TIPOS_ASISTENCIA,
+    ORDENES_LISTADO,
 )
 from .rrhh_asistencia_dto import (
     RrhhAsistenciaBase,
@@ -578,6 +579,7 @@ __all__ = [
     "RrhhEmpleadoBusqueda",
     "ESTADOS_EMPLEADO",
     "TIPOS_ASISTENCIA",
+    "ORDENES_LISTADO",
     "RrhhAsistenciaBase",
     "RrhhAsistenciaCreate",
     "RrhhAsistenciaUpdate",

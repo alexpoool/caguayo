@@ -77,6 +77,7 @@ export const rrhhService = {
     departamento_id?: number;
     puesto_id?: number;
     activo?: boolean;
+    orden?: 'apellido' | 'recientes';
   }): Promise<RrhhEmpleadoListado[]> => {
     return await apiClient.get('/rrhh/empleados', params);
   },

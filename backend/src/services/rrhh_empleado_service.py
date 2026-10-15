@@ -23,6 +23,7 @@ from sqlmodel import select, func, or_
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from src.dto import (
+    ORDENES_LISTADO,
     RrhhEmpleadoCreate,
     RrhhEmpleadoUpdate,
     RrhhEmpleadoRead,
@@ -94,6 +95,15 @@ class RrhhEmpleadoService:
             raise HTTPException(
                 status_code=400,
                 detail=f"Estado inválido. Debe ser uno de: {', '.join(ESTADOS_EMPLEADO)}",
+            )
+
+    async def _verificar_orden(self, orden: Optional[str]) -> None:
+        if orden is None:
+            return
+        if orden not in ORDENES_LISTADO:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Orden inválido. Debe ser uno de: {', '.join(ORDENES_LISTADO)}",
             )
 
     async def _verificar_tipo_asistencia(self, tipo: Optional[str]) -> None:
@@ -230,8 +240,10 @@ class RrhhEmpleadoService:
         departamento_id: Optional[int] = None,
         puesto_id: Optional[int] = None,
         activo: Optional[bool] = None,
+        orden: Optional[str] = None,
     ) -> List[RrhhEmpleadoListado]:
         await self._verificar_estado(estado)
+        await self._verificar_orden(orden)
         statement = select(RrhhEmpleado)
         if buscar:
             term = f"%{buscar.strip()}%"
@@ -252,7 +264,14 @@ class RrhhEmpleadoService:
             statement = statement.where(RrhhEmpleado.puesto_id == puesto_id)
         if activo is not None:
             statement = statement.where(RrhhEmpleado.activo == activo)
-        statement = statement.order_by(RrhhEmpleado.apellido, RrhhEmpleado.nombre).offset(skip).limit(limit)
+        # Orden: apellido (por defecto) o creación descendente (scroll tipo feed)
+        if orden == "recientes":
+            statement = statement.order_by(
+                RrhhEmpleado.created_at.desc(), RrhhEmpleado.id.desc()
+            )
+        else:
+            statement = statement.order_by(RrhhEmpleado.apellido, RrhhEmpleado.nombre)
+        statement = statement.offset(skip).limit(limit)
         result = await db.exec(statement)
         filas = list(result.all())
         if not filas:

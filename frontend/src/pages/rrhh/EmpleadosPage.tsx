@@ -1,11 +1,13 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { rrhhService } from '../../services/rrhh';
+import { useInfiniteList } from '../../hooks/useInfiniteList';
 import {
   RRHH_ESTADOS_EMPLEADO,
   type RrhhEmpleado,
   type RrhhEmpleadoCreate,
+  type RrhhEmpleadoListado,
   type RrhhEstadoEmpleado,
 } from '../../types/rrhh';
 import {
@@ -19,7 +21,23 @@ import {
   AlertCircle,
   Loader2,
   Search,
+  ArrowLeft,
+  Hash,
+  Type,
+  CreditCard,
+  Mail,
+  Phone,
+  Calendar,
+  MapPin,
+  Briefcase,
+  Building2,
+  FileText,
+  UserCheck,
+  CircleDollarSign,
   BadgeCheck,
+  Clock,
+  Timer,
+  Banknote,
   Target,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -41,13 +59,6 @@ import {
   SearchSelect,
 } from '../../components/ui';
 
-const ESTADO_BADGE: Record<RrhhEstadoEmpleado, string> = {
-  activo: 'bg-green-100 text-green-700',
-  suspendido: 'bg-red-100 text-red-700',
-  vacaciones: 'bg-blue-100 text-blue-700',
-  terminado: 'bg-slate-100 text-slate-500',
-};
-
 const fmtMoneda = (v: number | string | null | undefined) =>
   v === null || v === undefined || v === ''
     ? '—'
@@ -59,14 +70,15 @@ const fmtMoneda = (v: number | string | null | undefined) =>
 const fmtHora = (v: string | null | undefined) =>
   v ? v.slice(0, 5) : null;
 
+// Degradado del módulo RRHH (color propio, referenciado de la página de Monedas)
+const GRADIENTE =
+  'bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300';
+
 export function EmpleadosPage() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const [view, setView] = useState<'list' | 'form'>('list');
   const [editing, setEditing] = useState<RrhhEmpleado | null>(null);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filtroEstado, setFiltroEstado] = useState<RrhhEstadoEmpleado | ''>('');
-  const [filtroDepto, setFiltroDepto] = useState<number | ''>('');
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
     empleado: RrhhEmpleado | null;
@@ -93,6 +105,46 @@ export function EmpleadosPage() {
   });
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
+  // Lista con scroll infinito (tipo feed): 100 por página, más recientes
+  // primero. El buscador vive en el propio hook.
+  const {
+    items: empleados,
+    isLoading,
+    isFetchingMore,
+    isError,
+    error,
+    hasMore,
+    loadMore,
+    searchTerm,
+    setSearch,
+    refresh,
+  } = useInfiniteList<RrhhEmpleadoListado>({
+    queryKeyBase: 'rrhh_empleados',
+    queryFn: (skip, limit, search) =>
+      rrhhService.listarEmpleados({
+        skip,
+        limit,
+        buscar: search,
+        orden: 'recientes',
+      }),
+  });
+
+  // Observador del sentinel: pide la siguiente página al llegar al final
+  const loadMoreRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!hasMore || isFetchingMore) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore) {
+          loadMore();
+        }
+      },
+      { threshold: 0.1 },
+    );
+    if (loadMoreRef.current) observer.observe(loadMoreRef.current);
+    return () => observer.disconnect();
+  }, [hasMore, isFetchingMore, loadMore]);
+
   // Listas para los selectores del formulario
   const { data: departamentos = [] } = useQuery({
     queryKey: ['rrhh', 'departamentos', 'para-filtro'],
@@ -109,23 +161,6 @@ export function EmpleadosPage() {
     queryFn: () => rrhhService.listarTiposContrato({ limit: 500, activo: true }),
   });
 
-  const {
-    data: empleados = [],
-    isLoading,
-    isError,
-    error,
-    refetch,
-  } = useQuery({
-    queryKey: ['rrhh', 'empleados', searchTerm, filtroEstado, filtroDepto],
-    queryFn: () =>
-      rrhhService.listarEmpleados({
-        limit: 500,
-        buscar: searchTerm || undefined,
-        estado: filtroEstado || undefined,
-        departamento_id: filtroDepto === '' ? undefined : filtroDepto,
-      }),
-  });
-
   // Selector de supervisor: lista inicial al abrir, busca bajo demanda
   const [busquedaSupervisor, setBusquedaSupervisor] = useState('');
   const { data: candidatosSupervisor = [], isFetching: buscandoSupervisor } = useQuery({
@@ -134,8 +169,10 @@ export function EmpleadosPage() {
     enabled: view === 'form',
   });
 
-  const invalidate = () =>
+  const invalidate = () => {
+    refresh(); // reinicia y refresca la lista infinita
     queryClient.invalidateQueries({ queryKey: ['rrhh', 'empleados'] });
+  };
 
   const handleNuevo = () => {
     setEditing(null);
@@ -273,177 +310,224 @@ export function EmpleadosPage() {
   ];
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="flex items-center gap-2 text-xl font-bold text-slate-900">
-            <Users className="h-6 w-6 text-brand-600" />
-            Empleados
-          </h1>
-          <p className="mt-1 text-sm text-slate-500">
-            Ficha del personal, sus asignaciones y su estado
-          </p>
+    <div className="space-y-4 animate-fade-in-up">
+      {/* Header con icono animado */}
+      <div className="flex flex-wrap justify-between items-center gap-3">
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded shadow-lg animate-bounce-subtle">
+            <Users className="h-5 w-5 text-white" />
+          </div>
+          <div className="flex items-baseline flex-wrap">
+            <h1 className="text-xl font-bold text-gray-900">Empleados</h1>
+            <p className="text-sm text-gray-500 ml-3 hidden sm:block">
+              Ficha del personal, sus asignaciones y su estado
+            </p>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isLoading}>
-            <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+        {view === 'list' ? (
+          <Button onClick={handleNuevo} className={`gap-2 ${GRADIENTE}`}>
+            <Plus className="h-4 w-4" />
+            Nuevo empleado
           </Button>
-          {view === 'list' ? (
-            <Button size="sm" onClick={handleNuevo}>
-              <Plus className="h-4 w-4" />
-              Nuevo empleado
-            </Button>
-          ) : (
-            <Button variant="outline" size="sm" onClick={() => setView('list')}>
-              <X className="h-4 w-4" />
-              Volver
-            </Button>
-          )}
-        </div>
+        ) : (
+          <Button
+            variant="secondary"
+            onClick={() => setView('list')}
+            className="gap-2 hover:scale-105 transition-transform"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Volver a la lista
+          </Button>
+        )}
       </div>
 
       {view === 'list' ? (
-        <Card>
+        <Card className="overflow-hidden hover:shadow-lg transition-shadow duration-300">
           <CardHeader className="pb-3">
-            <div className="flex flex-wrap items-center gap-3">
-              <div className="relative min-w-[200px] flex-1">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                <Input
-                  placeholder="Buscar por nombre, código, carnet o correo..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-9"
-                />
-              </div>
-              <select
-                value={filtroEstado}
-                onChange={(e) => setFiltroEstado(e.target.value as RrhhEstadoEmpleado | '')}
-                className="rounded-md border border-slate-300 px-3 py-2 text-sm"
-              >
-                <option value="">Todos los estados</option>
-                {RRHH_ESTADOS_EMPLEADO.map((e) => (
-                  <option key={e.valor} value={e.valor}>
-                    {e.etiqueta}
-                  </option>
-                ))}
-              </select>
-              <select
-                value={filtroDepto}
-                onChange={(e) =>
-                  setFiltroDepto(e.target.value === '' ? '' : Number(e.target.value))
-                }
-                className="rounded-md border border-slate-300 px-3 py-2 text-sm"
-              >
-                <option value="">Todos los departamentos</option>
-                {departamentos.map((d) => (
-                  <option key={d.id_departamento} value={d.id_departamento}>
-                    {d.nombre}
-                  </option>
-                ))}
-              </select>
+            <div className="relative max-w-md">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <Input
+                placeholder="Buscar por nombre, código, carnet o correo..."
+                value={searchTerm}
+                onChange={(e) => setSearch(e.target.value)}
+                className="pl-9"
+              />
             </div>
           </CardHeader>
           <CardContent>
             {isLoading ? (
-              <LoadingRows />
+              <div className="flex flex-col items-center justify-center h-96 gap-4">
+                <div className="p-4 bg-gradient-to-br from-indigo-100 to-indigo-200 rounded-full animate-pulse">
+                  <Users className="h-12 w-12 text-indigo-600 animate-spin" />
+                </div>
+                <div className="text-gray-600 font-medium">Cargando empleados...</div>
+              </div>
             ) : isError ? (
-              <ErrorState
-                mensaje={error instanceof Error ? error.message : undefined}
-                onReintentar={refetch}
-              />
+              <div className="flex items-center justify-center h-64">
+                <div className="text-center bg-red-50 border border-red-200 rounded-md p-4">
+                  <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+                  <p className="font-bold text-lg mb-2 text-red-700">
+                    Error al cargar empleados
+                  </p>
+                  <p className="text-red-600 mb-4">{error?.message || 'Error desconocido'}</p>
+                  <Button
+                    onClick={refresh}
+                    className="gap-2 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white"
+                  >
+                    <RefreshCw className="h-4 w-4" />
+                    Reintentar
+                  </Button>
+                </div>
+              </div>
             ) : empleados.length === 0 ? (
-              <EmptyState
-                mensaje={
-                  searchTerm
-                    ? 'No se encontraron empleados con esa búsqueda.'
-                    : 'Aún no hay empleados dados de alta.'
-                }
-              />
+              <div className="flex flex-col items-center justify-center gap-2 py-12 text-center text-gray-400">
+                <div className="p-4 bg-slate-50 rounded-full mb-2">
+                  <Users className="h-12 w-12 text-gray-300" />
+                </div>
+                <p className="text-lg font-medium mb-1">
+                  {searchTerm
+                    ? 'No se encontraron empleados con esa búsqueda'
+                    : 'No se encontraron empleados'}
+                </p>
+                <p className="text-sm mb-4">
+                  {searchTerm ? 'Prueba con otro término' : 'Comience creando un empleado nuevo'}
+                </p>
+                <Button onClick={handleNuevo} className={`gap-2 ${GRADIENTE}`}>
+                  <Plus className="h-4 w-4" />
+                  Nuevo empleado
+                </Button>
+              </div>
             ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Código</TableHead>
-                    <TableHead>Empleado</TableHead>
-                    <TableHead>Puesto</TableHead>
-                    <TableHead>Departamento</TableHead>
-                    <TableHead className="text-right">Salario</TableHead>
-                    <TableHead className="text-center">Estado</TableHead>
-                    <TableHead className="text-center">Objetivos</TableHead>
-                    <TableHead className="text-right">Acciones</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {empleados.map((emp) => (
-                    <TableRow key={emp.id}>
-                      <TableCell className="font-mono text-xs text-slate-500">
-                        {emp.codigo_empleado ?? '—'}
-                      </TableCell>
-                      <TableCell>
-                        <div className="font-medium text-slate-900">
-                          {emp.apellido}, {emp.nombre}
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader className="bg-gradient-to-r from-indigo-50 to-indigo-100">
+                    <TableRow>
+                      <TableHead>
+                        <div className="flex items-center gap-2">
+                          <Hash className="h-4 w-4 text-indigo-500" />
+                          Código
                         </div>
-                        <div className="text-xs text-slate-500">
-                          {emp.carnet_identidad ?? '—'}
+                      </TableHead>
+                      <TableHead>
+                        <div className="flex items-center gap-2">
+                          <Type className="h-4 w-4 text-blue-500" />
+                          Empleado
                         </div>
-                      </TableCell>
-                      <TableCell className="text-slate-600">
-                        {emp.puesto_nombre ?? '—'}
-                      </TableCell>
-                      <TableCell className="text-slate-600">
-                        {emp.departamento_nombre ?? '—'}
-                      </TableCell>
-                      <TableCell className="text-right tabular-nums">
-                        {fmtMoneda(emp.salario)}
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <span
-                          className={`inline-block rounded-full px-2 py-0.5 text-xs font-semibold ${
-                            ESTADO_BADGE[emp.estado] ?? 'bg-slate-100 text-slate-500'
-                          }`}
-                        >
-                          {RRHH_ESTADOS_EMPLEADO.find((e) => e.valor === emp.estado)
-                            ?.etiqueta ?? emp.estado}
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          title={`Ver los objetivos y metas de ${emp.apellido}, ${emp.nombre}`}
-                          onClick={() =>
-                            navigate(`/rrhh/objetivos?empleado_id=${emp.id}`)
-                          }
-                        >
-                          <Target className="h-4 w-4" />
-                          Ver objetivos
-                        </Button>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center justify-end gap-1">
-                          <ActionButton titulo="Editar" onClick={() => handleEditar(emp)}>
-                            <Edit className="h-4 w-4" />
-                          </ActionButton>
-                          <ActionButton
-                            titulo="Eliminar"
-                            danger
-                            onClick={() => setConfirmModal({ isOpen: true, empleado: emp })}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </ActionButton>
+                      </TableHead>
+                      <TableHead>
+                        <div className="flex items-center gap-2">
+                          <Briefcase className="h-4 w-4 text-amber-500" />
+                          Puesto
                         </div>
-                      </TableCell>
+                      </TableHead>
+                      <TableHead>
+                        <div className="flex items-center gap-2">
+                          <Building2 className="h-4 w-4 text-emerald-500" />
+                          Departamento
+                        </div>
+                      </TableHead>
+                      <TableHead className="text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <Banknote className="h-4 w-4 text-purple-500" />
+                          Salario
+                        </div>
+                      </TableHead>
+                      <TableHead className="text-center">
+                        <div className="flex items-center justify-center gap-2">
+                          <Target className="h-4 w-4 text-rose-500" />
+                          Objetivos
+                        </div>
+                      </TableHead>
+                      <TableHead className="text-right">Acciones</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {empleados.map((emp) => (
+                      <TableRow
+                        key={emp.id}
+                        className="hover:bg-gray-50 transition-colors"
+                      >
+                        <TableCell>
+                          <span className="inline-flex items-center gap-1 px-2 py-1 bg-indigo-100 text-indigo-700 rounded text-sm font-medium font-mono">
+                            <Hash className="h-3 w-3" />
+                            {emp.codigo_empleado ?? '—'}
+                          </span>
+                        </TableCell>
+                        <TableCell>
+                          <div className="font-medium text-slate-900">
+                            {emp.apellido}, {emp.nombre}
+                          </div>
+                          <div className="text-xs text-slate-500">
+                            {emp.carnet_identidad ?? '—'}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-slate-600">
+                          {emp.puesto_nombre ?? '—'}
+                        </TableCell>
+                        <TableCell className="text-slate-600">
+                          {emp.departamento_nombre ?? '—'}
+                        </TableCell>
+                        <TableCell className="text-right tabular-nums">
+                          {fmtMoneda(emp.salario)}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            title={`Objetivos y metas de ${emp.apellido}, ${emp.nombre}`}
+                            onClick={() =>
+                              navigate(`/rrhh/objetivos?empleado_id=${emp.id}`)
+                            }
+                          >
+                            Objetivos
+                          </Button>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-2">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleEditar(emp)}
+                              className="text-blue-600 hover:bg-blue-50 hover:scale-110 transition-all"
+                              title="Editar"
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => setConfirmModal({ isOpen: true, empleado: emp })}
+                              className="text-red-600 hover:bg-red-50 hover:scale-110 transition-all"
+                              title="Eliminar"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
             )}
+            {/* Sentinel del scroll infinito */}
+            <div ref={loadMoreRef} className="flex justify-center py-2">
+              {isFetchingMore && !isLoading && (
+                <div className="flex items-center gap-2 text-gray-500">
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                  <span>Cargando más...</span>
+                </div>
+              )}
+            </div>
           </CardContent>
         </Card>
       ) : (
-        <Card>
-          <CardHeader>
-            <CardTitle>
+        <Card className="hover:shadow-lg transition-shadow duration-300">
+          <CardHeader className="border-b bg-gradient-to-r from-indigo-50 to-indigo-100">
+            <CardTitle className="flex items-center gap-2">
+              <div className="p-2 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-lg">
+                <Users className="h-5 w-5 text-white" />
+              </div>
               {editing
                 ? `Editar: ${editing.apellido}, ${editing.nombre}`
                 : 'Nuevo empleado'}
@@ -458,7 +542,8 @@ export function EmpleadosPage() {
             <form onSubmit={onSubmit} className="space-y-6">
               {/* Datos personales */}
               <section>
-                <h3 className="mb-3 text-sm font-semibold text-slate-700">
+                <h3 className="mb-3 text-sm font-semibold text-slate-700 flex items-center gap-2">
+                  <Users className="h-4 w-4 text-indigo-500" />
                   Datos personales
                 </h3>
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -468,6 +553,8 @@ export function EmpleadosPage() {
                     valor={formData.nombre}
                     onChange={(v) => set('nombre', v)}
                     error={formErrors.nombre}
+                    icono={Type}
+                    color="text-blue-500"
                   />
                   <CampoTexto
                     id="apellido"
@@ -475,12 +562,16 @@ export function EmpleadosPage() {
                     valor={formData.apellido}
                     onChange={(v) => set('apellido', v)}
                     error={formErrors.apellido}
+                    icono={Type}
+                    color="text-emerald-500"
                   />
                   <CampoTexto
                     id="carnet"
                     label="Carnet de identidad"
                     valor={formData.carnet_identidad ?? ''}
                     onChange={(v) => set('carnet_identidad', v)}
+                    icono={CreditCard}
+                    color="text-amber-500"
                   />
                   <CampoTexto
                     id="correo"
@@ -489,12 +580,16 @@ export function EmpleadosPage() {
                     valor={formData.correo ?? ''}
                     onChange={(v) => set('correo', v)}
                     error={formErrors.correo}
+                    icono={Mail}
+                    color="text-rose-500"
                   />
                   <CampoTexto
                     id="telefono"
                     label="Teléfono"
                     valor={formData.telefono ?? ''}
                     onChange={(v) => set('telefono', v)}
+                    icono={Phone}
+                    color="text-purple-500"
                   />
                   <CampoTexto
                     id="fecha_nacimiento"
@@ -502,6 +597,8 @@ export function EmpleadosPage() {
                     tipo="date"
                     valor={formData.fecha_nacimiento ?? ''}
                     onChange={(v) => set('fecha_nacimiento', v)}
+                    icono={Calendar}
+                    color="text-sky-500"
                   />
                 </div>
                 <div className="mt-4">
@@ -510,24 +607,30 @@ export function EmpleadosPage() {
                     label="Dirección"
                     valor={formData.direccion ?? ''}
                     onChange={(v) => set('direccion', v)}
+                    icono={MapPin}
+                    color="text-indigo-500"
                   />
                 </div>
               </section>
 
               {/* Asignación laboral */}
               <section>
-                <h3 className="mb-3 text-sm font-semibold text-slate-700">
+                <h3 className="mb-3 text-sm font-semibold text-slate-700 flex items-center gap-2">
+                  <Briefcase className="h-4 w-4 text-amber-500" />
                   Asignación laboral
                 </h3>
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
-                    <Label>Puesto</Label>
+                    <Label className="flex items-center gap-2 text-gray-700">
+                      <Briefcase className="h-4 w-4 text-amber-500" />
+                      Puesto
+                    </Label>
                     <select
                       value={formData.puesto_id ?? ''}
                       onChange={(e) =>
                         set('puesto_id', e.target.value === '' ? null : Number(e.target.value))
                       }
-                      className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                      className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200"
                     >
                       <option value="">Sin puesto</option>
                       {puestos.map((p) => (
@@ -538,7 +641,10 @@ export function EmpleadosPage() {
                     </select>
                   </div>
                   <div className="space-y-2">
-                    <Label>Departamento</Label>
+                    <Label className="flex items-center gap-2 text-gray-700">
+                      <Building2 className="h-4 w-4 text-emerald-500" />
+                      Departamento
+                    </Label>
                     <select
                       value={formData.departamento_id ?? ''}
                       onChange={(e) =>
@@ -547,7 +653,7 @@ export function EmpleadosPage() {
                           e.target.value === '' ? null : Number(e.target.value)
                         )
                       }
-                      className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                      className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200"
                     >
                       <option value="">Sin departamento</option>
                       {departamentos.map((d) => (
@@ -558,7 +664,10 @@ export function EmpleadosPage() {
                     </select>
                   </div>
                   <div className="space-y-2">
-                    <Label>Tipo de contrato</Label>
+                    <Label className="flex items-center gap-2 text-gray-700">
+                      <FileText className="h-4 w-4 text-sky-500" />
+                      Tipo de contrato
+                    </Label>
                     <select
                       value={formData.tipo_contrato_id ?? ''}
                       onChange={(e) =>
@@ -567,7 +676,7 @@ export function EmpleadosPage() {
                           e.target.value === '' ? null : Number(e.target.value)
                         )
                       }
-                      className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                      className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200"
                     >
                       <option value="">Sin tipo de contrato</option>
                       {tiposContrato.map((t) => (
@@ -581,7 +690,10 @@ export function EmpleadosPage() {
                     </select>
                   </div>
                   <div className="space-y-2">
-                    <Label>Supervisor</Label>
+                    <Label className="flex items-center gap-2 text-gray-700">
+                      <UserCheck className="h-4 w-4 text-indigo-500" />
+                      Supervisor
+                    </Label>
                     <SearchSelect
                       options={opcionesSupervisor}
                       value={formData.supervisor}
@@ -601,7 +713,8 @@ export function EmpleadosPage() {
 
               {/* Contrato y jornada */}
               <section>
-                <h3 className="mb-3 text-sm font-semibold text-slate-700">
+                <h3 className="mb-3 text-sm font-semibold text-slate-700 flex items-center gap-2">
+                  <Clock className="h-4 w-4 text-purple-500" />
                   Contrato y jornada
                 </h3>
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
@@ -611,6 +724,8 @@ export function EmpleadosPage() {
                     tipo="date"
                     valor={formData.fecha_contratacion ?? ''}
                     onChange={(v) => set('fecha_contratacion', v)}
+                    icono={Calendar}
+                    color="text-indigo-500"
                   />
                   <CampoTexto
                     id="salario"
@@ -620,13 +735,18 @@ export function EmpleadosPage() {
                     onChange={(v) =>
                       set('salario', v === '' ? undefined : Number(v))
                     }
+                    icono={CircleDollarSign}
+                    color="text-emerald-500"
                   />
                   <div className="space-y-2">
-                    <Label>Estado</Label>
+                    <Label className="flex items-center gap-2 text-gray-700">
+                      <BadgeCheck className="h-4 w-4 text-rose-500" />
+                      Estado
+                    </Label>
                     <select
                       value={formData.estado}
                       onChange={(e) => set('estado', e.target.value as RrhhEstadoEmpleado)}
-                      className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                      className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200"
                     >
                       {RRHH_ESTADOS_EMPLEADO.map((e) => (
                         <option key={e.valor} value={e.valor}>
@@ -641,6 +761,8 @@ export function EmpleadosPage() {
                     tipo="time"
                     valor={formData.horario_inicio ?? ''}
                     onChange={(v) => set('horario_inicio', v)}
+                    icono={Clock}
+                    color="text-slate-500"
                   />
                   <CampoTexto
                     id="horario_final"
@@ -649,15 +771,20 @@ export function EmpleadosPage() {
                     valor={formData.horario_final ?? ''}
                     onChange={(v) => set('horario_final', v)}
                     error={formErrors.horario_final}
+                    icono={Clock}
+                    color="text-slate-500"
                   />
                   <div className="space-y-2">
-                    <Label>Tipo de asistencia</Label>
+                    <Label className="flex items-center gap-2 text-gray-700">
+                      <Timer className="h-4 w-4 text-amber-500" />
+                      Tipo de asistencia
+                    </Label>
                     <select
                       value={formData.tipo_asistencia}
                       onChange={(e) =>
                         set('tipo_asistencia', e.target.value as 'LIBRE' | 'NO_LIBRE')
                       }
-                      className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                      className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200"
                     >
                       <option value="NO_LIBRE">NO_LIBRE (asistir en horario)</option>
                       <option value="LIBRE">LIBRE (sin horario fijo)</option>
@@ -666,8 +793,12 @@ export function EmpleadosPage() {
                 </div>
               </section>
 
-              <div className="flex items-center gap-2 border-t border-slate-100 pt-4">
-                <Button type="submit" disabled={saveMutation.isPending}>
+              <div className="flex gap-4 pt-4 border-t">
+                <Button
+                  type="submit"
+                  className={`gap-2 ${GRADIENTE}`}
+                  disabled={saveMutation.isPending}
+                >
                   {saveMutation.isPending ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
                   ) : (
@@ -675,7 +806,12 @@ export function EmpleadosPage() {
                   )}
                   {editing ? 'Guardar cambios' : 'Crear empleado'}
                 </Button>
-                <Button type="button" variant="outline" onClick={() => setView('list')}>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => setView('list')}
+                  className="gap-2 hover:bg-gray-200 transition-colors"
+                >
                   <X className="h-4 w-4" />
                   Cancelar
                 </Button>
@@ -712,6 +848,8 @@ function CampoTexto({
   onChange,
   tipo = 'text',
   error,
+  icono: Icono,
+  color = 'text-indigo-500',
 }: {
   id: string;
   label: string;
@@ -719,16 +857,21 @@ function CampoTexto({
   onChange: (v: string) => void;
   tipo?: string;
   error?: string;
+  icono?: React.ComponentType<{ className?: string }>;
+  color?: string;
 }) {
   return (
     <div className="space-y-2">
-      <Label htmlFor={id}>{label}</Label>
+      <Label htmlFor={id} className="flex items-center gap-2 text-gray-700">
+        {Icono && <Icono className={`h-4 w-4 ${color}`} />}
+        {label}
+      </Label>
       <Input
         id={id}
         type={tipo}
         value={valor}
         onChange={(e) => onChange(e.target.value)}
-        className={error ? 'border-red-500' : ''}
+        className={`transition-all duration-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 ${error ? 'border-red-500' : ''}`}
       />
       {error && (
         <p className="flex items-center gap-1 text-xs text-red-600">
@@ -736,72 +879,6 @@ function CampoTexto({
           {error}
         </p>
       )}
-    </div>
-  );
-}
-
-function ActionButton({
-  children,
-  onClick,
-  titulo,
-  danger,
-}: {
-  children: React.ReactNode;
-  onClick: () => void;
-  titulo: string;
-  danger?: boolean;
-}) {
-  return (
-    <button
-      type="button"
-      title={titulo}
-      onClick={onClick}
-      className={`rounded-md p-1.5 transition-colors ${
-        danger
-          ? 'text-slate-400 hover:bg-red-50 hover:text-red-600'
-          : 'text-slate-400 hover:bg-slate-100 hover:text-slate-700'
-      }`}
-    >
-      {children}
-    </button>
-  );
-}
-
-function LoadingRows() {
-  return (
-    <div className="space-y-2 py-4">
-      {[...Array(5)].map((_, i) => (
-        <div key={i} className="h-10 animate-pulse rounded-md bg-slate-100" />
-      ))}
-    </div>
-  );
-}
-
-function EmptyState({ mensaje }: { mensaje: string }) {
-  return (
-    <div className="flex flex-col items-center justify-center gap-2 py-12 text-center">
-      <BadgeCheck className="h-10 w-10 text-slate-300" />
-      <p className="max-w-sm text-sm text-slate-500">{mensaje}</p>
-    </div>
-  );
-}
-
-function ErrorState({
-  mensaje,
-  onReintentar,
-}: {
-  mensaje?: string;
-  onReintentar: () => void;
-}) {
-  return (
-    <div className="flex flex-col items-center justify-center gap-3 py-12 text-center">
-      <AlertCircle className="h-10 w-10 text-red-400" />
-      <p className="text-sm text-slate-600">
-        {mensaje || 'No se pudieron cargar los empleados'}
-      </p>
-      <Button variant="outline" size="sm" onClick={onReintentar}>
-        Reintentar
-      </Button>
     </div>
   );
 }
