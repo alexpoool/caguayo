@@ -285,6 +285,59 @@ def _enlazar(conn, id_legacy_por_codigo, codigos_contrato, registro: Registro):
     return enlazados
 
 
+def _generar_codigos_proyecto(conn, registro: Registro):
+    """Rellena `codigo_proyecto` de las solicitudes que ya son proyecto.
+
+    Es la misma regla que aplica la aplicación en `servicio_service.py:187-190`:
+    aprobado **y** con contrato. Sin las dos cosas la solicitud todavía no es un
+    proyecto, y `update()` le generará el código en su día si llega a serlo.
+
+    Va después de `_enlazar` porque hasta que el contrato no está enlazado no se
+    sabe si la fila califica.
+
+    La serie se saca con `MAX(SPLIT_PART(codigo_proyecto,'.',-1)::int) + 1` sobre
+    toda la columna, igual que `siguiente_secuencia` (`codigos_entidad.py:151-161`),
+    y no con un contador propio: la serie de la app es global y no reinicia por
+    año ni por prefijo, así que un código creado a mano después tiene que salir
+    por encima de los migrados y no repetir uno.
+
+    El año sale de `fecha_solicitud`, como en la app. Es un dato, no el reloj: con
+    el reloj, reejecutar en enero cambiaría el código de lo ya escrito.
+
+    Idempotente por el `WHERE codigo_proyecto IS NULL`, y ordenado por
+    `id_solicitud_servicio` para que dos ejecuciones den lo mismo.
+    """
+    with conn.cursor() as cur:
+        cur.execute(
+            "SELECT id_solicitud_servicio, EXTRACT(YEAR FROM fecha_solicitud)"
+            " FROM %s WHERE aprobado AND id_contrato IS NOT NULL"
+            "   AND codigo_proyecto IS NULL"
+            " ORDER BY id_solicitud_servicio" % TABLA)
+        candidatas = [(i, int(anio)) for i, anio in cur.fetchall() if anio]
+
+        if not candidatas:
+            return 0
+
+        cur.execute(
+            "SELECT COALESCE(MAX(NULLIF(SPLIT_PART(codigo_proyecto,'.',-1),'')::int), 0)"
+            " FROM %s" % TABLA)
+        secuencia = cur.fetchone()[0]
+
+    valores = []
+    for id_solicitud, anio in candidatas:
+        secuencia += 1
+        valores.append(("CAG.%s.%03d" % (str(anio)[-2:], secuencia),
+                        id_solicitud))
+
+    with conn.cursor() as cur:
+        for lote in db.lotes(valores, TAMANO_LOTE):
+            cur.executemany(
+                "UPDATE %s SET codigo_proyecto = %%s"
+                " WHERE id_solicitud_servicio = %%s" % TABLA, lote)
+    conn.commit()
+    return len(valores)
+
+
 def _enlazables(id_legacy_por_codigo, codigos_contrato):
     """Cuántas solicitudes encontrarían contrato, sin tocar la base."""
     contrato_por_solicitud = _contratos_legacy()
@@ -356,7 +409,9 @@ def cargar_solicitudes(registro=None, dry_run=True, diag=None):
         db.crear_log(conn)
         insertadas = ejecutar(conn, registro, payloads)
         enlazados = _enlazar(conn, id_legacy_por_codigo, codigos_contrato, registro)
+        proyectos = _generar_codigos_proyecto(conn, registro)
 
     print("  Solicitudes insertadas: %d | con contrato enlazado: %d"
           % (insertadas, enlazados))
+    print("  Códigos de proyecto generados: %d" % proyectos)
     return insertadas, registro, payloads, id_legacy_por_codigo, diag

@@ -7,6 +7,7 @@ dump real no se usa, para que los tests no dependan de un fichero de varios MB
 que además lleva datos personales y está en `.gitignore`.
 """
 import migrar_contratos
+import migrar_etapas
 import migrar_liquidaciones
 import migrar_suplementos
 import pytest
@@ -444,3 +445,84 @@ def test_el_suplemento_encuentra_el_contrato_cuyo_codigo_choco(monkeypatch):
         Registro(), {"2014.016-75": 99}, ESTADOS, {"CUP": 3})
 
     assert payloads[0]["id_contrato"] == 99
+
+# --------------------------------------------------------------------------
+# El servicio genérico de la fase O
+# --------------------------------------------------------------------------
+class _CursorFalso:
+    def __init__(self, existente=None, id_nuevo=42):
+        self._existente = existente
+        self._id_nuevo = id_nuevo
+        self.insertado = None
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *_):
+        return False
+
+    def execute(self, sql, params=None):
+        if sql.lstrip().startswith("INSERT"):
+            self.insertado = params
+            self._filas = [(self._id_nuevo,)]
+        else:
+            # El SELECT de comprobación: si ya hay `GEN`, devuelve su id y no
+            # debe llegar a insertar nada.
+            self._filas = [] if self._existente is None else [(self._existente,)]
+
+    def fetchone(self):
+        # psycopg2 devuelve None y no revienta cuando no hay filas.
+        return self._filas[0] if self._filas else None
+
+
+class _ConexionFalsa:
+    def __init__(self, existente=None, id_nuevo=42):
+        self.cursor_falso = _CursorFalso(existente, id_nuevo)
+        self.commit = lambda: None
+        self.rollback = lambda: None
+
+    def cursor(self):
+        return self.cursor_falso
+
+
+def test_el_servicio_generico_se_crea_si_no_existe():
+    conn = _ConexionFalsa(existente=None, id_nuevo=42)
+
+    id_servicio = migrar_etapas._id_servicio_generico(conn, Registro())
+
+    assert id_servicio == 42
+    assert conn.cursor_falso.insertado[0] == "GEN"
+
+
+def test_el_servicio_generico_se_reutiliza_en_la_segunda_pasada():
+    """`codigo_servicio` es UNIQUE: un segundo `GEN` reventaría el INSERT."""
+    conn = _ConexionFalsa(existente=7)
+
+    id_servicio = migrar_etapas._id_servicio_generico(conn, Registro())
+
+    assert id_servicio == 7
+    assert conn.cursor_falso.insertado is None, "no debe intentar insertar"
+
+
+def test_la_tarea_apunta_al_servicio_generico():
+    etapas = [{"id_etapa": 3, "nombre_etapa": "Montaje", "valor": "1500.00",
+              "id_moneda": 1}]
+
+    tareas = migrar_etapas.preparar_tareas(etapas, 42)
+
+    assert tareas[0]["id_servicio"] == 42
+    assert tareas[0]["codigo_extendido"] == "GEN"
+    # El concepto no se toca: es lo que muestran la tabla y los PDF.
+    assert tareas[0]["concepto_modificado"] == "Montaje"
+
+
+def test_sin_servicio_generico_la_tarea_se_queda_sin_codigo():
+    """Si el catálogo no se pudo crear, es preferible la columna vacía a
+    apuntar a un servicio que no existe."""
+    etapas = [{"id_etapa": 3, "nombre_etapa": "Montaje", "valor": "1500.00",
+              "id_moneda": 1}]
+
+    tareas = migrar_etapas.preparar_tareas(etapas, None)
+
+    assert tareas[0]["id_servicio"] is None
+    assert tareas[0]["codigo_extendido"] is None

@@ -120,6 +120,39 @@ propio del legacy: las 324 que no lo traen necesitan el mapa que pasa la N, y si
 él sus contratos se quedan sin realizadores. En la cadena completa no pasa,
 porque la N va siempre antes.
 
+### Los códigos que se generan
+
+Tres columnas salen del ETL con un valor, y conviene saber de dónde:
+
+- **`solicitud_servicio.codigo_solicitud`** — el del legacy tal cual (`2014.001`)
+  en las que lo traen; `CAG.AA.id_solicitudsc` en las que no. El `id_solicitudsc`
+  hace el código único y estable, y como `siguiente_secuencia` toma el `MAX` del
+  último segmento, un contrato creado a mano después sale por encima de los
+  migrados.
+- **`solicitud_servicio.codigo_proyecto`** — `CAG.AA.NNN`, sólo para las solicitudes
+  con `aprobado` **y** `id_contrato`. Es la misma regla que aplica la aplicación
+  en `servicio_service.py:187-190`. Sin las dos cosas la fila todavía no es un
+  proyecto y lo seguirá sin él; `update()` se lo dará si algún día lo es.
+- **`tareas_etapa.codigo_extendido`** — `GEN`, el servicio genérico, en las 3.757
+  tareas. El legacy no trae catálogo de servicios (sólo `tipo_concepto`) y los
+  `nombre_etapa` son 2.568 textos libres, así que no hay con qué emparejar tarea
+  por tarea. La fase O crea una fila en `servicios` con ese código, la busca antes
+  de insertar porque `codigo_servicio` es UNIQUE, y le cuelga todas las tareas.
+  `concepto_modificado` no se toca: sigue siendo el nombre de la etapa, que es lo
+  que muestran la tabla y los PDF.
+
+Las etapas **no tienen código**. La columna no existe en la tabla y nadie la lee;
+si algún día hace falta, sale al vuelo de `{codigo_solicitud}.{numero_etapa}`
+sin tocar la base.
+
+Las tres son idempotentes: la segunda pasada no cambia nada.
+
+`verificar.py` lo comprueba con tres controles —`codigo_proyecto inconsistente`,
+`servicio generico GEN inconsistente` y `codigo_extendido inconsistente con su
+servicio`—. El tercero es el que avisaría si alguien asigna un servicio real a
+una tarea y el código no se mueve con él, porque `TareaEtapaService.update` no lo
+recalcula.
+
 ## Variables de entorno
 
 Todas tienen valor por defecto. Se leen del entorno y, si no están ahí, de los

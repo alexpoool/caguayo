@@ -47,6 +47,7 @@ TABLA_TAREA = "tareas_etapa"
 TABLA_PERSONA = "persona_etapa"
 TABLA_SOLICITUD = "solicitud_servicio"
 TABLA_CONTRATO = "contrato"
+TABLA_SERVICIO = "servicios"
 
 LARGO_NOMBRE_ETAPA = 150
 NOMBRE_ETAPA_SINTETICA = "Etapa única"
@@ -401,12 +402,70 @@ def preparar_etapas(registro: Registro, codigos_contrato, ids_solicitud,
 # --------------------------------------------------------------------------
 # Tareas y personas
 # --------------------------------------------------------------------------
-def preparar_tareas(etapas):
-    """Una tarea por etapa, con el texto de la etapa y su importe."""
+CODIGO_GENERICO = "GEN"
+CONCEPTO_GENERICO = "Servicio generico (asignado por la migracion)"
+
+
+def _id_servicio_generico(conn, registro: Registro):
+    """Devuelve el `id_servicio` de la fila `GEN`, creándola si no existe.
+
+    El legacy no trae catálogo de servicios —sólo `tipo_concepto`, que es otra
+    cosa— y los `nombre_etapa` son 2.568 textos libres. Sin una fila de catálogo
+    no hay código que copiar a `tareas_etapa.codigo_extendido`, y la columna se
+    vería como `N/A` en las 3.757 tareas (`TareasEtapaPage.tsx:346`).
+
+    Una sola fila para todas: `codigo_servicio` es UNIQUE, así que un segundo
+    `GEN` revienta. Se busca antes de insertar, que es lo que hace idempotente la
+    fase. Devuelve `None` si la inserción falla, y entonces las tareas salen con
+    el código en NULL: es preferible dejar la columna vacía a inventar el
+    servicio.
+    """
+    with conn.cursor() as cur:
+        cur.execute("SELECT id_servicio FROM %s WHERE codigo_servicio = %%s"
+                    % TABLA_SERVICIO, (CODIGO_GENERICO,))
+        fila = cur.fetchone()
+        if fila:
+            return fila[0]
+
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "INSERT INTO %s (codigo_servicio, concepto, precio,"
+                " observaciones) VALUES (%%s, %%s, 0, %%s) RETURNING id_servicio"
+                % TABLA_SERVICIO,
+                (CODIGO_GENERICO, CONCEPTO_GENERICO,
+                 "Generado por la migracion del legacy. No corresponde a un"
+                 " servicio real del catalogo."))
+            id_servicio = cur.fetchone()[0]
+        conn.commit()
+    except Exception as exc:
+        conn.rollback()
+        registro.error(TABLA_SERVICIO, 0, CODIGO_GENERICO,
+                       "servicio generico no creado", str(exc))
+        print("  [Fase O] no se pudo crear el servicio %s: %s"
+              % (CODIGO_GENERICO, exc))
+        return None
+
+    print("  Servicio generico %s creado con id %d" % (CODIGO_GENERICO, id_servicio))
+    return id_servicio
+
+
+def preparar_tareas(etapas, id_servicio):
+    """Una tarea por etapa, con el texto de la etapa y su importe.
+
+    Todas apuntan al servicio genérico: el legacy no tiene catálogo de servicios,
+    así que no hay con qué emparejarlas una a una. Es lo mismo que hará
+    `TareaEtapaService.create` (`:261-264`) cuando alguien elija un servicio
+    desde la pantalla, y no cambia lo que se muestra: los PDF y las facturas sacan
+    el concepto de `concepto_modificado`, que sigue siendo el nombre de la etapa.
+
+    Si no hay servicio genérico (`id_servicio` es None), `codigo_extendido` queda
+    en NULL en vez de apuntar a un servicio que no existe.
+    """
     return [{
         "id_etapa": e["id_etapa"],
-        "id_servicio": None,
-        "codigo_extendido": None,
+        "id_servicio": id_servicio,
+        "codigo_extendido": CODIGO_GENERICO if id_servicio else None,
         "concepto_modificado": e["nombre_etapa"],
         "unidad_medida": None,
         "cantidad": rl.decimal_legacy("1"),
@@ -624,6 +683,10 @@ def cargar_etapas(registro=None, dry_run=True, codigo_a_id_legacy=None, diag=Non
         ids_moneda = db.monedas_por_simbolo(conn)
         ids_cliente = db.mapa_codigo_a_cliente(conn)
         ya_con_etapa = _solicitudes_con_etapa(conn)
+        # En simulación no se escribe nada, así que no se busca ni se crea el
+        # servicio genérico: se simula con el código puesto y sin id, que es lo
+        # que se verá si luego la inserción del catálogo falla.
+        id_servicio = None if dry_run else _id_servicio_generico(conn, registro)
 
     print("  Contratos: %d | solicitudes migradas: %d | monedas: %s"
           % (len(codigos_contrato), len(ids_solicitud), ",".join(sorted(ids_moneda))))
@@ -648,7 +711,7 @@ def cargar_etapas(registro=None, dry_run=True, codigo_a_id_legacy=None, diag=Non
     ids_previas = {i: -i - 1 for i in range(len(etapas))}
     etapas_con_id = [dict(e, id_etapa=ids_previas[i])
                      for i, e in enumerate(etapas)]
-    tareas = preparar_tareas(etapas_con_id)
+    tareas = preparar_tareas(etapas_con_id, id_servicio)
     personas_previas = preparar_personas(Registro(), etapas, ids_previas, primera,
                                         reales, ids_cliente, ids_moneda,
                                         mostrar=False)
@@ -679,7 +742,7 @@ def cargar_etapas(registro=None, dry_run=True, codigo_a_id_legacy=None, diag=Non
     # y realizadores se cuelgan de las que sí entraron.
     etapas_con_id = [dict(e, id_etapa=ids_etapa[i])
                      for i, e in enumerate(etapas) if i in ids_etapa]
-    tareas = preparar_tareas(etapas_con_id)
+    tareas = preparar_tareas(etapas_con_id, id_servicio)
     personas = preparar_personas(registro, etapas, ids_etapa, primera, reales,
                                  ids_cliente, ids_moneda)
 

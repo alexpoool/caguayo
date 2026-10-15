@@ -12,6 +12,8 @@ import ast
 import inspect
 from pathlib import Path
 
+import pytest
+
 import verificar
 
 VERIFICAR = Path(verificar.__file__).resolve()
@@ -23,6 +25,10 @@ def _controles_declarados():
     Se lee el AST y no la lista en sí porque `_consultas` necesita una conexión
     viva que aquí no hay.
     """
+    return _lista_controles()
+
+
+def _lista_controles():
     arbol = ast.parse(VERIFICAR.read_text(encoding="utf-8"))
     for nodo in ast.walk(arbol):
         if isinstance(nodo, ast.Assign):
@@ -34,13 +40,25 @@ def _controles_declarados():
     raise AssertionError("no se encontró la lista `controles` en verificar.py")
 
 
+def _etiquetas():
+    """La primera constante de cada tupla de la lista `controles`."""
+    etiquetas = []
+    for elemento in _lista_controles():
+        if isinstance(elemento, ast.Tuple) and elemento.elts:
+            primero = elemento.elts[0]
+            if isinstance(primero, ast.Constant):
+                etiquetas.append(primero.value)
+    return etiquetas
+
+
 def test_los_cortes_cuadran_con_los_controles():
     total = len(_controles_declarados())
 
     assert verificar.FIN_CONTEO == 11, (
         "conteos: 4 de clientes + 3 de las fases K y L + 4 de las fases N y O")
-    assert verificar.FIN_INTEGRIDAD == 29, (
-        "integridad: 9 antiguos + 4 de las fases K y L + 6 de las fases N y O")
+    assert verificar.FIN_INTEGRIDAD == 32, (
+        "integridad: 9 antiguos + 4 de las fases K y L + 9 de las fases N y O"
+        " (codigo_proyecto, servicio generico y codigo_extendido al final)")
     assert verificar.FIN_REGISTRO == total, (
         "el último control se quedaría sin imprimir: la lista tiene %d y "
         "FIN_REGISTRO dice %d" % (total, verificar.FIN_REGISTRO)
@@ -62,3 +80,18 @@ def test_el_control_que_hace_fallar_se_busca_por_nombre():
     assert "ETIQUETA_ERRORES" in fuente
     assert "controles[15][1]" not in fuente, \
         "el índice fijo es justo lo que este cambio viene a quitar"
+
+
+@pytest.mark.parametrize("etiqueta", [
+    "solicitud_servicio: codigo_proyecto inconsistente",
+    "servicios: servicio generico GEN inconsistente",
+    "tareas_etapa: codigo_extendido inconsistente con su servicio",
+])
+def test_los_controles_nuevos_se_declaran_y_pueden_fallar(etiqueta):
+    """Un control que sale siempre en OK no sirve de nada.
+
+    `verificar` sólo marca FALLA si el valor no es cero **y** la etiqueta
+    contiene una de las palabras del disparador (`verificar.py:184`). Por eso
+    estas tres lo llevan en la etiqueta: es lo que las hace comprobables."""
+    assert etiqueta in _etiquetas(), "el control no está declarado"
+    assert "inconsistente" in etiqueta, "sin la palabra no puede fallar"

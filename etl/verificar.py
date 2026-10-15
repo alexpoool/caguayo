@@ -31,8 +31,8 @@ def _uno(cur, sql, params=None):
 #: dato que se escribe a mano y se descoloca con cada control nuevo, que es
 #: justo cuando nadie lo mira.
 FIN_CONTEO = 11
-FIN_INTEGRIDAD = 29
-FIN_REGISTRO = 32
+FIN_INTEGRIDAD = 32
+FIN_REGISTRO = 35
 
 #: La comprobación que hace fallar la migración. Se busca por nombre y no por
 #: posición: si mañana se añade un control, el índice se desplaza solo y esto no.
@@ -114,6 +114,29 @@ def _consultas(conn):
              _uno(cur, "SELECT count(*) FROM %s WHERE id_contrato IS NOT NULL"
                        " AND id_contrato NOT IN (SELECT id_contrato FROM %s)"
                        % (TABLA_SOLICITUD, TABLA_CONTRATO))),
+             # Sólo en esta dirección: la inversa no es un invariante, porque
+             # después de que alguien enlace un contrato desde la aplicación más
+             # filas cumplirán la regla y tendrán el código en NULL legítimamente.
+             ("solicitud_servicio: codigo_proyecto inconsistente",
+              _uno(cur, "SELECT count(*) FROM %s WHERE codigo_proyecto IS NOT NULL"
+                        " AND NOT (aprobado AND id_contrato IS NOT NULL)"
+                        % TABLA_SOLICITUD)),
+             # |n-1|: cero cuando hay exactamente una fila GEN, que es lo
+             # correcto. Cero GEN significa que no se creó; más de una, que se
+             # duplicó entre dos pasadas.
+             ("servicios: servicio generico GEN inconsistente",
+              _uno(cur, "SELECT abs(count(*) - 1) FROM servicios"
+                        " WHERE codigo_servicio = 'GEN'")),
+             # La regla de `TareaEtapaService.create` (`servicio_service.py:261`)
+             # convertida en invariante: si mañana alguien asigna un servicio real
+             # a una tarea, el código tiene que moverse con él.
+             ("tareas_etapa: codigo_extendido inconsistente con su servicio",
+              _uno(cur, "SELECT count(*) FROM %s t"
+                        " WHERE t.codigo_extendido IS NOT NULL"
+                        "   AND (t.id_servicio IS NULL OR EXISTS ("
+                        "     SELECT 1 FROM servicios s WHERE s.id_servicio = t.id_servicio"
+                        "       AND s.codigo_servicio IS DISTINCT FROM t.codigo_extendido))"
+                        % TABLA_TAREA_ETAPA)),
             ("etapas: huérfanos",
              _uno(cur, "SELECT count(*) FROM %s e LEFT JOIN %s s"
                        " USING (id_solicitud_servicio)"
