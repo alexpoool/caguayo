@@ -6,14 +6,21 @@ import { type RrhhMeta } from '../../types/rrhh';
 import {
   AlertCircle,
   ArrowLeft,
+  Calendar,
   CalendarRange,
+  FileText,
+  Hash,
   ListChecks,
   Loader2,
   Pencil,
   Plus,
   RefreshCw,
-  Target,
+  Save,
+  Star,
+  TrendingUp,
   Trash2,
+  Type,
+  X,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import {
@@ -46,6 +53,10 @@ function rangoFechas(inicio: string | null, fin: string | null): string {
   if (fin) return `Hasta ${fmt(fin)}`;
   return 'Sin fechas';
 }
+
+// Degradado de la página (violeta), referenciado de la página de Monedas
+const GRADIENTE =
+  'bg-gradient-to-r from-violet-500 to-violet-600 hover:from-violet-600 hover:to-violet-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300';
 
 /**
  * Metas de un objetivo, con su CRUD (siempre editable).
@@ -158,8 +169,10 @@ export function MetasPage() {
 
   if (!objetivoId) {
     return (
-      <div className="flex flex-col items-center gap-3 py-16 text-center">
-        <ListChecks className="h-10 w-10 text-slate-300" />
+      <div className="flex flex-col items-center gap-3 py-16 text-center animate-fade-in-up">
+        <div className="p-4 bg-slate-50 rounded-full">
+          <ListChecks className="h-10 w-10 text-violet-300" />
+        </div>
         <p className="max-w-sm text-sm text-slate-500">
           Esta página muestra las metas de un objetivo concreto. Elige un
           objetivo desde su listado de empleados.
@@ -174,51 +187,61 @@ export function MetasPage() {
 
   if (isLoading) {
     return (
-      <div className="space-y-4">
-        <div className="h-8 w-64 animate-pulse rounded-md bg-slate-100" />
-        <div className="h-72 animate-pulse rounded-xl bg-slate-100" />
+      <div className="flex flex-col items-center justify-center h-96 gap-4 animate-fade-in-up">
+        <div className="p-4 bg-gradient-to-br from-violet-100 to-violet-200 rounded-full animate-pulse">
+          <ListChecks className="h-12 w-12 text-violet-600 animate-spin" />
+        </div>
+        <div className="text-gray-600 font-medium">Cargando metas...</div>
       </div>
     );
   }
 
   if (isError || !objetivo) {
     return (
-      <div className="flex flex-col items-center gap-3 py-16 text-center">
-        <AlertCircle className="h-10 w-10 text-red-400" />
-        <p className="text-sm text-slate-600">
-          {(error as any)?.message || 'No se pudieron cargar las metas'}
-        </p>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={() => refetch()}>
-            Reintentar
-          </Button>
-          <Button variant="outline" size="sm" onClick={() => navigate('/rrhh/empleados')}>
-            <ArrowLeft className="h-4 w-4" />
-            Volver
-          </Button>
+      <div className="flex items-center justify-center h-64 animate-fade-in-up">
+        <div className="text-center bg-red-50 border border-red-200 rounded-md p-4">
+          <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+          <p className="font-bold text-lg mb-2 text-red-700">
+            Error al cargar metas
+          </p>
+          <p className="text-red-600 mb-4">
+            {(error as any)?.message || 'No se pudieron cargar las metas'}
+          </p>
+          <div className="flex justify-center gap-2">
+            <Button
+              onClick={() => refetch()}
+              className="gap-2 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white"
+            >
+              <RefreshCw className="h-4 w-4" />
+              Reintentar
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => navigate('/rrhh/empleados')}
+              className="gap-2"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Volver
+            </Button>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 animate-fade-in-up">
+      {/* Header con icono animado */}
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-start gap-3">
-          <button
-            type="button"
-            title="Volver a los objetivos"
-            onClick={volverAObjetivos}
-            className="mt-1 rounded-md p-1.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700"
-          >
-            <ArrowLeft className="h-5 w-5" />
-          </button>
-          <div>
-            <h1 className="flex items-center gap-2 text-xl font-bold text-slate-900">
-              <ListChecks className="h-6 w-6 text-brand-600" />
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-gradient-to-br from-violet-500 to-violet-600 rounded shadow-lg animate-bounce-subtle">
+            <ListChecks className="h-5 w-5 text-white" />
+          </div>
+          <div className="flex items-baseline flex-wrap">
+            <h1 className="text-xl font-bold text-gray-900">
               Metas de «{objetivo.nombre}»
             </h1>
-            <p className="mt-1 text-sm text-slate-500">
+            <p className="text-sm text-gray-500 ml-3 hidden sm:block">
               {objetivo.empleado_nombre ?? '—'}
               {objetivo.empleado_codigo ? ` · ${objetivo.empleado_codigo}` : ''} ·
               Resultado del objetivo{' '}
@@ -229,105 +252,144 @@ export function MetasPage() {
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Button variant="outline" size="sm" onClick={volverAObjetivos}>
-            <Target className="h-4 w-4" />
+          <Button
+            variant="secondary"
+            onClick={volverAObjetivos}
+            className="gap-2 hover:scale-105 transition-transform"
+          >
+            <ArrowLeft className="h-4 w-4" />
             Ver objetivos
           </Button>
-          <Button variant="outline" size="sm" onClick={() => refetch()}>
-            <RefreshCw className="h-4 w-4" />
-          </Button>
-          <Button size="sm" onClick={() => abrir()}>
+          <Button onClick={() => abrir()} className={`gap-2 ${GRADIENTE}`}>
             <Plus className="h-4 w-4" />
             Nueva meta
           </Button>
         </div>
       </div>
 
-      <div className="rounded-md bg-slate-100 px-4 py-2 text-xs text-slate-600">
+      <div className="rounded-md bg-violet-50 border border-violet-100 px-4 py-2 text-xs text-violet-700">
         Las metas se definen aquí y siempre son editables. Su valoración (1–5)
         se pone al calificar la evaluación del empleado (mientras esté en
         borrador) y promedia al resultado del objetivo.
       </div>
 
-      <Card>
-        <CardContent className="pt-6">
+      <Card className="overflow-hidden hover:shadow-lg transition-shadow duration-300">
+        <CardContent>
           {objetivo.metas.length === 0 ? (
-            <div className="flex flex-col items-center gap-2 py-10 text-center">
-              <ListChecks className="h-10 w-10 text-slate-300" />
-              <p className="max-w-sm text-sm text-slate-500">
+            <div className="flex flex-col items-center justify-center gap-2 py-12 text-center text-gray-400">
+              <div className="p-4 bg-slate-50 rounded-full mb-2">
+                <ListChecks className="h-12 w-12 text-gray-300" />
+              </div>
+              <p className="text-lg font-medium mb-1">No se encontraron metas</p>
+              <p className="text-sm mb-4">
                 Este objetivo aún no tiene metas. Las metas se puntúan del 1 al 5
-                desde la evaluación y alimentan el resultado del objetivo.
+                desde la evaluación y alimentan el resultado del objetivo
               </p>
-              <Button size="sm" onClick={() => abrir()}>
+              <Button onClick={() => abrir()} className={`gap-2 ${GRADIENTE}`}>
                 <Plus className="h-4 w-4" />
                 Nueva meta
               </Button>
             </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Meta</TableHead>
-                  <TableHead>Rango</TableHead>
-                  <TableHead className="w-40">Resultado</TableHead>
-                  <TableHead className="w-44">Valoración</TableHead>
-                  <TableHead className="text-right">Acciones</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {objetivo.metas.map((meta) => (
-                  <TableRow key={meta.id_metas}>
-                    <TableCell>
-                      <p className="font-medium text-slate-900">{meta.nombre}</p>
-                      {meta.observaciones && (
-                        <p className="max-w-xl truncate text-xs text-slate-400">
-                          {meta.observaciones}
-                        </p>
-                      )}
-                    </TableCell>
-                    <TableCell className="whitespace-nowrap text-xs text-slate-500">
-                      <span className="inline-flex items-center gap-1">
-                        <CalendarRange className="h-3.5 w-3.5 text-slate-400" />
-                        {rangoFechas(meta.fecha_inicio, meta.fecha_fin)}
-                      </span>
-                    </TableCell>
-                    <TableCell className="tabular-nums text-slate-700">
-                      {meta.resultado_meta != null ? meta.resultado_meta : (
-                        <span className="text-slate-400">Sin resultado</span>
-                      )}
-                    </TableCell>
-                    <TableCell className="tabular-nums text-slate-700">
-                      {meta.valoracion != null ? (
-                        <>
-                          <strong className="text-slate-900">
-                            {meta.valoracion}/5
-                          </strong>
-                          <span className="ml-1 text-xs text-slate-400">
-                            en evaluación
-                          </span>
-                        </>
-                      ) : (
-                        <span className="text-slate-400">Sin puntuar</span>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-1">
-                        <ActionButton titulo="Editar meta" onClick={() => abrir(meta)}>
-                          <Pencil className="h-4 w-4" />
-                        </ActionButton>
-                        <ActionButton
-                          titulo="Eliminar meta"
-                          danger
-                          onClick={() => setConfirm(meta)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </ActionButton>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader className="bg-gradient-to-r from-violet-50 to-violet-100">
+                  <TableRow>
+                    <TableHead>
+                      <div className="flex items-center gap-2">
+                        <ListChecks className="h-4 w-4 text-violet-500" />
+                        Meta
                       </div>
-                    </TableCell>
+                    </TableHead>
+                    <TableHead>
+                      <div className="flex items-center gap-2">
+                        <CalendarRange className="h-4 w-4 text-sky-500" />
+                        Rango
+                      </div>
+                    </TableHead>
+                    <TableHead className="w-40">
+                      <div className="flex items-center gap-2">
+                        <TrendingUp className="h-4 w-4 text-emerald-500" />
+                        Resultado
+                      </div>
+                    </TableHead>
+                    <TableHead className="w-44">
+                      <div className="flex items-center gap-2">
+                        <Star className="h-4 w-4 text-amber-500" />
+                        Valoración
+                      </div>
+                    </TableHead>
+                    <TableHead className="text-right">Acciones</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {objetivo.metas.map((meta) => (
+                    <TableRow
+                      key={meta.id_metas}
+                      className="hover:bg-gray-50 transition-colors"
+                    >
+                      <TableCell>
+                        <p className="font-medium text-slate-900">{meta.nombre}</p>
+                        {meta.observaciones && (
+                          <p className="max-w-xl truncate text-xs text-slate-400">
+                            {meta.observaciones}
+                          </p>
+                        )}
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap text-xs text-slate-500">
+                        <span className="inline-flex items-center gap-1">
+                          <CalendarRange className="h-3.5 w-3.5 text-slate-400" />
+                          {rangoFechas(meta.fecha_inicio, meta.fecha_fin)}
+                        </span>
+                      </TableCell>
+                      <TableCell className="tabular-nums text-slate-700">
+                        {meta.resultado_meta != null ? (
+                          meta.resultado_meta
+                        ) : (
+                          <span className="text-slate-400">Sin resultado</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="tabular-nums text-slate-700">
+                        {meta.valoracion != null ? (
+                          <>
+                            <strong className="text-slate-900">
+                              {meta.valoracion}/5
+                            </strong>
+                            <span className="ml-1 text-xs text-slate-400">
+                              en evaluación
+                            </span>
+                          </>
+                        ) : (
+                          <span className="text-slate-400">Sin puntuar</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            title="Editar meta"
+                            onClick={() => abrir(meta)}
+                            className="text-blue-600 hover:bg-blue-50 hover:scale-110 transition-all"
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            title="Eliminar meta"
+                            onClick={() => setConfirm(meta)}
+                            className="text-red-600 hover:bg-red-50 hover:scale-110 transition-all"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           )}
         </CardContent>
       </Card>
@@ -335,18 +397,29 @@ export function MetasPage() {
       {/* Modal de meta */}
       <Modal isOpen={formAbierto !== null} onClose={() => setFormAbierto(null)}>
         <div className="space-y-4 p-1">
-          <h2 className="text-lg font-bold text-slate-900">
-            {formAbierto?.editando ? 'Editar meta' : 'Nueva meta'}
-          </h2>
+          <div className="flex items-center gap-2">
+            <div className="p-2 bg-gradient-to-br from-violet-500 to-violet-600 rounded-lg">
+              <ListChecks className="h-4 w-4 text-white" />
+            </div>
+            <h2 className="text-lg font-bold text-slate-900">
+              {formAbierto?.editando ? 'Editar meta' : 'Nueva meta'}
+            </h2>
+          </div>
           <form onSubmit={submit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="meta-nombre">Nombre *</Label>
+              <Label
+                htmlFor="meta-nombre"
+                className="flex items-center gap-2 text-gray-700"
+              >
+                <Type className="h-4 w-4 text-blue-500" />
+                Nombre *
+              </Label>
               <Input
                 id="meta-nombre"
                 value={metaForm.nombre}
                 onChange={(e) => setMetaForm({ ...metaForm, nombre: e.target.value })}
                 placeholder="Ej. Cerrar 10 contratos"
-                className={formErrors.nombre ? 'border-red-500' : ''}
+                className={`transition-all duration-200 focus:ring-2 focus:ring-violet-500 focus:border-violet-500 ${formErrors.nombre ? 'border-red-500' : ''}`}
               />
               {formErrors.nombre && (
                 <p className="flex items-center gap-1 text-xs text-red-600">
@@ -357,7 +430,13 @@ export function MetasPage() {
             </div>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="space-y-2">
-                <Label htmlFor="meta-resultado">Resultado (número)</Label>
+                <Label
+                  htmlFor="meta-resultado"
+                  className="flex items-center gap-2 text-gray-700"
+                >
+                  <Hash className="h-4 w-4 text-emerald-500" />
+                  Resultado (número)
+                </Label>
                 <Input
                   id="meta-resultado"
                   type="number"
@@ -366,10 +445,17 @@ export function MetasPage() {
                     setMetaForm({ ...metaForm, resultado_meta: e.target.value })
                   }
                   placeholder="Ej. 9"
+                  className="transition-all duration-200 focus:ring-2 focus:ring-violet-500 focus:border-violet-500"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="meta-inicio">Fecha de inicio</Label>
+                <Label
+                  htmlFor="meta-inicio"
+                  className="flex items-center gap-2 text-gray-700"
+                >
+                  <Calendar className="h-4 w-4 text-sky-500" />
+                  Fecha de inicio
+                </Label>
                 <Input
                   id="meta-inicio"
                   type="date"
@@ -377,17 +463,24 @@ export function MetasPage() {
                   onChange={(e) =>
                     setMetaForm({ ...metaForm, fecha_inicio: e.target.value })
                   }
+                  className="transition-all duration-200 focus:ring-2 focus:ring-violet-500 focus:border-violet-500"
                 />
               </div>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="meta-fin">Fecha de fin</Label>
+              <Label
+                htmlFor="meta-fin"
+                className="flex items-center gap-2 text-gray-700"
+              >
+                <Calendar className="h-4 w-4 text-rose-500" />
+                Fecha de fin
+              </Label>
               <Input
                 id="meta-fin"
                 type="date"
                 value={metaForm.fecha_fin}
                 onChange={(e) => setMetaForm({ ...metaForm, fecha_fin: e.target.value })}
-                className={formErrors.fecha_fin ? 'border-red-500' : ''}
+                className={`transition-all duration-200 focus:ring-2 focus:ring-violet-500 focus:border-violet-500 ${formErrors.fecha_fin ? 'border-red-500' : ''}`}
               />
               {formErrors.fecha_fin && (
                 <p className="flex items-center gap-1 text-xs text-red-600">
@@ -397,21 +490,41 @@ export function MetasPage() {
               )}
             </div>
             <div className="space-y-2">
-              <Label htmlFor="meta-obs">Observaciones</Label>
+              <Label
+                htmlFor="meta-obs"
+                className="flex items-center gap-2 text-gray-700"
+              >
+                <FileText className="h-4 w-4 text-amber-500" />
+                Observaciones
+              </Label>
               <textarea
                 id="meta-obs"
                 rows={3}
                 value={metaForm.observaciones}
                 onChange={(e) => setMetaForm({ ...metaForm, observaciones: e.target.value })}
-                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
+                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500 transition-all duration-200"
               />
             </div>
-            <div className="flex items-center gap-2">
-              <Button type="submit" disabled={metaMutation.isPending}>
-                {metaMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+            <div className="flex items-center gap-2 pt-2 border-t">
+              <Button
+                type="submit"
+                className={`gap-2 ${GRADIENTE}`}
+                disabled={metaMutation.isPending}
+              >
+                {metaMutation.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Save className="h-4 w-4" />
+                )}
                 {formAbierto?.editando ? 'Guardar cambios' : 'Añadir meta'}
               </Button>
-              <Button type="button" variant="outline" onClick={() => setFormAbierto(null)}>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => setFormAbierto(null)}
+                className="gap-2 hover:bg-gray-200 transition-colors"
+              >
+                <X className="h-4 w-4" />
                 Cancelar
               </Button>
             </div>
@@ -430,34 +543,5 @@ export function MetasPage() {
         onClose={() => setConfirm(null)}
       />
     </div>
-  );
-}
-
-// ── Subcomponentes ─────────────────────────────────────────────────────────
-
-function ActionButton({
-  children,
-  onClick,
-  titulo,
-  danger,
-}: {
-  children: React.ReactNode;
-  onClick: () => void;
-  titulo: string;
-  danger?: boolean;
-}) {
-  return (
-    <button
-      type="button"
-      title={titulo}
-      onClick={onClick}
-      className={`rounded-md p-1.5 transition-colors ${
-        danger
-          ? 'text-slate-400 hover:bg-red-50 hover:text-red-600'
-          : 'text-slate-400 hover:bg-slate-100 hover:text-slate-700'
-      }`}
-    >
-      {children}
-    </button>
   );
 }
