@@ -261,7 +261,7 @@ export function ObjetivosPage() {
             </p>
           </div>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 ml-auto">
           <Button
             variant="secondary"
             onClick={() => navigate('/rrhh/empleados')}
@@ -284,11 +284,6 @@ export function ObjetivosPage() {
             Nuevo objetivo
           </Button>
         </div>
-      </div>
-
-      <div className="rounded-md bg-emerald-50 border border-emerald-100 px-4 py-2 text-xs text-emerald-700">
-        Los objetivos se definen aquí y siempre son editables. La valoración
-        (1–5) de sus metas se pone al calificar la evaluación del empleado.
       </div>
 
       <Card className="overflow-hidden hover:shadow-lg transition-shadow duration-300">
@@ -381,8 +376,7 @@ export function ObjetivosPage() {
                             navigate(`/rrhh/metas?objetivo_id=${obj.id_objetivos}`)
                           }
                         >
-                          Ver metas
-                          {obj.metas.length > 0 ? ` (${obj.metas.length})` : ''}
+                          Metas
                         </Button>
                       </TableCell>
                       <TableCell className="text-right">

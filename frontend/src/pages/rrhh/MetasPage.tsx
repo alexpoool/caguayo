@@ -251,7 +251,7 @@ export function MetasPage() {
             </p>
           </div>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 ml-auto">
           <Button
             variant="secondary"
             onClick={volverAObjetivos}
@@ -265,12 +265,6 @@ export function MetasPage() {
             Nueva meta
           </Button>
         </div>
-      </div>
-
-      <div className="rounded-md bg-violet-50 border border-violet-100 px-4 py-2 text-xs text-violet-700">
-        Las metas se definen aquí y siempre son editables. Su valoración (1–5)
-        se pone al calificar la evaluación del empleado (mientras esté en
-        borrador) y promedia al resultado del objetivo.
       </div>
 
       <Card className="overflow-hidden hover:shadow-lg transition-shadow duration-300">

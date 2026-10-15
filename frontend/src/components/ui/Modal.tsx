@@ -14,6 +14,8 @@ export function Modal({ isOpen, onClose, children, className = '' }: ModalProps)
 
   return createPortal(
     <div 
+      role="dialog"
+      aria-modal="true"
       className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 animate-fade-in"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
