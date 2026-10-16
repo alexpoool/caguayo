@@ -33,6 +33,13 @@ class RrhhEvaluacion(SQLModel, table=True):
             "estado IN ('borrador','finalizada')",
             name="chk_evaluacion_estado",
         ),
+        CheckConstraint(
+            "(puntualidad_estrellas IS NULL OR puntualidad_estrellas BETWEEN 0 AND 10)"
+            " AND (productividad_estrellas IS NULL OR productividad_estrellas BETWEEN 0 AND 10)"
+            " AND (trabajo_equipo_estrellas IS NULL OR trabajo_equipo_estrellas BETWEEN 0 AND 10)"
+            " AND (calidad_estrellas IS NULL OR calidad_estrellas BETWEEN 0 AND 10)",
+            name="chk_evaluacion_estrellas",
+        ),
     )
 
     id: Optional[int] = Field(
@@ -70,51 +77,24 @@ class RrhhEvaluacion(SQLModel, table=True):
     estado: str = Field(default="borrador", max_length=20)
     inicio_periodo: date
     fin_periodo: date
-    # Criterios FK a calificaciones (1-5). ON DELETE SET NULL.
-    puntualidad: Optional[int] = Field(
+    # Criterios: la **escala** elegida (FK a `calificaciones`, cuyo `valor` es
+    # el último número: 5, 10 o 100) y la puntuación de cada criterio en
+    # estrellas (0–10; None = sin puntuar). ON DELETE SET NULL en la escala.
+    escala_criterios_id: Optional[int] = Field(
         default=None,
         sa_column=Column(
             Integer,
             ForeignKey(
                 "calificaciones.id_calificaciones",
                 ondelete="SET NULL",
-                name="fk_evaluaciones_puntualidad",
+                name="fk_evaluaciones_escala_criterios",
             ),
         ),
     )
-    productividad: Optional[int] = Field(
-        default=None,
-        sa_column=Column(
-            Integer,
-            ForeignKey(
-                "calificaciones.id_calificaciones",
-                ondelete="SET NULL",
-                name="fk_evaluaciones_productividad",
-            ),
-        ),
-    )
-    trabajo_equipo: Optional[int] = Field(
-        default=None,
-        sa_column=Column(
-            Integer,
-            ForeignKey(
-                "calificaciones.id_calificaciones",
-                ondelete="SET NULL",
-                name="fk_evaluaciones_trabajo_equipo",
-            ),
-        ),
-    )
-    calidad: Optional[int] = Field(
-        default=None,
-        sa_column=Column(
-            Integer,
-            ForeignKey(
-                "calificaciones.id_calificaciones",
-                ondelete="SET NULL",
-                name="fk_evaluaciones_calidad",
-            ),
-        ),
-    )
+    puntualidad_estrellas: Optional[int] = None
+    productividad_estrellas: Optional[int] = None
+    trabajo_equipo_estrellas: Optional[int] = None
+    calidad_estrellas: Optional[int] = None
     promedio_objetivos: Optional[Decimal] = Field(
         default=None, decimal_places=2, max_digits=5
     )

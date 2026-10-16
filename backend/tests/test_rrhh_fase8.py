@@ -2,14 +2,19 @@
 
 Usan el patrón `client` de conftest.py (TestClient contra la BD real).
 
-Cada test crea su propio empleado y sus propias `calificaciones` (los 4
-criterios son FK a ese catálogo), usa periodos en **2098-06** (libre de las
-demás fases) y al final limpia: al borrar de verdad el empleado se van sus
-evaluaciones (FK `CASCADE`) y también sus objetivos (FK `CASCADE` desde
-`empleados`; si hay historial el DELETE es baja lógica y queda residuo, que
-por eso los asertos nunca cuentan filas globales). Las `calificaciones` se
-borran aparte: su FK es `SET NULL`, así que no queda ninguna referencia
-colgando.
+Cada test crea su propio empleado y su propia **escala** en `calificaciones`
+(valor 5, 10 o 100), usa periodos en **2098-06** (libre de las demás fases) y
+al final limpia: al borrar de verdad el empleado se van sus evaluaciones
+(FK `CASCADE`) y también sus objetivos (FK `CASCADE` desde `empleados`; si hay
+historial el DELETE es baja lógica y queda residuo, que por eso los asertos
+nunca cuentan filas globales). Las escalas se borran aparte: si una evaluación
+sigue citándola el DELETE es 409, por eso cada test limpia a su empleado
+primero.
+
+Los criterios se puntúan con **10 estrellas** (`{criterio}_estrellas`, 0–10)
+sobre la escala elegida (`escala_criterios_id`): el valor en escala de cada
+criterio es estrellas/10 × escala y `promedio_criterios` es su media (ambos
+se calculan al leer, no están en la BD).
 
 Los objetivos **se definen en el empleado** (`/api/v1/rrhh/objetivos`, siempre
 editables) y **se califican en la evaluación**
@@ -27,6 +32,7 @@ from src.domain.rrhh_evaluacion_calc import (
     promedio_objetivos,
     solapa_fechas,
     validar_fechas,
+    valor_en_escala,
 )
 
 BASE = "/api/v1/rrhh/evaluaciones"
@@ -73,8 +79,10 @@ def _limpiar_empleado(client, empleado_id):
     client.delete(f"/api/v1/rrhh/empleados/{empleado_id}")
 
 
-def _crear_calificacion(client, valor):
-    """Crea una `calificaciones` única con el valor dado (1–5) y devuelve el id."""
+def _crear_escala(client, valor):
+    """Crea una `calificaciones` (escala completa: solo 5, 10 o 100) y
+    devuelve el id."""
+    assert valor in (5, 10, 100), f"escala no admitida: {valor}"
     response = client.post(
         CATALOGOS,
         json={"nombre": f"EVAL-{_sufijo()}", "valor": valor},
@@ -144,6 +152,15 @@ class TestDominioEvaluacion:
 
     def test_promedio_criterios_redondea_a_dos_decimales(self):
         assert promedio_criterios([1, 2, 2]) == Decimal("1.67")
+
+    def test_valor_en_escala_convierte_las_estrellas(self):
+        # 7★ sobre 1–5 → 3.50; 10★ sobre 1–100 → 100.00; 0★ → 0.00.
+        assert valor_en_escala(7, 5) == Decimal("3.50")
+        assert valor_en_escala(10, 100) == Decimal("100.00")
+        assert valor_en_escala(0, 10) == Decimal("0.00")
+        # Sin puntuación o sin escala no hay valor.
+        assert valor_en_escala(None, 10) is None
+        assert valor_en_escala(7, None) is None
 
     def test_promedio_objetivos_convierte_a_escala_100(self):
         # resultados [4, 2] → media 3 → 3/5×100 = 60
@@ -337,7 +354,7 @@ class TestValidacionesAlta:
         finally:
             _limpiar_empleado(client, empleado["id"])
 
-    def test_criterio_que_no_existe(self, client):
+    def test_escala_que_no_existe(self, client):
         empleado = _crear_empleado(client)
         try:
             response = client.post(
@@ -347,11 +364,11 @@ class TestValidacionesAlta:
                     "periodo": "2098-06",
                     "inicio_periodo": "2098-06-01",
                     "fin_periodo": "2098-06-30",
-                    "puntualidad": 999999,
+                    "escala_criterios_id": 999999,
                 },
             )
             assert response.status_code == 404
-            assert "puntualidad" in response.json()["detail"]
+            assert "escala" in response.json()["detail"]
         finally:
             _limpiar_empleado(client, empleado["id"])
 
@@ -418,98 +435,191 @@ class TestValidacionesAlta:
 class TestPromedioCriterios:
     def test_promedio_de_los_cuatro_criterios(self, client):
         empleado = _crear_empleado(client)
-        calificaciones = []
+        escalas = []
         try:
-            valores = [1, 2, 3, 4]
-            ids = []
-            for valor in valores:
-                calif_id = _crear_calificacion(client, valor)
-                calificaciones.append(calif_id)
-                ids.append(calif_id)
+            escala = _crear_escala(client, 5)  # escala 1–5
+            escalas.append(escala)
 
             data = _crear_evaluacion(
                 client,
                 empleado["id"],
-                puntualidad=ids[0],
-                productividad=ids[1],
-                trabajo_equipo=ids[2],
-                calidad=ids[3],
+                escala_criterios_id=escala,
+                puntualidad_estrellas=2,      # 2/10×5 = 1.00
+                productividad_estrellas=4,    # 4/10×5 = 2.00
+                trabajo_equipo_estrellas=6,   # 6/10×5 = 3.00
+                calidad_estrellas=10,         # 10/10×5 = 5.00
             )
-            # (1+2+3+4)/4 = 2.50
-            assert Decimal(data["promedio_criterios"]) == Decimal("2.50")
+            # valores (1+2+3+5)/4 = 2.75
+            assert Decimal(data["promedio_criterios"]) == Decimal("2.75")
+            assert data["escala_valor"] == 5
 
             detalle = client.get(f"{BASE}/{data['id']}").json()
-            assert Decimal(detalle["promedio_criterios"]) == Decimal("2.50")
+            assert Decimal(detalle["promedio_criterios"]) == Decimal("2.75")
 
-            # El radar trae los 4 criterios con la etiqueta y el valor resuelto.
+            # El radar trae los 4 criterios con la etiqueta, las estrellas
+            # marcadas y el valor convertido a la escala.
             assert [c["etiqueta"] for c in detalle["criterios"]] == [
                 "Puntualidad",
                 "Productividad",
                 "Trabajo en equipo",
                 "Calidad",
             ]
-            assert [c["valor"] for c in detalle["criterios"]] == [1, 2, 3, 4]
-            assert all(c["calificacion_nombre"] for c in detalle["criterios"])
+            assert [c["estrellas"] for c in detalle["criterios"]] == [2, 4, 6, 10]
+            assert [Decimal(str(c["valor"])) for c in detalle["criterios"]] == [
+                Decimal("1.00"),
+                Decimal("2.00"),
+                Decimal("3.00"),
+                Decimal("5.00"),
+            ]
         finally:
             _limpiar_empleado(client, empleado["id"])
-            _limpiar_calificaciones(client, calificaciones)
+            _limpiar_calificaciones(client, escalas)
+
+    def test_criterios_con_escala_amplia(self, client):
+        """La escala la define el usuario (1–5, 1–10 o 1–100): las 10
+        estrellas se convierten a esa escala (estrellas/10 × escala)."""
+        empleado = _crear_empleado(client)
+        escalas = []
+        try:
+            escala = _crear_escala(client, 100)
+            escalas.append(escala)
+
+            data = _crear_evaluacion(
+                client,
+                empleado["id"],
+                escala_criterios_id=escala,
+                puntualidad_estrellas=7,    # 70.00
+                calidad_estrellas=10,       # 100.00
+            )
+            # (70+100)/2 = 85.00 sobre una escala 1–100
+            assert Decimal(data["promedio_criterios"]) == Decimal("85.00")
+
+            detalle = client.get(f"{BASE}/{data['id']}").json()
+            valores = {
+                c["criterio"]: Decimal(str(c["valor"]))
+                for c in detalle["criterios"]
+            }
+            assert valores["puntualidad"] == Decimal("70.00")
+            assert valores["calidad"] == Decimal("100.00")
+            assert detalle["escala_valor"] == 100
+        finally:
+            _limpiar_empleado(client, empleado["id"])
+            _limpiar_calificaciones(client, escalas)
 
     def test_criterios_parciales(self, client):
         empleado = _crear_empleado(client)
-        calificaciones = []
+        escalas = []
         try:
-            uno = _crear_calificacion(client, 3)
-            dos = _crear_calificacion(client, 5)
-            calificaciones += [uno, dos]
+            escala = _crear_escala(client, 5)
+            escalas.append(escala)
 
             data = _crear_evaluacion(
-                client, empleado["id"], puntualidad=uno, calidad=dos
+                client,
+                empleado["id"],
+                escala_criterios_id=escala,
+                puntualidad_estrellas=6,   # 3.00
+                calidad_estrellas=10,      # 5.00
             )
             # Solo dos puntuados: (3+5)/2 = 4.00
             assert Decimal(data["promedio_criterios"]) == Decimal("4.00")
 
             detalle = client.get(f"{BASE}/{data['id']}").json()
             # Los dos sin puntuar quedan en 0 para el radar.
-            valores = {c["criterio"]: c["valor"] for c in detalle["criterios"]}
-            assert valores["puntualidad"] == 3
-            assert valores["calidad"] == 5
-            assert valores["productividad"] == 0
-            assert valores["trabajo_equipo"] == 0
+            valores = {
+                c["criterio"]: Decimal(str(c["valor"]))
+                for c in detalle["criterios"]
+            }
+            assert valores["puntualidad"] == Decimal("3.00")
+            assert valores["calidad"] == Decimal("5.00")
+            assert valores["productividad"] == Decimal("0")
+            assert valores["trabajo_equipo"] == Decimal("0")
+            estrellas = {c["criterio"]: c["estrellas"] for c in detalle["criterios"]}
+            assert estrellas["productividad"] is None
+            assert estrellas["trabajo_equipo"] is None
         finally:
             _limpiar_empleado(client, empleado["id"])
-            _limpiar_calificaciones(client, calificaciones)
+            _limpiar_calificaciones(client, escalas)
 
     def test_criterios_sin_puntuar(self, client):
         empleado = _crear_empleado(client)
         try:
             data = _crear_evaluacion(client, empleado["id"])
             assert data["promedio_criterios"] is None
+            assert data["escala_valor"] is None
 
             detalle = client.get(f"{BASE}/{data['id']}").json()
             assert detalle["promedio_criterios"] is None
-            assert all(c["valor"] == 0 for c in detalle["criterios"])
+            assert all(c["estrellas"] is None for c in detalle["criterios"])
+            assert all(Decimal(str(c["valor"])) == 0 for c in detalle["criterios"])
         finally:
             _limpiar_empleado(client, empleado["id"])
 
     def test_cambio_de_criterio_se_refleja_al_leer(self, client):
         empleado = _crear_empleado(client)
-        calificaciones = []
+        escalas = []
         try:
-            tres = _crear_calificacion(client, 3)
-            cinco = _crear_calificacion(client, 5)
-            calificaciones += [tres, cinco]
+            escala = _crear_escala(client, 5)
+            escalas.append(escala)
 
-            data = _crear_evaluacion(client, empleado["id"], puntualidad=tres)
+            data = _crear_evaluacion(
+                client,
+                empleado["id"],
+                escala_criterios_id=escala,
+                puntualidad_estrellas=6,   # 3.00
+            )
             assert Decimal(data["promedio_criterios"]) == Decimal("3.00")
 
             response = client.put(
-                f"{BASE}/{data['id']}", json={"puntualidad": cinco}
+                f"{BASE}/{data['id']}", json={"puntualidad_estrellas": 10}
             )
             assert response.status_code == 200
             assert Decimal(response.json()["promedio_criterios"]) == Decimal("5.00")
         finally:
             _limpiar_empleado(client, empleado["id"])
-            _limpiar_calificaciones(client, calificaciones)
+            _limpiar_calificaciones(client, escalas)
+
+    def test_estrellas_sin_escala_es_400(self, client):
+        """Sin escala elegida no hay dónde convertir las estrellas."""
+        empleado = _crear_empleado(client)
+        try:
+            response = client.post(
+                BASE,
+                json={
+                    "empleado_id": empleado["id"],
+                    "periodo": "2098-06",
+                    "tipo_evaluacion_id": _tipo_id(client, "Formal"),
+                    "inicio_periodo": "2098-06-01",
+                    "fin_periodo": "2098-06-30",
+                    "puntualidad_estrellas": 5,
+                },
+            )
+            assert response.status_code == 400
+            assert "escala" in response.json()["detail"]
+        finally:
+            _limpiar_empleado(client, empleado["id"])
+
+    def test_estrellas_fuera_de_10_es_422(self, client):
+        empleado = _crear_empleado(client)
+        escalas = []
+        try:
+            escala = _crear_escala(client, 10)
+            escalas.append(escala)
+            response = client.post(
+                BASE,
+                json={
+                    "empleado_id": empleado["id"],
+                    "periodo": "2098-06",
+                    "tipo_evaluacion_id": _tipo_id(client, "Formal"),
+                    "inicio_periodo": "2098-06-01",
+                    "fin_periodo": "2098-06-30",
+                    "escala_criterios_id": escala,
+                    "puntualidad_estrellas": 11,
+                },
+            )
+            assert response.status_code == 422
+        finally:
+            _limpiar_empleado(client, empleado["id"])
+            _limpiar_calificaciones(client, escalas)
 
 
 # ── Objetivos y metas (definición en el empleado, calificación en la evaluación) ──
@@ -885,12 +995,16 @@ class TestListado:
         """La fila del listado trae los 4 criterios resueltos (columna
         «Desempeño»): valor 0 cuando el criterio aún no está puntuado."""
         empleado = _crear_empleado(client)
-        calificaciones = []
+        escalas = []
         try:
-            ids = [_crear_calificacion(client, v) for v in (1, 5)]
-            calificaciones += ids
+            escala = _crear_escala(client, 5)
+            escalas.append(escala)
             evaluacion = _crear_evaluacion(
-                client, empleado["id"], puntualidad=ids[0], calidad=ids[1]
+                client,
+                empleado["id"],
+                escala_criterios_id=escala,
+                puntualidad_estrellas=2,    # 1.00
+                calidad_estrellas=10,       # 5.00
             )
 
             response = client.get(f"{BASE}?empleado_id={empleado['id']}")
@@ -904,10 +1018,22 @@ class TestListado:
                 "trabajo_equipo",
                 "calidad",
             ]
-            assert [c["valor"] for c in fila["criterios"]] == [1, 0, 0, 5]
+            assert [c["estrellas"] for c in fila["criterios"]] == [
+                2,
+                None,
+                None,
+                10,
+            ]
+            assert [Decimal(str(c["valor"])) for c in fila["criterios"]] == [
+                Decimal("1"),
+                Decimal("0"),
+                Decimal("0"),
+                Decimal("5"),
+            ]
+            assert fila["escala_valor"] == 5
         finally:
             _limpiar_empleado(client, empleado["id"])
-            _limpiar_calificaciones(client, calificaciones)
+            _limpiar_calificaciones(client, escalas)
 
     def test_listado_vacio(self, client):
         response = client.get(f"{BASE}?empleado_id=999999")
@@ -1012,12 +1138,15 @@ class TestSubRecursosYReporte:
         otro = _crear_empleado(client)
         calificaciones = []
         try:
-            uno = _crear_calificacion(client, 2)
-            dos = _crear_calificacion(client, 4)
-            calificaciones += [uno, dos]
+            escala = _crear_escala(client, 5)
+            calificaciones.append(escala)
 
             primera = _crear_evaluacion(
-                client, empleado["id"], puntualidad=uno, productividad=dos
+                client,
+                empleado["id"],
+                escala_criterios_id=escala,
+                puntualidad_estrellas=6,     # 3.00
+                productividad_estrellas=10,  # 5.00
             )
             objetivo = _crear_objetivo(client, empleado["id"])
             meta = _crear_meta(client, objetivo["id_objetivos"])
@@ -1042,9 +1171,9 @@ class TestSubRecursosYReporte:
             assert empleado["id"] in por_id
             assert otro["id"] in por_id
 
-            # Empleado 1: criterios (2+4)/2 = 3.00, objetivos 5 → 100.00
+            # Empleado 1: criterios (3+5)/2 = 4.00, objetivos 5 → 100.00
             primero = por_id[empleado["id"]]
-            assert Decimal(primero["promedio_criterios"]) == Decimal("3.00")
+            assert Decimal(primero["promedio_criterios"]) == Decimal("4.00")
             assert Decimal(primero["promedio_objetivos"]) == Decimal("100.00")
             assert primero["cantidad_evaluaciones"] == 1
             assert por_id[otro["id"]]["cantidad_evaluaciones"] == 1

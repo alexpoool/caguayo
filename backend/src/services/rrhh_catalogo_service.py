@@ -237,7 +237,7 @@ class _TipoEvaluacionService(RrhhCatalogoService):
 
 
 class _CalificacionService(RrhhCatalogoService):
-    """`calificaciones` es referenciada por 4 columnas de `evaluaciones`."""
+    """`calificaciones` es referenciada por `evaluaciones.escala_criterios_id`."""
 
     def _usos(self, id: int) -> List:
         from src.models.rrhh_evaluacion import RrhhEvaluacion
@@ -245,12 +245,7 @@ class _CalificacionService(RrhhCatalogoService):
         return [
             select(func.count())
             .select_from(RrhhEvaluacion)
-            .where(
-                (RrhhEvaluacion.puntualidad == id)
-                | (RrhhEvaluacion.productividad == id)
-                | (RrhhEvaluacion.trabajo_equipo == id)
-                | (RrhhEvaluacion.calidad == id)
-            )
+            .where(RrhhEvaluacion.escala_criterios_id == id)
         ]
 
 

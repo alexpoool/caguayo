@@ -83,7 +83,9 @@ class RrhhCalificacion(SQLModel, table=True):
         default=None, primary_key=True, sa_column_kwargs={"autoincrement": True}
     )
     nombre: str = Field(max_length=100, unique=True)
-    valor: int = Field(ge=1, le=5)
+    # Escala de puntuación completa: el valor es su último número
+    # (5, 10 o 100; CHECK `chk_calificaciones_valor` en BD).
+    valor: int = Field(ge=1, le=100)
     descripcion: Optional[str] = None
     created_at: datetime = Field(default_factory=_now, sa_column_kwargs={"server_default": "CURRENT_TIMESTAMP"})
     updated_at: datetime = Field(default_factory=_now, sa_column_kwargs={"server_default": "CURRENT_TIMESTAMP"})

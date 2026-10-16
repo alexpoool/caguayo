@@ -12,10 +12,12 @@ Reglas de negocio de esta fase:
   `tipos_evaluaciones` (sembrado con Formal, Autoevaluación, Parcial y Final);
   el servicio exige que el id exista (404) y esté activo (400), y resuelve su
   `nombre` para las respuestas.
-- **Criterios**: los 4 campos (`puntualidad`, `productividad`,
-  `trabajo_equipo`, `calidad`) son FK a `calificaciones`; el servicio exige que
-  cada id exista y resuelve su `valor` (1–5) para calcular el promedio **al
-  leer** (no está persistido).
+- **Criterios**: cada criterio se puntúa con **10 estrellas** (0–10, columna
+  `{criterio}_estrellas`; None = sin puntuar) sobre **una escala por
+  evaluación** (`escala_criterios_id`, FK a `calificaciones` cuyo `valor` es
+  el último número: 5, 10 o 100). El servicio exige que la escala exista y
+  que no falte si hay estrellas; el valor en escala (estrellas/10 × escala) y
+  el promedio se calculan **al leer** (no están persistidos).
 - **`promedio_objetivos`** (0–100) **sí se persiste**: es el promedio de los
   `resultado_objetivo` (media 1–5 de las valoraciones de las metas de cada
   objetivo) de los objetivos del empleado **en alcance** del periodo (solape
@@ -46,6 +48,7 @@ from src.domain.rrhh_evaluacion_calc import (
     redondear,
     solapa_fechas,
     validar_fechas,
+    valor_en_escala,
 )
 from src.dto import (
     RrhhEvaluacionCreate,
@@ -162,18 +165,29 @@ class RrhhEvaluacionService:
             return
         await self._verificar_empleado(db, evaluador_id, solo_activo=False)
 
-    async def _validar_criterios(self, db: AsyncSession, campos: dict) -> None:
-        """Exige que cada criterio enviado apunte a una `calificaciones` real."""
-        ids = [v for v in campos.values() if v is not None]
-        if not ids:
-            return
-        existentes = await self._calificaciones_por_id(db, set(ids))
-        for nombre, valor in campos.items():
-            if valor is not None and valor not in existentes:
+    async def _validar_escala(
+        self, db: AsyncSession, escala_id: Optional[int], estrellas: dict
+    ) -> None:
+        """La escala es una `calificaciones` real; obligatoria si hay estrellas."""
+        if escala_id is None:
+            if any(v is not None for v in estrellas.values()):
                 raise HTTPException(
-                    status_code=404,
-                    detail=f"La calificación del criterio «{nombre}» ({valor}) no existe",
+                    status_code=400,
+                    detail=(
+                        "Si puntúas los criterios debes elegir una escala "
+                        "(5, 10 o 100)"
+                    ),
                 )
+            return
+        res = await db.exec(
+            select(RrhhCalificacion).where(
+                RrhhCalificacion.id_calificaciones == escala_id
+            )
+        )
+        if res.first() is None:
+            raise HTTPException(
+                status_code=404, detail="La escala de criterios no existe"
+            )
 
     def _validar_rango(self, inicio: date, fin: date) -> None:
         error = validar_fechas(inicio, fin)
@@ -228,19 +242,19 @@ class RrhhEvaluacionService:
     # ── Cálculos ────────────────────────────────────────────────────────────
 
     def _criterios_resueltos(
-        self, evaluacion: RrhhEvaluacion, calificaciones: dict
+        self, evaluacion: RrhhEvaluacion, escala_valor: Optional[int]
     ) -> List[RrhhCriterioEvaluacion]:
-        """Los 4 criterios con su `calificaciones.valor` (0 si sin puntuar)."""
+        """Los 4 criterios: sus estrellas y su valor en la escala (0 si vacío)."""
         salida = []
         for clave in CRITERIOS:
-            id_calif = getattr(evaluacion, clave)
-            calif = calificaciones.get(id_calif) if id_calif else None
+            estrellas = getattr(evaluacion, f"{clave}_estrellas")
+            valor = valor_en_escala(estrellas, escala_valor)
             salida.append(
                 RrhhCriterioEvaluacion(
                     criterio=clave,
                     etiqueta=CRITERIOS_ETIQUETA[clave],
-                    valor=calif.valor if calif else 0,
-                    calificacion_nombre=calif.nombre if calif else None,
+                    estrellas=estrellas,
+                    valor=valor if valor is not None else Decimal("0.00"),
                 )
             )
         return salida
@@ -249,7 +263,6 @@ class RrhhEvaluacionService:
         self,
         evaluacion: RrhhEvaluacion,
         resolucion: dict,
-        calificaciones: dict,
         conteos: dict,
     ) -> RrhhEvaluacionListado:
         empleado = resolucion["empleados"].get(evaluacion.empleado_id)
@@ -262,10 +275,10 @@ class RrhhEvaluacionService:
         if empleado and empleado.departamento_id:
             nombre_depto = resolucion["departamentos"].get(empleado.departamento_id)
 
+        escala = resolucion["escalas"].get(evaluacion.escala_criterios_id)
+        escala_valor = escala.valor if escala else None
         valores = [
-            (calificaciones.get(getattr(evaluacion, c)).valor
-             if getattr(evaluacion, c) and calificaciones.get(getattr(evaluacion, c))
-             else None)
+            valor_en_escala(getattr(evaluacion, f"{c}_estrellas"), escala_valor)
             for c in CRITERIOS
         ]
         cantidad_objetivos, cantidad_metas = conteos.get(evaluacion.id, (0, 0))
@@ -279,7 +292,9 @@ class RrhhEvaluacionService:
             empleado_nombre=self._nombre_completo(empleado),
             departamento_nombre=nombre_depto,
             evaluador_nombre=self._nombre_completo(evaluador),
-            criterios=self._criterios_resueltos(evaluacion, calificaciones),
+            escala_nombre=escala.nombre if escala else None,
+            escala_valor=escala_valor,
+            criterios=self._criterios_resueltos(evaluacion, escala_valor),
             promedio_criterios=promedio_criterios(valores),
             cantidad_objetivos=cantidad_objetivos,
             cantidad_metas=cantidad_metas,
@@ -288,7 +303,7 @@ class RrhhEvaluacionService:
     async def _resolucion_listado(
         self, db: AsyncSession, filas: List[RrhhEvaluacion]
     ) -> dict:
-        """Empleados, departamentos, calificaciones y conteos, todo en lote."""
+        """Empleados, departamentos, escalas y conteos, todo en lote."""
         empleado_ids = {f.empleado_id for f in filas} | {
             f.evaluador_id for f in filas if f.evaluador_id
         }
@@ -297,8 +312,8 @@ class RrhhEvaluacionService:
             db, {e.departamento_id for e in empleados.values() if e.departamento_id}
         )
 
-        calif_ids = {getattr(f, c) for f in filas for c in CRITERIOS if getattr(f, c)}
-        calificaciones = await self._calificaciones_por_id(db, calif_ids)
+        escala_ids = {f.escala_criterios_id for f in filas if f.escala_criterios_id}
+        escalas = await self._calificaciones_por_id(db, escala_ids)
 
         tipos = await self._tipos_por_id(
             db, {f.tipo_evaluacion_id for f in filas}
@@ -341,7 +356,7 @@ class RrhhEvaluacionService:
         return {
             "empleados": empleados,
             "departamentos": departamentos,
-            "calificaciones": calificaciones,
+            "escalas": escalas,
             "tipos": tipos,
             "conteos": conteos,
         }
@@ -423,12 +438,7 @@ class RrhhEvaluacionService:
 
         resolucion = await self._resolucion_listado(db, filas)
         return [
-            self._construir_listado(
-                f,
-                resolucion,
-                resolucion["calificaciones"],
-                resolucion["conteos"],
-            )
+            self._construir_listado(f, resolucion, resolucion["conteos"])
             for f in filas
         ]
 
@@ -438,7 +448,6 @@ class RrhhEvaluacionService:
         base = self._construir_listado(
             evaluacion,
             resolucion,
-            resolucion["calificaciones"],
             resolucion["conteos"],
         )
 
@@ -472,13 +481,14 @@ class RrhhEvaluacionService:
         await self._verificar_empleado(db, obj_in.empleado_id)
         await self._validar_empleados_del_evaluador(db, obj_in.evaluador_id)
         self._validar_rango(obj_in.inicio_periodo, obj_in.fin_periodo)
-        await self._validar_criterios(
+        await self._validar_escala(
             db,
+            obj_in.escala_criterios_id,
             {
-                "puntualidad": obj_in.puntualidad,
-                "productividad": obj_in.productividad,
-                "trabajo_equipo": obj_in.trabajo_equipo,
-                "calidad": obj_in.calidad,
+                "puntualidad": obj_in.puntualidad_estrellas,
+                "productividad": obj_in.productividad_estrellas,
+                "trabajo_equipo": obj_in.trabajo_equipo_estrellas,
+                "calidad": obj_in.calidad_estrellas,
             },
         )
         await self._validar_tipo(db, obj_in.tipo_evaluacion_id)
@@ -494,10 +504,11 @@ class RrhhEvaluacionService:
             estado="borrador",
             inicio_periodo=obj_in.inicio_periodo,
             fin_periodo=obj_in.fin_periodo,
-            puntualidad=obj_in.puntualidad,
-            productividad=obj_in.productividad,
-            trabajo_equipo=obj_in.trabajo_equipo,
-            calidad=obj_in.calidad,
+            escala_criterios_id=obj_in.escala_criterios_id,
+            puntualidad_estrellas=obj_in.puntualidad_estrellas,
+            productividad_estrellas=obj_in.productividad_estrellas,
+            trabajo_equipo_estrellas=obj_in.trabajo_equipo_estrellas,
+            calidad_estrellas=obj_in.calidad_estrellas,
             comentarios=obj_in.comentarios,
             fecha=obj_in.fecha or date.today(),
         )
@@ -515,7 +526,6 @@ class RrhhEvaluacionService:
         return self._construir_listado(
             evaluacion,
             resolucion,
-            resolucion["calificaciones"],
             resolucion["conteos"],
         )
 
@@ -544,12 +554,16 @@ class RrhhEvaluacionService:
                 datos.get("tipo_evaluacion_id", evaluacion.tipo_evaluacion_id),
                 excluir_id=evaluacion.id,
             )
-        if any(k in datos for k in CRITERIOS):
-            await self._validar_criterios(
+        campos_estrellas = [f"{c}_estrellas" for c in CRITERIOS]
+        if "escala_criterios_id" in datos or any(k in datos for k in campos_estrellas):
+            estrellas = {
+                c: datos.get(f"{c}_estrellas", getattr(evaluacion, f"{c}_estrellas"))
+                for c in CRITERIOS
+            }
+            await self._validar_escala(
                 db,
-                {
-                    k: datos.get(k, getattr(evaluacion, k)) for k in CRITERIOS
-                },
+                datos.get("escala_criterios_id", evaluacion.escala_criterios_id),
+                estrellas,
             )
 
         for campo, valor in datos.items():
@@ -567,7 +581,6 @@ class RrhhEvaluacionService:
         return self._construir_listado(
             evaluacion,
             resolucion,
-            resolucion["calificaciones"],
             resolucion["conteos"],
         )
 
@@ -592,7 +605,6 @@ class RrhhEvaluacionService:
         return self._construir_listado(
             evaluacion,
             resolucion,
-            resolucion["calificaciones"],
             resolucion["conteos"],
         )
 
@@ -661,12 +673,7 @@ class RrhhEvaluacionService:
         borradores = finalizadas = 0
 
         for fila in filas:
-            listado = self._construir_listado(
-                fila,
-                resolucion,
-                resolucion["calificaciones"],
-                resolucion["conteos"],
-            )
+            listado = self._construir_listado(fila, resolucion, resolucion["conteos"])
             if listado.estado == "borrador":
                 borradores += 1
             else:

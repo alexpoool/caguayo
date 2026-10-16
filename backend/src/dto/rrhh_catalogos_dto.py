@@ -8,9 +8,9 @@ catálogo, para que cada endpoint tenga su `response_model` explícito.
 """
 
 from datetime import datetime
-from typing import Optional
+from typing import Literal, Optional
 
-from sqlmodel import Field, SQLModel
+from sqlmodel import SQLModel
 
 
 # ── Base genérica ───────────────────────────────────────────────────────────
@@ -128,13 +128,15 @@ class RrhhCalificacionCreate(SQLModel):
     """`calificaciones` no tiene columna `activo` (decidido en Fase 0)."""
 
     nombre: str
-    valor: int = Field(ge=1, le=5)
+    # Escala de puntuación completa: su valor es el último número
+    # (5 → escala 1–5, 10 → 1–10, 100 → 1–100). Solo esas tres.
+    valor: Literal[5, 10, 100]
     descripcion: Optional[str] = None
 
 
 class RrhhCalificacionUpdate(SQLModel):
     nombre: Optional[str] = None
-    valor: Optional[int] = Field(default=None, ge=1, le=5)
+    valor: Optional[Literal[5, 10, 100]] = None
     descripcion: Optional[str] = None
 
 

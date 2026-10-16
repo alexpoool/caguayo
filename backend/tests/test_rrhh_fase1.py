@@ -48,7 +48,7 @@ def test_crear_ok(client):
         nombre = _nombre_unico(slug.upper())
         payload = {"nombre": nombre}
         if slug == "calificaciones":
-            payload["valor"] = 3
+            payload["valor"] = 5
         response = client.post(_url(slug), json=payload)
         assert response.status_code == 201, response.text
         data = response.json()
@@ -63,7 +63,7 @@ def test_nombre_duplicado_conflict(client):
         nombre = _nombre_unico(slug.upper())
         payload = {"nombre": nombre}
         if slug == "calificaciones":
-            payload["valor"] = 3
+            payload["valor"] = 5
         creado = client.post(_url(slug), json=payload)
         id_creado = creado.json()[pk]
         try:
@@ -78,7 +78,7 @@ def test_obtener_ok_y_no_encontrado(client):
         nombre = _nombre_unico(slug.upper())
         payload = {"nombre": nombre}
         if slug == "calificaciones":
-            payload["valor"] = 3
+            payload["valor"] = 5
         creado = client.post(_url(slug), json=payload)
         id_creado = creado.json()[pk]
         try:
@@ -96,7 +96,7 @@ def test_actualizar_ok(client):
         nombre = _nombre_unico(slug.upper())
         payload = {"nombre": nombre}
         if slug == "calificaciones":
-            payload["valor"] = 3
+            payload["valor"] = 5
         creado = client.post(_url(slug), json=payload)
         id_creado = creado.json()[pk]
         try:
@@ -122,7 +122,7 @@ def test_eliminar_ok(client):
         nombre = _nombre_unico(slug.upper())
         payload = {"nombre": nombre}
         if slug == "calificaciones":
-            payload["valor"] = 3
+            payload["valor"] = 5
         creado = client.post(_url(slug), json=payload)
         id_creado = creado.json()[pk]
         response = client.delete(_url(slug, f"/{id_creado}"))
@@ -141,7 +141,8 @@ def test_eliminar_no_encontrado_404(client):
 
 
 def test_calificacion_valor_fuera_de_rango_422(client):
-    for valor in (0, 6, -1):
+    # Solo se admiten escalas completas: 5, 10 o 100.
+    for valor in (0, 1, 3, 4, 7, 101, -1):
         response = client.post(
             _url("calificaciones"),
             json={"nombre": _nombre_unico("CAL"), "valor": valor},
@@ -149,10 +150,26 @@ def test_calificacion_valor_fuera_de_rango_422(client):
         assert response.status_code == 422
 
 
+def test_calificacion_escalas_admitidas(client):
+    """Una calificación es una escala completa: solo valor 5, 10 o 100."""
+    creadas = []
+    try:
+        for valor in (5, 10, 100):
+            response = client.post(
+                _url("calificaciones"),
+                json={"nombre": _nombre_unico("CAL"), "valor": valor},
+            )
+            assert response.status_code == 201, response.text
+            creadas.append(response.json()["id_calificaciones"])
+    finally:
+        for calif_id in creadas:
+            client.delete(_url("calificaciones", f"/{calif_id}"))
+
+
 def test_calificacion_no_tiene_flag_activo(client):
     nombre = _nombre_unico("CAL")
     creado = client.post(
-        _url("calificaciones"), json={"nombre": nombre, "valor": 4}
+        _url("calificaciones"), json={"nombre": nombre, "valor": 10}
     )
     data = creado.json()
     try:
@@ -213,6 +230,6 @@ def test_nombre_en_blanco_400(client):
     for slug, _pk, _activo in CATALOGOS:
         payload = {"nombre": "   "}
         if slug == "calificaciones":
-            payload["valor"] = 3
+            payload["valor"] = 5
         response = client.post(_url(slug), json=payload)
         assert response.status_code == 400

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Elimina de la BD los empleados residuo creados por la suite de tests.
+"""Elimina de la BD los residuos creados por la suite de tests.
 
 Los tests generan empleados con nombres aleatorios `Nombre`/`Apellido` +
 8 caracteres hexadécimos (`uuid4().hex[:8]`); estos residuos ensucian las
@@ -10,6 +10,12 @@ solicitudes y movimientos), según las FK `ON DELETE CASCADE` del esquema.
 Antes del borrado se limpian las filas de `nomina_deducciones` y
 `nomina_bonificaciones` ligadas al residuo: esas FK son `RESTRICT` y
 bloquearían la cascada.
+
+También purga las `calificaciones` de tests (prefijo `EVAL-`/`CAL-`/
+`CAT-TEST-` + 8 hex) que ya no cita ninguna evaluación: esos DELETE
+devolvieron 409 en su día (la baja lógica del empleado dejó su evaluación
+viva) y quedaron huérfanas ensuciando el catálogo. Una calificación
+referenciada por alguna evaluación —real o de test— nunca se toca.
 
 Los empleados que no siguen el patrón (empleados reales, p. ej. el
 personal dado de alta a mano) **nunca se tocan**, y además hay una lista
@@ -48,6 +54,10 @@ load_dotenv(BACKEND_DIR / ".env")
 # Patrón de los empleados residuo de tests (uuid4().hex[:8])
 PATRON_RESIDUO = r"^(Nombre|Apellido)[0-9a-f]{8}$"
 
+# Patrón de las calificaciones residuo de tests: prefijo + uuid4().hex[:8]
+# (fase 8 crea `EVAL-…`; fase 1, `CAL-…` y `CAT-TEST-…`).
+PATRON_CALIF_RESIDUO = r"^(EVAL|CAL|CAT-TEST)-[0-9a-f]{8}$"
+
 # Empleados reales que jamás se borran, aunque encajen con el patrón
 PROTEGIDOS = ("EMP-3111",)  # Alejandro Pozo (alta manual)
 
@@ -62,6 +72,7 @@ TABLAS_CONTEO = (
     "solicitudes",
     "deducciones",
     "bonificaciones",
+    "calificaciones",
 )
 
 SQL_RESIDUOS = """
@@ -83,6 +94,17 @@ SQL_PUENTE_BON = """
        OR nomina_id IN (SELECT id FROM nomina WHERE empleado_id = ANY(:ids))
 """
 SQL_BORRAR = "DELETE FROM empleados WHERE id = ANY(:ids)"
+
+# Solo calificaciones con nombre de test y que ninguna evaluación cita como
+# escala de criterios (p. ej. la escala de la evaluación «hgg» sobrevive).
+SQL_BORRAR_CALIF = """
+    DELETE FROM calificaciones
+    WHERE nombre ~ :patron
+      AND NOT EXISTS (
+        SELECT 1 FROM evaluaciones e
+         WHERE e.escala_criterios_id = calificaciones.id_calificaciones
+      )
+"""
 
 
 async def contar(conn) -> dict[str, int]:
@@ -122,16 +144,26 @@ async def main(db: str, si: bool) -> int:
 
             print(f"BD: {db}")
             print(f"Empleados residuo detectados: {len(ids)}")
-            if not ids:
+
+            if ids:
+                # Ejecutar el borrado completo dentro de la transacción para
+                # descubrir cualquier FK bloqueante aunque sea un dry-run.
+                await conn.execute(text(SQL_PUENTE_DED), {"ids": ids})
+                await conn.execute(text(SQL_PUENTE_BON), {"ids": ids})
+                await conn.execute(text(SQL_BORRAR), {"ids": ids})
+
+            # Con las evaluaciones residuo ya caídas en cascada, purga de
+            # calificaciones de test que ninguna evaluación sigue citando.
+            res_cal = await conn.execute(
+                text(SQL_BORRAR_CALIF), {"patron": PATRON_CALIF_RESIDUO}
+            )
+            cal_borradas = res_cal.rowcount or 0
+
+            if not ids and cal_borradas == 0:
                 await trans.rollback()
                 print("Nada que limpiar.")
                 return 0
 
-            # Ejecutar el borrado completo dentro de la transacción para
-            # descubrir cualquier FK bloqueante aunque sea un dry-run.
-            await conn.execute(text(SQL_PUENTE_DED), {"ids": ids})
-            await conn.execute(text(SQL_PUENTE_BON), {"ids": ids})
-            await conn.execute(text(SQL_BORRAR), {"ids": ids})
             despues = await contar(conn)
 
             print(f"\n{'Tabla':<18}{'antes':>8}{'borrados':>10}{'después':>9}")

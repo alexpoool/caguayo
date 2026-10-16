@@ -14,7 +14,8 @@ Como el módulo no usa autenticación en backend (decisión; deuda Fase 10), el
 `evaluador_id` viene en el payload.
 
 Dos promedios con escalas distintas:
-- `promedio_criterios` (1–5) se **calcula al leer** y no está en la BD.
+- `promedio_criterios` (sobre la escala de criterios elegida: 5, 10 o 100)
+  se **calcula al leer** y no está en la BD.
 - `promedio_objetivos` (0–100) **sí está persistido**: promedio de los
   `resultado_objetivo` (media 1–5 de las valoraciones de las metas de cada
   objetivo) de los objetivos en alcance del periodo; se recalcula en las
@@ -61,11 +62,14 @@ class RrhhEvaluacionCreate(SQLModel):
     tipo_evaluacion_id: int = Field(default=1)
     inicio_periodo: date
     fin_periodo: date
-    # Criterios: ids de `calificaciones` (1–5 resueltos en el servicio).
-    puntualidad: Optional[int] = None
-    productividad: Optional[int] = None
-    trabajo_equipo: Optional[int] = None
-    calidad: Optional[int] = None
+    # Criterios: la escala elegida (id de `calificaciones`, cuyo valor es
+    # 5, 10 o 100) y la puntuación de cada uno en estrellas (0–10;
+    # None = sin puntuar).
+    escala_criterios_id: Optional[int] = None
+    puntualidad_estrellas: Optional[int] = Field(default=None, ge=0, le=10)
+    productividad_estrellas: Optional[int] = Field(default=None, ge=0, le=10)
+    trabajo_equipo_estrellas: Optional[int] = Field(default=None, ge=0, le=10)
+    calidad_estrellas: Optional[int] = Field(default=None, ge=0, le=10)
     comentarios: Optional[str] = None
     fecha: Optional[date] = None
 
@@ -88,22 +92,27 @@ class RrhhEvaluacionUpdate(SQLModel):
     tipo_evaluacion_id: Optional[int] = None
     inicio_periodo: Optional[date] = None
     fin_periodo: Optional[date] = None
-    puntualidad: Optional[int] = None
-    productividad: Optional[int] = None
-    trabajo_equipo: Optional[int] = None
-    calidad: Optional[int] = None
+    escala_criterios_id: Optional[int] = None
+    puntualidad_estrellas: Optional[int] = Field(default=None, ge=0, le=10)
+    productividad_estrellas: Optional[int] = Field(default=None, ge=0, le=10)
+    trabajo_equipo_estrellas: Optional[int] = Field(default=None, ge=0, le=10)
+    calidad_estrellas: Optional[int] = Field(default=None, ge=0, le=10)
     comentarios: Optional[str] = None
     fecha: Optional[date] = None
 
 
 class RrhhCriterioEvaluacion(SQLModel):
-    """Un criterio con su calificación resuelta, para el radar y las tablas."""
+    """Un criterio con su puntuación resuelta, para el radar y las tablas."""
 
     criterio: str
     etiqueta: str
-    # `calificaciones.valor` (1–5) o 0 si todavía no está puntuado.
-    valor: int = 0
-    calificacion_nombre: Optional[str] = None
+    # Estrellas marcadas (0–10) y su valor convertido a la escala elegida
+    # (0 si todavía no está puntuado). `float` y no `Decimal` a propósito:
+    # pydantic serializa Decimal como cadena y el frontend lo consume como
+    # número (radar y formato con `toFixed`); los valores son múltiplos de
+    # 0.5 → sin pérdida en coma flotante.
+    estrellas: Optional[int] = None
+    valor: float = 0.0
 
 
 class RrhhEvaluacionBase(SQLModel):
@@ -116,10 +125,11 @@ class RrhhEvaluacionBase(SQLModel):
     estado: str
     inicio_periodo: date
     fin_periodo: date
-    puntualidad: Optional[int] = None
-    productividad: Optional[int] = None
-    trabajo_equipo: Optional[int] = None
-    calidad: Optional[int] = None
+    escala_criterios_id: Optional[int] = None
+    puntualidad_estrellas: Optional[int] = None
+    productividad_estrellas: Optional[int] = None
+    trabajo_equipo_estrellas: Optional[int] = None
+    calidad_estrellas: Optional[int] = None
     promedio_objetivos: Optional[Decimal] = None
     comentarios: Optional[str] = None
     fecha: date
@@ -138,8 +148,11 @@ class RrhhEvaluacionListado(RrhhEvaluacionRead):
     empleado_nombre: Optional[str] = None
     departamento_nombre: Optional[str] = None
     evaluador_nombre: Optional[str] = None
-    # Los 4 criterios resueltos (valor 0 = sin puntuar): alimentan el radar
-    # de la columna «Desempeño» del listado y el del detalle.
+    # Escala de criterios resuelta (nombre de la entrada y su último
+    # número: 5, 10 o 100).
+    escala_nombre: Optional[str] = None
+    escala_valor: Optional[int] = None
+    # Los 4 criterios resueltos (valor en la escala; 0 = sin puntuar).
     criterios: list[RrhhCriterioEvaluacion] = Field(default_factory=list)
     # Calculados al leer (no persistidos).
     promedio_criterios: Optional[Decimal] = None
