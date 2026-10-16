@@ -18,45 +18,48 @@ from log import Registro
 # --------------------------------------------------------------------------
 # Moneda
 # --------------------------------------------------------------------------
-@pytest.mark.parametrize("cuc,cup,simbolo,monto", [
-    ("0.00", "1500.00", "CUP", "1500.00"),
-    ("2500.00", "0.00", "USD", "2500.00"),
-    ("2500.00", "1500.00", "CUP", "1500.00"),
-    ("0.00", "0.00", "USD", "0.00"),
+@pytest.mark.parametrize("cuc,cup,esperado", [
+    ("0.00", "1500.00", [("1500.00", "CUP")]),
+    ("2500.00", "0.00", [("2500.00", "CUC")]),
+    ("2500.00", "1500.00", [("1500.00", "CUP"), ("2500.00", "CUC")]),
+    ("0.00", "0.00", [("0.00", "CUC")]),
 ])
-def test_monto_y_moneda(cuc, cup, simbolo, monto):
-    """CUP manda cuando hay las dos: el destino no tiene CUC y no hay tipo de
-    cambio con el que convertirlo."""
-    valor, simbolo_elegido, avisos = rl.monto_y_moneda(cuc, cup)
+def test_importes_por_moneda(cuc, cup, esperado):
+    """El destino tiene una sola moneda por fila y el legacy dos importes: se
+    parte en una entrada por moneda presente, CUP primero, y ninguna se pierde."""
+    importes, avisos = rl.importes_por_moneda(cuc, cup)
 
-    assert str(valor) == monto
-    assert simbolo_elegido == simbolo
-    if cup != "0.00" and cuc != "0.00":
-        assert any(m == "moneda CUC traducida a USD" for m, _, _ in avisos)
-
-
-def test_las_dos_monedas_avisan_del_importe_perdido():
-    _, _, avisos = rl.monto_y_moneda("2500.00", "1500.00")
-
-    assert len(avisos) == 1
-    motivo, _, detalle = avisos[0]
-    assert "cuc" in detalle and "cup" in detalle
+    assert [(str(monto), simbolo) for monto, simbolo in importes] == esperado
+    assert (avisos == []) == (cuc != "0.00" or cup != "0.00")
 
 
 def test_sin_importe_avisa():
-    _, simbolo, avisos = rl.monto_y_moneda("0.00", "0.00")
+    _, avisos = rl.importes_por_moneda("0.00", "0.00")
 
-    assert simbolo == "USD"
     assert avisos[0][0] == "sin importe en el legacy"
 
 
-def test_simbolo_destino_traduce_cuc():
+@pytest.mark.parametrize("cuc,cup,esperado", [
+    ("0.00", "1500.00", [(None, "CC-1"), (None, "CC-1-7")]),
+    ("2500.00", "0.00", [(None, "CC-1"), (None, "CC-1-7")]),
+    ("2500.00", "1500.00", [("CUP", "1.CC-1"), ("CUP", "1.CC-1-7"),
+                            ("CUC", "2.CC-1"), ("CUC", "2.CC-1-7")]),
+])
+def test_copias_de_contrato(cuc, cup, esperado):
+    """Un contrato con las dos monedas se partió en `1.codigo` (CUP) y
+    `2.codigo` (CUC); con una sola moneda se queda con su código, más el que
+    lleva el id detrás por si chocó."""
+    assert rl.copias_de_contrato("CC-1", "7", cuc, cup) == esperado
+
+
+def test_simbolo_destino_deja_cuc():
     """La liquidación trae la moneda en su propia columna: no hay dos importes
-    que elegir, sólo uno y la moneda en la que está."""
+    que elegir, sólo uno y la moneda en la que está. CUC existe en el destino y
+    se conserva."""
     simbolo, avisos = rl.simbolo_destino("CUC")
 
-    assert simbolo == "USD"
-    assert avisos[0][0] == "moneda CUC traducida a USD"
+    assert simbolo == "CUC"
+    assert not avisos
 
 
 def test_simbolo_destino_deja_cup():
@@ -243,14 +246,14 @@ def test_la_liquidacion_mapea_las_columnas_que_son_suyas(monkeypatch):
 
     registro = Registro()
     payloads = migrar_liquidaciones.preparar(
-        registro, {"ART-511": 42}, {"USD": 1, "CUP": 3},
+        registro, {"ART-511": 42}, {"USD": 1, "CUP": 3, "CUC": 9},
         {"descripcion", "tipo_concepto"})
 
     assert len(payloads) == 1
     p = payloads[0]
     assert p["codigo"] == "LEG-8-24"
     assert p["id_cliente"] == 42
-    assert p["id_moneda"] == 1          # CUC
+    assert p["id_moneda"] == 9          # CUC
     assert p["liquidada"] is True
     assert p["fecha_emision"] == "2015-01-07"
     assert p["tipo_pago"] == "CHEQUE"  # porque trae número de cheque
@@ -272,7 +275,7 @@ def test_liquidada_no_es_true(monkeypatch):
     monkeypatch.setattr(migrar_liquidaciones, "_fechas_por_artista", lambda filas: {})
 
     payloads = migrar_liquidaciones.preparar(
-        Registro(), {"ART-511": 42}, {"USD": 1}, set())
+        Registro(), {"ART-511": 42}, {"USD": 1, "CUC": 9}, set())
 
     assert payloads[0]["liquidada"] is False
 
@@ -308,7 +311,7 @@ def test_liquidacion_sin_concepto_va_a_otros(monkeypatch):
 
     registro = Registro()
     payloads = migrar_liquidaciones.preparar(
-        registro, {"ART-511": 42}, {"USD": 1}, {"tipo_concepto"})
+        registro, {"ART-511": 42}, {"USD": 1, "CUC": 9}, {"tipo_concepto"})
 
     assert payloads[0]["tipo_concepto"] == migrar_liquidaciones.CONCEPTO_POR_DEFECTO
     assert any("concepto" in e["motivo"] for e in registro.entradas)
@@ -327,15 +330,16 @@ def test_liquidacion_sin_fecha_toma_la_de_su_artista(monkeypatch):
 
     registro = Registro()
     payloads = migrar_liquidaciones.preparar(
-        registro, {"ART-511": 42}, {"USD": 1}, set())
+        registro, {"ART-511": 42}, {"USD": 1, "CUC": 9}, set())
 
     assert payloads[0]["fecha_emision"] == "2014-03-24"
     assert any("fecha" in e["motivo"] for e in registro.entradas)
 
 
-def test_contrato_sin_solicitud_se_descarta(monkeypatch):
+def test_contrato_sin_solicitud_se_cuelga_del_pivote(monkeypatch):
     """`contrato` no guarda el cliente: lo guarda la solicitud. Sin solicitud no
-    hay `id_cliente`, y la columna es NOT NULL."""
+    hay `id_cliente` propio, y la columna es NOT NULL: el contrato se cuelga del
+    cliente pivote en vez de descartarse."""
     fila = {
         "id_contrato": "6", "nombre_contrato": "Para la comercializacion",
         "documento": "", "valor_contratocuc": "0.00", "valor_contratocup": "0.00",
@@ -345,16 +349,78 @@ def test_contrato_sin_solicitud_se_descarta(monkeypatch):
     }
     monkeypatch.setattr(migrar_contratos, "_clientes_legacy", lambda: {})
     monkeypatch.setattr(migrar_contratos, "_solicitudes", lambda: {})
-    monkeypatch.setattr(migrar_contratos, "_tipos_legacy", lambda: {})
+    monkeypatch.setattr(migrar_contratos, "_tipos_legacy",
+                        lambda: {"3": "Compra-Venta"})
     import fuente as f
     monkeypatch.setattr(f, "leer_tabla", lambda r, t, *a, **k: (list(fila), [fila]))
 
     registro = Registro()
-    payloads = migrar_contratos.preparar(
-        registro, {}, {"USD": 1}, ESTADOS, {}, set())
+    payloads, _ = migrar_contratos.preparar(
+        registro, {"SIN-CLIENTE": 99}, {"CUC": 9}, ESTADOS,
+        {"Compra-Venta": 3}, set())
 
-    assert payloads == []
-    assert registro.entradas[0]["motivo"] == "sin solicitud"
+    assert len(payloads) == 1
+    assert payloads[0]["id_cliente"] == 99
+    assert any(e["motivo"] == "cliente pivote" for e in registro.entradas)
+
+
+def test_contrato_cliente_recuperado_por_nit(monkeypatch):
+    """La Fase B descartó al cliente por código duplicado, pero el superviviente
+    tiene el mismo NIT: el contrato se recupera por NIT en vez de descartarse."""
+    fila = {
+        "id_contrato": "6", "nombre_contrato": "Para la comercializacion",
+        "documento": "", "valor_contratocuc": "100.00", "valor_contratocup": "0.00",
+        "id_oferta": "0", "id_tipocontrato": "3", "id_estadocontrato": "2",
+        "numero": "21", "codigo_contrato": "2014.021", "id_solicitudsc": "5",
+        "fecha": "2014-02-12 00:00:00", "proforma": "",
+    }
+    monkeypatch.setattr(migrar_contratos, "_clientes_legacy",
+                        lambda: {"5": "NO-EXISTE"})
+    monkeypatch.setattr(migrar_contratos, "_nits_legacy",
+                        lambda: {"5": "10001007106"})
+    monkeypatch.setattr(migrar_contratos, "_solicitudes", lambda: {"5": "5"})
+    monkeypatch.setattr(migrar_contratos, "_tipos_legacy",
+                        lambda: {"3": "Compra-Venta"})
+    import fuente as f
+    monkeypatch.setattr(f, "leer_tabla", lambda r, t, *a, **k: (list(fila), [fila]))
+
+    registro = Registro()
+    payloads, _ = migrar_contratos.preparar(
+        registro, {"OTRO": 1, "SIN-CLIENTE": 99}, {"CUC": 9}, ESTADOS,
+        {"Compra-Venta": 3}, set(), set(), {"10001007106": 77})
+
+    assert len(payloads) == 1
+    assert payloads[0]["id_cliente"] == 77
+    assert any(e["motivo"] == "cliente recuperado por NIT"
+               for e in registro.entradas)
+
+
+def test_contrato_sin_nombre_usa_el_codigo(monkeypatch):
+    """`nombre` es NOT NULL: un contrato sin nombre no se tira, se le pone el
+    código (o el id) y se avisa."""
+    fila = {
+        "id_contrato": "6", "nombre_contrato": "",
+        "documento": "", "valor_contratocuc": "100.00", "valor_contratocup": "0.00",
+        "id_oferta": "0", "id_tipocontrato": "3", "id_estadocontrato": "2",
+        "numero": "21", "codigo_contrato": "2014.021", "id_solicitudsc": "5",
+        "fecha": "2014-02-12 00:00:00", "proforma": "",
+    }
+    monkeypatch.setattr(migrar_contratos, "_clientes_legacy",
+                        lambda: {"5": "CLI-5"})
+    monkeypatch.setattr(migrar_contratos, "_solicitudes", lambda: {"5": "5"})
+    monkeypatch.setattr(migrar_contratos, "_tipos_legacy",
+                        lambda: {"3": "Compra-Venta"})
+    import fuente as f
+    monkeypatch.setattr(f, "leer_tabla", lambda r, t, *a, **k: (list(fila), [fila]))
+
+    registro = Registro()
+    payloads, _ = migrar_contratos.preparar(
+        registro, {"CLI-5": 7}, {"CUC": 9}, ESTADOS,
+        {"Compra-Venta": 3}, set())
+
+    assert payloads[0]["nombre"] == "2014.021"
+    assert any("nombre vacio" in e["motivo"] for e in registro.entradas)
+
 
 
 def test_contrato_con_nombre_de_300_caracteres_no_se_trunca(monkeypatch):
@@ -377,8 +443,9 @@ def test_contrato_con_nombre_de_300_caracteres_no_se_trunca(monkeypatch):
     import fuente as f
     monkeypatch.setattr(f, "leer_tabla", lambda r, t, *a, **k: (list(fila), [fila]))
 
-    payloads = migrar_contratos.preparar(
-        Registro(), {"CLI-5": 7}, {"USD": 1}, ESTADOS, {"Compra-Venta": 3}, set())
+    payloads, _ = migrar_contratos.preparar(
+        Registro(), {"CLI-5": 7}, {"USD": 1, "CUC": 9}, ESTADOS,
+        {"Compra-Venta": 3}, set())
 
     assert payloads[0]["nombre"] == nombre
     assert payloads[0]["vigencia"] == payloads[0]["fecha"] == "2014-02-12"

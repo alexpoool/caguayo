@@ -41,17 +41,18 @@ def _mapas_de_prueba():
 
     # Todos los contratos del legacy apuntan al mismo destino, y ese destino
     # tiene tres etapas sin realizadores: así toda liquidación colocable cae en
-    # la regla (c) y se ve de forma determinista.
-    codigos_contrato = {}
+    # la regla (c) y se ve de forma determinista. El mapa va por moneda, como el
+    # que arma la producción: la liquidación elige la copia de la suya.
+    contratos = {}
     for c in _leer("contrato"):
-        codigo = (c.get("codigo_contrato") or "").strip()
-        if codigo:
-            codigos_contrato[codigo] = 1
+        id_legacy = str(c.get("id_contrato") or "").strip()
+        if id_legacy:
+            contratos[id_legacy] = {"CUC": 1, "CUP": 1, "USD": 1}
 
     etapas = {1: [1, 2, 3]}
     personas = {}
-    ids_moneda = {"CUP": 1, "USD": 2}
-    return codigos_cliente, codigos_contrato, etapas, personas, ids_moneda
+    ids_moneda = {"CUC": 1, "CUP": 2, "USD": 3}
+    return codigos_cliente, contratos, etapas, personas, ids_moneda
 
 
 def _preparar(**kwargs):

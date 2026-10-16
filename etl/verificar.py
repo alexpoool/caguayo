@@ -190,6 +190,7 @@ def _consultas(conn):
                   "           (SELECT sum(pl.importe) FROM %s pl"
                   "             WHERE pl.id_etapa = pe.id_etapa"
                   "               AND pl.id_persona = pe.id_persona"
+                  "               AND pl.id_moneda = pe.id_moneda"
                   "               AND pl.confirmado), 0)) AS esperado"
                   "    FROM %s pe"
                   "    JOIN etapas e ON e.id_etapa = pe.id_etapa"

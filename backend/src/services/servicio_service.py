@@ -293,11 +293,13 @@ class PersonaEtapaService:
         if data.por_cobrar is None or data.por_cobrar == Decimal("0"):
             data.por_cobrar = data.cobro
 
-        # Verificar si ya existe la combinación (id_etapa, id_persona)
+        # Verificar si ya existe la combinación (id_etapa, id_persona, id_moneda):
+        # un mismo artista puede cobrar la etapa en CUC y en CUP a la vez.
         from sqlmodel import select as sel
         statement = sel(PersonaEtapa).where(
             PersonaEtapa.id_etapa == data.id_etapa,
             PersonaEtapa.id_persona == data.id_persona,
+            PersonaEtapa.id_moneda == data.id_moneda,
         )
         result = await db.exec(statement)
         existing = result.first()
@@ -1001,12 +1003,13 @@ class PersonaLiquidacionService:
                 statement = select(PersonaEtapa).where(
                     PersonaEtapa.id_etapa == updated.id_etapa,
                     PersonaEtapa.id_persona == updated.id_persona,
+                    PersonaEtapa.id_moneda == updated.id_moneda,
                 )
                 result = await db.exec(statement)
                 persona_etapa = result.first()
                 if persona_etapa:
                     total_liquidado = await persona_liquidacion_repo.get_total_liquidado_by_persona_etapa(
-                        db, updated.id_etapa, updated.id_persona
+                        db, updated.id_etapa, updated.id_persona, updated.id_moneda
                     )
                     persona_etapa.por_cobrar = max(
                         Decimal("0"),
@@ -1032,7 +1035,8 @@ class PersonaLiquidacionService:
             raise ValueError("La liquidación ya está confirmada")
 
         validacion = await PersonaLiquidacionService.validar_liquidar(
-            db, liquidacion_obj.id_etapa, liquidacion_obj.id_persona
+            db, liquidacion_obj.id_etapa, liquidacion_obj.id_persona,
+            liquidacion_obj.id_moneda,
         )
 
         if not validacion.puede_liquidar:
@@ -1044,13 +1048,15 @@ class PersonaLiquidacionService:
 
         total_liquidado = (
             await persona_liquidacion_repo.get_total_liquidado_by_persona_etapa(
-                db, liquidacion_obj.id_etapa, liquidacion_obj.id_persona
+                db, liquidacion_obj.id_etapa, liquidacion_obj.id_persona,
+                liquidacion_obj.id_moneda,
             )
         )
 
         statement = select(PersonaEtapa).where(
             PersonaEtapa.id_etapa == liquidacion_obj.id_etapa,
             PersonaEtapa.id_persona == liquidacion_obj.id_persona,
+            PersonaEtapa.id_moneda == liquidacion_obj.id_moneda,
         )
         result = await db.exec(statement)
         persona_etapa = result.first()
@@ -1120,7 +1126,10 @@ class PersonaLiquidacionService:
 
     @staticmethod
     async def validar_liquidar(
-        db: AsyncSession, id_etapa: int, id_persona: int
+        db: AsyncSession,
+        id_etapa: int,
+        id_persona: int,
+        id_moneda: Optional[int] = None,
     ) -> PersonaLiquidacionValidacion:
 
         validacion_factura = await FacturaServicioService.validar_pago_etapa(
@@ -1143,6 +1152,8 @@ class PersonaLiquidacionService:
                 PersonaEtapa.id_etapa == id_etapa,
                 PersonaEtapa.id_persona == id_persona
             )
+            if id_moneda is not None:
+                stmt = stmt.where(PersonaEtapa.id_moneda == id_moneda)
             result = await db.exec(stmt)
             pe = result.first()
             if pe and pe.por_cobrar is not None and pe.por_cobrar <= 0:
@@ -1173,13 +1184,14 @@ class PersonaLiquidacionService:
         if id_etapa and id_persona:
             total_liquidado = (
                 await persona_liquidacion_repo.get_total_liquidado_by_persona_etapa(
-                    db, id_etapa, id_persona
+                    db, id_etapa, id_persona, liquidacion.id_moneda
                 )
             )
 
             statement = select(PersonaEtapa).where(
                 PersonaEtapa.id_etapa == id_etapa,
                 PersonaEtapa.id_persona == id_persona,
+                PersonaEtapa.id_moneda == liquidacion.id_moneda,
             )
             result = await db.exec(statement)
             persona_etapa = result.first()
@@ -1244,12 +1256,17 @@ class PersonaLiquidacionService:
 
     @staticmethod
     async def get_disponible_liquidar(
-        db: AsyncSession, id_etapa: int, id_persona: int
+        db: AsyncSession,
+        id_etapa: int,
+        id_persona: int,
+        id_moneda: Optional[int] = None,
     ) -> Decimal:
         statement = select(PersonaEtapa).where(
             PersonaEtapa.id_etapa == id_etapa,
             PersonaEtapa.id_persona == id_persona,
         )
+        if id_moneda is not None:
+            statement = statement.where(PersonaEtapa.id_moneda == id_moneda)
         result = await db.exec(statement)
         persona_etapa = result.first()
 
@@ -1259,7 +1276,7 @@ class PersonaLiquidacionService:
         cobro = Decimal(str(persona_etapa.cobro))
         total_liquidado = (
             await persona_liquidacion_repo.get_total_liquidado_by_persona_etapa(
-                db, id_etapa, id_persona
+                db, id_etapa, id_persona, id_moneda
             )
         )
 

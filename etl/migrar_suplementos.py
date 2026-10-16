@@ -40,19 +40,30 @@ def _codigos_legacy_contratos():
             for f in contratos}
 
 
-def _resolver_contrato(id_contrato_legacy, codigos_legacy, por_codigo):
+def _resolver_contrato(id_contrato_legacy, codigos_legacy, por_codigo, simbolo=None):
     """`id_contrato` del legacy -> `id_contrato` del destino, o None.
 
     Se intenta el código tal cual y después con el id detrás, que es como lo
     guarda la Fase L cuando el del legacy ya lo tenía otro contrato.
+
+    Si el contrato se partió en dos por moneda (`1.codigo` CUP / `2.codigo` CUC),
+    el código limpio no existe en el destino: se prueba primero el prefijado con
+    el símbolo de la copia y sólo después el limpio, que es el de un contrato de
+    una sola moneda.
     """
     codigo_legacy = codigos_legacy.get(id_contrato_legacy)
     if not codigo_legacy:
         return None
-    if codigo_legacy in por_codigo:
-        return por_codigo[codigo_legacy]
-    con_id = "%s-%s" % (codigo_legacy, id_contrato_legacy)
-    return por_codigo.get(con_id)
+    id_legacy = texto(id_contrato_legacy)
+    candidatos = []
+    if simbolo in rl.PREFIJO_MONEDA:
+        prefijado = "%s.%s" % (rl.PREFIJO_MONEDA[simbolo], codigo_legacy)
+        candidatos += [prefijado, "%s-%s" % (prefijado, id_legacy)]
+    candidatos += [codigo_legacy, "%s-%s" % (codigo_legacy, id_legacy)]
+    for candidato in candidatos:
+        if candidato in por_codigo:
+            return por_codigo[candidato]
+    return None
 
 
 def _fechas_por_contrato(codigos_legacy, por_codigo):
@@ -97,47 +108,65 @@ def preparar(registro: Registro, por_codigo, estados, ids_moneda,
             continue
 
         id_contrato_legacy = texto(f.get("id_contrato"))
-        id_contrato = _resolver_contrato(id_contrato_legacy, codigos_legacy, por_codigo)
-        if id_contrato is None:
-            registro.descarte(ORIGEN, id_legacy, nombre, "contrato no migrado",
-                              "id_contrato=%s" % id_contrato_legacy)
-            continue
 
         avisos = []
-
-        fecha_sup, avisos_fecha = rl.fecha_con_respaldo(
-            f.get("fecha"), fechas_por_contrato.get(id_contrato, []))
-        avisos += avisos_fecha
 
         id_estado, avisos_estado = rl.estado_legacy(f.get("id_estadosuplemento"), estados)
         avisos += avisos_estado
 
-        monto, simbolo, avisos_moneda = rl.monto_y_moneda(
+        importes, avisos_moneda = rl.importes_por_moneda(
             f.get("valor_suplementocuc"), f.get("valor_suplementocup"))
-        id_moneda = ids_moneda.get(simbolo)
-        if id_moneda is None:
-            registro.descarte(ORIGEN, id_legacy, nombre, "moneda ausente en el destino",
-                              "simbolo=%s" % simbolo)
-            continue
         avisos += avisos_moneda
+        # Un suplemento con las dos monedas se parte igual que su contrato: dos
+        # filas, `1.{codigo}` (CUP) y `2.{codigo}` (CUC), cada una colgando del
+        # contrato copia de su moneda.
+        hay_dos = len(importes) == 2
+        codigo_base = rl.codigo_legado(f.get("codigo_suplemento"), id_legacy)
 
-        codigo = rl.codigo_legado(f.get("codigo_suplemento"), id_legacy)
-        if codigo in previos:
-            registro.descarte(ORIGEN, id_legacy, nombre, "ya migrado",
-                              "codigo=%s" % codigo)
+        emitidas = 0
+        fallo = False
+        for monto, simbolo in importes:
+            id_contrato = _resolver_contrato(
+                id_contrato_legacy, codigos_legacy, por_codigo, simbolo)
+            if id_contrato is None:
+                registro.descarte(ORIGEN, id_legacy, nombre, "contrato no migrado",
+                                  "id_contrato=%s" % id_contrato_legacy)
+                fallo = True
+                continue
+
+            id_moneda = ids_moneda.get(simbolo)
+            if id_moneda is None:
+                avisos.append(("moneda ausente en el destino",
+                               "simbolo=%s" % simbolo, None))
+                fallo = True
+                continue
+
+            fecha_sup, avisos_fecha = rl.fecha_con_respaldo(
+                f.get("fecha"), fechas_por_contrato.get(id_contrato, []))
+            avisos += avisos_fecha
+
+            codigo = rl.codigo_de_copia(codigo_base, simbolo, hay_dos)
+            if codigo in previos:
+                continue
+            ya_usados.add(codigo)
+
+            payloads.append({
+                "codigo": codigo,
+                "id_contrato": id_contrato,
+                "nombre": nombre,
+                "id_estado": id_estado,
+                "fecha": fecha_sup,
+                "fecha_vigencia": fecha_sup,
+                "monto": monto,
+                "documento": no_vacio(f.get("documento")),
+            })
+            emitidas += 1
+
+        if emitidas == 0:
+            if not fallo:
+                registro.descarte(ORIGEN, id_legacy, nombre, "ya migrado",
+                                  "codigo=%s" % codigo_base)
             continue
-        ya_usados.add(codigo)
-
-        payloads.append({
-            "codigo": codigo,
-            "id_contrato": id_contrato,
-            "nombre": nombre,
-            "id_estado": id_estado,
-            "fecha": fecha_sup,
-            "fecha_vigencia": fecha_sup,
-            "monto": monto,
-            "documento": no_vacio(f.get("documento")),
-        })
 
         for motivo, resumen, detalle in avisos:
             registro.warning(ORIGEN, id_legacy, nombre, motivo, detalle or resumen)

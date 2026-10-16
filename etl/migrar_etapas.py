@@ -70,35 +70,10 @@ def _leer(tabla):
     return leer_tabla(DUMP_MARIADB, tabla)[1]
 
 
-def _solicitudes_legacy():
-    """`id_solicitudsc` -> `codigo_solicitudsc` del legacy (puede ser None)."""
-    return {texto(f.get("id_solicitudsc")): texto(f.get("codigo_solicitudsc"))
-            for f in _leer("solicitud_sc")}
-
-
-def _id_legacy_por_codigo(codigo_a_id_legacy):
-    """`codigo_solicitud` -> `id_solicitudsc`, para enlazar con el legacy.
-
-    Sin el mapa que pasa la Fase N sólo se Known las solicitudes que traían
-    código propio. Las 324 que lo Kalimantan_generatoron se quedan fuera, y con
-    ellas los contratos que dependían de esas solicitudes: 1.893 contratos y sus
-    artistas. Por eso el mapa se pasa de la N a la O en vez de intentar calcular
-    aquí qué código le tocó a cada una.
-    """
-    if codigo_a_id_legacy:
-        return dict(codigo_a_id_legacy)
-    return {v: k for k, v in _solicitudes_legacy().items() if v}
-
-
 def _suplementos_legacy():
     """`id_suplemento` -> `id_contrato` del legacy."""
     return {texto(f.get("id_suplemento")): texto(f.get("id_contrato"))
             for f in _leer("suplemento")}
-
-
-def _contratos_legacy():
-    """`codigo_contrato` -> fila del contrato."""
-    return {texto(c.get("codigo_contrato")): c for c in _leer("contrato")}
 
 
 def _artistas_legacy():
@@ -120,16 +95,21 @@ def _cobros():
 
 
 def _liquidado():
-    """(id_artista, id_contrato) -> suma de los `neto_pagar` de sus liquidaciones.
+    """(id_artista, id_contrato) y moneda -> suma de los `neto_pagar`.
+
+    Se separa por moneda porque `artista_liquidacion` la trae en su propia
+    columna y `por_cobrar` se calcula moneda a moneda: restarle a un cobro en CUP
+    el total liquidado, que mezcla CUP y CUC, lo dejaría descuadrado.
 
     Las 5.392 liquidaciones caen el 100% dentro de algún par de
     `artista_contrato`, así que es el mismo dinero que ve el artista.
     """
     salida = {}
-    for l in _leer("artista_liquidacion"):
-        clave = (l.get("id_artista"), l.get("id_contrato"))
+    for liq in _leer("artista_liquidacion"):
+        simbolo, _ = rl.simbolo_destino(liq.get("moneda"))
+        clave = (liq.get("id_artista"), liq.get("id_contrato"), simbolo)
         salida[clave] = salida.get(clave, rl.decimal_legacy("0")) + rl.decimal_legacy(
-            l.get("neto_pagar"))
+            liq.get("neto_pagar"))
     return salida
 
 
@@ -177,56 +157,111 @@ def _artistas_por_suplemento_con_contrato(supplemented):
 # --------------------------------------------------------------------------
 # Etapas
 # --------------------------------------------------------------------------
-def _solicitud_por_contrato(codigos_contrato, ids_solicitud, codigo_a_id_legacy):
-    """id_contrato del legacy -> id_solicitud_servicio.
+def _contrato_legacy_por_id():
+    """`id_contrato` del legacy -> fila del contrato."""
+    return {texto(c.get("id_contrato")): c for c in _leer("contrato")}
 
-    Se busca por el código del contrato porque el destino puede haberle puesto
-    el id detrás al código cuando chocó con otro contrato (ver `codigo_unico`).
+
+def _contrato_destino(conn):
+    """`contrato.codigo` -> (`id_contrato`, símbolo de su moneda)."""
+    with conn.cursor() as cur:
+        cur.execute(
+            "SELECT c.codigo, c.id_contrato, m.simbolo"
+            "  FROM contrato c JOIN moneda m ON m.id_moneda = c.id_moneda"
+            " WHERE c.codigo IS NOT NULL")
+        return {cod: (i, (s or "").strip().upper())
+                for cod, i, s in cur.fetchall() if cod}
+
+
+def _solicitudes_del_destino(conn):
+    """`id_solicitud_servicio` -> `id_contrato` (sólo las ya enlazadas)."""
+    with conn.cursor() as cur:
+        cur.execute("SELECT id_solicitud_servicio, id_contrato"
+                    "  FROM %s WHERE id_contrato IS NOT NULL" % TABLA_SOLICITUD)
+        return {s: c for s, c in cur.fetchall()}
+
+
+def _contrato_destino_por_legacy(conn):
+    """`id_contrato` del legacy -> {símbolo: `id_contrato` del destino}.
+
+    De los códigos que puede tener una copia —el limpio y el que lleva el id,
+    por si chocó con otro contrato— se queda con el primero que exista y que no
+    esté ya reclamado por otro contrato, recorriendo el volcado en su orden. La
+    Fase L le da el código limpio al primer contrato que lo usa y el del id a los
+    siguientes, así que este reparto devuelve cada copia a su contrato de verdad.
+    Sin la reserva, dos contratos con el mismo `codigo_contrato` se pisaban: la
+    copia de uno se quedaba con el contrato destino del otro y su persona caía en
+    una etapa distinta de la que esperaba su liquidación.
     """
-    # El mapa llega como codigo -> id_solicitudsc, y aquí se busca al revés.
-    codigo_por_id = {v: k for k, v in codigo_a_id_legacy.items()}
+    codigos = _contrato_destino(conn)
+    reclamados = set()
     salida = {}
-    for c in _leer("contrato"):
-        codigo = texto(c.get("codigo_contrato"))
-        id_contrato = texto(c.get("id_contrato"))
-        if not (codigo and id_contrato):
-            continue
-        destino = codigos_contrato.get(codigo)
-        if destino is None:
-            destino = codigos_contrato.get("%s-%s" % (codigo, id_contrato))
-        if destino is None:
-            continue
-        id_solicitud = ids_solicitud.get(
-            codigo_por_id.get(texto(c.get("id_solicitudsc"))))
-        if id_solicitud is not None:
-            salida[id_contrato] = id_solicitud
+    for id_legacy, c in _contrato_legacy_por_id().items():
+        base = texto(c.get("codigo_contrato")) or "LEG-%s" % id_legacy
+        candidatos = rl.copias_de_contrato(
+            base, id_legacy, c.get("valor_contratocuc"), c.get("valor_contratocup"))
+        por_simbolo = {}
+        for _, cand in candidatos:
+            if cand not in codigos:
+                continue
+            id_dest, simbolo = codigos[cand]
+            if id_dest in reclamados or simbolo in por_simbolo:
+                continue
+            por_simbolo[simbolo] = id_dest
+        for id_dest in por_simbolo.values():
+            reclamados.add(id_dest)
+        if por_simbolo:
+            salida[id_legacy] = por_simbolo
     return salida
 
 
-def _contrato_por_solicitud(ids_solicitud, codigo_a_id_legacy):
-    """id_solicitud_servicio -> (id_contrato del legacy, fila del contrato).
+def contratos_por_moneda(conn):
+    """`id_contrato` del legacy -> {símbolo: `id_contrato` del destino}.
 
-    Para las etapas sintéticas: la solicitud no tiene etapas, pero sí puede tener
-    contrato, y de él sale el importe. Va al revés de `_solicitud_por_contrato`.
-
-    Se devuelven las dos cosas porque el id del legacy hace falta además para
-    decir que esa etapa sintética es la primera de su contrato, que es donde van
-    sus artistas.
+    Un contrato con una sola moneda tiene una entrada; uno que la Fase L partió
+    por tener las dos tiene dos, CUP y CUC. Sirve para que una liquidación
+    encuentre la copia del contrato que le corresponde por moneda.
     """
-    codigo_a_id = codigo_a_id_legacy
-    # Se busca por id_solicitudsc, y el mapa viene al revés.
-    codigo_por_id = {v: k for k, v in codigo_a_id.items()}
-    salida = {}
-    for c in _leer("contrato"):
-        id_solicitud = ids_solicitud.get(
-            codigo_por_id.get(texto(c.get("id_solicitudsc"))))
-        if id_solicitud is not None:
-            salida.setdefault(id_solicitud, (texto(c.get("id_contrato")), c))
-    return salida
+    return _contrato_destino_por_legacy(conn)
+
+
+def _solicitud_por_contrato(conn):
+    """Devuelve (solicitud_por_contrato, contrato_por_solicitud).
+
+    · `solicitud_por_contrato`: id_contrato legacy -> {símbolo: id_solicitud}.
+      Una entrada por moneda: el contrato partido tiene CUP y CUC.
+    · `contrato_por_solicitud`: id_solicitud -> (id_contrato legacy, fila,
+      símbolo), para las etapas sintéticas.
+    """
+    contratos = _contrato_legacy_por_id()
+    por_legacy = _contrato_destino_por_legacy(conn)
+
+    # id_contrato del destino -> (id_contrato legacy, fila, símbolo)
+    destino_a_legacy = {}
+    for id_legacy, simbolos in por_legacy.items():
+        c = contratos[id_legacy]
+        for simbolo, id_dest in simbolos.items():
+            destino_a_legacy[id_dest] = (id_legacy, c, simbolo)
+
+    solicitud_por_contrato = {}
+    contrato_por_solicitud = {}
+    for id_solicitud, id_dest in _solicitudes_del_destino(conn).items():
+        par = destino_a_legacy.get(id_dest)
+        if not par:
+            continue
+        id_legacy, c, simbolo = par
+        solicitud_por_contrato.setdefault(id_legacy, {})[simbolo] = id_solicitud
+        contrato_por_solicitud[id_solicitud] = (id_legacy, c, simbolo)
+    return solicitud_por_contrato, contrato_por_solicitud
 
 
 def _agrupar_etapas(registro, solicitud_por_contrato, supplemented):
     """id_solicitud -> [etapa del legacy], ordenada por fecha de entrega.
+
+    Un contrato que la Fase L partió en dos por tener las dos monedas tiene dos
+    solicitudes —una por moneda—, así que cada etapa suya entra en las **dos**:
+    es la copia que deja completo el árbol de cada proyecto (CUP y CUC). Las de
+    un contrato de una sola moneda entran sólo en la suya.
 
     Las que no llegan a ninguna solicitud se descartan con su motivo: sin
     solicitud no hay `id_solicitud_servicio`, que es NOT NULL.
@@ -237,11 +272,12 @@ def _agrupar_etapas(registro, solicitud_por_contrato, supplemented):
         base = f.get("id_contrato")
         if base in (None, "", "0"):
             base = supplemented.get(f.get("id_suplemento"))
-        id_solicitud = solicitud_por_contrato.get(base) if base else None
-        if id_solicitud is None:
+        copias = solicitud_por_contrato.get(base) if base else None
+        if not copias:
             sin_destino.append(f)
             continue
-        por_solicitud.setdefault(id_solicitud, []).append(f)
+        for id_solicitud in copias.values():
+            por_solicitud.setdefault(id_solicitud, []).append(f)
 
     for f in sin_destino:
         registro.descarte(
@@ -258,10 +294,20 @@ def _agrupar_etapas(registro, solicitud_por_contrato, supplemented):
     return por_solicitud
 
 
-def _payload_etapa_real(f, numero, contrato, ids_moneda):
-    """Payload de una etapa que sí venía en el legacy."""
-    valor, simbolo, avisos = rl.monto_y_moneda(
-        f.get("pago_cuc"), f.get("pago_cup"))
+def _monto_de_etapa(f, simbolo):
+    """El importe de la etapa en la moneda de su copia.
+
+    El legacy guarda las dos columnas (`pago_cuc` y `pago_cup`) y cada copia se
+    queda con la suya: la CUP con `pago_cup` y la CUC con `pago_cuc`. Un contrato
+    de una sola moneda sólo genera una copia, así que sólo se lee una columna.
+    """
+    col = "pago_cup" if simbolo == "CUP" else "pago_cuc"
+    return rl.decimal_legacy(f.get(col))
+
+
+def _payload_etapa_real(f, numero, contrato, ids_moneda, simbolo):
+    """Payload de una etapa que sí venía en el legacy, en la moneda `simbolo`."""
+    valor = _monto_de_etapa(f, simbolo)
     fecha_contrato = fecha_legado(contrato.get("fecha")) if contrato else None
     fecha_entrega, avisos_fecha = rl.fecha_con_respaldo(
         f.get("fecha_entrega"), [fecha_contrato] if fecha_contrato else [])
@@ -285,18 +331,18 @@ def _payload_etapa_real(f, numero, contrato, ids_moneda):
         "pagada": (texto(f.get("pagada_cup")) or "").strip().lower() == "si",
         "tipo_etapa": "TAREAS",
     }
-    return payload, avisos + avisos_fecha
+    return payload, avisos_fecha
 
 
-def _payload_etapa_sintetica(contrato, ids_moneda):
-    """La etapa única de una solicitud que no tenía ninguna.
+def _payload_etapa_sintetica(contrato, ids_moneda, simbolo):
+    """La etapa única de una solicitud que no tenía ninguna, en su moneda.
 
     El importe sale del contrato y la fecha de su firma. Ningún contrato tiene
     dos solicitudes sin etapa —comprobado sobre el volcado—, así que repartir el
     importe del contrato no duplica nada.
     """
-    valor, simbolo, avisos = rl.monto_y_moneda(
-        contrato.get("valor_contratocuc"), contrato.get("valor_contratocup"))
+    col = "valor_contratocup" if simbolo == "CUP" else "valor_contratocuc"
+    valor = rl.decimal_legacy(contrato.get(col))
     fecha, avisos_fecha = rl.fecha_con_respaldo(contrato.get("fecha"), [])
     payload = {
         "id_solicitud_servicio": None,
@@ -311,21 +357,28 @@ def _payload_etapa_sintetica(contrato, ids_moneda):
         "pagada": False,
         "tipo_etapa": "TAREAS",
     }
-    return payload, avisos + avisos_fecha
+    return payload, avisos_fecha
 
 
-def preparar_etapas(registro: Registro, codigos_contrato, ids_solicitud,
-                    ids_moneda, codigo_a_id_legacy=None,
-                    ya_con_etapa=()):
+def preparar_etapas(registro, solicitud_por_contrato, contrato_por_solicitud,
+                    solicitud_ids, ids_moneda, ya_con_etapa=()):
     """Payloads de las etapas, y de dónde sale cada artista.
 
     Devuelve (etapas, primera_por_contrato, reales_por_etapa):
 
       * `etapas`: los payloads, en el orden en que se insertarán.
-      * `primera_por_contrato`: id_contrato del legacy -> índice en `etapas` de
-        su primera etapa, que es donde van sus artistas.
+      * `primera_por_contrato`: (id_contrato del legacy, símbolo) -> índice en
+        `etapas` de su primera etapa, que es donde van sus artistas. La clave
+        lleva la moneda porque un contrato partido en dos tiene una primera
+        etapa por cada proyecto.
       * `reales_por_etapa`: índice de etapa -> artistas con dato real, que no van
         a la primera sino a la suya.
+
+    `solicitud_por_contrato` es id_contrato del legacy -> {símbolo: id_solicitud}
+    y `contrato_por_solicitud` es id_solicitud -> (id_contrato legacy, fila,
+    símbolo); los arma `_solicitud_por_contrato` leyendo el destino, que ya tiene
+    los contratos partidos y sus dos solicitudes. `solicitud_ids` son todas las
+    solicitudes migradas, para las que no tengan contrato.
 
     `ya_con_etapa` son las solicitudes que ya tienen al menos una etapa en el
     destino. Se saltan enteras: en el legacy cada etapa pertenece a una sola
@@ -334,30 +387,32 @@ def preparar_etapas(registro: Registro, codigos_contrato, ids_solicitud,
     duplicaría 3.730 etapas.
     """
     supplemented = _suplementos_legacy()
-    codigo_a_id_legacy = _id_legacy_por_codigo(codigo_a_id_legacy)
-    solicitud_por_contrato = _solicitud_por_contrato(
-        codigos_contrato, ids_solicitud, codigo_a_id_legacy)
-    contrato_por_solicitud = _contrato_por_solicitud(
-        ids_solicitud, codigo_a_id_legacy)
     por_solicitud = _agrupar_etapas(registro, solicitud_por_contrato, supplemented)
-    contratos = _contratos_legacy()
-    por_id_legacy = {texto(c.get("id_contrato")): c for c in contratos.values()}
+    por_id_legacy = _contrato_legacy_por_id()
+    simbolo_de_solicitud = {s: simbolo
+                            for s, (_, _, simbolo) in contrato_por_solicitud.items()}
 
     etapas = []
     primera_por_contrato = {}
     reales_por_etapa = {}
-    supplemented = _suplementos_legacy()
     artistas_reales = _artistas_por_suplemento_con_contrato(supplemented)
+
+    def _primera(base, simbolo, clave, indice):
+        actual = primera_por_contrato.get((base, simbolo))
+        if actual is None or clave < actual[0]:
+            primera_por_contrato[(base, simbolo)] = (clave, indice)
 
     for id_solicitud, filas in sorted(por_solicitud.items()):
         if id_solicitud in ya_con_etapa:
             continue
+        simbolo = simbolo_de_solicitud.get(id_solicitud, "CUC")
         for numero, f in enumerate(filas, start=1):
             base = f.get("id_contrato")
             if base in (None, "", "0"):
                 base = supplemented.get(f.get("id_suplemento"))
             contrato = por_id_legacy.get(base)
-            payload, avisos = _payload_etapa_real(f, numero, contrato, ids_moneda)
+            payload, avisos = _payload_etapa_real(f, numero, contrato, ids_moneda,
+                                                  simbolo)
             payload["id_solicitud_servicio"] = id_solicitud
             indice = len(etapas)
             etapas.append(payload)
@@ -366,20 +421,30 @@ def preparar_etapas(registro: Registro, codigos_contrato, ids_solicitud,
                 # La primera del contrato es la de menor fecha, no la primera que
                 # salió: las etapas se agrupan por solicitud, y un contrato puede
                 # tener varias.
-                clave = fecha_legado(payload["fecha_entrega"]) or ""
-                if base not in primera_por_contrato or clave < primera_por_contrato[base][0]:
-                    primera_por_contrato[base] = (clave, indice)
+                _primera(base, simbolo, fecha_legado(payload["fecha_entrega"]) or "",
+                         indice)
 
             declarados = artistas_reales.get(texto(f.get("id_suplemento")))
             if declarados:
-                reales_por_etapa[indice] = declarados
+                # Cada copia lleva sólo los artistas de SU moneda. El contrato que
+                # cuenta es el de la etapa (`base`), no el del suplemento: cuando
+                # el legacy deja la etapa colgando de un contrato distinto al del
+                # suplemento, descontar el liquidado del suplemento descuadra el
+                # `por_cobrar` de esa etapa frente al que recalcula la aplicación,
+                # que siempre mira el contrato del proyecto de la etapa.
+                reales_por_etapa[indice] = [
+                    (a, base, rl.decimal_legacy(cup if simbolo == "CUP" else cuc), simbolo)
+                    for a, _c, cuc, cup in declarados]
 
-    sin_etapa = [i for i in sorted(ids_solicitud.values())
-                if i not in por_solicitud and i not in ya_con_etapa]
+    sin_etapa = [i for i in sorted(solicitud_ids)
+                 if i not in por_solicitud and i not in ya_con_etapa]
     for id_solicitud in sin_etapa:
         encontrado = contrato_por_solicitud.get(id_solicitud)
-        id_contrato_legacy, contrato = encontrado if encontrado else (None, {})
-        payload, avisos = _payload_etapa_sintetica(contrato, ids_moneda)
+        if encontrado:
+            id_contrato_legacy, contrato, simbolo = encontrado
+        else:
+            id_contrato_legacy, contrato, simbolo = None, {}, "CUC"
+        payload, avisos = _payload_etapa_sintetica(contrato, ids_moneda, simbolo)
         payload["id_solicitud_servicio"] = id_solicitud
         indice = len(etapas)
         etapas.append(payload)
@@ -387,10 +452,8 @@ def preparar_etapas(registro: Registro, codigos_contrato, ids_solicitud,
         # Si no se registra aquí, los artistas de un contrato sin etapas no
         # encuentran dónde colocarse y se descartan.
         if id_contrato_legacy and id_contrato_legacy != "0":
-            clave = fecha_legado(payload["fecha_entrega"]) or ""
-            if (id_contrato_legacy not in primera_por_contrato
-                    or clave < primera_por_contrato[id_contrato_legacy][0]):
-                primera_por_contrato[id_contrato_legacy] = (clave, indice)
+            _primera(id_contrato_legacy, simbolo,
+                     fecha_legado(payload["fecha_entrega"]) or "", indice)
 
     primera_por_contrato = {c: v[1] for c, v in primera_por_contrato.items()}
 
@@ -487,6 +550,11 @@ def preparar_personas(registro: Registro, etapas, ids_etapa,
     `por_cobrar = max(0, cobro - liquidado)`. Con eso, una liquidación que se
     cargue después recalcula lo mismo y no hay nada que reconciliar.
 
+    `primera_por_contrato` va con la clave (id_contrato del legacy, símbolo), así
+    que un contrato que la Fase L partió en dos recibe un realizador por moneda:
+    cada uno va a la primera etapa de SU proyecto, con el cobro de su columna
+    (`cobro_cup` o `cobro_cuc`).
+
     Se marcan sólo las **concentradas**, que son las que de verdad son una
     decisión nuestra: los contratos con más de un artista, donde además el
     reporte de realizadores multiplica el valor de la etapa por el número de
@@ -497,12 +565,17 @@ def preparar_personas(registro: Registro, etapas, ids_etapa,
     cobros = _cobros()
     liquidado = _liquidado()
 
-    payloads = []
-    vistos = set()
+    simbolos_por_contrato = {}
+    for (id_contrato, simbolo) in primera_por_contrato:
+        simbolos_por_contrato.setdefault(id_contrato, []).append(simbolo)
+
+    filas_por_clave = {}
+    pagado_por_clave = {}
+    artistas_por_clave = {}
     repetidos = []
 
-    def _una(id_artista, id_contrato_legacy, indice_etapa, cuc, cup, concentrado):
-        valor, simbolo, avisos = rl.monto_y_moneda(cuc, cup)
+    def _una(id_artista, id_contrato_legacy, indice_etapa, valor, simbolo,
+             concentrado):
         # La etapa pudo no insertarse (lote revuelto): sin su id no hay a quién
         # colgar el realizador, así que se descarta en vez de inventarlo.
         if indice_etapa not in ids_etapa:
@@ -523,19 +596,33 @@ def preparar_personas(registro: Registro, etapas, ids_etapa,
                               "codigo_exp=%r" % artistas.get(id_artista))
             return
 
-        # El guard es la clave primaria, `(id_etapa, id_persona)`, y no el par
-        # (artista, contrato). Con el otro, un artista que está en el suplemento
-        # de un contrato y también en su `artista_contrato` entraba dos veces si
-        # su etapa real no era la primera del contrato, que es justo lo que pasa.
-        clave = (ids_etapa[indice_etapa], id_persona)
-        if clave in vistos:
-            repetidos.append((id_artista, id_contrato_legacy, indice_etapa))
+        # La clave es la primaria, `(id_etapa, id_persona, id_moneda)`, y no el
+        # par (artista, contrato). Dos artistas del legacy que se deduplicaron a
+        # la misma persona comparten fila: sus cobros y sus liquidados se suman,
+        # que es lo que la Fase P hace con sus liquidaciones. Un mismo artista
+        # repetido —por el suplemento y por su contrato— sí es un duplicado y no
+        # se cuenta dos veces.
+        clave = (ids_etapa[indice_etapa], id_persona, id_moneda)
+        pagado = liquidado.get((id_artista, id_contrato_legacy, simbolo),
+                               rl.decimal_legacy("0"))
+        if clave in filas_por_clave:
+            if id_artista in artistas_por_clave[clave]:
+                repetidos.append((id_artista, id_contrato_legacy, indice_etapa))
+                return
+            fila = filas_por_clave[clave]
+            fila["cobro"] += valor
+            pagado_por_clave[clave] += pagado
+            fila["por_cobrar"] = max(rl.decimal_legacy("0"),
+                                     fila["cobro"] - pagado_por_clave[clave])
+            fila["liquidada"] = fila["por_cobrar"] == 0
+            if concentrado and not fila["asignada_por_migracion"]:
+                fila["asignada_por_migracion"] = True
+                fila["motivo_asignacion"] = MOTIVO_CONCENTRADO
+            artistas_por_clave[clave].add(id_artista)
             return
 
-        pagado = liquidado.get((id_artista, id_contrato_legacy),
-                               rl.decimal_legacy("0"))
         por_cobrar = max(rl.decimal_legacy("0"), valor - pagado)
-        payloads.append({
+        filas_por_clave[clave] = {
             "id_etapa": ids_etapa[indice_etapa],
             "id_persona": id_persona,
             "cobro": valor,
@@ -544,38 +631,40 @@ def preparar_personas(registro: Registro, etapas, ids_etapa,
             "por_cobrar": por_cobrar,
             "asignada_por_migracion": concentrado,
             "motivo_asignacion": MOTIVO_CONCENTRADO if concentrado else None,
-        })
-        vistos.add(clave)
-        for motivo, resumen, detalle in avisos:
-            registro.warning(ORIGEN_PERSONAS, id_artista, None, motivo,
-                             detalle or resumen)
+        }
+        pagado_por_clave[clave] = pagado
+        artistas_por_clave[clave] = {id_artista}
 
     # Primero las que tienen etapa real, que es el dato bueno.
     for indice, declarados in sorted(reales_por_etapa.items()):
-        for id_artista, id_contrato, cuc, cup in declarados:
-            _una(id_artista, id_contrato, indice, cuc, cup, False)
+        for id_artista, id_contrato, valor, simbolo in declarados:
+            _una(id_artista, id_contrato, indice, valor, simbolo, False)
 
-    # Y el resto, a la primera etapa de su contrato.
+    # Y el resto, a la primera etapa de su contrato, en cada una de sus monedas.
     artistas_por_contrato = {}
     for id_artista, id_contrato in cobros:
         artistas_por_contrato.setdefault(id_contrato, []).append(id_artista)
 
     for (id_artista, id_contrato), (cuc, cup) in sorted(
             cobros.items(), key=lambda kv: (kv[0][1], kv[0][0])):
-        indice = primera_por_contrato.get(id_contrato)
-        if indice is None:
+        simbolos = simbolos_por_contrato.get(id_contrato)
+        if not simbolos:
             registro.descarte(ORIGEN_PERSONAS, id_artista, None,
                               "su contrato no tiene etapa",
                               "id_contrato=%s" % id_contrato)
             continue
         concentrado = len(artistas_por_contrato.get(id_contrato, [])) > 1
-        _una(id_artista, id_contrato, indice, cuc, cup, concentrado)
+        for simbolo in simbolos:
+            indice = primera_por_contrato[(id_contrato, simbolo)]
+            valor = cup if simbolo == "CUP" else cuc
+            _una(id_artista, id_contrato, indice, valor, simbolo, concentrado)
 
     for id_artista, id_contrato, indice in repetidos:
         registro.descarte(ORIGEN_PERSONAS, id_artista, None, "repetido",
                           "id_contrato=%s etapa=%d: ya estaba colocado en esa "
                           "etapa por su suplemento" % (id_contrato, indice))
 
+    payloads = list(filas_por_clave.values())
     if mostrar:
         print("  Personas a migrar: %d | marcadas como concentradas: %d"
               % (len(payloads),
@@ -675,31 +764,33 @@ def _solicitudes_con_etapa(conn):
         return {i for (i,) in cur.fetchall() if i}
 
 
-def cargar_etapas(registro=None, dry_run=True, codigo_a_id_legacy=None, diag=None):
+def cargar_etapas(registro=None, dry_run=True, diag=None):
     registro = registro or Registro()
     diag = diag or Diagnostico()
 
     with db.conexion() as conn:
-        codigos_contrato = db.codigos_de_contrato(conn)
         ids_solicitud = _ids_solicitud(conn)
         ids_moneda = db.monedas_por_simbolo(conn)
         ids_cliente = db.mapa_codigo_a_cliente(conn)
         ya_con_etapa = _solicitudes_con_etapa(conn)
+        # Los mapas salen del destino, que ya tiene los contratos partidos y sus
+        # dos solicitudes: no hace falta que la Fase N pase nada.
+        solicitud_por_contrato, contrato_por_solicitud = _solicitud_por_contrato(conn)
         # En simulación no se escribe nada, así que no se busca ni se crea el
         # servicio genérico: se simula con el código puesto y sin id, que es lo
         # que se verá si luego la inserción del catálogo falla.
         id_servicio = None if dry_run else _id_servicio_generico(conn, registro)
 
-    print("  Contratos: %d | solicitudes migradas: %d | monedas: %s"
-          % (len(codigos_contrato), len(ids_solicitud), ",".join(sorted(ids_moneda))))
+    print("  Solicitudes migradas: %d | con contrato: %d | monedas: %s"
+          % (len(ids_solicitud), len(contrato_por_solicitud),
+             ",".join(sorted(ids_moneda))))
 
-    if not codigo_a_id_legacy:
-        print("  AVISO: sin el mapa de la Fase N sólo se localizan las solicitudes "
-              "con código propio del legacy. Las demás no reciben etapa y sus "
-              "contratos se quedan sin artistas.")
+    if not contrato_por_solicitud:
+        print("  AVISO: no hay ninguna solicitud con contrato en el destino. La "
+              "Fase N tiene que correr antes: sin solicitud no hay etapa.")
     etapas, primera, reales = preparar_etapas(
-        registro, codigos_contrato, ids_solicitud, ids_moneda, codigo_a_id_legacy,
-        ya_con_etapa)
+        registro, solicitud_por_contrato, contrato_por_solicitud,
+        set(ids_solicitud.values()), ids_moneda, ya_con_etapa)
 
     if not etapas:
         print("  Ninguna etapa que migrar: %d solicitud(es) ya tienen etapa."

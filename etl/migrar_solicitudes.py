@@ -25,6 +25,7 @@ borró esa columna en `drop_numero_solicitud`).
 
 import db
 import reglas_legacy as rl
+from cliente_pivote import CODIGO as CODIGO_PIVOTE
 from config import (
     DUMP_MARIADB,
     TAMANO_LOTE,
@@ -66,12 +67,31 @@ def _clientes_legacy():
     return salida
 
 
+def _nits_legacy():
+    """`id_cliente` del legacy -> su NIT, para recuperar un cliente por NIT.
+
+    Misma idea que en la Fase L: un cliente que la Fase B descartó por código
+    duplicado se encuentra por su NIT, que sí apunta al superviviente.
+    """
+    from fuente import leer_tabla
+
+    _, filas = leer_tabla(DUMP_MARIADB, "cliente")
+    salida = {}
+    for f in filas:
+        id_legacy = texto(f.get("id_cliente"))
+        nit = no_vacio(f.get("nit"))
+        if id_legacy and nit:
+            salida[id_legacy] = nit
+    return salida
+
+
 def _contratos_legacy():
-    """Del dump del legacy: `id_solicitudsc` -> `codigo_contrato`.
+    """Del dump del legacy: `id_solicitudsc` -> (id_contrato, código, fila).
 
     Es el puente en el otro sentido: de la solicitud al contrato. Se recorre una
     sola vez, porque hacerlo por fila sobre 3.427 solicitudes y 3.396 contratos
-    son 13 millones de comparaciones.
+    son 13 millones de comparaciones. La fila entera hace falta para saber, por
+    sus importes, en qué moneda quedó el contrato y si se partió en dos.
     """
     from fuente import leer_tabla
 
@@ -80,9 +100,43 @@ def _contratos_legacy():
     for f in filas:
         id_solicitud = texto(f.get("id_solicitudsc"))
         codigo = texto(f.get("codigo_contrato"))
-        if id_solicitud and codigo:
-            salida.setdefault(id_solicitud, codigo)
+        if id_solicitud and id_solicitud != "0" and codigo:
+            salida.setdefault(
+                id_solicitud, (texto(f.get("id_contrato")), codigo, f))
     return salida
+
+
+def _copias_contrato(id_contrato, codigo, fila, codigos_contrato):
+    """`{símbolo: código del contrato en el destino}`.
+
+    Un contrato con las dos monedas quedó partido en dos por la Fase L
+    (`1.codigo` en CUP y `2.codigo` en CUC); uno de una sola moneda quedó tal
+    cual. Se resuelve mirando qué códigos existen de verdad en el destino.
+    """
+    copias = {}
+    for simbolo, cand in rl.copias_de_contrato(
+            codigo, id_contrato, fila.get("valor_contratocuc"),
+            fila.get("valor_contratocup")):
+        if cand in codigos_contrato:
+            copias[simbolo] = cand
+    # Sin partido, la copia vino con símbolo None: se le pone el que dicen los
+    # importes del contrato.
+    if set(copias) == {None}:
+        importes, _ = rl.importes_por_moneda(
+            fila.get("valor_contratocuc"), fila.get("valor_contratocup"))
+        copias = {importes[0][1]: copias[None]}
+    return copias
+
+
+def _codigo_de_copia(codigo, simbolo):
+    """El código de la solicitud clonada: CUP conserva el del legacy, CUC `-CUC`.
+
+    El proyecto original —el que ya existía— se queda con el código de siempre y
+    la moneda CUP; la copia nueva, la CUC, se distingue con el sufijo. Así los
+    enlaces, los informes y las búsquedas por el código viejo siguen apuntando al
+    mismo sitio de antes.
+    """
+    return codigo if simbolo == "CUP" else "%s-CUC" % codigo
 
 
 def _fechas_por_cliente(filas):
@@ -150,34 +204,59 @@ def _codigo(codigo_legacy, id_legacy, fecha_iso):
     return "CAG.%s.%03d" % (str(fecha_iso)[2:4], int(id_legacy)), True
 
 
-def preparar(registro: Registro, codigos_cliente, codigos_existentes=()):
+def preparar(registro: Registro, codigos_cliente, codigos_contrato,
+             codigos_existentes=(), nits_cliente=None):
     """Arma los payloads. No escribe nada en la base.
 
-    Devuelve (payloads, id_legacy_por_codigo) para poder enlazar los contratos
-    después: el segundo es lo que permite ir del `codigo_solicitud` que acabamos
-    de inventar al `id_solicitudsc` del legacy.
+    Devuelve (payloads, enlaces): `enlaces` es `codigo_solicitud ->
+    codigo_contrato del destino`, con el que `_enlazar` rellena `id_contrato`
+    después. Un contrato que el destino partió en dos monedas genera **dos**
+    solicitudes, una por moneda, cada una con su contrato: el "proyecto" entero
+    se duplica, como pidió el usuario.
     """
     from fuente import leer_tabla
 
     _, filas = leer_tabla(DUMP_MARIADB, "solicitud_sc")
     clientes = _clientes_legacy()
+    nits = _nits_legacy()
+    nits_cliente = nits_cliente or {}
+    contratos = _contratos_legacy()
     fechas_por_cliente = _fechas_por_cliente(filas)
 
     ya_usados = set(codigos_existentes)
     previos = set(codigos_existentes)
     payloads = []
-    id_legacy_por_codigo = {}
+    enlaces = {}
     generados = 0
 
     for f in filas:
         id_legacy = texto(f.get("id_solicitudsc"))
         nombre = no_vacio(f.get("descripcion"))
 
-        codigo_cliente = clientes.get(f.get("id_cliente"))
-        if codigo_cliente is None or codigo_cliente not in codigos_cliente:
+        id_cliente_legacy = texto(f.get("id_cliente"))
+        codigo_cliente = clientes.get(id_cliente_legacy)
+        id_cliente = codigos_cliente.get(codigo_cliente) if codigo_cliente else None
+        avisos_cliente = []
+        if id_cliente is None and id_cliente_legacy:
+            nit = nits.get(id_cliente_legacy)
+            id_cliente = nits_cliente.get(nit) if nit else None
+            if id_cliente is not None:
+                avisos_cliente.append((
+                    "cliente recuperado por NIT",
+                    "id_cliente legacy=%s nit=%r" % (id_cliente_legacy, nit),
+                    "la Fase B lo descarto por codigo duplicado; el NIT apunta "
+                    "al superviviente"))
+        if id_cliente is None:
+            id_cliente = codigos_cliente.get(CODIGO_PIVOTE)
+            avisos_cliente.append((
+                "cliente pivote",
+                "id_cliente legacy=%s codigo=%r"
+                % (id_cliente_legacy, codigo_cliente),
+                "la solicitud no tiene cliente propio en el legacy"))
+        if id_cliente is None:
             registro.descarte(ORIGEN, id_legacy, nombre, "cliente no migrado",
                               "id_cliente=%s codigo=%r"
-                              % (f.get("id_cliente"), codigo_cliente))
+                              % (id_cliente_legacy, codigo_cliente))
             continue
 
         fecha_solicitud, avisos_fecha = rl.fecha_con_respaldo(
@@ -190,46 +269,67 @@ def preparar(registro: Registro, codigos_cliente, codigos_existentes=()):
 
         codigo, generado = _codigo(no_vacio(f.get("codigo_solicitudsc")),
                                    id_legacy, fecha_solicitud)
-        if codigo in previos:
-            registro.descarte(ORIGEN, id_legacy, nombre, "ya migrada",
-                              "codigo=%s" % codigo)
-            continue
-        ya_usados.add(codigo)
-        generados += 1 if generado else 0
 
-        avisos = list(avisos_fecha)
+        encontrado = contratos.get(id_legacy)
+        copias = (_copias_contrato(encontrado[0], encontrado[1], encontrado[2],
+                                   codigos_contrato)
+                  if encontrado else {})
+
+        # Un contrato con las dos monedas dejó DOS contratos en el destino, así
+        # que su solicitud se clona: CUP con el código del legacy, CUC `-CUC`.
+        if len(copias) >= 2:
+            partes = [(simbolo, _codigo_de_copia(codigo, simbolo))
+                      for simbolo in ("CUP", "CUC")]
+        elif copias:
+            partes = [(next(iter(copias)), codigo)]
+        else:
+            partes = [(None, codigo)]
+
+        avisos = list(avisos_fecha) + list(avisos_cliente)
         material, avisos_material = _material_asumido(f.get("mat_asumidos"))
         avisos += avisos_material
-
         aprobada, revisar, motivo = _revision()
 
-        payloads.append({
-            "codigo_solicitud": codigo,
-            "id_cliente": codigos_cliente[codigo_cliente],
-            # Se deja vacío a propósito: se enlaza en `_enlazar`.
-            "id_contrato": None,
-            "id_suplemento": None,
-            "nombres_rep": no_vacio(f.get("nombre_rep")),
-            "apellido1_rep": no_vacio(f.get("primerapellido_rep")),
-            "apellido2_rep": no_vacio(f.get("segundoapellido_rep")),
-            "ci_rep": no_vacio(f.get("ci_rep")),
-            # El legacy no guarda teléfono del representante.
-            "telefono_rep": None,
-            "cargo": (no_vacio(f.get("caracter")) or "")[:LARGO_CARGO] or None,
-            "descripcion": nombre,
-            "fecha_solicitud": fecha_solicitud,
-            "fecha_entrega": fecha_legado(f.get("fecha_entrega")),
-            "estado": ESTADO_MIGRACION,
-            "observaciones": no_vacio(f.get("observaciones")),
-            "material_asumido_x": material,
-            # El legacy trae 0 en las 3.427.
-            "id_usuario": None,
-            "aprobado": aprobada,
-            "codigo_proyecto": None,
-            "estado_por_revisar": revisar,
-            "motivo_revision": motivo,
-        })
-        id_legacy_por_codigo[codigo] = id_legacy
+        emitidas = 0
+        for simbolo, cod_sol in partes:
+            if cod_sol in previos:
+                registro.descarte(ORIGEN, id_legacy, nombre, "ya migrada",
+                                  "codigo=%s" % cod_sol)
+                continue
+            ya_usados.add(cod_sol)
+
+            payloads.append({
+                "codigo_solicitud": cod_sol,
+                "id_cliente": id_cliente,
+                # Se deja vacío a propósito: se enlaza en `_enlazar`.
+                "id_contrato": None,
+                "id_suplemento": None,
+                "nombres_rep": no_vacio(f.get("nombre_rep")),
+                "apellido1_rep": no_vacio(f.get("primerapellido_rep")),
+                "apellido2_rep": no_vacio(f.get("segundoapellido_rep")),
+                "ci_rep": no_vacio(f.get("ci_rep")),
+                # El legacy no guarda teléfono del representante.
+                "telefono_rep": None,
+                "cargo": (no_vacio(f.get("caracter")) or "")[:LARGO_CARGO] or None,
+                "descripcion": nombre,
+                "fecha_solicitud": fecha_solicitud,
+                "fecha_entrega": fecha_legado(f.get("fecha_entrega")),
+                "estado": ESTADO_MIGRACION,
+                "observaciones": no_vacio(f.get("observaciones")),
+                "material_asumido_x": material,
+                # El legacy trae 0 en las 3.427.
+                "id_usuario": None,
+                "aprobado": aprobada,
+                "codigo_proyecto": None,
+                "estado_por_revisar": revisar,
+                "motivo_revision": motivo,
+            })
+            emitidas += 1
+            if simbolo is not None:
+                enlaces[cod_sol] = copias[simbolo]
+
+        if generado and emitidas:
+            generados += 1
 
         for motivo_aviso, resumen, detalle in avisos:
             registro.warning(ORIGEN, id_legacy, nombre, motivo_aviso,
@@ -238,18 +338,19 @@ def preparar(registro: Registro, codigos_cliente, codigos_existentes=()):
     print("  Filas a migrar: %d | códigos generados: %d | para revisar: %d"
           % (len(payloads), generados,
              sum(1 for p in payloads if p["estado_por_revisar"])))
-    return payloads, id_legacy_por_codigo
+    return payloads, enlaces
 
 
-def _enlazar(conn, id_legacy_por_codigo, codigos_contrato, registro: Registro):
+def _enlazar(conn, enlaces, registro: Registro):
     """Rellena `id_contrato` de las solicitudes ya insertadas.
 
-    Va en su propia transacción y con un UPDATE por fila, no un INSERT con la
-    foreign key puesta: tirar la constraint obligaría a conocer su nombre y a que
-    nadie la toque mientras se insertan 3.426 filas.
+    `enlaces` es `codigo_solicitud -> codigo_contrato` del destino, que ya trae
+    la moneda resuelta: la solicitud clonada de un contrato partido apunta a su
+    propia copia del contrato. Va en su propia transacción y con un UPDATE por
+    fila, no un INSERT con la foreign key puesta: tirar la constraint obligaría a
+    conocer su nombre y a que nadie la toque mientras se insertan 3.426 filas.
     """
-    contrato_por_solicitud = _contratos_legacy()
-    if not contrato_por_solicitud:
+    if not enlaces:
         return 0
 
     with conn.cursor() as cur:
@@ -262,9 +363,8 @@ def _enlazar(conn, id_legacy_por_codigo, codigos_contrato, registro: Registro):
 
     enlazados = 0
     with conn.cursor() as cur:
-        for codigo_solicitud, id_legacy in id_legacy_por_codigo.items():
-            codigo_contrato = contrato_por_solicitud.get(id_legacy)
-            if not codigo_contrato or codigo_contrato == "0":
+        for codigo_solicitud, codigo_contrato in enlaces.items():
+            if not codigo_contrato:
                 continue
             id_solicitud = ids_por_codigo.get(codigo_solicitud)
             if not id_solicitud:
@@ -333,17 +433,13 @@ def _generar_codigos_proyecto(conn, registro: Registro):
     return len(valores)
 
 
-def _enlazables(id_legacy_por_codigo, codigos_contrato):
-    """Cuántas solicitudes encontrarían contrato, sin tocar la base."""
-    contrato_por_solicitud = _contratos_legacy()
-    total = 0
-    for id_legacy in id_legacy_por_codigo.values():
-        codigo = contrato_por_solicitud.get(id_legacy)
-        if codigo and codigo != "0" and (
-                codigo in codigos_contrato
-                or "%s-%s" % (codigo, id_legacy) in codigos_contrato):
-            total += 1
-    return total
+def _enlazables(enlaces):
+    """Cuántas solicitudes encontrarían contrato, sin tocar la base.
+
+    Los códigos ya vienen resueltos contra el destino cuando se armó el payload,
+    así que sólo se cuentan los que tienen a dónde apuntar.
+    """
+    return sum(1 for codigo in enlaces.values() if codigo)
 
 
 def ejecutar(conn, registro: Registro, payloads):
@@ -378,6 +474,7 @@ def cargar_solicitudes(registro=None, dry_run=True, diag=None):
 
     with db.conexion() as conn:
         codigos_cliente = db.mapa_codigo_a_cliente(conn)
+        nits_cliente = db.mapa_nit_a_cliente(conn)
         codigos_contrato = db.codigos_de_contrato(conn)
         codigos_existentes = {
             c for c in db.valores_existentes(conn, TABLA, "codigo_solicitud") if c}
@@ -385,8 +482,9 @@ def cargar_solicitudes(registro=None, dry_run=True, diag=None):
     print("  Clientes: %d | contratos: %d | solicitudes ya: %d"
           % (len(codigos_cliente), len(codigos_contrato), len(codigos_existentes)))
 
-    payloads, id_legacy_por_codigo = preparar(
-        registro, codigos_cliente, codigos_existentes)
+    payloads, enlaces = preparar(
+        registro, codigos_cliente, codigos_contrato, codigos_existentes,
+        nits_cliente)
     revisar_solicitudes(diag, payloads)
 
     with db.conexion() as conn:
@@ -397,16 +495,16 @@ def cargar_solicitudes(registro=None, dry_run=True, diag=None):
 
     if dry_run:
         print("  SIMULACIÓN: %d solicitud(es), %d con contrato enlazable"
-              % (len(payloads), _enlazables(id_legacy_por_codigo, codigos_contrato)))
-        return 0, registro, payloads, id_legacy_por_codigo, diag
+              % (len(payloads), _enlazables(enlaces)))
+        return 0, registro, payloads, enlaces, diag
 
     with db.conexion() as conn:
         db.crear_log(conn)
         insertadas = ejecutar(conn, registro, payloads)
-        enlazados = _enlazar(conn, id_legacy_por_codigo, codigos_contrato, registro)
+        enlazados = _enlazar(conn, enlaces, registro)
         proyectos = _generar_codigos_proyecto(conn, registro)
 
     print("  Solicitudes insertadas: %d | con contrato enlazado: %d"
           % (insertadas, enlazados))
     print("  Códigos de proyecto generados: %d" % proyectos)
-    return insertadas, registro, payloads, id_legacy_por_codigo, diag
+    return insertadas, registro, payloads, enlaces, diag

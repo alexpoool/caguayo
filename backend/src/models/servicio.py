@@ -143,7 +143,13 @@ class PersonaEtapa(SQLModel, table=True):
         )
     )
     cobro: Decimal = Field(default=Decimal("0.00"))
-    id_moneda: Optional[int] = Field(default=None, foreign_key="moneda.id_moneda")
+    id_moneda: int = Field(
+        sa_column=Column(
+            ForeignKey("moneda.id_moneda"),
+            nullable=False,
+            primary_key=True,
+        )
+    )
     liquidada: bool = Field(default=False)
     por_cobrar: Decimal = Field(default=Decimal("0.00"))
 

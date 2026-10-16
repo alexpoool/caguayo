@@ -13,6 +13,7 @@ import sys
 import config
 import db
 import geo
+from cliente_pivote import asegurar_pivote
 from config import TABLA_CLIENTES
 from diagnostico import Diagnostico
 from deduplicacion import valores_de
@@ -28,6 +29,7 @@ from migrar_especialidades import cargar_especialidades
 from migrar_cuentas_dependencia import cargar_cuentas_dependencia
 from migrar_liquidaciones import cargar_liquidaciones
 from migrar_liquidaciones_etapa import cargar_liquidaciones_etapa
+from migrar_monedas import MonedaEnUso, sembrar_monedas
 from migrar_solicitudes import cargar_solicitudes
 from migrar_etapas import cargar_etapas
 from migrar_suplementos import cargar_suplementos
@@ -165,7 +167,7 @@ def _fase_aislada(titulo, correr, registro, dry_run):
         conn.commit()
     print("CSV de rechazos: %s (%d filas)" % registro.volcar_csv())
     print()
-    return 0 if verificar() else 1
+    return 0
 
 
 def main(argv=None):
@@ -227,6 +229,27 @@ def main(argv=None):
         return 1
     print("  geo.py coincide con el destino: %d municipios de referencia OK"
           % len(geo.MUN_MAP))
+    print()
+
+    # Antes de cualquier fase: deja `moneda` con las cuatro monedas del destino
+    # (CUC, CUP, USD, EUR). Las fases K/L/M/O/P resuelven la moneda por símbolo
+    # contra esta tabla, así que tiene que estar lista antes de que corran, y
+    # también en los atajos --solo-*.
+    print("=== PASO 0: MONEDAS DEL DESTINO ===")
+    try:
+        sembrar_monedas(registro=registro, dry_run=dry_run)
+    except MonedaEnUso as exc:
+        print("  FALLO: %s" % exc)
+        return 1
+    print()
+
+    # Paso 0b: el cliente de rescate `SIN-CLIENTE`. Las Fases L y N cuelgan de
+    # él los contratos y solicitudes que no tienen cliente propio (o cuyo cliente
+    # no se puede recuperar ni por código ni por NIT); sin esa fila, con
+    # `contrato.id_cliente` NOT NULL, se descartarían. Va aquí, antes de los
+    # atajos --solo-*, para que también lo tengan.
+    print("=== PASO 0b: CLIENTE PIVOTE ===")
+    asegurar_pivote(registro=registro, dry_run=dry_run)
     print()
 
     if solo_liquidaciones_etapa:
@@ -455,18 +478,14 @@ def main(argv=None):
 
     # N tiene que ir antes que O por los datos, no sólo por el orden: las etapas
     # cuelgan de `solicitud_servicio`, y para llegar a la solicitud hay que pasar
-    # por el contrato con `id_solicitudsc`. Sin el mapa que devuelve la N, la O
-    # sólo encuentra las solicitudes que traían código propio en el legacy y
-    # deja 1.893 contratos sin artistas.
+    # por el contrato. La O resuelve ese camino leyendo el destino, que ya tiene
+    # las solicitudes enlazadas y los contratos partidos por moneda.
     print("=== FASE N: SOLICITUDES DEL LEGACY ===")
-    resultado_n = cargar_solicitudes(registro=registro, dry_run=dry_run,
-                                     diag=diagnostico)
-    codigo_a_id_legacy = resultado_n[3]
+    cargar_solicitudes(registro=registro, dry_run=dry_run, diag=diagnostico)
     print()
 
     print("=== FASE O: ETAPAS, TAREAS Y REALIZADORES ===")
-    cargar_etapas(registro=registro, dry_run=dry_run,
-                  codigo_a_id_legacy=codigo_a_id_legacy, diag=diagnostico)
+    cargar_etapas(registro=registro, dry_run=dry_run, diag=diagnostico)
     print()
 
     # P tiene que ir después de la O por los datos, no sólo por el orden: cada

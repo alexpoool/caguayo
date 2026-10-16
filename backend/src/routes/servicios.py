@@ -557,12 +557,13 @@ async def get_pagos_disponibles_etapa(
 async def get_disponible_liquidar(
     id_etapa: int = Query(...),
     id_persona: int = Query(...),
+    id_moneda: Optional[int] = Query(None),
     db: AsyncSession = Depends(get_session),
 ):
     """Obtiene el monto disponible para liquidar a una persona en una etapa."""
 
     disponible = await PersonaLiquidacionService.get_disponible_liquidar(
-        db, id_etapa, id_persona
+        db, id_etapa, id_persona, id_moneda
     )
     return {"disponible": float(disponible)}
 
@@ -571,10 +572,15 @@ async def get_disponible_liquidar(
     "/validar/{id_etapa}/{id_persona}", response_model=PersonaLiquidacionValidacion
 )
 async def validar_liquidar_persona(
-    id_etapa: int, id_persona: int, db: AsyncSession = Depends(get_session)
+    id_etapa: int,
+    id_persona: int,
+    id_moneda: Optional[int] = Query(None),
+    db: AsyncSession = Depends(get_session),
 ):
     """Valida si se puede liquidar a una persona en una etapa (verifica que la factura esté pagada)."""
-    return await PersonaLiquidacionService.validar_liquidar(db, id_etapa, id_persona)
+    return await PersonaLiquidacionService.validar_liquidar(
+        db, id_etapa, id_persona, id_moneda
+    )
 
 
 @persona_liquidacion_router.get(

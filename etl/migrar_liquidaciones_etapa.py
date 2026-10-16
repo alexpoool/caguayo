@@ -63,6 +63,7 @@ filas y no puede ser clave. El id del legacy sí lo es, y es estable.
     solas en la primera edición.
 """
 import db
+import migrar_etapas as me
 import reglas_legacy as rl
 from config import (
     DUMP_MARIADB,
@@ -251,12 +252,15 @@ def _numero(fecha, id_legado):
 # --------------------------------------------------------------------------
 # Preparación
 # --------------------------------------------------------------------------
-def preparar(registro: Registro, codigos_cliente, codigos_contrato,
+def preparar(registro: Registro, codigos_cliente, contratos_por_moneda,
              etapas_por_contrato, personas, ids_moneda, numeros_existentes=()):
     """Arma los payloads. No escribe nada en la base.
 
     `personas` es `(id_etapa, id_persona) -> (cobro, por_cobrar)`, lo que dejó
-    la Fase O; `etapas_por_contrato` es `id_contrato -> [id_etapa]` en orden.
+    la Fase O; `etapas_por_contrato` es `id_contrato -> [id_etapa]` en orden, y
+    `contratos_por_moneda` es `id_contrato del legacy -> {símbolo: id_contrato
+    del destino}`: la moneda de la liquidación elige cuál de las copias de un
+    contrato partido es la suya.
     """
     filas = _leer("artista_liquidacion")
     codigos_artista = _artistas_por_codigo()
@@ -292,25 +296,32 @@ def preparar(registro: Registro, codigos_cliente, codigos_contrato,
             continue
 
         id_contrato_legacy = texto(f.get("id_contrato"))
-        codigo_contrato = contratos.get(id_contrato_legacy)
-        if codigo_contrato is None:
+        contrato = contratos.get(id_contrato_legacy)
+        if contrato is None:
             registro.descarte(
                 ORIGEN, id_legacy, nombre, "contrato inexistente en el legacy",
                 "id_contrato=%s: el legacy apunta a un contrato que no existe, "
                 "sin contrato no hay solicitud y sin solicitud no hay etapa"
                 % id_contrato_legacy)
             continue
+        codigo, id_legacy_contrato = contrato
 
-        codigo, id_legacy_contrato = codigo_contrato
-        id_contrato = codigos_contrato.get(codigo)
+        # La moneda de la liquidación decide CUÁL de las copias del contrato es la
+        # suya: un contrato partido tiene una en CUP y otra en CUC en el destino.
+        simbolo, avisos_moneda = rl.simbolo_destino(f.get("moneda"))
+        id_moneda_destino = ids_moneda.get(simbolo)
+        if id_moneda_destino is None:
+            registro.descarte(ORIGEN, id_legacy, nombre,
+                              "moneda ausente en el destino",
+                              "simbolo=%s" % simbolo)
+            continue
+
+        id_contrato = (contratos_por_moneda.get(id_contrato_legacy) or {}).get(simbolo)
         if id_contrato is None:
-            # El destino le pone el id detrás al código cuando choca con otro
-            # contrato; es el mismo apaño que hace la Fase O.
-            id_contrato = codigos_contrato.get("%s-%s" % (codigo, id_legacy_contrato))
-        if id_contrato is None:
-            registro.descarte(ORIGEN, id_legacy, nombre, "contrato no migrado",
-                              "codigo_contrato=%r id_contrato=%s"
-                              % (codigo, id_legacy_contrato))
+            registro.descarte(
+                ORIGEN, id_legacy, nombre, "contrato sin copia en su moneda",
+                "codigo_contrato=%r id_contrato=%s moneda=%s: el destino lo dejo "
+                "en otra moneda" % (codigo, id_legacy_contrato, simbolo))
             continue
 
         id_etapa, regla = _etapa_para(etapas_por_contrato.get(id_contrato, []),
@@ -323,14 +334,6 @@ def preparar(registro: Registro, codigos_cliente, codigos_contrato,
                 % (id_legacy_contrato, id_contrato))
             continue
         reglas[regla] = reglas.get(regla, 0) + 1
-
-        simbolo, avisos_moneda = rl.simbolo_destino(f.get("moneda"))
-        id_moneda_destino = ids_moneda.get(simbolo)
-        if id_moneda_destino is None:
-            registro.descarte(ORIGEN, id_legacy, nombre,
-                              "moneda ausente en el destino",
-                              "simbolo=%s" % simbolo)
-            continue
 
         concepto = conceptos.get(texto(f.get("id_tipoconcepto")))
         if concepto is None:
@@ -419,7 +422,7 @@ def cargar_liquidaciones_etapa(registro=None, dry_run=True):
 
     with db.conexion() as conn:
         codigos_cliente = db.mapa_codigo_a_cliente(conn)
-        codigos_contrato = db.codigos_de_contrato(conn)
+        copias_contrato = me.contratos_por_moneda(conn)
         etapas_por_contrato = _etapas_por_contrato(conn)
         personas_de_etapa = _personas_por_etapa(conn)
         ids_moneda = db.monedas_por_simbolo(conn)
@@ -428,14 +431,14 @@ def cargar_liquidaciones_etapa(registro=None, dry_run=True):
 
     print("  Clientes en destino: %d | contratos: %d | contratos con etapas: %d"
           " | monedas: %s | liquidaciones ya: %d"
-          % (len(codigos_cliente), len(codigos_contrato), len(etapas_por_contrato),
+          % (len(codigos_cliente), len(copias_contrato), len(etapas_por_contrato),
              ",".join(sorted(ids_moneda)), len(numeros_existentes)))
     if not etapas_por_contrato:
         print("  AVISO: no hay ninguna etapa en el destino. Esta fase necesita la "
               "Fase O: las liquidaciones cuelgan de una etapa y sin ella no hay "
               "dónde colocarlas.")
 
-    payloads = preparar(registro, codigos_cliente, codigos_contrato,
+    payloads = preparar(registro, codigos_cliente, copias_contrato,
                         etapas_por_contrato, personas_de_etapa, ids_moneda,
                         numeros_existentes)
 

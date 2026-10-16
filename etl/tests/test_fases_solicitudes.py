@@ -9,9 +9,9 @@ import pytest
 from pathlib import Path
 
 import diagnostico
-import migrar_contratos as mc
 import migrar_etapas as me
 import migrar_solicitudes as ms
+import reglas_legacy as rl
 from log import Registro
 
 DUMP = Path(__file__).resolve().parents[1] / "dumps" / "comercial.sql"
@@ -220,6 +220,29 @@ def test_el_autodiagnostico_coge_los_repetidos():
 # --------------------------------------------------------------------------
 # Contra el volcado real
 # --------------------------------------------------------------------------
+def _contratos_destino():
+    """Replica lo que la Fase L dejó en el destino: código -> (id del legacy,
+    fila, símbolo). Un contrato con las dos monedas sale dos veces, con `1.` y
+    `2.`, como en PostgreSQL."""
+    import fuente
+
+    _, contratos = fuente.leer_tabla(str(DUMP), "contrato")
+    usados, salida = set(), {}
+    for c in contratos:
+        id_legacy = str(c["id_contrato"])
+        base = (c.get("codigo_contrato") or "").strip() or "LEG-%s" % id_legacy
+        importes, _ = rl.importes_por_moneda(
+            c.get("valor_contratocuc"), c.get("valor_contratocup"))
+        hay_dos = len(importes) == 2
+        for _monto, simbolo in importes:
+            codigo = rl.codigo_de_copia(base, simbolo, hay_dos)
+            if codigo in usados:
+                codigo = "%s-%s" % (codigo, id_legacy)
+            usados.add(codigo)
+            salida[codigo] = (id_legacy, c, simbolo)
+    return salida
+
+
 def _arnes():
     """Los mismos mapas que leen de PostgreSQL, sacados del dump."""
     import fuente
@@ -236,14 +259,8 @@ def _arnes():
         if codigo and codigo not in ids_cliente:
             ids_cliente[codigo] = j
 
-    _, contratos = fuente.leer_tabla(str(DUMP), "contrato")
-    usados, ids_contrato = set(), {}
-    for i, c in enumerate(contratos, start=1):
-        codigo = (c.get("codigo_contrato") or "").strip() or "LEG-%s" % c["id_contrato"]
-        if codigo in usados:
-            codigo = "%s-%s" % (codigo, c["id_contrato"])
-        usados.add(codigo)
-        ids_contrato[codigo] = i
+    ids_contrato = {codigo: i
+                    for i, codigo in enumerate(_contratos_destino(), start=1)}
     return ids_cliente, ids_contrato
 
 
@@ -251,13 +268,23 @@ def _arnes():
 def test_el_mapeo_completo_no_tiene_duplicados_ni_huerfanos():
     ids_cliente, ids_contrato = _arnes()
     registro = Registro()
-    monsoon = {"USD": 1, "CUP": 3}
+    monsoon = {"USD": 1, "CUP": 3, "CUC": 2}
 
-    solicitudes, id_legacy = ms.preparar(registro, ids_cliente, set())
+    solicitudes, enlaces = ms.preparar(registro, ids_cliente, ids_contrato, set())
     ids_solicitud = {p["codigo_solicitud"]: 1000 + i
                      for i, p in enumerate(solicitudes)}
+
+    destinos = _contratos_destino()
+    solicitud_por_contrato, contrato_por_solicitud = {}, {}
+    for cod_sol, cod_dest in enlaces.items():
+        id_legacy, c, simbolo = destinos[cod_dest]
+        id_sol = ids_solicitud[cod_sol]
+        solicitud_por_contrato.setdefault(id_legacy, {})[simbolo] = id_sol
+        contrato_por_solicitud[id_sol] = (id_legacy, c, simbolo)
+
     etapas, primera, reales = me.preparar_etapas(
-        registro, ids_contrato, ids_solicitud, monsoon, id_legacy)
+        registro, solicitud_por_contrato, contrato_por_solicitud,
+        set(ids_solicitud.values()), monsoon)
     personas = me.preparar_personas(registro, etapas, list(range(len(etapas))),
                                     primera, reales, ids_cliente, monsoon)
 
@@ -278,9 +305,69 @@ def test_el_mapeo_completo_no_tiene_duplicados_ni_huerfanos():
 @necesita_dump
 def test_las_solicitudes_vienen_todas_aprobadas():
     ids_cliente, _ = _arnes()
-    solicitudes, _ = ms.preparar(Registro(), ids_cliente, set())
+    solicitudes, _ = ms.preparar(Registro(), ids_cliente, set(), set())
 
     assert solicitudes, "el dump no trajo solicitudes"
     assert all(p["aprobado"] for p in solicitudes)
     assert not [p for p in solicitudes if p["estado_por_revisar"]]
     assert all(p["motivo_revision"] is None for p in solicitudes)
+
+
+# --------------------------------------------------------------------------
+# Resolución del cliente: por código -> por NIT -> pivote
+# --------------------------------------------------------------------------
+def _origen(monkeypatch, **tablas):
+    """Sustituye `fuente.leer_tabla` por `{tabla: (columnas, filas)}`."""
+    import fuente
+
+    def _leer(_ruta, nombre, *a, **k):
+        columnas, filas = tablas[nombre]
+        return list(columnas), filas
+
+    monkeypatch.setattr(fuente, "leer_tabla", _leer)
+
+
+def _solicitud(**cambios):
+    fila = {
+        "id_solicitudsc": "10", "descripcion": "Proyecto",
+        "codigo_solicitudsc": "2014.010", "fecha_solicitudsc": "2014-02-12",
+        "id_cliente": "5", "mat_asumidos": "", "aprobada": "Si",
+    }
+    fila.update(cambios)
+    return fila
+
+
+def test_solicitud_cliente_recuperado_por_nit(monkeypatch):
+    """La Fase B descartó al cliente por código duplicado, pero el superviviente
+    tiene el mismo NIT: la solicitud se recupera por NIT en vez de descartarse."""
+    _origen(monkeypatch,
+            solicitud_sc=([], [_solicitud()]),
+            cliente=([], [{"id_cliente": "5", "codigo": "NO-EXISTE",
+                           "nit": "10001007106"}]),
+            contrato=([], []))
+
+    registro = Registro()
+    payloads, _ = ms.preparar(
+        registro, {"OTRO": 1, "SIN-CLIENTE": 99}, set(), set(),
+        {"10001007106": 77})
+
+    assert payloads[0]["id_cliente"] == 77
+    assert any(e["motivo"] == "cliente recuperado por NIT"
+               for e in registro.entradas)
+
+
+def test_solicitud_sin_cliente_migrado_va_al_pivote(monkeypatch):
+    """Sin código ni NIT que resuelvan, la solicitud se cuelga del pivote en vez
+    de descartarse."""
+    _origen(monkeypatch,
+            solicitud_sc=([], [_solicitud()]),
+            cliente=([], [{"id_cliente": "5", "codigo": "NO-EXISTE",
+                           "nit": "00000000000"}]),
+            contrato=([], []))
+
+    registro = Registro()
+    payloads, _ = ms.preparar(
+        registro, {"SIN-CLIENTE": 99}, set(), set(), {})
+
+    assert payloads[0]["id_cliente"] == 99
+    assert any(e["motivo"] == "cliente pivote" for e in registro.entradas)

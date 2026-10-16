@@ -356,7 +356,11 @@ class PersonaLiquidacionRepository(
         return results.all()
 
     async def get_total_liquidado_by_persona_etapa(
-        self, db: AsyncSession, id_etapa: int, id_persona: int
+        self,
+        db: AsyncSession,
+        id_etapa: int,
+        id_persona: int,
+        id_moneda: Optional[int] = None,
     ) -> Decimal:
         from sqlalchemy import func
 
@@ -367,6 +371,10 @@ class PersonaLiquidacionRepository(
             PersonaLiquidacion.id_persona == id_persona,
             PersonaLiquidacion.confirmado,
         )
+        # Un artista puede cobrar la misma etapa en CUC y en CUP: sin la moneda
+        # se sumarían las dos y el por cobrar saldría descuadrado.
+        if id_moneda is not None:
+            statement = statement.where(PersonaLiquidacion.id_moneda == id_moneda)
         result = await db.exec(statement)
         return result.one() or Decimal("0")
 

@@ -35,40 +35,76 @@ def decimal_legacy(valor, defecto="0.00"):
         return Decimal(defecto)
 
 
-def monto_y_moneda(cuc, cup):
-    """El legacy guarda DOS importes; el destino tiene una sola moneda.
+#: Prefijo que separa las dos copias de un registro con las dos monedas: CUP va
+#: primero (1.) y CUC después (2.). Sin las dos monedas no hay prefijo.
+PREFIJO_MONEDA = {
+    "CUP": "1",
+    "CUC": "2",
+}
 
-    El destino no tiene CUC y no se siembra: no hay tipo de cambio con el que
-    convertirlo, e inventar uno falsearía los históricos más de lo que ya los
-    falsea etiquetarlos como dólares. El aviso deja constancia por fila.
 
-      · sólo CUP   -> CUP
-      · sólo CUC   -> USD
-      · las dos    -> CUP, con aviso: se pierde el importe en CUC
-      · ninguna    -> USD con 0.00, con aviso
+def importes_por_moneda(cuc, cup):
+    """El legacy guarda DOS importes; el destino tiene una sola moneda por fila.
 
-    Devuelve (monto, símbolo, avisos). Cada aviso es
-    (motivo, resumen, detalle) como en el resto del ETL.
+    En vez de elegir una y perder la otra, se devuelve una entrada por moneda
+    presente, CUP primero (para que su copia lleve el prefijo 1) y CUC después.
+    El contrato, la etapa y el realizador se parten en dos filas más abajo, una
+    por entrada, y ningún importe se pierde.
+
+    El destino tiene CUC (lo siembra el paso 0 de la migración, migrar_monedas),
+    así que no hay que traducirlo: se conserva la moneda del legacy.
+
+      · sólo CUP   -> [(cup, CUP)]
+      · sólo CUC   -> [(cuc, CUC)]
+      · las dos    -> [(cup, CUP), (cuc, CUC)]
+      · ninguna    -> [(0.00, CUC)], con aviso
+
+    Devuelve (importes, avisos), con los avisos como (motivo, resumen, detalle).
     """
     avisos = []
     valor_cuc = decimal_legacy(cuc)
     valor_cup = decimal_legacy(cup)
 
+    importes = []
     if valor_cup != 0:
-        monto, simbolo = valor_cup, "CUP"
-        if valor_cuc != 0:
-            avisos.append((
-                "moneda CUC traducida a USD",
-                "CUP %.2f" % monto,
-                "el legacy tiene cuc=%.2f y cup=%.2f; se migra el importe en CUP "
-                "y el de CUC se pierde" % (valor_cuc, valor_cup),
-            ))
-    else:
-        monto, simbolo = valor_cuc, "USD"
-        if valor_cuc == 0:
-            avisos.append(("sin importe en el legacy", "0.00 en USD", None))
+        importes.append((valor_cup, "CUP"))
+    if valor_cuc != 0:
+        importes.append((valor_cuc, "CUC"))
+    if not importes:
+        avisos.append(("sin importe en el legacy", "0.00 en CUC", None))
+        importes.append((valor_cuc, "CUC"))
 
-    return monto, simbolo, avisos
+    return importes, avisos
+
+
+def codigo_de_copia(codigo, simbolo, hay_dos):
+    """El código de una copia: `1.{codigo}` o `2.{codigo}` si hay dos monedas.
+
+    Con una sola moneda se deja el código tal cual; sólo cuando el registro se
+    parte hace falta desambiguar las dos mitades en la interfaz, y el prefijo lo
+    dice a simple vista (CUP = 1, CUC = 2).
+    """
+    if not hay_dos:
+        return codigo
+    return "%s.%s" % (PREFIJO_MONEDA[simbolo], codigo)
+
+
+def copias_de_contrato(base, id_legacy, cuc, cup):
+    """Los códigos que puede tener cada copia de un contrato, con su símbolo.
+
+    Con las dos monedas son cuatro —`1.base`/`2.base` y, por si el código chocó
+    con otro contrato, `1.base-id`/`2.base-id`—; con una sola son dos (`base` y
+    `base-id`). El símbolo va en None cuando el contrato no se partió: lo pone
+    quien lee el destino, que es el único que sabe en qué moneda quedó.
+    """
+    if decimal_legacy(cuc) != 0 and decimal_legacy(cup) != 0:
+        fuera = []
+        for simbolo in ("CUP", "CUC"):
+            prefijo = PREFIJO_MONEDA[simbolo]
+            fuera.append((simbolo, "%s.%s" % (prefijo, base)))
+            fuera.append((simbolo, "%s.%s-%s" % (prefijo, base, id_legacy)))
+        return fuera
+    return [(None, base), (None, "%s-%s" % (base, id_legacy))]
 
 
 #: Moneda del legacy -> símbolo en el destino.
@@ -76,10 +112,11 @@ def monto_y_moneda(cuc, cup):
 #: Para las tablas que traen la moneda en su propia columna (`artista_liquidacion`
 #: tiene `moneda varchar(3)` con 'CUC' o 'CUP'), que es un caso distinto al de
 #: arriba: aquí no hay dos importes que elegir, hay uno y la fila declara en cuál
-#: está. CUC no existe en el destino y se traduce a USD con aviso.
+#: está. CUC existe en el destino (lo siembra el paso 0 de la migración), así que
+#: se conserva tal cual.
 MAPA_MONEDA = {
     "CUP": "CUP",
-    "CUC": "USD",
+    "CUC": "CUC",
 }
 
 
@@ -99,12 +136,6 @@ def simbolo_destino(moneda_legado, default="USD"):
             "moneda %r sin equivalencia" % clave,
             "se asume %s" % default,
             None,
-        ))
-    elif clave == "CUC":
-        avisos.append((
-            "moneda CUC traducida a USD",
-            "el importe queda en dolares",
-            "el destino no tiene CUC y no hay tipo de cambio con el que convertirlo",
         ))
     return simbolo, avisos
 

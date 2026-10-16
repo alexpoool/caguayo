@@ -237,6 +237,19 @@ def mapa_codigo_a_cliente(conn):
         return {f[0]: f[1] for f in cur.fetchall()}
 
 
+def mapa_nit_a_cliente(conn):
+    """`clientes.nit` -> `id_cliente`.
+
+    Alternativa de `mapa_codigo_a_cliente` para recuperar un cliente que la Fase
+    B descartó por código duplicado: el superviviente de la deduplicación tiene
+    el mismo NIT, y `clientes.nit` es UNIQUE, así que el mapa es 1:1. Los NIT en
+    NULL se saltan (el legacy no los tiene, pero el pivote podría).
+    """
+    with conn.cursor() as cur:
+        cur.execute("SELECT nit, id_cliente FROM {t}".format(t=TABLA_CLIENTES))
+        return {f[0]: f[1] for f in cur.fetchall() if f[0]}
+
+
 def columnas(conn, tabla):
     """Los nombres de columna que tiene la tabla ahora mismo."""
     with conn.cursor() as cur:

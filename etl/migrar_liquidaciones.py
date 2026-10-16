@@ -18,8 +18,8 @@ Lo que no tiene destino y se pierde, dicho aquí para que no se busque después:
     numera las facturas con su propia serie y el contrato va por `id_anexo`.
 
 Las dos monedas del legacy se traducen en `reglas_legacy.monto_y_moneda`: CUP se
-migra como CUP y CUC como USD, porque el destino no tiene CUC y no hay tipo de
-cambio con el que convertirlo.
+migra como CUP y CUC como CUC. El destino tiene ambas (las siembra el paso 0 de
+la migración, migrar_monedas), así que no se convierte ninguna.
 """
 import db
 import reglas_legacy as rl
