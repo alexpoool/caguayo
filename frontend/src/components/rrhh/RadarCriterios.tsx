@@ -12,38 +12,14 @@ import {
 interface RadarCriteriosProps {
   data: { criterio: string; valor: number }[];
   /**
-   * Versión para la columna «Desempeño» del listado: sin etiquetas de eje ni
-   * leyenda, y con la escala fija 0–5 para que todos los radares sean
-   * comparables entre filas.
+   * Tope de la escala de criterios: es el `escala_valor` de la evaluación
+   * (5, 10 o 100; llega del catálogo de calificaciones). Por defecto 5.
    */
-  compact?: boolean;
+  max?: number;
 }
 
-/** Radar de los 4 criterios de desempeño (escala 0–5). */
-export function RadarCriterios({ data, compact = false }: RadarCriteriosProps) {
-  if (compact) {
-    return (
-      <div className="h-24 w-28">
-        <ResponsiveContainer width="100%" height="100%">
-          <RadarChart data={data} outerRadius="70%">
-            <PolarGrid stroke="#e2e8f0" />
-            {/* Eje invisible que fija el dominio 0–5 (si no, recharts
-                escala cada fila a su propio máximo). */}
-            <PolarRadiusAxis domain={[0, 5]} tick={false} axisLine={false} />
-            <Radar
-              dataKey="valor"
-              stroke="#0d9488"
-              fill="#0d9488"
-              fillOpacity={0.35}
-              isAnimationActive={false}
-            />
-            <Tooltip />
-          </RadarChart>
-        </ResponsiveContainer>
-      </div>
-    );
-  }
-
+/** Radar de los 4 criterios de desempeño (escala 0–`max`). */
+export function RadarCriterios({ data, max = 5 }: RadarCriteriosProps) {
   return (
     <div className="h-72">
       <ResponsiveContainer width="100%" height="100%">
@@ -52,7 +28,7 @@ export function RadarCriterios({ data, compact = false }: RadarCriteriosProps) {
           <PolarAngleAxis dataKey="criterio" tick={{ fontSize: 12 }} />
           <PolarRadiusAxis
             angle={30}
-            domain={[0, 5]}
+            domain={[0, max]}
             tick={{ fontSize: 10 }}
             tickCount={6}
           />

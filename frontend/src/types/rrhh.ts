@@ -584,9 +584,16 @@ export interface RrhhTipoEvaluacion {
   updated_at?: string;
 }
 
+/**
+ * Entrada del catálogo «Calificaciones»: es una **escala completa** de
+ * puntuación. Su `valor` solo puede ser 5, 10 o 100 (5 → escala 1–5,
+ * 10 → 1–10, 100 → 1–100); el backend rechaza con 422 cualquier otro.
+ * Vale como Create como como Read (el CRUD de catálogos es genérico).
+ */
 export interface RrhhCalificacion {
   id_calificaciones: number;
   nombre: string;
+  /** Escala que define: ∈ {5, 10, 100} (nunca un valor libre). */
   valor: number;
   descripcion: string | null;
   created_at?: string;
@@ -615,7 +622,7 @@ export interface RrhhCatalogoConfig {
   tieneActivo: boolean;
   /** Tiene columna `es_porcentaje` (deducciones y bonificaciones). */
   tienePorcentaje: boolean;
-  /** Tiene columna `valor` (calificaciones). */
+  /** Tiene columna `valor` (calificaciones: escala ∈ {5, 10, 100}). */
   tieneValor: boolean;
   /** Longitud máxima del nombre según la restricción de BD. */
   maxNombre: number;
@@ -716,7 +723,8 @@ export const RRHH_CATALOGOS: RrhhCatalogoConfig[] = [
     tienePorcentaje: false,
     tieneValor: true,
     maxNombre: 100,
-    descripcion: 'Escala de valoración usada en las evaluaciones (1 a 5).',
+    descripcion:
+      'Escala de valoración usada en las evaluaciones (su valor es el último número: 5 → 1–5, 100 → 1–100).',
   },
 ];
 
@@ -818,7 +826,10 @@ export const COLOR_ESTADO_EVALUACION: Record<RrhhEstadoEvaluacion, string> = {
   finalizada: 'bg-green-100 text-green-700',
 };
 
-/** Los 4 criterios son columnas FK fijas a `calificaciones`. */
+/**
+ * Los 4 criterios de cada evaluación. Se puntúan con 0–10 estrellas
+ * (`*_estrellas`) sobre la única escala elegida (`escala_criterios_id`).
+ */
 export const CRITERIOS_EVALUACION = [
   'puntualidad',
   'productividad',
@@ -879,11 +890,14 @@ export interface RrhhEvaluacion {
   estado: RrhhEstadoEvaluacion;
   inicio_periodo: string;
   fin_periodo: string;
-  /** Criterios: ids de `calificaciones` (no valores). */
-  puntualidad: number | null;
-  productividad: number | null;
-  trabajo_equipo: number | null;
-  calidad: number | null;
+  /** Escala de criterios: FK al catálogo `calificaciones` (cuyo `valor` es
+   * 5, 10 o 100) o `null` si todavía no se ha elegido. */
+  escala_criterios_id: number | null;
+  /** Puntuación de cada criterio en estrellas (0–10; `null` = sin puntuar). */
+  puntualidad_estrellas: number | null;
+  productividad_estrellas: number | null;
+  trabajo_equipo_estrellas: number | null;
+  calidad_estrellas: number | null;
   /** Escala 0–100, persistido: promedio de los `resultado_objetivo` de los
    * objetivos en alcance del periodo (recalculado en borradores). */
   promedio_objetivos: string | null;
@@ -898,22 +912,29 @@ export interface RrhhEvaluacionListado extends RrhhEvaluacion {
   empleado_nombre: string | null;
   departamento_nombre: string | null;
   evaluador_nombre: string | null;
-  /** Los 4 criterios resueltos (valor 0 = sin puntuar): alimentan el radar
-   * de la columna «Desempeño» y el del detalle. */
+  /** Nombre de la escala elegida, resuelta del catálogo (solo lectura). */
+  escala_nombre: string | null;
+  /** Valor numérico de la escala (5, 10 o 100); `null` sin escala. */
+  escala_valor: number | null;
+  /** Los 4 criterios resueltos (estrellas + valor ya convertido a la escala;
+   * 0 = sin puntuar): alimentan el radar y la lista del detalle. */
   criterios: RrhhCriterioEvaluacion[];
-  /** Escala 1–5, calculado al leer (no persistido en el backend). */
+  /** Media sobre la escala elegida, calculada al leer (no está
+   * persistida en el backend). */
   promedio_criterios: string | null;
   cantidad_objetivos: number;
   cantidad_metas: number;
 }
 
-/** Criterio con su calificación resuelta, listo para el radar. */
+/** Criterio con su puntuación resuelta, listo para el radar. */
 export interface RrhhCriterioEvaluacion {
   criterio: RrhhCriterio;
   etiqueta: string;
-  /** `calificaciones.valor` (1–5) o 0 si todavía no está puntuado. */
+  /** Estrellas marcadas (0–10) o `null` si todavía no está puntuado. */
+  estrellas: number | null;
+  /** Valor YA convertido a la escala elegida (estrellas÷10 × escala);
+   * 0 si no está puntuado. */
   valor: number;
-  calificacion_nombre: string | null;
 }
 
 export interface RrhhEvaluacionDetalle extends RrhhEvaluacionListado {
@@ -931,10 +952,15 @@ export interface RrhhEvaluacionCreate {
   tipo_evaluacion_id: number;
   inicio_periodo: string;
   fin_periodo: string;
-  puntualidad?: number | null;
-  productividad?: number | null;
-  trabajo_equipo?: number | null;
-  calidad?: number | null;
+  /** Escala de criterios elegida: FK al catálogo `calificaciones` (valor
+   * ∈ {5, 10, 100}); `null` sin escala (el backend no acepta estrellas sin
+   * escala: 400). */
+  escala_criterios_id: number | null;
+  /** Puntuación de cada criterio en estrellas (0–10; `null` = sin puntuar). */
+  puntualidad_estrellas: number | null;
+  productividad_estrellas: number | null;
+  trabajo_equipo_estrellas: number | null;
+  calidad_estrellas: number | null;
   comentarios?: string | null;
   fecha?: string | null;
 }

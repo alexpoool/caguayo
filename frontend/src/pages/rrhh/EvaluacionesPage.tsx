@@ -1,12 +1,13 @@
-import { useState } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useNavigate } from 'react-router-dom';
-import { rrhhService } from '../../services/rrhh';
+import { useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useNavigate } from "react-router-dom";
+import { rrhhService } from "../../services/rrhh";
 import {
   CRITERIOS_EVALUACION,
+  type RrhhCriterio,
   type RrhhEvaluacionCreate,
   type RrhhEvaluacionListado,
-} from '../../types/rrhh';
+} from "../../types/rrhh";
 import {
   AlertCircle,
   Calendar,
@@ -24,8 +25,8 @@ import {
   Trash2,
   User,
   X,
-} from 'lucide-react';
-import toast from 'react-hot-toast';
+} from "lucide-react";
+import toast from "react-hot-toast";
 import {
   Button,
   Input,
@@ -41,15 +42,15 @@ import {
   TableCell,
   ConfirmModal,
   Modal,
-} from '../../components/ui';
+} from "../../components/ui";
 
 /** Rango del periodo (inicio – fin) en formato legible. */
 const fmtRango = (inicio: string, fin: string) => {
   const f = (iso: string) =>
-    new Date(`${iso}T00:00:00`).toLocaleDateString('es-CU', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric',
+    new Date(`${iso}T00:00:00`).toLocaleDateString("es-CU", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
     });
   return `${f(inicio)} – ${f(fin)}`;
 };
@@ -57,58 +58,84 @@ const fmtRango = (inicio: string, fin: string) => {
 /** Fecha ISO local (sin desfase de UTC) para los inputs tipo date. */
 const hoyISO = () => {
   const d = new Date();
-  const mes = String(d.getMonth() + 1).padStart(2, '0');
-  const dia = String(d.getDate()).padStart(2, '0');
+  const mes = String(d.getMonth() + 1).padStart(2, "0");
+  const dia = String(d.getDate()).padStart(2, "0");
   return `${d.getFullYear()}-${mes}-${dia}`;
 };
 
+/** Formulario vacío: rango del periodo = hoy, sin escala y sin puntuar. */
+const formVacio = (): RrhhEvaluacionCreate => ({
+  empleado_id: 0,
+  periodo: "",
+  tipo_evaluacion_id: 0,
+  inicio_periodo: hoyISO(),
+  fin_periodo: hoyISO(),
+  escala_criterios_id: null,
+  puntualidad_estrellas: null,
+  productividad_estrellas: null,
+  trabajo_equipo_estrellas: null,
+  calidad_estrellas: null,
+  comentarios: "",
+});
+
 const ETIQUETA_CRITERIO: Record<string, string> = {
-  puntualidad: 'Puntualidad',
-  productividad: 'Productividad',
-  trabajo_equipo: 'Trabajo en equipo',
-  calidad: 'Calidad',
+  puntualidad: "Puntualidad",
+  productividad: "Productividad",
+  trabajo_equipo: "Trabajo en equipo",
+  calidad: "Calidad",
 };
+
+/** Formato español del valor en escala, sin ceros sobrantes:
+ * 3.5 → «3,5», 2.25 → «2,25», 7 → «7» (nunca «7.00»). */
+const fmtEscalado = (v: number) =>
+  String(Number(v.toFixed(2))).replace(".", ",");
 
 // Degradado de la página (celeste), referenciado de la página de Monedas
 const GRADIENTE =
-  'bg-gradient-to-r from-sky-500 to-sky-600 hover:from-sky-600 hover:to-sky-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300';
+  "bg-gradient-to-r from-sky-500 to-sky-600 hover:from-sky-600 hover:to-sky-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300";
 
 export function EvaluacionesPage() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
 
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState("");
   const [formOpen, setFormOpen] = useState(false);
-  const [confirmDelete, setConfirmDelete] = useState<RrhhEvaluacionListado | null>(null);
+  const [confirmDelete, setConfirmDelete] =
+    useState<RrhhEvaluacionListado | null>(null);
 
-  const [formData, setFormData] = useState<RrhhEvaluacionCreate>({
-    empleado_id: 0,
-    periodo: '',
-    tipo_evaluacion_id: 0,
-    inicio_periodo: hoyISO(),
-    fin_periodo: hoyISO(),
-    puntualidad: null,
-    productividad: null,
-    trabajo_equipo: null,
-    calidad: null,
-    comentarios: '',
-  });
+  const [formData, setFormData] = useState<RrhhEvaluacionCreate>(formVacio);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
   const { data: empleados = [] } = useQuery({
-    queryKey: ['rrhh', 'empleados', 'para-evaluaciones'],
+    queryKey: ["rrhh", "empleados", "para-evaluaciones"],
     queryFn: () => rrhhService.listarEmpleados({ limit: 500, activo: true }),
   });
 
+  // El catálogo «Calificaciones» son las **escalas** disponibles (su `valor`
+  // es 5, 10 o 100 → escala 1–5, 1–10 o 1–100): la evaluación usa una sola.
   const { data: calificaciones = [] } = useQuery({
-    queryKey: ['rrhh', 'calificaciones', 'para-criterios'],
+    queryKey: ["rrhh", "calificaciones", "para-criterios"],
     queryFn: () => rrhhService.listarCalificaciones({ limit: 100 }),
   });
 
+  // Valor numérico de la escala elegida (5, 10 o 100) o null sin elegir.
+  const escalaValor =
+    calificaciones.find(
+      (c) => c.id_calificaciones === formData.escala_criterios_id,
+    )?.valor ?? null;
+
+  /** Clic sobre ★n → n; clic sobre la ya marcada → null (vaciar). */
+  const marcarCriterio = (criterio: RrhhCriterio, n: number | null) => {
+    const parcial: Partial<RrhhEvaluacionCreate> = {};
+    parcial[`${criterio}_estrellas`] = n;
+    setFormData({ ...formData, ...parcial });
+  };
+
   // El selector de tipo tira del catálogo `tipos_evaluaciones` (solo activos).
   const { data: tiposEvaluacion = [] } = useQuery({
-    queryKey: ['rrhh', 'catalogos', 'tipos-evaluacion', 'activos'],
-    queryFn: () => rrhhService.listarTiposEvaluacion({ limit: 500, activo: true }),
+    queryKey: ["rrhh", "catalogos", "tipos-evaluacion", "activos"],
+    queryFn: () =>
+      rrhhService.listarTiposEvaluacion({ limit: 500, activo: true }),
   });
 
   const {
@@ -118,7 +145,7 @@ export function EvaluacionesPage() {
     error,
     refetch,
   } = useQuery({
-    queryKey: ['rrhh', 'evaluaciones', searchTerm],
+    queryKey: ["rrhh", "evaluaciones", searchTerm],
     queryFn: () =>
       rrhhService.listarEvaluaciones({
         limit: 500,
@@ -127,7 +154,7 @@ export function EvaluacionesPage() {
   });
 
   const invalidate = () =>
-    queryClient.invalidateQueries({ queryKey: ['rrhh', 'evaluaciones'] });
+    queryClient.invalidateQueries({ queryKey: ["rrhh", "evaluaciones"] });
 
   const cerrarForm = () => {
     setFormOpen(false);
@@ -135,55 +162,59 @@ export function EvaluacionesPage() {
   };
 
   const abrirForm = () => {
-    setFormData({
-      empleado_id: 0,
-      periodo: '',
-      tipo_evaluacion_id: 0,
-      inicio_periodo: hoyISO(),
-      fin_periodo: hoyISO(),
-      puntualidad: null,
-      productividad: null,
-      trabajo_equipo: null,
-      calidad: null,
-      comentarios: '',
-    });
+    setFormData(formVacio());
     setFormErrors({});
     setFormOpen(true);
   };
 
   const validar = (): boolean => {
     const errs: Record<string, string> = {};
-    if (!formData.empleado_id) errs.empleado_id = 'Selecciona el empleado a evaluar';
-    if (!formData.periodo.trim()) errs.periodo = 'El periodo es obligatorio (ej. 2026-1)';
+    if (!formData.empleado_id)
+      errs.empleado_id = "Selecciona el empleado a evaluar";
+    if (!formData.periodo.trim())
+      errs.periodo = "El periodo es obligatorio (ej. 2026-1)";
     if (!formData.tipo_evaluacion_id) {
-      errs.tipo_evaluacion_id = 'Selecciona el tipo de evaluación';
+      errs.tipo_evaluacion_id = "Selecciona el tipo de evaluación";
     }
     if (formData.fin_periodo < formData.inicio_periodo) {
-      errs.fin_periodo = 'El fin debe ser posterior o igual al inicio';
+      errs.fin_periodo = "El fin debe ser posterior o igual al inicio";
+    }
+    // El backend rechaza estrellas sin escala (400): avisamos antes de enviar.
+    const hayEstrellas = CRITERIOS_EVALUACION.some(
+      (criterio) => formData[`${criterio}_estrellas`] !== null,
+    );
+    if (hayEstrellas && formData.escala_criterios_id === null) {
+      toast.error(
+        "Selecciona la escala antes de puntuar: son 10 estrellas sobre la escala elegida",
+      );
+      errs.escala_criterios_id =
+        "Selecciona la escala antes de puntuar (10 estrellas sobre la escala elegida)";
     }
     setFormErrors(errs);
     return Object.keys(errs).length === 0;
   };
 
   const createMutation = useMutation({
-    mutationFn: (data: RrhhEvaluacionCreate) => rrhhService.crearEvaluacion(data),
+    mutationFn: (data: RrhhEvaluacionCreate) =>
+      rrhhService.crearEvaluacion(data),
     onSuccess: (creada) => {
-      toast.success('Evaluación creada en borrador');
+      toast.success("Evaluación creada en borrador");
       invalidate();
       cerrarForm();
       navigate(`/rrhh/evaluaciones/${creada.id}`);
     },
-    onError: (err: any) => toast.error(err?.message || 'No se pudo crear la evaluación'),
+    onError: (err: any) =>
+      toast.error(err?.message || "No se pudo crear la evaluación"),
   });
 
   const deleteMutation = useMutation({
     mutationFn: (id: number) => rrhhService.eliminarEvaluacion(id),
     onSuccess: () => {
-      toast.success('Evaluación eliminada');
+      toast.success("Evaluación eliminada");
       invalidate();
       setConfirmDelete(null);
     },
-    onError: (err: any) => toast.error(err?.message || 'No se pudo eliminar'),
+    onError: (err: any) => toast.error(err?.message || "No se pudo eliminar"),
   });
 
   const onSubmit = (e: React.FormEvent) => {
@@ -207,7 +238,7 @@ export function EvaluacionesPage() {
             <h1 className="text-xl font-bold text-gray-900">Evaluaciones</h1>
             <p className="text-sm text-gray-500 ml-3 hidden sm:block">
               {evaluaciones.length} evaluación
-              {evaluaciones.length === 1 ? '' : 'es'} · ciclo borrador →
+              {evaluaciones.length === 1 ? "" : "es"} · ciclo borrador →
               finalizada, con objetivos y metas
             </p>
           </div>
@@ -238,18 +269,26 @@ export function EvaluacionesPage() {
               <div className="p-4 bg-gradient-to-br from-sky-100 to-sky-200 rounded-full animate-pulse">
                 <ClipboardCheck className="h-12 w-12 text-sky-600 animate-spin" />
               </div>
-              <div className="text-gray-600 font-medium">Cargando evaluaciones...</div>
+              <div className="text-gray-600 font-medium">
+                Cargando evaluaciones...
+              </div>
             </div>
           ) : isError ? (
-            <ErrorState mensaje={(error as any)?.message} onReintentar={refetch} />
+            <ErrorState
+              mensaje={(error as any)?.message}
+              onReintentar={refetch}
+            />
           ) : evaluaciones.length === 0 ? (
             <div className="flex flex-col items-center justify-center gap-2 py-12 text-center text-gray-400">
               <div className="p-4 bg-slate-50 rounded-full mb-2">
                 <ClipboardCheck className="h-12 w-12 text-gray-300" />
               </div>
-              <p className="text-lg font-medium mb-1">No se encontraron evaluaciones</p>
+              <p className="text-lg font-medium mb-1">
+                No se encontraron evaluaciones
+              </p>
               <p className="text-sm mb-4">
-                Crea la primera con «Nueva evaluación» y púa sus criterios y metas
+                Crea la primera con «Nueva evaluación» y púa sus criterios y
+                metas
               </p>
               <Button onClick={abrirForm} className={`gap-2 ${GRADIENTE}`}>
                 <Plus className="h-4 w-4" />
@@ -295,19 +334,21 @@ export function EvaluacionesPage() {
                       className="hover:bg-gray-50 transition-colors"
                     >
                       <TableCell className="font-medium text-slate-900">
-                        {ev.empleado_nombre || '—'}
+                        {ev.empleado_nombre || "—"}
                       </TableCell>
-                      <TableCell className="text-slate-600">{ev.periodo}</TableCell>
+                      <TableCell className="text-slate-600">
+                        {ev.periodo}
+                      </TableCell>
                       <TableCell className="whitespace-nowrap text-xs text-slate-500">
                         <span className="inline-flex items-center gap-1">
                           <CalendarRange className="h-3.5 w-3.5 text-slate-400" />
                           {ev.inicio_periodo && ev.fin_periodo
                             ? fmtRango(ev.inicio_periodo, ev.fin_periodo)
-                            : '—'}
+                            : "—"}
                         </span>
                       </TableCell>
                       <TableCell className="text-slate-600">
-                        {ev.tipo_evaluacion ?? '—'}
+                        {ev.tipo_evaluacion ?? "—"}
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-2">
@@ -315,12 +356,14 @@ export function EvaluacionesPage() {
                             variant="ghost"
                             size="icon"
                             title="Editar evaluación"
-                            onClick={() => navigate(`/rrhh/evaluaciones/${ev.id}`)}
+                            onClick={() =>
+                              navigate(`/rrhh/evaluaciones/${ev.id}`)
+                            }
                             className="text-blue-600 hover:bg-blue-50 hover:scale-110 transition-all"
                           >
                             <Pencil className="h-4 w-4" />
                           </Button>
-                          {ev.estado === 'borrador' && (
+                          {ev.estado === "borrador" && (
                             <Button
                               variant="ghost"
                               size="icon"
@@ -352,27 +395,26 @@ export function EvaluacionesPage() {
           <h2 className="text-lg font-bold text-gray-900">Nueva evaluación</h2>
         </div>
         <form onSubmit={onSubmit} className="px-6 pt-5 space-y-4">
-          <p className="text-sm text-slate-500">
-            Nace en <strong>borrador</strong>: puedes puntuar criterios y añadir
-            objetivos hasta finalizarla.
-          </p>
-
           <div className="space-y-2">
-            <Label htmlFor="empleado_id" className="flex items-center gap-2 text-gray-700">
+            <Label
+              htmlFor="empleado_id"
+              className="flex items-center gap-2 text-gray-700"
+            >
               <User className="h-4 w-4 text-sky-500" />
-              Empleado *
+              Empleado
             </Label>
             <select
               id="empleado_id"
-              value={formData.empleado_id || ''}
+              value={formData.empleado_id || ""}
               onChange={(e) =>
                 setFormData({
                   ...formData,
-                  empleado_id: e.target.value === '' ? 0 : Number(e.target.value),
+                  empleado_id:
+                    e.target.value === "" ? 0 : Number(e.target.value),
                 })
               }
               className={`w-full rounded-md border px-3 py-2 text-sm transition-all duration-200 focus:ring-2 focus:ring-sky-500 focus:border-sky-500 ${
-                formErrors.empleado_id ? 'border-red-500' : 'border-slate-300'
+                formErrors.empleado_id ? "border-red-500" : "border-slate-300"
               }`}
             >
               <option value="">Selecciona un empleado activo</option>
@@ -392,17 +434,22 @@ export function EvaluacionesPage() {
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="periodo" className="flex items-center gap-2 text-gray-700">
+              <Label
+                htmlFor="periodo"
+                className="flex items-center gap-2 text-gray-700"
+              >
                 <Hash className="h-4 w-4 text-purple-500" />
-                Periodo *
+                Periodo
               </Label>
               <Input
                 id="periodo"
                 value={formData.periodo}
-                onChange={(e) => setFormData({ ...formData, periodo: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, periodo: e.target.value })
+                }
                 placeholder="Ej. 2026-1"
                 className={`transition-all duration-200 focus:ring-2 focus:ring-sky-500 focus:border-sky-500 ${
-                  formErrors.periodo ? 'border-red-500' : ''
+                  formErrors.periodo ? "border-red-500" : ""
                 }`}
               />
               {formErrors.periodo && (
@@ -413,9 +460,12 @@ export function EvaluacionesPage() {
               )}
             </div>
             <div className="space-y-2">
-              <Label htmlFor="tipo_evaluacion" className="flex items-center gap-2 text-gray-700">
+              <Label
+                htmlFor="tipo_evaluacion"
+                className="flex items-center gap-2 text-gray-700"
+              >
                 <Tag className="h-4 w-4 text-amber-500" />
-                Tipo *
+                Tipo
               </Label>
               <select
                 id="tipo_evaluacion"
@@ -427,14 +477,19 @@ export function EvaluacionesPage() {
                   })
                 }
                 className={`w-full rounded-md border px-3 py-2 text-sm transition-all duration-200 focus:ring-2 focus:ring-sky-500 focus:border-sky-500 ${
-                  formErrors.tipo_evaluacion_id ? 'border-red-500' : 'border-slate-300'
+                  formErrors.tipo_evaluacion_id
+                    ? "border-red-500"
+                    : "border-slate-300"
                 }`}
               >
                 <option value={0} disabled>
                   Selecciona un tipo
                 </option>
                 {tiposEvaluacion.map((t) => (
-                  <option key={t.id_tipos_evaluaciones} value={t.id_tipos_evaluaciones}>
+                  <option
+                    key={t.id_tipos_evaluaciones}
+                    value={t.id_tipos_evaluaciones}
+                  >
                     {t.nombre}
                   </option>
                 ))}
@@ -450,9 +505,12 @@ export function EvaluacionesPage() {
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="inicio_periodo" className="flex items-center gap-2 text-gray-700">
+              <Label
+                htmlFor="inicio_periodo"
+                className="flex items-center gap-2 text-gray-700"
+              >
                 <Calendar className="h-4 w-4 text-sky-500" />
-                Inicio del periodo *
+                Inicio del periodo
               </Label>
               <Input
                 id="inicio_periodo"
@@ -465,17 +523,22 @@ export function EvaluacionesPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="fin_periodo" className="flex items-center gap-2 text-gray-700">
+              <Label
+                htmlFor="fin_periodo"
+                className="flex items-center gap-2 text-gray-700"
+              >
                 <Calendar className="h-4 w-4 text-rose-500" />
-                Fin del periodo *
+                Fin del periodo
               </Label>
               <Input
                 id="fin_periodo"
                 type="date"
                 value={formData.fin_periodo}
-                onChange={(e) => setFormData({ ...formData, fin_periodo: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, fin_periodo: e.target.value })
+                }
                 className={`transition-all duration-200 focus:ring-2 focus:ring-sky-500 focus:border-sky-500 ${
-                  formErrors.fin_periodo ? 'border-red-500' : ''
+                  formErrors.fin_periodo ? "border-red-500" : ""
                 }`}
               />
               {formErrors.fin_periodo && (
@@ -488,55 +551,87 @@ export function EvaluacionesPage() {
           </div>
 
           <div className="space-y-2">
-            <Label className="flex items-center gap-2 text-gray-700">
+            <Label
+              htmlFor="escala_criterios_id"
+              className="flex items-center gap-2 text-gray-700"
+            >
               <Star className="h-4 w-4 text-amber-500" />
-              Criterios (catálogo «Calificaciones», 1–5)
+              Escala
             </Label>
             {calificaciones.length === 0 ? (
               <p className="rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-700">
-                No hay calificaciones creadas. Crea la escala 1–5 primero en
-                «Catálogos → Calificaciones»; mientras tanto los criterios quedan vacíos.
+                No hay escalas creadas.
               </p>
             ) : (
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                {CRITERIOS_EVALUACION.map((criterio) => (
-                  <div key={criterio} className="space-y-1">
-                    <Label htmlFor={criterio} className="text-xs text-slate-500">
-                      {ETIQUETA_CRITERIO[criterio]}
-                    </Label>
-                    <select
-                      id={criterio}
-                      value={(formData[criterio] as number | null) ?? ''}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          [criterio]: e.target.value === '' ? null : Number(e.target.value),
-                        })
-                      }
-                      className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm transition-all duration-200 focus:ring-2 focus:ring-sky-500 focus:border-sky-500"
+              <div className="space-y-2">
+                <select
+                  id="escala_criterios_id"
+                  value={formData.escala_criterios_id ?? ""}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      escala_criterios_id:
+                        e.target.value === "" ? null : Number(e.target.value),
+                    })
+                  }
+                  className={`w-full rounded-md border px-3 py-2 text-sm transition-all duration-200 focus:ring-2 focus:ring-sky-500 focus:border-sky-500 ${
+                    formErrors.escala_criterios_id
+                      ? "border-red-500"
+                      : "border-slate-300"
+                  }`}
+                >
+                  <option value="">Selecciona una escala</option>
+                  {calificaciones.map((c) => (
+                    <option
+                      key={c.id_calificaciones}
+                      value={c.id_calificaciones}
                     >
-                      <option value="">Sin puntuar</option>
-                      {calificaciones.map((c) => (
-                        <option key={c.id_calificaciones} value={c.id_calificaciones}>
-                          {c.nombre} ({c.valor})
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                ))}
+                      {c.nombre} · 1–{c.valor}
+                    </option>
+                  ))}
+                </select>
+                {formErrors.escala_criterios_id && (
+                  <p className="flex items-center gap-1 text-xs text-red-600">
+                    <AlertCircle className="h-3 w-3" />
+                    {formErrors.escala_criterios_id}
+                  </p>
+                )}
+
+                <div className="space-y-2">
+                  {CRITERIOS_EVALUACION.map((criterio) => (
+                    <div
+                      key={criterio}
+                      className="flex items-center justify-between gap-4 rounded-md border border-slate-200 bg-slate-50/60 px-3 py-2"
+                    >
+                      <span className="text-sm font-medium text-gray-700">
+                        {ETIQUETA_CRITERIO[criterio]}
+                      </span>
+                      <Estrellas
+                        escala={escalaValor}
+                        marcadas={formData[`${criterio}_estrellas`]}
+                        onMarcar={(n) => marcarCriterio(criterio, n)}
+                      />
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="comentarios" className="flex items-center gap-2 text-gray-700">
+            <Label
+              htmlFor="comentarios"
+              className="flex items-center gap-2 text-gray-700"
+            >
               <FileText className="h-4 w-4 text-amber-500" />
               Comentarios
             </Label>
             <textarea
               id="comentarios"
-              value={formData.comentarios || ''}
-              onChange={(e) => setFormData({ ...formData, comentarios: e.target.value })}
+              value={formData.comentarios || ""}
+              onChange={(e) =>
+                setFormData({ ...formData, comentarios: e.target.value })
+              }
               rows={3}
               placeholder="Observaciones generales (opcional)"
               className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500 transition-all duration-200"
@@ -545,7 +640,11 @@ export function EvaluacionesPage() {
 
           {/* Pie fijo: siempre visible aunque el formulario haga scroll */}
           <div className="sticky bottom-0 -mx-6 flex items-center gap-2 border-t bg-white px-6 pb-5 pt-4">
-            <Button type="submit" className={`gap-2 ${GRADIENTE}`} disabled={createMutation.isPending}>
+            <Button
+              type="submit"
+              className={`gap-2 ${GRADIENTE}`}
+              disabled={createMutation.isPending}
+            >
               {createMutation.isPending ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
@@ -572,10 +671,12 @@ export function EvaluacionesPage() {
         message={
           confirmDelete
             ? `¿Seguro que quieres eliminar la evaluación de «${confirmDelete.empleado_nombre}» (${confirmDelete.periodo})? Solo se puede eliminar mientras esté en borrador.`
-            : ''
+            : ""
         }
         type="danger"
-        onConfirm={() => confirmDelete && deleteMutation.mutate(confirmDelete.id)}
+        onConfirm={() =>
+          confirmDelete && deleteMutation.mutate(confirmDelete.id)
+        }
         onClose={() => setConfirmDelete(null)}
       />
     </div>
@@ -583,6 +684,69 @@ export function EvaluacionesPage() {
 }
 
 // ── Subcomponentes ─────────────────────────────────────────────────────────
+
+/**
+ * 10 estrellas de puntuación sobre la escala elegida. Marcadas en amber,
+ * sin marcar en slate (todas son reales, no decorativas). El clic sobre ★n
+ * marca `n` y el clic sobre la ya marcada la vacía (`null`).
+ *
+ * Al pasar el ratón por encima se muestra un tooltip con el valor
+ * equivalente en la escala (`n × escala ÷ 10`, formato español sin ceros
+ * sobrantes: «3,5», «2,25», «70»); sin escala elegida el tooltip solo
+ * indica las estrellas («n ★»). El valor nunca se muestra de forma estática.
+ */
+function Estrellas({
+  escala,
+  marcadas,
+  onMarcar,
+}: {
+  /** Valor numérico de la escala (5, 10 o 100) o `null` sin escala elegida. */
+  escala: number | null;
+  marcadas: number | null; // 0–10 o null = sin puntuar
+  onMarcar: (n: number | null) => void;
+}) {
+  const [hover, setHover] = useState<number | null>(null);
+  const visibles = hover ?? marcadas ?? 0;
+  const tooltipDe = (n: number) =>
+    escala === null ? `${n} ★` : fmtEscalado((n * escala) / 10);
+  return (
+    <div
+      className="flex items-center gap-0.5"
+      onMouseLeave={() => setHover(null)}
+      role="radiogroup"
+      aria-label={
+        escala === null
+          ? "Puntuación con estrellas (sin escala elegida)"
+          : `Puntuación con estrellas (escala 1–${escala})`
+      }
+    >
+      {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => (
+        <button
+          key={n}
+          type="button"
+          aria-label={`${n} de 10 estrellas`}
+          onMouseEnter={() => setHover(n)}
+          onClick={() => onMarcar(n === marcadas ? null : n)}
+          className="relative rounded p-0.5 transition-transform hover:scale-110"
+        >
+          {/* Tooltip de hover: solo visible al pasar el ratón por encima. */}
+          {hover === n && (
+            <span className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-1 -translate-x-1/2 whitespace-nowrap rounded bg-slate-800 px-1.5 py-0.5 text-[10px] leading-none text-white shadow">
+              {tooltipDe(n)}
+            </span>
+          )}
+          <Star
+            className={`h-5 w-5 transition-colors ${
+              n <= visibles
+                ? "fill-amber-400 text-amber-400"
+                : "fill-transparent text-slate-300"
+            }`}
+          />
+        </button>
+      ))}
+    </div>
+  );
+}
 
 function ErrorState({
   mensaje,
@@ -595,7 +759,7 @@ function ErrorState({
     <div className="flex flex-col items-center justify-center gap-3 py-12 text-center">
       <AlertCircle className="h-10 w-10 text-red-400" />
       <p className="text-sm text-slate-600">
-        {mensaje || 'No se pudieron cargar las evaluaciones'}
+        {mensaje || "No se pudieron cargar las evaluaciones"}
       </p>
       <Button variant="outline" size="sm" onClick={onReintentar}>
         Reintentar

@@ -213,7 +213,9 @@ export const rrhhService = {
     return await apiClient.get('/rrhh/catalogos/tipos-evaluacion', params);
   },
 
-  /** Calificaciones (1–5): de aquí salen los valores de los 4 criterios. */
+  /** Calificaciones: catálogo de **escalas** de los criterios — su `valor`
+   * es 5, 10 o 100 (escala 1–5, 1–10 o 1–100). Una evaluación usa una sola
+   * (`escala_criterios_id`) y sus 4 criterios se puntúan 0–10 estrellas. */
   listarCalificaciones: async (params?: {
     skip?: number;
     limit?: number;

@@ -14,6 +14,7 @@ import {
   ClipboardCheck,
   Loader2,
   RefreshCw,
+  Star,
   Target,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -26,6 +27,9 @@ import {
 
 const fmtPromedio = (v: string | null) =>
   v === null || v === undefined ? '—' : Number(v).toFixed(2);
+
+/** Valor en escala con formato español sin ceros sobrantes: 3.5 → «3,5», 7 → «7». */
+const fmtValor = (v: number) => String(Number(v.toFixed(2))).replace('.', ',');
 
 export function EvaluacionDetallePage() {
   const { id } = useParams<{ id: string }>();
@@ -105,6 +109,10 @@ export function EvaluacionDetallePage() {
     );
   }
 
+  // Escala de criterios resuelta en la evaluación (5, 10 o 100); `null` si
+  // aún no se ha elegido — el radar y las etiquetas se adaptan a ella.
+  const escala = evaluacion.escala_valor;
+
   const radarData = evaluacion.criterios.map((c) => ({
     criterio: c.etiqueta,
     valor: c.valor,
@@ -181,14 +189,17 @@ export function EvaluacionDetallePage() {
         <Card>
           <CardHeader className="pb-2">
             <h2 className="text-sm font-semibold text-slate-700">
-              Criterios de desempeño (escala 1–5)
+              Criterios de desempeño{escala !== null ? ` (escala 1–${escala})` : ''}
             </h2>
             <p className="text-xs text-slate-500">
               Promedio de criterios: {fmtPromedio(evaluacion.promedio_criterios)}
+              {evaluacion.promedio_criterios !== null && escala !== null
+                ? ` / ${escala}`
+                : ''}
             </p>
           </CardHeader>
           <CardContent>
-            <RadarCriterios data={radarData} />
+            <RadarCriterios data={radarData} max={escala ?? 10} />
           </CardContent>
         </Card>
 
@@ -200,7 +211,9 @@ export function EvaluacionDetallePage() {
           <CardContent className="space-y-4">
             <div className="grid grid-cols-2 gap-3">
               <div className="rounded-lg bg-slate-50 p-3">
-                <p className="text-xs text-slate-500">Promedio criterios (1–5)</p>
+                <p className="text-xs text-slate-500">
+                  Promedio criterios{escala !== null ? ` (1–${escala})` : ''}
+                </p>
                 <p className="text-2xl font-bold tabular-nums text-slate-900">
                   {fmtPromedio(evaluacion.promedio_criterios)}
                 </p>
@@ -228,23 +241,43 @@ export function EvaluacionDetallePage() {
             </div>
 
             <div className="space-y-2">
-              <p className="text-xs font-semibold text-slate-500">Criterios puntuados</p>
+              <p className="text-xs font-semibold text-slate-500">
+                Criterios puntuados
+                {evaluacion.escala_nombre && (
+                  <span className="ml-1 font-normal">
+                    · escala {evaluacion.escala_nombre}
+                    {escala !== null ? ` (1–${escala})` : ''}
+                  </span>
+                )}
+              </p>
               <ul className="space-y-1">
                 {evaluacion.criterios.map((c) => (
                   <li
                     key={c.criterio}
-                    className="flex items-center justify-between rounded-md bg-slate-50 px-3 py-1.5 text-sm"
+                    className="flex items-center justify-between gap-2 rounded-md bg-slate-50 px-3 py-1.5 text-sm"
                   >
-                    <span className="text-slate-600">
-                      {c.etiqueta}
-                      {c.calificacion_nombre && (
-                        <span className="text-xs text-slate-400"> · {c.calificacion_nombre}</span>
-                      )}
-                    </span>
-                    <span
-                      className={`font-semibold tabular-nums ${c.valor > 0 ? 'text-slate-900' : 'text-slate-400'}`}
-                    >
-                      {c.valor > 0 ? c.valor : 'Sin puntuar'}
+                    <span className="text-slate-600">{c.etiqueta}</span>
+                    <span className="flex items-center gap-2">
+                      {/* Estrellas (0–10) + valor ya convertido a la escala. */}
+                      <span
+                        className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold ${
+                          c.estrellas !== null
+                            ? 'bg-amber-100 text-amber-700'
+                            : 'bg-slate-200 text-slate-500'
+                        }`}
+                      >
+                        <Star className="h-3 w-3" />
+                        {c.estrellas !== null ? `${c.estrellas}/10` : 'Sin puntuar'}
+                      </span>
+                      <span
+                        className={`font-semibold tabular-nums ${
+                          c.valor > 0 ? 'text-slate-900' : 'text-slate-400'
+                        }`}
+                      >
+                        {c.estrellas !== null
+                          ? `${fmtValor(c.valor)}${escala !== null ? ` / ${escala}` : ''}`
+                          : '—'}
+                      </span>
                     </span>
                   </li>
                 ))}

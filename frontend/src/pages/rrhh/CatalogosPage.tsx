@@ -53,8 +53,12 @@ const FORM_INICIAL: FormState = {
   nombre: '',
   descripcion: '',
   es_porcentaje: false,
-  valor: 3,
+  valor: 5,
 };
+
+/** Escalas admitidas en el catálogo «Calificaciones» (el backend solo
+ * acepta 5, 10 o 100 → escala 1–5, 1–10 o 1–100). */
+const ESCALAS = [5, 10, 100];
 
 /** Aplana cualquier catálogo a un registro para leer campos opcionales. */
 const comoRegistro = (item: RrhhCatalogo): Record<string, unknown> =>
@@ -133,7 +137,7 @@ export function CatalogosPage() {
       nombre: (registro.nombre as string) ?? '',
       descripcion: (registro.descripcion as string | null) ?? '',
       es_porcentaje: (registro.es_porcentaje as boolean) ?? false,
-      valor: (registro.valor as number) ?? 3,
+      valor: (registro.valor as number) ?? 5,
     });
     setFormErrors({});
     setView('form');
@@ -145,8 +149,8 @@ export function CatalogosPage() {
     else if (form.nombre.trim().length > config.maxNombre) {
       errs.nombre = `Máximo ${config.maxNombre} caracteres`;
     }
-    if (config.tieneValor && (form.valor < 1 || form.valor > 5)) {
-      errs.valor = 'La calificación debe estar entre 1 y 5';
+    if (config.tieneValor && !ESCALAS.includes(form.valor)) {
+      errs.valor = 'La escala debe ser 1–5, 1–10 o 1–100';
     }
     setFormErrors(errs);
     return Object.keys(errs).length === 0;
@@ -467,18 +471,23 @@ export function CatalogosPage() {
 
               {config.tieneValor && (
                 <div className="space-y-2">
-                  <Label htmlFor="valor">Valor (1 a 5) *</Label>
-                  <Input
+                  <Label htmlFor="valor">Escala de puntuación *</Label>
+                  <select
                     id="valor"
-                    type="number"
-                    min={1}
-                    max={5}
                     value={form.valor}
                     onChange={(e) =>
                       setForm({ ...form, valor: Number(e.target.value) })
                     }
-                    className={formErrors.valor ? 'border-red-500' : ''}
-                  />
+                    className={`flex h-10 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:cursor-not-allowed disabled:opacity-50 ${
+                      formErrors.valor ? 'border-red-500' : ''
+                    }`}
+                  >
+                    {ESCALAS.map((v) => (
+                      <option key={v} value={v}>
+                        Escala 1–{v}
+                      </option>
+                    ))}
+                  </select>
                   {formErrors.valor && (
                     <p className="flex items-center gap-1 text-xs text-red-600">
                       <AlertCircle className="h-3 w-3" />
