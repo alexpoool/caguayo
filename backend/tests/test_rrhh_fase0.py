@@ -5,14 +5,15 @@ Cubre el endpoint raíz `GET /api/v1/rrhh/info` (único endpoint de la fase).
 
 
 def test_rrhh_info_ok(client):
-    """El endpoint devuelve la info del módulo y sus 12 submódulos."""
+    """El endpoint devuelve la info del módulo y sus 13 submódulos."""
     response = client.get("/api/v1/rrhh/info")
     assert response.status_code == 200
     data = response.json()
     assert data["modulo"] == "rrhh"
     assert data["nombre"] == "Recursos Humanos"
     assert data["estado"] == "fase-0"
-    assert len(data["submodulos"]) == 12
+    # 12 del esqueleto inicial + Auditoría, que llega con la Fase 9.
+    assert len(data["submodulos"]) == 13
 
 
 def test_rrhh_info_estructura_submodulos(client):
@@ -33,7 +34,7 @@ def test_rrhh_info_funcionalidades_semilladas(client):
         "rrhh_catalogos", "rrhh_departamentos", "rrhh_puestos", "rrhh_empleados",
         "rrhh_asistencia", "rrhh_deducciones", "rrhh_bonificaciones",
         "rrhh_nomina", "rrhh_pagos", "rrhh_solicitudes", "rrhh_evaluaciones",
-        "rrhh_reportes",
+        "rrhh_reportes", "rrhh_auditoria",
     }
     obtenidas = {sub["funcionalidad"] for sub in response.json()["submodulos"]}
     assert obtenidas == esperadas

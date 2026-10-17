@@ -290,6 +290,9 @@ from .rrhh_asistencia_dto import (
     RrhhAsistenciaResumenDia,
     ESTADOS_ASISTENCIA,
 )
+from .rrhh_auditoria_dto import (
+    RrhhAuditoriaFila,
+)
 from .rrhh_movimiento_dto import (
     RrhhMovimientoBase,
     RrhhDeduccionBase,
@@ -588,6 +591,7 @@ __all__ = [
     "RrhhAsistenciaMarcacion",
     "RrhhAsistenciaResumenDia",
     "ESTADOS_ASISTENCIA",
+    "RrhhAuditoriaFila",
     "RrhhMovimientoBase",
     "RrhhDeduccionBase",
     "RrhhBonificacionBase",

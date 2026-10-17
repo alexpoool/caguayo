@@ -116,6 +116,13 @@ _SUBMODULOS = [
         funcionalidad="rrhh_reportes",
         fase=9,
     ),
+    RrhhSubmodulo(
+        id="auditoria",
+        nombre="Auditoría",
+        descripcion="Registro de acciones del módulo (tabla log)",
+        funcionalidad="rrhh_auditoria",
+        fase=9,
+    ),
 ]
 
 

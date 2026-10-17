@@ -70,6 +70,7 @@ from .rrhh_nomina import rrhh_nomina_router
 from .rrhh_solicitudes import rrhh_solicitudes_router
 from .rrhh_evaluaciones import rrhh_evaluaciones_router
 from .rrhh_objetivos import rrhh_objetivos_router
+from .rrhh_auditoria import rrhh_auditoria_router
 
 api_router = APIRouter(prefix="/api/v1")
 
@@ -137,6 +138,7 @@ api_router.include_router(rrhh_nomina_router)
 api_router.include_router(rrhh_solicitudes_router)
 api_router.include_router(rrhh_evaluaciones_router)
 api_router.include_router(rrhh_objetivos_router)
+api_router.include_router(rrhh_auditoria_router)
 
 
 @api_router.get("/")
