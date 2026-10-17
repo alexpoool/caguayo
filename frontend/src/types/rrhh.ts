@@ -1005,3 +1005,41 @@ export interface RrhhEvaluacionReporte {
   promedio_objetivos: string | null;
   empleados: RrhhEvaluacionEmpleadoReporte[];
 }
+
+// ── Auditoría (Fase 9) ──────────────────────────────────────────────────────
+
+/**
+ * Fila del registro de auditoría del módulo (Fase 9): una entrada de la tabla
+ * `log` con el contexto completo de la petición o acción — cuándo ocurrió, qué
+ * severidad tiene, quién la ejecutó y desde dónde. `nivel` y `tipo` llegan en
+ * mayúsculas (`INFO`/`WARNING`/`ERROR` y `REQUEST`/`SOLICITUD`/`ACTION`/
+ * `NOMINA`/`FRONTEND`); `detalle` es un JSON guardado como texto (p. ej.
+ * `{"duration_ms":126}`) y `null` cuando no hay contexto extra.
+ */
+export interface RrhhAuditoriaFila {
+  /** Identificador de la entrada de log. */
+  id: number;
+  /** Marca de tiempo ISO (p. ej. `2026-10-16T12:34:56`). */
+  timestamp: string;
+  /** Severidad del evento: `INFO`, `WARNING` o `ERROR`. */
+  nivel: string;
+  /** Categoría del evento: `REQUEST`, `SOLICITUD`, `ACTION`, `NOMINA` o `FRONTEND`. */
+  tipo: string;
+  /** Descripción legible (p. ej. `GET /rrhh/nomina/costo - 200`). */
+  mensaje: string;
+  /** Contexto extra en JSON como texto; `null` si no existe. */
+  detalle: string | null;
+  /** IP desde la que llegó la petición, si se registró. */
+  ip: string | null;
+  /** Usuario autenticado que ejecutó la acción; `null` si no había sesión. */
+  usuario_id: number | null;
+  usuario_nombre: string | null;
+  /** Endpoint asociado a la petición (para REQUEST). */
+  endpoint: string | null;
+  /** Método HTTP de la petición (`GET`, `POST`…); `null` si no aplica. */
+  method: string | null;
+  /** Código de estado HTTP devuelto; `null` si no aplica. */
+  status_code: number | null;
+  /** User-Agent recortado; se muestra en la fila expandida. */
+  navegador: string | null;
+}

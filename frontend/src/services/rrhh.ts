@@ -65,6 +65,7 @@ import type {
   RrhhMeta,
   RrhhMetaCreate,
   RrhhEvaluacionReporte,
+  RrhhAuditoriaFila,
 } from '../types/rrhh';
 
 export const rrhhService = {
@@ -660,5 +661,30 @@ export const rrhhService = {
     hasta?: string;
   }): Promise<RrhhEvaluacionReporte> => {
     return await apiClient.get('/rrhh/evaluaciones/reporte', params);
+  },
+
+  // ── Auditoría (Fase 9) ──────────────────────────────────────────────────
+
+  /** Entradas del registro de auditoría, de más reciente a más antigua. */
+  listarAuditoria: async (params?: {
+    skip?: number;
+    limit?: number;
+    desde?: string;
+    hasta?: string;
+    tipo?: string;
+    nivel?: string;
+    buscar?: string;
+  }): Promise<RrhhAuditoriaFila[]> => {
+    return await apiClient.get('/rrhh/auditoria', params);
+  },
+
+  /** Tipos distintos que existen en el registro (para el filtro). */
+  tiposAuditoria: async (): Promise<string[]> => {
+    return await apiClient.get('/rrhh/auditoria/tipos');
+  },
+
+  /** Niveles distintos que existen en el registro (para el filtro). */
+  nivelesAuditoria: async (): Promise<string[]> => {
+    return await apiClient.get('/rrhh/auditoria/niveles');
   },
 };

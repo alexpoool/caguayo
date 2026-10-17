@@ -12,6 +12,7 @@ import {
   CalendarDays,
   Award,
   BarChart3,
+  ShieldAlert,
 } from 'lucide-react';
 
 interface SubmoduloCard {
@@ -120,7 +121,15 @@ const SUBMODULOS: SubmoduloCard[] = [
     descripcion: 'Dashboards y reportes exportables del módulo.',
     icon: <BarChart3 className="h-5 w-5" />,
     fase: 9,
-    ruta: null,
+    ruta: '/rrhh/reportes',
+  },
+  {
+    id: 'auditoria',
+    nombre: 'Auditoría',
+    descripcion: 'Registro de acciones del módulo.',
+    icon: <ShieldAlert className="h-5 w-5" />,
+    fase: 9,
+    ruta: '/rrhh/auditoria',
   },
 ];
 
