@@ -12,9 +12,10 @@ import {
   ArrowLeft,
   Check,
   ClipboardCheck,
+  Info,
   Loader2,
   MessageSquare,
-  RefreshCw,
+  Save,
   Star,
   Target,
   X,
@@ -78,14 +79,14 @@ export function EvaluacionDetallePage() {
   const finalizarMutation = useMutation({
     mutationFn: () => rrhhService.finalizarEvaluacion(evaluacionId),
     onSuccess: () => {
-      toast.success('Evaluación finalizada (ya no se puede editar)');
+      toast.success('Evaluación finalizada');
       invalidate();
       navigate('/rrhh/evaluaciones');
     },
     onError: (err: any) => toast.error(err?.message || 'No se pudo finalizar'),
   });
 
-  /** Añade objetivos a la selección (solo `borrador`). */
+  /** Añade objetivos a la selección (cualquier estado). */
   const seleccionarMutation = useMutation({
     mutationFn: (objetivoIds: number[]) =>
       rrhhService.seleccionarObjetivos(evaluacionId, objetivoIds),
@@ -96,7 +97,7 @@ export function EvaluacionDetallePage() {
     onError: (err: any) => toast.error(err?.message || 'No se pudo seleccionar el objetivo'),
   });
 
-  /** Quita un objetivo de la selección (solo `borrador`). */
+  /** Quita un objetivo de la selección (cualquier estado). */
   const quitarMutation = useMutation({
     mutationFn: (filaId: number) =>
       rrhhService.quitarObjetivoEvaluacion(evaluacionId, filaId),
@@ -133,6 +134,16 @@ export function EvaluacionDetallePage() {
     },
     onError: (err: any) => toast.error(err?.message || 'No se pudo guardar'),
   });
+
+  /**
+   * «Guardar»: el blur del campo activo dispara sus guardados pendientes
+   * (los onBlur de cabecera y filas) y se vuelve al listado de evaluaciones.
+   */
+  const guardarYSalir = () => {
+    (document.activeElement as HTMLElement | null)?.blur();
+    toast.success('Guardado');
+    navigate('/rrhh/evaluaciones');
+  };
 
   if (isLoading) {
     return (
@@ -219,8 +230,13 @@ export function EvaluacionDetallePage() {
             <Target className="h-4 w-4" />
             Ver objetivos
           </Button>
-          <Button variant="outline" size="sm" onClick={() => refetch()}>
-            <RefreshCw className="h-4 w-4" />
+          <Button
+            size="sm"
+            title="Guardar cambios y volver al listado"
+            onClick={guardarYSalir}
+          >
+            <Save className="h-4 w-4" />
+            Guardar
           </Button>
           {esBorrador && (
             <Button
@@ -240,10 +256,13 @@ export function EvaluacionDetallePage() {
       </div>
 
       {!esBorrador && (
-        <div className="rounded-md bg-slate-100 px-4 py-2 text-xs text-slate-600">
-          Evaluación finalizada: la selección y la puntuación de los objetivos
-          quedan congeladas (la definición de objetivos sigue siendo editable
-          desde Empleados).
+        <div className="flex items-start gap-2 rounded-md bg-sky-50 px-4 py-2 text-xs text-sky-700 ring-1 ring-sky-100">
+          <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-sky-600" />
+          <span>
+            Evaluación finalizada: puedes seguir editándola (cabecera,
+            objetivos y puntuación) como si estuviera en borrador; el estado
+            es solo informativo.
+          </span>
         </div>
       )}
 
@@ -301,7 +320,6 @@ export function EvaluacionDetallePage() {
                   <FilaObjetivo
                     key={obj.id_objetivo}
                     obj={obj}
-                    esBorrador={esBorrador}
                     guardado={obj.fila_id !== null && filaGuardada === obj.fila_id}
                     seleccionando={
                       seleccionarMutation.isPending &&
@@ -376,22 +394,14 @@ export function EvaluacionDetallePage() {
                 <MessageSquare className="h-4 w-4 text-sky-500" />
                 Comentarios y recomendaciones
               </h2>
-              {!esBorrador && (
-                <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-500">
-                  Solo lectura
-                </span>
-              )}
             </div>
             <p className="text-xs text-slate-500">
-              {esBorrador
-                ? 'Se guardan al salir del campo.'
-                : 'Congelados al finalizar la evaluación.'}
+              Se guardan al salir del campo.
             </p>
           </CardHeader>
           <CardContent>
             <CabeceraTexto
               evaluacion={evaluacion}
-              esBorrador={esBorrador}
               onGuardar={(data) => cabeceraMutation.mutate(data)}
               guardando={cabeceraMutation.isPending}
             />
@@ -407,12 +417,10 @@ export function EvaluacionDetallePage() {
 /** Comentarios y recomendaciones generales, con guardado al salir del campo. */
 function CabeceraTexto({
   evaluacion,
-  esBorrador,
   onGuardar,
   guardando,
 }: {
   evaluacion: { comentarios: string | null; recomendaciones: string | null };
-  esBorrador: boolean;
   onGuardar: (data: {
     comentarios: string | null;
     recomendaciones: string | null;
@@ -424,8 +432,7 @@ function CabeceraTexto({
     evaluacion.recomendaciones ?? ''
   );
 
-  // Resincroniza cuando el servidor devuelve valores distintos (p. ej. tras
-  // finalizar): la dependencia solo cambia si cambió el dato guardado.
+  // Resincroniza cuando el servidor devuelve valores distintos.
   useEffect(() => setComentarios(evaluacion.comentarios ?? ''), [evaluacion.comentarios]);
   useEffect(
     () => setRecomendaciones(evaluacion.recomendaciones ?? ''),
@@ -433,7 +440,6 @@ function CabeceraTexto({
   );
 
   const guardar = (campo: 'comentarios' | 'recomendaciones') => {
-    if (!esBorrador) return;
     const actual = campo === 'comentarios' ? evaluacion.comentarios ?? '' : evaluacion.recomendaciones ?? '';
     const nuevo = (campo === 'comentarios' ? comentarios : recomendaciones).trim();
     if (nuevo === actual.trim()) return;
@@ -460,7 +466,7 @@ function CabeceraTexto({
           id="ev-comentarios"
           rows={4}
           value={comentarios}
-          disabled={!esBorrador || guardando}
+          disabled={guardando}
           onChange={(e) => setComentarios(e.target.value)}
           onBlur={() => guardar('comentarios')}
           placeholder="Observaciones generales (opcional)"
@@ -478,7 +484,7 @@ function CabeceraTexto({
           id="ev-recomendaciones"
           rows={4}
           value={recomendaciones}
-          disabled={!esBorrador || guardando}
+          disabled={guardando}
           onChange={(e) => setRecomendaciones(e.target.value)}
           onBlur={() => guardar('recomendaciones')}
           placeholder="Recomendaciones generales de la evaluación (opcional)"
@@ -492,7 +498,6 @@ function CabeceraTexto({
 /** Una fila de «Objetivos del periodo»: selección + puntuación por objetivo. */
 function FilaObjetivo({
   obj,
-  esBorrador,
   guardado,
   seleccionando,
   quitando,
@@ -502,7 +507,6 @@ function FilaObjetivo({
   onGuardarFila,
 }: {
   obj: RrhhEvaluacionObjetivo;
-  esBorrador: boolean;
   /** Muestra el check breve de «guardado» tras una mutación exitosa. */
   guardado: boolean;
   seleccionando: boolean;
@@ -512,7 +516,7 @@ function FilaObjetivo({
   onPuntuar: (resultado: number) => void;
   onGuardarFila: (data: RrhhEvaluacionObjetivoUpdate) => void;
 }) {
-  const editables = esBorrador && obj.seleccionado && obj.fila_id !== null;
+  const editables = obj.seleccionado && obj.fila_id !== null;
 
   const [valoracion, setValoracion] = useState(obj.valoracion ?? '');
   const [recomendaciones, setRecomendaciones] = useState(obj.recomendaciones ?? '');
@@ -559,15 +563,9 @@ function FilaObjetivo({
       <input
         type="checkbox"
         checked={obj.seleccionado}
-        disabled={!esBorrador || seleccionando || quitando}
+        disabled={seleccionando || quitando}
         onChange={(e) => (e.target.checked ? onSeleccionar() : onQuitar())}
-        title={
-          !esBorrador
-            ? 'Solo se edita mientras la evaluación está en borrador'
-            : obj.seleccionado
-              ? 'Quitar de la evaluación'
-              : 'Añadir a la evaluación'
-        }
+        title={obj.seleccionado ? 'Quitar de la evaluación' : 'Añadir a la evaluación'}
         className="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300 text-sky-600 accent-sky-600 focus:ring-sky-500 disabled:cursor-not-allowed"
       />
 
@@ -652,7 +650,7 @@ function FilaObjetivo({
 
       {/* Quitar de la evaluación */}
       <div className="flex items-center justify-end md:justify-center">
-        {obj.seleccionado && esBorrador && (
+        {obj.seleccionado && (
           <Button
             variant="ghost"
             size="icon"
@@ -675,8 +673,8 @@ function FilaObjetivo({
 
 /**
  * 5 estrellas, escala 0–5. Clic sobre ★n marca `n`; clic sobre la estrella ya
- * activa la vacía (0), y el botón «×» limpia la puntuación. En finalizada
- * (o en filas no seleccionadas) es solo lectura.
+ * activa la vacía (0), y el botón «×» limpia la puntuación. En filas no
+ * seleccionadas es solo lectura.
  */
 function Estrellas0a5({
   valor,

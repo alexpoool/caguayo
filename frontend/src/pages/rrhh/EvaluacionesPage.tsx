@@ -360,17 +360,15 @@ export function EvaluacionesPage() {
                           >
                             <Pencil className="h-4 w-4" />
                           </Button>
-                          {ev.estado === "borrador" && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              title="Eliminar evaluación"
-                              onClick={() => setConfirmDelete(ev)}
-                              className="text-red-600 hover:bg-red-50 hover:scale-110 transition-all"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          )}
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            title="Eliminar evaluación"
+                            onClick={() => setConfirmDelete(ev)}
+                            className="text-red-600 hover:bg-red-50 hover:scale-110 transition-all"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
                         </div>
                       </TableCell>
                     </TableRow>
@@ -383,7 +381,12 @@ export function EvaluacionesPage() {
       </Card>
 
       {/* Modal de nueva evaluación */}
-      <Modal isOpen={formOpen} onClose={cerrarForm} className="overflow-hidden">
+      {/* Estilo cuadrilátero sin borde solo para este modal (sombra y fondo se mantienen) */}
+      <Modal
+        isOpen={formOpen}
+        onClose={cerrarForm}
+        className="overflow-hidden !rounded-none"
+      >
         {/* Cabecera con el degradado de la página */}
         <div className="sticky top-0 flex items-center gap-3 border-b bg-gradient-to-r from-sky-50 to-sky-100 px-6 py-4">
           <div className="p-2 bg-gradient-to-br from-sky-500 to-sky-600 rounded-lg">
@@ -619,7 +622,7 @@ export function EvaluacionesPage() {
         title="Eliminar evaluación"
         message={
           confirmDelete
-            ? `¿Seguro que quieres eliminar la evaluación de «${confirmDelete.empleado_nombre}» (${confirmDelete.periodo})? Solo se puede eliminar mientras esté en borrador.`
+            ? `¿Seguro que quieres eliminar la evaluación de «${confirmDelete.empleado_nombre}» (${confirmDelete.periodo})?`
             : ""
         }
         type="danger"
