@@ -50,7 +50,7 @@ from src.models import (
     RrhhAsistencia,
     RrhhEvaluacion,
     RrhhObjetivo,
-    RrhhMeta,
+    RrhhEvaluacionObjetivo,
     RrhhSolicitud,
     RrhhNomina,
     RrhhNominaDeduccion,
@@ -105,7 +105,7 @@ __all_models__ = [
     RrhhAsistencia,
     RrhhEvaluacion,
     RrhhObjetivo,
-    RrhhMeta,
+    RrhhEvaluacionObjetivo,
     RrhhSolicitud,
     RrhhNomina,
     RrhhNominaDeduccion,
@@ -534,7 +534,7 @@ async def usuarios_lista_frontend():
                 allUsuarios = await res.json();
                 renderTable(allUsuarios);
             } catch (err) {
-                content.innerHTML = '<div class="empty-state"><div class="icon">\u26A0\uFE0F</div><p>Error: ' + escapeHtml(err.message) + '</p></div>';
+                content.innerHTML = '<div class="empty-state"><div class="icon">\u26a0\ufe0f</div><p>Error: ' + escapeHtml(err.message) + '</p></div>';
             }
         }
 

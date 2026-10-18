@@ -93,7 +93,8 @@ class RrhhCatalogoService:
         result = await db.exec(statement)
         if result.first():
             raise HTTPException(
-                status_code=409, detail=f"Ya existe un {self.etiqueta} llamado «{nombre}»"
+                status_code=409,
+                detail=f"Ya existe un {self.etiqueta} llamado «{nombre}»",
             )
 
     async def _esta_en_uso(self, db: AsyncSession, id: int) -> bool:
@@ -113,7 +114,9 @@ class RrhhCatalogoService:
     async def get(self, db: AsyncSession, id: int) -> SQLModel:
         obj = await db.get(self.model, id)
         if not obj:
-            raise HTTPException(status_code=404, detail=f"{self.etiqueta} no encontrado")
+            raise HTTPException(
+                status_code=404, detail=f"{self.etiqueta} no encontrado"
+            )
         return self.read_model.model_validate(obj)
 
     async def listar(
@@ -145,7 +148,9 @@ class RrhhCatalogoService:
     async def update(self, db: AsyncSession, id: int, obj_in: SQLModel) -> SQLModel:
         db_obj = await db.get(self.model, id)
         if not db_obj:
-            raise HTTPException(status_code=404, detail=f"{self.etiqueta} no encontrado")
+            raise HTTPException(
+                status_code=404, detail=f"{self.etiqueta} no encontrado"
+            )
         data = obj_in.model_dump(exclude_unset=True)
         if "nombre" in data:
             await self._verificar_nombre_unico(db, data["nombre"], excluir_id=id)
@@ -160,7 +165,9 @@ class RrhhCatalogoService:
         """Baja lógica si está en uso; si no, borrado físico."""
         db_obj = await db.get(self.model, id)
         if not db_obj:
-            raise HTTPException(status_code=404, detail=f"{self.etiqueta} no encontrado")
+            raise HTTPException(
+                status_code=404, detail=f"{self.etiqueta} no encontrado"
+            )
 
         if await self._esta_en_uso(db, id):
             if not self.tiene_activo:
@@ -217,9 +224,7 @@ class _TipoBonificacionService(RrhhCatalogoService):
 class _TipoPagoService(RrhhCatalogoService):
     def _usos(self, id: int) -> List:
         return [
-            select(func.count())
-            .select_from(RrhhPago)
-            .where(RrhhPago.metodo_id == id)
+            select(func.count()).select_from(RrhhPago).where(RrhhPago.metodo_id == id)
         ]
 
 
@@ -237,16 +242,12 @@ class _TipoEvaluacionService(RrhhCatalogoService):
 
 
 class _CalificacionService(RrhhCatalogoService):
-    """`calificaciones` es referenciada por `evaluaciones.escala_criterios_id`."""
+    """`calificaciones` no la referencia ninguna tabla desde el rework v2 de
+    la Fase 8 (fuera `evaluaciones.escala_criterios_id`); el catálogo vive
+    por su cuenta y sus entradas de test se purgan con el script de residuos."""
 
     def _usos(self, id: int) -> List:
-        from src.models.rrhh_evaluacion import RrhhEvaluacion
-
-        return [
-            select(func.count())
-            .select_from(RrhhEvaluacion)
-            .where(RrhhEvaluacion.escala_criterios_id == id)
-        ]
+        return []
 
 
 rrhh_tipo_contrato_service = _TipoContratoService(

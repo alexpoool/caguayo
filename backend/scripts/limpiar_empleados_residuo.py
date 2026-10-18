@@ -55,7 +55,8 @@ load_dotenv(BACKEND_DIR / ".env")
 PATRON_RESIDUO = r"^(Nombre|Apellido)[0-9a-f]{8}$"
 
 # Patrón de las calificaciones residuo de tests: prefijo + uuid4().hex[:8]
-# (fase 8 crea `EVAL-…`; fase 1, `CAL-…` y `CAT-TEST-…`).
+# (la fase 8 dejó de crear escalas en el rework v2; el patrón se mantiene
+# por si quedan huérfanas de antes y por las fases 1 y 9).
 PATRON_CALIF_RESIDUO = r"^(EVAL|CAL|CAT-TEST)-[0-9a-f]{8}$"
 
 # Empleados reales que jamás se borran, aunque encajen con el patrón
@@ -65,8 +66,8 @@ PROTEGIDOS = ("EMP-3111",)  # Alejandro Pozo (alta manual)
 TABLAS_CONTEO = (
     "empleados",
     "evaluaciones",
+    "evaluaciones_objetivos",
     "objetivos",
-    "metas",
     "asistencia",
     "nomina",
     "solicitudes",
@@ -95,15 +96,12 @@ SQL_PUENTE_BON = """
 """
 SQL_BORRAR = "DELETE FROM empleados WHERE id = ANY(:ids)"
 
-# Solo calificaciones con nombre de test y que ninguna evaluación cita como
-# escala de criterios (p. ej. la escala de la evaluación «hgg» sobrevive).
+# Solo calificaciones con nombre de test. Ninguna evaluación referencia ya
+# el catálogo (el rework v2 de la fase 8 eliminó `escala_criterios_id`), así
+# que ninguna FK protege a las huérfanas.
 SQL_BORRAR_CALIF = """
     DELETE FROM calificaciones
     WHERE nombre ~ :patron
-      AND NOT EXISTS (
-        SELECT 1 FROM evaluaciones e
-         WHERE e.escala_criterios_id = calificaciones.id_calificaciones
-      )
 """
 
 
@@ -118,7 +116,10 @@ async def contar(conn) -> dict[str, int]:
 async def main(db: str, si: bool) -> int:
     url = os.getenv("DATABASE_URL")
     if not url:
-        print("ERROR: DATABASE_URL no definida (falta el .env del backend)", file=sys.stderr)
+        print(
+            "ERROR: DATABASE_URL no definida (falta el .env del backend)",
+            file=sys.stderr,
+        )
         return 1
     # El .env del backend usa fin de línea CRLF: el \r se pegaría al nombre
     url = url.rstrip("\r")
@@ -176,16 +177,26 @@ async def main(db: str, si: bool) -> int:
                 print("\nCOMMIT: residuos eliminados.")
             else:
                 await trans.rollback()
-                print("\nDRY-RUN: todo revertido (ROLLBACK). Repite con --yes para borrar.")
+                print(
+                    "\nDRY-RUN: todo revertido (ROLLBACK). Repite con --yes para borrar."
+                )
             return 0
     finally:
         await engine.dispose()
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--db", default="caguayo_sa", help="Base de datos destino (default: caguayo_sa)")
-    parser.add_argument("--yes", action="store_true", help="Ejecuta el borrado real (sin esto es dry-run)")
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    parser.add_argument(
+        "--db", default="caguayo_sa", help="Base de datos destino (default: caguayo_sa)"
+    )
+    parser.add_argument(
+        "--yes",
+        action="store_true",
+        help="Ejecuta el borrado real (sin esto es dry-run)",
+    )
     args = parser.parse_args()
     if os.name == "nt":
         asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())

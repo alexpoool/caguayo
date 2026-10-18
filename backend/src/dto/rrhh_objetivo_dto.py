@@ -1,9 +1,13 @@
-"""DTOs de objetivos y metas (Fase 8, reorganización por empleado).
+"""DTOs de objetivos (Fase 8 v2 — objetivos ponderados).
 
-Los objetivos se **definen** en el empleado (siempre editables) y se
-**califican** en la evaluación: la valoración (1–5) de las metas promedia a
-`resultado_objetivo`, y el promedio de esos resultados es
-`evaluaciones.promedio_objetivos` (0–100).
+El objetivo se **define** en el empleado con su `periodo_inicio`/
+`periodo_fin` (obligatorios: delimitan en qué evaluaciones puede
+seleccionarse) y su `peso` fijo (**número natural 1–100**), que dice cuánto
+aporta al promedio ponderado de la evaluación que lo incluya.
+
+La puntuación (estrellas 0–5, valoración y recomendaciones) vive en la
+relación N:M `evaluaciones_objetivos`, gestionada desde
+`dto/rrhh_evaluacion_dto.py`.
 """
 
 from datetime import date, datetime
@@ -14,39 +18,22 @@ from pydantic import field_validator
 from sqlmodel import Field, SQLModel
 
 
-class RrhhMetaRead(SQLModel):
-    id_metas: int
-    objetivo_id: int
-    nombre: str
-    resultado_meta: Optional[int] = None
-    # Se puntúa en la evaluación; la definición de la meta no lo incluye.
-    valoracion: Optional[int] = None
-    fecha_inicio: Optional[date] = None
-    fecha_fin: Optional[date] = None
-    observaciones: Optional[str] = None
-    created_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
-
-
 class RrhhObjetivoRead(SQLModel):
     id_objetivos: int
     empleado_id: int
     nombre: str
-    # Media (1–5) de las valoraciones de sus metas; None sin puntuar.
-    resultado_objetivo: Optional[Decimal] = None
-    fecha_inicio: Optional[date] = None
-    fecha_fin: Optional[date] = None
+    # Periodo obligatorio en el que el objetivo está disponible.
+    periodo_inicio: date
+    periodo_fin: date
+    # Peso fijo (natural 1–100): cuánto aporta al promedio ponderado.
+    peso: Decimal
     observaciones: Optional[str] = None
-    # Derivados.
-    aporte: Optional[Decimal] = None  # resultado_objetivo → 0–100
-    total_metas: int = 0
-    metas: list[RrhhMetaRead] = Field(default_factory=list)
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
 
 
 class RrhhObjetivoDetalle(RrhhObjetivoRead):
-    """Detalle del objetivo con su empleado (cabecera de la pantalla de metas)."""
+    """Detalle del objetivo con su empleado (cabecera de la ficha)."""
 
     empleado_nombre: Optional[str] = None
     empleado_codigo: Optional[str] = None
@@ -55,54 +42,49 @@ class RrhhObjetivoDetalle(RrhhObjetivoRead):
 class RrhhObjetivoCreate(SQLModel):
     empleado_id: int
     nombre: str = Field(min_length=1, max_length=255)
-    fecha_inicio: Optional[date] = None
-    fecha_fin: Optional[date] = None
+    periodo_inicio: date
+    periodo_fin: date
+    # El peso nace con el objetivo y se copia a cada evaluación que lo
+    # seleccione (allí es editable por fila). Número natural 1–100 (decisión
+    # de usuario): el servicio lo guarda como Decimal en `NUMERIC(6,2)`.
+    peso: int = Field(default=1, ge=1, le=100)
     observaciones: Optional[str] = None
 
-    @field_validator("fecha_fin")
+    @field_validator("periodo_fin")
     @classmethod
     def _fin_posterior(cls, v, info):
-        if v and info.data.get("fecha_inicio") and v < info.data["fecha_inicio"]:
+        if info.data.get("periodo_inicio") and v < info.data["periodo_inicio"]:
             raise ValueError("El fin no puede ser anterior al inicio")
         return v
 
 
 class RrhhObjetivoUpdate(SQLModel):
-    """Edición parcial de la definición; siempre permitida."""
+    """Edición parcial de la definición; siempre permitida.
+
+    Cambiar el periodo no arrastra las filas ya seleccionadas en
+    evaluaciones (la selección es explícita); sí decide qué objetivos
+    aparecen como candidatos en las evaluaciones futuras.
+    """
 
     nombre: Optional[str] = Field(default=None, min_length=1, max_length=255)
-    fecha_inicio: Optional[date] = None
-    fecha_fin: Optional[date] = None
+    periodo_inicio: Optional[date] = None
+    periodo_fin: Optional[date] = None
+    # Número natural 1–100 (igual que el alta).
+    peso: Optional[int] = Field(default=None, ge=1, le=100)
     observaciones: Optional[str] = None
 
-
-class RrhhMetaCreate(SQLModel):
-    nombre: str = Field(min_length=1, max_length=255)
-    resultado_meta: Optional[int] = None
-    fecha_inicio: Optional[date] = None
-    fecha_fin: Optional[date] = None
-    observaciones: Optional[str] = None
-
-    @field_validator("fecha_fin")
+    @field_validator("periodo_fin")
     @classmethod
     def _fin_posterior(cls, v, info):
-        if v and info.data.get("fecha_inicio") and v < info.data["fecha_inicio"]:
+        inicio = info.data.get("periodo_inicio")
+        if v is not None and inicio is not None and v < inicio:
             raise ValueError("El fin no puede ser anterior al inicio")
         return v
 
 
-class RrhhMetaUpdate(SQLModel):
-    """Edición parcial de la definición; siempre permitida (sin valoración:
-    eso se califica en la evaluación)."""
-
-    nombre: Optional[str] = Field(default=None, min_length=1, max_length=255)
-    resultado_meta: Optional[int] = None
-    fecha_inicio: Optional[date] = None
-    fecha_fin: Optional[date] = None
-    observaciones: Optional[str] = None
-
-
-class RrhhMetaValoracion(SQLModel):
-    """Calificación de una meta desde la evaluación (1–5)."""
-
-    valoracion: int = Field(ge=1, le=5)
+__all__ = [
+    "RrhhObjetivoRead",
+    "RrhhObjetivoDetalle",
+    "RrhhObjetivoCreate",
+    "RrhhObjetivoUpdate",
+]

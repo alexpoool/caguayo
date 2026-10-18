@@ -1,24 +1,19 @@
-"""Tests de la Fase 8 del módulo RRHH — Evaluaciones, objetivos y metas.
+"""Tests de la Fase 8 (v2 — «Evaluaciones v2») del módulo RRHH.
+
+Rediseño: la evaluación se compone **solo de objetivos** seleccionados en la
+relación N:M `evaluaciones_objetivos` (peso, estrellas 0–5, valoración y
+recomendaciones); su nota es el **promedio ponderado** 0–5
+(Σ estrellas×peso / Σ pesos de las filas puntuadas), persistido en
+`evaluaciones.promedio_objetivos`. Desaparecen `metas`, los 4 criterios y la
+escala de `calificaciones`; los objetivos tienen periodo obligatorio y peso
+fijo que se copia al seleccionarlos.
 
 Usan el patrón `client` de conftest.py (TestClient contra la BD real).
 
-Cada test crea su propio empleado y su propia **escala** en `calificaciones`
-(valor 5, 10 o 100), usa periodos en **2098-06** (libre de las demás fases) y
-al final limpia: al borrar de verdad el empleado se van sus evaluaciones
-(FK `CASCADE`) y también sus objetivos (FK `CASCADE` desde `empleados`; si hay
-historial el DELETE es baja lógica y queda residuo, que por eso los asertos
-nunca cuentan filas globales). Las escalas se borran aparte: si una evaluación
-sigue citándola el DELETE es 409, por eso cada test limpia a su empleado
-primero.
-
-Los criterios se puntúan con **10 estrellas** (`{criterio}_estrellas`, 0–10)
-sobre la escala elegida (`escala_criterios_id`): el valor en escala de cada
-criterio es estrellas/10 × escala y `promedio_criterios` es su media (ambos
-se calculan al leer, no están en la BD).
-
-Los objetivos **se definen en el empleado** (`/api/v1/rrhh/objetivos`, siempre
-editables) y **se califican en la evaluación**
-(`PUT /rrhh/evaluaciones/{id}/metas/{meta_id}/valoracion`, solo `borrador`).
+Cada test crea su propio empleado, usa periodos en **2098-06** (libre de las
+demás fases) y al final limpia: al borrar de verdad el empleado se van sus
+evaluaciones, sus objetivos y las filas del N:M (todas las FK son
+`CASCADE`), así que los asertos nunca cuentan filas globales.
 """
 
 import uuid
@@ -26,19 +21,21 @@ from datetime import date
 from decimal import Decimal
 
 from src.domain.rrhh_evaluacion_calc import (
-    escala_a_100,
+    ESTRELLAS_MAX,
     puede_editar,
-    promedio_criterios,
-    promedio_objetivos,
+    promedio_ponderado,
     solapa_fechas,
     validar_fechas,
-    valor_en_escala,
 )
 
 BASE = "/api/v1/rrhh/evaluaciones"
 OBJETIVOS = "/api/v1/rrhh/objetivos"
-CATALOGOS = "/api/v1/rrhh/catalogos/calificaciones"
 TIPOS_EVAL = "/api/v1/rrhh/catalogos/tipos-evaluacion"
+
+# Periodo por defecto de los objetivos de prueba (solapa el de las
+# evaluaciones por defecto).
+JUNIO = ("2098-06-01", "2098-06-30")
+JULIO = ("2098-07-01", "2098-07-31")
 
 
 def _sufijo():
@@ -79,30 +76,13 @@ def _limpiar_empleado(client, empleado_id):
     client.delete(f"/api/v1/rrhh/empleados/{empleado_id}")
 
 
-def _crear_escala(client, valor):
-    """Crea una `calificaciones` (escala completa: solo 5, 10 o 100) y
-    devuelve el id."""
-    assert valor in (5, 10, 100), f"escala no admitida: {valor}"
-    response = client.post(
-        CATALOGOS,
-        json={"nombre": f"EVAL-{_sufijo()}", "valor": valor},
-    )
-    assert response.status_code == 201, response.text
-    return response.json()["id_calificaciones"]
-
-
-def _limpiar_calificaciones(client, ids):
-    for calif_id in ids:
-        client.delete(f"{CATALOGOS}/{calif_id}")
-
-
 def _crear_evaluacion(client, empleado_id, **kwargs):
     payload = {
         "empleado_id": empleado_id,
         "periodo": "2098-06",
         "tipo_evaluacion_id": _tipo_id(client, "Formal"),
-        "inicio_periodo": "2098-06-01",
-        "fin_periodo": "2098-06-30",
+        "inicio_periodo": JUNIO[0],
+        "fin_periodo": JUNIO[1],
     }
     payload.update(kwargs)
     response = client.post(BASE, json=payload)
@@ -111,94 +91,93 @@ def _crear_evaluacion(client, empleado_id, **kwargs):
 
 
 def _crear_objetivo(client, empleado_id, **kwargs):
-    payload = {"empleado_id": empleado_id, "nombre": f"Objetivo {_sufijo()}"}
+    payload = {
+        "empleado_id": empleado_id,
+        "nombre": f"Objetivo {_sufijo()}",
+        "periodo_inicio": JUNIO[0],
+        "periodo_fin": JUNIO[1],
+    }
     payload.update(kwargs)
     response = client.post(OBJETIVOS, json=payload)
     assert response.status_code == 201, response.text
     return response.json()
 
 
-def _crear_meta(client, objetivo_id, **kwargs):
-    payload = {"nombre": f"Meta {_sufijo()}"}
-    payload.update(kwargs)
-    response = client.post(f"{OBJETIVOS}/{objetivo_id}/metas", json=payload)
+def _seleccionar(client, evaluacion_id, objetivo_ids):
+    """Adjunta objetivos a la evaluación (solo `borrador`)."""
+    response = client.post(
+        f"{BASE}/{evaluacion_id}/objetivos",
+        json={"objetivo_ids": objetivo_ids},
+    )
     assert response.status_code == 201, response.text
     return response.json()
 
 
-def _valorar_meta(client, evaluacion_id, meta_id, valoracion):
-    """Califica una meta (1–5) desde la evaluación (solo en `borrador`)."""
+def _puntuar(client, evaluacion_id, fila_id, **kwargs):
+    """Puntúa/ajusta una fila seleccionada (solo `borrador`)."""
     response = client.put(
-        f"{BASE}/{evaluacion_id}/metas/{meta_id}/valoracion",
-        json={"valoracion": valoracion},
+        f"{BASE}/{evaluacion_id}/objetivos/{fila_id}",
+        json=kwargs,
     )
     assert response.status_code == 200, response.text
     return response.json()
+
+
+def _fila_de(detalle, objetivo_id):
+    """La fila del detalle correspondiente a un objetivo (o None)."""
+    for fila in detalle["objetivos"]:
+        if fila["id_objetivo"] == objetivo_id:
+            return fila
+    return None
 
 
 # ── Dominio (funciones puras) ───────────────────────────────────────────────
 
 
 class TestDominioEvaluacion:
-    def test_promedio_criterios_de_los_cuatro(self):
-        assert promedio_criterios([1, 2, 3, 4]) == Decimal("2.50")
+    def test_las_estrellas_son_cinco(self):
+        assert ESTRELLAS_MAX == 5
 
-    def test_promedio_criterios_ignora_los_vacios(self):
-        # Dos puntuados de cuatro: solo entran esos dos.
-        assert promedio_criterios([3, None, 5, None]) == Decimal("4.00")
+    def test_promedio_ponderado_con_pesos_distintos(self):
+        # (5×3 + 4×1) / (3+1) = 4.75
+        assert promedio_ponderado([(5, 3), (4, 1)]) == Decimal("4.75")
 
-    def test_promedio_criterios_sin_ninguno_devuelve_none(self):
-        assert promedio_criterios([None, None, None, None]) is None
+    def test_promedio_ponderado_pesos_iguales_es_la_media(self):
+        assert promedio_ponderado([(4, 1), (2, 1)]) == Decimal("3.00")
 
-    def test_promedio_criterios_redondea_a_dos_decimales(self):
-        assert promedio_criterios([1, 2, 2]) == Decimal("1.67")
+    def test_promedio_ponderado_ignora_filas_sin_puntuar(self):
+        # La fila sin estrellas no aporta ni pesa: (5×1 + 3×1)/(1+1) = 4.
+        assert promedio_ponderado([(5, 1), (None, 2), (3, 1)]) == Decimal("4.00")
 
-    def test_valor_en_escala_convierte_las_estrellas(self):
-        # 7★ sobre 1–5 → 3.50; 10★ sobre 1–100 → 100.00; 0★ → 0.00.
-        assert valor_en_escala(7, 5) == Decimal("3.50")
-        assert valor_en_escala(10, 100) == Decimal("100.00")
-        assert valor_en_escala(0, 10) == Decimal("0.00")
-        # Sin puntuación o sin escala no hay valor.
-        assert valor_en_escala(None, 10) is None
-        assert valor_en_escala(7, None) is None
+    def test_promedio_ponderado_sin_puntuadas_devuelve_none(self):
+        assert promedio_ponderado([]) is None
+        assert promedio_ponderado([(None, 1), (None, 5)]) is None
 
-    def test_promedio_objetivos_convierte_a_escala_100(self):
-        # resultados [4, 2] → media 3 → 3/5×100 = 60
-        assert promedio_objetivos([4, 2]) == Decimal("60.00")
+    def test_promedio_ponderado_redondea_a_dos_decimales(self):
+        # 10/3 = 3.333… → 3.33 (medio hacia arriba).
+        assert promedio_ponderado([(3, 2), (4, 1)]) == Decimal("3.33")
+        assert promedio_ponderado([(1, 1), (2, 1), (2, 1)]) == Decimal("1.67")
 
-    def test_promedio_objetivos_sin_valoraciones_devuelve_none(self):
-        assert promedio_objetivos([]) is None
-        assert promedio_objetivos([None, None]) is None
+    def test_promedio_ponderado_maximo_y_cero(self):
+        assert promedio_ponderado([(5, 2), (5, 3)]) == Decimal("5.00")
+        assert promedio_ponderado([(0, 1), (4, 1)]) == Decimal("2.00")
 
-    def test_promedio_objetivos_maximo(self):
-        assert promedio_objetivos([5, 5, 5]) == Decimal("100.00")
-
-    def test_promedio_objetivos_acepta_resultados_decimales(self):
-        # `resultado_objetivo` es la media (1–5) de las metas de cada objetivo.
-        assert promedio_objetivos(
-            [Decimal("4.50"), Decimal("3.00")]
-        ) == Decimal("75.00")
-        assert promedio_objetivos([Decimal("3.50"), None]) == Decimal("70.00")
-
-    def test_escala_a_100(self):
-        assert escala_a_100(3) == Decimal("60.00")
-        assert escala_a_100(None) is None
-        assert escala_a_100(Decimal("3.50")) == Decimal("70.00")
+    def test_promedio_ponderado_acepta_decimales(self):
+        assert promedio_ponderado([(Decimal("4.50"), Decimal("1.00"))]) == Decimal(
+            "4.50"
+        )
 
     def test_solapa_fechas(self):
         junio = (date(2098, 6, 1), date(2098, 6, 30))
         julio = (date(2098, 7, 1), date(2098, 7, 31))
 
-        # Un objetivo sin fechas cuenta siempre.
-        assert solapa_fechas(None, None, *junio)
-        # Solape completo y solape a medias.
+        # Solape completo, solape a medias y extremos abiertos (defensivo).
         assert solapa_fechas(*junio, *junio)
         assert solapa_fechas(date(2098, 6, 15), date(2098, 7, 5), *junio)
-        # Fuera de rango y extremos abiertos.
+        assert solapa_fechas(date(2098, 6, 15), None, *junio)
+        # Fuera de rango.
         assert not solapa_fechas(*julio, *junio)
         assert not solapa_fechas(date(2098, 5, 1), date(2098, 5, 31), *junio)
-        assert solapa_fechas(date(2098, 6, 15), None, *junio)
-        assert solapa_fechas(None, date(2098, 6, 15), *junio)
 
     def test_validar_fechas(self):
         assert validar_fechas(date(2098, 6, 1), date(2098, 6, 30)) is None
@@ -219,13 +198,33 @@ class TestCicloEvaluacion:
         try:
             data = _crear_evaluacion(client, empleado["id"])
             assert data["estado"] == "borrador"
-            assert data["promedio_criterios"] is None
             assert data["promedio_objetivos"] is None
             assert data["cantidad_objetivos"] == 0
-            assert data["cantidad_metas"] == 0
+            assert data["cantidad_seleccionados"] == 0
             assert data["empleado_nombre"] == (
                 f"{empleado['nombre']} {empleado['apellido']}"
             )
+        finally:
+            _limpiar_empleado(client, empleado["id"])
+
+    def test_crear_con_recomendaciones_y_editarlas(self, client):
+        empleado = _crear_empleado(client)
+        try:
+            data = _crear_evaluacion(
+                client,
+                empleado["id"],
+                comentarios="Todo bien",
+                recomendaciones="Mantener el ritmo",
+            )
+            assert data["comentarios"] == "Todo bien"
+            assert data["recomendaciones"] == "Mantener el ritmo"
+
+            response = client.put(
+                f"{BASE}/{data['id']}",
+                json={"recomendaciones": "Revisar la puntualidad"},
+            )
+            assert response.status_code == 200, response.text
+            assert response.json()["recomendaciones"] == "Revisar la puntualidad"
         finally:
             _limpiar_empleado(client, empleado["id"])
 
@@ -265,7 +264,7 @@ class TestCicloEvaluacion:
         try:
             evaluacion = _crear_evaluacion(client, empleado["id"])
             response = client.delete(f"{BASE}/{evaluacion['id']}")
-            assert response.status_code == 200
+            assert response.status_code == 200, response.text
 
             response = client.get(f"{BASE}/{evaluacion['id']}")
             assert response.status_code == 404
@@ -278,11 +277,17 @@ class TestCicloEvaluacion:
             evaluacion = _crear_evaluacion(client, empleado["id"])
             response = client.put(
                 f"{BASE}/{evaluacion['id']}",
-                json={"comentarios": "Ajuste de periodo", "periodo": "2098-06B"},
+                json={
+                    "periodo": "2098-S2",
+                    "comentarios": "Editada",
+                    "fecha": "2098-06-15",
+                },
             )
             assert response.status_code == 200, response.text
-            assert response.json()["periodo"] == "2098-06B"
-            assert response.json()["comentarios"] == "Ajuste de periodo"
+            data = response.json()
+            assert data["periodo"] == "2098-S2"
+            assert data["comentarios"] == "Editada"
+            assert data["fecha"] == "2098-06-15"
         finally:
             _limpiar_empleado(client, empleado["id"])
 
@@ -295,10 +300,10 @@ class TestValidacionesAlta:
         response = client.post(
             BASE,
             json={
-                "empleado_id": 999999,
+                "empleado_id": 99999999,
                 "periodo": "2098-06",
-                "inicio_periodo": "2098-06-01",
-                "fin_periodo": "2098-06-30",
+                "inicio_periodo": JUNIO[0],
+                "fin_periodo": JUNIO[1],
             },
         )
         assert response.status_code == 404
@@ -311,8 +316,8 @@ class TestValidacionesAlta:
                 json={
                     "empleado_id": empleado["id"],
                     "periodo": "2098-06",
-                    "inicio_periodo": "2098-06-30",
-                    "fin_periodo": "2098-06-01",
+                    "inicio_periodo": JUNIO[1],
+                    "fin_periodo": JUNIO[0],
                 },
             )
             assert response.status_code == 422
@@ -328,8 +333,8 @@ class TestValidacionesAlta:
                     "empleado_id": empleado["id"],
                     "periodo": "2098-06",
                     "tipo_evaluacion_id": "inventado",
-                    "inicio_periodo": "2098-06-01",
-                    "fin_periodo": "2098-06-30",
+                    "inicio_periodo": JUNIO[0],
+                    "fin_periodo": JUNIO[1],
                 },
             )
             assert response.status_code == 422
@@ -345,30 +350,11 @@ class TestValidacionesAlta:
                     "empleado_id": empleado["id"],
                     "periodo": "2098-06",
                     "tipo_evaluacion_id": 999999,
-                    "inicio_periodo": "2098-06-01",
-                    "fin_periodo": "2098-06-30",
+                    "inicio_periodo": JUNIO[0],
+                    "fin_periodo": JUNIO[1],
                 },
             )
             assert response.status_code == 404
-            assert "tipo de evaluación" in response.json()["detail"]
-        finally:
-            _limpiar_empleado(client, empleado["id"])
-
-    def test_escala_que_no_existe(self, client):
-        empleado = _crear_empleado(client)
-        try:
-            response = client.post(
-                BASE,
-                json={
-                    "empleado_id": empleado["id"],
-                    "periodo": "2098-06",
-                    "inicio_periodo": "2098-06-01",
-                    "fin_periodo": "2098-06-30",
-                    "escala_criterios_id": 999999,
-                },
-            )
-            assert response.status_code == 404
-            assert "escala" in response.json()["detail"]
         finally:
             _limpiar_empleado(client, empleado["id"])
 
@@ -385,8 +371,8 @@ class TestValidacionesAlta:
                 json={
                     "empleado_id": empleado["id"],
                     "periodo": "2098-06",
-                    "inicio_periodo": "2098-06-01",
-                    "fin_periodo": "2098-06-30",
+                    "inicio_periodo": JUNIO[0],
+                    "fin_periodo": JUNIO[1],
                 },
             )
             assert response.status_code == 400
@@ -404,8 +390,8 @@ class TestValidacionesAlta:
                     "empleado_id": empleado["id"],
                     "periodo": "2098-06",
                     "tipo_evaluacion_id": _tipo_id(client, "Formal"),
-                    "inicio_periodo": "2098-06-01",
-                    "fin_periodo": "2098-06-30",
+                    "inicio_periodo": JUNIO[0],
+                    "fin_periodo": JUNIO[1],
                 },
             )
             assert response.status_code == 409
@@ -416,9 +402,7 @@ class TestValidacionesAlta:
     def test_mismo_periodo_pero_otro_tipo_si_cabe(self, client):
         empleado = _crear_empleado(client)
         try:
-            _crear_evaluacion(
-                client, empleado["id"], tipo_evaluacion_id=_tipo_id(client, "Formal")
-            )
+            _crear_evaluacion(client, empleado["id"])
             data = _crear_evaluacion(
                 client,
                 empleado["id"],
@@ -429,815 +413,780 @@ class TestValidacionesAlta:
             _limpiar_empleado(client, empleado["id"])
 
 
-# ── Promedio de criterios (se calcula al leer) ──────────────────────────────
+# ── Objetivos (definición en el empleado) ───────────────────────────────────
 
 
-class TestPromedioCriterios:
-    def test_promedio_de_los_cuatro_criterios(self, client):
-        empleado = _crear_empleado(client)
-        escalas = []
-        try:
-            escala = _crear_escala(client, 5)  # escala 1–5
-            escalas.append(escala)
-
-            data = _crear_evaluacion(
-                client,
-                empleado["id"],
-                escala_criterios_id=escala,
-                puntualidad_estrellas=2,      # 2/10×5 = 1.00
-                productividad_estrellas=4,    # 4/10×5 = 2.00
-                trabajo_equipo_estrellas=6,   # 6/10×5 = 3.00
-                calidad_estrellas=10,         # 10/10×5 = 5.00
-            )
-            # valores (1+2+3+5)/4 = 2.75
-            assert Decimal(data["promedio_criterios"]) == Decimal("2.75")
-            assert data["escala_valor"] == 5
-
-            detalle = client.get(f"{BASE}/{data['id']}").json()
-            assert Decimal(detalle["promedio_criterios"]) == Decimal("2.75")
-
-            # El radar trae los 4 criterios con la etiqueta, las estrellas
-            # marcadas y el valor convertido a la escala.
-            assert [c["etiqueta"] for c in detalle["criterios"]] == [
-                "Puntualidad",
-                "Productividad",
-                "Trabajo en equipo",
-                "Calidad",
-            ]
-            assert [c["estrellas"] for c in detalle["criterios"]] == [2, 4, 6, 10]
-            assert [Decimal(str(c["valor"])) for c in detalle["criterios"]] == [
-                Decimal("1.00"),
-                Decimal("2.00"),
-                Decimal("3.00"),
-                Decimal("5.00"),
-            ]
-        finally:
-            _limpiar_empleado(client, empleado["id"])
-            _limpiar_calificaciones(client, escalas)
-
-    def test_criterios_con_escala_amplia(self, client):
-        """La escala la define el usuario (1–5, 1–10 o 1–100): las 10
-        estrellas se convierten a esa escala (estrellas/10 × escala)."""
-        empleado = _crear_empleado(client)
-        escalas = []
-        try:
-            escala = _crear_escala(client, 100)
-            escalas.append(escala)
-
-            data = _crear_evaluacion(
-                client,
-                empleado["id"],
-                escala_criterios_id=escala,
-                puntualidad_estrellas=7,    # 70.00
-                calidad_estrellas=10,       # 100.00
-            )
-            # (70+100)/2 = 85.00 sobre una escala 1–100
-            assert Decimal(data["promedio_criterios"]) == Decimal("85.00")
-
-            detalle = client.get(f"{BASE}/{data['id']}").json()
-            valores = {
-                c["criterio"]: Decimal(str(c["valor"]))
-                for c in detalle["criterios"]
-            }
-            assert valores["puntualidad"] == Decimal("70.00")
-            assert valores["calidad"] == Decimal("100.00")
-            assert detalle["escala_valor"] == 100
-        finally:
-            _limpiar_empleado(client, empleado["id"])
-            _limpiar_calificaciones(client, escalas)
-
-    def test_criterios_parciales(self, client):
-        empleado = _crear_empleado(client)
-        escalas = []
-        try:
-            escala = _crear_escala(client, 5)
-            escalas.append(escala)
-
-            data = _crear_evaluacion(
-                client,
-                empleado["id"],
-                escala_criterios_id=escala,
-                puntualidad_estrellas=6,   # 3.00
-                calidad_estrellas=10,      # 5.00
-            )
-            # Solo dos puntuados: (3+5)/2 = 4.00
-            assert Decimal(data["promedio_criterios"]) == Decimal("4.00")
-
-            detalle = client.get(f"{BASE}/{data['id']}").json()
-            # Los dos sin puntuar quedan en 0 para el radar.
-            valores = {
-                c["criterio"]: Decimal(str(c["valor"]))
-                for c in detalle["criterios"]
-            }
-            assert valores["puntualidad"] == Decimal("3.00")
-            assert valores["calidad"] == Decimal("5.00")
-            assert valores["productividad"] == Decimal("0")
-            assert valores["trabajo_equipo"] == Decimal("0")
-            estrellas = {c["criterio"]: c["estrellas"] for c in detalle["criterios"]}
-            assert estrellas["productividad"] is None
-            assert estrellas["trabajo_equipo"] is None
-        finally:
-            _limpiar_empleado(client, empleado["id"])
-            _limpiar_calificaciones(client, escalas)
-
-    def test_criterios_sin_puntuar(self, client):
+class TestObjetivos:
+    def test_crear_requiere_periodo(self, client):
         empleado = _crear_empleado(client)
         try:
-            data = _crear_evaluacion(client, empleado["id"])
-            assert data["promedio_criterios"] is None
-            assert data["escala_valor"] is None
-
-            detalle = client.get(f"{BASE}/{data['id']}").json()
-            assert detalle["promedio_criterios"] is None
-            assert all(c["estrellas"] is None for c in detalle["criterios"])
-            assert all(Decimal(str(c["valor"])) == 0 for c in detalle["criterios"])
-        finally:
-            _limpiar_empleado(client, empleado["id"])
-
-    def test_cambio_de_criterio_se_refleja_al_leer(self, client):
-        empleado = _crear_empleado(client)
-        escalas = []
-        try:
-            escala = _crear_escala(client, 5)
-            escalas.append(escala)
-
-            data = _crear_evaluacion(
-                client,
-                empleado["id"],
-                escala_criterios_id=escala,
-                puntualidad_estrellas=6,   # 3.00
-            )
-            assert Decimal(data["promedio_criterios"]) == Decimal("3.00")
-
-            response = client.put(
-                f"{BASE}/{data['id']}", json={"puntualidad_estrellas": 10}
-            )
-            assert response.status_code == 200
-            assert Decimal(response.json()["promedio_criterios"]) == Decimal("5.00")
-        finally:
-            _limpiar_empleado(client, empleado["id"])
-            _limpiar_calificaciones(client, escalas)
-
-    def test_estrellas_sin_escala_es_400(self, client):
-        """Sin escala elegida no hay dónde convertir las estrellas."""
-        empleado = _crear_empleado(client)
-        try:
+            # Sin periodo_inicio.
             response = client.post(
-                BASE,
+                OBJETIVOS,
                 json={
                     "empleado_id": empleado["id"],
-                    "periodo": "2098-06",
-                    "tipo_evaluacion_id": _tipo_id(client, "Formal"),
-                    "inicio_periodo": "2098-06-01",
-                    "fin_periodo": "2098-06-30",
-                    "puntualidad_estrellas": 5,
+                    "nombre": "Sin fechas",
+                    "periodo_fin": JUNIO[1],
                 },
             )
-            assert response.status_code == 400
-            assert "escala" in response.json()["detail"]
-        finally:
-            _limpiar_empleado(client, empleado["id"])
+            assert response.status_code == 422
 
-    def test_estrellas_fuera_de_10_es_422(self, client):
-        empleado = _crear_empleado(client)
-        escalas = []
-        try:
-            escala = _crear_escala(client, 10)
-            escalas.append(escala)
+            # Sin periodo_fin.
             response = client.post(
-                BASE,
+                OBJETIVOS,
                 json={
                     "empleado_id": empleado["id"],
-                    "periodo": "2098-06",
-                    "tipo_evaluacion_id": _tipo_id(client, "Formal"),
-                    "inicio_periodo": "2098-06-01",
-                    "fin_periodo": "2098-06-30",
-                    "escala_criterios_id": escala,
-                    "puntualidad_estrellas": 11,
+                    "nombre": "Sin fechas",
+                    "periodo_inicio": JUNIO[0],
                 },
             )
             assert response.status_code == 422
         finally:
             _limpiar_empleado(client, empleado["id"])
-            _limpiar_calificaciones(client, escalas)
 
-
-# ── Objetivos y metas (definición en el empleado, calificación en la evaluación) ──
-
-
-class TestObjetivosYMetas:
-    def test_valoracion_de_metas_alimenta_los_promedios(self, client):
-        """La meta se puntúa desde la evaluación: `resultado_objetivo` es la
-        media de las metas del objetivo y `promedio_objetivos` (0–100) el
-        promedio de esos resultados."""
+    def test_peso_por_defecto_y_explicito(self, client):
+        """Peso = número natural 1–100 (decisión de usuario)."""
         empleado = _crear_empleado(client)
         try:
-            evaluacion = _crear_evaluacion(client, empleado["id"])
-            objetivo = _crear_objetivo(
-                client,
-                empleado["id"],
-                fecha_inicio="2098-06-01",
-                fecha_fin="2098-06-15",
-            )
-            meta = _crear_meta(
-                client, objetivo["id_objetivos"], resultado_meta=75
-            )
+            por_defecto = _crear_objetivo(client, empleado["id"])
+            assert Decimal(por_defecto["peso"]) == Decimal("1")
 
-            valorada = _valorar_meta(
-                client, evaluacion["id"], meta["id_metas"], 4
-            )
-            assert valorada["valoracion"] == 4
+            con_peso = _crear_objetivo(client, empleado["id"], peso=7)
+            assert Decimal(con_peso["peso"]) == Decimal("7")
 
-            # resultado_objetivo = media de sus metas = 4 → aporte 80.00
-            fila = client.get(f"{OBJETIVOS}/{objetivo['id_objetivos']}").json()
-            assert Decimal(fila["resultado_objetivo"]) == Decimal("4.00")
-            assert Decimal(fila["aporte"]) == Decimal("80.00")
-            assert fila["empleado_id"] == empleado["id"]
-            assert len(fila["metas"]) == 1
-
-            # promedio_objetivos = 4/5×100 = 80.00
-            detalle = client.get(f"{BASE}/{evaluacion['id']}").json()
-            assert Decimal(detalle["promedio_objetivos"]) == Decimal("80.00")
-            assert Decimal(detalle["promedio_valoracion_1a5"]) == Decimal("4.00")
-            assert len(detalle["objetivos"]) == 1
-            assert len(detalle["objetivos"][0]["metas"]) == 1
-            assert detalle["cantidad_objetivos"] == 1
-            assert detalle["cantidad_metas"] == 1
+            limite = _crear_objetivo(client, empleado["id"], peso=100)
+            assert Decimal(limite["peso"]) == Decimal("100")
         finally:
             _limpiar_empleado(client, empleado["id"])
 
-    def test_promedio_ignora_objetivos_sin_puntuar(self, client):
-        """La meta sin valorar y el objetivo sin metas no aportan nada."""
+    def test_peso_invalido_es_422(self, client):
+        """Fuera del rango natural 1–100 (0, negativo, decimal o > 100)."""
         empleado = _crear_empleado(client)
         try:
-            evaluacion = _crear_evaluacion(client, empleado["id"])
-
-            sin_valorar = _crear_objetivo(client, empleado["id"])
-            _crear_meta(client, sin_valorar["id_objetivos"])  # sin puntuar
-            _crear_objetivo(client, empleado["id"])  # sin metas
-
-            graduado = _crear_objetivo(client, empleado["id"])
-            meta = _crear_meta(client, graduado["id_objetivos"])
-            _valorar_meta(client, evaluacion["id"], meta["id_metas"], 5)
-
-            detalle = client.get(f"{BASE}/{evaluacion['id']}").json()
-            assert Decimal(detalle["promedio_objetivos"]) == Decimal("100.00")
-            assert detalle["cantidad_objetivos"] == 3
-            assert detalle["cantidad_metas"] == 2
-        finally:
-            _limpiar_empleado(client, empleado["id"])
-
-    def test_editar_y_eliminar_meta_recalcula(self, client):
-        empleado = _crear_empleado(client)
-        try:
-            evaluacion = _crear_evaluacion(client, empleado["id"])
-            objetivo = _crear_objetivo(client, empleado["id"])
-            meta = _crear_meta(client, objetivo["id_objetivos"])
-            _valorar_meta(client, evaluacion["id"], meta["id_metas"], 1)
-
-            # resultado = 1 → 20.00
-            detalle = client.get(f"{BASE}/{evaluacion['id']}").json()
-            assert Decimal(detalle["promedio_objetivos"]) == Decimal("20.00")
-
-            # Puntuar otra meta del mismo objetivo: (1+5)/2 = 3 → 60.00
-            otra = _crear_meta(client, objetivo["id_objetivos"])
-            _valorar_meta(client, evaluacion["id"], otra["id_metas"], 5)
-            detalle = client.get(f"{BASE}/{evaluacion['id']}").json()
-            assert Decimal(detalle["promedio_objetivos"]) == Decimal("60.00")
-            assert detalle["cantidad_metas"] == 2
-
-            # Quitar la meta de 5: solo queda la de 1 → 20.00
-            response = client.delete(f"{OBJETIVOS}/metas/{otra['id_metas']}")
-            assert response.status_code == 200
-            detalle = client.get(f"{BASE}/{evaluacion['id']}").json()
-            assert detalle["cantidad_metas"] == 1
-            assert Decimal(detalle["promedio_objetivos"]) == Decimal("20.00")
-        finally:
-            _limpiar_empleado(client, empleado["id"])
-
-    def test_eliminar_objetivo_arrastra_sus_metas(self, client):
-        empleado = _crear_empleado(client)
-        try:
-            evaluacion = _crear_evaluacion(client, empleado["id"])
-            objetivo = _crear_objetivo(client, empleado["id"])
-            meta = _crear_meta(client, objetivo["id_objetivos"])
-            _valorar_meta(client, evaluacion["id"], meta["id_metas"], 5)
-
-            response = client.delete(f"{OBJETIVOS}/{objetivo['id_objetivos']}")
-            assert response.status_code == 200
-
-            detalle = client.get(f"{BASE}/{evaluacion['id']}").json()
-            assert detalle["objetivos"] == []
-            assert detalle["cantidad_objetivos"] == 0
-            assert detalle["cantidad_metas"] == 0
-            assert detalle["promedio_objetivos"] is None
-        finally:
-            _limpiar_empleado(client, empleado["id"])
-
-    def test_valoracion_fuera_de_rango_es_422(self, client):
-        empleado = _crear_empleado(client)
-        try:
-            evaluacion = _crear_evaluacion(client, empleado["id"])
-            objetivo = _crear_objetivo(client, empleado["id"])
-            meta = _crear_meta(client, objetivo["id_objetivos"])
-
-            for fuera in (6, 0):
-                response = client.put(
-                    f"{BASE}/{evaluacion['id']}/metas/{meta['id_metas']}/valoracion",
-                    json={"valoracion": fuera},
+            for peso in (0, -1, 0.5, 2.5, 101, 9999):
+                response = client.post(
+                    OBJETIVOS,
+                    json={
+                        "empleado_id": empleado["id"],
+                        "nombre": "Peso malo",
+                        "periodo_inicio": JUNIO[0],
+                        "periodo_fin": JUNIO[1],
+                        "peso": peso,
+                    },
                 )
-                assert response.status_code == 422
+                assert response.status_code == 422, f"peso={peso}"
         finally:
             _limpiar_empleado(client, empleado["id"])
 
-    def test_no_calificar_en_finalizada_ni_de_otro_empleado(self, client):
-        empleado = _crear_empleado(client)
-        otro = _crear_empleado(client)
-        try:
-            evaluacion = _crear_evaluacion(client, empleado["id"])
-            objetivo = _crear_objetivo(client, empleado["id"])
-            meta = _crear_meta(client, objetivo["id_objetivos"])
-            _valorar_meta(client, evaluacion["id"], meta["id_metas"], 3)
-
-            # La meta de otro empleado no existe para esta evaluación.
-            ajeno = _crear_objetivo(client, otro["id"])
-            ajena = _crear_meta(client, ajeno["id_objetivos"])
-            response = client.put(
-                f"{BASE}/{evaluacion['id']}/metas/{ajena['id_metas']}/valoracion",
-                json={"valoracion": 5},
-            )
-            assert response.status_code == 404
-
-            # En finalizada la calificación queda congelada.
-            client.post(f"{BASE}/{evaluacion['id']}/finalizar")
-            response = client.put(
-                f"{BASE}/{evaluacion['id']}/metas/{meta['id_metas']}/valoracion",
-                json={"valoracion": 5},
-            )
-            assert response.status_code == 409
-
-            detalle = client.get(f"{BASE}/{evaluacion['id']}").json()
-            assert Decimal(detalle["promedio_objetivos"]) == Decimal("60.00")
-        finally:
-            _limpiar_empleado(client, empleado["id"])
-            _limpiar_empleado(client, otro["id"])
-
-    def test_definicion_editable_aun_finalizada(self, client):
-        """Los objetivos y metas se definen en el empleado: la definición
-        (nombre, fechas, altas y bajas) se edita siempre; lo que se congela
-        al finalizar es la calificación."""
+    def test_periodo_invertido_es_422(self, client):
         empleado = _crear_empleado(client)
         try:
-            evaluacion = _crear_evaluacion(client, empleado["id"])
-            objetivo = _crear_objetivo(client, empleado["id"])
-            meta = _crear_meta(client, objetivo["id_objetivos"])
-            _valorar_meta(client, evaluacion["id"], meta["id_metas"], 3)
-            client.post(f"{BASE}/{evaluacion['id']}/finalizar")
-
-            response = client.put(
-                f"{OBJETIVOS}/{objetivo['id_objetivos']}",
-                json={"nombre": "Renombrado"},
-            )
-            assert response.status_code == 200, response.text
-
-            response = client.put(
-                f"{OBJETIVOS}/metas/{meta['id_metas']}", json={"nombre": "Cambiada"}
-            )
-            assert response.status_code == 200, response.text
-
-            response = client.post(
-                f"{OBJETIVOS}/{objetivo['id_objetivos']}/metas",
-                json={"nombre": "Extra"},
-            )
-            assert response.status_code == 201, response.text
-
-            response = client.delete(f"{OBJETIVOS}/{objetivo['id_objetivos']}")
-            assert response.status_code == 200
-
-            # La evaluación finalizada conserva su promedio congelado (60.00),
-            # aunque el objetivo ya no exista.
-            detalle = client.get(f"{BASE}/{evaluacion['id']}").json()
-            assert detalle["estado"] == "finalizada"
-            assert Decimal(detalle["promedio_objetivos"]) == Decimal("60.00")
-        finally:
-            _limpiar_empleado(client, empleado["id"])
-
-    def test_fechas_delimitan_el_alcance(self, client):
-        """Un objetivo cuyo rango no solapa el periodo de la evaluación no
-        cuenta en su detalle ni se puede puntuar desde ella."""
-        empleado = _crear_empleado(client)
-        try:
-            # Junio: la evaluación va de 2098-06-01 a 2098-06-30.
-            evaluacion = _crear_evaluacion(client, empleado["id"])
-            fuera = _crear_objetivo(
-                client,
-                empleado["id"],
-                fecha_inicio="2098-07-01",
-                fecha_fin="2098-07-31",
-            )
-            meta_fuera = _crear_meta(client, fuera["id_objetivos"])
-
-            detalle = client.get(f"{BASE}/{evaluacion['id']}").json()
-            assert detalle["objetivos"] == []
-            assert detalle["cantidad_objetivos"] == 0
-
-            response = client.put(
-                f"{BASE}/{evaluacion['id']}/metas/{meta_fuera['id_metas']}/valoracion",
-                json={"valoracion": 5},
-            )
-            assert response.status_code == 400
-
-            # En una evaluación de julio sí entra (solape exacto).
-            julio = _crear_evaluacion(
-                client,
-                empleado["id"],
-                tipo_evaluacion_id=_tipo_id(client, "Parcial"),
-                periodo="2098-07",
-                inicio_periodo="2098-07-01",
-                fin_periodo="2098-07-31",
-            )
-            response = client.put(
-                f"{BASE}/{julio['id']}/metas/{meta_fuera['id_metas']}/valoracion",
-                json={"valoracion": 5},
-            )
-            assert response.status_code == 200, response.text
-
-            detalle_julio = client.get(f"{BASE}/{julio['id']}").json()
-            assert Decimal(detalle_julio["promedio_objetivos"]) == Decimal(
-                "100.00"
-            )
-
-            # La de junio no se ve afectada: su objetivo sigue fuera de alcance.
-            assert client.get(f"{BASE}/{evaluacion['id']}").json()[
-                "promedio_objetivos"
-            ] is None
-        finally:
-            _limpiar_empleado(client, empleado["id"])
-
-    def test_alta_de_objetivo_valida_al_empleado(self, client):
-        response = client.post(
-            OBJETIVOS, json={"empleado_id": 999999, "nombre": "Huérfano"}
-        )
-        assert response.status_code == 404
-
-        empleado = _crear_empleado(client)
-        try:
-            # Fechas invertidas: validación del DTO → 422.
             response = client.post(
                 OBJETIVOS,
                 json={
                     "empleado_id": empleado["id"],
                     "nombre": "Al revés",
-                    "fecha_inicio": "2098-06-30",
-                    "fecha_fin": "2098-06-01",
+                    "periodo_inicio": JUNIO[1],
+                    "periodo_fin": JUNIO[0],
                 },
             )
             assert response.status_code == 422
-
-            # Edición con fechas invertidas: validación del servicio → 422.
-            objetivo = _crear_objetivo(client, empleado["id"])
-            meta = _crear_meta(client, objetivo["id_objetivos"])
-            response = client.put(
-                f"{OBJETIVOS}/metas/{meta['id_metas']}",
-                json={"fecha_inicio": "2098-06-30", "fecha_fin": "2098-06-01"},
-            )
-            assert response.status_code == 422
         finally:
             _limpiar_empleado(client, empleado["id"])
 
-    def test_finalizar_recalcula_promedio(self, client):
-        """Al finalizar se recalcula `promedio_objetivos` desde los hijos."""
+    def test_alta_requiere_empleado_valido(self, client):
+        response = client.post(
+            OBJETIVOS,
+            json={
+                "empleado_id": 99999999,
+                "nombre": "Nada",
+                "periodo_inicio": JUNIO[0],
+                "periodo_fin": JUNIO[1],
+            },
+        )
+        assert response.status_code == 404
+
+        empleado = _crear_empleado(client)
+        try:
+            client.put(
+                f"/api/v1/rrhh/empleados/{empleado['id']}", json={"activo": False}
+            )
+            response = client.post(
+                OBJETIVOS,
+                json={
+                    "empleado_id": empleado["id"],
+                    "nombre": "De inactivo",
+                    "periodo_inicio": JUNIO[0],
+                    "periodo_fin": JUNIO[1],
+                },
+            )
+            assert response.status_code == 400
+        finally:
+            _limpiar_empleado(client, empleado["id"])
+
+    def test_editar_y_eliminar_objetivo(self, client):
+        empleado = _crear_empleado(client)
+        try:
+            objetivo = _crear_objetivo(client, empleado["id"])
+
+            response = client.put(
+                f"{OBJETIVOS}/{objetivo['id_objetivos']}",
+                json={
+                    "nombre": "Renombrado",
+                    "peso": 4,
+                    "periodo_inicio": "2098-06-15",
+                },
+            )
+            assert response.status_code == 200, response.text
+            data = response.json()
+            assert data["nombre"] == "Renombrado"
+            assert Decimal(data["peso"]) == Decimal("4")
+            assert data["periodo_inicio"] == "2098-06-15"
+
+            response = client.delete(f"{OBJETIVOS}/{objetivo['id_objetivos']}")
+            assert response.status_code == 200, response.text
+            response = client.get(f"{OBJETIVOS}/{objetivo['id_objetivos']}")
+            assert response.status_code == 404
+        finally:
+            _limpiar_empleado(client, empleado["id"])
+
+    def test_get_detalle_incluye_al_empleado(self, client):
+        empleado = _crear_empleado(client)
+        try:
+            objetivo = _crear_objetivo(client, empleado["id"])
+            response = client.get(f"{OBJETIVOS}/{objetivo['id_objetivos']}")
+            assert response.status_code == 200, response.text
+            data = response.json()
+            assert data["empleado_nombre"] == (
+                f"{empleado['nombre']} {empleado['apellido']}"
+            )
+        finally:
+            _limpiar_empleado(client, empleado["id"])
+
+    def test_listar_por_empleado(self, client):
+        empleado = _crear_empleado(client)
+        otro = _crear_empleado(client)
+        try:
+            _crear_objetivo(client, empleado["id"])
+            _crear_objetivo(client, empleado["id"])
+            _crear_objetivo(client, otro["id"])
+
+            response = client.get(OBJETIVOS, params={"empleado_id": empleado["id"]})
+            assert response.status_code == 200, response.text
+            filas = response.json()
+            assert len(filas) == 2
+            assert {f["empleado_id"] for f in filas} == {empleado["id"]}
+        finally:
+            _limpiar_empleado(client, empleado["id"])
+            _limpiar_empleado(client, otro["id"])
+
+
+# ── Selección de objetivos (N:M) ────────────────────────────────────────────
+
+
+class TestSeleccionObjetivos:
+    def test_seleccionar_copia_el_peso(self, client):
+        empleado = _crear_empleado(client)
+        try:
+            objetivo = _crear_objetivo(client, empleado["id"], peso=3)
+            evaluacion = _crear_evaluacion(client, empleado["id"])
+
+            detalle = _seleccionar(client, evaluacion["id"], [objetivo["id_objetivos"]])
+            fila = _fila_de(detalle, objetivo["id_objetivos"])
+            assert fila["seleccionado"] is True
+            assert fila["fila_id"] is not None
+            assert Decimal(fila["peso"]) == Decimal("3")
+            assert Decimal(fila["peso_objetivo"]) == Decimal("3")
+            assert fila["resultado"] is None
+            assert detalle["cantidad_seleccionados"] == 1
+        finally:
+            _limpiar_empleado(client, empleado["id"])
+
+    def test_detalle_lista_alcance_y_seleccionados(self, client):
+        empleado = _crear_empleado(client)
+        try:
+            elegido = _crear_objetivo(client, empleado["id"])
+            otro = _crear_objetivo(client, empleado["id"])
+            _crear_objetivo(
+                client, empleado["id"], periodo_inicio=JULIO[0], periodo_fin=JULIO[1]
+            )
+            evaluacion = _crear_evaluacion(client, empleado["id"])
+            _seleccionar(client, evaluacion["id"], [elegido["id_objetivos"]])
+
+            detalle = client.get(f"{BASE}/{evaluacion['id']}").json()
+            # Solo los dos de junio están en alcance; el de julio ni aparece.
+            assert {f["id_objetivo"] for f in detalle["objetivos"]} == {
+                elegido["id_objetivos"],
+                otro["id_objetivos"],
+            }
+            assert _fila_de(detalle, elegido["id_objetivos"])["seleccionado"] is True
+            assert _fila_de(detalle, otro["id_objetivos"])["seleccionado"] is False
+            assert detalle["cantidad_objetivos"] == 2
+            assert detalle["cantidad_seleccionados"] == 1
+        finally:
+            _limpiar_empleado(client, empleado["id"])
+
+    def test_no_seleccionar_fuera_de_rango(self, client):
+        empleado = _crear_empleado(client)
+        try:
+            objetivo = _crear_objetivo(
+                client, empleado["id"], periodo_inicio=JULIO[0], periodo_fin=JULIO[1]
+            )
+            evaluacion = _crear_evaluacion(client, empleado["id"])
+
+            response = client.post(
+                f"{BASE}/{evaluacion['id']}/objetivos",
+                json={"objetivo_ids": [objetivo["id_objetivos"]]},
+            )
+            assert response.status_code == 400
+            assert "periodo" in response.json()["detail"]
+        finally:
+            _limpiar_empleado(client, empleado["id"])
+
+    def test_objetivo_solapante_si_entra(self, client):
+        empleado = _crear_empleado(client)
+        try:
+            # 15 de junio a 15 de julio: solapa el periodo de la evaluación.
+            objetivo = _crear_objetivo(
+                client,
+                empleado["id"],
+                periodo_inicio="2098-06-15",
+                periodo_fin=JULIO[1],
+            )
+            evaluacion = _crear_evaluacion(client, empleado["id"])
+            detalle = _seleccionar(client, evaluacion["id"], [objetivo["id_objetivos"]])
+            assert _fila_de(detalle, objetivo["id_objetivos"])["seleccionado"] is True
+        finally:
+            _limpiar_empleado(client, empleado["id"])
+
+    def test_no_seleccionar_de_otro_empleado(self, client):
+        empleado = _crear_empleado(client)
+        otro = _crear_empleado(client)
+        try:
+            ajeno = _crear_objetivo(client, otro["id"])
+            evaluacion = _crear_evaluacion(client, empleado["id"])
+
+            response = client.post(
+                f"{BASE}/{evaluacion['id']}/objetivos",
+                json={"objetivo_ids": [ajeno["id_objetivos"]]},
+            )
+            assert response.status_code == 400
+            assert "empleado" in response.json()["detail"]
+        finally:
+            _limpiar_empleado(client, empleado["id"])
+            _limpiar_empleado(client, otro["id"])
+
+    def test_objetivo_inexistente_es_404(self, client):
         empleado = _crear_empleado(client)
         try:
             evaluacion = _crear_evaluacion(client, empleado["id"])
+            response = client.post(
+                f"{BASE}/{evaluacion['id']}/objetivos",
+                json={"objetivo_ids": [99999999]},
+            )
+            assert response.status_code == 404
+        finally:
+            _limpiar_empleado(client, empleado["id"])
+
+    def test_duplicado_es_409(self, client):
+        empleado = _crear_empleado(client)
+        try:
             objetivo = _crear_objetivo(client, empleado["id"])
-            primera = _crear_meta(client, objetivo["id_objetivos"])
-            segunda = _crear_meta(client, objetivo["id_objetivos"])
-            _valorar_meta(client, evaluacion["id"], primera["id_metas"], 4)
-            _valorar_meta(client, evaluacion["id"], segunda["id_metas"], 3)
+            evaluacion = _crear_evaluacion(client, empleado["id"])
+            _seleccionar(client, evaluacion["id"], [objetivo["id_objetivos"]])
 
-            # resultado = (4+3)/2 = 3.5 → 70.00 antes de finalizar.
-            antes = client.get(f"{BASE}/{evaluacion['id']}").json()
-            assert Decimal(antes["promedio_objetivos"]) == Decimal("70.00")
+            response = client.post(
+                f"{BASE}/{evaluacion['id']}/objetivos",
+                json={"objetivo_ids": [objetivo["id_objetivos"]]},
+            )
+            assert response.status_code == 409
+            assert "seleccionado" in response.json()["detail"]
+        finally:
+            _limpiar_empleado(client, empleado["id"])
 
-            response = client.post(f"{BASE}/{evaluacion['id']}/finalizar")
-            assert response.status_code == 200, response.text
-            assert response.json()["estado"] == "finalizada"
+    def test_no_seleccionar_en_finalizada(self, client):
+        empleado = _crear_empleado(client)
+        try:
+            objetivo = _crear_objetivo(client, empleado["id"])
+            evaluacion = _crear_evaluacion(client, empleado["id"])
+            client.post(f"{BASE}/{evaluacion['id']}/finalizar")
 
-            despues = client.get(f"{BASE}/{evaluacion['id']}").json()
-            assert Decimal(despues["promedio_objetivos"]) == Decimal("70.00")
-            assert Decimal(despues["promedio_valoracion_1a5"]) == Decimal("3.50")
+            response = client.post(
+                f"{BASE}/{evaluacion['id']}/objetivos",
+                json={"objetivo_ids": [objetivo["id_objetivos"]]},
+            )
+            assert response.status_code == 409
+            assert "borrador" in response.json()["detail"]
+        finally:
+            _limpiar_empleado(client, empleado["id"])
+
+    def test_seleccionado_fuera_de_rango_sigue_visible(self, client):
+        """Cambiar el periodo del objetivo no arrastra la fila elegida: sigue
+        contando en el promedio y por tanto sigue visible en el detalle."""
+        empleado = _crear_empleado(client)
+        try:
+            objetivo = _crear_objetivo(client, empleado["id"], peso=2)
+            evaluacion = _crear_evaluacion(client, empleado["id"])
+            _seleccionar(client, evaluacion["id"], [objetivo["id_objetivos"]])
+            _puntuar(
+                client,
+                evaluacion["id"],
+                _fila_de(
+                    client.get(f"{BASE}/{evaluacion['id']}").json(),
+                    objetivo["id_objetivos"],
+                )["fila_id"],
+                resultado=4,
+            )
+
+            # El objetivo pasa a julio: sale del alcance de junio.
+            client.put(
+                f"{OBJETIVOS}/{objetivo['id_objetivos']}",
+                json={"periodo_inicio": JULIO[0], "periodo_fin": JULIO[1]},
+            )
+
+            detalle = client.get(f"{BASE}/{evaluacion['id']}").json()
+            fila = _fila_de(detalle, objetivo["id_objetivos"])
+            assert fila is not None
+            assert fila["seleccionado"] is True
+            assert fila["resultado"] == 4
+            assert Decimal(detalle["promedio_objetivos"]) == Decimal("4.00")
         finally:
             _limpiar_empleado(client, empleado["id"])
 
 
-# ── Listado y filtros ───────────────────────────────────────────────────────
+# ── Puntuación y promedio ponderado ─────────────────────────────────────────
 
 
-class TestListado:
+class TestPuntuacion:
+    def test_puntuar_recalcula_el_promedio_ponderado(self, client):
+        empleado = _crear_empleado(client)
+        try:
+            pesado = _crear_objetivo(client, empleado["id"], peso=3)
+            ligero = _crear_objetivo(client, empleado["id"], peso=1)
+            evaluacion = _crear_evaluacion(client, empleado["id"])
+            _seleccionar(
+                client,
+                evaluacion["id"],
+                [pesado["id_objetivos"], ligero["id_objetivos"]],
+            )
+            filas = {
+                f["id_objetivo"]: f
+                for f in client.get(f"{BASE}/{evaluacion['id']}").json()["objetivos"]
+            }
+
+            # Solo el pesado puntuado: su promedio es su propia nota.
+            _puntuar(
+                client,
+                evaluacion["id"],
+                filas[pesado["id_objetivos"]]["fila_id"],
+                resultado=5,
+            )
+            detalle = client.get(f"{BASE}/{evaluacion['id']}").json()
+            assert Decimal(detalle["promedio_objetivos"]) == Decimal("5.00")
+
+            # (5×3 + 4×1) / 4 = 4.75
+            _puntuar(
+                client,
+                evaluacion["id"],
+                filas[ligero["id_objetivos"]]["fila_id"],
+                resultado=4,
+            )
+            detalle = client.get(f"{BASE}/{evaluacion['id']}").json()
+            assert Decimal(detalle["promedio_objetivos"]) == Decimal("4.75")
+        finally:
+            _limpiar_empleado(client, empleado["id"])
+
+    def test_peso_ajustado_por_fila_entra_en_la_formula(self, client):
+        empleado = _crear_empleado(client)
+        try:
+            a = _crear_objetivo(client, empleado["id"], peso=1)
+            b = _crear_objetivo(client, empleado["id"], peso=1)
+            evaluacion = _crear_evaluacion(client, empleado["id"])
+            _seleccionar(
+                client, evaluacion["id"], [a["id_objetivos"], b["id_objetivos"]]
+            )
+            filas = {
+                f["id_objetivo"]: f
+                for f in client.get(f"{BASE}/{evaluacion['id']}").json()["objetivos"]
+            }
+
+            _puntuar(
+                client,
+                evaluacion["id"],
+                filas[a["id_objetivos"]]["fila_id"],
+                resultado=5,
+            )
+            # La evaluación ajusta el peso de la fila b a 3: (5×1 + 3×3)/4 = 3.5
+            _puntuar(
+                client,
+                evaluacion["id"],
+                filas[b["id_objetivos"]]["fila_id"],
+                resultado=3,
+                peso=3,
+            )
+            detalle = client.get(f"{BASE}/{evaluacion['id']}").json()
+            assert Decimal(detalle["promedio_objetivos"]) == Decimal("3.50")
+        finally:
+            _limpiar_empleado(client, empleado["id"])
+
+    def test_promedio_ignora_filas_sin_puntuar(self, client):
+        empleado = _crear_empleado(client)
+        try:
+            puntuado = _crear_objetivo(client, empleado["id"], peso=2)
+            sin_puntuar = _crear_objetivo(client, empleado["id"], peso=9)
+            evaluacion = _crear_evaluacion(client, empleado["id"])
+            _seleccionar(
+                client,
+                evaluacion["id"],
+                [puntuado["id_objetivos"], sin_puntuar["id_objetivos"]],
+            )
+            filas = {
+                f["id_objetivo"]: f
+                for f in client.get(f"{BASE}/{evaluacion['id']}").json()["objetivos"]
+            }
+            _puntuar(
+                client,
+                evaluacion["id"],
+                filas[puntuado["id_objetivos"]]["fila_id"],
+                resultado=4,
+            )
+
+            detalle = client.get(f"{BASE}/{evaluacion['id']}").json()
+            # La fila sin estrellas no aporta ni pesa.
+            assert Decimal(detalle["promedio_objetivos"]) == Decimal("4.00")
+        finally:
+            _limpiar_empleado(client, empleado["id"])
+
+    def test_estrellas_fuera_de_rango_es_422(self, client):
+        empleado = _crear_empleado(client)
+        try:
+            objetivo = _crear_objetivo(client, empleado["id"])
+            evaluacion = _crear_evaluacion(client, empleado["id"])
+            _seleccionar(client, evaluacion["id"], [objetivo["id_objetivos"]])
+            fila = _fila_de(
+                client.get(f"{BASE}/{evaluacion['id']}").json(),
+                objetivo["id_objetivos"],
+            )
+
+            for estrellas in (6, -1):
+                response = client.put(
+                    f"{BASE}/{evaluacion['id']}/objetivos/{fila['fila_id']}",
+                    json={"resultado": estrellas},
+                )
+                assert response.status_code == 422, f"estrellas={estrellas}"
+        finally:
+            _limpiar_empleado(client, empleado["id"])
+
+    def test_peso_invalido_en_fila_es_422(self, client):
+        """La fila también exige entero 1–100 (mismo límite que el objetivo)."""
+        empleado = _crear_empleado(client)
+        try:
+            objetivo = _crear_objetivo(client, empleado["id"])
+            evaluacion = _crear_evaluacion(client, empleado["id"])
+            _seleccionar(client, evaluacion["id"], [objetivo["id_objetivos"]])
+            fila = _fila_de(
+                client.get(f"{BASE}/{evaluacion['id']}").json(),
+                objetivo["id_objetivos"],
+            )
+            for peso in (0, -1, 0.5, 101):
+                response = client.put(
+                    f"{BASE}/{evaluacion['id']}/objetivos/{fila['fila_id']}",
+                    json={"peso": peso},
+                )
+                assert response.status_code == 422, f"peso={peso}"
+        finally:
+            _limpiar_empleado(client, empleado["id"])
+
+    def test_valoracion_y_recomendaciones_de_fila(self, client):
+        empleado = _crear_empleado(client)
+        try:
+            objetivo = _crear_objetivo(client, empleado["id"])
+            evaluacion = _crear_evaluacion(client, empleado["id"])
+            _seleccionar(client, evaluacion["id"], [objetivo["id_objetivos"]])
+            fila = _fila_de(
+                client.get(f"{BASE}/{evaluacion['id']}").json(),
+                objetivo["id_objetivos"],
+            )
+
+            _puntuar(
+                client,
+                evaluacion["id"],
+                fila["fila_id"],
+                resultado=3,
+                valoracion="Cumplió parcialmente",
+                recomendaciones="Falta documentar los procesos",
+            )
+            detalle = client.get(f"{BASE}/{evaluacion['id']}").json()
+            fila = _fila_de(detalle, objetivo["id_objetivos"])
+            assert fila["valoracion"] == "Cumplió parcialmente"
+            assert fila["recomendaciones"] == "Falta documentar los procesos"
+            # Y el texto de la evaluación en general.
+            client.put(
+                f"{BASE}/{evaluacion['id']}",
+                json={"recomendaciones": "Plan de mejora trimestral"},
+            )
+            detalle = client.get(f"{BASE}/{evaluacion['id']}").json()
+            assert detalle["recomendaciones"] == "Plan de mejora trimestral"
+        finally:
+            _limpiar_empleado(client, empleado["id"])
+
+    def test_quitar_fila_recalcula(self, client):
+        empleado = _crear_empleado(client)
+        try:
+            alto = _crear_objetivo(client, empleado["id"], peso=1)
+            bajo = _crear_objetivo(client, empleado["id"], peso=1)
+            evaluacion = _crear_evaluacion(client, empleado["id"])
+            _seleccionar(
+                client, evaluacion["id"], [alto["id_objetivos"], bajo["id_objetivos"]]
+            )
+            filas = {
+                f["id_objetivo"]: f
+                for f in client.get(f"{BASE}/{evaluacion['id']}").json()["objetivos"]
+            }
+            _puntuar(
+                client,
+                evaluacion["id"],
+                filas[alto["id_objetivos"]]["fila_id"],
+                resultado=5,
+            )
+            _puntuar(
+                client,
+                evaluacion["id"],
+                filas[bajo["id_objetivos"]]["fila_id"],
+                resultado=1,
+            )
+            detalle = client.get(f"{BASE}/{evaluacion['id']}").json()
+            assert Decimal(detalle["promedio_objetivos"]) == Decimal("3.00")
+
+            response = client.delete(
+                f"{BASE}/{evaluacion['id']}/objetivos/{filas[bajo['id_objetivos']]['fila_id']}"
+            )
+            assert response.status_code == 200, response.text
+
+            detalle = client.get(f"{BASE}/{evaluacion['id']}").json()
+            assert Decimal(detalle["promedio_objetivos"]) == Decimal("5.00")
+            assert detalle["cantidad_seleccionados"] == 1
+        finally:
+            _limpiar_empleado(client, empleado["id"])
+
+    def test_finalizar_conserva_el_promedio(self, client):
+        empleado = _crear_empleado(client)
+        try:
+            objetivo = _crear_objetivo(client, empleado["id"], peso=2)
+            evaluacion = _crear_evaluacion(client, empleado["id"])
+            _seleccionar(client, evaluacion["id"], [objetivo["id_objetivos"]])
+            fila = _fila_de(
+                client.get(f"{BASE}/{evaluacion['id']}").json(),
+                objetivo["id_objetivos"],
+            )
+            _puntuar(client, evaluacion["id"], fila["fila_id"], resultado=5)
+
+            response = client.post(f"{BASE}/{evaluacion['id']}/finalizar")
+            assert response.status_code == 200, response.text
+            assert Decimal(response.json()["promedio_objetivos"]) == Decimal("5.00")
+
+            # Congelado: ni puntuar ni quitar.
+            response = client.put(
+                f"{BASE}/{evaluacion['id']}/objetivos/{fila['fila_id']}",
+                json={"resultado": 1},
+            )
+            assert response.status_code == 409
+            response = client.delete(
+                f"{BASE}/{evaluacion['id']}/objetivos/{fila['fila_id']}"
+            )
+            assert response.status_code == 409
+
+            detalle = client.get(f"{BASE}/{evaluacion['id']}").json()
+            assert Decimal(detalle["promedio_objetivos"]) == Decimal("5.00")
+        finally:
+            _limpiar_empleado(client, empleado["id"])
+
+    def test_fila_de_otra_evaluacion_es_404(self, client):
+        empleado = _crear_empleado(client)
+        try:
+            objetivo = _crear_objetivo(client, empleado["id"])
+            evaluacion = _crear_evaluacion(client, empleado["id"])
+            _seleccionar(client, evaluacion["id"], [objetivo["id_objetivos"]])
+            fila = _fila_de(
+                client.get(f"{BASE}/{evaluacion['id']}").json(),
+                objetivo["id_objetivos"],
+            )
+
+            otra = _crear_evaluacion(
+                client, empleado["id"], tipo_evaluacion_id=_tipo_id(client, "Final")
+            )
+            response = client.put(
+                f"{BASE}/{otra['id']}/objetivos/{fila['fila_id']}",
+                json={"resultado": 3},
+            )
+            assert response.status_code == 404
+        finally:
+            _limpiar_empleado(client, empleado["id"])
+
+    def test_eliminar_objetivo_arrastre_y_recalculo(self, client):
+        empleado = _crear_empleado(client)
+        try:
+            objetivo = _crear_objetivo(client, empleado["id"], peso=3)
+            evaluacion = _crear_evaluacion(client, empleado["id"])
+            _seleccionar(client, evaluacion["id"], [objetivo["id_objetivos"]])
+            fila = _fila_de(
+                client.get(f"{BASE}/{evaluacion['id']}").json(),
+                objetivo["id_objetivos"],
+            )
+            _puntuar(client, evaluacion["id"], fila["fila_id"], resultado=4)
+
+            response = client.delete(f"{OBJETIVOS}/{objetivo['id_objetivos']}")
+            assert response.status_code == 200, response.text
+
+            detalle = client.get(f"{BASE}/{evaluacion['id']}").json()
+            assert detalle["objetivos"] == []
+            assert detalle["cantidad_seleccionados"] == 0
+            assert detalle["promedio_objetivos"] is None
+        finally:
+            _limpiar_empleado(client, empleado["id"])
+
+
+# ── Listado y reporte ───────────────────────────────────────────────────────
+
+
+class TestListadoYReporte:
     def test_listar_y_filtros(self, client):
         empleado = _crear_empleado(client)
         otro = _crear_empleado(client)
         try:
-            primera = _crear_evaluacion(client, empleado["id"])
-            parcial = _tipo_id(client, "Parcial")
-            _crear_evaluacion(client, otro["id"], tipo_evaluacion_id=parcial)
+            _crear_evaluacion(client, empleado["id"])
+            _crear_evaluacion(
+                client,
+                otro["id"],
+                tipo_evaluacion_id=_tipo_id(client, "Final"),
+                periodo="2098-07",
+                inicio_periodo=JULIO[0],
+                fin_periodo=JULIO[1],
+            )
 
-            # `limit` alto: la BD acumula residuo de tests y el límite por
-            # defecto (100) truncaría el listado por orden de id ascendente.
-            response = client.get(f"{BASE}?limit=1000")
-            assert response.status_code == 200
-            ids = {e["id"] for e in response.json()}
-            assert {primera["id"]} <= ids
+            response = client.get(BASE, params={"empleado_id": empleado["id"]})
+            assert response.status_code == 200, response.text
+            filas = response.json()
+            assert len(filas) == 1
+            assert filas[0]["empleado_id"] == empleado["id"]
+            assert "puntualidad" not in filas[0]
 
-            response = client.get(f"{BASE}?empleado_id={empleado['id']}")
-            assert response.status_code == 200
-            assert {e["empleado_id"] for e in response.json()} == {empleado["id"]}
+            # Rango que solo toca julio (siempre acotado al empleado: el
+            # residuo de otros tests también usa 2098 y el DELETE de empleado
+            # con historial es lógico).
+            response = client.get(
+                BASE,
+                params={
+                    "empleado_id": otro["id"],
+                    "desde": JULIO[0],
+                    "hasta": JULIO[1],
+                },
+            )
+            assert [f["empleado_id"] for f in response.json()] == [otro["id"]]
 
-            response = client.get(f"{BASE}?tipo_evaluacion_id={parcial}")
-            assert response.status_code == 200
-            assert {e["tipo_evaluacion"] for e in response.json()} == {"Parcial"}
-
-            # Un id fuera del catálogo es 400 (paridad con `tipo=<texto>`).
-            response = client.get(f"{BASE}?tipo_evaluacion_id=999999")
+            # Estado (acotado a los empleados de esta prueba).
+            response = client.get(
+                BASE, params={"empleado_id": otro["id"], "estado": "finalizada"}
+            )
+            assert response.json() == []
+            response = client.get(BASE, params={"estado": "inventado"})
             assert response.status_code == 400
-
-            response = client.get(f"{BASE}?estado=no_existe")
-            assert response.status_code == 400
-
-            response = client.get(f"{BASE}?buscar={empleado['apellido']}")
-            assert response.status_code == 200
-            assert {e["id"] for e in response.json()} == {primera["id"]}
         finally:
             _limpiar_empleado(client, empleado["id"])
             _limpiar_empleado(client, otro["id"])
 
-    def test_listar_incluye_conteos_y_departamento(self, client):
+    def test_listado_incluye_promedio_y_conteos(self, client):
         empleado = _crear_empleado(client)
         try:
+            objetivo = _crear_objetivo(client, empleado["id"], peso=2)
+            _crear_objetivo(client, empleado["id"])
             evaluacion = _crear_evaluacion(client, empleado["id"])
-            objetivo = _crear_objetivo(client, empleado["id"])
-            _crear_meta(client, objetivo["id_objetivos"])
-
-            response = client.get(f"{BASE}?empleado_id={empleado['id']}")
-            fila = response.json()[0]
-            assert fila["id"] == evaluacion["id"]
-            assert fila["cantidad_objetivos"] == 1
-            assert fila["cantidad_metas"] == 1
-            assert fila["empleado_codigo"] == empleado["codigo_empleado"]
-            assert fila["empleado_nombre"] == (
-                f"{empleado['nombre']} {empleado['apellido']}"
+            _seleccionar(client, evaluacion["id"], [objetivo["id_objetivos"]])
+            fila = _fila_de(
+                client.get(f"{BASE}/{evaluacion['id']}").json(),
+                objetivo["id_objetivos"],
             )
+            _puntuar(client, evaluacion["id"], fila["fila_id"], resultado=3)
+
+            response = client.get(BASE, params={"empleado_id": empleado["id"]})
+            data = response.json()[0]
+            assert data["cantidad_objetivos"] == 2
+            assert data["cantidad_seleccionados"] == 1
+            assert Decimal(data["promedio_objetivos"]) == Decimal("3.00")
         finally:
             _limpiar_empleado(client, empleado["id"])
 
-    def test_listado_incluye_criterios_para_el_radar(self, client):
-        """La fila del listado trae los 4 criterios resueltos (columna
-        «Desempeño»): valor 0 cuando el criterio aún no está puntuado."""
-        empleado = _crear_empleado(client)
-        escalas = []
-        try:
-            escala = _crear_escala(client, 5)
-            escalas.append(escala)
-            evaluacion = _crear_evaluacion(
-                client,
-                empleado["id"],
-                escala_criterios_id=escala,
-                puntualidad_estrellas=2,    # 1.00
-                calidad_estrellas=10,       # 5.00
-            )
-
-            response = client.get(f"{BASE}?empleado_id={empleado['id']}")
-            assert response.status_code == 200
-            fila = next(
-                e for e in response.json() if e["id"] == evaluacion["id"]
-            )
-            assert [c["criterio"] for c in fila["criterios"]] == [
-                "puntualidad",
-                "productividad",
-                "trabajo_equipo",
-                "calidad",
-            ]
-            assert [c["estrellas"] for c in fila["criterios"]] == [
-                2,
-                None,
-                None,
-                10,
-            ]
-            assert [Decimal(str(c["valor"])) for c in fila["criterios"]] == [
-                Decimal("1"),
-                Decimal("0"),
-                Decimal("0"),
-                Decimal("5"),
-            ]
-            assert fila["escala_valor"] == 5
-        finally:
-            _limpiar_empleado(client, empleado["id"])
-            _limpiar_calificaciones(client, escalas)
-
-    def test_listado_vacio(self, client):
-        response = client.get(f"{BASE}?empleado_id=999999")
+    def test_listado_vacio_y_404(self, client):
+        response = client.get(BASE, params={"buscar": _sufijo()})
         assert response.status_code == 200
         assert response.json() == []
 
-    def test_404_al_no_encontrar(self, client):
-        assert client.get(f"{BASE}/999999").status_code == 404
-        assert client.put(f"{BASE}/999999", json={}).status_code == 404
-        assert client.delete(f"{BASE}/999999").status_code == 404
-        assert client.post(f"{BASE}/999999/finalizar").status_code == 404
-        assert (
-            client.put(
-                f"{BASE}/999999/metas/999999/valoracion",
-                json={"valoracion": 3},
-            ).status_code
-            == 404
-        )
-        assert client.get(f"{OBJETIVOS}/999999").status_code == 404
-        assert client.put(f"{OBJETIVOS}/999999", json={}).status_code == 404
-        assert client.delete(f"{OBJETIVOS}/999999").status_code == 404
-        assert client.put(f"{OBJETIVOS}/metas/999999", json={}).status_code == 404
-        assert client.delete(f"{OBJETIVOS}/metas/999999").status_code == 404
-        assert (
-            client.post(f"{OBJETIVOS}/999999/metas", json={"nombre": "X"}).status_code
-            == 404
-        )
-
-
-# ── Listado de objetivos por empleado y reporte ─────────────────────────────
-
-
-class TestSubRecursosYReporte:
-    def test_listar_objetivos_por_empleado(self, client):
-        empleado = _crear_empleado(client)
-        otro = _crear_empleado(client)
-        try:
-            objetivo = _crear_objetivo(client, empleado["id"])
-            _crear_meta(client, objetivo["id_objetivos"])
-            ajeno = _crear_objetivo(client, otro["id"])
-
-            response = client.get(f"{OBJETIVOS}?empleado_id={empleado['id']}")
-            assert response.status_code == 200
-            objetivos = response.json()
-            assert [o["id_objetivos"] for o in objetivos] == [
-                objetivo["id_objetivos"]
-            ]
-            assert objetivos[0]["empleado_id"] == empleado["id"]
-            assert objetivos[0]["total_metas"] == 1
-            assert len(objetivos[0]["metas"]) == 1
-            assert ajeno["id_objetivos"] not in {
-                o["id_objetivos"] for o in objetivos
-            }
-        finally:
-            _limpiar_empleado(client, empleado["id"])
-            _limpiar_empleado(client, otro["id"])
-
-    def test_get_objetivo_detalle_con_metas_y_empleado(self, client):
-        """Detalle de un objetivo: metas anidadas + datos del empleado
-        (cabecera de la pantalla de metas)."""
-        empleado = _crear_empleado(client)
-        try:
-            evaluacion = _crear_evaluacion(client, empleado["id"])
-            objetivo = _crear_objetivo(
-                client, empleado["id"], fecha_inicio="2098-06-01"
-            )
-            meta = _crear_meta(client, objetivo["id_objetivos"], resultado_meta=90)
-            _valorar_meta(client, evaluacion["id"], meta["id_metas"], 3)
-
-            response = client.get(f"{OBJETIVOS}/{objetivo['id_objetivos']}")
-            assert response.status_code == 200, response.text
-            data = response.json()
-            assert data["id_objetivos"] == objetivo["id_objetivos"]
-            assert data["empleado_id"] == empleado["id"]
-            assert data["nombre"] == objetivo["nombre"]
-            assert data["fecha_inicio"] == "2098-06-01"
-            assert len(data["metas"]) == 1
-            assert data["metas"][0]["valoracion"] == 3
-            assert data["metas"][0]["resultado_meta"] == 90
-            # Contexto del empleado y nota derivada (3 → aporte 60.00).
-            assert data["empleado_nombre"] == (
-                f"{empleado['nombre']} {empleado['apellido']}"
-            )
-            assert data["empleado_codigo"] == empleado["codigo_empleado"]
-            assert Decimal(data["resultado_objetivo"]) == Decimal("3.00")
-            assert Decimal(data["aporte"]) == Decimal("60.00")
-        finally:
-            _limpiar_empleado(client, empleado["id"])
-
-    def test_get_objetivo_inexistente_404(self, client):
-        assert client.get(f"{OBJETIVOS}/999999").status_code == 404
-
-    def test_ruta_reporte_no_captura_get_id(self, client):
-        # `/reporte` debe resolverse antes que `/{evaluacion_id}` (orden de rutas).
-        response = client.get(f"{BASE}/reporte")
-        assert response.status_code == 200
-        assert response.json()["cantidad_evaluaciones"] >= 0
-        assert "empleados" in response.json()
+        response = client.get(f"{BASE}/99999999")
+        assert response.status_code == 404
 
     def test_reporte_con_datos(self, client):
         empleado = _crear_empleado(client)
         otro = _crear_empleado(client)
-        calificaciones = []
         try:
-            escala = _crear_escala(client, 5)
-            calificaciones.append(escala)
-
-            primera = _crear_evaluacion(
-                client,
-                empleado["id"],
-                escala_criterios_id=escala,
-                puntualidad_estrellas=6,     # 3.00
-                productividad_estrellas=10,  # 5.00
+            # A: finalizada con promedio 5.00.
+            objetivo_a = _crear_objetivo(client, empleado["id"], peso=2)
+            eval_a = _crear_evaluacion(client, empleado["id"])
+            _seleccionar(client, eval_a["id"], [objetivo_a["id_objetivos"]])
+            fila = _fila_de(
+                client.get(f"{BASE}/{eval_a['id']}").json(),
+                objetivo_a["id_objetivos"],
             )
-            objetivo = _crear_objetivo(client, empleado["id"])
-            meta = _crear_meta(client, objetivo["id_objetivos"])
-            _valorar_meta(client, primera["id"], meta["id_metas"], 5)
-            client.post(f"{BASE}/{primera['id']}/finalizar")
+            _puntuar(client, eval_a["id"], fila["fila_id"], resultado=5)
+            client.post(f"{BASE}/{eval_a['id']}/finalizar")
 
-            _crear_evaluacion(
-                client, otro["id"], tipo_evaluacion_id=_tipo_id(client, "Parcial"),
-                inicio_periodo="2098-07-01", fin_periodo="2098-07-31",
+            # B: borrador con promedio 3.00.
+            objetivo_b = _crear_objetivo(client, otro["id"])
+            eval_b = _crear_evaluacion(client, otro["id"])
+            _seleccionar(client, eval_b["id"], [objetivo_b["id_objetivos"]])
+            fila = _fila_de(
+                client.get(f"{BASE}/{eval_b['id']}").json(),
+                objetivo_b["id_objetivos"],
             )
+            _puntuar(client, eval_b["id"], fila["fila_id"], resultado=3)
 
-            # El reporte global ve también registros de otros tests (el DELETE
-            # de empleados con historial es baja lógica, así que hay residuo en
-            # esta BD): por eso se afirma sobre LOS empleados de esta prueba y
-            # con cotas `>=`, nunca con conteos globales exactos.
-            response = client.get(f"{BASE}/reporte")
-            assert response.status_code == 200
-            reporte = response.json()
-            assert reporte["cantidad_evaluaciones"] >= 2
-            assert reporte["cantidad_finalizadas"] >= 1
-            por_id = {e["empleado_id"]: e for e in reporte["empleados"]}
-            assert empleado["id"] in por_id
-            assert otro["id"] in por_id
-
-            # Empleado 1: criterios (3+5)/2 = 4.00, objetivos 5 → 100.00
-            primero = por_id[empleado["id"]]
-            assert Decimal(primero["promedio_criterios"]) == Decimal("4.00")
-            assert Decimal(primero["promedio_objetivos"]) == Decimal("100.00")
-            assert primero["cantidad_evaluaciones"] == 1
-            assert por_id[otro["id"]]["cantidad_evaluaciones"] == 1
-
-            # Filtro por empleado: alcance exacto, sin residuo posible.
-            response = client.get(f"{BASE}/reporte?empleado_id={empleado['id']}")
-            reporte = response.json()
-            assert reporte["cantidad_evaluaciones"] == 1
-            assert len(reporte["empleados"]) == 1
-
-            # Filtro por rango que toca solo julio: `otro` está, con su evaluación.
+            # Acotado por empleado: el DELETE de empleado con historial es
+            # lógico y deja residuo que contamina las consultas globales.
             response = client.get(
-                f"{BASE}/reporte?desde=2098-07-01&hasta=2098-07-31"
+                f"{BASE}/reporte", params={"empleado_id": empleado["id"]}
             )
-            reporte = response.json()
-            assert reporte["cantidad_evaluaciones"] >= 1
-            assert reporte["cantidad_borradores"] >= 1
-            julio = next(
-                e for e in reporte["empleados"]
-                if e["empleado_id"] == otro["id"]
+            assert response.status_code == 200, response.text
+            data = response.json()
+            assert data["cantidad_evaluaciones"] == 1
+            assert data["cantidad_finalizadas"] == 1
+            assert data["cantidad_borradores"] == 0
+            assert Decimal(data["promedio_objetivos"]) == Decimal("5.00")
+            assert len(data["empleados"]) == 1
+            assert Decimal(data["empleados"][0]["promedio_objetivos"]) == Decimal(
+                "5.00"
             )
-            assert julio["cantidad_evaluaciones"] >= 1
-            assert empleado["id"] not in {
-                e["empleado_id"] for e in reporte["empleados"]
-            }
+            assert data["empleados"][0]["empleado_id"] == empleado["id"]
+
+            response = client.get(f"{BASE}/reporte", params={"empleado_id": otro["id"]})
+            data = response.json()
+            assert data["cantidad_evaluaciones"] == 1
+            assert data["cantidad_borradores"] == 1
+            assert data["cantidad_finalizadas"] == 0
+            assert Decimal(data["promedio_objetivos"]) == Decimal("3.00")
+            assert data["empleados"][0]["cantidad_evaluaciones"] == 1
         finally:
             _limpiar_empleado(client, empleado["id"])
             _limpiar_empleado(client, otro["id"])
-            _limpiar_calificaciones(client, calificaciones)
 
     def test_reporte_sin_datos(self, client):
-        response = client.get(f"{BASE}/reporte?empleado_id=999999")
-        assert response.status_code == 200
-        reporte = response.json()
-        assert reporte["cantidad_evaluaciones"] == 0
-        assert reporte["cantidad_borradores"] == 0
-        assert reporte["promedio_criterios"] is None
-        assert reporte["promedio_objetivos"] is None
-        assert reporte["empleados"] == []
-
-
-# ── Catálogo de tipos de evaluación ─────────────────────────────────────────
-
-
-def test_tipo_en_uso_no_se_elimina(client):
-    """DELETE de un tipo en uso da baja lógica (la FK es `ON DELETE RESTRICT`)."""
-    creado = client.post(
-        TIPOS_EVAL,
-        json={"nombre": f"EVAL-TIPO-{_sufijo()}", "descripcion": "de prueba"},
-    )
-    assert creado.status_code == 201, creado.text
-    id_tipo = creado.json()["id_tipos_evaluaciones"]
-    empleado = _crear_empleado(client)
-    try:
-        _crear_evaluacion(client, empleado["id"], tipo_evaluacion_id=id_tipo)
-
-        r_del = client.delete(f"{TIPOS_EVAL}/{id_tipo}")
-        assert r_del.status_code == 200
-        assert r_del.json()["accion"] == "desactivado"
-
-        r_det = client.get(f"{TIPOS_EVAL}/{id_tipo}")
-        assert r_det.status_code == 200
-        assert r_det.json()["activo"] is False
-    finally:
-        _limpiar_empleado(client, empleado["id"])
-        # Con la evaluación fuera (CASCADE), ya se puede borrar de verdad.
-        client.delete(f"{TIPOS_EVAL}/{id_tipo}")
+        empleado = _crear_empleado(client)
+        try:
+            response = client.get(
+                f"{BASE}/reporte", params={"empleado_id": empleado["id"]}
+            )
+            assert response.status_code == 200, response.text
+            data = response.json()
+            assert data["cantidad_evaluaciones"] == 0
+            assert data["promedio_objetivos"] is None
+            assert data["empleados"] == []
+        finally:
+            _limpiar_empleado(client, empleado["id"])

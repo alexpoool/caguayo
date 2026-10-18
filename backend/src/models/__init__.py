@@ -55,7 +55,7 @@ from .rrhh_catalogos import (
 from .rrhh_empleado import RrhhEmpleado, RrhhDepartamento, RrhhPuesto
 from .rrhh_deducciones import RrhhDeduccion, RrhhBonificacion
 from .rrhh_asistencia import RrhhAsistencia
-from .rrhh_evaluacion import RrhhEvaluacion, RrhhObjetivo, RrhhMeta
+from .rrhh_evaluacion import RrhhEvaluacion, RrhhObjetivo, RrhhEvaluacionObjetivo
 from .rrhh_solicitud import RrhhSolicitud
 from .rrhh_nomina import (
     RrhhNomina,
@@ -176,7 +176,7 @@ __all__ = [
     "RrhhAsistencia",
     "RrhhEvaluacion",
     "RrhhObjetivo",
-    "RrhhMeta",
+    "RrhhEvaluacionObjetivo",
     "RrhhSolicitud",
     "RrhhNomina",
     "RrhhNominaDeduccion",

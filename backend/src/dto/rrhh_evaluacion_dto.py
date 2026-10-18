@@ -1,25 +1,22 @@
-"""DTOs del submódulo RRHH — Evaluaciones (Fase 8).
+"""DTOs del submódulo RRHH — Evaluaciones (Fase 8 v2 — objetivos ponderados).
 
 Ciclo de vida (decidido):
 
     borrador ──finalizar──▶ finalizada   (estado final)
 
-Mientras está en `borrador` se edita la cabecera, los criterios y la
-**calificación** de las metas (1–5). Al finalizar se recalcula
-`promedio_objetivos` y todo queda congelado. La *definición* de objetivos y
-metas (nombre, fechas) vive en el empleado y es siempre editable: véase
-`dto/rrhh_objetivo_dto.py`.
+Mientras está en `borrador` se edita la cabecera, se seleccionan objetivos
+(N:M) y se puntúan sus filas (estrellas 0–5, valoración y recomendaciones).
+Al finalizar se recalcula `promedio_objetivos` y todo queda congelado. La
+*definición* de objetivos (nombre, periodo, peso) vive en el empleado y es
+siempre editable: véase `dto/rrhh_objetivo_dto.py`.
 
 Como el módulo no usa autenticación en backend (decisión; deuda Fase 10), el
 `evaluador_id` viene en el payload.
 
-Dos promedios con escalas distintas:
-- `promedio_criterios` (sobre la escala de criterios elegida: 5, 10 o 100)
-  se **calcula al leer** y no está en la BD.
-- `promedio_objetivos` (0–100) **sí está persistido**: promedio de los
-  `resultado_objetivo` (media 1–5 de las valoraciones de las metas de cada
-  objetivo) de los objetivos en alcance del periodo; se recalcula en las
-  borradores al calificar/editar metas y al finalizar.
+La nota de la evaluación es el **promedio ponderado** de sus filas
+puntuadas (Σ estrellas×peso / Σ pesos), 0–5, persistido en
+`evaluaciones.promedio_objetivos` y recalculado en las borradores; las
+finalizadas quedan congeladas.
 """
 
 from datetime import date, datetime
@@ -38,21 +35,12 @@ from src.domain.rrhh_evaluacion_calc import (
 # `TIPOS_EVALUACION` se reexporta aquí por compatibilidad: la validación real
 # vive ahora en el catálogo `tipos_evaluaciones` (FK desde `evaluaciones`).
 
-# Objetivos y metas viven en su propio módulo (se definen en el empleado).
-from src.dto.rrhh_objetivo_dto import RrhhObjetivoRead
-
-
-# ── Objetivos y metas ───────────────────────────────────────────────────────
-# Se gestionan en `dto/rrhh_objetivo_dto.py` (se definen en el empleado y se
-# califican en la evaluación); aquí solo se referencia el Read, que alimenta
-# `RrhhEvaluacionDetalle.objetivos` con los objetivos en alcance del periodo.
-
 
 # ── Evaluación ──────────────────────────────────────────────────────────────
 
 
 class RrhhEvaluacionCreate(SQLModel):
-    """Alta de una evaluación; nace en `borrador`."""
+    """Alta de una evaluación; nace en `borrador` (sin objetivos aún)."""
 
     empleado_id: int
     evaluador_id: Optional[int] = None
@@ -62,15 +50,9 @@ class RrhhEvaluacionCreate(SQLModel):
     tipo_evaluacion_id: int = Field(default=1)
     inicio_periodo: date
     fin_periodo: date
-    # Criterios: la escala elegida (id de `calificaciones`, cuyo valor es
-    # 5, 10 o 100) y la puntuación de cada uno en estrellas (0–10;
-    # None = sin puntuar).
-    escala_criterios_id: Optional[int] = None
-    puntualidad_estrellas: Optional[int] = Field(default=None, ge=0, le=10)
-    productividad_estrellas: Optional[int] = Field(default=None, ge=0, le=10)
-    trabajo_equipo_estrellas: Optional[int] = Field(default=None, ge=0, le=10)
-    calidad_estrellas: Optional[int] = Field(default=None, ge=0, le=10)
     comentarios: Optional[str] = None
+    # Recomendaciones generales de la evaluación (texto libre).
+    recomendaciones: Optional[str] = None
     fecha: Optional[date] = None
 
     @field_validator("fin_periodo")
@@ -92,27 +74,9 @@ class RrhhEvaluacionUpdate(SQLModel):
     tipo_evaluacion_id: Optional[int] = None
     inicio_periodo: Optional[date] = None
     fin_periodo: Optional[date] = None
-    escala_criterios_id: Optional[int] = None
-    puntualidad_estrellas: Optional[int] = Field(default=None, ge=0, le=10)
-    productividad_estrellas: Optional[int] = Field(default=None, ge=0, le=10)
-    trabajo_equipo_estrellas: Optional[int] = Field(default=None, ge=0, le=10)
-    calidad_estrellas: Optional[int] = Field(default=None, ge=0, le=10)
     comentarios: Optional[str] = None
+    recomendaciones: Optional[str] = None
     fecha: Optional[date] = None
-
-
-class RrhhCriterioEvaluacion(SQLModel):
-    """Un criterio con su puntuación resuelta, para el radar y las tablas."""
-
-    criterio: str
-    etiqueta: str
-    # Estrellas marcadas (0–10) y su valor convertido a la escala elegida
-    # (0 si todavía no está puntuado). `float` y no `Decimal` a propósito:
-    # pydantic serializa Decimal como cadena y el frontend lo consume como
-    # número (radar y formato con `toFixed`); los valores son múltiplos de
-    # 0.5 → sin pérdida en coma flotante.
-    estrellas: Optional[int] = None
-    valor: float = 0.0
 
 
 class RrhhEvaluacionBase(SQLModel):
@@ -125,13 +89,10 @@ class RrhhEvaluacionBase(SQLModel):
     estado: str
     inicio_periodo: date
     fin_periodo: date
-    escala_criterios_id: Optional[int] = None
-    puntualidad_estrellas: Optional[int] = None
-    productividad_estrellas: Optional[int] = None
-    trabajo_equipo_estrellas: Optional[int] = None
-    calidad_estrellas: Optional[int] = None
+    # Promedio ponderado 0–5 (None sin filas puntuadas).
     promedio_objetivos: Optional[Decimal] = None
     comentarios: Optional[str] = None
+    recomendaciones: Optional[str] = None
     fecha: date
 
 
@@ -142,45 +103,87 @@ class RrhhEvaluacionRead(RrhhEvaluacionBase):
 
 
 class RrhhEvaluacionListado(RrhhEvaluacionRead):
-    """Fila del listado, con el empleado resuelto y los promedios."""
+    """Fila del listado, con el empleado resuelto y los conteos."""
 
     empleado_codigo: Optional[str] = None
     empleado_nombre: Optional[str] = None
     departamento_nombre: Optional[str] = None
     evaluador_nombre: Optional[str] = None
-    # Escala de criterios resuelta (nombre de la entrada y su último
-    # número: 5, 10 o 100).
-    escala_nombre: Optional[str] = None
-    escala_valor: Optional[int] = None
-    # Los 4 criterios resueltos (valor en la escala; 0 = sin puntuar).
-    criterios: list[RrhhCriterioEvaluacion] = Field(default_factory=list)
-    # Calculados al leer (no persistidos).
-    promedio_criterios: Optional[Decimal] = None
+    # Objetivos del empleado en alcance del periodo y los ya seleccionados.
     cantidad_objetivos: int = 0
-    cantidad_metas: int = 0
+    cantidad_seleccionados: int = 0
+
+
+# ── Objetivos en la evaluación (N:M) ────────────────────────────────────────
+
+
+class RrhhEvaluacionObjetivoRead(SQLModel):
+    """Un objetivo del empleado con su fila de evaluación si está seleccionado.
+
+    El detalle lista los objetivos **en alcance** del periodo de la
+    evaluación; si alguno quedó seleccionado y luego su periodo cambió, se
+    añade igualmente (todo lo que cuenta en el promedio debe verse).
+    """
+
+    # Fila en `evaluaciones_objetivos`; `None` = aún no seleccionado.
+    fila_id: Optional[int] = None
+    id_objetivo: int
+    nombre: str
+    periodo_inicio: date
+    periodo_fin: date
+    # Peso fijo del objetivo (el de partida al seleccionarlo).
+    peso_objetivo: Decimal
+    seleccionado: bool = False
+    # Peso efectivo de la fila (si está seleccionado); si no, el del objetivo.
+    peso: Decimal
+    # Estrellas 0–5 (None = sin puntuar); solo con `seleccionado`.
+    resultado: Optional[int] = None
+    valoracion: Optional[str] = None
+    recomendaciones: Optional[str] = None
+
+
+class RrhhEvaluacionObjetivoSeleccion(SQLModel):
+    """Selección masiva de objetivos en la evaluación (solo `borrador`).
+
+    Cada objetivo entra con su `peso` copiado; después la evaluación puede
+    ajustar el peso por fila al puntuarla.
+    """
+
+    objetivo_ids: list[int] = Field(min_length=1)
+
+
+class RrhhEvaluacionObjetivoCalificar(SQLModel):
+    """Puntuación/edición de una fila seleccionada (solo `borrador`).
+
+    Todos los campos son opcionales (edición parcial); `resultado` son las
+    estrellas 0–5 del objetivo en esta evaluación.
+    """
+
+    # Número natural 1–100 (peso del objetivo: decisión de usuario).
+    peso: Optional[int] = Field(default=None, ge=1, le=100)
+    resultado: Optional[int] = Field(default=None, ge=0, le=5)
+    valoracion: Optional[str] = None
+    recomendaciones: Optional[str] = None
 
 
 class RrhhEvaluacionDetalle(RrhhEvaluacionListado):
-    """Detalle completo: objetivos y metas anidados (los criterios vienen del
-    listado, que ya los resuelve en lote)."""
+    """Detalle completo: objetivos en alcance con su fila (los de cabecera
+    vienen del listado, que ya resuelve en lote)."""
 
-    objetivos: list[RrhhObjetivoRead] = Field(default_factory=list)
-    # Valoración media de objetivos+metas en 1–5 (el persistido va en 0–100).
-    promedio_valoracion_1a5: Optional[Decimal] = None
+    objetivos: list[RrhhEvaluacionObjetivoRead] = Field(default_factory=list)
 
 
 # ── Reportes ────────────────────────────────────────────────────────────────
 
 
 class RrhhEvaluacionEmpleadoReporte(SQLModel):
-    """Promedios de un empleado en el rango consultado."""
+    """Promedio ponderado medio (0–5) de un empleado en el rango consultado."""
 
     empleado_id: int
     empleado_codigo: Optional[str] = None
     empleado_nombre: Optional[str] = None
     departamento_nombre: Optional[str] = None
     cantidad_evaluaciones: int = 0
-    promedio_criterios: Optional[Decimal] = None
     promedio_objetivos: Optional[Decimal] = None
 
 
@@ -192,21 +195,19 @@ class RrhhEvaluacionReporte(SQLModel):
     cantidad_evaluaciones: int = 0
     cantidad_borradores: int = 0
     cantidad_finalizadas: int = 0
-    promedio_criterios: Optional[Decimal] = None
     promedio_objetivos: Optional[Decimal] = None
     empleados: list[RrhhEvaluacionEmpleadoReporte] = Field(default_factory=list)
 
 
 __all__ = [
-    # Los objetivos/metas se exportan desde `rrhh_objetivo_dto`; aquí solo
-    # queda `RrhhObjetivoRead`, que alimenta `RrhhEvaluacionDetalle`.
-    "RrhhObjetivoRead",
     "RrhhEvaluacionCreate",
     "RrhhEvaluacionUpdate",
-    "RrhhCriterioEvaluacion",
     "RrhhEvaluacionBase",
     "RrhhEvaluacionRead",
     "RrhhEvaluacionListado",
+    "RrhhEvaluacionObjetivoRead",
+    "RrhhEvaluacionObjetivoSeleccion",
+    "RrhhEvaluacionObjetivoCalificar",
     "RrhhEvaluacionDetalle",
     "RrhhEvaluacionEmpleadoReporte",
     "RrhhEvaluacionReporte",

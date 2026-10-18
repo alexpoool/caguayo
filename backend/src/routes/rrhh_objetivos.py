@@ -1,11 +1,9 @@
-"""Rutas RRHH — Objetivos y metas (definidos en el empleado).
+"""Rutas RRHH — Objetivos (definidos en el empleado).
 
 Prefijo `/rrhh/objetivos`. Los objetivos cuelgan de `empleados` (no de las
-evaluaciones): se **definen** aquí, siempre editables, y se **califican** en
-la evaluación (`PUT /rrhh/evaluaciones/{id}/metas/{meta_id}/valoracion`).
-
-**El orden importa**: la ruta literal `/metas/{meta_id}` se declara antes de
-`/{objetivo_id}` para que no la capture el parámetro.
+evaluaciones): se **definen** aquí, siempre editables, con su periodo
+(obligatorio) y su peso fijo; se **seleccionan y puntúan** en la evaluación
+(`POST/PUT/DELETE /rrhh/evaluaciones/{id}/objetivos…`).
 """
 
 from typing import List, Optional
@@ -15,9 +13,6 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 
 from src.database.connection import get_session
 from src.dto import (
-    RrhhMetaCreate,
-    RrhhMetaRead,
-    RrhhMetaUpdate,
     RrhhObjetivoCreate,
     RrhhObjetivoDetalle,
     RrhhObjetivoRead,
@@ -25,36 +20,7 @@ from src.dto import (
 )
 from src.services.rrhh_objetivo_service import rrhh_objetivo_service
 
-rrhh_objetivos_router = APIRouter(
-    prefix="/rrhh/objetivos", tags=["rrhh-objetivos"]
-)
-
-
-# ── Metas (literal, antes de /{objetivo_id}) ────────────────────────────────
-
-
-@rrhh_objetivos_router.put("/metas/{meta_id}", response_model=RrhhMetaRead)
-async def editar_meta(
-    meta_id: int,
-    payload: RrhhMetaUpdate,
-    db: AsyncSession = Depends(get_session),
-):
-    """Edición de la definición de una meta (nombre, resultado, fechas).
-
-    No incluye la valoración: eso se puntúa en la evaluación.
-    """
-    return await rrhh_objetivo_service.update_meta(db, meta_id, payload)
-
-
-@rrhh_objetivos_router.delete("/metas/{meta_id}")
-async def eliminar_meta(
-    meta_id: int, db: AsyncSession = Depends(get_session)
-):
-    """Baja de una meta (siempre permitida; recalcula su objetivo)."""
-    return await rrhh_objetivo_service.eliminar_meta(db, meta_id)
-
-
-# ── Objetivos ───────────────────────────────────────────────────────────────
+rrhh_objetivos_router = APIRouter(prefix="/rrhh/objetivos", tags=["rrhh-objetivos"])
 
 
 @rrhh_objetivos_router.get("", response_model=List[RrhhObjetivoRead])
@@ -64,34 +30,26 @@ async def listar_objetivos(
     empleado_id: Optional[int] = None,
     db: AsyncSession = Depends(get_session),
 ):
-    """Objetivos con sus metas anidadas; filtro por empleado.
-
-    `resultado_objetivo` es la media (1–5) de las valoraciones de las metas
-    (se puntuaron en alguna evaluación) y `aporte` su equivalente 0–100.
-    """
+    """Objetivos con su periodo y peso; filtro por empleado."""
     return await rrhh_objetivo_service.listar(
         db, empleado_id=empleado_id, skip=skip, limit=limit
     )
 
 
-@rrhh_objetivos_router.post(
-    "", response_model=RrhhObjetivoRead, status_code=201
-)
+@rrhh_objetivos_router.post("", response_model=RrhhObjetivoRead, status_code=201)
 async def crear_objetivo(
     payload: RrhhObjetivoCreate,
     db: AsyncSession = Depends(get_session),
 ):
-    """Alta de un objetivo para un empleado (activo). Las fechas delimitan en
-    qué evaluaciones cuenta: sin fechas cuenta siempre."""
+    """Alta de un objetivo para un empleado (activo). El periodo es
+    obligatorio y el peso nace con el objetivo (defecto 1)."""
     return await rrhh_objetivo_service.crear(db, payload)
 
 
 @rrhh_objetivos_router.get("/{objetivo_id}", response_model=RrhhObjetivoDetalle)
-async def obtener_objetivo(
-    objetivo_id: int, db: AsyncSession = Depends(get_session)
-):
-    """Detalle de un objetivo con sus metas y los datos del empleado
-    (cabecera de la pantalla de metas)."""
+async def obtener_objetivo(objetivo_id: int, db: AsyncSession = Depends(get_session)):
+    """Detalle de un objetivo con los datos del empleado (cabecera de la
+    ficha)."""
     return await rrhh_objetivo_service.get(db, objetivo_id)
 
 
@@ -101,26 +59,14 @@ async def editar_objetivo(
     payload: RrhhObjetivoUpdate,
     db: AsyncSession = Depends(get_session),
 ):
-    """Edición de la definición; siempre permitida (cambia las fechas y se
-    recalcula el alcance de las borradores del empleado)."""
+    """Edición de la definición; siempre permitida. Cambiar el periodo o el
+    peso no altera las filas ya seleccionadas en borradores (guardan su
+    copia), pero sí qué objetivos aparecen como candidatos."""
     return await rrhh_objetivo_service.update(db, objetivo_id, payload)
 
 
 @rrhh_objetivos_router.delete("/{objetivo_id}")
-async def eliminar_objetivo(
-    objetivo_id: int, db: AsyncSession = Depends(get_session)
-):
-    """Baja de un objetivo; sus metas caen por `CASCADE`."""
+async def eliminar_objetivo(objetivo_id: int, db: AsyncSession = Depends(get_session)):
+    """Baja de un objetivo; sus filas en evaluaciones caen por `CASCADE`
+    (se recalcula el promedio de las borradores afectadas)."""
     return await rrhh_objetivo_service.eliminar(db, objetivo_id)
-
-
-@rrhh_objetivos_router.post(
-    "/{objetivo_id}/metas", response_model=RrhhMetaRead, status_code=201
-)
-async def crear_meta(
-    objetivo_id: int,
-    payload: RrhhMetaCreate,
-    db: AsyncSession = Depends(get_session),
-):
-    """Alta de una meta dentro de un objetivo (siempre permitida)."""
-    return await rrhh_objetivo_service.crear_meta(db, objetivo_id, payload)
