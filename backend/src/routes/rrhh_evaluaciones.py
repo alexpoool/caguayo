@@ -8,8 +8,9 @@ declaran **antes** de `/{evaluacion_id}` para que no las capture el parámetro
 de ruta (FastAPI responde `422` en lugar de pasar a la siguiente ruta cuando
 el conversor `int` falla).
 
-Ciclo de vida: `borrador → finalizada`. Seleccionar objetivos, puntuarlos y
-editar la cabecera exigen `borrador` (409 en otro caso). Los objetivos se
+Ciclo de vida: `borrador → finalizada` (estado **informativo**: la
+evaluación es editable en cualquier momento, también al finalizar; el
+único 409 por estado es repetir *finalizar*). Los objetivos se
 definen en el empleado (`/rrhh/objetivos`) y aquí se **seleccionan** (N:M con
 peso) y se **puntúan** (estrellas 0–5 + valoración y recomendaciones).
 """
@@ -112,7 +113,7 @@ async def crear_evaluacion(
     return await rrhh_evaluacion_service.crear(db, payload)
 
 
-# ── Selección y puntuación de objetivos (solo borradores) ───────────────────
+# ── Selección y puntuación de objetivos (cualquier estado) ──────────────────
 
 
 @rrhh_evaluaciones_router.post(
@@ -125,7 +126,7 @@ async def seleccionar_objetivos(
     payload: RrhhEvaluacionObjetivoSeleccion,
     db: AsyncSession = Depends(get_session),
 ):
-    """Selecciona objetivos para la evaluación (solo `borrador`).
+    """Selecciona objetivos para la evaluación.
 
     Todos deben pertenecer al empleado evaluado y su periodo debe solapar el
     de la evaluación; entran con su peso copiado. Devuelve el detalle
@@ -146,7 +147,7 @@ async def puntuar_objetivo(
     payload: RrhhEvaluacionObjetivoCalificar,
     db: AsyncSession = Depends(get_session),
 ):
-    """Puntúa/ajusta una fila seleccionada (solo `borrador`): estrellas 0–5,
+    """Puntúa/ajusta una fila seleccionada: estrellas 0–5,
     valoración, recomendaciones y peso. Recalcula el promedio ponderado."""
     return await rrhh_evaluacion_service.actualizar_fila(
         db, evaluacion_id, fila_id, payload
@@ -159,7 +160,7 @@ async def quitar_objetivo(
     fila_id: int,
     db: AsyncSession = Depends(get_session),
 ):
-    """Quita un objetivo de la selección (solo `borrador`) y recalcula el
+    """Quita un objetivo de la selección y recalcula el
     promedio ponderado."""
     return await rrhh_evaluacion_service.eliminar_fila(db, evaluacion_id, fila_id)
 
@@ -183,7 +184,7 @@ async def editar_evaluacion(
     payload: RrhhEvaluacionUpdate,
     db: AsyncSession = Depends(get_session),
 ):
-    """Edición parcial; solo mientras la evaluación esté en `borrador`."""
+    """Edición parcial de la cabecera (cualquier estado)."""
     return await rrhh_evaluacion_service.update(db, evaluacion_id, payload)
 
 
@@ -194,7 +195,7 @@ async def finalizar_evaluacion(
     evaluacion_id: int,
     db: AsyncSession = Depends(get_session),
 ):
-    """`borrador → finalizada`: recalcula el promedio y congela."""
+    """`borrador → finalizada`: recalcula el promedio y sella el estado."""
     return await rrhh_evaluacion_service.finalizar(db, evaluacion_id)
 
 
@@ -203,5 +204,5 @@ async def eliminar_evaluacion(
     evaluacion_id: int,
     db: AsyncSession = Depends(get_session),
 ):
-    """Baja de una evaluación; solo en `borrador` (las finalizadas quedan)."""
+    """Baja de una evaluación (cualquier estado; las filas caen por CASCADE)."""
     return await rrhh_evaluacion_service.eliminar(db, evaluacion_id)

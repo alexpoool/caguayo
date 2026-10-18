@@ -22,7 +22,6 @@ from decimal import Decimal
 
 from src.domain.rrhh_evaluacion_calc import (
     ESTRELLAS_MAX,
-    puede_editar,
     promedio_ponderado,
     solapa_fechas,
     validar_fechas,
@@ -184,10 +183,6 @@ class TestDominioEvaluacion:
         assert validar_fechas(date(2098, 6, 1), date(2098, 6, 1)) is None
         assert validar_fechas(date(2098, 6, 30), date(2098, 6, 1)) is not None
 
-    def test_puede_editar(self):
-        assert puede_editar("borrador") is True
-        assert puede_editar("finalizada") is False
-
 
 # ── Ciclo de vida de la evaluación ──────────────────────────────────────────
 
@@ -242,7 +237,8 @@ class TestCicloEvaluacion:
         finally:
             _limpiar_empleado(client, empleado["id"])
 
-    def test_no_editar_ni_eliminar_finalizada(self, client):
+    def test_editar_y_eliminar_finalizada(self, client):
+        """La finalizada es editable igual que un borrador (decisión de usuario)."""
         empleado = _crear_empleado(client)
         try:
             evaluacion = _crear_evaluacion(client, empleado["id"])
@@ -251,11 +247,12 @@ class TestCicloEvaluacion:
             response = client.put(
                 f"{BASE}/{evaluacion['id']}", json={"comentarios": "Nuevo"}
             )
-            assert response.status_code == 409
-            assert "borrador" in response.json()["detail"]
+            assert response.status_code == 200, response.text
+            assert response.json()["comentarios"] == "Nuevo"
+            assert response.json()["estado"] == "finalizada"
 
             response = client.delete(f"{BASE}/{evaluacion['id']}")
-            assert response.status_code == 409
+            assert response.status_code == 200, response.text
         finally:
             _limpiar_empleado(client, empleado["id"])
 
@@ -704,7 +701,8 @@ class TestSeleccionObjetivos:
         finally:
             _limpiar_empleado(client, empleado["id"])
 
-    def test_no_seleccionar_en_finalizada(self, client):
+    def test_seleccionar_en_finalizada(self, client):
+        """La selección no se bloquea al finalizar (estado informativo)."""
         empleado = _crear_empleado(client)
         try:
             objetivo = _crear_objetivo(client, empleado["id"])
@@ -715,8 +713,10 @@ class TestSeleccionObjetivos:
                 f"{BASE}/{evaluacion['id']}/objetivos",
                 json={"objetivo_ids": [objetivo["id_objetivos"]]},
             )
-            assert response.status_code == 409
-            assert "borrador" in response.json()["detail"]
+            assert response.status_code == 201, response.text
+            detalle = response.json()
+            assert detalle["estado"] == "finalizada"
+            assert detalle["cantidad_seleccionados"] == 1
         finally:
             _limpiar_empleado(client, empleado["id"])
 
@@ -969,7 +969,8 @@ class TestPuntuacion:
         finally:
             _limpiar_empleado(client, empleado["id"])
 
-    def test_finalizar_conserva_el_promedio(self, client):
+    def test_finalizar_calcula_y_sigue_editable(self, client):
+        """Finalizar sella el estado pero no bloquea nada: se sigue editando."""
         empleado = _crear_empleado(client)
         try:
             objetivo = _crear_objetivo(client, empleado["id"], peso=2)
@@ -985,19 +986,24 @@ class TestPuntuacion:
             assert response.status_code == 200, response.text
             assert Decimal(response.json()["promedio_objetivos"]) == Decimal("5.00")
 
-            # Congelado: ni puntuar ni quitar.
+            # Sigue siendo editable: cambiar estrellas recalcula en finalizada.
             response = client.put(
                 f"{BASE}/{evaluacion['id']}/objetivos/{fila['fila_id']}",
                 json={"resultado": 1},
             )
-            assert response.status_code == 409
+            assert response.status_code == 200, response.text
+            detalle = client.get(f"{BASE}/{evaluacion['id']}").json()
+            assert detalle["estado"] == "finalizada"
+            assert Decimal(detalle["promedio_objetivos"]) == Decimal("1.00")
+
+            # Y también se puede quitar la fila (sin puntuadas → NULL).
             response = client.delete(
                 f"{BASE}/{evaluacion['id']}/objetivos/{fila['fila_id']}"
             )
-            assert response.status_code == 409
-
+            assert response.status_code == 200, response.text
             detalle = client.get(f"{BASE}/{evaluacion['id']}").json()
-            assert Decimal(detalle["promedio_objetivos"]) == Decimal("5.00")
+            assert detalle["promedio_objetivos"] is None
+            assert detalle["cantidad_seleccionados"] == 0
         finally:
             _limpiar_empleado(client, empleado["id"])
 

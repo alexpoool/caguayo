@@ -2,9 +2,9 @@
 
 Reglas de negocio de esta fase (rediseño «Evaluaciones v2»):
 
-- **Ciclo**: `borrador → finalizada`. Solo en `borrador` se edita la
-  cabecera, se seleccionan objetivos y se puntúan sus filas; las
-  finalizadas quedan congeladas (409).
+- **Ciclo**: `borrador → finalizada`. El estado es **informativo**: la
+  evaluación es **editable siempre** (cabecera, selección, puntuación y
+  borrado también en `finalizada`); finalizar solo recalcula y sella.
 - **Única por (empleado, periodo, tipo)**: no se puede tener dos evaluaciones
   iguales para el mismo periodo; el alta devuelve `409`.
 - **Tipos en catálogo**: `evaluaciones.tipo_evaluacion_id` es FK a
@@ -22,8 +22,9 @@ Reglas de negocio de esta fase (rediseño «Evaluaciones v2»):
   detalle (todo lo que cuenta en el promedio se ve).
 - **`promedio_objetivos`**: **promedio ponderado 0–5**
   (Σ estrellas×peso / Σ pesos de las filas **puntuadas**), persistido en la
-  columna homónima y recalculado en las borradores al seleccionar, puntuar,
-  editar o quitar filas y al finalizar.
+  columna homónima y recalculado en **cualquier estado** al seleccionar,
+  puntuar o quitar filas, al finalizar y cuando un cambio de objetivo
+  arrastra sus filas.
 - **Sin autenticación en backend** (decisión del módulo; deuda Fase 10): el
   `evaluador_id` viene en el payload.
 """
@@ -38,7 +39,6 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 
 from src.domain.rrhh_evaluacion_calc import (
     ESTADOS_EVALUACION,
-    puede_editar,
     promedio_ponderado,
     redondear,
     solapa_fechas,
@@ -71,8 +71,8 @@ from src.models import (
 async def _recalcular_promedio(db: AsyncSession, evaluacion: RrhhEvaluacion) -> None:
     """`promedio_objetivos` = promedio ponderado de sus filas puntuadas.
 
-    Solo se llama con evaluaciones en `borrador`; las finalizadas quedan
-    congeladas.
+    Se recalcula en **cualquier estado** (la evaluación es siempre
+    editable); `finalizar` lo invoca para dejar el valor al sellar.
     """
     res = await db.exec(
         select(RrhhEvaluacionObjetivo).where(
@@ -86,17 +86,15 @@ async def _recalcular_promedio(db: AsyncSession, evaluacion: RrhhEvaluacion) -> 
     db.add(evaluacion)
 
 
-async def recalcular_promedio_borradores(db: AsyncSession, empleado_id: int) -> None:
-    """Recalcula `promedio_objetivos` de las borradores del empleado.
+async def recalcular_promedios_empleado(db: AsyncSession, empleado_id: int) -> None:
+    """Recalcula `promedio_objetivos` de **todas** las evaluaciones del empleado.
 
     El servicio de objetivos la usa cuando un cambio en un objetivo arrastra
-    filas del N:M (p. ej. su baja, que las borra por `CASCADE`).
+    filas del N:M (p. ej. su baja, que las borra por `CASCADE`). No mira el
+    estado: la evaluación es siempre editable.
     """
     res = await db.exec(
-        select(RrhhEvaluacion).where(
-            RrhhEvaluacion.empleado_id == empleado_id,
-            RrhhEvaluacion.estado == "borrador",
-        )
+        select(RrhhEvaluacion).where(RrhhEvaluacion.empleado_id == empleado_id)
     )
     for evaluacion in res.all():
         await _recalcular_promedio(db, evaluacion)
@@ -206,16 +204,6 @@ class RrhhEvaluacionService:
                 status_code=404, detail="El objetivo no está en esta evaluación"
             )
         return fila
-
-    def _exigir_borrador(self, evaluacion: RrhhEvaluacion, accion: str) -> None:
-        if not puede_editar(evaluacion.estado):
-            raise HTTPException(
-                status_code=409,
-                detail=(
-                    f"La evaluación está «{evaluacion.estado}»; solo se puede "
-                    f"{accion} mientras esté en borrador"
-                ),
-            )
 
     async def _exigir_unica(
         self,
@@ -550,8 +538,6 @@ class RrhhEvaluacionService:
         self, db: AsyncSession, id: int, obj_in: RrhhEvaluacionUpdate
     ) -> RrhhEvaluacionListado:
         evaluacion = await self._buscar_o_404(db, id)
-        self._exigir_borrador(evaluacion, "editar")
-
         datos = obj_in.model_dump(exclude_unset=True)
 
         # Los campos de periodo y unicidad se revalidan si cambian.
@@ -583,16 +569,17 @@ class RrhhEvaluacionService:
         return self._construir_listado(evaluacion, resolucion)
 
     async def finalizar(self, db: AsyncSession, id: int) -> RrhhEvaluacionListado:
-        """`borrador → finalizada`: recalcula el promedio y congela."""
+        """`borrador → finalizada`: recalcula el promedio y sello informativo.
+
+        El estado no bloquea nada (la evaluación sigue siendo editable);
+        repetir finalizar devuelve 409.
+        """
         evaluacion = await self._buscar_o_404(db, id)
         if evaluacion.estado == "finalizada":
             raise HTTPException(
                 status_code=409, detail="La evaluación ya está finalizada"
             )
 
-        # El cálculo definitivo se hace mientras sigue en `borrador`
-        # (_recalcular_promedio solo se invoca en borradores); después ya
-        # queda congelado.
         await _recalcular_promedio(db, evaluacion)
         evaluacion.estado = "finalizada"
         evaluacion.updated_at = datetime.now()
@@ -605,12 +592,11 @@ class RrhhEvaluacionService:
 
     async def eliminar(self, db: AsyncSession, id: int) -> dict:
         evaluacion = await self._buscar_o_404(db, id)
-        self._exigir_borrador(evaluacion, "eliminar")
         await db.delete(evaluacion)  # las filas del N:M caen por CASCADE
         await db.commit()
         return {"mensaje": f"{self.model_name} eliminada", "id": id}
 
-    # ── Selección y puntuación de objetivos (solo borradores) ───────────────
+    # ── Selección y puntuación de objetivos (cualquier estado) ──────────────
 
     async def seleccionar_objetivos(
         self,
@@ -618,14 +604,13 @@ class RrhhEvaluacionService:
         evaluacion_id: int,
         obj_in: RrhhEvaluacionObjetivoSeleccion,
     ) -> RrhhEvaluacionDetalle:
-        """Adjunta objetivos al N:M con su peso copiado (solo `borrador`).
+        """Adjunta objetivos al N:M con su peso copiado.
 
         Todos los ids se validan antes de escribir (todo o nada): deben
         existir (404), pertenecer al empleado evaluado y estar en alcance
         del periodo (400); repetir un objetivo ya seleccionado es 409.
         """
         evaluacion = await self._buscar_o_404(db, evaluacion_id)
-        self._exigir_borrador(evaluacion, "seleccionar objetivos")
 
         # Sin duplicados dentro del mismo payload (el orden se conserva).
         objetivo_ids = list(dict.fromkeys(obj_in.objetivo_ids))
@@ -699,13 +684,12 @@ class RrhhEvaluacionService:
         fila_id: int,
         obj_in: RrhhEvaluacionObjetivoCalificar,
     ) -> RrhhEvaluacionObjetivoRead:
-        """Puntúa/ajusta una fila seleccionada (solo `borrador`).
+        """Puntúa/ajusta una fila seleccionada; recalcula el promedio.
 
         `resultado` son las estrellas 0–5; al cambiarse se recalcula el
         promedio ponderado de la evaluación.
         """
         evaluacion = await self._buscar_o_404(db, evaluacion_id)
-        self._exigir_borrador(evaluacion, "puntuar objetivos")
         fila = await self._buscar_fila_o_404(db, evaluacion, fila_id)
 
         cambios = obj_in.model_dump(exclude_unset=True)
@@ -723,9 +707,8 @@ class RrhhEvaluacionService:
     async def eliminar_fila(
         self, db: AsyncSession, evaluacion_id: int, fila_id: int
     ) -> dict:
-        """Quita un objetivo de la selección (solo `borrador`) y recalcula."""
+        """Quita un objetivo de la selección y recalcula."""
         evaluacion = await self._buscar_o_404(db, evaluacion_id)
-        self._exigir_borrador(evaluacion, "quitar objetivos")
         fila = await self._buscar_fila_o_404(db, evaluacion, fila_id)
 
         await db.delete(fila)

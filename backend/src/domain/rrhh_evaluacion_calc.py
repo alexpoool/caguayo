@@ -44,11 +44,6 @@ def validar_fechas(inicio, fin) -> Optional[str]:
     return None
 
 
-def puede_editar(estado: str) -> bool:
-    """Solo una evaluación en `borrador` admite cambios."""
-    return estado == "borrador"
-
-
 def solapa_fechas(
     ini_a: Optional[date],
     fin_a: Optional[date],
@@ -94,7 +89,6 @@ __all__ = [
     "ESTRELLAS_MAX",
     "redondear",
     "validar_fechas",
-    "puede_editar",
     "solapa_fechas",
     "promedio_ponderado",
 ]

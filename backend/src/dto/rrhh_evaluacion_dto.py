@@ -1,22 +1,22 @@
 """DTOs del submódulo RRHH — Evaluaciones (Fase 8 v2 — objetivos ponderados).
 
-Ciclo de vida (decidido):
+Ciclo de vida:
 
-    borrador ──finalizar──▶ finalizada   (estado final)
+    borrador ──finalizar──▶ finalizada      (estado informativo)
 
-Mientras está en `borrador` se edita la cabecera, se seleccionan objetivos
-(N:M) y se puntúan sus filas (estrellas 0–5, valoración y recomendaciones).
-Al finalizar se recalcula `promedio_objetivos` y todo queda congelado. La
-*definición* de objetivos (nombre, periodo, peso) vive en el empleado y es
-siempre editable: véase `dto/rrhh_objetivo_dto.py`.
+La evaluación es **editable siempre** (decisión de usuario): la cabecera, la
+selección de objetivos (N:M) y la puntuación de sus filas (estrellas 0–5,
+valoración y recomendaciones) se editan igual en `borrador` que en
+`finalizada`; solo *finalizar* dos veces devuelve 409. La *definición* de
+objetivos (nombre, periodo, peso) vive en el empleado y es siempre editable:
+véase `dto/rrhh_objetivo_dto.py`.
 
 Como el módulo no usa autenticación en backend (decisión; deuda Fase 10), el
 `evaluador_id` viene en el payload.
 
 La nota de la evaluación es el **promedio ponderado** de sus filas
 puntuadas (Σ estrellas×peso / Σ pesos), 0–5, persistido en
-`evaluaciones.promedio_objetivos` y recalculado en las borradores; las
-finalizadas quedan congeladas.
+`evaluaciones.promedio_objetivos` y recalculado en cualquier estado.
 """
 
 from datetime import date, datetime

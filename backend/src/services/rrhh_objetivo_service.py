@@ -26,7 +26,7 @@ from src.dto import (
 )
 from src.models.rrhh_empleado import RrhhEmpleado
 from src.models.rrhh_evaluacion import RrhhObjetivo
-from src.services.rrhh_evaluacion_service import recalcular_promedio_borradores
+from src.services.rrhh_evaluacion_service import recalcular_promedios_empleado
 
 
 class ObjetivoService:
@@ -147,7 +147,7 @@ class ObjetivoService:
         await db.delete(objetivo)  # las filas del N:M caen por CASCADE
         await db.flush()
         # La baja arrastra filas de borradores: hay que recomputar su promedio.
-        await recalcular_promedio_borradores(db, empleado_id)
+        await recalcular_promedios_empleado(db, empleado_id)
         await db.commit()
         return {"mensaje": "Objetivo eliminado", "id": objetivo_id}
 
