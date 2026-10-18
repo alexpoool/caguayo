@@ -6,6 +6,7 @@ import {
   COLOR_ESTADO_EVALUACION,
   type RrhhEvaluacionObjetivo,
   type RrhhEvaluacionObjetivoUpdate,
+  type RrhhEvaluacionUpdate,
 } from '../../types/rrhh';
 import {
   AlertCircle,
@@ -15,6 +16,7 @@ import {
   Info,
   Loader2,
   MessageSquare,
+  Pencil,
   Save,
   Star,
   Target,
@@ -26,6 +28,9 @@ import {
   Card,
   CardContent,
   CardHeader,
+  Input,
+  Label,
+  Modal,
 } from '../../components/ui';
 
 /** Promedio ponderado 0–5 con dos decimales; «—» si todavía no hay puntuación. */
@@ -76,15 +81,68 @@ export function EvaluacionDetallePage() {
     guardadoTimer.current = setTimeout(() => setFilaGuardada(null), 1800);
   };
 
-  const finalizarMutation = useMutation({
-    mutationFn: () => rrhhService.finalizarEvaluacion(evaluacionId),
-    onSuccess: () => {
-      toast.success('Evaluación finalizada');
-      invalidate();
-      navigate('/rrhh/evaluaciones');
-    },
-    onError: (err: any) => toast.error(err?.message || 'No se pudo finalizar'),
+  /** Catálogo de tipos para el modal de edición de la cabecera. */
+  const { data: tiposEvaluacion = [] } = useQuery({
+    queryKey: ['rrhh', 'catalogos', 'tipos-evaluacion', 'activos'],
+    queryFn: () => rrhhService.listarTiposEvaluacion({ limit: 500, activo: true }),
   });
+
+  // ── Edición de periodo, tipo y fechas (modal) ────────────────────────────
+  const [editarOpen, setEditarOpen] = useState(false);
+  const [cabecera, setCabecera] = useState({
+    periodo: '',
+    tipo_evaluacion_id: 0,
+    inicio_periodo: '',
+    fin_periodo: '',
+  });
+  const [cabeceraErrores, setCabeceraErrores] = useState<Record<string, string>>(
+    {}
+  );
+
+  const abrirEditar = () => {
+    if (!evaluacion) return;
+    setCabecera({
+      periodo: evaluacion.periodo,
+      tipo_evaluacion_id: evaluacion.tipo_evaluacion_id,
+      inicio_periodo: evaluacion.inicio_periodo,
+      fin_periodo: evaluacion.fin_periodo,
+    });
+    setCabeceraErrores({});
+    setEditarOpen(true);
+  };
+
+  const cabeceraDatosMutation = useMutation({
+    mutationFn: (data: RrhhEvaluacionUpdate) =>
+      rrhhService.editarEvaluacion(evaluacionId, data),
+    onSuccess: () => {
+      toast.success('Evaluación actualizada');
+      invalidate();
+      setEditarOpen(false);
+    },
+    onError: (err: any) => toast.error(err?.message || 'No se pudo guardar'),
+  });
+
+  const guardarCabecera = (e: React.FormEvent) => {
+    e.preventDefault();
+    const errs: Record<string, string> = {};
+    if (!cabecera.periodo.trim()) errs.periodo = 'El periodo es obligatorio';
+    if (!cabecera.tipo_evaluacion_id)
+      errs.tipo_evaluacion_id = 'Selecciona un tipo';
+    if (
+      cabecera.inicio_periodo &&
+      cabecera.fin_periodo &&
+      cabecera.fin_periodo < cabecera.inicio_periodo
+    )
+      errs.fin_periodo = 'El fin no puede ser anterior al inicio';
+    setCabeceraErrores(errs);
+    if (Object.keys(errs).length) return;
+    cabeceraDatosMutation.mutate({
+      periodo: cabecera.periodo.trim(),
+      tipo_evaluacion_id: cabecera.tipo_evaluacion_id,
+      inicio_periodo: cabecera.inicio_periodo,
+      fin_periodo: cabecera.fin_periodo,
+    });
+  };
 
   /** Añade objetivos a la selección (cualquier estado). */
   const seleccionarMutation = useMutation({
@@ -191,9 +249,20 @@ export function EvaluacionDetallePage() {
               <ClipboardCheck className="h-6 w-6 text-sky-600" />
               {evaluacion.empleado_nombre || 'Evaluación'}
             </h1>
-            <p className="mt-1 text-sm text-slate-500">
-              {evaluacion.empleado_codigo} · {evaluacion.tipo_evaluacion ?? '—'} ·
-              Periodo {evaluacion.periodo} · {evaluacion.inicio_periodo} → {evaluacion.fin_periodo}
+            <p className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-sm text-slate-500">
+              <span>
+                {evaluacion.empleado_codigo} · {evaluacion.tipo_evaluacion ?? '—'} ·
+                Periodo {evaluacion.periodo} · {evaluacion.inicio_periodo} → {evaluacion.fin_periodo}
+              </span>
+              <button
+                type="button"
+                title="Editar periodo, tipo y fechas"
+                aria-label="Editar periodo, tipo y fechas"
+                onClick={abrirEditar}
+                className="rounded-md p-1 text-slate-400 transition-colors hover:bg-slate-100 hover:text-sky-600"
+              >
+                <Pencil className="h-3.5 w-3.5" />
+              </button>
             </p>
           </div>
         </div>
@@ -238,20 +307,6 @@ export function EvaluacionDetallePage() {
             <Save className="h-4 w-4" />
             Guardar
           </Button>
-          {esBorrador && (
-            <Button
-              size="sm"
-              onClick={() => finalizarMutation.mutate()}
-              disabled={finalizarMutation.isPending}
-            >
-              {finalizarMutation.isPending ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Check className="h-4 w-4" />
-              )}
-              Finalizar
-            </Button>
-          )}
         </div>
       </div>
 
@@ -321,6 +376,13 @@ export function EvaluacionDetallePage() {
                     key={obj.id_objetivo}
                     obj={obj}
                     guardado={obj.fila_id !== null && filaGuardada === obj.fila_id}
+                    fueraDeAlcance={
+                      obj.seleccionado &&
+                      !(
+                        obj.periodo_inicio <= evaluacion.fin_periodo &&
+                        obj.periodo_fin >= evaluacion.inicio_periodo
+                      )
+                    }
                     seleccionando={
                       seleccionarMutation.isPending &&
                       seleccionarMutation.variables?.length === 1 &&
@@ -408,6 +470,135 @@ export function EvaluacionDetallePage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Modal de edición de periodo, tipo y fechas (cuadrado, sin borde) */}
+      <Modal
+        isOpen={editarOpen}
+        onClose={() => setEditarOpen(false)}
+        className="overflow-hidden !rounded-none"
+      >
+        <div className="sticky top-0 flex items-center gap-3 border-b bg-gradient-to-r from-sky-50 to-sky-100 px-6 py-4">
+          <div className="rounded-lg bg-gradient-to-br from-sky-500 to-sky-600 p-2">
+            <Pencil className="h-5 w-5 text-white" />
+          </div>
+          <h2 className="text-lg font-bold text-gray-900">Editar evaluación</h2>
+        </div>
+        <form onSubmit={guardarCabecera} className="space-y-4 px-6 pt-5">
+          <div className="space-y-2">
+            <Label htmlFor="ev-periodo" className="text-gray-700">
+              Periodo
+            </Label>
+            <Input
+              id="ev-periodo"
+              value={cabecera.periodo}
+              onChange={(e) =>
+                setCabecera({ ...cabecera, periodo: e.target.value })
+              }
+              placeholder="Ej. 2026-06"
+              className={cabeceraErrores.periodo ? 'border-red-500' : ''}
+            />
+            {cabeceraErrores.periodo && (
+              <p className="flex items-center gap-1 text-xs text-red-600">
+                <AlertCircle className="h-3 w-3" />
+                {cabeceraErrores.periodo}
+              </p>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="ev-tipo" className="text-gray-700">
+              Tipo de evaluación
+            </Label>
+            <select
+              id="ev-tipo"
+              value={cabecera.tipo_evaluacion_id}
+              onChange={(e) =>
+                setCabecera({
+                  ...cabecera,
+                  tipo_evaluacion_id: Number(e.target.value),
+                })
+              }
+              className={`w-full rounded-md border px-3 py-2 text-sm transition-all duration-200 focus:border-sky-500 focus:ring-2 focus:ring-sky-500 ${
+                cabeceraErrores.tipo_evaluacion_id
+                  ? 'border-red-500'
+                  : 'border-slate-300'
+              }`}
+            >
+              <option value={0} disabled>
+                Selecciona un tipo
+              </option>
+              {tiposEvaluacion.map((t) => (
+                <option
+                  key={t.id_tipos_evaluaciones}
+                  value={t.id_tipos_evaluaciones}
+                >
+                  {t.nombre}
+                </option>
+              ))}
+            </select>
+            {cabeceraErrores.tipo_evaluacion_id && (
+              <p className="flex items-center gap-1 text-xs text-red-600">
+                <AlertCircle className="h-3 w-3" />
+                {cabeceraErrores.tipo_evaluacion_id}
+              </p>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="ev-inicio" className="text-gray-700">
+                Inicio del periodo
+              </Label>
+              <Input
+                id="ev-inicio"
+                type="date"
+                value={cabecera.inicio_periodo}
+                onChange={(e) =>
+                  setCabecera({ ...cabecera, inicio_periodo: e.target.value })
+                }
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="ev-fin" className="text-gray-700">
+                Fin del periodo
+              </Label>
+              <Input
+                id="ev-fin"
+                type="date"
+                value={cabecera.fin_periodo}
+                onChange={(e) =>
+                  setCabecera({ ...cabecera, fin_periodo: e.target.value })
+                }
+                className={cabeceraErrores.fin_periodo ? 'border-red-500' : ''}
+              />
+              {cabeceraErrores.fin_periodo && (
+                <p className="flex items-center gap-1 text-xs text-red-600">
+                  <AlertCircle className="h-3 w-3" />
+                  {cabeceraErrores.fin_periodo}
+                </p>
+              )}
+            </div>
+          </div>
+
+          <div className="sticky bottom-0 -mx-6 flex items-center justify-end gap-2 border-t bg-white px-6 pb-5 pt-4">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setEditarOpen(false)}
+            >
+              Cancelar
+            </Button>
+            <Button type="submit" disabled={cabeceraDatosMutation.isPending}>
+              {cabeceraDatosMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Save className="h-4 w-4" />
+              )}
+              Guardar cambios
+            </Button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }
@@ -499,6 +690,7 @@ function CabeceraTexto({
 function FilaObjetivo({
   obj,
   guardado,
+  fueraDeAlcance,
   seleccionando,
   quitando,
   onSeleccionar,
@@ -509,6 +701,11 @@ function FilaObjetivo({
   obj: RrhhEvaluacionObjetivo;
   /** Muestra el check breve de «guardado» tras una mutación exitosa. */
   guardado: boolean;
+  /**
+   * `true` si está seleccionado pero su periodo ya no solapa el de la
+   * evaluación (sigue contando en el promedio: se señala en la fila).
+   */
+  fueraDeAlcance: boolean;
   seleccionando: boolean;
   quitando: boolean;
   onSeleccionar: () => void;
@@ -569,7 +766,7 @@ function FilaObjetivo({
         className="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300 text-sky-600 accent-sky-600 focus:ring-sky-500 disabled:cursor-not-allowed"
       />
 
-      {/* Nombre */}
+      {/* Nombre + periodo (se ve el filtro por fecha de la evaluación) */}
       <div className="min-w-0 flex-1 md:flex-none">
         <div className="flex items-center gap-2">
           <p className="truncate text-sm font-medium text-slate-800">{obj.nombre}</p>
@@ -580,6 +777,19 @@ function FilaObjetivo({
             <Check className="h-3.5 w-3.5 shrink-0 animate-fade-in-up text-emerald-500" aria-hidden />
           )}
         </div>
+        <p className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs text-slate-400">
+          <span className="tabular-nums" title="Periodo del objetivo">
+            {obj.periodo_inicio} → {obj.periodo_fin}
+          </span>
+          {fueraDeAlcance && (
+            <span
+              className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700"
+              title="Su periodo ya no solapa el de la evaluación, pero sigue contando en el promedio"
+            >
+              fuera de alcance
+            </span>
+          )}
+        </p>
         {!obj.seleccionado && (
           <p className="mt-1 text-xs italic text-slate-400">
             Selecciona el objetivo para evaluarlo

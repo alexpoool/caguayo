@@ -12,10 +12,8 @@ import {
   Calendar,
   CalendarRange,
   ClipboardCheck,
-  FileText,
   Hash,
   Loader2,
-  MessageSquare,
   Pencil,
   Plus,
   Save,
@@ -63,15 +61,18 @@ const hoyISO = () => {
   return `${d.getFullYear()}-${mes}-${dia}`;
 };
 
-/** Formulario vacío: rango del periodo = hoy, sin puntuar. */
+/**
+ * Formulario vacío: rango del periodo = hoy.
+ *
+ * Sin comentarios ni recomendaciones: se escriben ya en el detalle
+ * (`/rrhh/evaluaciones/:id`), donde tienen su tarjeta propia.
+ */
 const formVacio = (): RrhhEvaluacionCreate => ({
   empleado_id: 0,
   periodo: "",
   tipo_evaluacion_id: 0,
   inicio_periodo: hoyISO(),
   fin_periodo: hoyISO(),
-  comentarios: "",
-  recomendaciones: "",
 });
 
 /** Promedio ponderado 0–5 con dos decimales; «—» sin puntuar. */
@@ -177,13 +178,7 @@ export function EvaluacionesPage() {
   const onSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!validar()) return;
-    createMutation.mutate({
-      ...formData,
-      comentarios: formData.comentarios?.trim() ? formData.comentarios : null,
-      recomendaciones: formData.recomendaciones?.trim()
-        ? formData.recomendaciones
-        : null,
-    });
+    createMutation.mutate(formData);
   };
 
   return (
@@ -548,46 +543,6 @@ export function EvaluacionesPage() {
                 </p>
               )}
             </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label
-              htmlFor="comentarios"
-              className="flex items-center gap-2 text-gray-700"
-            >
-              <FileText className="h-4 w-4 text-amber-500" />
-              Comentarios
-            </Label>
-            <textarea
-              id="comentarios"
-              value={formData.comentarios || ""}
-              onChange={(e) =>
-                setFormData({ ...formData, comentarios: e.target.value })
-              }
-              rows={3}
-              placeholder="Observaciones generales (opcional)"
-              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500 transition-all duration-200"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label
-              htmlFor="recomendaciones"
-              className="flex items-center gap-2 text-gray-700"
-            >
-              <MessageSquare className="h-4 w-4 text-sky-500" />
-              Recomendaciones
-            </Label>
-            <textarea
-              id="recomendaciones"
-              value={formData.recomendaciones || ""}
-              onChange={(e) =>
-                setFormData({ ...formData, recomendaciones: e.target.value })
-              }
-              rows={3}
-              placeholder="Recomendaciones generales de la evaluación (opcional)"
-              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500 transition-all duration-200"
-            />
           </div>
 
           {/* Pie fijo: siempre visible aunque el formulario haga scroll */}
