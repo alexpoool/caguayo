@@ -1,11 +1,11 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useParams } from 'react-router-dom';
-import { RadarCriterios } from '../../components/rrhh/RadarCriterios';
 import { rrhhService } from '../../services/rrhh';
 import {
   COLOR_ESTADO_EVALUACION,
-  type RrhhMeta,
+  type RrhhEvaluacionObjetivo,
+  type RrhhEvaluacionObjetivoUpdate,
 } from '../../types/rrhh';
 import {
   AlertCircle,
@@ -13,9 +13,11 @@ import {
   Check,
   ClipboardCheck,
   Loader2,
+  MessageSquare,
   RefreshCw,
   Star,
   Target,
+  X,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import {
@@ -25,11 +27,13 @@ import {
   CardHeader,
 } from '../../components/ui';
 
-const fmtPromedio = (v: string | null) =>
+/** Promedio ponderado 0–5 con dos decimales; «—» si todavía no hay puntuación. */
+const fmtPromedio5 = (v: string | null) =>
   v === null || v === undefined ? '—' : Number(v).toFixed(2);
 
-/** Valor en escala con formato español sin ceros sobrantes: 3.5 → «3,5», 7 → «7». */
-const fmtValor = (v: number) => String(Number(v.toFixed(2))).replace('.', ',');
+/** Peso en español sin ceros sobrantes: 2.00 → «2», 2.50 → «2,5». */
+const fmtPeso = (v: string | number) =>
+  String(Number(Number(v).toFixed(2))).replace('.', ',');
 
 export function EvaluacionDetallePage() {
   const { id } = useParams<{ id: string }>();
@@ -56,28 +60,78 @@ export function EvaluacionDetallePage() {
 
   const esBorrador = evaluacion?.estado === 'borrador';
 
+  // Feedback sutil de «guardado» por fila: check breve junto a la fila.
+  const [filaGuardada, setFilaGuardada] = useState<number | null>(null);
+  const guardadoTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(
+    () => () => {
+      if (guardadoTimer.current) clearTimeout(guardadoTimer.current);
+    },
+    []
+  );
+  const marcarGuardada = (filaId: number) => {
+    setFilaGuardada(filaId);
+    if (guardadoTimer.current) clearTimeout(guardadoTimer.current);
+    guardadoTimer.current = setTimeout(() => setFilaGuardada(null), 1800);
+  };
+
   const finalizarMutation = useMutation({
     mutationFn: () => rrhhService.finalizarEvaluacion(evaluacionId),
     onSuccess: () => {
       toast.success('Evaluación finalizada (ya no se puede editar)');
       invalidate();
+      navigate('/rrhh/evaluaciones');
     },
     onError: (err: any) => toast.error(err?.message || 'No se pudo finalizar'),
   });
 
-  /** Califica una meta (1–5): recalcula `resultado_objetivo` y
-   * `promedio_objetivos`. Solo disponible en `borrador`. */
-  const [valorando, setValorando] = useState<number | null>(null);
-  const valorarMutation = useMutation({
-    mutationFn: ({ metaId, valoracion }: { metaId: number; valoracion: number }) =>
-      rrhhService.valorarMeta(evaluacionId, metaId, valoracion),
-    onMutate: ({ metaId }) => setValorando(metaId),
+  /** Añade objetivos a la selección (solo `borrador`). */
+  const seleccionarMutation = useMutation({
+    mutationFn: (objetivoIds: number[]) =>
+      rrhhService.seleccionarObjetivos(evaluacionId, objetivoIds),
     onSuccess: () => {
-      toast.success('Meta puntuada');
+      toast.success('Objetivo añadido a la evaluación');
       invalidate();
     },
-    onError: (err: any) => toast.error(err?.message || 'No se pudo puntuar la meta'),
-    onSettled: () => setValorando(null),
+    onError: (err: any) => toast.error(err?.message || 'No se pudo seleccionar el objetivo'),
+  });
+
+  /** Quita un objetivo de la selección (solo `borrador`). */
+  const quitarMutation = useMutation({
+    mutationFn: (filaId: number) =>
+      rrhhService.quitarObjetivoEvaluacion(evaluacionId, filaId),
+    onSuccess: () => {
+      toast.success('Objetivo quitado de la evaluación');
+      invalidate();
+    },
+    onError: (err: any) => toast.error(err?.message || 'No se pudo quitar el objetivo'),
+  });
+
+  /** Puntúa/edita una fila (estrellas, valoración, recomendaciones, peso). */
+  const puntuarMutation = useMutation({
+    mutationFn: ({
+      filaId,
+      data,
+    }: {
+      filaId: number;
+      data: RrhhEvaluacionObjetivoUpdate;
+    }) => rrhhService.puntuarObjetivo(evaluacionId, filaId, data),
+    onSuccess: (fila) => {
+      invalidate();
+      if (fila.fila_id !== null) marcarGuardada(fila.fila_id);
+    },
+    onError: (err: any) => toast.error(err?.message || 'No se pudo guardar la fila'),
+  });
+
+  /** Edición de cabecera (comentarios y recomendaciones). */
+  const cabeceraMutation = useMutation({
+    mutationFn: (data: { comentarios: string | null; recomendaciones: string | null }) =>
+      rrhhService.editarEvaluacion(evaluacionId, data),
+    onSuccess: () => {
+      toast.success('Guardado');
+      invalidate();
+    },
+    onError: (err: any) => toast.error(err?.message || 'No se pudo guardar'),
   });
 
   if (isLoading) {
@@ -109,15 +163,6 @@ export function EvaluacionDetallePage() {
     );
   }
 
-  // Escala de criterios resuelta en la evaluación (5, 10 o 100); `null` si
-  // aún no se ha elegido — el radar y las etiquetas se adaptan a ella.
-  const escala = evaluacion.escala_valor;
-
-  const radarData = evaluacion.criterios.map((c) => ({
-    criterio: c.etiqueta,
-    valor: c.valor,
-  }));
-
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -132,7 +177,7 @@ export function EvaluacionDetallePage() {
           </button>
           <div>
             <h1 className="flex items-center gap-2 text-xl font-bold text-slate-900">
-              <ClipboardCheck className="h-6 w-6 text-brand-600" />
+              <ClipboardCheck className="h-6 w-6 text-sky-600" />
               {evaluacion.empleado_nombre || 'Evaluación'}
             </h1>
             <p className="mt-1 text-sm text-slate-500">
@@ -141,7 +186,25 @@ export function EvaluacionDetallePage() {
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Nota de la evaluación: promedio ponderado 0–5 (badge prominente). */}
+          <span
+            className={`inline-flex items-baseline gap-1.5 rounded-full px-3 py-1.5 text-sm font-bold tabular-nums shadow-sm ${
+              evaluacion.promedio_objetivos === null
+                ? 'bg-slate-100 text-slate-500'
+                : 'bg-sky-100 text-sky-700 ring-1 ring-sky-200'
+            }`}
+            title="Promedio ponderado de los objetivos puntuados (0–5)"
+          >
+            {evaluacion.promedio_objetivos === null ? (
+              'Sin puntuar'
+            ) : (
+              <>
+                {fmtPromedio5(evaluacion.promedio_objetivos)}
+                <span className="text-xs font-semibold text-sky-500">/ 5</span>
+              </>
+            )}
+          </span>
           <span
             className={`inline-block rounded-full px-2.5 py-1 text-xs font-semibold ${COLOR_ESTADO_EVALUACION[evaluacion.estado]}`}
           >
@@ -150,7 +213,7 @@ export function EvaluacionDetallePage() {
           <Button
             variant="outline"
             size="sm"
-            title="Ver los objetivos y metas definidos para este empleado"
+            title="Ver los objetivos definidos para este empleado"
             onClick={() => navigate(`/rrhh/objetivos?empleado_id=${evaluacion.empleado_id}`)}
           >
             <Target className="h-4 w-4" />
@@ -178,134 +241,26 @@ export function EvaluacionDetallePage() {
 
       {!esBorrador && (
         <div className="rounded-md bg-slate-100 px-4 py-2 text-xs text-slate-600">
-          Evaluación finalizada: los criterios y la puntuación de las metas
-          quedan congelados (la definición de objetivos y metas sigue siendo
-          editable desde Empleados).
+          Evaluación finalizada: la selección y la puntuación de los objetivos
+          quedan congeladas (la definición de objetivos sigue siendo editable
+          desde Empleados).
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        {/* Radar de criterios */}
-        <Card>
-          <CardHeader className="pb-2">
-            <h2 className="text-sm font-semibold text-slate-700">
-              Criterios de desempeño{escala !== null ? ` (escala 1–${escala})` : ''}
-            </h2>
-            <p className="text-xs text-slate-500">
-              Promedio de criterios: {fmtPromedio(evaluacion.promedio_criterios)}
-              {evaluacion.promedio_criterios !== null && escala !== null
-                ? ` / ${escala}`
-                : ''}
-            </p>
-          </CardHeader>
-          <CardContent>
-            <RadarCriterios data={radarData} max={escala ?? 10} />
-          </CardContent>
-        </Card>
-
-        {/* Promedios + meta información */}
-        <Card>
-          <CardHeader className="pb-2">
-            <h2 className="text-sm font-semibold text-slate-700">Resumen</h2>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 gap-3">
-              <div className="rounded-lg bg-slate-50 p-3">
-                <p className="text-xs text-slate-500">
-                  Promedio criterios{escala !== null ? ` (1–${escala})` : ''}
-                </p>
-                <p className="text-2xl font-bold tabular-nums text-slate-900">
-                  {fmtPromedio(evaluacion.promedio_criterios)}
-                </p>
-              </div>
-              <div className="rounded-lg bg-slate-50 p-3">
-                <p className="text-xs text-slate-500">Promedio objetivos (0–100)</p>
-                <p className="text-2xl font-bold tabular-nums text-slate-900">
-                  {evaluacion.promedio_objetivos === null
-                    ? '—'
-                    : `${Number(evaluacion.promedio_objetivos).toFixed(1)}%`}
-                </p>
-              </div>
-              <div className="rounded-lg bg-slate-50 p-3">
-                <p className="text-xs text-slate-500">Objetivos / Metas</p>
-                <p className="text-2xl font-bold tabular-nums text-slate-900">
-                  {evaluacion.cantidad_objetivos} / {evaluacion.cantidad_metas}
-                </p>
-              </div>
-              <div className="rounded-lg bg-slate-50 p-3">
-                <p className="text-xs text-slate-500">Valoración media (1–5)</p>
-                <p className="text-2xl font-bold tabular-nums text-slate-900">
-                  {fmtPromedio(evaluacion.promedio_valoracion_1a5)}
-                </p>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <p className="text-xs font-semibold text-slate-500">
-                Criterios puntuados
-                {evaluacion.escala_nombre && (
-                  <span className="ml-1 font-normal">
-                    · escala {evaluacion.escala_nombre}
-                    {escala !== null ? ` (1–${escala})` : ''}
-                  </span>
-                )}
-              </p>
-              <ul className="space-y-1">
-                {evaluacion.criterios.map((c) => (
-                  <li
-                    key={c.criterio}
-                    className="flex items-center justify-between gap-2 rounded-md bg-slate-50 px-3 py-1.5 text-sm"
-                  >
-                    <span className="text-slate-600">{c.etiqueta}</span>
-                    <span className="flex items-center gap-2">
-                      {/* Estrellas (0–10) + valor ya convertido a la escala. */}
-                      <span
-                        className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold ${
-                          c.estrellas !== null
-                            ? 'bg-amber-100 text-amber-700'
-                            : 'bg-slate-200 text-slate-500'
-                        }`}
-                      >
-                        <Star className="h-3 w-3" />
-                        {c.estrellas !== null ? `${c.estrellas}/10` : 'Sin puntuar'}
-                      </span>
-                      <span
-                        className={`font-semibold tabular-nums ${
-                          c.valor > 0 ? 'text-slate-900' : 'text-slate-400'
-                        }`}
-                      >
-                        {c.estrellas !== null
-                          ? `${fmtValor(c.valor)}${escala !== null ? ` / ${escala}` : ''}`
-                          : '—'}
-                      </span>
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            {evaluacion.comentarios && (
-              <div className="rounded-md border border-slate-200 p-3">
-                <p className="text-xs font-semibold text-slate-500">Comentarios</p>
-                <p className="mt-1 whitespace-pre-wrap text-sm text-slate-700">
-                  {evaluacion.comentarios}
-                </p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Objetivos y metas en alcance: aquí se califican */}
+      {/* Objetivos del periodo: selección y puntuación */}
       <Card>
         <CardHeader className="pb-2">
-          <h2 className="text-sm font-semibold text-slate-700">
-            Objetivos y metas del periodo (escala 1–5)
-          </h2>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 className="text-sm font-semibold text-slate-700">
+              Objetivos del periodo
+            </h2>
+            <span className="rounded-full bg-sky-50 px-2.5 py-0.5 text-[11px] font-semibold text-sky-700 ring-1 ring-sky-100">
+              Estrellas 0–5 · promedio ponderado
+            </span>
+          </div>
           <p className="text-xs text-slate-500">
-            Se puntúan aquí las metas mientras la evaluación esté en borrador;
-            su media es el resultado de cada objetivo y el promedio de esos
-            resultados es «Promedio objetivos (0–100)».
+            Marca un objetivo para añadirlo a la evaluación y puntúalo con
+            estrellas; el peso y los textos se guardan al salir del campo.
           </p>
         </CardHeader>
         <CardContent>
@@ -313,10 +268,9 @@ export function EvaluacionDetallePage() {
             <div className="flex flex-col items-center gap-2 py-8 text-center">
               <Target className="h-8 w-8 text-slate-300" />
               <p className="max-w-md text-sm text-slate-500">
-                Este empleado no tiene objetivos en alcance del periodo{' '}
-                {evaluacion.inicio_periodo} → {evaluacion.fin_periodo}.
-                Defínelos desde su ficha (su rango de fechas debe solapar el
-                periodo, o quedarse sin fechas).
+                Este empleado no tiene objetivos cuyo periodo solape el de la
+                evaluación ({evaluacion.inicio_periodo} → {evaluacion.fin_periodo}).
+                Defínelos desde su ficha con su periodo y peso.
               </p>
               <Button
                 variant="outline"
@@ -330,108 +284,450 @@ export function EvaluacionDetallePage() {
               </Button>
             </div>
           ) : (
-            <div className="space-y-4">
-              {evaluacion.objetivos.map((obj) => (
-                <div
-                  key={obj.id_objetivos}
-                  className="overflow-hidden rounded-lg border border-slate-200"
-                >
-                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 bg-slate-50 px-3 py-2">
-                    <div>
-                      <p className="text-sm font-semibold text-slate-800">
-                        {obj.nombre}
-                      </p>
-                      <p className="text-xs text-slate-500">
-                        {obj.fecha_inicio || obj.fecha_fin
-                          ? `${obj.fecha_inicio ?? '…'} → ${obj.fecha_fin ?? '…'}`
-                          : 'Sin fechas · cuenta siempre'}
-                      </p>
-                    </div>
-                    <p className="text-sm tabular-nums text-slate-700">
-                      Resultado{' '}
-                      <strong>
-                        {obj.resultado_objetivo === null
-                          ? '—'
-                          : `${Number(obj.resultado_objetivo).toFixed(1)}/5`}
-                      </strong>
-                      {obj.aporte !== null &&
-                        ` · aporte ${Number(obj.aporte).toFixed(0)}%`}
-                    </p>
-                  </div>
-                  <ul className="divide-y divide-slate-100">
-                    {obj.metas.map((meta) => (
-                      <li
-                        key={meta.id_metas}
-                        className="flex flex-wrap items-center justify-between gap-2 px-3 py-2"
-                      >
-                        <div>
-                          <p className="text-sm text-slate-700">{meta.nombre}</p>
-                          <p className="text-xs text-slate-400">
-                            Resultado: {meta.resultado_meta ?? '—'}
-                          </p>
-                        </div>
-                        <SelectorValoracion
-                          meta={meta}
-                          esBorrador={esBorrador}
-                          valorando={valorando === meta.id_metas}
-                          onValorar={(v) =>
-                            valorarMutation.mutate({ metaId: meta.id_metas, valoracion: v })
-                          }
-                        />
-                      </li>
-                    ))}
-                    {obj.metas.length === 0 && (
-                      <li className="px-3 py-2 text-xs text-slate-400">
-                        Sin metas definidas.
-                      </li>
-                    )}
-                  </ul>
-                </div>
-              ))}
+            <div className="overflow-hidden rounded-lg border border-slate-200">
+              {/* Cabecera de columnas (solo pantallas medianas+) */}
+              <div className="hidden gap-3 border-b border-slate-200 bg-slate-50 px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500 md:grid md:grid-cols-[auto_minmax(0,1.5fr)_auto_5rem_14rem_16rem_2.5rem] md:items-center">
+                <span className="w-4" />
+                <span>Objetivo</span>
+                <span>Puntuación</span>
+                <span>Peso</span>
+                <span>Valoración</span>
+                <span>Recomendaciones</span>
+                <span className="text-right">Quitar</span>
+              </div>
+
+              <div className="divide-y divide-slate-100">
+                {evaluacion.objetivos.map((obj) => (
+                  <FilaObjetivo
+                    key={obj.id_objetivo}
+                    obj={obj}
+                    esBorrador={esBorrador}
+                    guardado={obj.fila_id !== null && filaGuardada === obj.fila_id}
+                    seleccionando={
+                      seleccionarMutation.isPending &&
+                      seleccionarMutation.variables?.length === 1 &&
+                      seleccionarMutation.variables[0] === obj.id_objetivo
+                    }
+                    quitando={quitarMutation.isPending && quitarMutation.variables === obj.fila_id}
+                    onSeleccionar={() =>
+                      seleccionarMutation.mutate([obj.id_objetivo])
+                    }
+                    onQuitar={() =>
+                      obj.fila_id !== null && quitarMutation.mutate(obj.fila_id)
+                    }
+                    onPuntuar={(resultado) =>
+                      obj.fila_id !== null &&
+                      puntuarMutation.mutate({
+                        filaId: obj.fila_id,
+                        data: { resultado },
+                      })
+                    }
+                    onGuardarFila={(data) =>
+                      obj.fila_id !== null &&
+                      puntuarMutation.mutate({ filaId: obj.fila_id, data })
+                    }
+                  />
+                ))}
+              </div>
             </div>
           )}
         </CardContent>
       </Card>
 
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        {/* Resumen: promedio y conteos */}
+        <Card>
+          <CardHeader className="pb-2">
+            <h2 className="text-sm font-semibold text-slate-700">Resumen</h2>
+            <p className="text-xs text-slate-500">
+              Promedio ponderado por el peso de cada objetivo puntuado (0–5)
+            </p>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="rounded-lg bg-slate-50 p-3">
+                <p className="text-xs text-slate-500">Promedio (0–5)</p>
+                <p className="text-2xl font-bold tabular-nums text-slate-900">
+                  {evaluacion.promedio_objetivos === null ? (
+                    <span className="text-base font-medium text-slate-400">Sin puntuar</span>
+                  ) : (
+                    <>
+                      {fmtPromedio5(evaluacion.promedio_objetivos)}
+                      <span className="text-sm font-semibold text-slate-400"> / 5</span>
+                    </>
+                  )}
+                </p>
+              </div>
+              <div className="rounded-lg bg-slate-50 p-3">
+                <p className="text-xs text-slate-500">Objetivos (sel. / alcance)</p>
+                <p className="text-2xl font-bold tabular-nums text-slate-900">
+                  {evaluacion.cantidad_seleccionados} / {evaluacion.cantidad_objetivos}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Comentarios y recomendaciones de la evaluación */}
+        <Card className="lg:col-span-2">
+          <CardHeader className="pb-2">
+            <div className="flex items-center justify-between gap-2">
+              <h2 className="flex items-center gap-2 text-sm font-semibold text-slate-700">
+                <MessageSquare className="h-4 w-4 text-sky-500" />
+                Comentarios y recomendaciones
+              </h2>
+              {!esBorrador && (
+                <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-500">
+                  Solo lectura
+                </span>
+              )}
+            </div>
+            <p className="text-xs text-slate-500">
+              {esBorrador
+                ? 'Se guardan al salir del campo.'
+                : 'Congelados al finalizar la evaluación.'}
+            </p>
+          </CardHeader>
+          <CardContent>
+            <CabeceraTexto
+              evaluacion={evaluacion}
+              esBorrador={esBorrador}
+              onGuardar={(data) => cabeceraMutation.mutate(data)}
+              guardando={cabeceraMutation.isPending}
+            />
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }
 
 // ── Subcomponentes ─────────────────────────────────────────────────────────
 
-function SelectorValoracion({
-  meta,
+/** Comentarios y recomendaciones generales, con guardado al salir del campo. */
+function CabeceraTexto({
+  evaluacion,
   esBorrador,
-  valorando,
-  onValorar,
+  onGuardar,
+  guardando,
 }: {
-  meta: RrhhMeta;
+  evaluacion: { comentarios: string | null; recomendaciones: string | null };
   esBorrador: boolean;
-  valorando: boolean;
-  onValorar: (valoracion: number) => void;
+  onGuardar: (data: {
+    comentarios: string | null;
+    recomendaciones: string | null;
+  }) => void;
+  guardando: boolean;
 }) {
+  const [comentarios, setComentarios] = useState(evaluacion.comentarios ?? '');
+  const [recomendaciones, setRecomendaciones] = useState(
+    evaluacion.recomendaciones ?? ''
+  );
+
+  // Resincroniza cuando el servidor devuelve valores distintos (p. ej. tras
+  // finalizar): la dependencia solo cambia si cambió el dato guardado.
+  useEffect(() => setComentarios(evaluacion.comentarios ?? ''), [evaluacion.comentarios]);
+  useEffect(
+    () => setRecomendaciones(evaluacion.recomendaciones ?? ''),
+    [evaluacion.recomendaciones]
+  );
+
+  const guardar = (campo: 'comentarios' | 'recomendaciones') => {
+    if (!esBorrador) return;
+    const actual = campo === 'comentarios' ? evaluacion.comentarios ?? '' : evaluacion.recomendaciones ?? '';
+    const nuevo = (campo === 'comentarios' ? comentarios : recomendaciones).trim();
+    if (nuevo === actual.trim()) return;
+    onGuardar({
+      comentarios: campo === 'comentarios' ? nuevo || null : (evaluacion.comentarios ?? '') || null,
+      recomendaciones:
+        campo === 'recomendaciones' ? nuevo || null : (evaluacion.recomendaciones ?? '') || null,
+    });
+  };
+
+  const comun =
+    'w-full rounded-md border border-slate-300 px-3 py-2 text-sm transition-all duration-200 focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500 disabled:bg-slate-50 disabled:text-slate-600';
+
   return (
-    <div className="flex items-center gap-2">
-      <span className="text-xs text-slate-400">Valoración</span>
-      <select
-        value={meta.valoracion ?? ''}
-        disabled={!esBorrador || valorando}
-        onChange={(e) => e.target.value && onValorar(Number(e.target.value))}
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <div className="space-y-1.5">
+        <label
+          htmlFor="ev-comentarios"
+          className="text-xs font-semibold text-slate-500"
+        >
+          Comentarios
+        </label>
+        <textarea
+          id="ev-comentarios"
+          rows={4}
+          value={comentarios}
+          disabled={!esBorrador || guardando}
+          onChange={(e) => setComentarios(e.target.value)}
+          onBlur={() => guardar('comentarios')}
+          placeholder="Observaciones generales (opcional)"
+          className={comun}
+        />
+      </div>
+      <div className="space-y-1.5">
+        <label
+          htmlFor="ev-recomendaciones"
+          className="text-xs font-semibold text-slate-500"
+        >
+          Recomendaciones
+        </label>
+        <textarea
+          id="ev-recomendaciones"
+          rows={4}
+          value={recomendaciones}
+          disabled={!esBorrador || guardando}
+          onChange={(e) => setRecomendaciones(e.target.value)}
+          onBlur={() => guardar('recomendaciones')}
+          placeholder="Recomendaciones generales de la evaluación (opcional)"
+          className={comun}
+        />
+      </div>
+    </div>
+  );
+}
+
+/** Una fila de «Objetivos del periodo»: selección + puntuación por objetivo. */
+function FilaObjetivo({
+  obj,
+  esBorrador,
+  guardado,
+  seleccionando,
+  quitando,
+  onSeleccionar,
+  onQuitar,
+  onPuntuar,
+  onGuardarFila,
+}: {
+  obj: RrhhEvaluacionObjetivo;
+  esBorrador: boolean;
+  /** Muestra el check breve de «guardado» tras una mutación exitosa. */
+  guardado: boolean;
+  seleccionando: boolean;
+  quitando: boolean;
+  onSeleccionar: () => void;
+  onQuitar: () => void;
+  onPuntuar: (resultado: number) => void;
+  onGuardarFila: (data: RrhhEvaluacionObjetivoUpdate) => void;
+}) {
+  const editables = esBorrador && obj.seleccionado && obj.fila_id !== null;
+
+  const [valoracion, setValoracion] = useState(obj.valoracion ?? '');
+  const [recomendaciones, setRecomendaciones] = useState(obj.recomendaciones ?? '');
+  const [peso, setPeso] = useState(String(Number(obj.peso)));
+
+  useEffect(() => setValoracion(obj.valoracion ?? ''), [obj.valoracion]);
+  useEffect(() => setRecomendaciones(obj.recomendaciones ?? ''), [obj.recomendaciones]);
+  useEffect(() => setPeso(String(Number(obj.peso))), [obj.peso]);
+
+  const guardarValoracion = () => {
+    if (!editables) return;
+    const nuevo = valoracion.trim();
+    if (nuevo === (obj.valoracion ?? '').trim()) return;
+    onGuardarFila({ valoracion: nuevo || null });
+  };
+
+  const guardarRecomendaciones = () => {
+    if (!editables) return;
+    const nuevo = recomendaciones.trim();
+    if (nuevo === (obj.recomendaciones ?? '').trim()) return;
+    onGuardarFila({ recomendaciones: nuevo || null });
+  };
+
+  const guardarPeso = () => {
+    if (!editables) return;
+    const n = Number(String(peso).replace(',', '.'));
+    if (!Number.isInteger(n) || n < 1 || n > 100) {
+      toast.error('El peso debe ser un número entero entre 1 y 100');
+      setPeso(String(Number(obj.peso)));
+      return;
+    }
+    if (n === Number(obj.peso)) return;
+    onGuardarFila({ peso: n });
+  };
+
+  const pesoDifiere = Number(peso) !== Number(obj.peso_objetivo);
+
+  const inputBase =
+    'w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm transition-all duration-200 focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500 disabled:cursor-not-allowed';
+
+  return (
+    <div className="flex flex-wrap items-start gap-3 px-4 py-3 transition-colors hover:bg-slate-50/70 md:grid md:grid-cols-[auto_minmax(0,1.5fr)_auto_5rem_14rem_16rem_2.5rem] md:items-center md:gap-3">
+      {/* Selección (único control activo también en filas no seleccionadas) */}
+      <input
+        type="checkbox"
+        checked={obj.seleccionado}
+        disabled={!esBorrador || seleccionando || quitando}
+        onChange={(e) => (e.target.checked ? onSeleccionar() : onQuitar())}
         title={
-          esBorrador
-            ? 'Puntuar esta meta (1–5)'
-            : 'Solo se puntúa mientras la evaluación está en borrador'
+          !esBorrador
+            ? 'Solo se edita mientras la evaluación está en borrador'
+            : obj.seleccionado
+              ? 'Quitar de la evaluación'
+              : 'Añadir a la evaluación'
         }
-        className="rounded-md border border-slate-300 px-2 py-1 text-sm tabular-nums disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
+        className="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300 text-sky-600 accent-sky-600 focus:ring-sky-500 disabled:cursor-not-allowed"
+      />
+
+      {/* Nombre */}
+      <div className="min-w-0 flex-1 md:flex-none">
+        <div className="flex items-center gap-2">
+          <p className="truncate text-sm font-medium text-slate-800">{obj.nombre}</p>
+          {seleccionando || quitando ? (
+            <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-slate-400" />
+          ) : null}
+          {guardado && (
+            <Check className="h-3.5 w-3.5 shrink-0 animate-fade-in-up text-emerald-500" aria-hidden />
+          )}
+        </div>
+        {!obj.seleccionado && (
+          <p className="mt-1 text-xs italic text-slate-400">
+            Selecciona el objetivo para evaluarlo
+          </p>
+        )}
+      </div>
+
+      {/* Zona puntuación/textos: cada control se atenúa si no está seleccionado */}
+      <div
+        className={`flex items-center gap-2 ${obj.seleccionado ? '' : 'opacity-40 pointer-events-none'}`}
       >
-        <option value="">—</option>
-        {[1, 2, 3, 4, 5].map((v) => (
-          <option key={v} value={v}>
-            {v}
-          </option>
-        ))}
-      </select>
-      {valorando && <Loader2 className="h-4 w-4 animate-spin text-slate-400" />}
+        <Estrellas0a5
+          valor={obj.resultado}
+          disabled={!editables}
+          onCambiar={onPuntuar}
+        />
+        <span className="text-xs tabular-nums text-slate-500">
+          {obj.resultado !== null ? `${obj.resultado}/5` : ''}
+        </span>
+      </div>
+
+      {/* Peso de la fila (entero 1–100, se guarda al salir del campo) */}
+      <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1">
+        <input
+          type="number"
+          min={1}
+          max={100}
+          step={1}
+          value={peso}
+          disabled={!editables}
+          onChange={(e) => setPeso(e.target.value)}
+          onBlur={guardarPeso}
+          aria-label="Peso de este objetivo en la evaluación"
+          title="Peso de la fila (entero 1–100; se guarda al salir del campo)"
+          className="w-16 rounded-md border border-slate-300 px-2 py-1.5 text-sm tabular-nums transition-all duration-200 focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500 disabled:cursor-not-allowed"
+        />
+        {pesoDifiere && (
+          <span
+            className="text-[11px] font-semibold text-amber-600"
+            title="Peso del objetivo (la fila lo sobrescribe en esta evaluación)"
+          >
+            obj. {fmtPeso(obj.peso_objetivo)}
+          </span>
+        )}
+      </div>
+
+      <textarea
+        rows={2}
+        value={valoracion}
+        disabled={!editables}
+        onChange={(e) => setValoracion(e.target.value)}
+        onBlur={guardarValoracion}
+        placeholder="Valoración"
+        aria-label={`Valoración de «${obj.nombre}»`}
+        className={`${inputBase} resize-none overflow-hidden ${obj.seleccionado ? '' : 'opacity-40 pointer-events-none'}`}
+      />
+
+      <textarea
+        rows={2}
+        value={recomendaciones}
+        disabled={!editables}
+        onChange={(e) => setRecomendaciones(e.target.value)}
+        onBlur={guardarRecomendaciones}
+        placeholder="Recomendaciones"
+        aria-label={`Recomendaciones de «${obj.nombre}»`}
+        className={`${inputBase} resize-none overflow-hidden ${obj.seleccionado ? '' : 'opacity-40 pointer-events-none'}`}
+      />
+
+      {/* Quitar de la evaluación */}
+      <div className="flex items-center justify-end md:justify-center">
+        {obj.seleccionado && esBorrador && (
+          <Button
+            variant="ghost"
+            size="icon"
+            title="Quitar de la evaluación"
+            onClick={onQuitar}
+            disabled={quitando}
+            className="h-8 w-8 text-slate-400 hover:bg-red-50 hover:text-red-600"
+          >
+            {quitando ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <X className="h-4 w-4" />
+            )}
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * 5 estrellas, escala 0–5. Clic sobre ★n marca `n`; clic sobre la estrella ya
+ * activa la vacía (0), y el botón «×» limpia la puntuación. En finalizada
+ * (o en filas no seleccionadas) es solo lectura.
+ */
+function Estrellas0a5({
+  valor,
+  disabled,
+  onCambiar,
+}: {
+  /** Estrellas marcadas (0–5) o `null` = sin puntuar. */
+  valor: number | null;
+  disabled: boolean;
+  onCambiar: (n: number) => void;
+}) {
+  const [hover, setHover] = useState<number | null>(null);
+  const visibles = hover ?? valor ?? 0;
+  return (
+    <div
+      className="flex items-center gap-0.5"
+      onMouseLeave={() => setHover(null)}
+      role="radiogroup"
+      aria-label="Puntuación con estrellas (0–5)"
+    >
+      {[1, 2, 3, 4, 5].map((n) => (
+        <button
+          key={n}
+          type="button"
+          aria-label={`${n} de 5 estrellas`}
+          title={`${n} de 5`}
+          disabled={disabled}
+          onMouseEnter={() => setHover(n)}
+          onClick={() => onCambiar(n === valor ? 0 : n)}
+          className="rounded p-0.5 transition-transform hover:scale-110 disabled:pointer-events-none disabled:opacity-70"
+        >
+          <Star
+            className={`h-5 w-5 transition-colors ${
+              n <= visibles
+                ? 'fill-amber-400 text-amber-400'
+                : 'fill-transparent text-slate-300'
+            }`}
+          />
+        </button>
+      ))}
+      {!disabled && valor !== null && valor > 0 && (
+        <button
+          type="button"
+          title="Quitar puntuación (0)"
+          aria-label="Quitar puntuación"
+          onClick={() => onCambiar(0)}
+          className="ml-1 rounded p-0.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600"
+        >
+          <X className="h-3.5 w-3.5" />
+        </button>
+      )}
     </div>
   );
 }

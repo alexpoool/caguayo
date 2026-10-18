@@ -25,7 +25,6 @@ import type {
   RrhhTipoBonificacion,
   RrhhTipoPago,
   RrhhTipoEvaluacion,
-  RrhhCalificacion,
   RrhhAsistencia,
   RrhhAsistenciaCreate,
   RrhhAsistenciaUpdate,
@@ -59,11 +58,12 @@ import type {
   RrhhEvaluacionDetalle,
   RrhhEvaluacionCreate,
   RrhhEvaluacionUpdate,
+  RrhhEvaluacionObjetivo,
+  RrhhEvaluacionObjetivoUpdate,
   RrhhObjetivo,
   RrhhObjetivoCreate,
+  RrhhObjetivoUpdate,
   RrhhObjetivoDetalle,
-  RrhhMeta,
-  RrhhMetaCreate,
   RrhhEvaluacionReporte,
   RrhhAuditoriaFila,
 } from '../types/rrhh';
@@ -212,17 +212,6 @@ export const rrhhService = {
     buscar?: string;
   }): Promise<RrhhTipoEvaluacion[]> => {
     return await apiClient.get('/rrhh/catalogos/tipos-evaluacion', params);
-  },
-
-  /** Calificaciones: catálogo de **escalas** de los criterios — su `valor`
-   * es 5, 10 o 100 (escala 1–5, 1–10 o 1–100). Una evaluación usa una sola
-   * (`escala_criterios_id`) y sus 4 criterios se puntúan 0–10 estrellas. */
-  listarCalificaciones: async (params?: {
-    skip?: number;
-    limit?: number;
-    buscar?: string;
-  }): Promise<RrhhCalificacion[]> => {
-    return await apiClient.get('/rrhh/catalogos/calificaciones', params);
   },
 
   // ── Departamentos ────────────────────────────────────────────────────────
@@ -550,7 +539,7 @@ export const rrhhService = {
     return await apiClient.get('/rrhh/solicitudes/estados');
   },
 
-  // ── Evaluaciones, objetivos y metas (Fase 8) ────────────────────────────
+  // ── Evaluaciones y objetivos (Fase 8 v2 — objetivos ponderados) ─────────
 
   listarEvaluaciones: async (params?: {
     skip?: number;
@@ -592,20 +581,51 @@ export const rrhhService = {
     return await apiClient.delete(`/rrhh/evaluaciones/${id}`);
   },
 
-  /** Califica una meta (1–5) desde la evaluación (solo `borrador`): mueve
-   * `resultado_objetivo` y `promedio_objetivos`. */
-  valorarMeta: async (
+  /** Selecciona objetivos en la evaluación (solo `borrador`; 409 si está
+   * finalizada). Devuelve el detalle completo ya con el promedio recalculado. */
+  seleccionarObjetivos: async (
     evaluacionId: number,
-    metaId: number,
-    valoracion: number
-  ): Promise<RrhhMeta> => {
+    objetivoIds: number[]
+  ): Promise<RrhhEvaluacionDetalle> => {
+    return await apiClient.post(`/rrhh/evaluaciones/${evaluacionId}/objetivos`, {
+      objetivo_ids: objetivoIds,
+    });
+  },
+
+  /** Puntúa/ajusta la fila de un objetivo seleccionado (solo `borrador`):
+   * estrellas 0–5, valoración, recomendaciones y peso. */
+  puntuarObjetivo: async (
+    evaluacionId: number,
+    filaId: number,
+    data: RrhhEvaluacionObjetivoUpdate
+  ): Promise<RrhhEvaluacionObjetivo> => {
     return await apiClient.put(
-      `/rrhh/evaluaciones/${evaluacionId}/metas/${metaId}/valoracion`,
-      { valoracion }
+      `/rrhh/evaluaciones/${evaluacionId}/objetivos/${filaId}`,
+      data
     );
   },
 
-  // ── Objetivos y metas (definición en el empleado, siempre editable) ────
+  /** Quita un objetivo de la selección (solo `borrador`). */
+  quitarObjetivoEvaluacion: async (
+    evaluacionId: number,
+    filaId: number
+  ): Promise<{ mensaje: string; id: number }> => {
+    return await apiClient.delete(
+      `/rrhh/evaluaciones/${evaluacionId}/objetivos/${filaId}`
+    );
+  },
+
+  /** Reporte consolidado (totales globales y promedios 0–5 por empleado). */
+  reporteEvaluaciones: async (params?: {
+    empleado_id?: number;
+    departamento_id?: number;
+    desde?: string;
+    hasta?: string;
+  }): Promise<RrhhEvaluacionReporte> => {
+    return await apiClient.get('/rrhh/evaluaciones/reporte', params);
+  },
+
+  // ── Objetivos (definición en el empleado, siempre editable) ─────────────
 
   listarObjetivos: async (params?: {
     empleado_id?: number;
@@ -621,7 +641,7 @@ export const rrhhService = {
 
   editarObjetivo: async (
     objetivoId: number,
-    data: Partial<RrhhObjetivoCreate>
+    data: RrhhObjetivoUpdate
   ): Promise<RrhhObjetivo> => {
     return await apiClient.put(`/rrhh/objetivos/${objetivoId}`, data);
   },
@@ -630,37 +650,9 @@ export const rrhhService = {
     return await apiClient.delete(`/rrhh/objetivos/${objetivoId}`);
   },
 
-  /** Detalle de un objetivo con sus metas y los datos de su empleado. */
+  /** Detalle de un objetivo con los datos de su empleado. */
   obtenerObjetivo: async (objetivoId: number): Promise<RrhhObjetivoDetalle> => {
     return await apiClient.get(`/rrhh/objetivos/${objetivoId}`);
-  },
-
-  crearMeta: async (
-    objetivoId: number,
-    data: RrhhMetaCreate
-  ): Promise<RrhhMeta> => {
-    return await apiClient.post(`/rrhh/objetivos/${objetivoId}/metas`, data);
-  },
-
-  editarMeta: async (
-    metaId: number,
-    data: RrhhMetaCreate
-  ): Promise<RrhhMeta> => {
-    return await apiClient.put(`/rrhh/objetivos/metas/${metaId}`, data);
-  },
-
-  eliminarMeta: async (metaId: number): Promise<RrhhEliminarResponse> => {
-    return await apiClient.delete(`/rrhh/objetivos/metas/${metaId}`);
-  },
-
-  /** Reporte consolidado (totales globales y promedios por empleado). */
-  reporteEvaluaciones: async (params?: {
-    empleado_id?: number;
-    departamento_id?: number;
-    desde?: string;
-    hasta?: string;
-  }): Promise<RrhhEvaluacionReporte> => {
-    return await apiClient.get('/rrhh/evaluaciones/reporte', params);
   },
 
   // ── Auditoría (Fase 9) ──────────────────────────────────────────────────

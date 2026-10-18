@@ -72,11 +72,9 @@ const fmtMoneda = (v: number | string | null | undefined) =>
         maximumFractionDigits: 2,
       }).format(Number(v));
 
-/** Promedio en español sin ceros sobrantes: 3.50 → «3,5», 7.00 → «7». */
-const fmtProm = (v: number | string | null | undefined) =>
-  v === null || v === undefined || v === ''
-    ? '—'
-    : String(Number(Number(v).toFixed(2))).replace('.', ',');
+/** Promedio ponderado 0–5 con dos decimales; «—» sin puntuar. */
+const fmtProm5 = (v: number | string | null | undefined) =>
+  v === null || v === undefined || v === '' ? '—' : Number(v).toFixed(2);
 
 const fmtFecha = (v: string) => {
   const [anio, mes, dia] = v.split('-');
@@ -356,15 +354,13 @@ function PestanaEvaluaciones() {
         'Código',
         'Departamento',
         'Evaluaciones',
-        'Promedio criterios',
-        'Promedio objetivos',
+        'Promedio objetivos (0-5)',
       ],
       data.empleados.map((e) => [
         e.empleado_nombre ?? '',
         e.empleado_codigo ?? '',
         e.departamento_nombre ?? '',
         e.cantidad_evaluaciones,
-        e.promedio_criterios ?? '',
         e.promedio_objetivos ?? '',
       ]),
     );
@@ -440,12 +436,15 @@ function PestanaEvaluaciones() {
           <EmptyState mensaje="No hay evaluaciones en el rango seleccionado." />
         ) : (
           <>
-            <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-5">
+            <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
               <Resumen titulo="Evaluaciones" valor={String(data.cantidad_evaluaciones)} />
               <Resumen titulo="Borradores" valor={String(data.cantidad_borradores)} />
               <Resumen titulo="Finalizadas" valor={String(data.cantidad_finalizadas)} />
-              <Resumen titulo="Prom. criterios" valor={fmtProm(data.promedio_criterios)} />
-              <Resumen titulo="Prom. objetivos" valor={fmtProm(data.promedio_objetivos)} destacado />
+              <Resumen
+                titulo="Prom. objetivos (/ 5)"
+                valor={fmtProm5(data.promedio_objetivos)}
+                destacado
+              />
             </div>
             <Table>
               <TableHeader className="bg-gradient-to-r from-orange-50 to-orange-100">
@@ -453,8 +452,7 @@ function PestanaEvaluaciones() {
                   <TableHead>Empleado</TableHead>
                   <TableHead>Departamento</TableHead>
                   <TableHead className="text-right">Evaluaciones</TableHead>
-                  <TableHead className="text-right">Prom. criterios</TableHead>
-                  <TableHead className="text-right">Prom. objetivos</TableHead>
+                  <TableHead className="text-right">Prom. objetivos (/ 5)</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -474,11 +472,8 @@ function PestanaEvaluaciones() {
                     <TableCell className="text-right tabular-nums">
                       {e.cantidad_evaluaciones}
                     </TableCell>
-                    <TableCell className="text-right tabular-nums">
-                      {fmtProm(e.promedio_criterios)}
-                    </TableCell>
                     <TableCell className="text-right font-semibold tabular-nums">
-                      {fmtProm(e.promedio_objetivos)}
+                      {fmtProm5(e.promedio_objetivos)}
                     </TableCell>
                   </TableRow>
                 ))}

@@ -110,7 +110,7 @@ const SUBMODULOS: SubmoduloCard[] = [
   {
     id: 'evaluaciones',
     nombre: 'Evaluaciones',
-    descripcion: 'Evaluaciones de desempeño, objetivos y metas.',
+    descripcion: 'Evaluaciones de desempeño con objetivos seleccionados y ponderados.',
     icon: <ClipboardList className="h-5 w-5" />,
     fase: 8,
     ruta: '/rrhh/evaluaciones',

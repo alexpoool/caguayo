@@ -10,7 +10,7 @@ import {
   CalendarRange,
   ClipboardCheck,
   FileText,
-  ListChecks,
+  Hash,
   Loader2,
   Pencil,
   Plus,
@@ -18,7 +18,6 @@ import {
   Save,
   Target,
   Trash2,
-  TrendingUp,
   Type,
   X,
 } from 'lucide-react';
@@ -39,21 +38,20 @@ import {
   Modal,
 } from '../../components/ui';
 
-/** Rango de fechas legible; «Sin fechas» cuenta siempre en todas las
- * evaluaciones. */
-function rangoFechas(inicio: string | null, fin: string | null): string {
-  if (!inicio && !fin) return 'Sin fechas · cuenta siempre';
+/** Rango del periodo (inicio – fin) en formato legible. */
+function rangoFechas(inicio: string, fin: string): string {
   const fmt = (f: string) =>
     new Date(`${f}T00:00:00`).toLocaleDateString('es-CU', {
       day: 'numeric',
       month: 'short',
       year: 'numeric',
     });
-  if (inicio && fin) return `${fmt(inicio)} – ${fmt(fin)}`;
-  if (inicio) return `Desde ${fmt(inicio)}`;
-  if (fin) return `Hasta ${fmt(fin)}`;
-  return 'Sin fechas · cuenta siempre';
+  return `${fmt(inicio)} – ${fmt(fin)}`;
 }
+
+/** Peso en español sin ceros sobrantes: 2.00 → «2», 2.50 → «2,5». */
+const fmtPeso = (v: string | number) =>
+  String(Number(Number(v).toFixed(2))).replace('.', ',');
 
 // Degradado de la página (esmeralda), referenciado de la página de Monedas
 const GRADIENTE =
@@ -64,8 +62,9 @@ const GRADIENTE =
  *
  * Llega `?empleado_id=N` desde la tabla de empleados, desde la de
  * evaluaciones o desde el detalle de una evaluación. Se **definen** aquí
- * (nombre y fechas) y se **califican** en la evaluación: la valoración (1–5)
- * de las metas promedia a `resultado_objetivo`.
+ * (nombre, periodo obligatorio y peso entero 1–100) y se **seleccionan y puntúan**
+ * en la evaluación: el peso decide cuánto aporta cada objetivo al promedio
+ * ponderado (0–5) de la evaluación que lo incluya.
  */
 export function ObjetivosPage() {
   const [searchParams] = useSearchParams();
@@ -79,8 +78,9 @@ export function ObjetivosPage() {
   const [confirm, setConfirm] = useState<RrhhObjetivo | null>(null);
   const [objForm, setObjForm] = useState({
     nombre: '',
-    fecha_inicio: '',
-    fecha_fin: '',
+    periodo_inicio: '',
+    periodo_fin: '',
+    peso: '1',
     observaciones: '',
   });
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
@@ -114,8 +114,9 @@ export function ObjetivosPage() {
     mutationFn: (id: number | undefined) => {
       const payload = {
         nombre: objForm.nombre.trim(),
-        fecha_inicio: objForm.fecha_inicio || null,
-        fecha_fin: objForm.fecha_fin || null,
+        periodo_inicio: objForm.periodo_inicio,
+        periodo_fin: objForm.periodo_fin,
+        peso: Number(String(objForm.peso).replace(',', '.')),
         observaciones: objForm.observaciones.trim() ? objForm.observaciones : null,
       };
       return id
@@ -145,8 +146,9 @@ export function ObjetivosPage() {
     setFormAbierto({ editando: o ?? null });
     setObjForm({
       nombre: o?.nombre ?? '',
-      fecha_inicio: o?.fecha_inicio ?? '',
-      fecha_fin: o?.fecha_fin ?? '',
+      periodo_inicio: o?.periodo_inicio ?? '',
+      periodo_fin: o?.periodo_fin ?? '',
+      peso: o ? String(Number(o.peso)) : '1',
       observaciones: o?.observaciones ?? '',
     });
     setFormErrors({});
@@ -156,12 +158,23 @@ export function ObjetivosPage() {
     e.preventDefault();
     const errs: Record<string, string> = {};
     if (!objForm.nombre.trim()) errs.nombre = 'El nombre es obligatorio';
+    if (!objForm.periodo_inicio) {
+      errs.periodo_inicio = 'El periodo de inicio es obligatorio';
+    }
+    if (!objForm.periodo_fin) {
+      errs.periodo_fin = 'El periodo de fin es obligatorio';
+    }
     if (
-      objForm.fecha_inicio &&
-      objForm.fecha_fin &&
-      objForm.fecha_fin < objForm.fecha_inicio
+      objForm.periodo_inicio &&
+      objForm.periodo_fin &&
+      objForm.periodo_fin < objForm.periodo_inicio
     ) {
-      errs.fecha_fin = 'El fin no puede ser anterior al inicio';
+      errs.periodo_fin = 'El fin no puede ser anterior al inicio';
+    }
+    const peso = Number(String(objForm.peso).replace(',', '.'));
+    if (!Number.isInteger(peso) || peso < 1 || peso > 100) {
+      errs.peso = 'El peso debe ser un número entero entre 1 y 100';
+      toast.error('El peso debe ser un número entero entre 1 y 100');
     }
     if (Object.keys(errs).length) {
       setFormErrors(errs);
@@ -234,13 +247,6 @@ export function ObjetivosPage() {
 
   const nombreEmpleado =
     empleado ? `${empleado.nombre} ${empleado.apellido}`.trim() : 'empleado';
-  const resultados = objetivos
-    .map((o) => (o.resultado_objetivo !== null ? Number(o.resultado_objetivo) : null))
-    .filter((r): r is number => r !== null);
-  const medio =
-    resultados.length > 0
-      ? resultados.reduce((a, b) => a + b, 0) / resultados.length
-      : null;
 
   return (
     <div className="space-y-4 animate-fade-in-up">
@@ -257,7 +263,7 @@ export function ObjetivosPage() {
             <p className="text-sm text-gray-500 ml-3 hidden sm:block">
               {empleado?.codigo_empleado ? `${empleado.codigo_empleado} · ` : ''}
               {objetivos.length} objetivo{objetivos.length === 1 ? '' : 's'} ·
-              Resultado medio {medio === null ? '—' : `${medio.toFixed(1)}/5`}
+              periodo y peso definen en qué evaluaciones cuentan
             </p>
           </div>
         </div>
@@ -273,7 +279,7 @@ export function ObjetivosPage() {
           <Button
             variant="outline"
             onClick={() => navigate('/rrhh/evaluaciones')}
-            title="La valoración de las metas se hace al calificar una evaluación"
+            title="Los objetivos se seleccionan y puntúan al calificar una evaluación"
             className="gap-2"
           >
             <ClipboardCheck className="h-4 w-4" />
@@ -295,8 +301,8 @@ export function ObjetivosPage() {
               </div>
               <p className="text-lg font-medium mb-1">No se encontraron objetivos</p>
               <p className="text-sm mb-4">
-                Define aquí las metas del periodo y puntúalas desde la evaluación
-                del empleado
+                Define aquí los objetivos del periodo con su peso; después
+                selecciónalos y puntúalos en la evaluación del empleado
               </p>
               <Button onClick={() => abrir()} className={`gap-2 ${GRADIENTE}`}>
                 <Plus className="h-4 w-4" />
@@ -311,25 +317,25 @@ export function ObjetivosPage() {
                     <TableHead>
                       <div className="flex items-center gap-2">
                         <Target className="h-4 w-4 text-emerald-500" />
-                        Objetivo
+                        Nombre
+                      </div>
+                    </TableHead>
+                    <TableHead>
+                      <div className="flex items-center gap-2">
+                        <ClipboardCheck className="h-4 w-4 text-sky-500" />
+                        Empleado
                       </div>
                     </TableHead>
                     <TableHead>
                       <div className="flex items-center gap-2">
                         <CalendarRange className="h-4 w-4 text-sky-500" />
-                        Rango
+                        Periodo
                       </div>
                     </TableHead>
-                    <TableHead className="w-36">
-                      <div className="flex items-center gap-2">
-                        <TrendingUp className="h-4 w-4 text-purple-500" />
-                        Resultado
-                      </div>
-                    </TableHead>
-                    <TableHead className="text-center">
-                      <div className="flex items-center justify-center gap-2">
-                        <ListChecks className="h-4 w-4 text-amber-500" />
-                        Metas
+                    <TableHead className="text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        <Hash className="h-4 w-4 text-purple-500" />
+                        Peso
                       </div>
                     </TableHead>
                     <TableHead className="text-right">Acciones</TableHead>
@@ -349,35 +355,20 @@ export function ObjetivosPage() {
                           </p>
                         )}
                       </TableCell>
+                      <TableCell className="text-slate-600">
+                        {nombreEmpleado}
+                        {empleado?.codigo_empleado
+                          ? ` · ${empleado.codigo_empleado}`
+                          : ''}
+                      </TableCell>
                       <TableCell className="whitespace-nowrap text-xs text-slate-500">
                         <span className="inline-flex items-center gap-1">
                           <CalendarRange className="h-3.5 w-3.5 text-slate-400" />
-                          {rangoFechas(obj.fecha_inicio, obj.fecha_fin)}
+                          {rangoFechas(obj.periodo_inicio, obj.periodo_fin)}
                         </span>
                       </TableCell>
-                      <TableCell className="tabular-nums text-slate-700">
-                        {obj.resultado_objetivo !== null ? (
-                          <>
-                            {Number(obj.resultado_objetivo).toFixed(1)}/5 ·{' '}
-                            <strong className="text-slate-900">
-                              {Number(obj.aporte ?? 0).toFixed(0)}%
-                            </strong>
-                          </>
-                        ) : (
-                          <span className="text-slate-400">Sin puntuar</span>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          title={`Ver las metas de «${obj.nombre}»`}
-                          onClick={() =>
-                            navigate(`/rrhh/metas?objetivo_id=${obj.id_objetivos}`)
-                          }
-                        >
-                          Metas
-                        </Button>
+                      <TableCell className="text-right font-semibold tabular-nums text-slate-700">
+                        {fmtPeso(obj.peso)}
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-2">
@@ -455,17 +446,23 @@ export function ObjetivosPage() {
                   className="flex items-center gap-2 text-gray-700"
                 >
                   <Calendar className="h-4 w-4 text-sky-500" />
-                  Fecha de inicio
+                  Periodo inicio *
                 </Label>
                 <Input
                   id="obj-inicio"
                   type="date"
-                  value={objForm.fecha_inicio}
+                  value={objForm.periodo_inicio}
                   onChange={(e) =>
-                    setObjForm({ ...objForm, fecha_inicio: e.target.value })
+                    setObjForm({ ...objForm, periodo_inicio: e.target.value })
                   }
-                  className="transition-all duration-200 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                  className={`transition-all duration-200 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 ${formErrors.periodo_inicio ? 'border-red-500' : ''}`}
                 />
+                {formErrors.periodo_inicio && (
+                  <p className="flex items-center gap-1 text-xs text-red-600">
+                    <AlertCircle className="h-3 w-3" />
+                    {formErrors.periodo_inicio}
+                  </p>
+                )}
               </div>
               <div className="space-y-2">
                 <Label
@@ -473,26 +470,57 @@ export function ObjetivosPage() {
                   className="flex items-center gap-2 text-gray-700"
                 >
                   <Calendar className="h-4 w-4 text-rose-500" />
-                  Fecha de fin
+                  Periodo fin *
                 </Label>
                 <Input
                   id="obj-fin"
                   type="date"
-                  value={objForm.fecha_fin}
-                  onChange={(e) => setObjForm({ ...objForm, fecha_fin: e.target.value })}
-                  className={`transition-all duration-200 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 ${formErrors.fecha_fin ? 'border-red-500' : ''}`}
+                  value={objForm.periodo_fin}
+                  onChange={(e) => setObjForm({ ...objForm, periodo_fin: e.target.value })}
+                  className={`transition-all duration-200 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 ${formErrors.periodo_fin ? 'border-red-500' : ''}`}
                 />
-                {formErrors.fecha_fin && (
+                {formErrors.periodo_fin && (
                   <p className="flex items-center gap-1 text-xs text-red-600">
                     <AlertCircle className="h-3 w-3" />
-                    {formErrors.fecha_fin}
+                    {formErrors.periodo_fin}
                   </p>
                 )}
               </div>
             </div>
+            <div className="space-y-2">
+              <Label
+                htmlFor="obj-peso"
+                className="flex items-center gap-2 text-gray-700"
+              >
+                <Hash className="h-4 w-4 text-purple-500" />
+                Peso *
+              </Label>
+              <Input
+                id="obj-peso"
+                type="number"
+                min={1}
+                max={100}
+                step={1}
+                value={objForm.peso}
+                onChange={(e) => setObjForm({ ...objForm, peso: e.target.value })}
+                className={`transition-all duration-200 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 ${formErrors.peso ? 'border-red-500' : ''}`}
+              />
+              {formErrors.peso ? (
+                <p className="flex items-center gap-1 text-xs text-red-600">
+                  <AlertCircle className="h-3 w-3" />
+                  {formErrors.peso}
+                </p>
+              ) : (
+                <p className="text-xs text-gray-500">
+                  Entero entre 1 y 100 (defecto 1): cuánto pesa el objetivo en
+                  el promedio ponderado de cada evaluación que lo seleccione.
+                </p>
+              )}
+            </div>
             <p className="text-xs text-gray-500 bg-gray-50 px-3 py-2 rounded-lg">
-              Sin fechas, el objetivo cuenta en todas las evaluaciones; con
-              fechas, solo en los periodos que solapen su rango.
+              El periodo es obligatorio: decide en qué evaluaciones puede
+              seleccionarse el objetivo (su rango debe solapar el de la
+              evaluación).
             </p>
             <div className="space-y-2">
               <Label
@@ -542,7 +570,7 @@ export function ObjetivosPage() {
         title="Eliminar objetivo"
         message={
           confirm
-            ? `¿Seguro que quieres eliminar «${confirm.nombre}»? Sus metas también se eliminarán y los promedios se recalcularán.`
+            ? `¿Seguro que quieres eliminar «${confirm.nombre}»? Sus filas en las evaluaciones se eliminarán y los promedios se recalcularán.`
             : ''
         }
         type="danger"

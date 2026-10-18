@@ -114,7 +114,6 @@ import { SolicitudesPage as RrhhSolicitudesPage } from './pages/rrhh/Solicitudes
 import { EvaluacionesPage } from './pages/rrhh/EvaluacionesPage';
 import { EvaluacionDetallePage } from './pages/rrhh/EvaluacionDetallePage';
 import { ObjetivosPage } from './pages/rrhh/ObjetivosPage';
-import { MetasPage } from './pages/rrhh/MetasPage';
 import { ReportesPage } from './pages/rrhh/ReportesPage';
 import { AuditoriaPage } from './pages/rrhh/AuditoriaPage';
 
@@ -139,7 +138,7 @@ const rutasPorModulo: Record<Modulo, string[]> = {
   reportes: ['/reportes', '/reportes/existencias', '/reportes/movimientos-dependencia', '/reportes/movimientos-producto', '/reportes/proveedores', '/reportes/registro-clientes', '/reportes/registro-proyectos', '/reportes/registro-creadores', '/reportes/informe-desempeno', '/reportes/resumen-liquidaciones', '/reportes/ingresos-retenciones', '/reportes/mincult', '/reportes/onat', '/perfil'],
   home: ['/', '/perfil'],
   dj08: ['/dj08', '/perfil'],
-  rrhh: ['/rrhh', '/rrhh/catalogos', '/rrhh/departamentos', '/rrhh/puestos', '/rrhh/empleados', '/rrhh/asistencia', '/rrhh/deducciones', '/rrhh/bonificaciones', '/rrhh/nomina', '/rrhh/pagos', '/rrhh/solicitudes', '/rrhh/evaluaciones', '/rrhh/objetivos', '/rrhh/metas', '/rrhh/reportes', '/rrhh/auditoria', '/perfil'],
+  rrhh: ['/rrhh', '/rrhh/catalogos', '/rrhh/departamentos', '/rrhh/puestos', '/rrhh/empleados', '/rrhh/asistencia', '/rrhh/deducciones', '/rrhh/bonificaciones', '/rrhh/nomina', '/rrhh/pagos', '/rrhh/solicitudes', '/rrhh/evaluaciones', '/rrhh/objetivos', '/rrhh/reportes', '/rrhh/auditoria', '/perfil'],
 };
 
 // Componente para proteger rutas según el módulo
@@ -1247,14 +1246,6 @@ function App() {
                   element={
                     <ProtectedRoute moduloActivo={moduloActivo} currentPath="/rrhh/objetivos">
                       <ObjetivosPage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/rrhh/metas"
-                  element={
-                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/rrhh/metas">
-                      <MetasPage />
                     </ProtectedRoute>
                   }
                 />

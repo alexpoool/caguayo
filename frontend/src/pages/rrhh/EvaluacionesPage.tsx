@@ -3,8 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { rrhhService } from "../../services/rrhh";
 import {
-  CRITERIOS_EVALUACION,
-  type RrhhCriterio,
+  COLOR_ESTADO_EVALUACION,
   type RrhhEvaluacionCreate,
   type RrhhEvaluacionListado,
 } from "../../types/rrhh";
@@ -16,6 +15,7 @@ import {
   FileText,
   Hash,
   Loader2,
+  MessageSquare,
   Pencil,
   Plus,
   Save,
@@ -63,32 +63,20 @@ const hoyISO = () => {
   return `${d.getFullYear()}-${mes}-${dia}`;
 };
 
-/** Formulario vacío: rango del periodo = hoy, sin escala y sin puntuar. */
+/** Formulario vacío: rango del periodo = hoy, sin puntuar. */
 const formVacio = (): RrhhEvaluacionCreate => ({
   empleado_id: 0,
   periodo: "",
   tipo_evaluacion_id: 0,
   inicio_periodo: hoyISO(),
   fin_periodo: hoyISO(),
-  escala_criterios_id: null,
-  puntualidad_estrellas: null,
-  productividad_estrellas: null,
-  trabajo_equipo_estrellas: null,
-  calidad_estrellas: null,
   comentarios: "",
+  recomendaciones: "",
 });
 
-const ETIQUETA_CRITERIO: Record<string, string> = {
-  puntualidad: "Puntualidad",
-  productividad: "Productividad",
-  trabajo_equipo: "Trabajo en equipo",
-  calidad: "Calidad",
-};
-
-/** Formato español del valor en escala, sin ceros sobrantes:
- * 3.5 → «3,5», 2.25 → «2,25», 7 → «7» (nunca «7.00»). */
-const fmtEscalado = (v: number) =>
-  String(Number(v.toFixed(2))).replace(".", ",");
+/** Promedio ponderado 0–5 con dos decimales; «—» sin puntuar. */
+const fmtPromedio5 = (v: string | null | undefined) =>
+  v === null || v === undefined || v === "" ? "—" : Number(v).toFixed(2);
 
 // Degradado de la página (celeste), referenciado de la página de Monedas
 const GRADIENTE =
@@ -110,26 +98,6 @@ export function EvaluacionesPage() {
     queryKey: ["rrhh", "empleados", "para-evaluaciones"],
     queryFn: () => rrhhService.listarEmpleados({ limit: 500, activo: true }),
   });
-
-  // El catálogo «Calificaciones» son las **escalas** disponibles (su `valor`
-  // es 5, 10 o 100 → escala 1–5, 1–10 o 1–100): la evaluación usa una sola.
-  const { data: calificaciones = [] } = useQuery({
-    queryKey: ["rrhh", "calificaciones", "para-criterios"],
-    queryFn: () => rrhhService.listarCalificaciones({ limit: 100 }),
-  });
-
-  // Valor numérico de la escala elegida (5, 10 o 100) o null sin elegir.
-  const escalaValor =
-    calificaciones.find(
-      (c) => c.id_calificaciones === formData.escala_criterios_id,
-    )?.valor ?? null;
-
-  /** Clic sobre ★n → n; clic sobre la ya marcada → null (vaciar). */
-  const marcarCriterio = (criterio: RrhhCriterio, n: number | null) => {
-    const parcial: Partial<RrhhEvaluacionCreate> = {};
-    parcial[`${criterio}_estrellas`] = n;
-    setFormData({ ...formData, ...parcial });
-  };
 
   // El selector de tipo tira del catálogo `tipos_evaluaciones` (solo activos).
   const { data: tiposEvaluacion = [] } = useQuery({
@@ -179,17 +147,6 @@ export function EvaluacionesPage() {
     if (formData.fin_periodo < formData.inicio_periodo) {
       errs.fin_periodo = "El fin debe ser posterior o igual al inicio";
     }
-    // El backend rechaza estrellas sin escala (400): avisamos antes de enviar.
-    const hayEstrellas = CRITERIOS_EVALUACION.some(
-      (criterio) => formData[`${criterio}_estrellas`] !== null,
-    );
-    if (hayEstrellas && formData.escala_criterios_id === null) {
-      toast.error(
-        "Selecciona la escala antes de puntuar: son 10 estrellas sobre la escala elegida",
-      );
-      errs.escala_criterios_id =
-        "Selecciona la escala antes de puntuar (10 estrellas sobre la escala elegida)";
-    }
     setFormErrors(errs);
     return Object.keys(errs).length === 0;
   };
@@ -223,6 +180,9 @@ export function EvaluacionesPage() {
     createMutation.mutate({
       ...formData,
       comentarios: formData.comentarios?.trim() ? formData.comentarios : null,
+      recomendaciones: formData.recomendaciones?.trim()
+        ? formData.recomendaciones
+        : null,
     });
   };
 
@@ -239,7 +199,7 @@ export function EvaluacionesPage() {
             <p className="text-sm text-gray-500 ml-3 hidden sm:block">
               {evaluaciones.length} evaluación
               {evaluaciones.length === 1 ? "" : "es"} · ciclo borrador →
-              finalizada, con objetivos y metas
+              finalizada, con objetivos seleccionados y ponderados
             </p>
           </div>
         </div>
@@ -287,8 +247,8 @@ export function EvaluacionesPage() {
                 No se encontraron evaluaciones
               </p>
               <p className="text-sm mb-4">
-                Crea la primera con «Nueva evaluación» y púa sus criterios y
-                metas
+                Crea la primera con «Nueva evaluación», selecciona sus
+                objetivos y puntúalos con estrellas
               </p>
               <Button onClick={abrirForm} className={`gap-2 ${GRADIENTE}`}>
                 <Plus className="h-4 w-4" />
@@ -324,6 +284,19 @@ export function EvaluacionesPage() {
                         Tipo
                       </div>
                     </TableHead>
+                    <TableHead>
+                      <div className="flex items-center gap-2">
+                        <ClipboardCheck className="h-4 w-4 text-sky-500" />
+                        Estado
+                      </div>
+                    </TableHead>
+                    <TableHead className="text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        <Star className="h-4 w-4 text-amber-500" />
+                        Promedio
+                      </div>
+                    </TableHead>
+                    <TableHead className="text-right">Objetivos</TableHead>
                     <TableHead className="text-right">Acciones</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -349,6 +322,30 @@ export function EvaluacionesPage() {
                       </TableCell>
                       <TableCell className="text-slate-600">
                         {ev.tipo_evaluacion ?? "—"}
+                      </TableCell>
+                      <TableCell>
+                        <span
+                          className={`inline-block rounded-full px-2 py-0.5 text-xs font-semibold ${COLOR_ESTADO_EVALUACION[ev.estado]}`}
+                        >
+                          {ev.estado === "borrador" ? "Borrador" : "Finalizada"}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-right font-semibold tabular-nums text-slate-900">
+                        {ev.promedio_objetivos === null ? (
+                          <span className="font-normal text-slate-400">
+                            {ev.estado === "borrador" ? "Sin puntuar" : "—"}
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-baseline gap-1">
+                            {fmtPromedio5(ev.promedio_objetivos)}
+                            <span className="text-xs font-semibold text-slate-400">
+                              / 5
+                            </span>
+                          </span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums text-slate-600">
+                        {ev.cantidad_seleccionados}/{ev.cantidad_objetivos}
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-2">
@@ -552,74 +549,6 @@ export function EvaluacionesPage() {
 
           <div className="space-y-2">
             <Label
-              htmlFor="escala_criterios_id"
-              className="flex items-center gap-2 text-gray-700"
-            >
-              <Star className="h-4 w-4 text-amber-500" />
-              Escala
-            </Label>
-            {calificaciones.length === 0 ? (
-              <p className="rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-700">
-                No hay escalas creadas.
-              </p>
-            ) : (
-              <div className="space-y-2">
-                <select
-                  id="escala_criterios_id"
-                  value={formData.escala_criterios_id ?? ""}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      escala_criterios_id:
-                        e.target.value === "" ? null : Number(e.target.value),
-                    })
-                  }
-                  className={`w-full rounded-md border px-3 py-2 text-sm transition-all duration-200 focus:ring-2 focus:ring-sky-500 focus:border-sky-500 ${
-                    formErrors.escala_criterios_id
-                      ? "border-red-500"
-                      : "border-slate-300"
-                  }`}
-                >
-                  <option value="">Selecciona una escala</option>
-                  {calificaciones.map((c) => (
-                    <option
-                      key={c.id_calificaciones}
-                      value={c.id_calificaciones}
-                    >
-                      {c.nombre} · 1–{c.valor}
-                    </option>
-                  ))}
-                </select>
-                {formErrors.escala_criterios_id && (
-                  <p className="flex items-center gap-1 text-xs text-red-600">
-                    <AlertCircle className="h-3 w-3" />
-                    {formErrors.escala_criterios_id}
-                  </p>
-                )}
-
-                <div className="space-y-2">
-                  {CRITERIOS_EVALUACION.map((criterio) => (
-                    <div
-                      key={criterio}
-                      className="flex items-center justify-between gap-4 rounded-md border border-slate-200 bg-slate-50/60 px-3 py-2"
-                    >
-                      <span className="text-sm font-medium text-gray-700">
-                        {ETIQUETA_CRITERIO[criterio]}
-                      </span>
-                      <Estrellas
-                        escala={escalaValor}
-                        marcadas={formData[`${criterio}_estrellas`]}
-                        onMarcar={(n) => marcarCriterio(criterio, n)}
-                      />
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-
-          <div className="space-y-2">
-            <Label
               htmlFor="comentarios"
               className="flex items-center gap-2 text-gray-700"
             >
@@ -634,6 +563,26 @@ export function EvaluacionesPage() {
               }
               rows={3}
               placeholder="Observaciones generales (opcional)"
+              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500 transition-all duration-200"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label
+              htmlFor="recomendaciones"
+              className="flex items-center gap-2 text-gray-700"
+            >
+              <MessageSquare className="h-4 w-4 text-sky-500" />
+              Recomendaciones
+            </Label>
+            <textarea
+              id="recomendaciones"
+              value={formData.recomendaciones || ""}
+              onChange={(e) =>
+                setFormData({ ...formData, recomendaciones: e.target.value })
+              }
+              rows={3}
+              placeholder="Recomendaciones generales de la evaluación (opcional)"
               className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500 transition-all duration-200"
             />
           </div>
@@ -684,69 +633,6 @@ export function EvaluacionesPage() {
 }
 
 // ── Subcomponentes ─────────────────────────────────────────────────────────
-
-/**
- * 10 estrellas de puntuación sobre la escala elegida. Marcadas en amber,
- * sin marcar en slate (todas son reales, no decorativas). El clic sobre ★n
- * marca `n` y el clic sobre la ya marcada la vacía (`null`).
- *
- * Al pasar el ratón por encima se muestra un tooltip con el valor
- * equivalente en la escala (`n × escala ÷ 10`, formato español sin ceros
- * sobrantes: «3,5», «2,25», «70»); sin escala elegida el tooltip solo
- * indica las estrellas («n ★»). El valor nunca se muestra de forma estática.
- */
-function Estrellas({
-  escala,
-  marcadas,
-  onMarcar,
-}: {
-  /** Valor numérico de la escala (5, 10 o 100) o `null` sin escala elegida. */
-  escala: number | null;
-  marcadas: number | null; // 0–10 o null = sin puntuar
-  onMarcar: (n: number | null) => void;
-}) {
-  const [hover, setHover] = useState<number | null>(null);
-  const visibles = hover ?? marcadas ?? 0;
-  const tooltipDe = (n: number) =>
-    escala === null ? `${n} ★` : fmtEscalado((n * escala) / 10);
-  return (
-    <div
-      className="flex items-center gap-0.5"
-      onMouseLeave={() => setHover(null)}
-      role="radiogroup"
-      aria-label={
-        escala === null
-          ? "Puntuación con estrellas (sin escala elegida)"
-          : `Puntuación con estrellas (escala 1–${escala})`
-      }
-    >
-      {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => (
-        <button
-          key={n}
-          type="button"
-          aria-label={`${n} de 10 estrellas`}
-          onMouseEnter={() => setHover(n)}
-          onClick={() => onMarcar(n === marcadas ? null : n)}
-          className="relative rounded p-0.5 transition-transform hover:scale-110"
-        >
-          {/* Tooltip de hover: solo visible al pasar el ratón por encima. */}
-          {hover === n && (
-            <span className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-1 -translate-x-1/2 whitespace-nowrap rounded bg-slate-800 px-1.5 py-0.5 text-[10px] leading-none text-white shadow">
-              {tooltipDe(n)}
-            </span>
-          )}
-          <Star
-            className={`h-5 w-5 transition-colors ${
-              n <= visibles
-                ? "fill-amber-400 text-amber-400"
-                : "fill-transparent text-slate-300"
-            }`}
-          />
-        </button>
-      ))}
-    </div>
-  );
-}
 
 function ErrorState({
   mensaje,

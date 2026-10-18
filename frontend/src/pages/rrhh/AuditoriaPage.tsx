@@ -174,7 +174,8 @@ export function AuditoriaPage() {
             <h1 className="text-xl font-bold text-gray-900">Auditoría</h1>
             <p className="text-sm text-gray-500 ml-3 hidden sm:block">
               Registro de acciones del módulo · {filas.length} entrada
-              {filas.length === 1 ? '' : 's'} a partir de 500
+              {filas.length === 1 ? '' : 's'}
+              {filas.length >= 500 ? ' (las 500 más recientes)' : ''}
             </p>
           </div>
         </div>

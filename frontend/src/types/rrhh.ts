@@ -814,7 +814,7 @@ export interface RrhhSolicitudResumen {
   cantidad: number;
 }
 
-// ── Evaluaciones, objetivos y metas (Fase 8) ────────────────────────────────
+// ── Evaluaciones y objetivos (Fase 8 v2 — objetivos ponderados) ─────────────
 
 export type RrhhEstadoEvaluacion = 'borrador' | 'finalizada';
 
@@ -827,55 +827,63 @@ export const COLOR_ESTADO_EVALUACION: Record<RrhhEstadoEvaluacion, string> = {
 };
 
 /**
- * Los 4 criterios de cada evaluación. Se puntúan con 0–10 estrellas
- * (`*_estrellas`) sobre la única escala elegida (`escala_criterios_id`).
+ * Definición de un objetivo de un empleado: se define con su periodo
+ * (obligatorio: decide en qué evaluaciones puede seleccionarse) y su peso
+ * fijo (> 0), que dice cuánto aporta al promedio ponderado de la evaluación
+ * que lo incluya. La puntuación vive en la evaluación (`RrhhEvaluacionObjetivo`).
  */
-export const CRITERIOS_EVALUACION = [
-  'puntualidad',
-  'productividad',
-  'trabajo_equipo',
-  'calidad',
-] as const;
-
-export type RrhhCriterio = (typeof CRITERIOS_EVALUACION)[number];
-
-export interface RrhhMeta {
-  id_metas: number;
-  objetivo_id: number;
-  nombre: string;
-  resultado_meta: number | null;
-  /** 1–5: se puntúa en la evaluación; en la pantalla de metas es lectura. */
-  valoracion: number | null;
-  fecha_inicio: string | null;
-  fecha_fin: string | null;
-  observaciones: string | null;
-  created_at?: string;
-  updated_at?: string;
-}
-
 export interface RrhhObjetivo {
   id_objetivos: number;
-  /** Se define en el empleado (siempre editable), se califica en la evaluación. */
   empleado_id: number;
   nombre: string;
-  /** Media (1–5) de las valoraciones de sus metas; null sin puntuar. */
-  resultado_objetivo: string | null;
-  /** Rango en el que cuenta para las evaluaciones; sin fechas cuenta siempre. */
-  fecha_inicio: string | null;
-  fecha_fin: string | null;
+  periodo_inicio: string;
+  periodo_fin: string;
+  /** Peso fijo del objetivo (Decimal del backend → string). */
+  peso: string;
   observaciones: string | null;
-  /** Aporte al promedio global, en 0–100. */
-  aporte: string | null;
-  total_metas: number;
-  metas: RrhhMeta[];
   created_at?: string;
   updated_at?: string;
 }
 
-/** Detalle de un objetivo para la página de metas, con su empleado resumido. */
+/** Detalle de un objetivo, con los datos de su empleado resueltos. */
 export interface RrhhObjetivoDetalle extends RrhhObjetivo {
   empleado_nombre: string | null;
   empleado_codigo: string | null;
+}
+
+export interface RrhhObjetivoCreate {
+  empleado_id: number;
+  nombre: string;
+  periodo_inicio: string;
+  periodo_fin: string;
+  /** Defecto 1; el backend exige > 0. */
+  peso?: number | string;
+  observaciones?: string | null;
+}
+
+export type RrhhObjetivoUpdate = Partial<Omit<RrhhObjetivoCreate, 'empleado_id'>>;
+
+/**
+ * Fila de la relación N:M `evaluaciones_objetivos`: un objetivo seleccionado
+ * en la evaluación, con su peso efectivo y su puntuación (estrellas 0–5,
+ * valoración y recomendaciones).
+ */
+export interface RrhhEvaluacionObjetivo {
+  /** Fila en `evaluaciones_objetivos`; `null` = aún no seleccionado. */
+  fila_id: number | null;
+  id_objetivo: number;
+  nombre: string;
+  periodo_inicio: string;
+  periodo_fin: string;
+  /** Peso fijo del objetivo (Decimal → string), el de partida al seleccionarlo. */
+  peso_objetivo: string;
+  seleccionado: boolean;
+  /** Peso efectivo de la fila, editable al puntuar (Decimal → string). */
+  peso: string;
+  /** Estrellas 0–5 (`null` = sin puntuar); solo con `seleccionado`. */
+  resultado: number | null;
+  valoracion: string | null;
+  recomendaciones: string | null;
 }
 
 export interface RrhhEvaluacion {
@@ -890,18 +898,14 @@ export interface RrhhEvaluacion {
   estado: RrhhEstadoEvaluacion;
   inicio_periodo: string;
   fin_periodo: string;
-  /** Escala de criterios: FK al catálogo `calificaciones` (cuyo `valor` es
-   * 5, 10 o 100) o `null` si todavía no se ha elegido. */
-  escala_criterios_id: number | null;
-  /** Puntuación de cada criterio en estrellas (0–10; `null` = sin puntuar). */
-  puntualidad_estrellas: number | null;
-  productividad_estrellas: number | null;
-  trabajo_equipo_estrellas: number | null;
-  calidad_estrellas: number | null;
-  /** Escala 0–100, persistido: promedio de los `resultado_objetivo` de los
-   * objetivos en alcance del periodo (recalculado en borradores). */
+  /**
+   * Promedio **ponderado 0–5** de las filas puntuadas
+   * (Σ estrellas×peso ÷ Σ pesos; Decimal → string); `null` sin puntuar.
+   */
   promedio_objetivos: string | null;
   comentarios: string | null;
+  /** Recomendaciones generales de la evaluación (texto libre). */
+  recomendaciones: string | null;
   fecha: string;
   created_at?: string;
   updated_at?: string;
@@ -912,38 +916,19 @@ export interface RrhhEvaluacionListado extends RrhhEvaluacion {
   empleado_nombre: string | null;
   departamento_nombre: string | null;
   evaluador_nombre: string | null;
-  /** Nombre de la escala elegida, resuelta del catálogo (solo lectura). */
-  escala_nombre: string | null;
-  /** Valor numérico de la escala (5, 10 o 100); `null` sin escala. */
-  escala_valor: number | null;
-  /** Los 4 criterios resueltos (estrellas + valor ya convertido a la escala;
-   * 0 = sin puntuar): alimentan el radar y la lista del detalle. */
-  criterios: RrhhCriterioEvaluacion[];
-  /** Media sobre la escala elegida, calculada al leer (no está
-   * persistida en el backend). */
-  promedio_criterios: string | null;
+  /** Objetivos del empleado en alcance del periodo… */
   cantidad_objetivos: number;
-  cantidad_metas: number;
-}
-
-/** Criterio con su puntuación resuelta, listo para el radar. */
-export interface RrhhCriterioEvaluacion {
-  criterio: RrhhCriterio;
-  etiqueta: string;
-  /** Estrellas marcadas (0–10) o `null` si todavía no está puntuado. */
-  estrellas: number | null;
-  /** Valor YA convertido a la escala elegida (estrellas÷10 × escala);
-   * 0 si no está puntuado. */
-  valor: number;
+  /** …y los ya seleccionados en esta evaluación. */
+  cantidad_seleccionados: number;
 }
 
 export interface RrhhEvaluacionDetalle extends RrhhEvaluacionListado {
-  /** Objetivos del empleado en alcance del periodo, con metas para calificar. */
-  objetivos: RrhhObjetivo[];
-  /** Valoración media (1–5) de las metas puntuadas en alcance. */
-  promedio_valoracion_1a5: string | null;
+  /** Objetivos del empleado en alcance del periodo (y los seleccionados que
+   * quedaron fuera de rango), con su fila si están seleccionados. */
+  objetivos: RrhhEvaluacionObjetivo[];
 }
 
+/** Payload de alta: solo cabecera (sin criterios ni escalas). */
 export interface RrhhEvaluacionCreate {
   empleado_id: number;
   evaluador_id?: number | null;
@@ -952,16 +937,8 @@ export interface RrhhEvaluacionCreate {
   tipo_evaluacion_id: number;
   inicio_periodo: string;
   fin_periodo: string;
-  /** Escala de criterios elegida: FK al catálogo `calificaciones` (valor
-   * ∈ {5, 10, 100}); `null` sin escala (el backend no acepta estrellas sin
-   * escala: 400). */
-  escala_criterios_id: number | null;
-  /** Puntuación de cada criterio en estrellas (0–10; `null` = sin puntuar). */
-  puntualidad_estrellas: number | null;
-  productividad_estrellas: number | null;
-  trabajo_equipo_estrellas: number | null;
-  calidad_estrellas: number | null;
   comentarios?: string | null;
+  recomendaciones?: string | null;
   fecha?: string | null;
 }
 
@@ -969,20 +946,18 @@ export type RrhhEvaluacionUpdate = Partial<
   Omit<RrhhEvaluacionCreate, 'empleado_id'>
 >;
 
-export interface RrhhObjetivoCreate {
-  empleado_id: number;
-  nombre: string;
-  fecha_inicio?: string | null;
-  fecha_fin?: string | null;
-  observaciones?: string | null;
+/** Selección masiva de objetivos en una evaluación (solo `borrador`). */
+export interface RrhhEvaluacionObjetivoSeleccion {
+  objetivo_ids: number[];
 }
 
-export interface RrhhMetaCreate {
-  nombre: string;
-  resultado_meta?: number | null;
-  fecha_inicio?: string | null;
-  fecha_fin?: string | null;
-  observaciones?: string | null;
+/** Edición parcial de una fila seleccionada (solo `borrador`). */
+export interface RrhhEvaluacionObjetivoUpdate {
+  peso?: number | string;
+  /** Estrellas 0–5. */
+  resultado?: number;
+  valoracion?: string | null;
+  recomendaciones?: string | null;
 }
 
 export interface RrhhEvaluacionEmpleadoReporte {
@@ -991,7 +966,7 @@ export interface RrhhEvaluacionEmpleadoReporte {
   empleado_nombre: string | null;
   departamento_nombre: string | null;
   cantidad_evaluaciones: number;
-  promedio_criterios: string | null;
+  /** Promedio ponderado medio 0–5 (Decimal → string). */
   promedio_objetivos: string | null;
 }
 
@@ -1001,7 +976,7 @@ export interface RrhhEvaluacionReporte {
   cantidad_evaluaciones: number;
   cantidad_borradores: number;
   cantidad_finalizadas: number;
-  promedio_criterios: string | null;
+  /** Promedio ponderado medio 0–5 del rango (Decimal → string). */
   promedio_objetivos: string | null;
   empleados: RrhhEvaluacionEmpleadoReporte[];
 }

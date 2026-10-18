@@ -474,7 +474,7 @@ export function EmpleadosPage() {
                           <Button
                             variant="outline"
                             size="sm"
-                            title={`Objetivos y metas de ${emp.apellido}, ${emp.nombre}`}
+                            title={`Objetivos de ${emp.apellido}, ${emp.nombre}`}
                             onClick={() =>
                               navigate(`/rrhh/objetivos?empleado_id=${emp.id}`)
                             }
