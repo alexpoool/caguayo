@@ -528,7 +528,7 @@ export function EmpleadosPage() {
       <Modal
         isOpen={formOpen}
         onClose={cerrarForm}
-        className="!max-w-5xl overflow-hidden !rounded-none"
+        className="!max-w-5xl overflow-hidden !rounded-none [&>button.absolute]:hidden"
       >
         <div className="sticky top-0 z-10 flex items-center gap-3 border-b bg-gradient-to-r from-indigo-50 to-indigo-100 px-6 py-4 pr-12">
           <div className="rounded-lg bg-gradient-to-br from-indigo-500 to-indigo-600 p-2">
@@ -546,6 +546,15 @@ export function EmpleadosPage() {
               </p>
             )}
           </div>
+          <button
+            type="button"
+            onClick={cerrarForm}
+            title="Cerrar"
+            aria-label="Cerrar"
+            className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full p-1 text-slate-400 transition-colors hover:bg-indigo-100 hover:text-slate-600"
+          >
+            <X className="h-5 w-5" />
+          </button>
         </div>
         <form onSubmit={onSubmit} className="space-y-6 px-6 py-5">
               {/* Datos personales */}
@@ -840,15 +849,6 @@ export function EmpleadosPage() {
                     <Save className="h-4 w-4" />
                   )}
                   {editing ? 'Guardar cambios' : 'Crear empleado'}
-                </Button>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  onClick={cerrarForm}
-                  className="gap-2 hover:bg-gray-200 transition-colors"
-                >
-                  <X className="h-4 w-4" />
-                  Cancelar
                 </Button>
               </div>
         </form>
