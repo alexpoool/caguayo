@@ -16,11 +16,11 @@ import {
   Trash2,
   Save,
   X,
-  RefreshCw,
-  AlertCircle,
   Loader2,
   Search,
   Clock,
+  AlertCircle,
+  BarChart3,
   LogIn,
   LogOut,
 } from 'lucide-react';
@@ -96,6 +96,8 @@ export function AsistenciaPage() {
   const [busqueda, setBusqueda] = useState('');
   const [desde, setDesde] = useState('');
   const [hasta, setHasta] = useState('');
+  /** La tarjeta «Resumen del día» se puede ocultar desde la cabecera. */
+  const [mostrarResumen, setMostrarResumen] = useState(true);
 
   const [modalMarcar, setModalMarcar] = useState(false);
   const [modalCorregir, setModalCorregir] = useState<RrhhAsistenciaListado | null>(null);
@@ -387,20 +389,33 @@ export function AsistenciaPage() {
         : 'Primero registra la entrada';
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 animate-fade-in-up">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="flex items-center gap-2 text-xl font-bold text-slate-900">
-            <CalendarCheck className="h-6 w-6 text-brand-600" />
-            Asistencia
-          </h1>
-          <p className="mt-1 text-sm text-slate-500">
-            Marcación de entrada y salida, tardanzas y horas extras
-          </p>
+        {/* Cabecera con icono animado (patrón de EmpleadosPage) */}
+        <div className="flex items-center gap-3">
+          <div className="rounded bg-gradient-to-br from-brand-500 to-brand-600 p-2 shadow-lg animate-bounce-subtle">
+            <CalendarCheck className="h-5 w-5 text-white" />
+          </div>
+          <div className="flex flex-wrap items-baseline">
+            <h1 className="text-xl font-bold text-gray-900">Asistencia</h1>
+            <p className="ml-3 hidden text-sm text-gray-500 sm:block">
+              Marcación de entrada y salida, tardanzas y horas extras
+            </p>
+          </div>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isLoading}>
-            <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setMostrarResumen((v) => !v)}
+            aria-pressed={mostrarResumen}
+            title={mostrarResumen ? 'Ocultar el resumen del día' : 'Mostrar el resumen del día'}
+            className={`gap-2 ${
+              mostrarResumen ? 'border-brand-500 bg-brand-50 text-brand-600' : ''
+            }`}
+          >
+            <BarChart3 className="h-4 w-4" />
+            Resumen
           </Button>
           <Button
             size="sm"
@@ -417,7 +432,7 @@ export function AsistenciaPage() {
       </div>
 
       {/* Resumen del día */}
-      {resumen && (
+      {resumen && mostrarResumen && (
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm text-slate-600">
@@ -669,6 +684,18 @@ export function AsistenciaPage() {
           }}
           className="space-y-4 px-6 py-5"
         >
+          <div className="space-y-2">
+            <Label>Empleado</Label>
+            <SearchSelect
+              options={opcionesEmpleado}
+              value={formMarcar.empleado_id}
+              onChange={(v) => setFormMarcar({ ...formMarcar, empleado_id: v })}
+              onSearch={setBusquedaEmpleado}
+              placeholder="Buscar empleado..."
+              loading={buscandoEmpleado}
+              emptyMessage="Sin resultados"
+            />
+          </div>
           {/* Selector explícito: entrada o salida */}
           <div className="space-y-2">
             <Label>¿Qué vas a marcar?</Label>
@@ -702,18 +729,6 @@ export function AsistenciaPage() {
                 Salida
               </button>
             </div>
-          </div>
-          <div className="space-y-2">
-            <Label>Empleado</Label>
-            <SearchSelect
-              options={opcionesEmpleado}
-              value={formMarcar.empleado_id}
-              onChange={(v) => setFormMarcar({ ...formMarcar, empleado_id: v })}
-              onSearch={setBusquedaEmpleado}
-              placeholder="Buscar empleado..."
-              loading={buscandoEmpleado}
-              emptyMessage="Sin resultados"
-            />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
