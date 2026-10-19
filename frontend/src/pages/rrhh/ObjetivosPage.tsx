@@ -514,23 +514,13 @@ export function ObjetivosPage() {
                 onChange={(e) => setObjForm({ ...objForm, peso: e.target.value })}
                 className={`transition-all duration-200 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 ${formErrors.peso ? 'border-red-500' : ''}`}
               />
-              {formErrors.peso ? (
+              {formErrors.peso && (
                 <p className="flex items-center gap-1 text-xs text-red-600">
                   <AlertCircle className="h-3 w-3" />
                   {formErrors.peso}
                 </p>
-              ) : (
-                <p className="text-xs text-gray-500">
-                  Entero entre 1 y 100 (defecto 1): cuánto pesa el objetivo en
-                  el promedio ponderado de cada evaluación que lo seleccione.
-                </p>
               )}
             </div>
-            <p className="text-xs text-gray-500 bg-gray-50 px-3 py-2 rounded-lg">
-              El periodo es obligatorio: decide en qué evaluaciones puede
-              seleccionarse el objetivo (su rango debe solapar el de la
-              evaluación).
-            </p>
             <div className="space-y-2">
               <Label
                 htmlFor="obj-obs"
