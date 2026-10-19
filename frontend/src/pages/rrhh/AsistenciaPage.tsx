@@ -119,10 +119,11 @@ export function AsistenciaPage() {
     queryFn: () => rrhhService.listarDepartamentos({ limit: 500, activo: true }),
   });
 
-  // Candidatos del selector: lista inicial al abrir el modal, busca bajo demanda
+  // Candidatos del selector: lista inicial al abrir el modal, busca bajo demanda.
+  // Solo personal con horario pactado: el LIBRE no se marca en Asistencia.
   const { data: candidatosEmpleado = [], isFetching: buscandoEmpleado } = useQuery({
-    queryKey: ['rrhh', 'empleados', 'candidatos', busquedaEmpleado],
-    queryFn: () => rrhhService.candidatosEmpleados(busquedaEmpleado),
+    queryKey: ['rrhh', 'empleados', 'candidatos', 'no-libre', busquedaEmpleado],
+    queryFn: () => rrhhService.candidatosEmpleados(busquedaEmpleado, 'NO_LIBRE'),
     enabled: modalMarcar,
   });
 

@@ -314,6 +314,53 @@ def test_filtro_estado_invalido_400(client):
     assert response.status_code == 400
 
 
+def test_filtro_por_tipo_asistencia(client):
+    """`?tipo_asistencia=` separa al personal con horario del LIBRE."""
+    libre = _crear_empleado(client, nombre=f"Libre{_sufijo()}", tipo_asistencia="LIBRE")
+    fijo = _crear_empleado(client, nombre=f"Fijo{_sufijo()}", tipo_asistencia="NO_LIBRE")
+    id_libre = libre.json()["id"]
+    id_fijo = fijo.json()["id"]
+    try:
+        response = client.get(
+            "/api/v1/rrhh/empleados?tipo_asistencia=NO_LIBRE&limit=1000"
+        )
+        assert response.status_code == 200
+        ids = {e["id"] for e in response.json()}
+        assert id_fijo in ids
+        assert id_libre not in ids
+    finally:
+        _limpiar(client, id_libre)
+        _limpiar(client, id_fijo)
+
+
+def test_filtro_tipo_asistencia_invalido_400(client):
+    response = client.get("/api/v1/rrhh/empleados?tipo_asistencia=inventado")
+    assert response.status_code == 400
+
+
+def test_buscar_filtra_por_tipo_asistencia(client):
+    """El selector abreviado solo devuelve NO_LIBRE cuando se pide, y expone el tipo."""
+    marca = f"BuscaTipo{_sufijo()}"
+    libre = _crear_empleado(client, nombre=marca, tipo_asistencia="LIBRE")
+    fijo = _crear_empleado(client, apellido=marca, tipo_asistencia="NO_LIBRE")
+    id_libre = libre.json()["id"]
+    id_fijo = fijo.json()["id"]
+    try:
+        sin_filtro = client.get(f"/api/v1/rrhh/empleados/buscar?q={marca}")
+        assert sin_filtro.status_code == 200
+        assert {e["id"] for e in sin_filtro.json()} == {id_libre, id_fijo}
+        assert all(e["tipo_asistencia"] for e in sin_filtro.json())
+
+        filtrado = client.get(
+            f"/api/v1/rrhh/empleados/buscar?q={marca}&tipo_asistencia=NO_LIBRE"
+        )
+        assert filtrado.status_code == 200
+        assert [e["id"] for e in filtrado.json()] == [id_fijo]
+    finally:
+        _limpiar(client, id_libre)
+        _limpiar(client, id_fijo)
+
+
 def test_orden_recientes_descendente(client):
     """?orden=recientes lista por creación descendente (scroll tipo feed)."""
     primero = _crear_empleado(client, nombre=f"OrdenA{_sufijo()}")

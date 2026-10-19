@@ -240,10 +240,12 @@ class RrhhEmpleadoService:
         departamento_id: Optional[int] = None,
         puesto_id: Optional[int] = None,
         activo: Optional[bool] = None,
+        tipo_asistencia: Optional[str] = None,
         orden: Optional[str] = None,
     ) -> List[RrhhEmpleadoListado]:
         await self._verificar_estado(estado)
         await self._verificar_orden(orden)
+        await self._verificar_tipo_asistencia(tipo_asistencia)
         statement = select(RrhhEmpleado)
         if buscar:
             term = f"%{buscar.strip()}%"
@@ -264,6 +266,8 @@ class RrhhEmpleadoService:
             statement = statement.where(RrhhEmpleado.puesto_id == puesto_id)
         if activo is not None:
             statement = statement.where(RrhhEmpleado.activo == activo)
+        if tipo_asistencia is not None:
+            statement = statement.where(RrhhEmpleado.tipo_asistencia == tipo_asistencia)
         # Orden: apellido (por defecto) o creación descendente (scroll tipo feed)
         if orden == "recientes":
             statement = statement.order_by(
@@ -288,21 +292,27 @@ class RrhhEmpleadoService:
             for e in filas
         ]
 
-    async def buscar(self, db: AsyncSession, term: str) -> List[RrhhEmpleadoBusqueda]:
+    async def buscar(
+        self, db: AsyncSession, term: str, tipo_asistencia: Optional[str] = None
+    ) -> List[RrhhEmpleadoBusqueda]:
         """Selector abreviado de empleados (para supervisor, responsable, etc.)."""
+        await self._verificar_tipo_asistencia(tipo_asistencia)
         like = f"%{term.strip()}%"
-        result = await db.exec(
-            select(RrhhEmpleado)
-            .where(
-                or_(
-                    RrhhEmpleado.nombre.ilike(like),
-                    RrhhEmpleado.apellido.ilike(like),
-                    RrhhEmpleado.codigo_empleado.ilike(like),
-                )
+        statement = select(RrhhEmpleado).where(
+            or_(
+                RrhhEmpleado.nombre.ilike(like),
+                RrhhEmpleado.apellido.ilike(like),
+                RrhhEmpleado.codigo_empleado.ilike(like),
             )
-            .order_by(RrhhEmpleado.apellido, RrhhEmpleado.nombre)
-            .limit(20)
         )
+        if tipo_asistencia is not None:
+            statement = statement.where(
+                RrhhEmpleado.tipo_asistencia == tipo_asistencia
+            )
+        statement = statement.order_by(
+            RrhhEmpleado.apellido, RrhhEmpleado.nombre
+        ).limit(20)
+        result = await db.exec(statement)
         return [RrhhEmpleadoBusqueda.model_validate(e) for e in result.all()]
 
     async def create(self, db: AsyncSession, obj_in: RrhhEmpleadoCreate) -> RrhhEmpleadoRead:

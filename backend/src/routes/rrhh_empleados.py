@@ -35,6 +35,10 @@ async def listar_empleados(
     departamento_id: Optional[int] = None,
     puesto_id: Optional[int] = None,
     activo: Optional[bool] = None,
+    tipo_asistencia: Optional[str] = Query(
+        None,
+        description="Filtra por LIBRE o NO_LIBRE (p. ej. Asistencia pide NO_LIBRE)",
+    ),
     orden: Optional[str] = Query(
         None,
         description="apellido (por defecto) o recientes (creación descendente)",
@@ -54,6 +58,7 @@ async def listar_empleados(
         departamento_id=departamento_id,
         puesto_id=puesto_id,
         activo=activo,
+        tipo_asistencia=tipo_asistencia,
         orden=orden,
     )
 
@@ -61,10 +66,14 @@ async def listar_empleados(
 @rrhh_empleados_router.get("/buscar", response_model=List[RrhhEmpleadoBusqueda])
 async def buscar_empleados(
     q: str = Query(..., min_length=1, description="Texto a buscar"),
+    tipo_asistencia: Optional[str] = Query(
+        None,
+        description="Filtra por LIBRE o NO_LIBRE (p. ej. Asistencia pide NO_LIBRE)",
+    ),
     db: AsyncSession = Depends(get_session),
 ):
     """Selector abreviado de empleados (supervisor, responsable, etc.)."""
-    return await rrhh_empleado_service.buscar(db, q)
+    return await rrhh_empleado_service.buscar(db, q, tipo_asistencia=tipo_asistencia)
 
 
 @rrhh_empleados_router.get("/{empleado_id}", response_model=RrhhEmpleadoDetalle)

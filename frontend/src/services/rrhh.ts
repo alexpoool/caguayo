@@ -18,6 +18,7 @@ import type {
   RrhhEmpleadoCreate,
   RrhhEmpleadoUpdate,
   RrhhEmpleadoListado,
+  RrhhTipoAsistencia,
   RrhhEmpleadoDetalle,
   RrhhEmpleadoBusqueda,
   RrhhTipoContrato,
@@ -91,11 +92,22 @@ export const rrhhService = {
    * Candidatos para un selector con buscador: con menos de 2 letras
    * devuelve una lista inicial (los primeros activos, para poder elegir
    * sin escribir); desde 2 letras busca por nombre/código/carnet.
+   *
+   * `tipo_asistencia` filtra en el servidor: `'NO_LIBRE'` deja fuera al
+   * personal sin horario pactado (el que sí se marca en Asistencia).
    */
-  candidatosEmpleados: async (q: string): Promise<RrhhEmpleadoBusqueda[]> => {
-    if (q.trim().length >= 2) return await apiClient.get('/rrhh/empleados/buscar', { q });
+  candidatosEmpleados: async (
+    q: string,
+    tipo_asistencia?: RrhhTipoAsistencia
+  ): Promise<RrhhEmpleadoBusqueda[]> => {
+    if (q.trim().length >= 2)
+      return await apiClient.get('/rrhh/empleados/buscar', {
+        q,
+        tipo_asistencia,
+      });
     const activos: RrhhEmpleadoListado[] = await apiClient.get('/rrhh/empleados', {
       activo: true,
+      tipo_asistencia,
       limit: 20,
     });
     return activos.map((e) => ({
@@ -105,6 +117,7 @@ export const rrhhService = {
       apellido: e.apellido,
       estado: e.estado,
       activo: e.activo,
+      tipo_asistencia: e.tipo_asistencia,
     }));
   },
 

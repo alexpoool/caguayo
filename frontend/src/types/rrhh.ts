@@ -168,6 +168,8 @@ export interface RrhhEmpleadoBusqueda {
   apellido: string;
   estado: RrhhEstadoEmpleado;
   activo: boolean;
+  /** LIBRE (sin horario pactado) o NO_LIBRE. */
+  tipo_asistencia: RrhhTipoAsistencia;
 }
 
 export const RRHH_ESTADOS_EMPLEADO: {

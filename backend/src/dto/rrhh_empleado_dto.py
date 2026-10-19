@@ -108,3 +108,6 @@ class RrhhEmpleadoBusqueda(SQLModel):
     apellido: str
     estado: str
     activo: bool
+    # LIBRE (sin horario pactado) o NO_LIBRE; permite filtrar en los selectores
+    # que solo admiten personal con horario (p. ej. Asistencia).
+    tipo_asistencia: str
