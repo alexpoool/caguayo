@@ -12,6 +12,7 @@ import {
   ArrowLeft,
   Check,
   ClipboardCheck,
+  FileText,
   Loader2,
   MessageSquare,
   Pencil,
@@ -341,13 +342,12 @@ export function EvaluacionDetallePage() {
           ) : (
             <div className="overflow-hidden rounded-lg border border-slate-200">
               {/* Cabecera de columnas (solo pantallas medianas+) */}
-              <div className="hidden gap-3 border-b border-slate-200 bg-slate-50 px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500 md:grid md:grid-cols-[auto_minmax(0,1.5fr)_auto_5rem_14rem_16rem_2.5rem] md:items-center">
+              <div className="hidden gap-3 border-b border-slate-200 bg-slate-50 px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500 md:grid md:grid-cols-[auto_minmax(0,1.5fr)_auto_5rem_10rem_2.5rem] md:items-center">
                 <span className="w-4" />
                 <span>Objetivo</span>
                 <span>Puntuación</span>
                 <span>Peso</span>
-                <span>Valoración</span>
-                <span>Recomendaciones</span>
+                <span>Acciones</span>
                 <span className="text-right">Quitar</span>
               </div>
 
@@ -357,6 +357,10 @@ export function EvaluacionDetallePage() {
                     key={obj.id_objetivo}
                     obj={obj}
                     guardado={obj.fila_id !== null && filaGuardada === obj.fila_id}
+                    guardando={
+                      puntuarMutation.isPending &&
+                      puntuarMutation.variables?.filaId === obj.fila_id
+                    }
                     fueraDeAlcance={
                       obj.seleccionado &&
                       !(
@@ -669,6 +673,7 @@ function CabeceraTexto({
 function FilaObjetivo({
   obj,
   guardado,
+  guardando,
   fueraDeAlcance,
   seleccionando,
   quitando,
@@ -680,6 +685,8 @@ function FilaObjetivo({
   obj: RrhhEvaluacionObjetivo;
   /** Muestra el check breve de «guardado» tras una mutación exitosa. */
   guardado: boolean;
+  /** `true` mientras se guarda una fila (para el botón del modal). */
+  guardando: boolean;
   /**
    * `true` si está seleccionado pero su periodo ya no solapa el de la
    * evaluación (sigue contando en el promedio: se señala en la fila).
@@ -694,24 +701,24 @@ function FilaObjetivo({
 }) {
   const editables = obj.seleccionado && obj.fila_id !== null;
 
-  const [valoracion, setValoracion] = useState(obj.valoracion ?? '');
-  const [recomendaciones, setRecomendaciones] = useState(obj.recomendaciones ?? '');
   const [peso, setPeso] = useState(String(Number(obj.peso)));
+  /** Editor de texto largo abierto en el modal (o `null` si está cerrado). */
+  const [editor, setEditor] = useState<'valoracion' | 'recomendaciones' | null>(
+    null,
+  );
 
-  useEffect(() => setValoracion(obj.valoracion ?? ''), [obj.valoracion]);
-  useEffect(() => setRecomendaciones(obj.recomendaciones ?? ''), [obj.recomendaciones]);
   useEffect(() => setPeso(String(Number(obj.peso))), [obj.peso]);
 
-  const guardarValoracion = () => {
+  const guardarValoracion = (texto: string) => {
     if (!editables) return;
-    const nuevo = valoracion.trim();
+    const nuevo = texto.trim();
     if (nuevo === (obj.valoracion ?? '').trim()) return;
     onGuardarFila({ valoracion: nuevo || null });
   };
 
-  const guardarRecomendaciones = () => {
+  const guardarRecomendaciones = (texto: string) => {
     if (!editables) return;
-    const nuevo = recomendaciones.trim();
+    const nuevo = texto.trim();
     if (nuevo === (obj.recomendaciones ?? '').trim()) return;
     onGuardarFila({ recomendaciones: nuevo || null });
   };
@@ -730,133 +737,292 @@ function FilaObjetivo({
 
   const pesoDifiere = Number(peso) !== Number(obj.peso_objetivo);
 
-  const inputBase =
-    'w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm transition-all duration-200 focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500 disabled:cursor-not-allowed';
+  /** Cierra el editor en cuanto el guardado iniciado desde «Guardar» termina bien. */
+  const cerrarAlGuardar = useRef(false);
+
+  useEffect(() => {
+    // Solo cierra si el guardado lo pidió el botón del modal (no un `onBlur`).
+    if (guardado && cerrarAlGuardar.current) {
+      cerrarAlGuardar.current = false;
+      setEditor(null);
+    }
+  }, [guardado]);
 
   return (
-    <div className="flex flex-wrap items-start gap-3 px-4 py-3 transition-colors hover:bg-slate-50/70 md:grid md:grid-cols-[auto_minmax(0,1.5fr)_auto_5rem_14rem_16rem_2.5rem] md:items-center md:gap-3">
-      {/* Selección (único control activo también en filas no seleccionadas) */}
-      <input
-        type="checkbox"
-        checked={obj.seleccionado}
-        disabled={seleccionando || quitando}
-        onChange={(e) => (e.target.checked ? onSeleccionar() : onQuitar())}
-        title={obj.seleccionado ? 'Quitar de la evaluación' : 'Añadir a la evaluación'}
-        className="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300 text-sky-600 accent-sky-600 focus:ring-sky-500 disabled:cursor-not-allowed"
-      />
+    <>
+      <div className="flex flex-wrap items-start gap-3 px-4 py-3 transition-colors hover:bg-slate-50/70 md:grid md:grid-cols-[auto_minmax(0,1.5fr)_auto_5rem_10rem_2.5rem] md:items-center md:gap-3">
+        {/* Selección (único control activo también en filas no seleccionadas) */}
+        <input
+          type="checkbox"
+          checked={obj.seleccionado}
+          disabled={seleccionando || quitando}
+          onChange={(e) => (e.target.checked ? onSeleccionar() : onQuitar())}
+          title={obj.seleccionado ? 'Quitar de la evaluación' : 'Añadir a la evaluación'}
+          className="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300 text-sky-600 accent-sky-600 focus:ring-sky-500 disabled:cursor-not-allowed"
+        />
 
-      {/* Nombre + periodo (se ve el filtro por fecha de la evaluación) */}
-      <div className="min-w-0 flex-1 md:flex-none">
-        <div className="flex items-center gap-2">
-          <p className="truncate text-sm font-medium text-slate-800">{obj.nombre}</p>
-          {seleccionando || quitando ? (
-            <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-slate-400" />
-          ) : null}
-          {guardado && (
-            <Check className="h-3.5 w-3.5 shrink-0 animate-fade-in-up text-emerald-500" aria-hidden />
+        {/* Nombre + periodo (se ve el filtro por fecha de la evaluación) */}
+        <div className="min-w-0 flex-1 md:flex-none">
+          <div className="flex items-center gap-2">
+            <p className="truncate text-sm font-medium text-slate-800">{obj.nombre}</p>
+            {seleccionando || quitando ? (
+              <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-slate-400" />
+            ) : null}
+            {guardado && (
+              <Check className="h-3.5 w-3.5 shrink-0 animate-fade-in-up text-emerald-500" aria-hidden />
+            )}
+          </div>
+          <p className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs text-slate-400">
+            <span className="tabular-nums" title="Periodo del objetivo">
+              {obj.periodo_inicio} → {obj.periodo_fin}
+            </span>
+            {fueraDeAlcance && (
+              <span
+                className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700"
+                title="Su periodo ya no solapa el de la evaluación, pero sigue contando en el promedio"
+              >
+                fuera de alcance
+              </span>
+            )}
+          </p>
+          {!obj.seleccionado && (
+            <p className="mt-1 text-xs italic text-slate-400">
+              Selecciona el objetivo para evaluarlo
+            </p>
           )}
         </div>
-        <p className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs text-slate-400">
-          <span className="tabular-nums" title="Periodo del objetivo">
-            {obj.periodo_inicio} → {obj.periodo_fin}
+
+        {/* Zona puntuación: cada control se atenúa si no está seleccionado */}
+        <div
+          className={`flex items-center gap-2 ${obj.seleccionado ? '' : 'opacity-40 pointer-events-none'}`}
+        >
+          <Estrellas0a5
+            valor={obj.resultado}
+            disabled={!editables}
+            onCambiar={onPuntuar}
+          />
+          <span className="text-xs tabular-nums text-slate-500">
+            {obj.resultado !== null ? `${obj.resultado}/5` : ''}
           </span>
-          {fueraDeAlcance && (
+        </div>
+
+        {/* Peso de la fila (entero 1–100, se guarda al salir del campo) */}
+        <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1">
+          <input
+            type="number"
+            min={1}
+            max={100}
+            step={1}
+            value={peso}
+            disabled={!editables}
+            onChange={(e) => setPeso(e.target.value)}
+            onBlur={guardarPeso}
+            aria-label="Peso de este objetivo en la evaluación"
+            title="Peso de la fila (entero 1–100; se guarda al salir del campo)"
+            className="w-16 rounded-md border border-slate-300 px-2 py-1.5 text-sm tabular-nums transition-all duration-200 focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500 disabled:cursor-not-allowed"
+          />
+          {pesoDifiere && (
             <span
-              className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700"
-              title="Su periodo ya no solapa el de la evaluación, pero sigue contando en el promedio"
+              className="text-[11px] font-semibold text-amber-600"
+              title="Peso del objetivo (la fila lo sobrescribe en esta evaluación)"
             >
-              fuera de alcance
+              obj. {fmtPeso(obj.peso_objetivo)}
             </span>
           )}
-        </p>
-        {!obj.seleccionado && (
-          <p className="mt-1 text-xs italic text-slate-400">
-            Selecciona el objetivo para evaluarlo
+        </div>
+
+        {/* Acciones: abren el editor de la valoración o las recomendaciones */}
+        <div
+          className={`flex w-40 shrink-0 flex-col gap-1.5 ${obj.seleccionado ? '' : 'opacity-40 pointer-events-none'}`}
+        >
+          <button
+            type="button"
+            disabled={!editables}
+            onClick={() => setEditor('valoracion')}
+            title={
+              obj.valoracion
+                ? `Valoración: ${obj.valoracion}`
+                : 'Añadir valoración'
+            }
+            className={`inline-flex w-full items-center gap-1.5 rounded-md border px-2 py-1.5 text-xs font-medium transition-colors disabled:cursor-not-allowed ${
+              obj.valoracion
+                ? 'border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100'
+                : 'border-slate-300 text-slate-600 hover:bg-slate-50'
+            }`}
+          >
+            <MessageSquare className="h-3.5 w-3.5 shrink-0" />
+            Valoración
+            {obj.valoracion && (
+              <span className="ml-auto h-1.5 w-1.5 shrink-0 rounded-full bg-sky-500" aria-hidden />
+            )}
+          </button>
+          <button
+            type="button"
+            disabled={!editables}
+            onClick={() => setEditor('recomendaciones')}
+            title={
+              obj.recomendaciones
+                ? `Recomendaciones: ${obj.recomendaciones}`
+                : 'Añadir recomendaciones'
+            }
+            className={`inline-flex w-full items-center gap-1.5 rounded-md border px-2 py-1.5 text-xs font-medium transition-colors disabled:cursor-not-allowed ${
+              obj.recomendaciones
+                ? 'border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100'
+                : 'border-slate-300 text-slate-600 hover:bg-slate-50'
+            }`}
+          >
+            <FileText className="h-3.5 w-3.5 shrink-0" />
+            Recomendaciones
+            {obj.recomendaciones && (
+              <span className="ml-auto h-1.5 w-1.5 shrink-0 rounded-full bg-sky-500" aria-hidden />
+            )}
+          </button>
+        </div>
+
+        {/* Quitar de la evaluación */}
+        <div className="flex items-center justify-end md:justify-center">
+          {obj.seleccionado && (
+            <Button
+              variant="ghost"
+              size="icon"
+              title="Quitar de la evaluación"
+              onClick={onQuitar}
+              disabled={quitando}
+              className="h-8 w-8 text-slate-400 hover:bg-red-50 hover:text-red-600"
+            >
+              {quitando ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <X className="h-4 w-4" />
+              )}
+            </Button>
+          )}
+        </div>
+      </div>
+
+      {/* Editor de la valoración o las recomendaciones de la fila */}
+      {editor !== null && (
+        <ModalTextoFila
+          key={editor}
+          titulo={editor === 'recomendaciones' ? 'Recomendaciones' : 'Valoración'}
+          objetivo={obj.nombre}
+          valor={
+            (editor === 'recomendaciones'
+              ? obj.recomendaciones
+              : obj.valoracion) ?? ''
+          }
+          guardando={guardando}
+          onGuardar={(texto) => {
+            cerrarAlGuardar.current = true;
+            if (editor === 'recomendaciones') guardarRecomendaciones(texto);
+            else guardarValoracion(texto);
+          }}
+          onCerrar={() => setEditor(null)}
+        />
+      )}
+    </>
+  );
+}
+
+/**
+ * Editor en modal de un texto largo de la fila (valoración o recomendaciones).
+ * Se monta al abrir (así toma el texto actual) y se desmonta al cerrar.
+ * Guárdalo con «Guardar» (el modal se cierra al confirmarse) o simplemente
+ * saliendo del campo: al cerrar con la X o con el fondo no se pierde lo escrito.
+ */
+function ModalTextoFila({
+  titulo,
+  objetivo,
+  valor,
+  guardando,
+  onGuardar,
+  onCerrar,
+}: {
+  /** «Valoración» o «Recomendaciones». */
+  titulo: string;
+  /** Nombre del objetivo, se muestra como subtítulo. */
+  objetivo: string;
+  valor: string;
+  guardando: boolean;
+  onGuardar: (texto: string) => void;
+  onCerrar: () => void;
+}) {
+  const [texto, setTexto] = useState(valor);
+  const areaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Autofoco al abrir.
+  useEffect(() => {
+    const t = setTimeout(() => areaRef.current?.focus(), 0);
+    return () => clearTimeout(t);
+  }, []);
+
+  const guardar = () => {
+    // Sin cambios: no hay nada que guardar, se cierra directamente.
+    if (texto.trim() === valor.trim()) {
+      onCerrar();
+      return;
+    }
+    onGuardar(texto);
+  };
+
+  return (
+    <Modal
+      isOpen
+      onClose={onCerrar}
+      className="!max-w-2xl !rounded-none overflow-hidden [&>button.absolute]:hidden"
+    >
+      <div className="sticky top-0 z-10 flex items-center gap-3 border-b bg-gradient-to-r from-sky-50 to-sky-100 px-6 py-4 pr-14">
+        <div className="rounded-lg bg-gradient-to-br from-sky-500 to-sky-600 p-2">
+          <MessageSquare className="h-5 w-5 text-white" />
+        </div>
+        <div className="min-w-0">
+          <h2 className="text-lg font-bold text-gray-900">{titulo}</h2>
+          <p className="truncate text-xs text-slate-500" title={objetivo}>
+            {objetivo}
           </p>
-        )}
+        </div>
+        <button
+          type="button"
+          onClick={onCerrar}
+          title="Cerrar"
+          aria-label="Cerrar"
+          className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full p-1 text-slate-400 transition-colors hover:bg-sky-100 hover:text-slate-600"
+        >
+          <X className="h-5 w-5" />
+        </button>
       </div>
 
-      {/* Zona puntuación/textos: cada control se atenúa si no está seleccionado */}
-      <div
-        className={`flex items-center gap-2 ${obj.seleccionado ? '' : 'opacity-40 pointer-events-none'}`}
-      >
-        <Estrellas0a5
-          valor={obj.resultado}
-          disabled={!editables}
-          onCambiar={onPuntuar}
+      <div className="px-6 py-5">
+        <Label htmlFor="texto-fila" className="sr-only">
+          {titulo}
+        </Label>
+        <textarea
+          id="texto-fila"
+          ref={areaRef}
+          rows={8}
+          value={texto}
+          onChange={(e) => setTexto(e.target.value)}
+          onBlur={() => onGuardar(texto)}
+          placeholder={`Escribe aquí la ${titulo.toLowerCase()} de «${objetivo}»`}
+          className="w-full resize-y rounded-lg border border-slate-300 px-3 py-2 text-sm transition-all duration-200 focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
         />
-        <span className="text-xs tabular-nums text-slate-500">
-          {obj.resultado !== null ? `${obj.resultado}/5` : ''}
-        </span>
-      </div>
-
-      {/* Peso de la fila (entero 1–100, se guarda al salir del campo) */}
-      <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1">
-        <input
-          type="number"
-          min={1}
-          max={100}
-          step={1}
-          value={peso}
-          disabled={!editables}
-          onChange={(e) => setPeso(e.target.value)}
-          onBlur={guardarPeso}
-          aria-label="Peso de este objetivo en la evaluación"
-          title="Peso de la fila (entero 1–100; se guarda al salir del campo)"
-          className="w-16 rounded-md border border-slate-300 px-2 py-1.5 text-sm tabular-nums transition-all duration-200 focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500 disabled:cursor-not-allowed"
-        />
-        {pesoDifiere && (
-          <span
-            className="text-[11px] font-semibold text-amber-600"
-            title="Peso del objetivo (la fila lo sobrescribe en esta evaluación)"
-          >
-            obj. {fmtPeso(obj.peso_objetivo)}
-          </span>
-        )}
-      </div>
-
-      <textarea
-        rows={2}
-        value={valoracion}
-        disabled={!editables}
-        onChange={(e) => setValoracion(e.target.value)}
-        onBlur={guardarValoracion}
-        placeholder="Valoración"
-        aria-label={`Valoración de «${obj.nombre}»`}
-        className={`${inputBase} resize-none overflow-hidden ${obj.seleccionado ? '' : 'opacity-40 pointer-events-none'}`}
-      />
-
-      <textarea
-        rows={2}
-        value={recomendaciones}
-        disabled={!editables}
-        onChange={(e) => setRecomendaciones(e.target.value)}
-        onBlur={guardarRecomendaciones}
-        placeholder="Recomendaciones"
-        aria-label={`Recomendaciones de «${obj.nombre}»`}
-        className={`${inputBase} resize-none overflow-hidden ${obj.seleccionado ? '' : 'opacity-40 pointer-events-none'}`}
-      />
-
-      {/* Quitar de la evaluación */}
-      <div className="flex items-center justify-end md:justify-center">
-        {obj.seleccionado && (
+        <div className="sticky bottom-0 -mx-6 mt-4 flex items-center justify-end gap-4 border-t bg-white px-6 pb-1 pt-4">
           <Button
-            variant="ghost"
-            size="icon"
-            title="Quitar de la evaluación"
-            onClick={onQuitar}
-            disabled={quitando}
-            className="h-8 w-8 text-slate-400 hover:bg-red-50 hover:text-red-600"
+            onClick={guardar}
+            onMouseDown={(e) => e.preventDefault()}
+            disabled={guardando}
+            className="gap-2"
           >
-            {quitando ? (
+            {guardando ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
-              <X className="h-4 w-4" />
+              <Save className="h-4 w-4" />
             )}
+            Guardar
           </Button>
-        )}
+        </div>
       </div>
-    </div>
+    </Modal>
   );
 }
 
