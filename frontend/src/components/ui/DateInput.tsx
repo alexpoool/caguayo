@@ -14,6 +14,10 @@ export interface DateInputProps {
   disabled?: boolean;
   error?: string;
   className?: string;
+  /** Clases del contenedor; por defecto `w-full`. En barras de filtros usa `w-44`. */
+  wrapperClassName?: string;
+  /** Tooltip del navegador, útil cuando el campo no tiene etiqueta visible. */
+  title?: string;
   placeholder?: string;
   id?: string;
   onBlur?: () => void;
@@ -90,6 +94,8 @@ export const DateInput: React.FC<DateInputProps> = ({
   disabled,
   error,
   className,
+  wrapperClassName,
+  title,
   placeholder = PLACEHOLDER,
   id,
   onBlur,
@@ -142,7 +148,7 @@ export const DateInput: React.FC<DateInputProps> = ({
   const invalido = tocado && texto.trim() !== "" && textoAIso(texto) === null;
 
   return (
-    <div className="w-full">
+    <div className={cn("w-full", wrapperClassName)} title={title}>
       <div className="relative">
         <input
           id={id}

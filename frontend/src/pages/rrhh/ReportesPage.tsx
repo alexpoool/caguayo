@@ -25,7 +25,7 @@ import {
 } from 'lucide-react';
 import {
   Button,
-  Input,
+  DateInput,
   Card,
   CardContent,
   CardHeader,
@@ -387,19 +387,17 @@ function PestanaEvaluaciones() {
               </option>
             ))}
           </select>
-          <Input
-            type="date"
+          <DateInput
             value={desde}
-            onChange={(e) => setDesde(e.target.value)}
+            onChange={(iso) => setDesde(iso)}
             title="Desde"
-            className="w-auto"
+            wrapperClassName="w-44"
           />
-          <Input
-            type="date"
+          <DateInput
             value={hasta}
-            onChange={(e) => setHasta(e.target.value)}
+            onChange={(iso) => setHasta(iso)}
             title="Hasta"
-            className="w-auto"
+            wrapperClassName="w-44"
           />
           <Button
             variant="outline"
@@ -530,19 +528,17 @@ function PestanaNomina() {
     <Card className="overflow-hidden hover:shadow-lg transition-shadow duration-300">
       <CardHeader className="pb-3">
         <div className="flex flex-wrap items-center gap-3">
-          <Input
-            type="date"
+          <DateInput
             value={desde}
-            onChange={(e) => setDesde(e.target.value)}
+            onChange={(iso) => setDesde(iso)}
             title="Desde"
-            className="w-auto"
+            wrapperClassName="w-44"
           />
-          <Input
-            type="date"
+          <DateInput
             value={hasta}
-            onChange={(e) => setHasta(e.target.value)}
+            onChange={(iso) => setHasta(iso)}
             title="Hasta"
-            className="w-auto"
+            wrapperClassName="w-44"
           />
           <select
             value={departamentoId}
@@ -714,19 +710,17 @@ function PestanaAsistencia() {
     <Card className="overflow-hidden hover:shadow-lg transition-shadow duration-300">
       <CardHeader className="pb-3">
         <div className="flex flex-wrap items-center gap-3">
-          <Input
-            type="date"
+          <DateInput
             value={desde}
-            onChange={(e) => setDesde(e.target.value)}
+            onChange={(iso) => setDesde(iso)}
             title="Desde"
-            className="w-auto"
+            wrapperClassName="w-44"
           />
-          <Input
-            type="date"
+          <DateInput
             value={hasta}
-            onChange={(e) => setHasta(e.target.value)}
+            onChange={(iso) => setHasta(iso)}
             title="Hasta"
-            className="w-auto"
+            wrapperClassName="w-44"
           />
           <select
             value={estado}
@@ -971,19 +965,17 @@ function PestanaSolicitudes() {
                 </option>
               ))}
             </select>
-            <Input
-              type="date"
+            <DateInput
               value={desde}
-              onChange={(e) => setDesde(e.target.value)}
+              onChange={(iso) => setDesde(iso)}
               title="Desde"
-              className="w-auto"
+              wrapperClassName="w-44"
             />
-            <Input
-              type="date"
+            <DateInput
               value={hasta}
-              onChange={(e) => setHasta(e.target.value)}
+              onChange={(iso) => setHasta(iso)}
               title="Hasta"
-              className="w-auto"
+              wrapperClassName="w-44"
             />
             <Button
               variant="outline"

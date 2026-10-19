@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import {
   Button,
+  DateInput,
   Input,
   Card,
   CardContent,
@@ -214,19 +215,17 @@ export function AuditoriaPage() {
                 className="pl-9"
               />
             </div>
-            <Input
-              type="date"
+            <DateInput
               value={desde}
-              onChange={(e) => setDesde(e.target.value)}
+              onChange={(iso) => setDesde(iso)}
               title="Desde"
-              className="w-auto"
+              wrapperClassName="w-44"
             />
-            <Input
-              type="date"
+            <DateInput
               value={hasta}
-              onChange={(e) => setHasta(e.target.value)}
+              onChange={(iso) => setHasta(iso)}
               title="Hasta"
-              className="w-auto"
+              wrapperClassName="w-44"
             />
             <select
               value={tipo}

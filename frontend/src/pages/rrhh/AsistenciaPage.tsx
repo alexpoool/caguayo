@@ -26,6 +26,7 @@ import {
 import toast from 'react-hot-toast';
 import {
   Button,
+  DateInput,
   Input,
   Label,
   Card,
@@ -326,19 +327,17 @@ export function AsistenciaPage() {
                 className="pl-9"
               />
             </div>
-            <Input
-              type="date"
+            <DateInput
               value={desde}
-              onChange={(e) => setDesde(e.target.value)}
+              onChange={(iso) => setDesde(iso)}
               title="Desde"
-              className="w-auto"
+              wrapperClassName="w-44"
             />
-            <Input
-              type="date"
+            <DateInput
               value={hasta}
-              onChange={(e) => setHasta(e.target.value)}
+              onChange={(iso) => setHasta(iso)}
               title="Hasta"
-              className="w-auto"
+              wrapperClassName="w-44"
             />
             <select
               value={filtroEstado}
@@ -537,11 +536,10 @@ export function AsistenciaPage() {
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="fecha-marcar">Fecha</Label>
-              <Input
+              <DateInput
                 id="fecha-marcar"
-                type="date"
                 value={formMarcar.fecha}
-                onChange={(e) => setFormMarcar({ ...formMarcar, fecha: e.target.value })}
+                onChange={(iso) => setFormMarcar({ ...formMarcar, fecha: iso })}
               />
             </div>
             <div className="space-y-2">

@@ -24,6 +24,7 @@ import {
 import toast from 'react-hot-toast';
 import {
   Button,
+  DateInput,
   Input,
   Label,
   Card,
@@ -457,12 +458,11 @@ export function ObjetivosPage() {
                   <Calendar className="h-4 w-4 text-sky-500" />
                   Periodo inicio *
                 </Label>
-                <Input
+                <DateInput
                   id="obj-inicio"
-                  type="date"
                   value={objForm.periodo_inicio}
-                  onChange={(e) =>
-                    setObjForm({ ...objForm, periodo_inicio: e.target.value })
+                  onChange={(iso) =>
+                    setObjForm({ ...objForm, periodo_inicio: iso })
                   }
                   className={`transition-all duration-200 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 ${formErrors.periodo_inicio ? 'border-red-500' : ''}`}
                 />
@@ -481,11 +481,10 @@ export function ObjetivosPage() {
                   <Calendar className="h-4 w-4 text-rose-500" />
                   Periodo fin *
                 </Label>
-                <Input
+                <DateInput
                   id="obj-fin"
-                  type="date"
                   value={objForm.periodo_fin}
-                  onChange={(e) => setObjForm({ ...objForm, periodo_fin: e.target.value })}
+                  onChange={(iso) => setObjForm({ ...objForm, periodo_fin: iso })}
                   className={`transition-all duration-200 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 ${formErrors.periodo_fin ? 'border-red-500' : ''}`}
                 />
                 {formErrors.periodo_fin && (

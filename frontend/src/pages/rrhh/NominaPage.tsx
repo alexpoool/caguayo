@@ -27,6 +27,7 @@ import {
 import toast from 'react-hot-toast';
 import {
   Button,
+  DateInput,
   Input,
   Label,
   Card,
@@ -168,19 +169,17 @@ function ListaNominas() {
       <Card>
         <CardHeader className="pb-3">
           <div className="flex flex-wrap items-center gap-3">
-            <Input
-              type="date"
+            <DateInput
               value={desde}
-              onChange={(e) => setDesde(e.target.value)}
+              onChange={(iso) => setDesde(iso)}
               title="Desde"
-              className="w-auto"
+              wrapperClassName="w-44"
             />
-            <Input
-              type="date"
+            <DateInput
               value={hasta}
-              onChange={(e) => setHasta(e.target.value)}
+              onChange={(iso) => setHasta(iso)}
               title="Hasta"
-              className="w-auto"
+              wrapperClassName="w-44"
             />
             <select
               value={estado}
@@ -454,16 +453,15 @@ function ModalGenerar({
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label htmlFor="inicio">Inicio del periodo</Label>
-            <Input
+            <DateInput
               id="inicio"
-              type="date"
               value={inicio}
-              onChange={(e) => setInicio(e.target.value)}
+              onChange={(iso) => setInicio(iso)}
             />
           </div>
           <div className="space-y-2">
             <Label htmlFor="fin">Fin del periodo</Label>
-            <Input id="fin" type="date" value={fin} onChange={(e) => setFin(e.target.value)} />
+            <DateInput id="fin" value={fin} onChange={(iso) => setFin(iso)} />
           </div>
         </div>
         <div className="space-y-2">
@@ -864,11 +862,10 @@ function ModalPagar({
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label htmlFor="fecha">Fecha de pago</Label>
-            <Input
+            <DateInput
               id="fecha"
-              type="date"
               value={fecha}
-              onChange={(e) => setFecha(e.target.value)}
+              onChange={(iso) => setFecha(iso)}
             />
           </div>
           <div className="space-y-2">
@@ -1063,19 +1060,17 @@ function VistaCosto() {
     <Card>
       <CardHeader className="pb-3">
         <div className="flex flex-wrap items-center gap-3">
-          <Input
-            type="date"
+          <DateInput
             value={desde}
-            onChange={(e) => setDesde(e.target.value)}
+            onChange={(iso) => setDesde(iso)}
             title="Desde"
-            className="w-auto"
+            wrapperClassName="w-44"
           />
-          <Input
-            type="date"
+          <DateInput
             value={hasta}
-            onChange={(e) => setHasta(e.target.value)}
+            onChange={(iso) => setHasta(iso)}
             title="Hasta"
-            className="w-auto"
+            wrapperClassName="w-44"
           />
           <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isLoading}>
             <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />

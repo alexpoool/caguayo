@@ -23,6 +23,7 @@ import {
 import toast from 'react-hot-toast';
 import {
   Button,
+  DateInput,
   Input,
   Label,
   Card,
@@ -475,11 +476,11 @@ function ModalCrear({
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label htmlFor="ini">Inicio</Label>
-            <Input id="ini" type="date" value={inicio} onChange={(e) => setInicio(e.target.value)} />
+            <DateInput id="ini" value={inicio} onChange={(iso) => setInicio(iso)} />
           </div>
           <div className="space-y-2">
             <Label htmlFor="fin">Fin</Label>
-            <Input id="fin" type="date" value={fin} onChange={(e) => setFin(e.target.value)} />
+            <DateInput id="fin" value={fin} onChange={(iso) => setFin(iso)} />
           </div>
         </div>
 

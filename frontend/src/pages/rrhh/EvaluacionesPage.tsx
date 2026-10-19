@@ -26,6 +26,7 @@ import {
 import toast from "react-hot-toast";
 import {
   Button,
+  DateInput,
   Input,
   Label,
   Card,
@@ -530,12 +531,11 @@ export function EvaluacionesPage() {
                 <Calendar className="h-4 w-4 text-sky-500" />
                 Inicio del periodo
               </Label>
-              <Input
+              <DateInput
                 id="inicio_periodo"
-                type="date"
                 value={formData.inicio_periodo}
-                onChange={(e) =>
-                  setFormData({ ...formData, inicio_periodo: e.target.value })
+                onChange={(iso) =>
+                  setFormData({ ...formData, inicio_periodo: iso })
                 }
                 className="transition-all duration-200 focus:ring-2 focus:ring-sky-500 focus:border-sky-500"
               />
@@ -548,12 +548,11 @@ export function EvaluacionesPage() {
                 <Calendar className="h-4 w-4 text-rose-500" />
                 Fin del periodo
               </Label>
-              <Input
+              <DateInput
                 id="fin_periodo"
-                type="date"
                 value={formData.fin_periodo}
-                onChange={(e) =>
-                  setFormData({ ...formData, fin_periodo: e.target.value })
+                onChange={(iso) =>
+                  setFormData({ ...formData, fin_periodo: iso })
                 }
                 className={`transition-all duration-200 focus:ring-2 focus:ring-sky-500 focus:border-sky-500 ${
                   formErrors.fin_periodo ? "border-red-500" : ""

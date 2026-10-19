@@ -27,6 +27,7 @@ import {
 import toast from 'react-hot-toast';
 import {
   Button,
+  DateInput,
   Input,
   Label,
   Card,
@@ -409,19 +410,17 @@ function TablaMovimientos({ tipo }: { tipo: 'deducciones' | 'bonificaciones' }) 
                 className="pl-9"
               />
             </div>
-            <Input
-              type="date"
+            <DateInput
               value={desde}
-              onChange={(e) => setDesde(e.target.value)}
+              onChange={(iso) => setDesde(iso)}
               title="Desde"
-              className="w-auto"
+              wrapperClassName="w-44"
             />
-            <Input
-              type="date"
+            <DateInput
               value={hasta}
-              onChange={(e) => setHasta(e.target.value)}
+              onChange={(iso) => setHasta(iso)}
               title="Hasta"
-              className="w-auto"
+              wrapperClassName="w-44"
             />
             <select
               value={filtroTipo}
@@ -623,20 +622,18 @@ function TablaMovimientos({ tipo }: { tipo: 'deducciones' | 'bonificaciones' }) 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="inicio">Inicio del periodo</Label>
-              <Input
+              <DateInput
                 id="inicio"
-                type="date"
                 value={formData.inicio_periodo}
-                onChange={(e) => setFormData({ ...formData, inicio_periodo: e.target.value })}
+                onChange={(iso) => setFormData({ ...formData, inicio_periodo: iso })}
               />
             </div>
             <div className="space-y-2">
               <Label htmlFor="fin">Fin del periodo</Label>
-              <Input
+              <DateInput
                 id="fin"
-                type="date"
                 value={formData.fin_periodo}
-                onChange={(e) => setFormData({ ...formData, fin_periodo: e.target.value })}
+                onChange={(iso) => setFormData({ ...formData, fin_periodo: iso })}
               />
             </div>
           </div>
@@ -697,19 +694,17 @@ function ConsolidadoVista() {
       <Card>
         <CardHeader className="pb-3">
           <div className="flex flex-wrap items-center gap-3">
-            <Input
-              type="date"
+            <DateInput
               value={desde}
-              onChange={(e) => setDesde(e.target.value)}
+              onChange={(iso) => setDesde(iso)}
               title="Desde"
-              className="w-auto"
+              wrapperClassName="w-44"
             />
-            <Input
-              type="date"
+            <DateInput
               value={hasta}
-              onChange={(e) => setHasta(e.target.value)}
+              onChange={(iso) => setHasta(iso)}
               title="Hasta"
-              className="w-auto"
+              wrapperClassName="w-44"
             />
             <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isLoading}>
               <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />

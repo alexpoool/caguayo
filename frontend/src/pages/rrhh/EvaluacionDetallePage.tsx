@@ -26,6 +26,7 @@ import {
   Card,
   CardContent,
   CardHeader,
+  DateInput,
   Input,
   Label,
   Modal,
@@ -529,12 +530,11 @@ export function EvaluacionDetallePage() {
               <Label htmlFor="ev-inicio" className="text-gray-700">
                 Inicio del periodo
               </Label>
-              <Input
+              <DateInput
                 id="ev-inicio"
-                type="date"
                 value={cabecera.inicio_periodo}
-                onChange={(e) =>
-                  setCabecera({ ...cabecera, inicio_periodo: e.target.value })
+                onChange={(iso) =>
+                  setCabecera({ ...cabecera, inicio_periodo: iso })
                 }
               />
             </div>
@@ -542,12 +542,11 @@ export function EvaluacionDetallePage() {
               <Label htmlFor="ev-fin" className="text-gray-700">
                 Fin del periodo
               </Label>
-              <Input
+              <DateInput
                 id="ev-fin"
-                type="date"
                 value={cabecera.fin_periodo}
-                onChange={(e) =>
-                  setCabecera({ ...cabecera, fin_periodo: e.target.value })
+                onChange={(iso) =>
+                  setCabecera({ ...cabecera, fin_periodo: iso })
                 }
                 className={cabeceraErrores.fin_periodo ? 'border-red-500' : ''}
               />
