@@ -408,14 +408,34 @@ function ModalCrear({
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} className="max-w-md">
-      <div className="border-b p-6 pb-5">
-        <h2 className="text-lg font-semibold text-slate-900">Nueva solicitud</h2>
-        <p className="mt-1 text-sm text-slate-500">
-          Queda `pendiente` hasta que el supervisor o RRHH la decidan.
-        </p>
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      className="!max-w-md overflow-hidden !rounded-none [&>button.absolute]:hidden"
+    >
+      <div className="sticky top-0 z-10 flex items-center gap-3 border-b bg-gradient-to-r from-brand-50 to-brand-100 px-6 py-4 pr-12">
+        <div className="rounded-lg bg-gradient-to-br from-brand-500 to-brand-600 p-2">
+          <ClipboardList className="h-5 w-5 text-white" />
+        </div>
+        <div className="min-w-0">
+          <h2 className="truncate text-lg font-bold text-gray-900">
+            Nueva solicitud
+          </h2>
+          <p className="text-xs text-slate-500">
+            Queda «pendiente» hasta que el supervisor o RRHH la decidan.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          title="Cerrar"
+          aria-label="Cerrar"
+          className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full p-1 text-slate-400 transition-colors hover:bg-brand-100 hover:text-slate-600"
+        >
+          <X className="h-5 w-5" />
+        </button>
       </div>
-      <form onSubmit={onSubmit} className="space-y-4 p-6">
+      <form onSubmit={onSubmit} className="space-y-4 px-6 py-5">
         <div className="space-y-2">
           <Label>Empleado</Label>
           <select
@@ -467,13 +487,10 @@ function ModalCrear({
           />
         </div>
 
-        <div className="flex items-center gap-2 border-t border-slate-100 pt-4">
+        <div className="sticky bottom-0 -mx-6 flex items-center gap-2 border-t bg-white px-6 pb-5 pt-4">
           <Button type="submit" disabled={mutation.isPending}>
             {mutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
             Crear
-          </Button>
-          <Button type="button" variant="outline" onClick={onClose}>
-            Cancelar
           </Button>
         </div>
       </form>
@@ -548,20 +565,42 @@ function ModalDecision({
   };
 
   return (
-    <Modal isOpen={solicitud !== null} onClose={onClose} className="max-w-md">
-      <div className="border-b p-6 pb-5">
-        <h2 className="text-lg font-semibold text-slate-900">
-          {accion === 'aprobar' ? 'Aprobar solicitud' : 'Rechazar solicitud'}
-        </h2>
-        {solicitud && (
-          <p className="mt-1 text-sm text-slate-500">
-            {solicitud.empleado_nombre} · {TIPO_ETIQUETA[solicitud.tipo]} ·{' '}
-            {fmtFecha(solicitud.fecha_inicio)} – {fmtFecha(solicitud.fecha_fin)} (
-            {solicitud.dias} días)
-          </p>
-        )}
+    <Modal
+      isOpen={solicitud !== null}
+      onClose={onClose}
+      className="!max-w-md overflow-hidden !rounded-none [&>button.absolute]:hidden"
+    >
+      <div className="sticky top-0 z-10 flex items-center gap-3 border-b bg-gradient-to-r from-brand-50 to-brand-100 px-6 py-4 pr-12">
+        <div className="rounded-lg bg-gradient-to-br from-brand-500 to-brand-600 p-2">
+          {accion === 'aprobar' ? (
+            <Check className="h-5 w-5 text-white" />
+          ) : (
+            <AlertCircle className="h-5 w-5 text-white" />
+          )}
+        </div>
+        <div className="min-w-0">
+          <h2 className="truncate text-lg font-bold text-gray-900">
+            {accion === 'aprobar' ? 'Aprobar solicitud' : 'Rechazar solicitud'}
+          </h2>
+          {solicitud && (
+            <p className="truncate text-xs text-slate-500">
+              {solicitud.empleado_nombre} · {TIPO_ETIQUETA[solicitud.tipo]} ·{' '}
+              {fmtFecha(solicitud.fecha_inicio)} – {fmtFecha(solicitud.fecha_fin)}{' '}
+              ({solicitud.dias} días)
+            </p>
+          )}
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          title="Cerrar"
+          aria-label="Cerrar"
+          className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full p-1 text-slate-400 transition-colors hover:bg-brand-100 hover:text-slate-600"
+        >
+          <X className="h-5 w-5" />
+        </button>
       </div>
-      <form onSubmit={onSubmit} className="space-y-4 p-6">
+      <form onSubmit={onSubmit} className="space-y-4 px-6 py-5">
         <div className="space-y-2">
           <Label>
             {accion === 'aprobar' ? 'Aprobado por' : 'Rechazado por'}
@@ -598,7 +637,7 @@ function ModalDecision({
           />
         </div>
 
-        <div className="flex items-center gap-2 border-t border-slate-100 pt-4">
+        <div className="sticky bottom-0 -mx-6 flex items-center gap-2 border-t bg-white px-6 pb-5 pt-4">
           <Button
             type="submit"
             disabled={mutation.isPending}
@@ -612,9 +651,6 @@ function ModalDecision({
               <X className="h-4 w-4" />
             )}
             {accion === 'aprobar' ? 'Aprobar' : 'Rechazar'}
-          </Button>
-          <Button type="button" variant="outline" onClick={onClose}>
-            Volver
           </Button>
         </div>
       </form>
@@ -638,19 +674,37 @@ function ModalDetalle({
   });
 
   return (
-    <Modal isOpen={solicitudId !== null} onClose={onClose} className="max-w-lg">
-      <div className="border-b p-6 pb-5">
-        <h2 className="text-lg font-semibold text-slate-900">
-          Solicitud {data ? `#${data.id}` : ''}
-        </h2>
-        {data && (
-          <p className="mt-1 text-sm text-slate-500">
-            {TIPO_ETIQUETA[data.tipo]} · {fmtFecha(data.fecha_inicio)} –{' '}
-            {fmtFecha(data.fecha_fin)} ({data.dias} días)
-          </p>
-        )}
+    <Modal
+      isOpen={solicitudId !== null}
+      onClose={onClose}
+      className="!max-w-lg overflow-hidden !rounded-none [&>button.absolute]:hidden"
+    >
+      <div className="sticky top-0 z-10 flex items-center gap-3 border-b bg-gradient-to-r from-brand-50 to-brand-100 px-6 py-4 pr-12">
+        <div className="rounded-lg bg-gradient-to-br from-brand-500 to-brand-600 p-2">
+          <ClipboardList className="h-5 w-5 text-white" />
+        </div>
+        <div className="min-w-0">
+          <h2 className="truncate text-lg font-bold text-gray-900">
+            Solicitud {data ? `#${data.id}` : ''}
+          </h2>
+          {data && (
+            <p className="truncate text-xs text-slate-500">
+              {TIPO_ETIQUETA[data.tipo]} · {fmtFecha(data.fecha_inicio)} –{' '}
+              {fmtFecha(data.fecha_fin)} ({data.dias} días)
+            </p>
+          )}
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          title="Cerrar"
+          aria-label="Cerrar"
+          className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full p-1 text-slate-400 transition-colors hover:bg-brand-100 hover:text-slate-600"
+        >
+          <X className="h-5 w-5" />
+        </button>
       </div>
-      <div className="space-y-4 p-6">
+      <div className="space-y-4 px-6 py-5">
         {isLoading || !data ? (
           <LoadingRows />
         ) : (
@@ -678,11 +732,6 @@ function ModalDetalle({
             <Fila label="Observaciones" valor={data.observaciones ?? '—'} />
           </dl>
         )}
-        <div className="flex justify-end border-t border-slate-100 pt-4">
-          <Button variant="outline" onClick={onClose}>
-            Cerrar
-          </Button>
-        </div>
       </div>
     </Modal>
   );

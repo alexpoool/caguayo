@@ -32,7 +32,6 @@ import {
   Card,
   CardContent,
   CardHeader,
-  CardTitle,
   Table,
   TableHeader,
   TableBody,
@@ -525,19 +524,40 @@ function TablaMovimientos({ tipo }: { tipo: 'deducciones' | 'bonificaciones' }) 
         </CardContent>
       </Card>
 
-      <Modal isOpen={modalAbierto} onClose={cerrarModal} className="max-w-lg">
-        <div className="border-b p-6 pb-5">
-          <h2 className="text-lg font-semibold text-slate-900">
-            {editando ? `Editar ${cfg.etiqueta.toLowerCase()}` : `Nueva ${cfg.etiqueta.toLowerCase()}`}
-          </h2>
-          {editando && (
-            <p className="mt-1 text-sm text-slate-500">
-              {editando.empleado_nombre ?? ''} · {fmtFecha(editando.inicio_periodo)} –{' '}
-              {fmtFecha(editando.fin_periodo)}
-            </p>
-          )}
+      <Modal
+        isOpen={modalAbierto}
+        onClose={cerrarModal}
+        className="!max-w-lg overflow-hidden !rounded-none [&>button.absolute]:hidden"
+      >
+        <div className="sticky top-0 z-10 flex items-center gap-3 border-b bg-gradient-to-r from-brand-50 to-brand-100 px-6 py-4 pr-12">
+          <div className="rounded-lg bg-gradient-to-br from-brand-500 to-brand-600 p-2">
+            <Scale className="h-5 w-5 text-white" />
+          </div>
+          <div className="min-w-0">
+            <h2 className="truncate text-lg font-bold text-gray-900">
+              {editando
+                ? `Editar ${cfg.etiqueta.toLowerCase()}`
+                : `Nueva ${cfg.etiqueta.toLowerCase()}`}
+            </h2>
+            {editando && (
+              <p className="truncate text-xs text-slate-500">
+                {editando.empleado_nombre ?? ''} ·{' '}
+                {fmtFecha(editando.inicio_periodo)} –{' '}
+                {fmtFecha(editando.fin_periodo)}
+              </p>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={cerrarModal}
+            title="Cerrar"
+            aria-label="Cerrar"
+            className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full p-1 text-slate-400 transition-colors hover:bg-brand-100 hover:text-slate-600"
+          >
+            <X className="h-5 w-5" />
+          </button>
         </div>
-        <form onSubmit={onSubmit} className="space-y-4 p-6">
+        <form onSubmit={onSubmit} className="space-y-4 px-6 py-5">
           <div className="space-y-2">
             <Label>Empleado</Label>
             <SearchSelect
@@ -620,7 +640,7 @@ function TablaMovimientos({ tipo }: { tipo: 'deducciones' | 'bonificaciones' }) 
               />
             </div>
           </div>
-          <div className="flex items-center gap-2 border-t border-slate-100 pt-4">
+          <div className="sticky bottom-0 -mx-6 flex items-center gap-2 border-t bg-white px-6 pb-5 pt-4">
             <Button type="submit" disabled={saveMutation.isPending}>
               {saveMutation.isPending ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -628,10 +648,6 @@ function TablaMovimientos({ tipo }: { tipo: 'deducciones' | 'bonificaciones' }) 
                 <Save className="h-4 w-4" />
               )}
               {editando ? 'Guardar cambios' : 'Crear'}
-            </Button>
-            <Button type="button" variant="outline" onClick={cerrarModal}>
-              <X className="h-4 w-4" />
-              Cancelar
             </Button>
           </div>
         </form>

@@ -405,16 +405,25 @@ export function ObjetivosPage() {
       <Modal
         isOpen={formAbierto !== null}
         onClose={() => setFormAbierto(null)}
-        className="overflow-hidden"
+        className="!max-w-lg overflow-hidden !rounded-none [&>button.absolute]:hidden"
       >
         {/* Cabecera con el degradado de la página */}
-        <div className="sticky top-0 flex items-center gap-3 border-b bg-gradient-to-r from-emerald-50 to-emerald-100 px-6 py-4">
+        <div className="sticky top-0 z-10 flex items-center gap-3 border-b bg-gradient-to-r from-emerald-50 to-emerald-100 px-6 py-4 pr-12">
           <div className="p-2 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-lg">
             <Target className="h-5 w-5 text-white" />
           </div>
           <h2 className="text-lg font-bold text-gray-900">
             {formAbierto?.editando ? 'Editar objetivo' : 'Nuevo objetivo'}
           </h2>
+          <button
+            type="button"
+            onClick={() => setFormAbierto(null)}
+            title="Cerrar"
+            aria-label="Cerrar"
+            className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full p-1 text-slate-400 transition-colors hover:bg-emerald-100 hover:text-slate-600"
+          >
+            <X className="h-5 w-5" />
+          </button>
         </div>
         <form onSubmit={submit} className="px-6 pt-5 space-y-4">
             <div className="space-y-2">
@@ -551,15 +560,6 @@ export function ObjetivosPage() {
                   <Save className="h-4 w-4" />
                 )}
                 {formAbierto?.editando ? 'Guardar cambios' : 'Añadir objetivo'}
-              </Button>
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={() => setFormAbierto(null)}
-                className="gap-2 hover:bg-gray-200 transition-colors"
-              >
-                <X className="h-4 w-4" />
-                Cancelar
               </Button>
             </div>
           </form>

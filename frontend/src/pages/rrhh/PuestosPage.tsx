@@ -22,7 +22,6 @@ import {
   Card,
   CardContent,
   CardHeader,
-  CardTitle,
   Table,
   TableHeader,
   TableBody,
@@ -30,6 +29,7 @@ import {
   TableHead,
   TableCell,
   ConfirmModal,
+  Modal,
 } from '../../components/ui';
 
 const fmtMoneda = (v: number | null | undefined) =>
@@ -42,7 +42,7 @@ const fmtMoneda = (v: number | null | undefined) =>
 
 export function PuestosPage() {
   const queryClient = useQueryClient();
-  const [view, setView] = useState<'list' | 'form'>('list');
+  const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<RrhhPuesto | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filtroDepto, setFiltroDepto] = useState<number | ''>('');
@@ -94,7 +94,7 @@ export function PuestosPage() {
       salario_maximo: null,
     });
     setFormErrors({});
-    setView('form');
+    setFormOpen(true);
   };
 
   const handleEditar = (p: RrhhPuesto) => {
@@ -108,7 +108,13 @@ export function PuestosPage() {
       activo: p.activo,
     });
     setFormErrors({});
-    setView('form');
+    setFormOpen(true);
+  };
+
+  /** Cierra el modal del formulario (crear o editar). */
+  const cerrarForm = () => {
+    setFormOpen(false);
+    setFormErrors({});
   };
 
   const validar = (): boolean => {
@@ -133,7 +139,7 @@ export function PuestosPage() {
     onSuccess: () => {
       toast.success(editing ? 'Puesto actualizado' : 'Puesto creado');
       invalidate();
-      setView('list');
+      setFormOpen(false);
     },
     onError: (err: any) => toast.error(err?.message || 'No se pudo guardar'),
   });
@@ -174,23 +180,15 @@ export function PuestosPage() {
           <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isLoading}>
             <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
           </Button>
-          {view === 'list' ? (
-            <Button size="sm" onClick={handleNuevo}>
-              <Plus className="h-4 w-4" />
-              Nuevo puesto
-            </Button>
-          ) : (
-            <Button variant="outline" size="sm" onClick={() => setView('list')}>
-              <X className="h-4 w-4" />
-              Volver
-            </Button>
-          )}
+          <Button size="sm" onClick={handleNuevo}>
+            <Plus className="h-4 w-4" />
+            Nuevo puesto
+          </Button>
         </div>
       </div>
 
-      {view === 'list' ? (
-        <Card>
-          <CardHeader className="pb-3">
+      <Card>
+        <CardHeader className="pb-3">
             <div className="flex flex-wrap items-center gap-3">
               <div className="relative min-w-[200px] flex-1">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
@@ -287,13 +285,33 @@ export function PuestosPage() {
             )}
           </CardContent>
         </Card>
-      ) : (
-        <Card>
-          <CardHeader>
-            <CardTitle>{editing ? `Editar: ${editing.nombre}` : 'Nuevo puesto'}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={onSubmit} className="max-w-xl space-y-4">
+
+      {/* Formulario de puesto (crear y editar) en modal cuadrado */}
+      <Modal
+        isOpen={formOpen}
+        onClose={cerrarForm}
+        className="!max-w-2xl overflow-hidden !rounded-none [&>button.absolute]:hidden"
+      >
+        <div className="sticky top-0 z-10 flex items-center gap-3 border-b bg-gradient-to-r from-brand-50 to-brand-100 px-6 py-4 pr-12">
+          <div className="rounded-lg bg-gradient-to-br from-brand-500 to-brand-600 p-2">
+            <Briefcase className="h-5 w-5 text-white" />
+          </div>
+          <div className="min-w-0">
+            <h2 className="truncate text-lg font-bold text-gray-900">
+              {editing ? `Editar: ${editing.nombre}` : 'Nuevo puesto'}
+            </h2>
+          </div>
+          <button
+            type="button"
+            onClick={cerrarForm}
+            title="Cerrar"
+            aria-label="Cerrar"
+            className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full p-1 text-slate-400 transition-colors hover:bg-brand-100 hover:text-slate-600"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+        <form onSubmit={onSubmit} className="space-y-6 px-6 py-5">
               <div className="space-y-2">
                 <Label htmlFor="nombre">Nombre *</Label>
                 <Input
@@ -391,7 +409,7 @@ export function PuestosPage() {
                 </div>
               </div>
 
-              <div className="flex items-center gap-2 pt-2">
+              <div className="sticky bottom-0 -mx-6 flex items-center gap-2 border-t bg-white px-6 pb-1 pt-4">
                 <Button type="submit" disabled={saveMutation.isPending}>
                   {saveMutation.isPending ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -400,15 +418,9 @@ export function PuestosPage() {
                   )}
                   {editing ? 'Guardar cambios' : 'Crear puesto'}
                 </Button>
-                <Button type="button" variant="outline" onClick={() => setView('list')}>
-                  <X className="h-4 w-4" />
-                  Cancelar
-                </Button>
               </div>
             </form>
-          </CardContent>
-        </Card>
-      )}
+      </Modal>
 
       <ConfirmModal
         isOpen={confirmModal.isOpen}

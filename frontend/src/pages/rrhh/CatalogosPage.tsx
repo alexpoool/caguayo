@@ -31,7 +31,6 @@ import {
   Card,
   CardContent,
   CardHeader,
-  CardTitle,
   Table,
   TableHeader,
   TableBody,
@@ -39,6 +38,7 @@ import {
   TableHead,
   TableCell,
   ConfirmModal,
+  Modal,
 } from '../../components/ui';
 
 /** Filas del formulario según el catálogo seleccionado. */
@@ -75,7 +75,7 @@ export function CatalogosPage() {
     : RRHH_CATALOGOS[0].id;
   const config = RRHH_CATALOGOS.find((c) => c.id === tabId) as RrhhCatalogoConfig;
 
-  const [view, setView] = useState<'list' | 'form'>('list');
+  const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<RrhhCatalogo | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filtroEstado, setFiltroEstado] = useState<'todos' | 'activo' | 'inactivo'>('todos');
@@ -116,7 +116,7 @@ export function CatalogosPage() {
 
   const cambiarTab = (id: string) => {
     setSearchParams({ tab: id });
-    setView('list');
+    setFormOpen(false);
     setEditing(null);
     setSearchTerm('');
     setFiltroEstado('todos');
@@ -127,7 +127,7 @@ export function CatalogosPage() {
     setEditing(null);
     setForm(FORM_INICIAL);
     setFormErrors({});
-    setView('form');
+    setFormOpen(true);
   };
 
   const handleEditar = (item: RrhhCatalogo) => {
@@ -140,7 +140,13 @@ export function CatalogosPage() {
       valor: (registro.valor as number) ?? 5,
     });
     setFormErrors({});
-    setView('form');
+    setFormOpen(true);
+  };
+
+  /** Cierra el modal del formulario (crear o editar). */
+  const cerrarForm = () => {
+    setFormOpen(false);
+    setFormErrors({});
   };
 
   const validar = (): boolean => {
@@ -177,7 +183,7 @@ export function CatalogosPage() {
     onSuccess: () => {
       toast.success(editing ? 'Actualizado correctamente' : 'Creado correctamente');
       invalidate();
-      setView('list');
+      setFormOpen(false);
     },
     onError: (err: unknown) => {
       const msg = err instanceof Error ? err.message : 'No se pudo guardar';
@@ -239,16 +245,10 @@ export function CatalogosPage() {
               />
             </Button>
           )}
-          {view === 'list' && !config.custom && (
+          {!config.custom && (
             <Button size="sm" onClick={handleNuevo}>
               <Plus className="h-4 w-4" />
               Nuevo
-            </Button>
-          )}
-          {view === 'form' && (
-            <Button variant="outline" size="sm" onClick={() => setView('list')}>
-              <X className="h-4 w-4" />
-              Volver
             </Button>
           )}
         </div>
@@ -277,7 +277,7 @@ export function CatalogosPage() {
         <DepartamentosPage />
       ) : config.custom === 'puestos' ? (
         <PuestosPage />
-      ) : view === 'list' ? (
+      ) : (
         <Card>
           <CardHeader className="pb-3">
             <p className="text-sm text-slate-500">{config.descripcion}</p>
@@ -405,17 +405,36 @@ export function CatalogosPage() {
             )}
           </CardContent>
         </Card>
-      ) : (
-        <Card>
-          <CardHeader>
-            <CardTitle>
+      )}
+
+      {/* Formulario de catálogo (crear y editar) en modal cuadrado */}
+      <Modal
+        isOpen={formOpen}
+        onClose={cerrarForm}
+        className="!max-w-2xl overflow-hidden !rounded-none [&>button.absolute]:hidden"
+      >
+        <div className="sticky top-0 z-10 flex items-center gap-3 border-b bg-gradient-to-r from-brand-50 to-brand-100 px-6 py-4 pr-12">
+          <div className="rounded-lg bg-gradient-to-br from-brand-500 to-brand-600 p-2">
+            <Settings className="h-5 w-5 text-white" />
+          </div>
+          <div className="min-w-0">
+            <h2 className="truncate text-lg font-bold text-gray-900">
               {editing
                 ? `Editar: ${editing.nombre}`
                 : `Nuevo registro en ${config.nombre}`}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={onSubmit} className="max-w-xl space-y-4">
+            </h2>
+          </div>
+          <button
+            type="button"
+            onClick={cerrarForm}
+            title="Cerrar"
+            aria-label="Cerrar"
+            className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full p-1 text-slate-400 transition-colors hover:bg-brand-100 hover:text-slate-600"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+        <form onSubmit={onSubmit} className="space-y-6 px-6 py-5">
               <div className="space-y-2">
                 <Label htmlFor="nombre">Nombre *</Label>
                 <Input
@@ -497,7 +516,7 @@ export function CatalogosPage() {
                 </div>
               )}
 
-              <div className="flex items-center gap-2 pt-2">
+              <div className="sticky bottom-0 -mx-6 flex items-center gap-2 border-t bg-white px-6 pb-1 pt-4">
                 <Button type="submit" disabled={saveMutation.isPending}>
                   {saveMutation.isPending ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -506,19 +525,9 @@ export function CatalogosPage() {
                   )}
                   {editing ? 'Guardar cambios' : 'Crear registro'}
                 </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setView('list')}
-                >
-                  <X className="h-4 w-4" />
-                  Cancelar
-                </Button>
               </div>
             </form>
-          </CardContent>
-        </Card>
-      )}
+      </Modal>
 
       <ConfirmModal
         isOpen={confirmModal.isOpen}

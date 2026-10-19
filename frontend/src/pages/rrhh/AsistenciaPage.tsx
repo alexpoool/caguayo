@@ -22,7 +22,6 @@ import {
   Search,
   Clock,
   LogIn,
-  LogOut,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import {
@@ -484,13 +483,29 @@ export function AsistenciaPage() {
       <Modal
         isOpen={modalMarcar}
         onClose={() => setModalMarcar(false)}
-        className="max-w-md"
+        className="!max-w-md overflow-hidden !rounded-none [&>button.absolute]:hidden"
       >
-        <div className="p-6 pb-5 border-b">
-          <h2 className="text-lg font-semibold text-slate-900">Marcar asistencia</h2>
-          <p className="mt-1 text-sm text-slate-500">
-            Registra la entrada o la salida de un empleado.
-          </p>
+        <div className="sticky top-0 z-10 flex items-center gap-3 border-b bg-gradient-to-r from-brand-50 to-brand-100 px-6 py-4 pr-12">
+          <div className="rounded-lg bg-gradient-to-br from-brand-500 to-brand-600 p-2">
+            <Clock className="h-5 w-5 text-white" />
+          </div>
+          <div className="min-w-0">
+            <h2 className="truncate text-lg font-bold text-gray-900">
+              Marcar asistencia
+            </h2>
+            <p className="text-xs text-slate-500">
+              Registra la entrada o la salida de un empleado.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setModalMarcar(false)}
+            title="Cerrar"
+            aria-label="Cerrar"
+            className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full p-1 text-slate-400 transition-colors hover:bg-brand-100 hover:text-slate-600"
+          >
+            <X className="h-5 w-5" />
+          </button>
         </div>
         <form
           onSubmit={(e) => {
@@ -501,7 +516,7 @@ export function AsistenciaPage() {
             }
             marcarMutation.mutate();
           }}
-          className="space-y-4 p-6"
+          className="space-y-4 px-6 py-5"
         >
           <div className="space-y-2">
             <Label>Empleado</Label>
@@ -549,7 +564,7 @@ export function AsistenciaPage() {
               placeholder="Opcional"
             />
           </div>
-          <div className="flex items-center gap-2 border-t border-slate-100 pt-4">
+          <div className="sticky bottom-0 -mx-6 flex items-center gap-2 border-t bg-white px-6 pb-5 pt-4">
             <Button type="submit" disabled={marcarMutation.isPending}>
               {marcarMutation.isPending ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -557,10 +572,6 @@ export function AsistenciaPage() {
                 <Clock className="h-4 w-4" />
               )}
               Registrar
-            </Button>
-            <Button type="button" variant="outline" onClick={() => setModalMarcar(false)}>
-              <X className="h-4 w-4" />
-              Cancelar
             </Button>
           </div>
         </form>
@@ -570,22 +581,39 @@ export function AsistenciaPage() {
       <Modal
         isOpen={modalCorregir !== null}
         onClose={() => setModalCorregir(null)}
-        className="max-w-md"
+        className="!max-w-md overflow-hidden !rounded-none [&>button.absolute]:hidden"
       >
-        <div className="p-6 pb-5 border-b">
-          <h2 className="text-lg font-semibold text-slate-900">Corregir marcación</h2>
-          {modalCorregir && (
-            <p className="mt-1 text-sm text-slate-500">
-              {modalCorregir.empleado_nombre ?? ''} · {fmtFecha(modalCorregir.fecha)}
-            </p>
-          )}
+        <div className="sticky top-0 z-10 flex items-center gap-3 border-b bg-gradient-to-r from-brand-50 to-brand-100 px-6 py-4 pr-12">
+          <div className="rounded-lg bg-gradient-to-br from-brand-500 to-brand-600 p-2">
+            <CalendarCheck className="h-5 w-5 text-white" />
+          </div>
+          <div className="min-w-0">
+            <h2 className="truncate text-lg font-bold text-gray-900">
+              Corregir marcación
+            </h2>
+            {modalCorregir && (
+              <p className="truncate text-xs text-slate-500">
+                {modalCorregir.empleado_nombre ?? ''} ·{' '}
+                {fmtFecha(modalCorregir.fecha)}
+              </p>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={() => setModalCorregir(null)}
+            title="Cerrar"
+            aria-label="Cerrar"
+            className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full p-1 text-slate-400 transition-colors hover:bg-brand-100 hover:text-slate-600"
+          >
+            <X className="h-5 w-5" />
+          </button>
         </div>
         <form
           onSubmit={(e) => {
             e.preventDefault();
             corregirMutation.mutate();
           }}
-          className="space-y-4 p-6"
+          className="space-y-4 px-6 py-5"
         >
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
@@ -646,7 +674,7 @@ export function AsistenciaPage() {
               placeholder="Motivo de la corrección"
             />
           </div>
-          <div className="flex items-center gap-2 border-t border-slate-100 pt-4">
+          <div className="sticky bottom-0 -mx-6 flex items-center gap-2 border-t bg-white px-6 pb-5 pt-4">
             <Button type="submit" disabled={corregirMutation.isPending}>
               {corregirMutation.isPending ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -654,10 +682,6 @@ export function AsistenciaPage() {
                 <Save className="h-4 w-4" />
               )}
               Guardar corrección
-            </Button>
-            <Button type="button" variant="outline" onClick={() => setModalCorregir(null)}>
-              <X className="h-4 w-4" />
-              Cancelar
             </Button>
           </div>
         </form>

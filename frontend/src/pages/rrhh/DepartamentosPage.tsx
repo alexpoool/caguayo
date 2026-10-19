@@ -18,8 +18,6 @@ import {
   Loader2,
   Search,
   Eye,
-  Briefcase,
-  Users,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import {
@@ -29,7 +27,6 @@ import {
   Card,
   CardContent,
   CardHeader,
-  CardTitle,
   Table,
   TableHeader,
   TableBody,
@@ -49,7 +46,7 @@ interface Props {
 
 export function DepartamentosPage({ onIrADetalle }: Props) {
   const queryClient = useQueryClient();
-  const [view, setView] = useState<'list' | 'form'>('list');
+  const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<RrhhDepartamento | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filtroEstado, setFiltroEstado] = useState<'todos' | 'activo' | 'inactivo'>('todos');
@@ -81,7 +78,7 @@ export function DepartamentosPage({ onIrADetalle }: Props) {
   const { data: candidatosResponsable = [], isFetching: buscandoResponsable } = useQuery({
     queryKey: ['rrhh', 'empleados', 'candidatos', busquedaResponsable],
     queryFn: () => rrhhService.candidatosEmpleados(busquedaResponsable),
-    enabled: view === 'form',
+    enabled: formOpen,
   });
 
   const invalidate = () =>
@@ -91,7 +88,7 @@ export function DepartamentosPage({ onIrADetalle }: Props) {
     setEditing(null);
     setFormData({ nombre: '', descripcion: '', responsable: null });
     setFormErrors({});
-    setView('form');
+    setFormOpen(true);
   };
 
   const handleEditar = (dep: RrhhDepartamento) => {
@@ -103,7 +100,13 @@ export function DepartamentosPage({ onIrADetalle }: Props) {
       activo: dep.activo,
     });
     setFormErrors({});
-    setView('form');
+    setFormOpen(true);
+  };
+
+  /** Cierra el modal del formulario (crear o editar). */
+  const cerrarForm = () => {
+    setFormOpen(false);
+    setFormErrors({});
   };
 
   const validar = (): boolean => {
@@ -123,7 +126,7 @@ export function DepartamentosPage({ onIrADetalle }: Props) {
     onSuccess: () => {
       toast.success(editing ? 'Departamento actualizado' : 'Departamento creado');
       invalidate();
-      setView('list');
+      setFormOpen(false);
     },
     onError: (err: any) => {
       toast.error(err?.message || 'No se pudo guardar');
@@ -184,24 +187,15 @@ export function DepartamentosPage({ onIrADetalle }: Props) {
           >
             <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
           </Button>
-          {view === 'list' && (
-            <Button size="sm" onClick={handleNuevo}>
-              <Plus className="h-4 w-4" />
-              Nuevo departamento
-            </Button>
-          )}
-          {view === 'form' && (
-            <Button variant="outline" size="sm" onClick={() => setView('list')}>
-              <ArrowLeftIcon />
-              Volver
-            </Button>
-          )}
+          <Button size="sm" onClick={handleNuevo}>
+            <Plus className="h-4 w-4" />
+            Nuevo departamento
+          </Button>
         </div>
       </div>
 
       {/* Contenido */}
-      {view === 'list' ? (
-        <Card>
+      <Card>
           <CardHeader className="pb-3">
             <div className="flex flex-wrap items-center gap-3">
               <div className="relative flex-1 min-w-[200px]">
@@ -300,15 +294,33 @@ export function DepartamentosPage({ onIrADetalle }: Props) {
             )}
           </CardContent>
         </Card>
-      ) : (
-        <Card>
-          <CardHeader>
-            <CardTitle>
+
+      {/* Formulario de departamento (crear y editar) en modal cuadrado */}
+      <Modal
+        isOpen={formOpen}
+        onClose={cerrarForm}
+        className="!max-w-2xl overflow-hidden !rounded-none [&>button.absolute]:hidden"
+      >
+        <div className="sticky top-0 z-10 flex items-center gap-3 border-b bg-gradient-to-r from-brand-50 to-brand-100 px-6 py-4 pr-12">
+          <div className="rounded-lg bg-gradient-to-br from-brand-500 to-brand-600 p-2">
+            <Building2 className="h-5 w-5 text-white" />
+          </div>
+          <div className="min-w-0">
+            <h2 className="truncate text-lg font-bold text-gray-900">
               {editing ? `Editar: ${editing.nombre}` : 'Nuevo departamento'}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={onSubmit} className="max-w-xl space-y-4">
+            </h2>
+          </div>
+          <button
+            type="button"
+            onClick={cerrarForm}
+            title="Cerrar"
+            aria-label="Cerrar"
+            className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full p-1 text-slate-400 transition-colors hover:bg-brand-100 hover:text-slate-600"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+        <form onSubmit={onSubmit} className="space-y-6 px-6 py-5">
               <div className="space-y-2">
                 <Label htmlFor="nombre">Nombre *</Label>
                 <Input
@@ -363,7 +375,7 @@ export function DepartamentosPage({ onIrADetalle }: Props) {
                 </p>
               </div>
 
-              <div className="flex items-center gap-2 pt-2">
+              <div className="sticky bottom-0 -mx-6 flex items-center gap-2 border-t bg-white px-6 pb-1 pt-4">
                 <Button type="submit" disabled={saveMutation.isPending}>
                   {saveMutation.isPending ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -372,19 +384,9 @@ export function DepartamentosPage({ onIrADetalle }: Props) {
                   )}
                   {editing ? 'Guardar cambios' : 'Crear departamento'}
                 </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setView('list')}
-                >
-                  <X className="h-4 w-4" />
-                  Cancelar
-                </Button>
               </div>
             </form>
-          </CardContent>
-        </Card>
-      )}
+      </Modal>
 
       <ConfirmModal
         isOpen={confirmModal.isOpen}
@@ -406,14 +408,6 @@ export function DepartamentosPage({ onIrADetalle }: Props) {
 }
 
 // ── Subcomponentes ─────────────────────────────────────────────────────────
-
-function ArrowLeftIcon() {
-  return (
-    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-    </svg>
-  );
-}
 
 function ActionButton({
   children,

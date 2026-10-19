@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { rrhhService } from '../../services/rrhh';
@@ -7,7 +7,6 @@ import {
   type RrhhConceptoGenerar,
   type RrhhEstadoNomina,
   type RrhhNominaListado,
-  type RrhhNominaDetalle,
 } from '../../types/rrhh';
 import {
   AlertCircle,
@@ -23,6 +22,7 @@ import {
   Trash2,
   TrendingUp,
   Wallet,
+  X,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import {
@@ -422,15 +422,35 @@ function ModalGenerar({
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={cerrar} className="max-w-md">
-      <div className="border-b p-6 pb-5">
-        <h2 className="text-lg font-semibold text-slate-900">Generar nómina</h2>
-        <p className="mt-1 text-sm text-slate-500">
-          Se genera para todos los empleados activos. Los que ya tengan nómina
-          para ese periodo se omiten.
-        </p>
+    <Modal
+      isOpen={isOpen}
+      onClose={cerrar}
+      className="!max-w-md overflow-hidden !rounded-none [&>button.absolute]:hidden"
+    >
+      <div className="sticky top-0 z-10 flex items-center gap-3 border-b bg-gradient-to-r from-brand-50 to-brand-100 px-6 py-4 pr-12">
+        <div className="rounded-lg bg-gradient-to-br from-brand-500 to-brand-600 p-2">
+          <Banknote className="h-5 w-5 text-white" />
+        </div>
+        <div className="min-w-0">
+          <h2 className="truncate text-lg font-bold text-gray-900">
+            Generar nómina
+          </h2>
+          <p className="text-xs text-slate-500">
+            Se genera para todos los empleados activos; los que ya tengan nómina
+            para ese periodo se omiten.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={cerrar}
+          title="Cerrar"
+          aria-label="Cerrar"
+          className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full p-1 text-slate-400 transition-colors hover:bg-brand-100 hover:text-slate-600"
+        >
+          <X className="h-5 w-5" />
+        </button>
       </div>
-      <form onSubmit={onSubmit} className="space-y-4 p-6">
+      <form onSubmit={onSubmit} className="space-y-4 px-6 py-5">
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label htmlFor="inicio">Inicio del periodo</Label>
@@ -523,7 +543,7 @@ function ModalGenerar({
           </label>
         </div>
 
-        <div className="flex items-center gap-2 border-t border-slate-100 pt-4">
+        <div className="sticky bottom-0 -mx-6 flex items-center gap-2 border-t bg-white px-6 pb-5 pt-4">
           <Button type="submit" disabled={mutation.isPending}>
             {mutation.isPending ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -531,9 +551,6 @@ function ModalGenerar({
               <Plus className="h-4 w-4" />
             )}
             Generar
-          </Button>
-          <Button type="button" variant="outline" onClick={cerrar}>
-            Cancelar
           </Button>
         </div>
       </form>
@@ -631,17 +648,39 @@ function ModalConceptos({
   };
 
   return (
-    <Modal isOpen onClose={onCerrar} className="max-w-md">
-      <div className="border-b p-6 pb-5">
-        <h3 className="text-lg font-semibold text-slate-900">
-          {esDeduccion ? 'Deducciones' : 'Bonificaciones'} de la generación
-        </h3>
-        <p className="mt-1 text-sm text-slate-500">
-          Se aplican a todas las nóminas del lote. Si un empleado ya tiene ese
-          mismo movimiento, se reutiliza en lugar de duplicarlo.
-        </p>
+    <Modal
+      isOpen
+      onClose={onCerrar}
+      className="!max-w-md overflow-hidden !rounded-none [&>button.absolute]:hidden"
+    >
+      <div className="sticky top-0 z-10 flex items-center gap-3 border-b bg-gradient-to-r from-brand-50 to-brand-100 px-6 py-4 pr-12">
+        <div className="rounded-lg bg-gradient-to-br from-brand-500 to-brand-600 p-2">
+          {esDeduccion ? (
+            <TrendingUp className="h-5 w-5 text-white" />
+          ) : (
+            <Award className="h-5 w-5 text-white" />
+          )}
+        </div>
+        <div className="min-w-0">
+          <h3 className="truncate text-lg font-bold text-gray-900">
+            {esDeduccion ? 'Deducciones' : 'Bonificaciones'} de la generación
+          </h3>
+          <p className="text-xs text-slate-500">
+            Se aplican a todas las nóminas del lote; si un empleado ya tiene ese
+            movimiento, se reutiliza.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={onCerrar}
+          title="Cerrar"
+          aria-label="Cerrar"
+          className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full p-1 text-slate-400 transition-colors hover:bg-brand-100 hover:text-slate-600"
+        >
+          <X className="h-5 w-5" />
+        </button>
       </div>
-      <div className="space-y-4 p-6">
+      <div className="space-y-4 px-6 py-5">
         <div className="space-y-2">
           <Label>Tipo de concepto</Label>
           <select
@@ -712,12 +751,9 @@ function ModalConceptos({
           </ul>
         )}
 
-        <div className="flex items-center gap-2 border-t border-slate-100 pt-4">
+        <div className="sticky bottom-0 -mx-6 flex items-center gap-2 border-t bg-white px-6 pb-5 pt-4">
           <Button type="button" onClick={guardar}>
             Guardar
-          </Button>
-          <Button type="button" variant="outline" onClick={onCerrar}>
-            Cancelar
           </Button>
         </div>
       </div>
@@ -779,15 +815,37 @@ function ModalPagar({
   };
 
   return (
-    <Modal isOpen={nomina !== null} onClose={onClose} className="max-w-md">
-      <div className="border-b p-6 pb-5">
-        <h2 className="text-lg font-semibold text-slate-900">Registrar pago</h2>
-        <p className="mt-1 text-sm text-slate-500">
-          {nomina?.empleado_nombre ?? ''} · Neto a pagar:{' '}
-          <span className="font-semibold">{fmtMoneda(nomina?.salario_neto)}</span>
-        </p>
+    <Modal
+      isOpen={nomina !== null}
+      onClose={onClose}
+      className="!max-w-md overflow-hidden !rounded-none [&>button.absolute]:hidden"
+    >
+      <div className="sticky top-0 z-10 flex items-center gap-3 border-b bg-gradient-to-r from-brand-50 to-brand-100 px-6 py-4 pr-12">
+        <div className="rounded-lg bg-gradient-to-br from-brand-500 to-brand-600 p-2">
+          <Wallet className="h-5 w-5 text-white" />
+        </div>
+        <div className="min-w-0">
+          <h2 className="truncate text-lg font-bold text-gray-900">
+            Registrar pago
+          </h2>
+          <p className="truncate text-xs text-slate-500">
+            {nomina?.empleado_nombre ?? ''} · Neto a pagar:{' '}
+            <span className="font-semibold">
+              {fmtMoneda(nomina?.salario_neto)}
+            </span>
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          title="Cerrar"
+          aria-label="Cerrar"
+          className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full p-1 text-slate-400 transition-colors hover:bg-brand-100 hover:text-slate-600"
+        >
+          <X className="h-5 w-5" />
+        </button>
       </div>
-      <form onSubmit={onSubmit} className="space-y-4 p-6">
+      <form onSubmit={onSubmit} className="space-y-4 px-6 py-5">
         <div className="space-y-2">
           <Label>Método de pago</Label>
           <select
@@ -827,7 +885,7 @@ function ModalPagar({
           El monto se registra por el neto exacto. Una vez pagada, la nómina
           queda inmutable y solo puede anularse.
         </p>
-        <div className="flex items-center gap-2 border-t border-slate-100 pt-4">
+        <div className="sticky bottom-0 -mx-6 flex items-center gap-2 border-t bg-white px-6 pb-5 pt-4">
           <Button type="submit" disabled={mutation.isPending}>
             {mutation.isPending ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -835,9 +893,6 @@ function ModalPagar({
               <Wallet className="h-4 w-4" />
             )}
             Registrar pago
-          </Button>
-          <Button type="button" variant="outline" onClick={onClose}>
-            Cancelar
           </Button>
         </div>
       </form>
@@ -855,19 +910,37 @@ function ModalDetalle({ nominaId, onClose }: { nominaId: number | null; onClose:
   });
 
   return (
-    <Modal isOpen={nominaId !== null} onClose={onClose} className="max-w-2xl">
-      <div className="border-b p-6 pb-5">
-        <h2 className="text-lg font-semibold text-slate-900">
-          Detalle de la nómina {data ? `#${data.id}` : ''}
-        </h2>
-        {data && (
-          <p className="mt-1 text-sm text-slate-500">
-            {data.empleado_nombre} · {fmtFecha(data.inicio_periodo)} –{' '}
-            {fmtFecha(data.fin_periodo)}
-          </p>
-        )}
+    <Modal
+      isOpen={nominaId !== null}
+      onClose={onClose}
+      className="!max-w-2xl overflow-hidden !rounded-none [&>button.absolute]:hidden"
+    >
+      <div className="sticky top-0 z-10 flex items-center gap-3 border-b bg-gradient-to-r from-brand-50 to-brand-100 px-6 py-4 pr-12">
+        <div className="rounded-lg bg-gradient-to-br from-brand-500 to-brand-600 p-2">
+          <Banknote className="h-5 w-5 text-white" />
+        </div>
+        <div className="min-w-0">
+          <h2 className="truncate text-lg font-bold text-gray-900">
+            Detalle de la nómina {data ? `#${data.id}` : ''}
+          </h2>
+          {data && (
+            <p className="truncate text-xs text-slate-500">
+              {data.empleado_nombre} · {fmtFecha(data.inicio_periodo)} –{' '}
+              {fmtFecha(data.fin_periodo)}
+            </p>
+          )}
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          title="Cerrar"
+          aria-label="Cerrar"
+          className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full p-1 text-slate-400 transition-colors hover:bg-brand-100 hover:text-slate-600"
+        >
+          <X className="h-5 w-5" />
+        </button>
       </div>
-      <div className="space-y-4 p-6">
+      <div className="space-y-4 px-6 py-5">
         {isLoading ? (
           <LoadingRows />
         ) : isError || !data ? (
@@ -918,11 +991,6 @@ function ModalDetalle({ nominaId, onClose }: { nominaId: number | null; onClose:
             )}
           </>
         )}
-        <div className="flex justify-end border-t border-slate-100 pt-4">
-          <Button variant="outline" onClick={onClose}>
-            Cerrar
-          </Button>
-        </div>
       </div>
     </Modal>
   );
