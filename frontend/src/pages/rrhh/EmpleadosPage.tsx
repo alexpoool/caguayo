@@ -528,7 +528,7 @@ export function EmpleadosPage() {
       <Modal
         isOpen={formOpen}
         onClose={cerrarForm}
-        className="max-w-4xl overflow-hidden !rounded-none"
+        className="!max-w-5xl overflow-hidden !rounded-none"
       >
         <div className="sticky top-0 z-10 flex items-center gap-3 border-b bg-gradient-to-r from-indigo-50 to-indigo-100 px-6 py-4 pr-12">
           <div className="rounded-lg bg-gradient-to-br from-indigo-500 to-indigo-600 p-2">
@@ -554,7 +554,7 @@ export function EmpleadosPage() {
                   <Users className="h-4 w-4 text-indigo-500" />
                   Datos personales
                 </h3>
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                   <CampoTexto
                     id="nombre"
                     label="Nombre *"
@@ -627,7 +627,7 @@ export function EmpleadosPage() {
                   <Briefcase className="h-4 w-4 text-amber-500" />
                   Asignación laboral
                 </h3>
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                   <div className="space-y-2">
                     <Label className="flex items-center gap-2 text-gray-700">
                       <Briefcase className="h-4 w-4 text-amber-500" />
@@ -697,7 +697,7 @@ export function EmpleadosPage() {
                       ))}
                     </select>
                   </div>
-                  <div className="space-y-2">
+                  <div className="space-y-2 sm:col-span-2">
                     <Label className="flex items-center gap-2 text-gray-700">
                       <UserCheck className="h-4 w-4 text-indigo-500" />
                       Supervisor
