@@ -47,10 +47,6 @@ class RrhhEvaluacion(SQLModel, table=True):
             "promedio_objetivos IS NULL OR promedio_objetivos BETWEEN 0 AND 5",
             name="chk_evaluacion_promedio_objetivos",
         ),
-        CheckConstraint(
-            "estado IN ('borrador','finalizada')",
-            name="chk_evaluacion_estado",
-        ),
     )
 
     id: Optional[int] = Field(
@@ -87,7 +83,6 @@ class RrhhEvaluacion(SQLModel, table=True):
             nullable=False,
         )
     )
-    estado: str = Field(default="borrador", max_length=20)
     inicio_periodo: date
     fin_periodo: date
     # Promedio ponderado 0–5 de las filas de `evaluaciones_objetivos`

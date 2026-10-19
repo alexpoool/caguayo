@@ -25,7 +25,6 @@ from decimal import ROUND_HALF_UP, Decimal
 from typing import Iterable, Optional
 
 TIPOS_EVALUACION = ("formal", "autoevaluacion", "parcial", "final")
-ESTADOS_EVALUACION = ("borrador", "finalizada")
 
 # Las estrellas de los objetivos van de 0 a 5 (en la fila de
 # `evaluaciones_objetivos.resultado`, con CHECK en BD).
@@ -85,7 +84,6 @@ def promedio_ponderado(
 
 __all__ = [
     "TIPOS_EVALUACION",
-    "ESTADOS_EVALUACION",
     "ESTRELLAS_MAX",
     "redondear",
     "validar_fechas",

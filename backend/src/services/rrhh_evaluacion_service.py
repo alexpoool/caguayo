@@ -2,9 +2,8 @@
 
 Reglas de negocio de esta fase (rediseño «Evaluaciones v2»):
 
-- **Ciclo**: `borrador → finalizada`. El estado es **informativo**: la
-  evaluación es **editable siempre** (cabecera, selección, puntuación y
-  borrado también en `finalizada`); finalizar solo recalcula y sella.
+- **Sin estado**: la evaluación es **editable siempre** (cabecera, selección,
+  puntuación y borrado); no hay `borrador/finalizada` ni endpoint *finalizar*.
 - **Única por (empleado, periodo, tipo)**: no se puede tener dos evaluaciones
   iguales para el mismo periodo; el alta devuelve `409`.
 - **Tipos en catálogo**: `evaluaciones.tipo_evaluacion_id` es FK a
@@ -22,9 +21,8 @@ Reglas de negocio de esta fase (rediseño «Evaluaciones v2»):
   detalle (todo lo que cuenta en el promedio se ve).
 - **`promedio_objetivos`**: **promedio ponderado 0–5**
   (Σ estrellas×peso / Σ pesos de las filas **puntuadas**), persistido en la
-  columna homónima y recalculado en **cualquier estado** al seleccionar,
-  puntuar o quitar filas, al finalizar y cuando un cambio de objetivo
-  arrastra sus filas.
+  columna homónima y recalculado al seleccionar, puntuar o quitar filas y
+  cuando un cambio de objetivo arrastra sus filas.
 - **Sin autenticación en backend** (decisión del módulo; deuda Fase 10): el
   `evaluador_id` viene en el payload.
 """
@@ -38,7 +36,6 @@ from sqlmodel import select, func, or_
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from src.domain.rrhh_evaluacion_calc import (
-    ESTADOS_EVALUACION,
     promedio_ponderado,
     redondear,
     solapa_fechas,
@@ -71,8 +68,8 @@ from src.models import (
 async def _recalcular_promedio(db: AsyncSession, evaluacion: RrhhEvaluacion) -> None:
     """`promedio_objetivos` = promedio ponderado de sus filas puntuadas.
 
-    Se recalcula en **cualquier estado** (la evaluación es siempre
-    editable); `finalizar` lo invoca para dejar el valor al sellar.
+    Se recalcula en cada cambio de filas (la evaluación es siempre
+    editable); sin filas puntuadas queda `NULL`.
     """
     res = await db.exec(
         select(RrhhEvaluacionObjetivo).where(
@@ -90,8 +87,7 @@ async def recalcular_promedios_empleado(db: AsyncSession, empleado_id: int) -> N
     """Recalcula `promedio_objetivos` de **todas** las evaluaciones del empleado.
 
     El servicio de objetivos la usa cuando un cambio en un objetivo arrastra
-    filas del N:M (p. ej. su baja, que las borra por `CASCADE`). No mira el
-    estado: la evaluación es siempre editable.
+    filas del N:M (p. ej. su baja, que las borra por `CASCADE`).
     """
     res = await db.exec(
         select(RrhhEvaluacion).where(RrhhEvaluacion.empleado_id == empleado_id)
@@ -418,17 +414,11 @@ class RrhhEvaluacionService:
         limit: int = 100,
         empleado_id: Optional[int] = None,
         departamento_id: Optional[int] = None,
-        estado: Optional[str] = None,
         tipo_evaluacion_id: Optional[int] = None,
         desde: Optional[date] = None,
         hasta: Optional[date] = None,
         buscar: Optional[str] = None,
     ) -> List[RrhhEvaluacionListado]:
-        if estado is not None and estado not in ESTADOS_EVALUACION:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Estado inválido. Debe ser uno de: {', '.join(ESTADOS_EVALUACION)}",
-            )
         if tipo_evaluacion_id is not None:
             # Exige que el id exista en el catálogo (paridad con el antiguo
             # filtro `tipo=<texto inválido>` → 400); un tipo inactivo sí filtra.
@@ -446,8 +436,6 @@ class RrhhEvaluacionService:
         statement = select(RrhhEvaluacion)
         if empleado_id is not None:
             statement = statement.where(RrhhEvaluacion.empleado_id == empleado_id)
-        if estado is not None:
-            statement = statement.where(RrhhEvaluacion.estado == estado)
         if tipo_evaluacion_id is not None:
             statement = statement.where(
                 RrhhEvaluacion.tipo_evaluacion_id == tipo_evaluacion_id
@@ -520,7 +508,6 @@ class RrhhEvaluacionService:
             evaluador_id=obj_in.evaluador_id,
             periodo=obj_in.periodo,
             tipo_evaluacion_id=obj_in.tipo_evaluacion_id,
-            estado="borrador",
             inicio_periodo=obj_in.inicio_periodo,
             fin_periodo=obj_in.fin_periodo,
             comentarios=obj_in.comentarios,
@@ -568,35 +555,13 @@ class RrhhEvaluacionService:
         resolucion = await self._resolucion_listado(db, [evaluacion])
         return self._construir_listado(evaluacion, resolucion)
 
-    async def finalizar(self, db: AsyncSession, id: int) -> RrhhEvaluacionListado:
-        """`borrador → finalizada`: recalcula el promedio y sello informativo.
-
-        El estado no bloquea nada (la evaluación sigue siendo editable);
-        repetir finalizar devuelve 409.
-        """
-        evaluacion = await self._buscar_o_404(db, id)
-        if evaluacion.estado == "finalizada":
-            raise HTTPException(
-                status_code=409, detail="La evaluación ya está finalizada"
-            )
-
-        await _recalcular_promedio(db, evaluacion)
-        evaluacion.estado = "finalizada"
-        evaluacion.updated_at = datetime.now()
-        db.add(evaluacion)
-        await db.commit()
-        await db.refresh(evaluacion)
-
-        resolucion = await self._resolucion_listado(db, [evaluacion])
-        return self._construir_listado(evaluacion, resolucion)
-
     async def eliminar(self, db: AsyncSession, id: int) -> dict:
         evaluacion = await self._buscar_o_404(db, id)
         await db.delete(evaluacion)  # las filas del N:M caen por CASCADE
         await db.commit()
         return {"mensaje": f"{self.model_name} eliminada", "id": id}
 
-    # ── Selección y puntuación de objetivos (cualquier estado) ──────────────
+    # ── Selección y puntuación de objetivos ─────────────────────────────────
 
     async def seleccionar_objetivos(
         self,
@@ -727,7 +692,7 @@ class RrhhEvaluacionService:
         desde: Optional[date] = None,
         hasta: Optional[date] = None,
     ) -> RrhhEvaluacionReporte:
-        """Promedios ponderados por empleado y globales (todos los estados)."""
+        """Promedios ponderados por empleado y globales."""
         statement = select(RrhhEvaluacion)
         if empleado_id is not None:
             statement = statement.where(RrhhEvaluacion.empleado_id == empleado_id)
@@ -749,13 +714,8 @@ class RrhhEvaluacionService:
 
         grupos: dict[int, list] = {}
         todos_promedios: List[Decimal] = []
-        borradores = finalizadas = 0
 
         for fila in filas:
-            if fila.estado == "borrador":
-                borradores += 1
-            else:
-                finalizadas += 1
             if fila.promedio_objetivos is not None:
                 prom = fila.promedio_objetivos
                 todos_promedios.append(prom)
@@ -792,8 +752,6 @@ class RrhhEvaluacionService:
             desde=desde,
             hasta=hasta,
             cantidad_evaluaciones=len(filas),
-            cantidad_borradores=borradores,
-            cantidad_finalizadas=finalizadas,
             promedio_objetivos=(
                 redondear(
                     sum(todos_promedios, Decimal("0")) / Decimal(len(todos_promedios))

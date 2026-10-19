@@ -103,7 +103,7 @@ def _crear_objetivo(client, empleado_id, **kwargs):
 
 
 def _seleccionar(client, evaluacion_id, objetivo_ids):
-    """Adjunta objetivos a la evaluación (solo `borrador`)."""
+    """Adjunta objetivos a la evaluación."""
     response = client.post(
         f"{BASE}/{evaluacion_id}/objetivos",
         json={"objetivo_ids": objetivo_ids},
@@ -113,7 +113,7 @@ def _seleccionar(client, evaluacion_id, objetivo_ids):
 
 
 def _puntuar(client, evaluacion_id, fila_id, **kwargs):
-    """Puntúa/ajusta una fila seleccionada (solo `borrador`)."""
+    """Puntúa/ajusta una fila seleccionada."""
     response = client.put(
         f"{BASE}/{evaluacion_id}/objetivos/{fila_id}",
         json=kwargs,
@@ -184,15 +184,16 @@ class TestDominioEvaluacion:
         assert validar_fechas(date(2098, 6, 30), date(2098, 6, 1)) is not None
 
 
-# ── Ciclo de vida de la evaluación ──────────────────────────────────────────
+# ── Alta y edición de la evaluación ────────────────────────────────────────
 
 
-class TestCicloEvaluacion:
-    def test_crear_nace_en_borrador(self, client):
+class TestAltaYEdicion:
+    def test_crear_sin_estado(self, client):
         empleado = _crear_empleado(client)
         try:
             data = _crear_evaluacion(client, empleado["id"])
-            assert data["estado"] == "borrador"
+            # Sin estado: la evaluación es siempre editable (decisión de usuario).
+            assert "estado" not in data
             assert data["promedio_objetivos"] is None
             assert data["cantidad_objetivos"] == 0
             assert data["cantidad_seleccionados"] == 0
@@ -223,40 +224,7 @@ class TestCicloEvaluacion:
         finally:
             _limpiar_empleado(client, empleado["id"])
 
-    def test_finalizar_pasa_a_finalizada(self, client):
-        empleado = _crear_empleado(client)
-        try:
-            evaluacion = _crear_evaluacion(client, empleado["id"])
-            response = client.post(f"{BASE}/{evaluacion['id']}/finalizar")
-            assert response.status_code == 200, response.text
-            assert response.json()["estado"] == "finalizada"
-
-            # Finalizar dos veces es conflicto.
-            response = client.post(f"{BASE}/{evaluacion['id']}/finalizar")
-            assert response.status_code == 409
-        finally:
-            _limpiar_empleado(client, empleado["id"])
-
-    def test_editar_y_eliminar_finalizada(self, client):
-        """La finalizada es editable igual que un borrador (decisión de usuario)."""
-        empleado = _crear_empleado(client)
-        try:
-            evaluacion = _crear_evaluacion(client, empleado["id"])
-            client.post(f"{BASE}/{evaluacion['id']}/finalizar")
-
-            response = client.put(
-                f"{BASE}/{evaluacion['id']}", json={"comentarios": "Nuevo"}
-            )
-            assert response.status_code == 200, response.text
-            assert response.json()["comentarios"] == "Nuevo"
-            assert response.json()["estado"] == "finalizada"
-
-            response = client.delete(f"{BASE}/{evaluacion['id']}")
-            assert response.status_code == 200, response.text
-        finally:
-            _limpiar_empleado(client, empleado["id"])
-
-    def test_eliminar_borrador(self, client):
+    def test_eliminar(self, client):
         empleado = _crear_empleado(client)
         try:
             evaluacion = _crear_evaluacion(client, empleado["id"])
@@ -268,7 +236,7 @@ class TestCicloEvaluacion:
         finally:
             _limpiar_empleado(client, empleado["id"])
 
-    def test_editar_borrador(self, client):
+    def test_editar_cabecera(self, client):
         empleado = _crear_empleado(client)
         try:
             evaluacion = _crear_evaluacion(client, empleado["id"])
@@ -701,13 +669,11 @@ class TestSeleccionObjetivos:
         finally:
             _limpiar_empleado(client, empleado["id"])
 
-    def test_seleccionar_en_finalizada(self, client):
-        """La selección no se bloquea al finalizar (estado informativo)."""
+    def test_seleccionar_y_quitar(self, client):
         empleado = _crear_empleado(client)
         try:
             objetivo = _crear_objetivo(client, empleado["id"])
             evaluacion = _crear_evaluacion(client, empleado["id"])
-            client.post(f"{BASE}/{evaluacion['id']}/finalizar")
 
             response = client.post(
                 f"{BASE}/{evaluacion['id']}/objetivos",
@@ -715,7 +681,6 @@ class TestSeleccionObjetivos:
             )
             assert response.status_code == 201, response.text
             detalle = response.json()
-            assert detalle["estado"] == "finalizada"
             assert detalle["cantidad_seleccionados"] == 1
         finally:
             _limpiar_empleado(client, empleado["id"])
@@ -969,8 +934,8 @@ class TestPuntuacion:
         finally:
             _limpiar_empleado(client, empleado["id"])
 
-    def test_finalizar_calcula_y_sigue_editable(self, client):
-        """Finalizar sella el estado pero no bloquea nada: se sigue editando."""
+    def test_repuntar_recalcula(self, client):
+        """Repuntuar una fila recalcula el promedio al momento."""
         empleado = _crear_empleado(client)
         try:
             objetivo = _crear_objetivo(client, empleado["id"], peso=2)
@@ -982,28 +947,14 @@ class TestPuntuacion:
             )
             _puntuar(client, evaluacion["id"], fila["fila_id"], resultado=5)
 
-            response = client.post(f"{BASE}/{evaluacion['id']}/finalizar")
-            assert response.status_code == 200, response.text
-            assert Decimal(response.json()["promedio_objetivos"]) == Decimal("5.00")
-
-            # Sigue siendo editable: cambiar estrellas recalcula en finalizada.
+            # Se puede repuntuar: recalcula.
             response = client.put(
                 f"{BASE}/{evaluacion['id']}/objetivos/{fila['fila_id']}",
                 json={"resultado": 1},
             )
             assert response.status_code == 200, response.text
             detalle = client.get(f"{BASE}/{evaluacion['id']}").json()
-            assert detalle["estado"] == "finalizada"
             assert Decimal(detalle["promedio_objetivos"]) == Decimal("1.00")
-
-            # Y también se puede quitar la fila (sin puntuadas → NULL).
-            response = client.delete(
-                f"{BASE}/{evaluacion['id']}/objetivos/{fila['fila_id']}"
-            )
-            assert response.status_code == 200, response.text
-            detalle = client.get(f"{BASE}/{evaluacion['id']}").json()
-            assert detalle["promedio_objetivos"] is None
-            assert detalle["cantidad_seleccionados"] == 0
         finally:
             _limpiar_empleado(client, empleado["id"])
 
@@ -1089,14 +1040,6 @@ class TestListadoYReporte:
                 },
             )
             assert [f["empleado_id"] for f in response.json()] == [otro["id"]]
-
-            # Estado (acotado a los empleados de esta prueba).
-            response = client.get(
-                BASE, params={"empleado_id": otro["id"], "estado": "finalizada"}
-            )
-            assert response.json() == []
-            response = client.get(BASE, params={"estado": "inventado"})
-            assert response.status_code == 400
         finally:
             _limpiar_empleado(client, empleado["id"])
             _limpiar_empleado(client, otro["id"])
@@ -1134,7 +1077,7 @@ class TestListadoYReporte:
         empleado = _crear_empleado(client)
         otro = _crear_empleado(client)
         try:
-            # A: finalizada con promedio 5.00.
+            # A: promedio 5.00.
             objetivo_a = _crear_objetivo(client, empleado["id"], peso=2)
             eval_a = _crear_evaluacion(client, empleado["id"])
             _seleccionar(client, eval_a["id"], [objetivo_a["id_objetivos"]])
@@ -1143,9 +1086,8 @@ class TestListadoYReporte:
                 objetivo_a["id_objetivos"],
             )
             _puntuar(client, eval_a["id"], fila["fila_id"], resultado=5)
-            client.post(f"{BASE}/{eval_a['id']}/finalizar")
 
-            # B: borrador con promedio 3.00.
+            # B: promedio 3.00.
             objetivo_b = _crear_objetivo(client, otro["id"])
             eval_b = _crear_evaluacion(client, otro["id"])
             _seleccionar(client, eval_b["id"], [objetivo_b["id_objetivos"]])
@@ -1163,8 +1105,6 @@ class TestListadoYReporte:
             assert response.status_code == 200, response.text
             data = response.json()
             assert data["cantidad_evaluaciones"] == 1
-            assert data["cantidad_finalizadas"] == 1
-            assert data["cantidad_borradores"] == 0
             assert Decimal(data["promedio_objetivos"]) == Decimal("5.00")
             assert len(data["empleados"]) == 1
             assert Decimal(data["empleados"][0]["promedio_objetivos"]) == Decimal(
@@ -1175,8 +1115,6 @@ class TestListadoYReporte:
             response = client.get(f"{BASE}/reporte", params={"empleado_id": otro["id"]})
             data = response.json()
             assert data["cantidad_evaluaciones"] == 1
-            assert data["cantidad_borradores"] == 1
-            assert data["cantidad_finalizadas"] == 0
             assert Decimal(data["promedio_objetivos"]) == Decimal("3.00")
             assert data["empleados"][0]["cantidad_evaluaciones"] == 1
         finally:

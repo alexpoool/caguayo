@@ -8,9 +8,8 @@ declaran **antes** de `/{evaluacion_id}` para que no las capture el parámetro
 de ruta (FastAPI responde `422` en lugar de pasar a la siguiente ruta cuando
 el conversor `int` falla).
 
-Ciclo de vida: `borrador → finalizada` (estado **informativo**: la
-evaluación es editable en cualquier momento, también al finalizar; el
-único 409 por estado es repetir *finalizar*). Los objetivos se
+Ciclo de vida: **sin estado** (decisión de usuario): la evaluación es
+**editable siempre** y no hay endpoint *finalizar*. Los objetivos se
 definen en el empleado (`/rrhh/objetivos`) y aquí se **seleccionan** (N:M con
 peso) y se **puntúan** (estrellas 0–5 + valoración y recomendaciones).
 """
@@ -22,7 +21,6 @@ from fastapi import APIRouter, Depends, Query
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from src.database.connection import get_session
-from src.domain.rrhh_evaluacion_calc import ESTADOS_EVALUACION
 from src.dto import (
     RrhhEvaluacionCreate,
     RrhhEvaluacionUpdate,
@@ -39,8 +37,6 @@ rrhh_evaluaciones_router = APIRouter(
     prefix="/rrhh/evaluaciones", tags=["rrhh-evaluaciones"]
 )
 
-_ESTADOS_DESC = ", ".join(ESTADOS_EVALUACION)
-
 
 # ── Evaluaciones (rutas literales primero) ──────────────────────────────────
 
@@ -51,7 +47,6 @@ async def listar_evaluaciones(
     limit: int = Query(100, ge=1, le=1000),
     empleado_id: Optional[int] = None,
     departamento_id: Optional[int] = None,
-    estado: Optional[str] = Query(None, description=f"Uno de: {_ESTADOS_DESC}"),
     tipo_evaluacion_id: Optional[int] = Query(
         None, description="Id de un tipo del catálogo `tipos_evaluaciones`"
     ),
@@ -62,7 +57,7 @@ async def listar_evaluaciones(
 ):
     """Listado de evaluaciones con empleado, promedio ponderado y conteos.
 
-    Filtros: empleado, departamento, estado, tipo de evaluación (id del
+    Filtros: empleado, departamento, tipo de evaluación (id del
     catálogo), periodo que toca el rango `desde`/`hasta` y búsqueda por
     nombre, apellido o código. `cantidad_objetivos` cuenta los objetivos del
     empleado **en alcance** del periodo y `cantidad_seleccionados` los ya
@@ -74,7 +69,6 @@ async def listar_evaluaciones(
         limit=limit,
         empleado_id=empleado_id,
         departamento_id=departamento_id,
-        estado=estado,
         tipo_evaluacion_id=tipo_evaluacion_id,
         desde=desde,
         hasta=hasta,
@@ -186,17 +180,6 @@ async def editar_evaluacion(
 ):
     """Edición parcial de la cabecera (cualquier estado)."""
     return await rrhh_evaluacion_service.update(db, evaluacion_id, payload)
-
-
-@rrhh_evaluaciones_router.post(
-    "/{evaluacion_id}/finalizar", response_model=RrhhEvaluacionListado
-)
-async def finalizar_evaluacion(
-    evaluacion_id: int,
-    db: AsyncSession = Depends(get_session),
-):
-    """`borrador → finalizada`: recalcula el promedio y sella el estado."""
-    return await rrhh_evaluacion_service.finalizar(db, evaluacion_id)
 
 
 @rrhh_evaluaciones_router.delete("/{evaluacion_id}")

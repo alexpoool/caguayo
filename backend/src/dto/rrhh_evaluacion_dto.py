@@ -1,15 +1,10 @@
 """DTOs del submódulo RRHH — Evaluaciones (Fase 8 v2 — objetivos ponderados).
 
-Ciclo de vida:
-
-    borrador ──finalizar──▶ finalizada      (estado informativo)
-
-La evaluación es **editable siempre** (decisión de usuario): la cabecera, la
-selección de objetivos (N:M) y la puntuación de sus filas (estrellas 0–5,
-valoración y recomendaciones) se editan igual en `borrador` que en
-`finalizada`; solo *finalizar* dos veces devuelve 409. La *definición* de
-objetivos (nombre, periodo, peso) vive en el empleado y es siempre editable:
-véase `dto/rrhh_objetivo_dto.py`.
+La evaluación **no tiene estado** (decisión de usuario): es **editable
+siempre** —cabecera, selección de objetivos (N:M) y puntuación de sus filas
+(estrellas 0–5, valoración y recomendaciones)—. La *definición* de objetivos
+(nombre, periodo, peso) vive en el empleado y es siempre editable: véase
+`dto/rrhh_objetivo_dto.py`.
 
 Como el módulo no usa autenticación en backend (decisión; deuda Fase 10), el
 `evaluador_id` viene en el payload.
@@ -27,7 +22,6 @@ from pydantic import field_validator
 from sqlmodel import Field, SQLModel
 
 from src.domain.rrhh_evaluacion_calc import (
-    ESTADOS_EVALUACION,
     TIPOS_EVALUACION,
     validar_fechas,
 )
@@ -86,7 +80,6 @@ class RrhhEvaluacionBase(SQLModel):
     tipo_evaluacion_id: int
     # Nombre resuelto del catálogo `tipos_evaluaciones` (solo lectura).
     tipo_evaluacion: Optional[str] = None
-    estado: str
     inicio_periodo: date
     fin_periodo: date
     # Promedio ponderado 0–5 (None sin filas puntuadas).
@@ -193,8 +186,6 @@ class RrhhEvaluacionReporte(SQLModel):
     desde: Optional[date] = None
     hasta: Optional[date] = None
     cantidad_evaluaciones: int = 0
-    cantidad_borradores: int = 0
-    cantidad_finalizadas: int = 0
     promedio_objetivos: Optional[Decimal] = None
     empleados: list[RrhhEvaluacionEmpleadoReporte] = Field(default_factory=list)
 
@@ -212,5 +203,4 @@ __all__ = [
     "RrhhEvaluacionEmpleadoReporte",
     "RrhhEvaluacionReporte",
     "TIPOS_EVALUACION",
-    "ESTADOS_EVALUACION",
 ]
