@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { rrhhService } from '../../services/rrhh';
 import {
@@ -22,6 +22,7 @@ import {
   Search,
   Clock,
   LogIn,
+  LogOut,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import {
@@ -46,6 +47,39 @@ import {
 
 const hoyISO = () => new Date().toISOString().slice(0, 10);
 
+/** Hora local actual en `HH:MM` (la que se propone al marcar). */
+const horaActualHHMM = () => {
+  const d = new Date();
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+};
+
+/** Qué se está marcando en el formulario rápido. */
+type TipoMarcacion = 'entrada' | 'salida';
+
+interface FormMarcar {
+  empleado_id: number | null;
+  fecha: string;
+  hora: string;
+  tipo: TipoMarcacion;
+  observaciones: string;
+}
+
+/** Formulario de marcación en blanco (hoy, ahora y entrada). */
+const formMarcarVacio = (): FormMarcar => ({
+  empleado_id: null,
+  fecha: hoyISO(),
+  hora: horaActualHHMM(),
+  tipo: 'entrada',
+  observaciones: '',
+});
+
+/** Colores del aviso de estado del día en el modal de marcación. */
+const AVISO_TONO = {
+  brand: 'border-brand-100 bg-brand-50 text-brand-600',
+  amber: 'border-amber-200 bg-amber-50 text-amber-800',
+  red: 'border-red-200 bg-red-50 text-red-700',
+} as const;
+
 const fmtHora = (v: string | null | undefined) => (v ? v.slice(0, 5) : null);
 
 const fmtFecha = (v: string) => {
@@ -67,12 +101,7 @@ export function AsistenciaPage() {
   const [modalCorregir, setModalCorregir] = useState<RrhhAsistenciaListado | null>(null);
   const [aEliminar, setAEliminar] = useState<RrhhAsistenciaListado | null>(null);
 
-  const [formMarcar, setFormMarcar] = useState<{
-    empleado_id: number | null;
-    fecha: string;
-    hora: string;
-    observaciones: string;
-  }>({ empleado_id: null, fecha: hoyISO(), hora: '', observaciones: '' });
+  const [formMarcar, setFormMarcar] = useState<FormMarcar>(formMarcarVacio);
 
   const [formCorreccion, setFormCorreccion] = useState<{
     hora_entrada: string;
@@ -93,6 +122,23 @@ export function AsistenciaPage() {
     queryKey: ['rrhh', 'empleados', 'candidatos', busquedaEmpleado],
     queryFn: () => rrhhService.candidatosEmpleados(busquedaEmpleado),
     enabled: modalMarcar,
+  });
+
+  // Marcación del empleado en la fecha elegida: decide qué se puede marcar.
+  const {
+    data: marcacionDia,
+    isLoading: consultandoDia,
+  } = useQuery({
+    queryKey: ['rrhh', 'asistencia', 'dia', formMarcar.empleado_id, formMarcar.fecha],
+    queryFn: () =>
+      rrhhService.listarAsistencias({
+        empleado_id: formMarcar.empleado_id!,
+        desde: formMarcar.fecha,
+        hasta: formMarcar.fecha,
+        limit: 1,
+      }),
+    select: (filas) => filas[0] ?? null,
+    enabled: modalMarcar && formMarcar.empleado_id !== null && Boolean(formMarcar.fecha),
   });
 
   const {
@@ -152,18 +198,43 @@ export function AsistenciaPage() {
   );
 
   const marcarMutation = useMutation({
-    mutationFn: () =>
-      rrhhService.marcarAsistencia({
+    mutationFn: () => {
+      const hora = formMarcar.hora || horaActualHHMM();
+      // Las observaciones solo se envían si se escribieron: así una re-marca no
+      // borra la nota que ya tuviera el día.
+      const observaciones = formMarcar.observaciones.trim() || undefined;
+
+      if (formMarcar.tipo === 'salida') {
+        return rrhhService.updateAsistencia(marcacionDia!.id, {
+          hora_salida: hora,
+          ...(observaciones ? { observaciones } : {}),
+        });
+      }
+
+      // Ya hay entrada: se re-marca (el backend vuelve a derivar presente/tardanza).
+      if (marcacionDia?.hora_entrada) {
+        return rrhhService.updateAsistencia(marcacionDia.id, {
+          hora_entrada: hora,
+          estado: 'presente',
+          ...(observaciones ? { observaciones } : {}),
+        });
+      }
+
+      // Sin entrada todavía: alta del día (el estado se deriva de la hora).
+      return rrhhService.createAsistencia({
         empleado_id: formMarcar.empleado_id!,
         fecha: formMarcar.fecha || hoyISO(),
-        hora: formMarcar.hora || undefined,
-        observaciones: formMarcar.observaciones || undefined,
-      }),
+        hora_entrada: hora,
+        observaciones: observaciones ?? marcacionDia?.observaciones ?? undefined,
+      });
+    },
     onSuccess: () => {
-      toast.success('Asistencia registrada');
+      toast.success(
+        formMarcar.tipo === 'entrada' ? 'Entrada registrada' : 'Salida registrada'
+      );
       invalidate();
       setModalMarcar(false);
-      setFormMarcar({ empleado_id: null, fecha: hoyISO(), hora: '', observaciones: '' });
+      setFormMarcar(formMarcarVacio());
     },
     onError: (err: unknown) => {
       toast.error(err instanceof Error ? err.message : 'No se pudo registrar');
@@ -246,6 +317,75 @@ export function AsistenciaPage() {
     setHasta('');
   };
 
+  // ── Estado del día elegido (empleado + fecha) ────────────────────────────
+  const hayEntrada = Boolean(marcacionDia?.hora_entrada);
+  const haySalida = Boolean(marcacionDia?.hora_salida);
+  const diaCompleto = hayEntrada && haySalida;
+  const entradaDia = fmtHora(marcacionDia?.hora_entrada);
+  const salidaDia = fmtHora(marcacionDia?.hora_salida);
+
+  const puedeMarcarEntrada = !diaCompleto;
+  const puedeMarcarSalida = hayEntrada && !haySalida;
+
+  // Al cambiar de empleado o de día, «Salida» puede dejar de aplicar.
+  useEffect(() => {
+    if (!modalMarcar) return;
+    if (formMarcar.tipo === 'salida' && !puedeMarcarSalida) {
+      setFormMarcar((f) => ({ ...f, tipo: 'entrada' }));
+    }
+  }, [modalMarcar, formMarcar.tipo, puedeMarcarSalida]);
+
+  const horaEfectiva = formMarcar.hora || horaActualHHMM();
+  const errorSalida =
+    formMarcar.tipo === 'salida' &&
+    entradaDia !== null &&
+    horaEfectiva <= entradaDia
+      ? `La salida debe ser posterior a la entrada (${entradaDia})`
+      : null;
+
+  /** Aviso bajo fecha/hora: qué va a pasar exactamente con este día. */
+  const avisoDia: { tono: keyof typeof AVISO_TONO; texto: string } | null =
+    formMarcar.empleado_id === null || !formMarcar.fecha
+      ? null
+      : consultandoDia
+        ? { tono: 'brand', texto: 'Comprobando el día…' }
+        : errorSalida
+          ? { tono: 'red', texto: errorSalida }
+          : diaCompleto
+            ? {
+                tono: 'amber',
+                texto: `El día ya tiene entrada (${entradaDia}) y salida (${salidaDia}). Edítalo con «Corregir» desde la tabla.`,
+              }
+            : formMarcar.tipo === 'salida'
+              ? {
+                  tono: 'brand',
+                  texto: `Se registrará la salida del día. Entrada: ${entradaDia}.`,
+                }
+              : hayEntrada
+                ? {
+                    tono: 'brand',
+                    texto: `El día ya tiene entrada (${entradaDia}); se actualizará a la hora indicada.`,
+                  }
+                : {
+                    tono: 'brand',
+                    texto: 'El día está sin marcar: se registrará la entrada.',
+                  };
+
+  const registrarDeshabilitado =
+    marcarMutation.isPending || consultandoDia || diaCompleto || errorSalida !== null;
+
+  const empleadoElegido = candidatosEmpleado.find(
+    (c) => c.id === formMarcar.empleado_id
+  );
+
+  const tituloSalida = puedeMarcarSalida
+    ? undefined
+    : diaCompleto
+      ? 'El día ya tiene entrada y salida; edítalo con «Corregir»'
+      : formMarcar.empleado_id === null
+        ? 'Elige primero el empleado y la fecha'
+        : 'Primero registra la entrada';
+
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -265,7 +405,7 @@ export function AsistenciaPage() {
           <Button
             size="sm"
             onClick={() => {
-              setFormMarcar({ empleado_id: null, fecha: hoyISO(), hora: '', observaciones: '' });
+              setFormMarcar(formMarcarVacio());
               setBusquedaEmpleado('');
               setModalMarcar(true);
             }}
@@ -492,8 +632,12 @@ export function AsistenciaPage() {
             <h2 className="truncate text-lg font-bold text-gray-900">
               Marcar asistencia
             </h2>
-            <p className="text-xs text-slate-500">
-              Registra la entrada o la salida de un empleado.
+            <p className="truncate text-xs text-slate-500">
+              {empleadoElegido
+                ? `${empleadoElegido.apellido}, ${empleadoElegido.nombre}${
+                    formMarcar.fecha ? ` · ${fmtFecha(formMarcar.fecha)}` : ''
+                  }`
+                : 'Registra la entrada o la salida de un empleado.'}
             </p>
           </div>
           <button
@@ -513,10 +657,52 @@ export function AsistenciaPage() {
               toast.error('Elige un empleado');
               return;
             }
+            if (formMarcar.tipo === 'salida' && !puedeMarcarSalida) {
+              toast.error('Ese día no admite una salida: primero registra la entrada');
+              return;
+            }
+            if (errorSalida) {
+              toast.error(errorSalida);
+              return;
+            }
             marcarMutation.mutate();
           }}
           className="space-y-4 px-6 py-5"
         >
+          {/* Selector explícito: entrada o salida */}
+          <div className="space-y-2">
+            <Label>¿Qué vas a marcar?</Label>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setFormMarcar((f) => ({ ...f, tipo: 'entrada' }))}
+                disabled={!puedeMarcarEntrada}
+                title={diaCompleto ? 'El día ya tiene entrada y salida' : undefined}
+                className={`inline-flex items-center justify-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
+                  formMarcar.tipo === 'entrada'
+                    ? 'border-brand-500 bg-brand-50 text-brand-600 ring-1 ring-brand-500'
+                    : 'border-slate-300 text-slate-600 hover:bg-slate-50'
+                }`}
+              >
+                <LogIn className="h-4 w-4" />
+                Entrada
+              </button>
+              <button
+                type="button"
+                onClick={() => setFormMarcar((f) => ({ ...f, tipo: 'salida' }))}
+                disabled={!puedeMarcarSalida}
+                title={tituloSalida}
+                className={`inline-flex items-center justify-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
+                  formMarcar.tipo === 'salida'
+                    ? 'border-brand-500 bg-brand-50 text-brand-600 ring-1 ring-brand-500'
+                    : 'border-slate-300 text-slate-600 hover:bg-slate-50'
+                }`}
+              >
+                <LogOut className="h-4 w-4" />
+                Salida
+              </button>
+            </div>
+          </div>
           <div className="space-y-2">
             <Label>Empleado</Label>
             <SearchSelect
@@ -528,10 +714,6 @@ export function AsistenciaPage() {
               loading={buscandoEmpleado}
               emptyMessage="Sin resultados"
             />
-            <p className="text-xs text-slate-400">
-              La primera marca del día es la <strong>entrada</strong>; la segunda, la{' '}
-              <strong>salida</strong>.
-            </p>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
@@ -543,16 +725,43 @@ export function AsistenciaPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="hora-marcar">Hora (opcional)</Label>
+              <div className="flex items-center justify-between gap-2">
+                <Label htmlFor="hora-marcar">Hora</Label>
+                <button
+                  type="button"
+                  onClick={() => setFormMarcar((f) => ({ ...f, hora: horaActualHHMM() }))}
+                  className="text-[11px] font-semibold text-brand-600 transition-colors hover:text-brand-500 hover:underline"
+                >
+                  Ahora
+                </button>
+              </div>
               <Input
                 id="hora-marcar"
                 type="time"
                 value={formMarcar.hora}
                 onChange={(e) => setFormMarcar({ ...formMarcar, hora: e.target.value })}
               />
-              <p className="text-xs text-slate-400">Si la dejas vacía, se usa la hora actual.</p>
             </div>
           </div>
+
+          {/* Estado del día elegido: qué va a pasar al registrar */}
+          {avisoDia && (
+            <div
+              className={`flex items-start gap-2 rounded-lg border px-3 py-2 text-xs ${AVISO_TONO[avisoDia.tono]}`}
+            >
+              {consultandoDia ? (
+                <Loader2 className="mt-0.5 h-3.5 w-3.5 shrink-0 animate-spin" />
+              ) : avisoDia.tono === 'amber' || avisoDia.tono === 'red' ? (
+                <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+              ) : formMarcar.tipo === 'salida' ? (
+                <LogOut className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+              ) : (
+                <LogIn className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+              )}
+              <span>{avisoDia.texto}</span>
+            </div>
+          )}
+
           <div className="space-y-2">
             <Label htmlFor="obs-marcar">Observaciones</Label>
             <Input
@@ -563,13 +772,15 @@ export function AsistenciaPage() {
             />
           </div>
           <div className="sticky bottom-0 -mx-6 flex items-center gap-2 border-t bg-white px-6 pb-5 pt-4">
-            <Button type="submit" disabled={marcarMutation.isPending}>
+            <Button type="submit" disabled={registrarDeshabilitado}>
               {marcarMutation.isPending ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
+              ) : formMarcar.tipo === 'salida' ? (
+                <LogOut className="h-4 w-4" />
               ) : (
-                <Clock className="h-4 w-4" />
+                <LogIn className="h-4 w-4" />
               )}
-              Registrar
+              {formMarcar.tipo === 'salida' ? 'Registrar salida' : 'Registrar entrada'}
             </Button>
           </div>
         </form>
