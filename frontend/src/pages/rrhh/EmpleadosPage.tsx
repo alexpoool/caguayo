@@ -21,7 +21,6 @@ import {
   AlertCircle,
   Loader2,
   Search,
-  ArrowLeft,
   Hash,
   Type,
   CreditCard,
@@ -37,8 +36,8 @@ import {
   BadgeCheck,
   Clock,
   Timer,
-  Banknote,
   Target,
+  ClipboardCheck,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import {
@@ -48,7 +47,6 @@ import {
   Card,
   CardContent,
   CardHeader,
-  CardTitle,
   Table,
   TableHeader,
   TableBody,
@@ -56,16 +54,9 @@ import {
   TableHead,
   TableCell,
   ConfirmModal,
+  Modal,
   SearchSelect,
 } from '../../components/ui';
-
-const fmtMoneda = (v: number | string | null | undefined) =>
-  v === null || v === undefined || v === ''
-    ? '—'
-    : new Intl.NumberFormat('es-CU', {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-      }).format(Number(v));
 
 const fmtHora = (v: string | null | undefined) =>
   v ? v.slice(0, 5) : null;
@@ -77,7 +68,7 @@ const GRADIENTE =
 export function EmpleadosPage() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
-  const [view, setView] = useState<'list' | 'form'>('list');
+  const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<RrhhEmpleado | null>(null);
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
@@ -166,7 +157,7 @@ export function EmpleadosPage() {
   const { data: candidatosSupervisor = [], isFetching: buscandoSupervisor } = useQuery({
     queryKey: ['rrhh', 'empleados', 'candidatos', busquedaSupervisor],
     queryFn: () => rrhhService.candidatosEmpleados(busquedaSupervisor),
-    enabled: view === 'form',
+    enabled: formOpen,
   });
 
   const invalidate = () => {
@@ -196,7 +187,7 @@ export function EmpleadosPage() {
       horario_final: '',
     });
     setFormErrors({});
-    setView('form');
+    setFormOpen(true);
   };
 
   const handleEditar = (emp: RrhhEmpleado) => {
@@ -221,7 +212,13 @@ export function EmpleadosPage() {
       horario_final: fmtHora(emp.horario_final) ?? '',
     });
     setFormErrors({});
-    setView('form');
+    setFormOpen(true);
+  };
+
+  /** Cierra el modal del formulario (crear o editar). */
+  const cerrarForm = () => {
+    setFormOpen(false);
+    setFormErrors({});
   };
 
   const validar = (): boolean => {
@@ -231,10 +228,12 @@ export function EmpleadosPage() {
     if (formData.correo && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.correo)) {
       errs.correo = 'El correo no tiene un formato válido';
     }
-    const ini = formData.horario_inicio;
-    const fin = formData.horario_final;
-    if (ini && fin && fin <= ini) {
-      errs.horario_final = 'El horario final debe ser posterior al inicio';
+    if (formData.tipo_asistencia !== 'LIBRE') {
+      const ini = formData.horario_inicio;
+      const fin = formData.horario_final;
+      if (ini && fin && fin <= ini) {
+        errs.horario_final = 'El horario final debe ser posterior al inicio';
+      }
     }
     setFormErrors(errs);
     return Object.keys(errs).length === 0;
@@ -252,8 +251,14 @@ export function EmpleadosPage() {
         direccion: formData.direccion?.trim() || null,
         fecha_nacimiento: formData.fecha_nacimiento || null,
         fecha_contratacion: formData.fecha_contratacion || null,
-        horario_inicio: formData.horario_inicio || null,
-        horario_final: formData.horario_final || null,
+        horario_inicio:
+          formData.tipo_asistencia === 'LIBRE'
+            ? null
+            : formData.horario_inicio || null,
+        horario_final:
+          formData.tipo_asistencia === 'LIBRE'
+            ? null
+            : formData.horario_final || null,
         salario: formData.salario === undefined ? null : formData.salario,
       };
       if (editing) {
@@ -264,7 +269,7 @@ export function EmpleadosPage() {
     onSuccess: () => {
       toast.success(editing ? 'Empleado actualizado' : 'Empleado creado');
       invalidate();
-      setView('list');
+      setFormOpen(false);
     },
     onError: (err: unknown) => {
       const msg = err instanceof Error ? err.message : 'No se pudo guardar';
@@ -324,25 +329,13 @@ export function EmpleadosPage() {
             </p>
           </div>
         </div>
-        {view === 'list' ? (
-          <Button onClick={handleNuevo} className={`gap-2 ${GRADIENTE}`}>
-            <Plus className="h-4 w-4" />
-            Nuevo empleado
-          </Button>
-        ) : (
-          <Button
-            variant="secondary"
-            onClick={() => setView('list')}
-            className="gap-2 hover:scale-105 transition-transform"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Volver a la lista
-          </Button>
-        )}
+        <Button onClick={handleNuevo} className={`gap-2 ${GRADIENTE}`}>
+          <Plus className="h-4 w-4" />
+          Nuevo empleado
+        </Button>
       </div>
 
-      {view === 'list' ? (
-        <Card className="overflow-hidden hover:shadow-lg transition-shadow duration-300">
+      <Card className="overflow-hidden hover:shadow-lg transition-shadow duration-300">
           <CardHeader className="pb-3">
             <div className="relative max-w-md">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
@@ -426,16 +419,16 @@ export function EmpleadosPage() {
                           Departamento
                         </div>
                       </TableHead>
-                      <TableHead className="text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <Banknote className="h-4 w-4 text-purple-500" />
-                          Salario
-                        </div>
-                      </TableHead>
                       <TableHead className="text-center">
                         <div className="flex items-center justify-center gap-2">
                           <Target className="h-4 w-4 text-rose-500" />
                           Objetivos
+                        </div>
+                      </TableHead>
+                      <TableHead className="text-center">
+                        <div className="flex items-center justify-center gap-2">
+                          <ClipboardCheck className="h-4 w-4 text-emerald-500" />
+                          Evaluaciones
                         </div>
                       </TableHead>
                       <TableHead className="text-right">Acciones</TableHead>
@@ -467,9 +460,6 @@ export function EmpleadosPage() {
                         <TableCell className="text-slate-600">
                           {emp.departamento_nombre ?? '—'}
                         </TableCell>
-                        <TableCell className="text-right tabular-nums">
-                          {fmtMoneda(emp.salario)}
-                        </TableCell>
                         <TableCell className="text-center">
                           <Button
                             variant="outline"
@@ -480,6 +470,18 @@ export function EmpleadosPage() {
                             }
                           >
                             Objetivos
+                          </Button>
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            title={`Evaluaciones de ${emp.apellido}, ${emp.nombre}`}
+                            onClick={() =>
+                              navigate(`/rrhh/evaluaciones?empleado_id=${emp.id}`)
+                            }
+                          >
+                            Evaluaciones
                           </Button>
                         </TableCell>
                         <TableCell className="text-right">
@@ -521,25 +523,31 @@ export function EmpleadosPage() {
             </div>
           </CardContent>
         </Card>
-      ) : (
-        <Card className="hover:shadow-lg transition-shadow duration-300">
-          <CardHeader className="border-b bg-gradient-to-r from-indigo-50 to-indigo-100">
-            <CardTitle className="flex items-center gap-2">
-              <div className="p-2 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-lg">
-                <Users className="h-5 w-5 text-white" />
-              </div>
+
+      {/* Formulario de empleado (crear y editar) en modal cuadrado */}
+      <Modal
+        isOpen={formOpen}
+        onClose={cerrarForm}
+        className="max-w-4xl overflow-hidden !rounded-none"
+      >
+        <div className="sticky top-0 z-10 flex items-center gap-3 border-b bg-gradient-to-r from-indigo-50 to-indigo-100 px-6 py-4 pr-12">
+          <div className="rounded-lg bg-gradient-to-br from-indigo-500 to-indigo-600 p-2">
+            <Users className="h-5 w-5 text-white" />
+          </div>
+          <div className="min-w-0">
+            <h2 className="truncate text-lg font-bold text-gray-900">
               {editing
                 ? `Editar: ${editing.apellido}, ${editing.nombre}`
                 : 'Nuevo empleado'}
-            </CardTitle>
+            </h2>
             {editing?.codigo_empleado && (
               <p className="font-mono text-xs text-slate-500">
                 Código: {editing.codigo_empleado}
               </p>
             )}
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={onSubmit} className="space-y-6">
+          </div>
+        </div>
+        <form onSubmit={onSubmit} className="space-y-6 px-6 py-5">
               {/* Datos personales */}
               <section>
                 <h3 className="mb-3 text-sm font-semibold text-slate-700 flex items-center gap-2">
@@ -755,25 +763,6 @@ export function EmpleadosPage() {
                       ))}
                     </select>
                   </div>
-                  <CampoTexto
-                    id="horario_inicio"
-                    label="Horario inicio"
-                    tipo="time"
-                    valor={formData.horario_inicio ?? ''}
-                    onChange={(v) => set('horario_inicio', v)}
-                    icono={Clock}
-                    color="text-slate-500"
-                  />
-                  <CampoTexto
-                    id="horario_final"
-                    label="Horario final"
-                    tipo="time"
-                    valor={formData.horario_final ?? ''}
-                    onChange={(v) => set('horario_final', v)}
-                    error={formErrors.horario_final}
-                    icono={Clock}
-                    color="text-slate-500"
-                  />
                   <div className="space-y-2">
                     <Label className="flex items-center gap-2 text-gray-700">
                       <Timer className="h-4 w-4 text-amber-500" />
@@ -781,19 +770,65 @@ export function EmpleadosPage() {
                     </Label>
                     <select
                       value={formData.tipo_asistencia}
-                      onChange={(e) =>
-                        set('tipo_asistencia', e.target.value as 'LIBRE' | 'NO_LIBRE')
-                      }
+                      onChange={(e) => {
+                        const tipo = e.target.value as 'LIBRE' | 'NO_LIBRE';
+                        setFormData((prev) => ({
+                          ...prev,
+                          tipo_asistencia: tipo,
+                          // LIBRE = sin horario fijo: se limpian (se guardan null).
+                          horario_inicio:
+                            tipo === 'LIBRE' ? '' : prev.horario_inicio,
+                          horario_final:
+                            tipo === 'LIBRE' ? '' : prev.horario_final,
+                        }));
+                        if (tipo === 'LIBRE') {
+                          setFormErrors((prev) => {
+                            const next = { ...prev };
+                            delete next.horario_final;
+                            return next;
+                          });
+                        }
+                      }}
                       className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200"
                     >
                       <option value="NO_LIBRE">NO_LIBRE (asistir en horario)</option>
                       <option value="LIBRE">LIBRE (sin horario fijo)</option>
                     </select>
                   </div>
+                  {/* LIBRE = sin horario fijo: no se piden horas. */}
+                  {formData.tipo_asistencia !== 'LIBRE' ? (
+                    <>
+                      <CampoTexto
+                        id="horario_inicio"
+                        label="Horario inicio"
+                        tipo="time"
+                        valor={formData.horario_inicio ?? ''}
+                        onChange={(v) => set('horario_inicio', v)}
+                        icono={Clock}
+                        color="text-slate-500"
+                      />
+                      <CampoTexto
+                        id="horario_final"
+                        label="Horario final"
+                        tipo="time"
+                        valor={formData.horario_final ?? ''}
+                        onChange={(v) => set('horario_final', v)}
+                        error={formErrors.horario_final}
+                        icono={Clock}
+                        color="text-slate-500"
+                      />
+                    </>
+                  ) : (
+                    <div className="flex items-center gap-2 rounded-md bg-slate-50 px-3 py-2 text-xs text-slate-500 sm:col-span-2">
+                      <Clock className="h-4 w-4 shrink-0 text-slate-400" />
+                      Sin horario fijo: este empleado no tiene hora de entrada ni
+                      de salida.
+                    </div>
+                  )}
                 </div>
               </section>
 
-              <div className="flex gap-4 pt-4 border-t">
+              <div className="sticky bottom-0 -mx-6 flex gap-4 border-t bg-white px-6 pb-1 pt-4">
                 <Button
                   type="submit"
                   className={`gap-2 ${GRADIENTE}`}
@@ -809,17 +844,15 @@ export function EmpleadosPage() {
                 <Button
                   type="button"
                   variant="secondary"
-                  onClick={() => setView('list')}
+                  onClick={cerrarForm}
                   className="gap-2 hover:bg-gray-200 transition-colors"
                 >
                   <X className="h-4 w-4" />
                   Cancelar
                 </Button>
               </div>
-            </form>
-          </CardContent>
-        </Card>
-      )}
+        </form>
+      </Modal>
 
       <ConfirmModal
         isOpen={confirmModal.isOpen}

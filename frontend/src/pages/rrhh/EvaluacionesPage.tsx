@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { rrhhService } from "../../services/rrhh";
 import {
   type RrhhEvaluacionCreate,
@@ -86,6 +86,11 @@ export function EvaluacionesPage() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
 
+  // Filtro por empleado desde la tabla de Empleados:
+  // `/rrhh/evaluaciones?empleado_id=N`.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const empleadoId = Number(searchParams.get("empleado_id")) || 0;
+
   const [searchTerm, setSearchTerm] = useState("");
   const [formOpen, setFormOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] =
@@ -106,6 +111,17 @@ export function EvaluacionesPage() {
       rrhhService.listarTiposEvaluacion({ limit: 500, activo: true }),
   });
 
+  // Nombre del empleado filtrado (el catálogo ya se carga para el alta).
+  const empleadoFiltrado = empleadoId
+    ? empleados.find((e) => e.id === empleadoId)
+    : null;
+
+  const limpiarFiltro = () => {
+    const next = new URLSearchParams(searchParams);
+    next.delete("empleado_id");
+    setSearchParams(next, { replace: true });
+  };
+
   const {
     data: evaluaciones = [],
     isLoading,
@@ -113,11 +129,12 @@ export function EvaluacionesPage() {
     error,
     refetch,
   } = useQuery({
-    queryKey: ["rrhh", "evaluaciones", searchTerm],
+    queryKey: ["rrhh", "evaluaciones", searchTerm, empleadoId],
     queryFn: () =>
       rrhhService.listarEvaluaciones({
         limit: 500,
         buscar: searchTerm || undefined,
+        empleado_id: empleadoId || undefined,
       }),
   });
 
@@ -130,7 +147,8 @@ export function EvaluacionesPage() {
   };
 
   const abrirForm = () => {
-    setFormData(formVacio());
+    // Si se llegó filtrado por un empleado, el alta nace con él elegido.
+    setFormData({ ...formVacio(), empleado_id: empleadoId });
     setFormErrors({});
     setFormOpen(true);
   };
@@ -207,14 +225,33 @@ export function EvaluacionesPage() {
 
       <Card className="overflow-hidden hover:shadow-lg transition-shadow duration-300">
         <CardHeader className="pb-3">
-          <div className="relative max-w-md">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-            <Input
-              placeholder="Buscar por nombre, apellido o código..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-9"
-            />
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="relative min-w-[240px] max-w-md flex-1">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <Input
+                placeholder="Buscar por nombre, apellido o código..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+            {empleadoId > 0 && (
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-sky-100 px-3 py-1 text-sm font-medium text-sky-700 ring-1 ring-sky-200">
+                <User className="h-3.5 w-3.5" />
+                {empleadoFiltrado
+                  ? `${empleadoFiltrado.apellido}, ${empleadoFiltrado.nombre}`
+                  : `Empleado #${empleadoId}`}
+                <button
+                  type="button"
+                  onClick={limpiarFiltro}
+                  title="Quitar el filtro de empleado"
+                  aria-label="Quitar el filtro de empleado"
+                  className="ml-1 rounded-full p-0.5 text-sky-600 transition-colors hover:bg-sky-200 hover:text-sky-800"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </span>
+            )}
           </div>
         </CardHeader>
         <CardContent>
