@@ -61,11 +61,12 @@ async def obtener_contratos(
     skip: int = 0,
     limit: int = 10000,
     id_cliente: Optional[int] = None,
+    search: Optional[str] = None,
     db: AsyncSession = Depends(get_session),
 ):
-    """Obtener todos los contratos, opcionalmente filtrados por id_cliente."""
+    """Obtener todos los contratos, opcionalmente filtrados por id_cliente o búsqueda."""
     try:
-        return await ContratoService.get_all(db, skip, limit, id_cliente)
+        return await ContratoService.get_all(db, skip, limit, id_cliente, search)
     except Exception as e:
         logger.error("Error al obtener contratos", exc_info=True)
         raise HTTPException(status_code=500, detail="Error interno del servidor")

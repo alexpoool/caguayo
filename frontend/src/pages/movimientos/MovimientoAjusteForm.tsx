@@ -7,20 +7,14 @@ import { authService } from "../../services/auth";
 import { useDependenciasFiltradas } from "../../hooks/useDependenciasFiltradas";
 import {
   Button,
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
   Input,
   Label,
 } from "../../components/ui";
 import { generarCodigoMovimiento } from "../../utils/codigos";
 import {
-  ArrowLeft,
   ArrowRight,
   Plus,
   Trash2,
-  Save,
   Package,
   MapPin,
   ClipboardList,
@@ -28,10 +22,8 @@ import {
   ChevronDown,
   X,
   CheckCircle2,
-  ArrowRightLeft,
 } from "lucide-react";
 import toast from "react-hot-toast";
-import { useNavigate } from "react-router-dom";
 import { ProductoConCantidad } from "../../types/index";
 
 interface Destino {
@@ -230,8 +222,17 @@ function SearchableSelect<T extends Record<string, any>>({
   );
 }
 
-export function MovimientoAjusteForm() {
-  const navigate = useNavigate();
+interface MovimientoAjusteFormProps {
+  formId: string;
+  onExit?: () => void;
+  onPendingChange?: (pending: boolean) => void;
+}
+
+export function MovimientoAjusteForm({
+  formId,
+  onExit,
+  onPendingChange,
+}: MovimientoAjusteFormProps) {
   const queryClient = useQueryClient();
 
   const usuario = authService.getUser();
@@ -286,12 +287,17 @@ export function MovimientoAjusteForm() {
       queryClient.invalidateQueries({ queryKey: ["movimientos"] });
       queryClient.invalidateQueries({ queryKey: ["movimientos-pendientes"] });
       toast.success("Ajuste creado exitosamente");
-      navigate("/movimientos");
+      onExit?.();
     },
     onError: (error: any) => {
       toast.error(error?.message || "Error al crear ajuste");
     },
   });
+
+  // Elevar estado de guardado al padre (para el footer del FormModal)
+  useEffect(() => {
+    onPendingChange?.(crearAjusteMutation.isPending);
+  }, [crearAjusteMutation.isPending, onPendingChange]);
 
   useEffect(() => {
     if (productoSeleccionado) {
@@ -350,15 +356,6 @@ export function MovimientoAjusteForm() {
     0,
   );
 
-  const puedeGuardar =
-    productoSeleccionado &&
-    dependenciaOrigen &&
-    stockOrigen > 0 &&
-    destinos.every((d) => d.id_dependencia !== null && d.cantidad > 0) &&
-    cantidadTotalDestinos > 0 &&
-    cantidadTotalDestinos <= stockOrigen &&
-    !destinos.some((d) => d.id_dependencia === dependenciaOrigen.id);
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -404,41 +401,19 @@ export function MovimientoAjusteForm() {
   };
 
   return (
-    <div className="space-y-4">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="p-3 rounded-md bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-lg animate-bounce-subtle">
-            <ArrowRightLeft className="h-8 w-8" />
-          </div>
-          <div>
-            <h2 className="text-2xl font-bold text-gray-900">Ajuste</h2>
-            <p className="text-sm text-gray-500 ml-3 hidden sm:block">
-              Transferencia de productos entre dependencias
-            </p>
-          </div>
-        </div>
-        <Button
-          variant="outline"
-          onClick={() => navigate("/movimientos")}
-          className="gap-2"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Volver
-        </Button>
-      </div>
-
-      <form onSubmit={handleSubmit}>
-        <div className="space-y-4">
+    <form
+      id={formId}
+      onSubmit={handleSubmit}
+      className="p-4 md:p-6"
+    >
+      <div className="space-y-4">
           {/* Producto y Dependencia de Origen */}
-          <Card className="shadow-sm border-gray-200">
-            <CardHeader className="border-b bg-gray-50/50">
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <Package className="h-5 w-5 text-blue-600" />
-                Producto y Origen
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-6">
+          <div>
+            <div className="px-6 py-4 border-b bg-gray-50/50 flex items-center gap-2 text-lg font-semibold text-gray-900">
+              <Package className="h-5 w-5 text-blue-600" />
+              Producto y Origen
+            </div>
+            <div className="p-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <SearchableSelect
                   label="Seleccionar Producto"
@@ -487,18 +462,16 @@ export function MovimientoAjusteForm() {
                   idField="id_dependencia"
                 />
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
 
           {/* Destinos */}
-          <Card className="shadow-sm border-gray-200">
-            <CardHeader className="border-b bg-gray-50/50">
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <ArrowRight className="h-5 w-5 text-green-600" />
-                Destinos
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-6">
+          <div>
+            <div className="px-6 py-4 border-b bg-gray-50/50 flex items-center gap-2 text-lg font-semibold text-gray-900">
+              <ArrowRight className="h-5 w-5 text-green-600" />
+              Destinos
+            </div>
+            <div className="p-6">
               <div className="space-y-4">
                 {destinos.map((destino) => {
                   const depsMostrar = dependencias.filter((d) => !dependenciaOrigen || d.id_dependencia !== dependenciaOrigen.id);
@@ -613,18 +586,16 @@ export function MovimientoAjusteForm() {
                     </p>
                   )}
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
 
           {/* Observación */}
-          <Card className="shadow-sm border-gray-200">
-            <CardHeader className="border-b bg-gray-50/50">
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <ClipboardList className="h-5 w-5 text-gray-600" />
-                Observación
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-6">
+          <div>
+            <div className="px-6 py-4 border-b bg-gray-50/50 flex items-center gap-2 text-lg font-semibold text-gray-900">
+              <ClipboardList className="h-5 w-5 text-gray-600" />
+              Observación
+            </div>
+            <div className="p-6">
               <textarea
                 value={observacion}
                 onChange={(e) => setObservacion(e.target.value)}
@@ -632,32 +603,11 @@ export function MovimientoAjusteForm() {
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none resize-none"
                 placeholder="Describe el motivo del ajuste..."
               />
-            </CardContent>
-          </Card>
-
-          {/* Botones */}
-          <div className="flex gap-3 mt-8 pt-6 border-t">
-            <Button
-              type="submit"
-              disabled={!puedeGuardar || crearAjusteMutation.isPending}
-              className="gap-2 bg-gradient-to-r from-blue-500 to-indigo-600 hover:opacity-90 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
-            >
-              <Save className="h-4 w-4" />
-              {crearAjusteMutation.isPending
-                ? "Guardando..."
-                : "Guardar Ajuste"}
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => navigate("/movimientos")}
-              disabled={crearAjusteMutation.isPending}
-            >
-              Cancelar
-            </Button>
+            </div>
           </div>
+
+          <div className="mt-8 pt-6 border-t" />
         </div>
       </form>
-    </div>
   );
 }

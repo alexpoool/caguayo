@@ -1,11 +1,11 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { Button, Input, Label, Card, CardContent, CardHeader, CardTitle, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, ConfirmModal } from '../../components/ui';
+import { Button, Input, Label, Card, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, ConfirmModal, FormModal } from '../../components/ui';
 import { suplementosService, contratosService } from '../../services/api';
 import { useInfiniteList } from '../../hooks/useInfiniteList';
 import type { ContratoWithDetails } from '../../types/contrato';
 import type { SuplementoWithDetails } from '../../types/contrato';
-import { Plus, Save, Trash2, Edit, ArrowLeft, Search, Layers, FileText, Calendar, Tag, X } from 'lucide-react';
+import { Plus, Trash2, Edit, Search, Layers, FileText, Calendar, Tag, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useSearchParams } from 'react-router-dom';
 import { required } from '../../utils/validacionFormularios';
@@ -13,6 +13,8 @@ import { formatFecha } from '../../utils/fecha';
 import { DateInput } from '../../components/ui';
 
 type View = 'list' | 'form';
+
+const SUPLEMENTO_FORM_ID = 'suplemento-form';
 
 const hoy = new Date().toISOString().split('T')[0];
 
@@ -27,6 +29,7 @@ export function SuplementosPage() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [selectedContratoId, setSelectedContratoId] = useState<number | null>(initialContratoId ? Number(initialContratoId) : null);
   const [formData, setFormData] = useState<Record<string, any>>({});
+  const [isSaving, setIsSaving] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
   const [contratoSearch, setContratoSearch] = useState('');
@@ -58,7 +61,6 @@ export function SuplementosPage() {
     hasMore,
     loadMore,
     refresh,
-    reset,
   } = useInfiniteList<SuplementoWithDetails>({
     queryKeyBase: 'suplementos',
     queryFn: (skip, limit) =>
@@ -136,21 +138,28 @@ export function SuplementosPage() {
       toast.error(vigenciaErr);
       return;
     }
+    setIsSaving(true);
     try {
-      const data = { 
-        id_contrato: selectedContratoId, 
+      const data = {
+        id_contrato: selectedContratoId,
         nombre: formData.nombre || '',
         fecha: formData.fecha || new Date().toISOString().split('T')[0],
         fecha_vigencia: formData.fecha_vigencia || new Date().toISOString().split('T')[0],
         monto: Number(formData.monto) || 0,
         documento: formData.documento
       };
-      editingId ? await suplementosService.updateSuplemento(editingId, data as any) : await suplementosService.createSuplemento(data as any);
+      if (editingId) {
+        await suplementosService.updateSuplemento(editingId, data as any);
+      } else {
+        await suplementosService.createSuplemento(data as any);
+      }
       toast.success(editingId ? 'Actualizado' : 'Creado');
       setView('list');
       resetForm();
       refresh();
-    } catch (error: any) { toast.error(error.message || 'Error'); }
+    } catch (error: any) { toast.error(error.message || 'Error'); } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleDelete = async (id: number, nombre: string) => {
@@ -337,31 +346,11 @@ export function SuplementosPage() {
   );
 
   const renderForm = () => (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <div className="p-2 bg-gradient-to-br from-teal-500 to-cyan-600 rounded shadow-lg animate-bounce-subtle">
-            <Layers className="h-5 w-5 text-white" />
-          </div>
-          <div>
-            <h2 className="text-xl font-bold text-gray-900">{editingId ? 'Editar Suplemento' : 'Nuevo Suplemento'}</h2>
-            <p className="text-sm text-gray-500 ml-3 hidden sm:block">Complete los datos del suplemento</p>
-          </div>
-        </div>
-        <Button variant="outline" onClick={() => { setView('list'); resetForm(); }} className="gap-2">
-          <ArrowLeft className="h-4 w-4" />
-          Volver
-        </Button>
-      </div>
-
-      <Card className="shadow-sm border-gray-200">
-        <CardHeader className="border-b bg-gray-50/50">
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <Layers className="h-5 w-5 text-teal-600" />
-            Información del Suplemento
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-6">
+    <form
+      id={SUPLEMENTO_FORM_ID}
+      onSubmit={(e) => { e.preventDefault(); handleSave(); }}
+      className="p-4 md:p-6"
+    >
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <Label className="text-sm font-medium">Nombre *</Label>
@@ -444,22 +433,43 @@ export function SuplementosPage() {
               <Input value={formData.documento || ''} onChange={(e: any) => setFormData({...formData, documento: e.target.value})} className="mt-1" placeholder="Número de documento" />
             </div>
           </div>
-          <div className="flex gap-3 mt-8 pt-6 border-t">
-            <Button onClick={handleSave} className="gap-2 bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300">
-              <Save className="h-4 w-4" />
-              {editingId ? 'Actualizar' : 'Guardar'}
-            </Button>
-            <Button variant="outline" onClick={() => { setView('list'); resetForm(); }}>Cancelar</Button>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+    </form>
   );
 
   return (
     <div className="p-6">
-      {view === 'list' && renderList()}
-      {view === 'form' && renderForm()}
+      {renderList()}
+      <FormModal
+        isOpen={view === 'form'}
+        onClose={() => { setView('list'); resetForm(); }}
+        title={editingId ? 'Editar Suplemento' : 'Nuevo Suplemento'}
+        subtitle="Complete los datos del suplemento"
+        icon={<Layers className="h-6 w-6" />}
+        size="xl"
+        footer={
+          <>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => { setView('list'); resetForm(); }}
+              disabled={isSaving}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="submit"
+              form={SUPLEMENTO_FORM_ID}
+              disabled={isSaving}
+              isLoading={isSaving}
+              className="gap-2 bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white shadow-lg hover:shadow-xl transition-all duration-300"
+            >
+              {editingId ? 'Actualizar' : 'Guardar'}
+            </Button>
+          </>
+        }
+      >
+        {renderForm()}
+      </FormModal>
 
       <ConfirmModal
         isOpen={confirmModal.isOpen}

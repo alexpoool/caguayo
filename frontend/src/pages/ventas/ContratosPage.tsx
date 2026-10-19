@@ -1,19 +1,21 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Button, Input, Label, Card, CardContent, CardHeader, CardTitle, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, ConfirmModal } from '../../components/ui';
+import { Button, Input, Label, Card, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, ConfirmModal, FormModal } from '../../components/ui';
 import { ClienteForm } from '../clientes/components/form/ClienteForm';
 import { contratosService, clientesService, monedaService, solicitudesService, configuracionService } from '../../services/api';
 import { useInfiniteList } from '../../hooks/useInfiniteList';
 import type { Cliente } from '../../types/ventas';
 import type { Moneda } from '../../types/moneda';
 import type { ContratoWithDetails, ContratoCreate } from '../../types/contrato';
-import { Plus, Save, Trash2, Edit, ArrowLeft, Search, FileText, User, DollarSign, Calendar, Tag, X, Eye, Layers, Receipt } from 'lucide-react';
+import { Plus, Trash2, Edit, ArrowLeft, Search, FileText, User, Calendar, Tag, X, Layers, Receipt } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { formatFecha } from '../../utils/fecha';
 import { DateInput } from '../../components/ui';
 
 type View = 'list' | 'form';
+
+const CONTRATO_FORM_ID = 'contrato-form';
 
 export function ContratosPage() {
   const navigate = useNavigate();
@@ -29,8 +31,8 @@ export function ContratosPage() {
   
   const [editingId, setEditingId] = useState<number | null>(null);
   const [formData, setFormData] = useState<Record<string, any>>({});
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filtroCliente, setFiltroCliente] = useState<number | null>(initialClienteId ? Number(initialClienteId) : null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [filtroCliente] = useState<number | null>(initialClienteId ? Number(initialClienteId) : null);
   const [clienteSearch, setClienteSearch] = useState('');
   const [showClienteDropdown, setShowClienteDropdown] = useState(false);
   const [showNuevoClienteModal, setShowNuevoClienteModal] = useState(false);
@@ -77,10 +79,12 @@ export function ContratosPage() {
     loadMore,
     refresh,
     reset,
+    searchTerm,
+    setSearch,
   } = useInfiniteList<ContratoWithDetails>({
     queryKeyBase: 'contratos',
-    queryFn: (skip, limit) =>
-      contratosService.getContratos(skip, limit, filtroCliente || undefined),
+    queryFn: (skip, limit, search) =>
+      contratosService.getContratos(skip, limit, filtroCliente || undefined, search),
     extraQueryKeyParams: [filtroCliente],
     limit: 100,
   });
@@ -150,6 +154,7 @@ export function ContratosPage() {
   };
 
   const handleSave = async () => {
+    setIsSaving(true);
     try {
       const fecha = formData.fecha || hoy;
       const vigencia = formData.vigencia || addDays(fecha, 1);
@@ -187,7 +192,9 @@ export function ContratosPage() {
       setView('list');
       resetForm();
       refresh();
-    } catch (error: any) { toast.error(error.message || 'Error'); }
+    } catch (error: any) { toast.error(error.message || 'Error'); } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleDelete = async (id: number, nombre: string) => {
@@ -232,15 +239,15 @@ export function ContratosPage() {
   };
 
   const filteredContratos = useMemo(() => {
-    let result = contratos;
-    if (searchTerm) {
-      result = result.filter(c => 
-        c.nombre?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        c.cliente?.nombre?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        c.estado?.nombre?.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-    }
-    return result;
+    const term = searchTerm.trim().toLowerCase();
+    if (!term) return contratos;
+    return contratos.filter(c =>
+      c.codigo?.toLowerCase().includes(term) ||
+      c.nombre?.toLowerCase().includes(term) ||
+      c.cliente?.codigo?.toLowerCase().includes(term) ||
+      c.cliente?.nombre?.toLowerCase().includes(term) ||
+      c.estado?.nombre?.toLowerCase().includes(term)
+    );
   }, [contratos, searchTerm]);
 
   const renderList = () => (
@@ -275,7 +282,7 @@ export function ContratosPage() {
           <Input
             placeholder="Buscar contratos..."
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={(e) => setSearch(e.target.value)}
             className="pl-10"
           />
         </div>
@@ -443,36 +450,11 @@ export function ContratosPage() {
   );
 
   const renderForm = () => (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          {solicitudParam && (
-            <Button variant="outline" onClick={() => navigate('/proyectos/solicitudes')} className="gap-2">
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-          )}
-          <div className="p-2 bg-gradient-to-br from-teal-500 to-cyan-600 rounded shadow-lg animate-bounce-subtle">
-            <FileText className="h-5 w-5 text-white" />
-          </div>
-          <div>
-            <h2 className="text-xl font-bold text-gray-900">{editingId ? 'Editar Contrato' : 'Nuevo Contrato'}</h2>
-            <p className="text-sm text-gray-500 ml-3 hidden sm:block">Complete los datos del contrato</p>
-          </div>
-        </div>
-        <Button variant="outline" onClick={() => { setView('list'); resetForm(); }} className="gap-2">
-          <ArrowLeft className="h-4 w-4" />
-          Volver
-        </Button>
-      </div>
-
-      <Card className="shadow-sm border-gray-200">
-        <CardHeader className="border-b bg-gray-50/50">
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <FileText className="h-5 w-5 text-teal-600" />
-            Información del Contrato
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-6">
+    <form
+      id={CONTRATO_FORM_ID}
+      onSubmit={(e) => { e.preventDefault(); handleSave(); }}
+      className="p-4 md:p-6"
+    >
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Fila 1: Nombre + Tipo */}
             <div>
@@ -607,22 +589,55 @@ export function ContratosPage() {
               <Input value={formData.documento_final || ''} onChange={(e: any) => setFormData({...formData, documento_final: e.target.value})} className="mt-1" placeholder="Número de documento" />
             </div>
           </div>
-          <div className="flex gap-3 mt-8 pt-6 border-t">
-            <Button onClick={handleSave} className="gap-2 bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300">
-              <Save className="h-4 w-4" />
-              {editingId ? 'Actualizar' : 'Guardar'}
-            </Button>
-            <Button variant="outline" onClick={() => { setView('list'); resetForm(); }}>Cancelar</Button>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+    </form>
   );
 
   return (
     <div className="p-6">
-      {view === 'list' && renderList()}
-      {view === 'form' && renderForm()}
+      {renderList()}
+      <FormModal
+        isOpen={view === 'form'}
+        onClose={() => { setView('list'); resetForm(); }}
+        title={editingId ? 'Editar Contrato' : 'Nuevo Contrato'}
+        subtitle="Complete los datos del contrato"
+        icon={<FileText className="h-6 w-6" />}
+        size="xl"
+        footer={
+          <>
+            {solicitudParam && (
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => navigate('/proyectos/solicitudes')}
+                disabled={isSaving}
+                className="gap-2 mr-auto"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                Volver a Solicitudes
+              </Button>
+            )}
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => { setView('list'); resetForm(); }}
+              disabled={isSaving}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="submit"
+              form={CONTRATO_FORM_ID}
+              disabled={isSaving}
+              isLoading={isSaving}
+              className="gap-2 bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white shadow-lg hover:shadow-xl transition-all duration-300"
+            >
+              {editingId ? 'Actualizar' : 'Guardar'}
+            </Button>
+          </>
+        }
+      >
+        {renderForm()}
+      </FormModal>
 
       <ConfirmModal
         isOpen={confirmModal.isOpen}

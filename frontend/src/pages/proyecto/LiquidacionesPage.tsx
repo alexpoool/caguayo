@@ -1,9 +1,8 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { createPortal } from 'react-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
-import { Button, Card, CardHeader, CardTitle, CardContent, Label, Input, DateInput, Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../../components/ui';
+import { Button, Card, Label, Input, DateInput, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, ModalOverlay, FormModal } from '../../components/ui';
 import { 
   Search, 
   Plus, 
@@ -19,7 +18,6 @@ import {
   User,
   Calculator,
   ArrowLeft,
-  Save,
   Eye,
   Printer,
   Loader2
@@ -40,7 +38,7 @@ import { administracionService } from '../../services/administracion';
 import { useInfiniteList } from '../../hooks/useInfiniteList';
 import { useMonedaContrato, useMonedaContratoDeEtapa } from '../../hooks/useMonedaContrato';
 import type { Usuario } from '../../types/usuario';
-import type { PersonaLiquidacionInput, PersonaLiquidacionInputUpdate, FacturaPagoValidacion, PersonaLiquidacionValidacion } from '../../types/servicio';
+import type { PersonaLiquidacionInput, PersonaLiquidacionInputUpdate, PersonaLiquidacionValidacion } from '../../types/servicio';
 import type { 
   PersonaLiquidacion,
   PersonaEtapa,
@@ -53,6 +51,8 @@ import { formatFecha } from '../../utils/fecha';
 
 type View = 'list' | 'form';
 type TabType = 'todas' | 'pendientes' | 'liquidadas';
+
+const LIQUIDACION_FORM_ID = 'liquidacion-form';
 
 export function LiquidacionesPage() {
   const queryClient = useQueryClient();
@@ -69,10 +69,10 @@ export function LiquidacionesPage() {
   const etapaParam = searchParams.get('etapa');
   const personaParam = searchParams.get('persona');
   
-  const [filtroPersona, setFiltroPersona] = useState<number | null>(
+  const [filtroPersona] = useState<number | null>(
     personaParam ? Number(personaParam) : null
   );
-  const [filtroEtapa, setFiltroEtapa] = useState<number | null>(
+  const [filtroEtapa] = useState<number | null>(
     etapaParam ? Number(etapaParam) : null
   );
   
@@ -153,7 +153,6 @@ export function LiquidacionesPage() {
     items: liquidaciones,
     isLoading,
     isFetchingMore,
-    refresh,
     hasMore,
     loadMore,
   } = useInfiniteList({
@@ -217,6 +216,7 @@ export function LiquidacionesPage() {
         }
       }).catch(console.error);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [idParam, solicitudParam, etapaParam, personaParam]);
 
   // Cargar todas las etapas al inicio
@@ -224,6 +224,7 @@ export function LiquidacionesPage() {
     etapasProyectoService.getAllEtapas().then((ets) => {
       queryClient.setQueryData(['etapas-all'], ets);
     }).catch(console.error);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -245,6 +246,7 @@ export function LiquidacionesPage() {
         setFormData(prev => ({ ...prev, id_moneda: etapa.id_moneda ?? prev.id_moneda }));
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedEtapa, etapas]);
 
   useEffect(() => {
@@ -254,6 +256,7 @@ export function LiquidacionesPage() {
         cargarPagosYDisponible(selectedEtapa, selectedPersona);
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedPersona, selectedEtapa, view]);
 
   const createMutation = useMutation({
@@ -605,6 +608,8 @@ export function LiquidacionesPage() {
     setView('form');
   };
 
+  const isSaving = createMutation.isPending || updateMutation.isPending;
+
   const handleSave = async () => {
     if (!selectedEtapa || !selectedPersona) {
       toast.error('Debe seleccionar una etapa y una persona');
@@ -692,8 +697,6 @@ export function LiquidacionesPage() {
     const direccionRealizador = realizador?.direccion || '';
     
     const nombreEtapa = etapa?.nombre_etapa || `Etapa #${etapa?.numero_etapa || 'N/A'}`;
-    const descripcionEtapa = etapa?.descripcion || '';
-    const codigoSolicitud = solicitud?.codigo_solicitud || 'N/A';
     const codigoProyecto = solicitud?.codigo_proyecto || 'N/A';
     const nombreTituloEtapa = (nombreCertificacion && etapa?.tipo_etapa === 'CERTIFICACIONES') ? nombreCertificacion : nombreEtapa;
     const nombreMoneda = moneda?.nombre || '';
@@ -939,12 +942,12 @@ export function LiquidacionesPage() {
     }
     
     return result;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [liquidaciones, activeTab, searchTerm, filtroPersona, filtroEtapa, personas]);
 
   return (
     <div className="space-y-6">
-      {view === 'list' && (
-        <>
+      <>
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div className="flex items-center gap-4">
               {(filtroPersona || filtroEtapa) && (
@@ -1153,34 +1156,41 @@ export function LiquidacionesPage() {
             </div>
           </Card>
         </>
-      )}
-
-      {view === 'form' && (
-        <div className="space-y-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div className="p-3 bg-gradient-to-br from-teal-500 to-cyan-600 rounded-xl shadow-lg">
-                <Calculator className="h-8 w-8 text-white" />
-              </div>
-              <div>
-                <h2 className="text-2xl font-bold text-gray-900">{editingId ? 'Editar Liquidación' : 'Nueva Liquidación'}</h2>
-                <p className="text-gray-500 mt-1">Complete los datos de la liquidación</p>
-              </div>
-            </div>
-            <Button variant="outline" onClick={() => { setView('list'); resetForm(); }} className="gap-2">
-              <ArrowLeft className="h-4 w-4" />
-              Volver
+      <FormModal
+        isOpen={view === 'form'}
+        onClose={() => { setView('list'); resetForm(); }}
+        title={editingId ? 'Editar Liquidación' : 'Nueva Liquidación'}
+        subtitle="Complete los datos de la liquidación"
+        icon={<Calculator className="h-6 w-6" />}
+        size="lg"
+        footer={
+          <>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => { setView('list'); resetForm(); }}
+              disabled={isSaving}
+            >
+              Cancelar
             </Button>
-          </div>
-
-          <Card className="shadow-sm border-gray-200">
-            <CardHeader className="border-b bg-gray-50/50">
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <FileText className="h-5 w-5 text-teal-600" />
-                Información General
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-6">
+            <Button
+              type="submit"
+              form={LIQUIDACION_FORM_ID}
+              disabled={isSaving}
+              isLoading={isSaving}
+              className="gap-2 bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white shadow-lg hover:shadow-xl transition-all duration-300"
+            >
+              Guardar
+            </Button>
+          </>
+        }
+      >
+        <form
+          id={LIQUIDACION_FORM_ID}
+          onSubmit={(e) => { e.preventDefault(); handleSave(); }}
+          className="p-4 md:p-6"
+        >
+          <div className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <Label>Solicitud</Label>
@@ -1232,18 +1242,14 @@ export function LiquidacionesPage() {
                   </select>
                 </div>
               </div>
-            </CardContent>
-          </Card>
 
           {selectedPersona && selectedEtapa && (
-          <Card className="shadow-sm border-gray-200">
-            <CardHeader className="border-b bg-gray-50/50">
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <DollarSign className="h-5 w-5 text-teal-600" />
-                Pago
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-6">
+          <div className="border border-gray-200 rounded-lg">
+            <div className="px-6 py-4 border-b bg-gray-50/50 flex items-center gap-2 text-teal-600">
+              <DollarSign className="h-5 w-5" />
+              <h3 className="text-lg font-semibold">Pago</h3>
+            </div>
+            <div className="p-6">
               <div>
                 <Label>Pago de Factura</Label>
                 {pagosDisponibles.length > 0 ? (
@@ -1280,18 +1286,10 @@ export function LiquidacionesPage() {
                   </div>
                 )}
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
           )}
 
-          <Card className="shadow-sm border-gray-200">
-            <CardHeader className="border-b bg-gray-50/50">
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <FileText className="h-5 w-5 text-teal-600" />
-                Información de la Liquidación
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <Label>Moneda</Label>
@@ -1482,20 +1480,13 @@ export function LiquidacionesPage() {
                 />
               </div>
 
-              <div className="flex gap-3 mt-8 pt-6 border-t">
-                <Button onClick={handleSave} className="gap-2 bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white shadow-lg">
-                  <Save className="h-4 w-4" />
-                  {editingId ? 'Actualizar' : 'Guardar'}
-                </Button>
-                <Button variant="outline" onClick={() => { setView('list'); resetForm(); }}>Cancelar</Button>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
+              <div className="mt-8 pt-6 border-t" />
+          </div>
+        </form>
+      </FormModal>
 
-      {detailModal.isOpen && detailModal.item && createPortal(
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60">
+      {detailModal.isOpen && detailModal.item && (
+        <ModalOverlay isOpen={true} onClose={() => setDetailModal({ isOpen: false, item: null })} ariaLabel="Liquidación">
           <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-auto">
             <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-teal-50 to-cyan-50">
               <div className="flex items-center justify-between">
@@ -1588,12 +1579,11 @@ export function LiquidacionesPage() {
               <button onClick={() => setDetailModal({ isOpen: false, item: null })} className="px-6 py-3 text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors font-medium">Cerrar</button>
             </div>
           </div>
-        </div>,
-        document.body
+        </ModalOverlay>
       )}
 
-      {confirmModal.isOpen && confirmModal.item && createPortal(
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60">
+      {confirmModal.isOpen && confirmModal.item && (
+        <ModalOverlay isOpen={true} onClose={() => { setConfirmModal({ isOpen: false, item: null }); setConfirmData({ doc_pago_liquidacion: '', porcentaje_caguayo: 10 }); }} ariaLabel="Confirmar Liquidación">
           <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full">
             <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-teal-50 to-cyan-50">
               <div className="flex items-center justify-between">
@@ -1653,12 +1643,11 @@ export function LiquidacionesPage() {
               </button>
             </div>
           </div>
-        </div>,
-        document.body
+        </ModalOverlay>
       )}
 
-      {validacionModal.isOpen && validacionModal.validacion && createPortal(
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60">
+      {validacionModal.isOpen && validacionModal.validacion && (
+        <ModalOverlay isOpen={true} onClose={() => setValidacionModal({ isOpen: false, validacion: null })} ariaLabel="No se puede liquidar">
           <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-auto">
             <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-red-50 to-orange-50">
               <div className="flex items-center justify-between">
@@ -1759,12 +1748,11 @@ export function LiquidacionesPage() {
               </button>
             </div>
           </div>
-        </div>,
-        document.body
+        </ModalOverlay>
       )}
 
-      {printModal.isOpen && printModal.liquidacion && createPortal(
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 animate-fade-in">
+      {printModal.isOpen && printModal.liquidacion && (
+        <ModalOverlay isOpen={true} onClose={() => setPrintModal({ isOpen: false, liquidacion: null, autorizado_por_id: null, autorizado_por: '', cargo_autorizado: '', revisado_por: '' })} ariaLabel="Imprimir Liquidación">
           <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full animate-scale-in">
             <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-teal-50 to-cyan-50">
               <div className="flex items-center gap-3">
@@ -1833,8 +1821,7 @@ export function LiquidacionesPage() {
               </button>
             </div>
           </div>
-        </div>,
-        document.body
+        </ModalOverlay>
       )}
     </div>
   );

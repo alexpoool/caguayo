@@ -1,15 +1,16 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { createPortal } from 'react-dom';
-import { Button, Input, Label, DateInput, Card, CardContent, CardHeader, CardTitle, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, ConfirmModal } from '../../components/ui';
+import { Button, Input, Label, DateInput, Card, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, ConfirmModal, ModalOverlay, FormModal } from '../../components/ui';
 import { certificacionesService, etapasProyectoService, solicitudesService } from '../../services/api';
-import type { Certificacion, CertificacionCreate, CertificacionUpdate, Etapa } from '../../types/servicio';
-import { Plus, Save, Trash2, Edit, ArrowLeft, Search, FileText, X, Check, DollarSign, Loader2 } from 'lucide-react';
+import type { Certificacion, CertificacionCreate, Etapa } from '../../types/servicio';
+import { Plus, Trash2, Edit, ArrowLeft, Search, FileText, X, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useInfiniteList } from '../../hooks/useInfiniteList';
 import { formatFecha } from '../../utils/fecha';
 
 type View = 'list' | 'form';
+
+const CERTIFICACION_FORM_ID = 'certificacion-form';
 
 export function CertificacionesPage() {
   const navigate = useNavigate();
@@ -24,7 +25,6 @@ export function CertificacionesPage() {
 
   const {
     items: certificaciones,
-    isLoading,
     isFetchingMore,
     refresh,
     hasMore,
@@ -56,6 +56,7 @@ export function CertificacionesPage() {
   
   const [editingId, setEditingId] = useState<number | null>(null);
   const [formData, setFormData] = useState<Record<string, any>>({});
+  const [isSaving, setIsSaving] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [detailModal, setDetailModal] = useState<{ isOpen: boolean; item: Certificacion | null }>({ isOpen: false, item: null });
   const [confirmModal, setConfirmModal] = useState<{
@@ -142,6 +143,7 @@ export function CertificacionesPage() {
   };
 
   const handleSave = async () => {
+    setIsSaving(true);
     try {
       const data: CertificacionCreate = {
         nombre: formData.nombre,
@@ -169,6 +171,8 @@ export function CertificacionesPage() {
     } catch (error) {
       console.error('Error saving:', error);
       toast.error('Error al guardar');
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -182,7 +186,7 @@ export function CertificacionesPage() {
           await certificacionesService.deleteCertificacion(item.id_certificacion);
           toast.success('Certificación eliminada');
           refresh();
-        } catch (error) {
+        } catch {
           toast.error('Error al eliminar');
         }
         setConfirmModal(prev => ({ ...prev, isOpen: false }));
@@ -202,33 +206,12 @@ export function CertificacionesPage() {
     return `${solic?.codigo_proyecto || 'Proyecto'} - ${etapa.nombre_etapa || `Etapa ${etapa.numero_etapa}`}`;
   };
 
-  if (view === 'form') {
-    return (
-      <div className="p-6 max-w-4xl mx-auto">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="p-3 bg-gradient-to-br from-teal-500 to-cyan-600 rounded-xl shadow-lg animate-bounce-subtle">
-              <FileText className="h-8 w-8 text-white" />
-            </div>
-            <div>
-              <h2 className="text-2xl font-bold text-gray-900">{editingId ? 'Editar' : 'Nueva'} Certificación</h2>
-              <p className="text-gray-500 mt-1">Complete los datos de la certificación</p>
-            </div>
-          </div>
-          <Button variant="outline" onClick={() => { setView('list'); resetForm(); }} className="gap-2">
-            <ArrowLeft className="h-4 w-4" />
-            Volver
-          </Button>
-        </div>
-
-        <Card className="shadow-sm border-gray-200 mt-6">
-          <CardHeader className="border-b bg-gray-50/50">
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <FileText className="h-5 w-5 text-teal-600" />
-              Información de la Certificación
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-6">
+  const certificacionForm = (
+    <form
+      id={CERTIFICACION_FORM_ID}
+      onSubmit={(e) => { e.preventDefault(); handleSave(); }}
+      className="p-4 md:p-6"
+    >
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="md:col-span-2">
                 <Label>Nombre *</Label>
@@ -299,22 +282,44 @@ export function CertificacionesPage() {
                 <Input type="number" step="0.01" placeholder="0.00" value={formData.impuesto_venta_onat || ''} onChange={e => setFormData({...formData, impuesto_venta_onat: e.target.value})} />
               </div>
             </div>
-
-            <div className="flex gap-3 mt-8 pt-6 border-t">
-              <Button onClick={handleSave} className="gap-2 bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300">
-                <Save className="h-4 w-4" />
-                {editingId ? 'Actualizar' : 'Guardar'}
-              </Button>
-              <Button variant="outline" onClick={() => { setView('list'); resetForm(); }}>Cancelar</Button>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
+    </form>
+  );
 
   return (
     <div className="p-6">
+
+      <FormModal
+        isOpen={view === 'form'}
+        onClose={() => { setView('list'); resetForm(); }}
+        title={`${editingId ? 'Editar' : 'Nueva'} Certificación`}
+        subtitle="Complete los datos de la certificación"
+        icon={<FileText className="h-6 w-6" />}
+        size="lg"
+        footer={
+          <>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => { setView('list'); resetForm(); }}
+              disabled={isSaving}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="submit"
+              form={CERTIFICACION_FORM_ID}
+              disabled={isSaving}
+              isLoading={isSaving}
+              className="gap-2 bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white shadow-lg hover:shadow-xl transition-all duration-300"
+            >
+              Guardar
+            </Button>
+          </>
+        }
+      >
+        {certificacionForm}
+      </FormModal>
+
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div className="flex items-center gap-4">
           {etapaIdParam && (
@@ -433,8 +438,12 @@ export function CertificacionesPage() {
         />
       )}
 
-      {detailModal.isOpen && detailModal.item && createPortal(
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 animate-fade-in">
+      {detailModal.isOpen && detailModal.item && (
+        <ModalOverlay
+          isOpen={true}
+          onClose={() => setDetailModal({ isOpen: false, item: null })}
+          ariaLabel="Certificación"
+        >
           <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-auto animate-scale-in">
             <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-teal-50 to-cyan-50">
               <div className="flex items-center justify-between">
@@ -515,8 +524,7 @@ export function CertificacionesPage() {
               <button onClick={() => setDetailModal({ isOpen: false, item: null })} className="px-6 py-3 text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors font-medium">Cerrar</button>
             </div>
           </div>
-        </div>,
-        document.body
+        </ModalOverlay>
       )}
     </div>
   );

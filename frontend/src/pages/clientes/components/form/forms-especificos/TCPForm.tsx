@@ -29,7 +29,7 @@ export const TCPForm: React.FC<DatosTCPFormProps> = ({
             className={errors.tcp_nombre ? "border-red-500" : ""}
           />
           {errors.tcp_nombre && (
-            <p className="text-red-500 text-sm">{errors.tcp_nombre}</p>
+            <p className="text-red-600 text-sm">{errors.tcp_nombre}</p>
           )}
         </div>
         <div>

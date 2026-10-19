@@ -243,9 +243,10 @@ class ContratoService:
         skip: int = 0,
         limit: int = 10000,
         id_cliente: Optional[int] = None,
+        search: Optional[str] = None,
     ) -> List[ContratoReadWithDetails]:
         contratos = await contrato_repo.get_all_with_details(
-            db, skip, limit, id_cliente
+            db, skip, limit, id_cliente, search
         )
         result = []
         for contrato in contratos:

@@ -513,13 +513,16 @@ export const dependenciasService = {
 };
 
 export const contratosService = {
-  async getContratos(skip = 0, limit = 10000, idCliente?: number): Promise<ContratoWithDetails[]> {
+  async getContratos(skip = 0, limit = 10000, idCliente?: number, search?: string): Promise<ContratoWithDetails[]> {
     const params = new URLSearchParams({
       skip: String(skip),
       limit: String(limit),
     });
     if (idCliente) {
       params.append("id_cliente", String(idCliente));
+    }
+    if (search) {
+      params.append("search", search);
     }
     return apiClient.get<ContratoWithDetails[]>(`/contratos?${params.toString()}`);
   },

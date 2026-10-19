@@ -7,7 +7,6 @@ import {
   Shield,
   Edit,
   Trash2,
-  Save,
   X,
   Copy,
   CheckCircle,
@@ -27,6 +26,7 @@ import {
   CardHeader,
   CardTitle,
   ConfirmModal,
+  FormModal,
   Table,
   TableHeader,
   TableBody,
@@ -35,12 +35,12 @@ import {
   TableCell,
 } from "../components/ui";
 import { administracionService, dependenciasService } from "../services/administracion";
-import { useAuth } from "../context/AuthContext";
 import type { Usuario, UsuarioCreate } from "../types/usuario";
+
+const USUARIO_FORM_ID = "usuario-form";
 
 export function UsuariosPage() {
   const queryClient = useQueryClient();
-  const { user } = useAuth();
   const [view, setView] = useState<"list" | "form">("list");
   const [editingUsuario, setEditingUsuario] = useState<Usuario | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
@@ -101,6 +101,7 @@ export function UsuariosPage() {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["usuarios"] });
       toast.success("Usuario creado exitosamente");
+      setView("list");
       resetUsuarioForm();
       setCreatedUserModal({
         isOpen: true,
@@ -117,6 +118,7 @@ export function UsuariosPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["usuarios"] });
       toast.success("Usuario actualizado");
+      setView("list");
       setEditingUsuario(null);
       resetUsuarioForm();
     },
@@ -194,34 +196,44 @@ export function UsuariosPage() {
     resetUsuarioForm();
   };
 
-  if (view === "form") {
-    return (
-      <div className="space-y-4 animate-fade-in-up">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Button variant="secondary" onClick={handleCancel}>
-              <X className="h-4 w-4 mr-2" />
-              Cancelar
-            </Button>
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-gradient-to-br from-green-500 to-emerald-600 rounded shadow-lg">
-                <Users className="h-5 w-5 text-white" />
-              </div>
-              <div className="flex items-baseline">
-                <h1 className="text-xl font-bold text-gray-900">
-                  {editingUsuario ? "Editar Usuario" : "Nuevo Usuario"}
-                </h1>
-                <p className="text-sm text-gray-500">
-                  {editingUsuario
-                    ? "Modifique los datos del usuario"
-                    : "Complete los datos del nuevo usuario"}
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
+  const isSaving = createUsuario.isPending || updateUsuario.isPending;
 
-        <Card className="hover:shadow-lg transition-shadow duration-300">
+  const formModal = (
+    <FormModal
+      isOpen={view === "form"}
+      onClose={handleCancel}
+      title={editingUsuario ? "Editar Usuario" : "Nuevo Usuario"}
+      subtitle={
+        editingUsuario
+          ? "Modifique los datos del usuario"
+          : "Complete los datos del nuevo usuario"
+      }
+      icon={<Users className="h-6 w-6" />}
+      size="lg"
+      footer={
+        <>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={handleCancel}
+            disabled={isSaving}
+          >
+            Cancelar
+          </Button>
+          <Button
+            type="submit"
+            form={USUARIO_FORM_ID}
+            disabled={isSaving}
+            isLoading={isSaving}
+            className="gap-2 bg-gradient-to-r from-green-600 to-emerald-700 hover:from-green-700 hover:to-emerald-800 shadow-lg hover:shadow-xl transition-all duration-300"
+          >
+            {editingUsuario ? "Actualizar" : "Guardar"}
+          </Button>
+        </>
+      }
+    >
+      <div className="p-4 md:p-6">
+        <Card className="border-0 shadow-none">
           <CardHeader className="border-b bg-gradient-to-r from-green-50 to-emerald-50">
             <div className="flex items-center gap-2">
               <div className="p-2 bg-gradient-to-br from-green-500 to-emerald-600 rounded-lg">
@@ -232,6 +244,7 @@ export function UsuariosPage() {
           </CardHeader>
           <CardContent className="pt-6">
             <form
+              id={USUARIO_FORM_ID}
               onSubmit={handleUsuarioSubmit}
               className="grid grid-cols-2 gap-4"
             >
@@ -376,30 +389,12 @@ export function UsuariosPage() {
                   )}
                 </select>
               </div>
-              <div className="col-span-2 flex gap-3 pt-2">
-                <Button
-                  type="submit"
-                  className="gap-2 bg-gradient-to-r from-green-600 to-emerald-700 hover:from-green-700 hover:to-emerald-800 shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300"
-                >
-                  <Save className="h-4 w-4" />
-                  {editingUsuario ? "Actualizar" : "Guardar"}
-                </Button>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  onClick={handleCancel}
-                  className="hover:bg-gray-200 transition-colors"
-                >
-                  <X className="h-4 w-4 mr-2" />
-                  Cancelar
-                </Button>
-              </div>
             </form>
           </CardContent>
         </Card>
       </div>
-    );
-  }
+    </FormModal>
+  );
 
   const content = (
     <div className="space-y-4">
@@ -418,7 +413,11 @@ export function UsuariosPage() {
           </div>
         </div>
         <Button
-          onClick={() => setView("form")}
+          onClick={() => {
+            setEditingUsuario(null);
+            resetUsuarioForm();
+            setView("form");
+          }}
           className="gap-2 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300"
         >
           <Plus className="h-4 w-4" />
@@ -532,6 +531,8 @@ export function UsuariosPage() {
         message={confirmModal.message}
         type="danger"
       />
+
+      {formModal}
     </div>
   );
 

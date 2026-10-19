@@ -1,11 +1,10 @@
 import { useState, useEffect, useMemo } from 'react';
-import { createPortal } from 'react-dom';
 import { useQueryClient } from '@tanstack/react-query';
-import { Button, Input, Label, DateInput, Card, CardContent, CardHeader, CardTitle, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, ConfirmModal } from '../../components/ui';
+import { Button, Input, Label, DateInput, Card, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, ConfirmModal, ModalOverlay, FormModal } from '../../components/ui';
 import { pagosFacturaServicioService, facturasServicioService, monedaService } from '../../services/api';
 import type { PagoFacturaServicio, PagoFacturaServicioCreate, FacturaServicio } from '../../types/servicio';
 import type { Moneda } from '../../types/moneda';
-import { Plus, Save, Trash2, ArrowLeft, Search, CreditCard, DollarSign, Calendar, FileText, X, Eye, Hash } from 'lucide-react';
+import { Plus, Trash2, ArrowLeft, Search, CreditCard, DollarSign, Calendar, FileText, X, Eye, Hash } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { formatCifra } from '../../utils/decimal';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -13,6 +12,8 @@ import { formatFecha } from '../../utils/fecha';
 import { useMonedaContratoDeEtapa } from '../../hooks/useMonedaContrato';
 
 type View = 'list' | 'form';
+
+const PAGO_FACTURA_SERVICIO_FORM_ID = 'pago-factura-servicio-form';
 
 export function PagosFacturaServicioPage() {
   const navigate = useNavigate();
@@ -27,6 +28,7 @@ export function PagosFacturaServicioPage() {
 
   const [formData, setFormData] = useState<Record<string, any>>({});
   const [searchTerm, setSearchTerm] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
 
   // Moneda del contrato de la etapa de la factura: fija, no se puede cambiar
   const { data: monedaContrato } = useMonedaContratoDeEtapa(factura?.id_etapa);
@@ -91,6 +93,7 @@ export function PagosFacturaServicioPage() {
   };
 
   const handleSave = async () => {
+    setIsSaving(true);
     try {
       if (!facturaId) {
         toast.error('No se especificó la factura');
@@ -113,6 +116,7 @@ export function PagosFacturaServicioPage() {
     } catch (error: any) {
       toast.error(error.message || 'Error al guardar');
     }
+    finally { setIsSaving(false); }
   };
 
   const handleDelete = async (id: number) => {
@@ -173,7 +177,6 @@ export function PagosFacturaServicioPage() {
             const pagado = Number(factura.pagado || 0);
             const importe = Number(factura.importe || 0);
             const saldo = importe - pagado;
-            const estaPagada = saldo <= 0 && importe > 0;
             return (
               <div className="flex items-center gap-6 ml-4">
                 <div>
@@ -341,31 +344,12 @@ export function PagosFacturaServicioPage() {
   );
 
   const renderForm = () => (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <div className="p-3 bg-gradient-to-br from-teal-500 to-cyan-600 rounded-xl shadow-lg animate-bounce-subtle">
-            <CreditCard className="h-8 w-8 text-white" />
-          </div>
-          <div>
-            <h2 className="text-2xl font-bold text-gray-900">Nuevo Pago</h2>
-            <p className="text-gray-500 mt-1">Complete los datos del pago</p>
-          </div>
-        </div>
-        <Button variant="outline" onClick={() => { setView('list'); resetForm(); }} className="gap-2">
-          <ArrowLeft className="h-4 w-4" />
-          Volver
-        </Button>
-      </div>
-
-      <Card className="shadow-sm border-gray-200">
-        <CardHeader className="border-b bg-gray-50/50">
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <CreditCard className="h-5 w-5 text-teal-600" />
-            Información del Pago
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-6">
+    <form
+      id={PAGO_FACTURA_SERVICIO_FORM_ID}
+      onSubmit={(e) => { e.preventDefault(); handleSave(); }}
+      className="p-4 md:p-6"
+    >
+      <div className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <Label className="text-sm font-medium">Monto *</Label>
@@ -413,23 +397,47 @@ export function PagosFacturaServicioPage() {
               />
             </div>
           </div>
-          <div className="flex gap-3 mt-8 pt-6 border-t">
-            <Button onClick={handleSave} className="gap-2 bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300">
-              <Save className="h-4 w-4" />
-              Guardar
-            </Button>
-            <Button variant="outline" onClick={() => { setView('list'); resetForm(); }}>Cancelar</Button>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+          <div className="mt-8 pt-6 border-t" />
+      </div>
+      </form>
   );
 
   return (
     <div className="p-6">
       {renderHeader()}
-      {view === 'list' && renderList()}
-      {view === 'form' && renderForm()}
+      {renderList()}
+
+      <FormModal
+        isOpen={view === 'form'}
+        onClose={() => { setView('list'); resetForm(); }}
+        title="Nuevo Pago"
+        subtitle="Complete los datos del pago"
+        icon={<CreditCard className="h-6 w-6" />}
+        size="lg"
+        footer={
+          <>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => { setView('list'); resetForm(); }}
+              disabled={isSaving}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="submit"
+              form={PAGO_FACTURA_SERVICIO_FORM_ID}
+              disabled={isSaving}
+              isLoading={isSaving}
+              className="gap-2 bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white shadow-lg hover:shadow-xl transition-all duration-300"
+            >
+              Guardar
+            </Button>
+          </>
+        }
+      >
+        {renderForm()}
+      </FormModal>
 
       <ConfirmModal
         isOpen={confirmModal.isOpen}
@@ -440,8 +448,12 @@ export function PagosFacturaServicioPage() {
         onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
       />
 
-      {detailModal.isOpen && detailModal.item && createPortal(
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 animate-fade-in">
+      {detailModal.isOpen && detailModal.item && (
+        <ModalOverlay
+          isOpen={true}
+          onClose={() => setDetailModal({ isOpen: false, item: null })}
+          ariaLabel="Detalle del Pago"
+        >
           <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-auto animate-scale-in">
             <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-teal-50 to-cyan-50">
               <div className="flex items-center justify-between">
@@ -483,8 +495,7 @@ export function PagosFacturaServicioPage() {
               <button onClick={() => setDetailModal({ isOpen: false, item: null })} className="px-6 py-3 text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors font-medium">Cerrar</button>
             </div>
           </div>
-        </div>,
-        document.body
+        </ModalOverlay>
       )}
     </div>
   );

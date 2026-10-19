@@ -1,9 +1,9 @@
-import { createPortal } from 'react-dom';
 import { X, Receipt, DollarSign, Calendar, Printer } from 'lucide-react';
 import type { FacturaWithDetails, ItemFactura } from '../../../../../types/contrato';
 import { contratosService, dependenciasService, clientesService, cuentasService } from '../../../../../services/api';
 import { getFacturaDocument } from '../../FacturasPage';
 import { formatFecha } from '../../../../../utils/fecha';
+import { ModalOverlay } from '../../../../../components/ui';
 
 interface FacturaDetailModalProps {
   isOpen: boolean;
@@ -20,8 +20,8 @@ export function FacturaDetailModal({
   
   if (!isOpen || !factura) return null;
 
-  return createPortal(
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 animate-fade-in">
+  return (
+    <ModalOverlay isOpen={isOpen} onClose={onClose} ariaLabel="Factura">
       <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-auto animate-scale-in">
         {/* Header */}
         <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-violet-50 to-purple-50">
@@ -160,7 +160,6 @@ export function FacturaDetailModal({
           </button>
         </div>
       </div>
-    </div>,
-    document.body
+    </ModalOverlay>
   );
 }

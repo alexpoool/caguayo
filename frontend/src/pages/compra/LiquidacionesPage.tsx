@@ -1,59 +1,50 @@
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { useNavigate, useSearchParams } from 'react-router-dom';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useSearchParams } from 'react-router-dom';
+import { useQuery, useMutation } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
-import { Button, Card, CardHeader, CardTitle, CardContent, Label, Input, Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../../components/ui';
-import { esPorcentaje, esNumeroPositivo } from '../../utils/validacionFormularios';
+import { Button, Card, Label, Input, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, FormModal } from '../../components/ui';
 import { 
   Search, 
   Plus, 
-  Edit, 
   Trash2, 
   CheckCircle, 
-  Check,
-  Filter,
   Eye,
   DollarSign,
   FileText,
-  ScrollText,
   Tag,
-  Calendar,
   User,
   X,
   Printer,
   Receipt,
-  Package,
   Loader2
 } from 'lucide-react';
 import { 
   liquidacionService, 
-  productosEnLiquidacionService,
-  type Liquidacion, 
-  type LiquidacionCreate,
-  type ProductosEnLiquidacion 
+  type Liquidacion
 } from '../../services/api';
 import { clientesService, cuentasService, type Cliente } from '../../services/api';
 import { anexosService, type Anexo } from '../../services/api';
-import { monedaService, type Moneda } from '../../services/api';
 import { authService } from '../../services/auth';
 import { Decimal } from 'decimal.js';
-import { mul, add, sub, percentToMultiplier, toNumber, toFixed } from '../../utils/decimal';
+import { mul, add, sub, percentToMultiplier, toFixed } from '../../utils/decimal';
 import { escapeHtml } from '../../utils/sanitize';
 import { DEFAULTS } from '../../config/defaults';
 import { useInfiniteList } from '../../hooks/useInfiniteList';
 import { formatFecha } from '../../utils/fecha';
+import { CrearLiquidacionForm } from './CrearLiquidacionPage';
 
 type TabType = 'todas' | 'pendientes' | 'liquidadas';
 
+const CREAR_LIQUIDACION_FORM_ID = 'crear-liquidacion-form';
+
 export function LiquidacionesPage() {
-  const queryClient = useQueryClient();
-  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const initialProveedorId = searchParams.get('proveedor');
 
   const [activeTab, setActiveTab] = useState<TabType>('todas');
-  const [showModal, setShowModal] = useState(false);
+  const [showCrearModal, setShowCrearModal] = useState(false);
+  const [isSavingCrear, setIsSavingCrear] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [selectedLiquidacion, setSelectedLiquidacion] = useState<Liquidacion | null>(null);
   const [detailModal, setDetailModal] = useState<{ isOpen: boolean; item: Liquidacion | null }>({ isOpen: false, item: null });
@@ -61,41 +52,6 @@ export function LiquidacionesPage() {
   const [approveModal, setApproveModal] = useState<{ isOpen: boolean; id_liquidacion: number | null }>({ isOpen: false, id_liquidacion: null });
   
   const [filtroCliente, setFiltroCliente] = useState<number | null>(initialProveedorId ? Number(initialProveedorId) : null);
-  const [proveedorSearch, setProveedorSearch] = useState("");
-  
-  const [selectedProductos, setSelectedProductos] = useState<number[]>([]);
-  const [errors, setErrors] = useState<Record<string, string>>({});
-  const [formData, setFormData] = useState<LiquidacionCreate>({
-    id_cliente: 0,
-    id_convenio: undefined,
-    id_moneda: 0,
-    devengado: 0,
-    tributario: 0,
-    comision_bancaria: 0,
-    gasto_empresa: 0,
-    tipo_pago: DEFAULTS.TIPO_PAGO,
-    observaciones: '',
-    producto_ids: []
-  });
-
-  const validateNumericField = (field: string, value: any): string | null => {
-    if (field === 'porcentaje_caguayo' || field === 'tributario') {
-      const err = esPorcentaje(value, field === 'porcentaje_caguayo' ? '% Caguayo' : 'Tributario');
-      setErrors(prev => ({ ...prev, [field]: err || '' }));
-      return err;
-    }
-    if (field === 'comision_bancaria' || field === 'gasto_empresa') {
-      const num = Number(value);
-      if (isNaN(num) || num < 0) {
-        const err = `${field === 'comision_bancaria' ? 'Comisión' : 'Gasto'} no puede ser negativo`;
-        setErrors(prev => ({ ...prev, [field]: err }));
-        return err;
-      }
-      setErrors(prev => ({ ...prev, [field]: '' }));
-      return null;
-    }
-    return null;
-  };
 
   const {
     items: liquidaciones,
@@ -124,6 +80,7 @@ export function LiquidacionesPage() {
   // Resetear paginación al cambiar de tab
   useEffect(() => {
     reset();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab]);
 
   // IntersectionObserver para scroll infinito
@@ -162,44 +119,6 @@ export function LiquidacionesPage() {
     queryFn: () => anexosService.getAnexos()
   });
 
-  const { data: monedas = [] } = useQuery({
-    queryKey: ['monedas'],
-    queryFn: () => monedaService.getMonedas()
-  });
-
-  useEffect(() => {
-    if (monedas.length === 0) return;
-    const valido = monedas.some(m => m.id_moneda === formData.id_moneda);
-    if (!valido) {
-      setFormData(prev => ({ ...prev, id_moneda: monedas[0].id_moneda }));
-    }
-  }, [monedas, formData.id_moneda]);
-
-  const { data: productosPendientes = [] } = useQuery({
-    queryKey: ['productos-pendientes', filtroCliente, formData.id_moneda],
-    queryFn: () => {
-      if (!filtroCliente) return Promise.resolve([]);
-      return liquidacionService.getProductosPendientesByCliente(
-        filtroCliente, undefined, formData.id_moneda
-      );
-    },
-    enabled: !!filtroCliente
-  });
-
-  const createMutation = useMutation({
-    mutationFn: (data: LiquidacionCreate) => liquidacionService.createLiquidacion(data),
-    onSuccess: () => {
-      refresh();
-      queryClient.refetchQueries({ queryKey: ['productos-pendientes'] });
-      toast.success('Liquidación creada correctamente');
-      setShowModal(false);
-      resetForm();
-    },
-    onError: (error: any) => {
-      toast.error(error?.response?.data?.detail || 'Error al crear liquidación');
-    }
-  });
-
   const deleteMutation = useMutation({
     mutationFn: (id: number) => liquidacionService.deleteLiquidacion(id),
     onSuccess: () => {
@@ -210,112 +129,6 @@ export function LiquidacionesPage() {
       toast.error('Error al eliminar liquidación');
     }
   });
-
-  const resetForm = () => {
-    setFormData({
-      id_cliente: 0,
-      id_convenio: undefined,
-id_moneda: 0,
-      devengado: 0,
-      tributario: 0,
-      comision_bancaria: 0,
-      gasto_empresa: 0,
-      porcentaje_caguayo: DEFAULTS.PORCENTAJE_CAGUAYO,
-      tipo_pago: DEFAULTS.TIPO_PAGO,
-      observaciones: '',
-      producto_ids: []
-    });
-    setFiltroCliente(null);
-    setSelectedProductos([]);
-  };
-
-  const handleClienteChange = (clienteId: number) => {
-    setFiltroCliente(clienteId);
-    setFormData(prev => ({
-      ...prev,
-      id_cliente: clienteId,
-      producto_ids: []
-    }));
-    setSelectedProductos([]);
-  };
-
-  const handleChangeProveedorClick = () => {
-    setFiltroCliente(null);
-    setFormData(prev => ({
-      ...prev,
-      id_cliente: 0,
-      producto_ids: []
-    }));
-    setSelectedProductos([]);
-  };
-
-  const handleProductoSelect = (productoId: number) => {
-    setSelectedProductos(prev => {
-      if (prev.includes(productoId)) {
-        return prev.filter(id => id !== productoId);
-      }
-      return [...prev, productoId];
-    });
-    setFormData(prev => ({
-      ...prev,
-      producto_ids: prev.producto_ids.includes(productoId)
-        ? prev.producto_ids.filter(id => id !== productoId)
-        : [...prev.producto_ids, productoId]
-    }));
-  };
-
-  const handleSelectAll = () => {
-    const allIds = productosPendientes.map((p: ProductosEnLiquidacion) => p.id_producto_en_liquidacion);
-    setSelectedProductos(allIds);
-    setFormData(prev => ({ ...prev, producto_ids: allIds }));
-  };
-
-  const handleDeselectAll = () => {
-    setSelectedProductos([]);
-    setFormData(prev => ({ ...prev, producto_ids: [] }));
-  };
-
-  const calculateImporte = (): number => {
-    const total = productosPendientes
-      .filter((p: ProductosEnLiquidacion) => selectedProductos.includes(p.id_producto_en_liquidacion))
-      .reduce((acc: Decimal, p: ProductosEnLiquidacion) => {
-        return add(acc, mul(p.precio, p.cantidad));
-      }, new Decimal(0));
-    return toNumber(total);
-  };
-
-  const calculateImporteCaguayo = (): number => {
-    const importe = new Decimal(calculateImporte());
-    const porcentaje = Number(formData.porcentaje_caguayo) || DEFAULTS.PORCENTAJE_CAGUAYO;
-    const result = mul(importe, percentToMultiplier(porcentaje));
-    return toNumber(result);
-  };
-
-  const calculateDevengado = (): number => {
-    const importe = new Decimal(calculateImporte());
-    const importe_caguayo = new Decimal(calculateImporteCaguayo());
-    return toNumber(sub(importe, importe_caguayo));
-  };
-
-  const calculateTributarioMonto = (): number => {
-    const devengado = new Decimal(calculateDevengado());
-    const tributario = Number(formData.tributario) || 0;
-    const result = mul(devengado, percentToMultiplier(tributario));
-    return toNumber(result);
-  };
-
-  const calculateSubtotal = (): number => {
-    const devengado = new Decimal(calculateDevengado());
-    const tributario_monto = new Decimal(calculateTributarioMonto());
-    return toNumber(sub(devengado, tributario_monto));
-  };
-
-  const calculateNetoPagar = (): number => {
-    const subtotal = new Decimal(calculateSubtotal());
-    const gasto_empresa = Number(formData.gasto_empresa) || 0;
-    const comision = Number(formData.comision_bancaria) || 0;
-    return toNumber(sub(sub(subtotal, gasto_empresa), comision));
-  };
 
   const filteredLiquidaciones = liquidaciones.filter((l: Liquidacion) => {
     if (filtroCliente && l.id_cliente !== filtroCliente) return false;
@@ -641,12 +454,7 @@ id_moneda: 0,
           </div>
         </div>
         <Button
-          onClick={() => {
-            const url = filtroCliente 
-              ? `/compra/liquidaciones/crear?proveedor=${filtroCliente}`
-              : '/compra/liquidaciones/crear';
-            navigate(url);
-          }}
+          onClick={() => setShowCrearModal(true)}
           className="gap-2 bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300"
         >
           <Plus className="h-4 w-4" />
@@ -822,359 +630,42 @@ id_moneda: 0,
         </div>
       )}
 
-      {showModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-4xl max-h-[90vh] overflow-hidden">
-            <CardHeader className="border-b bg-gradient-to-r from-teal-50 to-cyan-50">
-              <div className="flex items-center gap-4">
-                <div className="p-2 bg-gradient-to-br from-teal-500 to-cyan-600 rounded shadow-lg">
-                  <Receipt className="h-5 w-5 text-white" />
-                </div>
-                <CardTitle className="flex items-center gap-2 text-lg">
-                  Nueva Liquidación
-                </CardTitle>
-                <button onClick={() => { setShowModal(false); resetForm(); }} className="ml-auto text-gray-400 hover:text-gray-600">
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-            </CardHeader>
-            
-            <div className="p-6 overflow-y-auto max-h-[calc(90vh-140px)] space-y-6">
-              {/* Datos de Liquidación */}
-              <Card className="shadow-sm border-gray-200">
-                <CardHeader className="border-b bg-gray-50/50">
-                  <CardTitle className="flex items-center gap-2 text-base">
-                    <FileText className="h-4 w-4 text-teal-600" />
-                    Datos de Liquidación
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="mt-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <Label className="text-sm font-medium">Proveedor *</Label>
-                      <div className="relative mt-1">
-                        {filtroCliente ? (
-                          <div className="flex items-center gap-2 px-3 py-2 border border-teal-300 rounded-lg bg-teal-50">
-                            <span className="flex-1 font-medium text-teal-900">
-                              {clientes.find((c: Cliente) => c.id_cliente === filtroCliente)?.nombre}
-                            </span>
-                            <button
-                              type="button"
-                              onClick={handleChangeProveedorClick}
-                              className="p-1 text-gray-500 hover:text-red-500 transition-colors"
-                              title="Cambiar proveedor"
-                            >
-                              <X className="w-4 h-4" />
-                            </button>
-                          </div>
-                        ) : (
-                          <div className="relative">
-                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                            <Input
-                              placeholder="Buscar proveedor..."
-                              value={proveedorSearch}
-                              onChange={(e) => setProveedorSearch(e.target.value)}
-                              className="pl-10"
-                            />
-                            {proveedorSearch && (() => {
-                              const filtrados = clientes.filter((c: Cliente) =>
-                                c.nombre.toLowerCase().includes(proveedorSearch.toLowerCase()) ||
-                                c.codigo?.toLowerCase().includes(proveedorSearch.toLowerCase()) ||
-                                c.nit?.toLowerCase().includes(proveedorSearch.toLowerCase())
-                              );
-                              return filtrados.length > 0 ? (
-                                <ul className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
-                                  {filtrados.slice(0, 20).map((cliente: Cliente) => (
-                                    <li
-                                      key={cliente.id_cliente}
-                                      onClick={() => {
-                                        handleClienteChange(cliente.id_cliente);
-                                        setProveedorSearch("");
-                                      }}
-                                      className="px-3 py-2 hover:bg-teal-50 cursor-pointer text-sm transition-colors border-b border-gray-100 last:border-b-0"
-                                    >
-                                      <div className="font-medium text-gray-900">{cliente.nombre}</div>
-                                      <div className="text-xs text-gray-500">{cliente.codigo} · {cliente.nit}</div>
-                                    </li>
-                                  ))}
-                                </ul>
-                              ) : (
-                                <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg p-3 text-sm text-gray-500">
-                                  No se encontraron proveedores
-                                </div>
-                              );
-                            })()}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                    
-                    
-                    <div>
-                      <Label className="text-sm font-medium">Moneda *</Label>
-                      <select
-                        value={formData.id_moneda}
-                        onChange={(e) => setFormData(prev => ({ ...prev, id_moneda: Number(e.target.value) }))}
-                        className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white"
-                      >
-                        {monedas.map((moneda: Moneda) => (
-                          <option key={moneda.id_moneda} value={moneda.id_moneda}>
-                            {moneda.denominacion}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    
-                    <div>
-                      <Label className="text-sm font-medium">Tipo de Pago</Label>
-                      <select
-                        value={formData.tipo_pago}
-                        onChange={(e) => setFormData(prev => ({ ...prev, tipo_pago: e.target.value }))}
-                        className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white"
-                      >
-                        <option value="TRANSFERENCIA">Transferencia</option>
-                        <option value="EFECTIVO">Efectivo</option>
-                        <option value="CHEQUE">Cheque</option>
-                        <option value="OTRO">Otro</option>
-                      </select>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Productos Pendientes */}
-              {filtroCliente && (
-                <Card className="shadow-sm border-gray-200">
-                  <CardHeader className="border-b bg-gray-50/50">
-                    <div className="flex justify-between items-center w-full">
-                      <CardTitle className="flex items-center gap-2 text-base">
-                        <Package className="h-4 w-4 text-teal-600" />
-                        Productos Pendientes
-                      </CardTitle>
-                      <div className="flex gap-2">
-                        <button
-                          onClick={handleSelectAll}
-                          className="text-sm text-teal-600 hover:underline"
-                        >
-                          Seleccionar todos
-                        </button>
-                        <span className="text-gray-300">|</span>
-                        <button
-                          onClick={handleDeselectAll}
-                          className="text-sm text-teal-600 hover:underline"
-                        >
-                          Deseleccionar todos
-                        </button>
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="mt-4">
-                    {productosPendientes.length === 0 ? (
-                      <p className="text-gray-500 text-sm py-4">No hay productos pendientes para este proveedor</p>
-                    ) : (
-                      <div className="border rounded-lg max-h-60 overflow-y-auto">
-                        <Table>
-                          <TableHeader className="bg-gray-50 sticky top-0">
-                            <TableRow>
-                              <TableHead className="w-10"></TableHead>
-                              <TableHead>Código</TableHead>
-                              <TableHead>Producto</TableHead>
-                              <TableHead className="text-left">Anexo</TableHead>
-                              <TableHead className="text-right">A Liquidar</TableHead>
-                              <TableHead className="text-right">Por Liquidar</TableHead>
-                              <TableHead className="text-right">Precio Venta</TableHead>
-                              <TableHead className="text-right">Total</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {productosPendientes.map((prod: ProductosEnLiquidacion) => (
-                              <TableRow key={prod.id_producto_en_liquidacion} className="hover:bg-gray-50">
-                                <TableCell>
-                                  <input
-                                    type="checkbox"
-                                    checked={selectedProductos.includes(prod.id_producto_en_liquidacion)}
-                                    onChange={() => handleProductoSelect(prod.id_producto_en_liquidacion)}
-                                    className="rounded"
-                                  />
-                                </TableCell>
-                                <TableCell>{prod.codigo}</TableCell>
-                                <TableCell>{prod.producto_nombre || prod.producto?.nombre || `Producto ${prod.id_producto}`}</TableCell>
-                                <TableCell>
-                                  <span className="inline-flex items-center px-2 py-0.5 rounded text-xs bg-gray-100 text-gray-700">
-                                    {prod.anexo?.nombre_anexo || '-'}
-                                  </span>
-                                </TableCell>
-                                <TableCell className="text-right">{prod.cantidad}</TableCell>
-                                <TableCell className="text-right">
-                                  {((prod.cantidad_original || 0) - (prod.cantidad_liquidada || 0)) > 0 
-                                    ? (prod.cantidad_original || 0) - (prod.cantidad_liquidada || 0) 
-                                    : 0}
-                                </TableCell>
-                                <TableCell className="text-right">{prod.precio?.toLocaleString()}</TableCell>
-                                <TableCell className="text-right font-medium">
-                                  {(prod.precio * prod.cantidad).toLocaleString()}
-                                </TableCell>
-                              </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Cálculos de Liquidación */}
-              <Card className="shadow-sm border-gray-200">
-                <CardHeader className="border-b bg-gray-50/50">
-                  <CardTitle className="flex items-center gap-2 text-base">
-                    <DollarSign className="h-4 w-4 text-teal-600" />
-                    Cálculos de Liquidación
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="mt-4">
-                  <div className="grid gap-4 md:grid-cols-4 mb-6">
-                    <div>
-                      <Label className="text-sm font-medium">% Caguayo</Label>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        max="100"
-                        value={formData.porcentaje_caguayo}
-                        onChange={(e) => { setFormData(prev => ({ ...prev, porcentaje_caguayo: Number(e.target.value) })); validateNumericField('porcentaje_caguayo', e.target.value); }}
-                      />
-                      {errors.porcentaje_caguayo && <p className="text-red-500 text-sm mt-1">{errors.porcentaje_caguayo}</p>}
-                    </div>
-                    <div>
-                      <Label className="text-sm font-medium">Tributario (%)</Label>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        max="100"
-                        value={formData.tributario}
-                        onChange={(e) => { setFormData(prev => ({ ...prev, tributario: Number(e.target.value) })); validateNumericField('tributario', e.target.value); }}
-                      />
-                      {errors.tributario && <p className="text-red-500 text-sm mt-1">{errors.tributario}</p>}
-                    </div>
-                    <div>
-                      <Label className="text-sm font-medium">Comisión Bancaria</Label>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        value={formData.comision_bancaria}
-                        onChange={(e) => { setFormData(prev => ({ ...prev, comision_bancaria: Number(e.target.value) })); validateNumericField('comision_bancaria', e.target.value); }}
-                      />
-                      {errors.comision_bancaria && <p className="text-red-500 text-sm mt-1">{errors.comision_bancaria}</p>}
-                    </div>
-                    <div>
-                      <Label className="text-sm font-medium">Gasto Empresa</Label>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        value={formData.gasto_empresa}
-                        onChange={(e) => { setFormData(prev => ({ ...prev, gasto_empresa: Number(e.target.value) })); validateNumericField('gasto_empresa', e.target.value); }}
-                      />
-                      {errors.gasto_empresa && <p className="text-red-500 text-sm mt-1">{errors.gasto_empresa}</p>}
-                    </div>
-                  </div>
-
-                  <div className="bg-gray-50 rounded-lg p-5">
-                    <div className="space-y-1.5">
-                      <div className="flex justify-between">
-                        <span className="text-base font-bold text-gray-800">IMPORTE:</span>
-                        <span className="text-base font-bold text-gray-800">{calculateImporte().toLocaleString()}</span>
-                      </div>
-                      <div className="flex justify-between pl-4">
-                        <span className="text-sm text-gray-500">Importe Caguayo ({Number(formData.porcentaje_caguayo || DEFAULTS.PORCENTAJE_CAGUAYO)}%):</span>
-                        <span className="text-sm text-gray-500">- {calculateImporteCaguayo().toLocaleString()}</span>
-                      </div>
-                      <div className="flex justify-between border-b border-gray-200 pb-1.5">
-                        <span className="text-base font-semibold text-red-600">DEVENGADO:</span>
-                        <span className="text-base font-semibold text-red-600">{calculateDevengado().toLocaleString()}</span>
-                      </div>
-                      <div className="flex justify-between pl-4">
-                        <span className="text-sm text-gray-500">Tributario ({Number(formData.tributario || 0)}%):</span>
-                        <span className="text-sm text-gray-500">- {calculateTributarioMonto().toLocaleString()}</span>
-                      </div>
-                      <div className="flex justify-between border-b border-gray-200 pb-1.5">
-                        <span className="text-base font-semibold text-gray-700">SUBTOTAL:</span>
-                        <span className="text-base font-semibold text-gray-700">{calculateSubtotal().toLocaleString()}</span>
-                      </div>
-                      <div className="flex justify-between pl-4">
-                        <span className="text-sm text-gray-500">Gasto Empresa:</span>
-                        <span className="text-sm text-gray-500">- {Number(formData.gasto_empresa || 0).toLocaleString()}</span>
-                      </div>
-                      <div className="flex justify-between pl-4">
-                        <span className="text-sm text-gray-500">Comisión:</span>
-                        <span className="text-sm text-gray-500">- {Number(formData.comision_bancaria || 0).toLocaleString()}</span>
-                      </div>
-                      <div className="flex justify-between border-t-2 border-gray-300 pt-2.5 mt-1.5">
-                        <span className="text-lg font-bold text-gray-800">NETO A PAGAR:</span>
-                        <span className="text-lg font-bold text-green-600">{calculateNetoPagar().toLocaleString()}</span>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="shadow-sm border-gray-200">
-                <CardHeader className="border-b bg-gray-50/50">
-                  <CardTitle className="flex items-center gap-2 text-base">
-                    <ScrollText className="h-4 w-4 text-teal-600" />
-                    Observaciones
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="mt-4">
-                  <textarea
-                    value={formData.observaciones}
-                    onChange={(e) => setFormData(prev => ({ ...prev, observaciones: e.target.value }))}
-                    rows={3}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white resize-none"
-                  />
-                </CardContent>
-              </Card>
-            </div>
-
-            <div className="px-6 py-4 border-t bg-gray-50 flex justify-end gap-3">
-              <Button variant="outline" onClick={() => { setShowModal(false); resetForm(); }}>
-                Cancelar
-              </Button>
-              <Button
-                onClick={() => {
-                  if (!formData.id_cliente || selectedProductos.length === 0) {
-                    toast.error('Seleccione un proveedor y al menos un producto');
-                    return;
-                  }
-                  if (!formData.id_moneda || formData.id_moneda === 0) {
-                    toast.error('Seleccione una moneda');
-                    return;
-                  }
-                  const caguayoErr = validateNumericField('porcentaje_caguayo', formData.porcentaje_caguayo);
-                  const tributarioErr = validateNumericField('tributario', formData.tributario);
-                  const comisionErr = validateNumericField('comision_bancaria', formData.comision_bancaria);
-                  const gastoErr = validateNumericField('gasto_empresa', formData.gasto_empresa);
-                  if (caguayoErr || tributarioErr || comisionErr || gastoErr) {
-                    toast.error('Corrija los valores en los campos de cálculos');
-                    return;
-                  }
-                  createMutation.mutate({
-                    ...formData,
-                    id_cliente: filtroCliente!
-                  });
-                }}
-                disabled={createMutation.isPending || selectedProductos.length === 0}
-                className="gap-2 bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300"
-              >
-                {createMutation.isPending ? 'Creando...' : 'Crear Liquidación'}
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+      <FormModal
+        isOpen={showCrearModal}
+        onClose={() => { setShowCrearModal(false); setIsSavingCrear(false); }}
+        title="Nueva Liquidación"
+        subtitle="Liquidación de productos por proveedor"
+        icon={<FileText className="h-6 w-6" />}
+        size="xl"
+        footer={
+          <>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => { setShowCrearModal(false); setIsSavingCrear(false); }}
+              disabled={isSavingCrear}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="submit"
+              form={CREAR_LIQUIDACION_FORM_ID}
+              disabled={isSavingCrear}
+              isLoading={isSavingCrear}
+              className="gap-2 bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white shadow-lg hover:shadow-xl transition-all duration-300"
+            >
+              Guardar
+            </Button>
+          </>
+        }
+      >
+        <CrearLiquidacionForm
+          formId={CREAR_LIQUIDACION_FORM_ID}
+          initialProveedorId={filtroCliente}
+          onExit={() => { setShowCrearModal(false); setIsSavingCrear(false); refresh(); }}
+          onPendingChange={setIsSavingCrear}
+        />
+      </FormModal>
 
       {showDetailModal && selectedLiquidacion && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">

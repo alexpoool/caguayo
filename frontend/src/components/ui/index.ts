@@ -6,6 +6,8 @@ export * from './Card';
 export * from './Table';
 export * from './ConfirmModal';
 export * from './Modal';
+export * from './FormModal';
+export * from './ModalShell';
 export * from './Skeleton';
 export * from './AnimatedCard';
 export * from './Avatar';

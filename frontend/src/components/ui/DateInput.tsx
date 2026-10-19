@@ -157,7 +157,7 @@ export const DateInput: React.FC<DateInputProps> = ({
           onBlur={salir}
           aria-invalid={invalido || undefined}
           className={cn(
-            "flex h-10 w-full rounded-lg border bg-white px-3 py-2 pr-10 text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:cursor-not-allowed disabled:opacity-50",
+            "flex h-10 w-full rounded-lg border bg-white px-3 py-2 pr-10 text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent disabled:cursor-not-allowed disabled:opacity-50",
             error || invalido
               ? "border-red-500 focus:ring-red-500"
               : "border-gray-300",
@@ -190,7 +190,7 @@ export const DateInput: React.FC<DateInputProps> = ({
         />
       </div>
       {(error || invalido) && (
-        <p className="mt-1 text-xs text-red-500">
+        <p className="mt-1 text-sm text-red-600">
           {error || "Fecha invalida. Use el formato dd/mm/aaaa"}
         </p>
       )}

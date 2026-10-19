@@ -2,7 +2,6 @@ import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import {
-  ArrowLeft,
   Briefcase,
   CheckCircle2,
   Coins,
@@ -11,7 +10,6 @@ import {
   Landmark,
   Percent,
   Plus,
-  Save,
   ScrollText,
   Search,
   Trash2,
@@ -25,6 +23,7 @@ import {
   CardTitle,
   ConfirmModal,
   DateInput,
+  FormModal,
   Input,
   Label,
   Table,
@@ -279,6 +278,8 @@ const HOJAS: { id: HojaId; label: string }[] = [
   { id: "seccionG", label: "Sección G · Escala" },
 ];
 
+const DJ08_FORM_ID = "dj08-form";
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Página
 // ─────────────────────────────────────────────────────────────────────────────
@@ -424,8 +425,7 @@ export function DJ08Page() {
   // ═══════════════════════════════════════════════════════════════════════════
   // VISTA: Lista (mismo patrón que Proveedores / Convenios / Anexos)
   // ═══════════════════════════════════════════════════════════════════════════
-  if (vista === "list") {
-    return (
+  return (
       <div className="space-y-4 animate-fade-in-up">
         {/* Header */}
         <div className="flex items-center justify-between gap-3">
@@ -617,40 +617,73 @@ export function DJ08Page() {
           confirmText="Confirmar"
           cancelText="Cancelar"
         />
+
+        {renderFormModal()}
       </div>
     );
-  }
 
   // ═══════════════════════════════════════════════════════════════════════════
   // VISTA: Formulario (página completa, hojas como la Ficha de Costo)
   // ═══════════════════════════════════════════════════════════════════════════
-  return (
-    <div className="animate-fade-in-up">
-      {/* Header del formulario */}
-      <div className="flex items-center gap-4 mb-6">
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => setVista("list")}
-          className="h-9 w-9"
-        >
-          <ArrowLeft className="h-5 w-5" />
-        </Button>
-        <div className="flex items-center gap-3">
-          <div className="p-2 bg-gradient-to-br from-teal-500 to-cyan-600 rounded shadow-lg animate-bounce-subtle">
-            <ScrollText className="h-5 w-5 text-white" />
-          </div>
-          <h1 className="text-xl font-bold text-gray-900">
-            Nueva Declaración Jurada DJ-08
-          </h1>
-        </div>
-        <div className="ml-auto flex items-center gap-3">
-          <div className="text-right">
+  function renderFormModal() {
+    return (
+    <FormModal
+      isOpen={vista === "form"}
+      onClose={() => setVista("list")}
+      title="Nueva Declaración Jurada DJ-08"
+      subtitle="Impuesto sobre Ingresos Personales — CUP"
+      icon={<ScrollText className="h-6 w-6" />}
+      size="xl"
+      footer={
+        <>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={exportarPdf}
+            disabled={exportando || guardarMutation.isPending}
+            className="gap-2 text-rose-700 border-rose-300 hover:bg-rose-50"
+          >
+            <FileDown className="h-4 w-4" />
+            {exportando ? "Generando…" : "Exportar PDF"}
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => setVista("list")}
+            disabled={guardarMutation.isPending}
+          >
+            Cancelar
+          </Button>
+          <Button
+            type="submit"
+            form={DJ08_FORM_ID}
+            disabled={guardarMutation.isPending}
+            isLoading={guardarMutation.isPending}
+            className="gap-2 bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white shadow-lg hover:shadow-xl transition-all duration-300"
+          >
+            {guardarMutation.isPending ? "Guardando…" : "Guardar Declaración"}
+          </Button>
+        </>
+      }
+    >
+      <form
+        id={DJ08_FORM_ID}
+        onSubmit={(e) => {
+          e.preventDefault();
+          guardarMutation.mutate();
+        }}
+        className="p-4 md:p-6 space-y-6"
+      >
+        {/* Barra superior: total a pagar + calcular en servidor */}
+        <div className="flex items-center justify-between gap-3 rounded-lg bg-gray-50 border border-gray-200 px-4 py-2">
+          <div>
             <p className="text-xs text-gray-500 uppercase tracking-wider">Total a pagar (fila 36)</p>
             <p className="text-lg font-bold text-teal-700">${fmt(c.total_pagar)}</p>
           </div>
           <Button
+            type="button"
             variant="outline"
+            size="sm"
             onClick={calcularEnServidor}
             disabled={calculando}
             className="gap-2 text-teal-700 border-teal-300 hover:bg-teal-50"
@@ -659,54 +692,47 @@ export function DJ08Page() {
             {calculando ? "Calculando…" : "Calcular"}
           </Button>
         </div>
-      </div>
 
-      {/* Hojas del documento (tabs) */}
-      <div className="flex gap-2 mb-6 overflow-x-auto">
-        {HOJAS.map((h) => {
-          const activa = hojaActiva === h.id;
-          return (
-            <button
-              key={h.id}
-              type="button"
-              onClick={() => setHojaActiva(h.id)}
-              className={`inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-all ${
-                activa
-                  ? "bg-gradient-to-r from-teal-500 to-cyan-600 text-white shadow-md"
-                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-              }`}
-            >
-              {h.label}
-              {h.id === "seccionA" && actividades.length > 0 && (
-                <span
-                  className={`inline-flex items-center justify-center h-5 min-w-[1.25rem] px-1.5 text-[11px] font-bold rounded-full ${
-                    activa ? "bg-white/25 text-white" : "bg-teal-100 text-teal-700"
-                  }`}
-                >
-                  {actividades.length}
-                </span>
-              )}
-              {h.id === "seccionF" && tributos.length > 0 && (
-                <span
-                  className={`inline-flex items-center justify-center h-5 min-w-[1.25rem] px-1.5 text-[11px] font-bold rounded-full ${
-                    activa ? "bg-white/25 text-white" : "bg-teal-100 text-teal-700"
-                  }`}
-                >
-                  {tributos.length}
-                </span>
-              )}
-            </button>
-          );
-        })}
-      </div>
+        {/* Hojas del documento (tabs) */}
+        <div className="flex gap-2 overflow-x-auto">
+          {HOJAS.map((h) => {
+            const activa = hojaActiva === h.id;
+            return (
+              <button
+                key={h.id}
+                type="button"
+                onClick={() => setHojaActiva(h.id)}
+                className={`inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-all ${
+                  activa
+                    ? "bg-gradient-to-r from-teal-500 to-cyan-600 text-white shadow-md"
+                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                }`}
+              >
+                {h.label}
+                {h.id === "seccionA" && actividades.length > 0 && (
+                  <span
+                    className={`inline-flex items-center justify-center h-5 min-w-[1.25rem] px-1.5 text-[11px] font-bold rounded-full ${
+                      activa ? "bg-white/25 text-white" : "bg-teal-100 text-teal-700"
+                    }`}
+                  >
+                    {actividades.length}
+                  </span>
+                )}
+                {h.id === "seccionF" && tributos.length > 0 && (
+                  <span
+                    className={`inline-flex items-center justify-center h-5 min-w-[1.25rem] px-1.5 text-[11px] font-bold rounded-full ${
+                      activa ? "bg-white/25 text-white" : "bg-teal-100 text-teal-700"
+                    }`}
+                  >
+                    {tributos.length}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
 
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          guardarMutation.mutate();
-        }}
-        className="pb-8"
-      >
+        <div className="space-y-6">
         {/* ── HOJA 1: Datos del formulario ── */}
         {hojaActiva === "hoja1" && (
           <div className="space-y-6">
@@ -1192,45 +1218,9 @@ export function DJ08Page() {
           </div>
         )}
 
-        {/* ── Acciones del formulario ── */}
-        <div className="flex gap-3 pt-2">
-          <Button
-            type="submit"
-            disabled={guardarMutation.isPending}
-            className="gap-2 bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300"
-          >
-            <Save className="h-4 w-4" />
-            {guardarMutation.isPending ? "Guardando…" : "Guardar Declaración"}
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={exportarPdf}
-            disabled={exportando}
-            className="gap-2 text-rose-700 border-rose-300 hover:bg-rose-50"
-          >
-            <FileDown className="h-4 w-4" />
-            {exportando ? "Generando…" : "Exportar PDF"}
-          </Button>
-          <Button type="button" variant="outline" onClick={() => setVista("list")}>
-            Cancelar
-          </Button>
         </div>
       </form>
-
-      <ConfirmModal
-        isOpen={confirmar.isOpen}
-        onClose={() => setConfirmar({ ...confirmar, isOpen: false })}
-        onConfirm={() => {
-          confirmar.onConfirm();
-          setConfirmar({ ...confirmar, isOpen: false });
-        }}
-        title={confirmar.titulo}
-        message={confirmar.mensaje}
-        type={confirmar.tipo}
-        confirmText="Confirmar"
-        cancelText="Cancelar"
-      />
-    </div>
+    </FormModal>
   );
+  }
 }

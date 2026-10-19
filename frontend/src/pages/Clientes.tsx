@@ -1,23 +1,20 @@
 import { useEffect, useRef } from "react";
 import { useClientesLogic } from "./clientes/hooks/useClientesLogic";
-import { ClienteForm } from "./clientes/components/form/ClienteForm";
+import { ClienteFormModal } from "./clientes/components/modals/ClienteFormModal";
 import { ClientesList } from "./clientes/components/list/ClientesList";
 import { ConfirmModal } from "../components/ui";
 
 export function ClientesPage() {
   const {
-    view,
-    setView,
+    isFormOpen,
+    openForm,
+    closeForm,
     isProveedorView,
     editingCliente,
     setEditingCliente,
-    tipoPersona,
     setTipoPersona,
-    datosNatural,
     setDatosNatural,
-    datosJuridica,
     setDatosJuridica,
-    datosTCP,
     setDatosTCP,
     setCuentasCliente,
     confirmModal,
@@ -29,7 +26,6 @@ export function ClientesPage() {
     provincias,
     createMutation,
     updateMutation,
-    deleteMutation,
     handleEdit,
     handleDelete,
     filteredClientes,
@@ -69,48 +65,50 @@ export function ClientesPage() {
     setCuentasCliente([]);
   };
 
+  const handleCloseForm = () => {
+    resetForm();
+    closeForm();
+  };
+
+  const isSubmitting =
+    createMutation.isPending || updateMutation.isPending;
+
   return (
     <div className="flex-1 w-full bg-gray-50/50">
-      {/* List View */}
-      {view === "list" && (
-        <ClientesList
-          filteredClientes={filteredClientes}
-          totalClientes={clientes.length}
-          searchTerm={searchTerm}
-          setSearchTerm={setSearchTerm}
-          isProveedorView={isProveedorView}
-          onNew={() => {
-            resetForm();
-            setView("form");
-          }}
-          handleEdit={handleEdit}
-          handleDelete={handleDelete}
-          loadMoreRef={loadMoreRef}
-          isFetchingMore={isFetchingMore}
-          tiposEntidad={tiposEntidad}
-        />
-      )}
+      <ClientesList
+        filteredClientes={filteredClientes}
+        totalClientes={clientes.length}
+        searchTerm={searchTerm}
+        setSearchTerm={setSearchTerm}
+        isProveedorView={isProveedorView}
+        onNew={() => {
+          resetForm();
+          openForm();
+        }}
+        handleEdit={handleEdit}
+        handleDelete={handleDelete}
+        loadMoreRef={loadMoreRef}
+        isFetchingMore={isFetchingMore}
+        tiposEntidad={tiposEntidad}
+      />
 
-      {/* Form View */}
-      {view === "form" && (
-        <ClienteForm
-          isProveedorView={isProveedorView}
-          editingCliente={editingCliente}
-          onCancel={() => {
-            resetForm();
-            setView("list");
-          }}
-          onSubmit={async (data) => {
-            if (editingCliente) {
-              await updateMutation.mutateAsync({ id: editingCliente.id_cliente, data });
-            } else {
-              await createMutation.mutateAsync(data);
-            }
-          }}
-          provincias={provincias}
-          tiposEntidad={tiposEntidad}
-        />
-      )}
+      {/* Form Modal (creación / edición) */}
+      <ClienteFormModal
+        isOpen={isFormOpen}
+        isProveedorView={isProveedorView}
+        editingCliente={editingCliente}
+        isSubmitting={isSubmitting}
+        onClose={handleCloseForm}
+        onSubmit={async (data) => {
+          if (editingCliente) {
+            await updateMutation.mutateAsync({ id: editingCliente.id_cliente, data });
+          } else {
+            await createMutation.mutateAsync(data);
+          }
+        }}
+        provincias={provincias}
+        tiposEntidad={tiposEntidad}
+      />
 
       {/* Main Confirm Modal for Deletes */}
       <ConfirmModal

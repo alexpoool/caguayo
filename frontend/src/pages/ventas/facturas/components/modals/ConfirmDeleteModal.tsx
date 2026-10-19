@@ -1,6 +1,5 @@
-import { createPortal } from "react-dom";
 import { AlertCircle, AlertTriangle, Info, CheckCircle, X } from "lucide-react";
-import { Button } from "../../../../../components/ui";
+import { Button, ModalOverlay } from "../../../../../components/ui";
 
 interface ConfirmDeleteModalProps {
   isOpen: boolean;
@@ -65,8 +64,8 @@ export function ConfirmDeleteModal({
 
   const { text: buttonText, className: buttonClass } = buttonConfigs[type];
 
-  return createPortal(
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 animate-fade-in">
+  return (
+    <ModalOverlay isOpen={isOpen} onClose={onClose} ariaLabel={title}>
       <div
         className={`bg-white rounded-2xl shadow-2xl max-w-md w-full ${bg} border ${border} animate-scale-in`}
       >
@@ -100,7 +99,6 @@ export function ConfirmDeleteModal({
           </div>
         </div>
       </div>
-    </div>,
-    document.body,
+    </ModalOverlay>
   );
 }

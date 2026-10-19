@@ -1,20 +1,21 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { createPortal } from 'react-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Button, Input, Label, DateInput, Card, CardContent, CardHeader, CardTitle, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, ConfirmModal } from '../../components/ui';
+import { Button, Input, Label, DateInput, Card, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, ConfirmModal, ModalOverlay, FormModal } from '../../components/ui';
 import { ClienteForm } from '../clientes/components/form/ClienteForm';
 import { solicitudesService, contratosService, clientesService, monedaService, suplementosService, configuracionService, etapasProyectoService, ofertasService } from '../../services/api';
 import type { SolicitudServicio, SolicitudServicioCreate, SolicitudServicioUpdate, Etapa, Oferta } from '../../types/servicio';
 import type { ContratoWithDetails, ContratoCreate, SuplementoWithDetails, SuplementoCreate } from '../../types/contrato';
 import type { Cliente } from '../../types/ventas';
 import type { Moneda } from '../../types/moneda';
-import { Plus, Save, Trash2, Edit, ArrowLeft, Search, ClipboardList, Tag, X, Layers, CheckCircle, CheckSquare, FileText, FilePlus, User, DollarSign, Calendar, Loader2 } from 'lucide-react';
+import { Plus, Trash2, Edit, Search, ClipboardList, Tag, X, Layers, CheckCircle, FileText, FilePlus, User, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import { useInfiniteList } from '../../hooks/useInfiniteList';
 import { formatFecha } from '../../utils/fecha';
 
 type View = 'list' | 'form';
+
+const SOLICITUD_FORM_ID = 'solicitud-form';
 
 export function SolicitudesPage() {
   const navigate = useNavigate();
@@ -23,6 +24,7 @@ export function SolicitudesPage() {
 
   const [editingId, setEditingId] = useState<number | null>(null);
   const [formData, setFormData] = useState<Record<string, any>>({});
+  const [isSaving, setIsSaving] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
 
   const hoy = new Date().toISOString().split('T')[0];
@@ -67,7 +69,6 @@ export function SolicitudesPage() {
 
   const {
     items: solicitudes,
-    isLoading,
     isFetchingMore,
     refresh,
     hasMore,
@@ -125,8 +126,6 @@ export function SolicitudesPage() {
   });
   const tiposContrato = [{ id: 1, nombre: 'SERVICIO' }, { id: 2, nombre: 'OBRA' }, { id: 3, nombre: 'MANTENIMIENTO' }, { id: 4, nombre: 'ALQUILER' }, { id: 5, nombre: 'COMPRA' }];
 
-  const estados = ['PENDIENTE', 'EN NEGOCIACION', 'EN PROCESO', 'TERMINADA', 'CANCELADA'];
-
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (clienteRef.current && !clienteRef.current.contains(e.target as Node)) {
@@ -172,6 +171,7 @@ export function SolicitudesPage() {
   }, [view]);
 
   const handleSave = async () => {
+    setIsSaving(true);
     try {
       if (!formData.id_cliente) {
         toast.error('Debe seleccionar un cliente');
@@ -214,6 +214,7 @@ export function SolicitudesPage() {
       refresh();
       queryClient.invalidateQueries({ queryKey: ['solicitudes-proyecto'] });
     } catch (error: any) { toast.error(error.message || 'Error'); }
+    finally { setIsSaving(false); }
   };
 
   const handleDelete = async (id: number, codigo: string) => {
@@ -230,44 +231,6 @@ export function SolicitudesPage() {
         } catch (error: any) { toast.error(error.message || 'Error'); }
       },
       type: 'danger'
-    });
-  };
-
-  const handleCancelarSolicitud = async (item: SolicitudServicio) => {
-    setConfirmModal({
-      isOpen: true,
-      title: '¿Cancelar solicitud?',
-      message: `¿Está seguro de cancelar la solicitud "${item.codigo_solicitud}"?`,
-      onConfirm: async () => {
-        try {
-          await solicitudesService.updateSolicitud(item.id_solicitud_servicio, {
-            estado: 'CANCELADA'
-          });
-          toast.success('Solicitud cancelada');
-          refresh();
-          queryClient.invalidateQueries({ queryKey: ['solicitudes-proyecto'] });
-        } catch (error: any) { toast.error(error.message || 'Error'); }
-      },
-      type: 'warning'
-    });
-  };
-
-  const handleTerminarSolicitud = async (item: SolicitudServicio) => {
-    setConfirmModal({
-      isOpen: true,
-      title: '¿Terminar solicitud?',
-      message: `¿Está seguro de marcar como terminada la solicitud "${item.codigo_solicitud}"?`,
-      onConfirm: async () => {
-        try {
-          await solicitudesService.updateSolicitud(item.id_solicitud_servicio, {
-            estado: 'TERMINADA'
-          });
-          toast.success('Solicitud terminada');
-          refresh();
-          queryClient.invalidateQueries({ queryKey: ['solicitudes-proyecto'] });
-        } catch (error: any) { toast.error(error.message || 'Error'); }
-      },
-      type: 'info'
     });
   };
 
@@ -298,7 +261,7 @@ export function SolicitudesPage() {
         ? data.filter(c => c.id_cliente === item.id_cliente)
         : data;
       setAprobarModal(prev => ({ ...prev, contratos: contratosDelCliente, loadingContratos: false }));
-    } catch (error: any) {
+    } catch {
       toast.error('Error al cargar contratos');
       setAprobarModal(prev => ({ ...prev, isOpen: false, loadingContratos: false }));
     }
@@ -428,28 +391,6 @@ export function SolicitudesPage() {
     }
   };
 
-  const openContratoModal = async (idContrato: number) => {
-    setContratoModal({ isOpen: true, item: null, loading: true });
-    try {
-      const contrato = await contratosService.getContrato(idContrato);
-      setContratoModal({ isOpen: true, item: contrato, loading: false });
-    } catch (error: any) {
-      toast.error('Error al cargar contrato');
-      setContratoModal({ isOpen: false, item: null, loading: false });
-    }
-  };
-
-  const openSuplementoModal = async (idSuplemento: number) => {
-    setSuplementoModal({ isOpen: true, item: null, loading: true });
-    try {
-      const suplemento = await suplementosService.getSuplemento(idSuplemento);
-      setSuplementoModal({ isOpen: true, item: suplemento, loading: false });
-    } catch (error: any) {
-      toast.error('Error al cargar complemento');
-      setSuplementoModal({ isOpen: false, item: null, loading: false });
-    }
-  };
-
   const resetForm = () => { setFormData({ fecha_solicitud: hoy }); setEditingId(null); setClienteSearch(''); };
 
   const openForm = (item?: SolicitudServicio) => {
@@ -497,7 +438,7 @@ export function SolicitudesPage() {
       lista.push(oferta);
       ofertasPorEtapa.set(oferta.id_etapa, lista);
     }
-    for (const [solicitudId, count] of etapasPorSolicitud.entries()) {
+    for (const solicitudId of etapasPorSolicitud.keys()) {
       ofertasPorSolicitud.set(solicitudId, { total: 0, pendientes: 0, confirmadas: 0 });
     }
     for (const [etapaId, lista] of ofertasPorEtapa.entries()) {
@@ -728,32 +669,12 @@ export function SolicitudesPage() {
   );
 
   const renderForm = () => (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <div className="p-3 bg-gradient-to-br from-teal-500 to-cyan-600 rounded-xl shadow-lg animate-bounce-subtle">
-            <ClipboardList className="h-8 w-8 text-white" />
-          </div>
-          <div>
-            <h2 className="text-2xl font-bold text-gray-900">{editingId ? 'Editar Solicitud' : 'Nueva Solicitud'}</h2>
-            <p className="text-gray-500 mt-1">Complete los datos de la solicitud</p>
-          </div>
-        </div>
-        <Button variant="outline" onClick={() => { setView('list'); resetForm(); }} className="gap-2">
-          <ArrowLeft className="h-4 w-4" />
-          Volver
-        </Button>
-      </div>
-
-      <Card className="shadow-sm border-gray-200">
-        <CardHeader className="border-b bg-gray-50/50">
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <ClipboardList className="h-5 w-5 text-teal-600" />
-            Información de la Solicitud
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <form
+      id={SOLICITUD_FORM_ID}
+      onSubmit={(e) => { e.preventDefault(); handleSave(); }}
+      className="p-4 md:p-6"
+    >
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <Label className="text-sm font-medium">Fecha Solicitud</Label>
               <DateInput
@@ -848,22 +769,44 @@ export function SolicitudesPage() {
               <Input value={formData.observaciones || ''} onChange={(e: any) => setFormData({...formData, observaciones: e.target.value})} className="mt-1" placeholder="Observaciones adicionales" />
             </div>
           </div>
-          <div className="flex gap-3 mt-8 pt-6 border-t">
-            <Button onClick={handleSave} className="gap-2 bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300">
-              <Save className="h-4 w-4" />
-              {editingId ? 'Actualizar' : 'Guardar'}
-            </Button>
-            <Button variant="outline" onClick={() => { setView('list'); resetForm(); }}>Cancelar</Button>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+      </form>
   );
 
   return (
     <div className="p-6">
-      {view === 'list' && renderList()}
-      {view === 'form' && renderForm()}
+      {renderList()}
+
+      <FormModal
+        isOpen={view === 'form'}
+        onClose={() => { setView('list'); resetForm(); }}
+        title={editingId ? 'Editar Solicitud' : 'Nueva Solicitud'}
+        subtitle="Complete los datos de la solicitud"
+        icon={<ClipboardList className="h-6 w-6" />}
+        size="lg"
+        footer={
+          <>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => { setView('list'); resetForm(); }}
+              disabled={isSaving}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="submit"
+              form={SOLICITUD_FORM_ID}
+              disabled={isSaving}
+              isLoading={isSaving}
+              className="gap-2 bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white shadow-lg hover:shadow-xl transition-all duration-300"
+            >
+              Guardar
+            </Button>
+          </>
+        }
+      >
+        {renderForm()}
+      </FormModal>
 
       <ConfirmModal
         isOpen={confirmModal.isOpen}
@@ -874,8 +817,8 @@ export function SolicitudesPage() {
         onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
       />
 
-      {detailModal.isOpen && detailModal.item && createPortal(
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 animate-fade-in">
+      {detailModal.isOpen && detailModal.item && (
+        <ModalOverlay isOpen={true} onClose={() => setDetailModal({ isOpen: false, item: null })} ariaLabel="Detalle de solicitud">
           <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-auto animate-scale-in">
             <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-teal-50 to-cyan-50">
               <div className="flex items-center justify-between">
@@ -947,12 +890,10 @@ export function SolicitudesPage() {
               <button onClick={() => setDetailModal({ isOpen: false, item: null })} className="px-6 py-3 text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors font-medium">Cerrar</button>
             </div>
           </div>
-        </div>,
-        document.body
+        </ModalOverlay>
       )}
 
-      {contratoModal.isOpen && createPortal(
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 animate-fade-in">
+      <ModalOverlay isOpen={contratoModal.isOpen} onClose={() => setContratoModal({ isOpen: false, item: null, loading: false })} ariaLabel="Detalle del Contrato">
           <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-auto animate-scale-in">
             <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-teal-50 to-cyan-50">
               <div className="flex items-center justify-between">
@@ -1006,12 +947,9 @@ export function SolicitudesPage() {
               <button onClick={() => setContratoModal({ isOpen: false, item: null, loading: false })} className="px-6 py-3 text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors font-medium">Cerrar</button>
             </div>
           </div>
-        </div>,
-        document.body
-      )}
+      </ModalOverlay>
 
-      {suplementoModal.isOpen && createPortal(
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 animate-fade-in">
+      <ModalOverlay isOpen={suplementoModal.isOpen} onClose={() => setSuplementoModal({ isOpen: false, item: null, loading: false })} ariaLabel="Detalle del Suplemento">
           <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-auto animate-scale-in">
             <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-teal-50 to-cyan-50">
               <div className="flex items-center justify-between">
@@ -1057,12 +995,9 @@ export function SolicitudesPage() {
               <button onClick={() => setSuplementoModal({ isOpen: false, item: null, loading: false })} className="px-6 py-3 text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors font-medium">Cerrar</button>
             </div>
           </div>
-        </div>,
-        document.body
-      )}
+      </ModalOverlay>
 
-      {aprobarModal.isOpen && createPortal(
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 animate-fade-in">
+      <ModalOverlay isOpen={aprobarModal.isOpen} onClose={() => { setAprobarModal({ isOpen: false, solicitud: null, modo: 'seleccionar', contratos: [], loadingContratos: false }); setFormContrato({}); }} ariaLabel="Aprobar Solicitud">
           <div className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-auto animate-scale-in">
             <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-teal-50 to-cyan-50">
               <div className="flex items-center justify-between">
@@ -1429,12 +1364,9 @@ export function SolicitudesPage() {
               <button onClick={confirmarAprobacion} className="px-6 py-3 text-white bg-gradient-to-r from-teal-500 to-cyan-600 rounded-xl hover:from-teal-600 hover:to-cyan-700 shadow-lg hover:shadow-xl transition-all font-medium">Confirmar Aprobación</button>
             </div>
           </div>
-        </div>,
-        document.body
-      )}
+      </ModalOverlay>
 
-      {showNuevoClienteModal && createPortal(
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 animate-fade-in">
+      <ModalOverlay isOpen={showNuevoClienteModal} onClose={() => setShowNuevoClienteModal(false)} ariaLabel="Nuevo Cliente">
           <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-auto animate-scale-in">
             <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-teal-50 to-cyan-50">
               <div className="flex items-center justify-between">
@@ -1480,9 +1412,7 @@ export function SolicitudesPage() {
               />
             </div>
           </div>
-        </div>,
-        document.body
-      )}
+      </ModalOverlay>
     </div>
   );
 }

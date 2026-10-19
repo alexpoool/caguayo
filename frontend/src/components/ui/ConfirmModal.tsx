@@ -1,6 +1,6 @@
 import { AlertTriangle, X } from 'lucide-react';
-import { createPortal } from 'react-dom';
 import { Button } from './Button';
+import { ModalOverlay } from './ModalShell';
 
 interface ConfirmModalProps {
   isOpen: boolean;
@@ -48,8 +48,8 @@ export function ConfirmModal({
 
   const styles = typeStyles[type];
 
-  const modalContent = !isOpen ? null : (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 animate-fade-in">
+  return (
+    <ModalOverlay isOpen={isOpen} onClose={onClose} ariaLabel={title}>
       <div className="relative w-full max-w-md bg-white rounded-lg shadow-xl animate-in fade-in zoom-in duration-200">
         <div className="flex items-center justify-between p-4 border-b border-gray-200">
           <div className="flex items-center gap-3">
@@ -61,8 +61,8 @@ export function ConfirmModal({
           <button
             type="button"
             onClick={onClose}
-            aria-label="Fechar"
-            title="Fechar"
+            aria-label="Cerrar"
+            title="Cerrar"
             className="p-1 text-gray-400 hover:text-gray-600 transition-colors"
           >
             <X className="h-5 w-5" />
@@ -88,8 +88,6 @@ export function ConfirmModal({
           </Button>
         </div>
       </div>
-    </div>
+    </ModalOverlay>
   );
-
-  return createPortal(modalContent, document.body);
 }
