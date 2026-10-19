@@ -61,6 +61,35 @@ import {
 const fmtHora = (v: string | null | undefined) =>
   v ? v.slice(0, 5) : null;
 
+const fmtMoneda = (v: number | string | null | undefined) =>
+  v === null || v === undefined || v === ''
+    ? '—'
+    : new Intl.NumberFormat('es-CU', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      }).format(Number(v));
+
+const fmtFecha = (v: string | null | undefined) =>
+  v
+    ? new Intl.DateTimeFormat('es-CU', {
+        day: '2-digit',
+        month: 'long',
+        year: 'numeric',
+      }).format(new Date(`${v}T00:00:00`))
+    : '—';
+
+/** Iniciales para el avatar del detalle (nombre + apellido). */
+const inicialesEmpleado = (emp: { nombre: string; apellido: string }) =>
+  `${emp.nombre.charAt(0)}${emp.apellido.charAt(0)}`.toUpperCase();
+
+/** Colores del badge de estado del empleado. */
+const COLOR_ESTADO_EMPLEADO: Record<RrhhEstadoEmpleado, string> = {
+  activo: 'bg-emerald-100 text-emerald-700 ring-emerald-200',
+  suspendido: 'bg-red-100 text-red-700 ring-red-200',
+  vacaciones: 'bg-sky-100 text-sky-700 ring-sky-200',
+  terminado: 'bg-slate-100 text-slate-600 ring-slate-200',
+};
+
 // Degradado del módulo RRHH (color propio, referenciado de la página de Monedas)
 const GRADIENTE =
   'bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300';
@@ -69,6 +98,7 @@ export function EmpleadosPage() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const [formOpen, setFormOpen] = useState(false);
+  const [detalle, setDetalle] = useState<RrhhEmpleadoListado | null>(null);
   const [editing, setEditing] = useState<RrhhEmpleado | null>(null);
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
@@ -438,7 +468,8 @@ export function EmpleadosPage() {
                     {empleados.map((emp) => (
                       <TableRow
                         key={emp.id}
-                        className="hover:bg-gray-50 transition-colors"
+                        onClick={() => setDetalle(emp)}
+                        className="cursor-pointer hover:bg-indigo-50/70 transition-colors"
                       >
                         <TableCell>
                           <span className="inline-flex items-center gap-1 px-2 py-1 bg-indigo-100 text-indigo-700 rounded text-sm font-medium font-mono">
@@ -465,9 +496,10 @@ export function EmpleadosPage() {
                             variant="outline"
                             size="sm"
                             title={`Objetivos de ${emp.apellido}, ${emp.nombre}`}
-                            onClick={() =>
-                              navigate(`/rrhh/objetivos?empleado_id=${emp.id}`)
-                            }
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigate(`/rrhh/objetivos?empleado_id=${emp.id}`);
+                            }}
                           >
                             Objetivos
                           </Button>
@@ -477,9 +509,12 @@ export function EmpleadosPage() {
                             variant="outline"
                             size="sm"
                             title={`Evaluaciones de ${emp.apellido}, ${emp.nombre}`}
-                            onClick={() =>
-                              navigate(`/rrhh/evaluaciones?empleado_id=${emp.id}`)
-                            }
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigate(
+                                `/rrhh/evaluaciones?empleado_id=${emp.id}`,
+                              );
+                            }}
                           >
                             Evaluaciones
                           </Button>
@@ -489,7 +524,10 @@ export function EmpleadosPage() {
                             <Button
                               variant="ghost"
                               size="icon"
-                              onClick={() => handleEditar(emp)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleEditar(emp);
+                              }}
                               className="text-blue-600 hover:bg-blue-50 hover:scale-110 transition-all"
                               title="Editar"
                             >
@@ -498,7 +536,10 @@ export function EmpleadosPage() {
                             <Button
                               variant="ghost"
                               size="icon"
-                              onClick={() => setConfirmModal({ isOpen: true, empleado: emp })}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setConfirmModal({ isOpen: true, empleado: emp });
+                              }}
                               className="text-red-600 hover:bg-red-50 hover:scale-110 transition-all"
                               title="Eliminar"
                             >
@@ -854,6 +895,187 @@ export function EmpleadosPage() {
         </form>
       </Modal>
 
+      {/* Detalle del empleado (solo lectura) */}
+      <Modal
+        isOpen={detalle !== null}
+        onClose={() => setDetalle(null)}
+        className="!max-w-3xl overflow-hidden !rounded-none [&>button.absolute]:hidden"
+      >
+        {detalle && (
+          <>
+            <div className="sticky top-0 z-10 flex items-center gap-4 border-b bg-gradient-to-r from-indigo-50 to-indigo-100 px-6 py-4 pr-12">
+              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-indigo-600 text-lg font-bold text-white shadow">
+                {inicialesEmpleado(detalle)}
+              </div>
+              <div className="min-w-0">
+                <h2 className="truncate text-lg font-bold text-gray-900">
+                  {detalle.apellido}, {detalle.nombre}
+                </h2>
+                <div className="mt-1 flex flex-wrap items-center gap-2">
+                  <span className="rounded bg-white/70 px-2 py-0.5 font-mono text-xs text-indigo-700 ring-1 ring-indigo-200">
+                    {detalle.codigo_empleado ?? 'Sin código'}
+                  </span>
+                  <span
+                    className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ring-1 ${COLOR_ESTADO_EMPLEADO[detalle.estado]}`}
+                  >
+                    <BadgeCheck className="h-3 w-3" />
+                    {RRHH_ESTADOS_EMPLEADO.find((e) => e.valor === detalle.estado)
+                      ?.etiqueta ?? detalle.estado}
+                  </span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setDetalle(null)}
+                title="Cerrar"
+                aria-label="Cerrar"
+                className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full p-1 text-slate-400 transition-colors hover:bg-indigo-100 hover:text-slate-600"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="space-y-6 px-6 py-5">
+              <section>
+                <h3 className="mb-3 text-sm font-semibold text-slate-700 flex items-center gap-2">
+                  <Users className="h-4 w-4 text-indigo-500" />
+                  Datos personales
+                </h3>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                  <DatoDetalle
+                    icono={CreditCard}
+                    color="text-indigo-500"
+                    etiqueta="Carnet de identidad"
+                    valor={detalle.carnet_identidad || '—'}
+                  />
+                  <DatoDetalle
+                    icono={Calendar}
+                    color="text-emerald-500"
+                    etiqueta="Fecha de nacimiento"
+                    valor={fmtFecha(detalle.fecha_nacimiento)}
+                  />
+                  <DatoDetalle
+                    icono={Mail}
+                    color="text-sky-500"
+                    etiqueta="Correo"
+                    valor={detalle.correo || '—'}
+                  />
+                  <DatoDetalle
+                    icono={Phone}
+                    color="text-amber-500"
+                    etiqueta="Teléfono"
+                    valor={detalle.telefono || '—'}
+                  />
+                  <div className="sm:col-span-2">
+                    <DatoDetalle
+                      icono={MapPin}
+                      color="text-rose-500"
+                      etiqueta="Dirección"
+                      valor={detalle.direccion || '—'}
+                    />
+                  </div>
+                </div>
+              </section>
+
+              <section>
+                <h3 className="mb-3 text-sm font-semibold text-slate-700 flex items-center gap-2">
+                  <Briefcase className="h-4 w-4 text-amber-500" />
+                  Asignación laboral
+                </h3>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <DatoDetalle
+                    icono={Briefcase}
+                    color="text-amber-500"
+                    etiqueta="Puesto"
+                    valor={detalle.puesto_nombre || '—'}
+                  />
+                  <DatoDetalle
+                    icono={Building2}
+                    color="text-indigo-500"
+                    etiqueta="Departamento"
+                    valor={detalle.departamento_nombre || '—'}
+                  />
+                  <DatoDetalle
+                    icono={FileText}
+                    color="text-sky-500"
+                    etiqueta="Tipo de contrato"
+                    valor={detalle.tipo_contrato_nombre || '—'}
+                  />
+                  <DatoDetalle
+                    icono={UserCheck}
+                    color="text-emerald-500"
+                    etiqueta="Supervisor"
+                    valor={detalle.supervisor_nombre || '—'}
+                  />
+                </div>
+              </section>
+
+              <section>
+                <h3 className="mb-3 text-sm font-semibold text-slate-700 flex items-center gap-2">
+                  <Clock className="h-4 w-4 text-purple-500" />
+                  Contrato y jornada
+                </h3>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                  <DatoDetalle
+                    icono={Calendar}
+                    color="text-indigo-500"
+                    etiqueta="Fecha de contratación"
+                    valor={fmtFecha(detalle.fecha_contratacion)}
+                  />
+                  <DatoDetalle
+                    icono={CircleDollarSign}
+                    color="text-emerald-500"
+                    etiqueta="Salario"
+                    valor={fmtMoneda(detalle.salario)}
+                  />
+                  <DatoDetalle
+                    icono={Timer}
+                    color="text-amber-500"
+                    etiqueta="Tipo de asistencia"
+                    valor={
+                      detalle.tipo_asistencia === 'LIBRE'
+                        ? 'LIBRE (sin horario fijo)'
+                        : 'NO_LIBRE'
+                    }
+                  />
+                  <DatoDetalle
+                    icono={Clock}
+                    color="text-slate-500"
+                    etiqueta="Horario"
+                    valor={
+                      detalle.tipo_asistencia === 'LIBRE' ||
+                      (!detalle.horario_inicio && !detalle.horario_final)
+                        ? 'Sin horario fijo'
+                        : `${fmtHora(detalle.horario_inicio) ?? '—'} – ${fmtHora(detalle.horario_final) ?? '—'}`
+                    }
+                  />
+                  <DatoDetalle
+                    icono={Timer}
+                    color="text-sky-500"
+                    etiqueta="Horas a trabajar"
+                    valor={
+                      detalle.horas_a_trabajar != null
+                        ? `${detalle.horas_a_trabajar} h`
+                        : '—'
+                    }
+                  />
+                  <DatoDetalle
+                    icono={Calendar}
+                    color="text-rose-500"
+                    etiqueta="Días a trabajar"
+                    valor={
+                      detalle.dias_a_trabajar != null
+                        ? `${detalle.dias_a_trabajar} días`
+                        : '—'
+                    }
+                  />
+                </div>
+              </section>
+            </div>
+          </>
+        )}
+      </Modal>
+
       <ConfirmModal
         isOpen={confirmModal.isOpen}
         title="Eliminar empleado"
@@ -912,6 +1134,31 @@ function CampoTexto({
           {error}
         </p>
       )}
+    </div>
+  );
+}
+
+/** Dato de solo lectura del modal de detalle. */
+function DatoDetalle({
+  icono: Icono,
+  color,
+  etiqueta,
+  valor,
+}: {
+  icono: React.ComponentType<{ className?: string }>;
+  color: string;
+  etiqueta: string;
+  valor: React.ReactNode;
+}) {
+  return (
+    <div className="flex items-start gap-2.5">
+      <Icono className={`mt-0.5 h-4 w-4 shrink-0 ${color}`} />
+      <div className="min-w-0">
+        <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
+          {etiqueta}
+        </p>
+        <p className="break-words text-sm font-medium text-slate-900">{valor}</p>
+      </div>
     </div>
   );
 }
