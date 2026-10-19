@@ -221,19 +221,13 @@ function TarjetasDashboard() {
     queryFn: () => rrhhService.resumenSolicitudes(),
   });
 
-  const borradores = useQuery({
-    queryKey: ['rrhh', 'reportes', 'evaluaciones-borrador'],
-    queryFn: () =>
-      rrhhService.listarEvaluaciones({ estado: 'borrador', limit: 500 }),
-  });
-
   const valor = (
     q: { isLoading: boolean; isError: boolean },
     f: () => string,
   ) => (q.isLoading ? '…' : q.isError ? '—' : f());
 
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
       <TarjetaStat
         titulo="Empleados activos"
         icono={<Users className="h-5 w-5" />}
@@ -264,11 +258,6 @@ function TarjetasDashboard() {
                 0,
             ),
         )}
-      />
-      <TarjetaStat
-        titulo="Evaluaciones en borrador"
-        icono={<ClipboardCheck className="h-5 w-5" />}
-        valor={valor(borradores, () => String(borradores.data?.length ?? 0))}
       />
     </div>
   );
@@ -436,10 +425,8 @@ function PestanaEvaluaciones() {
           <EmptyState mensaje="No hay evaluaciones en el rango seleccionado." />
         ) : (
           <>
-            <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <div className="mb-4 grid grid-cols-2 gap-3">
               <Resumen titulo="Evaluaciones" valor={String(data.cantidad_evaluaciones)} />
-              <Resumen titulo="Borradores" valor={String(data.cantidad_borradores)} />
-              <Resumen titulo="Finalizadas" valor={String(data.cantidad_finalizadas)} />
               <Resumen
                 titulo="Prom. objetivos (/ 5)"
                 valor={fmtProm5(data.promedio_objetivos)}

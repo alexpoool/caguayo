@@ -546,7 +546,6 @@ export const rrhhService = {
     limit?: number;
     empleado_id?: number;
     departamento_id?: number;
-    estado?: string;
     tipo_evaluacion_id?: number;
     desde?: string;
     hasta?: string;
@@ -572,17 +571,12 @@ export const rrhhService = {
     return await apiClient.put(`/rrhh/evaluaciones/${id}`, data);
   },
 
-  /** `borrador → finalizada`: congela la evaluación. */
-  finalizarEvaluacion: async (id: number): Promise<RrhhEvaluacionListado> => {
-    return await apiClient.post(`/rrhh/evaluaciones/${id}/finalizar`, {});
-  },
-
   eliminarEvaluacion: async (id: number): Promise<RrhhEliminarResponse> => {
     return await apiClient.delete(`/rrhh/evaluaciones/${id}`);
   },
 
-  /** Selecciona objetivos en la evaluación (solo `borrador`; 409 si está
-   * finalizada). Devuelve el detalle completo ya con el promedio recalculado. */
+  /** Selecciona objetivos en la evaluación (siempre editable). Devuelve el
+   * detalle completo ya con el promedio recalculado. */
   seleccionarObjetivos: async (
     evaluacionId: number,
     objetivoIds: number[]
@@ -592,7 +586,7 @@ export const rrhhService = {
     });
   },
 
-  /** Puntúa/ajusta la fila de un objetivo seleccionado (solo `borrador`):
+  /** Puntúa/ajusta la fila de un objetivo seleccionado (siempre editable):
    * estrellas 0–5, valoración, recomendaciones y peso. */
   puntuarObjetivo: async (
     evaluacionId: number,
@@ -605,7 +599,7 @@ export const rrhhService = {
     );
   },
 
-  /** Quita un objetivo de la selección (solo `borrador`). */
+  /** Quita un objetivo de la selección (siempre editable). */
   quitarObjetivoEvaluacion: async (
     evaluacionId: number,
     filaId: number

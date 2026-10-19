@@ -816,16 +816,6 @@ export interface RrhhSolicitudResumen {
 
 // ── Evaluaciones y objetivos (Fase 8 v2 — objetivos ponderados) ─────────────
 
-export type RrhhEstadoEvaluacion = 'borrador' | 'finalizada';
-
-export const ESTADOS_EVALUACION: RrhhEstadoEvaluacion[] = ['borrador', 'finalizada'];
-
-/** Insignias de estado: el borrador se edita, la finalizada está congelada. */
-export const COLOR_ESTADO_EVALUACION: Record<RrhhEstadoEvaluacion, string> = {
-  borrador: 'bg-amber-100 text-amber-700',
-  finalizada: 'bg-green-100 text-green-700',
-};
-
 /**
  * Definición de un objetivo de un empleado: se define con su periodo
  * (obligatorio: decide en qué evaluaciones puede seleccionarse) y su peso
@@ -895,7 +885,6 @@ export interface RrhhEvaluacion {
   tipo_evaluacion_id: number;
   /** Nombre del tipo, resuelto del catálogo (solo lectura). */
   tipo_evaluacion: string | null;
-  estado: RrhhEstadoEvaluacion;
   inicio_periodo: string;
   fin_periodo: string;
   /**
@@ -946,12 +935,12 @@ export type RrhhEvaluacionUpdate = Partial<
   Omit<RrhhEvaluacionCreate, 'empleado_id'>
 >;
 
-/** Selección masiva de objetivos en una evaluación (solo `borrador`). */
+/** Selección masiva de objetivos en una evaluación (siempre editable). */
 export interface RrhhEvaluacionObjetivoSeleccion {
   objetivo_ids: number[];
 }
 
-/** Edición parcial de una fila seleccionada (solo `borrador`). */
+/** Edición parcial de una fila seleccionada (siempre editable). */
 export interface RrhhEvaluacionObjetivoUpdate {
   peso?: number | string;
   /** Estrellas 0–5. */
@@ -974,8 +963,6 @@ export interface RrhhEvaluacionReporte {
   desde: string | null;
   hasta: string | null;
   cantidad_evaluaciones: number;
-  cantidad_borradores: number;
-  cantidad_finalizadas: number;
   /** Promedio ponderado medio 0–5 del rango (Decimal → string). */
   promedio_objetivos: string | null;
   empleados: RrhhEvaluacionEmpleadoReporte[];

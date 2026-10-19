@@ -3,7 +3,6 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { rrhhService } from "../../services/rrhh";
 import {
-  COLOR_ESTADO_EVALUACION,
   type RrhhEvaluacionCreate,
   type RrhhEvaluacionListado,
 } from "../../types/rrhh";
@@ -156,7 +155,7 @@ export function EvaluacionesPage() {
     mutationFn: (data: RrhhEvaluacionCreate) =>
       rrhhService.crearEvaluacion(data),
     onSuccess: (creada) => {
-      toast.success("Evaluación creada en borrador");
+      toast.success("Evaluación creada");
       invalidate();
       cerrarForm();
       navigate(`/rrhh/evaluaciones/${creada.id}`);
@@ -193,8 +192,8 @@ export function EvaluacionesPage() {
             <h1 className="text-xl font-bold text-gray-900">Evaluaciones</h1>
             <p className="text-sm text-gray-500 ml-3 hidden sm:block">
               {evaluaciones.length} evaluación
-              {evaluaciones.length === 1 ? "" : "es"} · ciclo borrador →
-              finalizada, con objetivos seleccionados y ponderados
+              {evaluaciones.length === 1 ? "" : "es"} · objetivos seleccionados
+              y ponderados
             </p>
           </div>
         </div>
@@ -279,12 +278,6 @@ export function EvaluacionesPage() {
                         Tipo
                       </div>
                     </TableHead>
-                    <TableHead>
-                      <div className="flex items-center gap-2">
-                        <ClipboardCheck className="h-4 w-4 text-sky-500" />
-                        Estado
-                      </div>
-                    </TableHead>
                     <TableHead className="text-right">
                       <div className="flex items-center justify-end gap-2">
                         <Star className="h-4 w-4 text-amber-500" />
@@ -318,17 +311,10 @@ export function EvaluacionesPage() {
                       <TableCell className="text-slate-600">
                         {ev.tipo_evaluacion ?? "—"}
                       </TableCell>
-                      <TableCell>
-                        <span
-                          className={`inline-block rounded-full px-2 py-0.5 text-xs font-semibold ${COLOR_ESTADO_EVALUACION[ev.estado]}`}
-                        >
-                          {ev.estado === "borrador" ? "Borrador" : "Finalizada"}
-                        </span>
-                      </TableCell>
                       <TableCell className="text-right font-semibold tabular-nums text-slate-900">
                         {ev.promedio_objetivos === null ? (
                           <span className="font-normal text-slate-400">
-                            {ev.estado === "borrador" ? "Sin puntuar" : "—"}
+                            Sin puntuar
                           </span>
                         ) : (
                           <span className="inline-flex items-baseline gap-1">

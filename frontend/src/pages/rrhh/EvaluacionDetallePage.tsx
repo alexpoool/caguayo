@@ -3,7 +3,6 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useParams } from 'react-router-dom';
 import { rrhhService } from '../../services/rrhh';
 import {
-  COLOR_ESTADO_EVALUACION,
   type RrhhEvaluacionObjetivo,
   type RrhhEvaluacionObjetivoUpdate,
   type RrhhEvaluacionUpdate,
@@ -13,7 +12,6 @@ import {
   ArrowLeft,
   Check,
   ClipboardCheck,
-  Info,
   Loader2,
   MessageSquare,
   Pencil,
@@ -63,8 +61,6 @@ export function EvaluacionDetallePage() {
     queryClient.invalidateQueries({ queryKey: ['rrhh', 'evaluaciones'] });
     queryClient.invalidateQueries({ queryKey: ['rrhh', 'objetivos'] });
   };
-
-  const esBorrador = evaluacion?.estado === 'borrador';
 
   // Feedback sutil de «guardado» por fila: check breve junto a la fila.
   const [filaGuardada, setFilaGuardada] = useState<number | null>(null);
@@ -285,11 +281,6 @@ export function EvaluacionDetallePage() {
               </>
             )}
           </span>
-          <span
-            className={`inline-block rounded-full px-2.5 py-1 text-xs font-semibold ${COLOR_ESTADO_EVALUACION[evaluacion.estado]}`}
-          >
-            {evaluacion.estado === 'borrador' ? 'Borrador' : 'Finalizada'}
-          </span>
           <Button
             variant="outline"
             size="sm"
@@ -309,17 +300,6 @@ export function EvaluacionDetallePage() {
           </Button>
         </div>
       </div>
-
-      {!esBorrador && (
-        <div className="flex items-start gap-2 rounded-md bg-sky-50 px-4 py-2 text-xs text-sky-700 ring-1 ring-sky-100">
-          <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-sky-600" />
-          <span>
-            Evaluación finalizada: puedes seguir editándola (cabecera,
-            objetivos y puntuación) como si estuviera en borrador; el estado
-            es solo informativo.
-          </span>
-        </div>
-      )}
 
       {/* Objetivos del periodo: selección y puntuación */}
       <Card>
