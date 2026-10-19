@@ -1,11 +1,10 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { rrhhService } from '../../services/rrhh';
+import { useInfiniteList } from '../../hooks/useInfiniteList';
 import {
   COLOR_ESTADO_SOLICITUD,
   COLOR_TIPO_SOLICITUD,
-  ESTADOS_SOLICITUD,
-  type RrhhEstadoSolicitud,
   type RrhhSolicitudListado,
 } from '../../types/rrhh';
 import {
@@ -61,17 +60,26 @@ const hoyISO = () => {
 
 export function SolicitudesPage() {
   const [pestana, setPestana] = useState<Pestana>('solicitudes');
+  const [modalCrear, setModalCrear] = useState(false);
 
   return (
     <div className="space-y-4">
-      <div>
-        <h1 className="flex items-center gap-2 text-xl font-bold text-slate-900">
-          <ClipboardList className="h-6 w-6 text-brand-600" />
-          Solicitudes
-        </h1>
-        <p className="mt-1 text-sm text-slate-500">
-          Vacaciones y permisos: solicitud, aprobación y calendario de equipo
-        </p>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="flex items-center gap-2 text-xl font-bold text-slate-900">
+            <ClipboardList className="h-6 w-6 text-brand-600" />
+            Solicitudes
+          </h1>
+          <p className="mt-1 text-sm text-slate-500">
+            Vacaciones y permisos: solicitud, aprobación y calendario de equipo
+          </p>
+        </div>
+        {pestana === 'solicitudes' && (
+          <Button size="sm" onClick={() => setModalCrear(true)}>
+            <Plus className="h-4 w-4" />
+            Nueva solicitud
+          </Button>
+        )}
       </div>
 
       <div className="flex gap-1 border-b border-slate-200">
@@ -84,7 +92,10 @@ export function SolicitudesPage() {
           <button
             key={clave}
             type="button"
-            onClick={() => setPestana(clave)}
+            onClick={() => {
+              setPestana(clave);
+              setModalCrear(false);
+            }}
             className={`flex items-center gap-2 border-b-2 px-4 py-2 text-sm font-medium transition-colors ${
               pestana === clave
                 ? 'border-brand-600 text-brand-700'
@@ -97,55 +108,80 @@ export function SolicitudesPage() {
         ))}
       </div>
 
-      {pestana === 'solicitudes' ? <ListaSolicitudes /> : <VistaCalendario />}
+      {pestana === 'solicitudes' ? (
+        <ListaSolicitudes
+          modalCrear={modalCrear}
+          setModalCrear={setModalCrear}
+        />
+      ) : (
+        <VistaCalendario />
+      )}
     </div>
   );
 }
 
 // ── Listado y acciones ──────────────────────────────────────────────────────
 
-function ListaSolicitudes() {
+function ListaSolicitudes({
+  modalCrear,
+  setModalCrear,
+}: {
+  modalCrear: boolean;
+  setModalCrear: (abierto: boolean) => void;
+}) {
   const queryClient = useQueryClient();
 
-  const [estado, setEstado] = useState<RrhhEstadoSolicitud | ''>('');
-  const [tipo, setTipo] = useState('');
-  const [buscar, setBuscar] = useState('');
-  const [desde, setDesde] = useState('');
-  const [hasta, setHasta] = useState('');
-  const [modalCrear, setModalCrear] = useState(false);
   const [aAprobar, setAAprobar] = useState<RrhhSolicitudListado | null>(null);
   const [aRechazar, setARechazar] = useState<RrhhSolicitudListado | null>(null);
   const [aCancelar, setACancelar] = useState<RrhhSolicitudListado | null>(null);
   const [aVer, setAVer] = useState<number | null>(null);
 
-  const invalidate = () =>
-    queryClient.invalidateQueries({ queryKey: ['rrhh', 'solicitudes'] });
-
+  // Lista con scroll infinito (tipo feed): 100 por página, más recientes
+  // primero. El buscador vive en el propio hook.
   const {
-    data: filas = [],
+    items: filas,
     isLoading,
+    isFetchingMore,
     isError,
     error,
-    refetch,
-  } = useQuery({
-    queryKey: ['rrhh', 'solicitudes', estado, tipo, buscar, desde, hasta],
-    queryFn: () =>
-      rrhhService.listarSolicitudes({
-        limit: 500,
-        estado: estado || undefined,
-        tipo: tipo || undefined,
-        buscar: buscar || undefined,
-        desde: desde || undefined,
-        hasta: hasta || undefined,
-      }),
+    hasMore,
+    loadMore,
+    searchTerm,
+    setSearch,
+    refresh,
+  } = useInfiniteList<RrhhSolicitudListado>({
+    queryKeyBase: 'rrhh_solicitudes',
+    queryFn: (skip, limit, buscar) =>
+      rrhhService.listarSolicitudes({ skip, limit, buscar }),
   });
+
+  // Observador del sentinel: pide la siguiente página al llegar al final
+  const loadMoreRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!hasMore || isFetchingMore) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore) {
+          loadMore();
+        }
+      },
+      { threshold: 0.1 },
+    );
+    if (loadMoreRef.current) observer.observe(loadMoreRef.current);
+    return () => observer.disconnect();
+  }, [hasMore, isFetchingMore, loadMore]);
+
+  const refrescarLista = () => {
+    refresh();
+    queryClient.invalidateQueries({ queryKey: ['rrhh', 'solicitudes'] });
+  };
 
   const cancelarMutation = useMutation({
     mutationFn: ({ id, data }: { id: number; data: { empleado_id: number; observaciones?: string } }) =>
       rrhhService.cancelarSolicitud(id, data),
     onSuccess: () => {
       toast.success('Solicitud cancelada');
-      invalidate();
+      refrescarLista();
       setACancelar(null);
     },
     onError: (err: unknown) => {
@@ -153,59 +189,18 @@ function ListaSolicitudes() {
     },
   });
 
-  const hayFiltros =
-    estado !== '' || tipo !== '' || buscar !== '' || desde !== '' || hasta !== '';
-
   return (
     <div className="space-y-4">
       <Card>
         <CardHeader className="pb-3">
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="relative max-w-md">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
             <Input
-              value={buscar}
-              onChange={(e) => setBuscar(e.target.value)}
-              placeholder="Buscar empleado..."
-              className="w-56"
+              placeholder="Buscar por nombre, apellido o código..."
+              value={searchTerm}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-9"
             />
-            <Input
-              type="date"
-              value={desde}
-              onChange={(e) => setDesde(e.target.value)}
-              title="Desde"
-              className="w-auto"
-            />
-            <Input
-              type="date"
-              value={hasta}
-              onChange={(e) => setHasta(e.target.value)}
-              title="Hasta"
-              className="w-auto"
-            />
-            <select
-              value={tipo}
-              onChange={(e) => setTipo(e.target.value)}
-              className="rounded-md border border-slate-300 px-3 py-2 text-sm"
-            >
-              <option value="">Todos los tipos</option>
-              <option value="vacaciones">Vacaciones</option>
-              <option value="permiso">Permiso</option>
-            </select>
-            <select
-              value={estado}
-              onChange={(e) => setEstado(e.target.value as RrhhEstadoSolicitud | '')}
-              className="rounded-md border border-slate-300 px-3 py-2 text-sm"
-            >
-              <option value="">Todos los estados</option>
-              {ESTADOS_SOLICITUD.map((e) => (
-                <option key={e} value={e}>
-                  {e.charAt(0).toUpperCase() + e.slice(1)}
-                </option>
-              ))}
-            </select>
-            <Button size="sm" onClick={() => setModalCrear(true)}>
-              <Plus className="h-4 w-4" />
-              Nueva solicitud
-            </Button>
           </div>
         </CardHeader>
         <CardContent>
@@ -214,13 +209,13 @@ function ListaSolicitudes() {
           ) : isError ? (
             <ErrorState
               mensaje={error instanceof Error ? error.message : undefined}
-              onReintentar={refetch}
+              onReintentar={refresh}
             />
           ) : filas.length === 0 ? (
             <EmptyState
               mensaje={
-                hayFiltros
-                  ? 'No hay solicitudes que coincidan con los filtros.'
+                searchTerm
+                  ? 'No se encontraron solicitudes con esa búsqueda.'
                   : 'Aún no hay solicitudes. Pulsa «Nueva solicitud».'
               }
             />
@@ -304,21 +299,34 @@ function ListaSolicitudes() {
               </TableBody>
             </Table>
           )}
+          {/* Sentinel del scroll infinito */}
+          <div ref={loadMoreRef} className="flex justify-center py-2">
+            {isFetchingMore && !isLoading && (
+              <div className="flex items-center gap-2 text-gray-500">
+                <Loader2 className="h-5 w-5 animate-spin" />
+                <span>Cargando más...</span>
+              </div>
+            )}
+          </div>
         </CardContent>
       </Card>
 
-      <ModalCrear isOpen={modalCrear} onClose={() => setModalCrear(false)} onListo={invalidate} />
+      <ModalCrear
+        isOpen={modalCrear}
+        onClose={() => setModalCrear(false)}
+        onListo={refrescarLista}
+      />
       <ModalDecision
         solicitud={aAprobar}
         accion="aprobar"
         onClose={() => setAAprobar(null)}
-        onListo={invalidate}
+        onListo={refrescarLista}
       />
       <ModalDecision
         solicitud={aRechazar}
         accion="rechazar"
         onClose={() => setARechazar(null)}
-        onListo={invalidate}
+        onListo={refrescarLista}
       />
       <ModalDetalle solicitudId={aVer} onClose={() => setAVer(null)} />
 
