@@ -39,7 +39,18 @@ def _crear_empleado(client, **kwargs):
     return response.json()
 
 
+def _limpiar_asistencias(client, empleado_id):
+    """Borra las marcaciones del empleado (aprobar crea filas en asistencia)."""
+    response = client.get(
+        f"/api/v1/rrhh/asistencia?empleado_id={empleado_id}&limit=1000"
+    )
+    if response.status_code == 200:
+        for fila in response.json():
+            client.delete(f"/api/v1/rrhh/asistencia/{fila['id']}")
+
+
 def _limpiar_empleado(client, empleado_id):
+    _limpiar_asistencias(client, empleado_id)
     client.delete(f"/api/v1/rrhh/empleados/{empleado_id}")
 
 
@@ -637,6 +648,106 @@ def test_aprobar_decisor_inexistente_404(client):
         assert "empleado" in response.json()["detail"].lower()
     finally:
         _limpiar_empleado(client, emp["id"])
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Aprobación → asistencia
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+def _asistencias(client, empleado_id):
+    response = client.get(
+        f"/api/v1/rrhh/asistencia?empleado_id={empleado_id}&limit=1000"
+    )
+    assert response.status_code == 200, response.text
+    return sorted(response.json(), key=lambda f: f["fecha"])
+
+
+def test_aprobar_permiso_puebla_asistencia(client):
+    """Al aprobar un permiso, cada día del rango queda como `permiso`."""
+    jefe = _crear_empleado(client)
+    emp = _crear_empleado(client, supervisor=jefe["id"])
+    try:
+        sol = _crear_solicitud(
+            client, emp["id"], tipo="permiso", inicio="2098-06-03", fin="2098-06-05"
+        )
+        assert _aprobar(client, sol["id"], jefe["id"]).status_code == 200
+
+        filas = _asistencias(client, emp["id"])
+        assert [f["fecha"] for f in filas] == [
+            "2098-06-03",
+            "2098-06-04",
+            "2098-06-05",
+        ]
+        assert all(f["estado"] == "permiso" for f in filas)
+        assert all(f["hora_entrada"] is None and f["hora_salida"] is None for f in filas)
+        assert all(f"Solicitud #{sol['id']}" in f["observaciones"] for f in filas)
+    finally:
+        _limpiar_empleado(client, emp["id"])
+        _limpiar_empleado(client, jefe["id"])
+
+
+def test_aprobar_vacaciones_puebla_asistencia(client):
+    emp = _crear_empleado(client)
+    jefe = _crear_empleado(client)
+    try:
+        sol = _crear_solicitud(
+            client, emp["id"], tipo="vacaciones", inicio="2098-06-10", fin="2098-06-10"
+        )
+        assert _aprobar(client, sol["id"], jefe["id"]).status_code == 200
+
+        filas = _asistencias(client, emp["id"])
+        assert len(filas) == 1
+        assert filas[0]["fecha"] == "2098-06-10"
+        assert filas[0]["estado"] == "vacaciones"
+        assert filas[0]["hora_entrada"] is None
+    finally:
+        _limpiar_empleado(client, emp["id"])
+        _limpiar_empleado(client, jefe["id"])
+
+
+def test_aprobar_sobrescribe_marcacion_existente(client):
+    """El permiso aprobado manda: borra las horas del día ya marcado."""
+    emp = _crear_empleado(client)
+    jefe = _crear_empleado(client)
+    try:
+        marcacion = client.post(
+            "/api/v1/rrhh/asistencia",
+            json={
+                "empleado_id": emp["id"],
+                "fecha": "2098-06-15",
+                "hora_entrada": "09:00",
+                "hora_salida": "17:00",
+            },
+        )
+        assert marcacion.status_code == 201, marcacion.text
+        assert marcacion.json()["estado"] == "presente"
+
+        sol = _crear_solicitud(
+            client, emp["id"], tipo="permiso", inicio="2098-06-15", fin="2098-06-15"
+        )
+        assert _aprobar(client, sol["id"], jefe["id"]).status_code == 200
+
+        filas = _asistencias(client, emp["id"])
+        assert len(filas) == 1
+        assert filas[0]["estado"] == "permiso"
+        assert filas[0]["hora_entrada"] is None
+        assert filas[0]["hora_salida"] is None
+    finally:
+        _limpiar_empleado(client, emp["id"])
+        _limpiar_empleado(client, jefe["id"])
+
+
+def test_rechazar_no_puebla_asistencia(client):
+    emp = _crear_empleado(client)
+    jefe = _crear_empleado(client)
+    try:
+        sol = _crear_solicitud(client, emp["id"], inicio="2098-06-20", fin="2098-06-21")
+        assert _rechazar(client, sol["id"], jefe["id"]).status_code == 200
+        assert _asistencias(client, emp["id"]) == []
+    finally:
+        _limpiar_empleado(client, emp["id"])
+        _limpiar_empleado(client, jefe["id"])
 
 
 # ═══════════════════════════════════════════════════════════════════════════

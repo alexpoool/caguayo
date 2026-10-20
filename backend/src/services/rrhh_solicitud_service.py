@@ -12,6 +12,10 @@ Reglas de negocio de esta fase:
 - **Decisión**: al aprobar se guarda `aprobado_por` + `fecha_aprobacion`. Al
   rechazar se usa esa misma pareja de columnas para registrar quién decidió y
   cuándo. Al cancelar solo se marca `cancelada`.
+- **Aprobación → asistencia**: aprobar un permiso o unas vacaciones escribe
+  (o sobrescribe) la marcación de cada día del rango como `permiso` o
+  `vacaciones`, sin horas, en la misma transacción. Así la fase 4 muestra la
+  ausencia sin que haya que corregirla a mano.
 - **Sin autenticación en backend** (decisión del módulo; deuda Fase 10): las
   acciones llevan el `empleado_id` de quien las ejecuta en el payload. Se
   impide la **autaprobación** (quien solicita no aprueba su propia solicitud),
@@ -21,7 +25,7 @@ Reglas de negocio de esta fase:
   queda listo para sustituirse por email/in-app (fuera de alcance).
 """
 
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from typing import List, Optional
 
 from fastapi import HTTPException
@@ -44,6 +48,7 @@ from src.dto import (
     RrhhSolicitudResumenEstado,
 )
 from src.models import (
+    RrhhAsistencia,
     RrhhSolicitud,
     RrhhEmpleado,
     RrhhDepartamento,
@@ -137,6 +142,47 @@ class RrhhSolicitudService:
                     f"({choque.fecha_inicio} a {choque.fecha_fin}), ya aprobada"
                 ),
             )
+
+    async def _aplicar_en_asistencia(
+        self, db: AsyncSession, solicitud: RrhhSolicitud
+    ) -> None:
+        """Refleja la solicitud aprobada en la asistencia de cada día del rango.
+
+        El tipo de la solicitud coincide con el estado de asistencia
+        (`permiso` o `vacaciones`). Cada día se escribe sin horas y el permiso
+        aprobado manda: si el día ya tenía marcación (entrada/salida), se
+        sobrescribe, porque el periodo aprobado justifica la ausencia. Se
+        ejecuta dentro de la transacción de la aprobación.
+        """
+        estado = solicitud.tipo
+        observaciones = f"Solicitud #{solicitud.id} ({estado}) aprobada"
+        dia = solicitud.fecha_inicio
+        while dia <= solicitud.fecha_fin:
+            marcacion = (
+                await db.exec(
+                    select(RrhhAsistencia).where(
+                        RrhhAsistencia.empleado_id == solicitud.empleado_id,
+                        RrhhAsistencia.fecha == dia,
+                    )
+                )
+            ).first()
+            if marcacion is None:
+                db.add(
+                    RrhhAsistencia(
+                        empleado_id=solicitud.empleado_id,
+                        fecha=dia,
+                        estado=estado,
+                        observaciones=observaciones,
+                    )
+                )
+            else:
+                marcacion.estado = estado
+                marcacion.hora_entrada = None
+                marcacion.hora_salida = None
+                marcacion.observaciones = observaciones
+                marcacion.updated_at = datetime.now()
+                db.add(marcacion)
+            dia += timedelta(days=1)
 
     def _validar_estado(self, estado: str) -> None:
         if estado not in ESTADOS_SOLICITUD:
@@ -401,6 +447,9 @@ class RrhhSolicitudService:
         solicitante = await self._verificar_empleado(
             db, solicitud.empleado_id, solo_activo=False
         )
+        # La aprobación del permiso/vacaciones queda reflejada en la asistencia
+        # de todos los días del periodo (misma transacción).
+        await self._aplicar_en_asistencia(db, solicitud)
         await self.notificar(
             db,
             mensaje=(
