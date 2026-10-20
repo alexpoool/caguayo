@@ -66,12 +66,27 @@ async def listar_estados():
 
 @rrhh_asistencia_router.get("/resumen", response_model=RrhhAsistenciaResumenDia)
 async def resumen_dia(
-    fecha: date = Query(..., description="Fecha del resumen"),
+    fecha: Optional[date] = Query(None, description="Fecha del resumen (un solo día)"),
+    desde: Optional[date] = Query(None, description="Inicio del rango (si falta, `fecha`)"),
+    hasta: Optional[date] = Query(None, description="Fin del rango (si falta, el inicio)"),
     departamento_id: Optional[int] = None,
+    estado: Optional[str] = Query(None, description="Estado a filtrar"),
+    buscar: Optional[str] = None,
     db: AsyncSession = Depends(get_session),
 ):
-    """Conteo de asistencias por estado para una fecha."""
-    return await rrhh_asistencia_service.resumen_dia(db, fecha, departamento_id)
+    """Conteo de asistencias por estado para un día o un rango de fechas.
+
+    Acepta los mismos filtros que el listado; sin fechas, usa hoy.
+    """
+    return await rrhh_asistencia_service.resumen_dia(
+        db,
+        fecha=fecha,
+        departamento_id=departamento_id,
+        desde=desde,
+        hasta=hasta,
+        estado=estado,
+        buscar=buscar,
+    )
 
 
 @rrhh_asistencia_router.get("/{asistencia_id}", response_model=RrhhAsistenciaListado)

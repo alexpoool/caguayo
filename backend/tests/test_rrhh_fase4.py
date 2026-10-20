@@ -760,3 +760,80 @@ def test_resumen_dia_sin_datos(client):
     data = response.json()
     assert data["total_empleados"] == 0
     assert data["presentes"] == 0
+
+
+def test_resumen_rango_de_fechas(client):
+    """`desde`/`hasta` acotan el conteo y `fecha` sigue sirviendo para un día."""
+    emp = _crear_empleado(client)
+    try:
+        client.post(
+            "/api/v1/rrhh/asistencia",
+            json={"empleado_id": emp["id"], "fecha": "2099-02-11", "hora_entrada": "08:00"},
+        )
+        client.post(
+            "/api/v1/rrhh/asistencia",
+            json={"empleado_id": emp["id"], "fecha": "2099-02-12", "estado": "ausente"},
+        )
+        rango = client.get(
+            "/api/v1/rrhh/asistencia/resumen?desde=2099-02-11&hasta=2099-02-12"
+        )
+        assert rango.status_code == 200
+        datos = rango.json()
+        assert datos["fecha"] == "2099-02-11"
+        assert datos["presentes"] >= 1
+        assert datos["ausentes"] >= 1
+        assert datos["total_empleados"] >= 2
+
+        un_dia = client.get("/api/v1/rrhh/asistencia/resumen?fecha=2099-02-12")
+        assert un_dia.status_code == 200
+        assert un_dia.json()["ausentes"] >= 1
+        assert un_dia.json()["presentes"] == 0
+
+        solo_hasta = client.get("/api/v1/rrhh/asistencia/resumen?hasta=2099-02-12")
+        assert solo_hasta.status_code == 200
+        assert solo_hasta.json()["ausentes"] >= 1
+    finally:
+        _limpiar_asistencias(client, emp["id"])
+        _limpiar_empleado(client, emp["id"])
+
+
+def test_resumen_filtra_por_estado(client):
+    emp = _crear_empleado(client)
+    try:
+        client.post(
+            "/api/v1/rrhh/asistencia",
+            json={"empleado_id": emp["id"], "fecha": "2099-02-13", "estado": "ausente"},
+        )
+        response = client.get(
+            "/api/v1/rrhh/asistencia/resumen?fecha=2099-02-13&estado=ausente"
+        )
+        assert response.status_code == 200
+        datos = response.json()
+        assert datos["ausentes"] >= 1
+        # Al filtrar por estado, los demás contadores quedan a cero.
+        assert datos["presentes"] == 0
+        assert datos["total_empleados"] == datos["ausentes"]
+    finally:
+        _limpiar_asistencias(client, emp["id"])
+        _limpiar_empleado(client, emp["id"])
+
+
+def test_resumen_filtra_por_busqueda(client):
+    """El resumen acepta el mismo `buscar` que el listado (nombre/código)."""
+    marca = f"Resumen{_sufijo()}"
+    emp = _crear_empleado(client, nombre=marca)
+    try:
+        client.post(
+            "/api/v1/rrhh/asistencia",
+            json={"empleado_id": emp["id"], "fecha": "2099-02-14", "estado": "permiso"},
+        )
+        response = client.get(
+            f"/api/v1/rrhh/asistencia/resumen?desde=2099-02-14&hasta=2099-02-14&buscar={marca}"
+        )
+        assert response.status_code == 200
+        datos = response.json()
+        assert datos["total_empleados"] == 1
+        assert datos["permisos"] == 1
+    finally:
+        _limpiar_asistencias(client, emp["id"])
+        _limpiar_empleado(client, emp["id"])

@@ -339,18 +339,53 @@ class RrhhAsistenciaService:
     async def resumen_dia(
         self,
         db: AsyncSession,
-        fecha: date,
+        fecha: Optional[date] = None,
         departamento_id: Optional[int] = None,
+        desde: Optional[date] = None,
+        hasta: Optional[date] = None,
+        estado: Optional[str] = None,
+        buscar: Optional[str] = None,
     ) -> RrhhAsistenciaResumenDia:
-        """Conteo de asistencias por estado para una fecha."""
-        statement = select(RrhhAsistencia.estado, func.count()).where(
-            RrhhAsistencia.fecha == fecha
-        )
+        """Conteo de asistencias por estado en un día o rango de fechas.
 
-        if departamento_id is not None:
+        Acepta los mismos filtros que el listado (`departamento_id`, `estado`,
+        `buscar` y el rango `desde`/`hasta`); `fecha` sigue valiendo para el
+        resumen de un solo día. Sin fechas, se usa hoy.
+        """
+        if estado is not None:
+            self._validar_estado(estado)
+        # Rango: `desde`/`hasta` mandan; `fecha` equivale a un solo día.
+        # Sin fechas, hoy. Solo `hasta` deja el inicio abierto.
+        inicio = desde or fecha
+        fin = hasta or inicio
+        if inicio is None and fin is None:
+            inicio = fin = date.today()
+        elif inicio is None:
+            inicio = date.min
+
+        statement = select(RrhhAsistencia.estado, func.count()).where(
+            RrhhAsistencia.fecha >= inicio, RrhhAsistencia.fecha <= fin
+        )
+        if estado is not None:
+            statement = statement.where(RrhhAsistencia.estado == estado)
+
+        if departamento_id is not None or buscar:
             statement = statement.join(
                 RrhhEmpleado, RrhhAsistencia.empleado_id == RrhhEmpleado.id
-            ).where(RrhhEmpleado.departamento_id == departamento_id)
+            )
+            if departamento_id is not None:
+                statement = statement.where(
+                    RrhhEmpleado.departamento_id == departamento_id
+                )
+            if buscar:
+                term = f"%{buscar.strip()}%"
+                statement = statement.where(
+                    or_(
+                        RrhhEmpleado.nombre.ilike(term),
+                        RrhhEmpleado.apellido.ilike(term),
+                        RrhhEmpleado.codigo_empleado.ilike(term),
+                    )
+                )
 
         statement = statement.group_by(RrhhAsistencia.estado)
         result = await db.exec(statement)
@@ -359,16 +394,22 @@ class RrhhAsistenciaService:
         # Tardanzas y extras se suman desde el listado (cálculo derivado).
         total_tardanza = 0
         total_extras = 0
-        if conteos.get("tardanza") or conteos.get("presente"):
+        if conteos:
             marcaciones = await self.listar(
-                db, limit=1000, desde=fecha, hasta=fecha, departamento_id=departamento_id
+                db,
+                limit=1000,
+                desde=inicio,
+                hasta=fin,
+                departamento_id=departamento_id,
+                estado=estado,
+                buscar=buscar,
             )
             for m in marcaciones:
                 total_tardanza += m.tardanza_minutos
                 total_extras += m.horas_extras_minutos
 
         return RrhhAsistenciaResumenDia(
-            fecha=fecha,
+            fecha=inicio if inicio != date.min else fin,
             total_empleados=sum(conteos.values()),
             presentes=conteos.get("presente", 0),
             ausentes=conteos.get("ausente", 0),
