@@ -496,6 +496,47 @@ def test_listado_empleado_libre_sin_calculos(client):
         _limpiar_empleado(client, emp["id"])
 
 
+def test_listado_orden_descendente(client):
+    """La tabla muestra primero lo más reciente (fecha y, en el día, id)."""
+    emp_a = _crear_empleado(client)
+    emp_b = _crear_empleado(client)
+    try:
+        client.post(
+            "/api/v1/rrhh/asistencia",
+            json={"empleado_id": emp_a["id"], "fecha": "2099-03-01", "estado": "ausente"},
+        )
+        client.post(
+            "/api/v1/rrhh/asistencia",
+            json={"empleado_id": emp_b["id"], "fecha": "2099-03-02", "estado": "ausente"},
+        )
+        response = client.get(
+            "/api/v1/rrhh/asistencia?desde=2099-03-01&hasta=2099-03-02"
+        )
+        assert response.status_code == 200
+        fechas = [fila["fecha"] for fila in response.json()]
+        assert fechas == ["2099-03-02", "2099-03-01"]
+
+        # Mismo día: la marcación creada después (id mayor) va primero.
+        client.post(
+            "/api/v1/rrhh/asistencia",
+            json={"empleado_id": emp_a["id"], "fecha": "2099-03-03", "estado": "permiso"},
+        )
+        client.post(
+            "/api/v1/rrhh/asistencia",
+            json={"empleado_id": emp_b["id"], "fecha": "2099-03-03", "estado": "vacaciones"},
+        )
+        mismo_dia = client.get(
+            "/api/v1/rrhh/asistencia?desde=2099-03-03&hasta=2099-03-03"
+        )
+        ids = [fila["id"] for fila in mismo_dia.json()]
+        assert ids == sorted(ids, reverse=True)
+    finally:
+        _limpiar_asistencias(client, emp_a["id"])
+        _limpiar_asistencias(client, emp_b["id"])
+        _limpiar_empleado(client, emp_a["id"])
+        _limpiar_empleado(client, emp_b["id"])
+
+
 def test_filtro_por_fechas(client):
     emp = _crear_empleado(client)
     try:

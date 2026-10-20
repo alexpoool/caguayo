@@ -186,7 +186,7 @@ class RrhhAsistenciaService:
                 )
 
         statement = statement.order_by(
-            RrhhAsistencia.fecha.desc(), RrhhAsistencia.id
+            RrhhAsistencia.fecha.desc(), RrhhAsistencia.id.desc()
         ).offset(skip).limit(limit)
         result = await db.exec(statement)
         filas = list(result.all())
