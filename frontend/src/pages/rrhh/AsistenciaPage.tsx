@@ -81,6 +81,13 @@ const AVISO_TONO = {
 
 const fmtHora = (v: string | null | undefined) => (v ? v.slice(0, 5) : null);
 
+/** Estados que la marcación rápida puede reescribir; el resto son manuales. */
+const ESTADOS_MARCA_RAPIDA: RrhhEstadoAsistencia[] = [
+  'presente',
+  'tardanza',
+  'ausente',
+];
+
 const fmtFecha = (v: string) => {
   const [anio, mes, dia] = v.split('-');
   return `${dia}/${mes}/${anio}`;
@@ -246,21 +253,24 @@ export function AsistenciaPage() {
         });
       }
 
-      // Ya hay entrada: se re-marca (el backend vuelve a derivar presente/tardanza).
-      if (marcacionDia?.hora_entrada) {
+      // Ya hay marcación ese día: se actualiza. El estado solo se reescribe si
+      // es presente/tardanza/ausente; un estado manual (permiso, vacaciones,
+      // feriado, incapacidad) se conserva al re-marcar la entrada.
+      if (marcacionDia) {
+        const pisaEstado = ESTADOS_MARCA_RAPIDA.includes(marcacionDia.estado);
         return rrhhService.updateAsistencia(marcacionDia.id, {
           hora_entrada: hora,
-          estado: 'presente',
+          ...(pisaEstado ? { estado: 'presente' as const } : {}),
           ...(observaciones ? { observaciones } : {}),
         });
       }
 
-      // Sin entrada todavía: alta del día (el estado se deriva de la hora).
+      // Sin marcación todavía: alta del día (el estado se deriva de la hora).
       return rrhhService.createAsistencia({
         empleado_id: formMarcar.empleado_id!,
         fecha: formMarcar.fecha || hoyISO(),
         hora_entrada: hora,
-        observaciones: observaciones ?? marcacionDia?.observaciones ?? undefined,
+        observaciones,
       });
     },
     onSuccess: () => {
@@ -322,10 +332,27 @@ export function AsistenciaPage() {
   const requiereEntrada =
     RRHH_ESTADOS_CON_HORAS.includes(formCorreccion.estado);
 
-  const resumenCampos = resumen
+  const resumenCampos: {
+    etiqueta: string;
+    valor: number;
+    color: string;
+    titulo?: string;
+  }[] = resumen
     ? [
-        { etiqueta: 'Presentes', valor: resumen.presentes, color: 'text-green-600' },
-        { etiqueta: 'Tardanzas', valor: resumen.tardanzas, color: 'text-amber-600' },
+        {
+          // Quienes vinieron: los presentes más los que llegaron tarde (la
+          // tabla también los muestra como «Presente»).
+          etiqueta: 'Presentes',
+          valor: resumen.presentes + resumen.tardanzas,
+          color: 'text-green-600',
+          titulo: `Incluye ${resumen.tardanzas} que llegaron tarde`,
+        },
+        {
+          etiqueta: 'Tardanzas',
+          valor: resumen.tardanzas,
+          color: 'text-amber-600',
+          titulo: 'De los presentes, cuántos llegaron tarde',
+        },
         { etiqueta: 'Ausentes', valor: resumen.ausentes, color: 'text-red-600' },
         {
           etiqueta: 'Permisos',
@@ -385,6 +412,16 @@ export function AsistenciaPage() {
   const puedeMarcarEntrada = !diaCompleto;
   const puedeMarcarSalida = hayEntrada && !haySalida;
 
+  /** Estado manual del día (permiso, vacaciones…): la marca no debe pisarlo. */
+  const estadoManualDia =
+    marcacionDia && !ESTADOS_MARCA_RAPIDA.includes(marcacionDia.estado)
+      ? marcacionDia.estado
+      : null;
+  const etiquetaEstadoManual = estadoManualDia
+    ? (RRHH_ESTADOS_ASISTENCIA.find((e) => e.valor === estadoManualDia)?.etiqueta ??
+      estadoManualDia)
+    : null;
+
   // Al cambiar de empleado o de día, «Salida» puede dejar de aplicar.
   useEffect(() => {
     if (!modalMarcar) return;
@@ -414,20 +451,27 @@ export function AsistenciaPage() {
                 tono: 'amber',
                 texto: `El día ya tiene entrada (${entradaDia}) y salida (${salidaDia}). Edítalo con «Corregir» desde la tabla.`,
               }
-            : formMarcar.tipo === 'salida'
+            : estadoManualDia && formMarcar.tipo === 'entrada'
               ? {
-                  tono: 'brand',
-                  texto: `Se registrará la salida del día. Entrada: ${entradaDia}.`,
+                  tono: 'amber',
+                  texto: `El día está marcado como ${etiquetaEstadoManual}. Se actualizará la entrada y se mantendrá ese estado.`,
                 }
-              : hayEntrada
+              : formMarcar.tipo === 'salida'
                 ? {
-                    tono: 'brand',
-                    texto: `El día ya tiene entrada (${entradaDia}); se actualizará a la hora indicada.`,
+                    tono: estadoManualDia ? 'amber' : 'brand',
+                    texto: estadoManualDia
+                      ? `Se registrará la salida y se mantendrá el estado ${etiquetaEstadoManual}.`
+                      : `Se registrará la salida del día. Entrada: ${entradaDia}.`,
                   }
-                : {
-                    tono: 'brand',
-                    texto: 'El día está sin marcar: se registrará la entrada.',
-                  };
+                : hayEntrada
+                  ? {
+                      tono: 'brand',
+                      texto: `El día ya tiene entrada (${entradaDia}); se actualizará a la hora indicada.`,
+                    }
+                  : {
+                      tono: 'brand',
+                      texto: 'El día está sin marcar: se registrará la entrada.',
+                    };
 
   const registrarDeshabilitado =
     marcarMutation.isPending || consultandoDia || diaCompleto || errorSalida !== null;
@@ -526,7 +570,11 @@ export function AsistenciaPage() {
             <>
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
                 {resumenCampos.map((r) => (
-                  <div key={r.etiqueta} className="rounded-lg bg-slate-50 p-3">
+                  <div
+                    key={r.etiqueta}
+                    className="rounded-lg bg-slate-50 p-3"
+                    title={r.titulo}
+                  >
                     <div className={`text-2xl font-bold tabular-nums ${r.color}`}>
                       {r.valor}
                     </div>
