@@ -108,8 +108,9 @@ export function AsistenciaPage() {
   const [filtroEstado, setFiltroEstado] = useState<RrhhEstadoAsistencia | ''>('');
   const [filtroEmpleado, setFiltroEmpleado] = useState<number | ''>('');
   const [busqueda, setBusqueda] = useState('');
-  const [desde, setDesde] = useState('');
-  const [hasta, setHasta] = useState('');
+  // Por defecto la tabla muestra el día de hoy; las fechas se pueden cambiar.
+  const [desde, setDesde] = useState(hoyISO());
+  const [hasta, setHasta] = useState(hoyISO());
   /** El resumen (del día o del rango filtrado) se abre en un modal. */
   const [modalResumen, setModalResumen] = useState(false);
 
@@ -345,26 +346,33 @@ export function AsistenciaPage() {
       ]
     : [];
 
+  const hoy = hoyISO();
   const hayFiltroActivo =
-    busqueda !== '' || filtroEstado !== '' || filtroDepto !== '' || desde !== '' || hasta !== '';
+    busqueda !== '' ||
+    filtroEstado !== '' ||
+    filtroDepto !== '' ||
+    desde !== hoy ||
+    hasta !== hoy;
 
   /** Rango que resume el modal, con el mismo criterio que la consulta. */
   const tituloRangoResumen =
-    desde && hasta && desde !== hasta
-      ? `Del ${fmtFecha(desde)} al ${fmtFecha(hasta)}`
-      : desde
-        ? `Del ${fmtFecha(desde)}`
-        : hasta
-          ? `Hasta el ${fmtFecha(hasta)}`
-          : `Hoy, ${fmtFecha(hoyISO())}`;
+    desde === hoy && hasta === hoy
+      ? `Hoy, ${fmtFecha(hoy)}`
+      : desde && hasta && desde !== hasta
+        ? `Del ${fmtFecha(desde)} al ${fmtFecha(hasta)}`
+        : desde
+          ? `Del ${fmtFecha(desde)}`
+          : hasta
+            ? `Hasta el ${fmtFecha(hasta)}`
+            : `Hoy, ${fmtFecha(hoy)}`;
 
   const limpiarFiltros = () => {
     setBusqueda('');
     setFiltroEstado('');
     setFiltroDepto('');
     setFiltroEmpleado('');
-    setDesde('');
-    setHasta('');
+    setDesde(hoy);
+    setHasta(hoy);
   };
 
   // ── Estado del día elegido (empleado + fecha) ────────────────────────────
