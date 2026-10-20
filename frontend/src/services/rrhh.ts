@@ -312,8 +312,13 @@ export const rrhhService = {
   },
 
   /** Conteo de asistencias por estado para una fecha. */
+  /** Resumen de asistencia por estado (un día o un rango, con filtros). */
   resumenAsistenciaDia: async (params: {
-    fecha: string;
+    fecha?: string;
+    desde?: string;
+    hasta?: string;
+    estado?: RrhhEstadoAsistencia;
+    buscar?: string;
     departamento_id?: number;
   }): Promise<RrhhAsistenciaResumenDia> => {
     return await apiClient.get('/rrhh/asistencia/resumen', params);

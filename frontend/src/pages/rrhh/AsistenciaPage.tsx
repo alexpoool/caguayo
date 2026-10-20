@@ -33,7 +33,6 @@ import {
   Card,
   CardContent,
   CardHeader,
-  CardTitle,
   Table,
   TableHeader,
   TableBody,
@@ -87,6 +86,21 @@ const fmtFecha = (v: string) => {
   return `${dia}/${mes}/${anio}`;
 };
 
+/**
+ * Estado que pinta la tabla: una `tardanza` es una presencia con retraso, así
+ * que se muestra como «Presente» (los minutos van en la columna Tardanza).
+ */
+const etiquetaEstadoTabla = (fila: RrhhAsistenciaListado) =>
+  fila.estado === 'tardanza'
+    ? 'Presente'
+    : RRHH_ESTADOS_ASISTENCIA.find((e) => e.valor === fila.estado)?.etiqueta ??
+      fila.estado;
+
+const badgeEstadoTabla = (fila: RrhhAsistenciaListado) =>
+  RRHH_ESTADO_ASISTENCIA_BADGE[
+    fila.estado === 'tardanza' ? 'presente' : fila.estado
+  ] ?? 'bg-slate-100 text-slate-500';
+
 export function AsistenciaPage() {
   const queryClient = useQueryClient();
 
@@ -96,8 +110,8 @@ export function AsistenciaPage() {
   const [busqueda, setBusqueda] = useState('');
   const [desde, setDesde] = useState('');
   const [hasta, setHasta] = useState('');
-  /** La tarjeta «Resumen del día» se puede ocultar desde la cabecera. */
-  const [mostrarResumen, setMostrarResumen] = useState(true);
+  /** El resumen (del día o del rango filtrado) se abre en un modal. */
+  const [modalResumen, setModalResumen] = useState(false);
 
   const [modalMarcar, setModalMarcar] = useState(false);
   const [modalCorregir, setModalCorregir] = useState<RrhhAsistenciaListado | null>(null);
@@ -173,12 +187,29 @@ export function AsistenciaPage() {
       }),
   });
 
-  const { data: resumen } = useQuery({
-    queryKey: ['rrhh', 'asistencia', 'resumen', desde || hoyISO(), filtroDepto],
+  // El resumen sigue a todos los filtros de la tabla (periodo, estado,
+  // departamento y nombre), igual que el listado.
+  const {
+    data: resumen,
+    isLoading: cargandoResumen,
+  } = useQuery({
+    queryKey: [
+      'rrhh',
+      'asistencia',
+      'resumen',
+      desde,
+      hasta,
+      filtroEstado,
+      filtroDepto,
+      busqueda,
+    ],
     queryFn: () =>
       rrhhService.resumenAsistenciaDia({
-        fecha: desde || hoyISO(),
+        desde: desde || undefined,
+        hasta: hasta || undefined,
+        estado: filtroEstado || undefined,
         departamento_id: filtroDepto === '' ? undefined : filtroDepto,
+        buscar: busqueda || undefined,
       }),
   });
 
@@ -305,11 +336,27 @@ export function AsistenciaPage() {
           valor: resumen.vacaciones,
           color: 'text-blue-600',
         },
+        { etiqueta: 'Feriados', valor: resumen.feriados, color: 'text-slate-600' },
+        {
+          etiqueta: 'Incapacidades',
+          valor: resumen.incapacidades,
+          color: 'text-slate-600',
+        },
       ]
     : [];
 
   const hayFiltroActivo =
     busqueda !== '' || filtroEstado !== '' || filtroDepto !== '' || desde !== '' || hasta !== '';
+
+  /** Rango que resume el modal, con el mismo criterio que la consulta. */
+  const tituloRangoResumen =
+    desde && hasta && desde !== hasta
+      ? `Del ${fmtFecha(desde)} al ${fmtFecha(hasta)}`
+      : desde
+        ? `Del ${fmtFecha(desde)}`
+        : hasta
+          ? `Hasta el ${fmtFecha(hasta)}`
+          : `Hoy, ${fmtFecha(hoyISO())}`;
 
   const limpiarFiltros = () => {
     setBusqueda('');
@@ -408,12 +455,9 @@ export function AsistenciaPage() {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => setMostrarResumen((v) => !v)}
-            aria-pressed={mostrarResumen}
-            title={mostrarResumen ? 'Ocultar el resumen del día' : 'Mostrar el resumen del día'}
-            className={`gap-2 ${
-              mostrarResumen ? 'border-brand-500 bg-brand-50 text-brand-600' : ''
-            }`}
+            onClick={() => setModalResumen(true)}
+            title="Ver el resumen del periodo filtrado"
+            className="gap-2"
           >
             <BarChart3 className="h-4 w-4" />
             Resumen
@@ -432,47 +476,81 @@ export function AsistenciaPage() {
         </div>
       </div>
 
-      {/* Resumen del día */}
-      {resumen && mostrarResumen && (
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm text-slate-600">
-              Resumen del {fmtFecha(resumen.fecha)}
-              <span className="ml-2 font-normal text-slate-400">
-                · {resumen.total_empleados} marcación
-                {resumen.total_empleados === 1 ? '' : 'es'}
-              </span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-              {resumenCampos.map((r) => (
-                <div key={r.etiqueta} className="rounded-lg bg-slate-50 p-3">
-                  <div className={`text-2xl font-bold tabular-nums ${r.color}`}>
-                    {r.valor}
-                  </div>
-                  <div className="text-xs text-slate-500">{r.etiqueta}</div>
-                </div>
-              ))}
-              <div className="rounded-lg bg-slate-50 p-3">
-                <div className="text-2xl font-bold tabular-nums text-slate-700">
-                  {formatearMinutos(resumen.total_tardanza_minutos)}
-                </div>
-                <div className="text-xs text-slate-500">Total tardanza (H:MM)</div>
-              </div>
-              <div className="rounded-lg bg-slate-50 p-3">
-                <div className="text-2xl font-bold tabular-nums text-slate-700">
-                  {formatearMinutos(resumen.total_horas_extras_minutos)}
-                </div>
-                <div className="text-xs text-slate-500">Total extras (H:MM)</div>
-              </div>
+      {/* Resumen (día o rango filtrado) en modal */}
+      <Modal
+        isOpen={modalResumen}
+        onClose={() => setModalResumen(false)}
+        className="!max-w-2xl !rounded-none overflow-hidden [&>button.absolute]:hidden"
+      >
+        <div className="sticky top-0 z-10 flex items-center gap-3 border-b bg-gradient-to-r from-brand-50 to-brand-100 px-6 py-4 pr-14">
+          <div className="rounded-lg bg-gradient-to-br from-brand-500 to-brand-600 p-2">
+            <BarChart3 className="h-5 w-5 text-white" />
+          </div>
+          <div className="min-w-0">
+            <h2 className="text-lg font-bold text-gray-900">Resumen de asistencia</h2>
+            <p className="truncate text-xs text-slate-500">
+              {tituloRangoResumen}
+              {resumen
+                ? ` · ${resumen.total_empleados} marcación${
+                    resumen.total_empleados === 1 ? '' : 'es'
+                  }`
+                : ''}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setModalResumen(false)}
+            title="Cerrar"
+            aria-label="Cerrar"
+            className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full p-1 text-slate-400 transition-colors hover:bg-brand-100 hover:text-slate-600"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        <div className="px-6 py-5">
+          {cargandoResumen || !resumen ? (
+            <div className="flex items-center justify-center gap-2 py-10 text-sm text-slate-500">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Cargando resumen…
             </div>
-          </CardContent>
-        </Card>
-      )}
+          ) : (
+            <>
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                {resumenCampos.map((r) => (
+                  <div key={r.etiqueta} className="rounded-lg bg-slate-50 p-3">
+                    <div className={`text-2xl font-bold tabular-nums ${r.color}`}>
+                      {r.valor}
+                    </div>
+                    <div className="text-xs text-slate-500">{r.etiqueta}</div>
+                  </div>
+                ))}
+                <div className="rounded-lg bg-slate-50 p-3">
+                  <div className="text-2xl font-bold tabular-nums text-slate-700">
+                    {formatearMinutos(resumen.total_tardanza_minutos)}
+                  </div>
+                  <div className="text-xs text-slate-500">Total tardanza (H:MM)</div>
+                </div>
+                <div className="rounded-lg bg-slate-50 p-3">
+                  <div className="text-2xl font-bold tabular-nums text-slate-700">
+                    {formatearMinutos(resumen.total_horas_extras_minutos)}
+                  </div>
+                  <div className="text-xs text-slate-500">Total extras (H:MM)</div>
+                </div>
+              </div>
+              {resumen.total_empleados === 0 && (
+                <p className="mt-4 text-center text-sm text-slate-500">
+                  No hay marcaciones con estos filtros.
+                </p>
+              )}
+            </>
+          )}
+        </div>
+      </Modal>
 
       <Card>
         <CardHeader className="pb-3">
+          {/* Buscador arriba, filtros debajo */}
           <div className="flex flex-wrap items-center gap-3">
             <div className="relative min-w-[200px] flex-1">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
@@ -483,6 +561,8 @@ export function AsistenciaPage() {
                 className="pl-9"
               />
             </div>
+          </div>
+          <div className="mt-3 flex flex-wrap items-center gap-3">
             <DateInput
               value={desde}
               onChange={(iso) => setDesde(iso)}
@@ -581,12 +661,14 @@ export function AsistenciaPage() {
                     </TableCell>
                     <TableCell className="text-center">
                       <span
-                        className={`inline-block rounded-full px-2 py-0.5 text-xs font-semibold ${
-                          RRHH_ESTADO_ASISTENCIA_BADGE[fila.estado] ?? 'bg-slate-100 text-slate-500'
-                        }`}
+                        className={`inline-block rounded-full px-2 py-0.5 text-xs font-semibold ${badgeEstadoTabla(fila)}`}
+                        title={
+                          fila.estado === 'tardanza'
+                            ? `Entrada tardía (${formatearMinutos(fila.tardanza_minutos)})`
+                            : undefined
+                        }
                       >
-                        {RRHH_ESTADOS_ASISTENCIA.find((e) => e.valor === fila.estado)?.etiqueta ??
-                          fila.estado}
+                        {etiquetaEstadoTabla(fila)}
                       </span>
                     </TableCell>
                     <TableCell className="text-right tabular-nums">
