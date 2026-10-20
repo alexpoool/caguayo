@@ -1,26 +1,29 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { rrhhService } from '../../services/rrhh';
+import { monedaService } from '../../services/api';
 import {
   COLOR_ESTADO_NOMINA,
-  type RrhhConceptoGenerar,
+  ESTADOS_NOMINA,
+  ETIQUETA_ESTADO_NOMINA,
   type RrhhEstadoNomina,
+  type RrhhNominaCreate,
+  type RrhhNominaDetalle,
   type RrhhNominaListado,
 } from '../../types/rrhh';
 import {
   AlertCircle,
-  Award,
   Banknote,
   Calculator,
-  Eye,
+  CheckCircle2,
   FileDown,
   Loader2,
+  Pencil,
   Plus,
   RefreshCw,
   Search,
   Trash2,
-  TrendingUp,
   Wallet,
   X,
 } from 'lucide-react';
@@ -53,24 +56,57 @@ const fmtMoneda = (v: number | string | null | undefined) =>
         maximumFractionDigits: 2,
       }).format(Number(v));
 
-const fmtFecha = (v: string) => {
+/** `2026-10-01` → `01/10/2026`. Devuelve el original si no es una fecha ISO. */
+const fmtFecha = (v: string | null | undefined) => {
+  if (!v) return '—';
   const [anio, mes, dia] = v.split('-');
+  if (!anio || !mes || !dia) return v;
   return `${dia}/${mes}/${anio}`;
+};
+
+const FORM_VACIO: {
+  descripcion: string;
+  periodo: string;
+  inicio_periodo: string;
+  fin_periodo: string;
+  moneda_id: number | '';
+  tasa: string;
+  porcentaje_impuesto: string;
+} = {
+  descripcion: '',
+  periodo: '',
+  inicio_periodo: '',
+  fin_periodo: '',
+  moneda_id: '',
+  tasa: '1',
+  porcentaje_impuesto: '5',
 };
 
 export function NominaPage() {
   const [pestana, setPestana] = useState<Pestana>('nominas');
+  const [modalNueva, setModalNueva] = useState(false);
 
   return (
     <div className="space-y-4">
-      <div>
-        <h1 className="flex items-center gap-2 text-xl font-bold text-slate-900">
-          <Banknote className="h-6 w-6 text-brand-600" />
-          Nómina y pagos
-        </h1>
-        <p className="mt-1 text-sm text-slate-500">
-          Generación, pago y control de costos de la nómina
-        </p>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className="rounded-lg bg-gradient-to-br from-brand-500 to-brand-600 p-2 shadow-lg">
+            <Wallet className="h-5 w-5 text-white" />
+          </div>
+          <div>
+            <h1 className="text-xl font-bold text-gray-900">Nómina</h1>
+            <p className="text-sm text-gray-500">
+              Lotes de nómina, su detalle por empleado y el costo
+            </p>
+          </div>
+        </div>
+        <Button
+          onClick={() => setModalNueva(true)}
+          className="gap-2 bg-gradient-to-r from-brand-500 to-brand-600 text-white shadow-lg transition-all duration-300 hover:from-brand-600 hover:to-brand-500 hover:shadow-xl"
+        >
+          <Plus className="h-4 w-4" />
+          Nueva nómina
+        </Button>
       </div>
 
       <div className="flex gap-1 border-b border-slate-200">
@@ -86,7 +122,7 @@ export function NominaPage() {
             onClick={() => setPestana(clave)}
             className={`flex items-center gap-2 border-b-2 px-4 py-2 text-sm font-medium transition-colors ${
               pestana === clave
-                ? 'border-brand-600 text-brand-700'
+                ? 'border-brand-600 text-brand-600'
                 : 'border-transparent text-slate-500 hover:text-slate-700'
             }`}
           >
@@ -96,24 +132,30 @@ export function NominaPage() {
         ))}
       </div>
 
-      {pestana === 'nominas' ? <ListaNominas /> : <VistaCosto />}
+      {pestana === 'nominas' ? (
+        <ListaNominas onNueva={() => setModalNueva(true)} />
+      ) : (
+        <VistaCosto />
+      )}
+
+      <NominaFormModal
+        isOpen={modalNueva}
+        onClose={() => setModalNueva(false)}
+      />
     </div>
   );
 }
 
 // ── Listado y acciones de nómina ────────────────────────────────────────────
 
-function ListaNominas() {
+function ListaNominas({ onNueva }: { onNueva: () => void }) {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
 
+  const [buscar, setBuscar] = useState('');
   const [estado, setEstado] = useState<RrhhEstadoNomina | ''>('');
-  const [desde, setDesde] = useState('');
-  const [hasta, setHasta] = useState('');
-  const [modalGenerar, setModalGenerar] = useState(false);
-  const [aPagar, setAPagar] = useState<RrhhNominaListado | null>(null);
-  const [aAnular, setAAnular] = useState<RrhhNominaListado | null>(null);
-  const [aVer, setAVer] = useState<number | null>(null);
+  const [aConfirmar, setAConfirmar] = useState<RrhhNominaListado | null>(null);
+  const [aEliminar, setAEliminar] = useState<RrhhNominaListado | null>(null);
 
   const invalidate = () =>
     queryClient.invalidateQueries({ queryKey: ['rrhh', 'nomina'] });
@@ -125,75 +167,83 @@ function ListaNominas() {
     error,
     refetch,
   } = useQuery({
-    queryKey: ['rrhh', 'nomina', estado, desde, hasta],
+    queryKey: ['rrhh', 'nomina', 'listado', buscar, estado],
     queryFn: () =>
       rrhhService.listarNominas({
         limit: 500,
+        buscar: buscar.trim() || undefined,
         estado: estado || undefined,
-        desde: desde || undefined,
-        hasta: hasta || undefined,
       }),
   });
 
-  const anularMutation = useMutation({
-    mutationFn: (id: number) => rrhhService.anularNomina(id),
-    onSuccess: (res) => {
-      toast.success(
-        res.era_pagada ? 'Nómina anulada (quedó auditada)' : 'Nómina anulada'
-      );
+  const confirmarMutation = useMutation({
+    mutationFn: (id: number) => rrhhService.confirmarNomina(id),
+    onSuccess: () => {
+      toast.success('Nómina confirmada');
       invalidate();
-      setAAnular(null);
+      setAConfirmar(null);
     },
     onError: (err: unknown) => {
-      toast.error(err instanceof Error ? err.message : 'No se pudo anular');
+      toast.error(
+        err instanceof Error ? err.message : 'No se pudo confirmar la nómina'
+      );
     },
   });
 
-  const descargarMutation = useMutation({
-    mutationFn: (id: number) => rrhhService.descargarRecibo(id),
-    onSuccess: ({ blob, nombre }) => {
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = nombre;
-      a.click();
-      URL.revokeObjectURL(url);
+  const eliminarMutation = useMutation({
+    mutationFn: (id: number) => rrhhService.eliminarNomina(id),
+    onSuccess: () => {
+      toast.success('Nómina eliminada');
+      invalidate();
+      setAEliminar(null);
     },
-    onError: () => toast.error('No se pudo generar el recibo'),
+    onError: (err: unknown) => {
+      toast.error(
+        err instanceof Error ? err.message : 'No se pudo eliminar la nómina'
+      );
+    },
   });
 
-  const hayFiltros = estado !== '' || desde !== '' || hasta !== '';
+  const hayFiltros = buscar.trim() !== '' || estado !== '';
 
   return (
     <div className="space-y-4">
       <Card>
         <CardHeader className="pb-3">
           <div className="flex flex-wrap items-center gap-3">
-            <DateInput
-              value={desde}
-              onChange={(iso) => setDesde(iso)}
-              title="Desde"
-              wrapperClassName="w-44"
-            />
-            <DateInput
-              value={hasta}
-              onChange={(iso) => setHasta(iso)}
-              title="Hasta"
-              wrapperClassName="w-44"
-            />
+            <div className="relative min-w-[220px] flex-1">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <Input
+                placeholder="Buscar por descripción o periodo..."
+                value={buscar}
+                onChange={(e) => setBuscar(e.target.value)}
+                className="pl-9"
+              />
+            </div>
             <select
               value={estado}
-              onChange={(e) => setEstado(e.target.value as RrhhEstadoNomina | '')}
+              onChange={(e) =>
+                setEstado(e.target.value as RrhhEstadoNomina | '')
+              }
               className="rounded-md border border-slate-300 px-3 py-2 text-sm"
             >
               <option value="">Todos los estados</option>
-              <option value="pendiente">Pendiente</option>
-              <option value="pagada">Pagada</option>
-              <option value="anulada">Anulada</option>
+              {ESTADOS_NOMINA.map((valor) => (
+                <option key={valor} value={valor}>
+                  {ETIQUETA_ESTADO_NOMINA[valor]}
+                </option>
+              ))}
             </select>
-            <Button size="sm" onClick={() => setModalGenerar(true)}>
-              <Plus className="h-4 w-4" />
-              Generar nómina
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => refetch()}
+              disabled={isLoading}
+              title="Actualizar"
+            >
+              <RefreshCw
+                className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`}
+              />
             </Button>
           </div>
         </CardHeader>
@@ -210,19 +260,19 @@ function ListaNominas() {
               mensaje={
                 hayFiltros
                   ? 'No hay nóminas que coincidan con los filtros.'
-                  : 'Aún no se ha generado ninguna nómina. Pulsa «Generar nómina».'
+                  : 'Aún no hay nóminas. Pulsa «Nueva nómina» para crear la primera.'
               }
+              onNueva={hayFiltros ? undefined : onNueva}
             />
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Empleado</TableHead>
+                  <TableHead>Descripción</TableHead>
                   <TableHead>Periodo</TableHead>
-                  <TableHead className="text-right">Neto</TableHead>
-                  <TableHead className="text-right">Pagado</TableHead>
+                  <TableHead>Rango</TableHead>
                   <TableHead>Estado</TableHead>
-                  <TableHead className="text-center">Pagos</TableHead>
+                  <TableHead className="text-right">Pagos</TableHead>
                   <TableHead className="text-right">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
@@ -231,21 +281,19 @@ function ListaNominas() {
                   <TableRow key={fila.id}>
                     <TableCell>
                       <div className="font-medium text-slate-900">
-                        {fila.empleado_nombre ?? '—'}
+                        {fila.descripcion}
                       </div>
                       <div className="text-xs text-slate-500">
-                        {fila.empleado_codigo ?? '—'}
-                        {fila.departamento_nombre ? ` · ${fila.departamento_nombre}` : ''}
+                        {fila.cantidad_empleados} empleado
+                        {fila.cantidad_empleados === 1 ? '' : 's'}
                       </div>
                     </TableCell>
                     <TableCell className="whitespace-nowrap text-slate-600">
-                      {fmtFecha(fila.inicio_periodo)} – {fmtFecha(fila.fin_periodo)}
+                      {fmtFecha(fila.periodo)}
                     </TableCell>
-                    <TableCell className="text-right font-semibold tabular-nums">
-                      {fmtMoneda(fila.salario_neto)}
-                    </TableCell>
-                    <TableCell className="text-right tabular-nums text-slate-600">
-                      {fmtMoneda(fila.total_pagado)}
+                    <TableCell className="whitespace-nowrap text-slate-600">
+                      {fmtFecha(fila.inicio_periodo)} –{' '}
+                      {fmtFecha(fila.fin_periodo)}
                     </TableCell>
                     <TableCell>
                       <span
@@ -253,45 +301,59 @@ function ListaNominas() {
                           COLOR_ESTADO_NOMINA[fila.estado]
                         }`}
                       >
-                        {fila.estado}
+                        {ETIQUETA_ESTADO_NOMINA[fila.estado]}
                       </span>
                     </TableCell>
-                    <TableCell className="text-center">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        title={`Ver los pagos de la nómina #${fila.id}`}
-                        onClick={() => navigate(`/rrhh/pagos?nomina_id=${fila.id}`)}
-                      >
-                        <Wallet className="h-4 w-4" />
-                        Ver pagos
-                      </Button>
+                    <TableCell className="text-right">
+                      {fila.cantidad_pagos > 0 ? (
+                        <button
+                          type="button"
+                          title="Ver los pagos de esta nómina"
+                          onClick={() =>
+                            navigate(`/rrhh/pagos?nomina_id=${fila.id}`)
+                          }
+                          className="rounded-md px-2 py-1 text-sm font-semibold tabular-nums text-brand-600 transition-colors hover:bg-brand-50"
+                        >
+                          {fila.cantidad_pagos} · {fmtMoneda(fila.total_pagado)}
+                        </button>
+                      ) : (
+                        <span className="text-sm text-slate-400">—</span>
+                      )}
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center justify-end gap-1">
-                        <ActionButton titulo="Ver detalle" onClick={() => setAVer(fila.id)}>
-                          <Eye className="h-4 w-4" />
-                        </ActionButton>
                         <ActionButton
                           titulo="Descargar recibo"
-                          onClick={() => descargarMutation.mutate(fila.id)}
+                          onClick={() => toast('Próximamente')}
                         >
                           <FileDown className="h-4 w-4" />
                         </ActionButton>
-                        {fila.estado === 'pendiente' && (
+                        <ActionButton
+                          titulo={
+                            fila.estado === 'nomina'
+                              ? 'Ver detalle (solo lectura)'
+                              : 'Editar nómina'
+                          }
+                          onClick={() => navigate(`/rrhh/nomina/${fila.id}`)}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </ActionButton>
+                        {fila.estado === 'pre_nomina' && (
                           <>
-                            <ActionButton titulo="Registrar pago" onClick={() => setAPagar(fila)}>
-                              <Wallet className="h-4 w-4" />
+                            <ActionButton
+                              titulo="Confirmar nómina"
+                              onClick={() => setAConfirmar(fila)}
+                            >
+                              <CheckCircle2 className="h-4 w-4" />
                             </ActionButton>
-                            <ActionButton titulo="Anular" danger onClick={() => setAAnular(fila)}>
+                            <ActionButton
+                              titulo="Eliminar nómina"
+                              danger
+                              onClick={() => setAEliminar(fila)}
+                            >
                               <Trash2 className="h-4 w-4" />
                             </ActionButton>
                           </>
-                        )}
-                        {fila.estado === 'pagada' && (
-                          <ActionButton titulo="Anular" danger onClick={() => setAAnular(fila)}>
-                            <Trash2 className="h-4 w-4" />
-                          </ActionButton>
                         )}
                       </div>
                     </TableCell>
@@ -303,520 +365,160 @@ function ListaNominas() {
         </CardContent>
       </Card>
 
-      <ModalGenerar isOpen={modalGenerar} onClose={() => setModalGenerar(false)} onListo={invalidate} />
-      <ModalPagar nomina={aPagar} onClose={() => setAPagar(null)} onListo={invalidate} />
-      <ModalDetalle nominaId={aVer} onClose={() => setAVer(null)} />
-
       <ConfirmModal
-        isOpen={aAnular !== null}
-        title="Anular nómina"
+        isOpen={aConfirmar !== null}
+        title="Confirmar nómina"
         message={
-          aAnular
-            ? `¿Seguro que quieres anular la nómina de ${
-                aAnular.empleado_nombre ?? 'este empleado'
-              } (${fmtMoneda(aAnular.salario_neto)})? ${
-                aAnular.estado === 'pagada'
-                  ? 'Está pagada, así que la anulación quedará registrada en la auditoría.'
-                  : ''
-              }`
+          aConfirmar
+            ? `¿Confirmar la nómina «${aConfirmar.descripcion}»? Se bloqueará la edición y pasará al estado Nómina.`
             : ''
         }
+        confirmText="Confirmar"
+        type="warning"
+        onConfirm={() => aConfirmar && confirmarMutation.mutate(aConfirmar.id)}
+        onClose={() => setAConfirmar(null)}
+      />
+
+      <ConfirmModal
+        isOpen={aEliminar !== null}
+        title="Eliminar nómina"
+        message={
+          aEliminar
+            ? `¿Seguro que quieres eliminar la nómina «${aEliminar.descripcion}»? Esta acción no se puede deshacer.`
+            : ''
+        }
+        confirmText="Eliminar"
         type="danger"
-        onConfirm={() => aAnular && anularMutation.mutate(aAnular.id)}
-        onClose={() => setAAnular(null)}
+        onConfirm={() => aEliminar && eliminarMutation.mutate(aEliminar.id)}
+        onClose={() => setAEliminar(null)}
       />
     </div>
   );
 }
 
-// ── Modal de generación ─────────────────────────────────────────────────────
+// ── Modal de alta / edición de la cabecera ─────────────────────────────────
 
-function ModalGenerar({
+/**
+ * Formulario canónico de la cabecera de una nómina. Se usa al crear desde el
+ * listado y al editar los datos de una pre-nómina desde su detalle.
+ */
+export function NominaFormModal({
   isOpen,
   onClose,
-  onListo,
+  nomina = null,
 }: {
   isOpen: boolean;
   onClose: () => void;
-  onListo: () => void;
+  nomina?: RrhhNominaListado | null;
 }) {
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const [inicio, setInicio] = useState('');
-  const [fin, setFin] = useState('');
-  const [deducciones, setDeducciones] = useState<RrhhConceptoGenerar[]>([]);
-  const [bonificaciones, setBonificaciones] = useState<RrhhConceptoGenerar[]>([]);
-  const [incluirExistentes, setIncluirExistentes] = useState(true);
-  const [conceptoAbierto, setConceptoAbierto] = useState<
-    'deducciones' | 'bonificaciones' | null
-  >(null);
+  const [form, setForm] = useState(FORM_VACIO);
+  const [errores, setErrores] = useState<Record<string, string>>({});
+  const inicializado = useRef<number | 'nuevo' | null>(null);
 
-  const { data: departamentos = [] } = useQuery({
-    queryKey: ['rrhh', 'departamentos', 'activos'],
-    queryFn: () => rrhhService.listarDepartamentos({ activo: true }),
+  const esEdicion = nomina !== null;
+
+  useEffect(() => {
+    if (!isOpen) {
+      inicializado.current = null;
+      return;
+    }
+    const clave = nomina ? nomina.id : 'nuevo';
+    if (inicializado.current === clave) return;
+    inicializado.current = clave;
+    setForm(
+      nomina
+        ? {
+            descripcion: nomina.descripcion,
+            periodo: nomina.periodo,
+            inicio_periodo: nomina.inicio_periodo,
+            fin_periodo: nomina.fin_periodo,
+            moneda_id: nomina.moneda_id,
+            tasa: String(nomina.tasa),
+            porcentaje_impuesto: String(nomina.porcentaje_impuesto),
+          }
+        : FORM_VACIO
+    );
+    setErrores({});
+  }, [isOpen, nomina]);
+
+  const { data: monedas = [] } = useQuery({
+    queryKey: ['monedas'],
+    queryFn: () => monedaService.getMonedas(0, 100),
     enabled: isOpen,
   });
-  const [departamentoId, setDepartamentoId] = useState<number | ''>('');
-
-  const tipos = useTiposConceptos();
-
-  const cerrar = () => {
-    setDeducciones([]);
-    setBonificaciones([]);
-    setIncluirExistentes(true);
-    setConceptoAbierto(null);
-    onClose();
-  };
 
   const mutation = useMutation({
-    mutationFn: () =>
-      rrhhService.generarNominas({
-        inicio_periodo: inicio,
-        fin_periodo: fin,
-        departamento_id: departamentoId === '' ? null : departamentoId,
-        deducciones,
-        bonificaciones,
-        incluir_movimientos_existentes: incluirExistentes,
-      }),
-    onSuccess: (res) => {
-      toast.success(`Nóminas creadas: ${res.creadas}. Omitidas: ${res.omitidas}.`);
+    mutationFn: (payload: RrhhNominaCreate) =>
+      nomina
+        ? rrhhService.actualizarNomina(nomina.id, payload)
+        : rrhhService.crearNomina(payload),
+    onSuccess: (data: RrhhNominaDetalle) => {
+      toast.success(esEdicion ? 'Nómina actualizada' : 'Nómina creada');
       queryClient.invalidateQueries({ queryKey: ['rrhh', 'nomina'] });
-      onListo();
-      cerrar();
+      onClose();
+      if (!esEdicion) navigate(`/rrhh/nomina/${data.id}`);
     },
     onError: (err: unknown) => {
-      toast.error(err instanceof Error ? err.message : 'No se pudo generar');
+      toast.error(
+        err instanceof Error ? err.message : 'No se pudo guardar la nómina'
+      );
     },
   });
+
+  const set = <K extends keyof typeof FORM_VACIO>(
+    key: K,
+    value: (typeof FORM_VACIO)[K]
+  ) => setForm((prev) => ({ ...prev, [key]: value }));
+
+  const validar = (): boolean => {
+    const errs: Record<string, string> = {};
+    if (!form.descripcion.trim())
+      errs.descripcion = 'La descripción es obligatoria';
+    if (!form.periodo) errs.periodo = 'Indica el periodo';
+    if (!form.inicio_periodo || !form.fin_periodo) {
+      errs.rango = 'Indica el rango completo';
+    } else if (form.fin_periodo < form.inicio_periodo) {
+      errs.rango = 'El fin no puede ser anterior al inicio';
+    }
+    if (form.moneda_id === '') errs.moneda_id = 'Elige una moneda';
+    const tasa = Number(form.tasa);
+    if (form.tasa.trim() === '' || Number.isNaN(tasa) || tasa < 0) {
+      errs.tasa = 'Indica una tasa válida';
+    }
+    const impuesto = Number(form.porcentaje_impuesto);
+    if (
+      form.porcentaje_impuesto.trim() === '' ||
+      Number.isNaN(impuesto) ||
+      impuesto < 0 ||
+      impuesto > 100
+    ) {
+      errs.porcentaje_impuesto = 'Debe estar entre 0 y 100';
+    }
+    setErrores(errs);
+    return Object.keys(errs).length === 0;
+  };
 
   const onSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!inicio || !fin) {
-      toast.error('Indica el periodo completo');
-      return;
-    }
-    if (fin < inicio) {
-      toast.error('El fin del periodo debe ser posterior o igual al inicio');
-      return;
-    }
-    mutation.mutate();
-  };
-
-  const nombreTipo = (
-    clase: 'deducciones' | 'bonificaciones',
-    tipoId: number
-  ): string => {
-    const catalogo = clase === 'deducciones' ? tipos.deducciones : tipos.bonificaciones;
-    return catalogo.find((t) => t.id === tipoId)?.nombre ?? `#${tipoId}`;
-  };
-
-  const valorFormateado = (
-    clase: 'deducciones' | 'bonificaciones',
-    concepto: RrhhConceptoGenerar
-  ): string => {
-    const catalogo = clase === 'deducciones' ? tipos.deducciones : tipos.bonificaciones;
-    const tipo = catalogo.find((t) => t.id === concepto.tipo_id);
-    return tipo?.es_porcentaje
-      ? `${Number(concepto.valor)} %`
-      : fmtMoneda(concepto.valor);
+    if (!validar()) return;
+    mutation.mutate({
+      descripcion: form.descripcion.trim(),
+      periodo: form.periodo,
+      inicio_periodo: form.inicio_periodo,
+      fin_periodo: form.fin_periodo,
+      moneda_id: form.moneda_id as number,
+      tasa: Number(form.tasa),
+      porcentaje_impuesto: Number(form.porcentaje_impuesto),
+    });
   };
 
   return (
     <Modal
       isOpen={isOpen}
-      onClose={cerrar}
-      className="!max-w-md overflow-hidden !rounded-none [&>button.absolute]:hidden"
-    >
-      <div className="sticky top-0 z-10 flex items-center gap-3 border-b bg-gradient-to-r from-brand-50 to-brand-100 px-6 py-4 pr-12">
-        <div className="rounded-lg bg-gradient-to-br from-brand-500 to-brand-600 p-2">
-          <Banknote className="h-5 w-5 text-white" />
-        </div>
-        <div className="min-w-0">
-          <h2 className="truncate text-lg font-bold text-gray-900">
-            Generar nómina
-          </h2>
-          <p className="text-xs text-slate-500">
-            Se genera para todos los empleados activos; los que ya tengan nómina
-            para ese periodo se omiten.
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={cerrar}
-          title="Cerrar"
-          aria-label="Cerrar"
-          className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full p-1 text-slate-400 transition-colors hover:bg-brand-100 hover:text-slate-600"
-        >
-          <X className="h-5 w-5" />
-        </button>
-      </div>
-      <form onSubmit={onSubmit} className="space-y-4 px-6 py-5">
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label htmlFor="inicio">Inicio del periodo</Label>
-            <DateInput
-              id="inicio"
-              value={inicio}
-              onChange={(iso) => setInicio(iso)}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="fin">Fin del periodo</Label>
-            <DateInput id="fin" value={fin} onChange={(iso) => setFin(iso)} />
-          </div>
-        </div>
-        <div className="space-y-2">
-          <Label>Departamento (opcional)</Label>
-          <select
-            value={departamentoId}
-            onChange={(e) =>
-              setDepartamentoId(e.target.value === '' ? '' : Number(e.target.value))
-            }
-            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
-          >
-            <option value="">Todos los departamentos</option>
-            {departamentos.map((d) => (
-              <option key={d.id_departamento} value={d.id_departamento}>
-                {d.nombre}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div className="space-y-2">
-          <Label>Conceptos de esta generación</Label>
-          <div className="flex gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => setConceptoAbierto('deducciones')}
-            >
-              <TrendingUp className="h-4 w-4" />
-              Deducciones{deducciones.length > 0 ? ` (${deducciones.length})` : ''}
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => setConceptoAbierto('bonificaciones')}
-            >
-              <Award className="h-4 w-4" />
-              Bonificaciones{bonificaciones.length > 0 ? ` (${bonificaciones.length})` : ''}
-            </Button>
-          </div>
-          {(deducciones.length > 0 || bonificaciones.length > 0) && (
-            <ul className="space-y-1 rounded-md bg-slate-50 p-3 text-xs">
-              {deducciones.map((c, i) => (
-                <li key={`ded-${i}`} className="flex justify-between gap-3">
-                  <span className="text-red-600">− {nombreTipo('deducciones', c.tipo_id)}</span>
-                  <span className="tabular-nums text-slate-700">
-                    {valorFormateado('deducciones', c)}
-                  </span>
-                </li>
-              ))}
-              {bonificaciones.map((c, i) => (
-                <li key={`bon-${i}`} className="flex justify-between gap-3">
-                  <span className="text-green-600">+ {nombreTipo('bonificaciones', c.tipo_id)}</span>
-                  <span className="tabular-nums text-slate-700">
-                    {valorFormateado('bonificaciones', c)}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
-          <label className="flex cursor-pointer items-start gap-2 text-sm text-slate-600">
-            <input
-              type="checkbox"
-              checked={incluirExistentes}
-              onChange={(e) => setIncluirExistentes(e.target.checked)}
-              className="mt-0.5 h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
-            />
-            <span>
-              Aplicar también los movimientos ya registrados
-              <span className="block text-xs text-slate-400">
-                Deducciones y bonificaciones dadas de alta que solapan el periodo.
-                Desactívalo para aplicar solo los conceptos definidos arriba.
-              </span>
-            </span>
-          </label>
-        </div>
-
-        <div className="sticky bottom-0 -mx-6 flex items-center gap-2 border-t bg-white px-6 pb-5 pt-4">
-          <Button type="submit" disabled={mutation.isPending}>
-            {mutation.isPending ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Plus className="h-4 w-4" />
-            )}
-            Generar
-          </Button>
-        </div>
-      </form>
-
-      {conceptoAbierto !== null && (
-        <ModalConceptos
-          clase={conceptoAbierto}
-          iniciales={conceptoAbierto === 'deducciones' ? deducciones : bonificaciones}
-          onGuardar={(conceptos) =>
-            conceptoAbierto === 'deducciones'
-              ? setDeducciones(conceptos)
-              : setBonificaciones(conceptos)
-          }
-          onCerrar={() => setConceptoAbierto(null)}
-        />
-      )}
-    </Modal>
-  );
-}
-
-// ── Modal de conceptos (deducciones / bonificaciones de la generación) ──────
-
-type TipoConcepto = { id: number; nombre: string; es_porcentaje: boolean };
-
-/** Catálogos de tipos de deducción y bonificación, normalizados por `id`. */
-function useTiposConceptos() {
-  const { data: tiposD = [] } = useQuery({
-    queryKey: ['rrhh', 'catalogos', 'tipos-deducciones'],
-    queryFn: () => rrhhService.listarTiposDeduccion({ activo: true }),
-  });
-  const { data: tiposB = [] } = useQuery({
-    queryKey: ['rrhh', 'catalogos', 'tipos-bonificaciones'],
-    queryFn: () => rrhhService.listarTiposBonificacion({ activo: true }),
-  });
-
-  const deducciones: TipoConcepto[] = tiposD.map((t) => ({
-    id: t.id_tipos_deducciones,
-    nombre: t.nombre,
-    es_porcentaje: t.es_porcentaje,
-  }));
-  const bonificaciones: TipoConcepto[] = tiposB.map((t) => ({
-    id: t.id_tipos_bonificaciones,
-    nombre: t.nombre,
-    es_porcentaje: t.es_porcentaje,
-  }));
-  return { deducciones, bonificaciones };
-}
-
-/**
- * Formulario de conceptos: varias filas *tipo + valor* que se aplican a todas
- * las nóminas del lote. Edita un borrador; «Guardar» lo vuelca al formulario
- * principal y «Cancelar» lo descarta.
- */
-function ModalConceptos({
-  clase,
-  iniciales,
-  onGuardar,
-  onCerrar,
-}: {
-  clase: 'deducciones' | 'bonificaciones';
-  iniciales: RrhhConceptoGenerar[];
-  onGuardar: (conceptos: RrhhConceptoGenerar[]) => void;
-  onCerrar: () => void;
-}) {
-  const esDeduccion = clase === 'deducciones';
-  const { deducciones: tiposD, bonificaciones: tiposB } = useTiposConceptos();
-  const catalogo = esDeduccion ? tiposD : tiposB;
-
-  const [filas, setFilas] = useState<{ tipo_id: number; valor: string }[]>(
-    iniciales.map((c) => ({ tipo_id: c.tipo_id, valor: String(c.valor) }))
-  );
-  const [tipoId, setTipoId] = useState<number | ''>('');
-  const [valor, setValor] = useState('');
-
-  const tipoSeleccionado = catalogo.find((t) => t.id === tipoId);
-
-  const agregar = () => {
-    if (tipoId === '') {
-      toast.error('Elige el tipo de concepto');
-      return;
-    }
-    const numero = Number(valor);
-    if (valor.trim() === '' || Number.isNaN(numero) || numero < 0) {
-      toast.error('Indica un valor válido (0 o más)');
-      return;
-    }
-    setFilas([...filas, { tipo_id: tipoId, valor: valor.trim() }]);
-    setTipoId('');
-    setValor('');
-  };
-
-  const guardar = () => {
-    onGuardar(filas.map((f) => ({ tipo_id: f.tipo_id, valor: Number(f.valor) })));
-    onCerrar();
-  };
-
-  return (
-    <Modal
-      isOpen
-      onClose={onCerrar}
-      className="!max-w-md overflow-hidden !rounded-none [&>button.absolute]:hidden"
-    >
-      <div className="sticky top-0 z-10 flex items-center gap-3 border-b bg-gradient-to-r from-brand-50 to-brand-100 px-6 py-4 pr-12">
-        <div className="rounded-lg bg-gradient-to-br from-brand-500 to-brand-600 p-2">
-          {esDeduccion ? (
-            <TrendingUp className="h-5 w-5 text-white" />
-          ) : (
-            <Award className="h-5 w-5 text-white" />
-          )}
-        </div>
-        <div className="min-w-0">
-          <h3 className="truncate text-lg font-bold text-gray-900">
-            {esDeduccion ? 'Deducciones' : 'Bonificaciones'} de la generación
-          </h3>
-          <p className="text-xs text-slate-500">
-            Se aplican a todas las nóminas del lote; si un empleado ya tiene ese
-            movimiento, se reutiliza.
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={onCerrar}
-          title="Cerrar"
-          aria-label="Cerrar"
-          className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full p-1 text-slate-400 transition-colors hover:bg-brand-100 hover:text-slate-600"
-        >
-          <X className="h-5 w-5" />
-        </button>
-      </div>
-      <div className="space-y-4 px-6 py-5">
-        <div className="space-y-2">
-          <Label>Tipo de concepto</Label>
-          <select
-            value={tipoId}
-            onChange={(e) => setTipoId(e.target.value === '' ? '' : Number(e.target.value))}
-            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
-          >
-            <option value="">Elegir tipo...</option>
-            {catalogo.map((t) => (
-              <option key={t.id} value={t.id}>
-                {t.nombre}
-                {t.es_porcentaje ? ' (porcentaje)' : ''}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div className="flex items-end gap-2">
-          <div className="flex-1 space-y-2">
-            <Label htmlFor="valor-concepto">
-              Valor {tipoSeleccionado?.es_porcentaje ? '(%)' : '(monto)'}
-            </Label>
-            <Input
-              id="valor-concepto"
-              type="number"
-              min={0}
-              step="0.01"
-              value={valor}
-              onChange={(e) => setValor(e.target.value)}
-              placeholder={tipoSeleccionado?.es_porcentaje ? 'Ej. 10' : 'Ej. 200.00'}
-            />
-          </div>
-          <Button type="button" variant="outline" onClick={agregar}>
-            <Plus className="h-4 w-4" />
-            Añadir
-          </Button>
-        </div>
-
-        {filas.length === 0 ? (
-          <p className="rounded-md bg-slate-50 px-3 py-2 text-xs text-slate-500">
-            Sin conceptos. Al guardar, la generación se aplica solo con los
-            movimientos ya registrados (si dejaste activada esa casilla).
-          </p>
-        ) : (
-          <ul className="divide-y divide-slate-100 rounded-md border border-slate-200">
-            {filas.map((fila, i) => {
-              const tipo = catalogo.find((t) => t.id === fila.tipo_id);
-              return (
-                <li key={`${fila.tipo_id}-${i}`} className="flex items-center justify-between gap-2 px-3 py-2 text-sm">
-                  <span className="min-w-0 truncate text-slate-700">
-                    {tipo?.nombre ?? `#${fila.tipo_id}`}
-                  </span>
-                  <span className="flex items-center gap-2">
-                    <span className="tabular-nums text-slate-900">
-                      {tipo?.es_porcentaje ? `${Number(fila.valor)} %` : fmtMoneda(fila.valor)}
-                    </span>
-                    <ActionButton
-                      titulo="Quitar"
-                      danger
-                      onClick={() => setFilas(filas.filter((_, j) => j !== i))}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </ActionButton>
-                  </span>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-
-        <div className="sticky bottom-0 -mx-6 flex items-center gap-2 border-t bg-white px-6 pb-5 pt-4">
-          <Button type="button" onClick={guardar}>
-            Guardar
-          </Button>
-        </div>
-      </div>
-    </Modal>
-  );
-}
-
-// ── Modal de pago ───────────────────────────────────────────────────────────
-
-function ModalPagar({
-  nomina,
-  onClose,
-  onListo,
-}: {
-  nomina: RrhhNominaListado | null;
-  onClose: () => void;
-  onListo: () => void;
-}) {
-  const queryClient = useQueryClient();
-  const [metodoId, setMetodoId] = useState<number | ''>('');
-  const [fecha, setFecha] = useState('');
-  const [referencia, setReferencia] = useState('');
-
-  const { data: tipos = [] } = useQuery({
-    queryKey: ['rrhh', 'catalogos', 'tipos-pago'],
-    queryFn: () => rrhhService.listarTiposPago({ activo: true }),
-    enabled: nomina !== null,
-  });
-
-  const mutation = useMutation({
-    mutationFn: () =>
-      rrhhService.pagarNomina(nomina!.id, {
-        metodo_id: metodoId as number,
-        monto: nomina!.salario_neto ?? 0,
-        fecha_pago: fecha || null,
-        referencia: referencia || null,
-      }),
-    onSuccess: () => {
-      toast.success('Nómina pagada');
-      queryClient.invalidateQueries({ queryKey: ['rrhh', 'nomina'] });
-      onListo();
-      onClose();
-      setMetodoId('');
-      setFecha('');
-      setReferencia('');
-    },
-    onError: (err: unknown) => {
-      toast.error(err instanceof Error ? err.message : 'No se pudo registrar el pago');
-    },
-  });
-
-  const onSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (metodoId === '') {
-      toast.error('Elige el método de pago');
-      return;
-    }
-    mutation.mutate();
-  };
-
-  return (
-    <Modal
-      isOpen={nomina !== null}
       onClose={onClose}
-      className="!max-w-md overflow-hidden !rounded-none [&>button.absolute]:hidden"
+      className="!max-w-2xl overflow-hidden !rounded-none [&>button.absolute]:hidden"
     >
       <div className="sticky top-0 z-10 flex items-center gap-3 border-b bg-gradient-to-r from-brand-50 to-brand-100 px-6 py-4 pr-12">
         <div className="rounded-lg bg-gradient-to-br from-brand-500 to-brand-600 p-2">
@@ -824,13 +526,12 @@ function ModalPagar({
         </div>
         <div className="min-w-0">
           <h2 className="truncate text-lg font-bold text-gray-900">
-            Registrar pago
+            {esEdicion ? 'Editar datos de la nómina' : 'Nueva nómina'}
           </h2>
-          <p className="truncate text-xs text-slate-500">
-            {nomina?.empleado_nombre ?? ''} · Neto a pagar:{' '}
-            <span className="font-semibold">
-              {fmtMoneda(nomina?.salario_neto)}
-            </span>
+          <p className="text-xs text-slate-500">
+            {esEdicion
+              ? 'Solo se puede editar mientras esté en pre-nómina.'
+              : 'La nómina nace en pre-nómina: después podrás elegir a los empleados.'}
           </p>
         </div>
         <button
@@ -843,45 +544,107 @@ function ModalPagar({
           <X className="h-5 w-5" />
         </button>
       </div>
+
       <form onSubmit={onSubmit} className="space-y-4 px-6 py-5">
         <div className="space-y-2">
-          <Label>Método de pago</Label>
-          <select
-            value={metodoId}
-            onChange={(e) => setMetodoId(e.target.value === '' ? '' : Number(e.target.value))}
-            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
-          >
-            <option value="">Elegir método...</option>
-            {tipos.map((t) => (
-              <option key={t.id_tipo_pago} value={t.id_tipo_pago}>
-                {t.nombre}
-              </option>
-            ))}
-          </select>
+          <Label htmlFor="descripcion">Descripción *</Label>
+          <Input
+            id="descripcion"
+            value={form.descripcion}
+            onChange={(e) => set('descripcion', e.target.value)}
+            placeholder="Ej. Nómina de octubre 2026"
+            error={errores.descripcion}
+          />
         </div>
-        <div className="grid grid-cols-2 gap-4">
+
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div className="space-y-2">
-            <Label htmlFor="fecha">Fecha de pago</Label>
+            <Label htmlFor="periodo">Periodo *</Label>
             <DateInput
-              id="fecha"
-              value={fecha}
-              onChange={(iso) => setFecha(iso)}
+              id="periodo"
+              value={form.periodo}
+              onChange={(iso) => set('periodo', iso)}
+            />
+            {errores.periodo && (
+              <p className="text-xs text-red-500">{errores.periodo}</p>
+            )}
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="moneda">Moneda *</Label>
+            <select
+              id="moneda"
+              value={form.moneda_id}
+              onChange={(e) =>
+                set(
+                  'moneda_id',
+                  e.target.value === '' ? '' : Number(e.target.value)
+                )
+              }
+              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+            >
+              <option value="">Elegir moneda...</option>
+              {monedas.map((moneda) => (
+                <option key={moneda.id_moneda} value={moneda.id_moneda}>
+                  {moneda.nombre} ({moneda.simbolo})
+                </option>
+              ))}
+            </select>
+            {errores.moneda_id && (
+              <p className="text-xs text-red-500">{errores.moneda_id}</p>
+            )}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="space-y-2">
+            <Label htmlFor="inicio">Inicio del periodo *</Label>
+            <DateInput
+              id="inicio"
+              value={form.inicio_periodo}
+              onChange={(iso) => set('inicio_periodo', iso)}
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="ref">Referencia</Label>
-            <Input
-              id="ref"
-              value={referencia}
-              onChange={(e) => setReferencia(e.target.value)}
-              placeholder="Opcional"
+            <Label htmlFor="fin">Fin del periodo *</Label>
+            <DateInput
+              id="fin"
+              value={form.fin_periodo}
+              onChange={(iso) => set('fin_periodo', iso)}
             />
           </div>
         </div>
-        <p className="text-xs text-slate-400">
-          El monto se registra por el neto exacto. Una vez pagada, la nómina
-          queda inmutable y solo puede anularse.
-        </p>
+        {errores.rango && (
+          <p className="text-xs text-red-500">{errores.rango}</p>
+        )}
+
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="space-y-2">
+            <Label htmlFor="tasa">Tasa *</Label>
+            <Input
+              id="tasa"
+              type="number"
+              step="0.0001"
+              min="0"
+              value={form.tasa}
+              onChange={(e) => set('tasa', e.target.value)}
+              error={errores.tasa}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="impuesto">Porcentaje de impuesto *</Label>
+            <Input
+              id="impuesto"
+              type="number"
+              step="0.01"
+              min="0"
+              max="100"
+              value={form.porcentaje_impuesto}
+              onChange={(e) => set('porcentaje_impuesto', e.target.value)}
+              error={errores.porcentaje_impuesto}
+            />
+          </div>
+        </div>
+
         <div className="sticky bottom-0 -mx-6 flex items-center gap-2 border-t bg-white px-6 pb-5 pt-4">
           <Button type="submit" disabled={mutation.isPending}>
             {mutation.isPending ? (
@@ -889,158 +652,11 @@ function ModalPagar({
             ) : (
               <Wallet className="h-4 w-4" />
             )}
-            Registrar pago
+            {esEdicion ? 'Guardar cambios' : 'Crear nómina'}
           </Button>
         </div>
       </form>
     </Modal>
-  );
-}
-
-// ── Modal de detalle ────────────────────────────────────────────────────────
-
-function ModalDetalle({ nominaId, onClose }: { nominaId: number | null; onClose: () => void }) {
-  const { data, isLoading, isError } = useQuery({
-    queryKey: ['rrhh', 'nomina', 'detalle', nominaId],
-    queryFn: () => rrhhService.obtenerNomina(nominaId as number),
-    enabled: nominaId !== null,
-  });
-
-  return (
-    <Modal
-      isOpen={nominaId !== null}
-      onClose={onClose}
-      className="!max-w-2xl overflow-hidden !rounded-none [&>button.absolute]:hidden"
-    >
-      <div className="sticky top-0 z-10 flex items-center gap-3 border-b bg-gradient-to-r from-brand-50 to-brand-100 px-6 py-4 pr-12">
-        <div className="rounded-lg bg-gradient-to-br from-brand-500 to-brand-600 p-2">
-          <Banknote className="h-5 w-5 text-white" />
-        </div>
-        <div className="min-w-0">
-          <h2 className="truncate text-lg font-bold text-gray-900">
-            Detalle de la nómina {data ? `#${data.id}` : ''}
-          </h2>
-          {data && (
-            <p className="truncate text-xs text-slate-500">
-              {data.empleado_nombre} · {fmtFecha(data.inicio_periodo)} –{' '}
-              {fmtFecha(data.fin_periodo)}
-            </p>
-          )}
-        </div>
-        <button
-          type="button"
-          onClick={onClose}
-          title="Cerrar"
-          aria-label="Cerrar"
-          className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full p-1 text-slate-400 transition-colors hover:bg-brand-100 hover:text-slate-600"
-        >
-          <X className="h-5 w-5" />
-        </button>
-      </div>
-      <div className="space-y-4 px-6 py-5">
-        {isLoading ? (
-          <LoadingRows />
-        ) : isError || !data ? (
-          <p className="text-sm text-slate-500">No se pudo cargar el detalle.</p>
-        ) : (
-          <>
-            <ResumenFilas
-              filas={[
-                ['Salario base', fmtMoneda(data.salario_base)],
-                ['Horas extras', fmtMoneda(data.horas_extras)],
-                ['Bonificaciones', `+${fmtMoneda(data.bonificaciones)}`],
-                ['Deducciones', `-${fmtMoneda(data.deducciones)}`],
-              ]}
-              neto={fmtMoneda(data.salario_neto)}
-            />
-            {data.deducciones_aplicadas.length > 0 && (
-              <SeccionDetalle titulo="Deducciones aplicadas" items={data.deducciones_aplicadas} signo="-" />
-            )}
-            {data.bonificaciones_aplicadas.length > 0 && (
-              <SeccionDetalle titulo="Bonificaciones aplicadas" items={data.bonificaciones_aplicadas} signo="+" />
-            )}
-            {data.pagos.length > 0 && (
-              <div>
-                <h3 className="mb-2 text-sm font-semibold text-slate-700">Pagos</h3>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Fecha</TableHead>
-                      <TableHead>Método</TableHead>
-                      <TableHead>Referencia</TableHead>
-                      <TableHead className="text-right">Monto</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {data.pagos.map((p) => (
-                      <TableRow key={p.id}>
-                        <TableCell>{fmtFecha(p.fecha_pago)}</TableCell>
-                        <TableCell>{p.metodo_nombre ?? '—'}</TableCell>
-                        <TableCell>{p.referencia ?? '—'}</TableCell>
-                        <TableCell className="text-right tabular-nums">
-                          {fmtMoneda(p.monto)}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            )}
-          </>
-        )}
-      </div>
-    </Modal>
-  );
-}
-
-function ResumenFilas({ filas, neto }: { filas: [string, string][]; neto: string }) {
-  return (
-    <div className="rounded-lg bg-slate-50 p-4">
-      <dl className="space-y-1">
-        {filas.map(([k, v]) => (
-          <div key={k} className="flex justify-between text-sm">
-            <dt className="text-slate-600">{k}</dt>
-            <dd className="tabular-nums text-slate-900">{v}</dd>
-          </div>
-        ))}
-        <div className="flex justify-between border-t border-slate-200 pt-1 text-sm font-semibold">
-          <dt>Salario neto</dt>
-          <dd className="tabular-nums text-brand-700">{neto}</dd>
-        </div>
-      </dl>
-    </div>
-  );
-}
-
-function SeccionDetalle({
-  titulo,
-  items,
-  signo,
-}: {
-  titulo: string;
-  items: { tipo_nombre: string | null; es_porcentaje: boolean; valor_original: number | string | null; monto_aplicado: number | string }[];
-  signo: string;
-}) {
-  return (
-    <div>
-      <h3 className="mb-2 text-sm font-semibold text-slate-700">{titulo}</h3>
-      <ul className="divide-y divide-slate-100">
-        {items.map((item, i) => (
-          <li key={i} className="flex justify-between py-1 text-sm">
-            <span className="text-slate-700">
-              {item.tipo_nombre ?? '—'}
-              {item.es_porcentaje && item.valor_original !== null
-                ? ` (${item.valor_original}%)`
-                : ''}
-            </span>
-            <span className="tabular-nums text-slate-900">
-              {signo}
-              {fmtMoneda(item.monto_aplicado)}
-            </span>
-          </li>
-        ))}
-      </ul>
-    </div>
   );
 }
 
@@ -1049,11 +665,22 @@ function SeccionDetalle({
 function VistaCosto() {
   const [desde, setDesde] = useState('');
   const [hasta, setHasta] = useState('');
+  const [departamentoId, setDepartamentoId] = useState<number | ''>('');
+
+  const { data: departamentos = [] } = useQuery({
+    queryKey: ['rrhh', 'departamentos', 'para-filtro'],
+    queryFn: () => rrhhService.listarDepartamentos({ limit: 500, activo: true }),
+  });
 
   const { data, isLoading, isError, error, refetch } = useQuery({
-    queryKey: ['rrhh', 'nomina', 'costo', desde, hasta],
+    queryKey: ['rrhh', 'nomina', 'costo', desde, hasta, departamentoId],
     queryFn: () =>
-      rrhhService.reporteCosto({ desde: desde || undefined, hasta: hasta || undefined }),
+      rrhhService.reporteCosto({
+        desde: desde || undefined,
+        hasta: hasta || undefined,
+        departamento_id:
+          departamentoId === '' ? undefined : departamentoId,
+      }),
   });
 
   return (
@@ -1072,11 +699,38 @@ function VistaCosto() {
             title="Hasta"
             wrapperClassName="w-44"
           />
-          <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isLoading}>
-            <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+          <select
+            value={departamentoId}
+            onChange={(e) =>
+              setDepartamentoId(
+                e.target.value === '' ? '' : Number(e.target.value)
+              )
+            }
+            className="rounded-md border border-slate-300 px-3 py-2 text-sm"
+          >
+            <option value="">Todos los departamentos</option>
+            {departamentos.map((departamento) => (
+              <option
+                key={departamento.id_departamento}
+                value={departamento.id_departamento}
+              >
+                {departamento.nombre}
+              </option>
+            ))}
+          </select>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => refetch()}
+            disabled={isLoading}
+            title="Actualizar"
+          >
+            <RefreshCw
+              className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`}
+            />
           </Button>
           <p className="text-xs text-slate-400">
-            Excluye las nóminas anuladas. Sin fechas se incluye todo.
+            Solo incluye nóminas confirmadas. Sin fechas se incluye todo.
           </p>
         </div>
       </CardHeader>
@@ -1089,15 +743,31 @@ function VistaCosto() {
             onReintentar={refetch}
           />
         ) : !data || data.departamentos.length === 0 ? (
-          <EmptyState mensaje="No hay nóminas en el rango seleccionado." />
+          <EmptyState mensaje="No hay nóminas confirmadas en el rango seleccionado." />
         ) : (
           <>
             <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-5">
-              <Resumen titulo="Salario base" valor={fmtMoneda(data.total_salario_base)} />
-              <Resumen titulo="Horas extras" valor={fmtMoneda(data.total_horas_extras)} />
-              <Resumen titulo="Bonificaciones" valor={fmtMoneda(data.total_bonificaciones)} />
-              <Resumen titulo="Deducciones" valor={fmtMoneda(data.total_deducciones)} />
-              <Resumen titulo="Neto total" valor={fmtMoneda(data.total_neto)} destacado />
+              <Resumen
+                titulo="Salario base"
+                valor={fmtMoneda(data.total_salario_base)}
+              />
+              <Resumen
+                titulo="Horas extras"
+                valor={fmtMoneda(data.total_horas_extras)}
+              />
+              <Resumen
+                titulo="Bonificaciones"
+                valor={fmtMoneda(data.total_bonificaciones)}
+              />
+              <Resumen
+                titulo="Deducciones"
+                valor={fmtMoneda(data.total_deducciones)}
+              />
+              <Resumen
+                titulo="Neto total"
+                valor={fmtMoneda(data.total_neto)}
+                destacado
+              />
             </div>
             <Table>
               <TableHeader>
@@ -1139,6 +809,11 @@ function VistaCosto() {
                 ))}
               </TableBody>
             </Table>
+            <p className="mt-3 text-xs text-slate-400">
+              {data.cantidad_nominas} nómina
+              {data.cantidad_nominas === 1 ? '' : 's'} confirmada
+              {data.cantidad_nominas === 1 ? '' : 's'} en el rango.
+            </p>
           </>
         )}
       </CardContent>
@@ -1158,8 +833,16 @@ function Resumen({
   destacado?: boolean;
 }) {
   return (
-    <div className={`rounded-lg p-3 ${destacado ? 'bg-brand-50 ring-1 ring-brand-100' : 'bg-slate-50'}`}>
-      <div className={`text-xl font-bold tabular-nums ${destacado ? 'text-brand-700' : 'text-slate-700'}`}>
+    <div
+      className={`rounded-lg p-3 ${
+        destacado ? 'bg-brand-50 ring-1 ring-brand-100' : 'bg-slate-50'
+      }`}
+    >
+      <div
+        className={`text-xl font-bold tabular-nums ${
+          destacado ? 'text-brand-600' : 'text-slate-700'
+        }`}
+      >
         {valor}
       </div>
       <div className="text-xs text-slate-500">{titulo}</div>
@@ -1204,11 +887,23 @@ function LoadingRows() {
   );
 }
 
-function EmptyState({ mensaje }: { mensaje: string }) {
+function EmptyState({
+  mensaje,
+  onNueva,
+}: {
+  mensaje: string;
+  onNueva?: () => void;
+}) {
   return (
     <div className="flex flex-col items-center justify-center gap-2 py-12 text-center">
       <Banknote className="h-10 w-10 text-slate-300" />
       <p className="max-w-sm text-sm text-slate-500">{mensaje}</p>
+      {onNueva && (
+        <Button size="sm" onClick={onNueva} className="mt-2">
+          <Plus className="h-4 w-4" />
+          Nueva nómina
+        </Button>
+      )}
     </div>
   );
 }
@@ -1223,7 +918,9 @@ function ErrorState({
   return (
     <div className="flex flex-col items-center justify-center gap-3 py-12 text-center">
       <AlertCircle className="h-10 w-10 text-red-400" />
-      <p className="text-sm text-slate-600">{mensaje || 'No se pudieron cargar los datos'}</p>
+      <p className="text-sm text-slate-600">
+        {mensaje || 'No se pudieron cargar los datos'}
+      </p>
       <Button variant="outline" size="sm" onClick={onReintentar}>
         <Search className="h-4 w-4" />
         Reintentar

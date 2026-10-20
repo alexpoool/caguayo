@@ -53,8 +53,7 @@ from src.models import (
     RrhhEvaluacionObjetivo,
     RrhhSolicitud,
     RrhhNomina,
-    RrhhNominaDeduccion,
-    RrhhNominaBonificacion,
+    RrhhNominaEmpleado,
     RrhhPago,
 )
 
@@ -108,8 +107,7 @@ __all_models__ = [
     RrhhEvaluacionObjetivo,
     RrhhSolicitud,
     RrhhNomina,
-    RrhhNominaDeduccion,
-    RrhhNominaBonificacion,
+    RrhhNominaEmpleado,
     RrhhPago,
 ]
 

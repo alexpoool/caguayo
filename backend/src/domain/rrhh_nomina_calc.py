@@ -1,6 +1,6 @@
-"""Cálculo de deducciones y bonificaciones (Fase 5).
+"""Cálculos de deducciones, bonificaciones y nómina.
 
-Funciones puras, sin acceso a BD ni a FastAPI. Se ocupan de dos cosas:
+Funciones puras, sin acceso a BD ni a FastAPI:
 
 - **monto_aplicado**: traduce el `valor` guardado a dinero efectivo. El tipo
   define si es un importe fijo o un porcentaje sobre el salario; los dos
@@ -8,11 +8,13 @@ Funciones puras, sin acceso a BD ni a FastAPI. Se ocupan de dos cosas:
 - **solape de periodos**: dos movimientos del mismo tipo y empleado no pueden
   solaparse, porque el mismo concepto se cobraría dos veces en la ventana
   compartida.
+- **cálculo del lote** (Fase 6 v2): tarifa horaria derivada del salario
+  mensual, reparto de A cobrar en base + extras, impuesto sobre el exceso del
+  salario promedio y neto final.
 
-Convención decidida en la Fase 0: un movimiento se aplica **completo una
-sola vez**, en la nómina de su periodo. El registro en las tablas puente
-`nomina_deducciones`/`nomina_bonificaciones` es lo que impide el doble cobro
-en periodos posteriores.
+Las deducciones y bonificaciones se suman por empleado dentro del periodo de
+la nómina. Ya no existen tablas puente: el detalle congelado vive en
+`nomina_empleados`.
 """
 
 from datetime import date
@@ -132,8 +134,8 @@ def cota_deducciones(montos: list[Decimal], bruto: Decimal) -> list[Decimal]:
 
     Si la suma de `montos` excede el `bruto`, se prorratean a la baja
     manteniendo el orden; el escalado se reparte en el último elemento para
-    que el total cuadre exactamente con el bruto. Así `nomina.deducciones`
-    coincide siempre con la suma del detalle de `nomina_deducciones`.
+    que el total cuadre exactamente con el bruto. Se conserva como utilidad
+    histórica de la Fase 5; el cálculo actual del neto aplica un suelo de 0.
     """
     total = sum(montos, Decimal("0.00"))
     if total <= bruto or total == 0:
@@ -155,4 +157,69 @@ def neto(bruto: Decimal, deducciones: Decimal) -> Decimal:
     redondeos.
     """
     resultado = redondear(bruto - deducciones)
+    return resultado if resultado > 0 else Decimal("0.00")
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Cálculo del lote de nómina (Fase 6 v2)
+# ═══════════════════════════════════════════════════════════════════════════
+
+# Salario medio del país con el que se calcula el tramo gravable del impuesto.
+# Es una variable global porque se actualiza cada año (decisión del usuario).
+SALARIO_PROMEDIO = Decimal("3920.00")
+
+
+def pago_por_horas(
+    minutos_trabajados: int,
+    minutos_extras: int,
+    tarifa: Decimal,
+) -> tuple[Decimal, Decimal]:
+    """Reparte el pago de las horas del periodo entre base y extras.
+
+    `A cobrar` es el total trabajado (extras incluidas) por la tarifa horaria.
+    Devuelve `(salario_base, horas_extras)`:
+
+    - `horas_extras`: dinero de los minutos que excedieron la jornada.
+    - `salario_base`: el resto del total (horas ordinarias), nunca negativo.
+
+    Los minutos negativos se tratan como 0 y las extras se recortan al total
+    trabajado (una extras no puede exceder lo trabajado).
+    """
+    total_minutos = max(0, minutos_trabajados)
+    extras_minutos = max(0, min(minutos_extras, total_minutos))
+    if tarifa <= 0 or total_minutos == 0:
+        return Decimal("0.00"), Decimal("0.00")
+
+    total = redondear(Decimal(total_minutos) * tarifa / Decimal("60"))
+    extras = redondear(Decimal(extras_minutos) * tarifa / Decimal("60"))
+    base = total - extras
+    return (base if base > 0 else Decimal("0.00")), extras
+
+
+def impuesto_sobre_promedio(
+    devengado: Decimal,
+    porcentaje: Decimal,
+    salario_promedio: Decimal = SALARIO_PROMEDIO,
+) -> Decimal:
+    """Impuesto sobre el exceso del devengado respecto al salario promedio.
+
+    `max(0, devengado - salario_promedio) × porcentaje / 100`. Si el
+    devengado no supera el promedio no hay impuesto. El porcentaje llega del
+    formulario (p. ej. 5 %).
+    """
+    if porcentaje <= 0:
+        return Decimal("0.00")
+    exceso = Decimal(devengado) - Decimal(salario_promedio)
+    if exceso <= 0:
+        return Decimal("0.00")
+    return redondear(exceso * Decimal(porcentaje) / Decimal("100"))
+
+
+def neto_a_cobrar(
+    devengado: Decimal,
+    impuesto: Decimal,
+    deducciones: Decimal,
+) -> Decimal:
+    """Lo que finalmente cobra el empleado, nunca negativo."""
+    resultado = redondear(Decimal(devengado) - Decimal(impuesto) - Decimal(deducciones))
     return resultado if resultado > 0 else Decimal("0.00")

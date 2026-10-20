@@ -6,17 +6,10 @@ Cada test crea su propio empleado y sus propios tipos, y usa periodos en
 2098/2099 para no colisionar con datos reales. Al final limpia todo.
 """
 
-import asyncio
 import uuid
 from datetime import date
 from decimal import Decimal
 
-from sqlalchemy.ext.asyncio import create_async_engine
-from sqlalchemy.orm import sessionmaker
-from sqlalchemy.pool import NullPool
-from sqlmodel.ext.asyncio.session import AsyncSession
-
-from src.database.connection import DATABASE_URL
 from src.domain.rrhh_nomina_calc import (
     cubre_periodo,
     monto_aplicado,
@@ -25,7 +18,6 @@ from src.domain.rrhh_nomina_calc import (
     saldo,
     validar_porcentaje,
 )
-from src.models import RrhhNomina, RrhhNominaDeduccion, RrhhNominaBonificacion
 
 
 def _sufijo():
@@ -67,39 +59,6 @@ prefijos_ruta = {
 
 def _limpiar_tipo(client, prefijo, id_tipo):
     client.delete(f"/api/v1/rrhh/catalogos/{prefijos_ruta[prefijo]}/{id_tipo}")
-
-
-async def _insertar_en_nomina(tabla_puente, campo_puente, empleado_id, movimiento_id):
-    """Crea una nómina y registra el movimiento en su tabla puente.
-
-    Así el movimiento queda «ya aplicado» y su borrado debe fallar con 409.
-    Se usa un motor propio y aislado, para no interferir con el del TestClient.
-    """
-    engine = create_async_engine(DATABASE_URL, poolclass=NullPool)
-    S = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
-    try:
-        async with S() as session:
-            nomina = RrhhNomina(
-                empleado_id=empleado_id,
-                periodo=date(2099, 1, 1),
-                inicio_periodo=date(2099, 1, 1),
-                fin_periodo=date(2099, 1, 31),
-                salario_base=Decimal("1000.00"),
-            )
-            session.add(nomina)
-            await session.commit()
-            await session.refresh(nomina)
-
-            puente = tabla_puente(
-                nomina_id=nomina.id,
-                **{campo_puente: movimiento_id},
-                monto_aplicado=Decimal("10.00"),
-            )
-            session.add(puente)
-            await session.commit()
-            return nomina.id
-    finally:
-        await engine.dispose()
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -706,35 +665,6 @@ def test_eliminar_deduccion_ok(client):
     _limpiar_tipo(client, "DED", tipo["id_tipos_deducciones"])
 
 
-def test_eliminar_deduccion_ya_aplicada_409(client):
-    """Si el movimiento ya formó parte de una nómina, no se puede borrar."""
-    emp = _crear_empleado(client)
-    tipo = _crear_tipo(client, "DED")
-    creado = client.post(
-        "/api/v1/rrhh/deducciones",
-        json={
-            "empleado_id": emp["id"],
-            "tipo_deducciones_id": tipo["id_tipos_deducciones"],
-            "valor": 10,
-            "inicio_periodo": "2099-01-01",
-            "fin_periodo": "2099-01-31",
-        },
-    )
-    id_ded = creado.json()["id_deducciones"]
-    asyncio.run(
-        _insertar_en_nomina(RrhhNominaDeduccion, "deduccion_id", emp["id"], id_ded)
-    )
-    try:
-        response = client.delete(f"/api/v1/rrhh/deducciones/{id_ded}")
-        assert response.status_code == 409
-        assert "ya se aplicó" in response.json()["detail"]
-        # Sigue existiendo.
-        assert client.get(f"/api/v1/rrhh/deducciones/{id_ded}").status_code == 200
-    finally:
-        _limpiar_empleado(client, emp["id"])
-        _limpiar_tipo(client, "DED", tipo["id_tipos_deducciones"])
-
-
 def test_eliminar_no_encontrado_404(client):
     assert client.delete("/api/v1/rrhh/deducciones/999999").status_code == 404
 
@@ -819,31 +749,6 @@ def test_bonificacion_periodo_invertido_400(client):
             },
         )
         assert response.status_code == 400
-    finally:
-        _limpiar_empleado(client, emp["id"])
-        _limpiar_tipo(client, "BON", tipo["id_tipos_bonificaciones"])
-
-
-def test_eliminar_bonificacion_ya_aplicada_409(client):
-    emp = _crear_empleado(client)
-    tipo = _crear_tipo(client, "BON")
-    creado = client.post(
-        "/api/v1/rrhh/bonificaciones",
-        json={
-            "empleado_id": emp["id"],
-            "tipo_bonificaciones_id": tipo["id_tipos_bonificaciones"],
-            "valor": 100,
-            "inicio_periodo": "2099-01-01",
-            "fin_periodo": "2099-01-31",
-        },
-    )
-    id_bon = creado.json()["id_bonificaciones"]
-    asyncio.run(
-        _insertar_en_nomina(RrhhNominaBonificacion, "bonificacion_id", emp["id"], id_bon)
-    )
-    try:
-        response = client.delete(f"/api/v1/rrhh/bonificaciones/{id_bon}")
-        assert response.status_code == 409
     finally:
         _limpiar_empleado(client, emp["id"])
         _limpiar_tipo(client, "BON", tipo["id_tipos_bonificaciones"])

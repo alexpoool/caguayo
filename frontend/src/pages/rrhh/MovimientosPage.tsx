@@ -1,5 +1,6 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useSearchParams } from 'react-router-dom';
 import { rrhhService } from '../../services/rrhh';
 import {
   type RrhhConsolidado,
@@ -152,7 +153,29 @@ const fmtFecha = (v: string) => {
 };
 
 export function MovimientosPage() {
-  const [pestana, setPestana] = useState<Pestana>('deducciones');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tipoParam = searchParams.get('tipo');
+  const empleadoParam = Number(searchParams.get('empleado_id')) || null;
+
+  const [pestana, setPestana] = useState<Pestana>(
+    tipoParam === 'bonificaciones' ? 'bonificaciones' : 'deducciones'
+  );
+  // Llegan desde la ficha del empleado: filtro persistente y alta automática.
+  const [empleadoFiltro, setEmpleadoFiltro] = useState<number | null>(
+    empleadoParam
+  );
+  const [autoAbrir, setAutoAbrir] = useState(empleadoParam !== null);
+
+  // El empleado se conserva como filtro, pero se quita de la URL para no
+  // reabrir el modal al cambiar de pestaña o al recargar la vista.
+  useEffect(() => {
+    if (empleadoParam === null) return;
+    setEmpleadoFiltro(empleadoParam);
+    setAutoAbrir(true);
+    const siguiente = new URLSearchParams(searchParams);
+    siguiente.delete('empleado_id');
+    setSearchParams(siguiente, { replace: true });
+  }, [empleadoParam, searchParams, setSearchParams]);
 
   return (
     <div className="space-y-4">
@@ -180,7 +203,7 @@ export function MovimientosPage() {
             onClick={() => setPestana(clave)}
             className={`flex items-center gap-2 border-b-2 px-4 py-2 text-sm font-medium transition-colors ${
               pestana === clave
-                ? 'border-brand-600 text-brand-700'
+                ? 'border-brand-600 text-brand-600'
                 : 'border-transparent text-slate-500 hover:text-slate-700'
             }`}
           >
@@ -193,7 +216,13 @@ export function MovimientosPage() {
       {pestana === 'consolidado' ? (
         <ConsolidadoVista />
       ) : (
-        <TablaMovimientos tipo={pestana} />
+        <TablaMovimientos
+          tipo={pestana}
+          empleadoFiltro={empleadoFiltro}
+          autoAbrir={autoAbrir}
+          onAutoAbierto={() => setAutoAbrir(false)}
+          onQuitarEmpleadoFiltro={() => setEmpleadoFiltro(null)}
+        />
       )}
     </div>
   );
@@ -201,7 +230,19 @@ export function MovimientosPage() {
 
 // ── Listado y CRUD de un tipo de movimiento ────────────────────────────────
 
-function TablaMovimientos({ tipo }: { tipo: 'deducciones' | 'bonificaciones' }) {
+function TablaMovimientos({
+  tipo,
+  empleadoFiltro,
+  autoAbrir,
+  onAutoAbierto,
+  onQuitarEmpleadoFiltro,
+}: {
+  tipo: 'deducciones' | 'bonificaciones';
+  empleadoFiltro: number | null;
+  autoAbrir: boolean;
+  onAutoAbierto: () => void;
+  onQuitarEmpleadoFiltro: () => void;
+}) {
   const cfg = CONFIG[tipo];
   const queryClient = useQueryClient();
 
@@ -242,6 +283,37 @@ function TablaMovimientos({ tipo }: { tipo: 'deducciones' | 'bonificaciones' }) 
     enabled: modalAbierto,
   });
 
+  // Empleado llegado por URL: se resuelve aunque no esté en la lista inicial.
+  const { data: empleadoPreseleccionado } = useQuery({
+    queryKey: ['rrhh', 'empleados', 'detalle', empleadoFiltro],
+    queryFn: () => rrhhService.getEmpleado(empleadoFiltro as number),
+    enabled: empleadoFiltro !== null,
+  });
+
+  const autoAbierto = useRef(false);
+  // Una nueva preselección (p. ej. otro empleado desde su ficha) vuelve a
+  // habilitar la apertura automática.
+  useEffect(() => {
+    if (autoAbrir) autoAbierto.current = false;
+  }, [autoAbrir]);
+
+  useEffect(() => {
+    if (!autoAbrir || empleadoFiltro === null || autoAbierto.current) return;
+    autoAbierto.current = true;
+    setEditando(null);
+    setFormData({
+      empleado_id: empleadoFiltro,
+      tipo_id: '',
+      valor: '',
+      inicio_periodo: '',
+      fin_periodo: '',
+      observaciones: '',
+    });
+    setBusquedaEmpleado('');
+    setModalAbierto(true);
+    onAutoAbierto();
+  }, [autoAbrir, empleadoFiltro, onAutoAbierto]);
+
   const {
     data: filas = [],
     isLoading,
@@ -249,7 +321,15 @@ function TablaMovimientos({ tipo }: { tipo: 'deducciones' | 'bonificaciones' }) 
     error,
     refetch,
   } = useQuery({
-    queryKey: ['rrhh', tipo, busqueda, filtroTipo, desde, hasta],
+    queryKey: [
+      'rrhh',
+      tipo,
+      busqueda,
+      filtroTipo,
+      desde,
+      hasta,
+      empleadoFiltro,
+    ],
     queryFn: () =>
       cfg.listado({
         limit: 500,
@@ -257,6 +337,7 @@ function TablaMovimientos({ tipo }: { tipo: 'deducciones' | 'bonificaciones' }) 
         tipo_id: filtroTipo === '' ? undefined : filtroTipo,
         desde: desde || undefined,
         hasta: hasta || undefined,
+        empleado_id: empleadoFiltro ?? undefined,
       }),
   });
 
@@ -350,18 +431,26 @@ function TablaMovimientos({ tipo }: { tipo: 'deducciones' | 'bonificaciones' }) 
     setModalAbierto(true);
   };
 
-  const opcionesEmpleado = useMemo(
-    () => [
-      { value: 0, label: 'Sin empleado', disabled: true },
-      ...candidatosEmpleado.map((c) => ({
-        value: c.id,
-        label: `${c.apellido}, ${c.nombre}`,
-        description: c.codigo_empleado ?? undefined,
-        disabled: !c.activo,
-      })),
-    ],
-    [candidatosEmpleado]
-  );
+  const opcionesEmpleado = useMemo(() => {
+    const opciones = candidatosEmpleado.map((c) => ({
+      value: c.id,
+      label: `${c.apellido}, ${c.nombre}`,
+      description: c.codigo_empleado ?? undefined,
+      disabled: !c.activo,
+    }));
+    if (
+      empleadoPreseleccionado &&
+      !candidatosEmpleado.some((c) => c.id === empleadoPreseleccionado.id)
+    ) {
+      opciones.unshift({
+        value: empleadoPreseleccionado.id,
+        label: `${empleadoPreseleccionado.apellido}, ${empleadoPreseleccionado.nombre}`,
+        description: empleadoPreseleccionado.codigo_empleado ?? undefined,
+        disabled: !empleadoPreseleccionado.activo,
+      });
+    }
+    return [{ value: 0, label: 'Sin empleado', disabled: true }, ...opciones];
+  }, [candidatosEmpleado, empleadoPreseleccionado]);
 
   const opcionesTipo = tipos.map((t) => ({
     value: t.id,
@@ -438,6 +527,21 @@ function TablaMovimientos({ tipo }: { tipo: 'deducciones' | 'bonificaciones' }) 
               <Plus className="h-4 w-4" />
               Nueva {cfg.etiqueta.toLowerCase()}
             </Button>
+            {empleadoFiltro !== null && (
+              <span className="inline-flex items-center gap-2 rounded-full bg-brand-50 px-3 py-1 text-xs font-semibold text-brand-600 ring-1 ring-brand-100">
+                {empleadoPreseleccionado
+                  ? `Filtrado por ${empleadoPreseleccionado.apellido}, ${empleadoPreseleccionado.nombre}`
+                  : `Filtrado por empleado #${empleadoFiltro}`}
+                <button
+                  type="button"
+                  title="Quitar el filtro de empleado"
+                  onClick={onQuitarEmpleadoFiltro}
+                  className="rounded-full p-0.5 transition-colors hover:bg-brand-100"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </span>
+            )}
           </div>
         </CardHeader>
         <CardContent>
@@ -803,7 +907,7 @@ function Resumen({
     >
       <div
         className={`text-2xl font-bold tabular-nums ${
-          destacado ? 'text-brand-700' : 'text-slate-700'
+          destacado ? 'text-brand-600' : 'text-slate-700'
         }`}
       >
         {valor}

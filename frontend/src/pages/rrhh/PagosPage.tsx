@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { rrhhService } from '../../services/rrhh';
 import {
   COLOR_ESTADO_NOMINA,
-  type RrhhEstadoNomina,
+  ETIQUETA_ESTADO_NOMINA,
 } from '../../types/rrhh';
 import { AlertCircle, RefreshCw, Wallet, X } from 'lucide-react';
 import {
@@ -30,12 +30,6 @@ const fmtMoneda = (v: number | string | null | undefined) =>
 const fmtFecha = (v: string) => {
   const [anio, mes, dia] = v.split('-');
   return `${dia}/${mes}/${anio}`;
-};
-
-const ETIQUETA_ESTADO: Record<RrhhEstadoNomina, string> = {
-  pendiente: 'Pendiente',
-  pagada: 'Pagada',
-  anulada: 'Anulada',
 };
 
 /**
@@ -76,7 +70,7 @@ export function PagosPage() {
             Pagos
           </h1>
           <p className="mt-1 text-sm text-slate-500">
-            Pagos registrados por nómina, con empleado y método resueltos
+            Pagos registrados por nómina, con su estado y método resueltos
           </p>
         </div>
         <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isLoading}>
@@ -86,7 +80,7 @@ export function PagosPage() {
 
       {nominaId !== null && (
         <div className="flex items-center gap-2">
-          <span className="inline-flex items-center gap-2 rounded-full bg-brand-50 px-3 py-1 text-xs font-semibold text-brand-700 ring-1 ring-brand-100">
+          <span className="inline-flex items-center gap-2 rounded-full bg-brand-50 px-3 py-1 text-xs font-semibold text-brand-600 ring-1 ring-brand-100">
             Filtrado por la nómina #{nominaId}
             <button
               type="button"
@@ -97,7 +91,7 @@ export function PagosPage() {
               <X className="h-3.5 w-3.5" />
             </button>
           </span>
-          <span className="text-xs text-slate-400">Se muestran todos los pagos con «×».</span>
+          <span className="text-xs text-slate-400">Pulsa la «×» para quitar el filtro.</span>
         </div>
       )}
 
@@ -125,7 +119,7 @@ export function PagosPage() {
               mensaje={
                 nominaId !== null
                   ? 'Esta nómina todavía no tiene pagos registrados.'
-                  : 'Aún no hay pagos registrados. Registra uno desde la tabla de nómina.'
+                  : 'Aún no hay pagos registrados.'
               }
             />
           ) : (
@@ -133,8 +127,8 @@ export function PagosPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Fecha</TableHead>
-                  <TableHead>Empleado</TableHead>
                   <TableHead>Nómina</TableHead>
+                  <TableHead>Estado</TableHead>
                   <TableHead>Método</TableHead>
                   <TableHead>Referencia</TableHead>
                   <TableHead className="text-right">Monto</TableHead>
@@ -148,25 +142,20 @@ export function PagosPage() {
                     </TableCell>
                     <TableCell>
                       <div className="font-medium text-slate-900">
-                        {pago.empleado_nombre ?? '—'}
+                        {pago.nomina_descripcion ?? `Nómina #${pago.nomina_id}`}
                       </div>
                       <div className="text-xs text-slate-500">
-                        {pago.empleado_codigo ?? '—'}
-                        {pago.departamento_nombre ? ` · ${pago.departamento_nombre}` : ''}
+                        Periodo {fmtFecha(pago.periodo)} ·{' '}
+                        {fmtFecha(pago.inicio_periodo)} –{' '}
+                        {fmtFecha(pago.fin_periodo)}
                       </div>
                     </TableCell>
                     <TableCell>
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium text-slate-700">#{pago.nomina_id}</span>
-                        <span
-                          className={`inline-block rounded-full px-2 py-0.5 text-xs font-semibold ${COLOR_ESTADO_NOMINA[pago.estado_nomina]}`}
-                        >
-                          {ETIQUETA_ESTADO[pago.estado_nomina]}
-                        </span>
-                      </div>
-                      <div className="text-xs text-slate-500">
-                        {fmtFecha(pago.inicio_periodo)} – {fmtFecha(pago.fin_periodo)}
-                      </div>
+                      <span
+                        className={`inline-block rounded-full px-2 py-0.5 text-xs font-semibold ${COLOR_ESTADO_NOMINA[pago.estado_nomina]}`}
+                      >
+                        {ETIQUETA_ESTADO_NOMINA[pago.estado_nomina]}
+                      </span>
                     </TableCell>
                     <TableCell className="text-slate-600">
                       {pago.metodo_nombre ?? '—'}

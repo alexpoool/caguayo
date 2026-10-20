@@ -1,8 +1,9 @@
 """Deducciones y bonificaciones por empleado (script v3, sección 5).
 
-Regla de solape (decidida): un registro se aplica completa una sola vez; la
-tabla puente `nomina_deducciones`/`nomina_bonificaciones` evita el doble cobro
-en periodos posteriores.
+Regla de solape (decidida): un registro no puede cruzarse con otro del mismo
+tipo y empleado. Desde la Fase 6 v2 no hay tablas puente: la nómina suma los
+movimientos del empleado que solapan su periodo y congela el total en
+`nomina_empleados`.
 """
 
 from datetime import date, datetime

@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useLayoutEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { rrhhService } from '../../services/rrhh';
@@ -38,6 +39,9 @@ import {
   Timer,
   Target,
   ClipboardCheck,
+  MoreVertical,
+  PlusCircle,
+  MinusCircle,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import {
@@ -105,6 +109,55 @@ export function EmpleadosPage() {
     empleado: RrhhEmpleado | null;
   }>({ isOpen: false, empleado: null });
 
+  // Menú flotante de tres rayitas (Objetivos, Evaluaciones y movimientos).
+  const [menu, setMenu] = useState<{
+    id: number;
+    x: number;
+    y: number;
+    anchor: { top: number; left: number; right: number; bottom: number };
+  } | null>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const MARGIN = 8;
+
+  useLayoutEffect(() => {
+    if (!menu || !menuRef.current) return;
+    const m = menuRef.current.getBoundingClientRect();
+    let x = menu.x;
+    let y = menu.y;
+    if (x + m.width > window.innerWidth - MARGIN) {
+      x = Math.max(MARGIN, menu.anchor.right - m.width);
+    }
+    if (y + m.height > window.innerHeight - MARGIN) {
+      y = Math.max(MARGIN, menu.anchor.top - m.height - 4);
+    }
+    if (x !== menu.x || y !== menu.y) {
+      setMenu((prev) => (prev ? { ...prev, x, y } : null));
+    }
+  }, [menu]);
+
+  useEffect(() => {
+    if (!menu) return;
+    const onDocClick = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenu(null);
+      }
+    };
+    const onEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setMenu(null);
+    };
+    const onScrollOrResize = () => setMenu(null);
+    document.addEventListener('click', onDocClick);
+    document.addEventListener('keydown', onEsc);
+    window.addEventListener('scroll', onScrollOrResize, true);
+    window.addEventListener('resize', onScrollOrResize);
+    return () => {
+      document.removeEventListener('click', onDocClick);
+      document.removeEventListener('keydown', onEsc);
+      window.removeEventListener('scroll', onScrollOrResize, true);
+      window.removeEventListener('resize', onScrollOrResize);
+    };
+  }, [menu]);
+
   const [formData, setFormData] = useState<RrhhEmpleadoCreate>({
     nombre: '',
     apellido: '',
@@ -119,6 +172,8 @@ export function EmpleadosPage() {
     supervisor: null,
     fecha_contratacion: '',
     salario: undefined,
+    horas_a_trabajar: 8,
+    dias_a_trabajar: 30,
     estado: 'activo',
     tipo_asistencia: 'NO_LIBRE',
     horario_inicio: '',
@@ -211,6 +266,8 @@ export function EmpleadosPage() {
       supervisor: null,
       fecha_contratacion: '',
       salario: undefined,
+      horas_a_trabajar: 8,
+      dias_a_trabajar: 30,
       estado: 'activo',
       tipo_asistencia: 'NO_LIBRE',
       horario_inicio: '',
@@ -236,6 +293,8 @@ export function EmpleadosPage() {
       supervisor: emp.supervisor,
       fecha_contratacion: emp.fecha_contratacion ?? '',
       salario: emp.salario === null ? undefined : Number(emp.salario),
+      horas_a_trabajar: emp.horas_a_trabajar ?? undefined,
+      dias_a_trabajar: emp.dias_a_trabajar ?? undefined,
       estado: emp.estado,
       tipo_asistencia: emp.tipo_asistencia,
       horario_inicio: fmtHora(emp.horario_inicio) ?? '',
@@ -265,6 +324,24 @@ export function EmpleadosPage() {
         errs.horario_final = 'El horario final debe ser posterior al inicio';
       }
     }
+    if (
+      formData.horas_a_trabajar !== undefined &&
+      formData.horas_a_trabajar !== null &&
+      (!Number.isInteger(formData.horas_a_trabajar) ||
+        formData.horas_a_trabajar < 1 ||
+        formData.horas_a_trabajar > 24)
+    ) {
+      errs.horas_a_trabajar = 'Debe ser un entero entre 1 y 24';
+    }
+    if (
+      formData.dias_a_trabajar !== undefined &&
+      formData.dias_a_trabajar !== null &&
+      (!Number.isInteger(formData.dias_a_trabajar) ||
+        formData.dias_a_trabajar < 1 ||
+        formData.dias_a_trabajar > 31)
+    ) {
+      errs.dias_a_trabajar = 'Debe ser un entero entre 1 y 31';
+    }
     setFormErrors(errs);
     return Object.keys(errs).length === 0;
   };
@@ -290,6 +367,14 @@ export function EmpleadosPage() {
             ? null
             : formData.horario_final || null,
         salario: formData.salario === undefined ? null : formData.salario,
+        horas_a_trabajar:
+          formData.horas_a_trabajar === undefined
+            ? null
+            : formData.horas_a_trabajar,
+        dias_a_trabajar:
+          formData.dias_a_trabajar === undefined
+            ? null
+            : formData.dias_a_trabajar,
       };
       if (editing) {
         return await rrhhService.updateEmpleado(editing.id, payload);
@@ -449,18 +534,7 @@ export function EmpleadosPage() {
                           Departamento
                         </div>
                       </TableHead>
-                      <TableHead className="text-center">
-                        <div className="flex items-center justify-center gap-2">
-                          <Target className="h-4 w-4 text-rose-500" />
-                          Objetivos
-                        </div>
-                      </TableHead>
-                      <TableHead className="text-center">
-                        <div className="flex items-center justify-center gap-2">
-                          <ClipboardCheck className="h-4 w-4 text-emerald-500" />
-                          Evaluaciones
-                        </div>
-                      </TableHead>
+                      <TableHead className="text-center">Opciones</TableHead>
                       <TableHead className="text-right">Acciones</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -491,33 +565,41 @@ export function EmpleadosPage() {
                         <TableCell className="text-slate-600">
                           {emp.departamento_nombre ?? '—'}
                         </TableCell>
-                        <TableCell className="text-center">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            title={`Objetivos de ${emp.apellido}, ${emp.nombre}`}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              navigate(`/rrhh/objetivos?empleado_id=${emp.id}`);
-                            }}
-                          >
-                            Objetivos
-                          </Button>
-                        </TableCell>
-                        <TableCell className="text-center">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            title={`Evaluaciones de ${emp.apellido}, ${emp.nombre}`}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              navigate(
-                                `/rrhh/evaluaciones?empleado_id=${emp.id}`,
-                              );
-                            }}
-                          >
-                            Evaluaciones
-                          </Button>
+                        <TableCell
+                          className="text-center"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <div className="relative inline-block">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              title="Más opciones del empleado"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const r = (
+                                  e.currentTarget as HTMLButtonElement
+                                ).getBoundingClientRect();
+                                setMenu(
+                                  menu && menu.id === emp.id
+                                    ? null
+                                    : {
+                                        id: emp.id,
+                                        x: r.left,
+                                        y: r.bottom + 4,
+                                        anchor: {
+                                          top: r.top,
+                                          left: r.left,
+                                          right: r.right,
+                                          bottom: r.bottom,
+                                        },
+                                      }
+                                );
+                              }}
+                              className="h-8 w-8 p-0 text-indigo-600 hover:bg-indigo-50"
+                            >
+                              <MoreVertical className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-2">
@@ -796,6 +878,38 @@ export function EmpleadosPage() {
                     icono={CircleDollarSign}
                     color="text-emerald-500"
                   />
+                  <CampoTexto
+                    id="horas_a_trabajar"
+                    label="Horas por día"
+                    tipo="number"
+                    valor={
+                      formData.horas_a_trabajar === undefined
+                        ? ''
+                        : String(formData.horas_a_trabajar)
+                    }
+                    onChange={(v) =>
+                      set('horas_a_trabajar', v === '' ? undefined : Number(v))
+                    }
+                    error={formErrors.horas_a_trabajar}
+                    icono={Clock}
+                    color="text-purple-500"
+                  />
+                  <CampoTexto
+                    id="dias_a_trabajar"
+                    label="Días por mes"
+                    tipo="number"
+                    valor={
+                      formData.dias_a_trabajar === undefined
+                        ? ''
+                        : String(formData.dias_a_trabajar)
+                    }
+                    onChange={(v) =>
+                      set('dias_a_trabajar', v === '' ? undefined : Number(v))
+                    }
+                    error={formErrors.dias_a_trabajar}
+                    icono={Calendar}
+                    color="text-purple-500"
+                  />
                   <div className="space-y-2">
                     <Label className="flex items-center gap-2 text-gray-700">
                       <BadgeCheck className="h-4 w-4 text-rose-500" />
@@ -876,6 +990,11 @@ export function EmpleadosPage() {
                     </div>
                   )}
                 </div>
+                <p className="mt-3 text-xs text-slate-400">
+                  Las horas por día y los días por mes se usan para derivar la
+                  tarifa horaria con la que se paga la nómina. Si faltan, el
+                  empleado aparecerá con 0 en la nómina.
+                </p>
               </section>
 
               <div className="sticky bottom-0 -mx-6 flex gap-4 border-t bg-white px-6 pb-1 pt-4">
@@ -1090,6 +1209,65 @@ export function EmpleadosPage() {
         }
         onClose={() => setConfirmModal({ isOpen: false, empleado: null })}
       />
+
+      {menu &&
+        createPortal(
+          <div
+            ref={menuRef}
+            className="fixed z-50 w-56 overflow-y-auto rounded-xl border border-gray-200 bg-white py-1 shadow-xl animate-fade-in"
+            style={{ top: menu.y, left: menu.x }}
+          >
+            <button
+              type="button"
+              onClick={() => {
+                setMenu(null);
+                navigate(`/rrhh/objetivos?empleado_id=${menu.id}`);
+              }}
+              className="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-700 transition-colors hover:bg-rose-50 hover:text-rose-700"
+            >
+              <Target className="h-4 w-4 text-rose-600" />
+              Objetivos
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setMenu(null);
+                navigate(`/rrhh/evaluaciones?empleado_id=${menu.id}`);
+              }}
+              className="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-700 transition-colors hover:bg-emerald-50 hover:text-emerald-700"
+            >
+              <ClipboardCheck className="h-4 w-4 text-emerald-600" />
+              Evaluaciones
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setMenu(null);
+                navigate(
+                  `/rrhh/movimientos?empleado_id=${menu.id}&tipo=bonificaciones`
+                );
+              }}
+              className="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-700 transition-colors hover:bg-green-50 hover:text-green-700"
+            >
+              <PlusCircle className="h-4 w-4 text-green-600" />
+              Bonificaciones
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setMenu(null);
+                navigate(
+                  `/rrhh/movimientos?empleado_id=${menu.id}&tipo=deducciones`
+                );
+              }}
+              className="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-700 transition-colors hover:bg-red-50 hover:text-red-700"
+            >
+              <MinusCircle className="h-4 w-4 text-red-600" />
+              Deducciones
+            </button>
+          </div>,
+          document.body
+        )}
     </div>
   );
 }

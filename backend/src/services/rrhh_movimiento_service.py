@@ -13,9 +13,8 @@ Reglas de negocio:
 - **Sin solape**: dos movimientos del mismo tipo y empleado no pueden cruzarse
   en el tiempo, porque el mismo concepto se cobraría dos veces en la ventana
   compartida. Devuelve `409`.
-- Borrado **físico** salvo que el movimiento ya se haya aplicado a una nómina
-  (aparezca en las tablas puente), en cuyo caso devuelve `409`: esas tablas
-  tienen `ondelete=RESTRICT` y borrar rompería la trazabilidad.
+- Borrado **físico**: el movimiento no queda bloqueado por haber participado
+  en una nómina, porque la nómina congela sus importes por empleado.
 - El consolidado suma los movimientos cuyo periodo **cubre** el rango pedido
   (inclusive en los extremos).
 """
@@ -26,7 +25,7 @@ from decimal import Decimal
 from typing import List, Optional, Type
 
 from fastapi import HTTPException
-from sqlmodel import select, func, or_
+from sqlmodel import select, or_
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from src.domain.rrhh_nomina_calc import (
@@ -54,8 +53,6 @@ from src.models import (
     RrhhDepartamento,
     RrhhTipoDeduccion,
     RrhhTipoBonificacion,
-    RrhhNominaDeduccion,
-    RrhhNominaBonificacion,
 )
 
 
@@ -69,8 +66,6 @@ class ConfigMovimiento:
     pk: str
     campo_tipo: str
     pk_tipo: str
-    modelo_puente: Type
-    campo_puente: str
     dto_read: Type
     dto_listado: Type
 
@@ -82,8 +77,6 @@ DEDUCCION = ConfigMovimiento(
     pk="id_deducciones",
     campo_tipo="tipo_deducciones_id",
     pk_tipo="id_tipos_deducciones",
-    modelo_puente=RrhhNominaDeduccion,
-    campo_puente="deduccion_id",
     dto_read=RrhhDeduccionRead,
     dto_listado=RrhhDeduccionListado,
 )
@@ -95,8 +88,6 @@ BONIFICACION = ConfigMovimiento(
     pk="id_bonificaciones",
     campo_tipo="tipo_bonificaciones_id",
     pk_tipo="id_tipos_bonificaciones",
-    modelo_puente=RrhhNominaBonificacion,
-    campo_puente="bonificacion_id",
     dto_read=RrhhBonificacionRead,
     dto_listado=RrhhBonificacionListado,
 )
@@ -165,15 +156,6 @@ class RrhhMovimientoService:
                         f"entre {existente.inicio_periodo} y {existente.fin_periodo}"
                     ),
                 )
-
-    async def _ya_aplicada(self, db: AsyncSession, id: int) -> bool:
-        """Si el movimiento ya formó parte de alguna nómina."""
-        result = await db.exec(
-            select(func.count())
-            .select_from(self.cfg.modelo_puente)
-            .where(getattr(self.cfg.modelo_puente, self.cfg.campo_puente) == id)
-        )
-        return (result.one() or 0) > 0
 
     # ── Resolución en lote ──────────────────────────────────────────────────
 
@@ -386,15 +368,6 @@ class RrhhMovimientoService:
         db_obj = await db.get(self.cfg.modelo, id)
         if not db_obj:
             raise HTTPException(status_code=404, detail=f"{self.model_name} no encontrada")
-
-        if await self._ya_aplicada(db, id):
-            raise HTTPException(
-                status_code=409,
-                detail=(
-                    f"Esta {self.cfg.etiqueta} ya se aplicó a una nómina; "
-                    "no se puede eliminar sin romper la trazabilidad"
-                ),
-            )
 
         await db.delete(db_obj)
         await db.commit()

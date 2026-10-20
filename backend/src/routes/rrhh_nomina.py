@@ -1,11 +1,11 @@
-"""Rutas RRHH — Nómina y pagos (Fase 6).
+"""Rutas RRHH — Nómina y pagos (Fase 6 v2).
 
-Prefijo `/rrhh/nomina`. Siguen el patrón del proyecto: `APIRouter` con
-`get_session` inyectado y servicios en `src/services/`.
+Prefijo `/rrhh/nomina`. La nómina es una cabecera de lote con detalle por
+empleado en `nomina_empleados`.
 
-El orden de las rutas importa: `/costo`, `/generar` y `/pagos` se declaran
-antes de `/{nomina_id}` para que no las capture el parámetro de ruta (si no,
-FastAPI devuelve `422` al fallar el conversor `int`).
+El orden de las rutas importa: `/costo`, `/pagos` se declaran antes de
+`/{nomina_id}` para que no las capture el parámetro de ruta (si no, FastAPI
+devuelve `422` al fallar el conversor `int`).
 """
 
 from datetime import date
@@ -17,10 +17,12 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 
 from src.database.connection import get_session
 from src.dto import (
-    RrhhNominaGenerar,
-    RrhhNominaGenerada,
+    RrhhNominaCreate,
+    RrhhNominaUpdate,
     RrhhNominaListado,
     RrhhNominaDetalle,
+    RrhhNominaCandidato,
+    RrhhNominaSeleccion,
     RrhhPagoBase,
     RrhhPagoListado,
     RrhhReporteCosto,
@@ -35,22 +37,31 @@ rrhh_nomina_router = APIRouter(prefix="/rrhh/nomina", tags=["rrhh-nomina"])
 async def listar_nominas(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=1000),
-    empleado_id: Optional[int] = None,
     estado: Optional[str] = None,
     desde: Optional[date] = None,
     hasta: Optional[date] = None,
+    buscar: Optional[str] = None,
     db: AsyncSession = Depends(get_session),
 ):
-    """Listado de nóminas, con el empleado resuelto y lo pagado hasta ahora."""
+    """Listado de lotes de nómina con sus totales y pagos."""
     return await rrhh_nomina_service.listar(
         db,
         skip=skip,
         limit=limit,
-        empleado_id=empleado_id,
         estado=estado,
         desde=desde,
         hasta=hasta,
+        buscar=buscar,
     )
+
+
+@rrhh_nomina_router.post("", response_model=RrhhNominaDetalle, status_code=201)
+async def crear_nomina(
+    entrada: RrhhNominaCreate,
+    db: AsyncSession = Depends(get_session),
+):
+    """Crea una nómina en estado `pre_nomina` (cabecera sin empleados)."""
+    return await rrhh_nomina_service.create(db, entrada)
 
 
 @rrhh_nomina_router.get("/costo", response_model=RrhhReporteCosto)
@@ -60,24 +71,10 @@ async def reporte_costo(
     departamento_id: Optional[int] = None,
     db: AsyncSession = Depends(get_session),
 ):
-    """Costo de la nómina por departamento (excluye las anuladas)."""
+    """Costo por departamento de las nóminas confirmadas del rango."""
     return await rrhh_nomina_service.reporte_costo(
         db, desde=desde, hasta=hasta, departamento_id=departamento_id
     )
-
-
-@rrhh_nomina_router.post("/generar", response_model=RrhhNominaGenerada, status_code=201)
-async def generar_nominas(
-    entrada: RrhhNominaGenerar,
-    db: AsyncSession = Depends(get_session),
-):
-    """Genera las nóminas de un periodo, individual o masivamente.
-
-    Cada nómina congela el salario base, las horas extras y el detalle de
-    deducciones y bonificaciones vigentes. Los empleados que ya tengan nómina
-    para ese periodo se omiten (y no acumulan los conceptos del formulario).
-    """
-    return await rrhh_nomina_service.generar(db, entrada)
 
 
 @rrhh_nomina_router.get("/pagos", response_model=List[RrhhPagoListado])
@@ -85,22 +82,17 @@ async def listar_pagos(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=1000),
     nomina_id: Optional[int] = None,
-    empleado_id: Optional[int] = None,
     metodo_id: Optional[int] = None,
     desde: Optional[date] = None,
     hasta: Optional[date] = None,
     db: AsyncSession = Depends(get_session),
 ):
-    """Listado de pagos registrados, con su nómina y su empleado resueltos.
-
-    Filtros: nómina, empleado, método de pago y rango de fecha de pago.
-    """
+    """Pagos registrados; cada pago cubre una nómina completa."""
     return await rrhh_nomina_service.listar_pagos(
         db,
         skip=skip,
         limit=limit,
         nomina_id=nomina_id,
-        empleado_id=empleado_id,
         metodo_id=metodo_id,
         desde=desde,
         hasta=hasta,
@@ -112,8 +104,57 @@ async def obtener_nomina(
     nomina_id: int,
     db: AsyncSession = Depends(get_session),
 ):
-    """Detalle de una nómina: deducciones y bonificaciones congeladas y pagos."""
+    """Cabecera de la nómina con el detalle por empleado y sus pagos."""
     return await rrhh_nomina_service.get(db, nomina_id)
+
+
+@rrhh_nomina_router.put("/{nomina_id}", response_model=RrhhNominaDetalle)
+async def actualizar_nomina(
+    nomina_id: int,
+    entrada: RrhhNominaUpdate,
+    db: AsyncSession = Depends(get_session),
+):
+    """Edita la cabecera mientras la nómina siga en `pre_nomina`."""
+    return await rrhh_nomina_service.update(db, nomina_id, entrada)
+
+
+@rrhh_nomina_router.delete("/{nomina_id}")
+async def eliminar_nomina(
+    nomina_id: int,
+    db: AsyncSession = Depends(get_session),
+):
+    """Elimina una nómina en `pre_nomina` (el detalle cae en cascada)."""
+    return await rrhh_nomina_service.eliminar(db, nomina_id)
+
+
+@rrhh_nomina_router.post("/{nomina_id}/confirmar", response_model=RrhhNominaDetalle)
+async def confirmar_nomina(
+    nomina_id: int,
+    db: AsyncSession = Depends(get_session),
+):
+    """Pasa el lote de `pre_nomina` a `nomina` y lo deja de solo lectura."""
+    return await rrhh_nomina_service.confirmar(db, nomina_id)
+
+
+@rrhh_nomina_router.get(
+    "/{nomina_id}/candidatos", response_model=List[RrhhNominaCandidato]
+)
+async def candidatos_nomina(
+    nomina_id: int,
+    db: AsyncSession = Depends(get_session),
+):
+    """Empleados activos con sus importes calculados para esta nómina."""
+    return await rrhh_nomina_service.candidatos(db, nomina_id)
+
+
+@rrhh_nomina_router.put("/{nomina_id}/empleados", response_model=RrhhNominaDetalle)
+async def guardar_empleados(
+    nomina_id: int,
+    entrada: RrhhNominaSeleccion,
+    db: AsyncSession = Depends(get_session),
+):
+    """Fija la selección de empleados y recalcula sus importes."""
+    return await rrhh_nomina_service.guardar_empleados(db, nomina_id, entrada)
 
 
 @rrhh_nomina_router.get("/{nomina_id}/recibo")
@@ -121,7 +162,7 @@ async def recibo_nomina(
     nomina_id: int,
     db: AsyncSession = Depends(get_session),
 ):
-    """Descarga el recibo de la nómina en PDF."""
+    """Descarga el recibo del lote en PDF."""
     detalle = await rrhh_nomina_service.get(db, nomina_id)
     buffer = generar_recibo_pdf(detalle)
     nombre = f"RECIBO-NOMINA-{nomina_id}.pdf"
@@ -138,11 +179,7 @@ async def pagar_nomina(
     pago: RrhhPagoBase,
     db: AsyncSession = Depends(get_session),
 ):
-    """Registra el pago completo de una nómina y la marca como pagada.
-
-    El monto debe coincidir con el salario neto; a partir de ahí la nómina
-    queda inmutable.
-    """
+    """Registra el pago completo de una nómina confirmada."""
     return await rrhh_nomina_service.pagar(
         db,
         nomina_id,
@@ -152,12 +189,3 @@ async def pagar_nomina(
         referencia=pago.referencia,
         observaciones=pago.observaciones,
     )
-
-
-@rrhh_nomina_router.post("/{nomina_id}/anular")
-async def anular_nomina(
-    nomina_id: int,
-    db: AsyncSession = Depends(get_session),
-):
-    """Anula una nómina (pendiente o pagada); si estaba pagada, se audita."""
-    return await rrhh_nomina_service.anular(db, nomina_id)

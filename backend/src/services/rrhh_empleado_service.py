@@ -41,7 +41,7 @@ from src.models import (
     RrhhAsistencia,
 )
 from src.models.rrhh_deducciones import RrhhDeduccion, RrhhBonificacion
-from src.models.rrhh_nomina import RrhhNomina
+from src.models.rrhh_nomina import RrhhNominaEmpleado
 from src.models.rrhh_solicitud import RrhhSolicitud
 from src.models.rrhh_evaluacion import RrhhEvaluacion
 from src.models.usuarios import Usuario
@@ -408,7 +408,7 @@ class RrhhEmpleadoService:
             (RrhhAsistencia, RrhhAsistencia.empleado_id),
             (RrhhDeduccion, RrhhDeduccion.empleados_id),
             (RrhhBonificacion, RrhhBonificacion.empleados_id),
-            (RrhhNomina, RrhhNomina.empleado_id),
+            (RrhhNominaEmpleado, RrhhNominaEmpleado.empleados_id),
             (RrhhSolicitud, RrhhSolicitud.empleado_id),
             (RrhhEvaluacion, RrhhEvaluacion.empleado_id),
         ):

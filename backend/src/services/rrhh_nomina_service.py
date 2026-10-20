@@ -1,34 +1,21 @@
-"""Servicio del submódulo RRHH — Nómina y pagos (Fase 6).
+"""Servicio del submódulo RRHH — Nómina y pagos (Fase 6 v2).
 
-La nómina es el punto donde convergen todo lo anterior: el salario del
-empleado, las horas extras derivadas de la asistencia y las deducciones y
-bonificaciones registradas en la Fase 5. Al generarla se **congela** todo en
-los importes de `nomina` y en las tablas puente (`nomina_deducciones` /
-`nomina_bonificaciones`, con `monto_aplicado`), de modo que un cambio futuro
-del salario o de un tipo no altere una nómina ya emitida.
+La nómina pasa a ser un **lote**: una cabecera con descripción, periodo,
+rango, moneda, tasa y porcentaje de impuesto, y un detalle por empleado en
+`nomina_empleados`. Al guardar la selección se **recalculan y congelan** los
+importes de cada empleado:
 
-Ciclo de vida (decidido):
+- `salario_base` + `horas_extras` = horas trabajadas del periodo (extras
+  incluidas) × tarifa horaria derivada del salario mensual.
+- `bonificaciones` / `deducciones` = suma de los movimientos del empleado que
+  solapan el periodo (los porcentuales se convierten sobre el salario).
+- `devengado` = A cobrar + bonificaciones.
+- `impuesto` = max(0, devengado − salario promedio) × porcentaje del lote.
+- `neto_a_cobrar` = devengado − impuesto − deducciones.
 
-    pendiente ──pagar──▶ pagada ──anular──▶ anulada
-        └──────────────anular──────────────▶ anulada
-
-- `pagar` exige el neto exacto y deja la nómina **inmutable** en sus importes.
-- `anular` es la única vía de salida de `pagada`; si la nómina ya estaba
-  pagada, deja rastro en la tabla `log`.
-- No hay edición de importes: para corregir algo se anula y se vuelve a
-  generar.
-
-Regla de solvencia: las deducciones se **cotan al bruto** en la generación, de
-manera que el salario neto nunca es negativo (un préstamo grande no puede dejar
-al empleado con la nómina en negativo).
-
-Conceptos del formulario (decidido): la generación admite deducciones y
-bonificaciones propias del lote. Cada concepto se materializa como un
-movimiento por empleado (opción 1: se crean registros reales en `deducciones`
-/ `bonificaciones`, que es lo que exige la tabla puente) y se aplican a las
-nóminas generadas; si el empleado ya tiene un movimiento equivalente, se
-reutiliza en lugar de duplicarlo. Los movimientos ya registrados siguen
-aplicándose por defecto (`incluir_movimientos_existentes`).
+Ciclo de vida: `pre_nomina` (editable) → `nomina` (confirmada, de solo
+lectura). Una nómina confirmada no se edita ni se elimina. Los pagos cubren
+el lote completo y se registran una vez confirmado.
 """
 
 from datetime import date, datetime
@@ -39,21 +26,26 @@ from fastapi import HTTPException
 from sqlmodel import select, func
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from src.domain.rrhh_asistencia_calc import calcular_horas_extras
+from src.domain.rrhh_asistencia_calc import (
+    calcular_horas_extras,
+    calcular_horas_trabajadas,
+)
 from src.domain.rrhh_nomina_calc import (
-    cota_deducciones,
+    impuesto_sobre_promedio,
     monto_aplicado,
-    monto_horas_extras,
-    neto as calcular_neto,
+    neto_a_cobrar,
+    pago_por_horas,
+    redondear,
     tarifa_hora,
 )
 from src.dto import (
-    RrhhConceptoGenerar,
-    RrhhNominaGenerar,
-    RrhhNominaGenerada,
+    RrhhNominaCreate,
+    RrhhNominaUpdate,
     RrhhNominaListado,
     RrhhNominaDetalle,
-    RrhhDetalleNomina,
+    RrhhNominaEmpleadoRead,
+    RrhhNominaCandidato,
+    RrhhNominaSeleccion,
     RrhhPagoRead,
     RrhhPagoListado,
     RrhhCostoDepartamento,
@@ -61,25 +53,25 @@ from src.dto import (
 )
 from src.models import (
     RrhhNomina,
-    RrhhNominaDeduccion,
-    RrhhNominaBonificacion,
+    RrhhNominaEmpleado,
     RrhhPago,
     RrhhEmpleado,
     RrhhDepartamento,
+    RrhhPuesto,
     RrhhDeduccion,
     RrhhBonificacion,
     RrhhTipoDeduccion,
     RrhhTipoBonificacion,
     RrhhTipoPago,
     RrhhAsistencia,
-    LogEntry,
+    Moneda,
 )
 
 CERO = Decimal("0.00")
 
 
 class RrhhNominaService:
-    """Generación, pago y anulación de nóminas, más su recibo y costo."""
+    """Cabecera del lote, selección de empleados, pagos y costo."""
 
     # ── Resolución en lote ─────────────────────────────────────────────────
 
@@ -99,6 +91,22 @@ class RrhhNominaService:
         )
         return {row[0]: row[1] for row in res.all()}
 
+    async def _puestos_por_id(self, db: AsyncSession, ids) -> dict:
+        if not ids:
+            return {}
+        res = await db.exec(
+            select(RrhhPuesto.id_puesto, RrhhPuesto.nombre).where(
+                RrhhPuesto.id_puesto.in_(ids)
+            )
+        )
+        return {row[0]: row[1] for row in res.all()}
+
+    async def _monedas_por_id(self, db: AsyncSession, ids) -> dict:
+        if not ids:
+            return {}
+        res = await db.exec(select(Moneda).where(Moneda.id_moneda.in_(ids)))
+        return {m.id_moneda: m for m in res.all()}
+
     @staticmethod
     def _nombre_completo(empleado) -> Optional[str]:
         if not empleado:
@@ -106,20 +114,33 @@ class RrhhNominaService:
         return f"{empleado.nombre} {empleado.apellido}".strip()
 
     async def _resolucion_listado(self, db: AsyncSession, filas: List) -> dict:
-        """Carga empleados, departamentos y totales de pago en lote."""
-        empleados = await self._empleados_por_id(db, {f.empleado_id for f in filas})
-        departamentos = await self._departamentos_por_id(
-            db, {e.departamento_id for e in empleados.values() if e.departamento_id}
-        )
-
+        """Carga monedas, totales de detalle y pagos en lote."""
+        monedas = await self._monedas_por_id(db, {f.moneda_id for f in filas})
         nomina_ids = [f.id for f in filas]
+
+        totales: dict[int, tuple] = {}
         pagos_por_nomina: dict[int, tuple] = {}
         if nomina_ids:
             res = await db.exec(
                 select(
+                    RrhhNominaEmpleado.nomina_id,
+                    func.count().label("cantidad"),
+                    func.coalesce(func.sum(RrhhNominaEmpleado.devengado), 0),
+                    func.coalesce(func.sum(RrhhNominaEmpleado.deducciones), 0),
+                    func.coalesce(func.sum(RrhhNominaEmpleado.neto_a_cobrar), 0),
+                )
+                .where(RrhhNominaEmpleado.nomina_id.in_(nomina_ids))
+                .group_by(RrhhNominaEmpleado.nomina_id)
+            )
+            totales = {
+                row[0]: (row[1], row[2], row[3], row[4]) for row in res.all()
+            }
+
+            res = await db.exec(
+                select(
                     RrhhPago.nomina_id,
                     func.count().label("cantidad"),
-                    func.coalesce(func.sum(RrhhPago.monto), 0).label("total"),
+                    func.coalesce(func.sum(RrhhPago.monto), 0),
                 )
                 .where(RrhhPago.nomina_id.in_(nomina_ids))
                 .group_by(RrhhPago.nomina_id)
@@ -127,38 +148,66 @@ class RrhhNominaService:
             pagos_por_nomina = {row[0]: (row[1], row[2]) for row in res.all()}
 
         return {
-            "empleados": empleados,
-            "departamentos": departamentos,
+            "monedas": monedas,
+            "totales": totales,
             "pagos": pagos_por_nomina,
         }
 
     def _construir_listado(self, fila, resolucion: dict) -> RrhhNominaListado:
-        empleado = resolucion["empleados"].get(fila.empleado_id)
-        cantidad, total = resolucion["pagos"].get(fila.id, (0, CERO))
+        moneda = resolucion["monedas"].get(fila.moneda_id)
+        cantidad, devengado, deducciones, neto = resolucion["totales"].get(
+            fila.id, (0, CERO, CERO, CERO)
+        )
+        cantidad_pagos, total_pagado = resolucion["pagos"].get(fila.id, (0, CERO))
         return RrhhNominaListado(
             id=fila.id,
-            empleado_id=fila.empleado_id,
+            descripcion=fila.descripcion,
             periodo=fila.periodo,
             inicio_periodo=fila.inicio_periodo,
             fin_periodo=fila.fin_periodo,
-            salario_base=fila.salario_base,
-            horas_extras=fila.horas_extras,
-            deducciones=fila.deducciones,
-            bonificaciones=fila.bonificaciones,
-            salario_neto=fila.salario_neto,
+            moneda_id=fila.moneda_id,
+            tasa=fila.tasa,
+            porcentaje_impuesto=fila.porcentaje_impuesto,
             estado=fila.estado,
-            empleado_codigo=empleado.codigo_empleado if empleado else None,
-            empleado_nombre=self._nombre_completo(empleado),
-            departamento_nombre=(
-                resolucion["departamentos"].get(empleado.departamento_id)
-                if empleado and empleado.departamento_id
-                else None
-            ),
-            total_pagado=Decimal(str(total)),
-            cantidad_pagos=int(cantidad),
+            moneda_nombre=moneda.nombre if moneda else None,
+            moneda_simbolo=moneda.simbolo if moneda else None,
+            cantidad_empleados=int(cantidad),
+            total_devengado=Decimal(str(devengado)),
+            total_deducciones=Decimal(str(deducciones)),
+            total_neto=Decimal(str(neto)),
+            total_pagado=Decimal(str(total_pagado)),
+            cantidad_pagos=int(cantidad_pagos),
             created_at=fila.created_at,
             updated_at=fila.updated_at,
         )
+
+    # ── Validaciones ───────────────────────────────────────────────────────
+
+    async def _validar_cabecera(self, db: AsyncSession, datos: dict) -> None:
+        inicio = datos.get("inicio_periodo")
+        fin = datos.get("fin_periodo")
+        if inicio is not None and fin is not None and fin < inicio:
+            raise HTTPException(
+                status_code=422,
+                detail="El fin del periodo debe ser posterior o igual al inicio",
+            )
+        moneda_id = datos.get("moneda_id")
+        if moneda_id is not None and not await db.get(Moneda, moneda_id):
+            raise HTTPException(status_code=404, detail="La moneda no existe")
+
+    async def _buscar_o_404(self, db: AsyncSession, id: int) -> RrhhNomina:
+        nomina = await db.get(RrhhNomina, id)
+        if not nomina:
+            raise HTTPException(status_code=404, detail="Nómina no encontrada")
+        return nomina
+
+    @staticmethod
+    def _exigir_pre_nomina(nomina: RrhhNomina, accion: str) -> None:
+        if nomina.estado != "pre_nomina":
+            raise HTTPException(
+                status_code=409,
+                detail=f"La nómina ya está confirmada; no se puede {accion}",
+            )
 
     # ── Lectura ─────────────────────────────────────────────────────────────
 
@@ -167,193 +216,110 @@ class RrhhNominaService:
         db: AsyncSession,
         skip: int = 0,
         limit: int = 100,
-        empleado_id: Optional[int] = None,
         estado: Optional[str] = None,
         desde: Optional[date] = None,
         hasta: Optional[date] = None,
+        buscar: Optional[str] = None,
     ) -> List[RrhhNominaListado]:
         statement = select(RrhhNomina)
-        if empleado_id is not None:
-            statement = statement.where(RrhhNomina.empleado_id == empleado_id)
         if estado:
             statement = statement.where(RrhhNomina.estado == estado)
         if desde is not None:
             statement = statement.where(RrhhNomina.fin_periodo >= desde)
         if hasta is not None:
             statement = statement.where(RrhhNomina.inicio_periodo <= hasta)
-
-        statement = statement.order_by(
-            RrhhNomina.periodo.desc(), RrhhNomina.id
-        ).offset(skip).limit(limit)
-        result = await db.exec(statement)
-        filas = list(result.all())
-        if not filas:
-            return []
-        resolucion = await self._resolucion_listado(db, filas)
-        return [self._construir_listado(f, resolucion) for f in filas]
-
-    async def listar_pagos(
-        self,
-        db: AsyncSession,
-        skip: int = 0,
-        limit: int = 100,
-        nomina_id: Optional[int] = None,
-        empleado_id: Optional[int] = None,
-        metodo_id: Optional[int] = None,
-        desde: Optional[date] = None,
-        hasta: Optional[date] = None,
-    ) -> List[RrhhPagoListado]:
-        """Listado de pagos registrados, con su nómina y empleado resueltos."""
-        statement = select(RrhhPago)
-        if empleado_id is not None:
-            statement = statement.join(
-                RrhhNomina, RrhhPago.nomina_id == RrhhNomina.id
-            ).where(RrhhNomina.empleado_id == empleado_id)
-        if nomina_id is not None:
-            statement = statement.where(RrhhPago.nomina_id == nomina_id)
-        if metodo_id is not None:
-            statement = statement.where(RrhhPago.metodo_id == metodo_id)
-        if desde is not None:
-            statement = statement.where(RrhhPago.fecha_pago >= desde)
-        if hasta is not None:
-            statement = statement.where(RrhhPago.fecha_pago <= hasta)
+        if buscar:
+            statement = statement.where(
+                RrhhNomina.descripcion.ilike(f"%{buscar}%")
+            )
 
         statement = (
-            statement.order_by(RrhhPago.fecha_pago.desc(), RrhhPago.id.desc())
+            statement.order_by(RrhhNomina.periodo.desc(), RrhhNomina.id.desc())
             .offset(skip)
             .limit(limit)
         )
         filas = list((await db.exec(statement)).all())
         if not filas:
             return []
+        resolucion = await self._resolucion_listado(db, filas)
+        return [self._construir_listado(f, resolucion) for f in filas]
 
-        # Resolución en lote: nóminas → empleados → departamentos → métodos.
-        res = await db.exec(
-            select(RrhhNomina).where(RrhhNomina.id.in_({f.nomina_id for f in filas}))
+    async def get(self, db: AsyncSession, id: int) -> RrhhNominaDetalle:
+        fila = await self._buscar_o_404(db, id)
+        resolucion = await self._resolucion_listado(db, [fila])
+        base = self._construir_listado(fila, resolucion)
+        empleados = await self._detalle_empleados(db, [fila])
+        pagos = await self._pagos_de(db, id)
+        return RrhhNominaDetalle(
+            **base.model_dump(),
+            empleados=empleados,
+            pagos=pagos,
         )
-        nominas = {n.id: n for n in res.all()}
+
+    async def _detalle_empleados(
+        self, db: AsyncSession, nominas: List[RrhhNomina]
+    ) -> List[RrhhNominaEmpleadoRead]:
+        nomina_ids = [n.id for n in nominas]
+        res = await db.exec(
+            select(RrhhNominaEmpleado)
+            .where(RrhhNominaEmpleado.nomina_id.in_(nomina_ids))
+            .order_by(RrhhNominaEmpleado.id_nomina_empleado)
+        )
+        filas = list(res.all())
+        if not filas:
+            return []
+
         empleados = await self._empleados_por_id(
-            db, {n.empleado_id for n in nominas.values()}
+            db, {f.empleados_id for f in filas}
+        )
+        puestos = await self._puestos_por_id(
+            db, {e.puesto_id for e in empleados.values() if e.puesto_id}
         )
         departamentos = await self._departamentos_por_id(
             db, {e.departamento_id for e in empleados.values() if e.departamento_id}
         )
-        tipos = await self._tipos_pago(db, {f.metodo_id for f in filas})
 
-        salida: List[RrhhPagoListado] = []
+        salida = []
         for fila in filas:
-            nomina = nominas.get(fila.nomina_id)
-            if not nomina:
-                continue
-            empleado = empleados.get(nomina.empleado_id)
+            empleado = empleados.get(fila.empleados_id)
             salida.append(
-                RrhhPagoListado(
-                    id=fila.id,
-                    nomina_id=fila.nomina_id,
-                    fecha_pago=fila.fecha_pago,
-                    monto=fila.monto,
-                    metodo_id=fila.metodo_id,
-                    metodo_nombre=tipos.get(fila.metodo_id),
-                    referencia=fila.referencia,
-                    observaciones=fila.observaciones,
-                    empleado_id=nomina.empleado_id,
-                    empleado_codigo=empleado.codigo_empleado if empleado else None,
+                RrhhNominaEmpleadoRead(
+                    id_nomina_empleado=fila.id_nomina_empleado,
+                    empleado_id=fila.empleados_id,
+                    empleado_codigo=(
+                        empleado.codigo_empleado if empleado else None
+                    ),
                     empleado_nombre=self._nombre_completo(empleado),
+                    puesto_nombre=(
+                        puestos.get(empleado.puesto_id)
+                        if empleado and empleado.puesto_id
+                        else None
+                    ),
+                    departamento_id=(
+                        empleado.departamento_id if empleado else None
+                    ),
                     departamento_nombre=(
                         departamentos.get(empleado.departamento_id)
                         if empleado and empleado.departamento_id
                         else None
                     ),
-                    periodo=nomina.periodo,
-                    inicio_periodo=nomina.inicio_periodo,
-                    fin_periodo=nomina.fin_periodo,
-                    estado_nomina=nomina.estado,
-                    created_at=fila.created_at,
-                )
-            )
-        return salida
-
-    async def get(self, db: AsyncSession, id: int) -> RrhhNominaDetalle:
-        fila = await db.get(RrhhNomina, id)
-        if not fila:
-            raise HTTPException(status_code=404, detail="Nómina no encontrada")
-
-        resolucion = await self._resolucion_listado(db, [fila])
-        base = self._construir_listado(fila, resolucion)
-
-        deducciones = await self._detalle_movimientos(
-            db, RrhhNominaDeduccion, RrhhNominaDeduccion.deduccion_id, id, "deduccion"
-        )
-        bonificaciones = await self._detalle_movimientos(
-            db,
-            RrhhNominaBonificacion,
-            RrhhNominaBonificacion.bonificacion_id,
-            id,
-            "bonificacion",
-        )
-        pagos = await self._pagos_de(db, id)
-
-        return RrhhNominaDetalle(
-            **base.model_dump(),
-            deducciones_aplicadas=deducciones,
-            bonificaciones_aplicadas=bonificaciones,
-            pagos=pagos,
-        )
-
-    async def _detalle_movimientos(
-        self, db: AsyncSession, modelo_puente, campo_puente, nomina_id: int, clase: str
-    ) -> List[RrhhDetalleNomina]:
-        """Detalle congelado de deducciones/bonificaciones de una nómina."""
-        res = await db.exec(
-            select(modelo_puente).where(modelo_puente.nomina_id == nomina_id)
-        )
-        puentes = list(res.all())
-        if not puentes:
-            return []
-
-        if clase == "deduccion":
-            ids = {p.deduccion_id for p in puentes}
-            res = await db.exec(select(RrhhDeduccion).where(RrhhDeduccion.id_deducciones.in_(ids)))
-            movimientos = {m.id_deducciones: m for m in res.all()}
-            tipo_ids = {m.tipo_deducciones_id for m in movimientos.values()}
-            res = await db.exec(
-                select(RrhhTipoDeduccion).where(RrhhTipoDeduccion.id_tipos_deducciones.in_(tipo_ids))
-            )
-            tipos = {t.id_tipos_deducciones: t for t in res.all()}
-            campo_tipo = "tipo_deducciones_id"
-        else:
-            ids = {p.bonificacion_id for p in puentes}
-            res = await db.exec(
-                select(RrhhBonificacion).where(RrhhBonificacion.id_bonificaciones.in_(ids))
-            )
-            movimientos = {m.id_bonificaciones: m for m in res.all()}
-            tipo_ids = {m.tipo_bonificaciones_id for m in movimientos.values()}
-            res = await db.exec(
-                select(RrhhTipoBonificacion).where(
-                    RrhhTipoBonificacion.id_tipos_bonificaciones.in_(tipo_ids)
-                )
-            )
-            tipos = {t.id_tipos_bonificaciones: t for t in res.all()}
-            campo_tipo = "tipo_bonificaciones_id"
-
-        salida = []
-        for p in puentes:
-            clave = p.deduccion_id if clase == "deduccion" else p.bonificacion_id
-            movimiento = movimientos.get(clave)
-            tipo = tipos.get(getattr(movimiento, campo_tipo)) if movimiento else None
-            salida.append(
-                RrhhDetalleNomina(
-                    tipo_nombre=tipo.nombre if tipo else None,
-                    es_porcentaje=bool(tipo.es_porcentaje) if tipo else False,
-                    valor_original=movimiento.valor if movimiento else None,
-                    monto_aplicado=p.monto_aplicado,
+                    salario_base=fila.salario_base,
+                    horas_extras=fila.horas_extras,
+                    deducciones=fila.deducciones,
+                    bonificaciones=fila.bonificaciones,
+                    salario_neto=fila.salario_neto,
+                    devengado=fila.devengado,
+                    impuesto=fila.impuesto,
+                    neto_a_cobrar=fila.neto_a_cobrar,
                 )
             )
         return salida
 
     async def _pagos_de(self, db: AsyncSession, nomina_id: int) -> List[RrhhPagoRead]:
         res = await db.exec(
-            select(RrhhPago).where(RrhhPago.nomina_id == nomina_id).order_by(RrhhPago.id)
+            select(RrhhPago)
+            .where(RrhhPago.nomina_id == nomina_id)
+            .order_by(RrhhPago.id)
         )
         pagos = list(res.all())
         if not pagos:
@@ -377,299 +343,400 @@ class RrhhNominaService:
     async def _tipos_pago(self, db: AsyncSession, ids) -> dict:
         if not ids:
             return {}
-        res = await db.exec(select(RrhhTipoPago).where(RrhhTipoPago.id_tipo_pago.in_(ids)))
+        res = await db.exec(
+            select(RrhhTipoPago).where(RrhhTipoPago.id_tipo_pago.in_(ids))
+        )
         return {t.id_tipo_pago: t.nombre for t in res.all()}
 
-    # ── Generación ──────────────────────────────────────────────────────────
+    async def listar_pagos(
+        self,
+        db: AsyncSession,
+        skip: int = 0,
+        limit: int = 100,
+        nomina_id: Optional[int] = None,
+        metodo_id: Optional[int] = None,
+        desde: Optional[date] = None,
+        hasta: Optional[date] = None,
+    ) -> List[RrhhPagoListado]:
+        """Pagos registrados; cada pago cubre una nómina completa."""
+        statement = select(RrhhPago)
+        if nomina_id is not None:
+            statement = statement.where(RrhhPago.nomina_id == nomina_id)
+        if metodo_id is not None:
+            statement = statement.where(RrhhPago.metodo_id == metodo_id)
+        if desde is not None:
+            statement = statement.where(RrhhPago.fecha_pago >= desde)
+        if hasta is not None:
+            statement = statement.where(RrhhPago.fecha_pago <= hasta)
 
-    async def generar(self, db: AsyncSession, entrada: RrhhNominaGenerar) -> RrhhNominaGenerada:
-        """Genera las nóminas de un periodo, individual o masivamente.
-
-        Los conceptos definidos en el formulario (`entrada.deducciones` y
-        `entrada.bonificaciones`) se materializan como movimientos por
-        empleado y se aplican a las nóminas de este lote; los movimientos ya
-        registrados que solapan el periodo se aplican además, salvo que
-        `incluir_movimientos_existentes` venga en `False`.
-        """
-        await self._validar_conceptos(db, entrada)
-        empleados = await self._empleados_a_generar(db, entrada)
-        if not empleados:
-            return RrhhNominaGenerada(creadas=0, omitidas=0, detalle=["No hay empleados activos que cumplan los criterios."])
-
-        periodo = entrada.periodo or entrada.fin_periodo
-        extras = await self._extras_por_empleado(db, empleados, entrada)
-
-        creadas, omitidas, detalle = 0, 0, []
-        for empleado in empleados:
-            ya_existe = await self._nomina_existente(
-                db, empleado.id, entrada.inicio_periodo, entrada.fin_periodo
-            )
-            if ya_existe:
-                omitidas += 1
-                detalle.append(f"{self._nombre_completo(empleado)}: ya tiene nómina para ese periodo.")
-                continue
-
-            # Los conceptos solo se crean para los empleados que efectivamente
-            # generan (los omitidos no acumulan movimientos).
-            movimientos = await self._movimientos_de(db, empleado, entrada)
-            nomina = await self._construir_y_persistir(
-                db, empleado, periodo, entrada, extras.get(empleado.id, 0), movimientos
-            )
-            creadas += 1
-            detalle.append(f"{self._nombre_completo(empleado)}: nómina #{nomina.id} por {nomina.salario_neto}.")
-
-        return RrhhNominaGenerada(creadas=creadas, omitidas=omitidas, detalle=detalle)
-
-    async def _empleados_a_generar(self, db: AsyncSession, entrada: RrhhNominaGenerar) -> List:
-        statement = select(RrhhEmpleado).where(RrhhEmpleado.activo == True)  # noqa: E712
-        if entrada.empleado_id is not None:
-            statement = statement.where(RrhhEmpleado.id == entrada.empleado_id)
-        if entrada.departamento_id is not None:
-            statement = statement.where(RrhhEmpleado.departamento_id == entrada.departamento_id)
-        statement = statement.order_by(RrhhEmpleado.id)
-        result = await db.exec(statement)
-        return list(result.all())
-
-    async def _nomina_existente(
-        self, db: AsyncSession, empleado_id: int, inicio: date, fin: date
-    ) -> Optional[RrhhNomina]:
-        result = await db.exec(
-            select(RrhhNomina).where(
-                RrhhNomina.empleado_id == empleado_id,
-                RrhhNomina.inicio_periodo == inicio,
-                RrhhNomina.fin_periodo == fin,
-            )
+        statement = (
+            statement.order_by(RrhhPago.fecha_pago.desc(), RrhhPago.id.desc())
+            .offset(skip)
+            .limit(limit)
         )
-        return result.first()
+        filas = list((await db.exec(statement)).all())
+        if not filas:
+            return []
 
-    async def _extras_por_empleado(
-        self, db: AsyncSession, empleados: List, entrada: RrhhNominaGenerar
-    ) -> dict:
-        """Minutos extras del periodo por empleado, con su tarifa aplicada."""
-        ids = {e.id for e in empleados}
-        por_empleado = {e.id: e for e in empleados}
         res = await db.exec(
-            select(RrhhAsistencia).where(
-                RrhhAsistencia.empleado_id.in_(ids),
-                RrhhAsistencia.fecha >= entrada.inicio_periodo,
-                RrhhAsistencia.fecha <= entrada.fin_periodo,
+            select(RrhhNomina).where(RrhhNomina.id.in_({f.nomina_id for f in filas}))
+        )
+        nominas = {n.id: n for n in res.all()}
+        tipos = await self._tipos_pago(db, {f.metodo_id for f in filas})
+
+        salida: List[RrhhPagoListado] = []
+        for fila in filas:
+            nomina = nominas.get(fila.nomina_id)
+            if not nomina:
+                continue
+            salida.append(
+                RrhhPagoListado(
+                    id=fila.id,
+                    nomina_id=fila.nomina_id,
+                    nomina_descripcion=nomina.descripcion,
+                    fecha_pago=fila.fecha_pago,
+                    monto=fila.monto,
+                    metodo_id=fila.metodo_id,
+                    metodo_nombre=tipos.get(fila.metodo_id),
+                    referencia=fila.referencia,
+                    observaciones=fila.observaciones,
+                    periodo=nomina.periodo,
+                    inicio_periodo=nomina.inicio_periodo,
+                    fin_periodo=nomina.fin_periodo,
+                    estado_nomina=nomina.estado,
+                    created_at=fila.created_at,
+                )
+            )
+        return salida
+
+    # ── Cabecera: alta, edición y borrado ─────────────────────────────────
+
+    async def create(
+        self, db: AsyncSession, entrada: RrhhNominaCreate
+    ) -> RrhhNominaDetalle:
+        datos = entrada.model_dump()
+        await self._validar_cabecera(db, datos)
+        nomina = RrhhNomina(**datos, estado="pre_nomina")
+        db.add(nomina)
+        await db.commit()
+        await db.refresh(nomina)
+        return await self.get(db, nomina.id)
+
+    async def update(
+        self, db: AsyncSession, id: int, entrada: RrhhNominaUpdate
+    ) -> RrhhNominaDetalle:
+        nomina = await self._buscar_o_404(db, id)
+        self._exigir_pre_nomina(nomina, "editar")
+
+        datos = {
+            campo: valor
+            for campo, valor in entrada.model_dump(exclude_unset=True).items()
+            if valor is not None
+        }
+        inicio = datos.get("inicio_periodo", nomina.inicio_periodo)
+        fin = datos.get("fin_periodo", nomina.fin_periodo)
+        await self._validar_cabecera(
+            db,
+            {**datos, "inicio_periodo": inicio, "fin_periodo": fin},
+        )
+
+        for campo, valor in datos.items():
+            setattr(nomina, campo, valor)
+        nomina.updated_at = datetime.now()
+        db.add(nomina)
+        await db.flush()
+
+        # Si cambió el periodo o el porcentaje, los importes del detalle
+        # quedarían viejos: se recalculan con los datos nuevos.
+        if {"inicio_periodo", "fin_periodo", "porcentaje_impuesto"} & set(datos):
+            await self._recalcular_detalle(db, nomina)
+
+        await db.commit()
+        return await self.get(db, id)
+
+    async def eliminar(self, db: AsyncSession, id: int) -> dict:
+        nomina = await self._buscar_o_404(db, id)
+        self._exigir_pre_nomina(nomina, "eliminar")
+        total_pagos = await db.exec(
+            select(func.count())
+            .select_from(RrhhPago)
+            .where(RrhhPago.nomina_id == id)
+        )
+        if (total_pagos.one() or 0) > 0:
+            raise HTTPException(
+                status_code=409,
+                detail="La nómina tiene pagos registrados y no se puede eliminar",
+            )
+        await db.delete(nomina)
+        await db.commit()
+        return {"accion": "eliminado", "motivo": None}
+
+    async def confirmar(self, db: AsyncSession, id: int) -> RrhhNominaDetalle:
+        nomina = await self._buscar_o_404(db, id)
+        self._exigir_pre_nomina(nomina, "confirmar")
+        cantidad = await db.exec(
+            select(func.count())
+            .select_from(RrhhNominaEmpleado)
+            .where(RrhhNominaEmpleado.nomina_id == id)
+        )
+        if (cantidad.one() or 0) == 0:
+            raise HTTPException(
+                status_code=400,
+                detail="Selecciona al menos un empleado antes de confirmar la nómina",
+            )
+        nomina.estado = "nomina"
+        nomina.updated_at = datetime.now()
+        db.add(nomina)
+        await db.commit()
+        return await self.get(db, id)
+
+    # ── Selección de empleados y cálculos ─────────────────────────────────
+
+    async def _empleados_activos(self, db: AsyncSession) -> List[RrhhEmpleado]:
+        res = await db.exec(
+            select(RrhhEmpleado)
+            .where(RrhhEmpleado.activo == True)  # noqa: E712
+            .order_by(RrhhEmpleado.apellido, RrhhEmpleado.nombre)
+        )
+        return list(res.all())
+
+    async def candidatos(
+        self, db: AsyncSession, id: int
+    ) -> List[RrhhNominaCandidato]:
+        """Todos los empleados activos con sus importes calculados."""
+        nomina = await self._buscar_o_404(db, id)
+        empleados = await self._empleados_activos(db)
+        calculos = await self._calcular_para(db, nomina, empleados)
+
+        res = await db.exec(
+            select(RrhhNominaEmpleado).where(
+                RrhhNominaEmpleado.nomina_id == id
             )
         )
-        acumulado: dict[int, int] = {}
-        for marcacion in res.all():
-            empleado = por_empleado.get(marcacion.empleado_id)
-            pactadas = empleado.horas_a_trabajar if empleado else None
-            extra = calcular_horas_extras(
-                marcacion.hora_entrada, marcacion.hora_salida, pactadas
-            )
-            if extra:
-                acumulado[marcacion.empleado_id] = acumulado.get(marcacion.empleado_id, 0) + extra
+        seleccionados = {
+            fila.empleados_id: fila.id_nomina_empleado for fila in res.all()
+        }
 
-        montos: dict[int, Decimal] = {}
+        puestos = await self._puestos_por_id(
+            db, {e.puesto_id for e in empleados if e.puesto_id}
+        )
+        departamentos = await self._departamentos_por_id(
+            db, {e.departamento_id for e in empleados if e.departamento_id}
+        )
+
+        salida = []
         for empleado in empleados:
-            tarifa = tarifa_hora(
-                empleado.salario, empleado.horas_a_trabajar, empleado.dias_a_trabajar
+            valores = calculos[empleado.id]
+            salida.append(
+                RrhhNominaCandidato(
+                    id_nomina_empleado=seleccionados.get(empleado.id),
+                    seleccionado=empleado.id in seleccionados,
+                    empleado_id=empleado.id,
+                    empleado_codigo=empleado.codigo_empleado,
+                    empleado_nombre=self._nombre_completo(empleado),
+                    puesto_nombre=(
+                        puestos.get(empleado.puesto_id)
+                        if empleado.puesto_id
+                        else None
+                    ),
+                    departamento_id=empleado.departamento_id,
+                    departamento_nombre=(
+                        departamentos.get(empleado.departamento_id)
+                        if empleado.departamento_id
+                        else None
+                    ),
+                    **valores,
+                )
             )
-            montos[empleado.id] = monto_horas_extras(acumulado.get(empleado.id, 0), tarifa)
-        return montos
+        return salida
 
-    async def _validar_conceptos(
-        self, db: AsyncSession, entrada: RrhhNominaGenerar
-    ) -> None:
-        """Comprueba los tipos de los conceptos del formulario antes de crear nada."""
-        for clase, conceptos in (
-            ("deduccion", entrada.deducciones),
-            ("bonificacion", entrada.bonificaciones),
-        ):
-            ids = {c.tipo_id for c in conceptos}
-            if not ids:
-                continue
-            if clase == "deduccion":
-                res = await db.exec(
-                    select(RrhhTipoDeduccion).where(
-                        RrhhTipoDeduccion.id_tipos_deducciones.in_(ids)
-                    )
-                )
-                encontrados = {t.id_tipos_deducciones for t in res.all()}
-                etiqueta = "deducción"
-            else:
-                res = await db.exec(
-                    select(RrhhTipoBonificacion).where(
-                        RrhhTipoBonificacion.id_tipos_bonificaciones.in_(ids)
-                    )
-                )
-                encontrados = {t.id_tipos_bonificaciones for t in res.all()}
-                etiqueta = "bonificación"
+    async def guardar_empleados(
+        self, db: AsyncSession, id: int, entrada: RrhhNominaSeleccion
+    ) -> RrhhNominaDetalle:
+        """Fija la selección del lote y recalcula los importes congelados."""
+        nomina = await self._buscar_o_404(db, id)
+        self._exigir_pre_nomina(nomina, "editar la selección de empleados")
 
-            faltantes = sorted(ids - encontrados)
+        ids = sorted(set(entrada.empleado_ids))
+        empleados: List[RrhhEmpleado] = []
+        if ids:
+            res = await db.exec(
+                select(RrhhEmpleado).where(
+                    RrhhEmpleado.id.in_(ids),
+                    RrhhEmpleado.activo == True,  # noqa: E712
+                )
+            )
+            empleados = list(res.all())
+            encontrados = {e.id for e in empleados}
+            faltantes = [i for i in ids if i not in encontrados]
             if faltantes:
                 raise HTTPException(
                     status_code=404,
                     detail=(
-                        f"Tipos de {etiqueta} inexistentes: "
+                        "Empleados inexistentes o inactivos: "
                         f"{', '.join(str(i) for i in faltantes)}"
                     ),
                 )
 
-    async def _movimientos_de(
-        self, db: AsyncSession, empleado, entrada: RrhhNominaGenerar
-    ) -> tuple:
-        """Movimientos que aplican a la nómina que se está generando.
+        calculos = await self._calcular_para(db, nomina, empleados)
 
-        Combina los ya registrados que solapan el periodo (si el formulario no
-        los excluyó) con los conceptos definidos en él.
-        """
-        existentes_d: List = []
-        existentes_b: List = []
-        if entrada.incluir_movimientos_existentes:
-            existentes_d, existentes_b = await self._existentes_por_empleado(
-                db, empleado, entrada
-            )
-
-        conceptos_d = await self._asegurar_conceptos(
-            db, empleado, entrada.deducciones, "deduccion", entrada
-        )
-        conceptos_b = await self._asegurar_conceptos(
-            db, empleado, entrada.bonificaciones, "bonificacion", entrada
-        )
-
-        deducciones = self._fusionar_movimientos(existentes_d, conceptos_d, "deduccion")
-        bonificaciones = self._fusionar_movimientos(
-            existentes_b, conceptos_b, "bonificacion"
-        )
-
-        monto_d = await self._montos_movimientos(db, deducciones, "deduccion", empleado)
-        monto_b = await self._montos_movimientos(db, bonificaciones, "bonificacion", empleado)
-        return (deducciones, bonificaciones, monto_d, monto_b)
-
-    async def _existentes_por_empleado(
-        self, db: AsyncSession, empleado, entrada: RrhhNominaGenerar
-    ) -> tuple:
-        """Deducciones y bonificaciones ya registradas que cubren el periodo."""
-        res_d = await db.exec(
-            select(RrhhDeduccion).where(
-                RrhhDeduccion.empleados_id == empleado.id,
-                RrhhDeduccion.fin_periodo >= entrada.inicio_periodo,
-                RrhhDeduccion.inicio_periodo <= entrada.fin_periodo,
+        res = await db.exec(
+            select(RrhhNominaEmpleado).where(
+                RrhhNominaEmpleado.nomina_id == id
             )
         )
-        res_b = await db.exec(
-            select(RrhhBonificacion).where(
-                RrhhBonificacion.empleados_id == empleado.id,
-                RrhhBonificacion.fin_periodo >= entrada.inicio_periodo,
-                RrhhBonificacion.inicio_periodo <= entrada.fin_periodo,
-            )
-        )
-        return list(res_d.all()), list(res_b.all())
+        existentes = {fila.empleados_id: fila for fila in res.all()}
 
-    async def _asegurar_conceptos(
-        self,
-        db: AsyncSession,
-        empleado,
-        conceptos: List[RrhhConceptoGenerar],
-        clase: str,
-        entrada: RrhhNominaGenerar,
-    ) -> List:
-        """Materializa los conceptos del formulario como movimientos del empleado.
-
-        Si el empleado ya tiene un movimiento equivalente (mismo tipo, mismo
-        valor y periodo solapado) se reutiliza: no se duplica el cobro.
-        """
-        salida: List = []
-        for concepto in conceptos:
-            equivalente = await self._concepto_equivalente(
-                db, empleado.id, concepto, clase, entrada
-            )
-            if equivalente is not None:
-                salida.append(equivalente)
-                continue
-
-            if clase == "deduccion":
-                fila = RrhhDeduccion(
+        for empleado in empleados:
+            valores = calculos[empleado.id]
+            fila = existentes.pop(empleado.id, None)
+            if fila is None:
+                fila = RrhhNominaEmpleado(
+                    nomina_id=id,
                     empleados_id=empleado.id,
-                    tipo_deducciones_id=concepto.tipo_id,
-                    valor=Decimal(concepto.valor),
-                    inicio_periodo=entrada.inicio_periodo,
-                    fin_periodo=entrada.fin_periodo,
+                    **valores,
                 )
             else:
-                fila = RrhhBonificacion(
-                    empleados_id=empleado.id,
-                    tipo_bonificaciones_id=concepto.tipo_id,
-                    valor=Decimal(concepto.valor),
-                    inicio_periodo=entrada.inicio_periodo,
-                    fin_periodo=entrada.fin_periodo,
-                )
+                for campo, valor in valores.items():
+                    setattr(fila, campo, valor)
+                fila.updated_at = datetime.now()
             db.add(fila)
-            # Solo `flush`: el commit lo hace la nómina, así que el movimiento
-            # y su puente se cierran juntos en la misma transacción.
-            await db.flush()
-            salida.append(fila)
+
+        # Los que ya no están seleccionados salen del lote.
+        for fila in existentes.values():
+            await db.delete(fila)
+
+        await db.commit()
+        return await self.get(db, id)
+
+    async def _recalcular_detalle(
+        self, db: AsyncSession, nomina: RrhhNomina
+    ) -> None:
+        """Recalcula los importes de los empleados ya seleccionados."""
+        res = await db.exec(
+            select(RrhhNominaEmpleado).where(
+                RrhhNominaEmpleado.nomina_id == nomina.id
+            )
+        )
+        filas = list(res.all())
+        if not filas:
+            return
+        empleados = await self._empleados_por_id(
+            db, {f.empleados_id for f in filas}
+        )
+        lista = [e for e in empleados.values() if e.activo]
+        calculos = await self._calcular_para(db, nomina, lista)
+        for fila in filas:
+            valores = calculos.get(fila.empleados_id)
+            if valores is None:
+                continue
+            for campo, valor in valores.items():
+                setattr(fila, campo, valor)
+            fila.updated_at = datetime.now()
+            db.add(fila)
+
+    async def _calcular_para(
+        self, db: AsyncSession, nomina: RrhhNomina, empleados: List[RrhhEmpleado]
+    ) -> dict:
+        """Calcula los importes de cada empleado para la cabecera dada."""
+        if not empleados:
+            return {}
+        ids = {e.id for e in empleados}
+
+        # Horas trabajadas y extras del periodo, por empleado.
+        minutos_trabajados: dict[int, int] = {}
+        minutos_extras: dict[int, int] = {}
+        res = await db.exec(
+            select(RrhhAsistencia).where(
+                RrhhAsistencia.empleado_id.in_(ids),
+                RrhhAsistencia.fecha >= nomina.inicio_periodo,
+                RrhhAsistencia.fecha <= nomina.fin_periodo,
+            )
+        )
+        por_id = {e.id: e for e in empleados}
+        for marcacion in res.all():
+            empleado = por_id.get(marcacion.empleado_id)
+            if not empleado:
+                continue
+            trabajados = calcular_horas_trabajadas(
+                marcacion.hora_entrada, marcacion.hora_salida
+            )
+            extras = calcular_horas_extras(
+                marcacion.hora_entrada,
+                marcacion.hora_salida,
+                empleado.horas_a_trabajar,
+            )
+            minutos_trabajados[empleado.id] = (
+                minutos_trabajados.get(empleado.id, 0) + trabajados
+            )
+            minutos_extras[empleado.id] = (
+                minutos_extras.get(empleado.id, 0) + extras
+            )
+
+        bonificaciones = await self._sumar_movimientos(
+            db, nomina, empleados, "bonificacion"
+        )
+        deducciones = await self._sumar_movimientos(
+            db, nomina, empleados, "deduccion"
+        )
+
+        salida = {}
+        for empleado in empleados:
+            tarifa = tarifa_hora(
+                empleado.salario,
+                empleado.horas_a_trabajar,
+                empleado.dias_a_trabajar,
+            )
+            base, extras = pago_por_horas(
+                minutos_trabajados.get(empleado.id, 0),
+                minutos_extras.get(empleado.id, 0),
+                tarifa,
+            )
+            total_bonificaciones = bonificaciones.get(empleado.id, CERO)
+            total_deducciones = deducciones.get(empleado.id, CERO)
+            devengado = redondear(base + extras + total_bonificaciones)
+            impuesto = impuesto_sobre_promedio(
+                devengado, nomina.porcentaje_impuesto
+            )
+            neto = neto_a_cobrar(devengado, impuesto, total_deducciones)
+            salida[empleado.id] = {
+                "salario_base": base,
+                "horas_extras": extras,
+                "deducciones": total_deducciones,
+                "bonificaciones": total_bonificaciones,
+                "salario_neto": neto,
+                "devengado": devengado,
+                "impuesto": impuesto,
+                "neto_a_cobrar": neto,
+            }
         return salida
 
-    async def _concepto_equivalente(
+    async def _sumar_movimientos(
         self,
         db: AsyncSession,
-        empleado_id: int,
-        concepto: RrhhConceptoGenerar,
+        nomina: RrhhNomina,
+        empleados: List[RrhhEmpleado],
         clase: str,
-        entrada: RrhhNominaGenerar,
-    ):
-        """Movimiento ya registrado idéntico (tipo + valor) que solape el periodo."""
-        if clase == "deduccion":
-            statement = (
-                select(RrhhDeduccion)
-                .where(
-                    RrhhDeduccion.empleados_id == empleado_id,
-                    RrhhDeduccion.tipo_deducciones_id == concepto.tipo_id,
-                    RrhhDeduccion.valor == Decimal(concepto.valor),
-                    RrhhDeduccion.fin_periodo >= entrada.inicio_periodo,
-                    RrhhDeduccion.inicio_periodo <= entrada.fin_periodo,
-                )
-                .order_by(RrhhDeduccion.id_deducciones)
+    ) -> dict:
+        """Suma bonificaciones o deducciones del empleado dentro del periodo."""
+        ids = {e.id for e in empleados}
+        if clase == "bonificacion":
+            statement = select(RrhhBonificacion).where(
+                RrhhBonificacion.empleados_id.in_(ids),
+                RrhhBonificacion.fin_periodo >= nomina.inicio_periodo,
+                RrhhBonificacion.inicio_periodo <= nomina.fin_periodo,
             )
         else:
-            statement = (
-                select(RrhhBonificacion)
-                .where(
-                    RrhhBonificacion.empleados_id == empleado_id,
-                    RrhhBonificacion.tipo_bonificaciones_id == concepto.tipo_id,
-                    RrhhBonificacion.valor == Decimal(concepto.valor),
-                    RrhhBonificacion.fin_periodo >= entrada.inicio_periodo,
-                    RrhhBonificacion.inicio_periodo <= entrada.fin_periodo,
-                )
-                .order_by(RrhhBonificacion.id_bonificaciones)
+            statement = select(RrhhDeduccion).where(
+                RrhhDeduccion.empleados_id.in_(ids),
+                RrhhDeduccion.fin_periodo >= nomina.inicio_periodo,
+                RrhhDeduccion.inicio_periodo <= nomina.fin_periodo,
             )
-        result = await db.exec(statement)
-        return result.first()
-
-    @staticmethod
-    def _fusionar_movimientos(existentes: List, conceptos: List, clase: str) -> List:
-        """Une los movimientos existentes con los recién creados, sin duplicar."""
-        campo_pk = "id_deducciones" if clase == "deduccion" else "id_bonificaciones"
-        vistos = {getattr(m, campo_pk) for m in existentes}
-        salida = list(existentes)
-        for movimiento in conceptos:
-            clave = getattr(movimiento, campo_pk)
-            if clave not in vistos:
-                vistos.add(clave)
-                salida.append(movimiento)
-        return salida
-
-    async def _montos_movimientos(
-        self, db: AsyncSession, movimientos: List, clase: str, empleado
-    ) -> dict:
-        """Monto efectivo de cada movimiento, con su tipo resuelto en lote."""
+        movimientos = list((await db.exec(statement)).all())
         if not movimientos:
             return {}
-        if clase == "deduccion":
-            tipo_ids = {m.tipo_deducciones_id for m in movimientos}
-            res = await db.exec(
-                select(RrhhTipoDeduccion).where(RrhhTipoDeduccion.id_tipos_deducciones.in_(tipo_ids))
-            )
-            tipos = {t.id_tipos_deducciones: t for t in res.all()}
-            campo_tipo = "tipo_deducciones_id"
-        else:
+
+        if clase == "bonificacion":
             tipo_ids = {m.tipo_bonificaciones_id for m in movimientos}
             res = await db.exec(
                 select(RrhhTipoBonificacion).where(
@@ -678,72 +745,41 @@ class RrhhNominaService:
             )
             tipos = {t.id_tipos_bonificaciones: t for t in res.all()}
             campo_tipo = "tipo_bonificaciones_id"
-
-        montos = {}
-        for m in movimientos:
-            tipo = tipos.get(getattr(m, campo_tipo))
-            es_porcentaje = bool(tipo.es_porcentaje) if tipo else False
-            montos[id(m)] = monto_aplicado(m.valor, es_porcentaje, empleado.salario)
-        return montos
-
-    async def _construir_y_persistir(
-        self,
-        db: AsyncSession,
-        empleado,
-        periodo: date,
-        entrada: RrhhNominaGenerar,
-        extras: Decimal,
-        movimientos: tuple,
-    ) -> RrhhNomina:
-        deducciones, bonificaciones, monto_d, monto_b = movimientos
-
-        salario_base = empleado.salario if empleado.salario is not None else CERO
-        salario_base = Decimal(salario_base)
-        total_bonificaciones = sum(monto_b.values(), CERO)
-        bruto = salario_base + extras + total_bonificaciones
-
-        # Cota las deducciones al bruto para que el neto no baje de 0.
-        montos_d = [monto_d[id(m)] for m in deducciones] if deducciones else []
-        montos_cotados = cota_deducciones(montos_d, bruto)
-        total_deducciones = sum(montos_cotados, CERO)
-        neto = calcular_neto(bruto, total_deducciones)
-
-        nomina = RrhhNomina(
-            empleado_id=empleado.id,
-            periodo=periodo,
-            inicio_periodo=entrada.inicio_periodo,
-            fin_periodo=entrada.fin_periodo,
-            salario_base=salario_base,
-            horas_extras=extras,
-            deducciones=total_deducciones,
-            bonificaciones=total_bonificaciones,
-            salario_neto=neto,
-            estado="pendiente",
-        )
-        db.add(nomina)
-        await db.flush()
-
-        for movimiento, monto_cotado in zip(deducciones, montos_cotados):
-            db.add(
-                RrhhNominaDeduccion(
-                    nomina_id=nomina.id,
-                    deduccion_id=movimiento.id_deducciones,
-                    monto_aplicado=monto_cotado,
+        else:
+            tipo_ids = {m.tipo_deducciones_id for m in movimientos}
+            res = await db.exec(
+                select(RrhhTipoDeduccion).where(
+                    RrhhTipoDeduccion.id_tipos_deducciones.in_(tipo_ids)
                 )
             )
-        for movimiento in bonificaciones:
-            db.add(
-                RrhhNominaBonificacion(
-                    nomina_id=nomina.id,
-                    bonificacion_id=movimiento.id_bonificaciones,
-                    monto_aplicado=monto_b[id(movimiento)],
-                )
+            tipos = {t.id_tipos_deducciones: t for t in res.all()}
+            campo_tipo = "tipo_deducciones_id"
+
+        por_empleado = {e.id: e for e in empleados}
+        acumulado: dict[int, Decimal] = {}
+        for movimiento in movimientos:
+            empleado = por_empleado.get(movimiento.empleados_id)
+            if not empleado:
+                continue
+            tipo = tipos.get(getattr(movimiento, campo_tipo))
+            monto = monto_aplicado(
+                movimiento.valor,
+                bool(tipo.es_porcentaje) if tipo else False,
+                empleado.salario,
             )
-        await db.commit()
-        await db.refresh(nomina)
-        return nomina
+            acumulado[empleado.id] = (
+                acumulado.get(empleado.id, CERO) + monto
+            )
+        return acumulado
 
     # ── Pagos ───────────────────────────────────────────────────────────────
+
+    async def total_a_pagar(self, db: AsyncSession, nomina_id: int) -> Decimal:
+        res = await db.exec(
+            select(func.coalesce(func.sum(RrhhNominaEmpleado.neto_a_cobrar), 0))
+            .where(RrhhNominaEmpleado.nomina_id == nomina_id)
+        )
+        return Decimal(str(res.one() or 0))
 
     async def pagar(
         self,
@@ -755,24 +791,35 @@ class RrhhNominaService:
         referencia: Optional[str] = None,
         observaciones: Optional[str] = None,
     ) -> RrhhNominaDetalle:
-        """Registra el pago completo de una nómina y la marca como pagada."""
-        nomina = await db.get(RrhhNomina, nomina_id)
-        if not nomina:
-            raise HTTPException(status_code=404, detail="Nómina no encontrada")
-        if nomina.estado == "anulada":
-            raise HTTPException(status_code=409, detail="No se puede pagar una nómina anulada")
-        if nomina.estado == "pagada":
-            raise HTTPException(status_code=409, detail="La nómina ya está pagada")
-
+        """Registra el pago completo del lote (debe estar confirmado)."""
+        nomina = await self._buscar_o_404(db, nomina_id)
+        if nomina.estado != "nomina":
+            raise HTTPException(
+                status_code=409,
+                detail="Confirma la nómina antes de registrar el pago",
+            )
         metodo = await db.get(RrhhTipoPago, metodo_id)
         if not metodo:
-            raise HTTPException(status_code=404, detail="El método de pago no existe")
+            raise HTTPException(
+                status_code=404, detail="El método de pago no existe"
+            )
 
-        esperado = nomina.salario_neto or CERO
+        esperado = await self.total_a_pagar(db, nomina_id)
         if Decimal(monto) != esperado:
             raise HTTPException(
                 status_code=400,
-                detail=f"El monto debe coincidir con el salario neto ({esperado})",
+                detail=f"El monto debe coincidir con el neto total ({esperado})",
+            )
+
+        pagado = await db.exec(
+            select(func.coalesce(func.sum(RrhhPago.monto), 0)).where(
+                RrhhPago.nomina_id == nomina_id
+            )
+        )
+        if Decimal(str(pagado.one() or 0)) > 0:
+            raise HTTPException(
+                status_code=409,
+                detail="Esta nómina ya tiene un pago registrado",
             )
 
         db.add(
@@ -785,53 +832,10 @@ class RrhhNominaService:
                 observaciones=observaciones,
             )
         )
-        nomina.estado = "pagada"
         nomina.updated_at = datetime.now()
         db.add(nomina)
         await db.commit()
         return await self.get(db, nomina_id)
-
-    # ── Anulación ───────────────────────────────────────────────────────────
-
-    async def anular(
-        self, db: AsyncSession, nomina_id: int, usuario_nombre: Optional[str] = None
-    ) -> dict:
-        """Anula una nómina (pendiente o pagada), auditando si ya se pagó."""
-        nomina = await db.get(RrhhNomina, nomina_id)
-        if not nomina:
-            raise HTTPException(status_code=404, detail="Nómina no encontrada")
-        if nomina.estado == "anulada":
-            raise HTTPException(status_code=409, detail="La nómina ya está anulada")
-
-        era_pagada = nomina.estado == "pagada"
-        if era_pagada:
-            db.add(
-                LogEntry(
-                    nivel="WARNING",
-                    tipo="NOMINA",
-                    mensaje=f"Nómina #{nomina.id} anulada tras haber sido pagada",
-                    detalle=(
-                        f"empleado_id={nomina.empleado_id}; neto={nomina.salario_neto}; "
-                        f"periodo={nomina.inicio_periodo} a {nomina.fin_periodo}"
-                    ),
-                    usuario_nombre=usuario_nombre,
-                    status_code=200,
-                )
-            )
-
-        nomina.estado = "anulada"
-        nomina.updated_at = datetime.now()
-        db.add(nomina)
-        await db.commit()
-        return {
-            "accion": "anulada",
-            "era_pagada": era_pagada,
-            "motivo": (
-                "Nómina anulada tras haber sido pagada; queda registrada en la auditoría."
-                if era_pagada
-                else None
-            ),
-        }
 
     # ── Reporte de costo ────────────────────────────────────────────────────
 
@@ -842,31 +846,48 @@ class RrhhNominaService:
         hasta: Optional[date] = None,
         departamento_id: Optional[int] = None,
     ) -> RrhhReporteCosto:
-        """Costo de la nómina por departamento, excluyendo las anuladas."""
-        statement = select(RrhhNomina).where(RrhhNomina.estado != "anulada")
+        """Costo por departamento de las nóminas confirmadas del rango."""
+        statement = (
+            select(RrhhNominaEmpleado, RrhhNomina)
+            .join(RrhhNomina, RrhhNominaEmpleado.nomina_id == RrhhNomina.id)
+            .where(RrhhNomina.estado == "nomina")
+        )
         if desde is not None:
             statement = statement.where(RrhhNomina.fin_periodo >= desde)
         if hasta is not None:
             statement = statement.where(RrhhNomina.inicio_periodo <= hasta)
-        if departamento_id is not None:
-            statement = statement.join(
-                RrhhEmpleado, RrhhNomina.empleado_id == RrhhEmpleado.id
-            ).where(RrhhEmpleado.departamento_id == departamento_id)
 
-        result = await db.exec(statement)
-        filas = list(result.all())
+        filas = list((await db.exec(statement)).all())
         if not filas:
             return RrhhReporteCosto(desde=desde, hasta=hasta)
 
-        empleados = await self._empleados_por_id(db, {f.empleado_id for f in filas})
+        empleados = await self._empleados_por_id(
+            db, {f.RrhhNominaEmpleado.empleados_id for f in filas}
+        )
+        if departamento_id is not None:
+            filas = [
+                f
+                for f in filas
+                if empleados.get(f.RrhhNominaEmpleado.empleados_id)
+                and empleados[f.RrhhNominaEmpleado.empleados_id].departamento_id
+                == departamento_id
+            ]
         departamentos = await self._departamentos_por_id(
             db, {e.departamento_id for e in empleados.values() if e.departamento_id}
         )
 
         grupos: dict = {}
+        nominas_vistas = set()
         for fila in filas:
-            empleado = empleados.get(fila.empleado_id)
-            clave = empleado.departamento_id if empleado and empleado.departamento_id else None
+            detalle = fila.RrhhNominaEmpleado
+            nomina = fila.RrhhNomina
+            nominas_vistas.add(nomina.id)
+            empleado = empleados.get(detalle.empleados_id)
+            clave = (
+                empleado.departamento_id
+                if empleado and empleado.departamento_id
+                else None
+            )
             grupo = grupos.setdefault(
                 clave,
                 {
@@ -879,11 +900,11 @@ class RrhhNominaService:
                 },
             )
             grupo["cantidad"] += 1
-            grupo["salario_base"] += fila.salario_base or CERO
-            grupo["horas_extras"] += fila.horas_extras or CERO
-            grupo["deducciones"] += fila.deducciones or CERO
-            grupo["bonificaciones"] += fila.bonificaciones or CERO
-            grupo["neto"] += fila.salario_neto or CERO
+            grupo["salario_base"] += detalle.salario_base or CERO
+            grupo["horas_extras"] += detalle.horas_extras or CERO
+            grupo["deducciones"] += detalle.deducciones or CERO
+            grupo["bonificaciones"] += detalle.bonificaciones or CERO
+            grupo["neto"] += detalle.neto_a_cobrar or CERO
 
         departamentos_lista = []
         for clave in sorted(grupos, key=lambda k: (k is not None, k or 0)):
@@ -891,7 +912,9 @@ class RrhhNominaService:
             departamentos_lista.append(
                 RrhhCostoDepartamento(
                     departamento_id=clave,
-                    departamento_nombre=departamentos.get(clave, "Sin departamento"),
+                    departamento_nombre=departamentos.get(
+                        clave, "Sin departamento"
+                    ),
                     cantidad_empleados=g["cantidad"],
                     salario_base=g["salario_base"],
                     horas_extras=g["horas_extras"],
@@ -904,12 +927,20 @@ class RrhhNominaService:
         return RrhhReporteCosto(
             desde=desde,
             hasta=hasta,
-            total_salario_base=sum((g["salario_base"] for g in grupos.values()), CERO),
-            total_horas_extras=sum((g["horas_extras"] for g in grupos.values()), CERO),
-            total_deducciones=sum((g["deducciones"] for g in grupos.values()), CERO),
-            total_bonificaciones=sum((g["bonificaciones"] for g in grupos.values()), CERO),
+            total_salario_base=sum(
+                (g["salario_base"] for g in grupos.values()), CERO
+            ),
+            total_horas_extras=sum(
+                (g["horas_extras"] for g in grupos.values()), CERO
+            ),
+            total_deducciones=sum(
+                (g["deducciones"] for g in grupos.values()), CERO
+            ),
+            total_bonificaciones=sum(
+                (g["bonificaciones"] for g in grupos.values()), CERO
+            ),
             total_neto=sum((g["neto"] for g in grupos.values()), CERO),
-            cantidad_nominas=len(filas),
+            cantidad_nominas=len(nominas_vistas),
             departamentos=departamentos_lista,
         )
 

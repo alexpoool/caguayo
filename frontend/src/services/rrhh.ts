@@ -33,6 +33,7 @@ import type {
   RrhhAsistenciaMarcacion,
   RrhhAsistenciaResumenDia,
   RrhhEstadoAsistencia,
+  RrhhEstadoNomina,
   RrhhDeduccionListado,
   RrhhBonificacionListado,
   RrhhDeduccion,
@@ -41,15 +42,14 @@ import type {
   RrhhBonificacionCreate,
   RrhhMovimientoUpdate,
   RrhhConsolidado,
-  RrhhNomina,
   RrhhNominaListado,
   RrhhNominaDetalle,
-  RrhhNominaGenerar,
-  RrhhNominaGenerada,
+  RrhhNominaCreate,
+  RrhhNominaUpdate,
+  RrhhNominaCandidato,
   RrhhPagoInput,
   RrhhPagoListado,
   RrhhReporteCosto,
-  RrhhSolicitud,
   RrhhSolicitudListado,
   RrhhSolicitudCreate,
   RrhhSolicitudAccion,
@@ -421,10 +421,10 @@ export const rrhhService = {
   listarNominas: async (params?: {
     skip?: number;
     limit?: number;
-    empleado_id?: number;
-    estado?: string;
+    estado?: RrhhEstadoNomina;
     desde?: string;
     hasta?: string;
+    buscar?: string;
   }): Promise<RrhhNominaListado[]> => {
     return await apiClient.get('/rrhh/nomina', params);
   },
@@ -433,12 +433,48 @@ export const rrhhService = {
     return await apiClient.get(`/rrhh/nomina/${id}`);
   },
 
-  /** Pagos registrados, con su nómina y empleado resueltos. */
+  crearNomina: async (data: RrhhNominaCreate): Promise<RrhhNominaDetalle> => {
+    return await apiClient.post('/rrhh/nomina', data);
+  },
+
+  /** Edición parcial; el backend solo la permite en `pre_nomina`. */
+  actualizarNomina: async (
+    id: number,
+    data: RrhhNominaUpdate
+  ): Promise<RrhhNominaDetalle> => {
+    return await apiClient.put(`/rrhh/nomina/${id}`, data);
+  },
+
+  /** Solo se puede eliminar una nómina en `pre_nomina`. */
+  eliminarNomina: async (id: number): Promise<{ accion: string }> => {
+    return await apiClient.delete(`/rrhh/nomina/${id}`);
+  },
+
+  /** Confirma el lote (exige al menos un empleado) y lo bloquea. */
+  confirmarNomina: async (id: number): Promise<RrhhNominaDetalle> => {
+    return await apiClient.post(`/rrhh/nomina/${id}/confirmar`, {});
+  },
+
+  /** Todos los empleados activos con su estado de selección en el lote. */
+  candidatosNomina: async (id: number): Promise<RrhhNominaCandidato[]> => {
+    return await apiClient.get(`/rrhh/nomina/${id}/candidatos`);
+  },
+
+  /** Reemplaza la selección de empleados del lote y recalcula los totales. */
+  guardarEmpleadosNomina: async (
+    id: number,
+    empleadoIds: number[]
+  ): Promise<RrhhNominaDetalle> => {
+    return await apiClient.put(`/rrhh/nomina/${id}/empleados`, {
+      empleado_ids: empleadoIds,
+    });
+  },
+
+  /** Pagos registrados, con su nómina resuelta. */
   listarPagos: async (params?: {
     skip?: number;
     limit?: number;
     nomina_id?: number;
-    empleado_id?: number;
     metodo_id?: number;
     desde?: string;
     hasta?: string;
@@ -446,18 +482,8 @@ export const rrhhService = {
     return await apiClient.get('/rrhh/nomina/pagos', params);
   },
 
-  generarNominas: async (data: RrhhNominaGenerar): Promise<RrhhNominaGenerada> => {
-    return await apiClient.post('/rrhh/nomina/generar', data);
-  },
-
   pagarNomina: async (id: number, data: RrhhPagoInput): Promise<RrhhNominaDetalle> => {
     return await apiClient.post(`/rrhh/nomina/${id}/pagar`, data);
-  },
-
-  anularNomina: async (
-    id: number
-  ): Promise<{ accion: string; era_pagada: boolean; motivo: string | null }> => {
-    return await apiClient.post(`/rrhh/nomina/${id}/anular`, {});
   },
 
   reporteCosto: async (params?: {
@@ -474,9 +500,11 @@ export const rrhhService = {
    * Usa `fetch` directamente porque `apiClient` devuelve JSON; aquí la
    * respuesta es un blob, igual que en la exportación de fichas de costo.
    */
-  descargarRecibo: async (id: number): Promise<{ blob: Blob; nombre: string }> => {
+  descargarReciboNomina: async (
+    id: number
+  ): Promise<{ blob: Blob; nombre: string }> => {
     const token = localStorage.getItem('auth_token');
-    const base = (import.meta as any).env.VITE_API_BASE_URL;
+    const base = import.meta.env.VITE_API_BASE_URL;
     const resp = await fetch(`${base}/rrhh/nomina/${id}/recibo`, {
       headers: token ? { Authorization: `Bearer ${token}` } : {},
     });

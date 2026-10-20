@@ -32,10 +32,6 @@ import {
   Building,
   Wallet,
   Lock,
-  Key,
-  CreditCard,
-  Database,
-  MapPin,
   ChevronDown,
   ChevronUp,
   ScrollText,
@@ -109,6 +105,7 @@ import { EmpleadosPage } from './pages/rrhh/EmpleadosPage';
 import { AsistenciaPage } from './pages/rrhh/AsistenciaPage';
 import { MovimientosPage as RrhhMovimientosPage } from './pages/rrhh/MovimientosPage';
 import { NominaPage } from './pages/rrhh/NominaPage';
+import { NominaDetallePage } from './pages/rrhh/NominaDetallePage';
 import { PagosPage } from './pages/rrhh/PagosPage';
 import { SolicitudesPage as RrhhSolicitudesPage } from './pages/rrhh/SolicitudesPage';
 import { EvaluacionesPage } from './pages/rrhh/EvaluacionesPage';
@@ -1206,6 +1203,14 @@ function App() {
                   element={
                     <ProtectedRoute moduloActivo={moduloActivo} currentPath="/rrhh/nomina">
                       <NominaPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/rrhh/nomina/:id"
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/rrhh/nomina">
+                      <NominaDetallePage />
                     </ProtectedRoute>
                   }
                 />

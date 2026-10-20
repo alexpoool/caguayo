@@ -399,50 +399,80 @@ export interface RrhhConsolidado {
 
 // ── Nómina y pagos (Fase 6) ────────────────────────────────────────────────
 
-export type RrhhEstadoNomina = 'pendiente' | 'pagada' | 'anulada';
+/**
+ * Una nómina es un **lote** (cabecera) con un detalle por empleado.
+ * `pre_nomina` es editable; al confirmarla pasa a `nomina` y queda de solo
+ * lectura.
+ */
+export type RrhhEstadoNomina = 'pre_nomina' | 'nomina';
 
-export const ESTADOS_NOMINA: RrhhEstadoNomina[] = ['pendiente', 'pagada', 'anulada'];
+export const ESTADOS_NOMINA: RrhhEstadoNomina[] = ['pre_nomina', 'nomina'];
 
 /** Colores de la insignia de estado de una nómina. */
 export const COLOR_ESTADO_NOMINA: Record<RrhhEstadoNomina, string> = {
-  pendiente: 'bg-amber-100 text-amber-700',
-  pagada: 'bg-green-100 text-green-700',
-  anulada: 'bg-slate-200 text-slate-600',
+  pre_nomina: 'bg-amber-100 text-amber-700',
+  nomina: 'bg-green-100 text-green-700',
 };
 
-export interface RrhhNomina {
+/** Etiquetas visibles de los estados de una nómina. */
+export const ETIQUETA_ESTADO_NOMINA: Record<RrhhEstadoNomina, string> = {
+  pre_nomina: 'Pre-nómina',
+  nomina: 'Nómina',
+};
+
+export interface RrhhNominaListado {
   id: number;
-  empleado_id: number;
+  descripcion: string;
   periodo: string;
   inicio_periodo: string;
   fin_periodo: string;
-  salario_base: number | string;
-  horas_extras: number | string;
-  deducciones: number | string;
-  bonificaciones: number | string;
-  salario_neto: number | string | null;
+  moneda_id: number;
+  tasa: number | string;
+  porcentaje_impuesto: number | string;
   estado: RrhhEstadoNomina;
+  moneda_nombre: string | null;
+  moneda_simbolo: string | null;
+  cantidad_empleados: number;
+  total_devengado: number | string;
+  total_deducciones: number | string;
+  total_neto: number | string;
+  total_pagado: number | string;
+  cantidad_pagos: number;
   created_at?: string;
   updated_at?: string;
 }
 
-export interface RrhhNominaListado extends RrhhNomina {
+/** Fila del detalle: los cálculos de un empleado dentro del lote. */
+export interface RrhhNominaEmpleadoRead {
+  id_nomina_empleado: number;
+  empleado_id: number;
   empleado_codigo: string | null;
   empleado_nombre: string | null;
+  puesto_nombre: string | null;
+  departamento_id: number | null;
   departamento_nombre: string | null;
-  total_pagado: number | string;
-  cantidad_pagos: number;
+  salario_base: number | string;
+  horas_extras: number | string;
+  deducciones: number | string;
+  bonificaciones: number | string;
+  /** Alias de `neto_a_cobrar`; no se muestran ambos. */
+  salario_neto: number | string;
+  devengado: number | string;
+  impuesto: number | string;
+  neto_a_cobrar: number | string;
 }
 
-/** Una deducción/bonificación congelada en la nómina. */
-export interface RrhhDetalleNomina {
-  tipo_nombre: string | null;
-  es_porcentaje: boolean;
-  valor_original: number | string | null;
-  monto_aplicado: number | string;
-}
+/** Empleado activo ofrecido por el selector de la pre-nómina. */
+export type RrhhNominaCandidato = Omit<
+  RrhhNominaEmpleadoRead,
+  'id_nomina_empleado'
+> & {
+  /** `null` si todavía no forma parte del lote. */
+  id_nomina_empleado: number | null;
+  seleccionado: boolean;
+};
 
-export interface RrhhPago {
+export interface RrhhPagoRead {
   id: number;
   nomina_id: number;
   metodo_id: number;
@@ -455,34 +485,22 @@ export interface RrhhPago {
 }
 
 export interface RrhhNominaDetalle extends RrhhNominaListado {
-  deducciones_aplicadas: RrhhDetalleNomina[];
-  bonificaciones_aplicadas: RrhhDetalleNomina[];
-  pagos: RrhhPago[];
+  empleados: RrhhNominaEmpleadoRead[];
+  pagos: RrhhPagoRead[];
 }
 
-/** Un concepto (tipo del catálogo + valor) definido en el formulario. */
-export interface RrhhConceptoGenerar {
-  tipo_id: number;
-  valor: number | string;
-}
-
-export interface RrhhNominaGenerar {
+/** Cabecera del alta de una nómina (nace en `pre_nomina`). */
+export interface RrhhNominaCreate {
+  descripcion: string;
+  periodo: string;
   inicio_periodo: string;
   fin_periodo: string;
-  empleado_id?: number | null;
-  departamento_id?: number | null;
-  periodo?: string | null;
-  deducciones?: RrhhConceptoGenerar[];
-  bonificaciones?: RrhhConceptoGenerar[];
-  /** Aplica también los movimientos ya registrados (por defecto sí). */
-  incluir_movimientos_existentes?: boolean;
+  moneda_id: number;
+  tasa: number;
+  porcentaje_impuesto: number;
 }
 
-export interface RrhhNominaGenerada {
-  creadas: number;
-  omitidas: number;
-  detalle: string[];
-}
+export type RrhhNominaUpdate = Partial<RrhhNominaCreate>;
 
 export interface RrhhPagoInput {
   metodo_id: number;
@@ -492,20 +510,17 @@ export interface RrhhPagoInput {
   observaciones?: string | null;
 }
 
-/** Fila del listado de pagos, con su nómina y empleado resueltos. */
+/** Fila del listado de pagos, con su nómina resuelta. */
 export interface RrhhPagoListado {
   id: number;
   nomina_id: number;
+  nomina_descripcion: string | null;
   fecha_pago: string;
   monto: number | string;
   metodo_id: number;
   metodo_nombre: string | null;
   referencia: string | null;
   observaciones: string | null;
-  empleado_id: number;
-  empleado_codigo: string | null;
-  empleado_nombre: string | null;
-  departamento_nombre: string | null;
   periodo: string;
   inicio_periodo: string;
   fin_periodo: string;

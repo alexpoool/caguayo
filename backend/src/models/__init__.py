@@ -57,12 +57,7 @@ from .rrhh_deducciones import RrhhDeduccion, RrhhBonificacion
 from .rrhh_asistencia import RrhhAsistencia
 from .rrhh_evaluacion import RrhhEvaluacion, RrhhObjetivo, RrhhEvaluacionObjetivo
 from .rrhh_solicitud import RrhhSolicitud
-from .rrhh_nomina import (
-    RrhhNomina,
-    RrhhNominaDeduccion,
-    RrhhNominaBonificacion,
-    RrhhPago,
-)
+from .rrhh_nomina import RrhhNomina, RrhhNominaEmpleado, RrhhPago
 from .servicio import (
     Servicio,
     SolicitudServicio,
@@ -179,7 +174,6 @@ __all__ = [
     "RrhhEvaluacionObjetivo",
     "RrhhSolicitud",
     "RrhhNomina",
-    "RrhhNominaDeduccion",
-    "RrhhNominaBonificacion",
+    "RrhhNominaEmpleado",
     "RrhhPago",
 ]

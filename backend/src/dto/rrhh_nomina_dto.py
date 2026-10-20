@@ -1,14 +1,19 @@
-"""DTOs del submódulo RRHH — Nómina y pagos (Fase 6).
+"""DTOs del submódulo RRHH — Nómina y pagos (Fase 6 v2).
 
-La nómina congela en el momento de la generación el salario base, las horas
-extras, y el detalle exacto de deducciones y bonificaciones que se le
-aplicaron (en las tablas puente `nomina_deducciones`/`nomina_bonificaciones`,
-con el `monto_aplicado` congelado). A partir de ese momento los importes son
-inmutables: la única transición posible es pagarlas o anularlas.
+La nómina es una **cabecera de lote** (`descripcion`, `periodo`, rango,
+moneda, tasa y porcentaje de impuesto) y el detalle por empleado vive en
+`nomina_empleados` con los importes congelados al guardar la selección.
 
-El `salario_neto` nunca es negativo: las deducciones se cotan al bruto en la
-generación, así que un préstamo demasiado grande no deja al empleado con nómina
-en negativo.
+Cálculos (decididos):
+
+- `A cobrar` = horas trabajadas del periodo (extras incluidas) × tarifa
+  horaria derivada del salario mensual. Se reparte en `salario_base` (horas
+  ordinarias) + `horas_extras` (dinero de las extras).
+- `bonificaciones` / `deducciones` = suma de los movimientos del empleado que
+  solapan el periodo de la nómina.
+- `devengado` = A cobrar + bonificaciones.
+- `impuesto` = max(0, devengado − salario promedio) × porcentaje / 100.
+- `neto_a_cobrar` = devengado − impuesto − deducciones (nunca negativo).
 """
 
 from datetime import date, datetime
@@ -18,38 +23,53 @@ from typing import Optional
 from pydantic import field_validator
 from sqlmodel import Field, SQLModel
 
-ESTADOS_NOMINA = ("pendiente", "pagada", "anulada")
+ESTADOS_NOMINA = ("pre_nomina", "nomina")
 
 
-class RrhhConceptoGenerar(SQLModel):
-    """Un concepto (tipo del catálogo + valor) definido en el formulario.
+class RrhhNominaEmpleadoBase(SQLModel):
+    """Importes congelados de un empleado dentro de la nómina."""
 
-    Cada concepto se materializa como un movimiento por empleado al generar
-    (decidido: se crean/reusan registros reales en `deducciones` /
-    `bonificaciones`, que es lo que la tabla puente exige para trazabilidad).
+    empleado_id: int
+    salario_base: Decimal = Field(decimal_places=2, max_digits=12, ge=0)
+    horas_extras: Decimal = Field(decimal_places=2, max_digits=12, ge=0)
+    deducciones: Decimal = Field(decimal_places=2, max_digits=12, ge=0)
+    bonificaciones: Decimal = Field(decimal_places=2, max_digits=12, ge=0)
+    salario_neto: Decimal = Field(decimal_places=2, max_digits=12, ge=0)
+    devengado: Decimal = Field(decimal_places=2, max_digits=12, ge=0)
+    impuesto: Decimal = Field(decimal_places=2, max_digits=12, ge=0)
+    neto_a_cobrar: Decimal = Field(decimal_places=2, max_digits=12, ge=0)
+
+
+class RrhhNominaEmpleadoRead(RrhhNominaEmpleadoBase):
+    id_nomina_empleado: int
+    empleado_codigo: Optional[str] = None
+    empleado_nombre: Optional[str] = None
+    puesto_nombre: Optional[str] = None
+    departamento_id: Optional[int] = None
+    departamento_nombre: Optional[str] = None
+
+
+class RrhhNominaCandidato(RrhhNominaEmpleadoRead):
+    """Empleado activo con sus importes calculados para esta nómina.
+
+    `seleccionado` indica si ya forma parte del lote. `id_nomina_empleado`
+    es `None` mientras no se haya guardado.
     """
 
-    tipo_id: int = Field(ge=1)
-    valor: Decimal = Field(decimal_places=2, max_digits=10, ge=0)
+    id_nomina_empleado: Optional[int] = None
+    seleccionado: bool = False
 
 
-class RrhhNominaGenerar(SQLModel):
-    """Entrada de la generación individual o masiva de nóminas."""
-
+class RrhhNominaBase(SQLModel):
+    descripcion: str = Field(min_length=1, max_length=200)
+    periodo: date
     inicio_periodo: date
     fin_periodo: date
-    # Sin empleado ni departamento: se genera para todos los activos.
-    empleado_id: Optional[int] = None
-    departamento_id: Optional[int] = None
-    # Fecha que identifica al periodo en la columna `nomina.periodo`.
-    periodo: Optional[date] = None
-    # Conceptos definidos en el propio formulario de generación; se aplican
-    # a todas las nóminas del lote (repetibles: son una lista).
-    deducciones: list[RrhhConceptoGenerar] = Field(default_factory=list)
-    bonificaciones: list[RrhhConceptoGenerar] = Field(default_factory=list)
-    # Los movimientos ya registrados que solapan el periodo se aplican por
-    # defecto; con `False` solo aplican los conceptos definidos arriba.
-    incluir_movimientos_existentes: bool = True
+    moneda_id: int = Field(ge=1)
+    tasa: Decimal = Field(default=Decimal("1.0000"), decimal_places=4, max_digits=12, ge=0)
+    porcentaje_impuesto: Decimal = Field(
+        default=Decimal("0.00"), decimal_places=2, max_digits=5, ge=0, le=100
+    )
 
     @field_validator("fin_periodo")
     @classmethod
@@ -60,17 +80,53 @@ class RrhhNominaGenerar(SQLModel):
         return v
 
 
-class RrhhNominaGenerada(SQLModel):
-    """Resultado de una generación: qué se creó y qué se omitió."""
+class RrhhNominaCreate(RrhhNominaBase):
+    pass
 
-    creadas: int = 0
-    omitidas: int = 0
-    detalle: list[str] = Field(default_factory=list)
+
+class RrhhNominaUpdate(SQLModel):
+    """Edición parcial de la cabecera (solo en `pre_nomina`)."""
+
+    descripcion: Optional[str] = Field(default=None, min_length=1, max_length=200)
+    periodo: Optional[date] = None
+    inicio_periodo: Optional[date] = None
+    fin_periodo: Optional[date] = None
+    moneda_id: Optional[int] = Field(default=None, ge=1)
+    tasa: Optional[Decimal] = Field(default=None, decimal_places=4, max_digits=12, ge=0)
+    porcentaje_impuesto: Optional[Decimal] = Field(
+        default=None, decimal_places=2, max_digits=5, ge=0, le=100
+    )
+
+
+class RrhhNominaRead(RrhhNominaBase):
+    id: int
+    estado: str
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+
+
+class RrhhNominaListado(RrhhNominaRead):
+    """Fila del listado, con totales del lote y de sus pagos."""
+
+    moneda_nombre: Optional[str] = None
+    moneda_simbolo: Optional[str] = None
+    cantidad_empleados: int = 0
+    total_devengado: Decimal = Decimal("0.00")
+    total_deducciones: Decimal = Decimal("0.00")
+    total_neto: Decimal = Decimal("0.00")
+    total_pagado: Decimal = Decimal("0.00")
+    cantidad_pagos: int = 0
+
+
+class RrhhNominaSeleccion(SQLModel):
+    """Empleados elegidos para el lote; el servidor recalcula sus importes."""
+
+    empleado_ids: list[int] = Field(default_factory=list)
 
 
 class RrhhPagoBase(SQLModel):
     metodo_id: int
-    monto: Decimal = Field(decimal_places=2, max_digits=10, gt=0)
+    monto: Decimal = Field(decimal_places=2, max_digits=12, gt=0)
     fecha_pago: Optional[date] = None
     referencia: Optional[str] = Field(default=None, max_length=50)
     observaciones: Optional[str] = None
@@ -85,21 +141,17 @@ class RrhhPagoRead(RrhhPagoBase):
 
 
 class RrhhPagoListado(SQLModel):
-    """Fila del listado de pagos, con su nómina y su empleado resueltos."""
+    """Fila del listado de pagos: el pago cubre la nómina completa."""
 
     id: int
     nomina_id: int
+    nomina_descripcion: Optional[str] = None
     fecha_pago: date
     monto: Decimal
     metodo_id: int
     metodo_nombre: Optional[str] = None
     referencia: Optional[str] = None
     observaciones: Optional[str] = None
-    empleado_id: int
-    empleado_codigo: Optional[str] = None
-    empleado_nombre: Optional[str] = None
-    departamento_nombre: Optional[str] = None
-    # Datos de la nómina a la que pertenece el pago.
     periodo: date
     inicio_periodo: date
     fin_periodo: date
@@ -107,52 +159,10 @@ class RrhhPagoListado(SQLModel):
     created_at: Optional[datetime] = None
 
 
-class RrhhDetalleNomina(SQLModel):
-    """Una deducción o bonificación congelada en una nómina."""
-
-    tipo_nombre: Optional[str] = None
-    es_porcentaje: bool = False
-    valor_original: Optional[Decimal] = None
-    monto_aplicado: Decimal
-
-
-class RrhhNominaBase(SQLModel):
-    empleado_id: int
-    periodo: date
-    inicio_periodo: date
-    fin_periodo: date
-    salario_base: Decimal
-    horas_extras: Decimal
-    deducciones: Decimal
-    bonificaciones: Decimal
-    salario_neto: Optional[Decimal] = None
-    estado: str
-
-
-class RrhhNominaRead(RrhhNominaBase):
-    id: int
-    created_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
-
-
-class RrhhNominaListado(RrhhNominaBase):
-    """Fila del listado, con el empleado resueltoy el estado de sus pagos."""
-
-    id: int
-    empleado_codigo: Optional[str] = None
-    empleado_nombre: Optional[str] = None
-    departamento_nombre: Optional[str] = None
-    total_pagado: Decimal = Decimal("0.00")
-    cantidad_pagos: int = 0
-    created_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
-
-
 class RrhhNominaDetalle(RrhhNominaListado):
-    """Detalle completo para la vista de una nómina y su recibo."""
+    """Cabecera con el detalle por empleado y los pagos registrados."""
 
-    deducciones_aplicadas: list[RrhhDetalleNomina] = Field(default_factory=list)
-    bonificaciones_aplicadas: list[RrhhDetalleNomina] = Field(default_factory=list)
+    empleados: list[RrhhNominaEmpleadoRead] = Field(default_factory=list)
     pagos: list[RrhhPagoRead] = Field(default_factory=list)
 
 
@@ -184,17 +194,19 @@ class RrhhReporteCosto(SQLModel):
 
 __all__ = [
     "ESTADOS_NOMINA",
-    "RrhhConceptoGenerar",
-    "RrhhNominaGenerar",
-    "RrhhNominaGenerada",
-    "RrhhPagoBase",
-    "RrhhPagoRead",
-    "RrhhPagoListado",
-    "RrhhDetalleNomina",
+    "RrhhNominaEmpleadoBase",
+    "RrhhNominaEmpleadoRead",
+    "RrhhNominaCandidato",
     "RrhhNominaBase",
+    "RrhhNominaCreate",
+    "RrhhNominaUpdate",
     "RrhhNominaRead",
     "RrhhNominaListado",
     "RrhhNominaDetalle",
+    "RrhhNominaSeleccion",
+    "RrhhPagoBase",
+    "RrhhPagoRead",
+    "RrhhPagoListado",
     "RrhhCostoDepartamento",
     "RrhhReporteCosto",
 ]
