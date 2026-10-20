@@ -12,7 +12,6 @@ import {
   ArrowLeft,
   Check,
   ClipboardCheck,
-  FileText,
   Loader2,
   MessageSquare,
   Pencil,
@@ -342,13 +341,12 @@ export function EvaluacionDetallePage() {
           ) : (
             <div className="overflow-hidden rounded-lg border border-slate-200">
               {/* Cabecera de columnas (solo pantallas medianas+) */}
-              <div className="hidden gap-3 border-b border-slate-200 bg-slate-50 px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500 md:grid md:grid-cols-[auto_minmax(0,1.5fr)_auto_5rem_10rem_2.5rem] md:items-center">
+              <div className="hidden gap-3 border-b border-slate-200 bg-slate-50 px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500 md:grid md:grid-cols-[auto_minmax(0,1.5fr)_auto_5rem_2.5rem_2.5rem] md:items-center">
                 <span className="w-4" />
                 <span>Objetivo</span>
                 <span>Puntuación</span>
                 <span>Peso</span>
-                <span>Acciones</span>
-                <span className="text-right">Quitar</span>
+                <span className="text-center md:col-span-2">Acciones</span>
               </div>
 
               <div className="divide-y divide-slate-100">
@@ -702,26 +700,10 @@ function FilaObjetivo({
   const editables = obj.seleccionado && obj.fila_id !== null;
 
   const [peso, setPeso] = useState(String(Number(obj.peso)));
-  /** Editor de texto largo abierto en el modal (o `null` si está cerrado). */
-  const [editor, setEditor] = useState<'valoracion' | 'recomendaciones' | null>(
-    null,
-  );
+  /** `true` con el modal de notas (valoración + recomendaciones) abierto. */
+  const [editor, setEditor] = useState(false);
 
   useEffect(() => setPeso(String(Number(obj.peso))), [obj.peso]);
-
-  const guardarValoracion = (texto: string) => {
-    if (!editables) return;
-    const nuevo = texto.trim();
-    if (nuevo === (obj.valoracion ?? '').trim()) return;
-    onGuardarFila({ valoracion: nuevo || null });
-  };
-
-  const guardarRecomendaciones = (texto: string) => {
-    if (!editables) return;
-    const nuevo = texto.trim();
-    if (nuevo === (obj.recomendaciones ?? '').trim()) return;
-    onGuardarFila({ recomendaciones: nuevo || null });
-  };
 
   const guardarPeso = () => {
     if (!editables) return;
@@ -744,13 +726,13 @@ function FilaObjetivo({
     // Solo cierra si el guardado lo pidió el botón del modal (no un `onBlur`).
     if (guardado && cerrarAlGuardar.current) {
       cerrarAlGuardar.current = false;
-      setEditor(null);
+      setEditor(false);
     }
   }, [guardado]);
 
   return (
     <>
-      <div className="flex flex-wrap items-start gap-3 px-4 py-3 transition-colors hover:bg-slate-50/70 md:grid md:grid-cols-[auto_minmax(0,1.5fr)_auto_5rem_10rem_2.5rem] md:items-center md:gap-3">
+      <div className="flex flex-wrap items-start gap-3 px-4 py-3 transition-colors hover:bg-slate-50/70 md:grid md:grid-cols-[auto_minmax(0,1.5fr)_auto_5rem_2.5rem_2.5rem] md:items-center md:gap-3">
         {/* Selección (único control activo también en filas no seleccionadas) */}
         <input
           type="checkbox"
@@ -831,52 +813,36 @@ function FilaObjetivo({
           )}
         </div>
 
-        {/* Acciones: abren el editor de la valoración o las recomendaciones */}
+        {/* Acciones: abre el editor de valoración y recomendaciones */}
         <div
-          className={`flex w-40 shrink-0 flex-col gap-1.5 ${obj.seleccionado ? '' : 'opacity-40 pointer-events-none'}`}
+          className={`flex items-center justify-end md:justify-center ${obj.seleccionado ? '' : 'opacity-40 pointer-events-none'}`}
         >
-          <button
-            type="button"
+          <Button
+            variant="ghost"
+            size="icon"
             disabled={!editables}
-            onClick={() => setEditor('valoracion')}
+            onClick={() => setEditor(true)}
+            aria-label="Valoración y recomendaciones"
             title={
-              obj.valoracion
-                ? `Valoración: ${obj.valoracion}`
-                : 'Añadir valoración'
+              obj.valoracion || obj.recomendaciones
+                ? [
+                    obj.valoracion ? `Valoración: ${obj.valoracion}` : null,
+                    obj.recomendaciones
+                      ? `Recomendaciones: ${obj.recomendaciones}`
+                      : null,
+                  ]
+                    .filter(Boolean)
+                    .join(' — ')
+                : 'Añadir valoración y recomendaciones'
             }
-            className={`inline-flex w-full items-center gap-1.5 rounded-md border px-2 py-1.5 text-xs font-medium transition-colors disabled:cursor-not-allowed ${
-              obj.valoracion
-                ? 'border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100'
-                : 'border-slate-300 text-slate-600 hover:bg-slate-50'
+            className={`h-8 w-8 ${
+              obj.valoracion || obj.recomendaciones
+                ? 'text-sky-600 hover:bg-sky-50'
+                : 'text-slate-400 hover:bg-slate-50'
             }`}
           >
-            <MessageSquare className="h-3.5 w-3.5 shrink-0" />
-            Valoración
-            {obj.valoracion && (
-              <span className="ml-auto h-1.5 w-1.5 shrink-0 rounded-full bg-sky-500" aria-hidden />
-            )}
-          </button>
-          <button
-            type="button"
-            disabled={!editables}
-            onClick={() => setEditor('recomendaciones')}
-            title={
-              obj.recomendaciones
-                ? `Recomendaciones: ${obj.recomendaciones}`
-                : 'Añadir recomendaciones'
-            }
-            className={`inline-flex w-full items-center gap-1.5 rounded-md border px-2 py-1.5 text-xs font-medium transition-colors disabled:cursor-not-allowed ${
-              obj.recomendaciones
-                ? 'border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100'
-                : 'border-slate-300 text-slate-600 hover:bg-slate-50'
-            }`}
-          >
-            <FileText className="h-3.5 w-3.5 shrink-0" />
-            Recomendaciones
-            {obj.recomendaciones && (
-              <span className="ml-auto h-1.5 w-1.5 shrink-0 rounded-full bg-sky-500" aria-hidden />
-            )}
-          </button>
+            <MessageSquare className="h-4 w-4" />
+          </Button>
         </div>
 
         {/* Quitar de la evaluación */}
@@ -900,24 +866,19 @@ function FilaObjetivo({
         </div>
       </div>
 
-      {/* Editor de la valoración o las recomendaciones de la fila */}
-      {editor !== null && (
-        <ModalTextoFila
-          key={editor}
-          titulo={editor === 'recomendaciones' ? 'Recomendaciones' : 'Valoración'}
+      {/* Editor de la valoración y las recomendaciones de la fila */}
+      {editor && (
+        <ModalNotasFila
           objetivo={obj.nombre}
-          valor={
-            (editor === 'recomendaciones'
-              ? obj.recomendaciones
-              : obj.valoracion) ?? ''
-          }
+          valoracion={obj.valoracion ?? ''}
+          recomendaciones={obj.recomendaciones ?? ''}
           guardando={guardando}
-          onGuardar={(texto) => {
+          onGuardar={(data) => onGuardarFila(data)}
+          onConfirmar={(data) => {
             cerrarAlGuardar.current = true;
-            if (editor === 'recomendaciones') guardarRecomendaciones(texto);
-            else guardarValoracion(texto);
+            onGuardarFila(data);
           }}
-          onCerrar={() => setEditor(null)}
+          onCerrar={() => setEditor(false)}
         />
       )}
     </>
@@ -925,45 +886,73 @@ function FilaObjetivo({
 }
 
 /**
- * Editor en modal de un texto largo de la fila (valoración o recomendaciones).
- * Se monta al abrir (así toma el texto actual) y se desmonta al cerrar.
- * Guárdalo con «Guardar» (el modal se cierra al confirmarse) o simplemente
- * saliendo del campo: al cerrar con la X o con el fondo no se pierde lo escrito.
+ * Editor en modal de las notas de la fila: **valoración y recomendaciones**
+ * apiladas, cada una con su etiqueta. Se monta al abrir (así toma el texto
+ * actual) y se desmonta al cerrar. «Guardar» envía en una sola petición los
+ * campos que cambiaron y cierra al confirmarse; salir de un campo (`onBlur`)
+ * también guarda lo escrito, sin cerrar.
  */
-function ModalTextoFila({
-  titulo,
+function ModalNotasFila({
   objetivo,
-  valor,
+  valoracion,
+  recomendaciones,
   guardando,
   onGuardar,
+  onConfirmar,
   onCerrar,
 }: {
-  /** «Valoración» o «Recomendaciones». */
-  titulo: string;
   /** Nombre del objetivo, se muestra como subtítulo. */
   objetivo: string;
-  valor: string;
+  valoracion: string;
+  recomendaciones: string;
   guardando: boolean;
-  onGuardar: (texto: string) => void;
+  /** Guarda lo cambiado sin cerrar (se llama al salir de un campo). */
+  onGuardar: (data: RrhhEvaluacionObjetivoUpdate) => void;
+  /** «Guardar»: guarda y el padre cierra el modal cuando confirma. */
+  onConfirmar: (data: RrhhEvaluacionObjetivoUpdate) => void;
   onCerrar: () => void;
 }) {
-  const [texto, setTexto] = useState(valor);
-  const areaRef = useRef<HTMLTextAreaElement>(null);
+  const [valoracionTexto, setValoracionTexto] = useState(valoracion);
+  const [recomendacionesTexto, setRecomendacionesTexto] =
+    useState(recomendaciones);
+  const valoracionRef = useRef<HTMLTextAreaElement>(null);
 
-  // Autofoco al abrir.
+  // Autofoco en la valoración al abrir.
   useEffect(() => {
-    const t = setTimeout(() => areaRef.current?.focus(), 0);
+    const t = setTimeout(() => valoracionRef.current?.focus(), 0);
     return () => clearTimeout(t);
   }, []);
 
+  /** Campos cuyo texto difiere del guardado (vacío se normaliza a `null`). */
+  const cambios = (): RrhhEvaluacionObjetivoUpdate => {
+    const data: RrhhEvaluacionObjetivoUpdate = {};
+    if (valoracionTexto.trim() !== valoracion.trim()) {
+      data.valoracion = valoracionTexto.trim() || null;
+    }
+    if (recomendacionesTexto.trim() !== recomendaciones.trim()) {
+      data.recomendaciones = recomendacionesTexto.trim() || null;
+    }
+    return data;
+  };
+
+  /** Al perder el foco, guarda lo cambiado sin cerrar el modal. */
+  const guardarAlSalir = () => {
+    const data = cambios();
+    if (Object.keys(data).length > 0) onGuardar(data);
+  };
+
   const guardar = () => {
+    const data = cambios();
     // Sin cambios: no hay nada que guardar, se cierra directamente.
-    if (texto.trim() === valor.trim()) {
+    if (Object.keys(data).length === 0) {
       onCerrar();
       return;
     }
-    onGuardar(texto);
+    onConfirmar(data);
   };
+
+  const areaClass =
+    'w-full resize-y rounded-lg border border-slate-300 px-3 py-2 text-sm transition-all duration-200 focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500';
 
   return (
     <Modal
@@ -976,7 +965,9 @@ function ModalTextoFila({
           <MessageSquare className="h-5 w-5 text-white" />
         </div>
         <div className="min-w-0">
-          <h2 className="text-lg font-bold text-gray-900">{titulo}</h2>
+          <h2 className="text-lg font-bold text-gray-900">
+            Valoración y recomendaciones
+          </h2>
           <p className="truncate text-xs text-slate-500" title={objetivo}>
             {objetivo}
           </p>
@@ -993,19 +984,39 @@ function ModalTextoFila({
       </div>
 
       <div className="px-6 py-5">
-        <Label htmlFor="texto-fila" className="sr-only">
-          {titulo}
-        </Label>
-        <textarea
-          id="texto-fila"
-          ref={areaRef}
-          rows={8}
-          value={texto}
-          onChange={(e) => setTexto(e.target.value)}
-          onBlur={() => onGuardar(texto)}
-          placeholder={`Escribe aquí la ${titulo.toLowerCase()} de «${objetivo}»`}
-          className="w-full resize-y rounded-lg border border-slate-300 px-3 py-2 text-sm transition-all duration-200 focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
-        />
+        <div className="space-y-4">
+          <div className="space-y-1.5">
+            <Label htmlFor="nota-valoracion" className="text-gray-700">
+              Valoración
+            </Label>
+            <textarea
+              id="nota-valoracion"
+              ref={valoracionRef}
+              rows={6}
+              value={valoracionTexto}
+              disabled={guardando}
+              onChange={(e) => setValoracionTexto(e.target.value)}
+              onBlur={guardarAlSalir}
+              placeholder={`Escribe aquí la valoración de «${objetivo}»`}
+              className={areaClass}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="nota-recomendaciones" className="text-gray-700">
+              Recomendaciones
+            </Label>
+            <textarea
+              id="nota-recomendaciones"
+              rows={6}
+              value={recomendacionesTexto}
+              disabled={guardando}
+              onChange={(e) => setRecomendacionesTexto(e.target.value)}
+              onBlur={guardarAlSalir}
+              placeholder={`Escribe aquí las recomendaciones de «${objetivo}»`}
+              className={areaClass}
+            />
+          </div>
+        </div>
         <div className="sticky bottom-0 -mx-6 mt-4 flex items-center justify-end gap-4 border-t bg-white px-6 pb-1 pt-4">
           <Button
             onClick={guardar}
