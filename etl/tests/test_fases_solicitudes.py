@@ -26,10 +26,24 @@ necesita_dump = pytest.mark.skipif(
 def test_el_codigo_de_la_solicitud_se_copia_tal_cual():
     """`codigo_solicitud` no es UNIQUE en el destino y seis del legacy vienen
     repetidos: se copian como están."""
-    codigo, generado = ms._codigo("2014.001", "7", "2014-03-01")
+    codigo, generado, avisos = ms._codigo("2014.001", "7", "2014-03-01")
 
     assert codigo == "2014.001"
     assert generado is False
+    assert avisos == []
+
+
+def test_el_codigo_del_contrato_se_copia_cuando_la_solicitud_no_trae():
+    """Las 324 del legacy sin código tienen contrato, y sus 324 `codigo_contrato`
+    no chocan entre sí ni con el de otra solicitud: se copian tal cual, y queda
+    aviso de que es un dato suplido."""
+    codigo, generado, avisos = ms._codigo(None, "3172", "2022-02-08",
+                                          codigo_de_contrato="2022.021")
+
+    assert generado is True
+    assert codigo == "2022.021"
+    assert avisos[0][0] == "sin codigo en el legacy"
+    assert "su contrato" in avisos[0][2]
 
 
 def test_el_codigo_que_falta_sale_del_id_del_legacy():
@@ -39,17 +53,16 @@ def test_el_codigo_que_falta_sale_del_id_del_legacy():
     número mayor, no reconocería lo que escribió la primera y duplicaría las 282
     solicitudes sin código. El `id_solicitudsc` es único, estable y está por
     encima del 581 del legacy."""
-    codigo, generado = ms._codigo(None, "1543", "2014-03-01")
+    codigo, generado, avisos = ms._codigo(None, "1543", "2014-03-01")
 
     assert generado is True
-    assert codigo == "CAG.14.1543"
+    assert codigo == "FT.14.1543"
 
 
 def test_el_anio_del_codigo_nuevo_viene_de_la_fecha_y_no_del_reloj():
     """Reejecutar en enero no debe cambiar los códigos ya escritos."""
     assert ms._codigo(None, "1543", "2014-03-01")[0] == \
         ms._codigo(None, "1543", "2014-03-01")[0]
-
 
 # --------------------------------------------------------------------------
 # codigo_proyecto
@@ -121,7 +134,7 @@ def test_el_formato_del_codigo_de_proyecto_es_cag_aa_nnn():
 
     ms._generar_codigos_proyecto(conn, Registro())
 
-    assert conn.cursor_falso.actualizado == [("CAG.18.001", 7)]
+    assert conn.cursor_falso.actualizado == [("FT.18.001", 7)]
 
 
 def test_la_serie_empieza_despues_del_maximo_que_haya():
@@ -131,8 +144,8 @@ def test_la_serie_empieza_despues_del_maximo_que_haya():
 
     ms._generar_codigos_proyecto(conn, Registro())
 
-    assert conn.cursor_falso.actualizado == [("CAG.18.051", 7),
-                                             ("CAG.22.052", 8)]
+    assert conn.cursor_falso.actualizado == [("FT.18.051", 7),
+                                             ("FT.22.052", 8)]
 
 
 def test_sin_candidatas_no_escribe_nada():
@@ -397,6 +410,48 @@ def test_solicitud_sin_fecha_va_con_la_de_su_contrato(monkeypatch):
                   if e["motivo"] == "fecha 0000-00-00 en el legacy"), None)
     assert aviso, registro.entradas
     assert "documento del que viene" in aviso["detalle"]
+
+
+def test_solicitud_sin_codigo_va_con_el_de_su_contrato(monkeypatch):
+    """Las 324 sin `codigo_solicitudsc` tienen contrato con código; el payload se
+    leva el del contrato, que no choca con el de ninguna otra solicitud."""
+    contrato = {
+        "id_solicitudsc": "10", "id_contrato": "3",
+        "codigo_contrato": "2022.021", "fecha": "2022-02-08 00:00:00",
+        "valor_contratocuc": "100.00", "valor_contratocup": "0.00",
+    }
+    _origen(monkeypatch,
+            solicitud_sc=([], [_solicitud(codigo_solicitudsc=None)]),
+            cliente=([], [{"id_cliente": "5", "codigo": "CLIENTE",
+                           "nit": None}]),
+            contrato=([], [contrato]))
+
+    registro = Registro()
+    payloads, enlaces = ms.preparar(
+        registro, {"CLIENTE": 11}, {"2022.021": 1}, set())
+
+    assert payloads[0]["codigo_solicitud"] == "2022.021"
+    aviso = next((e for e in registro.entradas
+                  if e["motivo"] == "sin codigo en el legacy"), None)
+    assert aviso, registro.entradas
+
+
+def test_solicitud_sin_codigo_ni_contrato_genera_ft(monkeypatch):
+    """Cascada defensiva: sin código legacy y sin contrato, el código sale del
+    `id_solicitudsc` con el año de su fecha, ya en `FT`."""
+    _origen(monkeypatch,
+            solicitud_sc=([], [_solicitud(codigo_solicitudsc=None)]),
+            cliente=([], [{"id_cliente": "5", "codigo": "CLIENTE",
+                           "nit": None}]),
+            contrato=([], []))
+
+    registro = Registro()
+    payloads, _ = ms.preparar(
+        registro, {"CLIENTE": 11}, {}, set())
+
+    assert payloads[0]["codigo_solicitud"] == "FT.14.010"
+    assert not any(e["motivo"] == "sin codigo en el legacy"
+                   for e in registro.entradas)
 
 
 def test_solicitud_sin_fecha_y_su_contrato_tambien(monkeypatch):

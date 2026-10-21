@@ -7,7 +7,7 @@ import { useInfiniteList } from '../../hooks/useInfiniteList';
 import type { Cliente } from '../../types/ventas';
 import type { Moneda } from '../../types/moneda';
 import type { ContratoWithDetails, ContratoCreate } from '../../types/contrato';
-import { Plus, Trash2, Edit, ArrowLeft, Search, FileText, User, Calendar, Tag, X, Layers, Receipt } from 'lucide-react';
+import { Plus, Trash2, Edit, ArrowLeft, Search, FileText, User, Tag, X, Layers, Receipt } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { formatFecha } from '../../utils/fecha';
@@ -318,7 +318,6 @@ export function ContratosPage() {
                     Facturas
                   </div>
                 </TableHead>
-                <TableHead>Vigencia</TableHead>
                 <TableHead>Suplementos</TableHead>
                 <TableHead className="text-right">Acciones</TableHead>
               </TableRow>
@@ -374,22 +373,6 @@ export function ContratosPage() {
                         <Receipt className="h-3.5 w-3.5" />
                         Ver
                       </Button>
-                    </TableCell>
-                    <TableCell>
-                      {(() => {
-                        const vigencia = item.vigencia;
-                        const vencida = vigencia && new Date(vigencia) < new Date(hoy);
-                        return (
-                          <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded text-sm font-medium ${
-                            vencida
-                              ? 'bg-red-100 text-red-700'
-                              : 'bg-gray-100 text-gray-700'
-                          }`}>
-                            <Calendar className="h-3 w-3" />
-                            {formatFecha(vigencia) || 'N/A'}
-                          </span>
-                        );
-                      })()}
                     </TableCell>
                     <TableCell onClick={(e) => e.stopPropagation()}>
                       <Button

@@ -79,7 +79,6 @@ class SolicitudServicioUpdate(SQLModel):
     id_cliente: Optional[int] = None
     id_contrato: Optional[int] = None
     id_suplemento: Optional[int] = None
-    codigo_solicitud: Optional[str] = None
     nombres_rep: Optional[str] = None
     apellido1_rep: Optional[str] = None
     apellido2_rep: Optional[str] = None
@@ -94,7 +93,6 @@ class SolicitudServicioUpdate(SQLModel):
     material_asumido_x: Optional[bool] = None
     id_usuario: Optional[int] = None
     aprobado: Optional[bool] = None
-    codigo_proyecto: Optional[str] = None
 
 
 # ==========================================

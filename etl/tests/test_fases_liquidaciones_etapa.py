@@ -109,21 +109,21 @@ def test_sin_etapas_no_hay_onde_colgar():
 def test_el_numero_sale_del_id_del_legacy_y_no_del_numero_del_legacy():
     """`numero_liquidacion` tiene 903 valores distintos en 4.362 filas, así que
     no puede ser la clave. El `id_liquidacion` es único y estable."""
-    assert mp._numero(date(2014, 3, 1), "5") == "CAG.14.5"
-    assert mp._numero(date(2014, 3, 1), "6") == "CAG.14.6"
+    assert mp._numero(date(2014, 3, 1), "5") == "FT.14.5"
+    assert mp._numero(date(2014, 3, 1), "6") == "FT.14.6"
 
 
 def test_el_anio_del_numero_viene_de_la_fecha_y_no_del_reloj():
     """Reejecutar en otro año no debe cambiar lo ya escrito: el número es la
     clave con la que la fase se reconoce en la segunda pasada."""
-    assert mp._numero(date(2016, 7, 4), "42") == "CAG.16.42"
+    assert mp._numero(date(2016, 7, 4), "42") == "FT.16.42"
 
 
 def test_el_numero_no_se_rompe_si_la_fecha_no_trae_ano():
     """La fecha sin respaldo del legacy es el literal '1900-01-01', que no es un
     `date`: el número tiene que salir igual, no reventar."""
-    assert mp._numero("1900-01-01", "7") == "CAG.00.7"
-    assert mp._numero(None, "7") == "CAG.00.7"
+    assert mp._numero("1900-01-01", "7") == "FT.00.7"
+    assert mp._numero(None, "7") == "FT.00.7"
 
 
 # --------------------------------------------------------------------------

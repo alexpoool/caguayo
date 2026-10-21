@@ -130,11 +130,12 @@ porque la N va siempre antes.
 Cuatro columnas salen del ETL con un valor, y conviene saber de dónde:
 
 - **`solicitud_servicio.codigo_solicitud`** — el del legacy tal cual (`2014.001`)
-  en las que lo traen; `CAG.AA.id_solicitudsc` en las que no. El `id_solicitudsc`
-  hace el código único y estable, y como `siguiente_secuencia` toma el `MAX` del
-  último segmento, un contrato creado a mano después sale por encima de los
-  migrados.
-- **`solicitud_servicio.codigo_proyecto`** — `CAG.AA.NNN`, sólo para las solicitudes
+  en las que lo traen; el `codigo_contrato` del contrato del que vienen en las
+  324 que no lo traen (ninguna colisiona); y `FT.AA.id_solicitudsc` si ni
+  contrato tiene. El `id_solicitudsc` hace el código único y estable, y como
+  `siguiente_secuencia` toma el `MAX` del último segmento, un contrato creado a
+  mano después sale por encima de los migrados.
+- **`solicitud_servicio.codigo_proyecto`** — `FT.AA.NNN`, sólo para las solicitudes
   con `aprobado` **y** `id_contrato`. Es la misma regla que aplica la aplicación
   en `servicio_service.py:187-190`. Sin las dos cosas la fila todavía no es un
   proyecto y lo seguirá sin él; `update()` se lo dará si algún día lo es.
@@ -145,7 +146,7 @@ Cuatro columnas salen del ETL con un valor, y conviene saber de dónde:
   de insertar porque `codigo_servicio` es UNIQUE, y le cuelga todas las tareas.
   `concepto_modificado` no se toca: sigue siendo el nombre de la etapa, que es lo
   que muestran la tabla y los PDF.
-- **`persona_liquidacion.numero`** — `CAG.AA.<id_liquidacion del legacy>`. No se
+- **`persona_liquidacion.numero`** — `FT.AA.<id_liquidacion del legacy>`. No se
   copia `numero_liquidacion`: sólo tiene 903 valores distintos en 4.362 filas y
   no puede ser clave. El año sale de la fecha de la liquidación y no del reloj
   como en la aplicación (`servicio_service.py:875`), porque este número es lo

@@ -167,9 +167,12 @@ class LiquidacionService:
         from sqlalchemy import text
 
         stmt_sec = text(
-            "SELECT COALESCE(MAX(NULLIF(SPLIT_PART(codigo, '.', -1), '')::int), 0) "
+            "SELECT COALESCE(MAX(seg::int), 0) "
+            "FROM ("
+            "SELECT NULLIF(SPLIT_PART(codigo, '.', -1), '') AS seg "
             "FROM liquidacion "
             "WHERE id_cliente = :id_cliente AND codigo IS NOT NULL AND codigo <> ''"
+            ") s WHERE seg ~ '^[0-9]+$'"
         )
         result_sec = await db.exec(
             stmt_sec,

@@ -42,7 +42,7 @@ con `neto_pagar` porque la tabla estaba vacía; poner aquí el bruto haría que
 `pago_factura_servicio` no se migra —no hay facturas de etapa que paguen— y es
 NULLABLE. El legacy no trae ese vínculo.
 
-`numero` sale con el patrón de `generar_codigo` (`CAG.AA.id`), no con el
+`numero` sale con el patrón de `generar_codigo` (`FT.AA.id`), no con el
 `numero_liquidacion` del legacy: aquel sólo tiene 903 valores distintos en 4.362
 filas y no puede ser clave. El id del legacy sí lo es, y es estable.
 
@@ -83,8 +83,8 @@ ORIGEN = "artista_liquidacion"
 PREFIJO_CONCEPTO = "Concepto: "
 
 #: Prefijo del código, el mismo que usa la aplicación cuando no hay
-#: denominación: `generar_codigo` cae en "CAG" (`codigos_entidad.py:30`).
-PREFIJO_CODIGO = "CAG"
+#: denominación: `generar_codigo` cae en "FT" (`codigos_entidad.py:30`).
+PREFIJO_CODIGO = "FT"
 
 #: Sin nombre en el catálogo. Las 150 filas con `id_tipoconcepto = 0` no tienen
 #: ninguna entrada, y "Otros" dice la verdad en vez de colarles el concepto
@@ -231,7 +231,7 @@ def _etapa_para(etapas_del_contrato, personas, id_persona):
 
 
 def _numero(fecha, id_legado):
-    """`CAG.AA.<id_liquidacion del legacy>`, el patrón de `generar_codigo`.
+    """`FT.AA.<id_liquidacion del legacy>`, el patrón de `generar_codigo`.
 
     El año sale de la fecha de la liquidación y no del reloj como hace la
     aplicación (`servicio_service.py:875`): este número es la clave con la que la

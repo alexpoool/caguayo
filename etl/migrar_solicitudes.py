@@ -182,26 +182,37 @@ def _revision():
     return True, False, None
 
 
-def _codigo(codigo_legacy, id_legacy, fecha_iso):
-    """El código del legacy tal cual, o uno nuevo si no lo tiene.
+def _codigo(codigo_legacy, id_legacy, fecha_iso, codigo_de_contrato=None):
+    """El código del legacy tal cual, o el de su contrato, o uno nuevo.
 
-    Los 3.103 que trae son `AAAA.NNN`, y `codigo_solicitud` NO es UNIQUE en el
+    Los 3.104 que trae son `AAAA.NNN`, y `codigo_solicitud` NO es UNIQUE en el
     destino, así que se copian aunque seis estén repetidos.
 
-    Los que faltan usan el formato de la aplicación (`PREFIX.AA.NNN`) con el
-    `id_solicitudsc` como correlativo. Encima de ser único y estar por encima del
-    581 del legacy, tiene que ser **determinista**: si se sacara de
+    Las que faltan (324, id_solicitudsc 3172 en adelante) van con el
+    `codigo_contrato` del contrato del que vienen: las 324 lo tienen y ningún
+    código de contrato choca con el de otra solicitud. Si tampoco hubiese
+    contrato, cae el formato de la aplicación (`FT.AA.NNN`) con el
+    `id_solicitudsc` como correlativo. Encima de ser único y estar por encima
+    del 581 del legacy, tiene que ser **determinista**: si se sacara de
     `MAX(SPLIT_PART(codigo,'.',-1)::int) + 1` sobre lo que ya hay, la segunda
-    pasada calcularía un número mayor, no reconocería lo que escribió la primera y
-    duplicaría 282 solicitudes. El año sale de la fecha de la propia solicitud, no
-    del reloj, para que el código tampoco cambie en enero.
+    pasada calcularía un número mayor, no reconocería lo que escribió la
+    primera y duplicaría 282 solicitudes. El año sale de la fecha de la propia
+    solicitud, no del reloj, para que el código tampoco cambie en enero.
 
     `fecha_iso` es la fecha ISO (`AAAA-MM-DD`) que devuelve `limpieza.fecha`.
     """
+    avisos = []
     if codigo_legacy:
-        return codigo_legacy, False
+        return codigo_legacy, False, avisos
+    if codigo_de_contrato:
+        avisos.append((
+            "sin codigo en el legacy",
+            "se usa %s" % codigo_de_contrato,
+            "la solicitud no trae código; se copia el de su contrato",
+        ))
+        return codigo_de_contrato, True, avisos
     # 'AAAA-MM-DD' -> los dos últimos dígitos del año.
-    return "CAG.%s.%03d" % (str(fecha_iso)[2:4], int(id_legacy)), True
+    return "FT.%s.%03d" % (str(fecha_iso)[2:4], int(id_legacy)), True, avisos
 
 
 def preparar(registro: Registro, codigos_cliente, codigos_contrato,
@@ -274,8 +285,9 @@ def preparar(registro: Registro, codigos_cliente, codigos_contrato,
                               "ni la fila ni las de su cliente tienen fecha")
             continue
 
-        codigo, generado = _codigo(no_vacio(f.get("codigo_solicitudsc")),
-                                   id_legacy, fecha_solicitud)
+        codigo, generado, avisos_codigo = _codigo(
+            no_vacio(f.get("codigo_solicitudsc")), id_legacy, fecha_solicitud,
+            codigo_de_contrato=encontrado[1] if encontrado else None)
 
         copias = (_copias_contrato(encontrado[0], encontrado[1], encontrado[2],
                                    codigos_contrato)
@@ -291,7 +303,7 @@ def preparar(registro: Registro, codigos_cliente, codigos_contrato,
         else:
             partes = [(None, codigo)]
 
-        avisos = list(avisos_fecha) + list(avisos_cliente)
+        avisos = list(avisos_fecha) + list(avisos_codigo) + list(avisos_cliente)
         material, avisos_material = _material_asumido(f.get("mat_asumidos"))
         avisos += avisos_material
         aprobada, revisar, motivo = _revision()
@@ -341,7 +353,7 @@ def preparar(registro: Registro, codigos_cliente, codigos_contrato,
             registro.warning(ORIGEN, id_legacy, nombre, motivo_aviso,
                              detalle or resumen)
 
-    print("  Filas a migrar: %d | códigos generados: %d | para revisar: %d"
+    print("  Filas a migrar: %d | códigos suplidos del legacy: %d | para revisar: %d"
           % (len(payloads), generados,
              sum(1 for p in payloads if p["estado_por_revisar"])))
     return payloads, enlaces
@@ -427,7 +439,7 @@ def _generar_codigos_proyecto(conn, registro: Registro):
     valores = []
     for id_solicitud, anio in candidatas:
         secuencia += 1
-        valores.append(("CAG.%s.%03d" % (str(anio)[-2:], secuencia),
+        valores.append(("FT.%s.%03d" % (str(anio)[-2:], secuencia),
                         id_solicitud))
 
     with conn.cursor() as cur:

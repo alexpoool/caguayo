@@ -276,14 +276,6 @@ class ContratoService:
                 f"No se puede eliminar el contrato: tiene {len(facturas)} factura(s) asociada(s)."
             )
 
-        # Verificar que no tenga ventas en efectivo asociadas
-        stmt_ventas = select(VentaEfectivo).where(VentaEfectivo.id_contrato == id)
-        ventas = (await db.exec(stmt_ventas)).all()
-        if ventas:
-            raise BusinessLogicError(
-                f"No se puede eliminar el contrato: tiene {len(ventas)} venta(s) en efectivo asociada(s)."
-            )
-
         await contrato_repo.remove(db, id=id)
         return True
 

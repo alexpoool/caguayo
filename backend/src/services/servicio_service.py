@@ -123,6 +123,8 @@ class SolicitudServicioService:
         if data.aprobado and data.id_contrato:
             sec_proy = await siguiente_secuencia(db, "solicitud_servicio", "codigo_proyecto")
             s.codigo_proyecto = generar_codigo_correlativo(denominacion or "", año, sec_proy)
+        else:
+            s.codigo_proyecto = None
 
         await db.commit()
         await db.refresh(s)
@@ -187,7 +189,7 @@ class SolicitudServicioService:
         if aprobado and id_contrato and not s.codigo_proyecto:
             sec = await siguiente_secuencia(db, "solicitud_servicio", "codigo_proyecto")
             año = datetime.now().year
-            data.codigo_proyecto = generar_codigo_correlativo(denominacion or "", año, sec)
+            s.codigo_proyecto = generar_codigo_correlativo(denominacion or "", año, sec)
 
         updated = await solicitud_servicio_repo.update(db, db_obj=s, obj_in=data)
         return SolicitudServicioRead(**updated.model_dump())
