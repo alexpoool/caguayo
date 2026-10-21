@@ -119,6 +119,7 @@ export interface RrhhEmpleado {
 }
 
 export interface RrhhEmpleadoCreate {
+  codigo_empleado: string;
   nombre: string;
   apellido: string;
   fecha_nacimiento?: string | null;
@@ -142,7 +143,10 @@ export interface RrhhEmpleadoCreate {
   activo?: boolean;
 }
 
-export type RrhhEmpleadoUpdate = Partial<RrhhEmpleadoCreate>;
+/** El código no se edita: se captura solo en el alta. */
+export type RrhhEmpleadoUpdate = Partial<
+  Omit<RrhhEmpleadoCreate, 'codigo_empleado'>
+>;
 
 export interface RrhhEmpleadoListado extends RrhhEmpleado {
   puesto_nombre: string | null;

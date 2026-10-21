@@ -1,8 +1,8 @@
 """Servicio del submódulo RRHH — Empleados (Fase 3).
 
 Reglas de negocio de esta fase:
-- `codigo_empleado` lo genera la BD (`'EMP-' || nextval('empleado_codigo_seq')`);
-  no se acepta en el alta ni se puede editar.
+- `codigo_empleado` se captura manualmente en el alta, es obligatorio y único;
+  no se puede editar después.
 - `carnet_identidad` y `correo` únicos (también lo garantizan los índices).
 - Las asignaciones (puesto, departamento, tipo de contrato, supervisor) deben
   existir; el supervisor no puede ser el propio empleado.
@@ -18,7 +18,6 @@ from datetime import date
 from typing import List, Optional
 
 from fastapi import HTTPException
-from sqlalchemy import text
 from sqlmodel import select, func, or_
 from sqlmodel.ext.asyncio.session import AsyncSession
 
@@ -120,6 +119,19 @@ class RrhhEmpleadoService:
             raise HTTPException(
                 status_code=400,
                 detail="El horario final debe ser posterior al horario de inicio",
+            )
+
+    async def _verificar_codigo_unico(
+        self, db: AsyncSession, codigo: str, excluir_id: Optional[int] = None
+    ) -> None:
+        statement = select(RrhhEmpleado).where(
+            RrhhEmpleado.codigo_empleado == codigo
+        )
+        if excluir_id is not None:
+            statement = statement.where(RrhhEmpleado.id != excluir_id)
+        if (await db.exec(statement)).first():
+            raise HTTPException(
+                status_code=409, detail="Ya existe un empleado con ese código"
             )
 
     async def _verificar_carnet_unico(
@@ -317,6 +329,12 @@ class RrhhEmpleadoService:
 
     async def create(self, db: AsyncSession, obj_in: RrhhEmpleadoCreate) -> RrhhEmpleadoRead:
         data = obj_in.model_dump()
+        data["codigo_empleado"] = data["codigo_empleado"].strip()
+        if not data["codigo_empleado"]:
+            raise HTTPException(
+                status_code=400, detail="El código de empleado es obligatorio"
+            )
+        await self._verificar_codigo_unico(db, data["codigo_empleado"])
         await self._verificar_puesto(db, data.get("puesto_id"))
         await self._verificar_departamento(db, data.get("departamento_id"))
         await self._verificar_tipo_contrato(db, data.get("tipo_contrato_id"))
@@ -330,23 +348,11 @@ class RrhhEmpleadoService:
         if data.get("fecha_contratacion") is None:
             data["fecha_contratacion"] = date.today()
 
-        # El código lo genera la BD (`'EMP-' || nextval('empleado_codigo_seq')`).
-        # SQLModel envía el campo como NULL e invalida el default del servidor,
-        # así que se consume la secuencia aquí explícitamente.
-        if not data.get("codigo_empleado"):
-            data["codigo_empleado"] = await self._siguiente_codigo(db)
-
         db_obj = RrhhEmpleado(**data)
         db.add(db_obj)
         await db.commit()
         await db.refresh(db_obj)
         return RrhhEmpleadoRead.model_validate(db_obj)
-
-    async def _siguiente_codigo(self, db: AsyncSession) -> str:
-        """Obtiene el siguiente código `EMP-XXXX` de la secuencia de la BD."""
-        result = await db.execute(text("SELECT nextval('empleado_codigo_seq')"))
-        numero = result.scalar()
-        return f"EMP-{numero}"
 
     async def update(
         self, db: AsyncSession, id: int, obj_in: RrhhEmpleadoUpdate

@@ -3,8 +3,8 @@
 Prefijo `/rrhh/empleados`. Siguen el patrón del proyecto: `APIRouter` con
 `get_session` inyectado y servicios en `src/services/`.
 
-El código del empleado (`codigo_empleado`, `EMP-XXXX`) lo genera la BD con la
-secuencia `empleado_codigo_seq`; no se acepta en el alta ni se puede editar.
+El código del empleado (`codigo_empleado`) se captura manualmente en el alta,
+es obligatorio y no se puede editar.
 """
 
 from typing import List, Optional
@@ -90,7 +90,7 @@ async def crear_empleado(
     empleado: RrhhEmpleadoCreate,
     db: AsyncSession = Depends(get_session),
 ):
-    """Alta de empleado. El código se genera automáticamente en la BD."""
+    """Alta de empleado. El código se captura manualmente y no se autogenera."""
     return await rrhh_empleado_service.create(db, empleado)
 
 

@@ -159,6 +159,7 @@ export function EmpleadosPage() {
   }, [menu]);
 
   const [formData, setFormData] = useState<RrhhEmpleadoCreate>({
+    codigo_empleado: '',
     nombre: '',
     apellido: '',
     carnet_identidad: '',
@@ -253,6 +254,7 @@ export function EmpleadosPage() {
   const handleNuevo = () => {
     setEditing(null);
     setFormData({
+      codigo_empleado: '',
       nombre: '',
       apellido: '',
       carnet_identidad: '',
@@ -280,6 +282,7 @@ export function EmpleadosPage() {
   const handleEditar = (emp: RrhhEmpleado) => {
     setEditing(emp);
     setFormData({
+      codigo_empleado: emp.codigo_empleado ?? '',
       nombre: emp.nombre,
       apellido: emp.apellido,
       carnet_identidad: emp.carnet_identidad ?? '',
@@ -312,6 +315,13 @@ export function EmpleadosPage() {
 
   const validar = (): boolean => {
     const errs: Record<string, string> = {};
+    if (!editing) {
+      if (!formData.codigo_empleado.trim()) {
+        errs.codigo_empleado = 'El código es obligatorio';
+      } else if (formData.codigo_empleado.trim().length > 20) {
+        errs.codigo_empleado = 'El código no puede superar los 20 caracteres';
+      }
+    }
     if (!formData.nombre.trim()) errs.nombre = 'El nombre es obligatorio';
     if (!formData.apellido.trim()) errs.apellido = 'El apellido es obligatorio';
     if (formData.correo && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.correo)) {
@@ -350,6 +360,7 @@ export function EmpleadosPage() {
     mutationFn: async () => {
       const payload = {
         ...formData,
+        codigo_empleado: formData.codigo_empleado.trim(),
         nombre: formData.nombre.trim(),
         apellido: formData.apellido.trim(),
         carnet_identidad: formData.carnet_identidad?.trim() || null,
@@ -687,6 +698,19 @@ export function EmpleadosPage() {
                   Datos personales
                 </h3>
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                  {!editing && (
+                    <CampoTexto
+                      id="codigo_empleado"
+                      label="Código *"
+                      valor={formData.codigo_empleado}
+                      onChange={(v) => set('codigo_empleado', v)}
+                      error={formErrors.codigo_empleado}
+                      icono={Hash}
+                      color="text-indigo-500"
+                      placeholder="Ej. EMP-1234"
+                      maxLength={20}
+                    />
+                  )}
                   <CampoTexto
                     id="nombre"
                     label="Nombre *"
@@ -1283,6 +1307,8 @@ function CampoTexto({
   error,
   icono: Icono,
   color = 'text-indigo-500',
+  placeholder,
+  maxLength,
 }: {
   id: string;
   label: string;
@@ -1292,6 +1318,8 @@ function CampoTexto({
   error?: string;
   icono?: React.ComponentType<{ className?: string }>;
   color?: string;
+  placeholder?: string;
+  maxLength?: number;
 }) {
   return (
     <div className="space-y-2">
@@ -1304,6 +1332,8 @@ function CampoTexto({
         type={tipo}
         value={valor}
         onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        maxLength={maxLength}
         className={`transition-all duration-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 ${error ? 'border-red-500' : ''}`}
       />
       {error && (

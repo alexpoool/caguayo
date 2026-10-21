@@ -144,7 +144,7 @@ class RrhhEmpleado(SQLModel, table=True):
     id: Optional[int] = Field(
         default=None, primary_key=True, sa_column_kwargs={"autoincrement": True}
     )
-    # Default en BD: 'EMP-' || nextval('empleado_codigo_seq') (ver migración).
+    # Código visible y único; se captura manualmente en el alta (no se edita).
     codigo_empleado: Optional[str] = Field(default=None, max_length=20, unique=True)
     nombre: str = Field(max_length=100)
     apellido: str = Field(max_length=100)

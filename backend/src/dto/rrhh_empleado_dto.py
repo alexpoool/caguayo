@@ -1,9 +1,8 @@
 """DTOs del submódulo RRHH — Empleados (Fase 3).
 
-El código (`codigo_empleado`, `EMP-XXXX`) lo genera la BD con la secuencia
-`empleado_codigo_seq`, así que no se acepta en el alta. Los campos de
-asignación (puesto, departamento, tipo de contrato y supervisor) se validan
-en el servicio, no en el DTO.
+El código (`codigo_empleado`) se captura manualmente en el alta y no se puede
+editar después. Los campos de asignación (puesto, departamento, tipo de
+contrato y supervisor) se validan en el servicio, no en el DTO.
 """
 
 from datetime import date, datetime, time
@@ -42,8 +41,9 @@ class RrhhEmpleadoBase(SQLModel):
 
 
 class RrhhEmpleadoCreate(RrhhEmpleadoBase):
-    """Alta de empleado. `codigo_empleado` lo genera la BD."""
+    """Alta de empleado. El código se captura manualmente y es obligatorio."""
 
+    codigo_empleado: str = Field(min_length=1, max_length=20)
     fecha_contratacion: Optional[date] = None
 
 

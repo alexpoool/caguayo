@@ -1,9 +1,9 @@
 """Tests de la Fase 3 del módulo RRHH — Empleados.
 
 Usan el patrón `client` de conftest.py (TestClient contra la BD real).
-Los tests crean y limpian sus propios registros; el código
-(`codigo_empleado`, `EMP-XXXX`) lo genera la BD con la secuencia
-`empleado_codigo_seq`.
+Los tests crean y limpian sus propios registros. El código
+(`codigo_empleado`) se captura manualmente en el alta, es obligatorio
+y no se puede editar.
 """
 
 import uuid
@@ -23,6 +23,7 @@ def _correo():
 
 def _crear_empleado(client, **kwargs):
     payload = {
+        "codigo_empleado": f"EMP-{_sufijo()}",
         "nombre": f"Nombre{_sufijo()}",
         "apellido": f"Apellido{_sufijo()}",
         "carnet_identidad": _carnet(),
@@ -37,42 +38,58 @@ def _limpiar(client, empleado_id):
     client.delete(f"/api/v1/rrhh/empleados/{empleado_id}")
 
 
-# ── Alta y código autogenerado ──────────────────────────────────────────────
+# ── Alta y código manual ────────────────────────────────────────────────────
 
 
 def test_crear_empleado_ok(client):
-    response = _crear_empleado(client)
+    codigo = f"EMP-{_sufijo()}"
+    response = _crear_empleado(client, codigo_empleado=codigo)
     assert response.status_code == 201, response.text
     data = response.json()
     assert data["id"] is not None
     assert data["activo"] is True
     assert data["estado"] == "activo"
+    assert data["codigo_empleado"] == codigo
     _limpiar(client, data["id"])
 
 
-def test_codigo_empleado_generado_por_bd(client):
-    """El código lo genera la BD con el prefijo EMP-, no se envía en el alta."""
-    response = _crear_empleado(client)
+def test_codigo_empleado_es_manual(client):
+    """El código llega en el alta y se guarda tal cual (sin autogenerar)."""
+    codigo = f"EMP-{_sufijo()}"
+    response = _crear_empleado(client, codigo_empleado=codigo)
     assert response.status_code == 201, response.text
     data = response.json()
     try:
-        assert data["codigo_empleado"] is not None
-        assert data["codigo_empleado"].startswith("EMP-")
+        assert data["codigo_empleado"] == codigo
     finally:
         _limpiar(client, data["id"])
 
 
-def test_codigos_son_unicos(client):
-    """Dos altas seguidas generan códigos distintos (secuencia en BD)."""
-    r1 = _crear_empleado(client)
-    r2 = _crear_empleado(client)
+def test_codigo_empleado_obligatorio(client):
+    """Sin código el alta se rechaza (422 de validación del DTO)."""
+    response = client.post(
+        "/api/v1/rrhh/empleados",
+        json={
+            "nombre": f"Nombre{_sufijo()}",
+            "apellido": f"Apellido{_sufijo()}",
+            "carnet_identidad": _carnet(),
+            "correo": _correo(),
+        },
+    )
+    assert response.status_code == 422
+
+
+def test_codigo_duplicado_conflict(client):
+    """Dos altas no pueden compartir el mismo código."""
+    codigo = f"EMP-{_sufijo()}"
+    r1 = _crear_empleado(client, codigo_empleado=codigo)
+    assert r1.status_code == 201, r1.text
     id1 = r1.json()["id"]
-    id2 = r2.json()["id"]
     try:
-        assert r1.json()["codigo_empleado"] != r2.json()["codigo_empleado"]
+        r2 = _crear_empleado(client, codigo_empleado=codigo)
+        assert r2.status_code == 409
     finally:
         _limpiar(client, id1)
-        _limpiar(client, id2)
 
 
 def test_fecha_contratacion_default_hoy(client):

@@ -26,6 +26,7 @@ def _sufijo():
 
 def _crear_empleado(client, **kwargs):
     payload = {
+        "codigo_empleado": f"EMP-{uuid.uuid4().hex[:8]}",
         "nombre": f"Nombre{_sufijo()}",
         "apellido": f"Apellido{_sufijo()}",
         "carnet_identidad": f"CI-{uuid.uuid4().hex[:10]}",
