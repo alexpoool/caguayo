@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import { BrowserRouter as Router, Routes, Route, Link, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -168,6 +168,16 @@ function ProtectedRoute({
   }
 
   return <>{children}</>;
+}
+
+/**
+ * Alias del plural `/rrhh/pagos-resultados` hacia la ruta canónica
+ * `/rrhh/pagos-resultado`. Sin esto, el plural no coincide con ninguna ruta y
+ * React Router deja el área principal vacía.
+ */
+function RedirectPagoResultadoDetalle() {
+  const { id } = useParams<{ id: string }>();
+  return <Navigate to={`/rrhh/pagos-resultado/${id ?? ''}`} replace />;
 }
 
 // Componente estable de enlace del sidebar: navega SIEMPRE al destino al hacer
@@ -1224,6 +1234,19 @@ function App() {
                       <NominaPagosPage />
                     </ProtectedRoute>
                   }
+                />
+                {/* Alias del plural para no dejar la página en blanco. */}
+                <Route
+                  path="/rrhh/pagos-resultados"
+                  element={<Navigate to="/rrhh/pagos-resultado" replace />}
+                />
+                <Route
+                  path="/rrhh/pagos-resultados/nuevo"
+                  element={<Navigate to="/rrhh/pagos-resultado/nuevo" replace />}
+                />
+                <Route
+                  path="/rrhh/pagos-resultados/:id"
+                  element={<RedirectPagoResultadoDetalle />}
                 />
                 <Route
                   path="/rrhh/pagos-resultado"
