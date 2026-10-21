@@ -61,12 +61,13 @@ export function SuplementosPage() {
     hasMore,
     loadMore,
     refresh,
+    total: totalSuplementos,
   } = useInfiniteList<SuplementoWithDetails>({
     queryKeyBase: 'suplementos',
-    queryFn: (skip, limit) =>
+    queryFn: (skip, limit, _search, onTotal) =>
       initialContratoId
         ? suplementosService.getSuplementosByContrato(Number(initialContratoId), skip, limit)
-        : suplementosService.getSuplementos(skip, limit),
+        : suplementosService.getSuplementos(skip, limit, onTotal),
     extraQueryKeyParams: [initialContratoId],
     limit: 100,
   });
@@ -210,7 +211,7 @@ export function SuplementosPage() {
           <div className="flex items-baseline">
             <h1 className="text-xl font-bold text-gray-900">Suplementos</h1>
             <p className="text-sm text-gray-500 ml-3 hidden sm:block">
-              Gestión de suplementos ({suplementos.length} registrados)
+              Gestión de suplementos ({totalSuplementos ?? suplementos.length} registrados)
             </p>
           </div>
         </div>

@@ -1,5 +1,5 @@
 import logging
-from fastapi import APIRouter, Depends, Header, HTTPException
+from fastapi import APIRouter, Depends, Header, HTTPException, Response
 from sqlmodel.ext.asyncio.session import AsyncSession
 from typing import List, Optional
 from src.database.connection import get_auth_session, get_session
@@ -8,6 +8,11 @@ from src.services.contrato_service import (
     SuplementoService,
     FacturaService,
     VentaEfectivoService,
+)
+from src.repository.contratos_repo import (
+    contrato_repo,
+    suplemento_repo,
+    venta_efectivo_repo,
 )
 from src.dto import (
     ContratoCreate,
@@ -63,9 +68,13 @@ async def obtener_contratos(
     id_cliente: Optional[int] = None,
     search: Optional[str] = None,
     db: AsyncSession = Depends(get_session),
+    response: Response = None,
 ):
     """Obtener todos los contratos, opcionalmente filtrados por id_cliente o búsqueda."""
     try:
+        response.headers["X-Total-Count"] = str(
+            await contrato_repo.count_all(db, id_cliente=id_cliente, search=search)
+        )
         return await ContratoService.get_all(db, skip, limit, id_cliente, search)
     except Exception as e:
         logger.error("Error al obtener contratos", exc_info=True)
@@ -182,9 +191,11 @@ async def obtener_suplementos(
     skip: int = 0,
     limit: int = 100,
     db: AsyncSession = Depends(get_session),
+    response: Response = None,
 ):
     """Obtener todos los suplementos."""
     try:
+        response.headers["X-Total-Count"] = str(await suplemento_repo.count(db))
         return await SuplementoService.get_all(db, skip, limit)
     except Exception as e:
         logger.error("Error al obtener suplementos", exc_info=True)
@@ -378,9 +389,11 @@ async def obtener_ventas_efectivo(
     skip: int = 0,
     limit: int = 100,
     db: AsyncSession = Depends(get_session),
+    response: Response = None,
 ):
     """Obtener todas las ventas en efectivo."""
     try:
+        response.headers["X-Total-Count"] = str(await venta_efectivo_repo.count(db))
         return await VentaEfectivoService.get_all(db, skip, limit)
     except Exception as e:
         logger.error("Error al obtener ventas en efectivo", exc_info=True)

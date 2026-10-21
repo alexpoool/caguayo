@@ -65,9 +65,11 @@ export function VentasEfectivoPage() {
     searchTerm,
     setSearch,
     refresh,
+    total: totalVentas,
   } = useInfiniteList<VentaEfectivoWithDetails>({
     queryKeyBase: 'ventas-efectivo',
-    queryFn: (skip, limit) => ventasEfectivoService.getVentasEfectivo(skip, limit),
+    queryFn: (skip, limit, _search, onTotal) =>
+      ventasEfectivoService.getVentasEfectivo(skip, limit, onTotal),
     limit: 100,
   });
 
@@ -372,8 +374,8 @@ const loadInitialData = async () => {
             </h1>
             <p className="text-sm text-gray-500 ml-3 hidden sm:block">
               {filteredVentas.length === items.length
-                ? `Gestión de ventas (${items.length} items)`
-                : `Mostrando ${filteredVentas.length} de ${items.length} ventas`}
+                ? `Gestión de ventas (${totalVentas ?? items.length} items)`
+                : `Mostrando ${filteredVentas.length} de ${items.length} ventas (total en BD: ${totalVentas ?? items.length})`}
             </p>
           </div>
         </div>

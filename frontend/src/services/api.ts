@@ -1,6 +1,16 @@
 import { apiClient } from '../lib/api';
 import { configuracionService as configService } from './administracion';
 import { authHelpers } from '../lib/api';
+
+// Extrae el header X-Total-Count que mandan los GET de lista (total real de
+// la BD con los mismos filtros) y lo entrega al callback onTotal.
+function captureTotal(onTotal?: (t: number | null) => void) {
+  return (headers: Headers) => {
+    if (!onTotal) return;
+    const v = parseInt(headers.get('X-Total-Count') ?? '', 10);
+    onTotal(isNaN(v) ? null : v);
+  };
+}
 import type {
   ActividadEconomica,
   ActividadEconomicaInput,
@@ -90,12 +100,12 @@ import type {
 } from '../types/servicio';
 
 export const productosService = {
-  async getProductos(skip = 0, limit = 100, search?: string): Promise<Productos[]> {
+  async getProductos(skip = 0, limit = 100, search?: string, onTotal?: (t: number | null) => void): Promise<Productos[]> {
     let url = `/productos?skip=${skip}&limit=${limit}`;
     if (search && search.trim()) {
       url += `&search=${encodeURIComponent(search.trim())}`;
     }
-    return apiClient.get<Productos[]>(url);
+    return apiClient.get<Productos[]>(url, undefined, captureTotal(onTotal));
   },
 
   async getProducto(id: number): Promise<Productos> {
@@ -185,7 +195,7 @@ export const dashboardService = {
 
 
 export const clientesService = {
-  async getClientes(skip = 0, limit = 10000, tipoRelacion?: string): Promise<Cliente[]> {
+  async getClientes(skip = 0, limit = 10000, tipoRelacion?: string, onTotal?: (t: number | null) => void): Promise<Cliente[]> {
     const params = new URLSearchParams({
       skip: String(skip),
       limit: String(limit),
@@ -193,7 +203,7 @@ export const clientesService = {
     if (tipoRelacion) {
       params.append("tipo_relacion", tipoRelacion);
     }
-    return apiClient.get<Cliente[]>(`/clientes?${params.toString()}`);
+    return apiClient.get<Cliente[]>(`/clientes?${params.toString()}`, undefined, captureTotal(onTotal));
   },
 
   async getCliente(id: number): Promise<Cliente> {
@@ -330,8 +340,8 @@ export const subcategoriasService = {
 };
 
 export const monedaService = {
-  async getMonedas(skip = 0, limit = 100): Promise<Moneda[]> {
-    return apiClient.get<Moneda[]>(`/monedas?skip=${skip}&limit=${limit}`);
+  async getMonedas(skip = 0, limit = 100, onTotal?: (t: number | null) => void): Promise<Moneda[]> {
+    return apiClient.get<Moneda[]>(`/monedas?skip=${skip}&limit=${limit}`, undefined, captureTotal(onTotal));
   },
 
   async getMoneda(id: number): Promise<Moneda> {
@@ -366,11 +376,11 @@ export const movimientosService = {
     return apiClient.get<Movimiento[]>(`/movimientos?${params.toString()}`);
   },
 
-  async getMovimientosPendientes(skip = 0, limit = 100): Promise<Movimiento[]> {
+  async getMovimientosPendientes(skip = 0, limit = 100, onTotal?: (t: number | null) => void): Promise<Movimiento[]> {
     const params = new URLSearchParams();
     params.append('skip', skip.toString());
     params.append('limit', limit.toString());
-    return apiClient.get<Movimiento[]>(`/movimientos/pendientes?${params.toString()}`);
+    return apiClient.get<Movimiento[]>(`/movimientos/pendientes?${params.toString()}`, undefined, captureTotal(onTotal));
   },
 
   async createMovimiento(data: MovimientoCreate): Promise<Movimiento> {
@@ -423,13 +433,13 @@ export const movimientosService = {
 };
 
 export const conveniosService = {
-  async getConvenios(clienteId?: number, search?: string, skip = 0, limit = 100): Promise<Convenio[]> {
+  async getConvenios(clienteId?: number, search?: string, skip = 0, limit = 100, onTotal?: (t: number | null) => void): Promise<Convenio[]> {
     const params = new URLSearchParams();
     if (clienteId) params.append('cliente_id', clienteId.toString());
     if (search) params.append('search', search);
     params.append('skip', skip.toString());
     params.append('limit', limit.toString());
-    return apiClient.get<Convenio[]>(`/convenios?${params.toString()}`);
+    return apiClient.get<Convenio[]>(`/convenios?${params.toString()}`, undefined, captureTotal(onTotal));
   },
 
   async getConvenio(id: number): Promise<Convenio> {
@@ -458,13 +468,13 @@ export const conveniosService = {
 };
 
 export const anexosService = {
-  async getAnexos(convenioId?: number, search?: string, skip = 0, limit = 100): Promise<Anexo[]> {
+  async getAnexos(convenioId?: number, search?: string, skip = 0, limit = 100, onTotal?: (t: number | null) => void): Promise<Anexo[]> {
     const params = new URLSearchParams();
     if (convenioId) params.append('convenio_id',convenioId.toString());
     if (search) params.append('search', search);
     params.append('skip', skip.toString());
     params.append('limit', limit.toString());
-    return apiClient.get<Anexo[]>(`/anexos?${params.toString()}`);
+    return apiClient.get<Anexo[]>(`/anexos?${params.toString()}`, undefined, captureTotal(onTotal));
   },
 
   async getAnexo(id: number): Promise<Anexo> {
@@ -513,7 +523,7 @@ export const dependenciasService = {
 };
 
 export const contratosService = {
-  async getContratos(skip = 0, limit = 10000, idCliente?: number, search?: string): Promise<ContratoWithDetails[]> {
+  async getContratos(skip = 0, limit = 10000, idCliente?: number, search?: string, onTotal?: (t: number | null) => void): Promise<ContratoWithDetails[]> {
     const params = new URLSearchParams({
       skip: String(skip),
       limit: String(limit),
@@ -524,7 +534,7 @@ export const contratosService = {
     if (search) {
       params.append("search", search);
     }
-    return apiClient.get<ContratoWithDetails[]>(`/contratos?${params.toString()}`);
+    return apiClient.get<ContratoWithDetails[]>(`/contratos?${params.toString()}`, undefined, captureTotal(onTotal));
   },
 
   async getContrato(id: number): Promise<ContratoWithDetails> {
@@ -549,8 +559,8 @@ export const contratosService = {
 };
 
 export const suplementosService = {
-  async getSuplementos(skip = 0, limit = 100): Promise<SuplementoWithDetails[]> {
-    return apiClient.get<SuplementoWithDetails[]>(`/suplementos?skip=${skip}&limit=${limit}`);
+  async getSuplementos(skip = 0, limit = 100, onTotal?: (t: number | null) => void): Promise<SuplementoWithDetails[]> {
+    return apiClient.get<SuplementoWithDetails[]>(`/suplementos?skip=${skip}&limit=${limit}`, undefined, captureTotal(onTotal));
   },
 
   async getSuplementosByContrato(contratoId: number, skip = 0, limit = 100): Promise<SuplementoWithDetails[]> {
@@ -619,8 +629,8 @@ export const pagosService = {
 };
 
 export const serviciosProyectoService = {
-  async getServicios(skip = 0, limit = 100): Promise<Servicio[]> {
-    return apiClient.get<Servicio[]>(`/servicios?skip=${skip}&limit=${limit}`);
+  async getServicios(skip = 0, limit = 100, onTotal?: (t: number | null) => void): Promise<Servicio[]> {
+    return apiClient.get<Servicio[]>(`/servicios?skip=${skip}&limit=${limit}`, undefined, captureTotal(onTotal));
   },
   async createServicio(data: ServicioCreate): Promise<Servicio> {
     return apiClient.post<Servicio>('/servicios', data);
@@ -634,8 +644,20 @@ export const serviciosProyectoService = {
 };
 
 export const solicitudesService = {
-  async getSolicitudes(skip = 0, limit = 100): Promise<SolicitudServicio[]> {
-    return apiClient.get<SolicitudServicio[]>(`/solicitudes-servicio?skip=${skip}&limit=${limit}`);
+  async getSolicitudes(
+    skip = 0,
+    limit = 100,
+    onTotal?: (total: number | null) => void,
+    filtros?: { estado?: string; search?: string }
+  ): Promise<SolicitudServicio[]> {
+    const qs = new URLSearchParams({ skip: String(skip), limit: String(limit) });
+    if (filtros?.estado) qs.set('estado', filtros.estado);
+    if (filtros?.search) qs.set('search', filtros.search);
+    return apiClient.get<SolicitudServicio[]>(
+      `/solicitudes-servicio?${qs.toString()}`,
+      undefined,
+      captureTotal(onTotal),
+    );
   },
   async getSolicitud(id: number): Promise<SolicitudServicio> {
     return apiClient.get<SolicitudServicio>(`/solicitudes-servicio/${id}`);
@@ -706,8 +728,8 @@ export const personaEtapaService = {
 };
 
 export const facturasServicioService = {
-  async getFacturasServicio(skip = 0, limit = 100): Promise<FacturaServicio[]> {
-    return apiClient.get<FacturaServicio[]>(`/facturas-servicio?skip=${skip}&limit=${limit}`);
+  async getFacturasServicio(skip = 0, limit = 100, onTotal?: (t: number | null) => void): Promise<FacturaServicio[]> {
+    return apiClient.get<FacturaServicio[]>(`/facturas-servicio?skip=${skip}&limit=${limit}`, undefined, captureTotal(onTotal));
   },
   async getFacturaServicio(id: number): Promise<FacturaServicio> {
     return apiClient.get<FacturaServicio>(`/facturas-servicio/${id}`);
@@ -739,10 +761,10 @@ export const facturasServicioService = {
 };
 
 export const ofertasService = {
-  async getOfertas(skip = 0, limit = 100, estado?: string): Promise<Oferta[]> {
+  async getOfertas(skip = 0, limit = 100, estado?: string, onTotal?: (t: number | null) => void): Promise<Oferta[]> {
     const params = new URLSearchParams({ skip: String(skip), limit: String(limit) });
     if (estado) params.append('estado', estado);
-    return apiClient.get<Oferta[]>(`/ofertas?${params.toString()}`);
+    return apiClient.get<Oferta[]>(`/ofertas?${params.toString()}`, undefined, captureTotal(onTotal));
   },
   async getOferta(id: number): Promise<Oferta> {
     return apiClient.get<Oferta>(`/ofertas/${id}`);
@@ -785,8 +807,8 @@ export const pagosFacturaServicioService = {
 import type { Certificacion, CertificacionCreate, CertificacionUpdate } from '../types/servicio';
 
 export const certificacionesService = {
-  async getCertificaciones(skip = 0, limit = 100): Promise<Certificacion[]> {
-    return apiClient.get<Certificacion[]>(`/certificaciones?skip=${skip}&limit=${limit}`);
+  async getCertificaciones(skip = 0, limit = 100, onTotal?: (t: number | null) => void): Promise<Certificacion[]> {
+    return apiClient.get<Certificacion[]>(`/certificaciones?skip=${skip}&limit=${limit}`, undefined, captureTotal(onTotal));
   },
   async getCertificacion(id: number): Promise<Certificacion> {
     return apiClient.get<Certificacion>(`/certificaciones/${id}`);
@@ -806,8 +828,8 @@ export const certificacionesService = {
 };
 
 export const personaLiquidacionService = {
-  async getLiquidaciones(skip = 0, limit = 100): Promise<PersonaLiquidacion[]> {
-    return apiClient.get<PersonaLiquidacion[]>(`/persona-liquidacion?skip=${skip}&limit=${limit}`);
+  async getLiquidaciones(skip = 0, limit = 100, onTotal?: (t: number | null) => void): Promise<PersonaLiquidacion[]> {
+    return apiClient.get<PersonaLiquidacion[]>(`/persona-liquidacion?skip=${skip}&limit=${limit}`, undefined, captureTotal(onTotal));
   },
   async getLiquidacion(id: number): Promise<PersonaLiquidacion> {
     return apiClient.get<PersonaLiquidacion>(`/persona-liquidacion/${id}`);
@@ -858,8 +880,8 @@ export const personaLiquidacionService = {
 };
 
 export const ventasEfectivoService = {
-  async getVentasEfectivo(skip = 0, limit = 100): Promise<VentaEfectivoWithDetails[]> {
-    return apiClient.get<VentaEfectivoWithDetails[]>(`/ventas-efectivo?skip=${skip}&limit=${limit}`);
+  async getVentasEfectivo(skip = 0, limit = 100, onTotal?: (t: number | null) => void): Promise<VentaEfectivoWithDetails[]> {
+    return apiClient.get<VentaEfectivoWithDetails[]>(`/ventas-efectivo?skip=${skip}&limit=${limit}`, undefined, captureTotal(onTotal));
   },
 
   async getVentaEfectivo(id: number): Promise<VentaEfectivoWithDetails> {
@@ -951,22 +973,22 @@ export interface ProductosEnLiquidacionCreate {
 }
 
 export const productosEnLiquidacionService = {
-  async getProductosEnLiquidacion(skip = 0, limit = 100, clienteId?: number): Promise<ProductosEnLiquidacion[]> {
+  async getProductosEnLiquidacion(skip = 0, limit = 100, clienteId?: number, onTotal?: (t: number | null) => void): Promise<ProductosEnLiquidacion[]> {
     const params = new URLSearchParams({ skip: String(skip), limit: String(limit) });
     if (clienteId) params.set('cliente_id', String(clienteId));
-    return apiClient.get<ProductosEnLiquidacion[]>(`/productos-en-liquidacion?${params}`);
+    return apiClient.get<ProductosEnLiquidacion[]>(`/productos-en-liquidacion?${params}`, undefined, captureTotal(onTotal));
   },
 
-  async getProductosEnLiquidacionPendientes(skip = 0, limit = 100, clienteId?: number): Promise<ProductosEnLiquidacion[]> {
+  async getProductosEnLiquidacionPendientes(skip = 0, limit = 100, clienteId?: number, onTotal?: (t: number | null) => void): Promise<ProductosEnLiquidacion[]> {
     const params = new URLSearchParams({ skip: String(skip), limit: String(limit) });
     if (clienteId) params.set('cliente_id', String(clienteId));
-    return apiClient.get<ProductosEnLiquidacion[]>(`/productos-en-liquidacion/pendientes?${params}`);
+    return apiClient.get<ProductosEnLiquidacion[]>(`/productos-en-liquidacion/pendientes?${params}`, undefined, captureTotal(onTotal));
   },
 
-  async getProductosEnLiquidacionLiquidadas(skip = 0, limit = 100, clienteId?: number): Promise<ProductosEnLiquidacion[]> {
+  async getProductosEnLiquidacionLiquidadas(skip = 0, limit = 100, clienteId?: number, onTotal?: (t: number | null) => void): Promise<ProductosEnLiquidacion[]> {
     const params = new URLSearchParams({ skip: String(skip), limit: String(limit) });
     if (clienteId) params.set('cliente_id', String(clienteId));
-    return apiClient.get<ProductosEnLiquidacion[]>(`/productos-en-liquidacion/liquidadas?${params}`);
+    return apiClient.get<ProductosEnLiquidacion[]>(`/productos-en-liquidacion/liquidadas?${params}`, undefined, captureTotal(onTotal));
   },
 
   async getProductoEnLiquidacion(id: number): Promise<ProductosEnLiquidacion> {
@@ -1044,22 +1066,22 @@ export interface LiquidacionConfirmar {
 }
 
 export const liquidacionService = {
-  async getLiquidaciones(skip = 0, limit = 100, clienteId?: number): Promise<Liquidacion[]> {
+  async getLiquidaciones(skip = 0, limit = 100, clienteId?: number, onTotal?: (t: number | null) => void): Promise<Liquidacion[]> {
     const params = new URLSearchParams({ skip: String(skip), limit: String(limit) });
     if (clienteId) params.set('cliente_id', String(clienteId));
-    return apiClient.get<Liquidacion[]>(`/liquidaciones?${params}`);
+    return apiClient.get<Liquidacion[]>(`/liquidaciones?${params}`, undefined, captureTotal(onTotal));
   },
 
-  async getLiquidacionesPendientes(skip = 0, limit = 100, clienteId?: number): Promise<Liquidacion[]> {
+  async getLiquidacionesPendientes(skip = 0, limit = 100, clienteId?: number, onTotal?: (t: number | null) => void): Promise<Liquidacion[]> {
     const params = new URLSearchParams({ skip: String(skip), limit: String(limit) });
     if (clienteId) params.set('cliente_id', String(clienteId));
-    return apiClient.get<Liquidacion[]>(`/liquidaciones/pendientes?${params}`);
+    return apiClient.get<Liquidacion[]>(`/liquidaciones/pendientes?${params}`, undefined, captureTotal(onTotal));
   },
 
-  async getLiquidacionesLiquidadas(skip = 0, limit = 100, clienteId?: number): Promise<Liquidacion[]> {
+  async getLiquidacionesLiquidadas(skip = 0, limit = 100, clienteId?: number, onTotal?: (t: number | null) => void): Promise<Liquidacion[]> {
     const params = new URLSearchParams({ skip: String(skip), limit: String(limit) });
     if (clienteId) params.set('cliente_id', String(clienteId));
-    return apiClient.get<Liquidacion[]>(`/liquidaciones/liquidadas?${params}`);
+    return apiClient.get<Liquidacion[]>(`/liquidaciones/liquidadas?${params}`, undefined, captureTotal(onTotal));
   },
 
   async getLiquidacion(id: number): Promise<Liquidacion> {

@@ -2,7 +2,7 @@ import logging
 from typing import List, Optional
 from datetime import date, datetime, timezone
 from decimal import Decimal
-from fastapi import APIRouter, Depends, Header, HTTPException, Query
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Response
 from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlalchemy.orm import selectinload
 from src.database.connection import get_auth_session, get_session
@@ -28,7 +28,7 @@ from src.utils import (
     _get_denominacion_from_token,
     verify_auth,
 )
-from sqlmodel import select
+from sqlmodel import select, func
 from sqlalchemy import text
 
 logger = logging.getLogger(__name__)
@@ -49,6 +49,7 @@ async def listar_anexos(
     convenio_id: int = Query(None, description="Filtrar por convenio"),
     search: str = Query(None, description="Buscar por nombre o código"),
     db: AsyncSession = Depends(get_session),
+    response: Response = None,
 ):
     """Listar anexos con opción de búsqueda y filtro por convenio."""
     try:
@@ -66,6 +67,11 @@ async def listar_anexos(
                 (Anexo.nombre_anexo.ilike(f"%{escaped_search}%"))
                 | (Anexo.codigo_anexo.ilike(f"%{escaped_search}%"))
             )
+        # Total con el mismo WHERE, antes de paginar: header para el contador.
+        total = (
+            await db.exec(select(func.count()).select_from(statement.subquery()))
+        ).one()
+        response.headers["X-Total-Count"] = str(total)
         statement = statement.order_by(Anexo.id_anexo.desc()).offset(skip).limit(limit)
         results = await db.exec(statement)
         anexos = results.all()

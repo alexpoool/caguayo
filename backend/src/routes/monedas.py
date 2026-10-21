@@ -1,5 +1,5 @@
 from typing import List
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Response
 from sqlmodel.ext.asyncio.session import AsyncSession
 from src.database.connection import get_session
 from src.services.moneda_service import moneda_service
@@ -13,7 +13,9 @@ async def listar_monedas(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=1000),
     db: AsyncSession = Depends(get_session),
+    response: Response = None,
 ):
+    response.headers["X-Total-Count"] = str(await moneda_service.repository.count(db))
     return await moneda_service.get_multi(db, skip=skip, limit=limit)
 
 

@@ -90,6 +90,21 @@ class LiquidacionRepository(CRUDBase[Liquidacion, dict, dict]):
         result = await db.exec(statement)
         return result.all()
 
+    async def count_liquidaciones(
+        self, db: AsyncSession, cliente_id: Optional[int] = None, variante: str = ""
+    ) -> int:
+        """Total con el mismo WHERE que get_multi/pendientes/liquidadas.
+        variante: '', 'pendientes' o 'liquidadas'."""
+        statement = select(func.count()).select_from(Liquidacion)
+        if variante == "pendientes":
+            statement = statement.where(~Liquidacion.liquidada)
+        elif variante == "liquidadas":
+            statement = statement.where(Liquidacion.liquidada)
+        if cliente_id is not None:
+            statement = statement.where(Liquidacion.id_cliente == cliente_id)
+        result = await db.exec(statement)
+        return result.one()
+
     async def get_by_cliente_with_relations(
         self, db: AsyncSession, cliente_id: int, skip: int = 0, limit: int = 100
     ) -> List[Liquidacion]:

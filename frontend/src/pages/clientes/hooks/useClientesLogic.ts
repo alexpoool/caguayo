@@ -70,10 +70,11 @@ export function useClientesLogic() {
     searchTerm,
     setSearch,
     refresh,
+    total: totalClientesDB,
   } = useInfiniteList<Cliente>({
     queryKeyBase: "clientes",
-    queryFn: (skip, limit) =>
-      clientesService.getClientes(skip, limit, tipoRelacionFilter),
+    queryFn: (skip, limit, _search, onTotal) =>
+      clientesService.getClientes(skip, limit, tipoRelacionFilter, onTotal),
     limit: DEFAULT_LIMIT,
     extraQueryKeyParams: [isProveedorView],
   });
@@ -211,6 +212,7 @@ export function useClientesLogic() {
     hasMore,
     loadMore,
     isFetchingMore,
+    totalClientesDB,
     navigate,
   };
 }

@@ -152,6 +152,7 @@ export function OfertasPage() {
 
   const {
     items: ofertas,
+    total: totalOfertas,
     isLoading: isLoadingOfertas,
     isFetchingMore,
     refresh,
@@ -159,7 +160,8 @@ export function OfertasPage() {
     loadMore,
   } = useInfiniteList<Oferta>({
     queryKeyBase: 'ofertas',
-    queryFn: (skip, limit) => ofertasService.getOfertas(skip, limit, 'PENDIENTE'),
+    queryFn: (skip, limit, _search, onTotal) =>
+      ofertasService.getOfertas(skip, limit, 'PENDIENTE', onTotal),
   });
 
   useEffect(() => {
@@ -676,7 +678,7 @@ export function OfertasPage() {
             <h1 className="text-2xl font-bold text-gray-900">Ofertas</h1>
             <p className="text-gray-500 mt-1">
               {currentEtapa ? `Etapa: ${currentEtapa.nombre_etapa || `#${currentEtapa.numero_etapa}`}` : 'Gestión de ofertas de servicio'}
-              {` · ${filteredOfertas.length} oferta(s)`}
+              {` · ${(filtroEtapa || solicitudParam || searchTerm) ? filteredOfertas.length : (totalOfertas ?? filteredOfertas.length)} oferta(s)`}
             </p>
           </div>
         </div>

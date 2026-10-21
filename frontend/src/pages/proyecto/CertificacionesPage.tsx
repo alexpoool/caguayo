@@ -29,13 +29,14 @@ export function CertificacionesPage() {
     refresh,
     hasMore,
     loadMore,
+    total: totalCertificaciones,
   } = useInfiniteList<Certificacion>({
     queryKeyBase: 'certificaciones',
-    queryFn: async (skip, limit) => {
+    queryFn: async (skip, limit, _search, onTotal) => {
       if (etapaIdParam) {
         return certificacionesService.getCertificacionesByEtapa(Number(etapaIdParam));
       }
-      return certificacionesService.getCertificaciones(skip, limit);
+      return certificacionesService.getCertificaciones(skip, limit, onTotal);
     },
     extraQueryKeyParams: etapaIdParam ? [etapaIdParam] : [],
   });
@@ -333,7 +334,9 @@ export function CertificacionesPage() {
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Certificaciones</h1>
             <p className="text-gray-500 mt-1">
-              {filteredCertificaciones.length} certificación{filteredCertificaciones.length !== 1 ? 'es' : ''}
+              {searchTerm || etapaIdParam
+                ? filteredCertificaciones.length
+                : (totalCertificaciones ?? filteredCertificaciones.length)} certificación{searchTerm || etapaIdParam ? (filteredCertificaciones.length !== 1 ? 'es' : '') : ((totalCertificaciones ?? filteredCertificaciones.length) !== 1 ? 'es' : '')}
             </p>
           </div>
         </div>

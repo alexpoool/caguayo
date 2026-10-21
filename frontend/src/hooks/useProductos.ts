@@ -22,10 +22,11 @@ export function useProductos() {
     searchTerm,
     setSearch,
     refresh,
+    total: totalProductosDB,
   } = useInfiniteList<Productos>({
     queryKeyBase: 'productos',
-    queryFn: (skip, limit, search) =>
-      productosService.getProductos(skip, limit, search),
+    queryFn: (skip, limit, search, onTotal) =>
+      productosService.getProductos(skip, limit, search, onTotal),
     limit: DEFAULT_LIMIT,
   });
 
@@ -91,5 +92,6 @@ export function useProductos() {
     isCreating: createMutation.isPending,
     isUpdating: updateMutation.isPending,
     isDeleting: deleteMutation.isPending,
+    totalProductosDB,
   };
 }

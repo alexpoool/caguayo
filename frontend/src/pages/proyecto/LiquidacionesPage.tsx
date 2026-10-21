@@ -151,13 +151,15 @@ export function LiquidacionesPage() {
 
   const {
     items: liquidaciones,
+    total: totalLiquidacionesPersona,
     isLoading,
     isFetchingMore,
     hasMore,
     loadMore,
   } = useInfiniteList({
     queryKeyBase: 'persona-liquidaciones',
-    queryFn: (skip, limit) => personaLiquidacionService.getLiquidaciones(skip, limit),
+    queryFn: (skip, limit, _search, onTotal) =>
+      personaLiquidacionService.getLiquidaciones(skip, limit, onTotal),
   });
 
   useEffect(() => {
@@ -961,7 +963,12 @@ export function LiquidacionesPage() {
               </div>
               <div>
                 <h1 className="text-2xl font-bold text-gray-900">Liquidaciones</h1>
-                <p className="text-gray-500 mt-1">Gestión de liquidaciones a realizadores</p>
+                <p className="text-gray-500 mt-1">
+                  Gestión de liquidaciones a realizadores
+                  {filtroEtapa || filtroPersona || searchTerm || activeTab !== 'todas'
+                    ? ` (${filteredLiquidaciones.length} filtradas)`
+                    : ` (${totalLiquidacionesPersona ?? liquidaciones.length} registradas)`}
+                </p>
               </div>
             </div>
             <Button

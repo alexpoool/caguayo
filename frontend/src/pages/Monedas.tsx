@@ -73,9 +73,10 @@ export function MonedasPage() {
     hasMore,
     loadMore,
     refresh,
+    total: totalMonedas,
   } = useInfiniteList<Moneda>({
     queryKeyBase: 'monedas',
-    queryFn: (skip, limit) => monedaService.getMonedas(skip, limit),
+    queryFn: (skip, limit, _search, onTotal) => monedaService.getMonedas(skip, limit, onTotal),
   });
 
   // Scroll infinito
@@ -272,7 +273,7 @@ export function MonedasPage() {
           <div className="flex items-baseline">
             <h1 className="text-xl font-bold text-gray-900">Monedas</h1>
             <p className="text-sm text-gray-500 ml-3 hidden sm:block">
-              Gestión de monedas del sistema
+              Gestión de monedas del sistema ({totalMonedas ?? monedas.length})
             </p>
           </div>
         </div>

@@ -47,9 +47,11 @@ export function ServiciosPage() {
     refresh,
     hasMore,
     loadMore,
+    total: totalServicios,
   } = useInfiniteList<Servicio>({
     queryKeyBase: 'servicios-proyecto',
-    queryFn: (skip, limit) => serviciosProyectoService.getServicios(skip, limit),
+    queryFn: (skip, limit, _search, onTotal) =>
+      serviciosProyectoService.getServicios(skip, limit, onTotal),
   });
 
   useEffect(() => {
@@ -171,8 +173,8 @@ export function ServiciosPage() {
             <h1 className="text-2xl font-bold text-gray-900">Servicios</h1>
             <p className="text-gray-500 mt-1">
               {filteredServicios.length === servicios.length
-                ? `Gestión de servicios (${servicios.length} items)`
-                : `Mostrando ${filteredServicios.length} de ${servicios.length} servicios`
+                ? `Gestión de servicios (${totalServicios ?? servicios.length} items)`
+                : `Mostrando ${filteredServicios.length} de ${servicios.length} servicios (total en BD: ${totalServicios ?? servicios.length})`
               }
               {isFetchingMore && <Loader2 className="h-4 w-4 animate-spin inline ml-2" />}
             </p>

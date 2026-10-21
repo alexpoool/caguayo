@@ -46,15 +46,16 @@ export function ProductosEnLiquidacionPage() {
     loadMore,
     refresh,
     reset,
+    total: totalProductosPL,
   } = useInfiniteList<ProductosEnLiquidacion>({
     queryKeyBase: 'productos-liquidacion',
     extraQueryKeyParams: queryKeyParams,
-    queryFn: (skip, limit) => {
+    queryFn: (skip, limit, _search, onTotal) => {
       if (activeTab === 'pendientes')
-        return productosEnLiquidacionService.getProductosEnLiquidacionPendientes(skip, limit, filtroCliente ?? undefined);
+        return productosEnLiquidacionService.getProductosEnLiquidacionPendientes(skip, limit, filtroCliente ?? undefined, onTotal);
       if (activeTab === 'liquidadas')
-        return productosEnLiquidacionService.getProductosEnLiquidacionLiquidadas(skip, limit, filtroCliente ?? undefined);
-      return productosEnLiquidacionService.getProductosEnLiquidacion(skip, limit, filtroCliente ?? undefined);
+        return productosEnLiquidacionService.getProductosEnLiquidacionLiquidadas(skip, limit, filtroCliente ?? undefined, onTotal);
+      return productosEnLiquidacionService.getProductosEnLiquidacion(skip, limit, filtroCliente ?? undefined, onTotal);
     },
     limit: 100,
   });
@@ -178,8 +179,8 @@ export function ProductosEnLiquidacionPage() {
             <h1 className="text-xl font-bold text-gray-900">Productos en Liquidación</h1>
             <p className="text-sm text-gray-500 ml-3 hidden sm:block">
               {filteredProductos.length === productos.length
-                ? `Gestión de productos (${productos.length} items)`
-                : `Mostrando ${filteredProductos.length} de ${productos.length} productos`
+                ? `Gestión de productos (${totalProductosPL ?? productos.length} items)`
+                : `Mostrando ${filteredProductos.length} de ${productos.length} productos filtrados (total en BD: ${totalProductosPL ?? productos.length})`
               }
             </p>
           </div>

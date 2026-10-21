@@ -47,16 +47,41 @@ export function ProyectosPage() {
 
   const queryClient = useQueryClient();
 
+  // Total real de solicitudes en la BD. Lo manda el backend en el header
+  // X-Total-Count de cada GET paginado. null = aún no llegó (fallback al conteo cargado).
+  const [totalDB, setTotalDB] = useState<number | null>(null);
+
   const {
     items: solicitudes,
     isFetchingMore,
     refresh,
     hasMore,
     loadMore,
+    reset,
   } = useInfiniteList<SolicitudServicio>({
     queryKeyBase: 'solicitudes-proyecto',
-    queryFn: (skip, limit) => solicitudesService.getSolicitudes(skip, limit),
+    // El servidor filtra por estado y busca: la lista (y el total del header)
+    // ya vienen filtrados. Las params van a la query key para que cambie de
+    // filtros refetchee.
+    queryFn: (skip, limit) =>
+      solicitudesService.getSolicitudes(skip, limit, setTotalDB, {
+        estado: estadoFiltro === 'TODAS' ? undefined : estadoFiltro,
+        search: searchTerm || undefined,
+      }),
+    extraQueryKeyParams: [estadoFiltro, searchTerm],
   });
+
+  // Cambio de pestaña o de búsqueda: la lista acumulada ya no corresponde
+  // (el hook anexaría páginas viejas sobre las nuevas). Empieza de cero.
+  const primerMontaje = useRef(true);
+  useEffect(() => {
+    if (primerMontaje.current) {
+      primerMontaje.current = false;
+      return;
+    }
+    setTotalDB(null);
+    reset();
+  }, [estadoFiltro, searchTerm, reset]);
 
   useEffect(() => {
     if (!hasMore || isFetchingMore) return;
@@ -502,22 +527,19 @@ export function ProyectosPage() {
     setView('form');
   };
 
-  const filteredSolicitudes = useMemo(() => {
-    const filtered = estadoFiltro === 'TODAS' ? solicitudes : solicitudes.filter(s => s.estado === estadoFiltro);
-    if (!searchTerm) return filtered;
-    return filtered.filter(s =>
-      s.codigo_proyecto?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      s.descripcion?.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-  }, [solicitudes, searchTerm, estadoFiltro]);
-
   // Las que la migración del legacy dejó con estado provisional. Se cuentan
   // sobre lo que se está viendo, no sobre todo: el aviso tiene que estar
   // donde uno está mirando la fila.
   const paraRevisar = useMemo(
-    () => filteredSolicitudes.filter((s) => s.estado_por_revisar).length,
-    [filteredSolicitudes],
+    () => solicitudes.filter((s) => s.estado_por_revisar).length,
+    [solicitudes],
   );
+
+  // El filtrado (estado y búsqueda) ocurre en el servidor: la lista ya llega
+  // filtrada y el total del header X-Total-Count la cuenta completa. Con o sin
+  // filtros, el número es el de la base de datos, no el de lo cargado.
+  const sinFiltros = estadoFiltro === 'TODAS' && !searchTerm;
+  const totalProyectos = totalDB ?? solicitudes.length;
 
   const renderList = () => {
     return (
@@ -541,7 +563,8 @@ export function ProyectosPage() {
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Proyectos </h1>
             <p className="text-gray-500 mt-1">
-              {filteredSolicitudes.length} proyecto{filteredSolicitudes.length !== 1 ? 's' : ''}
+              {totalProyectos} proyecto{totalProyectos !== 1 ? 's' : ''}
+              {sinFiltros ? ' en la base de datos' : ''}
             </p>
           </div>
         </div>
@@ -601,14 +624,14 @@ export function ProyectosPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredSolicitudes.length === 0 ? (
+              {solicitudes.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={6} className="text-center py-12 text-gray-500">
                     {searchTerm ? 'No se encontraron solicitudes que coincidan con la búsqueda' : 'No hay solicitudes'}
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredSolicitudes.map((item) => (
+                solicitudes.map((item) => (
                   <TableRow key={item.id_solicitud_servicio} className="hover:bg-gray-50/50 transition-colors cursor-pointer" onClick={() => setDetailModal({ isOpen: true, item })}>
                     <TableCell>
                       <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-teal-50 text-teal-700 rounded text-sm font-mono font-medium">

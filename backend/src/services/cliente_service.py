@@ -157,6 +157,27 @@ class ClienteService:
         return [ClienteRead.model_validate(c) for c in db_clientes]
 
     @staticmethod
+    async def count_clientes(
+        db: AsyncSession, tipo_relacion: Optional[str] = None
+    ) -> int:
+        """Total con el mismo WHERE que get_clientes (header X-Total-Count)."""
+        from sqlalchemy import func
+
+        statement = select(func.count()).select_from(Cliente)
+        person_types = {"NATURAL", "TCP", "JURIDICA"}
+        if tipo_relacion:
+            tipos = [t.strip() for t in tipo_relacion.split(",") if t.strip()]
+            if tipos and set(tipos).issubset(person_types):
+                statement = statement.where(Cliente.tipo_persona.in_(tipos))
+            else:
+                if len(tipos) == 1:
+                    statement = statement.where(Cliente.tipo_relacion == tipos[0])
+                elif len(tipos) > 1:
+                    statement = statement.where(Cliente.tipo_relacion.in_(tipos))
+        result = await db.exec(statement)
+        return result.one()
+
+    @staticmethod
     async def update_cliente(
         db: AsyncSession, cliente_id: int, cliente_update: ClienteUpdate
     ) -> Optional[ClienteRead]:

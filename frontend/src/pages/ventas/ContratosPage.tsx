@@ -81,10 +81,11 @@ export function ContratosPage() {
     reset,
     searchTerm,
     setSearch,
+    total: totalContratos,
   } = useInfiniteList<ContratoWithDetails>({
     queryKeyBase: 'contratos',
-    queryFn: (skip, limit, search) =>
-      contratosService.getContratos(skip, limit, filtroCliente || undefined, search),
+    queryFn: (skip, limit, search, onTotal) =>
+      contratosService.getContratos(skip, limit, filtroCliente || undefined, search, onTotal),
     extraQueryKeyParams: [filtroCliente],
     limit: 100,
   });
@@ -260,9 +261,9 @@ export function ContratosPage() {
           <div className="flex items-baseline">
             <h1 className="text-xl font-bold text-gray-900">Contratos</h1>
             <p className="text-sm text-gray-500 ml-3 hidden sm:block">
-              {filteredContratos.length === contratos.length 
-                ? `Gestión de contratos (${contratos.length} items)`
-                : `Mostrando ${filteredContratos.length} de ${contratos.length} contratos`
+              {filteredContratos.length === contratos.length
+                ? `Gestión de contratos (${totalContratos ?? contratos.length} items)`
+                : `Mostrando ${filteredContratos.length} de ${contratos.length} contratos (total con filtros: ${totalContratos ?? contratos.length})`
               }
             </p>
           </div>

@@ -111,10 +111,17 @@ export function ConveniosPage() {
     searchTerm,
     setSearch,
     refresh,
+    total: totalConvenios,
   } = useInfiniteList<Convenio>({
     queryKeyBase: "convenios",
-    queryFn: (skip, limit, search) =>
-      conveniosService.getConvenios(filtroProveedor ?? undefined, search || undefined, skip, limit),
+    queryFn: (skip, limit, search, onTotal) =>
+      conveniosService.getConvenios(
+        filtroProveedor ?? undefined,
+        search || undefined,
+        skip,
+        limit,
+        onTotal,
+      ),
     limit: 100,
     extraQueryKeyParams: [filtroProveedor],
   });
@@ -292,7 +299,7 @@ export function ConveniosPage() {
           <div className="flex items-baseline">
             <h1 className="text-xl font-bold text-gray-900">Convenios</h1>
             <p className="text-sm text-gray-500 ml-3 hidden sm:block">
-              Gestión de convenios ({convenios.length} registrados)
+              Gestión de convenios ({totalConvenios ?? convenios.length} registrados)
             </p>
           </div>
         </div>

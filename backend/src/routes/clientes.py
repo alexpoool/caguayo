@@ -1,5 +1,5 @@
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlmodel import select
 from sqlalchemy.exc import IntegrityError
@@ -20,8 +20,12 @@ async def listar_clientes(
         None, description="Filtrar por tipo_relacion (CLIENTE, PROVEEDOR, AMBAS)"
     ),
     db: AsyncSession = Depends(get_session),
+    response: Response = None,
 ):
     """Listar todos los clientes con paginación y opcionalmente filtrar por tipo_relacion."""
+    response.headers["X-Total-Count"] = str(
+        await ClienteService.count_clientes(db, tipo_relacion=tipo_relacion)
+    )
     return await ClienteService.get_clientes(
         db, skip=skip, limit=limit, tipo_relacion=tipo_relacion
     )

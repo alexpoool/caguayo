@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Header, HTTPException, Query
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Response
 from sqlmodel.ext.asyncio.session import AsyncSession
 from typing import List, Optional
 from src.database.connection import get_auth_session, get_session
@@ -13,6 +13,11 @@ from src.services.servicio_service import (
     PersonaLiquidacionService,
     certificacion_service,
     OfertaServicioService,
+)
+from src.repository.servicio_repo import (
+    factura_servicio_repo,
+    persona_liquidacion_repo,
+    servicio_repo,
 )
 from src.dto.servicio_dto import (
     ServicioCreate,
@@ -66,8 +71,12 @@ servicios_router = APIRouter(
 
 @servicios_router.get("", response_model=List[ServicioRead])
 async def get_servicios(
-    skip: int = 0, limit: int = 100, db: AsyncSession = Depends(get_session)
+    skip: int = 0,
+    limit: int = 100,
+    db: AsyncSession = Depends(get_session),
+    response: Response = None,
 ):
+    response.headers["X-Total-Count"] = str(await servicio_repo.count(db))
     return await ServicioService.get_all(db, skip, limit)
 
 
@@ -117,9 +126,21 @@ solicitudes_router = APIRouter(
 
 @solicitudes_router.get("", response_model=List[SolicitudServicioRead])
 async def get_solicitudes(
-    skip: int = 0, limit: int = 100, db: AsyncSession = Depends(get_session)
+    skip: int = 0,
+    limit: int = 100,
+    estado: Optional[str] = Query(default=None),
+    search: Optional[str] = Query(default=None),
+    db: AsyncSession = Depends(get_session),
+    response: Response = None,
 ):
-    return await SolicitudServicioService.get_all(db, skip, limit)
+    # Total con el mismo WHERE que la lista, para el contador de la página de
+    # Proyectos. Va en header para no cambiar el shape del body (lista pelada).
+    response.headers["X-Total-Count"] = str(
+        await SolicitudServicioService.count_all(db, estado=estado, search=search)
+    )
+    return await SolicitudServicioService.get_all(
+        db, skip, limit, estado=estado, search=search
+    )
 
 
 @solicitudes_router.get("/{id}", response_model=SolicitudServicioRead)
@@ -306,8 +327,12 @@ facturas_servicio_router = APIRouter(
 
 @facturas_servicio_router.get("", response_model=List[FacturaServicioRead])
 async def get_facturas_servicio(
-    skip: int = 0, limit: int = 100, db: AsyncSession = Depends(get_session)
+    skip: int = 0,
+    limit: int = 100,
+    db: AsyncSession = Depends(get_session),
+    response: Response = None,
 ):
+    response.headers["X-Total-Count"] = str(await factura_servicio_repo.count(db))
     return await FacturaServicioService.get_all(db, skip, limit)
 
 
@@ -409,7 +434,11 @@ async def get_ofertas(
     limit: int = 100,
     estado: Optional[str] = None,
     db: AsyncSession = Depends(get_session),
+    response: Response = None,
 ):
+    response.headers["X-Total-Count"] = str(
+        await OfertaServicioService.count_all(db, estado=estado)
+    )
     return await OfertaServicioService.get_all(db, skip, limit, estado=estado)
 
 
@@ -535,8 +564,12 @@ persona_liquidacion_router = APIRouter(
 
 @persona_liquidacion_router.get("", response_model=List[PersonaLiquidacionRead])
 async def get_liquidaciones(
-    skip: int = 0, limit: int = 100, db: AsyncSession = Depends(get_session)
+    skip: int = 0,
+    limit: int = 100,
+    db: AsyncSession = Depends(get_session),
+    response: Response = None,
 ):
+    response.headers["X-Total-Count"] = str(await persona_liquidacion_repo.count(db))
     return await PersonaLiquidacionService.get_all(db, skip, limit)
 
 
@@ -675,8 +708,12 @@ certificaciones_router = APIRouter(
 
 @certificaciones_router.get("", response_model=List[CertificacionRead])
 async def get_certificaciones(
-    skip: int = 0, limit: int = 100, db: AsyncSession = Depends(get_session)
+    skip: int = 0,
+    limit: int = 100,
+    db: AsyncSession = Depends(get_session),
+    response: Response = None,
 ):
+    response.headers["X-Total-Count"] = str(await certificacion_service.count_all(db))
     return await certificacion_service.get_all(db)
 
 

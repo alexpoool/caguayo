@@ -187,7 +187,7 @@ Al inicializar la base de datos con `init_office.py`, se crea automáticamente u
 | Campo | Valor |
 |-------|-------|
 | **Alias** | admin |
-| **Contraseña** | Admin123@ |
+| **Contraseña** | admin123 |
 | **Grupo** | ADMINISTRADOR (acceso total) |
 | **Dependencia** | Caguayo Matriz |
 

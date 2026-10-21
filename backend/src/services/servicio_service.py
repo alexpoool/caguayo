@@ -1,7 +1,7 @@
 from datetime import datetime, date
 from decimal import Decimal
 from sqlmodel.ext.asyncio.session import AsyncSession
-from sqlmodel import select
+from sqlmodel import select, func
 from typing import List, Optional
 from src.core.exceptions import BusinessLogicError
 from src.utils.codigos_entidad import (
@@ -132,10 +132,22 @@ class SolicitudServicioService:
 
     @staticmethod
     async def get_all(
-        db: AsyncSession, skip: int = 0, limit: int = 100
+        db: AsyncSession,
+        skip: int = 0,
+        limit: int = 100,
+        estado: Optional[str] = None,
+        search: Optional[str] = None,
     ) -> List[SolicitudServicioRead]:
-        items = await solicitud_servicio_repo.get_all_with_details(db, skip, limit)
+        items = await solicitud_servicio_repo.get_all_with_details(
+            db, skip, limit, estado=estado, search=search
+        )
         return [SolicitudServicioRead(**i.model_dump()) for i in items]
+
+    @staticmethod
+    async def count_all(
+        db: AsyncSession, estado: Optional[str] = None, search: Optional[str] = None
+    ) -> int:
+        return await solicitud_servicio_repo.count_all(db, estado=estado, search=search)
 
     @staticmethod
     async def get(db: AsyncSession, id: int) -> SolicitudServicioRead:
@@ -1318,6 +1330,11 @@ class CertificacionService:
         result = await db.exec(statement)
         return [CertificacionRead.model_validate(c) for c in result.all()]
 
+    async def count_all(self, db: AsyncSession) -> int:
+        """Total de certificaciones para el header X-Total-Count."""
+        result = await db.exec(select(func.count()).select_from(Certificacion))
+        return result.one()
+
     async def get_by_etapa(
         self, db: AsyncSession, id_etapa: int
     ) -> List[CertificacionRead]:
@@ -1521,6 +1538,10 @@ class OfertaServicioService:
     ) -> List[OfertaRead]:
         items = await oferta_repo.get_all_with_details(db, skip, limit, estado=estado)
         return [OfertaRead(**i.model_dump()) for i in items]
+
+    @staticmethod
+    async def count_all(db: AsyncSession, estado: Optional[str] = None) -> int:
+        return await oferta_repo.count_all(db, estado=estado)
 
     @staticmethod
     async def get(db: AsyncSession, id: int) -> OfertaRead:

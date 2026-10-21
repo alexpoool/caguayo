@@ -41,7 +41,8 @@ class ApiClient {
 
   private async request<T>(
     endpoint: string,
-    options: RequestInit = {}
+    options: RequestInit = {},
+    onHeaders?: (headers: Headers) => void
   ): Promise<T> {
     const url = `${API_BASE_URL}${endpoint}`;
     
@@ -65,7 +66,8 @@ class ApiClient {
       const startTime = Date.now();
       const response = await fetch(url, config);
       const duration = (Date.now() - startTime) / 1000;
-      
+
+      onHeaders?.(response.headers);
       this.logApiCall(endpoint, options.method || 'GET', response.status, duration);
 
       if (!response.ok) {
@@ -107,7 +109,7 @@ class ApiClient {
     }
   }
 
-  async get<T>(endpoint: string, params?: Record<string, any>): Promise<T> {
+  async get<T>(endpoint: string, params?: Record<string, any>, onHeaders?: (headers: Headers) => void): Promise<T> {
     let url = endpoint;
     if (params && Object.keys(params).length > 0) {
       const queryParams = new URLSearchParams();
@@ -118,7 +120,7 @@ class ApiClient {
       });
       url += `?${queryParams.toString()}`;
     }
-    return this.request<T>(url);
+    return this.request<T>(url, {}, onHeaders);
   }
 
   /**

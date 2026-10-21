@@ -32,6 +32,7 @@ export function ClientesPage() {
     hasMore,
     loadMore,
     isFetchingMore,
+    totalClientesDB,
   } = useClientesLogic();
 
   const loadMoreRef = useRef<HTMLDivElement>(null);
@@ -77,7 +78,7 @@ export function ClientesPage() {
     <div className="flex-1 w-full bg-gray-50/50">
       <ClientesList
         filteredClientes={filteredClientes}
-        totalClientes={clientes.length}
+        totalClientes={totalClientesDB ?? clientes.length}
         searchTerm={searchTerm}
         setSearchTerm={setSearchTerm}
         isProveedorView={isProveedorView}

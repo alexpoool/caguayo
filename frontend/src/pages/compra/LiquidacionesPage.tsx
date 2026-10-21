@@ -63,15 +63,16 @@ export function LiquidacionesPage() {
     setSearch,
     refresh,
     reset,
+    total: totalLiquidaciones,
   } = useInfiniteList<Liquidacion>({
     queryKeyBase: 'liquidaciones',
-    queryFn: (skip, limit) => {
+    queryFn: (skip, limit, _search, onTotal) => {
       if (activeTab === 'pendientes') {
-        return liquidacionService.getLiquidacionesPendientes(skip, limit);
+        return liquidacionService.getLiquidacionesPendientes(skip, limit, undefined, onTotal);
       } else if (activeTab === 'liquidadas') {
-        return liquidacionService.getLiquidacionesLiquidadas(skip, limit);
+        return liquidacionService.getLiquidacionesLiquidadas(skip, limit, undefined, onTotal);
       }
-      return liquidacionService.getLiquidaciones(skip, limit);
+      return liquidacionService.getLiquidaciones(skip, limit, undefined, onTotal);
     },
     extraQueryKeyParams: [activeTab],
     limit: 100,
@@ -449,7 +450,7 @@ export function LiquidacionesPage() {
           <div className="flex items-baseline">
             <h1 className="text-xl font-bold text-gray-900">Liquidaciones</h1>
             <p className="text-sm text-gray-500 ml-3 hidden sm:block">
-              Gestión de liquidaciones ({liquidaciones.length} registradas)
+              Gestión de liquidaciones ({searchTerm ? filteredLiquidaciones.length : totalLiquidaciones ?? liquidaciones.length} registradas)
             </p>
           </div>
         </div>

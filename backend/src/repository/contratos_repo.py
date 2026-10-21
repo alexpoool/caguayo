@@ -1,7 +1,7 @@
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlalchemy.orm import selectinload
-from sqlalchemy import text, or_
+from sqlalchemy import func, text, or_
 from typing import List, Optional, Any
 from decimal import Decimal
 from src.repository.base import CRUDBase
@@ -102,6 +102,37 @@ class ContratoRepository(CRUDBase[Contrato, ContratoCreate, ContratoUpdate]):
         )
         results = await db.exec(statement)
         return results.all()
+
+    async def count_all(
+        self,
+        db: AsyncSession,
+        id_cliente: Optional[int] = None,
+        search: Optional[str] = None,
+    ) -> int:
+        """Total con el mismo WHERE que get_all_with_details (header X-Total-Count)."""
+        statement = select(func.count()).select_from(Contrato)
+        if id_cliente is not None:
+            statement = statement.where(Contrato.id_cliente == id_cliente)
+        if search and search.strip():
+            patron = "%%%s%%" % search.strip()
+            statement = (
+                statement.join(
+                    Cliente, Cliente.id_cliente == Contrato.id_cliente
+                ).join(
+                    EstadoContrato,
+                    EstadoContrato.id_estado_contrato == Contrato.id_estado,
+                ).where(
+                    or_(
+                        Contrato.codigo.ilike(patron),
+                        Contrato.nombre.ilike(patron),
+                        Cliente.codigo.ilike(patron),
+                        Cliente.nombre.ilike(patron),
+                        EstadoContrato.nombre.ilike(patron),
+                    )
+                )
+            )
+        result = await db.exec(statement)
+        return result.one()
 
     async def get_by_id_with_details(
         self, db: AsyncSession, id_contrato: int

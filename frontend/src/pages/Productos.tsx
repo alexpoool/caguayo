@@ -28,6 +28,7 @@ export function ProductosPage() {
     setSearch,
     isCreating,
     isUpdating,
+    totalProductosDB,
   } = useProductos();
 
   // Scroll infinito con IntersectionObserver
@@ -92,7 +93,7 @@ export function ProductosPage() {
     <div className="flex-1 w-full">
       <ProductListView
         productos={productos}
-        totalProductos={productos.length}
+        totalProductos={totalProductosDB ?? productos.length}
         searchTerm={searchTerm}
         onSearchChange={setSearch}
         onEdit={handleEdit}

@@ -73,9 +73,11 @@ export function SolicitudesPage() {
     refresh,
     hasMore,
     loadMore,
+    total: totalSolicitudes,
   } = useInfiniteList<SolicitudServicio>({
     queryKeyBase: 'solicitudes-servicio',
-    queryFn: (skip, limit) => solicitudesService.getSolicitudes(skip, limit),
+    queryFn: (skip, limit, _search, onTotal) =>
+      solicitudesService.getSolicitudes(skip, limit, onTotal),
   });
 
   useEffect(() => {
@@ -467,8 +469,8 @@ export function SolicitudesPage() {
             <h1 className="text-2xl font-bold text-gray-900">Solicitudes de Servicio</h1>
             <p className="text-gray-500 mt-1">
               {filteredSolicitudes.length === solicitudes.length
-                ? `Gestión de solicitudes (${solicitudes.length} items)`
-                : `Mostrando ${filteredSolicitudes.length} de ${solicitudes.length} solicitudes`
+                ? `Gestión de solicitudes (${totalSolicitudes ?? solicitudes.length} items)`
+                : `Mostrando ${filteredSolicitudes.length} de ${solicitudes.length} solicitudes (total en BD: ${totalSolicitudes ?? solicitudes.length})`
               }
             </p>
           </div>

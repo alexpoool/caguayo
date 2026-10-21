@@ -163,10 +163,17 @@ export function AnexosPage() {
     searchTerm,
     setSearch,
     refresh,
+    total: totalAnexos,
   } = useInfiniteList<Anexo>({
     queryKeyBase: "anexos",
-    queryFn: (skip, limit, search) =>
-      anexosService.getAnexos(filtroConvenio ?? undefined, search || undefined, skip, limit),
+    queryFn: (skip, limit, search, onTotal) =>
+      anexosService.getAnexos(
+        filtroConvenio ?? undefined,
+        search || undefined,
+        skip,
+        limit,
+        onTotal,
+      ),
     limit: 100,
     extraQueryKeyParams: [filtroConvenio],
   });
@@ -1314,7 +1321,7 @@ export function AnexosPage() {
           <div className="flex items-baseline">
             <h1 className="text-xl font-bold text-gray-900">Anexos</h1>
             <p className="text-sm text-gray-500 ml-3 hidden sm:block">
-              Gestión de anexos ({anexos.length} registrados)
+              Gestión de anexos ({totalAnexos ?? anexos.length} registrados)
             </p>
           </div>
         </div>
