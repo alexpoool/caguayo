@@ -45,9 +45,9 @@ from src.models import (
     RrhhTipoPago,
     RrhhCalificacion,
     RrhhEmpleado,
+    RrhhNominaEmpleado,
 )
 from src.models.rrhh_deducciones import RrhhDeduccion, RrhhBonificacion
-from src.models.rrhh_nomina import RrhhPago
 
 
 class RrhhCatalogoService:
@@ -224,7 +224,9 @@ class _TipoBonificacionService(RrhhCatalogoService):
 class _TipoPagoService(RrhhCatalogoService):
     def _usos(self, id: int) -> List:
         return [
-            select(func.count()).select_from(RrhhPago).where(RrhhPago.metodo_id == id)
+            select(func.count())
+            .select_from(RrhhNominaEmpleado)
+            .where(RrhhNominaEmpleado.metodo_id == id)
         ]
 
 

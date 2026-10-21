@@ -47,6 +47,14 @@ class RrhhNominaEmpleadoRead(RrhhNominaEmpleadoBase):
     puesto_nombre: Optional[str] = None
     departamento_id: Optional[int] = None
     departamento_nombre: Optional[str] = None
+    # Pago del empleado; `None` mientras esté pendiente.
+    fecha_pago: Optional[date] = None
+    monto: Optional[Decimal] = Field(
+        default=None, decimal_places=2, max_digits=12, gt=0
+    )
+    metodo_id: Optional[int] = None
+    metodo_nombre: Optional[str] = None
+    referencia: Optional[str] = None
 
 
 class RrhhNominaCandidato(RrhhNominaEmpleadoRead):
@@ -124,34 +132,40 @@ class RrhhNominaSeleccion(SQLModel):
     empleado_ids: list[int] = Field(default_factory=list)
 
 
-class RrhhPagoBase(SQLModel):
-    metodo_id: int
-    monto: Decimal = Field(decimal_places=2, max_digits=12, gt=0)
+class RrhhNominaPagoItem(SQLModel):
+    """Pago de un empleado del lote.
+
+    Si no se envía `fecha_pago` se usa la fecha del día. Para quitar un pago
+    ya registrado se envían `metodo_id` y `fecha_pago` en `None`.
+    """
+
+    empleado_id: int
     fecha_pago: Optional[date] = None
+    monto: Optional[Decimal] = Field(
+        default=None, decimal_places=2, max_digits=12, gt=0
+    )
+    metodo_id: Optional[int] = None
     referencia: Optional[str] = Field(default=None, max_length=50)
-    observaciones: Optional[str] = None
 
 
-class RrhhPagoRead(RrhhPagoBase):
-    id: int
-    nomina_id: int
-    fecha_pago: date
-    metodo_nombre: Optional[str] = None
-    created_at: Optional[datetime] = None
+class RrhhNominaPagosEntrada(SQLModel):
+    pagos: list[RrhhNominaPagoItem] = Field(default_factory=list)
 
 
 class RrhhPagoListado(SQLModel):
-    """Fila del listado de pagos: el pago cubre la nómina completa."""
+    """Pago por empleado, con su nómina resuelta."""
 
     id: int
     nomina_id: int
     nomina_descripcion: Optional[str] = None
+    empleado_id: int
+    empleado_codigo: Optional[str] = None
+    empleado_nombre: Optional[str] = None
     fecha_pago: date
     monto: Decimal
     metodo_id: int
     metodo_nombre: Optional[str] = None
     referencia: Optional[str] = None
-    observaciones: Optional[str] = None
     periodo: date
     inicio_periodo: date
     fin_periodo: date
@@ -160,10 +174,9 @@ class RrhhPagoListado(SQLModel):
 
 
 class RrhhNominaDetalle(RrhhNominaListado):
-    """Cabecera con el detalle por empleado y los pagos registrados."""
+    """Cabecera con el detalle por empleado (importes y pago)."""
 
     empleados: list[RrhhNominaEmpleadoRead] = Field(default_factory=list)
-    pagos: list[RrhhPagoRead] = Field(default_factory=list)
 
 
 # ── Reporte de costo ────────────────────────────────────────────────────────
@@ -204,8 +217,8 @@ __all__ = [
     "RrhhNominaListado",
     "RrhhNominaDetalle",
     "RrhhNominaSeleccion",
-    "RrhhPagoBase",
-    "RrhhPagoRead",
+    "RrhhNominaPagoItem",
+    "RrhhNominaPagosEntrada",
     "RrhhPagoListado",
     "RrhhCostoDepartamento",
     "RrhhReporteCosto",

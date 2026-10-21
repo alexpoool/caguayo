@@ -460,6 +460,12 @@ export interface RrhhNominaEmpleadoRead {
   devengado: number | string;
   impuesto: number | string;
   neto_a_cobrar: number | string;
+  /** Pago del empleado; `null` mientras esté pendiente. */
+  fecha_pago: string | null;
+  monto: number | string | null;
+  metodo_id: number | null;
+  metodo_nombre: string | null;
+  referencia: string | null;
 }
 
 /** Empleado activo ofrecido por el selector de la pre-nómina. */
@@ -472,21 +478,8 @@ export type RrhhNominaCandidato = Omit<
   seleccionado: boolean;
 };
 
-export interface RrhhPagoRead {
-  id: number;
-  nomina_id: number;
-  metodo_id: number;
-  monto: number | string;
-  fecha_pago: string;
-  referencia: string | null;
-  observaciones: string | null;
-  metodo_nombre: string | null;
-  created_at?: string;
-}
-
 export interface RrhhNominaDetalle extends RrhhNominaListado {
   empleados: RrhhNominaEmpleadoRead[];
-  pagos: RrhhPagoRead[];
 }
 
 /** Cabecera del alta de una nómina (nace en `pre_nomina`). */
@@ -502,25 +495,28 @@ export interface RrhhNominaCreate {
 
 export type RrhhNominaUpdate = Partial<RrhhNominaCreate>;
 
-export interface RrhhPagoInput {
-  metodo_id: number;
-  monto: number | string;
+/** Pago de un empleado de la nómina (los campos vacíos quitan el pago). */
+export interface RrhhNominaPagoItem {
+  empleado_id: number;
   fecha_pago?: string | null;
+  monto?: number | string | null;
+  metodo_id?: number | null;
   referencia?: string | null;
-  observaciones?: string | null;
 }
 
-/** Fila del listado de pagos, con su nómina resuelta. */
+/** Fila del listado de pagos, con su nómina y empleado resueltos. */
 export interface RrhhPagoListado {
   id: number;
   nomina_id: number;
   nomina_descripcion: string | null;
+  empleado_id: number;
+  empleado_codigo: string | null;
+  empleado_nombre: string | null;
   fecha_pago: string;
   monto: number | string;
   metodo_id: number;
   metodo_nombre: string | null;
   referencia: string | null;
-  observaciones: string | null;
   periodo: string;
   inicio_periodo: string;
   fin_periodo: string;

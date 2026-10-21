@@ -11,6 +11,9 @@ Rediseño (Fase 6 v2):
 - El estado del lote es `pre_nomina` mientras se edita y `nomina` una vez
   confirmado. Las deducciones y bonificaciones ya no se congelan en tablas
   puente: se suman por empleado dentro del periodo al calcular el lote.
+- El pago también es **por empleado**: `nomina_empleados` guarda la fecha,
+  el monto, el método (`tipos_pago`) y la referencia. Ya no existe la tabla
+  `pagos`.
 """
 
 from datetime import date, datetime
@@ -23,10 +26,6 @@ from sqlmodel import Field, SQLModel
 
 def _now() -> datetime:
     return datetime.now()
-
-
-def _today() -> date:
-    return date.today()
 
 
 class RrhhNomina(SQLModel, table=True):
@@ -87,6 +86,9 @@ class RrhhNominaEmpleado(SQLModel, table=True):
         CheckConstraint("devengado >= 0", name="chk_nomina_emp_devengado"),
         CheckConstraint("impuesto >= 0", name="chk_nomina_emp_impuesto"),
         CheckConstraint("neto_a_cobrar >= 0", name="chk_nomina_emp_neto"),
+        CheckConstraint(
+            "monto IS NULL OR monto > 0", name="chk_nomina_emp_monto"
+        ),
     )
 
     id_nomina_empleado: Optional[int] = Field(
@@ -134,41 +136,24 @@ class RrhhNominaEmpleado(SQLModel, table=True):
     neto_a_cobrar: Decimal = Field(
         default=Decimal("0.00"), decimal_places=2, max_digits=12
     )
-    created_at: datetime = Field(
-        default_factory=_now, sa_column_kwargs={"server_default": "CURRENT_TIMESTAMP"}
+    # ── Pago del empleado (null mientras esté pendiente) ──────────────────
+    fecha_pago: Optional[date] = None
+    monto: Optional[Decimal] = Field(
+        default=None, decimal_places=2, max_digits=12
     )
-    updated_at: datetime = Field(
-        default_factory=_now, sa_column_kwargs={"server_default": "CURRENT_TIMESTAMP"}
-    )
-
-
-class RrhhPago(SQLModel, table=True):
-    __tablename__ = "pagos"
-    __table_args__ = (
-        CheckConstraint("monto > 0", name="chk_pagos_monto"),
-    )
-
-    id: Optional[int] = Field(
-        default=None, primary_key=True, sa_column_kwargs={"autoincrement": True}
-    )
-    nomina_id: int = Field(
+    metodo_id: Optional[int] = Field(
+        default=None,
         sa_column=Column(
             Integer,
-            ForeignKey("nomina.id", ondelete="CASCADE", name="fk_pagos_nomina"),
-            nullable=False,
-        )
-    )
-    fecha_pago: date = Field(default_factory=_today)
-    monto: Decimal = Field(decimal_places=2, max_digits=12)
-    metodo_id: int = Field(
-        sa_column=Column(
-            Integer,
-            ForeignKey("tipos_pago.id_tipo_pago", ondelete="RESTRICT", name="fk_pagos_metodo"),
-            nullable=False,
-        )
+            ForeignKey(
+                "tipos_pago.id_tipo_pago",
+                ondelete="RESTRICT",
+                name="fk_nomina_emp_metodo",
+            ),
+            nullable=True,
+        ),
     )
     referencia: Optional[str] = Field(default=None, max_length=50)
-    observaciones: Optional[str] = None
     created_at: datetime = Field(
         default_factory=_now, sa_column_kwargs={"server_default": "CURRENT_TIMESTAMP"}
     )

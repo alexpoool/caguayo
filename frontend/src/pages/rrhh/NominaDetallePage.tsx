@@ -29,12 +29,6 @@ import {
   CardContent,
   CardHeader,
   ConfirmModal,
-  Table,
-  TableHeader,
-  TableBody,
-  TableRow,
-  TableHead,
-  TableCell,
 } from '../../components/ui';
 import { NominaFormModal } from './NominaPage';
 
@@ -394,6 +388,17 @@ export function NominaDetallePage() {
             </Button>
           </div>
         )}
+
+        {!esPreNomina && (
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => navigate(`/rrhh/nomina/${detalle.id}/pagos`)}
+          >
+            <Wallet className="h-4 w-4" />
+            Pagos
+          </Button>
+        )}
       </div>
 
       {!esPreNomina && (
@@ -595,49 +600,6 @@ export function NominaDetallePage() {
           )}
         </CardContent>
       </Card>
-
-      {detalle.pagos.length > 0 && (
-        <Card>
-          <CardHeader className="pb-2">
-            <h2 className="text-sm font-semibold text-slate-700">Pagos</h2>
-            <p className="text-xs text-slate-500">
-              {fmtMoneda(detalle.total_pagado)} pagado en{' '}
-              {detalle.cantidad_pagos} pago
-              {detalle.cantidad_pagos === 1 ? '' : 's'}.
-            </p>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Fecha</TableHead>
-                  <TableHead>Método</TableHead>
-                  <TableHead>Referencia</TableHead>
-                  <TableHead className="text-right">Monto</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {detalle.pagos.map((pago) => (
-                  <TableRow key={pago.id}>
-                    <TableCell className="whitespace-nowrap text-slate-600">
-                      {fmtFecha(pago.fecha_pago)}
-                    </TableCell>
-                    <TableCell className="text-slate-600">
-                      {pago.metodo_nombre ?? '—'}
-                    </TableCell>
-                    <TableCell className="text-slate-600">
-                      {pago.referencia ?? '—'}
-                    </TableCell>
-                    <TableCell className="text-right font-semibold tabular-nums">
-                      {fmtMoneda(pago.monto)}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-      )}
 
       <NominaFormModal
         isOpen={editarOpen}

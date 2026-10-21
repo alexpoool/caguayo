@@ -628,85 +628,294 @@ def test_nomina_inexistente_404(client):
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# Pagos
+# Pagos por empleado
 # ═══════════════════════════════════════════════════════════════════════════
 
 
-def test_pagar_nomina_confirmada(client):
-    emp = _crear_empleado(client, salario=2400, horas_a_trabajar=8, dias_a_trabajar=30)
+def _payload_pago(empleado_id, **kwargs):
+    payload = {"empleado_id": empleado_id}
+    payload.update(kwargs)
+    return payload
+
+
+def test_guardar_pagos_por_empleado(client):
+    emp_a = _crear_empleado(
+        client, salario=2400, horas_a_trabajar=8, dias_a_trabajar=30
+    )
+    emp_b = _crear_empleado(
+        client, salario=2400, horas_a_trabajar=8, dias_a_trabajar=30
+    )
     tipo_pago = _crear_tipo(client, "PAG")
     nomina = _crear_nomina(client)
     try:
-        _marcar(client, emp["id"], "2098-01-05", "08:00:00", "16:00:00")
-        _seleccionar(client, nomina["id"], [emp["id"]])
+        _marcar(client, emp_a["id"], "2098-01-05", "08:00:00", "16:00:00")
+        _marcar(client, emp_b["id"], "2098-01-05", "08:00:00", "16:00:00")
+        _seleccionar(client, nomina["id"], [emp_a["id"], emp_b["id"]])
 
-        # Sin confirmar no se puede pagar.
-        response = client.post(
-            f"/api/v1/rrhh/nomina/{nomina['id']}/pagar",
-            json={"metodo_id": tipo_pago["id_tipo_pago"], "monto": 80},
+        # En pre-nómina todavía no se puede pagar.
+        response = client.put(
+            f"/api/v1/rrhh/nomina/{nomina['id']}/pagos",
+            json={
+                "pagos": [
+                    _payload_pago(
+                        emp_a["id"],
+                        metodo_id=tipo_pago["id_tipo_pago"],
+                        monto=80,
+                    )
+                ]
+            },
         )
         assert response.status_code == 409
 
         client.post(f"/api/v1/rrhh/nomina/{nomina['id']}/confirmar")
 
-        # Monto incorrecto.
-        response = client.post(
-            f"/api/v1/rrhh/nomina/{nomina['id']}/pagar",
-            json={"metodo_id": tipo_pago["id_tipo_pago"], "monto": 79.99},
-        )
-        assert response.status_code == 400
-
-        response = client.post(
-            f"/api/v1/rrhh/nomina/{nomina['id']}/pagar",
+        # Pago libre: el monto no tiene que coincidir con el neto.
+        response = client.put(
+            f"/api/v1/rrhh/nomina/{nomina['id']}/pagos",
             json={
-                "metodo_id": tipo_pago["id_tipo_pago"],
-                "monto": 80,
-                "referencia": "REF-1",
+                "pagos": [
+                    _payload_pago(
+                        emp_a["id"],
+                        fecha_pago="2098-01-31",
+                        monto=80,
+                        metodo_id=tipo_pago["id_tipo_pago"],
+                        referencia="REF-1",
+                    ),
+                    _payload_pago(
+                        emp_b["id"],
+                        monto=40,
+                        metodo_id=tipo_pago["id_tipo_pago"],
+                    ),
+                ]
             },
         )
         assert response.status_code == 200, response.text
         detalle = response.json()
-        assert len(detalle["pagos"]) == 1
-        assert Decimal(str(detalle["total_pagado"])) == Decimal("80.00")
-        assert detalle["cantidad_pagos"] == 1
+        assert Decimal(str(detalle["total_pagado"])) == Decimal("120.00")
+        assert detalle["cantidad_pagos"] == 2
 
+        por_empleado = {f["empleado_id"]: f for f in detalle["empleados"]}
+        pago_a = por_empleado[emp_a["id"]]
+        assert pago_a["fecha_pago"] == "2098-01-31"
+        assert Decimal(str(pago_a["monto"])) == Decimal("80.00")
+        assert pago_a["metodo_nombre"] == tipo_pago["nombre"]
+        assert pago_a["referencia"] == "REF-1"
+        # Sin fecha explícita se usa la fecha del día.
+        assert por_empleado[emp_b["id"]]["fecha_pago"] is not None
+
+        # El listado global ahora es por empleado.
         listado = client.get(
             f"/api/v1/rrhh/nomina/pagos?nomina_id={nomina['id']}"
         )
         assert listado.status_code == 200
-        fila = listado.json()[0]
-        assert fila["nomina_descripcion"] == nomina["descripcion"]
-        assert fila["referencia"] == "REF-1"
-        assert "empleado_nombre" not in fila
+        filas = listado.json()
+        assert len(filas) == 2
+        assert {f["empleado_id"] for f in filas} == {emp_a["id"], emp_b["id"]}
+        assert all(f["nomina_descripcion"] == nomina["descripcion"] for f in filas)
+        assert all(f["empleado_nombre"] for f in filas)
 
-        # Un lote se paga una sola vez.
-        response = client.post(
-            f"/api/v1/rrhh/nomina/{nomina['id']}/pagar",
-            json={"metodo_id": tipo_pago["id_tipo_pago"], "monto": 80},
+        # El recibo incluye la tabla de pagos por empleado.
+        recibo = client.get(f"/api/v1/rrhh/nomina/{nomina['id']}/recibo")
+        assert recibo.status_code == 200
+        assert recibo.content.startswith(b"%PDF")
+
+        # Se puede corregir y también quitar un pago.
+        response = client.put(
+            f"/api/v1/rrhh/nomina/{nomina['id']}/pagos",
+            json={
+                "pagos": [
+                    _payload_pago(
+                        emp_a["id"],
+                        fecha_pago="2098-02-01",
+                        monto=70,
+                        metodo_id=tipo_pago["id_tipo_pago"],
+                        referencia="REF-2",
+                    ),
+                    _payload_pago(emp_b["id"]),
+                ]
+            },
         )
-        assert response.status_code == 409
+        assert response.status_code == 200, response.text
+        detalle = response.json()
+        assert Decimal(str(detalle["total_pagado"])) == Decimal("70.00")
+        assert detalle["cantidad_pagos"] == 1
+        por_empleado = {f["empleado_id"]: f for f in detalle["empleados"]}
+        assert Decimal(str(por_empleado[emp_a["id"]]["monto"])) == Decimal("70.00")
+        assert por_empleado[emp_a["id"]]["referencia"] == "REF-2"
+        assert por_empleado[emp_b["id"]]["fecha_pago"] is None
+        assert por_empleado[emp_b["id"]]["monto"] is None
+        assert por_empleado[emp_b["id"]]["metodo_id"] is None
+
+        # Quitar el último pago deja el lote sin pagos.
+        response = client.put(
+            f"/api/v1/rrhh/nomina/{nomina['id']}/pagos",
+            json={"pagos": [_payload_pago(emp_a["id"])]},
+        )
+        assert response.status_code == 200, response.text
+        detalle = response.json()
+        assert Decimal(str(detalle["total_pagado"])) == Decimal("0.00")
+        assert detalle["cantidad_pagos"] == 0
     finally:
         _limpiar_nomina(nomina["id"])
-        _limpiar_asistencias(client, emp["id"])
-        _limpiar_empleado(client, emp["id"])
+        _limpiar_asistencias(client, emp_a["id"])
+        _limpiar_asistencias(client, emp_b["id"])
+        _limpiar_empleado(client, emp_a["id"])
+        _limpiar_empleado(client, emp_b["id"])
         _limpiar_tipo(client, "PAG", tipo_pago["id_tipo_pago"])
 
 
-def test_pagar_metodo_inexistente_404(client):
-    emp = _crear_empleado(client, salario=2400, horas_a_trabajar=8, dias_a_trabajar=30)
+def test_guardar_pagos_validaciones(client):
+    emp = _crear_empleado(
+        client, salario=2400, horas_a_trabajar=8, dias_a_trabajar=30
+    )
+    ajeno = _crear_empleado(client)
+    tipo_pago = _crear_tipo(client, "PAG")
     nomina = _crear_nomina(client)
     try:
         _seleccionar(client, nomina["id"], [emp["id"]])
         client.post(f"/api/v1/rrhh/nomina/{nomina['id']}/confirmar")
-        response = client.post(
-            f"/api/v1/rrhh/nomina/{nomina['id']}/pagar",
-            json={"metodo_id": 999999, "monto": 0},
+        url = f"/api/v1/rrhh/nomina/{nomina['id']}/pagos"
+
+        # Monto cero lo rechaza el contrato.
+        assert (
+            client.put(
+                url,
+                json={
+                    "pagos": [
+                        _payload_pago(
+                            emp["id"],
+                            monto=0,
+                            metodo_id=tipo_pago["id_tipo_pago"],
+                        )
+                    ]
+                },
+            ).status_code
+            == 422
         )
-        assert response.status_code in (404, 422)
+        # Método inexistente.
+        assert (
+            client.put(
+                url,
+                json={
+                    "pagos": [
+                        _payload_pago(
+                            emp["id"], monto=80, metodo_id=999999
+                        )
+                    ]
+                },
+            ).status_code
+            == 404
+        )
+        # Empleado que no pertenece al lote.
+        assert (
+            client.put(
+                url,
+                json={
+                    "pagos": [
+                        _payload_pago(
+                            ajeno["id"],
+                            monto=80,
+                            metodo_id=tipo_pago["id_tipo_pago"],
+                        )
+                    ]
+                },
+            ).status_code
+            == 422
+        )
+        # Empleado repetido.
+        payload = _payload_pago(
+            emp["id"], monto=80, metodo_id=tipo_pago["id_tipo_pago"]
+        )
+        assert (
+            client.put(url, json={"pagos": [payload, payload]}).status_code
+            == 422
+        )
+        # Falta el método.
+        assert (
+            client.put(
+                url,
+                json={
+                    "pagos": [
+                        _payload_pago(
+                            emp["id"], fecha_pago="2098-01-31", monto=80
+                        )
+                    ]
+                },
+            ).status_code
+            == 422
+        )
+        # Nómina inexistente.
+        assert (
+            client.put(
+                "/api/v1/rrhh/nomina/999999/pagos",
+                json={
+                    "pagos": [
+                        _payload_pago(
+                            emp["id"],
+                            monto=80,
+                            metodo_id=tipo_pago["id_tipo_pago"],
+                        )
+                    ]
+                },
+            ).status_code
+            == 404
+        )
     finally:
         _limpiar_nomina(nomina["id"])
-        _limpiar_asistencias(client, emp["id"])
         _limpiar_empleado(client, emp["id"])
+        _limpiar_empleado(client, ajeno["id"])
+        _limpiar_tipo(client, "PAG", tipo_pago["id_tipo_pago"])
+
+
+def test_listar_pagos_por_empleado_filtra_y_ordena(client):
+    emp_a = _crear_empleado(client)
+    emp_b = _crear_empleado(client)
+    tipo_pago = _crear_tipo(client, "PAG")
+    nomina = _crear_nomina(client)
+    try:
+        _seleccionar(client, nomina["id"], [emp_a["id"], emp_b["id"]])
+        client.post(f"/api/v1/rrhh/nomina/{nomina['id']}/confirmar")
+        client.put(
+            f"/api/v1/rrhh/nomina/{nomina['id']}/pagos",
+            json={
+                "pagos": [
+                    _payload_pago(
+                        emp_a["id"],
+                        fecha_pago="2098-01-10",
+                        monto=10,
+                        metodo_id=tipo_pago["id_tipo_pago"],
+                    ),
+                    _payload_pago(
+                        emp_b["id"],
+                        fecha_pago="2098-01-20",
+                        monto=20,
+                        metodo_id=tipo_pago["id_tipo_pago"],
+                    ),
+                ]
+            },
+        )
+
+        response = client.get(
+            "/api/v1/rrhh/nomina/pagos"
+            "?desde=2098-01-01&hasta=2098-01-31"
+        )
+        assert response.status_code == 200
+        filas = response.json()
+        assert [f["empleado_id"] for f in filas] == [emp_b["id"], emp_a["id"]]
+
+        filtrado = client.get(
+            f"/api/v1/rrhh/nomina/pagos?metodo_id={tipo_pago['id_tipo_pago']}"
+        )
+        assert filtrado.status_code == 200
+        assert {f["empleado_id"] for f in filtrado.json()} == {
+            emp_a["id"],
+            emp_b["id"],
+        }
+    finally:
+        _limpiar_nomina(nomina["id"])
+        _limpiar_empleado(client, emp_a["id"])
+        _limpiar_empleado(client, emp_b["id"])
+        _limpiar_tipo(client, "PAG", tipo_pago["id_tipo_pago"])
 
 
 # ═══════════════════════════════════════════════════════════════════════════

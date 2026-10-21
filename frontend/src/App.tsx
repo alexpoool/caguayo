@@ -106,7 +106,7 @@ import { AsistenciaPage } from './pages/rrhh/AsistenciaPage';
 import { MovimientosPage as RrhhMovimientosPage } from './pages/rrhh/MovimientosPage';
 import { NominaPage } from './pages/rrhh/NominaPage';
 import { NominaDetallePage } from './pages/rrhh/NominaDetallePage';
-import { PagosPage } from './pages/rrhh/PagosPage';
+import { NominaPagosPage } from './pages/rrhh/NominaPagosPage';
 import { SolicitudesPage as RrhhSolicitudesPage } from './pages/rrhh/SolicitudesPage';
 import { EvaluacionesPage } from './pages/rrhh/EvaluacionesPage';
 import { EvaluacionDetallePage } from './pages/rrhh/EvaluacionDetallePage';
@@ -135,7 +135,7 @@ const rutasPorModulo: Record<Modulo, string[]> = {
   reportes: ['/reportes', '/reportes/existencias', '/reportes/movimientos-dependencia', '/reportes/movimientos-producto', '/reportes/proveedores', '/reportes/registro-clientes', '/reportes/registro-proyectos', '/reportes/registro-creadores', '/reportes/informe-desempeno', '/reportes/resumen-liquidaciones', '/reportes/ingresos-retenciones', '/reportes/mincult', '/reportes/onat', '/perfil'],
   home: ['/', '/perfil'],
   dj08: ['/dj08', '/perfil'],
-  rrhh: ['/rrhh', '/rrhh/catalogos', '/rrhh/departamentos', '/rrhh/puestos', '/rrhh/empleados', '/rrhh/asistencia', '/rrhh/deducciones', '/rrhh/bonificaciones', '/rrhh/nomina', '/rrhh/pagos', '/rrhh/solicitudes', '/rrhh/evaluaciones', '/rrhh/objetivos', '/rrhh/reportes', '/rrhh/auditoria', '/perfil'],
+  rrhh: ['/rrhh', '/rrhh/catalogos', '/rrhh/departamentos', '/rrhh/puestos', '/rrhh/empleados', '/rrhh/asistencia', '/rrhh/deducciones', '/rrhh/bonificaciones', '/rrhh/nomina', '/rrhh/solicitudes', '/rrhh/evaluaciones', '/rrhh/objetivos', '/rrhh/reportes', '/rrhh/auditoria', '/perfil'],
 };
 
 // Componente para proteger rutas según el módulo
@@ -284,7 +284,7 @@ const MODULO_FUNCIONALIDADES: Record<Modulo, string[]> = {
   administracion: ['configuracion', 'monedas', 'usuarios', 'grupos', 'dependencias', 'cuentas'],
   home: [],
   dj08: [],
-  rrhh: ['rrhh_empleados', 'rrhh_departamentos', 'rrhh_puestos', 'rrhh_asistencia', 'rrhh_solicitudes', 'rrhh_deducciones', 'rrhh_bonificaciones', 'rrhh_nomina', 'rrhh_pagos', 'rrhh_evaluaciones', 'rrhh_catalogos', 'rrhh_reportes', 'rrhh_auditoria'],
+  rrhh: ['rrhh_empleados', 'rrhh_departamentos', 'rrhh_puestos', 'rrhh_asistencia', 'rrhh_solicitudes', 'rrhh_deducciones', 'rrhh_bonificaciones', 'rrhh_nomina', 'rrhh_evaluaciones', 'rrhh_catalogos', 'rrhh_reportes', 'rrhh_auditoria'],
 };
 
 function App() {
@@ -1215,10 +1215,10 @@ function App() {
                   }
                 />
                 <Route
-                  path="/rrhh/pagos"
+                  path="/rrhh/nomina/:id/pagos"
                   element={
-                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/rrhh/pagos">
-                      <PagosPage />
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/rrhh/nomina">
+                      <NominaPagosPage />
                     </ProtectedRoute>
                   }
                 />

@@ -14,8 +14,9 @@ importes de cada empleado:
 - `neto_a_cobrar` = devengado − impuesto − deducciones.
 
 Ciclo de vida: `pre_nomina` (editable) → `nomina` (confirmada, de solo
-lectura). Una nómina confirmada no se edita ni se elimina. Los pagos cubren
-el lote completo y se registran una vez confirmado.
+lectura). Una nómina confirmada no se edita ni se elimina. El pago se
+registra por empleado una vez confirmada la nómina y se guarda en
+`nomina_empleados` (fecha, monto, método y referencia).
 """
 
 from datetime import date, datetime
@@ -46,7 +47,7 @@ from src.dto import (
     RrhhNominaEmpleadoRead,
     RrhhNominaCandidato,
     RrhhNominaSeleccion,
-    RrhhPagoRead,
+    RrhhNominaPagosEntrada,
     RrhhPagoListado,
     RrhhCostoDepartamento,
     RrhhReporteCosto,
@@ -54,7 +55,6 @@ from src.dto import (
 from src.models import (
     RrhhNomina,
     RrhhNominaEmpleado,
-    RrhhPago,
     RrhhEmpleado,
     RrhhDepartamento,
     RrhhPuesto,
@@ -138,12 +138,12 @@ class RrhhNominaService:
 
             res = await db.exec(
                 select(
-                    RrhhPago.nomina_id,
-                    func.count().label("cantidad"),
-                    func.coalesce(func.sum(RrhhPago.monto), 0),
+                    RrhhNominaEmpleado.nomina_id,
+                    func.count(RrhhNominaEmpleado.fecha_pago).label("cantidad"),
+                    func.coalesce(func.sum(RrhhNominaEmpleado.monto), 0),
                 )
-                .where(RrhhPago.nomina_id.in_(nomina_ids))
-                .group_by(RrhhPago.nomina_id)
+                .where(RrhhNominaEmpleado.nomina_id.in_(nomina_ids))
+                .group_by(RrhhNominaEmpleado.nomina_id)
             )
             pagos_por_nomina = {row[0]: (row[1], row[2]) for row in res.all()}
 
@@ -249,11 +249,9 @@ class RrhhNominaService:
         resolucion = await self._resolucion_listado(db, [fila])
         base = self._construir_listado(fila, resolucion)
         empleados = await self._detalle_empleados(db, [fila])
-        pagos = await self._pagos_de(db, id)
         return RrhhNominaDetalle(
             **base.model_dump(),
             empleados=empleados,
-            pagos=pagos,
         )
 
     async def _detalle_empleados(
@@ -277,6 +275,9 @@ class RrhhNominaService:
         )
         departamentos = await self._departamentos_por_id(
             db, {e.departamento_id for e in empleados.values() if e.departamento_id}
+        )
+        metodos = await self._tipos_pago(
+            db, {f.metodo_id for f in filas if f.metodo_id}
         )
 
         salida = []
@@ -311,34 +312,16 @@ class RrhhNominaService:
                     devengado=fila.devengado,
                     impuesto=fila.impuesto,
                     neto_a_cobrar=fila.neto_a_cobrar,
+                    fecha_pago=fila.fecha_pago,
+                    monto=fila.monto,
+                    metodo_id=fila.metodo_id,
+                    metodo_nombre=(
+                        metodos.get(fila.metodo_id) if fila.metodo_id else None
+                    ),
+                    referencia=fila.referencia,
                 )
             )
         return salida
-
-    async def _pagos_de(self, db: AsyncSession, nomina_id: int) -> List[RrhhPagoRead]:
-        res = await db.exec(
-            select(RrhhPago)
-            .where(RrhhPago.nomina_id == nomina_id)
-            .order_by(RrhhPago.id)
-        )
-        pagos = list(res.all())
-        if not pagos:
-            return []
-        tipos = await self._tipos_pago(db, {p.metodo_id for p in pagos})
-        return [
-            RrhhPagoRead(
-                id=p.id,
-                nomina_id=p.nomina_id,
-                metodo_id=p.metodo_id,
-                monto=p.monto,
-                fecha_pago=p.fecha_pago,
-                referencia=p.referencia,
-                observaciones=p.observaciones,
-                metodo_nombre=tipos.get(p.metodo_id),
-                created_at=p.created_at,
-            )
-            for p in pagos
-        ]
 
     async def _tipos_pago(self, db: AsyncSession, ids) -> dict:
         if not ids:
@@ -358,19 +341,29 @@ class RrhhNominaService:
         desde: Optional[date] = None,
         hasta: Optional[date] = None,
     ) -> List[RrhhPagoListado]:
-        """Pagos registrados; cada pago cubre una nómina completa."""
-        statement = select(RrhhPago)
+        """Pagos por empleado de las nóminas confirmadas."""
+        statement = (
+            select(RrhhNominaEmpleado, RrhhNomina)
+            .join(RrhhNomina, RrhhNominaEmpleado.nomina_id == RrhhNomina.id)
+            .where(
+                RrhhNominaEmpleado.fecha_pago.is_not(None),
+                RrhhNominaEmpleado.monto.is_not(None),
+            )
+        )
         if nomina_id is not None:
-            statement = statement.where(RrhhPago.nomina_id == nomina_id)
+            statement = statement.where(RrhhNominaEmpleado.nomina_id == nomina_id)
         if metodo_id is not None:
-            statement = statement.where(RrhhPago.metodo_id == metodo_id)
+            statement = statement.where(RrhhNominaEmpleado.metodo_id == metodo_id)
         if desde is not None:
-            statement = statement.where(RrhhPago.fecha_pago >= desde)
+            statement = statement.where(RrhhNominaEmpleado.fecha_pago >= desde)
         if hasta is not None:
-            statement = statement.where(RrhhPago.fecha_pago <= hasta)
+            statement = statement.where(RrhhNominaEmpleado.fecha_pago <= hasta)
 
         statement = (
-            statement.order_by(RrhhPago.fecha_pago.desc(), RrhhPago.id.desc())
+            statement.order_by(
+                RrhhNominaEmpleado.fecha_pago.desc(),
+                RrhhNominaEmpleado.id_nomina_empleado.desc(),
+            )
             .offset(skip)
             .limit(limit)
         )
@@ -378,33 +371,38 @@ class RrhhNominaService:
         if not filas:
             return []
 
-        res = await db.exec(
-            select(RrhhNomina).where(RrhhNomina.id.in_({f.nomina_id for f in filas}))
+        empleados = await self._empleados_por_id(
+            db, {f.RrhhNominaEmpleado.empleados_id for f in filas}
         )
-        nominas = {n.id: n for n in res.all()}
-        tipos = await self._tipos_pago(db, {f.metodo_id for f in filas})
+        tipos = await self._tipos_pago(
+            db, {f.RrhhNominaEmpleado.metodo_id for f in filas}
+        )
 
         salida: List[RrhhPagoListado] = []
         for fila in filas:
-            nomina = nominas.get(fila.nomina_id)
-            if not nomina:
-                continue
+            detalle = fila.RrhhNominaEmpleado
+            nomina = fila.RrhhNomina
+            empleado = empleados.get(detalle.empleados_id)
             salida.append(
                 RrhhPagoListado(
-                    id=fila.id,
-                    nomina_id=fila.nomina_id,
+                    id=detalle.id_nomina_empleado,
+                    nomina_id=detalle.nomina_id,
                     nomina_descripcion=nomina.descripcion,
-                    fecha_pago=fila.fecha_pago,
-                    monto=fila.monto,
-                    metodo_id=fila.metodo_id,
-                    metodo_nombre=tipos.get(fila.metodo_id),
-                    referencia=fila.referencia,
-                    observaciones=fila.observaciones,
+                    empleado_id=detalle.empleados_id,
+                    empleado_codigo=(
+                        empleado.codigo_empleado if empleado else None
+                    ),
+                    empleado_nombre=self._nombre_completo(empleado),
+                    fecha_pago=detalle.fecha_pago,
+                    monto=detalle.monto,
+                    metodo_id=detalle.metodo_id,
+                    metodo_nombre=tipos.get(detalle.metodo_id),
+                    referencia=detalle.referencia,
                     periodo=nomina.periodo,
                     inicio_periodo=nomina.inicio_periodo,
                     fin_periodo=nomina.fin_periodo,
                     estado_nomina=nomina.estado,
-                    created_at=fila.created_at,
+                    created_at=detalle.created_at,
                 )
             )
         return salida
@@ -457,16 +455,6 @@ class RrhhNominaService:
     async def eliminar(self, db: AsyncSession, id: int) -> dict:
         nomina = await self._buscar_o_404(db, id)
         self._exigir_pre_nomina(nomina, "eliminar")
-        total_pagos = await db.exec(
-            select(func.count())
-            .select_from(RrhhPago)
-            .where(RrhhPago.nomina_id == id)
-        )
-        if (total_pagos.one() or 0) > 0:
-            raise HTTPException(
-                status_code=409,
-                detail="La nómina tiene pagos registrados y no se puede eliminar",
-            )
         await db.delete(nomina)
         await db.commit()
         return {"accion": "eliminado", "motivo": None}
@@ -774,64 +762,112 @@ class RrhhNominaService:
 
     # ── Pagos ───────────────────────────────────────────────────────────────
 
-    async def total_a_pagar(self, db: AsyncSession, nomina_id: int) -> Decimal:
-        res = await db.exec(
-            select(func.coalesce(func.sum(RrhhNominaEmpleado.neto_a_cobrar), 0))
-            .where(RrhhNominaEmpleado.nomina_id == nomina_id)
-        )
-        return Decimal(str(res.one() or 0))
-
-    async def pagar(
+    async def guardar_pagos(
         self,
         db: AsyncSession,
         nomina_id: int,
-        metodo_id: int,
-        monto: Decimal,
-        fecha_pago: Optional[date] = None,
-        referencia: Optional[str] = None,
-        observaciones: Optional[str] = None,
+        entrada: RrhhNominaPagosEntrada,
     ) -> RrhhNominaDetalle:
-        """Registra el pago completo del lote (debe estar confirmado)."""
+        """Guarda (o corrige) el pago de cada empleado del lote confirmado.
+
+        Cada fila enviada se interpreta así:
+
+        - Sin `fecha_pago` ni `metodo_id`: se borra el pago (queda pendiente).
+        - Con ambos: se guarda el monto (obligatorio y mayor que cero), la
+          referencia y la fecha (hoy si no se indicó).
+        - Con solo uno de los dos: se devuelve `422`.
+
+        El monto es libre (puede ser distinto del neto) y se puede corregir
+        volviendo a enviar la fila.
+        """
         nomina = await self._buscar_o_404(db, nomina_id)
         if nomina.estado != "nomina":
             raise HTTPException(
                 status_code=409,
-                detail="Confirma la nómina antes de registrar el pago",
-            )
-        metodo = await db.get(RrhhTipoPago, metodo_id)
-        if not metodo:
-            raise HTTPException(
-                status_code=404, detail="El método de pago no existe"
+                detail="Confirma la nómina antes de registrar los pagos",
             )
 
-        esperado = await self.total_a_pagar(db, nomina_id)
-        if Decimal(monto) != esperado:
-            raise HTTPException(
-                status_code=400,
-                detail=f"El monto debe coincidir con el neto total ({esperado})",
-            )
-
-        pagado = await db.exec(
-            select(func.coalesce(func.sum(RrhhPago.monto), 0)).where(
-                RrhhPago.nomina_id == nomina_id
+        res = await db.exec(
+            select(RrhhNominaEmpleado).where(
+                RrhhNominaEmpleado.nomina_id == nomina_id
             )
         )
-        if Decimal(str(pagado.one() or 0)) > 0:
-            raise HTTPException(
-                status_code=409,
-                detail="Esta nómina ya tiene un pago registrado",
-            )
+        por_empleado = {fila.empleados_id: fila for fila in res.all()}
 
-        db.add(
-            RrhhPago(
-                nomina_id=nomina.id,
-                fecha_pago=fecha_pago or date.today(),
-                monto=Decimal(monto),
-                metodo_id=metodo_id,
-                referencia=referencia,
-                observaciones=observaciones,
+        vistos: set[int] = set()
+        metodos_ids = {
+            item.metodo_id
+            for item in entrada.pagos
+            if item.metodo_id is not None
+        }
+        metodos: set[int] = set()
+        if metodos_ids:
+            res = await db.exec(
+                select(RrhhTipoPago.id_tipo_pago).where(
+                    RrhhTipoPago.id_tipo_pago.in_(metodos_ids)
+                )
             )
-        )
+            metodos = set(res.all())
+
+        for item in entrada.pagos:
+            if item.empleado_id in vistos:
+                raise HTTPException(
+                    status_code=422,
+                    detail=(
+                        "El empleado "
+                        f"{item.empleado_id} aparece más de una vez en los pagos"
+                    ),
+                )
+            vistos.add(item.empleado_id)
+
+            fila = por_empleado.get(item.empleado_id)
+            if not fila:
+                raise HTTPException(
+                    status_code=422,
+                    detail=(
+                        "El empleado "
+                        f"{item.empleado_id} no forma parte de esta nómina"
+                    ),
+                )
+
+            # Sin fecha ni método se considera que el pago se quita.
+            if item.fecha_pago is None and item.metodo_id is None:
+                fila.fecha_pago = None
+                fila.monto = None
+                fila.metodo_id = None
+                fila.referencia = None
+                fila.updated_at = datetime.now()
+                db.add(fila)
+                continue
+
+            if item.monto is None:
+                raise HTTPException(
+                    status_code=422,
+                    detail=(
+                        "Indica el monto pagado al empleado "
+                        f"{item.empleado_id}"
+                    ),
+                )
+            if item.metodo_id is None:
+                raise HTTPException(
+                    status_code=422,
+                    detail=(
+                        "Indica el método de pago del empleado "
+                        f"{item.empleado_id}"
+                    ),
+                )
+            if item.metodo_id not in metodos:
+                raise HTTPException(
+                    status_code=404, detail="El método de pago no existe"
+                )
+
+            fila.fecha_pago = item.fecha_pago or date.today()
+            fila.monto = Decimal(item.monto)
+            fila.metodo_id = item.metodo_id
+            fila.referencia = (item.referencia or "").strip() or None
+            fila.updated_at = datetime.now()
+            db.add(fila)
+
         nomina.updated_at = datetime.now()
         db.add(nomina)
         await db.commit()

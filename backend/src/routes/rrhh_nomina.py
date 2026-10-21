@@ -9,7 +9,6 @@ devuelve `422` al fallar el conversor `int`).
 """
 
 from datetime import date
-from decimal import Decimal
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, Query, Response
@@ -23,7 +22,7 @@ from src.dto import (
     RrhhNominaDetalle,
     RrhhNominaCandidato,
     RrhhNominaSeleccion,
-    RrhhPagoBase,
+    RrhhNominaPagosEntrada,
     RrhhPagoListado,
     RrhhReporteCosto,
 )
@@ -87,7 +86,7 @@ async def listar_pagos(
     hasta: Optional[date] = None,
     db: AsyncSession = Depends(get_session),
 ):
-    """Pagos registrados; cada pago cubre una nómina completa."""
+    """Pagos por empleado de las nóminas confirmadas."""
     return await rrhh_nomina_service.listar_pagos(
         db,
         skip=skip,
@@ -104,7 +103,7 @@ async def obtener_nomina(
     nomina_id: int,
     db: AsyncSession = Depends(get_session),
 ):
-    """Cabecera de la nómina con el detalle por empleado y sus pagos."""
+    """Cabecera de la nómina con el detalle por empleado (importes y pago)."""
     return await rrhh_nomina_service.get(db, nomina_id)
 
 
@@ -173,19 +172,11 @@ async def recibo_nomina(
     )
 
 
-@rrhh_nomina_router.post("/{nomina_id}/pagar", response_model=RrhhNominaDetalle)
-async def pagar_nomina(
+@rrhh_nomina_router.put("/{nomina_id}/pagos", response_model=RrhhNominaDetalle)
+async def guardar_pagos_nomina(
     nomina_id: int,
-    pago: RrhhPagoBase,
+    entrada: RrhhNominaPagosEntrada,
     db: AsyncSession = Depends(get_session),
 ):
-    """Registra el pago completo de una nómina confirmada."""
-    return await rrhh_nomina_service.pagar(
-        db,
-        nomina_id,
-        metodo_id=pago.metodo_id,
-        monto=Decimal(pago.monto),
-        fecha_pago=pago.fecha_pago,
-        referencia=pago.referencia,
-        observaciones=pago.observaciones,
-    )
+    """Guarda o corrige el pago de cada empleado de una nómina confirmada."""
+    return await rrhh_nomina_service.guardar_pagos(db, nomina_id, entrada)

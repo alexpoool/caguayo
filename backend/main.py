@@ -54,7 +54,6 @@ from src.models import (
     RrhhSolicitud,
     RrhhNomina,
     RrhhNominaEmpleado,
-    RrhhPago,
 )
 
 logging.basicConfig(
@@ -108,7 +107,6 @@ __all_models__ = [
     RrhhSolicitud,
     RrhhNomina,
     RrhhNominaEmpleado,
-    RrhhPago,
 ]
 
 app = FastAPI(

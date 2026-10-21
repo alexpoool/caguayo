@@ -4,7 +4,6 @@ import {
   Building2,
   Briefcase,
   Clock,
-  Wallet,
   TrendingUp,
   ClipboardList,
   FileText,
@@ -90,14 +89,6 @@ const SUBMODULOS: SubmoduloCard[] = [
     icon: <FileText className="h-5 w-5" />,
     fase: 6,
     ruta: '/rrhh/nomina',
-  },
-  {
-    id: 'pagos',
-    nombre: 'Pagos',
-    descripcion: 'Registro de pagos y comprobantes.',
-    icon: <Wallet className="h-5 w-5" />,
-    fase: 6,
-    ruta: '/rrhh/pagos',
   },
   {
     id: 'solicitudes',

@@ -2,7 +2,7 @@
 
 El recibo del lote reutiliza `PDFTemplate` (el mismo motor ReportLab Platypus
 del resto de exportaciones del sistema) y lista a todos los empleados con sus
-importes, más los totales y los pagos registrados.
+importes, más los totales y los pagos registrados por empleado.
 """
 
 from io import BytesIO
@@ -79,21 +79,27 @@ def generar_recibo_pdf(
         numeric_columns=[1],
     )
 
-    if detalle.pagos:
-        pagos = [
+    pagados = [
+        empleado
+        for empleado in detalle.empleados
+        if empleado.fecha_pago is not None and empleado.monto is not None
+    ]
+    if pagados:
+        filas_pagos = [
             [
-                p.fecha_pago.isoformat(),
-                p.metodo_nombre or str(p.metodo_id),
-                p.referencia or "—",
-                _fmt(p.monto),
+                empleado.empleado_nombre or "—",
+                empleado.fecha_pago.isoformat(),
+                empleado.metodo_nombre or str(empleado.metodo_id or ""),
+                empleado.referencia or "—",
+                _fmt(empleado.monto),
             ]
-            for p in detalle.pagos
+            for empleado in pagados
         ]
-        pagos.append(["Total pagado", "", "", _fmt(detalle.total_pagado)])
+        filas_pagos.append(["Total pagado", "", "", "", _fmt(detalle.total_pagado)])
         template.add_table(
-            ["FECHA", "MÉTODO", "REFERENCIA", "MONTO"],
-            pagos,
-            numeric_columns=[3],
+            ["EMPLEADO", "FECHA", "MÉTODO", "REFERENCIA", "MONTO"],
+            filas_pagos,
+            numeric_columns=[4],
         )
 
     template.add_signature_section(created_by=usuario_actual or "—")

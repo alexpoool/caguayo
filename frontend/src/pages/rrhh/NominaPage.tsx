@@ -305,20 +305,23 @@ function ListaNominas({ onNueva }: { onNueva: () => void }) {
                       </span>
                     </TableCell>
                     <TableCell className="text-right">
-                      {fila.cantidad_pagos > 0 ? (
-                        <button
-                          type="button"
-                          title="Ver los pagos de esta nómina"
-                          onClick={() =>
-                            navigate(`/rrhh/pagos?nomina_id=${fila.id}`)
-                          }
-                          className="rounded-md px-2 py-1 text-sm font-semibold tabular-nums text-brand-600 transition-colors hover:bg-brand-50"
-                        >
-                          {fila.cantidad_pagos} · {fmtMoneda(fila.total_pagado)}
-                        </button>
-                      ) : (
-                        <span className="text-sm text-slate-400">—</span>
-                      )}
+                      <button
+                        type="button"
+                        title={
+                          fila.estado === 'pre_nomina'
+                            ? 'Confirma la nómina para registrar los pagos'
+                            : 'Registrar o ver los pagos por empleado'
+                        }
+                        disabled={fila.estado === 'pre_nomina'}
+                        onClick={() =>
+                          navigate(`/rrhh/nomina/${fila.id}/pagos`)
+                        }
+                        className="rounded-md px-2 py-1 text-sm font-semibold tabular-nums text-brand-600 transition-colors hover:bg-brand-50 disabled:cursor-not-allowed disabled:text-slate-400 disabled:hover:bg-transparent"
+                      >
+                        {fila.cantidad_pagos > 0
+                          ? `${fila.cantidad_pagos} · ${fmtMoneda(fila.total_pagado)}`
+                          : 'Pagos'}
+                      </button>
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center justify-end gap-1">

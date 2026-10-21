@@ -89,3 +89,39 @@ def client():
             loop.run_until_complete(engine.dispose())
     except Exception:
         pass
+
+
+def pytest_sessionfinish(session, exitstatus):
+    """Borra los residuos de pruebas con fechas 2098 al terminar la sesión.
+
+    Varios tests crean solicitudes y asistencias en 2098 y limpian el empleado
+    con `DELETE`, que puede acabar en baja lógica. La FK en cascada no se
+    dispara en ese caso, así que estos registros quedarían en la BD real.
+    """
+    from sqlalchemy.engine import make_url
+    import psycopg2
+
+    try:
+        url = make_url(DATABASE_URL)
+        conn = psycopg2.connect(
+            host=url.host,
+            port=url.port or 5432,
+            user=url.username,
+            password=url.password,
+            dbname=url.database,
+        )
+        try:
+            with conn, conn.cursor() as cur:
+                cur.execute(
+                    "DELETE FROM asistencia WHERE fecha >= DATE '2098-01-01'"
+                )
+                cur.execute(
+                    "DELETE FROM solicitudes "
+                    "WHERE fecha_inicio >= DATE '2098-01-01' "
+                    "OR fecha_fin >= DATE '2098-01-01'"
+                )
+        finally:
+            conn.close()
+    except Exception:
+        # La limpieza no debe hacer fallar la sesión de tests.
+        pass

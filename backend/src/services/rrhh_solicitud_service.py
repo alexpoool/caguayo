@@ -335,7 +335,7 @@ class RrhhSolicitudService:
                 )
 
         statement = statement.order_by(
-            RrhhSolicitud.fecha_inicio.desc(), RrhhSolicitud.id
+            RrhhSolicitud.fecha_inicio.desc(), RrhhSolicitud.id.desc()
         ).offset(skip).limit(limit)
         result = await db.exec(statement)
         filas = list(result.all())

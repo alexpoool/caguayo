@@ -47,7 +47,7 @@ import type {
   RrhhNominaCreate,
   RrhhNominaUpdate,
   RrhhNominaCandidato,
-  RrhhPagoInput,
+  RrhhNominaPagoItem,
   RrhhPagoListado,
   RrhhReporteCosto,
   RrhhSolicitudListado,
@@ -470,7 +470,7 @@ export const rrhhService = {
     });
   },
 
-  /** Pagos registrados, con su nómina resuelta. */
+  /** Pagos por empleado de las nóminas confirmadas. */
   listarPagos: async (params?: {
     skip?: number;
     limit?: number;
@@ -482,8 +482,12 @@ export const rrhhService = {
     return await apiClient.get('/rrhh/nomina/pagos', params);
   },
 
-  pagarNomina: async (id: number, data: RrhhPagoInput): Promise<RrhhNominaDetalle> => {
-    return await apiClient.post(`/rrhh/nomina/${id}/pagar`, data);
+  /** Guarda o corrige el pago de cada empleado del lote confirmado. */
+  guardarPagosNomina: async (
+    id: number,
+    pagos: RrhhNominaPagoItem[]
+  ): Promise<RrhhNominaDetalle> => {
+    return await apiClient.put(`/rrhh/nomina/${id}/pagos`, { pagos });
   },
 
   reporteCosto: async (params?: {
