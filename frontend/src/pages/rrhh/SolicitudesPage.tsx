@@ -59,6 +59,10 @@ const hoyISO = () => {
   return `${d.getFullYear()}-${mes}-${dia}`;
 };
 
+/** Botón de alta con el mismo patrón que «Nueva evaluación» (paleta brand). */
+const GRADIENTE =
+  'bg-gradient-to-r from-brand-500 to-brand-600 hover:from-brand-600 hover:to-brand-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300';
+
 export function SolicitudesPage() {
   const [pestana, setPestana] = useState<Pestana>('solicitudes');
   const [modalCrear, setModalCrear] = useState(false);
@@ -76,7 +80,11 @@ export function SolicitudesPage() {
           </p>
         </div>
         {pestana === 'solicitudes' && (
-          <Button size="sm" onClick={() => setModalCrear(true)}>
+          <Button
+            size="sm"
+            onClick={() => setModalCrear(true)}
+            className={`gap-2 ${GRADIENTE}`}
+          >
             <Plus className="h-4 w-4" />
             Nueva solicitud
           </Button>

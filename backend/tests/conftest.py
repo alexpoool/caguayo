@@ -92,11 +92,11 @@ def client():
 
 
 def pytest_sessionfinish(session, exitstatus):
-    """Borra los residuos de pruebas con fechas 2098 al terminar la sesión.
+    """Borra los residuos de pruebas (fechas 2098 y empleados de prueba).
 
-    Varios tests crean solicitudes y asistencias en 2098 y limpian el empleado
-    con `DELETE`, que puede acabar en baja lógica. La FK en cascada no se
-    dispara en ese caso, así que estos registros quedarían en la BD real.
+    Varios tests crean datos en 2098 y limpian el empleado con `DELETE`, que
+    puede acabar en baja lógica. La FK en cascada no se dispara en ese caso,
+    así que estos registros quedarían en la BD real.
     """
     from sqlalchemy.engine import make_url
     import psycopg2
@@ -112,6 +112,36 @@ def pytest_sessionfinish(session, exitstatus):
         )
         try:
             with conn, conn.cursor() as cur:
+                # Los tests nombran sus empleados `Nombre<hash>` y Apellido<hash>.
+                # El supervisor apunta con NO ACTION: hay que soltarlo antes.
+                cur.execute(
+                    "UPDATE empleados SET supervisor = NULL "
+                    "WHERE supervisor IN ("
+                    "SELECT id FROM empleados "
+                    "WHERE nombre LIKE 'Nombre%' "
+                    "AND apellido LIKE 'Apellido%'"
+                    ")"
+                )
+                cur.execute(
+                    "DELETE FROM evaluaciones "
+                    "WHERE periodo LIKE '2098%' "
+                    "OR inicio_periodo >= DATE '2098-01-01'"
+                )
+                cur.execute(
+                    "DELETE FROM objetivos "
+                    "WHERE periodo_inicio >= DATE '2098-01-01' "
+                    "OR periodo_fin >= DATE '2098-01-01'"
+                )
+                cur.execute(
+                    "DELETE FROM deducciones "
+                    "WHERE inicio_periodo >= DATE '2098-01-01' "
+                    "OR fin_periodo >= DATE '2098-01-01'"
+                )
+                cur.execute(
+                    "DELETE FROM bonificaciones "
+                    "WHERE inicio_periodo >= DATE '2098-01-01' "
+                    "OR fin_periodo >= DATE '2098-01-01'"
+                )
                 cur.execute(
                     "DELETE FROM asistencia WHERE fecha >= DATE '2098-01-01'"
                 )
@@ -119,6 +149,11 @@ def pytest_sessionfinish(session, exitstatus):
                     "DELETE FROM solicitudes "
                     "WHERE fecha_inicio >= DATE '2098-01-01' "
                     "OR fecha_fin >= DATE '2098-01-01'"
+                )
+                cur.execute(
+                    "DELETE FROM empleados "
+                    "WHERE nombre LIKE 'Nombre%' "
+                    "AND apellido LIKE 'Apellido%'"
                 )
         finally:
             conn.close()

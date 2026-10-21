@@ -79,6 +79,10 @@ const AVISO_TONO = {
   red: 'border-red-200 bg-red-50 text-red-700',
 } as const;
 
+/** Botón de alta con el mismo patrón que «Nueva evaluación» (paleta brand). */
+const GRADIENTE =
+  'bg-gradient-to-r from-brand-500 to-brand-600 hover:from-brand-600 hover:to-brand-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300';
+
 const fmtHora = (v: string | null | undefined) => (v ? v.slice(0, 5) : null);
 
 /** Estados que la marcación rápida puede reescribir; el resto son manuales. */
@@ -521,6 +525,7 @@ export function AsistenciaPage() {
               setBusquedaEmpleado('');
               setModalMarcar(true);
             }}
+            className={`gap-2 ${GRADIENTE}`}
           >
             <Plus className="h-4 w-4" />
             Marcar asistencia

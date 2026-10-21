@@ -130,6 +130,18 @@ export function NominaPagosPage() {
 
   const esEditable = detalle?.estado === 'nomina';
 
+  // Solo se pagan empleados con neto > 0. Si alguno con neto 0 ya tiene un
+  // pago guardado se mantiene visible para poder corregirlo o quitarlo.
+  const empleadosVisibles = useMemo(
+    () =>
+      (detalle?.empleados ?? []).filter(
+        (empleado) =>
+          Number(empleado.neto_a_cobrar) > 0 ||
+          (empleado.fecha_pago !== null && empleado.monto !== null)
+      ),
+    [detalle]
+  );
+
   const metodosDisponibles = useMemo(() => {
     const usados = new Set(
       (detalle?.empleados ?? [])
@@ -151,12 +163,12 @@ export function NominaPagosPage() {
   }, [detalle]);
 
   const grupos = useMemo(
-    () => agruparPorDepartamento(detalle?.empleados ?? []),
-    [detalle]
+    () => agruparPorDepartamento(empleadosVisibles),
+    [empleadosVisibles]
   );
 
   const resumen = useMemo(() => {
-    const filas = detalle?.empleados ?? [];
+    const filas = empleadosVisibles;
     let pagados = 0;
     let totalPagado = 0;
     for (const empleado of filas) {
@@ -173,7 +185,7 @@ export function NominaPagosPage() {
       totalPagado,
       totalNeto: Number(detalle?.total_neto ?? 0),
     };
-  }, [detalle, pagos]);
+  }, [empleadosVisibles, pagos, detalle?.total_neto]);
 
   const cambiar = (empleadoId: number, campo: CampoPago, valor: string) => {
     setPagos((prev) => ({
@@ -362,7 +374,10 @@ export function NominaPagosPage() {
       )}
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Resumen titulo="Empleados" valor={String(detalle.empleados.length)} />
+        <Resumen
+          titulo="Empleados"
+          valor={String(empleadosVisibles.length)}
+        />
         <Resumen titulo="Pagados" valor={String(resumen.pagados)} />
         <Resumen
           titulo="Total pagado"
@@ -383,14 +398,15 @@ export function NominaPagosPage() {
                 Pago por empleado
               </h2>
               <span className="rounded-full bg-brand-50 px-2.5 py-0.5 text-[11px] font-semibold text-brand-600 ring-1 ring-brand-100">
-                {resumen.pagados} de {detalle.empleados.length} pagado
-                {detalle.empleados.length === 1 ? '' : 's'}
+                {resumen.pagados} de {empleadosVisibles.length} pagado
+                {empleadosVisibles.length === 1 ? '' : 's'}
               </span>
             </div>
             <p className="text-xs text-slate-500">
-              El monto viene prellenado con el neto a cobrar, pero puedes
-              cambiarlo. Deja la fecha y el método vacíos para mantener un
-              empleado pendiente; usa la goma para quitar un pago guardado.
+              Solo se muestran los empleados con neto a cobrar mayor que cero.
+              El monto viene prellenado con ese neto, pero puedes cambiarlo.
+              Deja la fecha y el método vacíos para mantener un empleado
+              pendiente; usa la goma para quitar un pago guardado.
             </p>
             {metodosDisponibles.length === 0 && (
               <p className="mt-1 text-xs font-medium text-amber-600">
@@ -400,11 +416,12 @@ export function NominaPagosPage() {
             )}
           </CardHeader>
           <CardContent>
-            {detalle.empleados.length === 0 ? (
+            {empleadosVisibles.length === 0 ? (
               <div className="flex flex-col items-center gap-2 py-10 text-center">
                 <Users className="h-8 w-8 text-slate-300" />
                 <p className="text-sm text-slate-500">
-                  Esta nómina no tiene empleados.
+                  Esta nómina no tiene empleados con neto a cobrar mayor que
+                  cero.
                 </p>
               </div>
             ) : (
