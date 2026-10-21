@@ -124,6 +124,34 @@ def test_sin_fecha_y_sin_grupo_usa_la_fecha_fija():
     assert avisos
 
 
+def test_sin_fecha_usa_el_respaldo_antes_que_el_grupo():
+    """Un dato concreto ligado a la fila gana a la suposición por grupo: la
+    solicitud sin fecha toma la del contrato del que viene."""
+    fecha, avisos = rl.fecha_con_respaldo(
+        "0000-00-00 00:00:00", ["2016-05-14"], respaldo="2019-03-14 00:00:00")
+
+    assert fecha == "2019-03-14"
+    assert avisos[0][0] == "fecha 0000-00-00 en el legacy"
+    assert "documento del que viene" in avisos[0][2]
+
+
+def test_fecha_directa_gana_a_todos_los_respaldos():
+    fecha, avisos = rl.fecha_con_respaldo(
+        "2014-02-17 00:00:00", ["2016-05-14"], respaldo="2019-03-14")
+
+    assert fecha == "2014-02-17"
+    assert avisos == []
+
+
+def test_respaldo_invalido_cae_al_grupo():
+    """Un respaldo con '0000-00-00' no vale nada: sigue la cascada de siempre."""
+    fecha, avisos = rl.fecha_con_respaldo(
+        None, ["2016-05-14"], respaldo="0000-00-00 00:00:00")
+
+    assert fecha == "2016-05-14"
+    assert "mismo grupo" in avisos[0][2]
+
+
 # --------------------------------------------------------------------------
 # Códigos
 # --------------------------------------------------------------------------

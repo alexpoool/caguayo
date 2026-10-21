@@ -208,7 +208,7 @@ def estado_legacy(id_estado, estados):
 FECHA_SIN_RESPALDO = "1900-01-01"
 
 
-def fecha_con_respaldo(fecha_legado, fechas_del_grupo):
+def fecha_con_respaldo(fecha_legado, fechas_del_grupo, respaldo=None):
     """La fecha del legacy, o la del mismo grupo si no la tiene.
 
     Hay filas con '0000-00-00' en las dos columnas de fecha —8 en
@@ -217,17 +217,32 @@ def fecha_con_respaldo(fecha_legado, fechas_del_grupo):
     mismo grupo: el mismo artista en las liquidaciones, el mismo cliente en los
     contratos.
 
-    Cuando el grupo no tiene ninguna fecha se usa FECHA_SIN_RESPALDO. Es una
-    suposición en las tres, y por eso las tres dejan aviso.
+    `respaldo` es la fecha de otra fila ligada a ésta que el legacy sí guardó
+    (p. ej. la del contrato del que viene la solicitud). Va antes que la del
+    grupo porque entre dato concreto del documento y suposición por grupo,
+    gana el dato. Se pasa cruda: aquí se limpia igual que la propia.
+
+    Cuando ni la fila, ni su respaldo, ni el grupo tienen fecha se usa
+    FECHA_SIN_RESPALDO. Es una suposición, y por eso cada caso deja aviso.
 
     `fechas_del_grupo` es la lista de fechas del grupo.
 
-    Devuelve (fecha, avisos). La fecha es un `datetime.date` o None.
+    Devuelve (fecha, avisos). La fecha es ISO (`AAAA-MM-DD`) o None.
     """
     avisos = []
     directa = fecha(fecha_legado)
     if directa:
         return directa, avisos
+
+    del_respaldo = fecha(respaldo)
+    if del_respaldo:
+        avisos.append((
+            "fecha 0000-00-00 en el legacy",
+            "se usa %s" % del_respaldo,
+            "la fecha del documento del que viene; el legacy no guardó la "
+            "de la fila",
+        ))
+        return del_respaldo, avisos
 
     candidatas = sorted(f for f in fechas_del_grupo if f)
     if not candidatas:

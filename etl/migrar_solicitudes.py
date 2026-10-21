@@ -259,9 +259,16 @@ def preparar(registro: Registro, codigos_cliente, codigos_contrato,
                               % (id_cliente_legacy, codigo_cliente))
             continue
 
+        encontrado = contratos.get(id_legacy)
+
+        # La fila puede no tener fecha; si su contrato sí la trae, esa es
+        # directamente la suya (329 del legacy van así). La fecha más antigua
+        # del mismo cliente queda como segundo nivel para el caso raro de
+        # contrato también sin fecha.
         fecha_solicitud, avisos_fecha = rl.fecha_con_respaldo(
             f.get("fecha_solicitudsc"),
-            fechas_por_cliente.get(f.get("id_cliente"), []))
+            fechas_por_cliente.get(f.get("id_cliente"), []),
+            respaldo=encontrado[2].get("fecha") if encontrado else None)
         if fecha_solicitud is None:
             registro.descarte(ORIGEN, id_legacy, nombre, "sin fecha",
                               "ni la fila ni las de su cliente tienen fecha")
@@ -270,7 +277,6 @@ def preparar(registro: Registro, codigos_cliente, codigos_contrato,
         codigo, generado = _codigo(no_vacio(f.get("codigo_solicitudsc")),
                                    id_legacy, fecha_solicitud)
 
-        encontrado = contratos.get(id_legacy)
         copias = (_copias_contrato(encontrado[0], encontrado[1], encontrado[2],
                                    codigos_contrato)
                   if encontrado else {})

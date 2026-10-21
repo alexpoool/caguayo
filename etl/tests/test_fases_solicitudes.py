@@ -371,3 +371,56 @@ def test_solicitud_sin_cliente_migrado_va_al_pivote(monkeypatch):
 
     assert payloads[0]["id_cliente"] == 99
     assert any(e["motivo"] == "cliente pivote" for e in registro.entradas)
+
+
+def test_solicitud_sin_fecha_va_con_la_de_su_contrato(monkeypatch):
+    """329 solicitudes del legacy no traen fecha; las 329 tienen contrato y el
+    contrato sí la trae: la dateless toma la de su contrato, no la de sus
+    hermanas del cliente."""
+    contrato = {
+        "id_solicitudsc": "10", "id_contrato": "3",
+        "codigo_contrato": "CON-1", "fecha": "2019-03-14 00:00:00",
+        "valor_contratocuc": "100.00", "valor_contratocup": "0.00",
+    }
+    _origen(monkeypatch,
+            solicitud_sc=([], [_solicitud(fecha_solicitudsc="0000-00-00")]),
+            cliente=([], [{"id_cliente": "5", "codigo": "CLIENTE",
+                           "nit": None}]),
+            contrato=([], [contrato]))
+
+    registro = Registro()
+    payloads, _ = ms.preparar(
+        registro, {"CLIENTE": 11}, {"CON-1": 1}, set())
+
+    assert payloads[0]["fecha_solicitud"] == "2019-03-14"
+    aviso = next((e for e in registro.entradas
+                  if e["motivo"] == "fecha 0000-00-00 en el legacy"), None)
+    assert aviso, registro.entradas
+    assert "documento del que viene" in aviso["detalle"]
+
+
+def test_solicitud_sin_fecha_y_su_contrato_tambien(monkeypatch):
+    """La cascada no cambia para el caso raro: contrato sin fecha -> la fecha
+    más antigua de las solicitudes del mismo cliente."""
+    contrato = {
+        "id_solicitudsc": "10", "id_contrato": "3",
+        "codigo_contrato": "CON-1", "fecha": "0000-00-00",
+        "valor_contratocuc": "100.00", "valor_contratocup": "0.00",
+    }
+    hermana = _solicitud(codigo_solicitudsc="2014.011",
+                         fecha_solicitudsc="2014-02-12")
+    _origen(monkeypatch,
+            solicitud_sc=([], [
+                hermana,
+                _solicitud(fecha_solicitudsc="0000-00-00"),
+            ]),
+            cliente=([], [{"id_cliente": "5", "codigo": "CLIENTE",
+                           "nit": None}]),
+            contrato=([], [contrato]))
+
+    registro = Registro()
+    payloads, _ = ms.preparar(
+        registro, {"CLIENTE": 11}, {"CON-1": 1}, set())
+
+    por_codigo = {p["codigo_solicitud"]: p for p in payloads}
+    assert por_codigo["2014.010"]["fecha_solicitud"] == "2014-02-12"
