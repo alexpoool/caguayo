@@ -413,47 +413,22 @@ def _generar_codigos_proyecto(conn, registro: Registro):
     Va después de `_enlazar` porque hasta que el contrato no está enlazado no se
     sabe si la fila califica.
 
-    La serie se saca con `MAX(SPLIT_PART(codigo_proyecto,'.',-1)::int) + 1` sobre
-    toda la columna, igual que `siguiente_secuencia` (`codigos_entidad.py:151-161`),
-    y no con un contador propio: la serie de la app es global y no reinicia por
-    año ni por prefijo, así que un código creado a mano después tiene que salir
-    por encima de los migrados y no repetir uno.
-
-    El año sale de `fecha_solicitud`, como en la app. Es un dato, no el reloj: con
-    el reloj, reejecutar en enero cambiaría el código de lo ya escrito.
-
-    Idempotente por el `WHERE codigo_proyecto IS NULL`, y ordenado por
-    `id_solicitud_servicio` para que dos ejecuciones den lo mismo.
+    El proyecto hereda el código de su propia solicitud: proyecto y solicitud
+    comparten código y el rastreo end-to-end queda amarrado (el contrato de
+    arriba lleva su `2026.041`). Nada de serie correlativa añadida: no hay
+    secuencia que inventar, y reejecutar la fase no puede chocar con lo que ya
+    escribió una pasada anterior ni con lo que ponga la aplicación después,
+    porque el UPDATE es idempotente por su `WHERE codigo_proyecto IS NULL` y los
+    códigos que la app genere más tarde son para filas nuevas.
     """
     with conn.cursor() as cur:
         cur.execute(
-            "SELECT id_solicitud_servicio, EXTRACT(YEAR FROM fecha_solicitud)"
-            " FROM %s WHERE aprobado AND id_contrato IS NOT NULL"
-            "   AND codigo_proyecto IS NULL"
-            " ORDER BY id_solicitud_servicio" % TABLA)
-        candidatas = [(i, int(anio)) for i, anio in cur.fetchall() if anio]
-
-        if not candidatas:
-            return 0
-
-        cur.execute(
-            "SELECT COALESCE(MAX(NULLIF(SPLIT_PART(codigo_proyecto,'.',-1),'')::int), 0)"
-            " FROM %s" % TABLA)
-        secuencia = cur.fetchone()[0]
-
-    valores = []
-    for id_solicitud, anio in candidatas:
-        secuencia += 1
-        valores.append(("FT.%s.%03d" % (str(anio)[-2:], secuencia),
-                        id_solicitud))
-
-    with conn.cursor() as cur:
-        for lote in db.lotes(valores, TAMANO_LOTE):
-            cur.executemany(
-                "UPDATE %s SET codigo_proyecto = %%s"
-                " WHERE id_solicitud_servicio = %%s" % TABLA, lote)
+            "UPDATE %s SET codigo_proyecto = codigo_solicitud"
+            " WHERE aprobado AND id_contrato IS NOT NULL"
+            "   AND codigo_proyecto IS NULL" % TABLA)
+        generadas = cur.rowcount
     conn.commit()
-    return len(valores)
+    return max(generadas, 0)
 
 
 def _enlazables(enlaces):

@@ -1,179 +1,18 @@
-+ ROOT=/data/data/com.termux/files/home/caguayo
-+ STATE=/data/data/com.termux/files/home/caguayo/scripts/.estado_reset
-+ VENV=/data/data/com.termux/files/home/caguayo/backend/.venv/bin/python
-+ cd /data/data/com.termux/files/home/caguayo/scripts
-+ mkdir -p /data/data/com.termux/files/home/caguayo/scripts/.estado_reset
+++++ readlink -f scripts/reset_y_migrar.sh
++++ dirname /home/admin/caguayo/scripts/reset_y_migrar.sh
+++ cd /home/admin/caguayo/scripts/..
+++ pwd
++ ROOT=/home/admin/caguayo
++ STATE=/home/admin/caguayo/scripts/.estado_reset
++ VENV=/home/admin/caguayo/backend/.venv/bin/python
++ cd /home/admin/caguayo/scripts
++ mkdir -p /home/admin/caguayo/scripts/.estado_reset
 + for db in caguayo_sa caguayo caguayosa
 + marca alembic_caguayo_sa
-+ '[' -f /data/data/com.termux/files/home/caguayo/scripts/.estado_reset/alembic_caguayo_sa.hecho ']'
-+ cd /data/data/com.termux/files/home/caguayo/backend
++ '[' -f /home/admin/caguayo/scripts/.estado_reset/alembic_caguayo_sa.hecho ']'
++ cd /home/admin/caguayo/backend
 + DATABASE_URL=postgresql+asyncpg://postgres:12345678@127.0.0.1:5432/caguayo_sa
-+ /data/data/com.termux/files/home/caguayo/backend/.venv/bin/python -m alembic upgrade head
-Traceback (most recent call last):
-  File "<frozen runpy>", line 198, in _run_module_as_main
-  File "<frozen runpy>", line 88, in _run_code
-  File "/data/data/com.termux/files/home/caguayo/backend/.venv/lib/python3.13/site-packages/alembic/__main__.py", line 4, in <module>
-    main(prog="alembic")
-    ~~~~^^^^^^^^^^^^^^^^
-  File "/data/data/com.termux/files/home/caguayo/backend/.venv/lib/python3.13/site-packages/alembic/config.py", line 1039, in main
-    CommandLine(prog=prog).main(argv=argv)
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^
-  File "/data/data/com.termux/files/home/caguayo/backend/.venv/lib/python3.13/site-packages/alembic/config.py", line 1029, in main
-    self.run_cmd(cfg, options)
-    ~~~~~~~~~~~~^^^^^^^^^^^^^^
-  File "/data/data/com.termux/files/home/caguayo/backend/.venv/lib/python3.13/site-packages/alembic/config.py", line 963, in run_cmd
-    fn(
-    ~~^
-        config,
-        ^^^^^^^
-        *[getattr(options, k, None) for k in positional],
-        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-        **{k: getattr(options, k, None) for k in kwarg},
-        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-    )
-    ^
-  File "/data/data/com.termux/files/home/caguayo/backend/.venv/lib/python3.13/site-packages/alembic/command.py", line 487, in upgrade
-    script.run_env()
-    ~~~~~~~~~~~~~~^^
-  File "/data/data/com.termux/files/home/caguayo/backend/.venv/lib/python3.13/site-packages/alembic/script/base.py", line 550, in run_env
-    util.load_python_file(self.dir, "env.py")
-    ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
-  File "/data/data/com.termux/files/home/caguayo/backend/.venv/lib/python3.13/site-packages/alembic/util/pyfiles.py", line 114, in load_python_file
-    module = load_module_py(module_id, path)
-  File "/data/data/com.termux/files/home/caguayo/backend/.venv/lib/python3.13/site-packages/alembic/util/pyfiles.py", line 132, in load_module_py
-    spec.loader.exec_module(module)  # type: ignore
-    ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^
-  File "<frozen importlib._bootstrap_external>", line 1023, in exec_module
-  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
-  File "/data/data/com.termux/files/home/caguayo/backend/alembic/env.py", line 407, in <module>
-    run_migrations_online()
-    ~~~~~~~~~~~~~~~~~~~~~^^
-  File "/data/data/com.termux/files/home/caguayo/backend/alembic/env.py", line 401, in run_migrations_online
-    asyncio.run(run_async_migrations())
-    ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/data/data/com.termux/files/usr/lib/python3.13/asyncio/runners.py", line 195, in run
-    return runner.run(main)
-           ~~~~~~~~~~^^^^^^
-  File "/data/data/com.termux/files/usr/lib/python3.13/asyncio/runners.py", line 118, in run
-    return self._loop.run_until_complete(task)
-           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^
-  File "/data/data/com.termux/files/usr/lib/python3.13/asyncio/base_events.py", line 725, in run_until_complete
-    return future.result()
-           ~~~~~~~~~~~~~^^
-  File "/data/data/com.termux/files/home/caguayo/backend/alembic/env.py", line 392, in run_async_migrations
-    async with connectable.connect() as connection:
-               ~~~~~~~~~~~~~~~~~~~^^
-  File "/data/data/com.termux/files/home/caguayo/backend/.venv/lib/python3.13/site-packages/sqlalchemy/ext/asyncio/base.py", line 121, in __aenter__
-    return await self.start(is_ctxmanager=True)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/data/data/com.termux/files/home/caguayo/backend/.venv/lib/python3.13/site-packages/sqlalchemy/ext/asyncio/engine.py", line 275, in start
-    await greenlet_spawn(self.sync_engine.connect)
-  File "/data/data/com.termux/files/home/caguayo/backend/.venv/lib/python3.13/site-packages/sqlalchemy/util/_concurrency_py3k.py", line 201, in greenlet_spawn
-    result = context.throw(*sys.exc_info())
-  File "/data/data/com.termux/files/home/caguayo/backend/.venv/lib/python3.13/site-packages/sqlalchemy/engine/base.py", line 3293, in connect
-    return self._connection_cls(self)
-           ~~~~~~~~~~~~~~~~~~~~^^^^^^
-  File "/data/data/com.termux/files/home/caguayo/backend/.venv/lib/python3.13/site-packages/sqlalchemy/engine/base.py", line 143, in __init__
-    self._dbapi_connection = engine.raw_connection()
-                             ~~~~~~~~~~~~~~~~~~~~~^^
-  File "/data/data/com.termux/files/home/caguayo/backend/.venv/lib/python3.13/site-packages/sqlalchemy/engine/base.py", line 3317, in raw_connection
-    return self.pool.connect()
-           ~~~~~~~~~~~~~~~~~^^
-  File "/data/data/com.termux/files/home/caguayo/backend/.venv/lib/python3.13/site-packages/sqlalchemy/pool/base.py", line 448, in connect
-    return _ConnectionFairy._checkout(self)
-           ~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^
-  File "/data/data/com.termux/files/home/caguayo/backend/.venv/lib/python3.13/site-packages/sqlalchemy/pool/base.py", line 1272, in _checkout
-    fairy = _ConnectionRecord.checkout(pool)
-  File "/data/data/com.termux/files/home/caguayo/backend/.venv/lib/python3.13/site-packages/sqlalchemy/pool/base.py", line 712, in checkout
-    rec = pool._do_get()
-  File "/data/data/com.termux/files/home/caguayo/backend/.venv/lib/python3.13/site-packages/sqlalchemy/pool/impl.py", line 306, in _do_get
-    return self._create_connection()
-           ~~~~~~~~~~~~~~~~~~~~~~~^^
-  File "/data/data/com.termux/files/home/caguayo/backend/.venv/lib/python3.13/site-packages/sqlalchemy/pool/base.py", line 389, in _create_connection
-    return _ConnectionRecord(self)
-  File "/data/data/com.termux/files/home/caguayo/backend/.venv/lib/python3.13/site-packages/sqlalchemy/pool/base.py", line 674, in __init__
-    self.__connect()
-    ~~~~~~~~~~~~~~^^
-  File "/data/data/com.termux/files/home/caguayo/backend/.venv/lib/python3.13/site-packages/sqlalchemy/pool/base.py", line 900, in __connect
-    with util.safe_reraise():
-         ~~~~~~~~~~~~~~~~~^^
-  File "/data/data/com.termux/files/home/caguayo/backend/.venv/lib/python3.13/site-packages/sqlalchemy/util/langhelpers.py", line 121, in __exit__
-    raise exc_value.with_traceback(exc_tb)
-  File "/data/data/com.termux/files/home/caguayo/backend/.venv/lib/python3.13/site-packages/sqlalchemy/pool/base.py", line 896, in __connect
-    self.dbapi_connection = connection = pool._invoke_creator(self)
-                                         ~~~~~~~~~~~~~~~~~~~~^^^^^^
-  File "/data/data/com.termux/files/home/caguayo/backend/.venv/lib/python3.13/site-packages/sqlalchemy/engine/create.py", line 667, in connect
-    return dialect.connect(*cargs_tup, **cparams)
-           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
-  File "/data/data/com.termux/files/home/caguayo/backend/.venv/lib/python3.13/site-packages/sqlalchemy/engine/default.py", line 630, in connect
-    return self.loaded_dbapi.connect(*cargs, **cparams)  # type: ignore[no-any-return]  # NOQA: E501
-           ~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^
-  File "/data/data/com.termux/files/home/caguayo/backend/.venv/lib/python3.13/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py", line 955, in connect
-    await_only(creator_fn(*arg, **kw)),
-    ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/data/data/com.termux/files/home/caguayo/backend/.venv/lib/python3.13/site-packages/sqlalchemy/util/_concurrency_py3k.py", line 132, in await_only
-    return current.parent.switch(awaitable)  # type: ignore[no-any-return,attr-defined] # noqa: E501
-           ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^
-  File "/data/data/com.termux/files/home/caguayo/backend/.venv/lib/python3.13/site-packages/sqlalchemy/util/_concurrency_py3k.py", line 196, in greenlet_spawn
-    value = await result
-            ^^^^^^^^^^^^
-  File "/data/data/com.termux/files/home/caguayo/backend/.venv/lib/python3.13/site-packages/asyncpg/connection.py", line 2498, in connect
-    return await connect_utils._connect(
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-    ...<22 lines>...
-    )
-    ^
-  File "/data/data/com.termux/files/home/caguayo/backend/.venv/lib/python3.13/site-packages/asyncpg/connect_utils.py", line 1307, in _connect
-    raise last_error or exceptions.TargetServerAttributeNotMatched(
-    ...<2 lines>...
-    )
-  File "/data/data/com.termux/files/home/caguayo/backend/.venv/lib/python3.13/site-packages/asyncpg/connect_utils.py", line 1278, in _connect
-    conn = await _connect_addr(
-           ^^^^^^^^^^^^^^^^^^^^
-    ...<6 lines>...
-    )
-    ^
-  File "/data/data/com.termux/files/home/caguayo/backend/.venv/lib/python3.13/site-packages/asyncpg/connect_utils.py", line 1092, in _connect_addr
-    return await __connect_addr(params, True, *args)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/data/data/com.termux/files/home/caguayo/backend/.venv/lib/python3.13/site-packages/asyncpg/connect_utils.py", line 1162, in __connect_addr
-    tr, pr = await connector
-             ^^^^^^^^^^^^^^^
-  File "/data/data/com.termux/files/home/caguayo/backend/.venv/lib/python3.13/site-packages/asyncpg/connect_utils.py", line 996, in _create_ssl_connection
-    tr, pr = await loop.create_connection(
-             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-    ...<2 lines>...
-        host, port)
-        ^^^^^^^^^^^
-  File "/data/data/com.termux/files/usr/lib/python3.13/asyncio/base_events.py", line 1171, in create_connection
-    raise exceptions[0]
-  File "/data/data/com.termux/files/usr/lib/python3.13/asyncio/base_events.py", line 1146, in create_connection
-    sock = await self._connect_sock(
-           ^^^^^^^^^^^^^^^^^^^^^^^^^
-        exceptions, addrinfo, laddr_infos)
-        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/data/data/com.termux/files/usr/lib/python3.13/asyncio/base_events.py", line 1045, in _connect_sock
-    await self.sock_connect(sock, address)
-  File "/data/data/com.termux/files/usr/lib/python3.13/asyncio/selector_events.py", line 645, in sock_connect
-    return await fut
-           ^^^^^^^^^
-  File "/data/data/com.termux/files/usr/lib/python3.13/asyncio/selector_events.py", line 685, in _sock_connect_cb
-    raise OSError(err, f'Connect call failed {address}')
-ConnectionRefusedError: [Errno 111] Connect call failed ('127.0.0.1', 5432)
-+ echo 'FALLO alembic caguayo_sa'
-FALLO alembic caguayo_sa
-+ exit 1
-+ ROOT=/data/data/com.termux/files/home/caguayo
-+ STATE=/data/data/com.termux/files/home/caguayo/scripts/.estado_reset
-+ VENV=/data/data/com.termux/files/home/caguayo/backend/.venv/bin/python
-+ cd /data/data/com.termux/files/home/caguayo/scripts
-+ mkdir -p /data/data/com.termux/files/home/caguayo/scripts/.estado_reset
-+ for db in caguayo_sa caguayo caguayosa
-+ marca alembic_caguayo_sa
-+ '[' -f /data/data/com.termux/files/home/caguayo/scripts/.estado_reset/alembic_caguayo_sa.hecho ']'
-+ cd /data/data/com.termux/files/home/caguayo/backend
-+ DATABASE_URL=postgresql+asyncpg://postgres:12345678@127.0.0.1:5432/caguayo_sa
-+ /data/data/com.termux/files/home/caguayo/backend/.venv/bin/python -m alembic upgrade head
++ /home/admin/caguayo/backend/.venv/bin/python -m alembic upgrade head
 INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
 INFO  [alembic.runtime.migration] Will assume transactional DDL.
   🆕 Fresh database detected — creating tables from models...
@@ -181,13 +20,13 @@ INFO  [alembic.runtime.migration] Will assume transactional DDL.
   🌱 Seeding catalog data...
   ✅ Catalog data seeded successfully
   ✅ Alembic stamped to head
-+ touch /data/data/com.termux/files/home/caguayo/scripts/.estado_reset/alembic_caguayo_sa.hecho
++ touch /home/admin/caguayo/scripts/.estado_reset/alembic_caguayo_sa.hecho
 + for db in caguayo_sa caguayo caguayosa
 + marca alembic_caguayo
-+ '[' -f /data/data/com.termux/files/home/caguayo/scripts/.estado_reset/alembic_caguayo.hecho ']'
-+ cd /data/data/com.termux/files/home/caguayo/backend
++ '[' -f /home/admin/caguayo/scripts/.estado_reset/alembic_caguayo.hecho ']'
++ cd /home/admin/caguayo/backend
 + DATABASE_URL=postgresql+asyncpg://postgres:12345678@127.0.0.1:5432/caguayo
-+ /data/data/com.termux/files/home/caguayo/backend/.venv/bin/python -m alembic upgrade head
++ /home/admin/caguayo/backend/.venv/bin/python -m alembic upgrade head
 INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
 INFO  [alembic.runtime.migration] Will assume transactional DDL.
   🆕 Fresh database detected — creating tables from models...
@@ -195,13 +34,13 @@ INFO  [alembic.runtime.migration] Will assume transactional DDL.
   🌱 Seeding catalog data...
   ✅ Catalog data seeded successfully
   ✅ Alembic stamped to head
-+ touch /data/data/com.termux/files/home/caguayo/scripts/.estado_reset/alembic_caguayo.hecho
++ touch /home/admin/caguayo/scripts/.estado_reset/alembic_caguayo.hecho
 + for db in caguayo_sa caguayo caguayosa
 + marca alembic_caguayosa
-+ '[' -f /data/data/com.termux/files/home/caguayo/scripts/.estado_reset/alembic_caguayosa.hecho ']'
-+ cd /data/data/com.termux/files/home/caguayo/backend
++ '[' -f /home/admin/caguayo/scripts/.estado_reset/alembic_caguayosa.hecho ']'
++ cd /home/admin/caguayo/backend
 + DATABASE_URL=postgresql+asyncpg://postgres:12345678@127.0.0.1:5432/caguayosa
-+ /data/data/com.termux/files/home/caguayo/backend/.venv/bin/python -m alembic upgrade head
++ /home/admin/caguayo/backend/.venv/bin/python -m alembic upgrade head
 INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
 INFO  [alembic.runtime.migration] Will assume transactional DDL.
   🆕 Fresh database detected — creating tables from models...
@@ -209,44 +48,44 @@ INFO  [alembic.runtime.migration] Will assume transactional DDL.
   🌱 Seeding catalog data...
   ✅ Catalog data seeded successfully
   ✅ Alembic stamped to head
-+ touch /data/data/com.termux/files/home/caguayo/scripts/.estado_reset/alembic_caguayosa.hecho
++ touch /home/admin/caguayo/scripts/.estado_reset/alembic_caguayosa.hecho
 + for db in caguayo_sa caguayo caguayosa
 + marca init_caguayo_sa
-+ '[' -f /data/data/com.termux/files/home/caguayo/scripts/.estado_reset/init_caguayo_sa.hecho ']'
-+ cd /data/data/com.termux/files/home/caguayo/backend
-+ /data/data/com.termux/files/home/caguayo/backend/.venv/bin/python -m scripts.init_office caguayo_sa
++ '[' -f /home/admin/caguayo/scripts/.estado_reset/init_caguayo_sa.hecho ']'
++ cd /home/admin/caguayo/backend
++ /home/admin/caguayo/backend/.venv/bin/python -m scripts.init_office caguayo_sa
 ============================================================
 ==> Inicializando oficina en 'caguayo_sa'
 ============================================================
 Datos insertados: dependencia, usuarios, clientes, convenio, anexo
 Done.
-+ touch /data/data/com.termux/files/home/caguayo/scripts/.estado_reset/init_caguayo_sa.hecho
++ touch /home/admin/caguayo/scripts/.estado_reset/init_caguayo_sa.hecho
 + for db in caguayo_sa caguayo caguayosa
 + marca init_caguayo
-+ '[' -f /data/data/com.termux/files/home/caguayo/scripts/.estado_reset/init_caguayo.hecho ']'
-+ cd /data/data/com.termux/files/home/caguayo/backend
-+ /data/data/com.termux/files/home/caguayo/backend/.venv/bin/python -m scripts.init_office caguayo
++ '[' -f /home/admin/caguayo/scripts/.estado_reset/init_caguayo.hecho ']'
++ cd /home/admin/caguayo/backend
++ /home/admin/caguayo/backend/.venv/bin/python -m scripts.init_office caguayo
 ============================================================
 ==> Inicializando oficina en 'caguayo'
 ============================================================
 Datos insertados: dependencia, usuarios, clientes, convenio, anexo
 Done.
-+ touch /data/data/com.termux/files/home/caguayo/scripts/.estado_reset/init_caguayo.hecho
++ touch /home/admin/caguayo/scripts/.estado_reset/init_caguayo.hecho
 + for db in caguayo_sa caguayo caguayosa
 + marca init_caguayosa
-+ '[' -f /data/data/com.termux/files/home/caguayo/scripts/.estado_reset/init_caguayosa.hecho ']'
-+ cd /data/data/com.termux/files/home/caguayo/backend
-+ /data/data/com.termux/files/home/caguayo/backend/.venv/bin/python -m scripts.init_office caguayosa
++ '[' -f /home/admin/caguayo/scripts/.estado_reset/init_caguayosa.hecho ']'
++ cd /home/admin/caguayo/backend
++ /home/admin/caguayo/backend/.venv/bin/python -m scripts.init_office caguayosa
 ============================================================
 ==> Inicializando oficina en 'caguayosa'
 ============================================================
 Datos insertados: dependencia, usuarios, clientes, convenio, anexo
 Done.
-+ touch /data/data/com.termux/files/home/caguayo/scripts/.estado_reset/init_caguayosa.hecho
++ touch /home/admin/caguayo/scripts/.estado_reset/init_caguayosa.hecho
 + marca etl
-+ '[' -f /data/data/com.termux/files/home/caguayo/scripts/.estado_reset/etl.hecho ']'
-+ cd /data/data/com.termux/files/home/caguayo/etl
-+ /data/data/com.termux/files/home/caguayo/backend/.venv/bin/python main.py --commit
++ '[' -f /home/admin/caguayo/scripts/.estado_reset/etl.hecho ']'
++ cd /home/admin/caguayo/etl
++ /home/admin/caguayo/backend/.venv/bin/python main.py --commit
 ==================================================================
   MIGRACIÓN MariaDB → PostgreSQL  (artista, cliente)
 ==================================================================
@@ -458,7 +297,7 @@ Done.
 
 RESULTADO: 0 COMPROBACIÓN(ES) FALLIDA(S)
 
-CSV de rechazos: /data/data/com.termux/files/home/caguayo/etl/data/migracion_rechazos.csv (12315 filas)
+CSV de rechazos: /home/admin/caguayo/etl/data/migracion_rechazos.csv (12315 filas)
 
 === VERIFICACIÓN POST-MIGRACIÓN ===
 
@@ -555,589 +394,6 @@ CSV de rechazos: /data/data/com.termux/files/home/caguayo/etl/data/migracion_rec
   WARNING   suplemento   sin importe en el legacy           1
 
 === RESULTADO: TODO CORRECTO ===
-+ touch /data/data/com.termux/files/home/caguayo/scripts/.estado_reset/etl.hecho
-+ echo EXIT=0
-EXIT=0
-+ ROOT=/data/data/com.termux/files/home/caguayo
-+ STATE=/data/data/com.termux/files/home/caguayo/scripts/.estado_reset
-+ VENV=/data/data/com.termux/files/home/caguayo/backend/.venv/bin/python
-+ cd /data/data/com.termux/files/home/caguayo/scripts
-+ mkdir -p /data/data/com.termux/files/home/caguayo/scripts/.estado_reset
-+ for db in caguayo_sa caguayo caguayosa
-+ marca alembic_caguayo_sa
-+ '[' -f /data/data/com.termux/files/home/caguayo/scripts/.estado_reset/alembic_caguayo_sa.hecho ']'
-+ cd /data/data/com.termux/files/home/caguayo/backend
-+ DATABASE_URL=postgresql+asyncpg://postgres:12345678@127.0.0.1:5432/caguayo_sa
-+ /data/data/com.termux/files/home/caguayo/backend/.venv/bin/python -m alembic upgrade head
-INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
-INFO  [alembic.runtime.migration] Will assume transactional DDL.
-Traceback (most recent call last):
-  File "<frozen runpy>", line 198, in _run_module_as_main
-  File "<frozen runpy>", line 88, in _run_code
-  File "/data/data/com.termux/files/home/caguayo/backend/.venv/lib/python3.13/site-packages/alembic/__main__.py", line 4, in <module>
-    main(prog="alembic")
-    ~~~~^^^^^^^^^^^^^^^^
-  File "/data/data/com.termux/files/home/caguayo/backend/.venv/lib/python3.13/site-packages/alembic/config.py", line 1039, in main
-    CommandLine(prog=prog).main(argv=argv)
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^
-  File "/data/data/com.termux/files/home/caguayo/backend/.venv/lib/python3.13/site-packages/alembic/config.py", line 1029, in main
-    self.run_cmd(cfg, options)
-    ~~~~~~~~~~~~^^^^^^^^^^^^^^
-  File "/data/data/com.termux/files/home/caguayo/backend/.venv/lib/python3.13/site-packages/alembic/config.py", line 963, in run_cmd
-    fn(
-    ~~^
-        config,
-        ^^^^^^^
-        *[getattr(options, k, None) for k in positional],
-        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-        **{k: getattr(options, k, None) for k in kwarg},
-        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-    )
-    ^
-  File "/data/data/com.termux/files/home/caguayo/backend/.venv/lib/python3.13/site-packages/alembic/command.py", line 487, in upgrade
-    script.run_env()
-    ~~~~~~~~~~~~~~^^
-  File "/data/data/com.termux/files/home/caguayo/backend/.venv/lib/python3.13/site-packages/alembic/script/base.py", line 550, in run_env
-    util.load_python_file(self.dir, "env.py")
-    ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
-  File "/data/data/com.termux/files/home/caguayo/backend/.venv/lib/python3.13/site-packages/alembic/util/pyfiles.py", line 114, in load_python_file
-    module = load_module_py(module_id, path)
-  File "/data/data/com.termux/files/home/caguayo/backend/.venv/lib/python3.13/site-packages/alembic/util/pyfiles.py", line 132, in load_module_py
-    spec.loader.exec_module(module)  # type: ignore
-    ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^
-  File "<frozen importlib._bootstrap_external>", line 1023, in exec_module
-  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
-  File "/data/data/com.termux/files/home/caguayo/backend/alembic/env.py", line 407, in <module>
-    run_migrations_online()
-    ~~~~~~~~~~~~~~~~~~~~~^^
-  File "/data/data/com.termux/files/home/caguayo/backend/alembic/env.py", line 401, in run_migrations_online
-    asyncio.run(run_async_migrations())
-    ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/data/data/com.termux/files/usr/lib/python3.13/asyncio/runners.py", line 195, in run
-    return runner.run(main)
-           ~~~~~~~~~~^^^^^^
-  File "/data/data/com.termux/files/usr/lib/python3.13/asyncio/runners.py", line 118, in run
-    return self._loop.run_until_complete(task)
-           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^
-  File "/data/data/com.termux/files/usr/lib/python3.13/asyncio/base_events.py", line 725, in run_until_complete
-    return future.result()
-           ~~~~~~~~~~~~~^^
-  File "/data/data/com.termux/files/home/caguayo/backend/alembic/env.py", line 393, in run_async_migrations
-    await connection.run_sync(do_run_migrations)
-  File "/data/data/com.termux/files/home/caguayo/backend/.venv/lib/python3.13/site-packages/sqlalchemy/ext/asyncio/engine.py", line 888, in run_sync
-    return await greenlet_spawn(
-           ^^^^^^^^^^^^^^^^^^^^^
-        fn, self._proxied, *arg, _require_await=False, **kw
-        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-    )
-    ^
-  File "/data/data/com.termux/files/home/caguayo/backend/.venv/lib/python3.13/site-packages/sqlalchemy/util/_concurrency_py3k.py", line 201, in greenlet_spawn
-    result = context.throw(*sys.exc_info())
-  File "/data/data/com.termux/files/home/caguayo/backend/alembic/env.py", line 378, in do_run_migrations
-    create_all_and_seed(connection)
-    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^
-  File "/data/data/com.termux/files/home/caguayo/backend/alembic/env.py", line 347, in create_all_and_seed
-    _seed_generic_data(connection)
-    ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^
-  File "/data/data/com.termux/files/home/caguayo/backend/alembic/env.py", line 212, in _seed_generic_data
-    _insert_if_not_exists(connection, "estado_contrato", ["nombre", "descripcion"], ESTADOS_CONTRATO, "nombre")
-    ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/data/data/com.termux/files/home/caguayo/backend/alembic/env.py", line 76, in _insert_if_not_exists
-    conn.execute(
-    ~~~~~~~~~~~~^
-        sa.text(f"INSERT INTO {table} ({cols_str}) VALUES ({placeholders})"),
-        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-        params,
-        ^^^^^^^
-    )
-    ^
-  File "/data/data/com.termux/files/home/caguayo/backend/.venv/lib/python3.13/site-packages/sqlalchemy/engine/base.py", line 1419, in execute
-    return meth(
-        self,
-        distilled_parameters,
-        execution_options or NO_OPTIONS,
-    )
-  File "/data/data/com.termux/files/home/caguayo/backend/.venv/lib/python3.13/site-packages/sqlalchemy/sql/elements.py", line 527, in _execute_on_connection
-    return connection._execute_clauseelement(
-           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
-        self, distilled_params, execution_options
-        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-    )
-    ^
-  File "/data/data/com.termux/files/home/caguayo/backend/.venv/lib/python3.13/site-packages/sqlalchemy/engine/base.py", line 1641, in _execute_clauseelement
-    ret = self._execute_context(
-        dialect,
-    ...<8 lines>...
-        cache_hit=cache_hit,
-    )
-  File "/data/data/com.termux/files/home/caguayo/backend/.venv/lib/python3.13/site-packages/sqlalchemy/engine/base.py", line 1846, in _execute_context
-    return self._exec_single_context(
-           ~~~~~~~~~~~~~~~~~~~~~~~~~^
-        dialect, context, statement, parameters
-        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-    )
-    ^
-  File "/data/data/com.termux/files/home/caguayo/backend/.venv/lib/python3.13/site-packages/sqlalchemy/engine/base.py", line 1986, in _exec_single_context
-    self._handle_dbapi_exception(
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
-        e, str_statement, effective_parameters, cursor, context
-        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-    )
-    ^
-  File "/data/data/com.termux/files/home/caguayo/backend/.venv/lib/python3.13/site-packages/sqlalchemy/engine/base.py", line 2366, in _handle_dbapi_exception
-    raise exc_info[1].with_traceback(exc_info[2])
-  File "/data/data/com.termux/files/home/caguayo/backend/.venv/lib/python3.13/site-packages/sqlalchemy/engine/base.py", line 1967, in _exec_single_context
-    self.dialect.do_execute(
-    ~~~~~~~~~~~~~~~~~~~~~~~^
-        cursor, str_statement, effective_parameters, context
-        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-    )
-    ^
-  File "/data/data/com.termux/files/home/caguayo/backend/.venv/lib/python3.13/site-packages/sqlalchemy/engine/default.py", line 952, in do_execute
-    cursor.execute(statement, parameters)
-    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
-  File "/data/data/com.termux/files/home/caguayo/backend/.venv/lib/python3.13/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py", line 585, in execute
-    self._adapt_connection.await_(
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
-        self._prepare_and_execute(operation, parameters)
-        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-    )
-    ^
-  File "/data/data/com.termux/files/home/caguayo/backend/.venv/lib/python3.13/site-packages/sqlalchemy/util/_concurrency_py3k.py", line 132, in await_only
-    return current.parent.switch(awaitable)  # type: ignore[no-any-return,attr-defined] # noqa: E501
-           ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^
-  File "/data/data/com.termux/files/home/caguayo/backend/.venv/lib/python3.13/site-packages/sqlalchemy/util/_concurrency_py3k.py", line 196, in greenlet_spawn
-    value = await result
-            ^^^^^^^^^^^^
-  File "/data/data/com.termux/files/home/caguayo/backend/.venv/lib/python3.13/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py", line 563, in _prepare_and_execute
-    self._handle_exception(error)
-    ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^
-  File "/data/data/com.termux/files/home/caguayo/backend/.venv/lib/python3.13/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py", line 513, in _handle_exception
-    self._adapt_connection._handle_exception(error)
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^
-  File "/data/data/com.termux/files/home/caguayo/backend/.venv/lib/python3.13/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py", line 799, in _handle_exception
-    raise error
-  File "/data/data/com.termux/files/home/caguayo/backend/.venv/lib/python3.13/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py", line 550, in _prepare_and_execute
-    self._rows = deque(await prepared_stmt.fetch(*parameters))
-                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/data/data/com.termux/files/home/caguayo/backend/.venv/lib/python3.13/site-packages/asyncpg/prepared_stmt.py", line 177, in fetch
-    data = await self.__bind_execute(args, 0, timeout)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/data/data/com.termux/files/home/caguayo/backend/.venv/lib/python3.13/site-packages/asyncpg/prepared_stmt.py", line 268, in __bind_execute
-    data, status, _ = await self.__do_execute(
-                      ^^^^^^^^^^^^^^^^^^^^^^^^
-        lambda protocol: protocol.bind_execute(
-        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-            self._state, args, '', limit, True, timeout))
-            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/data/data/com.termux/files/home/caguayo/backend/.venv/lib/python3.13/site-packages/asyncpg/prepared_stmt.py", line 257, in __do_execute
-    return await executor(protocol)
-           ^^^^^^^^^^^^^^^^^^^^^^^^
-  File "asyncpg/protocol/protocol.pyx", line 197, in bind_execute
-  File "asyncpg/protocol/protocol.pyx", line 183, in asyncpg.protocol.protocol.BaseProtocol.bind_execute
-    self._bind_execute(
-  File "asyncpg/protocol/coreproto.pyx", line 1022, in asyncpg.protocol.protocol.CoreProtocol._bind_execute
-  File "asyncpg/protocol/coreproto.pyx", line 875, in asyncpg.protocol.protocol.CoreProtocol._set_state
-    raise apg_exc.InternalClientError(
-asyncpg.exceptions._base.InternalClientError: cannot switch to state 12; another operation (2) is in progress
-  🆕 Fresh database detected — creating tables from models...
-  ✅ Tables created successfully
-  🌱 Seeding catalog data...
-+ echo 'FALLO alembic caguayo_sa'
-FALLO alembic caguayo_sa
-+ exit 1
-+ ROOT=/data/data/com.termux/files/home/caguayo
-+ STATE=/data/data/com.termux/files/home/caguayo/scripts/.estado_reset
-+ VENV=/data/data/com.termux/files/home/caguayo/backend/.venv/bin/python
-+ cd /data/data/com.termux/files/home/caguayo/scripts
-+ mkdir -p /data/data/com.termux/files/home/caguayo/scripts/.estado_reset
-+ for db in caguayo_sa caguayo caguayosa
-+ marca alembic_caguayo_sa
-+ '[' -f /data/data/com.termux/files/home/caguayo/scripts/.estado_reset/alembic_caguayo_sa.hecho ']'
-+ cd /data/data/com.termux/files/home/caguayo/backend
-+ DATABASE_URL=postgresql+asyncpg://postgres:12345678@127.0.0.1:5432/caguayo_sa
-+ /data/data/com.termux/files/home/caguayo/backend/.venv/bin/python -m alembic upgrade head
-INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
-INFO  [alembic.runtime.migration] Will assume transactional DDL.
-  🆕 Fresh database detected — creating tables from models...
-  ✅ Tables created successfully
-  🌱 Seeding catalog data...
-  ✅ Catalog data seeded successfully
-  ✅ Alembic stamped to head
-+ touch /data/data/com.termux/files/home/caguayo/scripts/.estado_reset/alembic_caguayo_sa.hecho
-+ for db in caguayo_sa caguayo caguayosa
-+ marca alembic_caguayo
-+ '[' -f /data/data/com.termux/files/home/caguayo/scripts/.estado_reset/alembic_caguayo.hecho ']'
-+ cd /data/data/com.termux/files/home/caguayo/backend
-+ DATABASE_URL=postgresql+asyncpg://postgres:12345678@127.0.0.1:5432/caguayo
-+ /data/data/com.termux/files/home/caguayo/backend/.venv/bin/python -m alembic upgrade head
-INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
-INFO  [alembic.runtime.migration] Will assume transactional DDL.
-  🆕 Fresh database detected — creating tables from models...
-  ✅ Tables created successfully
-  🌱 Seeding catalog data...
-  ✅ Catalog data seeded successfully
-  ✅ Alembic stamped to head
-+ touch /data/data/com.termux/files/home/caguayo/scripts/.estado_reset/alembic_caguayo.hecho
-+ for db in caguayo_sa caguayo caguayosa
-+ marca alembic_caguayosa
-+ '[' -f /data/data/com.termux/files/home/caguayo/scripts/.estado_reset/alembic_caguayosa.hecho ']'
-+ cd /data/data/com.termux/files/home/caguayo/backend
-+ DATABASE_URL=postgresql+asyncpg://postgres:12345678@127.0.0.1:5432/caguayosa
-+ /data/data/com.termux/files/home/caguayo/backend/.venv/bin/python -m alembic upgrade head
-INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
-INFO  [alembic.runtime.migration] Will assume transactional DDL.
-  🆕 Fresh database detected — creating tables from models...
-  ✅ Tables created successfully
-  🌱 Seeding catalog data...
-  ✅ Catalog data seeded successfully
-  ✅ Alembic stamped to head
-+ touch /data/data/com.termux/files/home/caguayo/scripts/.estado_reset/alembic_caguayosa.hecho
-+ for db in caguayo_sa caguayo caguayosa
-+ marca init_caguayo_sa
-+ '[' -f /data/data/com.termux/files/home/caguayo/scripts/.estado_reset/init_caguayo_sa.hecho ']'
-+ cd /data/data/com.termux/files/home/caguayo/backend
-+ /data/data/com.termux/files/home/caguayo/backend/.venv/bin/python -m scripts.init_office caguayo_sa
-============================================================
-==> Inicializando oficina en 'caguayo_sa'
-============================================================
-Datos insertados: dependencia, usuarios, clientes, convenio, anexo
-Done.
-+ touch /data/data/com.termux/files/home/caguayo/scripts/.estado_reset/init_caguayo_sa.hecho
-+ for db in caguayo_sa caguayo caguayosa
-+ marca init_caguayo
-+ '[' -f /data/data/com.termux/files/home/caguayo/scripts/.estado_reset/init_caguayo.hecho ']'
-+ cd /data/data/com.termux/files/home/caguayo/backend
-+ /data/data/com.termux/files/home/caguayo/backend/.venv/bin/python -m scripts.init_office caguayo
-============================================================
-==> Inicializando oficina en 'caguayo'
-============================================================
-Datos insertados: dependencia, usuarios, clientes, convenio, anexo
-Done.
-+ touch /data/data/com.termux/files/home/caguayo/scripts/.estado_reset/init_caguayo.hecho
-+ for db in caguayo_sa caguayo caguayosa
-+ marca init_caguayosa
-+ '[' -f /data/data/com.termux/files/home/caguayo/scripts/.estado_reset/init_caguayosa.hecho ']'
-+ cd /data/data/com.termux/files/home/caguayo/backend
-+ /data/data/com.termux/files/home/caguayo/backend/.venv/bin/python -m scripts.init_office caguayosa
-============================================================
-==> Inicializando oficina en 'caguayosa'
-============================================================
-Datos insertados: dependencia, usuarios, clientes, convenio, anexo
-Done.
-+ touch /data/data/com.termux/files/home/caguayo/scripts/.estado_reset/init_caguayosa.hecho
-+ marca etl
-+ '[' -f /data/data/com.termux/files/home/caguayo/scripts/.estado_reset/etl.hecho ']'
-+ cd /data/data/com.termux/files/home/caguayo/etl
-+ /data/data/com.termux/files/home/caguayo/backend/.venv/bin/python main.py --commit
-==================================================================
-  MIGRACIÓN MariaDB → PostgreSQL  (artista, cliente)
-==================================================================
-  Modo: EJECUCIÓN
-  Destino: caguayo_sa
-
-=== COMPROBACIÓN GEOGRÁFICA ===
-  geo.py coincide con el destino: 16 municipios de referencia OK
-
-=== PASO 0: MONEDAS DEL DESTINO ===
-  Antes:   USD, EUR, CUP
-  Después: CUC, CUP, USD, EUR
-  Reemplazadas: 4 fila(s); en la tabla ahora hay 4
-
-=== PASO 0b: CLIENTE PIVOTE ===
-  Cliente pivote creado: 'SIN-CLIENTE' (id_cliente=2)
-
-=== FASE A: ARTISTAS ===
-  Ya en destino: 3 CI/código(s)
-  Origen artista: 938 filas
-  CI inválidos descartados: 6
-  Filas a migrar: 865
-  Códigos ocupados (los usa la Fase B): 865
-
-=== FASE B: CLIENTES ===
-  Ya en destino: 1731 CI/código(s)
-  Origen cliente: 750 filas
-  Filas a migrar: 510
-
-=== FASE C: TCP / MIPYME ===
-  Sin filas TCP/mipyme: la Fase C no tiene nada que migrar (§11).
-
-=== FASE D: ARTISTAS CON CI NORMALIZADO ===
-  Códigos y CI en uso: 2691
-  Registros con CI inválido: 6
-  Filas a migrar: 6
-  Puerta de calidad: 0 problema(s)
-
-=== FASE E: CUENTAS BANCARIAS ===
-  Leyendo destino para el mapa de códigos...
-  clientes en destino: 1383 | cuentas ya cargadas: 0
-  Cuentas propias:      880
-  Cuentas heredadas:    117
-  Ya existentes/duplicadas y omitidas: 10
-  Total a insertar:     987
-  Puerta de calidad: 0 problema(s)
-
-=== FASE F: USUARIOS ===
-  Usuarios en el origen: 6
-  Ya migrados: 0 | descartados por duplicado: 0 | a migrar: 6
-  Puerta de calidad: 0 problema(s)
-
-=== FASE G: CUENTAS DE LA DEPENDENCIA ===
-  Filas de 'empresa' en el origen: 1
-  Dependencia destino: 1
-  Cuentas a insertar: 2
-  Puerta de calidad: 0 problema(s)
-
-=== FASE H: ESPECIALIDADES DEL ARTISTA ===
-  Naturales migrados: 871 | especialidades ya cargadas: 0 | ya enlazados: 0
-  Artistas en el origen: 938
-  Catálogo: 247 especialidades en total
-  Nuevas a insertar:  247
-  Etiquetas fusionadas: 8 (64 artistas)
-  Artistas a enlazar: 781
-  Ya enlazados:       0
-  Sin especialidad:   110
-  Fichas colapsadas en un mismo cliente: 5
-  Artistas del origen que no están en la base: 33
-  Variantes fundidas por la normalización: 94
-  Especialidades en el catálogo: 247
-  Artistas enlazados:            781
-
-=== FASE I: CATÁLOGO TIPO_CONTRATO ===
-  Ya en PostgreSQL -> tipo_contrato: 5
-  [fuente] tipo_contrato: 9 fila(s) leída(s)
-  tipo_contrato  legacy:  9 fila(s) | ya en PostgreSQL:  0 | a insertar:  9
-      + CONTRATO PARA LA COMPRAVENTA DE CERÁMICA             (de comercial.sql)
-      + Contrato de Servicios                                 (de comercial.sql)
-      + CONTRATO DE SERVICIO DE OBRAS DE LAS ARTES            (de comercial.sql)
-      + CONTRATO MARCO PARA LA COMERCIALIZACIÓN DE OBRAS DE   (de comercial.sql)
-      + Compra-Venta                                          (de comercial.sql)
-      + Consignación                                          (de comercial.sql)
-      + CONTRATO DE OBRA POR ENCARGO.                         (de comercial.sql)
-      + CONTRATO DE EJECUCION DE OBRA                         (de comercial.sql)
-      + CONTRATO DE COMPRAVENTA DE OBRAS PLÁSTICAS            (de comercial.sql)
-  Puerta de calidad: 0 problema(s)
-  tipo_contrato    insertadas:  9 | en la tabla ahora: 14
-  Total insertado: 9 fila(s)
-
-=== FASE J: GRUPOS DEL LEGACY ===
-  Grupos en PostgreSQL: 2 | usuarios: 7
-    ADMINISTRADOR    38 funcionalidad(es)
-    LECTOR           27 funcionalidad(es)
-  Grupos legacy: 3 | ya en PostgreSQL: 0 | a insertar: 3
-      + Administradores   Control total de la Base de Datos
-      + Comerciales       Especialistas comerciales
-      + Directivos        Permisos limitados a la funcionalidad de dirección y Canales
-  Usuarios con grupo legacy: 6 | a mover: 4 | sin cambios: 2 | no migrados: 0
-      ~ soraya   12345678901 -> Comerciales
-      ~ nolaisy  73051806999 -> Comerciales
-      ~ giselle  87041533530 -> Directivos
-      ~ luis     8710127008 -> Comerciales
-      = ale      se queda en ADMINISTRADOR
-      = deysi    se queda en ADMINISTRADOR
-  Grupos insertados: 3 | usuarios movidos: 4 | grupos ahora: 5
-
-=== FASE K: LIQUIDACIONES DEL LEGACY ===
-  Clientes en destino: 1383 | monedas: CUC,CUP,EUR,USD | liquidaciones ya: 0
-  Filas a migrar: 5389
-  Puerta de calidad: 0 problema(s)
-  Liquidaciones insertadas: 5389
-
-=== FASE L: CONTRATOS DEL LEGACY ===
-  Clientes: 1383 | monedas: CUC,CUP,EUR,USD | estados: 4 | tipos: 14 | ya migrados: 0
-  Filas a migrar: 3723 | contratos partidos en dos: 327
-  Puerta de calidad: 0 problema(s)
-  Contratos insertados: 3723
-
-=== FASE M: SUPLEMENTOS DEL LEGACY ===
-  Contratos migrados: 3723 | monedas: CUC,CUP,EUR,USD | estados: 4 | ya migrados: 0
-  Filas a migrar: 48
-  Puerta de calidad: 0 problema(s)
-  Suplementos insertados: 48
-
-=== FASE N: SOLICITUDES DEL LEGACY ===
-  Clientes: 1383 | contratos: 3723 | solicitudes ya: 0
-  Filas a migrar: 3751 | códigos suplidos del legacy: 324 | para revisar: 0
-  Puerta de calidad: 0 problema(s)
-  Solicitudes insertadas: 3751 | con contrato enlazado: 3702
-  Códigos de proyecto generados: 3702
-
-=== FASE O: ETAPAS, TAREAS Y REALIZADORES ===
-  Servicio generico GEN creado con id 1
-  Solicitudes migradas: 3745 | con contrato: 0 | monedas: CUC,CUP,EUR,USD
-  AVISO: no hay ninguna solicitud con contrato en el destino. La Fase N tiene que correr antes: sin solicitud no hay etapa.
-  Etapas a migrar: 3745 | reales: 0 | sintéticas: 3745
-  Contratos con artista real por suplemento: 0
-  Puerta de calidad: 0 problema(s)
-  Personas a migrar: 0 | marcadas como concentradas: 0
-  Etapas: 3745 | tareas: 3745 | personas: 0 (0 marcadas como concentradas)
-
-=== FASE P: LIQUIDACIONES DE LAS ETAPAS ===
-  Clientes en destino: 1383 | contratos: 0 | contratos con etapas: 3702 | monedas: CUC,CUP,EUR,USD | liquidaciones ya: 0
-  Filas a migrar: 0
-  Puerta de calidad: 0 problema(s)
-  Liquidaciones de etapa insertadas: 0
-
-=== RESUMEN DE LA MIGRACIÓN ===
-  Resumen por severidad:
-    DESCARTE  12315
-    WARNING   1581
-    ERROR     0
-  Resumen por tabla y motivo:
-    DESCARTE artista_liquidacion    contrato sin copia en su moneda  5357
-    DESCARTE artista_contrato       su contrato no tiene etapa    4543
-    DESCARTE etapas_cs              sin solicitud                 2058
-    WARNING  solicitud_sc           fecha 0000-00-00 en el legacy   329
-    WARNING  solicitud_sc           sin codigo en el legacy        324
-    DESCARTE cliente                codigo duplicado               187
-    WARNING  artista_liquidacion    concepto 0 sin nombre en el catalogo   150
-    WARNING  contrato               sin importe en el legacy       131
-    WARNING  cliente (cuenta)       cuenta heredada de ficha duplicada   116
-    WARNING  contrato               cliente recuperado por NIT     110
-    WARNING  solicitud_sc           cliente recuperado por NIT     110
-    WARNING  contrato               tipo 0 sin equivalencia         82
-    WARNING  cliente                municipio sin equivalente en destino    54
-    DESCARTE cliente                nit duplicado                   53
-    DESCARTE artista                codigo_exp duplicado            40
-    WARNING  artista                municipio sin equivalente en destino    34
-    DESCARTE artista_liquidacion    contrato inexistente en el legacy    32
-    DESCARTE artista                CI duplicado                    27
-    WARNING  artista_liquidacion    fecha 0000-00-00 en el legacy    19
-    WARNING  artista                direccion vacia                 17
-    WARNING  cliente                direccion vacia                 16
-    WARNING  contrato               estado 0 sin equivalencia       14
-    WARNING  contrato               cliente pivote                  10
-    WARNING  contrato               codigo duplicado en el legacy    10
-    WARNING  solicitud_sc           material asumido 'Artista Cliente'     9
-    DESCARTE artista                CI invalido                      6
-    WARNING  artista (CI normalizado) CI normalizado                   6
-    WARNING  artista (cuenta)       numero de cuenta normalizado     6
-    DESCARTE artista_liquidacion    artista no migrado               6
-    WARNING  cliente (cuenta)       numero de cuenta normalizado     6
-    DESCARTE suplemento             contrato no migrado              6
-    WARNING  usuario                clave del legacy demasiado corta     6
-    WARNING  artista (especialidad) especialidades contradictorias para el mismo cliente     5
-    WARNING  cliente                codigo vacio en el legacy        4
-    WARNING  contrato               fecha 0000-00-00 en el legacy     4
-    WARNING  solicitud_sc           cliente pivote                   3
-    WARNING  empresa (cuenta dependencia) cuenta heredada de 'empresa'     2
-    WARNING  artista (cuenta)       cuenta heredada de ficha duplicada     1
-    WARNING  cliente                cliente pivote creado            1
-    WARNING  contrato               nombre vacio en el legacy        1
-    WARNING  suplemento             sin importe en el legacy         1
-
-
-=== AUTODIAGNÓSTICO ===
-  [OK]    N solicitudes: 3751 filas, todas con cliente
-  [OK]    N solicitudes: ninguna sin fecha
-  [OK]    N solicitudes: ninguna sin código
-  [OK]    O etapas: 3745 filas, todas con solicitud
-  [OK]    O etapas: ninguna sin importe
-  [OK]    O tareas: 3745, una por etapa
-  [OK]    O personas: 0, sin pares repetidos
-  [OK]    O personas: todas con cliente
-  [OK]    O personas: todas apuntan a una etapa insertada
-  [OK]    O personas: 0 concentradas, todas con motivo
-
-RESULTADO: 0 COMPROBACIÓN(ES) FALLIDA(S)
-
-CSV de rechazos: /data/data/com.termux/files/home/caguayo/etl/data/migracion_rechazos.csv (12315 filas)
-
-=== VERIFICACIÓN POST-MIGRACIÓN ===
-
-=== Conteos ===
-  clientes: filas                                        1383
-  clientes_persona_natural: filas                         871
-  clientes_persona_juridica: filas                        510
-  cliente_tcp: filas                                        0
-  liquidacion: filas                                     5389
-  contrato: filas                                        3723
-  suplemento: filas                                        48
-  solicitud_servicio: filas                              3751
-  etapas: filas                                          3745
-  tareas_etapa: filas                                    3745
-  persona_etapa: filas                                      0
-  persona_liquidacion: filas                                0
-
-=== Integridad ===
-  [OK] clientes.nit duplicados                                   0
-  [OK] clientes.codigo duplicados                                0
-  [OK] clientes_persona_natural.carnet_identidad duplicados      0
-  [OK] clientes_persona_juridica.codigo_reup duplicados          0
-  [OK] clientes_persona_natural: huérfanos                       0
-  [OK] clientes_persona_juridica: huérfanos                      0
-  [OK] cliente_tcp: huérfanos                                    0
-  [OK] clientes: id_provincia fuera de rango                     0
-  [OK] clientes: id_municipio inconsistente con su provincia      0
-  [OK] liquidacion: huérfanos                                    0
-  [OK] contrato: huérfanos                                       0
-  [OK] contrato: codigos duplicados                              0
-  [OK] suplemento: huérfanos                                     0
-  [OK] solicitud_servicio: huérfanos                             0
-  [OK] solicitud_servicio: contratos que no existen              0
-  [OK] solicitud_servicio: codigo_proyecto inconsistente         0
-  [OK] servicios: servicio generico GEN inconsistente            0
-  [OK] tareas_etapa: codigo_extendido inconsistente con su servicio      0
-  [OK] etapas: huérfanos                                         0
-  [OK] tareas_etapa: huérfanos                                   0
-  [OK] persona_etapa: huérfanos                                  0
-  [OK] persona_liquidacion: huérfanos                            0
-  [OK] persona_liquidacion: personas que no existen              0
-
-=== Registro de migración ===
-  persona_liquidacion: importe descuadrado con por_cobrar      0
-  migracion_log: descartes                              12315
-  migracion_log: warnings                                1581
-  migracion_log: errores                                    0
-
-=== Estado de los clientes migrados ===
-  ACTIVO                                                  659
-  BAJA                                                    724
-
-=== Descartes y advertencias por tabla y motivo ===
-  DESCARTE  artista_liquidacion contrato sin copia en su moneda  5357
-  DESCARTE  artista_contrato su contrato no tiene etapa      4543
-  DESCARTE  etapas_cs    sin solicitud                   2058
-  WARNING   solicitud_sc fecha 0000-00-00 en el legacy    329
-  WARNING   solicitud_sc sin codigo en el legacy          324
-  DESCARTE  cliente      codigo duplicado                 187
-  WARNING   artista_liquidacion concepto 0 sin nombre en el catalogo   150
-  WARNING   contrato     sin importe en el legacy         131
-  WARNING   cliente (cuenta) cuenta heredada de ficha duplicada   116
-  WARNING   contrato     cliente recuperado por NIT       110
-  WARNING   solicitud_sc cliente recuperado por NIT       110
-  WARNING   contrato     tipo 0 sin equivalencia           82
-  WARNING   cliente      municipio sin equivalente en destino    54
-  DESCARTE  cliente      nit duplicado                     53
-  DESCARTE  artista      codigo_exp duplicado              40
-  WARNING   artista      municipio sin equivalente en destino    34
-  DESCARTE  artista_liquidacion contrato inexistente en el legacy    32
-  DESCARTE  artista      CI duplicado                      27
-  WARNING   artista_liquidacion fecha 0000-00-00 en el legacy     19
-  WARNING   artista      direccion vacia                   17
-  WARNING   cliente      direccion vacia                   16
-  WARNING   contrato     estado 0 sin equivalencia         14
-  WARNING   contrato     cliente pivote                    10
-  WARNING   contrato     codigo duplicado en el legacy     10
-  WARNING   solicitud_sc material asumido 'Artista Cliente'     9
-  DESCARTE  artista      CI invalido                        6
-  WARNING   artista (CI normalizado) CI normalizado                     6
-  WARNING   artista (cuenta) numero de cuenta normalizado       6
-  DESCARTE  artista_liquidacion artista no migrado                 6
-  WARNING   cliente (cuenta) numero de cuenta normalizado       6
-  DESCARTE  suplemento   contrato no migrado                6
-  WARNING   usuario      clave del legacy demasiado corta     6
-  WARNING   artista (especialidad) especialidades contradictorias para el mismo cliente     5
-  WARNING   cliente      codigo vacio en el legacy          4
-  WARNING   contrato     fecha 0000-00-00 en el legacy      4
-  WARNING   solicitud_sc cliente pivote                     3
-  WARNING   empresa (cuenta dependencia) cuenta heredada de 'empresa'       2
-  WARNING   artista (cuenta) cuenta heredada de ficha duplicada     1
-  WARNING   cliente      cliente pivote creado              1
-  WARNING   contrato     nombre vacio en el legacy          1
-  WARNING   suplemento   sin importe en el legacy           1
-
-=== RESULTADO: TODO CORRECTO ===
-+ touch /data/data/com.termux/files/home/caguayo/scripts/.estado_reset/etl.hecho
++ touch /home/admin/caguayo/scripts/.estado_reset/etl.hecho
 + echo EXIT=0
 EXIT=0

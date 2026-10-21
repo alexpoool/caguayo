@@ -69,12 +69,10 @@ def test_el_anio_del_codigo_nuevo_viene_de_la_fecha_y_no_del_reloj():
 # codigo_proyecto
 # --------------------------------------------------------------------------
 class _CursorFalso:
-    """Cursor que responde a las dos consultas de `_generar_codigos_proyecto`."""
+    """Cursor que graba los SQL que recibe `_generar_codigos_proyecto`."""
 
-    def __init__(self, candidatas, maximo):
-        self._candidatas = candidatas
-        self._maximo = maximo
-        self.actualizado = []
+    def __init__(self):
+        self.sqls = []
 
     def __enter__(self):
         return self
@@ -83,24 +81,16 @@ class _CursorFalso:
         return False
 
     def execute(self, sql, params=None):
-        if "codigo_proyecto IS NULL" in sql:
-            self._filas = self._candidatas
-        else:
-            self._filas = [(self._maximo,)]
+        self.sqls.append(sql)
 
-    def fetchall(self):
-        return self._filas
-
-    def fetchone(self):
-        return self._filas[0]
-
-    def executemany(self, sql, lote):
-        self.actualizado.extend(lote)
+    @property
+    def rowcount(self):
+        return 0
 
 
 class _ConexionFalsa:
-    def __init__(self, candidatas, maximo):
-        self.cursor_falso = _CursorFalso(candidatas, maximo)
+    def __init__(self):
+        self.cursor_falso = _CursorFalso()
 
     def cursor(self):
         return self.cursor_falso
@@ -109,52 +99,48 @@ class _ConexionFalsa:
         pass
 
 
-@pytest.mark.parametrize("aprobado,con_contrato,debe_tener", [
-    (True, True, True),
-    (True, False, False),
-    (False, True, False),
-    (False, False, False),
-])
-def test_codigo_proyecto_solo_con_aprobado_y_contrato(aprobado, con_contrato,
-                                                    debe_tener):
-    """La misma regla que `servicio_service.py:187-190`.
-
-    El filtro va en el SQL de la función, así que lo que se comprueba aquí es que
-    sólo llegan candidatas las que lo cumplen; el `WHERE` completo seMira en la
-    consulta de integración."""
-    candidatas = [(1, 2018)] if (aprobado and con_contrato) else []
-    conn = _ConexionFalsa(candidatas, 0)
-
-    generadas = ms._generar_codigos_proyecto(conn, Registro())
-
-    assert (generadas > 0) is debe_tener
+def _sqls_de_codigos_proyecto(conn):
+    """Los SQL que `_generar_codigos_proyecto` lanzó, en minúsculas."""
+    return [sql.lower() for sql in conn.cursor_falso.sqls]
 
 
-def test_el_formato_del_codigo_de_proyecto_es_cag_aa_nnn():
-    conn = _ConexionFalsa([(7, 2018)], 0)
+def test_codigo_proyecto_solo_con_aprobado_y_contrato():
+    """La misma regla que `servicio_service.py:187-190`: sin aprobar y con
+    contrato, no. El filtro vive en el WHERE del UPDATE."""
+
+    conn = _ConexionFalsa()
+    ms._generar_codigos_proyecto(conn, Registro())
+
+    sqls = _sqls_de_codigos_proyecto(conn)
+    assert sqls, "debe lanzar su UPDATE"
+    assert all("aprobado" in sql and "id_contrato is not null" in sql
+               and "codigo_proyecto is null" in sql for sql in sqls), sqls
+
+
+def test_el_codigo_de_proyecto_es_el_de_la_solicitud():
+    """El proyecto hereda el código de su solicitud, no otro correlativo.
+
+    Así proyecto y solicitud comparten un solo código (`FT.2026.041`) y el
+    rastreo end-to-end queda amarrado: proyecto = solicitud = origen legacy."""
+    conn = _ConexionFalsa()
 
     ms._generar_codigos_proyecto(conn, Registro())
 
-    assert conn.cursor_falso.actualizado == [("FT.18.001", 7)]
+    sqls = _sqls_de_codigos_proyecto(conn)
+    assert any(
+        "set codigo_proyecto = codigo_solicitud" in sql for sql in sqls), sqls
+    assert not any("split_part" in sql or "coalesce(max(" in sql
+                   for sql in sqls), \
+        "ya no hay serie correlativa que inventar: %r" % (sqls,)
 
 
-def test_la_serie_empieza_despues_del_maximo_que_haya():
-    """La serie de la app es global (`siguiente_secuencia` toma el MAX de toda la
-    columna), así que arrancar en 1 repetiría un código ya escrito."""
-    conn = _ConexionFalsa([(7, 2018), (8, 2022)], 50)
-
-    ms._generar_codigos_proyecto(conn, Registro())
-
-    assert conn.cursor_falso.actualizado == [("FT.18.051", 7),
-                                             ("FT.22.052", 8)]
-
-
-def test_sin_candidatas_no_escribe_nada():
-    """La segunda pasada: 0 filas, 0 actualizaciones, y ni un `executemany`."""
-    conn = _ConexionFalsa([], 97)
+def test_segunda_pasada_no_vuelve_a_tocar_nada():
+    """Idempotente por su `WHERE codigo_proyecto IS NULL`: rejecutar la fase no
+    sobreescribe los códigos antes escritos."""
+    conn = _ConexionFalsa()
 
     assert ms._generar_codigos_proyecto(conn, Registro()) == 0
-    assert conn.cursor_falso.actualizado == []
+    assert len(conn.cursor_falso.sqls) == 1
 
 
 def test_los_tres_valores_de_material_asumido():

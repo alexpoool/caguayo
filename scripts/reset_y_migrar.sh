@@ -2,7 +2,7 @@
 # Reanudable: cada etapa deja marca en scripts/.estado_reset/ y se salta si ya
 # terminó. Pensado para relanzarse después de cada reinicio del host.
 set -x
-ROOT=/data/data/com.termux/files/home/caguayo
+ROOT=$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)
 STATE=$ROOT/scripts/.estado_reset
 VENV=$ROOT/backend/.venv/bin/python
 cd $ROOT/scripts
