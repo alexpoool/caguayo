@@ -11,8 +11,8 @@ aquí no se puede resolver hasta que los contratos estén insertados. Por eso va
 detrás de la L, y avisa si no encuentra ninguno.
 
 El suplemento no trae el código de su contrato, así que se llega a él por el
-código que la Fase L le calculó: el `codigo_contrato` del legacy si no chocó, o
-ese mismo con el id detrás si sí. De ahí el segundo intento en
+código que la Fase L le calculó: `FT.` + el `codigo_contrato` del legacy si no
+chocó, o ese mismo con el id detrás si sí. De ahí el segundo intento en
 `_resolver_contrato`.
 
 El estado, la moneda y la fecha se resuelven con las reglas de `reglas_legacy`,
@@ -43,13 +43,15 @@ def _codigos_legacy_contratos():
 def _resolver_contrato(id_contrato_legacy, codigos_legacy, por_codigo, simbolo=None):
     """`id_contrato` del legacy -> `id_contrato` del destino, o None.
 
-    Se intenta el código tal cual y después con el id detrás, que es como lo
-    guarda la Fase L cuando el del legacy ya lo tenía otro contrato.
+    La Fase L antepone `FT.` al código del legacy (ver `migrar_contratos`), así
+    que todos los candidatos llevan ese prefijo. Se intenta el código tal cual y
+    después con el id detrás, que es como lo guarda la Fase L cuando el del
+    legacy ya lo tenía otro contrato.
 
-    Si el contrato se partió en dos por moneda (`1.codigo` CUP / `2.codigo` CUC),
-    el código limpio no existe en el destino: se prueba primero el prefijado con
-    el símbolo de la copia y sólo después el limpio, que es el de un contrato de
-    una sola moneda.
+    Si el contrato se partió en dos por moneda (`1.FT.codigo` CUP /
+    `2.FT.codigo` CUC), el código limpio no existe en el destino: se prueba
+    primero el prefijado con el símbolo de la copia y sólo después el limpio,
+    que es el de un contrato de una sola moneda.
     """
     codigo_legacy = codigos_legacy.get(id_contrato_legacy)
     if not codigo_legacy:
@@ -61,8 +63,8 @@ def _resolver_contrato(id_contrato_legacy, codigos_legacy, por_codigo, simbolo=N
         candidatos += [prefijado, "%s-%s" % (prefijado, id_legacy)]
     candidatos += [codigo_legacy, "%s-%s" % (codigo_legacy, id_legacy)]
     for candidato in candidatos:
-        if candidato in por_codigo:
-            return por_codigo[candidato]
+        if "FT.%s" % candidato in por_codigo:
+            return por_codigo["FT.%s" % candidato]
     return None
 
 

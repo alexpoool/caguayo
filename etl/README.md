@@ -129,12 +129,19 @@ porque la N va siempre antes.
 
 Cuatro columnas salen del ETL con un valor, y conviene saber de dónde:
 
-- **`solicitud_servicio.codigo_solicitud`** — el del legacy tal cual (`2014.001`)
-  en las que lo traen; el `codigo_contrato` del contrato del que vienen en las
-  324 que no lo traen (ninguna colisiona); y `FT.AA.id_solicitudsc` si ni
-  contrato tiene. El `id_solicitudsc` hace el código único y estable, y como
-  `siguiente_secuencia` toma el `MAX` del último segmento, un contrato creado a
-  mano después sale por encima de los migrados.
+- **`contrato.codigo`** — `FT.{codigo_contrato}` del legacy (`2022.021` →
+  `FT.2022.021`; contrato sin código —0 hoy— → `FT.LEG-{id}`), con el id detrás
+  si el código chocó con otro contrato (`FT.2014.019-388`) y `1.FT.…`/`2.FT.…`
+  los partidos por moneda. La Fase M (suplementos) y la N emparejan con este
+  código compuesto.
+- **`solicitud_servicio.codigo_solicitud`** — `FT.{codigo_solicitudsc}` del
+  legacy (`2014.001` → `FT.2014.001`) en las que lo traen; `FT.{codigo_contrato}`
+  del contrato del que vienen en las 324 que no lo traen (la 3172, contrato
+  `2022.021` → `FT.2022.021`; ninguna colisiona porque cada solicitud tiene a lo
+  sumo un contrato); y `FT.AA.id_solicitudsc` si ni contrato tiene. El
+  `id_solicitudsc` hace el código único y estable, y como `siguiente_secuencia`
+  toma el `MAX` del último segmento, un contrato creado a mano después sale por
+  encima de los migrados.
 - **`solicitud_servicio.codigo_proyecto`** — `FT.AA.NNN`, sólo para las solicitudes
   con `aprobado` **y** `id_contrato`. Es la misma regla que aplica la aplicación
   en `servicio_service.py:187-190`. Sin las dos cosas la fila todavía no es un

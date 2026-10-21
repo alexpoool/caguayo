@@ -513,7 +513,7 @@ def test_suplemento_cuelga_del_contrato_migrado(monkeypatch):
                         lambda: {"4": "2014.016"})
 
     payloads = migrar_suplementos.preparar(
-        Registro(), {"2014.016": 88}, ESTADOS, {"USD": 1, "CUP": 3})
+        Registro(), {"FT.2014.016": 88}, ESTADOS, {"USD": 1, "CUP": 3})
 
     assert len(payloads) == 1
     assert payloads[0]["id_contrato"] == 88
@@ -537,7 +537,7 @@ def test_el_suplemento_encuentra_el_contrato_cuyo_codigo_choco(monkeypatch):
                         lambda: {"75": "2014.016"})
 
     payloads = migrar_suplementos.preparar(
-        Registro(), {"2014.016-75": 99}, ESTADOS, {"CUP": 3})
+        Registro(), {"FT.2014.016-75": 99}, ESTADOS, {"CUP": 3})
 
     assert payloads[0]["id_contrato"] == 99
 

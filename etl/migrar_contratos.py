@@ -20,9 +20,14 @@ son los que se están pagando.
 **Las dos monedas.** El legacy guarda el importe en dos columnas
 (`valor_contratocuc` y `valor_contratocup`) y hay 327 contratos con las dos a la
 vez. El destino tiene una sola moneda por fila, así que esos contratos se parten
-en dos: `1.{codigo}` en CUP y `2.{codigo}` en CUC, cada uno con su importe. El
+en dos: `1.FT.{codigo}` en CUP y `2.FT.{codigo}` en CUC, cada uno con su importe. El
 mapa de qué contratos se partieron se devuelve para que la Fase N clone también
 su solicitud (el "proyecto") y cada mitad quede con la suya.
+
+**El `FT.` del código.** El destino antepone `FT.` al código del legacy:
+`2022.021` de legacy se inserta como `FT.2022.021`. El contrato sin código (0
+casos hoy) llevaría `FT.LEG-{id}`. Es la misma regla que la Fase N aplica a las
+solicitudes, de modo que código de contrato y de su solicitud nacen iguales.
 
 Lo que el legacy guarda y aquí no va:
 
@@ -240,7 +245,7 @@ def preparar(registro: Registro, codigos_cliente, ids_moneda, estados,
         # El código limpio que la Fase L le habría dado al contrato. Si el legacy
         # trae las dos monedas, se parte en dos contratos con ese código
         # prefijado: `1.{base}` (CUP) y `2.{base}` (CUC).
-        base = texto(f.get("codigo_contrato")) or "LEG-%s" % id_legacy
+        base = "FT.%s" % (texto(f.get("codigo_contrato")) or "LEG-%s" % id_legacy)
         hay_dos = len(importes) == 2
 
         emitidas = 0

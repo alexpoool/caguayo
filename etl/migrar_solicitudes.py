@@ -110,12 +110,14 @@ def _copias_contrato(id_contrato, codigo, fila, codigos_contrato):
     """`{símbolo: código del contrato en el destino}`.
 
     Un contrato con las dos monedas quedó partido en dos por la Fase L
-    (`1.codigo` en CUP y `2.codigo` en CUC); uno de una sola moneda quedó tal
-    cual. Se resuelve mirando qué códigos existen de verdad en el destino.
+    (`1.FT.codigo` en CUP y `2.FT.codigo` en CUC); uno de una sola moneda quedó
+    tal cual, también con su `FT.`. La Fase L antepone `FT.` al código del
+    legacy (`migrar_contratos`), así que aquí los candidatos se componen igual.
+    Se resuelve mirando qué códigos existen de verdad en el destino.
     """
     copias = {}
     for simbolo, cand in rl.copias_de_contrato(
-            codigo, id_contrato, fila.get("valor_contratocuc"),
+            "FT.%s" % codigo, id_contrato, fila.get("valor_contratocuc"),
             fila.get("valor_contratocup")):
         if cand in codigos_contrato:
             copias[simbolo] = cand
@@ -183,15 +185,17 @@ def _revision():
 
 
 def _codigo(codigo_legacy, id_legacy, fecha_iso, codigo_de_contrato=None):
-    """El código del legacy tal cual, o el de su contrato, o uno nuevo.
+    """El código del legacy con su `FT.`, o el de su contrato, o uno nuevo.
 
-    Los 3.104 que trae son `AAAA.NNN`, y `codigo_solicitud` NO es UNIQUE en el
+    Los 3.104 que trae son `AAAA.NNN`; quedan `FT.AAAA.NNN`
+    (`2014.001` → `FT.2014.001`). `codigo_solicitud` NO es UNIQUE en el
     destino, así que se copian aunque seis estén repetidos.
 
-    Las que faltan (324, id_solicitudsc 3172 en adelante) van con el
-    `codigo_contrato` del contrato del que vienen: las 324 lo tienen y ningún
-    código de contrato choca con el de otra solicitud. Si tampoco hubiese
-    contrato, cae el formato de la aplicación (`FT.AA.NNN`) con el
+    Las que faltan (324, id_solicitudsc 3172 en adelante) van con el código de
+    su contrato antepuesto de `FT.`: la 3172, enlazada al contrato `2022.021`,
+    sale `FT.2022.021`. Los 324 códigos no chocan entre sí porque cada
+    solicitud tiene a lo sumo un contrato. Si tampoco hubiese contrato, cae el
+    formato de la aplicación (`FT.AA.NNN`) con el
     `id_solicitudsc` como correlativo. Encima de ser único y estar por encima
     del 581 del legacy, tiene que ser **determinista**: si se sacara de
     `MAX(SPLIT_PART(codigo,'.',-1)::int) + 1` sobre lo que ya hay, la segunda
@@ -203,14 +207,15 @@ def _codigo(codigo_legacy, id_legacy, fecha_iso, codigo_de_contrato=None):
     """
     avisos = []
     if codigo_legacy:
-        return codigo_legacy, False, avisos
+        return "FT.%s" % codigo_legacy, False, avisos
     if codigo_de_contrato:
+        codigo = "FT.%s" % codigo_de_contrato
         avisos.append((
             "sin codigo en el legacy",
-            "se usa %s" % codigo_de_contrato,
-            "la solicitud no trae código; se copia el de su contrato",
+            "se usa %s" % codigo,
+            "la solicitud no trae código; se compone con el de su contrato",
         ))
-        return codigo_de_contrato, True, avisos
+        return codigo, True, avisos
     # 'AAAA-MM-DD' -> los dos últimos dígitos del año.
     return "FT.%s.%03d" % (str(fecha_iso)[2:4], int(id_legacy)), True, avisos
 

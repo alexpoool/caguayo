@@ -23,25 +23,26 @@ necesita_dump = pytest.mark.skipif(
 # --------------------------------------------------------------------------
 # Las columnas del legacy
 # --------------------------------------------------------------------------
-def test_el_codigo_de_la_solicitud_se_copia_tal_cual():
-    """`codigo_solicitud` no es UNIQUE en el destino y seis del legacy vienen
-    repetidos: se copian como están."""
+def test_el_codigo_del_legacy_lleva_su_ft():
+    """Todos los códigos de solicitud salen con `FT.` delante, incluyendo los
+    del legacy (`2014.001` → `FT.2014.001`). `codigo_solicitud` no es UNIQUE en
+    el destino y seis del legacy vienen repetidos: se copian como están."""
     codigo, generado, avisos = ms._codigo("2014.001", "7", "2014-03-01")
 
-    assert codigo == "2014.001"
+    assert codigo == "FT.2014.001"
     assert generado is False
     assert avisos == []
 
 
 def test_el_codigo_del_contrato_se_copia_cuando_la_solicitud_no_trae():
-    """Las 324 del legacy sin código tienen contrato, y sus 324 `codigo_contrato`
-    no chocan entre sí ni con el de otra solicitud: se copian tal cual, y queda
-    aviso de que es un dato suplido."""
+    """Las 324 del legacy sin código tienen contrato, y su código sale compuesto
+    como `FT.{codigo_contrato}` — la 3172, contrato 2022.021 → `FT.2022.021`.
+    Ninguno choca entre sí, y queda aviso de que es un dato suplido."""
     codigo, generado, avisos = ms._codigo(None, "3172", "2022-02-08",
                                           codigo_de_contrato="2022.021")
 
     assert generado is True
-    assert codigo == "2022.021"
+    assert codigo == "FT.2022.021"
     assert avisos[0][0] == "sin codigo en el legacy"
     assert "su contrato" in avisos[0][2]
 
@@ -235,15 +236,16 @@ def test_el_autodiagnostico_coge_los_repetidos():
 # --------------------------------------------------------------------------
 def _contratos_destino():
     """Replica lo que la Fase L dejó en el destino: código -> (id del legacy,
-    fila, símbolo). Un contrato con las dos monedas sale dos veces, con `1.` y
-    `2.`, como en PostgreSQL."""
+    fila, símbolo). La Fase L antepone `FT.` al código del legacy. Un contrato
+    con las dos monedas sale dos veces, con `1.` y `2.`, como en PostgreSQL."""
     import fuente
 
     _, contratos = fuente.leer_tabla(str(DUMP), "contrato")
     usados, salida = set(), {}
     for c in contratos:
         id_legacy = str(c["id_contrato"])
-        base = (c.get("codigo_contrato") or "").strip() or "LEG-%s" % id_legacy
+        base = "FT.%s" % ((c.get("codigo_contrato") or "").strip()
+                          or "LEG-%s" % id_legacy)
         importes, _ = rl.importes_por_moneda(
             c.get("valor_contratocuc"), c.get("valor_contratocup"))
         hay_dos = len(importes) == 2
@@ -413,8 +415,9 @@ def test_solicitud_sin_fecha_va_con_la_de_su_contrato(monkeypatch):
 
 
 def test_solicitud_sin_codigo_va_con_el_de_su_contrato(monkeypatch):
-    """Las 324 sin `codigo_solicitudsc` tienen contrato con código; el payload se
-    leva el del contrato, que no choca con el de ninguna otra solicitud."""
+    """Las 324 sin `codigo_solicitudsc` tienen contrato con código; el payload
+    se lleva `FT.{codigo_contrato}` — contrato 2022.021 → `FT.2022.021` — que
+    no choca con el de ninguna otra solicitud."""
     contrato = {
         "id_solicitudsc": "10", "id_contrato": "3",
         "codigo_contrato": "2022.021", "fecha": "2022-02-08 00:00:00",
@@ -428,9 +431,9 @@ def test_solicitud_sin_codigo_va_con_el_de_su_contrato(monkeypatch):
 
     registro = Registro()
     payloads, enlaces = ms.preparar(
-        registro, {"CLIENTE": 11}, {"2022.021": 1}, set())
+        registro, {"CLIENTE": 11}, {"FT.2022.021": 1}, set())
 
-    assert payloads[0]["codigo_solicitud"] == "2022.021"
+    assert payloads[0]["codigo_solicitud"] == "FT.2022.021"
     aviso = next((e for e in registro.entradas
                   if e["motivo"] == "sin codigo en el legacy"), None)
     assert aviso, registro.entradas
@@ -478,4 +481,4 @@ def test_solicitud_sin_fecha_y_su_contrato_tambien(monkeypatch):
         registro, {"CLIENTE": 11}, {"CON-1": 1}, set())
 
     por_codigo = {p["codigo_solicitud"]: p for p in payloads}
-    assert por_codigo["2014.010"]["fecha_solicitud"] == "2014-02-12"
+    assert por_codigo["FT.2014.010"]["fecha_solicitud"] == "2014-02-12"
