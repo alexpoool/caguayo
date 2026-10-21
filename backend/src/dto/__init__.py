@@ -264,6 +264,9 @@ from .rrhh_catalogos_dto import (
     RrhhTipoEvaluacionCreate,
     RrhhTipoEvaluacionUpdate,
     RrhhTipoEvaluacionRead,
+    RrhhPeriodoEvaluacionCreate,
+    RrhhPeriodoEvaluacionUpdate,
+    RrhhPeriodoEvaluacionRead,
     RrhhCalificacionCreate,
     RrhhCalificacionUpdate,
     RrhhCalificacionRead,
@@ -354,6 +357,14 @@ from .rrhh_evaluacion_dto import (
     RrhhEvaluacionDetalle,
     RrhhEvaluacionEmpleadoReporte,
     RrhhEvaluacionReporte,
+)
+from .rrhh_pago_resultado_dto import (
+    RrhhPagoResultadoCreate,
+    RrhhPagoResultadoEmpleadoRead,
+    RrhhPagoResultadoRead,
+    RrhhPagoResultadoListado,
+    RrhhPagoResultadoCandidato,
+    RrhhPagoResultadoPreview,
 )
 
 
@@ -570,6 +581,9 @@ __all__ = [
     "RrhhTipoEvaluacionCreate",
     "RrhhTipoEvaluacionUpdate",
     "RrhhTipoEvaluacionRead",
+    "RrhhPeriodoEvaluacionCreate",
+    "RrhhPeriodoEvaluacionUpdate",
+    "RrhhPeriodoEvaluacionRead",
     "RrhhCalificacionCreate",
     "RrhhCalificacionUpdate",
     "RrhhCalificacionRead",
@@ -644,6 +658,12 @@ __all__ = [
     "RrhhEvaluacionDetalle",
     "RrhhEvaluacionEmpleadoReporte",
     "RrhhEvaluacionReporte",
+    "RrhhPagoResultadoCreate",
+    "RrhhPagoResultadoEmpleadoRead",
+    "RrhhPagoResultadoRead",
+    "RrhhPagoResultadoListado",
+    "RrhhPagoResultadoCandidato",
+    "RrhhPagoResultadoPreview",
 ]
 VentaRead.model_rebuild(
     _types_namespace={

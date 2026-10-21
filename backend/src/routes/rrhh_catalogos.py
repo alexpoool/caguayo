@@ -28,6 +28,9 @@ from src.dto import (
     RrhhTipoEvaluacionCreate,
     RrhhTipoEvaluacionUpdate,
     RrhhTipoEvaluacionRead,
+    RrhhPeriodoEvaluacionCreate,
+    RrhhPeriodoEvaluacionUpdate,
+    RrhhPeriodoEvaluacionRead,
     RrhhCalificacionCreate,
     RrhhCalificacionUpdate,
     RrhhCalificacionRead,
@@ -38,6 +41,7 @@ from src.services.rrhh_catalogo_service import (
     rrhh_tipo_bonificacion_service,
     rrhh_tipo_pago_service,
     rrhh_tipo_evaluacion_service,
+    rrhh_periodo_evaluacion_service,
     rrhh_calificacion_service,
 )
 
@@ -238,6 +242,64 @@ async def actualizar_tipo_pago(
 async def eliminar_tipo_pago(tipo_id: int, db: AsyncSession = Depends(get_session)):
     """Elimina el tipo; si está en uso por pagos, lo desactiva."""
     return await rrhh_tipo_pago_service.eliminar(db, tipo_id)
+
+
+# ── Periodos de evaluación ──────────────────────────────────────────────────
+
+periodos_evaluacion_router = _router(
+    "/rrhh/catalogos/periodos-evaluacion", "rrhh-catalogos"
+)
+
+
+@periodos_evaluacion_router.get("", response_model=List[RrhhPeriodoEvaluacionRead])
+async def listar_periodos_evaluacion(
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=1000),
+    activo: Optional[bool] = None,
+    buscar: Optional[str] = None,
+    db: AsyncSession = Depends(get_session),
+):
+    """Lista periodos de evaluación con filtros opcionales de estado y búsqueda."""
+    return await rrhh_periodo_evaluacion_service.listar(
+        db, skip=skip, limit=limit, activo=activo, buscar=buscar
+    )
+
+
+@periodos_evaluacion_router.get(
+    "/{periodo_id}", response_model=RrhhPeriodoEvaluacionRead
+)
+async def obtener_periodo_evaluacion(
+    periodo_id: int, db: AsyncSession = Depends(get_session)
+):
+    return await rrhh_periodo_evaluacion_service.get(db, periodo_id)
+
+
+@periodos_evaluacion_router.post(
+    "", response_model=RrhhPeriodoEvaluacionRead, status_code=201
+)
+async def crear_periodo_evaluacion(
+    periodo: RrhhPeriodoEvaluacionCreate, db: AsyncSession = Depends(get_session)
+):
+    return await rrhh_periodo_evaluacion_service.create(db, periodo)
+
+
+@periodos_evaluacion_router.put(
+    "/{periodo_id}", response_model=RrhhPeriodoEvaluacionRead
+)
+async def actualizar_periodo_evaluacion(
+    periodo_id: int,
+    periodo: RrhhPeriodoEvaluacionUpdate,
+    db: AsyncSession = Depends(get_session),
+):
+    return await rrhh_periodo_evaluacion_service.update(db, periodo_id, periodo)
+
+
+@periodos_evaluacion_router.delete("/{periodo_id}")
+async def eliminar_periodo_evaluacion(
+    periodo_id: int, db: AsyncSession = Depends(get_session)
+):
+    """Elimina el periodo; si está en uso por evaluaciones o pagos, lo desactiva."""
+    return await rrhh_periodo_evaluacion_service.eliminar(db, periodo_id)
 
 
 # ── Calificaciones ──────────────────────────────────────────────────────────

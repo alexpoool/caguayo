@@ -128,6 +128,16 @@ def pytest_sessionfinish(session, exitstatus):
                     "OR inicio_periodo >= DATE '2098-01-01'"
                 )
                 cur.execute(
+                    "DELETE FROM pago_x_resultado "
+                    "WHERE periodo_evaluacion_id IN ("
+                    "SELECT id_periodo_evaluacion FROM periodo_evaluaciones "
+                    "WHERE nombre LIKE '2098%'"
+                    ")"
+                )
+                cur.execute(
+                    "DELETE FROM periodo_evaluaciones WHERE nombre LIKE '2098%'"
+                )
+                cur.execute(
                     "DELETE FROM objetivos "
                     "WHERE periodo_inicio >= DATE '2098-01-01' "
                     "OR periodo_fin >= DATE '2098-01-01'"

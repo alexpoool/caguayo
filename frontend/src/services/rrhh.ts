@@ -26,6 +26,7 @@ import type {
   RrhhTipoBonificacion,
   RrhhTipoPago,
   RrhhTipoEvaluacion,
+  RrhhPeriodoEvaluacion,
   RrhhAsistencia,
   RrhhAsistenciaCreate,
   RrhhAsistenciaUpdate,
@@ -67,6 +68,10 @@ import type {
   RrhhObjetivoDetalle,
   RrhhEvaluacionReporte,
   RrhhAuditoriaFila,
+  RrhhPagoResultado,
+  RrhhPagoResultadoListado,
+  RrhhPagoResultadoPreview,
+  RrhhPagoResultadoCreate,
 } from '../types/rrhh';
 
 export const rrhhService = {
@@ -225,6 +230,16 @@ export const rrhhService = {
     buscar?: string;
   }): Promise<RrhhTipoEvaluacion[]> => {
     return await apiClient.get('/rrhh/catalogos/tipos-evaluacion', params);
+  },
+
+  /** Periodos de evaluación: alimenta el formulario y el pago por resultado. */
+  listarPeriodosEvaluacion: async (params?: {
+    skip?: number;
+    limit?: number;
+    activo?: boolean;
+    buscar?: string;
+  }): Promise<RrhhPeriodoEvaluacion[]> => {
+    return await apiClient.get('/rrhh/catalogos/periodos-evaluacion', params);
   },
 
   // ── Departamentos ────────────────────────────────────────────────────────
@@ -667,6 +682,41 @@ export const rrhhService = {
     hasta?: string;
   }): Promise<RrhhEvaluacionReporte> => {
     return await apiClient.get('/rrhh/evaluaciones/reporte', params);
+  },
+
+  // ── Pago por resultado ─────────────────────────────────────────────────
+
+  /** Empleados con evaluación en el periodo y rango sugerido de fechas. */
+  previewPagoResultado: async (
+    periodoEvaluacionId: number
+  ): Promise<RrhhPagoResultadoPreview> => {
+    return await apiClient.get('/rrhh/pagos-resultado/preview', {
+      periodo_evaluacion_id: periodoEvaluacionId,
+    });
+  },
+
+  listarPagosResultado: async (params?: {
+    skip?: number;
+    limit?: number;
+    periodo_evaluacion_id?: number;
+  }): Promise<RrhhPagoResultadoListado[]> => {
+    return await apiClient.get('/rrhh/pagos-resultado', params);
+  },
+
+  getPagoResultado: async (id: number): Promise<RrhhPagoResultado> => {
+    return await apiClient.get(`/rrhh/pagos-resultado/${id}`);
+  },
+
+  crearPagoResultado: async (
+    data: RrhhPagoResultadoCreate
+  ): Promise<RrhhPagoResultado> => {
+    return await apiClient.post('/rrhh/pagos-resultado', data);
+  },
+
+  eliminarPagoResultado: async (
+    id: number
+  ): Promise<RrhhEliminarResponse> => {
+    return await apiClient.delete(`/rrhh/pagos-resultado/${id}`);
   },
 
   // ── Objetivos (definición en el empleado, siempre editable) ─────────────

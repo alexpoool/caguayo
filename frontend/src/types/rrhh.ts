@@ -601,6 +601,16 @@ export interface RrhhTipoEvaluacion {
   updated_at?: string;
 }
 
+/** Fila del catálogo `periodo_evaluaciones` (selector del formulario). */
+export interface RrhhPeriodoEvaluacion {
+  id_periodo_evaluacion: number;
+  nombre: string;
+  descripcion: string | null;
+  activo: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
 /**
  * Entrada del catálogo «Calificaciones»: es una **escala completa** de
  * puntuación. Su `valor` solo puede ser 5, 10 o 100 (5 → escala 1–5,
@@ -623,6 +633,7 @@ export type RrhhCatalogo =
   | RrhhTipoBonificacion
   | RrhhTipoPago
   | RrhhTipoEvaluacion
+  | RrhhPeriodoEvaluacion
   | RrhhCalificacion;
 
 /** Metadatos por catálogo, para generar la UI de forma genérica. */
@@ -730,6 +741,18 @@ export const RRHH_CATALOGOS: RrhhCatalogoConfig[] = [
     tieneValor: false,
     maxNombre: 50,
     descripcion: 'Clasificación de las evaluaciones (formal, parcial, etc.).',
+  },
+  {
+    id: 'periodos-evaluacion',
+    nombre: 'Periodos de evaluación',
+    ruta: '/rrhh/catalogos/periodos-evaluacion',
+    pk: 'id_periodo_evaluacion',
+    tieneActivo: true,
+    tienePorcentaje: false,
+    tieneValor: false,
+    maxNombre: 100,
+    descripcion:
+      'Periodos reutilizables para evaluar y repartir el pago por resultado.',
   },
   {
     id: 'calificaciones',
@@ -898,6 +921,8 @@ export interface RrhhEvaluacion {
   empleado_id: number;
   evaluador_id: number | null;
   periodo: string;
+  /** FK al catálogo `periodo_evaluaciones` (nullable en datos legados). */
+  periodo_evaluacion_id: number | null;
   /** FK al catálogo `tipos_evaluaciones`. */
   tipo_evaluacion_id: number;
   /** Nombre del tipo, resuelto del catálogo (solo lectura). */
@@ -938,7 +963,10 @@ export interface RrhhEvaluacionDetalle extends RrhhEvaluacionListado {
 export interface RrhhEvaluacionCreate {
   empleado_id: number;
   evaluador_id?: number | null;
-  periodo: string;
+  /** Texto legible; el formulario lo rellena desde el catálogo. */
+  periodo?: string | null;
+  /** FK al catálogo `periodo_evaluaciones` (selector del formulario). */
+  periodo_evaluacion_id?: number | null;
   /** FK al catálogo `tipos_evaluaciones` (selector del formulario). */
   tipo_evaluacion_id: number;
   inicio_periodo: string;
@@ -983,6 +1011,80 @@ export interface RrhhEvaluacionReporte {
   /** Promedio ponderado medio 0–5 del rango (Decimal → string). */
   promedio_objetivos: string | null;
   empleados: RrhhEvaluacionEmpleadoReporte[];
+}
+
+// ── Pago por resultado ─────────────────────────────────────────────────────
+
+/** Empleado con evaluación en el periodo (candidato del formulario). */
+export interface RrhhPagoResultadoCandidato {
+  empleado_id: number;
+  evaluacion_id: number;
+  empleado_codigo: string | null;
+  empleado_nombre: string | null;
+  departamento_nombre: string | null;
+  /** Promedio 0–5 (Decimal → string). */
+  puntuacion: number | string;
+  /** `false` si la evaluación todavía no tiene objetivos puntuados. */
+  puntuada: boolean;
+}
+
+export interface RrhhPagoResultadoPreview {
+  periodo_evaluacion_id: number;
+  periodo_nombre: string | null;
+  inicio_periodo: string | null;
+  fin_periodo: string | null;
+  empleados: RrhhPagoResultadoCandidato[];
+}
+
+export interface RrhhPagoResultadoEmpleado {
+  id_pago_x_resultado_empleado: number;
+  empleado_id: number;
+  evaluacion_id: number;
+  empleado_codigo: string | null;
+  empleado_nombre: string | null;
+  departamento_nombre: string | null;
+  puntuacion: number | string;
+  coeficiente: number | string;
+  monto_individual: number | string;
+}
+
+export interface RrhhPagoResultado {
+  id_pago_x_resultado: number;
+  periodo_evaluacion_id: number;
+  periodo_nombre: string | null;
+  descripcion: string | null;
+  inicio_periodo: string;
+  fin_periodo: string;
+  monto: number | string;
+  promedio_general: number | string;
+  suma_coeficientes_empleados: number | string;
+  empleados: RrhhPagoResultadoEmpleado[];
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface RrhhPagoResultadoListado {
+  id_pago_x_resultado: number;
+  periodo_evaluacion_id: number;
+  periodo_nombre: string | null;
+  descripcion: string | null;
+  inicio_periodo: string;
+  fin_periodo: string;
+  monto: number | string;
+  promedio_general: number | string;
+  suma_coeficientes_empleados: number | string;
+  empleados_count: number;
+  total_pagado: number | string;
+  created_at?: string;
+}
+
+export interface RrhhPagoResultadoCreate {
+  periodo_evaluacion_id: number;
+  descripcion?: string | null;
+  inicio_periodo: string;
+  fin_periodo: string;
+  monto: number;
+  empleado_ids: number[];
 }
 
 // ── Auditoría (Fase 9) ──────────────────────────────────────────────────────

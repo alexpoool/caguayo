@@ -59,6 +59,7 @@ from src.models import (
     RrhhEmpleado,
     RrhhDepartamento,
     RrhhTipoEvaluacion,
+    RrhhPeriodoEvaluacion,
 )
 
 
@@ -81,6 +82,14 @@ async def _recalcular_promedio(db: AsyncSession, evaluacion: RrhhEvaluacion) -> 
     )
     evaluacion.updated_at = datetime.now()
     db.add(evaluacion)
+
+    # Los pagos por resultado del periodo se recalculan automáticamente.
+    if evaluacion.periodo_evaluacion_id:
+        from src.services.rrhh_pago_resultado_service import (
+            recalcular_lotes_periodo,
+        )
+
+        await recalcular_lotes_periodo(db, evaluacion.periodo_evaluacion_id)
 
 
 async def recalcular_promedios_empleado(db: AsyncSession, empleado_id: int) -> None:
@@ -139,6 +148,41 @@ class RrhhEvaluacionService:
                 ),
             )
         return tipo.nombre
+
+    async def _resolver_periodo(
+        self,
+        db: AsyncSession,
+        periodo_id: Optional[int],
+        periodo_texto: Optional[str],
+    ) -> tuple[Optional[int], str]:
+        """Valida la FK del catálogo o acepta el texto legado.
+
+        Devuelve `(id, nombre)`. Si viene la FK, el nombre del catálogo manda
+        sobre el texto para que la fila de evaluación quede sincronizada.
+        """
+        if periodo_id is not None:
+            periodo = await db.get(RrhhPeriodoEvaluacion, periodo_id)
+            if not periodo:
+                raise HTTPException(
+                    status_code=404, detail="El periodo de evaluación no existe"
+                )
+            if not periodo.activo:
+                raise HTTPException(
+                    status_code=400,
+                    detail=(
+                        f"El periodo «{periodo.nombre}» está inactivo; "
+                        "reactívalo en Catálogos para usarlo"
+                    ),
+                )
+            return periodo.id_periodo_evaluacion, periodo.nombre
+
+        texto = (periodo_texto or "").strip()
+        if not texto:
+            raise HTTPException(
+                status_code=400,
+                detail="El periodo de evaluación es obligatorio",
+            )
+        return None, texto
 
     async def _departamentos_por_id(self, db: AsyncSession, ids) -> dict:
         if not ids:
@@ -499,14 +543,18 @@ class RrhhEvaluacionService:
         await self._validar_empleados_del_evaluador(db, obj_in.evaluador_id)
         self._validar_rango(obj_in.inicio_periodo, obj_in.fin_periodo)
         await self._validar_tipo(db, obj_in.tipo_evaluacion_id)
+        periodo_id, periodo_texto = await self._resolver_periodo(
+            db, obj_in.periodo_evaluacion_id, obj_in.periodo
+        )
         await self._exigir_unica(
-            db, obj_in.empleado_id, obj_in.periodo, obj_in.tipo_evaluacion_id
+            db, obj_in.empleado_id, periodo_texto, obj_in.tipo_evaluacion_id
         )
 
         evaluacion = RrhhEvaluacion(
             empleado_id=obj_in.empleado_id,
             evaluador_id=obj_in.evaluador_id,
-            periodo=obj_in.periodo,
+            periodo=periodo_texto,
+            periodo_evaluacion_id=periodo_id,
             tipo_evaluacion_id=obj_in.tipo_evaluacion_id,
             inicio_periodo=obj_in.inicio_periodo,
             fin_periodo=obj_in.fin_periodo,
@@ -526,6 +574,7 @@ class RrhhEvaluacionService:
     ) -> RrhhEvaluacionListado:
         evaluacion = await self._buscar_o_404(db, id)
         datos = obj_in.model_dump(exclude_unset=True)
+        periodo_anterior = evaluacion.periodo_evaluacion_id
 
         # Los campos de periodo y unicidad se revalidan si cambian.
         if "evaluador_id" in datos:
@@ -534,13 +583,34 @@ class RrhhEvaluacionService:
             inicio = datos.get("inicio_periodo", evaluacion.inicio_periodo)
             fin = datos.get("fin_periodo", evaluacion.fin_periodo)
             self._validar_rango(inicio, fin)
-        if "periodo" in datos or "tipo_evaluacion_id" in datos:
+        if (
+            "periodo" in datos
+            or "periodo_evaluacion_id" in datos
+            or "tipo_evaluacion_id" in datos
+        ):
             if "tipo_evaluacion_id" in datos:
                 await self._validar_tipo(db, datos["tipo_evaluacion_id"])
+
+            if "periodo_evaluacion_id" in datos:
+                periodo_id = datos["periodo_evaluacion_id"]
+            elif "periodo" in datos:
+                # Edición de texto legado: la FK deja de corresponder.
+                periodo_id = None
+            else:
+                periodo_id = evaluacion.periodo_evaluacion_id
+
+            periodo_id, periodo_texto = await self._resolver_periodo(
+                db,
+                periodo_id,
+                datos.get("periodo", evaluacion.periodo),
+            )
+            datos["periodo_evaluacion_id"] = periodo_id
+            datos["periodo"] = periodo_texto
+
             await self._exigir_unica(
                 db,
                 evaluacion.empleado_id,
-                datos.get("periodo", evaluacion.periodo),
+                periodo_texto,
                 datos.get("tipo_evaluacion_id", evaluacion.tipo_evaluacion_id),
                 excluir_id=evaluacion.id,
             )
@@ -552,13 +622,35 @@ class RrhhEvaluacionService:
         await db.commit()
         await db.refresh(evaluacion)
 
+        # Si cambió de periodo, los lotes de ambos periodos deben recalcularse.
+        if periodo_anterior != evaluacion.periodo_evaluacion_id:
+            from src.services.rrhh_pago_resultado_service import (
+                recalcular_lotes_periodo,
+            )
+
+            if periodo_anterior:
+                await recalcular_lotes_periodo(db, periodo_anterior)
+            if evaluacion.periodo_evaluacion_id:
+                await recalcular_lotes_periodo(db, evaluacion.periodo_evaluacion_id)
+            await db.commit()
+
         resolucion = await self._resolucion_listado(db, [evaluacion])
         return self._construir_listado(evaluacion, resolucion)
 
     async def eliminar(self, db: AsyncSession, id: int) -> dict:
         evaluacion = await self._buscar_o_404(db, id)
+        periodo_id = evaluacion.periodo_evaluacion_id
         await db.delete(evaluacion)  # las filas del N:M caen por CASCADE
         await db.commit()
+
+        if periodo_id:
+            from src.services.rrhh_pago_resultado_service import (
+                recalcular_lotes_periodo,
+            )
+
+            await recalcular_lotes_periodo(db, periodo_id)
+            await db.commit()
+
         return {"mensaje": f"{self.model_name} eliminada", "id": id}
 
     # ── Selección y puntuación de objetivos ─────────────────────────────────

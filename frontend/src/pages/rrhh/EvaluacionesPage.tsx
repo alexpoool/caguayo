@@ -70,6 +70,7 @@ const hoyISO = () => {
 const formVacio = (): RrhhEvaluacionCreate => ({
   empleado_id: 0,
   periodo: "",
+  periodo_evaluacion_id: null,
   tipo_evaluacion_id: 0,
   inicio_periodo: hoyISO(),
   fin_periodo: hoyISO(),
@@ -110,6 +111,13 @@ export function EvaluacionesPage() {
     queryKey: ["rrhh", "catalogos", "tipos-evaluacion", "activos"],
     queryFn: () =>
       rrhhService.listarTiposEvaluacion({ limit: 500, activo: true }),
+  });
+
+  // El periodo es un catálogo propio (`periodo_evaluaciones`).
+  const { data: periodosEvaluacion = [] } = useQuery({
+    queryKey: ["rrhh", "catalogos", "periodos-evaluacion", "activos"],
+    queryFn: () =>
+      rrhhService.listarPeriodosEvaluacion({ limit: 500, activo: true }),
   });
 
   // Nombre del empleado filtrado (el catálogo ya se carga para el alta).
@@ -158,8 +166,8 @@ export function EvaluacionesPage() {
     const errs: Record<string, string> = {};
     if (!formData.empleado_id)
       errs.empleado_id = "Selecciona el empleado a evaluar";
-    if (!formData.periodo.trim())
-      errs.periodo = "El periodo es obligatorio (ej. 2026-1)";
+    if (!formData.periodo_evaluacion_id)
+      errs.periodo = "Selecciona el periodo de evaluación";
     if (!formData.tipo_evaluacion_id) {
       errs.tipo_evaluacion_id = "Selecciona el tipo de evaluación";
     }
@@ -460,17 +468,34 @@ export function EvaluacionesPage() {
                 <Hash className="h-4 w-4 text-purple-500" />
                 Periodo
               </Label>
-              <Input
+              <select
                 id="periodo"
-                value={formData.periodo}
-                onChange={(e) =>
-                  setFormData({ ...formData, periodo: e.target.value })
-                }
-                placeholder="Ej. 2026-1"
-                className={`transition-all duration-200 focus:ring-2 focus:ring-sky-500 focus:border-sky-500 ${
-                  formErrors.periodo ? "border-red-500" : ""
+                value={formData.periodo_evaluacion_id ?? ""}
+                onChange={(e) => {
+                  const id = e.target.value ? Number(e.target.value) : null;
+                  const periodo = periodosEvaluacion.find(
+                    (p) => p.id_periodo_evaluacion === id
+                  );
+                  setFormData({
+                    ...formData,
+                    periodo_evaluacion_id: id,
+                    periodo: periodo?.nombre ?? "",
+                  });
+                }}
+                className={`w-full rounded-md border px-3 py-2 text-sm transition-all duration-200 focus:ring-2 focus:ring-sky-500 focus:border-sky-500 ${
+                  formErrors.periodo ? "border-red-500" : "border-slate-300"
                 }`}
-              />
+              >
+                <option value="">Selecciona un periodo</option>
+                {periodosEvaluacion.map((p) => (
+                  <option
+                    key={p.id_periodo_evaluacion}
+                    value={p.id_periodo_evaluacion}
+                  >
+                    {p.nombre}
+                  </option>
+                ))}
+              </select>
               {formErrors.periodo && (
                 <p className="flex items-center gap-1 text-xs text-red-600">
                   <AlertCircle className="h-3 w-3" />

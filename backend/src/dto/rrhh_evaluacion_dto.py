@@ -38,7 +38,10 @@ class RrhhEvaluacionCreate(SQLModel):
 
     empleado_id: int
     evaluador_id: Optional[int] = None
-    periodo: str = Field(min_length=1, max_length=20)
+    # Texto legible; si se envía `periodo_evaluacion_id` el servicio lo toma
+    # del catálogo. Se mantiene opcional para no romper clientes anteriores.
+    periodo: Optional[str] = Field(default=None, min_length=1, max_length=100)
+    periodo_evaluacion_id: Optional[int] = None
     # FK al catálogo `tipos_evaluaciones` (el servicio exige que exista y esté activo).
     # Default 1 = «Formal», id fijo de la semilla de `add_tipos_evaluaciones`.
     tipo_evaluacion_id: int = Field(default=1)
@@ -64,7 +67,8 @@ class RrhhEvaluacionUpdate(SQLModel):
     """Edición parcial; el servicio exige que esté en `borrador`."""
 
     evaluador_id: Optional[int] = None
-    periodo: Optional[str] = Field(default=None, min_length=1, max_length=20)
+    periodo: Optional[str] = Field(default=None, min_length=1, max_length=100)
+    periodo_evaluacion_id: Optional[int] = None
     tipo_evaluacion_id: Optional[int] = None
     inicio_periodo: Optional[date] = None
     fin_periodo: Optional[date] = None
@@ -77,6 +81,7 @@ class RrhhEvaluacionBase(SQLModel):
     empleado_id: int
     evaluador_id: Optional[int] = None
     periodo: str
+    periodo_evaluacion_id: Optional[int] = None
     tipo_evaluacion_id: int
     # Nombre resuelto del catálogo `tipos_evaluaciones` (solo lectura).
     tipo_evaluacion: Optional[str] = None

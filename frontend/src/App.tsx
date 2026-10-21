@@ -107,6 +107,9 @@ import { MovimientosPage as RrhhMovimientosPage } from './pages/rrhh/Movimientos
 import { NominaPage } from './pages/rrhh/NominaPage';
 import { NominaDetallePage } from './pages/rrhh/NominaDetallePage';
 import { NominaPagosPage } from './pages/rrhh/NominaPagosPage';
+import { PagosResultadoPage } from './pages/rrhh/PagosResultadoPage';
+import { PagoResultadoNuevoPage } from './pages/rrhh/PagoResultadoNuevoPage';
+import { PagoResultadoDetallePage } from './pages/rrhh/PagoResultadoDetallePage';
 import { SolicitudesPage as RrhhSolicitudesPage } from './pages/rrhh/SolicitudesPage';
 import { EvaluacionesPage } from './pages/rrhh/EvaluacionesPage';
 import { EvaluacionDetallePage } from './pages/rrhh/EvaluacionDetallePage';
@@ -1219,6 +1222,30 @@ function App() {
                   element={
                     <ProtectedRoute moduloActivo={moduloActivo} currentPath="/rrhh/nomina">
                       <NominaPagosPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/rrhh/pagos-resultado"
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/rrhh/nomina">
+                      <PagosResultadoPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/rrhh/pagos-resultado/nuevo"
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/rrhh/nomina">
+                      <PagoResultadoNuevoPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/rrhh/pagos-resultado/:id"
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/rrhh/nomina">
+                      <PagoResultadoDetallePage />
                     </ProtectedRoute>
                   }
                 />

@@ -49,6 +49,7 @@ from .rrhh_catalogos import (
     RrhhTipoDeduccion,
     RrhhTipoBonificacion,
     RrhhTipoEvaluacion,
+    RrhhPeriodoEvaluacion,
     RrhhCalificacion,
     RrhhTipoPago,
 )
@@ -58,6 +59,7 @@ from .rrhh_asistencia import RrhhAsistencia
 from .rrhh_evaluacion import RrhhEvaluacion, RrhhObjetivo, RrhhEvaluacionObjetivo
 from .rrhh_solicitud import RrhhSolicitud
 from .rrhh_nomina import RrhhNomina, RrhhNominaEmpleado
+from .rrhh_pago_resultado import RrhhPagoResultado, RrhhPagoResultadoEmpleado
 from .servicio import (
     Servicio,
     SolicitudServicio,

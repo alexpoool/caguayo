@@ -57,6 +57,7 @@ from .rrhh_catalogos import (
     tipos_bonificaciones_router,
     tipos_pago_router,
     tipos_evaluacion_router,
+    periodos_evaluacion_router,
     calificaciones_router,
 )
 from .rrhh_empleados import rrhh_empleados_router
@@ -71,6 +72,7 @@ from .rrhh_solicitudes import rrhh_solicitudes_router
 from .rrhh_evaluaciones import rrhh_evaluaciones_router
 from .rrhh_objetivos import rrhh_objetivos_router
 from .rrhh_auditoria import rrhh_auditoria_router
+from .rrhh_pagos_resultado import rrhh_pagos_resultado_router
 
 api_router = APIRouter(prefix="/api/v1")
 
@@ -128,6 +130,7 @@ api_router.include_router(tipos_deducciones_router)
 api_router.include_router(tipos_bonificaciones_router)
 api_router.include_router(tipos_pago_router)
 api_router.include_router(tipos_evaluacion_router)
+api_router.include_router(periodos_evaluacion_router)
 api_router.include_router(calificaciones_router)
 api_router.include_router(rrhh_empleados_router)
 api_router.include_router(rrhh_asistencia_router)
@@ -139,6 +142,7 @@ api_router.include_router(rrhh_solicitudes_router)
 api_router.include_router(rrhh_evaluaciones_router)
 api_router.include_router(rrhh_objetivos_router)
 api_router.include_router(rrhh_auditoria_router)
+api_router.include_router(rrhh_pagos_resultado_router)
 
 
 @api_router.get("/")

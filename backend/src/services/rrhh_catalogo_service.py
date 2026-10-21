@@ -14,6 +14,7 @@ Reglas comunes:
 from typing import List, Optional, Type
 
 from fastapi import HTTPException
+from sqlalchemy import update as sa_update
 from sqlmodel import SQLModel, select, func
 from sqlmodel.ext.asyncio.session import AsyncSession
 
@@ -33,6 +34,9 @@ from src.dto import (
     RrhhTipoEvaluacionCreate,
     RrhhTipoEvaluacionUpdate,
     RrhhTipoEvaluacionRead,
+    RrhhPeriodoEvaluacionCreate,
+    RrhhPeriodoEvaluacionUpdate,
+    RrhhPeriodoEvaluacionRead,
     RrhhCalificacionCreate,
     RrhhCalificacionUpdate,
     RrhhCalificacionRead,
@@ -42,12 +46,15 @@ from src.models import (
     RrhhTipoDeduccion,
     RrhhTipoBonificacion,
     RrhhTipoEvaluacion,
+    RrhhPeriodoEvaluacion,
     RrhhTipoPago,
     RrhhCalificacion,
     RrhhEmpleado,
     RrhhNominaEmpleado,
+    RrhhPagoResultado,
 )
 from src.models.rrhh_deducciones import RrhhDeduccion, RrhhBonificacion
+from src.models.rrhh_evaluacion import RrhhEvaluacion
 
 
 class RrhhCatalogoService:
@@ -243,6 +250,33 @@ class _TipoEvaluacionService(RrhhCatalogoService):
         ]
 
 
+class _PeriodoEvaluacionService(RrhhCatalogoService):
+    """`periodo_evaluaciones` es referenciado por evaluaciones y pagos."""
+
+    async def update(self, db: AsyncSession, id: int, obj_in: SQLModel) -> SQLModel:
+        """Sincroniza el texto legado `evaluaciones.periodo` al renombrar."""
+        datos = obj_in.model_dump(exclude_unset=True)
+        resultado = await super().update(db, id, obj_in)
+        if "nombre" in datos:
+            await db.exec(
+                sa_update(RrhhEvaluacion)
+                .where(RrhhEvaluacion.periodo_evaluacion_id == id)
+                .values(periodo=resultado.nombre)
+            )
+            await db.commit()
+        return resultado
+
+    def _usos(self, id: int) -> List:
+        return [
+            select(func.count())
+            .select_from(RrhhEvaluacion)
+            .where(RrhhEvaluacion.periodo_evaluacion_id == id),
+            select(func.count())
+            .select_from(RrhhPagoResultado)
+            .where(RrhhPagoResultado.periodo_evaluacion_id == id),
+        ]
+
+
 class _CalificacionService(RrhhCatalogoService):
     """`calificaciones` no la referencia ninguna tabla desde el rework v2 de
     la Fase 8 (fuera `evaluaciones.escala_criterios_id`); el catálogo vive
@@ -300,6 +334,16 @@ rrhh_tipo_evaluacion_service = _TipoEvaluacionService(
     pk="id_tipos_evaluaciones",
     etiqueta="tipo de evaluación",
     max_nombre=50,
+)
+
+rrhh_periodo_evaluacion_service = _PeriodoEvaluacionService(
+    model=RrhhPeriodoEvaluacion,
+    create_model=RrhhPeriodoEvaluacionCreate,
+    update_model=RrhhPeriodoEvaluacionUpdate,
+    read_model=RrhhPeriodoEvaluacionRead,
+    pk="id_periodo_evaluacion",
+    etiqueta="periodo de evaluación",
+    max_nombre=100,
 )
 
 rrhh_calificacion_service = _CalificacionService(

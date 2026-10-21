@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { rrhhService } from '../../services/rrhh';
@@ -19,10 +20,12 @@ import {
   CheckCircle2,
   FileDown,
   Loader2,
+  MoreVertical,
   Pencil,
   Plus,
   RefreshCw,
   Search,
+  Target,
   Trash2,
   Wallet,
   X,
@@ -156,6 +159,62 @@ function ListaNominas({ onNueva }: { onNueva: () => void }) {
   const [estado, setEstado] = useState<RrhhEstadoNomina | ''>('');
   const [aConfirmar, setAConfirmar] = useState<RrhhNominaListado | null>(null);
   const [aEliminar, setAEliminar] = useState<RrhhNominaListado | null>(null);
+
+  // Menú flotante de pagos (Salario / Resultado), con el mismo patrón que el
+  // menú de opciones de Empleados: portal a `document.body` y posición fija.
+  const [menuPagos, setMenuPagos] = useState<{
+    id: number;
+    estado: RrhhEstadoNomina;
+    cantidadPagos: number;
+    totalPagado: number | string;
+    x: number;
+    y: number;
+    anchor: { top: number; left: number; right: number; bottom: number };
+  } | null>(null);
+  const menuPagosRef = useRef<HTMLDivElement>(null);
+  const MARGIN = 8;
+
+  useLayoutEffect(() => {
+    if (!menuPagos || !menuPagosRef.current) return;
+    const m = menuPagosRef.current.getBoundingClientRect();
+    let x = menuPagos.x;
+    let y = menuPagos.y;
+    if (x + m.width > window.innerWidth - MARGIN) {
+      x = Math.max(MARGIN, menuPagos.anchor.right - m.width);
+    }
+    if (y + m.height > window.innerHeight - MARGIN) {
+      y = Math.max(MARGIN, menuPagos.anchor.top - m.height - 4);
+    }
+    if (x !== menuPagos.x || y !== menuPagos.y) {
+      setMenuPagos((prev) => (prev ? { ...prev, x, y } : null));
+    }
+  }, [menuPagos]);
+
+  useEffect(() => {
+    if (!menuPagos) return;
+    const onDocClick = (e: MouseEvent) => {
+      if (
+        menuPagosRef.current &&
+        !menuPagosRef.current.contains(e.target as Node)
+      ) {
+        setMenuPagos(null);
+      }
+    };
+    const onEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setMenuPagos(null);
+    };
+    const onScrollOrResize = () => setMenuPagos(null);
+    document.addEventListener('click', onDocClick);
+    document.addEventListener('keydown', onEsc);
+    window.addEventListener('scroll', onScrollOrResize, true);
+    window.addEventListener('resize', onScrollOrResize);
+    return () => {
+      document.removeEventListener('click', onDocClick);
+      document.removeEventListener('keydown', onEsc);
+      window.removeEventListener('scroll', onScrollOrResize, true);
+      window.removeEventListener('resize', onScrollOrResize);
+    };
+  }, [menuPagos]);
 
   const invalidate = () =>
     queryClient.invalidateQueries({ queryKey: ['rrhh', 'nomina'] });
@@ -305,23 +364,47 @@ function ListaNominas({ onNueva }: { onNueva: () => void }) {
                       </span>
                     </TableCell>
                     <TableCell className="text-right">
-                      <button
-                        type="button"
-                        title={
-                          fila.estado === 'pre_nomina'
-                            ? 'Confirma la nómina para registrar los pagos'
-                            : 'Registrar o ver los pagos por empleado'
-                        }
-                        disabled={fila.estado === 'pre_nomina'}
-                        onClick={() =>
-                          navigate(`/rrhh/nomina/${fila.id}/pagos`)
-                        }
-                        className="rounded-md px-2 py-1 text-sm font-semibold tabular-nums text-brand-600 transition-colors hover:bg-brand-50 disabled:cursor-not-allowed disabled:text-slate-400 disabled:hover:bg-transparent"
-                      >
-                        {fila.cantidad_pagos > 0
-                          ? `${fila.cantidad_pagos} · ${fmtMoneda(fila.total_pagado)}`
-                          : 'Pagos'}
-                      </button>
+                      <div className="flex items-center justify-end gap-2">
+                        <span className="text-sm font-semibold tabular-nums text-brand-600">
+                          {fila.cantidad_pagos > 0
+                            ? `${fila.cantidad_pagos} · ${fmtMoneda(fila.total_pagado)}`
+                            : '—'}
+                        </span>
+                        <div className="relative inline-block">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            title="Opciones de pago"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const r = (
+                                e.currentTarget as HTMLButtonElement
+                              ).getBoundingClientRect();
+                              setMenuPagos(
+                                menuPagos && menuPagos.id === fila.id
+                                  ? null
+                                  : {
+                                      id: fila.id,
+                                      estado: fila.estado,
+                                      cantidadPagos: fila.cantidad_pagos,
+                                      totalPagado: fila.total_pagado,
+                                      x: r.left,
+                                      y: r.bottom + 4,
+                                      anchor: {
+                                        top: r.top,
+                                        left: r.left,
+                                        right: r.right,
+                                        bottom: r.bottom,
+                                      },
+                                    }
+                              );
+                            }}
+                            className="h-8 w-8 p-0 text-indigo-600 hover:bg-indigo-50"
+                          >
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center justify-end gap-1">
@@ -395,6 +478,54 @@ function ListaNominas({ onNueva }: { onNueva: () => void }) {
         onConfirm={() => aEliminar && eliminarMutation.mutate(aEliminar.id)}
         onClose={() => setAEliminar(null)}
       />
+
+      {menuPagos &&
+        createPortal(
+          <div
+            ref={menuPagosRef}
+            className="fixed z-50 w-64 overflow-y-auto rounded-xl border border-gray-200 bg-white py-1 shadow-xl animate-fade-in"
+            style={{ top: menuPagos.y, left: menuPagos.x }}
+          >
+            <div className="px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-gray-400">
+              Pagos
+            </div>
+            <button
+              type="button"
+              disabled={menuPagos.estado === 'pre_nomina'}
+              title={
+                menuPagos.estado === 'pre_nomina'
+                  ? 'Confirma la nómina para registrar los pagos'
+                  : 'Registrar o ver los pagos por empleado'
+              }
+              onClick={() => {
+                setMenuPagos(null);
+                navigate(`/rrhh/nomina/${menuPagos.id}/pagos`);
+              }}
+              className="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-700 transition-colors hover:bg-sky-50 hover:text-sky-700 disabled:cursor-not-allowed disabled:text-gray-400 disabled:hover:bg-transparent disabled:hover:text-gray-400"
+            >
+              <Banknote className="h-4 w-4 text-sky-600" />
+              <span className="flex-1 text-left">Salario</span>
+              {menuPagos.cantidadPagos > 0 && (
+                <span className="text-xs font-semibold tabular-nums text-gray-500">
+                  {menuPagos.cantidadPagos} ·{' '}
+                  {fmtMoneda(menuPagos.totalPagado)}
+                </span>
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setMenuPagos(null);
+                navigate('/rrhh/pagos-resultado');
+              }}
+              className="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-700 transition-colors hover:bg-emerald-50 hover:text-emerald-700"
+            >
+              <Target className="h-4 w-4 text-emerald-600" />
+              <span className="flex-1 text-left">Resultado</span>
+            </button>
+          </div>,
+          document.body
+        )}
     </div>
   );
 }

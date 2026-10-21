@@ -70,7 +70,22 @@ class RrhhEvaluacion(SQLModel, table=True):
             ),
         ),
     )
-    periodo: str = Field(max_length=20)
+    periodo: str = Field(max_length=100)
+    # Catálogo de periodos; `periodo` se conserva como texto legible y para
+    # compatibilidad con evaluaciones creadas antes de la FK.
+    periodo_evaluacion_id: Optional[int] = Field(
+        default=None,
+        sa_column=Column(
+            Integer,
+            ForeignKey(
+                "periodo_evaluaciones.id_periodo_evaluacion",
+                ondelete="RESTRICT",
+                name="fk_evaluaciones_periodo",
+            ),
+            nullable=True,
+            index=True,
+        ),
+    )
     # FK al catálogo `tipos_evaluaciones` (antes VARCHAR con CHECK de 4 valores).
     tipo_evaluacion_id: int = Field(
         sa_column=Column(

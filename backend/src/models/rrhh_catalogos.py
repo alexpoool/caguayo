@@ -76,6 +76,30 @@ class RrhhTipoEvaluacion(SQLModel, table=True):
     updated_at: datetime = Field(default_factory=_now, sa_column_kwargs={"server_default": "CURRENT_TIMESTAMP"})
 
 
+class RrhhPeriodoEvaluacion(SQLModel, table=True):
+    """Periodo de evaluación reutilizable (catálogo).
+
+    Sustituye el texto libre de `evaluaciones.periodo` en el alta: la
+    evaluación guarda la FK y conserva el nombre en el texto por
+    compatibilidad con listados y filtros históricos.
+    """
+
+    __tablename__ = "periodo_evaluaciones"
+
+    id_periodo_evaluacion: Optional[int] = Field(
+        default=None, primary_key=True, sa_column_kwargs={"autoincrement": True}
+    )
+    nombre: str = Field(max_length=100, unique=True)
+    descripcion: Optional[str] = None
+    activo: bool = Field(default=True)
+    created_at: datetime = Field(
+        default_factory=_now, sa_column_kwargs={"server_default": "CURRENT_TIMESTAMP"}
+    )
+    updated_at: datetime = Field(
+        default_factory=_now, sa_column_kwargs={"server_default": "CURRENT_TIMESTAMP"}
+    )
+
+
 class RrhhCalificacion(SQLModel, table=True):
     __tablename__ = "calificaciones"
 
@@ -110,6 +134,7 @@ __all__ = [
     "RrhhTipoDeduccion",
     "RrhhTipoBonificacion",
     "RrhhTipoEvaluacion",
+    "RrhhPeriodoEvaluacion",
     "RrhhCalificacion",
     "RrhhTipoPago",
     "Decimal",
