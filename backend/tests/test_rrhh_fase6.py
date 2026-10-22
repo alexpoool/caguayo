@@ -659,8 +659,11 @@ def test_confirmar_y_bloquear_edicion(client):
         assert client.put(
             f"/api/v1/rrhh/nomina/{nomina['id']}", json={"descripcion": "Otra"}
         ).status_code == 409
-        assert client.delete(f"/api/v1/rrhh/nomina/{nomina['id']}").status_code == 409
         assert client.post(f"/api/v1/rrhh/nomina/{nomina['id']}/confirmar").status_code == 409
+
+        # Una nómina confirmada sí se puede eliminar (el detalle cae en cascada).
+        assert client.delete(f"/api/v1/rrhh/nomina/{nomina['id']}").status_code == 200
+        assert client.get(f"/api/v1/rrhh/nomina/{nomina['id']}").status_code == 404
     finally:
         _limpiar_nomina(nomina["id"])
         _limpiar_asistencias(client, emp["id"])

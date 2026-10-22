@@ -443,6 +443,8 @@ export interface RrhhNominaListado {
   total_neto: number | string;
   total_pagado: number | string;
   cantidad_pagos: number;
+  /** Pago por resultado vinculado (máximo uno por nómina). */
+  pago_resultado_id: number | null;
   created_at?: string;
   updated_at?: string;
 }
@@ -1056,6 +1058,8 @@ export interface RrhhPagoResultadoEmpleado {
 
 export interface RrhhPagoResultado {
   id_pago_x_resultado: number;
+  nomina_id: number | null;
+  nomina_descripcion: string | null;
   periodo_evaluacion_id: number;
   periodo_nombre: string | null;
   descripcion: string | null;
@@ -1071,6 +1075,8 @@ export interface RrhhPagoResultado {
 
 export interface RrhhPagoResultadoListado {
   id_pago_x_resultado: number;
+  nomina_id: number | null;
+  nomina_descripcion: string | null;
   periodo_evaluacion_id: number;
   periodo_nombre: string | null;
   descripcion: string | null;
@@ -1085,6 +1091,7 @@ export interface RrhhPagoResultadoListado {
 }
 
 export interface RrhhPagoResultadoCreate {
+  nomina_id: number;
   periodo_evaluacion_id: number;
   descripcion?: string | null;
   inicio_periodo: string;

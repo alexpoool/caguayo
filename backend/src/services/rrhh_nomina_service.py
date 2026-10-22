@@ -67,6 +67,7 @@ from src.models import (
     RrhhTipoPago,
     RrhhAsistencia,
     RrhhPeriodoEvaluacion,
+    RrhhPagoResultado,
     Moneda,
 )
 
@@ -137,6 +138,7 @@ class RrhhNominaService:
 
         totales: dict[int, tuple] = {}
         pagos_por_nomina: dict[int, tuple] = {}
+        pagos_resultado: dict[int, int] = {}
         if nomina_ids:
             res = await db.exec(
                 select(
@@ -164,11 +166,20 @@ class RrhhNominaService:
             )
             pagos_por_nomina = {row[0]: (row[1], row[2]) for row in res.all()}
 
+            res = await db.exec(
+                select(
+                    RrhhPagoResultado.nomina_id,
+                    RrhhPagoResultado.id_pago_x_resultado,
+                ).where(RrhhPagoResultado.nomina_id.in_(nomina_ids))
+            )
+            pagos_resultado = {row[0]: row[1] for row in res.all()}
+
         return {
             "monedas": monedas,
             "periodos": periodos,
             "totales": totales,
             "pagos": pagos_por_nomina,
+            "pagos_resultado": pagos_resultado,
         }
 
     def _construir_listado(self, fila, resolucion: dict) -> RrhhNominaListado:
@@ -196,6 +207,7 @@ class RrhhNominaService:
             total_neto=Decimal(str(neto)),
             total_pagado=Decimal(str(total_pagado)),
             cantidad_pagos=int(cantidad_pagos),
+            pago_resultado_id=resolucion["pagos_resultado"].get(fila.id),
             created_at=fila.created_at,
             updated_at=fila.updated_at,
         )
@@ -488,8 +500,24 @@ class RrhhNominaService:
         return await self.get(db, id)
 
     async def eliminar(self, db: AsyncSession, id: int) -> dict:
+        """Elimina la nómina en cualquier estado.
+
+        El detalle (`nomina_empleados`) cae en cascada. Si la nómina tiene un
+        pago por resultado vinculado se rechaza: primero hay que eliminar el
+        pago, porque la FK es `RESTRICT` y el lote representa dinero pagado.
+        """
         nomina = await self._buscar_o_404(db, id)
-        self._exigir_pre_nomina(nomina, "eliminar")
+        pago = await db.exec(
+            select(RrhhPagoResultado).where(RrhhPagoResultado.nomina_id == id)
+        )
+        if pago.first():
+            raise HTTPException(
+                status_code=409,
+                detail=(
+                    "La nómina tiene un pago por resultado; "
+                    "elimínalo primero"
+                ),
+            )
         await db.delete(nomina)
         await db.commit()
         return {"accion": "eliminado", "motivo": None}

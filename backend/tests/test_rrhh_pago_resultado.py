@@ -5,14 +5,23 @@ los datos de prueba llevan el prefijo 2098 y se eliminan en el propio test;
 `pytest_sessionfinish` vuelve a limpiar por si un aserto falla.
 """
 
+import asyncio
 import uuid
 from decimal import Decimal
+
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import create_async_engine
+from sqlalchemy.pool import NullPool
+
+from src.database.connection import DATABASE_URL
 
 BASE_PERIODOS = "/api/v1/rrhh/catalogos/periodos-evaluacion"
 BASE_EVALUACIONES = "/api/v1/rrhh/evaluaciones"
 BASE_OBJETIVOS = "/api/v1/rrhh/objetivos"
 BASE_PAGOS = "/api/v1/rrhh/pagos-resultado"
+BASE_NOMINA = "/api/v1/rrhh/nomina"
 TIPOS_EVAL = "/api/v1/rrhh/catalogos/tipos-evaluacion"
+MONEDA_ID = 1
 
 JUNIO = ("2098-06-01", "2098-06-30")
 _TIPOS_CACHE: dict = {}
@@ -68,6 +77,50 @@ def _crear_evaluacion(client, empleado_id, periodo_id):
     return response.json()
 
 
+def _crear_nomina(client, periodo_id, empleado_ids, confirmar=True):
+    """Crea (y opcionalmente confirma) una nómina del periodo de prueba."""
+    payload = {
+        "descripcion": f"2098-nomina-{_sufijo()}",
+        "periodo_id": periodo_id,
+        "inicio_periodo": JUNIO[0],
+        "fin_periodo": JUNIO[1],
+        "moneda_id": MONEDA_ID,
+        "tasa": 1,
+        "porcentaje_impuesto": 0,
+    }
+    response = client.post(BASE_NOMINA, json=payload)
+    assert response.status_code == 201, response.text
+    nomina = response.json()
+
+    response = client.put(
+        f"{BASE_NOMINA}/{nomina['id']}/empleados",
+        json={"empleado_ids": empleado_ids},
+    )
+    assert response.status_code == 200, response.text
+
+    if confirmar:
+        response = client.post(f"{BASE_NOMINA}/{nomina['id']}/confirmar")
+        assert response.status_code == 200, response.text
+        nomina = response.json()
+    return nomina
+
+
+async def _borrar_nomina_db(nomina_id: int) -> None:
+    """Borra la nómina directamente (limpieza al margen de la API)."""
+    engine = create_async_engine(DATABASE_URL, poolclass=NullPool)
+    try:
+        async with engine.begin() as conn:
+            await conn.execute(
+                text("DELETE FROM nomina WHERE id = :id"), {"id": nomina_id}
+            )
+    finally:
+        await engine.dispose()
+
+
+def _limpiar_nomina(nomina_id):
+    asyncio.run(_borrar_nomina_db(nomina_id))
+
+
 def _crear_objetivo(client, empleado_id):
     payload = {
         "empleado_id": empleado_id,
@@ -111,9 +164,19 @@ def _puntuar_evaluacion(
     return {"objetivo_id": objetivo_id, "fila_id": fila_id}
 
 
-def _limpiar(client, *, pagos=(), evaluaciones=(), empleados=(), periodo=None):
+def _limpiar(
+    client,
+    *,
+    pagos=(),
+    nominas=(),
+    evaluaciones=(),
+    empleados=(),
+    periodo=None,
+):
     for pago_id in pagos:
         client.delete(f"{BASE_PAGOS}/{pago_id}")
+    for nomina_id in nominas:
+        _limpiar_nomina(nomina_id)
     for evaluacion_id in evaluaciones:
         client.delete(f"{BASE_EVALUACIONES}/{evaluacion_id}")
     for empleado_id in empleados:
@@ -202,6 +265,7 @@ class TestPagoPorResultado:
         evaluaciones = []
         filas_puntuadas = []
         pagos = []
+        nominas = []
         try:
             # Tres empleados con notas 4, 2 y 3.
             for nota in (4, 2, 3):
@@ -216,6 +280,13 @@ class TestPagoPorResultado:
                         client, evaluacion["id"], empleado["id"], nota
                     )
                 )
+
+            nomina = _crear_nomina(
+                client,
+                periodo["id_periodo_evaluacion"],
+                [e["id"] for e in empleados],
+            )
+            nominas.append(nomina["id"])
 
             preview = client.get(
                 f"{BASE_PAGOS}/preview",
@@ -235,6 +306,7 @@ class TestPagoPorResultado:
             response = client.post(
                 BASE_PAGOS,
                 json={
+                    "nomina_id": nomina["id"],
                     "periodo_evaluacion_id": periodo["id_periodo_evaluacion"],
                     "descripcion": "Reparto de prueba",
                     "inicio_periodo": JUNIO[0],
@@ -247,6 +319,8 @@ class TestPagoPorResultado:
             pago = response.json()
             pagos.append(pago["id_pago_x_resultado"])
 
+            assert pago["nomina_id"] == nomina["id"]
+            assert pago["nomina_descripcion"] == nomina["descripcion"]
             assert Decimal(pago["promedio_general"]) == Decimal("3.0000")
             assert Decimal(pago["suma_coeficientes_empleados"]) == Decimal("3.0000")
             importes = sorted(
@@ -311,6 +385,7 @@ class TestPagoPorResultado:
             repetido = client.post(
                 BASE_PAGOS,
                 json={
+                    "nomina_id": nomina["id"],
                     "periodo_evaluacion_id": periodo["id_periodo_evaluacion"],
                     "descripcion": "Segundo intento",
                     "inicio_periodo": JUNIO[0],
@@ -320,7 +395,7 @@ class TestPagoPorResultado:
                 },
             )
             assert repetido.status_code == 409, repetido.text
-            assert "Ya existe un pago por resultado" in repetido.json()["detail"]
+            assert "nómina" in repetido.json()["detail"]
 
             # Al eliminar el lote el periodo vuelve a estar disponible.
             assert (
@@ -340,6 +415,7 @@ class TestPagoPorResultado:
             response = client.post(
                 BASE_PAGOS,
                 json={
+                    "nomina_id": nomina["id"],
                     "periodo_evaluacion_id": periodo["id_periodo_evaluacion"],
                     "descripcion": "Subconjunto",
                     "inicio_periodo": JUNIO[0],
@@ -364,6 +440,130 @@ class TestPagoPorResultado:
             _limpiar(
                 client,
                 pagos=pagos,
+                nominas=nominas,
+                evaluaciones=[e["id"] for e in evaluaciones],
+                empleados=[e["id"] for e in empleados],
+                periodo=periodo,
+            )
+
+    def test_crear_sin_nomina_422(self, client):
+        response = client.post(
+            BASE_PAGOS,
+            json={
+                "periodo_evaluacion_id": 1,
+                "inicio_periodo": JUNIO[0],
+                "fin_periodo": JUNIO[1],
+                "monto": 1000,
+                "empleado_ids": [1],
+            },
+        )
+        assert response.status_code == 422, response.text
+
+    def test_crear_con_nomina_inexistente_404(self, client):
+        response = client.post(
+            BASE_PAGOS,
+            json={
+                "nomina_id": 999999999,
+                "periodo_evaluacion_id": 1,
+                "inicio_periodo": JUNIO[0],
+                "fin_periodo": JUNIO[1],
+                "monto": 1000,
+                "empleado_ids": [1],
+            },
+        )
+        assert response.status_code == 404, response.text
+        assert "nómina" in response.json()["detail"].lower()
+
+    def test_pre_nomina_no_puede_generar_pago_400(self, client):
+        periodo = _crear_periodo(client)
+        empleado = _crear_empleado(client)
+        nomina = None
+        try:
+            nomina = _crear_nomina(
+                client,
+                periodo["id_periodo_evaluacion"],
+                [empleado["id"]],
+                confirmar=False,
+            )
+            response = client.post(
+                BASE_PAGOS,
+                json={
+                    "nomina_id": nomina["id"],
+                    "periodo_evaluacion_id": periodo["id_periodo_evaluacion"],
+                    "inicio_periodo": JUNIO[0],
+                    "fin_periodo": JUNIO[1],
+                    "monto": 1000,
+                    "empleado_ids": [empleado["id"]],
+                },
+            )
+            assert response.status_code == 400, response.text
+            assert "confirmadas" in response.json()["detail"].lower()
+        finally:
+            _limpiar(
+                client,
+                nominas=[nomina["id"]] if nomina else [],
+                empleados=[empleado["id"]],
+                periodo=periodo,
+            )
+
+    def test_periodo_pagado_con_otra_nomina_409(self, client):
+        periodo = _crear_periodo(client)
+        empleados = []
+        evaluaciones = []
+        nominas = []
+        pagos = []
+        try:
+            for _ in range(2):
+                empleado = _crear_empleado(client)
+                empleados.append(empleado)
+                evaluacion = _crear_evaluacion(
+                    client, empleado["id"], periodo["id_periodo_evaluacion"]
+                )
+                evaluaciones.append(evaluacion)
+                _puntuar_evaluacion(
+                    client, evaluacion["id"], empleado["id"], 4
+                )
+
+            for empleado in empleados:
+                nomina = _crear_nomina(
+                    client,
+                    periodo["id_periodo_evaluacion"],
+                    [empleado["id"]],
+                )
+                nominas.append(nomina["id"])
+
+            response = client.post(
+                BASE_PAGOS,
+                json={
+                    "nomina_id": nominas[0],
+                    "periodo_evaluacion_id": periodo["id_periodo_evaluacion"],
+                    "inicio_periodo": JUNIO[0],
+                    "fin_periodo": JUNIO[1],
+                    "monto": 1000,
+                    "empleado_ids": [empleados[0]["id"]],
+                },
+            )
+            assert response.status_code == 201, response.text
+            pagos.append(response.json()["id_pago_x_resultado"])
+
+            repetido = client.post(
+                BASE_PAGOS,
+                json={
+                    "nomina_id": nominas[1],
+                    "periodo_evaluacion_id": periodo["id_periodo_evaluacion"],
+                    "inicio_periodo": JUNIO[0],
+                    "fin_periodo": JUNIO[1],
+                    "monto": 1000,
+                    "empleado_ids": [empleados[1]["id"]],
+                },
+            )
+            assert repetido.status_code == 409, repetido.text
+            assert "periodo" in repetido.json()["detail"].lower()
+        finally:
+            _limpiar(
+                client,
+                pagos=pagos,
+                nominas=nominas,
                 evaluaciones=[e["id"] for e in evaluaciones],
                 empleados=[e["id"] for e in empleados],
                 periodo=periodo,
@@ -373,13 +573,18 @@ class TestPagoPorResultado:
         periodo = _crear_periodo(client)
         empleado = _crear_empleado(client)
         evaluacion = None
+        nomina = None
         try:
             evaluacion = _crear_evaluacion(
                 client, empleado["id"], periodo["id_periodo_evaluacion"]
             )
+            nomina = _crear_nomina(
+                client, periodo["id_periodo_evaluacion"], [empleado["id"]]
+            )
             response = client.post(
                 BASE_PAGOS,
                 json={
+                    "nomina_id": nomina["id"],
                     "periodo_evaluacion_id": periodo["id_periodo_evaluacion"],
                     "inicio_periodo": JUNIO[0],
                     "fin_periodo": JUNIO[1],
@@ -392,6 +597,58 @@ class TestPagoPorResultado:
         finally:
             _limpiar(
                 client,
+                nominas=[nomina["id"]] if nomina else [],
+                evaluaciones=[evaluacion["id"]] if evaluacion else [],
+                empleados=[empleado["id"]],
+                periodo=periodo,
+            )
+
+    def test_nomina_confirmada_con_pago_no_se_elimina_409(self, client):
+        periodo = _crear_periodo(client)
+        empleado = _crear_empleado(client)
+        evaluacion = None
+        nomina = None
+        pago_id = None
+        try:
+            evaluacion = _crear_evaluacion(
+                client, empleado["id"], periodo["id_periodo_evaluacion"]
+            )
+            _puntuar_evaluacion(
+                client, evaluacion["id"], empleado["id"], 4
+            )
+            nomina = _crear_nomina(
+                client, periodo["id_periodo_evaluacion"], [empleado["id"]]
+            )
+            response = client.post(
+                BASE_PAGOS,
+                json={
+                    "nomina_id": nomina["id"],
+                    "periodo_evaluacion_id": periodo["id_periodo_evaluacion"],
+                    "inicio_periodo": JUNIO[0],
+                    "fin_periodo": JUNIO[1],
+                    "monto": 1000,
+                    "empleado_ids": [empleado["id"]],
+                },
+            )
+            assert response.status_code == 201, response.text
+            pago_id = response.json()["id_pago_x_resultado"]
+
+            # Mientras el pago exista, la nómina no se puede eliminar.
+            bloqueado = client.delete(f"{BASE_NOMINA}/{nomina['id']}")
+            assert bloqueado.status_code == 409, bloqueado.text
+            assert "pago por resultado" in bloqueado.json()["detail"].lower()
+
+            # Al borrar el pago, la nómina confirmada vuelve a estar disponible.
+            assert client.delete(f"{BASE_PAGOS}/{pago_id}").status_code == 200
+            pago_id = None
+            assert client.delete(f"{BASE_NOMINA}/{nomina['id']}").status_code == 200
+            assert client.get(f"{BASE_NOMINA}/{nomina['id']}").status_code == 404
+            nomina = None
+        finally:
+            _limpiar(
+                client,
+                pagos=[pago_id] if pago_id else [],
+                nominas=[nomina["id"]] if nomina else [],
                 evaluaciones=[evaluacion["id"]] if evaluacion else [],
                 empleados=[empleado["id"]],
                 periodo=periodo,

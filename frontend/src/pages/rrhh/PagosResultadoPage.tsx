@@ -194,8 +194,8 @@ export function PagosResultadoPage() {
             <div className="flex flex-col items-center gap-3 py-12 text-center">
               <Target className="h-10 w-10 text-slate-300" />
               <p className="text-sm text-slate-600">
-                Aún no hay pagos por resultado. Crea el primero eligiendo un
-                periodo de evaluación.
+                Aún no hay pagos por resultado. Crea el primero eligiendo una
+                nómina confirmada y su periodo.
               </p>
               <Button
                 onClick={() => navigate('/rrhh/pagos-resultado/nuevo')}
@@ -211,6 +211,7 @@ export function PagosResultadoPage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Periodo</TableHead>
+                    <TableHead>Nómina</TableHead>
                     <TableHead>Rango</TableHead>
                     <TableHead className="text-center">Empleados</TableHead>
                     <TableHead className="text-right">Monto</TableHead>
@@ -229,6 +230,26 @@ export function PagosResultadoPage() {
                         <div className="text-xs text-slate-500">
                           {pago.descripcion || `Lote #${pago.id_pago_x_resultado}`}
                         </div>
+                      </TableCell>
+                      <TableCell>
+                        {pago.nomina_id ? (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              navigate(`/rrhh/nomina/${pago.nomina_id}`)
+                            }
+                            className="text-left text-sm font-medium text-sky-700 hover:underline"
+                            title="Ver nómina"
+                          >
+                            {pago.nomina_descripcion ||
+                              `Nómina #${pago.nomina_id}`}
+                            <span className="block text-xs font-normal text-slate-500">
+                              #{pago.nomina_id}
+                            </span>
+                          </button>
+                        ) : (
+                          <span className="text-sm text-slate-400">—</span>
+                        )}
                       </TableCell>
                       <TableCell className="whitespace-nowrap text-slate-600">
                         {fmtFecha(pago.inicio_periodo)} –{' '}

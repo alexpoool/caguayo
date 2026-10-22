@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { rrhhService } from '../../services/rrhh';
 import {
   AlertCircle,
@@ -12,6 +12,7 @@ import {
   Save,
   Target,
   Users,
+  Wallet,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import {
@@ -72,7 +73,10 @@ const GRADIENTE =
 export function PagoResultadoNuevoPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const [searchParams] = useSearchParams();
+  const nominaParam = Number(searchParams.get('nomina')) || null;
 
+  const [nominaId, setNominaId] = useState<number | ''>(nominaParam ?? '');
   const [periodoId, setPeriodoId] = useState<number | ''>('');
   const [descripcion, setDescripcion] = useState('');
   const [monto, setMonto] = useState('');
@@ -81,12 +85,41 @@ export function PagoResultadoNuevoPage() {
   const [seleccionados, setSeleccionados] = useState<Set<number>>(new Set());
   const [errores, setErrores] = useState<Record<string, string>>({});
   const periodoInicializado = useRef<number | null>(null);
+  const nominaInicializada = useRef<number | null>(null);
+
+  const { data: nominas = [], isLoading: cargandoNominas } = useQuery({
+    queryKey: ['rrhh', 'nomina', 'confirmadas'],
+    queryFn: () => rrhhService.listarNominas({ estado: 'nomina', limit: 1000 }),
+  });
+
+  const { data: nominaDetalle } = useQuery({
+    queryKey: ['rrhh', 'nomina', nominaParam],
+    queryFn: () => rrhhService.obtenerNomina(nominaParam as number),
+    enabled: nominaParam !== null,
+  });
+
+  const nominaSeleccionada = nominaParam
+    ? nominaDetalle
+    : nominas.find((nomina) => nomina.id === nominaId) ?? null;
+  const nominaFijada = nominaParam !== null;
+  const sinPeriodo = Boolean(nominaSeleccionada && !nominaSeleccionada.periodo_id);
 
   const { data: periodos = [], isLoading: cargandoPeriodos } = useQuery({
     queryKey: ['rrhh', 'catalogos', 'periodos-evaluacion', 'activos'],
     queryFn: () =>
       rrhhService.listarPeriodosEvaluacion({ limit: 500, activo: true }),
   });
+
+  const { data: pagosDeNomina = [] } = useQuery({
+    queryKey: ['rrhh', 'pagos-resultado', 'nomina', nominaId || null],
+    queryFn: () =>
+      rrhhService.listarPagosResultado({
+        nomina_id: Number(nominaId),
+        limit: 1,
+      }),
+    enabled: nominaId !== '',
+  });
+  const pagoExistente = pagosDeNomina[0] ?? null;
 
   const {
     data: preview,
@@ -99,10 +132,30 @@ export function PagoResultadoNuevoPage() {
     enabled: !!periodoId,
   });
 
+  // Al elegir una nómina se preselecciona su periodo (editable). El monto
+  // arranca en cero: el usuario decide cuánto repartir.
+  useEffect(() => {
+    if (!nominaSeleccionada) return;
+    if (nominaInicializada.current === nominaSeleccionada.id) return;
+    nominaInicializada.current = nominaSeleccionada.id;
+    setNominaId(nominaSeleccionada.id);
+    if (nominaSeleccionada.periodo_id) {
+      periodoInicializado.current = null;
+      setPeriodoId(nominaSeleccionada.periodo_id);
+    }
+  }, [nominaSeleccionada]);
+
   // Un periodo solo se puede pagar una vez: el selector oculta los ya pagados.
+  // Se conserva el periodo de la nómina aunque ya esté pagado para mostrar el
+  // aviso en lugar de dejar el selector vacío.
   const periodosDisponibles = useMemo(
-    () => periodos.filter((periodo) => !periodo.pagado_x_resultado),
-    [periodos]
+    () =>
+      periodos.filter(
+        (periodo) =>
+          !periodo.pagado_x_resultado ||
+          periodo.id_periodo_evaluacion === periodoId
+      ),
+    [periodos, periodoId]
   );
 
   const periodoSeleccionado = periodos.find(
@@ -178,6 +231,7 @@ export function PagoResultadoNuevoPage() {
   const createMutation = useMutation({
     mutationFn: () =>
       rrhhService.crearPagoResultado({
+        nomina_id: Number(nominaId),
         periodo_evaluacion_id: Number(periodoId),
         descripcion: descripcion.trim() || null,
         inicio_periodo: inicio,
@@ -188,6 +242,7 @@ export function PagoResultadoNuevoPage() {
     onSuccess: (creado) => {
       toast.success('Pago por resultado creado');
       queryClient.invalidateQueries({ queryKey: ['rrhh', 'pagos-resultado'] });
+      queryClient.invalidateQueries({ queryKey: ['rrhh', 'nomina'] });
       queryClient.invalidateQueries({
         queryKey: ['rrhh', 'catalogos', 'periodos-evaluacion'],
       });
@@ -200,6 +255,13 @@ export function PagoResultadoNuevoPage() {
   const onSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const errs: Record<string, string> = {};
+    if (nominaId === '') errs.nomina = 'Selecciona una nómina confirmada';
+    else if (pagoExistente) {
+      errs.nomina = 'Ya existe un pago por resultado para esta nómina';
+    } else if (sinPeriodo) {
+      errs.nomina =
+        'La nómina no tiene periodo; edítala y asígnale uno antes de pagar';
+    }
     if (!periodoId) errs.periodo = 'Selecciona un periodo';
     else if (yaPagado) {
       errs.periodo = 'Ya existe un pago por resultado para este periodo';
@@ -219,15 +281,20 @@ export function PagoResultadoNuevoPage() {
     createMutation.mutate();
   };
 
+  const volver = () =>
+    nominaParam
+      ? navigate(`/rrhh/nomina/${nominaParam}`)
+      : navigate('/rrhh/pagos-resultado');
+
   return (
     <div className="space-y-4 animate-fade-in-up">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <button
             type="button"
-            onClick={() => navigate('/rrhh/pagos-resultado')}
+            onClick={volver}
             className="rounded-md p-2 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700"
-            title="Volver al historial"
+            title={nominaParam ? 'Volver a la nómina' : 'Volver al historial'}
           >
             <ArrowLeft className="h-5 w-5" />
           </button>
@@ -239,7 +306,9 @@ export function PagoResultadoNuevoPage() {
               Nuevo pago por resultado
             </h1>
             <p className="text-sm text-slate-500">
-              Elige el periodo, revisa a los empleados y define el monto.
+              {nominaParam
+                ? 'Pago para una nómina concreta: revisa el periodo y define el monto.'
+                : 'Elige la nómina y el periodo, revisa a los empleados y define el monto.'}
             </p>
           </div>
         </div>
@@ -249,10 +318,100 @@ export function PagoResultadoNuevoPage() {
         <Card>
           <CardHeader className="pb-3">
             <h2 className="text-base font-semibold text-slate-900">
-              1. Periodo
+              1. Nómina y periodo
             </h2>
           </CardHeader>
           <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="nomina">Nómina *</Label>
+              {nominaFijada ? (
+                <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-sky-200 bg-sky-50/60 px-3 py-2">
+                  <div className="flex items-center gap-2">
+                    <Wallet className="h-4 w-4 text-sky-600" />
+                    <div>
+                      <p className="text-sm font-medium text-slate-900">
+                        {nominaDetalle?.descripcion ||
+                          `Nómina #${nominaParam}`}
+                      </p>
+                      <p className="text-xs text-slate-500">
+                        Nómina #{nominaParam}
+                      </p>
+                    </div>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => navigate(`/rrhh/nomina/${nominaParam}`)}
+                  >
+                    Ver nómina
+                  </Button>
+                </div>
+              ) : (
+                <select
+                  id="nomina"
+                  value={nominaId}
+                  disabled={cargandoNominas}
+                  onChange={(e) => {
+                    const id = e.target.value
+                      ? Number(e.target.value)
+                      : '';
+                    nominaInicializada.current = null;
+                    setNominaId(id);
+                    setErrores({});
+                  }}
+                  className={`w-full rounded-md border px-3 py-2 text-sm transition-all duration-200 focus:border-sky-500 focus:ring-2 focus:ring-sky-500 ${
+                    errores.nomina ? 'border-red-500' : 'border-slate-300'
+                  }`}
+                >
+                  <option value="">Selecciona una nómina confirmada</option>
+                  {nominas.map((nomina) => (
+                    <option key={nomina.id} value={nomina.id}>
+                      #{nomina.id} · {nomina.descripcion}
+                    </option>
+                  ))}
+                </select>
+              )}
+              {errores.nomina && (
+                <p className="flex items-center gap-1 text-xs text-red-600">
+                  <AlertCircle className="h-3 w-3" />
+                  {errores.nomina}
+                </p>
+              )}
+              {pagoExistente && (
+                <div className="flex flex-wrap items-center gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
+                  <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                  <span className="flex-1">
+                    Esta nómina ya tiene un pago por resultado.
+                  </span>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() =>
+                      navigate(
+                        `/rrhh/pagos-resultado/${pagoExistente.id_pago_x_resultado}`
+                      )
+                    }
+                  >
+                    Ver pago
+                  </Button>
+                </div>
+              )}
+              {sinPeriodo && (
+                <p className="flex items-start gap-1 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
+                  <AlertCircle className="mt-0.5 h-3 w-3 shrink-0" />
+                  Esta nómina no tiene periodo asignado. Edítala y asígnale uno
+                  antes de generar el pago por resultado.
+                </p>
+              )}
+              {!nominaFijada && nominas.length === 0 && !cargandoNominas && (
+                <p className="text-xs text-amber-600">
+                  No hay nóminas confirmadas. Confirma una nómina primero.
+                </p>
+              )}
+            </div>
+
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="periodo_evaluacion">
@@ -294,8 +453,7 @@ export function PagoResultadoNuevoPage() {
                 )}
                 {periodos.length === 0 && !cargandoPeriodos && (
                   <p className="text-xs text-amber-600">
-                    No hay periodos activos. Créalos en Catálogos → Periodos de
-                    evaluación.
+                    No hay periodos activos. Créalos en Catálogos → Periodos.
                   </p>
                 )}
                 {periodos.length > 0 &&
@@ -303,8 +461,8 @@ export function PagoResultadoNuevoPage() {
                   !cargandoPeriodos && (
                     <p className="text-xs text-amber-600">
                       Todos los periodos activos ya tienen pago por resultado.
-                      Crea un periodo nuevo en Catálogos → Periodos de
-                      evaluación para registrar otro pago.
+                      Crea un periodo nuevo en Catálogos → Periodos para
+                      registrar otro pago.
                     </p>
                   )}
                 {errores.periodo && (
@@ -378,7 +536,8 @@ export function PagoResultadoNuevoPage() {
             <CardContent className="flex flex-col items-center gap-2 py-10 text-center">
               <CalendarRange className="h-9 w-9 text-slate-300" />
               <p className="text-sm text-slate-600">
-                Selecciona un periodo para cargar a sus empleados evaluados.
+                Selecciona una nómina y su periodo para cargar a los empleados
+                evaluados.
               </p>
             </CardContent>
           </Card>
@@ -547,17 +706,16 @@ export function PagoResultadoNuevoPage() {
         )}
 
         <div className="flex flex-wrap items-center justify-end gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => navigate('/rrhh/pagos-resultado')}
-          >
+          <Button type="button" variant="outline" onClick={volver}>
             Cancelar
           </Button>
           <Button
             type="submit"
             disabled={
               createMutation.isPending ||
+              nominaId === '' ||
+              sinPeriodo ||
+              Boolean(pagoExistente) ||
               !periodoId ||
               yaPagado ||
               calculo.filas.length === 0

@@ -165,6 +165,8 @@ function ListaNominas({ onNueva }: { onNueva: () => void }) {
   const [menuPagos, setMenuPagos] = useState<{
     id: number;
     estado: RrhhEstadoNomina;
+    periodoId: number | null;
+    pagoResultadoId: number | null;
     cantidadPagos: number;
     totalPagado: number | string;
     x: number;
@@ -386,6 +388,9 @@ function ListaNominas({ onNueva }: { onNueva: () => void }) {
                                   : {
                                       id: fila.id,
                                       estado: fila.estado,
+                                      periodoId: fila.periodo_id,
+                                      pagoResultadoId:
+                                        fila.pago_resultado_id ?? null,
                                       cantidadPagos: fila.cantidad_pagos,
                                       totalPagado: fila.total_pagado,
                                       x: r.left,
@@ -425,22 +430,20 @@ function ListaNominas({ onNueva }: { onNueva: () => void }) {
                           <Pencil className="h-4 w-4" />
                         </ActionButton>
                         {fila.estado === 'pre_nomina' && (
-                          <>
-                            <ActionButton
-                              titulo="Confirmar nómina"
-                              onClick={() => setAConfirmar(fila)}
-                            >
-                              <CheckCircle2 className="h-4 w-4" />
-                            </ActionButton>
-                            <ActionButton
-                              titulo="Eliminar nómina"
-                              danger
-                              onClick={() => setAEliminar(fila)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </ActionButton>
-                          </>
+                          <ActionButton
+                            titulo="Confirmar nómina"
+                            onClick={() => setAConfirmar(fila)}
+                          >
+                            <CheckCircle2 className="h-4 w-4" />
+                          </ActionButton>
                         )}
+                        <ActionButton
+                          titulo="Eliminar nómina"
+                          danger
+                          onClick={() => setAEliminar(fila)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </ActionButton>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -470,7 +473,9 @@ function ListaNominas({ onNueva }: { onNueva: () => void }) {
         title="Eliminar nómina"
         message={
           aEliminar
-            ? `¿Seguro que quieres eliminar la nómina «${aEliminar.descripcion}»? Esta acción no se puede deshacer.`
+            ? aEliminar.estado === 'nomina'
+              ? `¿Seguro que quieres eliminar la nómina «${aEliminar.descripcion}»? También se borrarán los pagos de salario registrados por empleado. Esta acción no se puede deshacer.`
+              : `¿Seguro que quieres eliminar la nómina «${aEliminar.descripcion}»? Esta acción no se puede deshacer.`
             : ''
         }
         confirmText="Eliminar"
@@ -514,14 +519,31 @@ function ListaNominas({ onNueva }: { onNueva: () => void }) {
             </button>
             <button
               type="button"
+              disabled={
+                menuPagos.estado !== 'nomina' || !menuPagos.periodoId
+              }
+              title={
+                menuPagos.estado !== 'nomina'
+                  ? 'Confirma la nómina para generar el pago por resultado'
+                  : !menuPagos.periodoId
+                    ? 'La nómina no tiene periodo; asígnale uno antes de pagar'
+                    : 'Crear el pago por resultado de esta nómina'
+              }
               onClick={() => {
                 setMenuPagos(null);
-                navigate('/rrhh/pagos-resultado');
+                navigate(
+                  `/rrhh/pagos-resultado/nuevo?nomina=${menuPagos.id}`
+                );
               }}
-              className="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-700 transition-colors hover:bg-emerald-50 hover:text-emerald-700"
+              className="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-700 transition-colors hover:bg-emerald-50 hover:text-emerald-700 disabled:cursor-not-allowed disabled:text-gray-400 disabled:hover:bg-transparent disabled:hover:text-gray-400"
             >
               <Target className="h-4 w-4 text-emerald-600" />
               <span className="flex-1 text-left">Resultado</span>
+              {menuPagos.pagoResultadoId && (
+                <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">
+                  Pagado
+                </span>
+              )}
             </button>
           </div>,
           document.body

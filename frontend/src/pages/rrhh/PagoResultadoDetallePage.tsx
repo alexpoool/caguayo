@@ -103,8 +103,24 @@ export function PagoResultadoDetallePage() {
               Pago por resultado
               {data ? ` #${data.id_pago_x_resultado}` : ''}
             </h1>
-            <p className="text-sm text-slate-500">
-              {data?.periodo_nombre || 'Detalle del reparto por empleado'}
+            <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-slate-500">
+              <span>
+                {data?.periodo_nombre || 'Detalle del reparto por empleado'}
+              </span>
+              {data?.nomina_id && (
+                <>
+                  <span className="text-slate-300">·</span>
+                  <button
+                    type="button"
+                    onClick={() => navigate(`/rrhh/nomina/${data.nomina_id}`)}
+                    className="font-medium text-sky-700 hover:underline"
+                    title="Ver nómina"
+                  >
+                    Nómina{' '}
+                    {data.nomina_descripcion || `#${data.nomina_id}`}
+                  </button>
+                </>
+              )}
             </p>
           </div>
         </div>

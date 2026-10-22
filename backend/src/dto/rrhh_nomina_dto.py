@@ -126,6 +126,8 @@ class RrhhNominaListado(RrhhNominaRead):
     total_neto: Decimal = Decimal("0.00")
     total_pagado: Decimal = Decimal("0.00")
     cantidad_pagos: int = 0
+    # Pago por resultado vinculado (a lo sumo uno por nómina).
+    pago_resultado_id: Optional[int] = None
 
 
 class RrhhNominaSeleccion(SQLModel):

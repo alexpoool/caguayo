@@ -1,7 +1,8 @@
 """DTOs del submódulo RRHH — Pago por resultado.
 
-Un pago por resultado se arma sobre un periodo de evaluación completo. El
-usuario elige el periodo, revisa a los empleados con evaluación en ese
+Un pago por resultado pertenece a una nómina confirmada y se arma sobre un
+periodo de evaluación. El usuario elige la nómina y el periodo (que se
+preselecciona desde la nómina), revisa a los empleados con evaluación en ese
 periodo, descarta los que no correspondan y guarda el lote con el monto a
 repartir.
 
@@ -18,6 +19,8 @@ from sqlmodel import SQLModel
 
 
 class RrhhPagoResultadoCreate(SQLModel):
+    # Nómina confirmada de origen. Una nómina solo puede pagarse una vez.
+    nomina_id: int = Field(ge=1)
     periodo_evaluacion_id: int
     descripcion: Optional[str] = None
     inicio_periodo: date
@@ -42,6 +45,8 @@ class RrhhPagoResultadoEmpleadoRead(SQLModel):
 
 class RrhhPagoResultadoRead(SQLModel):
     id_pago_x_resultado: int
+    nomina_id: Optional[int] = None
+    nomina_descripcion: Optional[str] = None
     periodo_evaluacion_id: int
     periodo_nombre: Optional[str] = None
     descripcion: Optional[str] = None
@@ -57,6 +62,8 @@ class RrhhPagoResultadoRead(SQLModel):
 
 class RrhhPagoResultadoListado(SQLModel):
     id_pago_x_resultado: int
+    nomina_id: Optional[int] = None
+    nomina_descripcion: Optional[str] = None
     periodo_evaluacion_id: int
     periodo_nombre: Optional[str] = None
     descripcion: Optional[str] = None

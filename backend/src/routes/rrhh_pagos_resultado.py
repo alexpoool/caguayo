@@ -42,6 +42,7 @@ async def listar_pagos_resultado(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=1000),
     periodo_evaluacion_id: Optional[int] = Query(None, gt=0),
+    nomina_id: Optional[int] = Query(None, gt=0),
     db: AsyncSession = Depends(get_session),
 ):
     return await rrhh_pago_resultado_service.listar(
@@ -49,6 +50,7 @@ async def listar_pagos_resultado(
         skip=skip,
         limit=limit,
         periodo_evaluacion_id=periodo_evaluacion_id,
+        nomina_id=nomina_id,
     )
 
 

@@ -1,6 +1,7 @@
 """Pago por resultado: lote por periodo de evaluación y detalle por empleado.
 
-El lote reparte un monto total entre los empleados evaluados en un periodo:
+Cada lote pertenece a una **nómina** concreta (`nomina_id`, UNIQUE) y reparte
+un monto total entre los empleados evaluados en un periodo:
 
 - `promedio_general` y `suma_coeficientes_empleados` se calculan (no vienen
   del formulario) y se persisten para que el detalle y los reportes no
@@ -38,6 +39,10 @@ class RrhhPagoResultado(SQLModel, table=True):
             "periodo_evaluacion_id",
             name="uq_pago_resultado_periodo",
         ),
+        UniqueConstraint(
+            "nomina_id",
+            name="uq_pago_resultado_nomina",
+        ),
         CheckConstraint("fin_periodo >= inicio_periodo", name="chk_pago_resultado_fechas"),
         CheckConstraint("monto > 0", name="chk_pago_resultado_monto"),
         CheckConstraint(
@@ -62,6 +67,20 @@ class RrhhPagoResultado(SQLModel, table=True):
             ),
             nullable=False,
         )
+    )
+    # Nómina de origen. Nullable solo para el pago histórico creado antes de
+    # existir la relación; el DTO de alta la exige.
+    nomina_id: Optional[int] = Field(
+        default=None,
+        sa_column=Column(
+            Integer,
+            ForeignKey(
+                "nomina.id",
+                ondelete="RESTRICT",
+                name="fk_pago_resultado_nomina",
+            ),
+            nullable=True,
+        ),
     )
     descripcion: Optional[str] = None
     inicio_periodo: date = Field(sa_column=Column(Date, nullable=False))

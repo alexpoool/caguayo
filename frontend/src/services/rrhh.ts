@@ -699,6 +699,7 @@ export const rrhhService = {
     skip?: number;
     limit?: number;
     periodo_evaluacion_id?: number;
+    nomina_id?: number;
   }): Promise<RrhhPagoResultadoListado[]> => {
     return await apiClient.get('/rrhh/pagos-resultado', params);
   },

@@ -32,6 +32,7 @@ from src.models import (
     RrhhDepartamento,
     RrhhEmpleado,
     RrhhEvaluacion,
+    RrhhNomina,
     RrhhPagoResultado,
     RrhhPagoResultadoEmpleado,
     RrhhPeriodoEvaluacion,
@@ -69,6 +70,28 @@ class RrhhPagoResultadoService:
             .limit(1)
         )
         return res.first() is not None
+
+    async def _nomina_pagada(self, db: AsyncSession, nomina_id: int) -> bool:
+        """`True` si la nómina ya tiene un lote de pago por resultado."""
+        res = await db.exec(
+            select(RrhhPagoResultado.id_pago_x_resultado)
+            .where(RrhhPagoResultado.nomina_id == nomina_id)
+            .limit(1)
+        )
+        return res.first() is not None
+
+    async def _nomina_o_404(
+        self, db: AsyncSession, nomina_id: int
+    ) -> RrhhNomina:
+        nomina = await db.get(RrhhNomina, nomina_id)
+        if not nomina:
+            raise HTTPException(status_code=404, detail="La nómina no existe")
+        if nomina.estado != "nomina":
+            raise HTTPException(
+                status_code=400,
+                detail="Solo las nóminas confirmadas pueden generar un pago por resultado",
+            )
+        return nomina
 
     async def _periodo_o_404(
         self, db: AsyncSession, periodo_id: int, exigir_activo: bool = True
@@ -189,6 +212,7 @@ class RrhhPagoResultadoService:
         self, db: AsyncSession, lote: RrhhPagoResultado
     ) -> RrhhPagoResultadoRead:
         periodo = await db.get(RrhhPeriodoEvaluacion, lote.periodo_evaluacion_id)
+        nomina = await db.get(RrhhNomina, lote.nomina_id) if lote.nomina_id else None
 
         res = await db.exec(
             select(RrhhPagoResultadoEmpleado)
@@ -218,6 +242,8 @@ class RrhhPagoResultadoService:
 
         return RrhhPagoResultadoRead(
             id_pago_x_resultado=lote.id_pago_x_resultado,
+            nomina_id=lote.nomina_id,
+            nomina_descripcion=nomina.descripcion if nomina else None,
             periodo_evaluacion_id=lote.periodo_evaluacion_id,
             periodo_nombre=periodo.nombre if periodo else None,
             descripcion=lote.descripcion,
@@ -256,12 +282,15 @@ class RrhhPagoResultadoService:
         skip: int = 0,
         limit: int = 100,
         periodo_evaluacion_id: Optional[int] = None,
+        nomina_id: Optional[int] = None,
     ) -> List[RrhhPagoResultadoListado]:
         statement = select(RrhhPagoResultado)
         if periodo_evaluacion_id is not None:
             statement = statement.where(
                 RrhhPagoResultado.periodo_evaluacion_id == periodo_evaluacion_id
             )
+        if nomina_id is not None:
+            statement = statement.where(RrhhPagoResultado.nomina_id == nomina_id)
         statement = (
             statement.order_by(
                 RrhhPagoResultado.created_at.desc(),
@@ -284,6 +313,16 @@ class RrhhPagoResultadoService:
         )
         periodos = {p.id_periodo_evaluacion: p.nombre for p in periodos_res.all()}
 
+        nomina_ids = {lote.nomina_id for lote in lotes if lote.nomina_id}
+        nominas: Dict[int, str] = {}
+        if nomina_ids:
+            nominas_res = await db.exec(
+                select(RrhhNomina.id, RrhhNomina.descripcion).where(
+                    RrhhNomina.id.in_(nomina_ids)
+                )
+            )
+            nominas = {row[0]: row[1] for row in nominas_res.all()}
+
         resumen_res = await db.exec(
             select(
                 RrhhPagoResultadoEmpleado.pago_x_resultado_id,
@@ -301,6 +340,8 @@ class RrhhPagoResultadoService:
         return [
             RrhhPagoResultadoListado(
                 id_pago_x_resultado=lote.id_pago_x_resultado,
+                nomina_id=lote.nomina_id,
+                nomina_descripcion=nominas.get(lote.nomina_id),
                 periodo_evaluacion_id=lote.periodo_evaluacion_id,
                 periodo_nombre=periodos.get(lote.periodo_evaluacion_id),
                 descripcion=lote.descripcion,
@@ -389,6 +430,14 @@ class RrhhPagoResultadoService:
                 status_code=400, detail="Selecciona al menos un empleado para el pago"
             )
 
+        # La nómina debe existir, estar confirmada y no haber sido pagada.
+        await self._nomina_o_404(db, obj_in.nomina_id)
+        if await self._nomina_pagada(db, obj_in.nomina_id):
+            raise HTTPException(
+                status_code=409,
+                detail="Ya existe un pago por resultado para esta nómina",
+            )
+
         # Un periodo solo puede pagarse una vez por resultado. La restricción
         # UNIQUE de BD protege ante dos altas concurrentes; esta comprobación
         # devuelve un mensaje legible en el caso normal.
@@ -420,6 +469,7 @@ class RrhhPagoResultadoService:
         )
 
         lote = RrhhPagoResultado(
+            nomina_id=obj_in.nomina_id,
             periodo_evaluacion_id=periodo.id_periodo_evaluacion,
             descripcion=(obj_in.descripcion or "").strip() or None,
             inicio_periodo=obj_in.inicio_periodo,
