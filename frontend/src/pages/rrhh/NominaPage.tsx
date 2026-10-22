@@ -162,6 +162,7 @@ function ListaNominas({ onNueva }: { onNueva: () => void }) {
   const [estado, setEstado] = useState<RrhhEstadoNomina | ''>('');
   const [aConfirmar, setAConfirmar] = useState<RrhhNominaListado | null>(null);
   const [aEliminar, setAEliminar] = useState<RrhhNominaListado | null>(null);
+  const [descargando, setDescargando] = useState<number | null>(null);
 
   // Menú flotante de pagos (Salario / Resultado), con el mismo patrón que el
   // menú de opciones de Empleados: portal a `document.body` y posición fija.
@@ -267,6 +268,28 @@ function ListaNominas({ onNueva }: { onNueva: () => void }) {
       );
     },
   });
+
+  const descargarNomina = async (nomina: RrhhNominaListado) => {
+    if (descargando !== null) return;
+    setDescargando(nomina.id);
+    try {
+      const { blob, nombre } = await rrhhService.descargarReciboNomina(
+        nomina.id
+      );
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = nombre;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : 'No se pudo descargar la nómina'
+      );
+    } finally {
+      setDescargando(null);
+    }
+  };
 
   const hayFiltros = buscar.trim() !== '' || estado !== '';
 
@@ -422,9 +445,14 @@ function ListaNominas({ onNueva }: { onNueva: () => void }) {
                       <div className="flex items-center justify-end gap-1">
                         <ActionButton
                           titulo="Descargar nómina"
-                          onClick={() => toast('Próximamente')}
+                          onClick={() => descargarNomina(fila)}
+                          disabled={descargando !== null}
                         >
-                          <FileDown className="h-4 w-4" />
+                          {descargando === fila.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <FileDown className="h-4 w-4" />
+                          )}
                         </ActionButton>
                         <ActionButton
                           titulo={
@@ -1102,18 +1130,21 @@ function ActionButton({
   onClick,
   titulo,
   danger,
+  disabled,
 }: {
   children: React.ReactNode;
   onClick: () => void;
   titulo: string;
   danger?: boolean;
+  disabled?: boolean;
 }) {
   return (
     <button
       type="button"
       title={titulo}
       onClick={onClick}
-      className={`rounded-md p-1.5 transition-colors ${
+      disabled={disabled}
+      className={`rounded-md p-1.5 transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
         danger
           ? 'text-slate-400 hover:bg-red-50 hover:text-red-600'
           : 'text-slate-400 hover:bg-slate-100 hover:text-slate-700'
