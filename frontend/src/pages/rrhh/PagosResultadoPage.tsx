@@ -5,10 +5,10 @@ import { rrhhService } from '../../services/rrhh';
 import type { RrhhPagoResultadoListado } from '../../types/rrhh';
 import {
   AlertCircle,
+  ArrowLeft,
   Eye,
   Loader2,
   Plus,
-  RefreshCw,
   Target,
   Trash2,
   Users,
@@ -66,7 +66,6 @@ export function PagosResultadoPage() {
     isError,
     error,
     refetch,
-    isFetching,
   } = useQuery({
     queryKey: ['rrhh', 'pagos-resultado'],
     queryFn: () => rrhhService.listarPagosResultado({ limit: 500 }),
@@ -99,6 +98,14 @@ export function PagosResultadoPage() {
     <div className="space-y-4 animate-fade-in-up">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => navigate('/rrhh/nomina')}
+            className="rounded-md p-2 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700"
+            title="Volver a Nómina"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </button>
           <div className="rounded bg-gradient-to-br from-sky-500 to-sky-600 p-2 shadow-lg">
             <Target className="h-5 w-5 text-white" />
           </div>
@@ -112,17 +119,6 @@ export function PagosResultadoPage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => refetch()}
-            disabled={isLoading}
-            title="Actualizar"
-          >
-            <RefreshCw
-              className={`h-4 w-4 ${isFetching ? 'animate-spin' : ''}`}
-            />
-          </Button>
           <Button
             onClick={() => navigate('/rrhh/pagos-resultado/nuevo')}
             className={`gap-2 ${GRADIENTE}`}
