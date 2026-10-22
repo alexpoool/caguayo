@@ -11,6 +11,7 @@ Reglas comunes:
 - `calificaciones` no tiene columna `activo`: si está en uso devuelve 409.
 """
 
+from datetime import date
 from typing import List, Optional, Type
 
 from fastapi import HTTPException
@@ -83,9 +84,7 @@ class RrhhCatalogoService:
 
     # ── Validaciones ────────────────────────────────────────────────────────
 
-    async def _verificar_nombre_unico(
-        self, db: AsyncSession, nombre: str, excluir_id: Optional[int] = None
-    ) -> None:
+    def _validar_nombre(self, nombre: str) -> str:
         nombre = nombre.strip()
         if not nombre:
             raise HTTPException(status_code=400, detail="El nombre es obligatorio")
@@ -94,6 +93,12 @@ class RrhhCatalogoService:
                 status_code=400,
                 detail=f"El nombre no puede superar los {self.max_nombre} caracteres",
             )
+        return nombre
+
+    async def _verificar_nombre_unico(
+        self, db: AsyncSession, nombre: str, excluir_id: Optional[int] = None
+    ) -> None:
+        nombre = self._validar_nombre(nombre)
         statement = select(self.model).where(self.model.nombre == nombre)  # type: ignore[attr-defined]
         if excluir_id is not None:
             statement = statement.where(getattr(self.model, self.pk) != excluir_id)
@@ -251,20 +256,126 @@ class _TipoEvaluacionService(RrhhCatalogoService):
 
 
 class _PeriodoEvaluacionService(RrhhCatalogoService):
-    """`periodo_evaluaciones` es referenciado por evaluaciones y pagos."""
+    """`periodo_evaluaciones` es referenciado por evaluaciones y pagos.
+
+    A diferencia del resto de catálogos, el nombre no es único por sí solo:
+    dos «semanal» de semanas distintas son válidos. La unicidad es el rango
+    completo `(nombre, fecha_inicio, fecha_fin)`.
+    """
+
+    async def _verificar_periodo(
+        self,
+        db: AsyncSession,
+        nombre: str,
+        fecha_inicio: date,
+        fecha_fin: date,
+        excluir_id: Optional[int] = None,
+    ) -> str:
+        nombre = self._validar_nombre(nombre)
+        if fecha_fin < fecha_inicio:
+            raise HTTPException(
+                status_code=400,
+                detail="La fecha de fin debe ser posterior o igual a la de inicio",
+            )
+        statement = select(RrhhPeriodoEvaluacion).where(
+            RrhhPeriodoEvaluacion.nombre == nombre,
+            RrhhPeriodoEvaluacion.fecha_inicio == fecha_inicio,
+            RrhhPeriodoEvaluacion.fecha_fin == fecha_fin,
+        )
+        if excluir_id is not None:
+            statement = statement.where(
+                RrhhPeriodoEvaluacion.id_periodo_evaluacion != excluir_id
+            )
+        if (await db.exec(statement)).first():
+            raise HTTPException(
+                status_code=409,
+                detail=(
+                    f"Ya existe un periodo de evaluación llamado «{nombre}» "
+                    "con el mismo rango de fechas"
+                ),
+            )
+        return nombre
+
+    async def _pagados(self, db: AsyncSession, ids: List[int]) -> set[int]:
+        if not ids:
+            return set()
+        res = await db.exec(
+            select(RrhhPagoResultado.periodo_evaluacion_id)
+            .where(RrhhPagoResultado.periodo_evaluacion_id.in_(ids))
+            .distinct()
+        )
+        return set(res.all())
+
+    async def get(self, db: AsyncSession, id: int) -> SQLModel:
+        periodo = await super().get(db, id)
+        pagados = await self._pagados(db, [id])
+        return periodo.model_copy(
+            update={"pagado_x_resultado": id in pagados}
+        )
+
+    async def listar(
+        self,
+        db: AsyncSession,
+        skip: int = 0,
+        limit: int = 100,
+        activo: Optional[bool] = None,
+        buscar: Optional[str] = None,
+    ) -> List[SQLModel]:
+        periodos = await super().listar(
+            db, skip=skip, limit=limit, activo=activo, buscar=buscar
+        )
+        ids = [getattr(p, self.pk) for p in periodos]
+        pagados = await self._pagados(db, ids)
+        return [
+            p.model_copy(update={"pagado_x_resultado": getattr(p, self.pk) in pagados})
+            for p in periodos
+        ]
+
+    async def create(self, db: AsyncSession, obj_in: SQLModel) -> SQLModel:
+        data = obj_in.model_dump()
+        data["nombre"] = await self._verificar_periodo(
+            db, data["nombre"], data["fecha_inicio"], data["fecha_fin"]
+        )
+        db_obj = self.model(**data)
+        db.add(db_obj)
+        await db.commit()
+        await db.refresh(db_obj)
+        return await self.get(db, getattr(db_obj, self.pk))
 
     async def update(self, db: AsyncSession, id: int, obj_in: SQLModel) -> SQLModel:
-        """Sincroniza el texto legado `evaluaciones.periodo` al renombrar."""
+        """Actualiza el periodo y sincroniza el texto legado de evaluaciones."""
+        db_obj = await db.get(self.model, id)
+        if not db_obj:
+            raise HTTPException(
+                status_code=404, detail=f"{self.etiqueta} no encontrado"
+            )
         datos = obj_in.model_dump(exclude_unset=True)
-        resultado = await super().update(db, id, obj_in)
+        for campo in ("fecha_inicio", "fecha_fin"):
+            if campo in datos and datos[campo] is None:
+                raise HTTPException(
+                    status_code=400, detail="Las fechas del periodo son obligatorias"
+                )
+        nombre = await self._verificar_periodo(
+            db,
+            datos.get("nombre", db_obj.nombre),
+            datos.get("fecha_inicio", db_obj.fecha_inicio),
+            datos.get("fecha_fin", db_obj.fecha_fin),
+            excluir_id=id,
+        )
+        datos["nombre"] = nombre
+        for field, value in datos.items():
+            setattr(db_obj, field, value)
+        db.add(db_obj)
+        await db.commit()
+        await db.refresh(db_obj)
         if "nombre" in datos:
             await db.exec(
                 sa_update(RrhhEvaluacion)
                 .where(RrhhEvaluacion.periodo_evaluacion_id == id)
-                .values(periodo=resultado.nombre)
+                .values(periodo=nombre)
             )
             await db.commit()
-        return resultado
+        return await self.get(db, id)
 
     def _usos(self, id: int) -> List:
         return [

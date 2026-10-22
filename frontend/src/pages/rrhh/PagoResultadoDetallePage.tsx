@@ -68,6 +68,9 @@ export function PagoResultadoDetallePage() {
     onSuccess: () => {
       toast.success('Pago por resultado eliminado');
       queryClient.invalidateQueries({ queryKey: ['rrhh', 'pagos-resultado'] });
+      queryClient.invalidateQueries({
+        queryKey: ['rrhh', 'catalogos', 'periodos-evaluacion'],
+      });
       navigate('/rrhh/pagos-resultado');
     },
     onError: (err: any) =>

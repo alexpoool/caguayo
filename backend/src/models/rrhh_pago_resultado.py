@@ -34,6 +34,10 @@ def _now() -> datetime:
 class RrhhPagoResultado(SQLModel, table=True):
     __tablename__ = "pago_x_resultado"
     __table_args__ = (
+        UniqueConstraint(
+            "periodo_evaluacion_id",
+            name="uq_pago_resultado_periodo",
+        ),
         CheckConstraint("fin_periodo >= inicio_periodo", name="chk_pago_resultado_fechas"),
         CheckConstraint("monto > 0", name="chk_pago_resultado_monto"),
         CheckConstraint(

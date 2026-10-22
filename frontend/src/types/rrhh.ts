@@ -606,7 +606,12 @@ export interface RrhhPeriodoEvaluacion {
   id_periodo_evaluacion: number;
   nombre: string;
   descripcion: string | null;
+  /** Rango que desambigua periodos con el mismo nombre. */
+  fecha_inicio: string;
+  fecha_fin: string;
   activo: boolean;
+  /** Derivado: ya existe un lote de pago por resultado para este periodo. */
+  pagado_x_resultado: boolean;
   created_at?: string;
   updated_at?: string;
 }
@@ -652,6 +657,10 @@ export interface RrhhCatalogoConfig {
   tienePorcentaje: boolean;
   /** Tiene columna `valor` (calificaciones: escala ∈ {5, 10, 100}). */
   tieneValor: boolean;
+  /** Tiene rango de fechas obligatorio (periodos de evaluación). */
+  tieneFechas?: boolean;
+  /** Muestra el estado derivado `pagado_x_resultado`. */
+  tienePagado?: boolean;
   /** Longitud máxima del nombre según la restricción de BD. */
   maxNombre: number;
   descripcion: string;
@@ -750,6 +759,8 @@ export const RRHH_CATALOGOS: RrhhCatalogoConfig[] = [
     tieneActivo: true,
     tienePorcentaje: false,
     tieneValor: false,
+    tieneFechas: true,
+    tienePagado: true,
     maxNombre: 100,
     descripcion:
       'Periodos reutilizables para evaluar y repartir el pago por resultado.',
@@ -1033,6 +1044,8 @@ export interface RrhhPagoResultadoPreview {
   periodo_nombre: string | null;
   inicio_periodo: string | null;
   fin_periodo: string | null;
+  /** El periodo ya tiene un lote de pago por resultado. */
+  pagado_x_resultado: boolean;
   empleados: RrhhPagoResultadoCandidato[];
 }
 

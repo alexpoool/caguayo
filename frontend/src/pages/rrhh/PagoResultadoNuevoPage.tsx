@@ -52,6 +52,24 @@ const fmtNumero = (v: number | string | null | undefined, max = 4) =>
         maximumFractionDigits: max,
       }).format(Number(v));
 
+const fmtFecha = (v: string | null | undefined) => {
+  if (!v) return '—';
+  const [anio, mes, dia] = v.split('-');
+  if (!anio || !mes || !dia) return v;
+  return `${dia}/${mes}/${anio}`;
+};
+
+/** Etiqueta del selector: el rango desambigua nombres repetidos. */
+const etiquetaPeriodo = (periodo: {
+  nombre: string;
+  fecha_inicio: string;
+  fecha_fin: string;
+  pagado_x_resultado: boolean;
+}) =>
+  `${periodo.nombre} (${fmtFecha(periodo.fecha_inicio)} – ${fmtFecha(
+    periodo.fecha_fin
+  )})${periodo.pagado_x_resultado ? ' · Pagado' : ''}`;
+
 const GRADIENTE =
   'bg-gradient-to-r from-sky-500 to-sky-600 hover:from-sky-600 hover:to-sky-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300';
 
@@ -93,6 +111,13 @@ export function PagoResultadoNuevoPage() {
     enabled: !!periodoId,
   });
 
+  const periodoSeleccionado = periodos.find(
+    (periodo) => periodo.id_periodo_evaluacion === periodoId
+  );
+  const yaPagado = Boolean(
+    periodoSeleccionado?.pagado_x_resultado || preview?.pagado_x_resultado
+  );
+
   useEffect(() => {
     if (!preview) return;
     if (periodoInicializado.current === preview.periodo_evaluacion_id) return;
@@ -100,9 +125,14 @@ export function PagoResultadoNuevoPage() {
     setSeleccionados(
       new Set(preview.empleados.map((empleado) => empleado.empleado_id))
     );
-    setInicio(preview.inicio_periodo || hoyISO());
-    setFin(preview.fin_periodo || hoyISO());
-  }, [preview]);
+    // Las fechas del catálogo mandan; el preview queda como respaldo si el
+    // periodo es legado y no tiene rango propio.
+    const periodo = periodos.find(
+      (p) => p.id_periodo_evaluacion === preview.periodo_evaluacion_id
+    );
+    setInicio(periodo?.fecha_inicio || preview.inicio_periodo || hoyISO());
+    setFin(periodo?.fecha_fin || preview.fin_periodo || hoyISO());
+  }, [preview, periodos]);
 
   const calculo = useMemo(() => {
     const datos = (preview?.empleados ?? []).filter((empleado) =>
@@ -167,6 +197,9 @@ export function PagoResultadoNuevoPage() {
     onSuccess: (creado) => {
       toast.success('Pago por resultado creado');
       queryClient.invalidateQueries({ queryKey: ['rrhh', 'pagos-resultado'] });
+      queryClient.invalidateQueries({
+        queryKey: ['rrhh', 'catalogos', 'periodos-evaluacion'],
+      });
       navigate(`/rrhh/pagos-resultado/${creado.id_pago_x_resultado}`);
     },
     onError: (err: any) =>
@@ -177,6 +210,9 @@ export function PagoResultadoNuevoPage() {
     e.preventDefault();
     const errs: Record<string, string> = {};
     if (!periodoId) errs.periodo = 'Selecciona un periodo de evaluación';
+    else if (yaPagado) {
+      errs.periodo = 'Ya existe un pago por resultado para este periodo';
+    }
     if (!monto || Number(monto) <= 0)
       errs.monto = 'Introduce un monto mayor que cero';
     if (!inicio || !fin) errs.fechas = 'Completa el rango de fechas';
@@ -237,11 +273,14 @@ export function PagoResultadoNuevoPage() {
                   disabled={cargandoPeriodos}
                   onChange={(e) => {
                     const id = e.target.value ? Number(e.target.value) : '';
+                    const periodo = periodos.find(
+                      (p) => p.id_periodo_evaluacion === id
+                    );
                     periodoInicializado.current = null;
                     setPeriodoId(id);
                     setSeleccionados(new Set());
-                    setInicio(hoyISO());
-                    setFin(hoyISO());
+                    setInicio(periodo?.fecha_inicio || hoyISO());
+                    setFin(periodo?.fecha_fin || hoyISO());
                     setErrores({});
                   }}
                   className={`w-full rounded-md border px-3 py-2 text-sm transition-all duration-200 focus:border-sky-500 focus:ring-2 focus:ring-sky-500 ${
@@ -254,10 +293,17 @@ export function PagoResultadoNuevoPage() {
                       key={periodo.id_periodo_evaluacion}
                       value={periodo.id_periodo_evaluacion}
                     >
-                      {periodo.nombre}
+                      {etiquetaPeriodo(periodo)}
                     </option>
                   ))}
                 </select>
+                {yaPagado && (
+                  <p className="flex items-start gap-1 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
+                    <AlertCircle className="mt-0.5 h-3 w-3 shrink-0" />
+                    Ya existe un pago por resultado para este periodo. Elimínalo
+                    desde el historial antes de crear otro.
+                  </p>
+                )}
                 {periodos.length === 0 && !cargandoPeriodos && (
                   <p className="text-xs text-amber-600">
                     No hay periodos activos. Créalos en Catálogos → Periodos de
@@ -516,6 +562,7 @@ export function PagoResultadoNuevoPage() {
             disabled={
               createMutation.isPending ||
               !periodoId ||
+              yaPagado ||
               calculo.filas.length === 0
             }
             className={`gap-2 ${GRADIENTE}`}

@@ -61,6 +61,15 @@ class RrhhPagoResultadoService:
 
     # ── Resolución de candidatos ───────────────────────────────────────────
 
+    async def _periodo_pagado(self, db: AsyncSession, periodo_id: int) -> bool:
+        """`True` si el periodo ya tiene un lote de pago por resultado."""
+        res = await db.exec(
+            select(RrhhPagoResultado.id_pago_x_resultado)
+            .where(RrhhPagoResultado.periodo_evaluacion_id == periodo_id)
+            .limit(1)
+        )
+        return res.first() is not None
+
     async def _periodo_o_404(
         self, db: AsyncSession, periodo_id: int, exigir_activo: bool = True
     ) -> RrhhPeriodoEvaluacion:
@@ -159,6 +168,9 @@ class RrhhPagoResultadoService:
             periodo_nombre=periodo.nombre,
             inicio_periodo=inicio,
             fin_periodo=fin,
+            pagado_x_resultado=await self._periodo_pagado(
+                db, periodo.id_periodo_evaluacion
+            ),
             empleados=[
                 RrhhPagoResultadoCandidato(
                     empleado_id=f["empleado_id"],
@@ -375,6 +387,16 @@ class RrhhPagoResultadoService:
         if not obj_in.empleado_ids:
             raise HTTPException(
                 status_code=400, detail="Selecciona al menos un empleado para el pago"
+            )
+
+        # Un periodo solo puede pagarse una vez por resultado. La restricción
+        # UNIQUE de BD protege ante dos altas concurrentes; esta comprobación
+        # devuelve un mensaje legible en el caso normal.
+        periodo = await self._periodo_o_404(db, obj_in.periodo_evaluacion_id)
+        if await self._periodo_pagado(db, periodo.id_periodo_evaluacion):
+            raise HTTPException(
+                status_code=409,
+                detail="Ya existe un pago por resultado para este periodo",
             )
 
         periodo, candidatos = await self._candidatos(

@@ -5,10 +5,11 @@ el prefijo `Rrhh` para no colisionar con `TipoContrato` (ventas) y `Pago`
 (ventas) ya existentes en el paquete de modelos.
 """
 
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 from typing import Optional
 
+from sqlalchemy import CheckConstraint, Column, Date, UniqueConstraint
 from sqlmodel import Field, SQLModel
 
 
@@ -85,12 +86,27 @@ class RrhhPeriodoEvaluacion(SQLModel, table=True):
     """
 
     __tablename__ = "periodo_evaluaciones"
+    __table_args__ = (
+        UniqueConstraint(
+            "nombre",
+            "fecha_inicio",
+            "fecha_fin",
+            name="uq_periodo_evaluaciones_nombre_fechas",
+        ),
+        CheckConstraint(
+            "fecha_fin >= fecha_inicio", name="chk_periodo_evaluacion_fechas"
+        ),
+    )
 
     id_periodo_evaluacion: Optional[int] = Field(
         default=None, primary_key=True, sa_column_kwargs={"autoincrement": True}
     )
-    nombre: str = Field(max_length=100, unique=True)
+    # El nombre puede repetirse si el rango de fechas es distinto: dos
+    # «semanal» de semanas diferentes son periodos distintos.
+    nombre: str = Field(max_length=100)
     descripcion: Optional[str] = None
+    fecha_inicio: date = Field(sa_column=Column(Date, nullable=False))
+    fecha_fin: date = Field(sa_column=Column(Date, nullable=False))
     activo: bool = Field(default=True)
     created_at: datetime = Field(
         default_factory=_now, sa_column_kwargs={"server_default": "CURRENT_TIMESTAMP"}

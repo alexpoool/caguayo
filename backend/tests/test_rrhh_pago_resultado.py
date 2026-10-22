@@ -15,6 +15,7 @@ BASE_PAGOS = "/api/v1/rrhh/pagos-resultado"
 TIPOS_EVAL = "/api/v1/rrhh/catalogos/tipos-evaluacion"
 
 JUNIO = ("2098-06-01", "2098-06-30")
+JULIO = ("2098-07-01", "2098-07-31")
 _TIPOS_CACHE: dict = {}
 
 
@@ -45,10 +46,12 @@ def _crear_empleado(client):
     return response.json()
 
 
-def _crear_periodo(client, nombre=None):
+def _crear_periodo(client, nombre=None, inicio=JUNIO[0], fin=JUNIO[1]):
     payload = {
         "nombre": nombre or f"2098-periodo-{_sufijo()}",
         "descripcion": "Periodo de prueba",
+        "fecha_inicio": inicio,
+        "fecha_fin": fin,
     }
     response = client.post(BASE_PERIODOS, json=payload)
     assert response.status_code == 201, response.text
@@ -127,15 +130,39 @@ def _importe(valor):
 
 
 class TestPeriodoEvaluacionCatalogo:
-    def test_crud_y_nombre_unico(self, client):
+    def test_crud_y_unicidad_por_nombre_y_fechas(self, client):
         creado = _crear_periodo(client)
+        otro = None
         try:
             assert creado["nombre"].startswith("2098-periodo-")
             assert creado["activo"] is True
+            assert creado["fecha_inicio"] == JUNIO[0]
+            assert creado["fecha_fin"] == JUNIO[1]
+            assert creado["pagado_x_resultado"] is False
 
-            # El nombre es único.
-            repetido = client.post(BASE_PERIODOS, json={"nombre": creado["nombre"]})
+            # Mismo nombre y mismas fechas: duplicado exacto.
+            repetido = client.post(
+                BASE_PERIODOS,
+                json={
+                    "nombre": creado["nombre"],
+                    "fecha_inicio": JUNIO[0],
+                    "fecha_fin": JUNIO[1],
+                },
+            )
             assert repetido.status_code == 409, repetido.text
+
+            # Mismo nombre con otro rango (dos «semanal»): permitido.
+            otro = _crear_periodo(
+                client, nombre=creado["nombre"], inicio=JULIO[0], fin=JULIO[1]
+            )
+            assert otro["id_periodo_evaluacion"] != creado["id_periodo_evaluacion"]
+
+            # El fin no puede ser anterior al inicio.
+            invalido = client.put(
+                f"{BASE_PERIODOS}/{creado['id_periodo_evaluacion']}",
+                json={"fecha_fin": "2098-05-01"},
+            )
+            assert invalido.status_code == 400, invalido.text
 
             response = client.put(
                 f"{BASE_PERIODOS}/{creado['id_periodo_evaluacion']}",
@@ -154,6 +181,10 @@ class TestPeriodoEvaluacionCatalogo:
                 for p in listado.json()
             )
         finally:
+            if otro:
+                client.delete(
+                    f"{BASE_PERIODOS}/{otro['id_periodo_evaluacion']}"
+                )
             client.delete(f"{BASE_PERIODOS}/{creado['id_periodo_evaluacion']}")
 
     def test_evaluacion_toma_el_periodo_del_catalogo(self, client):
@@ -223,6 +254,7 @@ class TestPagoPorResultado:
             assert len(datos_preview["empleados"]) == 3
             assert datos_preview["inicio_periodo"] == JUNIO[0]
             assert datos_preview["fin_periodo"] == JUNIO[1]
+            assert datos_preview["pagado_x_resultado"] is False
 
             todos = [e["id"] for e in empleados]
             response = client.post(
@@ -252,6 +284,29 @@ class TestPagoPorResultado:
                 Decimal("1333.30"),
             ]
 
+            # El catálogo y el preview reflejan que el periodo ya se pagó.
+            catalogo = client.get(
+                f"{BASE_PERIODOS}/{periodo['id_periodo_evaluacion']}"
+            )
+            assert catalogo.status_code == 200, catalogo.text
+            assert catalogo.json()["pagado_x_resultado"] is True
+            listado_catalogo = client.get(
+                BASE_PERIODOS, params={"buscar": periodo["nombre"]}
+            )
+            fila_catalogo = next(
+                p
+                for p in listado_catalogo.json()
+                if p["id_periodo_evaluacion"] == periodo["id_periodo_evaluacion"]
+            )
+            assert fila_catalogo["pagado_x_resultado"] is True
+            preview_pagado = client.get(
+                f"{BASE_PAGOS}/preview",
+                params={
+                    "periodo_evaluacion_id": periodo["id_periodo_evaluacion"]
+                },
+            )
+            assert preview_pagado.json()["pagado_x_resultado"] is True
+
             # Cambiar la nota de 4 a 5 debe recalcular el lote automáticamente.
             _puntuar_evaluacion(
                 client,
@@ -276,6 +331,34 @@ class TestPagoPorResultado:
                 Decimal("900.00"),
                 Decimal("1500.00"),
             ]
+
+            # Un periodo solo puede pagarse una vez por resultado.
+            repetido = client.post(
+                BASE_PAGOS,
+                json={
+                    "periodo_evaluacion_id": periodo["id_periodo_evaluacion"],
+                    "descripcion": "Segundo intento",
+                    "inicio_periodo": JUNIO[0],
+                    "fin_periodo": JUNIO[1],
+                    "monto": 500,
+                    "empleado_ids": todos[:2],
+                },
+            )
+            assert repetido.status_code == 409, repetido.text
+            assert "Ya existe un pago por resultado" in repetido.json()["detail"]
+
+            # Al eliminar el lote el periodo vuelve a estar disponible.
+            assert (
+                client.delete(
+                    f"{BASE_PAGOS}/{pago['id_pago_x_resultado']}"
+                ).status_code
+                == 200
+            )
+            pagos.remove(pago["id_pago_x_resultado"])
+            catalogo = client.get(
+                f"{BASE_PERIODOS}/{periodo['id_periodo_evaluacion']}"
+            )
+            assert catalogo.json()["pagado_x_resultado"] is False
 
             # Descartar al tercer empleado: solo se reparte entre los dos
             # seleccionados y se guardan solo sus filas.

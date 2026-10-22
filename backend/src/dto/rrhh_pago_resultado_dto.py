@@ -85,4 +85,5 @@ class RrhhPagoResultadoPreview(SQLModel):
     periodo_nombre: Optional[str] = None
     inicio_periodo: Optional[date] = None
     fin_periodo: Optional[date] = None
+    pagado_x_resultado: bool = False
     empleados: List[RrhhPagoResultadoCandidato]
