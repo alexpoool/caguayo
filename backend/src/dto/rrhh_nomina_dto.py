@@ -75,6 +75,8 @@ class RrhhNominaBase(SQLModel):
     inicio_periodo: date
     fin_periodo: date
     moneda_id: int = Field(ge=1)
+    # Método sugerido para los pagos del lote (opcional).
+    metodo_pago_id: Optional[int] = Field(default=None, ge=1)
     tasa: Decimal = Field(default=Decimal("1.0000"), decimal_places=4, max_digits=12, ge=0)
     porcentaje_impuesto: Decimal = Field(
         default=Decimal("0.00"), decimal_places=2, max_digits=5, ge=0, le=100
@@ -101,6 +103,7 @@ class RrhhNominaUpdate(SQLModel):
     inicio_periodo: Optional[date] = None
     fin_periodo: Optional[date] = None
     moneda_id: Optional[int] = Field(default=None, ge=1)
+    metodo_pago_id: Optional[int] = Field(default=None, ge=1)
     tasa: Optional[Decimal] = Field(default=None, decimal_places=4, max_digits=12, ge=0)
     porcentaje_impuesto: Optional[Decimal] = Field(
         default=None, decimal_places=2, max_digits=5, ge=0, le=100
@@ -120,6 +123,7 @@ class RrhhNominaListado(RrhhNominaRead):
     periodo_nombre: Optional[str] = None
     moneda_nombre: Optional[str] = None
     moneda_simbolo: Optional[str] = None
+    metodo_pago_nombre: Optional[str] = None
     cantidad_empleados: int = 0
     total_devengado: Decimal = Decimal("0.00")
     total_impuesto: Decimal = Decimal("0.00")

@@ -329,6 +329,12 @@ export function NominaDetallePage() {
               </span>
               <span className="text-slate-300">·</span>
               <span>Impuesto {fmtNumero(detalle.porcentaje_impuesto)}%</span>
+              {detalle.metodo_pago_nombre && (
+                <>
+                  <span className="text-slate-300">·</span>
+                  <span>Método {detalle.metodo_pago_nombre}</span>
+                </>
+              )}
             </p>
           </div>
         </div>

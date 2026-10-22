@@ -437,6 +437,8 @@ export interface RrhhNominaListado {
   estado: RrhhEstadoNomina;
   moneda_nombre: string | null;
   moneda_simbolo: string | null;
+  metodo_pago_id: number | null;
+  metodo_pago_nombre: string | null;
   cantidad_empleados: number;
   total_devengado: number | string;
   total_impuesto: number | string;
@@ -497,6 +499,7 @@ export interface RrhhNominaCreate {
   inicio_periodo: string;
   fin_periodo: string;
   moneda_id: number;
+  metodo_pago_id: number | null;
   tasa: number;
   porcentaje_impuesto: number;
 }

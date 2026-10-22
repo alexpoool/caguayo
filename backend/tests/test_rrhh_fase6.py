@@ -426,6 +426,46 @@ def test_listar_filtra_por_estado_y_busca(client):
         _limpiar_nomina(otra["id"])
 
 
+def test_metodo_pago_por_defecto_en_cabecera(client):
+    tipos = client.get("/api/v1/rrhh/catalogos/tipos-pago?limit=500").json()
+    assert tipos
+    metodo = tipos[0]
+    nomina = _crear_nomina(
+        client,
+        descripcion=f"Metodo-{_sufijo()}",
+        metodo_pago_id=metodo["id_tipo_pago"],
+    )
+    try:
+        assert nomina["metodo_pago_id"] == metodo["id_tipo_pago"]
+        assert nomina["metodo_pago_nombre"] == metodo["nombre"]
+
+        listado = client.get(
+            f"/api/v1/rrhh/nomina?buscar={nomina['descripcion']}"
+        ).json()
+        assert listado[0]["metodo_pago_id"] == metodo["id_tipo_pago"]
+        assert listado[0]["metodo_pago_nombre"] == metodo["nombre"]
+    finally:
+        _limpiar_nomina(nomina["id"])
+
+
+def test_metodo_pago_inexistente_da_404(client):
+    response = client.post(
+        "/api/v1/rrhh/nomina",
+        json={
+            "descripcion": f"Metodo-{_sufijo()}",
+            "periodo_id": _periodo_id(client),
+            "inicio_periodo": PERIODO_INICIO,
+            "fin_periodo": PERIODO_FIN,
+            "moneda_id": MONEDA_ID,
+            "metodo_pago_id": 999999,
+            "tasa": 1,
+            "porcentaje_impuesto": 0,
+        },
+    )
+    assert response.status_code == 404
+    assert response.json()["detail"] == "El método de pago no existe"
+
+
 # ═══════════════════════════════════════════════════════════════════════════
 # Candidatos y cálculos
 # ═══════════════════════════════════════════════════════════════════════════

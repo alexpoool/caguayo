@@ -134,6 +134,9 @@ class RrhhNominaService:
         periodos = await self._periodos_por_id(
             db, {f.periodo_id for f in filas if f.periodo_id}
         )
+        metodos_pago = await self._tipos_pago(
+            db, {f.metodo_pago_id for f in filas if f.metodo_pago_id}
+        )
         nomina_ids = [f.id for f in filas]
 
         totales: dict[int, tuple] = {}
@@ -179,6 +182,7 @@ class RrhhNominaService:
         return {
             "monedas": monedas,
             "periodos": periodos,
+            "metodos_pago": metodos_pago,
             "totales": totales,
             "pagos": pagos_por_nomina,
             "pagos_resultado": pagos_resultado,
@@ -203,6 +207,10 @@ class RrhhNominaService:
             estado=fila.estado,
             moneda_nombre=moneda.nombre if moneda else None,
             moneda_simbolo=moneda.simbolo if moneda else None,
+            metodo_pago_id=fila.metodo_pago_id,
+            metodo_pago_nombre=resolucion["metodos_pago"].get(
+                fila.metodo_pago_id
+            ),
             cantidad_empleados=int(cantidad),
             total_devengado=Decimal(str(devengado)),
             total_impuesto=Decimal(str(impuesto)),
@@ -233,6 +241,13 @@ class RrhhNominaService:
         moneda_id = datos.get("moneda_id")
         if moneda_id is not None and not await db.get(Moneda, moneda_id):
             raise HTTPException(status_code=404, detail="La moneda no existe")
+        metodo_pago_id = datos.get("metodo_pago_id")
+        if metodo_pago_id is not None and not await db.get(
+            RrhhTipoPago, metodo_pago_id
+        ):
+            raise HTTPException(
+                status_code=404, detail="El método de pago no existe"
+            )
 
     async def _buscar_o_404(self, db: AsyncSession, id: int) -> RrhhNomina:
         nomina = await db.get(RrhhNomina, id)

@@ -54,14 +54,22 @@ interface FilaPago {
 
 type CampoPago = keyof FilaPago;
 
-function filaInicial(empleado: RrhhNominaEmpleadoRead): FilaPago {
+function filaInicial(
+  empleado: RrhhNominaEmpleadoRead,
+  metodoPagoId?: number | null
+): FilaPago {
   return {
     fecha_pago: empleado.fecha_pago ?? '',
     monto:
       empleado.monto !== null && empleado.monto !== undefined
         ? String(Number(empleado.monto))
         : String(Number(empleado.neto_a_cobrar)),
-    metodo_id: empleado.metodo_id ? String(empleado.metodo_id) : '',
+    // El pago guardado manda; si está pendiente se propone el método del lote.
+    metodo_id: empleado.metodo_id
+      ? String(empleado.metodo_id)
+      : metodoPagoId
+        ? String(metodoPagoId)
+        : '',
     referencia: empleado.referencia ?? '',
   };
 }
@@ -148,6 +156,7 @@ export function NominaPagosPage() {
         .map((empleado) => empleado.metodo_id)
         .filter((id): id is number => id !== null)
     );
+    if (detalle?.metodo_pago_id) usados.add(detalle.metodo_pago_id);
     return metodos.filter(
       (metodo) => metodo.activo || usados.has(metodo.id_tipo_pago)
     );
@@ -157,7 +166,10 @@ export function NominaPagosPage() {
     if (!detalle) return;
     const siguiente: Record<number, FilaPago> = {};
     for (const empleado of detalle.empleados) {
-      siguiente[empleado.empleado_id] = filaInicial(empleado);
+      siguiente[empleado.empleado_id] = filaInicial(
+        empleado,
+        detalle.metodo_pago_id
+      );
     }
     setPagos(siguiente);
   }, [detalle]);

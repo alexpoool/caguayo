@@ -70,6 +70,19 @@ class RrhhNomina(SQLModel, table=True):
             nullable=False,
         )
     )
+    # Método de pago por defecto del lote; se propone al registrar los pagos.
+    metodo_pago_id: Optional[int] = Field(
+        default=None,
+        sa_column=Column(
+            Integer,
+            ForeignKey(
+                "tipos_pago.id_tipo_pago",
+                ondelete="RESTRICT",
+                name="fk_nomina_metodo_pago",
+            ),
+            nullable=True,
+        ),
+    )
     tasa: Decimal = Field(
         default=Decimal("1.0000"), decimal_places=4, max_digits=12
     )

@@ -74,6 +74,7 @@ const FORM_VACIO: {
   inicio_periodo: string;
   fin_periodo: string;
   moneda_id: number | '';
+  metodo_pago_id: number | '';
   tasa: string;
   porcentaje_impuesto: string;
 } = {
@@ -82,6 +83,7 @@ const FORM_VACIO: {
   inicio_periodo: '',
   fin_periodo: '',
   moneda_id: '',
+  metodo_pago_id: '',
   tasa: '1',
   porcentaje_impuesto: '5',
 };
@@ -597,6 +599,7 @@ export function NominaFormModal({
             inicio_periodo: nomina.inicio_periodo,
             fin_periodo: nomina.fin_periodo,
             moneda_id: nomina.moneda_id,
+            metodo_pago_id: nomina.metodo_pago_id ?? '',
             tasa: String(nomina.tasa),
             porcentaje_impuesto: String(nomina.porcentaje_impuesto),
           }
@@ -608,6 +611,12 @@ export function NominaFormModal({
   const { data: monedas = [] } = useQuery({
     queryKey: ['monedas'],
     queryFn: () => monedaService.getMonedas(0, 100),
+    enabled: isOpen,
+  });
+
+  const { data: metodosPago = [] } = useQuery({
+    queryKey: ['rrhh', 'catalogos', 'tipos-pago', 'activos'],
+    queryFn: () => rrhhService.listarTiposPago({ limit: 500, activo: true }),
     enabled: isOpen,
   });
 
@@ -678,6 +687,8 @@ export function NominaFormModal({
       inicio_periodo: form.inicio_periodo,
       fin_periodo: form.fin_periodo,
       moneda_id: form.moneda_id as number,
+      metodo_pago_id:
+        form.metodo_pago_id === '' ? null : Number(form.metodo_pago_id),
       tasa: Number(form.tasa),
       porcentaje_impuesto: Number(form.porcentaje_impuesto),
     });
@@ -792,6 +803,31 @@ export function NominaFormModal({
               <p className="text-xs text-red-500">{errores.moneda_id}</p>
             )}
           </div>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="metodo_pago">Método de pago (opcional)</Label>
+          <select
+            id="metodo_pago"
+            value={form.metodo_pago_id}
+            onChange={(e) =>
+              set(
+                'metodo_pago_id',
+                e.target.value === '' ? '' : Number(e.target.value)
+              )
+            }
+            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+          >
+            <option value="">Sin método por defecto</option>
+            {metodosPago.map((metodo) => (
+              <option key={metodo.id_tipo_pago} value={metodo.id_tipo_pago}>
+                {metodo.nombre}
+              </option>
+            ))}
+          </select>
+          <p className="text-xs text-slate-400">
+            Se propondrá al registrar los pagos; cada empleado puede cambiarlo.
+          </p>
         </div>
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
