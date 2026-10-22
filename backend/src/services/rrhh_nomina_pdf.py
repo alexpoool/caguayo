@@ -45,7 +45,9 @@ def generar_recibo_pdf(
 ) -> BytesIO:
     """Genera el PDF del lote de nómina con su detalle por empleado."""
     template = PDFTemplate(
-        title=ESTADOS.get(detalle.estado, "NÓMINA"), landscape_mode=True
+        title=ESTADOS.get(detalle.estado, "NÓMINA"),
+        landscape_mode=True,
+        title_centered=True,
     )
     template.set_company_header(name="Caguayo")
 
@@ -60,7 +62,7 @@ def generar_recibo_pdf(
             ],
             [
                 (
-                    "Rango",
+                    "Periodo de pago",
                     f"Del {_fmt_fecha(detalle.inicio_periodo)} al "
                     f"{_fmt_fecha(detalle.fin_periodo)}",
                 ),
