@@ -49,19 +49,28 @@ def generar_recibo_pdf(
     )
     template.set_company_header(name="Caguayo")
 
-    template.set_filters(
-        {
-            "Nómina": f"#{detalle.id} · {detalle.descripcion}",
-            "Periodo": (
-                f"{detalle.periodo_nombre or '—'} "
-                f"({_fmt_fecha(detalle.inicio_periodo)} al "
-                f"{_fmt_fecha(detalle.fin_periodo)})"
-            ),
-            "Moneda": detalle.moneda_nombre or "—",
-            "Tasa": _fmt_tasa(detalle.tasa),
-            "Impuesto": f"{_fmt_tasa(detalle.porcentaje_impuesto)} %",
-            "Empleados": str(len(detalle.empleados)),
-        }
+    moneda = detalle.moneda_nombre or "—"
+    if detalle.moneda_simbolo:
+        moneda = f"{moneda} ({detalle.moneda_simbolo})"
+    template.add_info_grid(
+        [
+            [
+                ("Nómina", detalle.descripcion),
+                ("Periodo", detalle.periodo_nombre or "—"),
+            ],
+            [
+                (
+                    "Rango",
+                    f"Del {_fmt_fecha(detalle.inicio_periodo)} al "
+                    f"{_fmt_fecha(detalle.fin_periodo)}",
+                ),
+                ("Moneda", f"{moneda} · tasa {_fmt_tasa(detalle.tasa)}"),
+            ],
+            [
+                ("Impuesto", f"{_fmt_tasa(detalle.porcentaje_impuesto)} %"),
+                ("Empleados", str(len(detalle.empleados))),
+            ],
+        ]
     )
 
     filas = []

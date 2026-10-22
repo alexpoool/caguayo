@@ -201,6 +201,16 @@ class PDFTemplate:
         )
         styles.add(
             ParagraphStyle(
+                "InfoText",
+                fontName="Helvetica",
+                fontSize=8,
+                alignment=TA_LEFT,
+                leading=11,
+                textColor=black,
+            )
+        )
+        styles.add(
+            ParagraphStyle(
                 "TableCell",
                 fontName="Helvetica",
                 fontSize=7,
@@ -477,6 +487,45 @@ class PDFTemplate:
             )
         )
         self.elements.append(note_table)
+        self.elements.append(Spacer(1, 4))
+
+    def add_info_grid(
+        self, rows: List[List[tuple[str, str]]]
+    ) -> None:
+        """Append a borderless info grid of label/value pairs.
+
+        Each row is a list of ``(label, value)`` tuples, normalmente dos
+        columnas. Se usa para los datos básicos de un documento.
+        """
+        if not rows:
+            return
+        self._has_content = True
+        data = [
+            [
+                Paragraph(
+                    f"<b>{self._escape(label)}:</b> {self._escape(value)}",
+                    self.styles["InfoText"],
+                )
+                for label, value in row
+            ]
+            for row in rows
+        ]
+        available_width = self.page_size[0] - 40
+        columnas = max(len(row) for row in rows)
+        ancho = available_width / columnas
+        table = Table(data, colWidths=[ancho] * columnas)
+        table.setStyle(
+            TableStyle(
+                [
+                    ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                    ("LEFTPADDING", (0, 0), (-1, -1), 0),
+                    ("RIGHTPADDING", (0, 0), (-1, -1), 8),
+                    ("TOPPADDING", (0, 0), (-1, -1), 1),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 1),
+                ]
+            )
+        )
+        self.elements.append(table)
         self.elements.append(Spacer(1, 4))
 
     def add_summary_line(self, label: str, value: str) -> None:
