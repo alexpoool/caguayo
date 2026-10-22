@@ -439,6 +439,7 @@ export interface RrhhNominaListado {
   moneda_simbolo: string | null;
   cantidad_empleados: number;
   total_devengado: number | string;
+  total_impuesto: number | string;
   total_deducciones: number | string;
   total_neto: number | string;
   total_pagado: number | string;

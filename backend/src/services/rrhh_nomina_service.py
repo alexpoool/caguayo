@@ -145,6 +145,7 @@ class RrhhNominaService:
                     RrhhNominaEmpleado.nomina_id,
                     func.count().label("cantidad"),
                     func.coalesce(func.sum(RrhhNominaEmpleado.devengado), 0),
+                    func.coalesce(func.sum(RrhhNominaEmpleado.impuesto), 0),
                     func.coalesce(func.sum(RrhhNominaEmpleado.deducciones), 0),
                     func.coalesce(func.sum(RrhhNominaEmpleado.neto_a_cobrar), 0),
                 )
@@ -152,7 +153,8 @@ class RrhhNominaService:
                 .group_by(RrhhNominaEmpleado.nomina_id)
             )
             totales = {
-                row[0]: (row[1], row[2], row[3], row[4]) for row in res.all()
+                row[0]: (row[1], row[2], row[3], row[4], row[5])
+                for row in res.all()
             }
 
             res = await db.exec(
@@ -184,9 +186,9 @@ class RrhhNominaService:
 
     def _construir_listado(self, fila, resolucion: dict) -> RrhhNominaListado:
         moneda = resolucion["monedas"].get(fila.moneda_id)
-        cantidad, devengado, deducciones, neto = resolucion["totales"].get(
-            fila.id, (0, CERO, CERO, CERO)
-        )
+        cantidad, devengado, impuesto, deducciones, neto = resolucion[
+            "totales"
+        ].get(fila.id, (0, CERO, CERO, CERO, CERO))
         cantidad_pagos, total_pagado = resolucion["pagos"].get(fila.id, (0, CERO))
         return RrhhNominaListado(
             id=fila.id,
@@ -203,6 +205,7 @@ class RrhhNominaService:
             moneda_simbolo=moneda.simbolo if moneda else None,
             cantidad_empleados=int(cantidad),
             total_devengado=Decimal(str(devengado)),
+            total_impuesto=Decimal(str(impuesto)),
             total_deducciones=Decimal(str(deducciones)),
             total_neto=Decimal(str(neto)),
             total_pagado=Decimal(str(total_pagado)),

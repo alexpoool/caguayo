@@ -521,6 +521,15 @@ def test_candidatos_impuesto_sobre_exceso(client):
         assert Decimal(str(fila["devengado"])) == Decimal("5080.00")
         assert Decimal(str(fila["impuesto"])) == Decimal("58.00")
         assert Decimal(str(fila["neto_a_cobrar"])) == Decimal("5022.00")
+
+        # El total de impuesto se expone en el detalle y en el listado.
+        assert _seleccionar(client, nomina["id"], [emp["id"]]).status_code == 200
+        detalle = client.get(f"/api/v1/rrhh/nomina/{nomina['id']}").json()
+        assert Decimal(str(detalle["total_impuesto"])) == Decimal("58.00")
+        listado = client.get(
+            f"/api/v1/rrhh/nomina?buscar={nomina['descripcion']}"
+        ).json()
+        assert Decimal(str(listado[0]["total_impuesto"])) == Decimal("58.00")
     finally:
         _limpiar_nomina(nomina["id"])
         _limpiar_asistencias(client, emp["id"])

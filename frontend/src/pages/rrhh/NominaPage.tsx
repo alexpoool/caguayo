@@ -334,6 +334,7 @@ function ListaNominas({ onNueva }: { onNueva: () => void }) {
                   <TableHead>Periodo</TableHead>
                   <TableHead>Rango</TableHead>
                   <TableHead>Estado</TableHead>
+                  <TableHead className="text-right">Impuesto</TableHead>
                   <TableHead className="text-right">Pagos</TableHead>
                   <TableHead className="text-right">Acciones</TableHead>
                 </TableRow>
@@ -365,6 +366,9 @@ function ListaNominas({ onNueva }: { onNueva: () => void }) {
                       >
                         {ETIQUETA_ESTADO_NOMINA[fila.estado]}
                       </span>
+                    </TableCell>
+                    <TableCell className="text-right text-sm tabular-nums text-slate-700">
+                      {fmtMoneda(fila.total_impuesto)}
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-2">
@@ -837,6 +841,9 @@ export function NominaFormModal({
               onChange={(e) => set('porcentaje_impuesto', e.target.value)}
               error={errores.porcentaje_impuesto}
             />
+            <p className="text-xs text-slate-400">
+              Solo se grava el exceso del devengado sobre el salario promedio.
+            </p>
           </div>
         </div>
 

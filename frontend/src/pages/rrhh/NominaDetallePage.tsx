@@ -18,6 +18,7 @@ import {
   Loader2,
   MinusCircle,
   Pencil,
+  Percent,
   Save,
   Users,
   Wallet,
@@ -409,7 +410,7 @@ export function NominaDetallePage() {
         </div>
       )}
 
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
         <Resumen
           titulo="Empleados"
           valor={String(detalle.cantidad_empleados)}
@@ -419,6 +420,11 @@ export function NominaDetallePage() {
           titulo="Total devengado"
           valor={fmtMoneda(detalle.total_devengado)}
           icono={CircleDollarSign}
+        />
+        <Resumen
+          titulo="Total impuesto"
+          valor={fmtMoneda(detalle.total_impuesto)}
+          icono={Percent}
         />
         <Resumen
           titulo="Total deducciones"

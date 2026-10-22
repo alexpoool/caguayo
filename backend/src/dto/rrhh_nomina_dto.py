@@ -122,6 +122,7 @@ class RrhhNominaListado(RrhhNominaRead):
     moneda_simbolo: Optional[str] = None
     cantidad_empleados: int = 0
     total_devengado: Decimal = Decimal("0.00")
+    total_impuesto: Decimal = Decimal("0.00")
     total_deducciones: Decimal = Decimal("0.00")
     total_neto: Decimal = Decimal("0.00")
     total_pagado: Decimal = Decimal("0.00")
