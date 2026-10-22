@@ -819,7 +819,7 @@ def test_guardar_pagos_por_empleado(client):
         assert all(f["nomina_descripcion"] == nomina["descripcion"] for f in filas)
         assert all(f["empleado_nombre"] for f in filas)
 
-        # El recibo incluye la tabla de pagos por empleado.
+        # El PDF de la nómina se descarga correctamente.
         recibo = client.get(f"/api/v1/rrhh/nomina/{nomina['id']}/recibo")
         assert recibo.status_code == 200
         assert recibo.content.startswith(b"%PDF")
@@ -1065,6 +1065,10 @@ def test_recibo_pdf(client):
         assert response.status_code == 200
         assert response.headers["content-type"].startswith("application/pdf")
         assert response.content.startswith(b"%PDF")
+        assert (
+            f'filename="nomina-2098-{nomina["id"]}.pdf"'
+            in response.headers["content-disposition"]
+        )
     finally:
         _limpiar_nomina(nomina["id"])
         _limpiar_asistencias(client, emp["id"])

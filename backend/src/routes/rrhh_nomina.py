@@ -161,10 +161,10 @@ async def recibo_nomina(
     nomina_id: int,
     db: AsyncSession = Depends(get_session),
 ):
-    """Descarga el recibo del lote en PDF."""
+    """Descarga la nómina del lote en PDF."""
     detalle = await rrhh_nomina_service.get(db, nomina_id)
     buffer = generar_recibo_pdf(detalle)
-    nombre = f"RECIBO-NOMINA-{nomina_id}.pdf"
+    nombre = f"nomina-{detalle.inicio_periodo.year}-{nomina_id}.pdf"
     return Response(
         content=buffer.getvalue(),
         media_type="application/pdf",

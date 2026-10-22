@@ -421,7 +421,7 @@ function ListaNominas({ onNueva }: { onNueva: () => void }) {
                     <TableCell>
                       <div className="flex items-center justify-end gap-1">
                         <ActionButton
-                          titulo="Descargar recibo"
+                          titulo="Descargar nómina"
                           onClick={() => toast('Próximamente')}
                         >
                           <FileDown className="h-4 w-4" />

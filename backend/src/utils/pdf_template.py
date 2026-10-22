@@ -479,6 +479,17 @@ class PDFTemplate:
         self.elements.append(note_table)
         self.elements.append(Spacer(1, 4))
 
+    def add_summary_line(self, label: str, value: str) -> None:
+        """Append a right-aligned bold summary line (e.g. total of a report)."""
+        self._has_content = True
+        self.elements.append(Spacer(1, 4))
+        self.elements.append(
+            Paragraph(
+                f"<b>{self._escape(label)}:</b> {self._escape(value)}",
+                self.styles["TotalsRow"],
+            )
+        )
+
     def add_signature_section(
         self,
         created_by: str,

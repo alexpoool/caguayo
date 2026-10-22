@@ -522,7 +522,7 @@ export const rrhhService = {
   },
 
   /**
-   * Descarga el recibo de una nómina en PDF.
+   * Descarga la nómina en PDF.
    *
    * Usa `fetch` directamente porque `apiClient` devuelve JSON; aquí la
    * respuesta es un blob, igual que en la exportación de fichas de costo.
@@ -535,11 +535,11 @@ export const rrhhService = {
     const resp = await fetch(`${base}/rrhh/nomina/${id}/recibo`, {
       headers: token ? { Authorization: `Bearer ${token}` } : {},
     });
-    if (!resp.ok) throw new Error('No se pudo generar el recibo');
+    if (!resp.ok) throw new Error('No se pudo generar la nómina');
     const blob = await resp.blob();
     const disp = resp.headers.get('Content-Disposition') || '';
     const m = /filename\*?=(?:"([^"]+)"|([^;]+))/.exec(disp);
-    const nombre = (m && (m[1] || m[2])?.replace(/"/g, '').trim()) || `RECIBO-NOMINA-${id}.pdf`;
+    const nombre = (m && (m[1] || m[2])?.replace(/"/g, '').trim()) || `nomina-${id}.pdf`;
     return { blob, nombre };
   },
 
