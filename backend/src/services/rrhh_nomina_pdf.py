@@ -56,21 +56,18 @@ def generar_recibo_pdf(
         moneda = f"{moneda} ({detalle.moneda_simbolo})"
     template.add_info_grid(
         [
+            [("Descripción", detalle.descripcion)],
             [
-                ("Nómina", detalle.descripcion),
                 ("Periodo", detalle.periodo_nombre or "—"),
-            ],
-            [
                 (
                     "Periodo de pago",
                     f"Del {_fmt_fecha(detalle.inicio_periodo)} al "
                     f"{_fmt_fecha(detalle.fin_periodo)}",
                 ),
-                ("Moneda", f"{moneda} · tasa {_fmt_tasa(detalle.tasa)}"),
             ],
             [
-                ("Impuesto", f"{_fmt_tasa(detalle.porcentaje_impuesto)} %"),
-                ("Empleados", str(len(detalle.empleados))),
+                ("Moneda", moneda),
+                ("Tasa", _fmt_tasa(detalle.tasa)),
             ],
         ]
     )
