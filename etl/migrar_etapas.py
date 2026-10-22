@@ -197,7 +197,11 @@ def _contrato_destino_por_legacy(conn):
     reclamados = set()
     salida = {}
     for id_legacy, c in _contrato_legacy_por_id().items():
-        base = texto(c.get("codigo_contrato")) or "LEG-%s" % id_legacy
+        # La Fase L guarda el código del contrato con el prefijo `FT.`
+        # (`migrar_contratos.preparar`): aquí hay que buscar las copias con el
+        # mismo prefijo, o ningún candidato existe y realizadores y
+        # liquidaciones quedan sin destino.
+        base = "FT.%s" % (texto(c.get("codigo_contrato")) or "LEG-%s" % id_legacy)
         candidatos = rl.copias_de_contrato(
             base, id_legacy, c.get("valor_contratocuc"), c.get("valor_contratocup"))
         por_simbolo = {}

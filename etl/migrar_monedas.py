@@ -45,7 +45,12 @@ def _leer(conn):
 
 
 def sembrar_monedas(registro=None, dry_run=True):
-    """Deja `moneda` con exactamente las filas de `MONEDAS`."""
+    """Deja `moneda` con exactamente las filas de `MONEDAS`.
+
+    Si la tabla ya tiene las cuatro filas canónicas tal cual, no toca nada: un
+    reemplazo sobre una base ya migrada reasignaría los ids y dejaría colgadas
+    las referencias de contrato, etapas y liquidaciones.
+    """
     registro = registro or Registro()
 
     with db.conexion() as conn:
@@ -53,6 +58,11 @@ def sembrar_monedas(registro=None, dry_run=True):
 
     print("  Antes:   %s" % (", ".join(s for _, _, s in actuales) or "(vacía)"))
     print("  Después: %s" % ", ".join(s for _, _, s in MONEDAS))
+
+    ya_siembra = {tuple(fila) for fila in MONEDAS}
+    if {tuple(fila) for fila in actuales} == ya_siembra:
+        print("  Ya es siembra: nada que hacer.")
+        return registro
 
     if dry_run:
         print("  SIMULACIÓN: se borrarían %d fila(s) y se insertarían %d"
