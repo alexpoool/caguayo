@@ -212,17 +212,36 @@ export function NominaPagosPage() {
 
   const guardarMutation = useMutation({
     mutationFn: () => {
-      const items: RrhhNominaPagoItem[] = (detalle?.empleados ?? []).map(
+      // Solo se envían las filas visibles y con una acción real. Las filas
+      // pendientes (sin fecha ni método) no se mandan: el backend las dejaría
+      // igual y enviar su monto 0 rompe la validación `gt=0`.
+      const items: RrhhNominaPagoItem[] = empleadosVisibles.flatMap(
         (empleado) => {
           const fila = pagos[empleado.empleado_id];
-          return {
-            empleado_id: empleado.empleado_id,
-            fecha_pago: fila?.fecha_pago || null,
-            monto:
-              fila && fila.monto.trim() !== '' ? Number(fila.monto) : null,
-            metodo_id: fila?.metodo_id ? Number(fila.metodo_id) : null,
-            referencia: fila?.referencia.trim() || null,
-          };
+          if (!fila) return [];
+
+          const tieneFecha = Boolean(fila.fecha_pago);
+          const tieneMetodo = Boolean(fila.metodo_id);
+          const monto =
+            fila.monto.trim() !== '' ? Number(fila.monto) : null;
+          const completa =
+            tieneFecha && tieneMetodo && monto !== null && monto > 0;
+          const teniaPago =
+            empleado.fecha_pago !== null && empleado.monto !== null;
+
+          // Sin pago completo: solo se envía si había uno previo, para
+          // quitarlo (fecha, método y monto en null).
+          if (!completa && !teniaPago) return [];
+
+          return [
+            {
+              empleado_id: empleado.empleado_id,
+              fecha_pago: completa ? fila.fecha_pago : null,
+              monto: completa ? monto : null,
+              metodo_id: completa ? Number(fila.metodo_id) : null,
+              referencia: completa ? fila.referencia.trim() || null : null,
+            },
+          ];
         }
       );
       return rrhhService.guardarPagosNomina(nominaId, items);
