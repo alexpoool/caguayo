@@ -45,6 +45,14 @@ const fmtFecha = (v: string | null | undefined) => {
   return `${dia}/${mes}/${anio}`;
 };
 
+/** Fecha ISO local (sin desfase de UTC) para los inputs tipo date. */
+const hoyISO = () => {
+  const d = new Date();
+  const mes = String(d.getMonth() + 1).padStart(2, '0');
+  const dia = String(d.getDate()).padStart(2, '0');
+  return `${d.getFullYear()}-${mes}-${dia}`;
+};
+
 interface FilaPago {
   fecha_pago: string;
   monto: string;
@@ -59,7 +67,8 @@ function filaInicial(
   metodoPagoId?: number | null
 ): FilaPago {
   return {
-    fecha_pago: empleado.fecha_pago ?? '',
+    // Sin pago guardado se propone hoy, igual que se propone el neto.
+    fecha_pago: empleado.fecha_pago ?? hoyISO(),
     monto:
       empleado.monto !== null && empleado.monto !== undefined
         ? String(Number(empleado.monto))
@@ -179,14 +188,15 @@ export function NominaPagosPage() {
     [empleadosVisibles]
   );
 
+  // El resumen cuenta solo los pagos ya guardados: la fecha viene propuesta
+  // con hoy, así que el estado del formulario no significa que ya se pagó.
   const resumen = useMemo(() => {
     const filas = empleadosVisibles;
     let pagados = 0;
     let totalPagado = 0;
     for (const empleado of filas) {
-      const fila = pagos[empleado.empleado_id];
-      if (!fila || !fila.fecha_pago || !fila.metodo_id) continue;
-      const monto = Number(fila.monto);
+      if (empleado.fecha_pago === null || empleado.monto === null) continue;
+      const monto = Number(empleado.monto);
       if (!Number.isFinite(monto) || monto <= 0) continue;
       pagados += 1;
       totalPagado += monto;
@@ -197,7 +207,7 @@ export function NominaPagosPage() {
       totalPagado,
       totalNeto: Number(detalle?.total_neto ?? 0),
     };
-  }, [empleadosVisibles, pagos, detalle?.total_neto]);
+  }, [empleadosVisibles, detalle?.total_neto]);
 
   const cambiar = (empleadoId: number, campo: CampoPago, valor: string) => {
     setPagos((prev) => ({
