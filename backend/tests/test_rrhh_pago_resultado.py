@@ -321,10 +321,12 @@ class TestPagoPorResultado:
 
             assert pago["nomina_id"] == nomina["id"]
             assert pago["nomina_descripcion"] == nomina["descripcion"]
+            # Sin indicarlo en el alta, el impuesto por defecto es 5 %.
+            assert Decimal(pago["porcentaje_impuesto"]) == Decimal("5.00")
             assert Decimal(pago["promedio_general"]) == Decimal("3.0000")
             assert Decimal(pago["suma_coeficientes_empleados"]) == Decimal("3.0000")
             importes = sorted(
-                _importe(fila["monto_individual"])
+                _importe(fila["devengado"])
                 for fila in pago["empleados"]
             )
             assert importes == [
@@ -372,7 +374,7 @@ class TestPagoPorResultado:
                 "3.3333"
             )
             importes = sorted(
-                _importe(fila["monto_individual"])
+                _importe(fila["devengado"])
                 for fila in actualizado_json["empleados"]
             )
             assert importes == [
@@ -445,6 +447,128 @@ class TestPagoPorResultado:
                 empleados=[e["id"] for e in empleados],
                 periodo=periodo,
             )
+
+    def test_impuesto_y_neto_a_cobrar(self, client):
+        periodo = _crear_periodo(client)
+        empleados = []
+        evaluaciones = []
+        filas_puntuadas = []
+        pagos = []
+        nominas = []
+        try:
+            # Notas 4, 2 y 3: coeficientes 1.3333, 0.6667 y 1.0000.
+            for nota in (4, 2, 3):
+                empleado = _crear_empleado(client)
+                empleados.append(empleado)
+                evaluacion = _crear_evaluacion(
+                    client, empleado["id"], periodo["id_periodo_evaluacion"]
+                )
+                evaluaciones.append(evaluacion)
+                filas_puntuadas.append(
+                    _puntuar_evaluacion(
+                        client, evaluacion["id"], empleado["id"], nota
+                    )
+                )
+
+            nomina = _crear_nomina(
+                client,
+                periodo["id_periodo_evaluacion"],
+                [e["id"] for e in empleados],
+            )
+            nominas.append(nomina["id"])
+
+            response = client.post(
+                BASE_PAGOS,
+                json={
+                    "nomina_id": nomina["id"],
+                    "periodo_evaluacion_id": periodo["id_periodo_evaluacion"],
+                    "descripcion": "Reparto con impuesto",
+                    "inicio_periodo": JUNIO[0],
+                    "fin_periodo": JUNIO[1],
+                    "monto": 3000,
+                    "porcentaje_impuesto": 10,
+                    "empleado_ids": [e["id"] for e in empleados],
+                },
+            )
+            assert response.status_code == 201, response.text
+            pago = response.json()
+            pagos.append(pago["id_pago_x_resultado"])
+            assert Decimal(pago["porcentaje_impuesto"]) == Decimal("10.00")
+
+            esperado = {
+                empleados[0]["id"]: ("1333.30", "133.33", "1199.97"),
+                empleados[1]["id"]: ("666.70", "66.67", "600.03"),
+                empleados[2]["id"]: ("1000.00", "100.00", "900.00"),
+            }
+            por_empleado = {
+                fila["empleado_id"]: fila for fila in pago["empleados"]
+            }
+            for empleado_id, (devengado, impuesto, neto) in esperado.items():
+                fila = por_empleado[empleado_id]
+                assert _importe(fila["devengado"]) == Decimal(devengado)
+                assert _importe(fila["impuesto"]) == Decimal(impuesto)
+                assert _importe(fila["neto_a_cobrar"]) == Decimal(neto)
+
+            listado = client.get(BASE_PAGOS, params={"limit": 1000}).json()
+            fila_lote = next(
+                p
+                for p in listado
+                if p["id_pago_x_resultado"] == pago["id_pago_x_resultado"]
+            )
+            assert _importe(fila_lote["total_pagado"]) == Decimal("3000.00")
+            assert _importe(fila_lote["total_impuesto"]) == Decimal("300.00")
+            assert _importe(fila_lote["total_neto"]) == Decimal("2700.00")
+
+            # Al repuntuar se recalcula con el porcentaje guardado en el lote.
+            _puntuar_evaluacion(
+                client,
+                evaluaciones[0]["id"],
+                empleados[0]["id"],
+                5,
+                objetivo_id=filas_puntuadas[0]["objetivo_id"],
+                fila_id=filas_puntuadas[0]["fila_id"],
+            )
+            actualizado = client.get(
+                f"{BASE_PAGOS}/{pago['id_pago_x_resultado']}"
+            ).json()
+            assert Decimal(actualizado["porcentaje_impuesto"]) == Decimal("10.00")
+            por_empleado = {
+                fila["empleado_id"]: fila
+                for fila in actualizado["empleados"]
+            }
+            assert _importe(por_empleado[empleados[0]["id"]]["devengado"]) == (
+                Decimal("1500.00")
+            )
+            assert _importe(por_empleado[empleados[0]["id"]]["impuesto"]) == (
+                Decimal("150.00")
+            )
+            assert _importe(
+                por_empleado[empleados[0]["id"]]["neto_a_cobrar"]
+            ) == Decimal("1350.00")
+        finally:
+            _limpiar(
+                client,
+                pagos=pagos,
+                nominas=nominas,
+                evaluaciones=[e["id"] for e in evaluaciones],
+                empleados=[e["id"] for e in empleados],
+                periodo=periodo,
+            )
+
+    def test_porcentaje_impuesto_fuera_de_rango_422(self, client):
+        response = client.post(
+            BASE_PAGOS,
+            json={
+                "nomina_id": 1,
+                "periodo_evaluacion_id": 1,
+                "inicio_periodo": JUNIO[0],
+                "fin_periodo": JUNIO[1],
+                "monto": 1000,
+                "porcentaje_impuesto": 101,
+                "empleado_ids": [1],
+            },
+        )
+        assert response.status_code == 422, response.text
 
     def test_crear_sin_nomina_422(self, client):
         response = client.post(

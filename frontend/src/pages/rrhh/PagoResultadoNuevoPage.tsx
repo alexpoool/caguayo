@@ -82,6 +82,7 @@ export function PagoResultadoNuevoPage() {
   const [periodoId, setPeriodoId] = useState<number | ''>('');
   const [descripcion, setDescripcion] = useState('');
   const [monto, setMonto] = useState('');
+  const [porcentaje, setPorcentaje] = useState('5');
   const [inicio, setInicio] = useState(hoyISO());
   const [fin, setFin] = useState(hoyISO());
   const [seleccionados, setSeleccionados] = useState<Set<number>>(new Set());
@@ -197,24 +198,37 @@ export function PagoResultadoNuevoPage() {
     );
     const sumaCoeficientes = coeficientes.reduce((acc, v) => acc + v, 0);
     const montoNumero = Number(monto) || 0;
-    const filas = datos.map((empleado, indice) => ({
-      ...empleado,
-      coeficiente: coeficientes[indice],
-      montoIndividual:
+    const porcentajeNumero = Math.min(
+      100,
+      Math.max(0, Number(porcentaje) || 0)
+    );
+    const filas = datos.map((empleado, indice) => {
+      // Mismo redondeo que el backend: 2 decimales por importe.
+      const devengado =
         sumaCoeficientes > 0
-          ? (coeficientes[indice] * montoNumero) / sumaCoeficientes
-          : 0,
-    }));
+          ? Math.round(
+              ((coeficientes[indice] * montoNumero) / sumaCoeficientes) * 100
+            ) / 100
+          : 0;
+      const impuesto =
+        Math.round(devengado * porcentajeNumero) / 100;
+      return {
+        ...empleado,
+        coeficiente: coeficientes[indice],
+        devengado,
+        impuesto,
+        netoACobrar: Math.round((devengado - impuesto) * 100) / 100,
+      };
+    });
     return {
       filas,
       promedio,
       sumaCoeficientes,
-      totalCalculado: filas.reduce(
-        (acc, fila) => acc + fila.montoIndividual,
-        0
-      ),
+      totalDevengado: filas.reduce((acc, fila) => acc + fila.devengado, 0),
+      totalImpuesto: filas.reduce((acc, fila) => acc + fila.impuesto, 0),
+      totalNeto: filas.reduce((acc, fila) => acc + fila.netoACobrar, 0),
     };
-  }, [preview, seleccionados, monto]);
+  }, [preview, seleccionados, monto, porcentaje]);
 
   const toggleEmpleado = (id: number) => {
     setSeleccionados((actual) => {
@@ -240,6 +254,7 @@ export function PagoResultadoNuevoPage() {
         inicio_periodo: inicio,
         fin_periodo: fin,
         monto: Number(monto),
+        porcentaje_impuesto: Number(porcentaje),
         empleado_ids: [...seleccionados],
       }),
     onSuccess: (creado) => {
@@ -271,6 +286,13 @@ export function PagoResultadoNuevoPage() {
     }
     if (!monto || Number(monto) <= 0)
       errs.monto = 'Introduce un monto mayor que cero';
+    if (
+      porcentaje === '' ||
+      Number.isNaN(Number(porcentaje)) ||
+      Number(porcentaje) < 0 ||
+      Number(porcentaje) > 100
+    )
+      errs.porcentaje = 'El porcentaje debe estar entre 0 y 100';
     if (!inicio || !fin) errs.fechas = 'Completa el rango de fechas';
     else if (fin < inicio)
       errs.fechas = 'El fin debe ser posterior o igual al inicio';
@@ -415,7 +437,7 @@ export function PagoResultadoNuevoPage() {
               )}
             </div>
 
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="grid gap-4 md:grid-cols-3">
               <div className="space-y-2">
                 <Label htmlFor="periodo_evaluacion">
                   Periodo *
@@ -504,6 +526,31 @@ export function PagoResultadoNuevoPage() {
                   <p className="flex items-center gap-1 text-xs text-red-600">
                     <AlertCircle className="h-3 w-3" />
                     {errores.monto}
+                  </p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="porcentaje">Porcentaje de impuesto *</Label>
+                <Input
+                  id="porcentaje"
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="0.01"
+                  value={porcentaje}
+                  onChange={(e) => setPorcentaje(e.target.value)}
+                  placeholder="5.00"
+                  className={errores.porcentaje ? 'border-red-500' : ''}
+                />
+                {errores.porcentaje ? (
+                  <p className="flex items-center gap-1 text-xs text-red-600">
+                    <AlertCircle className="h-3 w-3" />
+                    {errores.porcentaje}
+                  </p>
+                ) : (
+                  <p className="text-xs text-slate-500">
+                    Se descuenta del devengado de cada empleado.
                   </p>
                 )}
               </div>
@@ -627,8 +674,10 @@ export function PagoResultadoNuevoPage() {
                         <TableHead>Departamento</TableHead>
                         <TableHead className="text-right">Puntuación</TableHead>
                         <TableHead className="text-right">Coeficiente</TableHead>
+                        <TableHead className="text-right">Devengado</TableHead>
+                        <TableHead className="text-right">Impuesto</TableHead>
                         <TableHead className="text-right">
-                          Monto individual
+                          Neto a cobrar
                         </TableHead>
                       </TableRow>
                     </TableHeader>
@@ -666,7 +715,13 @@ export function PagoResultadoNuevoPage() {
                             {fmtNumero(fila.coeficiente)}
                           </TableCell>
                           <TableCell className="text-right font-semibold tabular-nums text-slate-900">
-                            {fmtMoneda(fila.montoIndividual)}
+                            {fmtMoneda(fila.devengado)}
+                          </TableCell>
+                          <TableCell className="text-right tabular-nums text-red-600">
+                            {fmtMoneda(fila.impuesto)}
+                          </TableCell>
+                          <TableCell className="text-right font-semibold tabular-nums text-emerald-700">
+                            {fmtMoneda(fila.netoACobrar)}
                           </TableCell>
                         </TableRow>
                       ))}
@@ -675,7 +730,7 @@ export function PagoResultadoNuevoPage() {
                 </div>
               )}
 
-              <div className="grid gap-3 rounded-lg border border-sky-100 bg-sky-50/60 p-3 sm:grid-cols-4">
+              <div className="grid gap-3 rounded-lg border border-sky-100 bg-sky-50/60 p-3 sm:grid-cols-2 lg:grid-cols-3">
                 <div>
                   <p className="text-xs font-medium uppercase tracking-wide text-sky-700">
                     Promedio general
@@ -702,19 +757,37 @@ export function PagoResultadoNuevoPage() {
                 </div>
                 <div>
                   <p className="text-xs font-medium uppercase tracking-wide text-sky-700">
-                    Total calculado
+                    Total devengado
                   </p>
                   <p className="mt-1 text-lg font-bold text-slate-900">
-                    {fmtMoneda(calculo.totalCalculado)}
+                    {fmtMoneda(calculo.totalDevengado)}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs font-medium uppercase tracking-wide text-sky-700">
+                    Total impuesto
+                  </p>
+                  <p className="mt-1 text-lg font-bold text-red-600">
+                    {fmtMoneda(calculo.totalImpuesto)}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs font-medium uppercase tracking-wide text-sky-700">
+                    Total neto a cobrar
+                  </p>
+                  <p className="mt-1 text-lg font-bold text-emerald-700">
+                    {fmtMoneda(calculo.totalNeto)}
                   </p>
                 </div>
               </div>
 
               <p className="flex items-start gap-1.5 text-xs text-slate-500">
                 <Calculator className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-                coeficiente = puntuación / promedio general · monto individual =
-                (coeficiente × monto) / suma de coeficientes. Estos valores los
-                recalcula el servidor al guardar.
+                coeficiente = puntuación / promedio general · devengado =
+                (coeficiente × monto) / suma de coeficientes · impuesto =
+                devengado × porcentaje / 100 · neto a cobrar = devengado −
+                impuesto.
+                Estos valores los recalcula el servidor al guardar.
               </p>
             </CardContent>
           </Card>

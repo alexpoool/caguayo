@@ -212,7 +212,9 @@ export function PagosResultadoPage() {
                     <TableHead className="text-center">Empleados</TableHead>
                     <TableHead className="text-right">Monto</TableHead>
                     <TableHead className="text-right">Promedio</TableHead>
-                    <TableHead className="text-right">Repartido</TableHead>
+                    <TableHead className="text-right">Devengado</TableHead>
+                    <TableHead className="text-right">Impuesto</TableHead>
+                    <TableHead className="text-right">Neto</TableHead>
                     <TableHead className="text-right">Acciones</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -265,6 +267,12 @@ export function PagosResultadoPage() {
                       </TableCell>
                       <TableCell className="text-right font-semibold tabular-nums text-slate-900">
                         {fmtMoneda(pago.total_pagado)}
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums text-red-600">
+                        {fmtMoneda(pago.total_impuesto)}
+                      </TableCell>
+                      <TableCell className="text-right font-semibold tabular-nums text-emerald-700">
+                        {fmtMoneda(pago.total_neto)}
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center justify-end gap-1">

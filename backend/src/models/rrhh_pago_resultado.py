@@ -7,7 +7,9 @@ un monto total entre los empleados evaluados en un periodo:
   del formulario) y se persisten para que el detalle y los reportes no
   dependan de recalcular en cada lectura.
 - `coeficiente = puntuacion / promedio_general`.
-- `monto_individual = (coeficiente × monto) / suma_coeficientes_empleados`.
+- `devengado = (coeficiente × monto) / suma_coeficientes_empleados`.
+- `impuesto = devengado × porcentaje_impuesto / 100`.
+- `neto_a_cobrar = devengado − impuesto`.
 
 Los importes y coeficientes se recalculan cuando cambia la puntuación de una
 evaluación del periodo.
@@ -45,6 +47,10 @@ class RrhhPagoResultado(SQLModel, table=True):
         ),
         CheckConstraint("fin_periodo >= inicio_periodo", name="chk_pago_resultado_fechas"),
         CheckConstraint("monto > 0", name="chk_pago_resultado_monto"),
+        CheckConstraint(
+            "porcentaje_impuesto >= 0 AND porcentaje_impuesto <= 100",
+            name="chk_pago_resultado_porcentaje",
+        ),
         CheckConstraint(
             "promedio_general >= 0", name="chk_pago_resultado_promedio"
         ),
@@ -86,6 +92,9 @@ class RrhhPagoResultado(SQLModel, table=True):
     inicio_periodo: date = Field(sa_column=Column(Date, nullable=False))
     fin_periodo: date = Field(sa_column=Column(Date, nullable=False))
     monto: Decimal = Field(decimal_places=2, max_digits=12)
+    porcentaje_impuesto: Decimal = Field(
+        default=Decimal("0.00"), decimal_places=2, max_digits=5
+    )
     promedio_general: Decimal = Field(
         default=Decimal("0.0000"), decimal_places=4, max_digits=8
     )
@@ -111,7 +120,13 @@ class RrhhPagoResultadoEmpleado(SQLModel, table=True):
         CheckConstraint("puntuacion >= 0", name="chk_pago_resultado_emp_puntuacion"),
         CheckConstraint("coeficiente >= 0", name="chk_pago_resultado_emp_coeficiente"),
         CheckConstraint(
-            "monto_individual >= 0", name="chk_pago_resultado_emp_monto"
+            "devengado >= 0", name="chk_pago_resultado_emp_devengado"
+        ),
+        CheckConstraint(
+            "impuesto >= 0", name="chk_pago_resultado_emp_impuesto"
+        ),
+        CheckConstraint(
+            "neto_a_cobrar >= 0", name="chk_pago_resultado_emp_neto"
         ),
     )
 
@@ -151,7 +166,9 @@ class RrhhPagoResultadoEmpleado(SQLModel, table=True):
     )
     puntuacion: Decimal = Field(decimal_places=4, max_digits=8)
     coeficiente: Decimal = Field(decimal_places=4, max_digits=12)
-    monto_individual: Decimal = Field(decimal_places=2, max_digits=12)
+    devengado: Decimal = Field(decimal_places=2, max_digits=12)
+    impuesto: Decimal = Field(decimal_places=2, max_digits=12)
+    neto_a_cobrar: Decimal = Field(decimal_places=2, max_digits=12)
     created_at: datetime = Field(
         default_factory=_now, sa_column_kwargs={"server_default": "CURRENT_TIMESTAMP"}
     )

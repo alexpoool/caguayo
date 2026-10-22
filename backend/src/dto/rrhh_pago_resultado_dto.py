@@ -7,7 +7,8 @@ periodo, descarta los que no correspondan y guarda el lote con el monto a
 repartir.
 
 Los campos calculados (`promedio_general`, `suma_coeficientes_empleados`,
-`coeficiente` y `monto_individual`) nunca se aceptan desde el formulario.
+`coeficiente`, `devengado`, `impuesto` y `neto_a_cobrar`) nunca se aceptan
+desde el formulario.
 """
 
 from datetime import date, datetime
@@ -26,6 +27,14 @@ class RrhhPagoResultadoCreate(SQLModel):
     inicio_periodo: date
     fin_periodo: date
     monto: Decimal = Field(gt=0, max_digits=12, decimal_places=2)
+    # Impuesto que se descuenta del devengado de cada empleado.
+    porcentaje_impuesto: Decimal = Field(
+        default=Decimal("5.00"),
+        decimal_places=2,
+        max_digits=5,
+        ge=0,
+        le=100,
+    )
     # Empleados que el usuario dejó seleccionados en el formulario. Debe
     # incluir al menos uno con evaluación en el periodo.
     empleado_ids: List[int]
@@ -40,7 +49,9 @@ class RrhhPagoResultadoEmpleadoRead(SQLModel):
     departamento_nombre: Optional[str] = None
     puntuacion: Decimal
     coeficiente: Decimal
-    monto_individual: Decimal
+    devengado: Decimal
+    impuesto: Decimal
+    neto_a_cobrar: Decimal
 
 
 class RrhhPagoResultadoRead(SQLModel):
@@ -53,6 +64,7 @@ class RrhhPagoResultadoRead(SQLModel):
     inicio_periodo: date
     fin_periodo: date
     monto: Decimal
+    porcentaje_impuesto: Decimal = Decimal("0.00")
     promedio_general: Decimal
     suma_coeficientes_empleados: Decimal
     empleados: List[RrhhPagoResultadoEmpleadoRead]
@@ -70,10 +82,14 @@ class RrhhPagoResultadoListado(SQLModel):
     inicio_periodo: date
     fin_periodo: date
     monto: Decimal
+    porcentaje_impuesto: Decimal = Decimal("0.00")
     promedio_general: Decimal
     suma_coeficientes_empleados: Decimal
     empleados_count: int = 0
+    # Suma de devengados del lote (lo repartido antes del impuesto).
     total_pagado: Decimal = Decimal("0.00")
+    total_impuesto: Decimal = Decimal("0.00")
+    total_neto: Decimal = Decimal("0.00")
     created_at: Optional[datetime] = None
 
 

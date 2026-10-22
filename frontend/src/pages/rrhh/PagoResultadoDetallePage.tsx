@@ -35,11 +35,11 @@ const fmtMoneda = (v: number | string | null | undefined) =>
         maximumFractionDigits: 2,
       }).format(Number(v));
 
-const fmtNumero = (v: number | string | null | undefined) =>
+const fmtNumero = (v: number | string | null | undefined, max = 4) =>
   v === null || v === undefined || v === ''
     ? '—'
     : new Intl.NumberFormat('es-CU', {
-        maximumFractionDigits: 4,
+        maximumFractionDigits: max,
       }).format(Number(v));
 
 const fmtFecha = (v: string | null | undefined) => {
@@ -77,11 +77,14 @@ export function PagoResultadoDetallePage() {
       toast.error(err?.message || 'No se pudo eliminar el pago'),
   });
 
-  const totalIndividual =
-    data?.empleados.reduce(
-      (acc, fila) => acc + Number(fila.monto_individual),
-      0
-    ) ?? 0;
+  const totales = (data?.empleados ?? []).reduce(
+    (acc, fila) => ({
+      devengado: acc.devengado + Number(fila.devengado),
+      impuesto: acc.impuesto + Number(fila.impuesto),
+      neto: acc.neto + Number(fila.neto_a_cobrar),
+    }),
+    { devengado: 0, impuesto: 0, neto: 0 }
+  );
 
   return (
     <div className="space-y-4 animate-fade-in-up">
@@ -159,7 +162,7 @@ export function PagoResultadoDetallePage() {
         </Card>
       ) : (
         <>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
             <Card>
               <CardContent className="p-4">
                 <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
@@ -167,6 +170,29 @@ export function PagoResultadoDetallePage() {
                 </p>
                 <p className="mt-1 text-2xl font-bold text-slate-900">
                   {fmtMoneda(data.monto)}
+                </p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4">
+                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                  Impuesto
+                </p>
+                <p className="mt-1 text-2xl font-bold text-red-600">
+                  {fmtMoneda(totales.impuesto)}
+                </p>
+                <p className="text-xs text-slate-500">
+                  {fmtNumero(data.porcentaje_impuesto, 2)} %
+                </p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4">
+                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                  Neto a cobrar
+                </p>
+                <p className="mt-1 text-2xl font-bold text-emerald-700">
+                  {fmtMoneda(totales.neto)}
                 </p>
               </CardContent>
             </Card>
@@ -220,6 +246,9 @@ export function PagoResultadoDetallePage() {
                     {fmtFecha(data.fin_periodo)}
                   </p>
                   <p className="mt-0.5">
+                    Impuesto: {fmtNumero(data.porcentaje_impuesto, 2)} %
+                  </p>
+                  <p className="mt-0.5">
                     Registrado:{' '}
                     {data.created_at
                       ? new Date(data.created_at).toLocaleString('es-CU')
@@ -237,8 +266,10 @@ export function PagoResultadoDetallePage() {
                       <TableHead>Departamento</TableHead>
                       <TableHead className="text-right">Puntuación</TableHead>
                       <TableHead className="text-right">Coeficiente</TableHead>
+                      <TableHead className="text-right">Devengado</TableHead>
+                      <TableHead className="text-right">Impuesto</TableHead>
                       <TableHead className="text-right">
-                        Monto individual
+                        Neto a cobrar
                       </TableHead>
                       <TableHead className="text-right">Evaluación</TableHead>
                     </TableRow>
@@ -264,7 +295,13 @@ export function PagoResultadoDetallePage() {
                           {fmtNumero(fila.coeficiente)}
                         </TableCell>
                         <TableCell className="text-right font-semibold tabular-nums text-slate-900">
-                          {fmtMoneda(fila.monto_individual)}
+                          {fmtMoneda(fila.devengado)}
+                        </TableCell>
+                        <TableCell className="text-right tabular-nums text-red-600">
+                          {fmtMoneda(fila.impuesto)}
+                        </TableCell>
+                        <TableCell className="text-right font-semibold tabular-nums text-emerald-700">
+                          {fmtMoneda(fila.neto_a_cobrar)}
                         </TableCell>
                         <TableCell className="text-right">
                           <button
@@ -288,12 +325,21 @@ export function PagoResultadoDetallePage() {
               <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-3 text-sm">
                 <p className="flex items-start gap-1.5 text-xs text-slate-500">
                   <Calculator className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-                  coeficiente = puntuación / promedio general · monto individual
-                  = (coeficiente × monto) / suma de coeficientes.
+                  coeficiente = puntuación / promedio general · devengado =
+                  (coeficiente × monto) / suma de coeficientes · impuesto =
+                  devengado × porcentaje / 100 · neto = devengado − impuesto.
                 </p>
-                <p className="font-semibold text-slate-900">
-                  Total repartido: {fmtMoneda(totalIndividual)}
-                </p>
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-right font-semibold">
+                  <span className="text-slate-700">
+                    Devengado: {fmtMoneda(totales.devengado)}
+                  </span>
+                  <span className="text-red-600">
+                    Impuesto: {fmtMoneda(totales.impuesto)}
+                  </span>
+                  <span className="text-emerald-700">
+                    Neto: {fmtMoneda(totales.neto)}
+                  </span>
+                </div>
               </div>
             </CardContent>
           </Card>

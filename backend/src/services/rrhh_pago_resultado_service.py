@@ -4,7 +4,9 @@ Fórmulas (confirmadas con el usuario):
 
 - `promedio_general` = media de las puntuaciones seleccionadas.
 - `coeficiente = puntuacion / promedio_general`.
-- `monto_individual = (coeficiente × monto) / suma_coeficientes_empleados`.
+- `devengado = (coeficiente × monto) / suma_coeficientes_empleados`.
+- `impuesto = devengado × porcentaje_impuesto / 100`.
+- `neto_a_cobrar = devengado − impuesto`.
 
 Los cálculos se hacen con `Decimal` y se persisten. Cuando cambia la
 puntuación de una evaluación, el servicio de evaluaciones llama a
@@ -250,6 +252,7 @@ class RrhhPagoResultadoService:
             inicio_periodo=lote.inicio_periodo,
             fin_periodo=lote.fin_periodo,
             monto=lote.monto,
+            porcentaje_impuesto=lote.porcentaje_impuesto,
             promedio_general=lote.promedio_general,
             suma_coeficientes_empleados=lote.suma_coeficientes_empleados,
             empleados=[
@@ -268,7 +271,9 @@ class RrhhPagoResultadoService:
                     ),
                     puntuacion=f.puntuacion,
                     coeficiente=f.coeficiente,
-                    monto_individual=f.monto_individual,
+                    devengado=f.devengado,
+                    impuesto=f.impuesto,
+                    neto_a_cobrar=f.neto_a_cobrar,
                 )
                 for f in filas
             ],
@@ -327,13 +332,22 @@ class RrhhPagoResultadoService:
             select(
                 RrhhPagoResultadoEmpleado.pago_x_resultado_id,
                 func.count(RrhhPagoResultadoEmpleado.id_pago_x_resultado_empleado),
-                func.coalesce(func.sum(RrhhPagoResultadoEmpleado.monto_individual), 0),
+                func.coalesce(func.sum(RrhhPagoResultadoEmpleado.devengado), 0),
+                func.coalesce(func.sum(RrhhPagoResultadoEmpleado.impuesto), 0),
+                func.coalesce(
+                    func.sum(RrhhPagoResultadoEmpleado.neto_a_cobrar), 0
+                ),
             )
             .where(RrhhPagoResultadoEmpleado.pago_x_resultado_id.in_(ids))
             .group_by(RrhhPagoResultadoEmpleado.pago_x_resultado_id)
         )
         resumen = {
-            fila[0]: {"count": fila[1], "total": Decimal(fila[2] or 0)}
+            fila[0]: {
+                "count": fila[1],
+                "total": Decimal(fila[2] or 0),
+                "impuesto": Decimal(fila[3] or 0),
+                "neto": Decimal(fila[4] or 0),
+            }
             for fila in resumen_res.all()
         }
 
@@ -348,6 +362,7 @@ class RrhhPagoResultadoService:
                 inicio_periodo=lote.inicio_periodo,
                 fin_periodo=lote.fin_periodo,
                 monto=lote.monto,
+                porcentaje_impuesto=lote.porcentaje_impuesto,
                 promedio_general=lote.promedio_general,
                 suma_coeficientes_empleados=lote.suma_coeficientes_empleados,
                 empleados_count=resumen.get(
@@ -355,6 +370,12 @@ class RrhhPagoResultadoService:
                 ).get("count", 0),
                 total_pagado=resumen.get(lote.id_pago_x_resultado, {}).get(
                     "total", CERO
+                ),
+                total_impuesto=resumen.get(
+                    lote.id_pago_x_resultado, {}
+                ).get("impuesto", CERO),
+                total_neto=resumen.get(lote.id_pago_x_resultado, {}).get(
+                    "neto", CERO
                 ),
                 created_at=lote.created_at,
             )
@@ -373,12 +394,15 @@ class RrhhPagoResultadoService:
     def _calcular_filas(
         filas: List[dict],
         monto: Decimal,
+        porcentaje_impuesto: Decimal = CERO,
     ) -> tuple[Decimal, Decimal, List[dict]]:
         """Devuelve (promedio, suma de coeficientes, filas actualizadas).
 
         Espera dicts con al menos `puntuacion`; conserva el resto de claves.
         Los coeficientes se calculan con el promedio **redondeado a 4
         decimales** y el promedio general también se persiste redondeado.
+        El devengado se redondea a 2 decimales antes de calcular el impuesto,
+        de modo que `neto = devengado − impuesto` cuadre al centavo.
         """
         if not filas:
             raise HTTPException(
@@ -410,10 +434,15 @@ class RrhhPagoResultadoService:
                 detail="La suma de coeficientes es cero; no se puede repartir el monto",
             )
 
+        porcentaje = Decimal(porcentaje_impuesto or 0)
         for fila in filas:
-            fila["monto_individual"] = _q2(
+            devengado = _q2(
                 (fila["coeficiente"] * Decimal(monto)) / suma_coeficientes
             )
+            impuesto = _q2(devengado * porcentaje / Decimal("100"))
+            fila["devengado"] = devengado
+            fila["impuesto"] = impuesto
+            fila["neto_a_cobrar"] = _q2(devengado - impuesto)
 
         return promedio, suma_coeficientes, filas
 
@@ -465,7 +494,7 @@ class RrhhPagoResultadoService:
 
         seleccionados = [candidatos_por_empleado[i] for i in ids]
         promedio, suma_coeficientes, seleccionados = self._calcular_filas(
-            seleccionados, obj_in.monto
+            seleccionados, obj_in.monto, obj_in.porcentaje_impuesto
         )
 
         lote = RrhhPagoResultado(
@@ -475,6 +504,7 @@ class RrhhPagoResultadoService:
             inicio_periodo=obj_in.inicio_periodo,
             fin_periodo=obj_in.fin_periodo,
             monto=obj_in.monto,
+            porcentaje_impuesto=obj_in.porcentaje_impuesto,
             promedio_general=promedio,
             suma_coeficientes_empleados=suma_coeficientes,
         )
@@ -489,7 +519,9 @@ class RrhhPagoResultadoService:
                     evaluacion_id=fila["evaluacion_id"],
                     puntuacion=fila["puntuacion"],
                     coeficiente=fila["coeficiente"],
-                    monto_individual=fila["monto_individual"],
+                    devengado=fila["devengado"],
+                    impuesto=fila["impuesto"],
+                    neto_a_cobrar=fila["neto_a_cobrar"],
                 )
             )
 
@@ -559,14 +591,21 @@ class RrhhPagoResultadoService:
 
         try:
             promedio, suma_coeficientes, calculadas = self._calcular_filas(
-                vigentes, lote.monto
+                vigentes, lote.monto, lote.porcentaje_impuesto
             )
         except HTTPException:
             # Sin puntuaciones: conservar el lote pero con importes a cero.
             promedio = Decimal("0.0000")
             suma_coeficientes = Decimal("0.0000")
             calculadas = [
-                {**fila, "puntuacion": CERO, "coeficiente": CERO, "monto_individual": CERO}
+                {
+                    **fila,
+                    "puntuacion": CERO,
+                    "coeficiente": CERO,
+                    "devengado": CERO,
+                    "impuesto": CERO,
+                    "neto_a_cobrar": CERO,
+                }
                 for fila in vigentes
             ]
 
@@ -574,7 +613,9 @@ class RrhhPagoResultadoService:
             fila = calculada["fila"]
             fila.puntuacion = calculada["puntuacion"]
             fila.coeficiente = calculada["coeficiente"]
-            fila.monto_individual = calculada["monto_individual"]
+            fila.devengado = calculada["devengado"]
+            fila.impuesto = calculada["impuesto"]
+            fila.neto_a_cobrar = calculada["neto_a_cobrar"]
             fila.updated_at = datetime.now()
             db.add(fila)
 

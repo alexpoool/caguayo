@@ -1057,7 +1057,9 @@ export interface RrhhPagoResultadoEmpleado {
   departamento_nombre: string | null;
   puntuacion: number | string;
   coeficiente: number | string;
-  monto_individual: number | string;
+  devengado: number | string;
+  impuesto: number | string;
+  neto_a_cobrar: number | string;
 }
 
 export interface RrhhPagoResultado {
@@ -1070,6 +1072,7 @@ export interface RrhhPagoResultado {
   inicio_periodo: string;
   fin_periodo: string;
   monto: number | string;
+  porcentaje_impuesto: number | string;
   promedio_general: number | string;
   suma_coeficientes_empleados: number | string;
   empleados: RrhhPagoResultadoEmpleado[];
@@ -1087,10 +1090,14 @@ export interface RrhhPagoResultadoListado {
   inicio_periodo: string;
   fin_periodo: string;
   monto: number | string;
+  porcentaje_impuesto: number | string;
   promedio_general: number | string;
   suma_coeficientes_empleados: number | string;
   empleados_count: number;
+  /** Suma de devengados (antes del impuesto). */
   total_pagado: number | string;
+  total_impuesto: number | string;
+  total_neto: number | string;
   created_at?: string;
 }
 
@@ -1101,6 +1108,7 @@ export interface RrhhPagoResultadoCreate {
   inicio_periodo: string;
   fin_periodo: string;
   monto: number;
+  porcentaje_impuesto: number;
   empleado_ids: number[];
 }
 
