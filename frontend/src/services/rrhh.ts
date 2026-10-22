@@ -242,6 +242,14 @@ export const rrhhService = {
     return await apiClient.get('/rrhh/catalogos/periodos-evaluacion', params);
   },
 
+  /** Alta rápida desde los formularios que seleccionan un periodo. */
+  crearPeriodoEvaluacion: async (data: {
+    nombre: string;
+    descripcion?: string | null;
+  }): Promise<RrhhPeriodoEvaluacion> => {
+    return await apiClient.post('/rrhh/catalogos/periodos-evaluacion', data);
+  },
+
   // ── Departamentos ────────────────────────────────────────────────────────
   listarDepartamentos: async (params?: {
     skip?: number;

@@ -42,6 +42,7 @@ import {
   ConfirmModal,
   Modal,
 } from "../../components/ui";
+import { ModalNuevoPeriodo } from "../../components/rrhh/ModalNuevoPeriodo";
 
 /** Fecha ISO local (sin desfase de UTC) para los inputs tipo date. */
 const hoyISO = () => {
@@ -85,6 +86,7 @@ export function EvaluacionesPage() {
 
   const [searchTerm, setSearchTerm] = useState("");
   const [formOpen, setFormOpen] = useState(false);
+  const [modalPeriodo, setModalPeriodo] = useState(false);
   const [confirmDelete, setConfirmDelete] =
     useState<RrhhEvaluacionListado | null>(null);
 
@@ -461,35 +463,47 @@ export function EvaluacionesPage() {
                 <Hash className="h-4 w-4 text-purple-500" />
                 Periodo
               </Label>
-              <select
-                id="periodo"
-                value={formData.periodo_evaluacion_id ?? ""}
-                onChange={(e) => {
-                  const id = e.target.value ? Number(e.target.value) : null;
-                  const periodo = periodosEvaluacion.find(
-                    (p) => p.id_periodo_evaluacion === id
-                  );
-                  setFormData({
-                    ...formData,
-                    periodo_evaluacion_id: id,
-                    periodo: periodo?.nombre ?? "",
-                  });
-                }}
-                className={`w-full rounded-md border px-3 py-2 text-sm transition-all duration-200 focus:ring-2 focus:ring-sky-500 focus:border-sky-500 ${
-                  formErrors.periodo ? "border-red-500" : "border-slate-300"
-                }`}
-              >
-                <option value="">Selecciona un periodo</option>
-                {periodosEvaluacion.map((p) => (
-                  <option
-                    key={p.id_periodo_evaluacion}
-                    value={p.id_periodo_evaluacion}
-                  >
-                    {p.nombre}
-                    {p.pagado_x_resultado ? " · Pagado" : ""}
-                  </option>
-                ))}
-              </select>
+              <div className="flex items-start gap-2">
+                <select
+                  id="periodo"
+                  value={formData.periodo_evaluacion_id ?? ""}
+                  onChange={(e) => {
+                    const id = e.target.value ? Number(e.target.value) : null;
+                    const periodo = periodosEvaluacion.find(
+                      (p) => p.id_periodo_evaluacion === id
+                    );
+                    setFormData({
+                      ...formData,
+                      periodo_evaluacion_id: id,
+                      periodo: periodo?.nombre ?? "",
+                    });
+                  }}
+                  className={`w-full flex-1 rounded-md border px-3 py-2 text-sm transition-all duration-200 focus:ring-2 focus:ring-sky-500 focus:border-sky-500 ${
+                    formErrors.periodo ? "border-red-500" : "border-slate-300"
+                  }`}
+                >
+                  <option value="">Selecciona un periodo</option>
+                  {periodosEvaluacion.map((p) => (
+                    <option
+                      key={p.id_periodo_evaluacion}
+                      value={p.id_periodo_evaluacion}
+                    >
+                      {p.nombre}
+                      {p.pagado_x_resultado ? " · Pagado" : ""}
+                    </option>
+                  ))}
+                </select>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setModalPeriodo(true)}
+                  title="Nuevo periodo"
+                  className="shrink-0"
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
               {formErrors.periodo && (
                 <p className="flex items-center gap-1 text-xs text-red-600">
                   <AlertCircle className="h-3 w-3" />
@@ -612,6 +626,19 @@ export function EvaluacionesPage() {
           </div>
         </form>
       </Modal>
+
+      <ModalNuevoPeriodo
+        isOpen={modalPeriodo}
+        onClose={() => setModalPeriodo(false)}
+        onCreado={(periodo) => {
+          setFormData((prev) => ({
+            ...prev,
+            periodo_evaluacion_id: periodo.id_periodo_evaluacion,
+            periodo: periodo.nombre,
+          }));
+          setFormErrors((prev) => ({ ...prev, periodo: "" }));
+        }}
+      />
 
       <ConfirmModal
         isOpen={confirmDelete !== null}

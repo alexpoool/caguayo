@@ -9,6 +9,7 @@ import {
   CalendarRange,
   Check,
   Loader2,
+  Plus,
   Save,
   Target,
   Users,
@@ -30,6 +31,7 @@ import {
   TableHeader,
   TableRow,
 } from '../../components/ui';
+import { ModalNuevoPeriodo } from '../../components/rrhh/ModalNuevoPeriodo';
 
 const hoyISO = () => {
   const d = new Date();
@@ -84,6 +86,7 @@ export function PagoResultadoNuevoPage() {
   const [fin, setFin] = useState(hoyISO());
   const [seleccionados, setSeleccionados] = useState<Set<number>>(new Set());
   const [errores, setErrores] = useState<Record<string, string>>({});
+  const [modalPeriodo, setModalPeriodo] = useState(false);
   const periodoInicializado = useRef<number | null>(null);
   const nominaInicializada = useRef<number | null>(null);
 
@@ -417,33 +420,45 @@ export function PagoResultadoNuevoPage() {
                 <Label htmlFor="periodo_evaluacion">
                   Periodo *
                 </Label>
-                <select
-                  id="periodo_evaluacion"
-                  value={periodoId}
-                  disabled={cargandoPeriodos}
-                  onChange={(e) => {
-                    const id = e.target.value ? Number(e.target.value) : '';
-                    periodoInicializado.current = null;
-                    setPeriodoId(id);
-                    setSeleccionados(new Set());
-                    setInicio(hoyISO());
-                    setFin(hoyISO());
-                    setErrores({});
-                  }}
-                  className={`w-full rounded-md border px-3 py-2 text-sm transition-all duration-200 focus:border-sky-500 focus:ring-2 focus:ring-sky-500 ${
-                    errores.periodo ? 'border-red-500' : 'border-slate-300'
-                  }`}
-                >
-                  <option value="">Selecciona un periodo</option>
-                  {periodosDisponibles.map((periodo) => (
-                    <option
-                      key={periodo.id_periodo_evaluacion}
-                      value={periodo.id_periodo_evaluacion}
-                    >
-                      {etiquetaPeriodo(periodo)}
-                    </option>
-                  ))}
-                </select>
+                <div className="flex items-start gap-2">
+                  <select
+                    id="periodo_evaluacion"
+                    value={periodoId}
+                    disabled={cargandoPeriodos}
+                    onChange={(e) => {
+                      const id = e.target.value ? Number(e.target.value) : '';
+                      periodoInicializado.current = null;
+                      setPeriodoId(id);
+                      setSeleccionados(new Set());
+                      setInicio(hoyISO());
+                      setFin(hoyISO());
+                      setErrores({});
+                    }}
+                    className={`w-full flex-1 rounded-md border px-3 py-2 text-sm transition-all duration-200 focus:border-sky-500 focus:ring-2 focus:ring-sky-500 ${
+                      errores.periodo ? 'border-red-500' : 'border-slate-300'
+                    }`}
+                  >
+                    <option value="">Selecciona un periodo</option>
+                    {periodosDisponibles.map((periodo) => (
+                      <option
+                        key={periodo.id_periodo_evaluacion}
+                        value={periodo.id_periodo_evaluacion}
+                      >
+                        {etiquetaPeriodo(periodo)}
+                      </option>
+                    ))}
+                  </select>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setModalPeriodo(true)}
+                    title="Nuevo periodo"
+                    className="shrink-0"
+                  >
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </div>
                 {yaPagado && (
                   <p className="flex items-start gap-1 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
                     <AlertCircle className="mt-0.5 h-3 w-3 shrink-0" />
@@ -453,7 +468,8 @@ export function PagoResultadoNuevoPage() {
                 )}
                 {periodos.length === 0 && !cargandoPeriodos && (
                   <p className="text-xs text-amber-600">
-                    No hay periodos activos. Créalos en Catálogos → Periodos.
+                    No hay periodos activos. Usa «Nuevo periodo» para crear
+                    uno.
                   </p>
                 )}
                 {periodos.length > 0 &&
@@ -461,8 +477,7 @@ export function PagoResultadoNuevoPage() {
                   !cargandoPeriodos && (
                     <p className="text-xs text-amber-600">
                       Todos los periodos activos ya tienen pago por resultado.
-                      Crea un periodo nuevo en Catálogos → Periodos para
-                      registrar otro pago.
+                      Crea uno nuevo con el botón + para registrar otro pago.
                     </p>
                   )}
                 {errores.periodo && (
@@ -731,6 +746,19 @@ export function PagoResultadoNuevoPage() {
           </Button>
         </div>
       </form>
+
+      <ModalNuevoPeriodo
+        isOpen={modalPeriodo}
+        onClose={() => setModalPeriodo(false)}
+        onCreado={(periodo) => {
+          periodoInicializado.current = null;
+          setPeriodoId(periodo.id_periodo_evaluacion);
+          setSeleccionados(new Set());
+          setInicio(hoyISO());
+          setFin(hoyISO());
+          setErrores({});
+        }}
+      />
     </div>
   );
 }

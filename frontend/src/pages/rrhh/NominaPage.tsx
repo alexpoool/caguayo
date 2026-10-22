@@ -48,6 +48,7 @@ import {
   ConfirmModal,
   Modal,
 } from '../../components/ui';
+import { ModalNuevoPeriodo } from '../../components/rrhh/ModalNuevoPeriodo';
 
 type Pestana = 'nominas' | 'costo';
 
@@ -571,6 +572,7 @@ export function NominaFormModal({
   const queryClient = useQueryClient();
   const [form, setForm] = useState(FORM_VACIO);
   const [errores, setErrores] = useState<Record<string, string>>({});
+  const [modalPeriodo, setModalPeriodo] = useState(false);
   const inicializado = useRef<number | 'nuevo' | null>(null);
 
   const esEdicion = nomina !== null;
@@ -723,29 +725,41 @@ export function NominaFormModal({
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div className="space-y-2">
             <Label htmlFor="periodo">Periodo *</Label>
-            <select
-              id="periodo"
-              value={form.periodo_id}
-              onChange={(e) =>
-                set(
-                  'periodo_id',
-                  e.target.value === '' ? '' : Number(e.target.value)
-                )
-              }
-              className={`w-full rounded-md border px-3 py-2 text-sm ${
-                errores.periodo_id ? 'border-red-500' : 'border-slate-300'
-              }`}
-            >
-              <option value="">Elegir periodo...</option>
-              {periodos.map((periodo) => (
-                <option
-                  key={periodo.id_periodo_evaluacion}
-                  value={periodo.id_periodo_evaluacion}
-                >
-                  {periodo.nombre}
-                </option>
-              ))}
-            </select>
+            <div className="flex items-start gap-2">
+              <select
+                id="periodo"
+                value={form.periodo_id}
+                onChange={(e) =>
+                  set(
+                    'periodo_id',
+                    e.target.value === '' ? '' : Number(e.target.value)
+                  )
+                }
+                className={`w-full flex-1 rounded-md border px-3 py-2 text-sm ${
+                  errores.periodo_id ? 'border-red-500' : 'border-slate-300'
+                }`}
+              >
+                <option value="">Elegir periodo...</option>
+                {periodos.map((periodo) => (
+                  <option
+                    key={periodo.id_periodo_evaluacion}
+                    value={periodo.id_periodo_evaluacion}
+                  >
+                    {periodo.nombre}
+                  </option>
+                ))}
+              </select>
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                onClick={() => setModalPeriodo(true)}
+                title="Nuevo periodo"
+                className="shrink-0"
+              >
+                <Plus className="h-4 w-4" />
+              </Button>
+            </div>
             {errores.periodo_id && (
               <p className="text-xs text-red-500">{errores.periodo_id}</p>
             )}
@@ -837,6 +851,15 @@ export function NominaFormModal({
           </Button>
         </div>
       </form>
+
+      <ModalNuevoPeriodo
+        isOpen={modalPeriodo}
+        onClose={() => setModalPeriodo(false)}
+        onCreado={(periodo) => {
+          set('periodo_id', periodo.id_periodo_evaluacion);
+          setErrores((prev) => ({ ...prev, periodo_id: '' }));
+        }}
+      />
     </Modal>
   );
 }
