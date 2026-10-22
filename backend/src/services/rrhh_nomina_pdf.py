@@ -21,6 +21,20 @@ from src.utils.pdf_template import PDFTemplate
 
 ESTADOS = {"pre_nomina": "PRE NÓMINA", "nomina": "NÓMINA"}
 CERO = Decimal("0.00")
+MESES = (
+    "enero",
+    "febrero",
+    "marzo",
+    "abril",
+    "mayo",
+    "junio",
+    "julio",
+    "agosto",
+    "septiembre",
+    "octubre",
+    "noviembre",
+    "diciembre",
+)
 
 
 def _fmt(valor: Optional[Decimal]) -> str:
@@ -31,6 +45,23 @@ def _fmt(valor: Optional[Decimal]) -> str:
 
 def _fmt_fecha(valor) -> str:
     return valor.strftime("%d/%m/%Y") if valor else "—"
+
+
+def _fmt_fecha_larga(valor, con_anio: bool = True) -> str:
+    """`2026-07-01` → `1 de julio` (o `1 de julio de 2026`)."""
+    if not valor:
+        return "—"
+    texto = f"{valor.day} de {MESES[valor.month - 1]}"
+    return f"{texto} de {valor.year}" if con_anio else texto
+
+
+def _fmt_rango(inicio, fin) -> str:
+    """Rango declarativo: `Del 1 de julio al 5 de septiembre de 2026`."""
+    if not inicio or not fin:
+        return "—"
+    if inicio.year == fin.year:
+        return f"Del {_fmt_fecha_larga(inicio, False)} al {_fmt_fecha_larga(fin)}"
+    return f"Del {_fmt_fecha_larga(inicio)} al {_fmt_fecha_larga(fin)}"
 
 
 def _fmt_tasa(valor: Optional[Decimal]) -> str:
@@ -60,9 +91,8 @@ def generar_recibo_pdf(
             [
                 ("Periodo", detalle.periodo_nombre or "—"),
                 (
-                    "Periodo de pago",
-                    f"Del {_fmt_fecha(detalle.inicio_periodo)} al "
-                    f"{_fmt_fecha(detalle.fin_periodo)}",
+                    "Fecha",
+                    _fmt_rango(detalle.inicio_periodo, detalle.fin_periodo),
                 ),
             ],
             [
