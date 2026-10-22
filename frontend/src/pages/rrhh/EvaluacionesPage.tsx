@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { rrhhService } from "../../services/rrhh";
+import { formatRangoFechasCorto } from "../../utils/fecha";
 import {
   type RrhhEvaluacionCreate,
   type RrhhEvaluacionListado,
@@ -41,17 +42,6 @@ import {
   ConfirmModal,
   Modal,
 } from "../../components/ui";
-
-/** Rango del periodo (inicio – fin) en formato legible. */
-const fmtRango = (inicio: string, fin: string) => {
-  const f = (iso: string) =>
-    new Date(`${iso}T00:00:00`).toLocaleDateString("es-CU", {
-      day: "numeric",
-      month: "short",
-      year: "numeric",
-    });
-  return `${f(inicio)} – ${f(fin)}`;
-};
 
 /** Fecha ISO local (sin desfase de UTC) para los inputs tipo date. */
 const hoyISO = () => {
@@ -167,7 +157,7 @@ export function EvaluacionesPage() {
     if (!formData.empleado_id)
       errs.empleado_id = "Selecciona el empleado a evaluar";
     if (!formData.periodo_evaluacion_id)
-      errs.periodo = "Selecciona el periodo de evaluación";
+      errs.periodo = "Selecciona el periodo";
     if (!formData.tipo_evaluacion_id) {
       errs.tipo_evaluacion_id = "Selecciona el tipo de evaluación";
     }
@@ -350,7 +340,10 @@ export function EvaluacionesPage() {
                         <span className="inline-flex items-center gap-1">
                           <CalendarRange className="h-3.5 w-3.5 text-slate-400" />
                           {ev.inicio_periodo && ev.fin_periodo
-                            ? fmtRango(ev.inicio_periodo, ev.fin_periodo)
+                            ? formatRangoFechasCorto(
+                                ev.inicio_periodo,
+                                ev.fin_periodo
+                              )
                             : "—"}
                         </span>
                       </TableCell>
@@ -480,12 +473,6 @@ export function EvaluacionesPage() {
                     ...formData,
                     periodo_evaluacion_id: id,
                     periodo: periodo?.nombre ?? "",
-                    ...(periodo
-                      ? {
-                          inicio_periodo: periodo.fecha_inicio,
-                          fin_periodo: periodo.fecha_fin,
-                        }
-                      : {}),
                   });
                 }}
                 className={`w-full rounded-md border px-3 py-2 text-sm transition-all duration-200 focus:ring-2 focus:ring-sky-500 focus:border-sky-500 ${
@@ -498,7 +485,7 @@ export function EvaluacionesPage() {
                     key={p.id_periodo_evaluacion}
                     value={p.id_periodo_evaluacion}
                   >
-                    {p.nombre} ({fmtRango(p.fecha_inicio, p.fecha_fin)})
+                    {p.nombre}
                     {p.pagado_x_resultado ? " · Pagado" : ""}
                   </option>
                 ))}

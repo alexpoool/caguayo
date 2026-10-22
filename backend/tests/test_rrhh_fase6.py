@@ -34,6 +34,25 @@ def _sufijo():
     return uuid.uuid4().hex[:8]
 
 
+_PERIODO_ID = None
+
+
+def _periodo_id(client):
+    """Periodo del catálogo compartido, creado una vez por sesión de tests."""
+    global _PERIODO_ID
+    if _PERIODO_ID is None:
+        response = client.post(
+            "/api/v1/rrhh/catalogos/periodos-evaluacion",
+            json={
+                "nombre": f"2098-nomina-{_sufijo()}",
+                "descripcion": "Periodo de pruebas de nómina",
+            },
+        )
+        assert response.status_code == 201, response.text
+        _PERIODO_ID = response.json()["id_periodo_evaluacion"]
+    return _PERIODO_ID
+
+
 # ═══════════════════════════════════════════════════════════════════════════
 # Helpers
 # ═══════════════════════════════════════════════════════════════════════════
@@ -56,7 +75,7 @@ def _crear_empleado(client, **kwargs):
 def _crear_nomina(client, **overrides):
     payload = {
         "descripcion": f"Nómina {_sufijo()}",
-        "periodo": PERIODO_FIN,
+        "periodo_id": _periodo_id(client),
         "inicio_periodo": PERIODO_INICIO,
         "fin_periodo": PERIODO_FIN,
         "moneda_id": MONEDA_ID,
@@ -298,6 +317,8 @@ def test_crear_nomina_nace_pre_nomina(client):
     try:
         assert nomina["estado"] == "pre_nomina"
         assert nomina["descripcion"] == "Enero 2098"
+        assert nomina["periodo_id"] == _periodo_id(client)
+        assert nomina["periodo_nombre"]
         assert nomina["moneda_id"] == MONEDA_ID
         assert nomina["moneda_nombre"]
         assert nomina["cantidad_empleados"] == 0
@@ -307,12 +328,43 @@ def test_crear_nomina_nace_pre_nomina(client):
         _limpiar_nomina(nomina["id"])
 
 
+def test_crear_sin_periodo_422(client):
+    response = client.post(
+        "/api/v1/rrhh/nomina",
+        json={
+            "descripcion": "Sin periodo",
+            "inicio_periodo": PERIODO_INICIO,
+            "fin_periodo": PERIODO_FIN,
+            "moneda_id": MONEDA_ID,
+            "tasa": 1,
+            "porcentaje_impuesto": 5,
+        },
+    )
+    assert response.status_code == 422, response.text
+
+
+def test_crear_periodo_inexistente_404(client):
+    response = client.post(
+        "/api/v1/rrhh/nomina",
+        json={
+            "descripcion": "Periodo inexistente",
+            "periodo_id": 999999999,
+            "inicio_periodo": PERIODO_INICIO,
+            "fin_periodo": PERIODO_FIN,
+            "moneda_id": MONEDA_ID,
+            "tasa": 1,
+            "porcentaje_impuesto": 5,
+        },
+    )
+    assert response.status_code == 404, response.text
+
+
 def test_crear_fin_anterior_al_inicio_422(client):
     response = client.post(
         "/api/v1/rrhh/nomina",
         json={
             "descripcion": "Mal rango",
-            "periodo": PERIODO_FIN,
+            "periodo_id": _periodo_id(client),
             "inicio_periodo": PERIODO_FIN,
             "fin_periodo": PERIODO_INICIO,
             "moneda_id": MONEDA_ID,
@@ -328,7 +380,7 @@ def test_crear_moneda_inexistente_404(client):
         "/api/v1/rrhh/nomina",
         json={
             "descripcion": "Sin moneda",
-            "periodo": PERIODO_FIN,
+            "periodo_id": _periodo_id(client),
             "inicio_periodo": PERIODO_INICIO,
             "fin_periodo": PERIODO_FIN,
             "moneda_id": 999999,
@@ -344,7 +396,7 @@ def test_crear_porcentaje_fuera_de_rango_422(client):
         "/api/v1/rrhh/nomina",
         json={
             "descripcion": "Impuesto inválido",
-            "periodo": PERIODO_FIN,
+            "periodo_id": _periodo_id(client),
             "inicio_periodo": PERIODO_INICIO,
             "fin_periodo": PERIODO_FIN,
             "moneda_id": MONEDA_ID,

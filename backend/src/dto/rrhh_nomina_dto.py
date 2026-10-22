@@ -1,6 +1,6 @@
 """DTOs del submódulo RRHH — Nómina y pagos (Fase 6 v2).
 
-La nómina es una **cabecera de lote** (`descripcion`, `periodo`, rango,
+La nómina es una **cabecera de lote** (`descripcion`, `periodo_id`, rango,
 moneda, tasa y porcentaje de impuesto) y el detalle por empleado vive en
 `nomina_empleados` con los importes congelados al guardar la selección.
 
@@ -70,7 +70,8 @@ class RrhhNominaCandidato(RrhhNominaEmpleadoRead):
 
 class RrhhNominaBase(SQLModel):
     descripcion: str = Field(min_length=1, max_length=200)
-    periodo: date
+    # Opcional en la base para poder leer lotes históricos sin periodo.
+    periodo_id: Optional[int] = Field(default=None, ge=1)
     inicio_periodo: date
     fin_periodo: date
     moneda_id: int = Field(ge=1)
@@ -89,14 +90,14 @@ class RrhhNominaBase(SQLModel):
 
 
 class RrhhNominaCreate(RrhhNominaBase):
-    pass
+    periodo_id: int = Field(ge=1)
 
 
 class RrhhNominaUpdate(SQLModel):
     """Edición parcial de la cabecera (solo en `pre_nomina`)."""
 
     descripcion: Optional[str] = Field(default=None, min_length=1, max_length=200)
-    periodo: Optional[date] = None
+    periodo_id: Optional[int] = Field(default=None, ge=1)
     inicio_periodo: Optional[date] = None
     fin_periodo: Optional[date] = None
     moneda_id: Optional[int] = Field(default=None, ge=1)
@@ -116,6 +117,7 @@ class RrhhNominaRead(RrhhNominaBase):
 class RrhhNominaListado(RrhhNominaRead):
     """Fila del listado, con totales del lote y de sus pagos."""
 
+    periodo_nombre: Optional[str] = None
     moneda_nombre: Optional[str] = None
     moneda_simbolo: Optional[str] = None
     cantidad_empleados: int = 0
@@ -166,7 +168,8 @@ class RrhhPagoListado(SQLModel):
     metodo_id: int
     metodo_nombre: Optional[str] = None
     referencia: Optional[str] = None
-    periodo: date
+    periodo_id: Optional[int] = None
+    periodo_nombre: Optional[str] = None
     inicio_periodo: date
     fin_periodo: date
     estado_nomina: str

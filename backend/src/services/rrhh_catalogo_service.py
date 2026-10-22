@@ -11,7 +11,6 @@ Reglas comunes:
 - `calificaciones` no tiene columna `activo`: si está en uso devuelve 409.
 """
 
-from datetime import date
 from typing import List, Optional, Type
 
 from fastapi import HTTPException
@@ -51,6 +50,7 @@ from src.models import (
     RrhhTipoPago,
     RrhhCalificacion,
     RrhhEmpleado,
+    RrhhNomina,
     RrhhNominaEmpleado,
     RrhhPagoResultado,
 )
@@ -256,45 +256,11 @@ class _TipoEvaluacionService(RrhhCatalogoService):
 
 
 class _PeriodoEvaluacionService(RrhhCatalogoService):
-    """`periodo_evaluaciones` es referenciado por evaluaciones y pagos.
+    """`periodo_evaluaciones` es referenciado por evaluaciones, nómina y pagos.
 
-    A diferencia del resto de catálogos, el nombre no es único por sí solo:
-    dos «semanal» de semanas distintas son válidos. La unicidad es el rango
-    completo `(nombre, fecha_inicio, fecha_fin)`.
+    El nombre es único: ya no hay fechas en el catálogo que desambigüen dos
+    periodos con el mismo nombre.
     """
-
-    async def _verificar_periodo(
-        self,
-        db: AsyncSession,
-        nombre: str,
-        fecha_inicio: date,
-        fecha_fin: date,
-        excluir_id: Optional[int] = None,
-    ) -> str:
-        nombre = self._validar_nombre(nombre)
-        if fecha_fin < fecha_inicio:
-            raise HTTPException(
-                status_code=400,
-                detail="La fecha de fin debe ser posterior o igual a la de inicio",
-            )
-        statement = select(RrhhPeriodoEvaluacion).where(
-            RrhhPeriodoEvaluacion.nombre == nombre,
-            RrhhPeriodoEvaluacion.fecha_inicio == fecha_inicio,
-            RrhhPeriodoEvaluacion.fecha_fin == fecha_fin,
-        )
-        if excluir_id is not None:
-            statement = statement.where(
-                RrhhPeriodoEvaluacion.id_periodo_evaluacion != excluir_id
-            )
-        if (await db.exec(statement)).first():
-            raise HTTPException(
-                status_code=409,
-                detail=(
-                    f"Ya existe un periodo de evaluación llamado «{nombre}» "
-                    "con el mismo rango de fechas"
-                ),
-            )
-        return nombre
 
     async def _pagados(self, db: AsyncSession, ids: List[int]) -> set[int]:
         if not ids:
@@ -332,15 +298,8 @@ class _PeriodoEvaluacionService(RrhhCatalogoService):
         ]
 
     async def create(self, db: AsyncSession, obj_in: SQLModel) -> SQLModel:
-        data = obj_in.model_dump()
-        data["nombre"] = await self._verificar_periodo(
-            db, data["nombre"], data["fecha_inicio"], data["fecha_fin"]
-        )
-        db_obj = self.model(**data)
-        db.add(db_obj)
-        await db.commit()
-        await db.refresh(db_obj)
-        return await self.get(db, getattr(db_obj, self.pk))
+        creado = await super().create(db, obj_in)
+        return await self.get(db, getattr(creado, self.pk))
 
     async def update(self, db: AsyncSession, id: int, obj_in: SQLModel) -> SQLModel:
         """Actualiza el periodo y sincroniza el texto legado de evaluaciones."""
@@ -350,25 +309,17 @@ class _PeriodoEvaluacionService(RrhhCatalogoService):
                 status_code=404, detail=f"{self.etiqueta} no encontrado"
             )
         datos = obj_in.model_dump(exclude_unset=True)
-        for campo in ("fecha_inicio", "fecha_fin"):
-            if campo in datos and datos[campo] is None:
-                raise HTTPException(
-                    status_code=400, detail="Las fechas del periodo son obligatorias"
-                )
-        nombre = await self._verificar_periodo(
-            db,
-            datos.get("nombre", db_obj.nombre),
-            datos.get("fecha_inicio", db_obj.fecha_inicio),
-            datos.get("fecha_fin", db_obj.fecha_fin),
-            excluir_id=id,
-        )
-        datos["nombre"] = nombre
+        nombre = None
+        if "nombre" in datos:
+            nombre = self._validar_nombre(datos["nombre"])
+            await self._verificar_nombre_unico(db, nombre, excluir_id=id)
+            datos["nombre"] = nombre
         for field, value in datos.items():
             setattr(db_obj, field, value)
         db.add(db_obj)
         await db.commit()
         await db.refresh(db_obj)
-        if "nombre" in datos:
+        if nombre is not None:
             await db.exec(
                 sa_update(RrhhEvaluacion)
                 .where(RrhhEvaluacion.periodo_evaluacion_id == id)
@@ -382,6 +333,9 @@ class _PeriodoEvaluacionService(RrhhCatalogoService):
             select(func.count())
             .select_from(RrhhEvaluacion)
             .where(RrhhEvaluacion.periodo_evaluacion_id == id),
+            select(func.count())
+            .select_from(RrhhNomina)
+            .where(RrhhNomina.periodo_id == id),
             select(func.count())
             .select_from(RrhhPagoResultado)
             .where(RrhhPagoResultado.periodo_evaluacion_id == id),

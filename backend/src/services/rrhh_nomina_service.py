@@ -1,7 +1,8 @@
 """Servicio del submódulo RRHH — Nómina y pagos (Fase 6 v2).
 
-La nómina pasa a ser un **lote**: una cabecera con descripción, periodo,
-rango, moneda, tasa y porcentaje de impuesto, y un detalle por empleado en
+La nómina pasa a ser un **lote**: una cabecera con descripción, periodo
+(referencia al catálogo compartido `periodo_evaluaciones`), rango, moneda,
+tasa y porcentaje de impuesto, y un detalle por empleado en
 `nomina_empleados`. Al guardar la selección se **recalculan y congelan** los
 importes de cada empleado:
 
@@ -24,6 +25,7 @@ from decimal import Decimal
 from typing import List, Optional
 
 from fastapi import HTTPException
+from sqlalchemy import or_
 from sqlmodel import select, func
 from sqlmodel.ext.asyncio.session import AsyncSession
 
@@ -64,6 +66,7 @@ from src.models import (
     RrhhTipoBonificacion,
     RrhhTipoPago,
     RrhhAsistencia,
+    RrhhPeriodoEvaluacion,
     Moneda,
 )
 
@@ -107,6 +110,17 @@ class RrhhNominaService:
         res = await db.exec(select(Moneda).where(Moneda.id_moneda.in_(ids)))
         return {m.id_moneda: m for m in res.all()}
 
+    async def _periodos_por_id(self, db: AsyncSession, ids) -> dict:
+        if not ids:
+            return {}
+        res = await db.exec(
+            select(
+                RrhhPeriodoEvaluacion.id_periodo_evaluacion,
+                RrhhPeriodoEvaluacion.nombre,
+            ).where(RrhhPeriodoEvaluacion.id_periodo_evaluacion.in_(ids))
+        )
+        return {row[0]: row[1] for row in res.all()}
+
     @staticmethod
     def _nombre_completo(empleado) -> Optional[str]:
         if not empleado:
@@ -114,8 +128,11 @@ class RrhhNominaService:
         return f"{empleado.nombre} {empleado.apellido}".strip()
 
     async def _resolucion_listado(self, db: AsyncSession, filas: List) -> dict:
-        """Carga monedas, totales de detalle y pagos en lote."""
+        """Carga monedas, periodos, totales de detalle y pagos en lote."""
         monedas = await self._monedas_por_id(db, {f.moneda_id for f in filas})
+        periodos = await self._periodos_por_id(
+            db, {f.periodo_id for f in filas if f.periodo_id}
+        )
         nomina_ids = [f.id for f in filas]
 
         totales: dict[int, tuple] = {}
@@ -149,6 +166,7 @@ class RrhhNominaService:
 
         return {
             "monedas": monedas,
+            "periodos": periodos,
             "totales": totales,
             "pagos": pagos_por_nomina,
         }
@@ -162,7 +180,8 @@ class RrhhNominaService:
         return RrhhNominaListado(
             id=fila.id,
             descripcion=fila.descripcion,
-            periodo=fila.periodo,
+            periodo_id=fila.periodo_id,
+            periodo_nombre=resolucion["periodos"].get(fila.periodo_id),
             inicio_periodo=fila.inicio_periodo,
             fin_periodo=fila.fin_periodo,
             moneda_id=fila.moneda_id,
@@ -191,6 +210,11 @@ class RrhhNominaService:
                 status_code=422,
                 detail="El fin del periodo debe ser posterior o igual al inicio",
             )
+        periodo_id = datos.get("periodo_id")
+        if periodo_id is not None and not await db.get(
+            RrhhPeriodoEvaluacion, periodo_id
+        ):
+            raise HTTPException(status_code=404, detail="El periodo no existe")
         moneda_id = datos.get("moneda_id")
         if moneda_id is not None and not await db.get(Moneda, moneda_id):
             raise HTTPException(status_code=404, detail="La moneda no existe")
@@ -229,12 +253,19 @@ class RrhhNominaService:
         if hasta is not None:
             statement = statement.where(RrhhNomina.inicio_periodo <= hasta)
         if buscar:
-            statement = statement.where(
-                RrhhNomina.descripcion.ilike(f"%{buscar}%")
+            statement = statement.outerjoin(
+                RrhhPeriodoEvaluacion,
+                RrhhNomina.periodo_id
+                == RrhhPeriodoEvaluacion.id_periodo_evaluacion,
+            ).where(
+                or_(
+                    RrhhNomina.descripcion.ilike(f"%{buscar}%"),
+                    RrhhPeriodoEvaluacion.nombre.ilike(f"%{buscar}%"),
+                )
             )
 
         statement = (
-            statement.order_by(RrhhNomina.periodo.desc(), RrhhNomina.id.desc())
+            statement.order_by(RrhhNomina.inicio_periodo.desc(), RrhhNomina.id.desc())
             .offset(skip)
             .limit(limit)
         )
@@ -377,6 +408,9 @@ class RrhhNominaService:
         tipos = await self._tipos_pago(
             db, {f.RrhhNominaEmpleado.metodo_id for f in filas}
         )
+        periodos = await self._periodos_por_id(
+            db, {f.RrhhNomina.periodo_id for f in filas if f.RrhhNomina.periodo_id}
+        )
 
         salida: List[RrhhPagoListado] = []
         for fila in filas:
@@ -398,7 +432,8 @@ class RrhhNominaService:
                     metodo_id=detalle.metodo_id,
                     metodo_nombre=tipos.get(detalle.metodo_id),
                     referencia=detalle.referencia,
-                    periodo=nomina.periodo,
+                    periodo_id=nomina.periodo_id,
+                    periodo_nombre=periodos.get(nomina.periodo_id),
                     inicio_periodo=nomina.inicio_periodo,
                     fin_periodo=nomina.fin_periodo,
                     estado_nomina=nomina.estado,

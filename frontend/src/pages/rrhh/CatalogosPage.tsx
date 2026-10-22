@@ -22,8 +22,6 @@ import {
   Search,
   Percent,
   Star,
-  CalendarRange,
-  CheckCircle2,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import {
@@ -40,7 +38,6 @@ import {
   TableHead,
   TableCell,
   ConfirmModal,
-  DateInput,
   Modal,
 } from '../../components/ui';
 
@@ -50,8 +47,6 @@ interface FormState {
   descripcion: string | null;
   es_porcentaje: boolean;
   valor: number;
-  fecha_inicio: string;
-  fecha_fin: string;
 }
 
 const FORM_INICIAL: FormState = {
@@ -59,16 +54,6 @@ const FORM_INICIAL: FormState = {
   descripcion: '',
   es_porcentaje: false,
   valor: 5,
-  fecha_inicio: '',
-  fecha_fin: '',
-};
-
-/** Fecha ISO (YYYY-MM-DD) a formato legible es-CU. */
-const fmtFecha = (v: unknown) => {
-  if (typeof v !== 'string' || !v) return '—';
-  const [anio, mes, dia] = v.split('-');
-  if (!anio || !mes || !dia) return v;
-  return `${dia}/${mes}/${anio}`;
 };
 
 /** Escalas admitidas en el catálogo «Calificaciones» (el backend solo
@@ -153,8 +138,6 @@ export function CatalogosPage() {
       descripcion: (registro.descripcion as string | null) ?? '',
       es_porcentaje: (registro.es_porcentaje as boolean) ?? false,
       valor: (registro.valor as number) ?? 5,
-      fecha_inicio: (registro.fecha_inicio as string) ?? '',
-      fecha_fin: (registro.fecha_fin as string) ?? '',
     });
     setFormErrors({});
     setFormOpen(true);
@@ -175,13 +158,6 @@ export function CatalogosPage() {
     if (config.tieneValor && !ESCALAS.includes(form.valor)) {
       errs.valor = 'La escala debe ser 1–5, 1–10 o 1–100';
     }
-    if (config.tieneFechas) {
-      if (!form.fecha_inicio) errs.fecha_inicio = 'La fecha de inicio es obligatoria';
-      if (!form.fecha_fin) errs.fecha_fin = 'La fecha de fin es obligatoria';
-      else if (form.fecha_inicio && form.fecha_fin < form.fecha_inicio) {
-        errs.fecha_fin = 'El fin debe ser posterior o igual al inicio';
-      }
-    }
     setFormErrors(errs);
     return Object.keys(errs).length === 0;
   };
@@ -194,10 +170,6 @@ export function CatalogosPage() {
       };
       if (config.tienePorcentaje) payload.es_porcentaje = form.es_porcentaje;
       if (config.tieneValor) payload.valor = form.valor;
-      if (config.tieneFechas) {
-        payload.fecha_inicio = form.fecha_inicio;
-        payload.fecha_fin = form.fecha_fin;
-      }
 
       if (editing) {
         return await rrhhService.updateCatalogo(
@@ -257,7 +229,7 @@ export function CatalogosPage() {
           <p className="mt-1 text-sm text-slate-500">
             Todo el catálogo del módulo: contratos, bonificaciones,
             deducciones, pagos, departamentos, puestos, tipos de evaluación,
-            periodos de evaluación y calificaciones.
+            periodos y calificaciones.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -356,20 +328,11 @@ export function CatalogosPage() {
                   <TableRow>
                     <TableHead>Nombre</TableHead>
                     <TableHead>Descripción</TableHead>
-                    {config.tieneFechas && (
-                      <>
-                        <TableHead className="text-center">Inicio</TableHead>
-                        <TableHead className="text-center">Fin</TableHead>
-                      </>
-                    )}
                     {config.tieneValor && (
                       <TableHead className="text-center">Valor</TableHead>
                     )}
                     {config.tienePorcentaje && (
                       <TableHead className="text-center">Tipo</TableHead>
-                    )}
-                    {config.tienePagado && (
-                      <TableHead className="text-center">Pago por resultado</TableHead>
                     )}
                     {config.tieneActivo && (
                       <TableHead className="text-center">Estado</TableHead>
@@ -388,16 +351,6 @@ export function CatalogosPage() {
                         <TableCell className="max-w-[280px] truncate text-slate-500">
                           {(registro.descripcion as string | null) || '—'}
                         </TableCell>
-                        {config.tieneFechas && (
-                          <>
-                            <TableCell className="text-center tabular-nums text-slate-600">
-                              {fmtFecha(registro.fecha_inicio)}
-                            </TableCell>
-                            <TableCell className="text-center tabular-nums text-slate-600">
-                              {fmtFecha(registro.fecha_fin)}
-                            </TableCell>
-                          </>
-                        )}
                         {config.tieneValor && (
                           <TableCell className="text-center">
                             <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-700">
@@ -423,20 +376,6 @@ export function CatalogosPage() {
                                 'Fijo'
                               )}
                             </span>
-                          </TableCell>
-                        )}
-                        {config.tienePagado && (
-                          <TableCell className="text-center">
-                            {registro.pagado_x_resultado ? (
-                              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700">
-                                <CheckCircle2 className="h-3 w-3" />
-                                Pagado
-                              </span>
-                            ) : (
-                              <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-500">
-                                Pendiente
-                              </span>
-                            )}
                           </TableCell>
                         )}
                         {config.tieneActivo && (
@@ -531,63 +470,6 @@ export function CatalogosPage() {
                   className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
                 />
               </div>
-
-              {config.tieneFechas && (
-                <>
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label
-                        htmlFor="fecha_inicio"
-                        className="flex items-center gap-2"
-                      >
-                        <CalendarRange className="h-4 w-4 text-emerald-500" />
-                        Fecha de inicio *
-                      </Label>
-                      <DateInput
-                        id="fecha_inicio"
-                        value={form.fecha_inicio}
-                        onChange={(value) =>
-                          setForm({ ...form, fecha_inicio: value })
-                        }
-                      />
-                      {formErrors.fecha_inicio && (
-                        <p className="flex items-center gap-1 text-xs text-red-600">
-                          <AlertCircle className="h-3 w-3" />
-                          {formErrors.fecha_inicio}
-                        </p>
-                      )}
-                    </div>
-                    <div className="space-y-2">
-                      <Label
-                        htmlFor="fecha_fin"
-                        className="flex items-center gap-2"
-                      >
-                        <CalendarRange className="h-4 w-4 text-rose-500" />
-                        Fecha de fin *
-                      </Label>
-                      <DateInput
-                        id="fecha_fin"
-                        value={form.fecha_fin}
-                        onChange={(value) =>
-                          setForm({ ...form, fecha_fin: value })
-                        }
-                      />
-                      {formErrors.fecha_fin && (
-                        <p className="flex items-center gap-1 text-xs text-red-600">
-                          <AlertCircle className="h-3 w-3" />
-                          {formErrors.fecha_fin}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                  {editing && Boolean(comoRegistro(editing).pagado_x_resultado) && (
-                    <p className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-700">
-                      Este periodo ya tiene un pago por resultado. Se puede
-                      editar, pero no se podrá crear otro pago para él.
-                    </p>
-                  )}
-                </>
-              )}
 
               {config.tienePorcentaje && (
                 <div className="flex items-center gap-2">

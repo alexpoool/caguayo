@@ -314,7 +314,7 @@ export function NominaDetallePage() {
               </span>
             </h1>
             <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-sm text-slate-500">
-              <span>Periodo {fmtFecha(detalle.periodo)}</span>
+              <span>Periodo {detalle.periodo_nombre || '—'}</span>
               <span className="text-slate-300">·</span>
               <span>
                 {fmtFecha(detalle.inicio_periodo)} –{' '}

@@ -2,9 +2,10 @@
 
 Rediseño (Fase 6 v2):
 
-- `nomina` es la **cabecera** del lote: descripción, periodo, rango, moneda,
-  tasa y el porcentaje de impuesto con el que se calculó. No guarda importes:
-  el detalle vive en `nomina_empleados`.
+- `nomina` es la **cabecera** del lote: descripción, periodo (FK al catálogo
+  `periodo_evaluaciones`), rango, moneda, tasa y el porcentaje de impuesto con
+  el que se calculó. No guarda importes: el detalle vive en
+  `nomina_empleados`.
 - `nomina_empleados` relaciona la nómina con cada empleado seleccionado y
   congela sus importes (`salario_base`, `horas_extras`, `bonificaciones`,
   `devengado`, `impuesto`, `deducciones`, `neto_a_cobrar`).
@@ -46,7 +47,20 @@ class RrhhNomina(SQLModel, table=True):
         default=None, primary_key=True, sa_column_kwargs={"autoincrement": True}
     )
     descripcion: str = Field(max_length=200)
-    periodo: date
+    # Referencia al catálogo compartido de periodos. Nullable para los lotes
+    # históricos creados antes de existir la FK.
+    periodo_id: Optional[int] = Field(
+        default=None,
+        sa_column=Column(
+            Integer,
+            ForeignKey(
+                "periodo_evaluaciones.id_periodo_evaluacion",
+                ondelete="RESTRICT",
+                name="fk_nomina_periodo",
+            ),
+            nullable=True,
+        ),
+    )
     inicio_periodo: date
     fin_periodo: date
     moneda_id: int = Field(

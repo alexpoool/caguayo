@@ -32,7 +32,10 @@ def generar_recibo_pdf(
     template.set_filters(
         {
             "Nómina": f"#{detalle.id} · {detalle.descripcion}",
-            "Periodo": f"{detalle.inicio_periodo} al {detalle.fin_periodo}",
+            "Periodo": (
+                f"{detalle.periodo_nombre or '—'} "
+                f"({detalle.inicio_periodo} al {detalle.fin_periodo})"
+            ),
             "Estado": ESTADOS.get(detalle.estado, detalle.estado),
             "Moneda": detalle.moneda_nombre or "—",
         }

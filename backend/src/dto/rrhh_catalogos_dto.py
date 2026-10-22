@@ -8,7 +8,7 @@ clase concreta por catálogo, para que cada endpoint tenga su `response_model`
 explícito.
 """
 
-from datetime import date, datetime
+from datetime import datetime
 from typing import Literal, Optional
 
 from sqlmodel import SQLModel
@@ -122,26 +122,21 @@ class RrhhTipoEvaluacionRead(_RrhhCatalogoConActivo, _RrhhCatalogoRead):
     id_tipos_evaluaciones: int
 
 
-# ── Periodo de evaluación ───────────────────────────────────────────────────
+# ── Periodo ─────────────────────────────────────────────────────────────────
 
 
 class RrhhPeriodoEvaluacionCreate(_RrhhCatalogoConActivo):
-    fecha_inicio: date
-    fecha_fin: date
+    pass
 
 
 class RrhhPeriodoEvaluacionUpdate(SQLModel):
     nombre: Optional[str] = None
     descripcion: Optional[str] = None
-    fecha_inicio: Optional[date] = None
-    fecha_fin: Optional[date] = None
     activo: Optional[bool] = None
 
 
 class RrhhPeriodoEvaluacionRead(_RrhhCatalogoConActivo, _RrhhCatalogoRead):
     id_periodo_evaluacion: int
-    fecha_inicio: date
-    fecha_fin: date
     # Derivado de `pago_x_resultado`; nunca se escribe desde el formulario.
     pagado_x_resultado: bool = False
 

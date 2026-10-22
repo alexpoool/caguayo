@@ -15,7 +15,6 @@ BASE_PAGOS = "/api/v1/rrhh/pagos-resultado"
 TIPOS_EVAL = "/api/v1/rrhh/catalogos/tipos-evaluacion"
 
 JUNIO = ("2098-06-01", "2098-06-30")
-JULIO = ("2098-07-01", "2098-07-31")
 _TIPOS_CACHE: dict = {}
 
 
@@ -46,12 +45,10 @@ def _crear_empleado(client):
     return response.json()
 
 
-def _crear_periodo(client, nombre=None, inicio=JUNIO[0], fin=JUNIO[1]):
+def _crear_periodo(client, nombre=None):
     payload = {
         "nombre": nombre or f"2098-periodo-{_sufijo()}",
         "descripcion": "Periodo de prueba",
-        "fecha_inicio": inicio,
-        "fecha_fin": fin,
     }
     response = client.post(BASE_PERIODOS, json=payload)
     assert response.status_code == 201, response.text
@@ -130,39 +127,21 @@ def _importe(valor):
 
 
 class TestPeriodoEvaluacionCatalogo:
-    def test_crud_y_unicidad_por_nombre_y_fechas(self, client):
+    def test_crud_y_unicidad_por_nombre(self, client):
         creado = _crear_periodo(client)
-        otro = None
         try:
             assert creado["nombre"].startswith("2098-periodo-")
             assert creado["activo"] is True
-            assert creado["fecha_inicio"] == JUNIO[0]
-            assert creado["fecha_fin"] == JUNIO[1]
             assert creado["pagado_x_resultado"] is False
+            assert "fecha_inicio" not in creado
+            assert "fecha_fin" not in creado
 
-            # Mismo nombre y mismas fechas: duplicado exacto.
+            # El nombre es único en el catálogo.
             repetido = client.post(
                 BASE_PERIODOS,
-                json={
-                    "nombre": creado["nombre"],
-                    "fecha_inicio": JUNIO[0],
-                    "fecha_fin": JUNIO[1],
-                },
+                json={"nombre": creado["nombre"]},
             )
             assert repetido.status_code == 409, repetido.text
-
-            # Mismo nombre con otro rango (dos «semanal»): permitido.
-            otro = _crear_periodo(
-                client, nombre=creado["nombre"], inicio=JULIO[0], fin=JULIO[1]
-            )
-            assert otro["id_periodo_evaluacion"] != creado["id_periodo_evaluacion"]
-
-            # El fin no puede ser anterior al inicio.
-            invalido = client.put(
-                f"{BASE_PERIODOS}/{creado['id_periodo_evaluacion']}",
-                json={"fecha_fin": "2098-05-01"},
-            )
-            assert invalido.status_code == 400, invalido.text
 
             response = client.put(
                 f"{BASE_PERIODOS}/{creado['id_periodo_evaluacion']}",
@@ -181,10 +160,6 @@ class TestPeriodoEvaluacionCatalogo:
                 for p in listado.json()
             )
         finally:
-            if otro:
-                client.delete(
-                    f"{BASE_PERIODOS}/{otro['id_periodo_evaluacion']}"
-                )
             client.delete(f"{BASE_PERIODOS}/{creado['id_periodo_evaluacion']}")
 
     def test_evaluacion_toma_el_periodo_del_catalogo(self, client):

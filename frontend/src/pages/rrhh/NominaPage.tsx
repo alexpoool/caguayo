@@ -69,7 +69,7 @@ const fmtFecha = (v: string | null | undefined) => {
 
 const FORM_VACIO: {
   descripcion: string;
-  periodo: string;
+  periodo_id: number | '';
   inicio_periodo: string;
   fin_periodo: string;
   moneda_id: number | '';
@@ -77,7 +77,7 @@ const FORM_VACIO: {
   porcentaje_impuesto: string;
 } = {
   descripcion: '',
-  periodo: '',
+  periodo_id: '',
   inicio_periodo: '',
   fin_periodo: '',
   moneda_id: '',
@@ -348,7 +348,7 @@ function ListaNominas({ onNueva }: { onNueva: () => void }) {
                       </div>
                     </TableCell>
                     <TableCell className="whitespace-nowrap text-slate-600">
-                      {fmtFecha(fila.periodo)}
+                      {fila.periodo_nombre || '—'}
                     </TableCell>
                     <TableCell className="whitespace-nowrap text-slate-600">
                       {fmtFecha(fila.inicio_periodo)} –{' '}
@@ -565,7 +565,7 @@ export function NominaFormModal({
       nomina
         ? {
             descripcion: nomina.descripcion,
-            periodo: nomina.periodo,
+            periodo_id: nomina.periodo_id ?? '',
             inicio_periodo: nomina.inicio_periodo,
             fin_periodo: nomina.fin_periodo,
             moneda_id: nomina.moneda_id,
@@ -580,6 +580,13 @@ export function NominaFormModal({
   const { data: monedas = [] } = useQuery({
     queryKey: ['monedas'],
     queryFn: () => monedaService.getMonedas(0, 100),
+    enabled: isOpen,
+  });
+
+  const { data: periodos = [] } = useQuery({
+    queryKey: ['rrhh', 'catalogos', 'periodos-evaluacion', 'activos'],
+    queryFn: () =>
+      rrhhService.listarPeriodosEvaluacion({ limit: 500, activo: true }),
     enabled: isOpen,
   });
 
@@ -610,7 +617,7 @@ export function NominaFormModal({
     const errs: Record<string, string> = {};
     if (!form.descripcion.trim())
       errs.descripcion = 'La descripción es obligatoria';
-    if (!form.periodo) errs.periodo = 'Indica el periodo';
+    if (form.periodo_id === '') errs.periodo_id = 'Indica el periodo';
     if (!form.inicio_periodo || !form.fin_periodo) {
       errs.rango = 'Indica el rango completo';
     } else if (form.fin_periodo < form.inicio_periodo) {
@@ -639,7 +646,7 @@ export function NominaFormModal({
     if (!validar()) return;
     mutation.mutate({
       descripcion: form.descripcion.trim(),
-      periodo: form.periodo,
+      periodo_id: form.periodo_id as number,
       inicio_periodo: form.inicio_periodo,
       fin_periodo: form.fin_periodo,
       moneda_id: form.moneda_id as number,
@@ -694,13 +701,31 @@ export function NominaFormModal({
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div className="space-y-2">
             <Label htmlFor="periodo">Periodo *</Label>
-            <DateInput
+            <select
               id="periodo"
-              value={form.periodo}
-              onChange={(iso) => set('periodo', iso)}
-            />
-            {errores.periodo && (
-              <p className="text-xs text-red-500">{errores.periodo}</p>
+              value={form.periodo_id}
+              onChange={(e) =>
+                set(
+                  'periodo_id',
+                  e.target.value === '' ? '' : Number(e.target.value)
+                )
+              }
+              className={`w-full rounded-md border px-3 py-2 text-sm ${
+                errores.periodo_id ? 'border-red-500' : 'border-slate-300'
+              }`}
+            >
+              <option value="">Elegir periodo...</option>
+              {periodos.map((periodo) => (
+                <option
+                  key={periodo.id_periodo_evaluacion}
+                  value={periodo.id_periodo_evaluacion}
+                >
+                  {periodo.nombre}
+                </option>
+              ))}
+            </select>
+            {errores.periodo_id && (
+              <p className="text-xs text-red-500">{errores.periodo_id}</p>
             )}
           </div>
           <div className="space-y-2">

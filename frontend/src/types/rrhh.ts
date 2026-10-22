@@ -427,7 +427,8 @@ export const ETIQUETA_ESTADO_NOMINA: Record<RrhhEstadoNomina, string> = {
 export interface RrhhNominaListado {
   id: number;
   descripcion: string;
-  periodo: string;
+  periodo_id: number | null;
+  periodo_nombre: string | null;
   inicio_periodo: string;
   fin_periodo: string;
   moneda_id: number;
@@ -489,7 +490,7 @@ export interface RrhhNominaDetalle extends RrhhNominaListado {
 /** Cabecera del alta de una nómina (nace en `pre_nomina`). */
 export interface RrhhNominaCreate {
   descripcion: string;
-  periodo: string;
+  periodo_id: number;
   inicio_periodo: string;
   fin_periodo: string;
   moneda_id: number;
@@ -521,7 +522,8 @@ export interface RrhhPagoListado {
   metodo_id: number;
   metodo_nombre: string | null;
   referencia: string | null;
-  periodo: string;
+  periodo_id: number | null;
+  periodo_nombre: string | null;
   inicio_periodo: string;
   fin_periodo: string;
   estado_nomina: RrhhEstadoNomina;
@@ -601,14 +603,11 @@ export interface RrhhTipoEvaluacion {
   updated_at?: string;
 }
 
-/** Fila del catálogo `periodo_evaluaciones` (selector del formulario). */
+/** Fila del catálogo `periodo_evaluaciones` (selector de los formularios). */
 export interface RrhhPeriodoEvaluacion {
   id_periodo_evaluacion: number;
   nombre: string;
   descripcion: string | null;
-  /** Rango que desambigua periodos con el mismo nombre. */
-  fecha_inicio: string;
-  fecha_fin: string;
   activo: boolean;
   /** Derivado: ya existe un lote de pago por resultado para este periodo. */
   pagado_x_resultado: boolean;
@@ -657,10 +656,6 @@ export interface RrhhCatalogoConfig {
   tienePorcentaje: boolean;
   /** Tiene columna `valor` (calificaciones: escala ∈ {5, 10, 100}). */
   tieneValor: boolean;
-  /** Tiene rango de fechas obligatorio (periodos de evaluación). */
-  tieneFechas?: boolean;
-  /** Muestra el estado derivado `pagado_x_resultado`. */
-  tienePagado?: boolean;
   /** Longitud máxima del nombre según la restricción de BD. */
   maxNombre: number;
   descripcion: string;
@@ -753,17 +748,15 @@ export const RRHH_CATALOGOS: RrhhCatalogoConfig[] = [
   },
   {
     id: 'periodos-evaluacion',
-    nombre: 'Periodos de evaluación',
+    nombre: 'Periodos',
     ruta: '/rrhh/catalogos/periodos-evaluacion',
     pk: 'id_periodo_evaluacion',
     tieneActivo: true,
     tienePorcentaje: false,
     tieneValor: false,
-    tieneFechas: true,
-    tienePagado: true,
     maxNombre: 100,
     descripcion:
-      'Periodos reutilizables para evaluar y repartir el pago por resultado.',
+      'Periodos compartidos por evaluaciones, nómina y pago por resultado.',
   },
   {
     id: 'calificaciones',
