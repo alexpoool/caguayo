@@ -83,6 +83,8 @@ export function CatalogosPage({ tabInicial, onCambiarTab }: CatalogosPageProps =
       ? (tabInicial as string)
       : RRHH_CATALOGOS[0].id;
   const config = RRHH_CATALOGOS.find((c) => c.id === tabId) as RrhhCatalogoConfig;
+  // Abierto desde Administración: sin pestañas, con el nombre del catálogo.
+  const embebido = Boolean(tabInicial);
 
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<RrhhCatalogo | null>(null);
@@ -237,12 +239,12 @@ export function CatalogosPage({ tabInicial, onCambiarTab }: CatalogosPageProps =
         <div>
           <h1 className="flex items-center gap-2 text-xl font-bold text-slate-900">
             <Settings className="h-6 w-6 text-brand-600" />
-            Catálogos
+            {embebido ? config.nombre : 'Catálogos'}
           </h1>
           <p className="mt-1 text-sm text-slate-500">
-            Todo el catálogo del módulo: contratos, bonificaciones,
-            deducciones, pagos, departamentos, puestos, tipos de evaluación,
-            periodos y calificaciones.
+            {embebido
+              ? config.descripcion
+              : 'Todo el catálogo del módulo: contratos, bonificaciones, deducciones, pagos, departamentos, puestos, tipos de evaluación, periodos y calificaciones.'}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -267,23 +269,25 @@ export function CatalogosPage({ tabInicial, onCambiarTab }: CatalogosPageProps =
         </div>
       </div>
 
-      {/* Pestañas por catálogo */}
-      <div className="flex flex-wrap gap-2 border-b border-slate-200 pb-2">
-        {RRHH_CATALOGOS.map((cat) => (
-          <button
-            key={cat.id}
-            type="button"
-            onClick={() => cambiarTab(cat.id)}
-            className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
-              cat.id === tabId
-                ? 'bg-brand-600 text-white'
-                : 'text-slate-600 hover:bg-slate-100'
-            }`}
-          >
-            {cat.nombre}
-          </button>
-        ))}
-      </div>
+      {/* Pestañas por catálogo (solo en el módulo RRHH) */}
+      {!embebido && (
+        <div className="flex flex-wrap gap-2 border-b border-slate-200 pb-2">
+          {RRHH_CATALOGOS.map((cat) => (
+            <button
+              key={cat.id}
+              type="button"
+              onClick={() => cambiarTab(cat.id)}
+              className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+                cat.id === tabId
+                  ? 'bg-brand-600 text-white'
+                  : 'text-slate-600 hover:bg-slate-100'
+              }`}
+            >
+              {cat.nombre}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Contenido: pestañas con UI propia o CRUD genérico */}
       {config.custom === 'departamentos' ? (

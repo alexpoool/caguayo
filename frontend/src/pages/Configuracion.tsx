@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { useSearchParams, useNavigate, useParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -25,10 +25,7 @@ import {
   Wallet,
   AlertCircle,
   Search,
-  ChevronLeft,
-  ChevronRight,
   Palette,
-  Database,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import {
@@ -58,7 +55,6 @@ import {
   tipoEntidadService,
   dj08Service,
 } from "../services/api";
-import { MigracionLegacy } from "./migracion/MigracionLegacy";
 import type {
   ActividadEconomicaInput,
   TributoInput,
@@ -81,8 +77,7 @@ type ConfigSubTabType =
   | "tipo-entidad"
   | "dj08-actividades"
   | "dj08-tributos"
-  | "especialidades"
-  | "migracion";
+  | "especialidades";
 
 const configSubTabs: { id: ConfigSubTabType; label: string }[] = [
   { id: "tipo-contrato", label: "Tipos de Contrato" },
@@ -97,7 +92,6 @@ const configSubTabs: { id: ConfigSubTabType; label: string }[] = [
   { id: "dj08-actividades", label: "Actividades Económicas" },
   { id: "dj08-tributos", label: "Tributos" },
   { id: "especialidades", label: "Especialidades" },
-  { id: "migracion", label: "Migración" },
 ];
 
 /** Slug de URL de cada pestaña (`/configuracion/<slug>`). */
@@ -114,7 +108,6 @@ const CONFIG_SLUGS: Record<ConfigSubTabType, string> = {
   "dj08-actividades": "actividades-economicas",
   "dj08-tributos": "tributos",
   especialidades: "especialidades",
-  migracion: "migracion",
 };
 
 /** Inverso de `CONFIG_SLUGS`: slug → pestaña. */
@@ -256,9 +249,7 @@ export function ConfiguracionPage() {
     (pagina ? CONFIG_TABS[pagina] : undefined) ??
     tabDesdeQuery ??
     "tipo-contrato";
-  const setActiveConfigSubTab = (tab: ConfigSubTabType) => {
-    navigate(`/configuracion/${CONFIG_SLUGS[tab]}`);
-  };
+  const currentSubTab = configSubTabs.find((t) => t.id === activeConfigSubTab);
 
   // Canoniza la URL: sin página o con página desconocida se redirige al slug
   // de la pestaña activa; un `?tab=` antiguo se traduce a su slug.
@@ -279,36 +270,6 @@ export function ConfiguracionPage() {
     isOpen: boolean;
     item: any | null;
   }>({ isOpen: false, item: null });
-
-  const tabsRef = useRef<HTMLDivElement>(null);
-  const [canScrollLeft, setCanScrollLeft] = useState(false);
-  const [canScrollRight, setCanScrollRight] = useState(false);
-
-  const checkScroll = useCallback(() => {
-    const el = tabsRef.current;
-    if (!el) return;
-    setCanScrollLeft(el.scrollLeft > 2);
-    setCanScrollRight(el.scrollLeft < el.scrollWidth - el.clientWidth - 2);
-  }, []);
-
-  useEffect(() => {
-    const el = tabsRef.current;
-    if (!el) return;
-    checkScroll();
-    el.addEventListener("scroll", checkScroll, { passive: true });
-    window.addEventListener("resize", checkScroll);
-    return () => {
-      el.removeEventListener("scroll", checkScroll);
-      window.removeEventListener("resize", checkScroll);
-    };
-  }, [checkScroll]);
-
-  const scrollTabs = (direction: "left" | "right") => {
-    const el = tabsRef.current;
-    if (!el) return;
-    const amount = 180;
-    el.scrollBy({ left: direction === "left" ? -amount : amount, behavior: "smooth" });
-  };
 
   const {
     data: tiposContrato = [],
@@ -1284,7 +1245,6 @@ const {
 
   const isSubcategoria = activeConfigSubTab === "subcategorias";
   const isEspecialidades = activeConfigSubTab === "especialidades";
-  const isMigracion = activeConfigSubTab === "migracion";
   const isDj08Catalogo =
     activeConfigSubTab === "dj08-actividades" ||
     activeConfigSubTab === "dj08-tributos";
@@ -1855,33 +1815,12 @@ const {
   };
 
   const renderConfigListView = () => {
-    // La sub-pestaña Importar no es un catálogo más: no tiene tabla, buscador,
-    // botón "Nuevo" ni modal de edición. Devolviendo aquí antes de todo eso, no
-    // hay que añadir una condición en cada uno.
-    if (isMigracion) {
-      return (
-        <div className="space-y-4">
-          <div className="flex items-center gap-2">
-            <Database className="w-5 h-5 text-slate-600" />
-            <h2 className="text-lg font-bold text-gray-900">Migración</h2>
-          </div>
-          <p className="text-sm text-gray-500">
-            Migra el legacy completo. Sólo inserta: nunca borra ni actualiza.
-          </p>
-          <MigracionLegacy />
-        </div>
-      );
-    }
-
     const currentItems = getItems();
     const filteredItems = currentItems.filter(
       (item: any) =>
         item.nombre?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         item.codigo?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         item.descripcion?.toLowerCase().includes(searchTerm.toLowerCase()),
-    );
-    const currentSubTab = configSubTabs.find(
-      (t) => t.id === activeConfigSubTab,
     );
 
     return (
@@ -1949,11 +1888,7 @@ const {
               {activeConfigSubTab === "especialidades" && (
                 <Palette className="w-5 h-5 text-fuchsia-600" />
               )}
-              {isMigracion && <Database className="w-5 h-5 text-slate-600" />}
             </div>
-            <h2 className="text-lg font-bold text-gray-900">
-              {currentSubTab?.label}
-            </h2>
             {isAnyLoading ? (
               <span className="text-sm text-blue-500">Cargando...</span>
             ) : (
@@ -2167,63 +2102,15 @@ const {
           <div className="p-2 bg-gradient-to-br from-blue-500 to-indigo-600 rounded shadow-lg">
             <Settings className="h-5 w-5 text-white" />
           </div>
-          <div className="flex items-baseline">
-            <h1 className="text-xl font-bold text-gray-900">Administración</h1>
-            <p className="text-gray-500 text-sm">Gestión del sistema</p>
+          <div className="flex items-baseline gap-2">
+            <h1 className="text-xl font-bold text-gray-900">{currentSubTab?.label}</h1>
+            <p className="text-gray-500 text-sm">Administración</p>
           </div>
         </div>
       </div>
 
-      {/* Sub-tabs de configuración */}
-      <div className="relative flex items-center border-b bg-white rounded-t-lg">
-        {/* Arrow left */}
-        {canScrollLeft && (
-          <button
-            onClick={() => scrollTabs("left")}
-            className="absolute left-0 z-10 flex items-center justify-center w-8 h-full bg-gradient-to-r from-white via-white/90 to-transparent hover:bg-gray-50 transition-colors"
-            aria-label="Desplazar a la izquierda"
-          >
-            <ChevronLeft className="h-4 w-4 text-gray-500" />
-          </button>
-        )}
-
-        {/* Tabs container */}
-        <div
-          ref={tabsRef}
-          className="flex gap-1 overflow-x-auto hide-scrollbar px-2 pt-2 flex-1"
-        >
-          {configSubTabs.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => {
-                setActiveConfigSubTab(tab.id);
-                setSearchTerm("");
-              }}
-              className={`px-4 py-2 text-sm font-medium whitespace-nowrap transition-colors ${
-                activeConfigSubTab === tab.id
-                  ? "text-blue-600 border-b-2 border-blue-600 bg-blue-50"
-                  : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
-
-        {/* Arrow right */}
-        {canScrollRight && (
-          <button
-            onClick={() => scrollTabs("right")}
-            className="absolute right-0 z-10 flex items-center justify-center w-8 h-full bg-gradient-to-l from-white via-white/90 to-transparent hover:bg-gray-50 transition-colors"
-            aria-label="Desplazar a la derecha"
-          >
-            <ChevronRight className="h-4 w-4 text-gray-500" />
-          </button>
-        )}
-      </div>
-
       {/* Vista de lista */}
-      <div className="bg-white rounded-b-lg rounded-tr-lg p-6 border border-t-0">
+      <div className="bg-white rounded-lg p-6 border">
         {renderConfigListView()}
       </div>
 
