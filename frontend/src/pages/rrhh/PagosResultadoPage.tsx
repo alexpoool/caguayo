@@ -7,6 +7,7 @@ import {
   AlertCircle,
   ArrowLeft,
   Eye,
+  FileDown,
   Loader2,
   Plus,
   Target,
@@ -59,6 +60,7 @@ export function PagosResultadoPage() {
   const queryClient = useQueryClient();
   const [confirmDelete, setConfirmDelete] =
     useState<RrhhPagoResultadoListado | null>(null);
+  const [descargando, setDescargando] = useState<number | null>(null);
 
   const {
     data: pagos = [],
@@ -84,6 +86,28 @@ export function PagosResultadoPage() {
     onError: (err: any) =>
       toast.error(err?.message || 'No se pudo eliminar el pago'),
   });
+
+  const descargarDocumento = async (pago: RrhhPagoResultadoListado) => {
+    if (descargando !== null) return;
+    setDescargando(pago.id_pago_x_resultado);
+    try {
+      const { blob, nombre } = await rrhhService.descargarDocumentoPagoResultado(
+        pago.id_pago_x_resultado
+      );
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = nombre;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : 'No se pudo descargar el documento'
+      );
+    } finally {
+      setDescargando(null);
+    }
+  };
 
   const totalRepartido = pagos.reduce(
     (acc, p) => acc + Number(p.total_pagado),
@@ -215,7 +239,9 @@ export function PagosResultadoPage() {
                     <TableHead className="text-right">Devengado</TableHead>
                     <TableHead className="text-right">Impuesto</TableHead>
                     <TableHead className="text-right">Neto</TableHead>
-                    <TableHead className="text-right">Acciones</TableHead>
+                    <TableHead className="sticky right-0 z-10 bg-white text-right shadow-[-6px_0_6px_-6px_rgba(15,23,42,0.15)]">
+                      Acciones
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -274,7 +300,7 @@ export function PagosResultadoPage() {
                       <TableCell className="text-right font-semibold tabular-nums text-emerald-700">
                         {fmtMoneda(pago.total_neto)}
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="sticky right-0 z-10 bg-white shadow-[-6px_0_6px_-6px_rgba(15,23,42,0.15)]">
                         <div className="flex items-center justify-end gap-1">
                           <button
                             type="button"
@@ -287,6 +313,19 @@ export function PagosResultadoPage() {
                             className="rounded-md p-1.5 text-slate-500 transition-colors hover:bg-sky-50 hover:text-sky-600"
                           >
                             <Eye className="h-4 w-4" />
+                          </button>
+                          <button
+                            type="button"
+                            title="Descargar documento"
+                            onClick={() => descargarDocumento(pago)}
+                            disabled={descargando !== null}
+                            className="rounded-md p-1.5 text-slate-500 transition-colors hover:bg-sky-50 hover:text-sky-600 disabled:cursor-not-allowed disabled:opacity-50"
+                          >
+                            {descargando === pago.id_pago_x_resultado ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <FileDown className="h-4 w-4" />
+                            )}
                           </button>
                           <button
                             type="button"

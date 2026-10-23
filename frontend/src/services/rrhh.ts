@@ -716,6 +716,31 @@ export const rrhhService = {
     return await apiClient.get(`/rrhh/pagos-resultado/${id}`);
   },
 
+  /**
+   * Descarga el documento del pago por resultado en PDF.
+   *
+   * Igual que la nómina, usa `fetch` porque la respuesta es un blob y el
+   * nombre del archivo viene en `Content-Disposition`.
+   */
+  descargarDocumentoPagoResultado: async (
+    id: number
+  ): Promise<{ blob: Blob; nombre: string }> => {
+    const token = localStorage.getItem('auth_token');
+    const base = import.meta.env.VITE_API_BASE_URL;
+    const resp = await fetch(`${base}/rrhh/pagos-resultado/${id}/documento`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+    if (!resp.ok)
+      throw new Error('No se pudo generar el documento del pago por resultado');
+    const blob = await resp.blob();
+    const disp = resp.headers.get('Content-Disposition') || '';
+    const m = /filename\*?=(?:"([^"]+)"|([^;]+))/.exec(disp);
+    const nombre =
+      (m && (m[1] || m[2])?.replace(/"/g, '').trim()) ||
+      `pago-resultado-${id}.pdf`;
+    return { blob, nombre };
+  },
+
   crearPagoResultado: async (
     data: RrhhPagoResultadoCreate
   ): Promise<RrhhPagoResultado> => {

@@ -7,6 +7,7 @@ import {
   ArrowLeft,
   Calculator,
   ClipboardCheck,
+  FileDown,
   Loader2,
   Target,
   Trash2,
@@ -56,6 +57,7 @@ export function PagoResultadoDetallePage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [descargando, setDescargando] = useState(false);
 
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['rrhh', 'pagos-resultado', pagoId],
@@ -76,6 +78,27 @@ export function PagoResultadoDetallePage() {
     onError: (err: any) =>
       toast.error(err?.message || 'No se pudo eliminar el pago'),
   });
+
+  const descargarDocumento = async () => {
+    if (descargando) return;
+    setDescargando(true);
+    try {
+      const { blob, nombre } =
+        await rrhhService.descargarDocumentoPagoResultado(pagoId);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = nombre;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : 'No se pudo descargar el documento'
+      );
+    } finally {
+      setDescargando(false);
+    }
+  };
 
   const totales = (data?.empleados ?? []).reduce(
     (acc, fila) => ({
@@ -128,14 +151,29 @@ export function PagoResultadoDetallePage() {
           </div>
         </div>
         {data && (
-          <Button
-            variant="outline"
-            onClick={() => setConfirmDelete(true)}
-            className="gap-2 text-red-600 hover:bg-red-50 hover:text-red-700"
-          >
-            <Trash2 className="h-4 w-4" />
-            Eliminar
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              variant="outline"
+              onClick={descargarDocumento}
+              disabled={descargando}
+              className="gap-2"
+            >
+              {descargando ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <FileDown className="h-4 w-4" />
+              )}
+              Descargar documento
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => setConfirmDelete(true)}
+              className="gap-2 text-red-600 hover:bg-red-50 hover:text-red-700"
+            >
+              <Trash2 className="h-4 w-4" />
+              Eliminar
+            </Button>
+          </div>
         )}
       </div>
 

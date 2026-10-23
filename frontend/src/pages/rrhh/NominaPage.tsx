@@ -19,6 +19,7 @@ import {
   Calculator,
   CheckCircle2,
   FileDown,
+  FileText,
   Loader2,
   MoreVertical,
   Pencil,
@@ -163,6 +164,9 @@ function ListaNominas({ onNueva }: { onNueva: () => void }) {
   const [aConfirmar, setAConfirmar] = useState<RrhhNominaListado | null>(null);
   const [aEliminar, setAEliminar] = useState<RrhhNominaListado | null>(null);
   const [descargando, setDescargando] = useState<number | null>(null);
+  const [descargandoResultado, setDescargandoResultado] = useState<
+    number | null
+  >(null);
 
   // Menú flotante de pagos (Salario / Resultado), con el mismo patrón que el
   // menú de opciones de Empleados: portal a `document.body` y posición fija.
@@ -288,6 +292,31 @@ function ListaNominas({ onNueva }: { onNueva: () => void }) {
       );
     } finally {
       setDescargando(null);
+    }
+  };
+
+  const descargarPagoResultado = async (nomina: RrhhNominaListado) => {
+    if (!nomina.pago_resultado_id || descargandoResultado !== null) return;
+    setDescargandoResultado(nomina.id);
+    try {
+      const { blob, nombre } =
+        await rrhhService.descargarDocumentoPagoResultado(
+          nomina.pago_resultado_id
+        );
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = nombre;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      toast.error(
+        err instanceof Error
+          ? err.message
+          : 'No se pudo descargar el pago por resultado'
+      );
+    } finally {
+      setDescargandoResultado(null);
     }
   };
 
@@ -454,6 +483,19 @@ function ListaNominas({ onNueva }: { onNueva: () => void }) {
                             <FileDown className="h-4 w-4" />
                           )}
                         </ActionButton>
+                        {fila.pago_resultado_id && (
+                          <ActionButton
+                            titulo="Descargar pago por resultado"
+                            onClick={() => descargarPagoResultado(fila)}
+                            disabled={descargandoResultado !== null}
+                          >
+                            {descargandoResultado === fila.id ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <FileText className="h-4 w-4" />
+                            )}
+                          </ActionButton>
+                        )}
                         <ActionButton
                           titulo={
                             fila.estado === 'nomina'
