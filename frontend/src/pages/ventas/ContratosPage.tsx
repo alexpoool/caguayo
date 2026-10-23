@@ -142,7 +142,7 @@ export function ContratosPage() {
   const loadInitialData = async () => {
     try {
       const [clientesRes, monedasRes, estadosRes, tiposRes] = await Promise.all([
-        clientesService.getClientes(0, 1000),
+        clientesService.getClientes(0, 1000, "CLIENTE,AMBAS"),
         monedaService.getMonedas(0, 100),
         configuracionService.getEstadosContrato(),
         configuracionService.getTiposContrato()
