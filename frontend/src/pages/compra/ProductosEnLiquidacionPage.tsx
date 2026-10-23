@@ -1,24 +1,25 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useSearchParams } from 'react-router-dom';
-import { Button, Input, Label, Card, CardHeader, CardTitle, CardContent, Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../../components/ui';
+import { Button, Input, Label, Card, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, FormModal } from '../../components/ui';
 import { productosEnLiquidacionService, productosService, monedaService } from '../../services/api';
 import type { ProductosEnLiquidacion, ProductosEnLiquidacionCreate } from '../../services/api';
 import type { Productos } from '../../types';
 import type { Moneda } from '../../types/moneda';
 import { useInfiniteList } from '../../hooks/useInfiniteList';
-import { Plus, Save, Trash2, Edit, X, ArrowLeft, Search, Check, Package, Tag, DollarSign, ClipboardList, Eye, Boxes, Loader2 } from 'lucide-react';
+import { Trash2, Edit, X, Search, Package, DollarSign, Boxes, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { esNumeroPositivo, esPorcentaje } from '../../utils/validacionFormularios';
 import { formatFecha } from '../../utils/fecha';
 
 type View = 'list' | 'form';
 type TabType = 'todas' | 'pendientes' | 'liquidadas';
 
+const PEL_FORM_ID = 'producto-en-liquidacion-form';
+
 export function ProductosEnLiquidacionPage() {
   const [searchParams] = useSearchParams();
   const initialProveedorId = searchParams.get('proveedor');
-  const [filtroCliente, setFiltroCliente] = useState<number | null>(initialProveedorId ? Number(initialProveedorId) : null);
+  const [filtroCliente] = useState<number | null>(initialProveedorId ? Number(initialProveedorId) : null);
 
   const [view, setView] = useState<View>('list');
   const [allProductos, setAllProductos] = useState<Productos[]>([]);
@@ -31,6 +32,7 @@ export function ProductosEnLiquidacionPage() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [formData, setFormData] = useState<Partial<ProductosEnLiquidacionCreate>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isSaving, setIsSaving] = useState(false);
 
   // ── Infinite list ──────────────────────────────────────────────────────────
 
@@ -44,20 +46,21 @@ export function ProductosEnLiquidacionPage() {
     loadMore,
     refresh,
     reset,
+    total: totalProductosPL,
   } = useInfiniteList<ProductosEnLiquidacion>({
     queryKeyBase: 'productos-liquidacion',
     extraQueryKeyParams: queryKeyParams,
-    queryFn: (skip, limit) => {
+    queryFn: (skip, limit, _search, onTotal) => {
       if (activeTab === 'pendientes')
-        return productosEnLiquidacionService.getProductosEnLiquidacionPendientes(skip, limit, filtroCliente ?? undefined);
+        return productosEnLiquidacionService.getProductosEnLiquidacionPendientes(skip, limit, filtroCliente ?? undefined, onTotal);
       if (activeTab === 'liquidadas')
-        return productosEnLiquidacionService.getProductosEnLiquidacionLiquidadas(skip, limit, filtroCliente ?? undefined);
-      return productosEnLiquidacionService.getProductosEnLiquidacion(skip, limit, filtroCliente ?? undefined);
+        return productosEnLiquidacionService.getProductosEnLiquidacionLiquidadas(skip, limit, filtroCliente ?? undefined, onTotal);
+      return productosEnLiquidacionService.getProductosEnLiquidacion(skip, limit, filtroCliente ?? undefined, onTotal);
     },
     limit: 100,
   });
 
-  useEffect(() => { reset(); }, [activeTab, filtroCliente]);
+  useEffect(() => { reset(); /* eslint-disable-line react-hooks/exhaustive-deps */ }, [activeTab, filtroCliente]);
 
   // IntersectionObserver para scroll infinito
   const loadMoreRef = useRef<HTMLDivElement>(null);
@@ -102,15 +105,20 @@ export function ProductosEnLiquidacionPage() {
       toast.error(Object.values(newErrors).join('\n• '));
       return;
     }
+    setIsSaving(true);
     try {
-      editingId 
-        ? await productosEnLiquidacionService.updateProductoEnLiquidacion(editingId, formData)
-        : await productosEnLiquidacionService.createProductoEnLiquidacion(formData as ProductosEnLiquidacionCreate);
+      if (editingId) {
+        await productosEnLiquidacionService.updateProductoEnLiquidacion(editingId, formData);
+      } else {
+        await productosEnLiquidacionService.createProductoEnLiquidacion(formData as ProductosEnLiquidacionCreate);
+      }
       toast.success(editingId ? 'Actualizado' : 'Creado');
       setView('list');
       resetForm();
       refresh();
-    } catch (error: any) { toast.error(error.message || 'Error'); }
+    } catch (error: any) { toast.error(error.message || 'Error'); } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleDelete = async (id: number, liquidada: boolean) => {
@@ -171,8 +179,8 @@ export function ProductosEnLiquidacionPage() {
             <h1 className="text-xl font-bold text-gray-900">Productos en Liquidación</h1>
             <p className="text-sm text-gray-500 ml-3 hidden sm:block">
               {filteredProductos.length === productos.length
-                ? `Gestión de productos (${productos.length} items)`
-                : `Mostrando ${filteredProductos.length} de ${productos.length} productos`
+                ? `Gestión de productos (${totalProductosPL ?? productos.length} items)`
+                : `Mostrando ${filteredProductos.length} de ${productos.length} productos filtrados (total en BD: ${totalProductosPL ?? productos.length})`
               }
             </p>
           </div>
@@ -325,114 +333,105 @@ export function ProductosEnLiquidacionPage() {
   );
 
   const renderForm = () => (
-    <div className="max-w-2xl mx-auto">
-      <div className="flex items-center gap-4 mb-6">
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => { setView('list'); resetForm(); }}
-          className="h-9 w-9"
+    <form
+      id={PEL_FORM_ID}
+      onSubmit={(e) => { e.preventDefault(); handleSave(); }}
+      className="p-4 md:p-6 space-y-4"
+    >
+      <div>
+        <Label className="text-sm font-medium">Producto *</Label>
+        <select
+          className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white"
+          value={formData.id_producto || ''}
+          onChange={(e) => { setFormData({...formData, id_producto: Number(e.target.value)}); setErrors(prev => ({...prev, id_producto: ''})); }}
         >
-          <ArrowLeft className="h-5 w-5" />
-        </Button>
-        <div className="flex items-center gap-3">
-          <div className="p-2 bg-gradient-to-br from-teal-500 to-cyan-600 rounded shadow-lg animate-bounce-subtle">
-            <Boxes className="h-5 w-5 text-white" />
-          </div>
-          <h1 className="text-xl font-bold text-gray-900">
-            {editingId ? 'Editar' : 'Nuevo'} Producto en Liquidación
-          </h1>
+          <option value="">Seleccionar</option>
+          {allProductos.map(p => <option key={p.id_producto} value={p.id_producto}>{p.nombre}</option>)}
+        </select>
+        {errors.id_producto && <p className="text-red-500 text-sm mt-1">{errors.id_producto}</p>}
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <Label className="text-sm font-medium">Cantidad *</Label>
+          <Input
+            type="number"
+            min="1"
+            value={formData.cantidad || ''}
+            onChange={(e: any) => { setFormData({...formData, cantidad: Number(e.target.value)}); setErrors(prev => ({...prev, cantidad: ''})); }}
+          />
+          {errors.cantidad && <p className="text-red-500 text-sm mt-1">{errors.cantidad}</p>}
+        </div>
+        <div>
+          <Label className="text-sm font-medium">Precio *</Label>
+          <Input
+            type="number"
+            step="0.01"
+            min="0"
+            value={formData.precio || ''}
+            onChange={(e: any) => { setFormData({...formData, precio: Number(e.target.value)}); setErrors(prev => ({...prev, precio: ''})); }}
+          />
+          {errors.precio && <p className="text-red-500 text-sm mt-1">{errors.precio}</p>}
         </div>
       </div>
-      <Card className="shadow-sm border-gray-200">
-        <CardHeader className="border-b bg-gray-50/50">
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <Package className="h-5 w-5 text-teal-600" />
-            {editingId ? 'Editar' : 'Nuevo'} Producto en Liquidación
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="mt-4 space-y-4">
-          <div>
-            <Label className="text-sm font-medium">Producto *</Label>
-            <select 
-              className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white"
-              value={formData.id_producto || ''}
-              onChange={(e) => { setFormData({...formData, id_producto: Number(e.target.value)}); setErrors(prev => ({...prev, id_producto: ''})); }}
-            >
-              <option value="">Seleccionar</option>
-              {allProductos.map(p => <option key={p.id_producto} value={p.id_producto}>{p.nombre}</option>)}
-            </select>
-            {errors.id_producto && <p className="text-red-500 text-sm mt-1">{errors.id_producto}</p>}
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label className="text-sm font-medium">Cantidad *</Label>
-              <Input 
-                type="number" 
-                min="1"
-                value={formData.cantidad || ''} 
-                onChange={(e: any) => { setFormData({...formData, cantidad: Number(e.target.value)}); setErrors(prev => ({...prev, cantidad: ''})); }}
-              />
-              {errors.cantidad && <p className="text-red-500 text-sm mt-1">{errors.cantidad}</p>}
-            </div>
-            <div>
-              <Label className="text-sm font-medium">Precio *</Label>
-              <Input 
-                type="number" 
-                step="0.01"
-                min="0"
-                value={formData.precio || ''} 
-                onChange={(e: any) => { setFormData({...formData, precio: Number(e.target.value)}); setErrors(prev => ({...prev, precio: ''})); }}
-              />
-              {errors.precio && <p className="text-red-500 text-sm mt-1">{errors.precio}</p>}
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label className="text-sm font-medium">Moneda *</Label>
-              <select 
-                className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white"
-                value={formData.id_moneda || ''}
-                onChange={(e) => { setFormData({...formData, id_moneda: Number(e.target.value)}); setErrors(prev => ({...prev, id_moneda: ''})); }}
-              >
-                <option value="">Seleccionar</option>
-                {monedas.map(m => <option key={m.id_moneda} value={m.id_moneda}>{m.denominacion}</option>)}
-              </select>
-              {errors.id_moneda && <p className="text-red-500 text-sm mt-1">{errors.id_moneda}</p>}
-            </div>
-            <div>
-              <Label className="text-sm font-medium">Tipo Compra *</Label>
-              <select 
-                className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white"
-                value={formData.tipo_compra || ''}
-                onChange={(e) => { setFormData({...formData, tipo_compra: e.target.value as any}); setErrors(prev => ({...prev, tipo_compra: ''})); }}
-              >
-                <option value="">Seleccionar</option>
-                <option value="FACTURA">Factura</option>
-                <option value="VENTA_EFECTIVO">Venta Efectivo</option>
-                <option value="ANEXO">Anexo</option>
-              </select>
-            </div>
-          </div>
-          <div className="flex gap-3 pt-6 border-t">
-            <Button
-              onClick={handleSave}
-              className="gap-2 bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300"
-            >
-              <Save className="w-4 h-4" />
-              Guardar
-            </Button>
-            <Button variant="outline" onClick={() => { setView('list'); resetForm(); }}>Cancelar</Button>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <Label className="text-sm font-medium">Moneda *</Label>
+          <select
+            className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white"
+            value={formData.id_moneda || ''}
+            onChange={(e) => { setFormData({...formData, id_moneda: Number(e.target.value)}); setErrors(prev => ({...prev, id_moneda: ''})); }}
+          >
+            <option value="">Seleccionar</option>
+            {monedas.map(m => <option key={m.id_moneda} value={m.id_moneda}>{m.denominacion}</option>)}
+          </select>
+          {errors.id_moneda && <p className="text-red-500 text-sm mt-1">{errors.id_moneda}</p>}
+        </div>
+        <div>
+          <Label className="text-sm font-medium">Tipo Compra *</Label>
+          <select
+            className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white"
+            value={formData.tipo_compra || ''}
+            onChange={(e) => { setFormData({...formData, tipo_compra: e.target.value as any}); setErrors(prev => ({...prev, tipo_compra: ''})); }}
+          >
+            <option value="">Seleccionar</option>
+            <option value="FACTURA">Factura</option>
+            <option value="VENTA_EFECTIVO">Venta Efectivo</option>
+            <option value="ANEXO">Anexo</option>
+          </select>
+        </div>
+      </div>
+    </form>
   );
 
   return (
     <div>
-      {view === 'list' && renderList()}
-      {view === 'form' && renderForm()}
+      {renderList()}
+
+      <FormModal
+        isOpen={view === 'form'}
+        onClose={() => { setView('list'); resetForm(); }}
+        title={`${editingId ? 'Editar' : 'Nuevo'} Producto en Liquidación`}
+        icon={<Boxes className="h-6 w-6" />}
+        size="lg"
+        footer={
+          <>
+            <Button variant="outline" onClick={() => { setView('list'); resetForm(); }} disabled={isSaving}>
+              Cancelar
+            </Button>
+            <Button
+              type="submit"
+              form={PEL_FORM_ID}
+              disabled={isSaving}
+              isLoading={isSaving}
+              className="gap-2 bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white shadow-lg hover:shadow-xl transition-all duration-300"
+            >
+              Guardar
+            </Button>
+          </>
+        }
+      >
+        {renderForm()}
+      </FormModal>
 
       {detailModal.isOpen && detailModal.item && createPortal(
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 animate-fade-in">

@@ -7,7 +7,7 @@ export interface UseInfiniteListOptions<T> {
   /** Base única para la query key. Ej: 'productos' */
   queryKeyBase: string;
   /** Función que llama al endpoint paginado */
-  queryFn: (skip: number, limit: number, search?: string) => Promise<T[]>;
+  queryFn: (skip: number, limit: number, search?: string, onTotal?: (total: number | null) => void) => Promise<T[]>;
   /** Tamaño de página (default: 100) */
   limit?: number;
   /** Parámetros extra incluidos en la query key (ej: [categoriaId]) */
@@ -18,6 +18,8 @@ export interface UseInfiniteListOptions<T> {
 
 export interface UseInfiniteListReturn<T> {
   items: T[];
+  /** Total de la BD que manda el backend en el header X-Total-Count. null = aún no llegó. */
+  total: number | null;
   isLoading: boolean;
   isFetchingMore: boolean;
   isError: boolean;
@@ -50,6 +52,7 @@ export function useInfiniteList<T>({
   const [hasMore, setHasMore] = useState(true);
   const [skip, setSkip] = useState(0);
   const [searchTerm, setSearchTerm] = useState('');
+  const [total, setTotal] = useState<number | null>(null);
 
   // ── Reset ────────────────────────────────────────────────────────────────
 
@@ -57,6 +60,7 @@ export function useInfiniteList<T>({
     setSkip(0);
     setAllItems([]);
     setHasMore(true);
+    setTotal(null);
   }, []);
 
   const setSearch = useCallback((term: string) => {
@@ -64,6 +68,7 @@ export function useInfiniteList<T>({
     setSkip(0);
     setAllItems([]);
     setHasMore(true);
+    setTotal(null);
   }, []);
 
   // ── Query paginada ───────────────────────────────────────────────────────
@@ -71,7 +76,15 @@ export function useInfiniteList<T>({
   const query = useQuery({
     queryKey: [queryKeyBase, skip, searchTerm, ...extraQueryKeyParams],
     queryFn: async () => {
-      const newItems = await queryFn(skip, limit, searchTerm || undefined);
+      let fetchedTotal: number | null = null;
+      const onTotal = (t: number | null) => {
+        fetchedTotal = t;
+      };
+      const newItems = await queryFn(skip, limit, searchTerm || undefined, onTotal);
+
+      if (fetchedTotal !== null) {
+        setTotal(fetchedTotal);
+      }
 
       // Determinar si hay más páginas
       if (newItems.length < limit) {
@@ -144,6 +157,7 @@ export function useInfiniteList<T>({
     setSkip(0);
     setAllItems([]);
     setHasMore(true);
+    setTotal(null);
     queryClient.invalidateQueries({ queryKey: [queryKeyBase] });
   }, [queryClient, queryKeyBase]);
 
@@ -157,6 +171,7 @@ export function useInfiniteList<T>({
 
   return {
     items,
+    total,
     isLoading: query.isLoading && skip === 0,
     isFetchingMore: query.isFetching,
     isError: query.isError,

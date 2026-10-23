@@ -3,10 +3,8 @@ import { createPortal } from "react-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Shield,
-  ShieldCheck,
   Edit,
   Trash2,
-  Save,
   X,
   Plus,
   Search,
@@ -19,10 +17,8 @@ import {
   Input,
   Label,
   Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
   ConfirmModal,
+  FormModal,
   Table,
   TableHeader,
   TableBody,
@@ -32,6 +28,8 @@ import {
 } from "../components/ui";
 import { administracionService } from "../services/administracion";
 import type { Grupo, GrupoCreate, GrupoUpdate } from "../types/usuario";
+
+const GRUPO_FORM_ID = "grupo-form";
 
 interface Modulo {
   nombre: string;
@@ -154,6 +152,7 @@ export function GruposPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["grupos"] });
       toast.success("Grupo creado exitosamente");
+      setView("list");
       resetGrupoForm();
     },
     onError: () => toast.error("Error al crear grupo"),
@@ -165,6 +164,7 @@ export function GruposPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["grupos"] });
       toast.success("Grupo actualizado");
+      setView("list");
       setEditingGrupo(null);
       resetGrupoForm();
     },
@@ -264,204 +264,7 @@ export function GruposPage() {
     resetGrupoForm();
   };
 
-  if (view === "form") {
-    return (
-      <div className="space-y-4 animate-fade-in-up">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Button variant="secondary" onClick={handleCancel}>
-              <X className="h-4 w-4 mr-2" />
-              Cancelar
-            </Button>
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-gradient-to-br from-purple-500 to-purple-600 rounded shadow-lg">
-                <Shield className="h-5 w-5 text-white" />
-              </div>
-              <div className="flex items-baseline">
-                <h1 className="text-xl font-bold text-gray-900">
-                  {editingGrupo ? "Editar Grupo" : "Nuevo Grupo"}
-                </h1>
-                <p className="text-sm text-gray-500">
-                  {editingGrupo
-                    ? "Modifique los datos del grupo"
-                    : "Complete los datos del nuevo grupo"}
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <Card className="hover:shadow-lg transition-shadow duration-300">
-          <CardHeader className="border-b bg-gradient-to-r from-purple-50 to-pink-50">
-            <div className="flex items-center gap-2">
-              <div className="p-2 bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg">
-                <ShieldCheck className="h-5 w-5 text-white" />
-              </div>
-              <CardTitle>Datos del Grupo</CardTitle>
-            </div>
-          </CardHeader>
-          <CardContent className="pt-6">
-            <form onSubmit={handleGrupoSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label className="flex items-center gap-2 text-gray-700">
-                  <Shield className="h-5 w-5 text-purple-500" />
-                  Nombre *
-                </Label>
-                <Input
-                  value={grupoForm.nombre}
-                  onChange={(e) =>
-                    setGrupoForm({ ...grupoForm, nombre: e.target.value })
-                  }
-                  placeholder="Nombre del grupo"
-                  className="transition-all duration-200 focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label className="flex items-center gap-2 text-gray-700">
-                  <FileText className="h-5 w-5 text-blue-500" />
-                  Descripción
-                </Label>
-                <Input
-                  value={grupoForm.descripcion || ""}
-                  onChange={(e) =>
-                    setGrupoForm({ ...grupoForm, descripcion: e.target.value })
-                  }
-                  placeholder="Descripción opcional"
-                  className="transition-all duration-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
-              <div className="space-y-3">
-                <Label className="flex items-center gap-2 text-gray-700">
-                  <Check className="h-5 w-5 text-green-500" />
-                  Funcionalidades por Módulo
-                </Label>
-                {MODULOS.map((modulo) => {
-                  const funcsDelModulo = funcionalidades.filter((f) =>
-                    modulo.funcionalidades.includes(f.nombre)
-                  );
-                  const todasSeleccionadas = funcsDelModulo.every((f) =>
-                    grupoForm.funcionalidades?.includes(f.id_funcionalidad)
-                  );
-                  const algunasSeleccionadas = funcsDelModulo.some((f) =>
-                    grupoForm.funcionalidades?.includes(f.id_funcionalidad)
-                  );
-                  return (
-                    <div
-                      key={modulo.nombre}
-                      className="border rounded-lg overflow-hidden"
-                    >
-                      <label
-                        className={`flex items-center gap-3 p-3 cursor-pointer transition-colors ${
-                          todasSeleccionadas
-                            ? "bg-green-50 border-green-500"
-                            : "bg-gray-50 hover:bg-gray-100"
-                        }`}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={todasSeleccionadas}
-                          onChange={(e) =>
-                            handleModuloChange(modulo, e.target.checked)
-                          }
-                          className="sr-only"
-                        />
-                        <div
-                          className={`w-5 h-5 rounded border flex items-center justify-center ${
-                            todasSeleccionadas
-                              ? "bg-green-500 border-green-500"
-                              : algunasSeleccionadas
-                                ? "bg-green-100 border-green-500"
-                                : "border-gray-300"
-                          }`}
-                        >
-                          {todasSeleccionadas && (
-                            <Check className="w-3 h-3 text-white" />
-                          )}
-                          {algunasSeleccionadas && !todasSeleccionadas && (
-                            <div className="w-2 h-2 rounded-full bg-green-500" />
-                          )}
-                        </div>
-                        <span className="font-semibold text-gray-800 flex-1">
-                          {modulo.nombre}
-                        </span>
-                        <span className="text-xs text-gray-500">
-                          ({funcsDelModulo.length})
-                        </span>
-                      </label>
-                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 p-3 bg-white">
-                        {funcsDelModulo.map((func) => (
-                          <label
-                            key={func.id_funcionalidad}
-                            className={`flex items-center gap-2 p-2 rounded border cursor-pointer transition-all duration-200 ${
-                              grupoForm.funcionalidades?.includes(
-                                func.id_funcionalidad,
-                              )
-                                ? "border-green-500 bg-green-50 text-green-700"
-                                : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"
-                            }`}
-                          >
-                            <input
-                              type="checkbox"
-                              checked={
-                                grupoForm.funcionalidades?.includes(
-                                  func.id_funcionalidad,
-                                ) || false
-                              }
-                              onChange={(e) =>
-                                handleFuncionalidadChange(
-                                  func.id_funcionalidad,
-                                  e.target.checked,
-                                )
-                              }
-                              className="sr-only"
-                            />
-                            <div
-                              className={`w-4 h-4 rounded border flex items-center justify-center ${
-                                grupoForm.funcionalidades?.includes(
-                                  func.id_funcionalidad,
-                                )
-                                  ? "bg-green-500 border-green-500"
-                                  : "border-gray-300"
-                              }`}
-                            >
-                              {grupoForm.funcionalidades?.includes(
-                                func.id_funcionalidad,
-                              ) && <Check className="w-3 h-3 text-white" />}
-                            </div>
-                            <span className="text-sm font-medium capitalize">
-                              {func.nombre.replace(/_/g, " ")}
-                            </span>
-                          </label>
-                        ))}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-              <div className="flex gap-3 pt-2">
-                <Button
-                  type="submit"
-                  className="gap-2 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300"
-                >
-                  <Save className="h-4 w-4" />
-                  {editingGrupo ? "Actualizar" : "Guardar"}
-                </Button>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  onClick={handleCancel}
-                  className="hover:bg-gray-200 transition-colors"
-                >
-                  <X className="h-4 w-4 mr-2" />
-                  Cancelar
-                </Button>
-              </div>
-            </form>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
+  const isSaving = createGrupo.isPending || updateGrupo.isPending;
 
   const content = (
     <div className="space-y-4">
@@ -480,7 +283,11 @@ export function GruposPage() {
           </div>
         </div>
         <Button
-          onClick={() => setView("form")}
+          onClick={() => {
+            setEditingGrupo(null);
+            resetGrupoForm();
+            setView("form");
+          }}
           className="gap-2 bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300"
         >
           <Plus className="h-4 w-4" />
@@ -588,6 +395,179 @@ export function GruposPage() {
         message={confirmModal.message}
         type="danger"
       />
+
+      <FormModal
+        isOpen={view === "form"}
+        onClose={handleCancel}
+        title={editingGrupo ? "Editar Grupo" : "Nuevo Grupo"}
+        subtitle={
+          editingGrupo
+            ? "Modifique los datos del grupo"
+            : "Complete los datos del nuevo grupo"
+        }
+        icon={<Shield className="h-6 w-6" />}
+        size="lg"
+        footer={
+          <>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleCancel}
+              disabled={isSaving}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="submit"
+              form={GRUPO_FORM_ID}
+              disabled={isSaving}
+              isLoading={isSaving}
+              className="gap-2 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 shadow-lg hover:shadow-xl transition-all duration-300"
+            >
+              {editingGrupo ? "Actualizar" : "Guardar"}
+            </Button>
+          </>
+        }
+      >
+        <form id={GRUPO_FORM_ID} onSubmit={handleGrupoSubmit} className="p-4 md:p-6 space-y-4">
+          <div className="space-y-2">
+            <Label className="flex items-center gap-2 text-gray-700">
+              <Shield className="h-5 w-5 text-purple-500" />
+              Nombre *
+            </Label>
+            <Input
+              value={grupoForm.nombre}
+              onChange={(e) =>
+                setGrupoForm({ ...grupoForm, nombre: e.target.value })
+              }
+              placeholder="Nombre del grupo"
+              className="transition-all duration-200 focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label className="flex items-center gap-2 text-gray-700">
+              <FileText className="h-5 w-5 text-blue-500" />
+              Descripción
+            </Label>
+            <Input
+              value={grupoForm.descripcion || ""}
+              onChange={(e) =>
+                setGrupoForm({ ...grupoForm, descripcion: e.target.value })
+              }
+              placeholder="Descripción opcional"
+              className="transition-all duration-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            />
+          </div>
+          <div className="space-y-3">
+            <Label className="flex items-center gap-2 text-gray-700">
+              <Check className="h-5 w-5 text-green-500" />
+              Funcionalidades por Módulo
+            </Label>
+            {MODULOS.map((modulo) => {
+              const funcsDelModulo = funcionalidades.filter((f) =>
+                modulo.funcionalidades.includes(f.nombre)
+              );
+              const todasSeleccionadas = funcsDelModulo.every((f) =>
+                grupoForm.funcionalidades?.includes(f.id_funcionalidad)
+              );
+              const algunasSeleccionadas = funcsDelModulo.some((f) =>
+                grupoForm.funcionalidades?.includes(f.id_funcionalidad)
+              );
+              return (
+                <div
+                  key={modulo.nombre}
+                  className="border rounded-lg overflow-hidden"
+                >
+                  <label
+                    className={`flex items-center gap-3 p-3 cursor-pointer transition-colors ${
+                      todasSeleccionadas
+                        ? "bg-green-50 border-green-500"
+                        : "bg-gray-50 hover:bg-gray-100"
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={todasSeleccionadas}
+                      onChange={(e) =>
+                        handleModuloChange(modulo, e.target.checked)
+                      }
+                      className="sr-only"
+                    />
+                    <div
+                      className={`w-5 h-5 rounded border flex items-center justify-center ${
+                        todasSeleccionadas
+                          ? "bg-green-500 border-green-500"
+                          : algunasSeleccionadas
+                            ? "bg-green-100 border-green-500"
+                            : "border-gray-300"
+                      }`}
+                    >
+                      {todasSeleccionadas && (
+                        <Check className="w-3 h-3 text-white" />
+                      )}
+                      {algunasSeleccionadas && !todasSeleccionadas && (
+                        <div className="w-2 h-2 rounded-full bg-green-500" />
+                      )}
+                    </div>
+                    <span className="font-semibold text-gray-800 flex-1">
+                      {modulo.nombre}
+                    </span>
+                    <span className="text-xs text-gray-500">
+                      ({funcsDelModulo.length})
+                    </span>
+                  </label>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 p-3 bg-white">
+                    {funcsDelModulo.map((func) => (
+                      <label
+                        key={func.id_funcionalidad}
+                        className={`flex items-center gap-2 p-2 rounded border cursor-pointer transition-all duration-200 ${
+                          grupoForm.funcionalidades?.includes(
+                            func.id_funcionalidad,
+                          )
+                            ? "border-green-500 bg-green-50 text-green-700"
+                            : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={
+                            grupoForm.funcionalidades?.includes(
+                              func.id_funcionalidad,
+                            ) || false
+                          }
+                          onChange={(e) =>
+                            handleFuncionalidadChange(
+                              func.id_funcionalidad,
+                              e.target.checked,
+                            )
+                          }
+                          className="sr-only"
+                        />
+                        <div
+                          className={`w-4 h-4 rounded border flex items-center justify-center ${
+                            grupoForm.funcionalidades?.includes(
+                              func.id_funcionalidad,
+                            )
+                              ? "bg-green-500 border-green-500"
+                              : "border-gray-300"
+                          }`}
+                        >
+                          {grupoForm.funcionalidades?.includes(
+                            func.id_funcionalidad,
+                          ) && <Check className="w-3 h-3 text-white" />}
+                        </div>
+                        <span className="text-sm font-medium capitalize">
+                          {func.nombre.replace(/_/g, " ")}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </form>
+      </FormModal>
     </div>
   );
 

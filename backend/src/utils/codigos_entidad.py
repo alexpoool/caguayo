@@ -27,18 +27,18 @@ async def generar_codigo_con_padre(
 
 def generar_codigo(denominacion: str, anio: int, entity_id: int) -> str:
     """Genera código con patrón {denominacion}.{año_2d}.{entity_id}. Ej: OFI.26.5"""
-    prefijo = (denominacion or "").strip() or "CAG"
+    prefijo = (denominacion or "").strip() or "FT"
     return f"{prefijo}.{str(anio)[-2:]}.{entity_id}"
 
 
 def _prefijo(denominacion: Optional[str]) -> str:
-    return (denominacion or "").strip() or "CAG"
+    return (denominacion or "").strip() or "FT"
 
 
 def generar_codigo_convenio(
     denominacion: str, anio: int, secuencia: int
 ) -> str:
-    """Código de convenio: {den}.{año_2d}.{secuencia:03d}. Ej: CAG.26.014"""
+    """Código de convenio: {den}.{año_2d}.{secuencia:03d}. Ej: FT.26.014"""
     return f"{_prefijo(denominacion)}.{str(anio)[-2:]}.{secuencia:03d}"
 
 
@@ -46,7 +46,7 @@ def generar_codigo_anexo(
     denominacion: str, anio: int, sec_conv: int, sec_anexo: int
 ) -> str:
     """Código de anexo: {den}.{año_2d}.{sec_conv:03d}.{sec_anexo:03d}.
-    Ej: CAG.26.014.002"""
+    Ej: FT.26.014.002"""
     return (
         f"{_prefijo(denominacion)}.{str(anio)[-2:]}."
         f"{sec_conv:03d}.{sec_anexo:03d}"
@@ -68,7 +68,7 @@ def generar_codigo_liquidacion(
 ) -> str:
     """Código de liquidación: {den}.{año_2d}.{id_cliente}.{secuencia:03d}.
     El secuencial es global por cliente.
-    Ej: CAG.26.1.001"""
+    Ej: FT.26.1.001"""
     return (
         f"{_prefijo(denominacion)}.{str(anio)[-2:]}."
         f"{id_cliente}.{secuencia:03d}"
@@ -80,7 +80,7 @@ def generar_codigo_factura(
 ) -> str:
     """Código de factura: {den}.{año_2d}.{id_contrato:03d}.{secuencia:03d}.
     El secuencial es propio de la factura dentro de su contrato.
-    Ej: CAG.26.002.001"""
+    Ej: FT.26.002.001"""
     return (
         f"{_prefijo(denominacion)}.{str(anio)[-2:]}."
         f"{id_contrato:03d}.{secuencia:03d}"
@@ -102,7 +102,7 @@ def generar_codigo_venta_efectivo(
 ) -> str:
     """Código de venta en efectivo: {den}.{año_2d}.{secuencia:03d}.
     El secuencial es global.
-    Ej: CAG.26.012"""
+    Ej: FT.26.012"""
     return f"{_prefijo(denominacion)}.{str(anio)[-2:]}.{secuencia:03d}"
 
 
@@ -121,7 +121,7 @@ def generar_codigo_contrato(
 ) -> str:
     """Código de contrato: {den}.{año_2d}.{secuencia:03d}.
     El secuencial es global.
-    Ej: CAG.26.014"""
+    Ej: FT.26.014"""
     return f"{_prefijo(denominacion)}.{str(anio)[-2:]}.{secuencia:03d}"
 
 
@@ -133,7 +133,7 @@ def generar_codigo_suplemento(
 ) -> str:
     """Código de suplemento: {den}.{año_2d}.{id_contrato:03d}.{secuencia:03d}.
     El secuencial es propio del suplemento dentro de su contrato.
-    Ej: CAG.26.008.001"""
+    Ej: FT.26.008.001"""
     return (
         f"{_prefijo(denominacion)}.{str(anio)[-2:]}."
         f"{id_contrato:03d}.{secuencia:03d}"
@@ -144,18 +144,21 @@ def generar_codigo_correlativo(
     denominacion: str, anio: int, secuencia: int
 ) -> str:
     """Código correlativo: {den}.{año_2d}.{secuencia:03d}.
-    La serie es global (no reinicia por año). Ej: CAG.26.001"""
+    La serie es global (no reinicia por año). Ej: FT.26.001"""
     return f"{_prefijo(denominacion)}.{str(anio)[-2:]}.{secuencia:03d}"
 
 
 async def siguiente_secuencia(db, tabla: str, campo: str) -> int:
     """Devuelve el siguiente número de la serie correlativa del campo indicado
     (MAX del último segmento numérico + 1, global, sin filtrar por año o prefijo).
-    Ej: con códigos CAG.26.012 y .26.3 devuelve 13"""
+    Ej: con códigos FT.26.012 y .26.3 devuelve 13"""
     raw = text(
-        f"SELECT COALESCE(MAX(NULLIF(SPLIT_PART({campo}, '.', -1), '')::int), 0) "
+        f"SELECT COALESCE(MAX(seg::int), 0) "
+        f"FROM ("
+        f"SELECT NULLIF(SPLIT_PART({campo}, '.', -1), '') AS seg "
         f"FROM {tabla} "
         f"WHERE {campo} IS NOT NULL AND {campo} <> ''"
+        f") s WHERE seg ~ '^[0-9]+$'"
     )
     result = await db.exec(raw)
     return result.one()[0] + 1

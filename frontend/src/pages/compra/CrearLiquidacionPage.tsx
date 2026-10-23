@@ -1,27 +1,29 @@
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Button, Input, Label, Card, CardContent, CardHeader, CardTitle } from '../../components/ui';
+import { Input, Label } from '../../components/ui';
 import { clientesService, monedaService, liquidacionService, existenciaService } from '../../services/api';
 import type { Cliente, Moneda, LiquidacionCreate, ProductosEnLiquidacion } from '../../services/api';
-import { Plus, Save, ArrowLeft, CheckCircle, Package, X, FileText, Search } from 'lucide-react';
+import { X, Search } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { esPorcentaje } from '../../utils/validacionFormularios';
 import { Decimal } from 'decimal.js';
-import { mul, add, sub, percentToMultiplier, toNumber, toFixed } from '../../utils/decimal';
+import { mul, add, sub, percentToMultiplier, toNumber } from '../../utils/decimal';
 import { DEFAULTS } from '../../config/defaults';
 
-export function CrearLiquidacionPage() {
-  const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const initialProveedorId = searchParams.get('proveedor');
-  
+interface CrearLiquidacionFormProps {
+  formId: string;
+  initialProveedorId?: number | null;
+  onExit?: () => void;
+  onPendingChange?: (pending: boolean) => void;
+}
+
+export function CrearLiquidacionForm({ formId, initialProveedorId, onExit, onPendingChange }: CrearLiquidacionFormProps) {
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [monedas, setMonedas] = useState<Moneda[]>([]);
   const [proveedorSearch, setProveedorSearch] = useState("");
   const [showProveedorDropdown, setShowProveedorDropdown] = useState(false);
   const proveedorDropdownRef = useRef<HTMLDivElement>(null);
-  
+
   const [filtroCliente, setFiltroCliente] = useState<number | null>(initialProveedorId ? Number(initialProveedorId) : null);
   const [selectedProductos, setSelectedProductos] = useState<number[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -90,6 +92,7 @@ export function CrearLiquidacionPage() {
     if (monedas.length > 0 && formData.id_moneda === 0) {
       setFormData(prev => ({ ...prev, id_moneda: monedas[0].id_moneda }));
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [monedas]);
 
   const loadInitialData = async () => {
@@ -273,7 +276,7 @@ if (!filtroCliente) {
       
       await liquidacionService.createLiquidacion(dataToSend);
       toast.success('Liquidación creada correctamente');
-      navigate('/compra/liquidaciones');
+      onExit?.();
     } catch (error: any) {
       console.error('Error en operación:', error instanceof Error ? error.message : 'Error desconocido');
       toast.error(error?.response?.data?.detail || 'Error al crear liquidación');
@@ -282,35 +285,24 @@ if (!filtroCliente) {
     }
   };
 
-  const getClienteNombre = (clienteId: number) => {
-    const cliente = clientes.find((c: Cliente) => c.id_cliente === clienteId);
-    return cliente?.nombre || '';
-  };
-
   const getMonedaNombre = (monedaId: number) => {
     const moneda = monedas.find((m: Moneda) => m.id_moneda === monedaId);
     return moneda?.denominacion || '';
   };
 
-  return (
-    <div className="p-6">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Nueva Liquidación</h1>
-        <Button variant="outline" onClick={() => navigate('/compra/liquidaciones')} className="gap-2">
-          <ArrowLeft className="h-4 w-4" />
-          Volver
-        </Button>
-      </div>
+  // Elevar estado de guardar al padre (para el footer del FormModal)
+  useEffect(() => {
+    onPendingChange?.(isLoading);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoading, onPendingChange]);
 
-      <Card className="shadow-sm border-gray-200">
-        <CardHeader className="border-b bg-gray-50/50">
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <FileText className="h-5 w-5 text-blue-600" />
-            Información de la Liquidación
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-6">
-          
+  return (
+    <form
+      id={formId}
+      onSubmit={(e) => { e.preventDefault(); handleSave(); }}
+      className="p-4 md:p-6"
+    >
+      
           <div className="grid gap-6 md:grid-cols-2">
             <div>
               <Label className="text-sm font-medium">Proveedor *</Label>
@@ -609,20 +601,10 @@ if (!filtroCliente) {
               onChange={(e: any) => setFormData(prev => ({ ...prev, observaciones: e.target.value }))}
               rows={3}
               className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white"
-            />
+              />
           </div>
 
-          <div className="flex gap-2 mt-8 pt-6 border-t">
-            <Button onClick={handleSave} disabled={isLoading}>
-              <Save className="w-4 h-4 mr-2" />
-              {isLoading ? 'Guardando...' : 'Guardar Liquidación'}
-            </Button>
-            <Button variant="outline" onClick={() => navigate('/compra/liquidaciones')}>
-              Cancelar
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+          <div className="mt-8 pt-6 border-t" />
+      </form>
   );
 }

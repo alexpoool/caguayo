@@ -1,34 +1,25 @@
 # -*- coding: utf-8 -*-
 """Migración del legacy desde la aplicación.
 
-El legacy no está en un fichero sino en dos bases distintas:
-
-    caguayo_comercial   artistas, clientes, usuarios, grupos   (el fichero grande)
-    caguayo             tipos de convenio, contratos, solicitudes (el pequeño)
-
-Por eso se suben dos ficheros y no uno. El comercial no tiene ni una sola
-fila de tipo_convenio, así que con el primero solo no se puede migrar todo.
+El dump del legacy viene en el repositorio, en `etl/legacy/caguayo_comercial.sql`.
+Antes se subía desde la pantalla de configuración; ya no: el ETL resuelve la ruta
+por su cuenta y este servicio se limita a lanzarlo. Para migrar otro legacy basta
+con reemplazar ese fichero.
 
 Lo que hace este servicio NO es destruir nada: se limita a lanzar el ETL, que
-desde ayer es idempotente. Si la base ya está migrada, el resultado es 0
-inserciones. Sirve sobre todo para migrar un dump distinto del que se migró la
-vez anterior.
+es idempotente. Si la base ya está migrada, el resultado es 0 inserciones.
 
-Decisiones de seguridad que conviene no saltarse al leer esto:
+Decisiones que conviene no saltarse al leer esto:
 
-* El ETL NUNCA recibe una ruta del cliente. `DUMP_MARIADB` y `DUMP_CAGUAYO` se
-  apuntan a ficheros que genera este servicio con nombre propio. Una petición
-  no puede decir "lee este otro fichero del disco".
-* El nombre original del fichero sólo se usa para mostrarlo. Se guarda con un
-  nombre generado, en un directorio de subidas.
-* `rol` es un valor de dos. Cualquier otra cosa es 400.
+* El ETL NUNCA recibe una ruta del cliente. No hay ninguna petición que pueda
+  decir "lee este otro fichero del disco": la ruta la resuelve el propio ETL
+  desde su carpeta `legacy/`.
 * Antes de nada se comprueba que la base del ETL y la que sirve la aplicación
   son la misma. Si difieren, no se hace nada: migrar una base que nadie está
   viendo es un trabajo perdido.
 * Hay un advisory lock, porque dos migraciones simultáneas se pisan.
-* Analizar es obligatorio antes de ejecutar, y la UI no habilita el botón
-  hasta que hay informe.
 """
+import importlib.util
 import os
 import re
 import subprocess
@@ -41,22 +32,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 
 from src.database.connection import get_session
 
-#: Los dos ficheros del legacy. El rol es lo único que acepta el cliente.
-ROLES = {
-    "comercial": {
-        "etiqueta": "Base caguayo_comercial",
-        "descripcion": "Artistas, clientes, usuarios y grupos",
-    },
-    "principal": {
-        "etiqueta": "Base caguayo (principal)",
-        "descripcion": "Tipos de convenio, contratos y solicitudes",
-    },
-}
-
-#: Margen holgado sobre los ficheros reales (4,6 MB y 108 KB).
-TAMANO_MAXIMO = 20 * 1024 * 1024
-
-#: Clave del advisory lock.
+# Clave del advisory lock.
 #:
 #: El sufijo se deriva del nombre de la base con crc32 y NO con hash() de
 #: Python, que va salted por proceso: con hash() cada worker sacaría una clave
@@ -71,7 +47,11 @@ def _clave_lock() -> int:
     return LOCK_BASE + (zlib.crc32(base.encode("utf-8")) % 100000)
 
 ETL_DIR = Path(__file__).resolve().parents[3] / "etl"
-DIRECTORIO_SUBIDAS = ETL_DIR / "data" / "subidas"
+
+#: Config del ETL: `etl/config.py` no es un paquete y el directorio del ETL
+#: tiene módulos (`db`, `log`) que colisionarían con los del backend si se
+#: añadiera a `sys.path`. Se carga por ruta, bajo un nombre privado.
+CONFIG_ETL = ETL_DIR / "config.py"
 
 #: Resultado de una ejecución, indexado por sección del log del ETL.
 SECCIONES = ("A", "B", "C", "D", "E", "F", "G", "H", "I", "J")
@@ -79,8 +59,12 @@ _TITULOS = {
     "A": "Artistas", "B": "Clientes", "C": "TCP / MIPYME",
     "D": "Artistas con CI normalizado", "E": "Cuentas bancarias",
     "F": "Usuarios", "G": "Cuentas de la dependencia",
-    "H": "Especialidades del artista", "I": "Catálogos",
+    "H": "Especialidades del artista", "I": "Tipos de contrato",
     "J": "Grupos del legacy",
+    "K": "Liquidaciones del legacy", "L": "Contratos del legacy",
+    "M": "Suplementos del legacy",
+    "N": "Solicitudes del legacy",
+    "O": "Etapas, tareas y realizadores",
 }
 
 #: Números que el ETL imprime y que resumen lo que va a hacer.
@@ -91,105 +75,160 @@ RE_RESULTADO = re.compile(r"RESULTADO:\s*(.+)")
 
 
 # --------------------------------------------------------------------------
-# Ficheros subidos
+# El volcado del legacy
 # --------------------------------------------------------------------------
-def _ruta_de(rol: str) -> Path:
-    return DIRECTORIO_SUBIDAS / f"{rol}.sql"
+def dump_legacy() -> dict:
+    """Si el volcado del legacy está en su sitio, y cuál es.
 
+    La ruta la contesta `etl/config.py` —el mismo módulo que va a leer el
+    subproceso—, no una constante repetida aquí. Duplicarla es justo lo que
+    rompió esto: `config.py` pasó a leer `etl/dumps/comercial.sql` y el backend
+    siguió mirando `etl/legacy/caguayo_comercial.sql`, así que la pantalla decía
+    que no había volcado con el volcado de 6 MB en su sitio y el botón de
+    ejecutar quedaba deshabilitado sin explicación.
 
-def _comprobar_rol(rol: str) -> str:
-    if rol not in ROLES:
-        raise HTTPException(
-            status_code=400,
-            detail="rol desconocido. admitting: %s" % ", ".join(sorted(ROLES)),
-        )
-    return rol
-
-
-def guardar_fichero(rol: str, contenido: bytes) -> dict:
-    """Guarda el fichero del legacy con nombre generado.
-
-    El nombre que manda el cliente no se usa para construir la ruta: sólo se
-    guarda como texto para poder mostrarlo.
+    Si la config no se puede cargar, `disponible` sale False y `motivo` lo dice:
+    sin poder preguntar, tampoco se puede afirmar que esté.
     """
-    _comprobar_rol(rol)
-    if not contenido:
-        raise HTTPException(status_code=400, detail="El fichero viene vacío")
-    if len(contenido) > TAMANO_MAXIMO:
-        raise HTTPException(
-            status_code=400,
-            detail="El fichero ocupa %.1f MB y el máximo es %d MB"
-                   % (len(contenido) / 1e6, TAMANO_MAXIMO // (1024 * 1024)),
-        )
-    # Un dump sin un solo INSERT no sirve para nada. Se comprueba antes de
-    # escribir, para no dejar basura en disco.
-    if not re.search(rb"INSERT\s+INTO", contenido, re.I):
-        raise HTTPException(
-            status_code=400,
-            detail="El fichero no parece un dump SQL: no contiene ningún INSERT",
-        )
+    modulo, motivo = cargar_config_etl()
+    if modulo is None:
+        return {
+            "disponible": False,
+            "ruta": None,
+            "bytes": 0,
+            "motivo": "No se pudo leer la configuración del ETL: %s" % motivo,
+        }
 
-    DIRECTORIO_SUBIDAS.mkdir(parents=True, exist_ok=True)
-    ruta = _ruta_de(rol)
-    ruta.write_bytes(contenido)
-    return _info(rol, ruta, len(contenido), None)
-
-
-def quitar_fichero(rol: str) -> None:
-    _comprobar_rol(rol)
-    ruta = _ruta_de(rol)
-    if ruta.exists():
-        ruta.unlink()
-
-
-def ficheros_subidos() -> Dict[str, dict]:
-    """Lo que hay en disco ahora mismo, indexado por rol."""
-    return {rol: _info(rol, _ruta_de(rol)) for rol in sorted(ROLES)}
-
-
-def _info(rol: str, ruta: Path, tamano: Optional[int] = None,
-          nombre: Optional[str] = None) -> dict:
+    ruta = Path(modulo.DUMP_MARIADB)
     existe = ruta.exists()
-    if tamano is None:
-        tamano = ruta.stat().st_size if existe else 0
     return {
-        "rol": rol,
-        "etiqueta": ROLES[rol]["etiqueta"],
-        "descripcion": ROLES[rol]["descripcion"],
-        "subido": existe,
-        "bytes": tamano,
-        "ruta": str(ruta) if existe else None,
+        "disponible": existe,
+        "ruta": str(ruta),
+        "bytes": ruta.stat().st_size if existe else 0,
+        "motivo": None if existe else (
+            "No existe %s. Se deja ahí con `main.py --generar-dumps` (mysqldump "
+            "contra el legacy), o con `main.py --adoptar` si ya tienes un .sql."
+            % ruta),
     }
+
+
+def _exigir_dump() -> None:
+    info = dump_legacy()
+    if info["disponible"]:
+        return
+    raise HTTPException(
+        status_code=400,
+        detail=info.get("motivo") or "No se pudo determinar la ruta del volcado",
+    )
 
 
 # --------------------------------------------------------------------------
 # Guardas
 # --------------------------------------------------------------------------
+def cargar_config_etl():
+    """Carga `etl/config.py` y devuelve (módulo, motivo_del_fallo).
+
+    Se ejecuta en proceso, con el mismo PROYECTO_DIR que prepara `_entorno()`
+    para el subproceso, para que lo que se ve aquí sea exactamente lo que verá
+    el ETL. PROYECTO_DIR se restaura al terminar: no es asunto del resto de la
+    aplicación.
+
+    Ante cualquier fallo devuelve (None, motivo). El guard avisa y deja pasar:
+    quedarse sin pantalla de migración por un `etl/` no desplegado sería peor
+    que avisar de lo que no se ha verificado.
+    """
+    if not CONFIG_ETL.exists():
+        return None, "no existe %s" % CONFIG_ETL
+
+    previo = os.environ.get("PROYECTO_DIR")
+    os.environ["PROYECTO_DIR"] = previo or str(ETL_DIR.parent)
+    try:
+        spec = importlib.util.spec_from_file_location("_caguayo_etl_config",
+                                                       CONFIG_ETL)
+        if spec is None or spec.loader is None:
+            return None, "no se pudo crear el loader de %s" % CONFIG_ETL
+        modulo = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(modulo)
+        return modulo, None
+    except Exception as exc:  # noqa: BLE001 - el motivo va al aviso
+        return None, "%s: %s" % (type(exc).__name__, exc)
+    finally:
+        if previo is None:
+            os.environ.pop("PROYECTO_DIR", None)
+        else:
+            os.environ["PROYECTO_DIR"] = previo
+
+
+def _base_destino_etl():
+    """La base a la que va a escribir el ETL, según su propia configuración.
+
+    Devuelve (base, motivo_del_fallo). `base` es None si no se pudo saber.
+    """
+    modulo, motivo = cargar_config_etl()
+    if modulo is None:
+        return None, motivo
+    return getattr(modulo.POSTGRES, "database", None), None
+
+
 def comprobar_identidad() -> dict:
     """Que la base del ETL y la que sirve la app sean la misma.
 
-    El ETL lee POSTGRES_DB; la app usa AUTH_DATABASE y la de DATABASE_URL. Si
-    no coinciden, migrar produce una base que nadie está viendo.
-    """
-    etl = os.getenv("POSTGRES_DB") or os.getenv("PG_DB") or "caguayo_sa"
-    auth = os.getenv("AUTH_DATABASE")
-    central = os.getenv("CENTRAL_DATABASE")
-    url = os.getenv("DATABASE_URL", "")
-    activa = ""
-    if url:
-        activa = url.rsplit("/", 1)[-1].split("?")[0]
+    El ETL no lee POSTGRES_DB del entorno del backend: lo saca de `etl/config.py`,
+    que a su vez lo lee de los `.env`. El backend nunca lo tuvo en `os.environ`,
+    así que este guard comparaba el literal "caguayo_sa" contra la base de la
+    aplicación. Siempre coherente, y un ETL apuntado a otra base —cambiando el
+    `.env`, que es como se documenta retargetizarlo— pasaba inadvertido.
 
-    incoherencias = []
-    for nombre, valor in (("AUTH_DATABASE", auth), ("CENTRAL_DATABASE", central),
-                         ("DATABASE_URL", activa)):
-        if valor and valor != etl:
-            incoherencias.append("%s apunta a %s y el ETL a %s"
-                                  % (nombre, valor, etl))
+    Ahora lo pregunta al ETL. Del lado de la app se usa la base de la sesión,
+    que es la que atienden los endpoints: hoy siempre AUTH_DATABASE, porque
+    `set_current_db()` todavía no lo llama nadie.
+
+    Si la base del ETL no se puede determinar, `coherente` sigue en True para
+    no bloquear la migración; `verificado` en False y `detalle` lo dicen. Sólo
+    bloquea cuando sabe que difieren.
+    """
+    from src.database.connection import get_current_db
+
+    base_etl, motivo = _base_destino_etl()
+    base_app = get_current_db() or "(sin definir)"
+
+    if base_etl is None:
+        return {
+            "base_etl": "(desconocida)",
+            "base_app": base_app,
+            "coherente": True,
+            "verificado": False,
+            "fuente_etl": "etl/config.py (no se pudo cargar)",
+            "fuente_app": "sesión de la aplicación",
+            "detalle": [
+                "No se pudo determinar la base del ETL: %s. La migración va a "
+                "salir sin comprobar contra qué base escribe." % motivo
+            ],
+        }
+
+    if base_etl == base_app:
+        return {
+            "base_etl": base_etl,
+            "base_app": base_app,
+            "coherente": True,
+            "verificado": True,
+            "fuente_etl": "etl/config.py (backend/.env, luego .env)",
+            "fuente_app": "sesión de la aplicación",
+            "detalle": [],
+        }
+
     return {
-        "base_etl": etl,
-        "base_app": activa or auth or "(sin definir)",
-        "coherente": not incoherencias,
-        "detalle": incoherencias,
+        "base_etl": base_etl,
+        "base_app": base_app,
+        "coherente": False,
+        "verificado": True,
+        "fuente_etl": "etl/config.py (backend/.env, luego .env)",
+        "fuente_app": "sesión de la aplicación",
+        "detalle": [
+            "El ETL migraría a %s (su config) y la aplicación está sirviendo %s "
+            "(su sesión). Migrar produce una base que nadie está viendo."
+            % (base_etl, base_app)
+        ],
     }
 
 
@@ -217,21 +256,14 @@ async def _liberar_lock(conn: AsyncSession) -> None:
 # --------------------------------------------------------------------------
 # Ejecución del ETL
 # --------------------------------------------------------------------------
-def _ficheros_listos() -> Dict[str, str]:
-    faltan = [rol for rol in sorted(ROLES) if not _ruta_de(rol).exists()]
-    if faltan:
-        raise HTTPException(
-            status_code=400,
-            detail="Falta subir el fichero de: %s" % ", ".join(
-                ROLES[r]["etiqueta"] for r in faltan),
-        )
-    return {rol: str(_ruta_de(rol)) for rol in sorted(ROLES)}
+def _entorno() -> dict:
+    """Entorno para el subproceso.
 
-
-def _entorno(rutas: Dict[str, str]) -> dict:
+    No se fija `DUMP_MARIADB`: el ETL ya sabe encontrar el dump en su carpeta
+    `legacy/`. Cuanto menos le pase este servicio, menos formas hay de que la
+    ruta y lo que de verdad lee el ETL se desincronicen.
+    """
     env = os.environ.copy()
-    env["DUMP_MARIADB"] = rutas["comercial"]
-    env["DUMP_CAGUAYO"] = rutas["principal"]
     env.setdefault("PROYECTO_DIR", str(ETL_DIR.parent))
     return env
 
@@ -243,7 +275,7 @@ def _interpretar(salida: str, codigo: int, commit: bool) -> dict:
     resultado = None
 
     for linea in salida.splitlines():
-        cabecera = re.match(r"=== FASE ([A-J]):", linea.strip())
+        cabecera = re.match(r"=== FASE ([A-O]):", linea.strip())
         if cabecera:
             fase_actual = {"letra": cabecera.group(1),
                            "titulo": _TITULOS[cabecera.group(1)],
@@ -295,14 +327,14 @@ def _interpretar(salida: str, codigo: int, commit: bool) -> dict:
 
 def ejecutar_etl(commit: bool, timeout: int = 900) -> dict:
     """Lanza el ETL. `commit=False` es el análisis."""
-    rutas = _ficheros_listos()
+    _exigir_dump()
     comando = [sys.executable, "main.py"]
     if commit:
         comando.append("--commit")
 
     try:
         proc = subprocess.run(
-            comando, cwd=str(ETL_DIR), env=_entorno(rutas),
+            comando, cwd=str(ETL_DIR), env=_entorno(),
             capture_output=True, text=True, timeout=timeout,
         )
     except subprocess.TimeoutExpired:
@@ -368,11 +400,14 @@ async def estado(conn: AsyncSession) -> dict:
     )
     en_curso = (r.scalar() or 0) > 0
 
+    dump = dump_legacy()
     return {
         "recuentos": consulta,
         "errores_migracion": errores,
         "revision": revision,
         "identidad": comprobar_identidad(),
         "operacion_en_curso": en_curso,
-        "ficheros": ficheros_subidos(),
+        "dump_disponible": dump["disponible"],
+        "dump_ruta": dump["ruta"],
+        "dump_motivo": dump.get("motivo"),
     }

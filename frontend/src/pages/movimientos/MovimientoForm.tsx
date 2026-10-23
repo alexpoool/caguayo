@@ -14,14 +14,9 @@ import type {
   ProductosCreate,
   ProductoConCantidad,
 } from "../../types/index";
-import type { FacturaWithDetails } from "../../types/contrato";
 import { generarCodigoMovimiento } from "../../utils/codigos";
 import {
   Button,
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
   Input,
   Label,
   DateInput,
@@ -33,27 +28,17 @@ import {
   RotateCcw,
   Save,
   Package,
-  CheckCircle2,
   TrendingUp,
   TrendingDown,
   X,
   ChevronDown,
   Search,
-  Building,
-  FileText,
-  Calendar,
-  Hash,
-  DollarSign,
-  Sparkles,
   MapPin,
-  ClipboardList,
-  ArrowRight,
-  ArrowLeft,
   Plus,
 } from "lucide-react";
 import toast from "react-hot-toast";
 
-interface MovimientoFormData extends MovimientoCreate {}
+type MovimientoFormData = MovimientoCreate;
 
 // Componente SearchableSelect reutilizable
 interface SearchableSelectProps<T> {
@@ -319,18 +304,18 @@ export interface PrecioExtraForm {
 
 interface MovimientoRecepcionFormProps {
   tipoMovimiento: "RECEPCION" | "MERMA" | "DONACION" | "DEVOLUCION";
+  formId: string;
   onSubmit: (data: MovimientoCreate) => void;
-  onCancel: () => void;
-  isSubmitting?: boolean;
   onPreciosChange?: (precios: PrecioExtraForm[]) => void;
+  onPendingChange?: (pending: boolean) => void;
 }
 
 export function MovimientoRecepcionForm({
   tipoMovimiento,
+  formId,
   onSubmit,
-  onCancel,
-  isSubmitting = false,
   onPreciosChange,
+  onPendingChange,
 }: MovimientoRecepcionFormProps) {
   const queryClient = useQueryClient();
   const [formData, setFormData] = useState<Partial<MovimientoFormData>>({
@@ -411,6 +396,11 @@ export function MovimientoRecepcionForm({
       );
     },
   });
+
+  // Elevar estado de guardado al padre (para el footer del FormModal)
+  useEffect(() => {
+    onPendingChange?.(crearMutation.isPending);
+  }, [crearMutation.isPending, onPendingChange]);
 
   const createProductoMutation = useMutation({
     mutationFn: (data: ProductosCreate) =>
@@ -722,48 +712,24 @@ export function MovimientoRecepcionForm({
   };
 
   const config = getTipoConfig();
-  const Icon = config.icon;
-  const ImpactoIcon = config.impactoIcon;
   const mostrarPrecios = tipoMovimiento === "RECEPCION";
   const esSalida = ["MERMA", "DONACION", "DEVOLUCION"].includes(tipoMovimiento);
   const sinStock = esSalida && !!selectedProduct && (selectedProduct as any).cantidad <= 0;
 
   return (
-    <div className="space-y-4">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div
-            className={`p-3 rounded-md bg-gradient-to-br ${config.gradient} text-white shadow-lg animate-bounce-subtle`}
-          >
-            <Icon className="h-8 w-8" />
-          </div>
-          <div>
-            <h2 className="text-2xl font-bold text-gray-900">
-              {tipoMovimiento}
-            </h2>
-            <p className="text-sm text-gray-500 ml-3 hidden sm:block">
-              {config.descripcion}
-            </p>
-          </div>
-        </div>
-        <Button variant="outline" onClick={onCancel} className="gap-2">
-          <ArrowLeft className="h-4 w-4" />
-          Volver
-        </Button>
-      </div>
-
-      <form onSubmit={handleSubmit}>
-        <div className="space-y-4">
+    <form
+      id={formId}
+      onSubmit={handleSubmit}
+      className="p-4 md:p-6"
+    >
+      <div className="space-y-4">
           {/* Sección de Producto y Cantidad */}
-          <Card className="shadow-sm border-gray-200">
-            <CardHeader className="border-b bg-gray-50/50">
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <Package className={`h-5 w-5 ${config.textColor}`} />
-                Producto y Cantidad
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-6">
+          <div>
+            <div className="px-6 py-4 border-b bg-gray-50/50 flex items-center gap-2 text-lg font-semibold text-gray-900">
+              <Package className={`h-5 w-5 ${config.textColor}`} />
+              Producto y Cantidad
+            </div>
+            <div className="p-6">
               {tipoMovimiento === "RECEPCION" ? (
                 <div>
                   <div className="grid grid-cols-[4fr_1fr_4fr] gap-4 items-start">
@@ -1385,18 +1351,16 @@ export function MovimientoRecepcionForm({
                   )}
                 </div>
               )}
-            </CardContent>
-          </Card>
+            </div>
+          </div>
 
           {/* Sección de Fecha y Código */}
-          <Card className="shadow-sm border-gray-200">
-            <CardHeader className="border-b bg-gray-50/50">
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <MapPin className={`h-5 w-5 ${config.textColor}`} />
-                Detalles del Movimiento
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-6">
+          <div>
+            <div className="px-6 py-4 border-b bg-gray-50/50 flex items-center gap-2 text-lg font-semibold text-gray-900">
+              <MapPin className={`h-5 w-5 ${config.textColor}`} />
+              Detalles del Movimiento
+            </div>
+            <div className="p-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <Label className="text-sm font-medium">Fecha *</Label>
@@ -1440,30 +1404,10 @@ export function MovimientoRecepcionForm({
                   />
                 </div>
               </div>
-            </CardContent>
-          </Card>
-
-          {/* Botones */}
-          <div className="flex gap-3 mt-8 pt-6 border-t">
-            <Button
-              type="submit"
-              disabled={crearMutation.isPending || isSubmitting || sinStock}
-              className={`gap-2 bg-gradient-to-r ${config.gradient} hover:opacity-90 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300`}
-            >
-              <Save className="h-4 w-4" />
-              {crearMutation.isPending ? "Guardando..." : "Guardar Movimiento"}
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={onCancel}
-              disabled={crearMutation.isPending}
-            >
-              Cancelar
-            </Button>
+            </div>
           </div>
+          <div className="mt-8 pt-6 border-t" />
         </div>
-      </form>
 
       {/* Modal Nuevo Producto */}
       {showNuevoProductoModal &&
@@ -1796,6 +1740,6 @@ export function MovimientoRecepcionForm({
           </div>,
           document.body,
         )}
-    </div>
+    </form>
   );
 }

@@ -1,6 +1,6 @@
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
-from sqlalchemy import func
+from sqlalchemy import func, or_
 from sqlalchemy.orm import selectinload
 from typing import List, Optional
 from decimal import Decimal
@@ -54,16 +54,53 @@ class SolicitudServicioRepository(
     CRUDBase[SolicitudServicio, SolicitudServicioCreate, SolicitudServicioUpdate]
 ):
     async def get_all_with_details(
-        self, db: AsyncSession, skip: int = 0, limit: int = 100
+        self,
+        db: AsyncSession,
+        skip: int = 0,
+        limit: int = 100,
+        estado: Optional[str] = None,
+        search: Optional[str] = None,
     ) -> List[SolicitudServicio]:
+        # Filtros opcionales para que el conteo del header X-Total-Count (y la
+        # lista) reflejen lo que ve el usuario. Los campos son los mismos que
+        # filtraba el cliente: codigo_proyecto + descripcion.
+        statement = select(SolicitudServicio)
+        if estado:
+            statement = statement.where(SolicitudServicio.estado == estado)
+        if search:
+            pattern = f"%{search}%"
+            statement = statement.where(
+                or_(
+                    SolicitudServicio.codigo_proyecto.ilike(pattern),
+                    SolicitudServicio.descripcion.ilike(pattern),
+                )
+            )
         statement = (
-            select(SolicitudServicio)
-            .offset(skip)
+            statement.offset(skip)
             .limit(limit)
             .order_by(SolicitudServicio.id_solicitud_servicio.desc())
         )
         results = await db.exec(statement)
         return results.all()
+
+    async def count_all(
+        self, db: AsyncSession, estado: Optional[str] = None, search: Optional[str] = None
+    ) -> int:
+        """Total de solicitudes, con el mismo WHERE que get_all_with_details.
+        Sin filtros: total de la tabla completa."""
+        statement = select(func.count()).select_from(SolicitudServicio)
+        if estado:
+            statement = statement.where(SolicitudServicio.estado == estado)
+        if search:
+            pattern = f"%{search}%"
+            statement = statement.where(
+                or_(
+                    SolicitudServicio.codigo_proyecto.ilike(pattern),
+                    SolicitudServicio.descripcion.ilike(pattern),
+                )
+            )
+        result = await db.exec(statement)
+        return result.one()
 
     async def get_by_cliente(
         self, db: AsyncSession, id_cliente: int
@@ -356,7 +393,11 @@ class PersonaLiquidacionRepository(
         return results.all()
 
     async def get_total_liquidado_by_persona_etapa(
-        self, db: AsyncSession, id_etapa: int, id_persona: int
+        self,
+        db: AsyncSession,
+        id_etapa: int,
+        id_persona: int,
+        id_moneda: Optional[int] = None,
     ) -> Decimal:
         from sqlalchemy import func
 
@@ -367,6 +408,10 @@ class PersonaLiquidacionRepository(
             PersonaLiquidacion.id_persona == id_persona,
             PersonaLiquidacion.confirmado,
         )
+        # Un artista puede cobrar la misma etapa en CUC y en CUP: sin la moneda
+        # se sumarían las dos y el por cobrar saldría descuadrado.
+        if id_moneda is not None:
+            statement = statement.where(PersonaLiquidacion.id_moneda == id_moneda)
         result = await db.exec(statement)
         return result.one() or Decimal("0")
 
@@ -449,6 +494,14 @@ class OfertaRepository(
         )
         results = await db.exec(statement)
         return results.all()
+
+    async def count_all(self, db: AsyncSession, estado: Optional[str] = None) -> int:
+        """Total con el mismo WHERE que get_all_with_details (header X-Total-Count)."""
+        statement = select(func.count()).select_from(Oferta)
+        if estado:
+            statement = statement.where(Oferta.estado == estado)
+        result = await db.exec(statement)
+        return result.one()
 
     async def get_by_etapa(self, db: AsyncSession, id_etapa: int) -> List[Oferta]:
         statement = (

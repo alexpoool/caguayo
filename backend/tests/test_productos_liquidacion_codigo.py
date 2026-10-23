@@ -17,7 +17,7 @@ class TestGetCodigoAnio:
     async def test_ignora_codigos_no_numericos(self):
         db = AsyncMock()
         db.exec.return_value = _result_mock(
-            ["0001-LIQ-1", "001.002.0003-LIQ-7", "CAG.26.5", "26.V.3"]
+            ["0001-LIQ-1", "001.002.0003-LIQ-7", "FT.26.5", "26.V.3"]
         )
         assert await productos_en_liquidacion_repo.get_codigo_anio(db, 2026) == 6
 
@@ -36,5 +36,5 @@ class TestGetCodigoAnio:
     @pytest.mark.asyncio
     async def test_maximo_estandar(self):
         db = AsyncMock()
-        db.exec.return_value = _result_mock(["CAG.26.10", "OFI.26.42"])
+        db.exec.return_value = _result_mock(["FT.26.10", "OFI.26.42"])
         assert await productos_en_liquidacion_repo.get_codigo_anio(db, 2026) == 43

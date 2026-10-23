@@ -167,9 +167,12 @@ class LiquidacionService:
         from sqlalchemy import text
 
         stmt_sec = text(
-            "SELECT COALESCE(MAX(NULLIF(SPLIT_PART(codigo, '.', -1), '')::int), 0) "
+            "SELECT COALESCE(MAX(seg::int), 0) "
+            "FROM ("
+            "SELECT NULLIF(SPLIT_PART(codigo, '.', -1), '') AS seg "
             "FROM liquidacion "
             "WHERE id_cliente = :id_cliente AND codigo IS NOT NULL AND codigo <> ''"
+            ") s WHERE seg ~ '^[0-9]+$'"
         )
         result_sec = await db.exec(
             stmt_sec,
@@ -330,6 +333,14 @@ class LiquidacionService:
         return [LiquidacionRead.model_validate(liq) for liq in db_liquidaciones]
 
     @staticmethod
+    async def count_liquidaciones(
+        db: AsyncSession, cliente_id: Optional[int] = None, variante: str = ""
+    ) -> int:
+        """Total para el header X-Total-Count, mismo WHERE que la lista."""
+        return await liquidacion_repo.count_liquidaciones(
+            db, cliente_id=cliente_id, variante=variante
+        )
+
     async def get_liquidaciones_by_cliente(
         db: AsyncSession, cliente_id: int, skip: int = 0, limit: int = 100
     ) -> List[LiquidacionRead]:

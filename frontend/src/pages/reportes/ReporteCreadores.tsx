@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import { toast } from "react-hot-toast";
 import { dependenciasService } from "../../services/administracion";
 import { authHelpers } from "../../lib/api";
-import { UserCircle, Download, Eye, Loader2 } from "lucide-react";
+import { UserCircle, Download, Eye, Loader2, AlertTriangle } from "lucide-react";
 import ReportNotes from "../../components/ui/ReportNotes";
 import type { Provincia, Municipio } from "../../types/ubicacion";
 
@@ -86,6 +86,19 @@ const ReporteCreadores: React.FC = () => {
             {pdfLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
           </button>
         </div>
+      </div>
+
+      <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 flex items-start gap-2 text-xs text-amber-900">
+        <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+        <span>
+          La columna <strong>VALOR ETAPA</strong> y los totales por persona suman
+          el valor de la etapa <em>una vez por cada realizador</em> que tenga. En
+          los contratos migrados del legacy, donde todos los artistas se
+          pusieron en la primera etapa porque el legacy no guardaba de qué era
+          cada uno, ese total queda multiplicado por el número de realizadores.
+          El <strong>cobro</strong> y el <strong>por cobrar</strong> sí son
+          correctos.
+        </span>
       </div>
 
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 w-full max-w-lg mx-auto">

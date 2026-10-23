@@ -51,6 +51,13 @@ class ProductosService:
         return [ProductosRead.model_validate(p) for p in db_productos]
 
     @staticmethod
+    async def count_productos(
+        db: AsyncSession, search: Optional[str] = None
+    ) -> int:
+        """Total con el mismo WHERE que get_productos (header X-Total-Count)."""
+        return await productos_repo.count_multi(db, search=search)
+
+    @staticmethod
     async def update_producto(
         db: AsyncSession, producto_id: int, producto: ProductosUpdate
     ) -> ProductosRead:

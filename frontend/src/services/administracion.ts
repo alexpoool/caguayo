@@ -11,7 +11,6 @@ import type {
   Especialidad,
   EspecialidadCreate,
   EspecialidadUpdate,
-  FicheroLegacy,
   EstadoMigracion,
   InformeMigracion,
 } from '../types/index';
@@ -255,29 +254,6 @@ export const dependenciasService = {
 export const migracionService = {
   getEstado: async (): Promise<EstadoMigracion> => {
     return await apiClient.get('/configuracion/migracion/estado');
-  },
-
-  /**
-   * El fichero va como cuerpo crudo, no como multipart. El backend no tiene
-   * python-multipart y no lo necesita: FastAPI lee el cuerpo con request.body().
-   */
-  subirFichero: async (rol: string, fichero: File): Promise<FicheroLegacy> => {
-    const contenido = await fichero.arrayBuffer();
-    return await apiClient.post(
-      `/configuracion/migracion/fichero?rol=${rol}`,
-      contenido,
-      {
-        raw: true,
-        headers: {
-          'Content-Type': 'application/octet-stream',
-          'X-Nombre-Fichero': fichero.name,
-        },
-      }
-    );
-  },
-
-  quitarFichero: async (rol: string): Promise<void> => {
-    await apiClient.delete(`/configuracion/migracion/fichero?rol=${rol}`);
   },
 
   analizar: async (): Promise<InformeMigracion> => {

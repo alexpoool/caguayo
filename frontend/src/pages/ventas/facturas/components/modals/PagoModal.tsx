@@ -1,6 +1,5 @@
-import { createPortal } from 'react-dom';
 import { X, CreditCard, Plus, Trash2 } from 'lucide-react';
-import { Button, Input, Label, DateInput, Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../../../../../components/ui';
+import { Button, Input, Label, DateInput, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, ModalOverlay } from '../../../../../components/ui';
 import type { FacturaWithDetails } from '../../../../../types/contrato';
 import type { Pago } from '../../../../../types/pago';
 import { formatFecha } from '../../../../../utils/fecha';
@@ -36,8 +35,8 @@ export function PagoModal({
 
   const pendiente = Number(factura.monto) - Number(factura.pago_actual);
 
-  return createPortal(
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 animate-fade-in">
+  return (
+    <ModalOverlay isOpen={isOpen} onClose={onClose} ariaLabel="Pagos">
       <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-auto animate-scale-in">
         {/* Header */}
         <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-green-50 to-emerald-50">
@@ -186,7 +185,6 @@ export function PagoModal({
           </button>
         </div>
       </div>
-    </div>,
-    document.body
+    </ModalOverlay>
   );
 }

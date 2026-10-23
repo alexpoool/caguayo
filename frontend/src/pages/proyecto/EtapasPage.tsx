@@ -1,16 +1,18 @@
 import { useState, useEffect, useMemo, useRef, useLayoutEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Button, Input, Label, DateInput, Card, CardContent, CardHeader, CardTitle, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, ConfirmModal } from '../../components/ui';
+import { Button, Input, Label, DateInput, Card, CardContent, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, ConfirmModal, ModalOverlay, FormModal } from '../../components/ui';
 import { etapasProyectoService, solicitudesService, monedaService } from '../../services/api';
 import type { Etapa, EtapaCreate, EtapaUpdate } from '../../types/servicio';
 import type { Moneda } from '../../types/moneda';
-import { Plus, Save, Trash2, Edit, ArrowLeft, Search, Layers, DollarSign, Tag, X, FileText, Users, CheckSquare, MoreVertical, ChevronDown } from 'lucide-react';
+import { Plus, Trash2, Edit, ArrowLeft, Search, Layers, DollarSign, Tag, X, FileText, Users, CheckSquare, MoreVertical, ChevronDown } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { formatFecha } from '../../utils/fecha';
 import { useMonedaContrato } from '../../hooks/useMonedaContrato';
 
 type View = 'list' | 'form';
+
+const ETAPA_FORM_ID = 'etapa-form';
 
 export function EtapasPage() {
   const navigate = useNavigate();
@@ -26,6 +28,7 @@ export function EtapasPage() {
 
   const [editingId, setEditingId] = useState<number | null>(null);
   const [formData, setFormData] = useState<Record<string, any>>({});
+  const [isSaving, setIsSaving] = useState(false);
 
   // Moneda del contrato de la solicitud: se usa fija y no se puede cambiar
   const { data: monedaContrato } = useMonedaContrato(solicitudId ? Number(solicitudId) : null);
@@ -112,9 +115,11 @@ export function EtapasPage() {
     catch (error) { console.error('Error:', error); }
   };
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { if (view === 'list' && solicitudId) loadEtapas(); }, [view, solicitudId]);
 
   const handleSave = async () => {
+    setIsSaving(true);
     try {
       if (formData.fecha_pago && formData.fecha_entrega && formData.fecha_pago < formData.fecha_entrega) {
         toast.error('La fecha de pago debe ser mayor o igual a la fecha de entrega');
@@ -151,6 +156,7 @@ export function EtapasPage() {
       resetForm();
       loadEtapas();
     } catch (error: any) { toast.error(error.message || 'Error'); }
+    finally { setIsSaving(false); }
   };
 
   const handleDelete = async (id: number, nombre: string) => {
@@ -354,32 +360,12 @@ export function EtapasPage() {
   );
 
   const renderForm = () => (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <div className="p-3 bg-gradient-to-br from-teal-500 to-cyan-600 rounded-xl shadow-lg animate-bounce-subtle">
-            <Layers className="h-8 w-8 text-white" />
-          </div>
-          <div>
-            <h2 className="text-2xl font-bold text-gray-900">{editingId ? 'Editar Etapa' : 'Nueva Etapa'}</h2>
-            <p className="text-gray-500 mt-1">Complete los datos de la etapa</p>
-          </div>
-        </div>
-        <Button variant="outline" onClick={() => { setView('list'); resetForm(); }} className="gap-2">
-          <ArrowLeft className="h-4 w-4" />
-          Volver
-        </Button>
-      </div>
-
-      <Card className="shadow-sm border-gray-200">
-        <CardHeader className="border-b bg-gray-50/50">
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <Layers className="h-5 w-5 text-teal-600" />
-            Información de la Etapa
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <form
+      id={ETAPA_FORM_ID}
+      onSubmit={(e) => { e.preventDefault(); handleSave(); }}
+      className="p-4 md:p-6"
+    >
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <Label className="text-sm font-medium">Tipo de etapa</Label>
               <select
@@ -437,22 +423,44 @@ export function EtapasPage() {
               <Input value={formData.descripcion || ''} onChange={(e: any) => setFormData({...formData, descripcion: e.target.value})} className="mt-1" placeholder="Descripción de la etapa" />
             </div>
           </div>
-          <div className="flex gap-3 mt-8 pt-6 border-t">
-            <Button onClick={handleSave} className="gap-2 bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300">
-              <Save className="h-4 w-4" />
-              {editingId ? 'Actualizar' : 'Guardar'}
-            </Button>
-            <Button variant="outline" onClick={() => { setView('list'); resetForm(); }}>Cancelar</Button>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+      </form>
   );
 
   return (
     <div className="p-6">
-      {view === 'list' && renderList()}
-      {view === 'form' && renderForm()}
+      {renderList()}
+
+      <FormModal
+        isOpen={view === 'form'}
+        onClose={() => { setView('list'); resetForm(); }}
+        title={editingId ? 'Editar Etapa' : 'Nueva Etapa'}
+        subtitle="Complete los datos de la etapa"
+        icon={<Layers className="h-6 w-6" />}
+        size="lg"
+        footer={
+          <>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => { setView('list'); resetForm(); }}
+              disabled={isSaving}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="submit"
+              form={ETAPA_FORM_ID}
+              disabled={isSaving}
+              isLoading={isSaving}
+              className="gap-2 bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white shadow-lg hover:shadow-xl transition-all duration-300"
+            >
+              Guardar
+            </Button>
+          </>
+        }
+      >
+        {renderForm()}
+      </FormModal>
 
       <ConfirmModal
         isOpen={confirmModal.isOpen}
@@ -463,8 +471,11 @@ export function EtapasPage() {
         onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
       />
 
-      {detailModal.isOpen && detailModal.item && createPortal(
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 animate-fade-in">
+      {detailModal.isOpen && detailModal.item && (
+        <ModalOverlay
+          isOpen={true}
+          onClose={() => setDetailModal({ isOpen: false, item: null })}
+        >
           <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-auto animate-scale-in">
             <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-teal-50 to-cyan-50">
               <div className="flex items-center justify-between">
@@ -544,8 +555,7 @@ export function EtapasPage() {
               <button onClick={() => setDetailModal({ isOpen: false, item: null })} className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors font-medium text-sm">Cerrar</button>
             </div>
           </div>
-        </div>,
-        document.body
+        </ModalOverlay>
       )}
 
       {menu && (() => {

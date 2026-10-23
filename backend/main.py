@@ -821,6 +821,9 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allow_headers=["*"],
+    # Header usado por paginaciones (ej: X-Total-Count de /solicitudes-servicio).
+    # Sin esto el navegador no se lo entrega a fetch() y el total nunca llega.
+    expose_headers=["X-Total-Count"],
 )
 
 

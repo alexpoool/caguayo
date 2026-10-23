@@ -1,7 +1,7 @@
 import logging
 from typing import Optional
 from datetime import date
-from fastapi import APIRouter, Depends, Header, HTTPException, Query
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Response
 from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlmodel import select, func
 from sqlalchemy.orm import selectinload
@@ -28,6 +28,7 @@ async def listar_convenios(
     cliente_id: int = Query(None, description="Filtrar por cliente"),
     search: str = Query(None, description="Buscar por nombre"),
     db: AsyncSession = Depends(get_session),
+    response: Response = None,
 ):
     statement = (
         select(Convenio)
@@ -39,6 +40,11 @@ async def listar_convenios(
     if search:
         escaped = _sanitize_search(search)
         statement = statement.where(Convenio.nombre_convenio.ilike(f"%{escaped}%"))
+    # Total con el mismo WHERE, antes de paginar: header para el contador.
+    total = (
+        await db.exec(select(func.count()).select_from(statement.subquery()))
+    ).one()
+    response.headers["X-Total-Count"] = str(total)
     statement = statement.offset(skip).limit(limit)
     results = await db.exec(statement)
     convenios = results.all()

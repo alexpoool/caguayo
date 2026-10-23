@@ -1,11 +1,11 @@
 from typing import List
 import logging
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlmodel.ext.asyncio.session import AsyncSession
-from sqlmodel import select
+from sqlmodel import select, func
 from src.database.connection import get_session
 from src.services.movimiento_service import MovimientoService
-from src.models import TipoMovimiento
+from src.models import TipoMovimiento, Movimiento
 from src.dto import (
     MovimientoCreate,
     MovimientoRead,
@@ -46,8 +46,14 @@ async def listar_movimientos(
 @router.get("/pendientes", response_model=List[MovimientoRead])
 async def listar_movimientos_pendientes(
     db: AsyncSession = Depends(get_session),
+    response: Response = None,
 ):
     """Obtener todos los movimientos pendientes de confirmación."""
+    # Mismo WHERE que trae la lista (get_pendientes): estado 'pendiente'.
+    stmt_count = select(func.count()).select_from(Movimiento).where(
+        Movimiento.estado == "pendiente"
+    )
+    response.headers["X-Total-Count"] = str((await db.exec(stmt_count)).one())
     return await MovimientoService.get_movimientos_pendientes(db)
 
 

@@ -13,10 +13,7 @@ import {
   Edit,
   Trash2,
   Search,
-  Save,
-  ArrowLeft,
   ScrollText,
-  Eye,
   Loader2,
   X,
   AlertTriangle,
@@ -53,9 +50,6 @@ import {
   Input,
   Label,
   Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
   Table,
   TableHeader,
   TableBody,
@@ -64,13 +58,15 @@ import {
   TableCell,
   ConfirmModal,
   DateInput,
+  FormModal,
 } from "../components/ui";
 import { formatFecha } from "../utils/fecha";
 
+const CONVENIO_FORM_ID = "convenio-form";
+
 export function ConveniosPage() {
-  const [view, setView] = useState<"list" | "form" | "detail">("list");
+  const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingConvenio, setEditingConvenio] = useState<Convenio | null>(null);
-  const [viewingConvenio, setViewingConvenio] = useState<Convenio | null>(null);
   const [detailModal, setDetailModal] = useState<{
     isOpen: boolean;
     convenio: Convenio | null;
@@ -115,10 +111,17 @@ export function ConveniosPage() {
     searchTerm,
     setSearch,
     refresh,
+    total: totalConvenios,
   } = useInfiniteList<Convenio>({
     queryKeyBase: "convenios",
-    queryFn: (skip, limit, search) =>
-      conveniosService.getConvenios(filtroProveedor ?? undefined, search || undefined, skip, limit),
+    queryFn: (skip, limit, search, onTotal) =>
+      conveniosService.getConvenios(
+        filtroProveedor ?? undefined,
+        search || undefined,
+        skip,
+        limit,
+        onTotal,
+      ),
     limit: 100,
     extraQueryKeyParams: [filtroProveedor],
   });
@@ -179,7 +182,7 @@ export function ConveniosPage() {
     onSuccess: () => {
       refresh();
       toast.success("Convenio creado");
-      setView("list");
+      setIsFormOpen(false);
       resetForm();
     },
     onError: () => toast.error("Error al crear convenio"),
@@ -191,7 +194,7 @@ export function ConveniosPage() {
     onSuccess: () => {
       refresh();
       toast.success("Convenio actualizado");
-      setView("list");
+      setIsFormOpen(false);
       resetForm();
     },
     onError: () => toast.error("Error al actualizar convenio"),
@@ -221,7 +224,7 @@ export function ConveniosPage() {
 
   const handleNew = () => {
     resetForm();
-    setView("form");
+    setIsFormOpen(true);
   };
 
   const handleEdit = (convenio: Convenio) => {
@@ -233,7 +236,12 @@ export function ConveniosPage() {
       vigencia: convenio.vigencia,
       id_tipo_convenio: convenio.id_tipo_convenio,
     });
-    setView("form");
+    setIsFormOpen(true);
+  };
+
+  const handleCloseForm = () => {
+    setIsFormOpen(false);
+    resetForm();
   };
 
   const handleDelete = (convenio: Convenio) => {
@@ -272,290 +280,14 @@ export function ConveniosPage() {
     }
   };
 
-  if (view === "form") {
-    return (
-      <div className="p-6">
-        <div className="flex items-center gap-4 mb-6">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setView("list")}
-            className="h-9 w-9"
-          >
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-gradient-to-br from-teal-500 to-cyan-600 rounded shadow-lg animate-bounce-subtle">
-              <ScrollText className="h-5 w-5 text-white" />
-            </div>
-            <h1 className="text-xl font-bold text-gray-900">
-              {editingConvenio ? "Editar" : "Nuevo"} Convenio
-            </h1>
-          </div>
-        </div>
-
-        <form onSubmit={handleSubmit}>
-          <Card className="shadow-sm border-gray-200">
-            <CardContent className="pt-6 space-y-4">
-              <div ref={clienteRef} className="relative">
-                <Label>Cliente *</Label>
-                <div className="relative mt-1">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                  <input
-                    value={
-                      formData.id_cliente
-                        ? (clientes.find((c) => c.id_cliente === formData.id_cliente)?.nombre || "")
-                        : clienteSearch
-                    }
-                    onChange={(e) => {
-                      setClienteSearch(e.target.value);
-                      if (formData.id_cliente)
-                        setFormData({ ...formData, id_cliente: 0 });
-                      setShowClienteDropdown(true);
-                    }}
-                    onFocus={() => setShowClienteDropdown(true)}
-                    placeholder="Buscar cliente..."
-                    className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none"
-                  />
-                </div>
-                {showClienteDropdown && (
-                  <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-48 overflow-y-auto">
-                    {filteredClientes.length === 0 ? (
-                      <p className="p-3 text-gray-500 text-sm">No se encontraron clientes</p>
-                    ) : (
-                      filteredClientes.map((c) => (
-                        <div
-                          key={c.id_cliente}
-                          className="px-3 py-2 hover:bg-teal-50 cursor-pointer flex items-center justify-between"
-                          onMouseDown={() => {
-                            setFormData({ ...formData, id_cliente: c.id_cliente });
-                            setClienteSearch("");
-                            setShowClienteDropdown(false);
-                          }}
-                        >
-                          <span className="text-sm font-medium">{c.nombre}</span>
-                          <span className="text-xs text-gray-400">{c.codigo}</span>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                )}
-                {formErrors.id_cliente && (
-                  <p className="text-red-500 text-sm mt-1">
-                    {formErrors.id_cliente}
-                  </p>
-                )}
-              </div>
-
-              <div>
-                <Label>Tipo de Convenio *</Label>
-                <select
-                  value={formData.id_tipo_convenio || ""}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      id_tipo_convenio: parseInt(e.target.value) || 0,
-                    })
-                  }
-                  className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white"
-                >
-                  <option value="">Seleccione un tipo</option>
-                  {tiposConvenio.map((tc) => (
-                    <option
-                      key={tc.id_tipo_convenio}
-                      value={tc.id_tipo_convenio}
-                    >
-                      {tc.nombre}
-                    </option>
-                  ))}
-                </select>
-                {formErrors.id_tipo_convenio && (
-                  <p className="text-red-500 text-sm mt-1">
-                    {formErrors.id_tipo_convenio}
-                  </p>
-                )}
-              </div>
-
-              <div>
-                <Label>Nombre del Convenio *</Label>
-                <Input
-                  value={formData.nombre_convenio}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      nombre_convenio: e.target.value,
-                    })
-                  }
-                  placeholder="Nombre del contrato/convenio"
-                />
-                {formErrors.nombre_convenio && (
-                  <p className="text-red-500 text-sm mt-1">
-                    {formErrors.nombre_convenio}
-                  </p>
-                )}
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label>Fecha *</Label>
-                  <DateInput
-                    value={formData.fecha}
-                    onChange={(fecha) => setFormData({ ...formData, fecha })}
-                  />
-                  {formErrors.fecha && (
-                    <p className="text-red-500 text-sm mt-1">
-                      {formErrors.fecha}
-                    </p>
-                  )}
-                </div>
-                <div>
-                  <Label>Vigencia *</Label>
-                  <DateInput
-                    value={formData.vigencia}
-                    onChange={(vigencia) => setFormData({ ...formData, vigencia })}
-                  />
-                  {formErrors.vigencia && (
-                    <p className="text-red-500 text-sm mt-1">
-                      {formErrors.vigencia}
-                    </p>
-                  )}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <div className="flex gap-3 pt-2 pb-8">
-            <Button
-              type="submit"
-              className="gap-2 bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300"
-            >
-              <Save className="h-4 w-4" />
-              {editingConvenio ? "Actualizar" : "Crear"}
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setView("list")}
-            >
-              Cancelar
-            </Button>
-          </div>
-        </form>
-      </div>
-    );
-  }
-
-  // VISTA: DETALLE
-  if (view === "detail" && viewingConvenio) {
-    return (
-      <div className="space-y-4">
-        <div className="flex items-center gap-4 mb-6">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => {
-              setView("list");
-              setViewingConvenio(null);
-            }}
-            className="h-9 w-9"
-          >
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-gradient-to-br from-teal-500 to-cyan-600 rounded shadow-lg animate-bounce-subtle">
-              <ScrollText className="h-5 w-5 text-white" />
-            </div>
-            <h1 className="text-xl font-bold text-gray-900">
-              Detalle del Convenio
-            </h1>
-          </div>
-        </div>
-
-        <Card className="shadow-sm border-gray-200">
-          <CardHeader className="border-b bg-gray-50/50">
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <ScrollText className="h-5 w-5 text-teal-600" />
-              Detalles del Convenio
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="pt-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="bg-gradient-to-br from-teal-50 to-cyan-50 p-4 rounded-md border border-teal-100">
-                <p className="text-xs text-teal-600 uppercase tracking-wider mb-1">
-                  Código
-                </p>
-                <p className="font-bold text-gray-900">
-                  {viewingConvenio.codigo || "N/A"}
-                </p>
-              </div>
-              <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-4 rounded-md border border-blue-100">
-                <p className="text-xs text-blue-600 uppercase tracking-wider mb-1">
-                  Nombre
-                </p>
-                <p className="font-bold text-gray-900">
-                  {viewingConvenio.nombre_convenio}
-                </p>
-              </div>
-              <div className="bg-gradient-to-br from-purple-50 to-pink-50 p-4 rounded-md border border-purple-100">
-                <p className="text-xs text-purple-600 uppercase tracking-wider mb-1">
-                  Cliente
-                </p>
-                <p className="font-bold text-gray-900">
-                  {viewingConvenio.cliente?.nombre || "N/A"}
-                </p>
-              </div>
-              <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-4 rounded-md border border-green-100">
-                <p className="text-xs text-green-600 uppercase tracking-wider mb-1">
-                  Tipo de Convenio
-                </p>
-                <p className="font-bold text-gray-900">
-                  {viewingConvenio.tipo_convenio?.nombre || "N/A"}
-                </p>
-              </div>
-              <div className="bg-gradient-to-br from-orange-50 to-amber-50 p-4 rounded-md border border-orange-100">
-                <p className="text-xs text-orange-600 uppercase tracking-wider mb-1">
-                  Fecha
-                </p>
-                <p className="font-bold text-gray-900">
-                  {formatFecha(viewingConvenio.fecha)}
-                </p>
-              </div>
-              <div className="bg-gradient-to-br from-rose-50 to-red-50 p-4 rounded-md border border-rose-100">
-                <p className="text-xs text-rose-600 uppercase tracking-wider mb-1">
-                  Vigencia
-                </p>
-                <p className="font-bold text-gray-900">
-                  {formatFecha(viewingConvenio.vigencia)}
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <div className="flex gap-3">
-          <Button
-            onClick={() => {
-              setEditingConvenio(viewingConvenio);
-              setView("form");
-            }}
-            className="gap-2 bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300"
-          >
-            <Edit className="h-4 w-4" />
-            Editar
-          </Button>
-          <Button
-            variant="outline"
-            onClick={() => {
-              setView("list");
-              setViewingConvenio(null);
-            }}
-          >
-            Volver
-          </Button>
-        </div>
-      </div>
-    );
-  }
+  const isFormValid = Boolean(
+    formData.id_cliente &&
+      formData.id_tipo_convenio &&
+      formData.nombre_convenio &&
+      formData.fecha &&
+      formData.vigencia,
+  );
+  const isSubmitting = createMutation.isPending || updateMutation.isPending;
 
   return (
     <div className="space-y-4">
@@ -567,7 +299,7 @@ export function ConveniosPage() {
           <div className="flex items-baseline">
             <h1 className="text-xl font-bold text-gray-900">Convenios</h1>
             <p className="text-sm text-gray-500 ml-3 hidden sm:block">
-              Gestión de convenios ({convenios.length} registrados)
+              Gestión de convenios ({totalConvenios ?? convenios.length} registrados)
             </p>
           </div>
         </div>
@@ -651,7 +383,10 @@ export function ConveniosPage() {
                         Anexos
                       </Button>
                     </TableCell>
-                    <TableCell className="text-right">
+                    <TableCell
+                      className="text-right"
+                      onClick={(e) => e.stopPropagation()}
+                    >
                       <div className="flex justify-end gap-2">
                         <Button
                           variant="ghost"
@@ -689,6 +424,163 @@ export function ConveniosPage() {
           )}
         </div>
       </Card>
+
+      <FormModal
+        isOpen={isFormOpen}
+        onClose={handleCloseForm}
+        title={`${editingConvenio ? "Editar" : "Nuevo"} Convenio`}
+        subtitle="Complete los datos del convenio"
+        icon={<ScrollText className="h-6 w-6" />}
+        size="md"
+        footer={
+          <>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleCloseForm}
+              disabled={isSubmitting}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="submit"
+              form={CONVENIO_FORM_ID}
+              disabled={!isFormValid || isSubmitting}
+              isLoading={isSubmitting}
+              className="gap-2 bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white shadow-lg hover:shadow-xl transition-all duration-300"
+            >
+              {editingConvenio ? "Actualizar" : "Crear"}
+            </Button>
+          </>
+        }
+      >
+        <form id={CONVENIO_FORM_ID} onSubmit={handleSubmit} className="space-y-4 p-4 md:p-6">
+          <div ref={clienteRef} className="relative">
+            <Label>Cliente *</Label>
+            <div className="relative mt-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <input
+                value={
+                  formData.id_cliente
+                    ? (clientes.find((c) => c.id_cliente === formData.id_cliente)?.nombre || "")
+                    : clienteSearch
+                }
+                onChange={(e) => {
+                  setClienteSearch(e.target.value);
+                  if (formData.id_cliente)
+                    setFormData({ ...formData, id_cliente: 0 });
+                  setShowClienteDropdown(true);
+                }}
+                onFocus={() => setShowClienteDropdown(true)}
+                placeholder="Buscar cliente..."
+                className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none"
+              />
+            </div>
+            {showClienteDropdown && (
+              <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                {filteredClientes.length === 0 ? (
+                  <p className="p-3 text-gray-500 text-sm">No se encontraron clientes</p>
+                ) : (
+                  filteredClientes.map((c) => (
+                    <div
+                      key={c.id_cliente}
+                      className="px-3 py-2 hover:bg-teal-50 cursor-pointer flex items-center justify-between"
+                      onMouseDown={() => {
+                        setFormData({ ...formData, id_cliente: c.id_cliente });
+                        setClienteSearch("");
+                        setShowClienteDropdown(false);
+                      }}
+                    >
+                      <span className="text-sm font-medium">{c.nombre}</span>
+                      <span className="text-xs text-gray-400">{c.codigo}</span>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+            {formErrors.id_cliente && (
+              <p className="text-red-600 text-sm mt-1">
+                {formErrors.id_cliente}
+              </p>
+            )}
+          </div>
+
+          <div>
+            <Label>Tipo de Convenio *</Label>
+            <select
+              value={formData.id_tipo_convenio || ""}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  id_tipo_convenio: parseInt(e.target.value) || 0,
+                })
+              }
+              className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none bg-white"
+            >
+              <option value="">Seleccione un tipo</option>
+              {tiposConvenio.map((tc) => (
+                <option
+                  key={tc.id_tipo_convenio}
+                  value={tc.id_tipo_convenio}
+                >
+                  {tc.nombre}
+                </option>
+              ))}
+            </select>
+            {formErrors.id_tipo_convenio && (
+              <p className="text-red-600 text-sm mt-1">
+                {formErrors.id_tipo_convenio}
+              </p>
+            )}
+          </div>
+
+          <div>
+            <Label>Nombre del Convenio *</Label>
+            <Input
+              value={formData.nombre_convenio}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  nombre_convenio: e.target.value,
+                })
+              }
+              placeholder="Nombre del contrato/convenio"
+            />
+            {formErrors.nombre_convenio && (
+              <p className="text-red-600 text-sm mt-1">
+                {formErrors.nombre_convenio}
+              </p>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label>Fecha *</Label>
+              <DateInput
+                value={formData.fecha}
+                onChange={(fecha) => setFormData({ ...formData, fecha })}
+              />
+              {formErrors.fecha && (
+                <p className="text-red-600 text-sm mt-1">
+                  {formErrors.fecha}
+                </p>
+              )}
+            </div>
+            <div>
+              <Label>Vigencia *</Label>
+              <DateInput
+                value={formData.vigencia}
+                onChange={(vigencia) => setFormData({ ...formData, vigencia })}
+              />
+              {formErrors.vigencia && (
+                <p className="text-red-600 text-sm mt-1">
+                  {formErrors.vigencia}
+                </p>
+              )}
+            </div>
+          </div>
+        </form>
+      </FormModal>
 
       <ConfirmModal
         isOpen={confirmModal.isOpen}

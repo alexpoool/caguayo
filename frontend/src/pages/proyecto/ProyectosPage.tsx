@@ -1,14 +1,13 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { createPortal } from 'react-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Button, Input, Label, DateInput, Card, CardContent, CardHeader, CardTitle, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, ConfirmModal } from '../../components/ui';
+import { Button, Input, Label, DateInput, Card, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, ConfirmModal, ModalOverlay, FormModal } from '../../components/ui';
 import { ClienteForm } from '../clientes/components/form/ClienteForm';
 import { solicitudesService, contratosService, clientesService, monedaService, suplementosService, configuracionService } from '../../services/api';
 import type { SolicitudServicio, SolicitudServicioCreate, SolicitudServicioUpdate } from '../../types/servicio';
 import type { ContratoWithDetails, ContratoCreate, SuplementoWithDetails, SuplementoCreate } from '../../types/contrato';
 import type { Cliente } from '../../types/ventas';
 import type { Moneda } from '../../types/moneda';
-import { Plus, Save, Trash2, Edit, ArrowLeft, Search, ClipboardList, Tag, X, Layers, CheckCircle, CheckSquare, FileText, FilePlus, Loader2, User } from 'lucide-react';
+import { Plus, Trash2, Edit, Search, ClipboardList, Tag, X, Layers, CheckCircle, CheckSquare, FileText, FilePlus, Loader2, User, AlertTriangle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import { useInfiniteList } from '../../hooks/useInfiniteList';
@@ -18,12 +17,15 @@ type View = 'list' | 'form';
 
 type EstadoFiltro = 'EN PROCESO' | 'TERMINADA' | 'CANCELADA' | 'TODAS';
 
+const PROYECTO_FORM_ID = 'proyecto-form';
+
 export function ProyectosPage() {
   const navigate = useNavigate();
   const [view, setView] = useState<View>('list');
 
   const [editingId, setEditingId] = useState<number | null>(null);
   const [formData, setFormData] = useState<Record<string, any>>({});
+  const [isSaving, setIsSaving] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [estadoFiltro, setEstadoFiltro] = useState<EstadoFiltro>('EN PROCESO');
   const [detailModal, setDetailModal] = useState<{ isOpen: boolean; item: SolicitudServicio | null }>({ isOpen: false, item: null });
@@ -45,16 +47,41 @@ export function ProyectosPage() {
 
   const queryClient = useQueryClient();
 
+  // Total real de solicitudes en la BD. Lo manda el backend en el header
+  // X-Total-Count de cada GET paginado. null = aún no llegó (fallback al conteo cargado).
+  const [totalDB, setTotalDB] = useState<number | null>(null);
+
   const {
     items: solicitudes,
     isFetchingMore,
     refresh,
     hasMore,
     loadMore,
+    reset,
   } = useInfiniteList<SolicitudServicio>({
     queryKeyBase: 'solicitudes-proyecto',
-    queryFn: (skip, limit) => solicitudesService.getSolicitudes(skip, limit),
+    // El servidor filtra por estado y busca: la lista (y el total del header)
+    // ya vienen filtrados. Las params van a la query key para que cambie de
+    // filtros refetchee.
+    queryFn: (skip, limit) =>
+      solicitudesService.getSolicitudes(skip, limit, setTotalDB, {
+        estado: estadoFiltro === 'TODAS' ? undefined : estadoFiltro,
+        search: searchTerm || undefined,
+      }),
+    extraQueryKeyParams: [estadoFiltro, searchTerm],
   });
+
+  // Cambio de pestaña o de búsqueda: la lista acumulada ya no corresponde
+  // (el hook anexaría páginas viejas sobre las nuevas). Empieza de cero.
+  const primerMontaje = useRef(true);
+  useEffect(() => {
+    if (primerMontaje.current) {
+      primerMontaje.current = false;
+      return;
+    }
+    setTotalDB(null);
+    reset();
+  }, [estadoFiltro, searchTerm, reset]);
 
   useEffect(() => {
     if (!hasMore || isFetchingMore) return;
@@ -153,6 +180,7 @@ export function ProyectosPage() {
   }, []);
 
   const handleSave = async () => {
+    setIsSaving(true);
     try {
       if (!formData.id_cliente && !pendingClientData) {
         toast.error('Debe seleccionar un cliente');
@@ -196,6 +224,7 @@ export function ProyectosPage() {
         abrirAprobacionNuevo(data);
       }
     } catch (error: any) { toast.error(error.message || 'Error'); }
+    finally { setIsSaving(false); }
   };
 
   const handleDelete = async (id: number, codigo: string) => {
@@ -498,17 +527,34 @@ export function ProyectosPage() {
     setView('form');
   };
 
-  const filteredSolicitudes = useMemo(() => {
-    const filtered = estadoFiltro === 'TODAS' ? solicitudes : solicitudes.filter(s => s.estado === estadoFiltro);
-    if (!searchTerm) return filtered;
-    return filtered.filter(s =>
-      s.codigo_proyecto?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      s.descripcion?.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-  }, [solicitudes, searchTerm, estadoFiltro]);
+  // Las que la migración del legacy dejó con estado provisional. Se cuentan
+  // sobre lo que se está viendo, no sobre todo: el aviso tiene que estar
+  // donde uno está mirando la fila.
+  const paraRevisar = useMemo(
+    () => solicitudes.filter((s) => s.estado_por_revisar).length,
+    [solicitudes],
+  );
 
-  const renderList = () => (
+  // El filtrado (estado y búsqueda) ocurre en el servidor: la lista ya llega
+  // filtrada y el total del header X-Total-Count la cuenta completa. Con o sin
+  // filtros, el número es el de la base de datos, no el de lo cargado.
+  const sinFiltros = estadoFiltro === 'TODAS' && !searchTerm;
+  const totalProyectos = totalDB ?? solicitudes.length;
+
+  const renderList = () => {
+    return (
     <div className="space-y-6">
+      {paraRevisar > 0 && (
+        <div className="flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-900">
+          <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+          <span>
+            <strong>{paraRevisar}</strong> de las solicitudes que ves (migradas
+            del legacy) quedaron en <em>EN PROCESO</em> sin que se pudiera saber
+            si estaban aprobadas: el legacy no lo guarda. El triángulo ámbar
+            marca cuáles. Corrige su estado cuando las revises.
+          </span>
+        </div>
+      )}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div className="flex items-center gap-4">
           <div className="p-3 bg-gradient-to-br from-teal-500 to-cyan-600 rounded-xl shadow-lg animate-bounce-subtle">
@@ -517,7 +563,8 @@ export function ProyectosPage() {
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Proyectos </h1>
             <p className="text-gray-500 mt-1">
-              {filteredSolicitudes.length} proyecto{filteredSolicitudes.length !== 1 ? 's' : ''}
+              {totalProyectos} proyecto{totalProyectos !== 1 ? 's' : ''}
+              {sinFiltros ? ' en la base de datos' : ''}
             </p>
           </div>
         </div>
@@ -577,20 +624,28 @@ export function ProyectosPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredSolicitudes.length === 0 ? (
+              {solicitudes.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={6} className="text-center py-12 text-gray-500">
                     {searchTerm ? 'No se encontraron solicitudes que coincidan con la búsqueda' : 'No hay solicitudes'}
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredSolicitudes.map((item) => (
+                solicitudes.map((item) => (
                   <TableRow key={item.id_solicitud_servicio} className="hover:bg-gray-50/50 transition-colors cursor-pointer" onClick={() => setDetailModal({ isOpen: true, item })}>
                     <TableCell>
                       <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-teal-50 text-teal-700 rounded text-sm font-mono font-medium">
                         <Tag className="h-3 w-3" />
                         {item.codigo_proyecto || 'N/A'}
                       </span>
+                      {item.estado_por_revisar && (
+                        <span
+                          className="inline-flex items-center ml-1 align-middle text-amber-500 cursor-help"
+                          title={item.motivo_revision || 'El estado de esta solicitud fue puesto a EN PROCESO por la migración del legacy.'}
+                        >
+                          <AlertTriangle className="h-3.5 w-3.5" />
+                        </span>
+                      )}
                     </TableCell>
 <TableCell>{formatFecha(item.fecha_solicitud) || 'N/A'}</TableCell>
                     <TableCell>
@@ -737,35 +792,16 @@ export function ProyectosPage() {
         </div>
       </Card>
     </div>
-  );
+    );
+  };
 
   const renderForm = () => (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <div className="p-3 bg-gradient-to-br from-teal-500 to-cyan-600 rounded-xl shadow-lg animate-bounce-subtle">
-            <ClipboardList className="h-8 w-8 text-white" />
-          </div>
-          <div>
-            <h2 className="text-2xl font-bold text-gray-900">{editingId ? 'Editar Proyecto' : 'Nuevo Proyecto'}</h2>
-            <p className="text-gray-500 mt-1">Complete los datos de la solicitud</p>
-          </div>
-        </div>
-        <Button variant="outline" onClick={() => { setView('list'); resetForm(); }} className="gap-2">
-          <ArrowLeft className="h-4 w-4" />
-          Volver
-        </Button>
-      </div>
-
-      <Card className="shadow-sm border-gray-200">
-        <CardHeader className="border-b bg-gray-50/50">
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <ClipboardList className="h-5 w-5 text-teal-600" />
-            Información del Proyecto
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <form
+      id={PROYECTO_FORM_ID}
+      onSubmit={(e) => { e.preventDefault(); handleSave(); }}
+      className="p-4 md:p-6"
+    >
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <Label className="text-sm font-medium">Fecha Solicitud</Label>
               <DateInput
@@ -862,22 +898,44 @@ export function ProyectosPage() {
               <Input value={formData.observaciones || ''} onChange={(e: any) => setFormData({...formData, observaciones: e.target.value})} className="mt-1" placeholder="Observaciones adicionales" />
             </div>
           </div>
-          <div className="flex gap-3 mt-8 pt-6 border-t">
-            <Button onClick={handleSave} className="gap-2 bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300">
-              <Save className="h-4 w-4" />
-              {editingId ? 'Actualizar' : 'Guardar'}
-            </Button>
-            <Button variant="outline" onClick={() => { setView('list'); resetForm(); }}>Cancelar</Button>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+      </form>
   );
 
   return (
     <div className="p-6">
-      {view === 'list' && renderList()}
-      {view === 'form' && renderForm()}
+      {renderList()}
+
+      <FormModal
+        isOpen={view === 'form'}
+        onClose={() => { setView('list'); resetForm(); }}
+        title={editingId ? 'Editar Proyecto' : 'Nuevo Proyecto'}
+        subtitle="Complete los datos de la solicitud"
+        icon={<ClipboardList className="h-6 w-6" />}
+        size="lg"
+        footer={
+          <>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => { setView('list'); resetForm(); }}
+              disabled={isSaving}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="submit"
+              form={PROYECTO_FORM_ID}
+              disabled={isSaving}
+              isLoading={isSaving}
+              className="gap-2 bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white shadow-lg hover:shadow-xl transition-all duration-300"
+            >
+              Guardar
+            </Button>
+          </>
+        }
+      >
+        {renderForm()}
+      </FormModal>
 
       <ConfirmModal
         isOpen={confirmModal.isOpen}
@@ -888,8 +946,8 @@ export function ProyectosPage() {
         onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
       />
 
-      {detailModal.isOpen && detailModal.item && createPortal(
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 animate-fade-in">
+      {detailModal.isOpen && detailModal.item && (
+        <ModalOverlay isOpen={true} onClose={() => setDetailModal({ isOpen: false, item: null })} ariaLabel="Detalle de proyecto">
           <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-auto animate-scale-in">
             <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-teal-50 to-cyan-50">
               <div className="flex items-center justify-between">
@@ -961,12 +1019,10 @@ export function ProyectosPage() {
               <button onClick={() => setDetailModal({ isOpen: false, item: null })} className="px-6 py-3 text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors font-medium">Cerrar</button>
             </div>
           </div>
-        </div>,
-        document.body
+        </ModalOverlay>
       )}
 
-      {contratoModal.isOpen && createPortal(
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 animate-fade-in">
+      <ModalOverlay isOpen={contratoModal.isOpen} onClose={() => setContratoModal({ isOpen: false, item: null, loading: false })} ariaLabel="Detalle del Contrato">
           <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-auto animate-scale-in">
             <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-teal-50 to-cyan-50">
               <div className="flex items-center justify-between">
@@ -1020,12 +1076,9 @@ export function ProyectosPage() {
               <button onClick={() => setContratoModal({ isOpen: false, item: null, loading: false })} className="px-6 py-3 text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors font-medium">Cerrar</button>
             </div>
           </div>
-        </div>,
-        document.body
-      )}
+      </ModalOverlay>
 
-      {suplementoModal.isOpen && createPortal(
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 animate-fade-in">
+      <ModalOverlay isOpen={suplementoModal.isOpen} onClose={() => setSuplementoModal({ isOpen: false, item: null, loading: false })} ariaLabel="Detalle del Suplemento">
           <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-auto animate-scale-in">
             <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-teal-50 to-cyan-50">
               <div className="flex items-center justify-between">
@@ -1071,12 +1124,9 @@ export function ProyectosPage() {
               <button onClick={() => setSuplementoModal({ isOpen: false, item: null, loading: false })} className="px-6 py-3 text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors font-medium">Cerrar</button>
             </div>
           </div>
-        </div>,
-        document.body
-      )}
+      </ModalOverlay>
 
-      {aprobarModal.isOpen && createPortal(
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 animate-fade-in">
+      <ModalOverlay isOpen={aprobarModal.isOpen} onClose={() => { setAprobarModal({ isOpen: false, solicitud: null, modo: 'seleccionar', contratos: [], loadingContratos: false }); setFormContrato({}); setSuplementosPorContrato({}); setCreacionPendiente(null); setPendingClientData(null); setView('list'); }} ariaLabel="Aprobar Proyecto">
           <div className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-auto animate-scale-in">
             <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-teal-50 to-cyan-50">
               <div className="flex items-center justify-between">
@@ -1430,12 +1480,9 @@ export function ProyectosPage() {
               <button onClick={confirmarAprobacion} className="px-6 py-3 text-white bg-gradient-to-r from-teal-500 to-cyan-600 rounded-xl hover:from-teal-600 hover:to-cyan-700 shadow-lg hover:shadow-xl transition-all font-medium">Confirmar Aprobación</button>
             </div>
           </div>
-        </div>,
-        document.body
-      )}
+      </ModalOverlay>
 
-      {showNuevoClienteModal && createPortal(
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 animate-fade-in">
+      <ModalOverlay isOpen={showNuevoClienteModal} onClose={() => setShowNuevoClienteModal(false)} ariaLabel="Nuevo Cliente">
           <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-auto animate-scale-in">
             <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-teal-50 to-cyan-50">
               <div className="flex items-center justify-between">
@@ -1478,9 +1525,7 @@ export function ProyectosPage() {
               />
             </div>
           </div>
-        </div>,
-        document.body
-      )}
+      </ModalOverlay>
     </div>
   );
 }

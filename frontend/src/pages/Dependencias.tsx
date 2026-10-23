@@ -7,7 +7,6 @@ import {
   Plus,
   Edit,
   Trash2,
-  Save,
   X,
   ChevronRight,
   ChevronDown,
@@ -26,10 +25,7 @@ import {
   Landmark,
   Store,
   ArrowLeft,
-  Sparkles,
   CheckCircle2,
-  Copy,
-  Check,
   Hash,
   Search,
 } from "lucide-react";
@@ -49,9 +45,12 @@ import {
   TableHead,
   TableCell,
   ConfirmModal,
+  FormModal,
 } from "../components/ui";
 import { dependenciasService } from "../services/administracion";
 import type { Dependencia, DependenciaCreate, DependenciaConCuentasCreate } from "../types/dependencia";
+
+const DEPENDENCIA_FORM_ID = "dependencia-form";
 
 interface ArbolDependenciaProps {
   dependencias: Dependencia[];
@@ -487,6 +486,14 @@ export function DependenciasPage() {
     });
   };
 
+  const closeForm = () => {
+    setView("list");
+    setEditingDependencia(null);
+    resetForm();
+  };
+
+  const isSaving = createDependencia.isPending || updateDependencia.isPending;
+
   // Funciones para modales de detalle
   const handleSelectDependencia = (dep: Dependencia) => {
     setDependenciaSeleccionadaArbol(dep);
@@ -514,46 +521,41 @@ export function DependenciasPage() {
 
   const dependenciasRaiz = dependencias.filter((d) => !d.codigo_padre);
 
-  if (view === "form") {
-    return (
-      <div className="space-y-4 animate-fade-in-up">
-        {/* Header con icono animado */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Button
-              variant="secondary"
-              onClick={() => {
-                setView("list");
-                setEditingDependencia(null);
-                resetForm();
-              }}
-              className="hover:scale-105 transition-transform duration-200"
-            >
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Cancelar
-            </Button>
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-gradient-to-br from-blue-500 to-blue-600 rounded shadow-lg animate-bounce-subtle">
-                <Building className="h-5 w-5 text-white" />
-              </div>
-              <div className="flex items-baseline">
-                <h1 className="text-xl font-bold text-gray-900">
-                  {editingDependencia
-                    ? "Editar Dependencia"
-                    : "Nueva Dependencia"}
-                </h1>
-                
-                <p className=" text-sm text-gray-500">
-                  {editingDependencia
-                    ? "  Actualice la información de la dependencia"
-                    : "  Complete los datos para crear una nueva dependencia"}
-                </p>
-              </div>
-            </div>
-          </div>
-          <Sparkles className="h-6 w-6 text-yellow-500 animate-pulse" />
-        </div>
-
+  const formModal = (
+    <FormModal
+      isOpen={view === "form"}
+      onClose={closeForm}
+      title={editingDependencia ? "Editar Dependencia" : "Nueva Dependencia"}
+      subtitle={
+        editingDependencia
+          ? "Actualice la información de la dependencia"
+          : "Complete los datos para crear una nueva dependencia"
+      }
+      icon={<Building className="h-6 w-6" />}
+      size="lg"
+      footer={
+        <>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={closeForm}
+            disabled={isSaving}
+          >
+            Cancelar
+          </Button>
+          <Button
+            type="submit"
+            form={DEPENDENCIA_FORM_ID}
+            disabled={isSaving}
+            isLoading={isSaving}
+            className="gap-2 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 shadow-lg hover:shadow-xl transition-all duration-300"
+          >
+            {editingDependencia ? "Actualizar" : "Guardar"}
+          </Button>
+        </>
+      }
+    >
+      <div className="p-4 md:p-6 space-y-4">
         {selectedPadre && (
           <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-l-4 border-blue-500 rounded-lg p-4 animate-fade-in">
             <div className="flex items-center gap-2">
@@ -574,7 +576,7 @@ export function DependenciasPage() {
             </div>
           </CardHeader>
           <CardContent className="pt-6">
-            <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-4">
+            <form id={DEPENDENCIA_FORM_ID} onSubmit={handleSubmit} className="grid grid-cols-2 gap-4">
               {/* ===== INFORMACIÓN GENERAL ===== */}
               <div className="col-span-2">
                 <div className="flex items-center gap-2 pt-2 pb-3">
@@ -904,22 +906,9 @@ export function DependenciasPage() {
             </form>
           </CardContent>
         </Card>
-
-        {/* Botón de guardar */}
-        <div className="flex justify-end pt-4">
-          <Button
-            onClick={handleSubmit}
-            className="gap-2 px-6 py-3 text-lg font-semibold bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300"
-          >
-            <Save className="h-5 w-5" />
-            {editingDependencia
-              ? "Actualizar Dependencia"
-              : "Guardar Dependencia"}
-          </Button>
-        </div>
       </div>
-    );
-  }
+    </FormModal>
+  );
 
   return (
     <div className="space-y-4">
@@ -1606,6 +1595,8 @@ export function DependenciasPage() {
           </div>,
           document.body,
         )}
+
+      {formModal}
     </div>
   );
 }

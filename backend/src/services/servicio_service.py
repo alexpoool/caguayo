@@ -1,7 +1,7 @@
 from datetime import datetime, date
 from decimal import Decimal
 from sqlmodel.ext.asyncio.session import AsyncSession
-from sqlmodel import select
+from sqlmodel import select, func
 from typing import List, Optional
 from src.core.exceptions import BusinessLogicError
 from src.utils.codigos_entidad import (
@@ -123,6 +123,8 @@ class SolicitudServicioService:
         if data.aprobado and data.id_contrato:
             sec_proy = await siguiente_secuencia(db, "solicitud_servicio", "codigo_proyecto")
             s.codigo_proyecto = generar_codigo_correlativo(denominacion or "", año, sec_proy)
+        else:
+            s.codigo_proyecto = None
 
         await db.commit()
         await db.refresh(s)
@@ -130,10 +132,22 @@ class SolicitudServicioService:
 
     @staticmethod
     async def get_all(
-        db: AsyncSession, skip: int = 0, limit: int = 100
+        db: AsyncSession,
+        skip: int = 0,
+        limit: int = 100,
+        estado: Optional[str] = None,
+        search: Optional[str] = None,
     ) -> List[SolicitudServicioRead]:
-        items = await solicitud_servicio_repo.get_all_with_details(db, skip, limit)
+        items = await solicitud_servicio_repo.get_all_with_details(
+            db, skip, limit, estado=estado, search=search
+        )
         return [SolicitudServicioRead(**i.model_dump()) for i in items]
+
+    @staticmethod
+    async def count_all(
+        db: AsyncSession, estado: Optional[str] = None, search: Optional[str] = None
+    ) -> int:
+        return await solicitud_servicio_repo.count_all(db, estado=estado, search=search)
 
     @staticmethod
     async def get(db: AsyncSession, id: int) -> SolicitudServicioRead:
@@ -187,7 +201,7 @@ class SolicitudServicioService:
         if aprobado and id_contrato and not s.codigo_proyecto:
             sec = await siguiente_secuencia(db, "solicitud_servicio", "codigo_proyecto")
             año = datetime.now().year
-            data.codigo_proyecto = generar_codigo_correlativo(denominacion or "", año, sec)
+            s.codigo_proyecto = generar_codigo_correlativo(denominacion or "", año, sec)
 
         updated = await solicitud_servicio_repo.update(db, db_obj=s, obj_in=data)
         return SolicitudServicioRead(**updated.model_dump())
@@ -293,11 +307,13 @@ class PersonaEtapaService:
         if data.por_cobrar is None or data.por_cobrar == Decimal("0"):
             data.por_cobrar = data.cobro
 
-        # Verificar si ya existe la combinación (id_etapa, id_persona)
+        # Verificar si ya existe la combinación (id_etapa, id_persona, id_moneda):
+        # un mismo artista puede cobrar la etapa en CUC y en CUP a la vez.
         from sqlmodel import select as sel
         statement = sel(PersonaEtapa).where(
             PersonaEtapa.id_etapa == data.id_etapa,
             PersonaEtapa.id_persona == data.id_persona,
+            PersonaEtapa.id_moneda == data.id_moneda,
         )
         result = await db.exec(statement)
         existing = result.first()
@@ -1001,12 +1017,13 @@ class PersonaLiquidacionService:
                 statement = select(PersonaEtapa).where(
                     PersonaEtapa.id_etapa == updated.id_etapa,
                     PersonaEtapa.id_persona == updated.id_persona,
+                    PersonaEtapa.id_moneda == updated.id_moneda,
                 )
                 result = await db.exec(statement)
                 persona_etapa = result.first()
                 if persona_etapa:
                     total_liquidado = await persona_liquidacion_repo.get_total_liquidado_by_persona_etapa(
-                        db, updated.id_etapa, updated.id_persona
+                        db, updated.id_etapa, updated.id_persona, updated.id_moneda
                     )
                     persona_etapa.por_cobrar = max(
                         Decimal("0"),
@@ -1032,7 +1049,8 @@ class PersonaLiquidacionService:
             raise ValueError("La liquidación ya está confirmada")
 
         validacion = await PersonaLiquidacionService.validar_liquidar(
-            db, liquidacion_obj.id_etapa, liquidacion_obj.id_persona
+            db, liquidacion_obj.id_etapa, liquidacion_obj.id_persona,
+            liquidacion_obj.id_moneda,
         )
 
         if not validacion.puede_liquidar:
@@ -1044,13 +1062,15 @@ class PersonaLiquidacionService:
 
         total_liquidado = (
             await persona_liquidacion_repo.get_total_liquidado_by_persona_etapa(
-                db, liquidacion_obj.id_etapa, liquidacion_obj.id_persona
+                db, liquidacion_obj.id_etapa, liquidacion_obj.id_persona,
+                liquidacion_obj.id_moneda,
             )
         )
 
         statement = select(PersonaEtapa).where(
             PersonaEtapa.id_etapa == liquidacion_obj.id_etapa,
             PersonaEtapa.id_persona == liquidacion_obj.id_persona,
+            PersonaEtapa.id_moneda == liquidacion_obj.id_moneda,
         )
         result = await db.exec(statement)
         persona_etapa = result.first()
@@ -1120,7 +1140,10 @@ class PersonaLiquidacionService:
 
     @staticmethod
     async def validar_liquidar(
-        db: AsyncSession, id_etapa: int, id_persona: int
+        db: AsyncSession,
+        id_etapa: int,
+        id_persona: int,
+        id_moneda: Optional[int] = None,
     ) -> PersonaLiquidacionValidacion:
 
         validacion_factura = await FacturaServicioService.validar_pago_etapa(
@@ -1143,6 +1166,8 @@ class PersonaLiquidacionService:
                 PersonaEtapa.id_etapa == id_etapa,
                 PersonaEtapa.id_persona == id_persona
             )
+            if id_moneda is not None:
+                stmt = stmt.where(PersonaEtapa.id_moneda == id_moneda)
             result = await db.exec(stmt)
             pe = result.first()
             if pe and pe.por_cobrar is not None and pe.por_cobrar <= 0:
@@ -1173,13 +1198,14 @@ class PersonaLiquidacionService:
         if id_etapa and id_persona:
             total_liquidado = (
                 await persona_liquidacion_repo.get_total_liquidado_by_persona_etapa(
-                    db, id_etapa, id_persona
+                    db, id_etapa, id_persona, liquidacion.id_moneda
                 )
             )
 
             statement = select(PersonaEtapa).where(
                 PersonaEtapa.id_etapa == id_etapa,
                 PersonaEtapa.id_persona == id_persona,
+                PersonaEtapa.id_moneda == liquidacion.id_moneda,
             )
             result = await db.exec(statement)
             persona_etapa = result.first()
@@ -1244,12 +1270,17 @@ class PersonaLiquidacionService:
 
     @staticmethod
     async def get_disponible_liquidar(
-        db: AsyncSession, id_etapa: int, id_persona: int
+        db: AsyncSession,
+        id_etapa: int,
+        id_persona: int,
+        id_moneda: Optional[int] = None,
     ) -> Decimal:
         statement = select(PersonaEtapa).where(
             PersonaEtapa.id_etapa == id_etapa,
             PersonaEtapa.id_persona == id_persona,
         )
+        if id_moneda is not None:
+            statement = statement.where(PersonaEtapa.id_moneda == id_moneda)
         result = await db.exec(statement)
         persona_etapa = result.first()
 
@@ -1259,7 +1290,7 @@ class PersonaLiquidacionService:
         cobro = Decimal(str(persona_etapa.cobro))
         total_liquidado = (
             await persona_liquidacion_repo.get_total_liquidado_by_persona_etapa(
-                db, id_etapa, id_persona
+                db, id_etapa, id_persona, id_moneda
             )
         )
 
@@ -1298,6 +1329,11 @@ class CertificacionService:
         )
         result = await db.exec(statement)
         return [CertificacionRead.model_validate(c) for c in result.all()]
+
+    async def count_all(self, db: AsyncSession) -> int:
+        """Total de certificaciones para el header X-Total-Count."""
+        result = await db.exec(select(func.count()).select_from(Certificacion))
+        return result.one()
 
     async def get_by_etapa(
         self, db: AsyncSession, id_etapa: int
@@ -1502,6 +1538,10 @@ class OfertaServicioService:
     ) -> List[OfertaRead]:
         items = await oferta_repo.get_all_with_details(db, skip, limit, estado=estado)
         return [OfertaRead(**i.model_dump()) for i in items]
+
+    @staticmethod
+    async def count_all(db: AsyncSession, estado: Optional[str] = None) -> int:
+        return await oferta_repo.count_all(db, estado=estado)
 
     @staticmethod
     async def get(db: AsyncSession, id: int) -> OfertaRead:

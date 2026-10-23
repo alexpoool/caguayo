@@ -6,8 +6,6 @@ import {
   Plus,
   Edit,
   Trash2,
-  Save,
-  X,
   ArrowLeft,
   Search,
   CreditCard,
@@ -36,9 +34,12 @@ import {
   TableHead,
   TableCell,
   ConfirmModal,
+  FormModal,
 } from "../components/ui";
 import { cuentasService, clientesService, monedaService } from "../services/api";
 import type { Cuenta } from "../types/ventas";
+
+const CUENTA_CLIENTE_FORM_ID = "cuenta-cliente-form";
 
 export function CuentasClientePage() {
   const queryClient = useQueryClient();
@@ -240,192 +241,13 @@ export function CuentasClientePage() {
     return "-";
   };
 
-  if (view === "form") {
-    return (
-      <div className="space-y-4 animate-fade-in-up">
-        <div className="flex justify-between items-center">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-gradient-to-br from-emerald-500 to-teal-600 rounded shadow-lg animate-bounce-subtle">
-              <Wallet className="h-5 w-5 text-white" />
-            </div>
-            <div className="flex items-baseline">
-              <h1 className="text-xl font-bold text-gray-900">
-                {editingCuenta ? "Editar Cuenta" : "Nueva Cuenta"}
-              </h1>
-              <p className="text-sm text-gray-500 ml-3 hidden sm:block">
-                {editingCuenta
-                  ? "Actualice la información de la cuenta"
-                  : "Complete los datos para crear una nueva cuenta bancaria"}
-              </p>
-            </div>
-          </div>
-          <Button
-            variant="secondary"
-            onClick={() => {
-              setView("list");
-              setEditingCuenta(null);
-              resetForm();
-            }}
-            className="gap-2 hover:scale-105 transition-transform"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Volver a la lista
-          </Button>
-        </div>
+  const closeForm = () => {
+    setView("list");
+    setEditingCuenta(null);
+    resetForm();
+  };
 
-        <form onSubmit={handleSubmit}>
-          <Card className="hover:shadow-lg transition-shadow duration-300">
-            <CardHeader className="border-b bg-gradient-to-r from-emerald-50 to-teal-50">
-              <CardTitle className="flex items-center gap-2">
-                <div className="p-2 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-lg">
-                  <CreditCard className="h-5 w-5 text-white" />
-                </div>
-                Información de la cuenta de:{" "}
-                {clienteInfo?.nombre || (esProveedor ? "Proveedor" : "Cliente")}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-6">
-              <div className="space-y-2">
-                <Label className="flex items-center gap-2 text-gray-700">
-                  <Banknote className="h-5 w-5 text-purple-500" />
-                  Moneda
-                </Label>
-                <select
-                  className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none bg-white"
-                  value={formData.id_moneda || ""}
-                  onChange={(e) =>
-                    setFormData({ ...formData, id_moneda: parseInt(e.target.value) || undefined })
-                  }
-                >
-                  <option value="">Seleccione una moneda</option>
-                  {monedas.map((m) => (
-                    <option key={m.id_moneda} value={m.id_moneda}>
-                      {m.denominacion}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="space-y-2">
-                <Label className="flex items-center gap-2 text-gray-700">
-                  <User className="h-5 w-5 text-green-500" />
-                  Titular *
-                </Label>
-                <Input
-                  type="text"
-                  value={formData.titular}
-                  onChange={(e) => setFormData({ ...formData, titular: e.target.value })}
-                  className={`mt-1 ${formErrors.titular ? "border-red-500" : ""}`}
-                  placeholder="Nombre del titular"
-                />
-                {formErrors.titular && (
-                  <p className="text-red-500 text-sm">{formErrors.titular}</p>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <Label className="flex items-center gap-2 text-gray-700">
-                  <Landmark className="h-5 w-5 text-orange-500" />
-                  Banco *
-                </Label>
-                <Input
-                  type="text"
-                  value={formData.banco}
-                  onChange={(e) => setFormData({ ...formData, banco: e.target.value })}
-                  className={`mt-1 ${formErrors.banco ? "border-red-500" : ""}`}
-                  placeholder="Nombre del banco"
-                />
-                {formErrors.banco && (
-                  <p className="text-red-500 text-sm">{formErrors.banco}</p>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <Label className="flex items-center gap-2 text-gray-700">
-                  <Hash className="h-5 w-5 text-cyan-500" />
-                  Número de Cuenta *
-                </Label>
-                <Input
-                  type="text"
-                  value={formData.numero_cuenta}
-                  onChange={(e) => setFormData({ ...formData, numero_cuenta: e.target.value })}
-                  className={`mt-1 ${formErrors.numero_cuenta ? "border-red-500" : ""}`}
-                  placeholder="Número de cuenta"
-                />
-                {formErrors.numero_cuenta && (
-                  <p className="text-red-500 text-sm">{formErrors.numero_cuenta}</p>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <Label className="flex items-center gap-2 text-gray-700">
-                  <Type className="h-5 w-5 text-gray-500" />
-                  Sucursal
-                </Label>
-                <Input
-                  type="number"
-                  value={formData.sucursal || ""}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      sucursal: e.target.value ? parseInt(e.target.value) : undefined,
-                    })
-                  }
-                  className="mt-1"
-                  placeholder="Número de sucursal (opcional)"
-                />
-              </div>
-
-              <div className="md:col-span-2 space-y-2">
-                <Label className="flex items-center gap-2 text-gray-700">
-                  <Globe className="h-5 w-5 text-indigo-500" />
-                  Dirección *
-                </Label>
-                <Input
-                  type="text"
-                  value={formData.direccion}
-                  onChange={(e) => setFormData({ ...formData, direccion: e.target.value })}
-                  className={`mt-1 ${formErrors.direccion ? "border-red-500" : ""}`}
-                  placeholder="Dirección de la cuenta"
-                />
-                {formErrors.direccion && (
-                  <p className="text-red-500 text-sm">{formErrors.direccion}</p>
-                )}
-              </div>
-
-              <div className="flex gap-4 md:col-span-2 pt-4 border-t">
-                <Button
-                  type="submit"
-                  className="gap-2 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300"
-                  disabled={createMutation.isPending || updateMutation.isPending}
-                >
-                  <Save className="h-4 w-4" />
-                  {createMutation.isPending || updateMutation.isPending
-                    ? "Guardando..."
-                    : editingCuenta
-                      ? "Actualizar"
-                      : "Guardar"}
-                </Button>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  onClick={() => {
-                    setView("list");
-                    setEditingCuenta(null);
-                    resetForm();
-                  }}
-                  className="gap-2 hover:bg-gray-200 transition-colors"
-                >
-                  <X className="h-4 w-4" />
-                  Cancelar
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </form>
-      </div>
-    );
-  }
+  const isSaving = createMutation.isPending || updateMutation.isPending;
 
   if (isLoading) {
     return (
@@ -550,7 +372,11 @@ export function CuentasClientePage() {
                       <p className="text-lg font-medium mb-2">No se encontraron cuentas</p>
                       <p className="text-sm mb-4">Comience creando una nueva cuenta bancaria</p>
                       <Button
-                        onClick={() => setView("form")}
+                        onClick={() => {
+                          resetForm();
+                          setEditingCuenta(null);
+                          setView("form");
+                        }}
                         className="gap-2 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white"
                       >
                         <Plus className="h-4 w-4" />
@@ -607,6 +433,163 @@ export function CuentasClientePage() {
         message={confirmModal.message}
         type={confirmModal.type}
       />
+
+      <FormModal
+        isOpen={view === "form"}
+        onClose={closeForm}
+        title={editingCuenta ? "Editar Cuenta" : "Nueva Cuenta"}
+        subtitle={
+          editingCuenta
+            ? "Actualice la información de la cuenta"
+            : "Complete los datos para crear una nueva cuenta bancaria"
+        }
+        icon={<Wallet className="h-6 w-6" />}
+        size="lg"
+        footer={
+          <>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={closeForm}
+              disabled={isSaving}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="submit"
+              form={CUENTA_CLIENTE_FORM_ID}
+              disabled={isSaving}
+              isLoading={isSaving}
+              className="gap-2 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white shadow-lg hover:shadow-xl transition-all duration-300"
+            >
+              {editingCuenta ? "Actualizar" : "Guardar"}
+            </Button>
+          </>
+        }
+      >
+        <form id={CUENTA_CLIENTE_FORM_ID} onSubmit={handleSubmit}>
+          <Card className="border-0 shadow-none">
+            <CardHeader className="border-b bg-gradient-to-r from-emerald-50 to-teal-50">
+              <CardTitle className="flex items-center gap-2">
+                <div className="p-2 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-lg">
+                  <CreditCard className="h-5 w-5 text-white" />
+                </div>
+                Información de la cuenta de:{" "}
+                {clienteInfo?.nombre || (esProveedor ? "Proveedor" : "Cliente")}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-6">
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2 text-gray-700">
+                  <Banknote className="h-5 w-5 text-purple-500" />
+                  Moneda
+                </Label>
+                <select
+                  className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none bg-white"
+                  value={formData.id_moneda || ""}
+                  onChange={(e) =>
+                    setFormData({ ...formData, id_moneda: parseInt(e.target.value) || undefined })
+                  }
+                >
+                  <option value="">Seleccione una moneda</option>
+                  {monedas.map((m: any) => (
+                    <option key={m.id_moneda} value={m.id_moneda}>
+                      {m.denominacion}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2 text-gray-700">
+                  <User className="h-5 w-5 text-green-500" />
+                  Titular *
+                </Label>
+                <Input
+                  type="text"
+                  value={formData.titular}
+                  onChange={(e) => setFormData({ ...formData, titular: e.target.value })}
+                  className={`mt-1 ${formErrors.titular ? "border-red-500" : ""}`}
+                  placeholder="Nombre del titular"
+                />
+                {formErrors.titular && (
+                  <p className="text-red-500 text-sm">{formErrors.titular}</p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2 text-gray-700">
+                  <Landmark className="h-5 w-5 text-orange-500" />
+                  Banco *
+                </Label>
+                <Input
+                  type="text"
+                  value={formData.banco}
+                  onChange={(e) => setFormData({ ...formData, banco: e.target.value })}
+                  className={`mt-1 ${formErrors.banco ? "border-red-500" : ""}`}
+                  placeholder="Nombre del banco"
+                />
+                {formErrors.banco && (
+                  <p className="text-red-500 text-sm">{formErrors.banco}</p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2 text-gray-700">
+                  <Hash className="h-5 w-5 text-cyan-500" />
+                  Número de Cuenta *
+                </Label>
+                <Input
+                  type="text"
+                  value={formData.numero_cuenta}
+                  onChange={(e) => setFormData({ ...formData, numero_cuenta: e.target.value })}
+                  className={`mt-1 ${formErrors.numero_cuenta ? "border-red-500" : ""}`}
+                  placeholder="Número de cuenta"
+                />
+                {formErrors.numero_cuenta && (
+                  <p className="text-red-500 text-sm">{formErrors.numero_cuenta}</p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2 text-gray-700">
+                  <Type className="h-5 w-5 text-gray-500" />
+                  Sucursal
+                </Label>
+                <Input
+                  type="number"
+                  value={formData.sucursal || ""}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      sucursal: e.target.value ? parseInt(e.target.value) : undefined,
+                    })
+                  }
+                  className="mt-1"
+                  placeholder="Número de sucursal (opcional)"
+                />
+              </div>
+
+              <div className="md:col-span-2 space-y-2">
+                <Label className="flex items-center gap-2 text-gray-700">
+                  <Globe className="h-5 w-5 text-indigo-500" />
+                  Dirección *
+                </Label>
+                <Input
+                  type="text"
+                  value={formData.direccion}
+                  onChange={(e) => setFormData({ ...formData, direccion: e.target.value })}
+                  className={`mt-1 ${formErrors.direccion ? "border-red-500" : ""}`}
+                  placeholder="Dirección de la cuenta"
+                />
+                {formErrors.direccion && (
+                  <p className="text-red-500 text-sm">{formErrors.direccion}</p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </form>
+      </FormModal>
     </div>
   );
 }

@@ -1,6 +1,6 @@
 import logging
 from typing import List, Optional
-from fastapi import APIRouter, Depends, Header, HTTPException, Query
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Response
 from sqlmodel.ext.asyncio.session import AsyncSession
 from src.database.connection import get_auth_session, get_session
 from src.services.liquidacion_service import liquidacion_service
@@ -26,9 +26,15 @@ async def listar_liquidaciones(
     limit: int = Query(100, ge=1, le=1000),
     cliente_id: Optional[int] = Query(None),
     db: AsyncSession = Depends(get_session),
+    response: Response = None,
 ):
     """Listar todas las liquidaciones con paginación."""
     try:
+        response.headers["X-Total-Count"] = str(
+            await liquidacion_service.count_liquidaciones(
+                db, cliente_id=cliente_id
+            )
+        )
         return await liquidacion_service.get_liquidaciones(db, skip=skip, limit=limit, cliente_id=cliente_id)
     except Exception as e:
         logger.error("Error al listar liquidaciones", exc_info=True)
@@ -41,8 +47,14 @@ async def listar_liquidaciones_pendientes(
     limit: int = Query(100, ge=1, le=1000),
     cliente_id: Optional[int] = Query(None),
     db: AsyncSession = Depends(get_session),
+    response: Response = None,
 ):
     """Listar liquidaciones pendientes."""
+    response.headers["X-Total-Count"] = str(
+        await liquidacion_service.count_liquidaciones(
+            db, cliente_id=cliente_id, variante="pendientes"
+        )
+    )
     return await liquidacion_service.get_liquidaciones_pendientes(
         db, skip=skip, limit=limit, cliente_id=cliente_id
     )
@@ -54,8 +66,14 @@ async def listar_liquidaciones_liquidadas(
     limit: int = Query(100, ge=1, le=1000),
     cliente_id: Optional[int] = Query(None),
     db: AsyncSession = Depends(get_session),
+    response: Response = None,
 ):
     """Listar liquidaciones liquidadas."""
+    response.headers["X-Total-Count"] = str(
+        await liquidacion_service.count_liquidaciones(
+            db, cliente_id=cliente_id, variante="liquidadas"
+        )
+    )
     return await liquidacion_service.get_liquidaciones_liquidadas(
         db, skip=skip, limit=limit, cliente_id=cliente_id
     )

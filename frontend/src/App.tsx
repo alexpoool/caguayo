@@ -51,7 +51,6 @@ import { PerfilClientePage } from './pages/PerfilCliente';
 import { MovimientosPage } from './pages/Movimientos';
 import { MovimientosPendientesPage } from './pages/MovimientosPendientes';
 import { RecepcionesPage } from './pages/RecepcionesPage';
-import { MovimientoAjusteForm } from './pages/movimientos/MovimientoAjusteForm';
 import { ConfiguracionPage } from './pages/Configuracion';
 import { MonedasPage } from './pages/Monedas';
 import { UsuariosPage } from './pages/Usuarios';
@@ -81,7 +80,6 @@ import { ConveniosPage as CompraConveniosPage } from './pages/Convenios';
 import { AnexosPage as CompraAnexosPage } from './pages/Anexos';
 import { ProductosEnLiquidacionPage } from './pages/compra/ProductosEnLiquidacionPage';
 import { LiquidacionesPage } from './pages/compra/LiquidacionesPage';
-import { CrearLiquidacionPage } from './pages/compra/CrearLiquidacionPage';
 import { ContratosPage } from './pages/ventas/ContratosPage';
 import { SuplementosPage } from './pages/ventas/SuplementosPage';
 import { FacturasPage } from './pages/ventas/facturas/FacturasPage';
@@ -909,14 +907,6 @@ function App() {
                     </ProtectedRoute>
                   }
                 />
-                <Route
-                  path="/movimientos/ajuste"
-                  element={
-                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/movimientos">
-                      <MovimientoAjusteForm />
-                    </ProtectedRoute>
-                  }
-                />
                 {/* Rutas de Ventas - protegidas */}
                 <Route
                   path="/venta"
@@ -1414,14 +1404,6 @@ function App() {
                   element={
                     <ProtectedRoute moduloActivo={moduloActivo} currentPath="/compra/liquidaciones">
                       <LiquidacionesPage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/compra/liquidaciones/crear"
-                  element={
-                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/compra/liquidaciones">
-                      <CrearLiquidacionPage />
                     </ProtectedRoute>
                   }
                 />

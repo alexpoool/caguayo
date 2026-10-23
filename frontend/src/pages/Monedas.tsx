@@ -9,13 +9,9 @@ import {
   Trash2,
   Coins,
   CircleDollarSign,
-  Save,
-  X,
-  ArrowLeft,
   RefreshCw,
   Type,
   Text,
-  Sparkles,
   AlertCircle,
   Wallet,
   Loader2,
@@ -36,7 +32,10 @@ import {
   TableHead,
   TableCell,
   ConfirmModal,
+  FormModal,
 } from "../components/ui";
+
+const MONEDA_FORM_ID = "moneda-form";
 
 export function MonedasPage() {
   const queryClient = useQueryClient();
@@ -73,12 +72,11 @@ export function MonedasPage() {
     error,
     hasMore,
     loadMore,
-    searchTerm,
-    setSearch,
     refresh,
+    total: totalMonedas,
   } = useInfiniteList<Moneda>({
     queryKeyBase: 'monedas',
-    queryFn: (skip, limit) => monedaService.getMonedas(skip, limit),
+    queryFn: (skip, limit, _search, onTotal) => monedaService.getMonedas(skip, limit, onTotal),
   });
 
   // Scroll infinito
@@ -221,46 +219,239 @@ export function MonedasPage() {
     });
   };
 
-  // VISTA: FORMULARIO
-  if (view === "form") {
+  const closeForm = () => {
+    setView("list");
+    setEditingMoneda(null);
+    resetForm();
+  };
+
+  const isSaving = createMutation.isPending || updateMutation.isPending;
+
+  // VISTA: LISTA
+  if (isLoading) {
     return (
-      <div className="space-y-4 animate-fade-in-up">
-        {/* Header con icono animado */}
-        <div className="flex justify-between items-center">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-gradient-to-br from-yellow-500 to-amber-600 rounded shadow-lg animate-bounce-subtle">
-              <Coins className="h-5 w-5 text-white" />
-            </div>
-            <div className="flex items-baseline">
-              <h1 className="text-xl font-bold text-gray-900">
-                {editingMoneda ? "Editar Moneda" : "Nueva Moneda"}
-              </h1>
-              <p className="text-sm text-gray-500">
-                {editingMoneda
-                  ? "Actualice la información de la moneda"
-                  : "Complete los datos para crear una nueva moneda"}
-              </p>
-            </div>
+      <div className="flex flex-col items-center justify-center h-96 gap-4">
+        <div className="p-4 bg-gradient-to-br from-yellow-100 to-amber-100 rounded-full animate-pulse">
+          <Coins className="h-12 w-12 text-yellow-600 animate-spin" />
+        </div>
+        <div className="text-gray-600 font-medium">Cargando monedas...</div>
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center bg-red-50 border border-red-200 rounded-md p-4">
+          <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+          <p className="font-bold text-lg mb-2 text-red-700">
+            Error al cargar monedas
+          </p>
+          <p className="text-red-600 mb-4">
+            {error instanceof Error ? error.message : "Error desconocido"}
+          </p>
+          <Button
+            onClick={refresh}
+            className="gap-2 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white"
+          >
+            <RefreshCw className="h-4 w-4" />
+            Reintentar
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4 animate-fade-in-up">
+      {/* Header con icono animado */}
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-gradient-to-br from-yellow-500 to-amber-600 rounded shadow-lg animate-bounce-subtle">
+            <Coins className="h-5 w-5 text-white" />
           </div>
-          <div className="flex items-center gap-3">
-            <Sparkles className="h-6 w-6 text-yellow-500 animate-pulse" />
-            <Button
-              variant="secondary"
-              onClick={() => {
-                setView("list");
-                setEditingMoneda(null);
-                resetForm();
-              }}
-              className="gap-2 hover:scale-105 transition-transform"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              Volver a la lista
-            </Button>
+          <div className="flex items-baseline">
+            <h1 className="text-xl font-bold text-gray-900">Monedas</h1>
+            <p className="text-sm text-gray-500 ml-3 hidden sm:block">
+              Gestión de monedas del sistema ({totalMonedas ?? monedas.length})
+            </p>
           </div>
         </div>
+        <Button
+          onClick={() => {
+            resetForm();
+            setEditingMoneda(null);
+            setView("form");
+          }}
+          className="gap-2 bg-gradient-to-r from-yellow-500 to-amber-600 hover:from-yellow-600 hover:to-amber-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300"
+        >
+          <Plus className="h-4 w-4" />
+          Nueva Moneda
+        </Button>
+      </div>
 
-        <form onSubmit={handleSubmit}>
-          <Card className="hover:shadow-lg transition-shadow duration-300">
+      <Card className="overflow-hidden hover:shadow-lg transition-shadow duration-300">
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader className="bg-gradient-to-r from-yellow-50 to-amber-50">
+              <TableRow>
+                <TableHead className="flex items-center gap-2">
+                  <Wallet className="h-4 w-4 text-yellow-600" />
+                  ID
+                </TableHead>
+                <TableHead>
+                  <div className="flex items-center gap-2">
+                    <Type className="h-4 w-4 text-blue-500" />
+                    Nombre
+                  </div>
+                </TableHead>
+                <TableHead>
+                  <div className="flex items-center gap-2">
+                    <Text className="h-4 w-4 text-green-500" />
+                    Denominación
+                  </div>
+                </TableHead>
+                <TableHead>
+                  <div className="flex items-center gap-2">
+                    <CircleDollarSign className="h-4 w-4 text-purple-500" />
+                    Símbolo
+                  </div>
+                </TableHead>
+                <TableHead className="text-right">Acciones</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {monedas.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={5} className="text-center py-12">
+                    <div className="flex flex-col items-center justify-center text-gray-400">
+                      <div className="p-4 bg-slate-50 rounded-full mb-4">
+                        <Coins className="h-12 w-12 text-gray-300" />
+                      </div>
+                      <p className="text-lg font-medium mb-2">
+                        No se encontraron monedas
+                      </p>
+                      <p className="text-sm mb-4">
+                        Comience creando una nueva moneda
+                      </p>
+                      <Button
+                        onClick={() => {
+                          resetForm();
+                          setEditingMoneda(null);
+                          setView("form");
+                        }}
+                        className="gap-2 bg-gradient-to-r from-yellow-500 to-amber-600 hover:from-yellow-600 hover:to-amber-700 text-white"
+                      >
+                        <Plus className="h-4 w-4" />
+                        Crear Moneda
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ) : (
+                monedas.map((moneda) => (
+                  <TableRow
+                    key={moneda.id_moneda}
+                    className="hover:bg-gray-50 transition-colors"
+                  >
+                    <TableCell>
+                      <span className="inline-flex items-center gap-1 px-2 py-1 bg-yellow-100 text-yellow-700 rounded text-sm font-medium">
+                        <Wallet className="h-3 w-3" />#{moneda.id_moneda}
+                      </span>
+                    </TableCell>
+                    <TableCell className="font-semibold">
+                      {moneda.nombre}
+                    </TableCell>
+                    <TableCell>{moneda.denominacion}</TableCell>
+                    <TableCell>
+                      <span className="inline-flex items-center gap-1 px-2 py-1 bg-purple-100 text-purple-700 rounded text-sm font-bold">
+                        <CircleDollarSign className="h-3 w-3" />
+                        {moneda.simbolo}
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleEdit(moneda)}
+                          className="text-blue-600 hover:bg-blue-50 hover:scale-110 transition-all"
+                          title="Editar"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleEliminar(moneda)}
+                          className="text-red-600 hover:bg-red-50 hover:scale-110 transition-all"
+                          title="Eliminar"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
+        {/* Elemento para scroll infinito */}
+        <div ref={loadMoreRef} className="flex justify-center py-2">
+          {isFetchingMore && (
+            <div className="flex items-center gap-2 text-gray-500">
+              <Loader2 className="h-5 w-5 animate-spin" />
+              <span>Cargando más...</span>
+            </div>
+          )}
+        </div>
+      </Card>
+
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+        onConfirm={confirmModal.onConfirm}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        type={confirmModal.type}
+      />
+
+      <FormModal
+        isOpen={view === "form"}
+        onClose={closeForm}
+        title={editingMoneda ? "Editar Moneda" : "Nueva Moneda"}
+        subtitle={
+          editingMoneda
+            ? "Actualice la información de la moneda"
+            : "Complete los datos para crear una nueva moneda"
+        }
+        icon={<Coins className="h-6 w-6" />}
+        size="lg"
+        footer={
+          <>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={closeForm}
+              disabled={isSaving}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="submit"
+              form={MONEDA_FORM_ID}
+              disabled={isSaving}
+              isLoading={isSaving}
+              className="gap-2 bg-gradient-to-r from-yellow-500 to-amber-600 hover:from-yellow-600 hover:to-amber-700 text-white shadow-lg hover:shadow-xl transition-all duration-300"
+            >
+              {editingMoneda ? "Actualizar" : "Guardar"}
+            </Button>
+          </>
+        }
+      >
+        <form id={MONEDA_FORM_ID} onSubmit={handleSubmit}>
+          <Card className="border-0 shadow-none">
             <CardHeader className="border-b bg-gradient-to-r from-yellow-50 to-amber-50">
               <CardTitle className="flex items-center gap-2">
                 <div className="p-2 bg-gradient-to-br from-yellow-500 to-amber-600 rounded-lg">
@@ -339,228 +530,10 @@ export function MonedasPage() {
                   Ejemplos: $ (Dólar), € (Euro), Bs (Bolívar)
                 </p>
               </div>
-
-              <div className="flex gap-4 md:col-span-2 pt-4 border-t">
-                <Button
-                  type="submit"
-                  className="gap-2 bg-gradient-to-r from-yellow-500 to-amber-600 hover:from-yellow-600 hover:to-amber-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300"
-                  disabled={
-                    createMutation.isPending || updateMutation.isPending
-                  }
-                >
-                  <Save className="h-4 w-4" />
-                  {createMutation.isPending || updateMutation.isPending
-                    ? "Guardando..."
-                    : editingMoneda
-                      ? "Actualizar"
-                      : "Guardar"}
-                </Button>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  onClick={() => {
-                    setView("list");
-                    setEditingMoneda(null);
-                    resetForm();
-                  }}
-                  className="gap-2 hover:bg-gray-200 transition-colors"
-                >
-                  <X className="h-4 w-4" />
-                  Cancelar
-                </Button>
-              </div>
             </CardContent>
           </Card>
         </form>
-      </div>
-    );
-  }
-
-  // VISTA: LISTA
-  if (isLoading) {
-    return (
-      <div className="flex flex-col items-center justify-center h-96 gap-4">
-        <div className="p-4 bg-gradient-to-br from-yellow-100 to-amber-100 rounded-full animate-pulse">
-          <Coins className="h-12 w-12 text-yellow-600 animate-spin" />
-        </div>
-        <div className="text-gray-600 font-medium">Cargando monedas...</div>
-      </div>
-    );
-  }
-
-  if (isError) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center bg-red-50 border border-red-200 rounded-md p-4">
-          <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-          <p className="font-bold text-lg mb-2 text-red-700">
-            Error al cargar monedas
-          </p>
-          <p className="text-red-600 mb-4">
-            {error instanceof Error ? error.message : "Error desconocido"}
-          </p>
-          <Button
-            onClick={refresh}
-            className="gap-2 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white"
-          >
-            <RefreshCw className="h-4 w-4" />
-            Reintentar
-          </Button>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-4 animate-fade-in-up">
-      {/* Header con icono animado */}
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <div className="p-2 bg-gradient-to-br from-yellow-500 to-amber-600 rounded shadow-lg animate-bounce-subtle">
-            <Coins className="h-5 w-5 text-white" />
-          </div>
-          <div className="flex items-baseline">
-            <h1 className="text-xl font-bold text-gray-900">Monedas</h1>
-            <p className="text-sm text-gray-500 ml-3 hidden sm:block">
-              Gestión de monedas del sistema
-            </p>
-          </div>
-        </div>
-        <Button
-          onClick={() => {
-            resetForm();
-            setEditingMoneda(null);
-            setView("form");
-          }}
-          className="gap-2 bg-gradient-to-r from-yellow-500 to-amber-600 hover:from-yellow-600 hover:to-amber-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300"
-        >
-          <Plus className="h-4 w-4" />
-          Nueva Moneda
-        </Button>
-      </div>
-
-      <Card className="overflow-hidden hover:shadow-lg transition-shadow duration-300">
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHeader className="bg-gradient-to-r from-yellow-50 to-amber-50">
-              <TableRow>
-                <TableHead className="flex items-center gap-2">
-                  <Wallet className="h-4 w-4 text-yellow-600" />
-                  ID
-                </TableHead>
-                <TableHead>
-                  <div className="flex items-center gap-2">
-                    <Type className="h-4 w-4 text-blue-500" />
-                    Nombre
-                  </div>
-                </TableHead>
-                <TableHead>
-                  <div className="flex items-center gap-2">
-                    <Text className="h-4 w-4 text-green-500" />
-                    Denominación
-                  </div>
-                </TableHead>
-                <TableHead>
-                  <div className="flex items-center gap-2">
-                    <CircleDollarSign className="h-4 w-4 text-purple-500" />
-                    Símbolo
-                  </div>
-                </TableHead>
-                <TableHead className="text-right">Acciones</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {monedas.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={5} className="text-center py-12">
-                    <div className="flex flex-col items-center justify-center text-gray-400">
-                      <div className="p-4 bg-slate-50 rounded-full mb-4">
-                        <Coins className="h-12 w-12 text-gray-300" />
-                      </div>
-                      <p className="text-lg font-medium mb-2">
-                        No se encontraron monedas
-                      </p>
-                      <p className="text-sm mb-4">
-                        Comience creando una nueva moneda
-                      </p>
-                      <Button
-                        onClick={() => setView("form")}
-                        className="gap-2 bg-gradient-to-r from-yellow-500 to-amber-600 hover:from-yellow-600 hover:to-amber-700 text-white"
-                      >
-                        <Plus className="h-4 w-4" />
-                        Crear Moneda
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ) : (
-                monedas.map((moneda) => (
-                  <TableRow
-                    key={moneda.id_moneda}
-                    className="hover:bg-gray-50 transition-colors"
-                  >
-                    <TableCell>
-                      <span className="inline-flex items-center gap-1 px-2 py-1 bg-yellow-100 text-yellow-700 rounded text-sm font-medium">
-                        <Wallet className="h-3 w-3" />#{moneda.id_moneda}
-                      </span>
-                    </TableCell>
-                    <TableCell className="font-semibold">
-                      {moneda.nombre}
-                    </TableCell>
-                    <TableCell>{moneda.denominacion}</TableCell>
-                    <TableCell>
-                      <span className="inline-flex items-center gap-1 px-2 py-1 bg-purple-100 text-purple-700 rounded text-sm font-bold">
-                        <CircleDollarSign className="h-3 w-3" />
-                        {moneda.simbolo}
-                      </span>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleEdit(moneda)}
-                          className="text-blue-600 hover:bg-blue-50 hover:scale-110 transition-all"
-                          title="Editar"
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleEliminar(moneda)}
-                          className="text-red-600 hover:bg-red-50 hover:scale-110 transition-all"
-                          title="Eliminar"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </div>
-        {/* Elemento para scroll infinito */}
-        <div ref={loadMoreRef} className="flex justify-center py-2">
-          {isFetchingMore && (
-            <div className="flex items-center gap-2 text-gray-500">
-              <Loader2 className="h-5 w-5 animate-spin" />
-              <span>Cargando más...</span>
-            </div>
-          )}
-        </div>
-      </Card>
-
-      <ConfirmModal
-        isOpen={confirmModal.isOpen}
-        onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
-        onConfirm={confirmModal.onConfirm}
-        title={confirmModal.title}
-        message={confirmModal.message}
-        type={confirmModal.type}
-      />
+      </FormModal>
     </div>
   );
 }

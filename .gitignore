@@ -54,5 +54,14 @@ etl/.venv/
 etl/data/tmp/
 # salida generada, no es fuente
 etl/data/migracion_rechazos.csv
-# ficheros del legacy que sube Configuración -> Migración. Son de varios MB
-etl/data/subidas/
+# volcados del legacy que deja main.py --generar-dumps/--adoptar. Llevan CI y
+# NITs de personas: no deben entrar en un commit nunca.
+# Un clon recién hecho no los trae, así que la pantalla de migración avisa de
+# que falta y dice dónde esperarlo.
+etl/dumps/*
+# Salvedad: el .gpg sí se versiona, para poder montar la migración en otra
+# máquina sin mover el fichero a mano. Va cifrado con gpg --symmetric, OJO: la
+# clave va DENTRO del fichero, así que esto protege de que alguien lo abra por
+# descuido, no de que lo tenga en serio. Descifrarlo:
+#   gpg --symmetric --decrypt comercial.sql.gpg > comercial.sql
+!etl/dumps/*.gpg

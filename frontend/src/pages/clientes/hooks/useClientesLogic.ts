@@ -5,10 +5,6 @@ import { useInfiniteList } from "../../../hooks/useInfiniteList";
 import {
   clientesService,
   tiposEntidadService,
-  clienteNaturalService,
-  clienteJuridicaService,
-  clienteTCPService,
-  cuentasService,
   monedaService,
 } from "../../../services/api";
 import { dependenciasService } from "../../../services/administracion";
@@ -30,7 +26,10 @@ const DEFAULT_LIMIT = 100;
 export function useClientesLogic() {
   const location = useLocation();
   const navigate = useNavigate();
-  const [view, setView] = useState<"list" | "form" | "detail">("list");
+  const [isFormOpen, setIsFormOpen] = useState(false);
+
+  const openForm = () => setIsFormOpen(true);
+  const closeForm = () => setIsFormOpen(false);
 
   const isProveedorView =
     location.pathname.includes("/compra/clientes") ||
@@ -71,10 +70,11 @@ export function useClientesLogic() {
     searchTerm,
     setSearch,
     refresh,
+    total: totalClientesDB,
   } = useInfiniteList<Cliente>({
     queryKeyBase: "clientes",
-    queryFn: (skip, limit, _search) =>
-      clientesService.getClientes(skip, limit, tipoRelacionFilter),
+    queryFn: (skip, limit, _search, onTotal) =>
+      clientesService.getClientes(skip, limit, tipoRelacionFilter, onTotal),
     limit: DEFAULT_LIMIT,
     extraQueryKeyParams: [isProveedorView],
   });
@@ -103,7 +103,7 @@ export function useClientesLogic() {
     onSuccess: () => {
       refresh();
       toast.success("Cliente creado correctamente");
-      setView("list");
+      setIsFormOpen(false);
     },
     onError: (error) => {
       toast.error(
@@ -118,7 +118,7 @@ export function useClientesLogic() {
     onSuccess: () => {
       refresh();
       toast.success("Cliente actualizado correctamente");
-      setView("list");
+      setIsFormOpen(false);
       setEditingCliente(null);
     },
     onError: (error) => {
@@ -145,7 +145,7 @@ export function useClientesLogic() {
     setEditingCliente(cliente);
     setTipoPersona(cliente.tipo_persona || "NATURAL");
     setCuentasCliente(cliente.cuentas || []);
-    setView("form");
+    setIsFormOpen(true);
   };
 
   const handleDelete = (cliente: Cliente) => {
@@ -178,8 +178,9 @@ export function useClientesLogic() {
   }, [clientes, searchTerm, isProveedorView]);
 
   return {
-    view,
-    setView,
+    isFormOpen,
+    openForm,
+    closeForm,
     isProveedorView,
     defaultTipoRelacion,
     editingCliente,
@@ -211,6 +212,7 @@ export function useClientesLogic() {
     hasMore,
     loadMore,
     isFetchingMore,
+    totalClientesDB,
     navigate,
   };
 }
