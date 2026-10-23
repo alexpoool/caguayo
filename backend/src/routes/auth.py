@@ -45,7 +45,7 @@ async def register(
     if not result:
         raise HTTPException(
             status_code=400,
-            detail="No se pudo registrar el usuario. El alias ya existe o la dependencia no es válida.",
+            detail="No se pudo registrar el usuario. Verifique que el alias y el CI no estén en uso, y que la dependencia y el grupo existan en la base de datos.",
         )
     return result
 

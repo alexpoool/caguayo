@@ -571,8 +571,9 @@ async def register(
     db: AsyncSession, register_data: RegisterRequest
 ) -> Optional[LoginResponse]:
     """Registra un nuevo usuario en la base de datos seleccionada"""
-    logger.info("Registration attempt: alias=%s, base_datos=%s, id_dependencia=%d",
-                register_data.alias, register_data.base_datos, register_data.id_dependencia)
+    logger.info("Registration attempt: alias=%s, base_datos=%s, id_dependencia=%d, id_grupo=%s",
+                register_data.alias, register_data.base_datos,
+                register_data.id_dependencia, register_data.id_grupo)
 
     # 1. Buscar la conexión a la base de datos seleccionada
     try:
@@ -631,9 +632,22 @@ async def register(
             # 5. Hashear contraseña con bcrypt
             hashed_password = get_password_hash(register_data.contrasenia)
 
-            # 6. Buscar grupo ADMINISTRADOR (id_grupo=1)
-            grupo = db_target.get(Grupo, 1)
-            id_grupo = grupo.id_grupo if grupo else 1
+            # 6. Resolver el grupo: el elegido en el registro o, si no viene,
+            # ADMINISTRADOR (id 1) como hacía antes.
+            id_grupo_solicitado = (
+                register_data.id_grupo
+                if register_data.id_grupo is not None
+                else 1
+            )
+            grupo = db_target.get(Grupo, id_grupo_solicitado)
+            if not grupo:
+                logger.warning(
+                    "Registration failed: grupo %d not found in %s",
+                    id_grupo_solicitado,
+                    register_data.base_datos,
+                )
+                return None
+            id_grupo = grupo.id_grupo
 
             # 7. Crear el usuario
             usuario = Usuario(

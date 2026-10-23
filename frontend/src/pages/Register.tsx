@@ -9,10 +9,12 @@ import {
   XCircle,
   Building2,
   User,
+  Users,
   Lock,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { apiClient, authHelpers } from "../lib/api";
+import { useAuth } from "../context/AuthContext";
 
 interface ConexionInfo {
   id_conexion: number;
@@ -26,13 +28,21 @@ interface DependenciaInfo {
   nombre: string;
 }
 
+interface GrupoInfo {
+  id_grupo: number;
+  nombre: string;
+  descripcion?: string | null;
+}
+
 type ConexionStatus = "idle" | "testing" | "connected" | "error";
 
 export function RegisterPage() {
   const navigate = useNavigate();
+  const { refreshUser } = useAuth();
 
   const [baseDatos, setBaseDatos] = useState("");
   const [idDependencia, setIdDependencia] = useState("");
+  const [idGrupo, setIdGrupo] = useState("");
   const [ci, setCi] = useState("");
   const [nombre, setNombre] = useState("");
   const [primerApellido, setPrimerApellido] = useState("");
@@ -44,8 +54,10 @@ export function RegisterPage() {
 
   const [conexiones, setConexiones] = useState<ConexionInfo[]>([]);
   const [dependencias, setDependencias] = useState<DependenciaInfo[]>([]);
+  const [grupos, setGrupos] = useState<GrupoInfo[]>([]);
   const [loadingConexiones, setLoadingConexiones] = useState(true);
   const [loadingDependencias, setLoadingDependencias] = useState(false);
+  const [loadingGrupos, setLoadingGrupos] = useState(false);
   const [loadingRegister, setLoadingRegister] = useState(false);
   const [conexionStatus, setConexionStatus] = useState<ConexionStatus>("idle");
 
@@ -108,13 +120,32 @@ export function RegisterPage() {
     }
   };
 
+  const fetchGrupos = async (dbName: string) => {
+    setLoadingGrupos(true);
+    setIdGrupo("");
+    try {
+      const response = await apiClient.get<GrupoInfo[]>(
+        `/conexiones/${dbName}/grupos`,
+      );
+      setGrupos(response);
+    } catch (error) {
+      console.error("Error fetching grupos:", error);
+      setGrupos([]);
+    } finally {
+      setLoadingGrupos(false);
+    }
+  };
+
   const handleBaseDatosChange = (value: string) => {
     setBaseDatos(value);
     setDependencias([]);
+    setGrupos([]);
     setIdDependencia("");
+    setIdGrupo("");
     if (value) {
       probarConexion(value);
       fetchDependencias(value);
+      fetchGrupos(value);
     } else {
       setConexionStatus("idle");
     }
@@ -133,6 +164,11 @@ export function RegisterPage() {
 
     if (!idDependencia) {
       toast.error("Seleccione una dependencia");
+      return;
+    }
+
+    if (!idGrupo) {
+      toast.error("Seleccione un grupo");
       return;
     }
 
@@ -178,11 +214,16 @@ export function RegisterPage() {
         contrasenia,
         base_datos: baseDatos,
         id_dependencia: parseInt(idDependencia),
+        id_grupo: parseInt(idGrupo),
       });
 
       authHelpers.setToken(response.token);
       authHelpers.setUser(response.usuario);
       authHelpers.setBaseDatos(response.base_datos);
+
+      // El AuthProvider se inicializó antes de existir el token: refrescar
+      // el usuario para que la sesión quede activa y no rebote a /login.
+      await refreshUser();
 
       toast.success("Registro exitoso");
       navigate("/");
@@ -222,8 +263,8 @@ export function RegisterPage() {
             </h2>
 
             <div className="space-y-5">
-              {/* Fila 1: Base de Datos + Dependencia */}
-              <div className="grid grid-cols-2 gap-4">
+              {/* Fila 1: Base de Datos + Dependencia + Grupo */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Base de Datos
@@ -301,6 +342,38 @@ export function RegisterPage() {
                           value={dep.id_dependencia}
                         >
                           {dep.nombre}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Grupo
+                  </label>
+                  <div className="relative">
+                    <Users className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400 z-10" />
+                    <select
+                      value={idGrupo}
+                      onChange={(e) => setIdGrupo(e.target.value)}
+                      disabled={
+                        !baseDatos ||
+                        conexionStatus !== "connected" ||
+                        loadingGrupos
+                      }
+                      className="w-full pl-10 pr-4 py-3 border-2 border-gray-300 rounded-md focus:ring-2 focus:ring-amber-500 focus:border-transparent bg-white transition-colors disabled:bg-slate-50"
+                    >
+                      <option value="">
+                        {loadingGrupos
+                          ? "Cargando..."
+                          : !baseDatos
+                            ? "Primero una base de datos "
+                            : "Seleccione grupo"}
+                      </option>
+                      {grupos.map((grupo) => (
+                        <option key={grupo.id_grupo} value={grupo.id_grupo}>
+                          {grupo.nombre}
                         </option>
                       ))}
                     </select>
@@ -441,7 +514,8 @@ export function RegisterPage() {
                   loadingRegister ||
                   loadingConexiones ||
                   !baseDatos ||
-                  !idDependencia
+                  !idDependencia ||
+                  !idGrupo
                 }
                 className="w-full"
               >

@@ -18,6 +18,7 @@ class RegisterRequest(BaseModel):
     contrasenia: str
     base_datos: str
     id_dependencia: int
+    id_grupo: int | None = None
 
 
 class DependenciaInfo(BaseModel):

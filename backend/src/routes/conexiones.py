@@ -99,6 +99,12 @@ class DependenciaResponse(BaseModel):
     nombre: str
 
 
+class GrupoResponse(BaseModel):
+    id_grupo: int
+    nombre: str
+    descripcion: str | None = None
+
+
 @router.get("/{db_name}/dependencias", response_model=List[DependenciaResponse])
 async def get_dependencias_por_db(db_name: str):
     """Obtiene las dependencias de una base de datos específica"""
@@ -124,4 +130,34 @@ async def get_dependencias_por_db(db_name: str):
         raise HTTPException(
             status_code=400,
             detail=f"Error al obtener dependencias de {db_name}: {str(e)}",
+        )
+
+
+@router.get("/{db_name}/grupos", response_model=List[GrupoResponse])
+async def get_grupos_por_db(db_name: str):
+    """Obtiene los grupos de usuarios de una base de datos específica."""
+    try:
+        conn = psycopg2.connect(
+            host=os.getenv("ADMIN_DB_HOST", "localhost"),
+            port=int(os.getenv("ADMIN_DB_PORT", 5432)),
+            user=os.getenv("ADMIN_DB_USER", "postgres"),
+            password=os.getenv("ADMIN_DB_PASSWORD"),
+            database=db_name,
+            client_encoding="utf8",
+        )
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT id_grupo, nombre, descripcion FROM grupo ORDER BY nombre"
+        )
+        grupos = [
+            GrupoResponse(id_grupo=row[0], nombre=row[1], descripcion=row[2])
+            for row in cur.fetchall()
+        ]
+        cur.close()
+        conn.close()
+        return grupos
+    except Exception as e:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Error al obtener grupos de {db_name}: {str(e)}",
         )
