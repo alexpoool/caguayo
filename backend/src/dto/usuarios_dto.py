@@ -45,7 +45,7 @@ class UsuarioBase(SQLModel):
 
 class UsuarioCreate(UsuarioBase):
     alias: Optional[str] = None
-    contrasenia: Optional[str] = None
+    contrasenia: str
     contrasenia_plana: Optional[str] = None
 
 

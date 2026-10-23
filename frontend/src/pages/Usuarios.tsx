@@ -15,6 +15,7 @@ import {
   CreditCard,
   Plus,
   Search,
+  Lock,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import {
@@ -51,6 +52,7 @@ export function UsuariosPage() {
     segundo_apellido: "",
     cargo: "",
     id_grupo: 0,
+    contrasenia: "",
   });
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
@@ -62,8 +64,7 @@ export function UsuariosPage() {
   const [createdUserModal, setCreatedUserModal] = useState<{
     isOpen: boolean;
     usuario: Usuario | null;
-    contrasenia: string;
-  }>({ isOpen: false, usuario: null, contrasenia: "" });
+  }>({ isOpen: false, usuario: null });
 
   const [detailModal, setDetailModal] = useState<{
     isOpen: boolean;
@@ -106,7 +107,6 @@ export function UsuariosPage() {
       setCreatedUserModal({
         isOpen: true,
         usuario: data,
-        contrasenia: data.password_temporal || "",
       });
     },
     onError: () => toast.error("Error al crear usuario"),
@@ -140,6 +140,7 @@ export function UsuariosPage() {
       segundo_apellido: "",
       cargo: "",
       id_grupo: 0,
+      contrasenia: "",
     });
 
   const handleUsuarioSubmit = (e: React.FormEvent) => {
@@ -157,9 +158,21 @@ export function UsuariosPage() {
     if (editingUsuario) {
       updateUsuario.mutate({
         id: editingUsuario.id_usuario,
-        data: usuarioForm,
+        data: {
+          ci: usuarioForm.ci,
+          nombre: usuarioForm.nombre,
+          primer_apellido: usuarioForm.primer_apellido,
+          segundo_apellido: usuarioForm.segundo_apellido,
+          cargo: usuarioForm.cargo,
+          id_grupo: usuarioForm.id_grupo,
+          id_dependencia: usuarioForm.id_dependencia,
+        },
       });
     } else {
+      if (usuarioForm.contrasenia.length < 6) {
+        toast.error("La contraseña debe tener al menos 6 caracteres");
+        return;
+      }
       createUsuario.mutate(usuarioForm);
     }
   };
@@ -186,6 +199,7 @@ export function UsuariosPage() {
       cargo: usuario.cargo,
       id_grupo: usuario.id_grupo,
       id_dependencia: usuario.id_dependencia,
+      contrasenia: "",
     });
     setView("form");
   };
@@ -327,6 +341,26 @@ export function UsuariosPage() {
                   className="transition-all duration-200 focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
                 />
               </div>
+              {!editingUsuario && (
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2 text-gray-700">
+                    <Lock className="h-5 w-5 text-rose-500" />
+                    Contraseña *
+                  </Label>
+                  <Input
+                    type="password"
+                    value={usuarioForm.contrasenia}
+                    onChange={(e) =>
+                      setUsuarioForm({
+                        ...usuarioForm,
+                        contrasenia: e.target.value,
+                      })
+                    }
+                    placeholder="Contraseña (mínimo 6 caracteres)"
+                    className="transition-all duration-200 focus:ring-2 focus:ring-rose-500 focus:border-rose-500"
+                  />
+                </div>
+              )}
               <div className="space-y-2">
                 <Label
                   htmlFor="id_grupo"
@@ -559,8 +593,8 @@ export function UsuariosPage() {
             <div className="p-6 space-y-4">
               <div className="bg-green-50 border border-green-200 rounded-lg p-4">
                 <p className="text-sm text-green-800 mb-2">
-                  El usuario ha sido creado con las siguientes credenciales
-                  autogeneradas:
+                  El usuario ha sido creado correctamente. Comparta su alias de
+                  acceso:
                 </p>
               </div>
 
@@ -601,40 +635,10 @@ export function UsuariosPage() {
                       {createdUserModal.usuario.alias}
                     </div>
                   </div>
-
-                  <div>
-                    <Label className="text-blue-700 flex items-center gap-2">
-                      Contraseña Temporal
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-6 w-6"
-                        onClick={() => {
-                          if (createdUserModal.usuario!.password_temporal) {
-                            navigator.clipboard.writeText(
-                              createdUserModal.usuario!.password_temporal!,
-                            );
-                            setCopiedField("password");
-                            setTimeout(() => setCopiedField(null), 2000);
-                          }
-                        }}
-                      >
-                        {copiedField === "password" ? (
-                          <CheckCircle className="h-4 w-4 text-green-600" />
-                        ) : (
-                          <Copy className="h-4 w-4" />
-                        )}
-                      </Button>
-                    </Label>
-                    <div className="font-mono font-medium text-lg">
-                      {createdUserModal.usuario.password_temporal}
-                    </div>
-                  </div>
                 </div>
 
                 <p className="text-sm text-yellow-700 bg-yellow-50 border border-yellow-200 rounded-lg p-3">
-                  ⚠️ Esta información solo se muestra una vez. Asegúrese de
-                  copiar la contraseña antes de cerrar.
+                  La contraseña es la que se ingresó en el formulario de creación.
                 </p>
               </div>
             </div>

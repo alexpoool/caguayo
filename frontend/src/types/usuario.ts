@@ -53,6 +53,7 @@ export interface UsuarioCreate {
   cargo: string;
   id_grupo: number;
   id_dependencia?: number;
+  contrasenia: string;
 }
 
 export interface UsuarioUpdate {
