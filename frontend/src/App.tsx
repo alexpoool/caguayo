@@ -322,6 +322,77 @@ const MODULO_FUNCIONALIDADES: Record<Modulo, string[]> = {
   rrhh: ['rrhh_empleados', 'rrhh_departamentos', 'rrhh_puestos', 'rrhh_asistencia', 'rrhh_solicitudes', 'rrhh_deducciones', 'rrhh_bonificaciones', 'rrhh_nomina', 'rrhh_evaluaciones', 'rrhh_catalogos', 'rrhh_reportes', 'rrhh_auditoria'],
 };
 
+interface AdminSeccionItem {
+  to: string;
+  label: string;
+  icon: React.ElementType;
+  func: string;
+}
+
+/** Grupos desplegables del sidebar de Administración. */
+const ADMIN_SECCIONES: { id: string; label: string; items: AdminSeccionItem[] }[] = [
+  {
+    id: 'sistema',
+    label: 'Sistema',
+    items: [
+      { to: '/grupos', label: 'Grupos', icon: Shield, func: 'grupos' },
+      { to: '/usuarios', label: 'Usuarios', icon: Users, func: 'usuarios' },
+      { to: '/monedas', label: 'Monedas', icon: Coins, func: 'monedas' },
+    ],
+  },
+  {
+    id: 'dependencia',
+    label: 'Dependencia',
+    items: [
+      { to: '/dependencias', label: 'Dependencias', icon: Building, func: 'dependencias' },
+      { to: '/cuentas', label: 'Cuentas', icon: Wallet, func: 'cuentas' },
+      { to: '/configuracion/tipos-dependencia', label: 'Tipos de Dependencia', icon: Building, func: 'configuracion' },
+      { to: '/configuracion/tipos-cuenta', label: 'Tipos de Cuenta', icon: Wallet, func: 'configuracion' },
+    ],
+  },
+  {
+    id: 'terceros',
+    label: 'Terceros',
+    items: [
+      { to: '/configuracion/estados-contrato', label: 'Estados de Contrato', icon: FileText, func: 'configuracion' },
+      { to: '/configuracion/tipos-contrato', label: 'Tipos de Contrato', icon: FilePlus, func: 'configuracion' },
+      { to: '/configuracion/tipos-proveedores', label: 'Tipos de Proveedores', icon: Briefcase, func: 'configuracion' },
+      { to: '/configuracion/tipos-convenio', label: 'Tipos de Convenio', icon: FileText, func: 'configuracion' },
+      { to: '/configuracion/tipos-entidad', label: 'Tipos de Entidad', icon: Building, func: 'configuracion' },
+    ],
+  },
+  {
+    id: 'inventario',
+    label: 'Inventario',
+    items: [
+      { to: '/configuracion/categorias', label: 'Categorías', icon: Boxes, func: 'configuracion' },
+      { to: '/configuracion/subcategorias', label: 'Subcategorías', icon: Layers, func: 'configuracion' },
+    ],
+  },
+  {
+    id: 'rrhh',
+    label: 'RRHH',
+    items: [
+      { to: '/configuracion/rrhh/departamentos', label: 'Departamentos', icon: Building, func: 'rrhh_catalogos' },
+      { to: '/configuracion/rrhh/puestos', label: 'Puestos', icon: Briefcase, func: 'rrhh_catalogos' },
+      { to: '/configuracion/rrhh/periodos', label: 'Periodos', icon: Clock, func: 'rrhh_catalogos' },
+      { to: '/configuracion/rrhh/tipos-contrato', label: 'Tipos de Contrato', icon: FilePlus, func: 'rrhh_catalogos' },
+      { to: '/configuracion/rrhh/tipos-bonificaciones', label: 'Tipos de Bonificación', icon: Coins, func: 'rrhh_catalogos' },
+      { to: '/configuracion/rrhh/tipos-deducciones', label: 'Tipos de Deducción', icon: FileText, func: 'rrhh_catalogos' },
+      { to: '/configuracion/rrhh/tipos-pago', label: 'Tipos de Pago', icon: Wallet, func: 'rrhh_catalogos' },
+    ],
+  },
+  {
+    id: 'declaracion-jurada',
+    label: 'Declaración Jurada',
+    items: [
+      { to: '/configuracion/actividades-economicas', label: 'Actividades Económicas', icon: Briefcase, func: 'configuracion' },
+      { to: '/configuracion/tributos', label: 'Tributos', icon: Coins, func: 'configuracion' },
+      { to: '/configuracion/especialidades', label: 'Especialidades', icon: FileText, func: 'configuracion' },
+    ],
+  },
+];
+
 function App() {
   const { isAuthenticated, isLoading, user, logout, hasFuncionalidad, baseDatos } = useAuth();
 
@@ -331,6 +402,7 @@ function App() {
     return funcs.some(f => hasFuncionalidad(f));
   };
   const [moduloActivo, setModuloActivo] = useState<Modulo>('inventario');
+  const [adminSeccionesAbiertas, setAdminSeccionesAbiertas] = useState<Record<string, boolean>>({});
   const [slimSidebar, setSlimSidebar] = useState(false);
   const [showAccountModal, setShowAccountModal] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
@@ -565,101 +637,53 @@ function App() {
               )}
               {moduloActivo === 'administracion' && (
                 <div className={`${slimSidebar ? 'px-0' : 'px-3'} space-y-1`}>
-                  {!slimSidebar && (
-                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-2 pt-2 pb-1">Sistema</p>
-                  )}
-                  <SidebarLink slim={slimSidebar} to="/grupos" onClick={handleLinkClick} disabled={!hasFuncionalidad('grupos')}>
-                    <Shield className="w-4 h-4" /> Grupos
-                  </SidebarLink>
-                  <SidebarLink slim={slimSidebar} to="/usuarios" onClick={handleLinkClick} disabled={!hasFuncionalidad('usuarios')}>
-                    <Users className="w-4 h-4" /> Usuarios
-                  </SidebarLink>
-                  <SidebarLink slim={slimSidebar} to="/monedas" onClick={handleLinkClick} disabled={!hasFuncionalidad('monedas')}>
-                    <Coins className="w-4 h-4" /> Monedas
-                  </SidebarLink>
-
-                  {!slimSidebar && (
-                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-2 pt-3 pb-1">Dependencia</p>
-                  )}
-                  <SidebarLink slim={slimSidebar} to="/dependencias" onClick={handleLinkClick} disabled={!hasFuncionalidad('dependencias')}>
-                    <Building className="w-4 h-4" /> Dependencias
-                  </SidebarLink>
-                  <SidebarLink slim={slimSidebar} to="/cuentas" onClick={handleLinkClick} disabled={!hasFuncionalidad('cuentas')}>
-                    <Wallet className="w-4 h-4" /> Cuentas
-                  </SidebarLink>
-                  <SidebarLink slim={slimSidebar} to="/configuracion/tipos-dependencia" onClick={handleLinkClick} disabled={!hasFuncionalidad('configuracion')}>
-                    <Building className="w-4 h-4" /> Tipos de Dependencia
-                  </SidebarLink>
-                  <SidebarLink slim={slimSidebar} to="/configuracion/tipos-cuenta" onClick={handleLinkClick} disabled={!hasFuncionalidad('configuracion')}>
-                    <Wallet className="w-4 h-4" /> Tipos de Cuenta
-                  </SidebarLink>
-
-                  {!slimSidebar && (
-                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-2 pt-3 pb-1">Terceros</p>
-                  )}
-                  <SidebarLink slim={slimSidebar} to="/configuracion/estados-contrato" onClick={handleLinkClick} disabled={!hasFuncionalidad('configuracion')}>
-                    <FileText className="w-4 h-4" /> Estados de Contrato
-                  </SidebarLink>
-                  <SidebarLink slim={slimSidebar} to="/configuracion/tipos-contrato" onClick={handleLinkClick} disabled={!hasFuncionalidad('configuracion')}>
-                    <FilePlus className="w-4 h-4" /> Tipos de Contrato
-                  </SidebarLink>
-                  <SidebarLink slim={slimSidebar} to="/configuracion/tipos-proveedores" onClick={handleLinkClick} disabled={!hasFuncionalidad('configuracion')}>
-                    <Briefcase className="w-4 h-4" /> Tipos de Proveedores
-                  </SidebarLink>
-                  <SidebarLink slim={slimSidebar} to="/configuracion/tipos-convenio" onClick={handleLinkClick} disabled={!hasFuncionalidad('configuracion')}>
-                    <FileText className="w-4 h-4" /> Tipos de Convenio
-                  </SidebarLink>
-                  <SidebarLink slim={slimSidebar} to="/configuracion/tipos-entidad" onClick={handleLinkClick} disabled={!hasFuncionalidad('configuracion')}>
-                    <Building className="w-4 h-4" /> Tipos de Entidad
-                  </SidebarLink>
-
-                  {!slimSidebar && (
-                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-2 pt-3 pb-1">Declaración Jurada</p>
-                  )}
-                  <SidebarLink slim={slimSidebar} to="/configuracion/actividades-economicas" onClick={handleLinkClick} disabled={!hasFuncionalidad('configuracion')}>
-                    <Briefcase className="w-4 h-4" /> Actividades Económicas
-                  </SidebarLink>
-                  <SidebarLink slim={slimSidebar} to="/configuracion/tributos" onClick={handleLinkClick} disabled={!hasFuncionalidad('configuracion')}>
-                    <Coins className="w-4 h-4" /> Tributos
-                  </SidebarLink>
-                  <SidebarLink slim={slimSidebar} to="/configuracion/especialidades" onClick={handleLinkClick} disabled={!hasFuncionalidad('configuracion')}>
-                    <FileText className="w-4 h-4" /> Especialidades
-                  </SidebarLink>
-
-                  {!slimSidebar && (
-                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-2 pt-3 pb-1">Inventario</p>
-                  )}
-                  <SidebarLink slim={slimSidebar} to="/configuracion/categorias" onClick={handleLinkClick} disabled={!hasFuncionalidad('configuracion')}>
-                    <Boxes className="w-4 h-4" /> Categorías
-                  </SidebarLink>
-                  <SidebarLink slim={slimSidebar} to="/configuracion/subcategorias" onClick={handleLinkClick} disabled={!hasFuncionalidad('configuracion')}>
-                    <Layers className="w-4 h-4" /> Subcategorías
-                  </SidebarLink>
-
-                  {!slimSidebar && (
-                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-2 pt-3 pb-1">RRHH</p>
-                  )}
-                  <SidebarLink slim={slimSidebar} to="/configuracion/rrhh/departamentos" onClick={handleLinkClick} disabled={!hasFuncionalidad('rrhh_catalogos')}>
-                    <Building className="w-4 h-4" /> Departamentos
-                  </SidebarLink>
-                  <SidebarLink slim={slimSidebar} to="/configuracion/rrhh/puestos" onClick={handleLinkClick} disabled={!hasFuncionalidad('rrhh_catalogos')}>
-                    <Briefcase className="w-4 h-4" /> Puestos
-                  </SidebarLink>
-                  <SidebarLink slim={slimSidebar} to="/configuracion/rrhh/periodos" onClick={handleLinkClick} disabled={!hasFuncionalidad('rrhh_catalogos')}>
-                    <Clock className="w-4 h-4" /> Periodos
-                  </SidebarLink>
-                  <SidebarLink slim={slimSidebar} to="/configuracion/rrhh/tipos-contrato" onClick={handleLinkClick} disabled={!hasFuncionalidad('rrhh_catalogos')}>
-                    <FilePlus className="w-4 h-4" /> Tipos de Contrato
-                  </SidebarLink>
-                  <SidebarLink slim={slimSidebar} to="/configuracion/rrhh/tipos-bonificaciones" onClick={handleLinkClick} disabled={!hasFuncionalidad('rrhh_catalogos')}>
-                    <Coins className="w-4 h-4" /> Tipos de Bonificación
-                  </SidebarLink>
-                  <SidebarLink slim={slimSidebar} to="/configuracion/rrhh/tipos-deducciones" onClick={handleLinkClick} disabled={!hasFuncionalidad('rrhh_catalogos')}>
-                    <FileText className="w-4 h-4" /> Tipos de Deducción
-                  </SidebarLink>
-                  <SidebarLink slim={slimSidebar} to="/configuracion/rrhh/tipos-pago" onClick={handleLinkClick} disabled={!hasFuncionalidad('rrhh_catalogos')}>
-                    <Wallet className="w-4 h-4" /> Tipos de Pago
-                  </SidebarLink>
+                  {ADMIN_SECCIONES.map((seccion) => {
+                    const contieneRutaActual = seccion.items.some(
+                      (item) =>
+                        location.pathname === item.to ||
+                        location.pathname.startsWith(`${item.to}/`),
+                    );
+                    const abierta =
+                      slimSidebar ||
+                      (adminSeccionesAbiertas[seccion.id] ?? contieneRutaActual);
+                    return (
+                      <div key={seccion.id}>
+                        {!slimSidebar && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setAdminSeccionesAbiertas((prev) => ({
+                                ...prev,
+                                [seccion.id]: !abierta,
+                              }))
+                            }
+                            className="flex w-full items-center justify-between gap-2 rounded px-2 pt-3 pb-1 text-[10px] font-bold uppercase tracking-widest text-slate-500 transition-colors hover:text-slate-300"
+                            aria-expanded={abierta}
+                          >
+                            <span>{seccion.label}</span>
+                            <ChevronDown
+                              className={`h-3.5 w-3.5 transition-transform ${abierta ? 'rotate-180' : ''}`}
+                            />
+                          </button>
+                        )}
+                        {abierta &&
+                          seccion.items.map((item) => {
+                            const Icon = item.icon;
+                            return (
+                              <SidebarLink
+                                key={item.to}
+                                slim={slimSidebar}
+                                to={item.to}
+                                onClick={handleLinkClick}
+                                disabled={!hasFuncionalidad(item.func)}
+                              >
+                                <Icon className="w-4 h-4" /> {item.label}
+                              </SidebarLink>
+                            );
+                          })}
+                      </div>
+                    );
+                  })}
                 </div>
               )}
               {moduloActivo === 'compra' && (
