@@ -273,7 +273,6 @@ export function ConfiguracionPage() {
 
   const {
     data: tiposContrato = [],
-    isLoading: loadingTiposContrato,
     refetch: refetchTiposContrato,
   } = useQuery({
     queryKey: ["tiposContrato"],
@@ -282,7 +281,6 @@ export function ConfiguracionPage() {
 
   const {
     data: estadosContrato = [],
-    isLoading: loadingEstadosContrato,
     refetch: refetchEstadosContrato,
   } = useQuery({
     queryKey: ["estadosContrato"],
@@ -291,7 +289,6 @@ export function ConfiguracionPage() {
 
   const {
     data: categorias = [],
-    isLoading: loadingCategorias,
     refetch: refetchCategorias,
   } = useQuery({
     queryKey: ["categorias"],
@@ -300,7 +297,6 @@ export function ConfiguracionPage() {
 
   const {
     data: subcategorias = [],
-    isLoading: loadingSubcategorias,
     refetch: refetchSubcategorias,
   } = useQuery({
     queryKey: ["subcategorias"],
@@ -309,7 +305,6 @@ export function ConfiguracionPage() {
 
   const {
     data: tiposProveedor = [],
-    isLoading: loadingTiposProveedor,
     refetch: refetchTiposProveedor,
   } = useQuery({
     queryKey: ["tiposProveedor"],
@@ -318,7 +313,6 @@ export function ConfiguracionPage() {
 
   const {
     data: tiposConvenio = [],
-    isLoading: loadingTiposConvenio,
     refetch: refetchTiposConvenio,
   } = useQuery({
     queryKey: ["tiposConvenio"],
@@ -327,7 +321,6 @@ export function ConfiguracionPage() {
 
   const {
     data: especialidades = [],
-    isLoading: loadingEspecialidades,
     refetch: refetchEspecialidades,
   } = useQuery({
     queryKey: ["especialidades"],
@@ -336,7 +329,6 @@ export function ConfiguracionPage() {
 
   const {
     data: tiposDependencia = [],
-    isLoading: loadingTiposDependencia,
     refetch: refetchTiposDependencia,
   } = useQuery({
     queryKey: ["tiposDependencia"],
@@ -345,7 +337,6 @@ export function ConfiguracionPage() {
 
 const {
     data: tiposCuenta = [],
-    isLoading: loadingTiposCuenta,
     refetch: refetchTiposCuenta,
   } = useQuery({
     queryKey: ["tiposCuenta"],
@@ -355,7 +346,6 @@ const {
 
   const {
     data: tiposEntidad = [],
-    isLoading: loadingTiposEntidad,
     refetch: refetchTiposEntidad,
   } = useQuery({
     queryKey: ["tiposEntidad"],
@@ -364,7 +354,6 @@ const {
 
   const {
     data: dj08Actividades = [],
-    isLoading: loadingDj08Actividades,
     refetch: refetchDj08Actividades,
   } = useQuery({
     queryKey: ["dj08Actividades"],
@@ -373,26 +362,11 @@ const {
 
   const {
     data: dj08Tributos = [],
-    isLoading: loadingDj08Tributos,
     refetch: refetchDj08Tributos,
   } = useQuery({
     queryKey: ["dj08Tributos"],
     queryFn: () => dj08Service.listarTributos(),
   });
-
-  const isAnyLoading =
-    loadingTiposContrato ||
-    loadingEstadosContrato ||
-    loadingCategorias ||
-    loadingSubcategorias ||
-    loadingTiposProveedor ||
-    loadingTiposConvenio ||
-    loadingTiposDependencia ||
-    loadingTiposCuenta ||
-    loadingTiposEntidad ||
-    loadingDj08Actividades ||
-    loadingDj08Tributos ||
-    loadingEspecialidades;
 
   // Mutations para tipos de contrato
   const createTipoContrato = useMutation({
@@ -1654,7 +1628,6 @@ const {
                     variant="outline"
                     onClick={() => setEditingItem(null)}
                   >
-                    <X className="h-4 w-4 mr-2" />
                     Cancelar
                   </Button>
                 )}
@@ -1826,75 +1799,12 @@ const {
     return (
       <div className="space-y-4 animate-fade-in-up">
         {/* Header de la sección */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div
-              className={`p-2 rounded-lg ${
-                activeConfigSubTab === "tipo-contrato"
-                  ? "bg-blue-100"
-                  : activeConfigSubTab === "estado-contrato"
-                    ? "bg-green-100"
-                    : activeConfigSubTab === "categorias"
-                      ? "bg-purple-100"
-                      : activeConfigSubTab === "subcategorias"
-                        ? "bg-orange-100"
-                        : activeConfigSubTab === "tipo-proveedores"
-                          ? "bg-red-100"
-                          : activeConfigSubTab === "tipo-convenios"
-                            ? "bg-teal-100"
-                            : activeConfigSubTab === "tipo-dependencia"
-                              ? "bg-indigo-100"                            : activeConfigSubTab === "tipo-cuenta"
-                              ? "bg-cyan-100"
-                              : activeConfigSubTab === "dj08-actividades"
-                                ? "bg-amber-100"
-                                : activeConfigSubTab === "dj08-tributos"
-                                  ? "bg-cyan-100"
-                                  : "bg-rose-100"
-              }`}
-            >
-              {activeConfigSubTab === "tipo-contrato" && (
-                <ScrollText className="w-5 h-5 text-blue-600" />
-              )}
-              {activeConfigSubTab === "estado-contrato" && (
-                <ToggleLeft className="w-5 h-5 text-green-600" />
-              )}
-              {activeConfigSubTab === "categorias" && (
-                <FolderTree className="w-5 h-5 text-purple-600" />
-              )}
-              {activeConfigSubTab === "subcategorias" && (
-                <Tag className="w-5 h-5 text-orange-600" />
-              )}
-              {activeConfigSubTab === "tipo-proveedores" && (
-                <Truck className="w-5 h-5 text-red-600" />
-              )}
-              {activeConfigSubTab === "tipo-convenios" && (
-                <FileText className="w-5 h-5 text-teal-600" />
-              )}
-              {activeConfigSubTab === "tipo-dependencia" && (
-                <BuildingIcon className="w-5 h-5 text-indigo-600" />
-              )}
-              {activeConfigSubTab === "tipo-cuenta" && (
-                <Wallet className="w-5 h-5 text-cyan-600" />
-              )}
-              {activeConfigSubTab === "tipo-entidad" && (
-                <BuildingIcon className="w-5 h-5 text-rose-600" />
-              )}
-              {activeConfigSubTab === "dj08-actividades" && (
-                <Briefcase className="w-5 h-5 text-amber-600" />
-              )}
-              {activeConfigSubTab === "dj08-tributos" && (
-                <Coins className="w-5 h-5 text-cyan-600" />
-              )}
-              {activeConfigSubTab === "especialidades" && (
-                <Palette className="w-5 h-5 text-fuchsia-600" />
-              )}
-            </div>
-            {isAnyLoading && (
-              <span className="text-sm text-blue-500">Cargando...</span>
-            )}
-          </div>
-          <Button onClick={() => openModal(activeConfigSubTab)}>
-            <Plus className="w-4 h-4 mr-2" />
+        <div className="flex items-center justify-end">
+          <Button
+            onClick={() => openModal(activeConfigSubTab)}
+            className={`gap-2 bg-gradient-to-r ${getButtonGradient()} text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300`}
+          >
+            <Plus className="h-4 w-4" />
             Nuevo
           </Button>
         </div>

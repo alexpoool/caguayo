@@ -16,7 +16,6 @@ import {
   Settings,
   Save,
   X,
-  RefreshCw,
   AlertCircle,
   Loader2,
   Search,
@@ -250,18 +249,10 @@ export function CatalogosPage({ tabInicial, onCambiarTab }: CatalogosPageProps =
         <div className="flex items-center gap-2">
           {!config.custom && (
             <Button
-              variant="outline"
               size="sm"
-              onClick={() => refetch()}
-              disabled={isLoading}
+              onClick={handleNuevo}
+              className="gap-2 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300"
             >
-              <RefreshCw
-                className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`}
-              />
-            </Button>
-          )}
-          {!config.custom && (
-            <Button size="sm" onClick={handleNuevo}>
               <Plus className="h-4 w-4" />
               Nuevo
             </Button>
@@ -297,7 +288,6 @@ export function CatalogosPage({ tabInicial, onCambiarTab }: CatalogosPageProps =
       ) : (
         <Card>
           <CardHeader className="pb-3">
-            <p className="text-sm text-slate-500">{config.descripcion}</p>
             <div className="mt-2 flex flex-wrap items-center gap-3">
               <div className="relative min-w-[200px] flex-1">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
@@ -534,7 +524,11 @@ export function CatalogosPage({ tabInicial, onCambiarTab }: CatalogosPageProps =
               )}
 
               <div className="sticky bottom-0 -mx-6 flex items-center gap-2 border-t bg-white px-6 pb-1 pt-4">
-                <Button type="submit" disabled={saveMutation.isPending}>
+                <Button
+                  type="submit"
+                  disabled={saveMutation.isPending}
+                  className="gap-2 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white shadow-lg hover:shadow-xl transition-all duration-300"
+                >
                   {saveMutation.isPending ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
                   ) : (
@@ -584,10 +578,10 @@ function ActionButton({
       type="button"
       title={titulo}
       onClick={onClick}
-      className={`rounded-md p-1.5 transition-colors ${
+      className={`rounded-md p-1.5 transition-all ${
         danger
-          ? 'text-slate-400 hover:bg-red-50 hover:text-red-600'
-          : 'text-slate-400 hover:bg-slate-100 hover:text-slate-700'
+          ? 'text-red-600 hover:bg-red-50 hover:scale-110'
+          : 'text-blue-600 hover:bg-blue-50 hover:scale-110'
       }`}
     >
       {children}
