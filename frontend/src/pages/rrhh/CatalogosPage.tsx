@@ -232,20 +232,23 @@ export function CatalogosPage({ tabInicial, onCambiarTab }: CatalogosPageProps =
 
   return (
     <div className="space-y-4">
-      {/* Encabezado */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="flex items-center gap-2 text-xl font-bold text-slate-900">
-            <Settings className="h-6 w-6 text-brand-600" />
-            {embebido ? config.nombre : 'Catálogos'}
-          </h1>
-          <p className="mt-1 text-sm text-slate-500">
-            {embebido
-              ? config.descripcion
-              : 'Todo el catálogo del módulo: contratos, bonificaciones, deducciones, pagos, departamentos, puestos, tipos de evaluación, periodos y calificaciones.'}
-          </p>
+      {/* Encabezado: en Administración las páginas con UI propia muestran
+          su propio título, así que aquí se omite para no duplicarlo. */}
+      {!(embebido && config.custom) && (
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h1 className="flex items-center gap-2 text-xl font-bold text-slate-900">
+              <Settings className="h-6 w-6 text-brand-600" />
+              {embebido ? config.nombre : 'Catálogos'}
+            </h1>
+            <p className="mt-1 text-sm text-slate-500">
+              {embebido
+                ? config.descripcion
+                : 'Todo el catálogo del módulo: contratos, bonificaciones, deducciones, pagos, departamentos, puestos, tipos de evaluación, periodos y calificaciones.'}
+            </p>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Pestañas por catálogo (solo en el módulo RRHH) */}
       {!embebido && (
