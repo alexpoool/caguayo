@@ -400,17 +400,15 @@ export function ContratosPage() {
           </Table>
         </div>
         {/* Sentinel para infinite scroll */}
-        {!isLoading && contratos.length > 0 && (
+        {!isLoading && contratos.length > 0 && (hasMore || isFetchingMore) && (
           <div ref={loadMoreRef} className="flex justify-center py-3 border-t border-gray-100">
             {isFetchingMore ? (
               <span className="text-sm text-teal-600 flex items-center gap-2">
                 <div className="h-4 w-4 border-2 border-teal-500 border-t-transparent rounded-full animate-spin" />
                 Cargando más...
               </span>
-            ) : hasMore ? (
-              <span className="text-sm text-gray-400">Desplázate para cargar más</span>
             ) : (
-              <span className="text-sm text-gray-400">— Fin de los resultados —</span>
+              <span className="text-sm text-gray-400">Desplázate para cargar más</span>
             )}
           </div>
         )}
