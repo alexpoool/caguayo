@@ -283,7 +283,9 @@ export function NominaPagosPage() {
   });
 
   const validar = () => {
-    for (const empleado of detalle?.empleados ?? []) {
+    // Solo se valida lo que se muestra y se va a enviar. Los empleados con
+    // neto 0 y sin pago guardado quedan ocultos y no deben bloquear el guardado.
+    for (const empleado of empleadosVisibles) {
       const fila = pagos[empleado.empleado_id];
       if (!fila) continue;
       const tieneFecha = Boolean(fila.fecha_pago);
