@@ -28,9 +28,9 @@ export function ClientesPage() {
     updateMutation,
     handleEdit,
     handleDelete,
-    filteredClientes,
     hasMore,
     loadMore,
+    isLoading,
     isFetchingMore,
     totalClientesDB,
   } = useClientesLogic();
@@ -77,7 +77,7 @@ export function ClientesPage() {
   return (
     <div className="flex-1 w-full bg-gray-50/50">
       <ClientesList
-        filteredClientes={filteredClientes}
+        clientes={clientes}
         totalClientes={totalClientesDB ?? clientes.length}
         searchTerm={searchTerm}
         setSearchTerm={setSearchTerm}
@@ -90,6 +90,7 @@ export function ClientesPage() {
         handleDelete={handleDelete}
         loadMoreRef={loadMoreRef}
         isFetchingMore={isFetchingMore}
+        isLoading={isLoading}
         tiposEntidad={tiposEntidad}
       />
 

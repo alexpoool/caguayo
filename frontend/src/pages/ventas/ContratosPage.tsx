@@ -239,18 +239,6 @@ export function ContratosPage() {
     setView('form');
   };
 
-  const filteredContratos = useMemo(() => {
-    const term = searchTerm.trim().toLowerCase();
-    if (!term) return contratos;
-    return contratos.filter(c =>
-      c.codigo?.toLowerCase().includes(term) ||
-      c.nombre?.toLowerCase().includes(term) ||
-      c.cliente?.codigo?.toLowerCase().includes(term) ||
-      c.cliente?.nombre?.toLowerCase().includes(term) ||
-      c.estado?.nombre?.toLowerCase().includes(term)
-    );
-  }, [contratos, searchTerm]);
-
   const renderList = () => (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-3">
@@ -261,10 +249,7 @@ export function ContratosPage() {
           <div className="flex items-baseline">
             <h1 className="text-xl font-bold text-gray-900">Contratos</h1>
             <p className="text-sm text-gray-500 ml-3 hidden sm:block">
-              {filteredContratos.length === contratos.length
-                ? `Gestión de contratos (${totalContratos ?? contratos.length} items)`
-                : `Mostrando ${filteredContratos.length} de ${contratos.length} contratos (total con filtros: ${totalContratos ?? contratos.length})`
-              }
+              {`Gestión de contratos (${totalContratos ?? contratos.length} items)`}
             </p>
           </div>
         </div>
@@ -339,14 +324,14 @@ export function ContratosPage() {
                     Error al cargar contratos: {(error as Error)?.message || 'Error desconocido'}
                   </TableCell>
                 </TableRow>
-              ) : filteredContratos.length === 0 ? (
+              ) : contratos.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={7} className="text-center py-12 text-gray-500">
                     {searchTerm ? 'No se encontraron contratos que coincidan con la búsqueda' : 'No hay contratos'}
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredContratos.map((item) => (
+                contratos.map((item) => (
                   <TableRow key={item.id_contrato} className="hover:bg-gray-50/50 transition-colors cursor-pointer" onClick={() => setDetailModal({ isOpen: true, item })}>
                     <TableCell>
                       <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-teal-50 text-teal-700 rounded text-sm font-mono font-medium">
@@ -415,7 +400,7 @@ export function ContratosPage() {
           </Table>
         </div>
         {/* Sentinel para infinite scroll */}
-        {!isLoading && filteredContratos.length > 0 && (
+        {!isLoading && contratos.length > 0 && (
           <div ref={loadMoreRef} className="flex justify-center py-3 border-t border-gray-100">
             {isFetchingMore ? (
               <span className="text-sm text-teal-600 flex items-center gap-2">

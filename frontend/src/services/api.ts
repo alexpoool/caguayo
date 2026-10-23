@@ -195,13 +195,22 @@ export const dashboardService = {
 
 
 export const clientesService = {
-  async getClientes(skip = 0, limit = 10000, tipoRelacion?: string, onTotal?: (t: number | null) => void): Promise<Cliente[]> {
+  async getClientes(
+    skip = 0,
+    limit = 10000,
+    tipoRelacion?: string,
+    search?: string,
+    onTotal?: (t: number | null) => void,
+  ): Promise<Cliente[]> {
     const params = new URLSearchParams({
       skip: String(skip),
       limit: String(limit),
     });
     if (tipoRelacion) {
       params.append("tipo_relacion", tipoRelacion);
+    }
+    if (search) {
+      params.append("search", search);
     }
     return apiClient.get<Cliente[]>(`/clientes?${params.toString()}`, undefined, captureTotal(onTotal));
   },

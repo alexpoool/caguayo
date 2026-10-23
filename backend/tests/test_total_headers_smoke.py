@@ -58,3 +58,21 @@ def test_convenios_header_refleja_search(client, db_session):
     assert resp.status_code == 200
     assert resp.headers.get("X-Total-Count") == "0"
     assert resp.json() == []
+
+
+@pytest.mark.usefixtures("db_session")
+def test_clientes_header_refleja_search(client, db_session):
+    """El header de clientes cuenta con el mismo WHERE del search."""
+    resp = client.get("/api/v1/clientes", params={"search": "zzz-sin-match-x9"})
+    assert resp.status_code == 200
+    assert resp.headers.get("X-Total-Count") == "0"
+    assert resp.json() == []
+
+
+@pytest.mark.usefixtures("db_session")
+def test_clientes_search_no_interpreta_comodines(client, db_session):
+    """Un `%` literal no debe comportarse como comodín de LIKE."""
+    resp = client.get("/api/v1/clientes", params={"search": "%"})
+    assert resp.status_code == 200
+    assert resp.headers.get("X-Total-Count") == "0"
+    assert resp.json() == []

@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useInfiniteList } from "../../../hooks/useInfiniteList";
@@ -65,6 +65,7 @@ export function useClientesLogic() {
 
   const {
     items: clientes,
+    isLoading,
     isFetchingMore,
     hasMore,
     loadMore,
@@ -74,8 +75,14 @@ export function useClientesLogic() {
     total: totalClientesDB,
   } = useInfiniteList<Cliente>({
     queryKeyBase: "clientes",
-    queryFn: (skip, limit, _search, onTotal) =>
-      clientesService.getClientes(skip, limit, tipoRelacionFilter, onTotal),
+    queryFn: (skip, limit, search, onTotal) =>
+      clientesService.getClientes(
+        skip,
+        limit,
+        tipoRelacionFilter,
+        search,
+        onTotal
+      ),
     limit: DEFAULT_LIMIT,
     extraQueryKeyParams: [isProveedorView],
   });
@@ -159,25 +166,6 @@ export function useClientesLogic() {
     });
   };
 
-  const filteredClientes = useMemo(() => {
-    let result = clientes;
-
-    if (isProveedorView) {
-      result = result.filter(
-        (c) => c.tipo_relacion === "PROVEEDOR" || c.tipo_relacion === "AMBAS"
-      );
-    }
-
-    if (!searchTerm) return result;
-    return result.filter(
-      (c) =>
-        c.nombre?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        c.nit?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        c.telefono?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        c.email?.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-  }, [clientes, searchTerm, isProveedorView]);
-
   return {
     isFormOpen,
     openForm,
@@ -209,9 +197,9 @@ export function useClientesLogic() {
     deleteMutation,
     handleEdit,
     handleDelete,
-    filteredClientes,
     hasMore,
     loadMore,
+    isLoading,
     isFetchingMore,
     totalClientesDB,
     navigate,

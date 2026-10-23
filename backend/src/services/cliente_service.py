@@ -1,7 +1,7 @@
 from typing import List, Optional
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
-from sqlalchemy import text
+from sqlalchemy import or_, text
 from sqlalchemy.orm import selectinload
 from src.repository.cliente_repo import (
     cliente_repo,
@@ -32,6 +32,40 @@ from src.dto import (
     CuentaRead,
     CuentaUpdate,
 )
+
+PERSON_TYPES = {"NATURAL", "TCP", "JURIDICA"}
+
+
+def _sanitize_search(search: str) -> str:
+    """Escapa los comodines de LIKE para buscar el texto literal."""
+    return search.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
+
+def _aplicar_filtros(statement, tipo_relacion=None, search=None):
+    """Aplica los filtros de listado y conteo con el mismo WHERE."""
+    if tipo_relacion:
+        # Soportar valores separados por coma (ej. "PROVEEDOR,AMBAS").
+        tipos = [t.strip() for t in tipo_relacion.split(",") if t.strip()]
+        if tipos and set(tipos).issubset(PERSON_TYPES):
+            statement = statement.where(Cliente.tipo_persona.in_(tipos))
+        elif len(tipos) == 1:
+            statement = statement.where(Cliente.tipo_relacion == tipos[0])
+        elif len(tipos) > 1:
+            statement = statement.where(Cliente.tipo_relacion.in_(tipos))
+
+    if search and search.strip():
+        patron = f"%{_sanitize_search(search.strip())}%"
+        statement = statement.where(
+            or_(
+                Cliente.codigo.ilike(patron),
+                Cliente.nombre.ilike(patron),
+                Cliente.nit.ilike(patron),
+                Cliente.telefono.ilike(patron),
+                Cliente.email.ilike(patron),
+            )
+        )
+
+    return statement
 
 
 class ClienteService:
@@ -123,6 +157,7 @@ class ClienteService:
         skip: int = 0,
         limit: int = 10000,
         tipo_relacion: Optional[str] = None,
+        search: Optional[str] = None,
     ) -> List[ClienteRead]:
 
         statement = select(Cliente).options(
@@ -134,21 +169,9 @@ class ClienteService:
             selectinload(Cliente.cliente_tcp),
         )
 
-        # Person type filters (NATURAL, TCP, JURIDICA)
-        person_types = {"NATURAL", "TCP", "JURIDICA"}
-
-        if tipo_relacion:
-            # Support comma-separated values (e.g., "PROVEEDOR,AMBAS")
-            tipos = [t.strip() for t in tipo_relacion.split(",") if t.strip()]
-            # Check if filtering by person type (NATURAL, TCP, JURIDICA)
-            if tipos and set(tipos).issubset(person_types):
-                statement = statement.where(Cliente.tipo_persona.in_(tipos))
-            else:
-                # Filter by relation type (CLIENTE, PROVEEDOR, AMBAS)
-                if len(tipos) == 1:
-                    statement = statement.where(Cliente.tipo_relacion == tipos[0])
-                elif len(tipos) > 1:
-                    statement = statement.where(Cliente.tipo_relacion.in_(tipos))
+        statement = _aplicar_filtros(
+            statement, tipo_relacion=tipo_relacion, search=search
+        )
 
         statement = statement.order_by(Cliente.id_cliente.desc()).offset(skip).limit(limit)
         results = await db.exec(statement)
@@ -158,22 +181,17 @@ class ClienteService:
 
     @staticmethod
     async def count_clientes(
-        db: AsyncSession, tipo_relacion: Optional[str] = None
+        db: AsyncSession,
+        tipo_relacion: Optional[str] = None,
+        search: Optional[str] = None,
     ) -> int:
         """Total con el mismo WHERE que get_clientes (header X-Total-Count)."""
         from sqlalchemy import func
 
         statement = select(func.count()).select_from(Cliente)
-        person_types = {"NATURAL", "TCP", "JURIDICA"}
-        if tipo_relacion:
-            tipos = [t.strip() for t in tipo_relacion.split(",") if t.strip()]
-            if tipos and set(tipos).issubset(person_types):
-                statement = statement.where(Cliente.tipo_persona.in_(tipos))
-            else:
-                if len(tipos) == 1:
-                    statement = statement.where(Cliente.tipo_relacion == tipos[0])
-                elif len(tipos) > 1:
-                    statement = statement.where(Cliente.tipo_relacion.in_(tipos))
+        statement = _aplicar_filtros(
+            statement, tipo_relacion=tipo_relacion, search=search
+        )
         result = await db.exec(statement)
         return result.one()
 

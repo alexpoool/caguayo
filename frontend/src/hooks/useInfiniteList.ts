@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useDebounce } from './useDebounce';
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 
@@ -36,6 +37,7 @@ export interface UseInfiniteListReturn<T> {
 
 const DEFAULT_LIMIT = 100;
 const DEFAULT_STALE_TIME = 5 * 60 * 1000; // 5 minutos
+const SEARCH_DEBOUNCE_MS = 400;
 
 // ─── Hook ────────────────────────────────────────────────────────────────────
 
@@ -54,6 +56,22 @@ export function useInfiniteList<T>({
   const [searchTerm, setSearchTerm] = useState('');
   const [total, setTotal] = useState<number | null>(null);
 
+  // La búsqueda se envía al servidor con retardo: mientras el usuario escribe
+  // se mantiene la lista anterior y sólo se consulta cuando el término se
+  // estabiliza. `searchTerm` sigue siendo el valor crudo del input.
+  const debouncedSearch = useDebounce(searchTerm, SEARCH_DEBOUNCE_MS);
+  const [appliedSearch, setAppliedSearch] = useState(debouncedSearch);
+
+  // Reiniciar la paginación en el mismo render en que cambia el término
+  // diferido, para que la query siempre arranque desde `skip = 0`.
+  if (appliedSearch !== debouncedSearch) {
+    setAppliedSearch(debouncedSearch);
+    setSkip(0);
+    setAllItems([]);
+    setHasMore(true);
+    setTotal(null);
+  }
+
   // ── Reset ────────────────────────────────────────────────────────────────
 
   const reset = useCallback(() => {
@@ -65,22 +83,18 @@ export function useInfiniteList<T>({
 
   const setSearch = useCallback((term: string) => {
     setSearchTerm(term);
-    setSkip(0);
-    setAllItems([]);
-    setHasMore(true);
-    setTotal(null);
   }, []);
 
   // ── Query paginada ───────────────────────────────────────────────────────
 
   const query = useQuery({
-    queryKey: [queryKeyBase, skip, searchTerm, ...extraQueryKeyParams],
+    queryKey: [queryKeyBase, skip, debouncedSearch, ...extraQueryKeyParams],
     queryFn: async () => {
       let fetchedTotal: number | null = null;
       const onTotal = (t: number | null) => {
         fetchedTotal = t;
       };
-      const newItems = await queryFn(skip, limit, searchTerm || undefined, onTotal);
+      const newItems = await queryFn(skip, limit, debouncedSearch || undefined, onTotal);
 
       if (fetchedTotal !== null) {
         setTotal(fetchedTotal);
@@ -99,7 +113,7 @@ export function useInfiniteList<T>({
       } else {
         setAllItems(prev => {
           if (prev.length === 0) {
-            const baseData = queryClient.getQueryData([queryKeyBase, 0, searchTerm, ...extraQueryKeyParams]);
+            const baseData = queryClient.getQueryData([queryKeyBase, 0, debouncedSearch, ...extraQueryKeyParams]);
             if (baseData) return [...(baseData as T[]), ...newItems];
           }
           return [...prev, ...newItems];
@@ -134,14 +148,14 @@ export function useInfiniteList<T>({
     } else {
       setAllItems(prev => {
         if (prev.length > 0) return prev;
-        const baseKey = [queryKeyBase, 0, searchTerm, ...extraQueryKeyParams];
+        const baseKey = [queryKeyBase, 0, debouncedSearch, ...extraQueryKeyParams];
         const baseData = queryClient.getQueryData(baseKey);
         if (baseData) return [...(baseData as T[]), ...(query.data ?? [])];
         return query.data ?? [];
       });
       setHasMore((query.data?.length ?? 0) >= limit);
     }
-  }, [skip, query.data, limit, queryClient, queryKeyBase, searchTerm, extraQueryKeyParams]);
+  }, [skip, query.data, limit, queryClient, queryKeyBase, debouncedSearch, extraQueryKeyParams]);
 
   // ── Cargar más ───────────────────────────────────────────────────────────
 
