@@ -555,6 +555,60 @@ class TestPagoPorResultado:
                 periodo=periodo,
             )
 
+    def test_documento_pdf(self, client):
+        periodo = _crear_periodo(client)
+        empleado = _crear_empleado(client)
+        evaluacion = None
+        pago = None
+        nomina = None
+        try:
+            evaluacion = _crear_evaluacion(
+                client, empleado["id"], periodo["id_periodo_evaluacion"]
+            )
+            _puntuar_evaluacion(
+                client, evaluacion["id"], empleado["id"], 3
+            )
+            nomina = _crear_nomina(
+                client, periodo["id_periodo_evaluacion"], [empleado["id"]]
+            )
+            response = client.post(
+                BASE_PAGOS,
+                json={
+                    "nomina_id": nomina["id"],
+                    "periodo_evaluacion_id": periodo["id_periodo_evaluacion"],
+                    "descripcion": "Lote para PDF",
+                    "inicio_periodo": JUNIO[0],
+                    "fin_periodo": JUNIO[1],
+                    "monto": 1000,
+                    "porcentaje_impuesto": 10,
+                    "empleado_ids": [empleado["id"]],
+                },
+            )
+            assert response.status_code == 201, response.text
+            pago = response.json()
+
+            documento = client.get(
+                f"{BASE_PAGOS}/{pago['id_pago_x_resultado']}/documento"
+            )
+            assert documento.status_code == 200, documento.text
+            assert documento.headers["content-type"] == "application/pdf"
+            assert documento.content.startswith(b"%PDF")
+            assert "pago-resultado-2098-" in documento.headers[
+                "content-disposition"
+            ]
+
+            inexistente = client.get(f"{BASE_PAGOS}/999999/documento")
+            assert inexistente.status_code == 404
+        finally:
+            _limpiar(
+                client,
+                pagos=[pago["id_pago_x_resultado"]] if pago else [],
+                nominas=[nomina["id"]] if nomina else [],
+                evaluaciones=[evaluacion["id"]] if evaluacion else [],
+                empleados=[empleado["id"]],
+                periodo=periodo,
+            )
+
     def test_porcentaje_impuesto_fuera_de_rango_422(self, client):
         response = client.post(
             BASE_PAGOS,

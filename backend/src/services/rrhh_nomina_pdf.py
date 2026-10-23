@@ -178,8 +178,6 @@ def generar_recibo_pdf(
         code_columns=[0],
     )
 
-    template.add_summary_line("Total de nómina", _fmt(total_neto))
-
     template.add_signature_section(created_by=usuario_actual or "—")
 
     return template.build()

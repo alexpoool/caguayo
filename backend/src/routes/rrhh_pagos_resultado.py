@@ -7,7 +7,7 @@ periodo y el alta recibe solo los ids que el usuario dejó seleccionados.
 
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Response
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from src.database.connection import get_session
@@ -17,6 +17,7 @@ from src.dto import (
     RrhhPagoResultadoPreview,
     RrhhPagoResultadoRead,
 )
+from src.services.rrhh_pago_resultado_pdf import generar_documento_pdf
 from src.services.rrhh_pago_resultado_service import rrhh_pago_resultado_service
 
 rrhh_pagos_resultado_router = APIRouter(
@@ -61,6 +62,22 @@ async def crear_pago_resultado(
     pago: RrhhPagoResultadoCreate, db: AsyncSession = Depends(get_session)
 ):
     return await rrhh_pago_resultado_service.crear(db, pago)
+
+
+@rrhh_pagos_resultado_router.get("/{pago_id}/documento")
+async def documento_pago_resultado(
+    pago_id: int,
+    db: AsyncSession = Depends(get_session),
+):
+    """Descarga el pago por resultado en PDF."""
+    detalle = await rrhh_pago_resultado_service.get(db, pago_id)
+    buffer = generar_documento_pdf(detalle)
+    nombre = f"pago-resultado-{detalle.inicio_periodo.year}-{pago_id}.pdf"
+    return Response(
+        content=buffer.getvalue(),
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{nombre}"'},
+    )
 
 
 @rrhh_pagos_resultado_router.get("/{pago_id}", response_model=RrhhPagoResultadoRead)
