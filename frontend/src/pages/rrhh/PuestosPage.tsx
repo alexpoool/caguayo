@@ -9,7 +9,6 @@ import {
   Briefcase,
   Save,
   X,
-  RefreshCw,
   AlertCircle,
   Loader2,
   Search,
@@ -21,7 +20,6 @@ import {
   Label,
   Card,
   CardContent,
-  CardHeader,
   Table,
   TableHeader,
   TableBody,
@@ -176,45 +174,39 @@ export function PuestosPage() {
             Puestos de trabajo y sus rangos salariales
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isLoading}>
-            <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-          </Button>
-          <Button size="sm" onClick={handleNuevo}>
-            <Plus className="h-4 w-4" />
-            Nuevo puesto
-          </Button>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="relative min-w-[12rem] max-w-md flex-1">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+          <Input
+            placeholder="Buscar puesto por nombre..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-9"
+          />
         </div>
+        <select
+          value={filtroDepto}
+          onChange={(e) =>
+            setFiltroDepto(e.target.value === '' ? '' : Number(e.target.value))
+          }
+          className="rounded-md border border-slate-300 px-3 py-2 text-sm"
+        >
+          <option value="">Todos los departamentos</option>
+          {departamentos.map((d) => (
+            <option key={d.id_departamento} value={d.id_departamento}>
+              {d.nombre}
+            </option>
+          ))}
+        </select>
+        <Button size="sm" onClick={handleNuevo} className="ml-auto">
+          <Plus className="h-4 w-4" />
+          Nuevo puesto
+        </Button>
       </div>
 
       <Card>
-        <CardHeader className="pb-3">
-            <div className="flex flex-wrap items-center gap-3">
-              <div className="relative min-w-[200px] flex-1">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                <Input
-                  placeholder="Buscar puesto por nombre..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-9"
-                />
-              </div>
-              <select
-                value={filtroDepto}
-                onChange={(e) =>
-                  setFiltroDepto(e.target.value === '' ? '' : Number(e.target.value))
-                }
-                className="rounded-md border border-slate-300 px-3 py-2 text-sm"
-              >
-                <option value="">Todos los departamentos</option>
-                {departamentos.map((d) => (
-                  <option key={d.id_departamento} value={d.id_departamento}>
-                    {d.nombre}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </CardHeader>
           <CardContent>
             {isLoading ? (
               <LoadingRows />

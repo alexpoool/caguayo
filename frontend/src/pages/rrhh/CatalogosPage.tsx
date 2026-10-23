@@ -29,7 +29,6 @@ import {
   Label,
   Card,
   CardContent,
-  CardHeader,
   Table,
   TableHeader,
   TableBody,
@@ -246,18 +245,6 @@ export function CatalogosPage({ tabInicial, onCambiarTab }: CatalogosPageProps =
               : 'Todo el catálogo del módulo: contratos, bonificaciones, deducciones, pagos, departamentos, puestos, tipos de evaluación, periodos y calificaciones.'}
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          {!config.custom && (
-            <Button
-              size="sm"
-              onClick={handleNuevo}
-              className="gap-2 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300"
-            >
-              <Plus className="h-4 w-4" />
-              Nuevo
-            </Button>
-          )}
-        </div>
       </div>
 
       {/* Pestañas por catálogo (solo en el módulo RRHH) */}
@@ -280,6 +267,42 @@ export function CatalogosPage({ tabInicial, onCambiarTab }: CatalogosPageProps =
         </div>
       )}
 
+      {/* Barra de búsqueda y acción */}
+      {!config.custom && (
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="relative min-w-[200px] flex-1">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <Input
+              placeholder={`Buscar en ${config.nombre.toLowerCase()}...`}
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+          {config.tieneActivo && (
+            <select
+              value={filtroEstado}
+              onChange={(e) =>
+                setFiltroEstado(e.target.value as typeof filtroEstado)
+              }
+              className="rounded-md border border-slate-300 px-3 py-2 text-sm"
+            >
+              <option value="todos">Todos</option>
+              <option value="activo">Activos</option>
+              <option value="inactivo">Inactivos</option>
+            </select>
+          )}
+          <Button
+            size="sm"
+            onClick={handleNuevo}
+            className="ml-auto gap-2 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300"
+          >
+            <Plus className="h-4 w-4" />
+            Nuevo
+          </Button>
+        </div>
+      )}
+
       {/* Contenido: pestañas con UI propia o CRUD genérico */}
       {config.custom === 'departamentos' ? (
         <DepartamentosPage />
@@ -287,32 +310,6 @@ export function CatalogosPage({ tabInicial, onCambiarTab }: CatalogosPageProps =
         <PuestosPage />
       ) : (
         <Card>
-          <CardHeader className="pb-3">
-            <div className="mt-2 flex flex-wrap items-center gap-3">
-              <div className="relative min-w-[200px] flex-1">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                <Input
-                  placeholder={`Buscar en ${config.nombre.toLowerCase()}...`}
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-9"
-                />
-              </div>
-              {config.tieneActivo && (
-                <select
-                  value={filtroEstado}
-                  onChange={(e) =>
-                    setFiltroEstado(e.target.value as typeof filtroEstado)
-                  }
-                  className="rounded-md border border-slate-300 px-3 py-2 text-sm"
-                >
-                  <option value="todos">Todos</option>
-                  <option value="activo">Activos</option>
-                  <option value="inactivo">Inactivos</option>
-                </select>
-              )}
-            </div>
-          </CardHeader>
           <CardContent>
             {isLoading ? (
               <LoadingRows />

@@ -282,21 +282,10 @@ export function GruposPage() {
             </p>
           </div>
         </div>
-        <Button
-          onClick={() => {
-            setEditingGrupo(null);
-            resetGrupoForm();
-            setView("form");
-          }}
-          className="gap-2 bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300"
-        >
-          <Plus className="h-4 w-4" />
-          Nuevo Grupo
-        </Button>
       </div>
 
-      <div className="flex gap-2">
-        <div className="flex-1 relative max-w-md">
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="relative min-w-[12rem] max-w-md flex-1">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
           <Input
             type="text"
@@ -306,6 +295,17 @@ export function GruposPage() {
             className="pl-10"
           />
         </div>
+        <Button
+          onClick={() => {
+            setEditingGrupo(null);
+            resetGrupoForm();
+            setView("form");
+          }}
+          className="ml-auto gap-2 bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300"
+        >
+          <Plus className="h-4 w-4" />
+          Nuevo Grupo
+        </Button>
       </div>
 
       <Card className="overflow-hidden hover:shadow-lg transition-shadow duration-300">
