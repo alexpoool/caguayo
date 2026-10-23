@@ -62,6 +62,7 @@ import { CuentasClientePage } from './pages/CuentasCliente';
 import { InventarioHome } from './pages/home/InventarioHome';
 import { VentaHome } from './pages/home/VentaHome';
 import { CompraHome } from './pages/home/CompraHome';
+import { TercerosHome } from './pages/home/TercerosHome';
 import { ReportesHome } from './pages/home/ReportesHome';
 import { ProyectosHome } from './pages/home/ProyectosHome';
 import { AdministracionHome } from './pages/home/AdministracionHome';
@@ -115,7 +116,7 @@ import { ObjetivosPage } from './pages/rrhh/ObjetivosPage';
 import { ReportesPage } from './pages/rrhh/ReportesPage';
 import { AuditoriaPage } from './pages/rrhh/AuditoriaPage';
 
-type Modulo = 'administracion' | 'venta' | 'compra' | 'inventario' | 'reportes' | 'home' | 'proyecto' | 'dj08' | 'rrhh';
+type Modulo = 'administracion' | 'venta' | 'compra' | 'inventario' | 'reportes' | 'home' | 'proyecto' | 'dj08' | 'rrhh' | 'terceros';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -130,8 +131,9 @@ const queryClient = new QueryClient({
 const rutasPorModulo: Record<Modulo, string[]> = {
   inventario: ['/inventario', '/movimientos', '/movimientos/pendientes', '/movimientos/ajuste', '/movimientos/seleccionar-recepcion', '/productos', '/dashboard', '/perfil'],
   administracion: ['/administracion', '/configuracion', '/monedas', '/usuarios', '/usuarios-credenciales', '/grupos', '/dependencias', '/cuentas', '/perfil'],
-  venta: ['/venta', '/ventas', '/clientes', '/ventas/operaciones', '/ventas/contratos', '/ventas/suplementos', '/ventas/facturas', '/ventas/efectivo', '/ventas/cuentas', '/perfil'],
-  compra: ['/compra', '/compra/clientes', '/compra/convenios', '/compra/anexos', '/compra/liquidaciones', '/compra/productos-liquidacion', '/compra/cuentas', '/perfil'],
+  terceros: ['/terceros', '/clientes', '/ventas/contratos', '/ventas/suplementos', '/compra/clientes', '/compra/convenios', '/perfil'],
+  venta: ['/venta', '/ventas', '/ventas/operaciones', '/ventas/facturas', '/ventas/efectivo', '/ventas/cuentas', '/perfil'],
+  compra: ['/compra', '/compra/anexos', '/compra/liquidaciones', '/compra/productos-liquidacion', '/compra/cuentas', '/perfil'],
   proyecto: ['/proyecto', '/proyectos', '/proyectos/servicios', '/proyectos/solicitudes', '/proyectos/proyectos', '/proyectos/etapas', '/proyectos/tareas-etapa', '/proyectos/realizadores', '/proyectos/facturas-servicio', '/proyectos/ofertas', '/proyectos/pre-facturas', '/proyectos/pagos-factura-servicio', '/proyectos/liquidaciones', '/perfil'],
   reportes: ['/reportes', '/reportes/existencias', '/reportes/movimientos-dependencia', '/reportes/movimientos-producto', '/reportes/proveedores', '/reportes/registro-clientes', '/reportes/registro-proyectos', '/reportes/registro-creadores', '/reportes/informe-desempeno', '/reportes/resumen-liquidaciones', '/reportes/ingresos-retenciones', '/reportes/mincult', '/reportes/onat', '/perfil'],
   home: ['/', '/perfil'],
@@ -288,8 +290,9 @@ function InfoRow({ label, value }: { label: string; value?: string | number | nu
 // Map each module to the funcionalidades it requires
 const MODULO_FUNCIONALIDADES: Record<Modulo, string[]> = {
   inventario: ['movimientos', 'pendientes', 'productos'],
-  compra: ['proveedores', 'convenios', 'anexos', 'liquidaciones', 'productos_liquidacion'],
-  venta: ['clientes', 'contratos', 'suplementos', 'facturas', 'venta_efectivo'],
+  terceros: ['clientes', 'contratos', 'proveedores', 'convenios'],
+  compra: ['anexos', 'liquidaciones', 'productos_liquidacion'],
+  venta: ['facturas', 'venta_efectivo'],
   proyecto: ['servicios', 'solicitudes', 'proyectos', 'facturas_servicio', 'ofertas', 'pre_facturas', 'liquidaciones_servicio'],
   reportes: ['reporte_existencias', 'reporte_movimientos_dependencia', 'reporte_movimientos_producto', 'reporte_proveedores', 'reporte_clientes', 'reporte_proyectos', 'reporte_creadores', 'reporte_desempeno', 'reporte_liquidaciones', 'reporte_onat', 'reporte_mincult'],
   administracion: ['configuracion', 'monedas', 'usuarios', 'grupos', 'dependencias', 'cuentas'],
@@ -372,6 +375,7 @@ function App() {
   // Sidebar and header are always visible
 
   const modulos: { id: Modulo; label: string; icon: React.ElementType }[] = [
+    { id: 'terceros', label: 'Terceros', icon: UserCircle },
     { id: 'compra', label: 'Compra', icon: UserCircle },
     { id: 'venta', label: 'Tienda', icon: Briefcase },
     { id: 'proyecto', label: 'Proyectos', icon: Wrench },
@@ -510,51 +514,23 @@ function App() {
                   </li>
                 </ul>
               )}
-              {moduloActivo === 'administracion' && (
+              {moduloActivo === 'terceros' && (
                 <ul className="space-y-1 px-3">
                   <li>
-                    <SidebarLink slim={slimSidebar} to="/configuracion" onClick={handleLinkClick} disabled={!hasFuncionalidad('configuracion')}>
-                      <Settings className="w-6 h-6" />
-                      Configuración
+                    <SidebarLink slim={slimSidebar} to="/clientes" onClick={handleLinkClick} disabled={!hasFuncionalidad('clientes')}>
+                      <UserCircle className="w-6 h-6" />
+                      Clientes
                     </SidebarLink>
                   </li>
                   <li>
-                    <SidebarLink slim={slimSidebar} to="/monedas" onClick={handleLinkClick} disabled={!hasFuncionalidad('monedas')}>
-                      <Coins className="w-6 h-6" />
-                      Monedas
+                    <SidebarLink slim={slimSidebar} to="/ventas/contratos" onClick={handleLinkClick} disabled={!hasFuncionalidad('contratos')}>
+                      <FilePlus className="w-6 h-6" />
+                      Contratos
                     </SidebarLink>
                   </li>
-                  <li>
-                    <SidebarLink slim={slimSidebar} to="/usuarios" onClick={handleLinkClick} disabled={!hasFuncionalidad('usuarios')}>
-                      <Users className="w-6 h-6" />
-                      Usuarios
-                    </SidebarLink>
-                  </li>
-                  <li>
-                    <SidebarLink slim={slimSidebar} to="/grupos" onClick={handleLinkClick} disabled={!hasFuncionalidad('grupos')}>
-                      <Shield className="w-6 h-6" />
-                      Grupos
-                    </SidebarLink>
-                  </li>
-                  <li>
-                    <SidebarLink slim={slimSidebar} to="/dependencias" onClick={handleLinkClick} disabled={!hasFuncionalidad('dependencias')}>
-                      <Building className="w-6 h-6" />
-                      Dependencias
-                    </SidebarLink>
-                  </li>
-                  <li>
-                    <SidebarLink slim={slimSidebar} to="/cuentas" onClick={handleLinkClick} disabled={!hasFuncionalidad('cuentas')}>
-                      <Wallet className="w-6 h-6" />
-                      Cuentas
-                    </SidebarLink>
-                  </li>
-                </ul>
-              )}
-              {moduloActivo === 'compra' && (
-                <ul className="space-y-1 px-3">
                   <li>
                     <SidebarLink slim={slimSidebar} to="/compra/clientes" onClick={handleLinkClick} disabled={!hasFuncionalidad('proveedores')}>
-                      <UserCircle className="w-6 h-6" />
+                      <Briefcase className="w-6 h-6" />
                       Proveedores
                     </SidebarLink>
                   </li>
@@ -564,6 +540,109 @@ function App() {
                       Convenios
                     </SidebarLink>
                   </li>
+                </ul>
+              )}
+              {moduloActivo === 'administracion' && (
+                <div className={`${slimSidebar ? 'px-0' : 'px-3'} space-y-1`}>
+                  {!slimSidebar && (
+                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-2 pt-2 pb-1">Sistema</p>
+                  )}
+                  <SidebarLink slim={slimSidebar} to="/grupos" onClick={handleLinkClick} disabled={!hasFuncionalidad('grupos')}>
+                    <Shield className="w-4 h-4" /> Grupos
+                  </SidebarLink>
+                  <SidebarLink slim={slimSidebar} to="/usuarios" onClick={handleLinkClick} disabled={!hasFuncionalidad('usuarios')}>
+                    <Users className="w-4 h-4" /> Usuarios
+                  </SidebarLink>
+                  <SidebarLink slim={slimSidebar} to="/monedas" onClick={handleLinkClick} disabled={!hasFuncionalidad('monedas')}>
+                    <Coins className="w-4 h-4" /> Monedas
+                  </SidebarLink>
+
+                  {!slimSidebar && (
+                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-2 pt-3 pb-1">Dependencia</p>
+                  )}
+                  <SidebarLink slim={slimSidebar} to="/dependencias" onClick={handleLinkClick} disabled={!hasFuncionalidad('dependencias')}>
+                    <Building className="w-4 h-4" /> Dependencias
+                  </SidebarLink>
+                  <SidebarLink slim={slimSidebar} to="/cuentas" onClick={handleLinkClick} disabled={!hasFuncionalidad('cuentas')}>
+                    <Wallet className="w-4 h-4" /> Cuentas
+                  </SidebarLink>
+                  <SidebarLink slim={slimSidebar} to="/configuracion?tab=tipo-dependencia" onClick={handleLinkClick} disabled={!hasFuncionalidad('configuracion')}>
+                    <Building className="w-4 h-4" /> Tipos de Dependencia
+                  </SidebarLink>
+                  <SidebarLink slim={slimSidebar} to="/configuracion?tab=tipo-cuenta" onClick={handleLinkClick} disabled={!hasFuncionalidad('configuracion')}>
+                    <Wallet className="w-4 h-4" /> Tipos de Cuenta
+                  </SidebarLink>
+
+                  {!slimSidebar && (
+                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-2 pt-3 pb-1">Terceros</p>
+                  )}
+                  <SidebarLink slim={slimSidebar} to="/configuracion?tab=estado-contrato" onClick={handleLinkClick} disabled={!hasFuncionalidad('configuracion')}>
+                    <FileText className="w-4 h-4" /> Estados de Contrato
+                  </SidebarLink>
+                  <SidebarLink slim={slimSidebar} to="/configuracion?tab=tipo-contrato" onClick={handleLinkClick} disabled={!hasFuncionalidad('configuracion')}>
+                    <FilePlus className="w-4 h-4" /> Tipos de Contrato
+                  </SidebarLink>
+                  <SidebarLink slim={slimSidebar} to="/configuracion?tab=tipo-proveedores" onClick={handleLinkClick} disabled={!hasFuncionalidad('configuracion')}>
+                    <Briefcase className="w-4 h-4" /> Tipos de Proveedores
+                  </SidebarLink>
+                  <SidebarLink slim={slimSidebar} to="/configuracion?tab=tipo-convenios" onClick={handleLinkClick} disabled={!hasFuncionalidad('configuracion')}>
+                    <FileText className="w-4 h-4" /> Tipos de Convenio
+                  </SidebarLink>
+                  <SidebarLink slim={slimSidebar} to="/configuracion?tab=tipo-entidad" onClick={handleLinkClick} disabled={!hasFuncionalidad('configuracion')}>
+                    <Building className="w-4 h-4" /> Tipos de Entidad
+                  </SidebarLink>
+
+                  {!slimSidebar && (
+                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-2 pt-3 pb-1">Declaración Jurada</p>
+                  )}
+                  <SidebarLink slim={slimSidebar} to="/configuracion?tab=dj08-actividades" onClick={handleLinkClick} disabled={!hasFuncionalidad('configuracion')}>
+                    <Briefcase className="w-4 h-4" /> Actividades Económicas
+                  </SidebarLink>
+                  <SidebarLink slim={slimSidebar} to="/configuracion?tab=dj08-tributos" onClick={handleLinkClick} disabled={!hasFuncionalidad('configuracion')}>
+                    <Coins className="w-4 h-4" /> Tributos
+                  </SidebarLink>
+                  <SidebarLink slim={slimSidebar} to="/configuracion?tab=especialidades" onClick={handleLinkClick} disabled={!hasFuncionalidad('configuracion')}>
+                    <FileText className="w-4 h-4" /> Especialidades
+                  </SidebarLink>
+
+                  {!slimSidebar && (
+                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-2 pt-3 pb-1">Inventario</p>
+                  )}
+                  <SidebarLink slim={slimSidebar} to="/configuracion?tab=categorias" onClick={handleLinkClick} disabled={!hasFuncionalidad('configuracion')}>
+                    <Boxes className="w-4 h-4" /> Categorías
+                  </SidebarLink>
+                  <SidebarLink slim={slimSidebar} to="/configuracion?tab=subcategorias" onClick={handleLinkClick} disabled={!hasFuncionalidad('configuracion')}>
+                    <Layers className="w-4 h-4" /> Subcategorías
+                  </SidebarLink>
+
+                  {!slimSidebar && (
+                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-2 pt-3 pb-1">RRHH</p>
+                  )}
+                  <SidebarLink slim={slimSidebar} to="/rrhh/departamentos" onClick={handleLinkClick} disabled={!hasFuncionalidad('rrhh_catalogos')}>
+                    <Building className="w-4 h-4" /> Departamentos
+                  </SidebarLink>
+                  <SidebarLink slim={slimSidebar} to="/rrhh/puestos" onClick={handleLinkClick} disabled={!hasFuncionalidad('rrhh_catalogos')}>
+                    <Briefcase className="w-4 h-4" /> Puestos
+                  </SidebarLink>
+                  <SidebarLink slim={slimSidebar} to="/rrhh/catalogos?tab=periodos-evaluacion" onClick={handleLinkClick} disabled={!hasFuncionalidad('rrhh_catalogos')}>
+                    <Clock className="w-4 h-4" /> Periodos
+                  </SidebarLink>
+                  <SidebarLink slim={slimSidebar} to="/rrhh/catalogos?tab=tipos-contrato" onClick={handleLinkClick} disabled={!hasFuncionalidad('rrhh_catalogos')}>
+                    <FilePlus className="w-4 h-4" /> Tipos de Contrato
+                  </SidebarLink>
+                  <SidebarLink slim={slimSidebar} to="/rrhh/catalogos?tab=tipos-bonificaciones" onClick={handleLinkClick} disabled={!hasFuncionalidad('rrhh_catalogos')}>
+                    <Coins className="w-4 h-4" /> Tipos de Bonificación
+                  </SidebarLink>
+                  <SidebarLink slim={slimSidebar} to="/rrhh/catalogos?tab=tipos-deducciones" onClick={handleLinkClick} disabled={!hasFuncionalidad('rrhh_catalogos')}>
+                    <FileText className="w-4 h-4" /> Tipos de Deducción
+                  </SidebarLink>
+                  <SidebarLink slim={slimSidebar} to="/rrhh/catalogos?tab=tipos-pago" onClick={handleLinkClick} disabled={!hasFuncionalidad('rrhh_catalogos')}>
+                    <Wallet className="w-4 h-4" /> Tipos de Pago
+                  </SidebarLink>
+                </div>
+              )}
+              {moduloActivo === 'compra' && (
+                <ul className="space-y-1 px-3">
                   <li>
                     <SidebarLink slim={slimSidebar} to="/compra/anexos" onClick={handleLinkClick} disabled={!hasFuncionalidad('anexos')}>
                       <Boxes className="w-6 h-6" />
@@ -586,24 +665,6 @@ function App() {
               )}
               {moduloActivo === 'venta' && (
                 <ul className="space-y-1 px-3">
-                  <li>
-                    <SidebarLink slim={slimSidebar} to="/clientes" onClick={handleLinkClick} disabled={!hasFuncionalidad('clientes')}>
-                      <UserCircle className="w-6 h-6" />
-                      Clientes
-                    </SidebarLink>
-                  </li>
-                  <li>
-                    <SidebarLink slim={slimSidebar} to="/ventas/contratos" onClick={handleLinkClick} disabled={!hasFuncionalidad('contratos')}>
-                      <FilePlus className="w-6 h-6" />
-                      Contrato
-                    </SidebarLink>
-                  </li>
-                  <li>
-                    <SidebarLink slim={slimSidebar} to="/ventas/suplementos" onClick={handleLinkClick} disabled={!hasFuncionalidad('suplementos')}>
-                      <FileText className="w-6 h-6" />
-                      Suplemento
-                    </SidebarLink>
-                  </li>
                   <li>
                     <SidebarLink slim={slimSidebar} to="/ventas/facturas" onClick={handleLinkClick} disabled={!hasFuncionalidad('facturas')}>
                       <Receipt className="w-6 h-6" />
@@ -854,6 +915,14 @@ function App() {
                   element={
                     <ProtectedRoute currentPath="/dashboard">
                       <Dashboard />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/terceros"
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/terceros">
+                      <TercerosHome />
                     </ProtectedRoute>
                   }
                 />

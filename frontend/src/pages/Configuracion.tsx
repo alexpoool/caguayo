@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { createPortal } from "react-dom";
+import { useSearchParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Settings,
@@ -91,6 +92,7 @@ const configSubTabs: { id: ConfigSubTabType; label: string }[] = [
   { id: "tipo-proveedores", label: "Tipos de Proveedores" },
   { id: "tipo-convenios", label: "Tipos de Convenio" },
   { id: "tipo-dependencia", label: "Tipos de Dependencia" },
+  { id: "tipo-cuenta", label: "Tipos de Cuenta" },
   { id: "tipo-entidad", label: "Tipos de Entidad" },
   { id: "dj08-actividades", label: "Actividades Económicas" },
   { id: "dj08-tributos", label: "Tributos" },
@@ -219,8 +221,20 @@ function Modal({ isOpen, onClose, title, children }: ModalProps) {
 
 export function ConfiguracionPage() {
   const queryClient = useQueryClient();
-  const [activeConfigSubTab, setActiveConfigSubTab] =
-    useState<ConfigSubTabType>("tipo-contrato");
+  // La pestaña vive en la URL (`?tab=`) para que los enlaces del sidebar
+  // abran directamente el catálogo correspondiente.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabParam = searchParams.get("tab");
+  const activeConfigSubTab: ConfigSubTabType = configSubTabs.some(
+    (tab) => tab.id === tabParam,
+  )
+    ? (tabParam as ConfigSubTabType)
+    : "tipo-contrato";
+  const setActiveConfigSubTab = (tab: ConfigSubTabType) => {
+    const next = new URLSearchParams(searchParams);
+    next.set("tab", tab);
+    setSearchParams(next, { replace: true });
+  };
   const [searchTerm, setSearchTerm] = useState("");
   const [modalType, setModalType] = useState<string | null>(null);
   const [editingItem, setEditingItem] = useState<any>(null);

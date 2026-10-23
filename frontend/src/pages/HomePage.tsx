@@ -16,6 +16,17 @@ type ModuleNode = {
 
 const MODULES: ModuleNode[] = [
   {
+    key: 'terceros',
+    label: 'Terceros',
+    enabled: false,
+    funcs: [
+      { key: 'clientes', label: 'Clientes' },
+      { key: 'contratos', label: 'Contratos' },
+      { key: 'proveedores', label: 'Proveedores' },
+      { key: 'convenios', label: 'Convenios' },
+    ],
+  },
+  {
     key: 'inventario',
     label: 'Inventario',
     enabled: false,
@@ -86,7 +97,6 @@ const MODULES: ModuleNode[] = [
     label: 'Administración',
     enabled: false,
     funcs: [
-      { key: 'configuracion', label: 'Configuración' },
       { key: 'monedas', label: 'Monedas' },
       { key: 'usuarios', label: 'Usuarios' },
       { key: 'grupos', label: 'Grupos' },
@@ -122,6 +132,7 @@ const guideSteps = [
 export function HomePage() {
   const { funcionalidades, user } = useAuth();
   const [expanded, setExpanded] = useState<Record<string, boolean>>({
+    terceros: false,
     inventario: false,
     compra: false,
     venta: false,
