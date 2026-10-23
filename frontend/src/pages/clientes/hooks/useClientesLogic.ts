@@ -33,6 +33,7 @@ export function useClientesLogic() {
 
   const isProveedorView =
     location.pathname.includes("/compra/clientes") ||
+    location.pathname.includes("/compra/proveedores") ||
     location.search.includes("tipo=proveedor");
 
   const defaultTipoRelacion = isProveedorView ? "PROVEEDOR" : "CLIENTE";

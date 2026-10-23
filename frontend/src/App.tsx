@@ -312,8 +312,8 @@ function InfoRow({ label, value }: { label: string; value?: string | number | nu
 const MODULO_FUNCIONALIDADES: Record<Modulo, string[]> = {
   inventario: ['movimientos', 'pendientes', 'productos'],
   terceros: ['clientes', 'contratos', 'proveedores', 'convenios'],
-  compra: ['anexos', 'liquidaciones', 'productos_liquidacion'],
-  venta: ['facturas', 'venta_efectivo'],
+  compra: ['proveedores', 'anexos', 'liquidaciones', 'productos_liquidacion'],
+  venta: ['clientes', 'facturas', 'venta_efectivo'],
   proyecto: ['servicios', 'solicitudes', 'proyectos', 'facturas_servicio', 'ofertas', 'pre_facturas', 'liquidaciones_servicio'],
   reportes: ['reporte_existencias', 'reporte_movimientos_dependencia', 'reporte_movimientos_producto', 'reporte_proveedores', 'reporte_clientes', 'reporte_proyectos', 'reporte_creadores', 'reporte_desempeno', 'reporte_liquidaciones', 'reporte_onat', 'reporte_mincult'],
   administracion: ['configuracion', 'monedas', 'usuarios', 'grupos', 'dependencias', 'cuentas'],
@@ -689,6 +689,12 @@ function App() {
               {moduloActivo === 'compra' && (
                 <ul className="space-y-1 px-3">
                   <li>
+                    <SidebarLink slim={slimSidebar} to="/compra/proveedores" onClick={handleLinkClick} disabled={!hasFuncionalidad('proveedores')}>
+                      <Briefcase className="w-6 h-6" />
+                      Proveedores
+                    </SidebarLink>
+                  </li>
+                  <li>
                     <SidebarLink slim={slimSidebar} to="/compra/anexos" onClick={handleLinkClick} disabled={!hasFuncionalidad('anexos')}>
                       <Boxes className="w-6 h-6" />
                       Anexos
@@ -710,6 +716,12 @@ function App() {
               )}
               {moduloActivo === 'venta' && (
                 <ul className="space-y-1 px-3">
+                  <li>
+                    <SidebarLink slim={slimSidebar} to="/venta/clientes" onClick={handleLinkClick} disabled={!hasFuncionalidad('clientes')}>
+                      <UserCircle className="w-6 h-6" />
+                      Clientes
+                    </SidebarLink>
+                  </li>
                   <li>
                     <SidebarLink slim={slimSidebar} to="/ventas/facturas" onClick={handleLinkClick} disabled={!hasFuncionalidad('facturas')}>
                       <Receipt className="w-6 h-6" />
@@ -980,6 +992,14 @@ function App() {
                   }
                 />
                 <Route
+                  path="/compra/proveedores"
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/compra/proveedores">
+                      <ClientesPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
                   path="/movimientos/pendientes"
                   element={
                     <ProtectedRoute moduloActivo={moduloActivo} currentPath="/movimientos/pendientes">
@@ -1034,6 +1054,14 @@ function App() {
                   path="/clientes"
                   element={
                     <ProtectedRoute moduloActivo={moduloActivo} currentPath="/clientes">
+                      <ClientesPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/venta/clientes"
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/venta/clientes">
                       <ClientesPage />
                     </ProtectedRoute>
                   }
