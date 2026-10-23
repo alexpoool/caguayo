@@ -319,7 +319,7 @@ const MODULO_FUNCIONALIDADES: Record<Modulo, string[]> = {
   administracion: ['configuracion', 'monedas', 'usuarios', 'grupos', 'dependencias', 'cuentas'],
   home: [],
   dj08: [],
-  rrhh: ['rrhh_empleados', 'rrhh_departamentos', 'rrhh_puestos', 'rrhh_asistencia', 'rrhh_solicitudes', 'rrhh_deducciones', 'rrhh_bonificaciones', 'rrhh_nomina', 'rrhh_evaluaciones', 'rrhh_catalogos', 'rrhh_reportes', 'rrhh_auditoria'],
+  rrhh: ['rrhh_empleados', 'rrhh_departamentos', 'rrhh_puestos', 'rrhh_asistencia', 'rrhh_solicitudes', 'rrhh_deducciones', 'rrhh_bonificaciones', 'rrhh_nomina', 'rrhh_pagos', 'rrhh_evaluaciones', 'rrhh_catalogos', 'rrhh_reportes', 'rrhh_auditoria'],
 };
 
 interface AdminSeccionItem {
@@ -370,19 +370,6 @@ const ADMIN_SECCIONES: { id: string; label: string; items: AdminSeccionItem[] }[
     ],
   },
   {
-    id: 'rrhh',
-    label: 'RRHH',
-    items: [
-      { to: '/configuracion/rrhh/departamentos', label: 'Departamentos', icon: Building, func: 'rrhh_catalogos' },
-      { to: '/configuracion/rrhh/puestos', label: 'Puestos', icon: Briefcase, func: 'rrhh_catalogos' },
-      { to: '/configuracion/rrhh/periodos', label: 'Periodos', icon: Clock, func: 'rrhh_catalogos' },
-      { to: '/configuracion/rrhh/tipos-contrato', label: 'Tipos de Contrato', icon: FilePlus, func: 'rrhh_catalogos' },
-      { to: '/configuracion/rrhh/tipos-bonificaciones', label: 'Tipos de Bonificación', icon: Coins, func: 'rrhh_catalogos' },
-      { to: '/configuracion/rrhh/tipos-deducciones', label: 'Tipos de Deducción', icon: FileText, func: 'rrhh_catalogos' },
-      { to: '/configuracion/rrhh/tipos-pago', label: 'Tipos de Pago', icon: Wallet, func: 'rrhh_catalogos' },
-    ],
-  },
-  {
     id: 'declaracion-jurada',
     label: 'Declaración Jurada',
     items: [
@@ -394,7 +381,7 @@ const ADMIN_SECCIONES: { id: string; label: string; items: AdminSeccionItem[] }[
 ];
 
 function App() {
-  const { isAuthenticated, isLoading, user, logout, hasFuncionalidad, baseDatos } = useAuth();
+  const { isAuthenticated, isLoading, user, logout, hasFuncionalidad, funcionalidades, baseDatos } = useAuth();
 
   // Check if user has access to an entire module (at least one funcionalidad)
   const hasModuloAccess = (moduloId: Modulo): boolean => {
@@ -476,12 +463,21 @@ function App() {
     { id: 'reportes', label: 'Reportes', icon: BarChart3 },
     { id: 'administracion', label: 'Administración', icon: Settings },
     { id: 'dj08', label: 'DJ-08', icon: ScrollText },
-    { id: 'rrhh', label: 'RRHH', icon: Users },
   ];
 
   function handleToggleSlim(): void {
     setSlimSidebar(prev => !prev);
   }
+
+  // RRHH está oculto del menú: sólo se entra escribiendo la URL, y siempre que
+  // el grupo del usuario tenga al menos una funcionalidad de RRHH asignada.
+  const esRutaRrhh =
+    location.pathname === '/rrhh' || location.pathname.startsWith('/rrhh/');
+  const esCatalogoRrhh = location.pathname.startsWith('/configuracion/rrhh');
+  const tieneAccesoRrhh = funcionalidades.some(f => f.nombre.startsWith('rrhh_'));
+  const sinAccesoRrhh = esRutaRrhh && !tieneAccesoRrhh;
+  const sinAccesoCatalogoRrhh =
+    esCatalogoRrhh && !hasFuncionalidad('rrhh_catalogos');
   return (
     <QueryClientProvider client={queryClient}>
       <div className={`grid ${hideSidebar ? 'grid-cols-1' : slimSidebar ? 'grid-cols-[4.5rem_minmax(0,1fr)]' : 'grid-cols-[16rem_minmax(0,1fr)]'} grid-rows-[auto_minmax(0,1fr)] h-screen overflow-hidden bg-surface w-full`}>
@@ -953,6 +949,12 @@ function App() {
         <div className={`${hideSidebar ? 'col-span-1 col-start-1 col-end-2' : 'col-start-2 col-end-3'} row-start-2 row-end-3 min-w-0 flex flex-col w-full`}>
           <main className={`min-h-0 min-w-0 flex-1 overflow-y-auto ${hideSidebar ? 'bg-surface' : 'bg-gray-50'} ${hideSidebar ? 'p-6' : 'p-8'} w-full`}>
             <div className="animate-fade-in-up animation-fill-both">
+              {sinAccesoRrhh || sinAccesoCatalogoRrhh ? (
+                <Navigate
+                  to={esCatalogoRrhh ? '/configuracion' : '/'}
+                  replace
+                />
+              ) : (
               <Routes>
                 <Route
                   path="/"
@@ -1698,6 +1700,7 @@ function App() {
                   }
                 />
               </Routes>
+              )}
             </div>
           </main>
         </div>

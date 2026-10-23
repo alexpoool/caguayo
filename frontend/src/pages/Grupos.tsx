@@ -94,6 +94,24 @@ const MODULOS: Modulo[] = [
       "reporte_mincult",
     ],
   },
+  {
+    nombre: "RRHH",
+    funcionalidades: [
+      "rrhh_empleados",
+      "rrhh_departamentos",
+      "rrhh_puestos",
+      "rrhh_asistencia",
+      "rrhh_solicitudes",
+      "rrhh_deducciones",
+      "rrhh_bonificaciones",
+      "rrhh_nomina",
+      "rrhh_pagos",
+      "rrhh_evaluaciones",
+      "rrhh_catalogos",
+      "rrhh_reportes",
+      "rrhh_auditoria",
+    ],
+  },
 ];
 
 export function GruposPage() {
