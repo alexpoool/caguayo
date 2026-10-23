@@ -461,8 +461,6 @@ function App() {
     { id: 'proyecto', label: 'Proyectos', icon: Wrench },
     { id: 'inventario', label: 'Inventario', icon: Boxes },
     { id: 'reportes', label: 'Reportes', icon: BarChart3 },
-    { id: 'administracion', label: 'Administración', icon: Settings },
-    { id: 'dj08', label: 'DJ-08', icon: ScrollText },
   ];
 
   function handleToggleSlim(): void {
@@ -897,6 +895,27 @@ function App() {
             >
               <Home className="w-6 h-6 text-slate-200 group-hover:text-white transition-colors" />
             </Link>
+            <button
+              onClick={() =>
+                hasModuloAccess('administracion') &&
+                handleModuloClick('administracion')
+              }
+              disabled={!hasModuloAccess('administracion')}
+              title={
+                hasModuloAccess('administracion')
+                  ? 'Administración'
+                  : 'No tienes acceso a este módulo'
+              }
+              className={`p-2 rounded-lg transition-all duration-300 ease-out hover:scale-110 active:scale-95 group
+                ${!hasModuloAccess('administracion')
+                  ? 'text-slate-500 cursor-not-allowed hover:scale-100'
+                  : moduloActivo === 'administracion'
+                    ? 'bg-white/10 text-brand-400'
+                    : 'text-slate-200 hover:text-white hover:bg-gray-100'
+                }`}
+            >
+              <Settings className="w-6 h-6 transition-colors" />
+            </button>
           </div>
 
           <div className="flex items-center gap-6">
