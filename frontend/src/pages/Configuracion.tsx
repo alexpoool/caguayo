@@ -1889,12 +1889,8 @@ const {
                 <Palette className="w-5 h-5 text-fuchsia-600" />
               )}
             </div>
-            {isAnyLoading ? (
+            {isAnyLoading && (
               <span className="text-sm text-blue-500">Cargando...</span>
-            ) : (
-              <span className="text-sm text-gray-500">
-                ({filteredItems.length} elementos)
-              </span>
             )}
           </div>
           <Button onClick={() => openModal(activeConfigSubTab)}>
