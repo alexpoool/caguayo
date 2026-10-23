@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { createPortal } from "react-dom";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate, useParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Settings,
@@ -99,6 +99,28 @@ const configSubTabs: { id: ConfigSubTabType; label: string }[] = [
   { id: "especialidades", label: "Especialidades" },
   { id: "migracion", label: "Migración" },
 ];
+
+/** Slug de URL de cada pestaña (`/configuracion/<slug>`). */
+const CONFIG_SLUGS: Record<ConfigSubTabType, string> = {
+  "tipo-contrato": "tipos-contrato",
+  "estado-contrato": "estados-contrato",
+  categorias: "categorias",
+  subcategorias: "subcategorias",
+  "tipo-proveedores": "tipos-proveedores",
+  "tipo-convenios": "tipos-convenio",
+  "tipo-dependencia": "tipos-dependencia",
+  "tipo-cuenta": "tipos-cuenta",
+  "tipo-entidad": "tipos-entidad",
+  "dj08-actividades": "actividades-economicas",
+  "dj08-tributos": "tributos",
+  especialidades: "especialidades",
+  migracion: "migracion",
+};
+
+/** Inverso de `CONFIG_SLUGS`: slug → pestaña. */
+const CONFIG_TABS = Object.fromEntries(
+  Object.entries(CONFIG_SLUGS).map(([tab, slug]) => [slug, tab]),
+) as Record<string, ConfigSubTabType>;
 
 /** 1234.5 -> "1.234,50" (montos de los catálogos DJ-08). */
 const fmtMonto = (valor: unknown) =>
@@ -221,20 +243,29 @@ function Modal({ isOpen, onClose, title, children }: ModalProps) {
 
 export function ConfiguracionPage() {
   const queryClient = useQueryClient();
-  // La pestaña vive en la URL (`?tab=`) para que los enlaces del sidebar
-  // abran directamente el catálogo correspondiente.
-  const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const { pagina } = useParams<{ pagina?: string }>();
+  // Cada catálogo tiene su propia URL (`/configuracion/<pagina>`); `?tab=`
+  // se mantiene como alias para enlaces antiguos.
+  const [searchParams] = useSearchParams();
   const tabParam = searchParams.get("tab");
-  const activeConfigSubTab: ConfigSubTabType = configSubTabs.some(
-    (tab) => tab.id === tabParam,
-  )
+  const tabDesdeQuery = configSubTabs.some((tab) => tab.id === tabParam)
     ? (tabParam as ConfigSubTabType)
-    : "tipo-contrato";
+    : undefined;
+  const activeConfigSubTab: ConfigSubTabType =
+    (pagina ? CONFIG_TABS[pagina] : undefined) ??
+    tabDesdeQuery ??
+    "tipo-contrato";
   const setActiveConfigSubTab = (tab: ConfigSubTabType) => {
-    const next = new URLSearchParams(searchParams);
-    next.set("tab", tab);
-    setSearchParams(next, { replace: true });
+    navigate(`/configuracion/${CONFIG_SLUGS[tab]}`);
   };
+
+  // Canoniza la URL: sin página o con página desconocida se redirige al slug
+  // de la pestaña activa; un `?tab=` antiguo se traduce a su slug.
+  useEffect(() => {
+    if (pagina && CONFIG_TABS[pagina]) return;
+    navigate(`/configuracion/${CONFIG_SLUGS[activeConfigSubTab]}`, { replace: true });
+  }, [pagina, activeConfigSubTab, navigate]);
   const [searchTerm, setSearchTerm] = useState("");
   const [modalType, setModalType] = useState<string | null>(null);
   const [editingItem, setEditingItem] = useState<any>(null);

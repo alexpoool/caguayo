@@ -64,7 +64,14 @@ const ESCALAS = [5, 10, 100];
 const comoRegistro = (item: RrhhCatalogo): Record<string, unknown> =>
   item as unknown as Record<string, unknown>;
 
-export function CatalogosPage() {
+interface CatalogosPageProps {
+  /** Pestaña a mostrar cuando la URL no trae `?tab=` (uso dentro de Administración). */
+  tabInicial?: string;
+  /** Si se indica, la pestaña se cambia fuera (por ejemplo con otra URL). */
+  onCambiarTab?: (id: string) => void;
+}
+
+export function CatalogosPage({ tabInicial, onCambiarTab }: CatalogosPageProps = {}) {
   const queryClient = useQueryClient();
   // La pestaña vive en la URL (`?tab=`): así las tarjetas de la portada y los
   // enlaces externos abren directamente la sección pedida.
@@ -72,7 +79,9 @@ export function CatalogosPage() {
   const tabParam = searchParams.get('tab');
   const tabId = RRHH_CATALOGOS.some((c) => c.id === tabParam)
     ? (tabParam as string)
-    : RRHH_CATALOGOS[0].id;
+    : RRHH_CATALOGOS.some((c) => c.id === tabInicial)
+      ? (tabInicial as string)
+      : RRHH_CATALOGOS[0].id;
   const config = RRHH_CATALOGOS.find((c) => c.id === tabId) as RrhhCatalogoConfig;
 
   const [formOpen, setFormOpen] = useState(false);
@@ -115,7 +124,11 @@ export function CatalogosPage() {
     queryClient.invalidateQueries({ queryKey: ['rrhh', 'catalogos', tabId] });
 
   const cambiarTab = (id: string) => {
-    setSearchParams({ tab: id });
+    if (onCambiarTab) {
+      onCambiarTab(id);
+    } else {
+      setSearchParams({ tab: id });
+    }
     setFormOpen(false);
     setEditing(null);
     setSearchTerm('');

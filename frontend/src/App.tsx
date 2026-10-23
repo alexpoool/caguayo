@@ -180,6 +180,27 @@ function RedirectPagoResultadoDetalle() {
   return <Navigate to={`/rrhh/pagos-resultado/${id ?? ''}`} replace />;
 }
 
+/**
+ * Catálogos de RRHH abiertos desde Administración: se mantiene la URL
+ * `/configuracion/rrhh/<página>` para no cambiar de módulo.
+ */
+function CatalogoRrhhConfiguracion() {
+  const { catalogo = '' } = useParams<{ catalogo: string }>();
+  const navigate = useNavigate();
+  const tabId =
+    catalogo === 'periodos' ? 'periodos-evaluacion' : catalogo;
+  return (
+    <CatalogosPage
+      tabInicial={tabId}
+      onCambiarTab={(id) =>
+        navigate(
+          `/configuracion/rrhh/${id === 'periodos-evaluacion' ? 'periodos' : id}`,
+        )
+      }
+    />
+  );
+}
+
 // Componente estable de enlace del sidebar: navega SIEMPRE al destino al hacer
 // click, sin depender del comportamiento por defecto del navegador/router.
 function SidebarLink({
@@ -566,77 +587,77 @@ function App() {
                   <SidebarLink slim={slimSidebar} to="/cuentas" onClick={handleLinkClick} disabled={!hasFuncionalidad('cuentas')}>
                     <Wallet className="w-4 h-4" /> Cuentas
                   </SidebarLink>
-                  <SidebarLink slim={slimSidebar} to="/configuracion?tab=tipo-dependencia" onClick={handleLinkClick} disabled={!hasFuncionalidad('configuracion')}>
+                  <SidebarLink slim={slimSidebar} to="/configuracion/tipos-dependencia" onClick={handleLinkClick} disabled={!hasFuncionalidad('configuracion')}>
                     <Building className="w-4 h-4" /> Tipos de Dependencia
                   </SidebarLink>
-                  <SidebarLink slim={slimSidebar} to="/configuracion?tab=tipo-cuenta" onClick={handleLinkClick} disabled={!hasFuncionalidad('configuracion')}>
+                  <SidebarLink slim={slimSidebar} to="/configuracion/tipos-cuenta" onClick={handleLinkClick} disabled={!hasFuncionalidad('configuracion')}>
                     <Wallet className="w-4 h-4" /> Tipos de Cuenta
                   </SidebarLink>
 
                   {!slimSidebar && (
                     <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-2 pt-3 pb-1">Terceros</p>
                   )}
-                  <SidebarLink slim={slimSidebar} to="/configuracion?tab=estado-contrato" onClick={handleLinkClick} disabled={!hasFuncionalidad('configuracion')}>
+                  <SidebarLink slim={slimSidebar} to="/configuracion/estados-contrato" onClick={handleLinkClick} disabled={!hasFuncionalidad('configuracion')}>
                     <FileText className="w-4 h-4" /> Estados de Contrato
                   </SidebarLink>
-                  <SidebarLink slim={slimSidebar} to="/configuracion?tab=tipo-contrato" onClick={handleLinkClick} disabled={!hasFuncionalidad('configuracion')}>
+                  <SidebarLink slim={slimSidebar} to="/configuracion/tipos-contrato" onClick={handleLinkClick} disabled={!hasFuncionalidad('configuracion')}>
                     <FilePlus className="w-4 h-4" /> Tipos de Contrato
                   </SidebarLink>
-                  <SidebarLink slim={slimSidebar} to="/configuracion?tab=tipo-proveedores" onClick={handleLinkClick} disabled={!hasFuncionalidad('configuracion')}>
+                  <SidebarLink slim={slimSidebar} to="/configuracion/tipos-proveedores" onClick={handleLinkClick} disabled={!hasFuncionalidad('configuracion')}>
                     <Briefcase className="w-4 h-4" /> Tipos de Proveedores
                   </SidebarLink>
-                  <SidebarLink slim={slimSidebar} to="/configuracion?tab=tipo-convenios" onClick={handleLinkClick} disabled={!hasFuncionalidad('configuracion')}>
+                  <SidebarLink slim={slimSidebar} to="/configuracion/tipos-convenio" onClick={handleLinkClick} disabled={!hasFuncionalidad('configuracion')}>
                     <FileText className="w-4 h-4" /> Tipos de Convenio
                   </SidebarLink>
-                  <SidebarLink slim={slimSidebar} to="/configuracion?tab=tipo-entidad" onClick={handleLinkClick} disabled={!hasFuncionalidad('configuracion')}>
+                  <SidebarLink slim={slimSidebar} to="/configuracion/tipos-entidad" onClick={handleLinkClick} disabled={!hasFuncionalidad('configuracion')}>
                     <Building className="w-4 h-4" /> Tipos de Entidad
                   </SidebarLink>
 
                   {!slimSidebar && (
                     <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-2 pt-3 pb-1">Declaración Jurada</p>
                   )}
-                  <SidebarLink slim={slimSidebar} to="/configuracion?tab=dj08-actividades" onClick={handleLinkClick} disabled={!hasFuncionalidad('configuracion')}>
+                  <SidebarLink slim={slimSidebar} to="/configuracion/actividades-economicas" onClick={handleLinkClick} disabled={!hasFuncionalidad('configuracion')}>
                     <Briefcase className="w-4 h-4" /> Actividades Económicas
                   </SidebarLink>
-                  <SidebarLink slim={slimSidebar} to="/configuracion?tab=dj08-tributos" onClick={handleLinkClick} disabled={!hasFuncionalidad('configuracion')}>
+                  <SidebarLink slim={slimSidebar} to="/configuracion/tributos" onClick={handleLinkClick} disabled={!hasFuncionalidad('configuracion')}>
                     <Coins className="w-4 h-4" /> Tributos
                   </SidebarLink>
-                  <SidebarLink slim={slimSidebar} to="/configuracion?tab=especialidades" onClick={handleLinkClick} disabled={!hasFuncionalidad('configuracion')}>
+                  <SidebarLink slim={slimSidebar} to="/configuracion/especialidades" onClick={handleLinkClick} disabled={!hasFuncionalidad('configuracion')}>
                     <FileText className="w-4 h-4" /> Especialidades
                   </SidebarLink>
 
                   {!slimSidebar && (
                     <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-2 pt-3 pb-1">Inventario</p>
                   )}
-                  <SidebarLink slim={slimSidebar} to="/configuracion?tab=categorias" onClick={handleLinkClick} disabled={!hasFuncionalidad('configuracion')}>
+                  <SidebarLink slim={slimSidebar} to="/configuracion/categorias" onClick={handleLinkClick} disabled={!hasFuncionalidad('configuracion')}>
                     <Boxes className="w-4 h-4" /> Categorías
                   </SidebarLink>
-                  <SidebarLink slim={slimSidebar} to="/configuracion?tab=subcategorias" onClick={handleLinkClick} disabled={!hasFuncionalidad('configuracion')}>
+                  <SidebarLink slim={slimSidebar} to="/configuracion/subcategorias" onClick={handleLinkClick} disabled={!hasFuncionalidad('configuracion')}>
                     <Layers className="w-4 h-4" /> Subcategorías
                   </SidebarLink>
 
                   {!slimSidebar && (
                     <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-2 pt-3 pb-1">RRHH</p>
                   )}
-                  <SidebarLink slim={slimSidebar} to="/rrhh/departamentos" onClick={handleLinkClick} disabled={!hasFuncionalidad('rrhh_catalogos')}>
+                  <SidebarLink slim={slimSidebar} to="/configuracion/rrhh/departamentos" onClick={handleLinkClick} disabled={!hasFuncionalidad('rrhh_catalogos')}>
                     <Building className="w-4 h-4" /> Departamentos
                   </SidebarLink>
-                  <SidebarLink slim={slimSidebar} to="/rrhh/puestos" onClick={handleLinkClick} disabled={!hasFuncionalidad('rrhh_catalogos')}>
+                  <SidebarLink slim={slimSidebar} to="/configuracion/rrhh/puestos" onClick={handleLinkClick} disabled={!hasFuncionalidad('rrhh_catalogos')}>
                     <Briefcase className="w-4 h-4" /> Puestos
                   </SidebarLink>
-                  <SidebarLink slim={slimSidebar} to="/rrhh/catalogos?tab=periodos-evaluacion" onClick={handleLinkClick} disabled={!hasFuncionalidad('rrhh_catalogos')}>
+                  <SidebarLink slim={slimSidebar} to="/configuracion/rrhh/periodos" onClick={handleLinkClick} disabled={!hasFuncionalidad('rrhh_catalogos')}>
                     <Clock className="w-4 h-4" /> Periodos
                   </SidebarLink>
-                  <SidebarLink slim={slimSidebar} to="/rrhh/catalogos?tab=tipos-contrato" onClick={handleLinkClick} disabled={!hasFuncionalidad('rrhh_catalogos')}>
+                  <SidebarLink slim={slimSidebar} to="/configuracion/rrhh/tipos-contrato" onClick={handleLinkClick} disabled={!hasFuncionalidad('rrhh_catalogos')}>
                     <FilePlus className="w-4 h-4" /> Tipos de Contrato
                   </SidebarLink>
-                  <SidebarLink slim={slimSidebar} to="/rrhh/catalogos?tab=tipos-bonificaciones" onClick={handleLinkClick} disabled={!hasFuncionalidad('rrhh_catalogos')}>
+                  <SidebarLink slim={slimSidebar} to="/configuracion/rrhh/tipos-bonificaciones" onClick={handleLinkClick} disabled={!hasFuncionalidad('rrhh_catalogos')}>
                     <Coins className="w-4 h-4" /> Tipos de Bonificación
                   </SidebarLink>
-                  <SidebarLink slim={slimSidebar} to="/rrhh/catalogos?tab=tipos-deducciones" onClick={handleLinkClick} disabled={!hasFuncionalidad('rrhh_catalogos')}>
+                  <SidebarLink slim={slimSidebar} to="/configuracion/rrhh/tipos-deducciones" onClick={handleLinkClick} disabled={!hasFuncionalidad('rrhh_catalogos')}>
                     <FileText className="w-4 h-4" /> Tipos de Deducción
                   </SidebarLink>
-                  <SidebarLink slim={slimSidebar} to="/rrhh/catalogos?tab=tipos-pago" onClick={handleLinkClick} disabled={!hasFuncionalidad('rrhh_catalogos')}>
+                  <SidebarLink slim={slimSidebar} to="/configuracion/rrhh/tipos-pago" onClick={handleLinkClick} disabled={!hasFuncionalidad('rrhh_catalogos')}>
                     <Wallet className="w-4 h-4" /> Tipos de Pago
                   </SidebarLink>
                 </div>
@@ -1198,10 +1219,18 @@ function App() {
                   }
                 />
                 <Route
-                  path="/configuracion"
+                  path="/configuracion/:pagina?"
                   element={
                     <ProtectedRoute moduloActivo={moduloActivo} currentPath="/configuracion">
                       <ConfiguracionPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/configuracion/rrhh/:catalogo"
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/configuracion/rrhh">
+                      <CatalogoRrhhConfiguracion />
                     </ProtectedRoute>
                   }
                 />
