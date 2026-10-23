@@ -937,15 +937,6 @@ function App() {
               className="flex items-center gap-2 p-2 rounded-lg hover:bg-gray-100 transition-all duration-300 ease-out hover:scale-110 active:scale-95 group"
               title="Perfil"
             >
-              <div className="w-9 h-9 rounded-full bg-brand-500/90 flex items-center justify-center overflow-hidden">
-                {user ? (
-                  <span className="text-sm font-medium text-white">
-                    {user.nombre[0]}{user.primer_apellido[0]}
-                  </span>
-                ) : (
-                  <UserCircle className="w-5 h-5 text-white" />
-                )}
-              </div>
               <div className="text-left leading-tight hidden sm:block">
                 <span className="block text-sm font-medium text-slate-200 group-hover:text-white">
                   {user ? `${user.nombre} ${user.primer_apellido}` : 'Usuario'}
