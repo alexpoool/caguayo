@@ -5,7 +5,7 @@ from sqlmodel import select
 from src.database.connection import get_session
 from src.services.cuenta_service import cuenta_service
 from src.services.usuario_service import GrupoService, UsuarioService
-from src.models import Funcionalidad
+from src.models import Funcionalidad, Usuario
 from src.dto import (
     CuentaCreate,
     CuentaRead,
@@ -148,6 +148,16 @@ async def crear_usuario(
     data: UsuarioCreate,
     db: AsyncSession = Depends(get_session),
 ):
+    statement = select(Usuario).where(Usuario.alias == data.alias)
+    if (await db.exec(statement)).first():
+        raise HTTPException(status_code=400, detail="El alias ya existe")
+
+    statement = select(Usuario).where(Usuario.ci == data.ci)
+    if (await db.exec(statement)).first():
+        raise HTTPException(
+            status_code=400, detail="La cédula de identidad ya existe"
+        )
+
     return await UsuarioService.create(db, data)
 
 
@@ -168,6 +178,22 @@ async def actualizar_usuario(
     data: UsuarioUpdate,
     db: AsyncSession = Depends(get_session),
 ):
+    if data.alias:
+        statement = select(Usuario).where(
+            Usuario.alias == data.alias, Usuario.id_usuario != usuario_id
+        )
+        if (await db.exec(statement)).first():
+            raise HTTPException(status_code=400, detail="El alias ya existe")
+
+    if data.ci:
+        statement = select(Usuario).where(
+            Usuario.ci == data.ci, Usuario.id_usuario != usuario_id
+        )
+        if (await db.exec(statement)).first():
+            raise HTTPException(
+                status_code=400, detail="La cédula de identidad ya existe"
+            )
+
     result = await UsuarioService.update(db, usuario_id, data)
     if not result:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")

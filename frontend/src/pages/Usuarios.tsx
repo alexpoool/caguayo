@@ -16,6 +16,7 @@ import {
   Plus,
   Search,
   Lock,
+  AtSign,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import {
@@ -52,8 +53,10 @@ export function UsuariosPage() {
     segundo_apellido: "",
     cargo: "",
     id_grupo: 0,
+    alias: "",
     contrasenia: "",
   });
+  const [confirmarContrasenia, setConfirmarContrasenia] = useState("");
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
     title: string;
@@ -109,7 +112,8 @@ export function UsuariosPage() {
         usuario: data,
       });
     },
-    onError: () => toast.error("Error al crear usuario"),
+    onError: (error: Error) =>
+      toast.error(error.message || "Error al crear usuario"),
   });
 
   const updateUsuario = useMutation({
@@ -122,6 +126,8 @@ export function UsuariosPage() {
       setEditingUsuario(null);
       resetUsuarioForm();
     },
+    onError: (error: Error) =>
+      toast.error(error.message || "Error al actualizar usuario"),
   });
 
   const deleteUsuario = useMutation({
@@ -132,7 +138,7 @@ export function UsuariosPage() {
     },
   });
 
-  const resetUsuarioForm = () =>
+  const resetUsuarioForm = () => {
     setUsuarioForm({
       ci: "",
       nombre: "",
@@ -140,8 +146,11 @@ export function UsuariosPage() {
       segundo_apellido: "",
       cargo: "",
       id_grupo: 0,
+      alias: "",
       contrasenia: "",
     });
+    setConfirmarContrasenia("");
+  };
 
   const handleUsuarioSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -150,7 +159,8 @@ export function UsuariosPage() {
       !usuarioForm.nombre ||
       !usuarioForm.primer_apellido ||
       !usuarioForm.cargo ||
-      !usuarioForm.id_grupo
+      !usuarioForm.id_grupo ||
+      !usuarioForm.alias.trim()
     ) {
       toast.error("Todos los campos requeridos deben completarse");
       return;
@@ -166,6 +176,7 @@ export function UsuariosPage() {
           cargo: usuarioForm.cargo,
           id_grupo: usuarioForm.id_grupo,
           id_dependencia: usuarioForm.id_dependencia,
+          alias: usuarioForm.alias.trim(),
         },
       });
     } else {
@@ -173,7 +184,11 @@ export function UsuariosPage() {
         toast.error("La contraseña debe tener al menos 6 caracteres");
         return;
       }
-      createUsuario.mutate(usuarioForm);
+      if (usuarioForm.contrasenia !== confirmarContrasenia) {
+        toast.error("Las contraseñas no coinciden");
+        return;
+      }
+      createUsuario.mutate({ ...usuarioForm, alias: usuarioForm.alias.trim() });
     }
   };
 
@@ -199,8 +214,10 @@ export function UsuariosPage() {
       cargo: usuario.cargo,
       id_grupo: usuario.id_grupo,
       id_dependencia: usuario.id_dependencia,
+      alias: usuario.alias,
       contrasenia: "",
     });
+    setConfirmarContrasenia("");
     setView("form");
   };
 
@@ -341,25 +358,57 @@ export function UsuariosPage() {
                   className="transition-all duration-200 focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
                 />
               </div>
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2 text-gray-700">
+                  <AtSign className="h-5 w-5 text-teal-500" />
+                  Alias *
+                </Label>
+                <Input
+                  value={usuarioForm.alias}
+                  onChange={(e) =>
+                    setUsuarioForm({
+                      ...usuarioForm,
+                      alias: e.target.value,
+                    })
+                  }
+                  placeholder="Alias de acceso"
+                  className="transition-all duration-200 focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                />
+              </div>
               {!editingUsuario && (
-                <div className="space-y-2">
-                  <Label className="flex items-center gap-2 text-gray-700">
-                    <Lock className="h-5 w-5 text-rose-500" />
-                    Contraseña *
-                  </Label>
-                  <Input
-                    type="password"
-                    value={usuarioForm.contrasenia}
-                    onChange={(e) =>
-                      setUsuarioForm({
-                        ...usuarioForm,
-                        contrasenia: e.target.value,
-                      })
-                    }
-                    placeholder="Contraseña (mínimo 6 caracteres)"
-                    className="transition-all duration-200 focus:ring-2 focus:ring-rose-500 focus:border-rose-500"
-                  />
-                </div>
+                <>
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-2 text-gray-700">
+                      <Lock className="h-5 w-5 text-rose-500" />
+                      Contraseña *
+                    </Label>
+                    <Input
+                      type="password"
+                      value={usuarioForm.contrasenia}
+                      onChange={(e) =>
+                        setUsuarioForm({
+                          ...usuarioForm,
+                          contrasenia: e.target.value,
+                        })
+                      }
+                      placeholder="Contraseña (mínimo 6 caracteres)"
+                      className="transition-all duration-200 focus:ring-2 focus:ring-rose-500 focus:border-rose-500"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-2 text-gray-700">
+                      <Lock className="h-5 w-5 text-rose-400" />
+                      Confirmar Contraseña *
+                    </Label>
+                    <Input
+                      type="password"
+                      value={confirmarContrasenia}
+                      onChange={(e) => setConfirmarContrasenia(e.target.value)}
+                      placeholder="Repita la contraseña"
+                      className="transition-all duration-200 focus:ring-2 focus:ring-rose-400 focus:border-rose-400"
+                    />
+                  </div>
+                </>
               )}
               <div className="space-y-2">
                 <Label

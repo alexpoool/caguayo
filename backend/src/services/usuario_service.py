@@ -132,15 +132,8 @@ class GrupoService:
 
 class UsuarioService:
     @staticmethod
-    def _generar_alias(nombre: str, primer_apellido: str) -> str:
-        return f"{nombre.lower()}.{primer_apellido.lower()}"
-
-    @staticmethod
     async def create(db: AsyncSession, data: UsuarioCreate) -> UsuarioRead:
-        # Generar alias si no viene en los datos
-        alias = data.alias or UsuarioService._generar_alias(
-            data.nombre, data.primer_apellido
-        )
+        alias = data.alias
 
         contrasenia = bcrypt.hashpw(
             data.contrasenia.encode("utf-8"), bcrypt.gensalt()
