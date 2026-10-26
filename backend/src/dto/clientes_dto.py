@@ -1,9 +1,22 @@
 from sqlmodel import SQLModel
+from pydantic import field_validator
 from typing import Optional, List, Any
 from datetime import date, datetime
 from .ventas_dto import VentaRead
 from .cuentas_dto import CuentaCreate, CuentaRead
 from .especialidad_dto import EspecialidadRead
+
+TIPOS_RELACION_VALIDOS = {"CLIENTE", "PROVEEDOR", "AMBAS"}
+
+
+def _normalizar_tipo_relacion(valor: Optional[str]) -> Optional[str]:
+    """Valida y normaliza el tipo de relación de un tercero."""
+    if valor is None:
+        return None
+    normalizado = valor.strip().upper()
+    if normalizado not in TIPOS_RELACION_VALIDOS:
+        raise ValueError("tipo_relacion debe ser CLIENTE, PROVEEDOR o AMBAS")
+    return normalizado
 
 
 class ClienteNaturalRead(SQLModel):
@@ -116,6 +129,11 @@ class ClienteCreate(ClienteBase):
     cliente_tcp: Optional[ClienteTCPData] = None
     cuentas: Optional[List[CuentaCreate]] = None
 
+    @field_validator("tipo_relacion")
+    @classmethod
+    def _validar_tipo_relacion(cls, valor):
+        return _normalizar_tipo_relacion(valor)
+
 
 class ClienteRead(ClienteBase):
     model_config = {"populate_by_name": True}
@@ -158,6 +176,11 @@ class ClienteUpdate(SQLModel):
     cliente_natural: Optional[Any] = None
     cliente_juridica: Optional[Any] = None
     cliente_tcp: Optional[Any] = None
+
+    @field_validator("tipo_relacion")
+    @classmethod
+    def _validar_tipo_relacion(cls, valor):
+        return _normalizar_tipo_relacion(valor)
 
 
 class ClienteSimpleRead(SQLModel):

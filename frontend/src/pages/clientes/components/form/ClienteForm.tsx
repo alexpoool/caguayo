@@ -298,11 +298,8 @@ export const ClienteForm: React.FC<ClienteFormProps> = ({
     setFormData((prev: any) => ({ ...prev, tipo_persona: null }));
   };
 
-  const baseRelacion = ["CLIENTE", "PROVEEDOR"].includes(formData.tipo_relacion)
-    ? formData.tipo_relacion
-    : (isProveedorView ? "PROVEEDOR" : "CLIENTE");
-
-  const esRelacionAmbas = formData.tipo_relacion === "AMBAS";
+  const relacionActual =
+    formData.tipo_relacion || (isProveedorView ? "PROVEEDOR" : "CLIENTE");
 
   const personaCompleta =
     tipoPersona === "NATURAL"
@@ -418,25 +415,41 @@ export const ClienteForm: React.FC<ClienteFormProps> = ({
 
       <form id={formId} onSubmit={handleSubmit} className={selfContained ? "" : "p-4 md:p-6"}>
         {/* Tipo de Relación */}
-        <div className="flex flex-wrap items-center gap-4 mb-6">
+        <div className="mb-6">
           <span className="text-sm font-medium text-gray-700">Tipo de Relación:</span>
-          <span className={`inline-flex items-center px-4 py-2 rounded-full text-sm font-medium ${baseRelacion === "PROVEEDOR" ? "bg-amber-100 text-amber-800" : "bg-teal-100 text-teal-800"}`}>
-            {baseRelacion === "PROVEEDOR" ? "Proveedor" : "Cliente"}
-          </span>
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={esRelacionAmbas}
-              onChange={(e) =>
-                setFormData((prev: any) => ({
-                  ...prev,
-                  tipo_relacion: e.target.checked ? "AMBAS" : baseRelacion,
-                }))
-              }
-              className="w-4 h-4"
-            />
-            y {isProveedorView ? "cliente" : "proveedor"}
-          </label>
+          <div className="mt-2 flex flex-wrap gap-4">
+            {(
+              [
+                { valor: "CLIENTE", etiqueta: "Cliente" },
+                { valor: "PROVEEDOR", etiqueta: "Proveedor" },
+                { valor: "AMBAS", etiqueta: "Cliente y proveedor" },
+              ] as const
+            ).map((opcion) => (
+              <label
+                key={opcion.valor}
+                className={`flex items-center gap-2 cursor-pointer rounded-full border px-4 py-2 text-sm font-medium transition-colors ${
+                  relacionActual === opcion.valor
+                    ? "border-teal-500 bg-teal-50 text-teal-800"
+                    : "border-gray-300 text-gray-600 hover:border-gray-400"
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="tipo_relacion"
+                  value={opcion.valor}
+                  checked={relacionActual === opcion.valor}
+                  onChange={() =>
+                    setFormData((prev: any) => ({
+                      ...prev,
+                      tipo_relacion: opcion.valor,
+                    }))
+                  }
+                  className="w-4 h-4"
+                />
+                {opcion.etiqueta}
+              </label>
+            ))}
+          </div>
         </div>
 
         {/* Datos Base del Cliente */}

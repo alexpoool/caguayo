@@ -175,12 +175,6 @@ export function useInfiniteList<T>({
     queryClient.invalidateQueries({ queryKey: [queryKeyBase] });
   }, [queryClient, queryKeyBase]);
 
-  // ── Debug ─────────────────────────────────────────────────────────────────
-
-  console.log(
-    `[useInfiniteList:${queryKeyBase}] skip=${skip} qdata=${query.data?.length ?? 0} all=${allItems.length} isLoading=${query.isLoading} isFetching=${query.isFetching} hasMore=${hasMore}`,
-  );
-
   // ── Retorno ──────────────────────────────────────────────────────────────
 
   return {

@@ -157,10 +157,11 @@ export function useClientesLogic() {
   };
 
   const handleDelete = (cliente: Cliente) => {
+    const nombreTipo = isProveedorView ? "proveedor" : "cliente";
     setConfirmModal({
       isOpen: true,
-      title: "¿Eliminar cliente?",
-      message: `¿Está seguro de eliminar al cliente "${cliente.nombre}"?`,
+      title: `¿Eliminar ${nombreTipo}?`,
+      message: `¿Está seguro de eliminar al ${nombreTipo} "${cliente.nombre}"? Esta acción no se puede deshacer. Si tiene ventas, compras, contratos o convenios asociados, también se eliminarán.`,
       onConfirm: () => deleteMutation.mutate(cliente.id_cliente),
       type: "danger",
     });
