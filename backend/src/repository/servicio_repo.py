@@ -211,8 +211,20 @@ class FacturaServicioRepository(
             .limit(limit)
             .order_by(FacturaServicio.id_factura_servicio.desc())
         )
+        # Las facturas anuladas por pagos (borrado lógico) no se listan.
+        statement = statement.where(FacturaServicio.estado != "CANCELADA")
         results = await db.exec(statement)
         return results.all()
+
+    async def count(self, db: AsyncSession) -> int:
+        """Total con el mismo WHERE que get_all_with_details (X-Total-Count)."""
+        statement = (
+            select(func.count())
+            .select_from(FacturaServicio)
+            .where(FacturaServicio.estado != "CANCELADA")
+        )
+        result = await db.exec(statement)
+        return result.one()
 
     async def get_by_etapa(
         self, db: AsyncSession, id_etapa: int

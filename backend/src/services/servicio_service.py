@@ -13,6 +13,13 @@ from src.models.servicio import (
     Etapa,
     PersonaEtapa,
     Certificacion,
+    TareaEtapa,
+    FacturaServicio,
+    Oferta,
+    PersonaLiquidacion,
+    ItemFacturaServicio,
+    ItemOferta,
+    PagoFacturaServicio,
 )
 from src.dto.servicio_dto import (
     ServicioCreate,
@@ -265,6 +272,42 @@ class EtapaService:
 
     @staticmethod
     async def delete(db: AsyncSession, id: int) -> bool:
+        etapa = await etapa_repo.get(db, id)
+        if not etapa:
+            return False
+
+        # Facturas u ofertas activas de la etapa: con ellas la etapa no se
+        # puede borrar físicamente (arraría la FK y bloquearía el borrado de
+        # la solicitud).
+        for factura in await factura_servicio_repo.get_by_etapa(db, id):
+            if factura.estado != "CANCELADA":
+                raise BusinessLogicError(
+                    "No se puede eliminar: la etapa tiene facturas activas. "
+                    "Cancele las facturas primero."
+                )
+        ofertas = (
+            await db.exec(
+                select(func.count()).select_from(Oferta).where(Oferta.id_etapa == id)
+            )
+        ).one() or 0
+        if ofertas:
+            raise BusinessLogicError(
+                f"No se puede eliminar: la etapa tiene {ofertas} oferta(s) "
+                "asociada(s). Elimine primero las ofertas."
+            )
+        liquidaciones_persona = (
+            await db.exec(
+                select(func.count())
+                .select_from(PersonaLiquidacion)
+                .where(PersonaLiquidacion.id_etapa == id)
+            )
+        ).one() or 0
+        if liquidaciones_persona:
+            raise BusinessLogicError(
+                f"No se puede eliminar: la etapa tiene {liquidaciones_persona} "
+                "liquidación(es) de persona asociada(s). Elimínelas primero."
+            )
+
         obj = await etapa_repo.remove(db, id=id)
         return obj is not None
 
@@ -297,6 +340,37 @@ class TareaEtapaService:
 
     @staticmethod
     async def delete(db: AsyncSession, id: int) -> bool:
+        tarea = await tarea_etapa_repo.get(db, id)
+        if not tarea:
+            return False
+
+        # Si la tarea está en una factura u oferta, borrarla en cascada
+        # borraria silenciosamente las líneas del documento emitido.
+        en_facturas = (
+            await db.exec(
+                select(func.count())
+                .select_from(ItemFacturaServicio)
+                .where(ItemFacturaServicio.id_tarea_etapa == id)
+            )
+        ).one() or 0
+        en_ofertas = (
+            await db.exec(
+                select(func.count())
+                .select_from(ItemOferta)
+                .where(ItemOferta.id_tarea_etapa == id)
+            )
+        ).one() or 0
+        if en_facturas or en_ofertas:
+            raise BusinessLogicError(
+                "No se puede eliminar: la tarea está incluida en "
+                f"{en_facturas} factura(s) y {en_ofertas} oferta(s) del proyecto."
+            )
+        if tarea.facturada:
+            raise BusinessLogicError(
+                "No se puede eliminar: la tarea está marcada como facturada. "
+                "Cancele la factura de servicio que la incluye."
+            )
+
         obj = await tarea_etapa_repo.remove(db, id=id)
         return obj is not None
 
@@ -336,6 +410,31 @@ class PersonaEtapaService:
 
     @staticmethod
     async def delete(db: AsyncSession, id_etapa: int, id_persona: int) -> bool:
+        registro = await persona_etapa_repo.get(db, id=(id_etapa, id_persona))
+        if not registro:
+            return False
+
+        liquidaciones = (
+            await db.exec(
+                select(PersonaLiquidacion).where(
+                    PersonaLiquidacion.id_etapa == id_etapa,
+                    PersonaLiquidacion.id_persona == id_persona,
+                )
+            )
+        ).all()
+        confirmadas = [liq for liq in liquidaciones if liq.confirmado]
+        if confirmadas:
+            raise BusinessLogicError(
+                "No se puede eliminar: la realización tiene "
+                f"{len(confirmadas)} liquidación(es) confirmada(s). "
+                "Una liquidación confirmada no se puede deshacer."
+            )
+
+        # Sin confirmaciones: se borran sus liquidaciones en cascada.
+        for liq in liquidaciones:
+            await db.delete(liq)
+        await db.flush()
+
         obj = await persona_etapa_repo.remove(db, id=(id_etapa, id_persona))
         return obj is not None
 
@@ -627,6 +726,44 @@ class FacturaServicioService:
 
     @staticmethod
     async def delete(db: AsyncSession, id: int) -> bool:
+        """Anular una factura de servicio (borrado lógico).
+
+        La factura queda en estado CANCELADA conservando items y pagos.
+        Las tareas dejan de estar marcadas como facturadas para poder volver
+        a facturarse. Prefacturas sin pagos sí se borran físicamente.
+        """
+        factura = await factura_servicio_repo.get(db, id)
+        if not factura:
+            return False
+
+        pagos = (
+            await db.exec(
+                select(func.count())
+                .select_from(PagoFacturaServicio)
+                .where(PagoFacturaServicio.id_factura_servicio == id)
+            )
+        ).one() or 0
+
+        async def _desmarcar_tareas():
+            items = await item_factura_servicio_repo.get_by_factura(db, id)
+            for item in items:
+                other_refs = await item_factura_servicio_repo.count_other_references_by_tarea(
+                    db, item.id_tarea_etapa, exclude_factura_id=id
+                )
+                if other_refs == 0:
+                    tarea = await tarea_etapa_repo.get(db, item.id_tarea_etapa)
+                    if tarea:
+                        tarea.facturada = False
+                        await db.commit()
+                        await db.refresh(tarea)
+
+        if pagos or factura.estado == "CANCELADA":
+            # Con pagos no se borra físicamente: se anula y queda el historial.
+            factura.estado = "CANCELADA"
+            await _desmarcar_tareas()
+            await db.commit()
+            return True
+
         existing_items = await item_factura_servicio_repo.get_by_factura(db, id)
         for item in existing_items:
             other_refs = await item_factura_servicio_repo.count_other_references_by_tarea(
@@ -801,7 +938,28 @@ class PagoFacturaServicioService:
     @staticmethod
     async def delete(db: AsyncSession, id: int) -> bool:
         pago = await pago_factura_servicio_repo.get(db, id)
-        if pago and pago.id_factura_servicio:
+        if not pago:
+            return False
+
+        # Si el pago ya generó liquidaciones de persona, las eliminamos en
+        # cascada (recalculando por_cobrar y el monto disponible del pago).
+        # Una liquidación confirmada bloquea el borrado con mensaje claro.
+        liquidaciones = (
+            await db.exec(
+                select(PersonaLiquidacion).where(PersonaLiquidacion.id_pago == id)
+            )
+        ).all()
+        for liq in liquidaciones:
+            if liq.confirmado:
+                raise BusinessLogicError(
+                    "No se puede eliminar: el pago tiene "
+                    f"{len(liquidaciones)} liquidación(es) de persona confirmada(s)."
+                )
+        for liq in liquidaciones:
+            await PersonaLiquidacionService.delete(db, liq.id_liquidacion)
+        await db.flush()
+
+        if pago.id_factura_servicio:
             await factura_servicio_repo.actualizar_pagado(
                 db, pago.id_factura_servicio, -(pago.monto or Decimal("0"))
             )
@@ -1190,6 +1348,12 @@ class PersonaLiquidacionService:
         if not liquidacion:
             return False
 
+        if liquidacion.confirmado:
+            raise BusinessLogicError(
+                "No se puede eliminar: la liquidación está confirmada "
+                "y un pago confirmado no se puede deshacer."
+            )
+
         id_etapa = liquidacion.id_etapa
         id_persona = liquidacion.id_persona
 
@@ -1375,6 +1539,31 @@ class CertificacionService:
 
         if not certificacion:
             return False
+
+        if certificacion.facturado:
+            raise BusinessLogicError(
+                "No se puede eliminar: la certificación está facturada. "
+                "Cancele la factura de servicio primero."
+            )
+        facturas = (
+            await db.exec(
+                select(func.count())
+                .select_from(FacturaServicio)
+                .where(FacturaServicio.id_certificacion == id_certificacion)
+            )
+        ).one() or 0
+        ofertas = (
+            await db.exec(
+                select(func.count())
+                .select_from(Oferta)
+                .where(Oferta.id_certificacion == id_certificacion)
+            )
+        ).one() or 0
+        if facturas or ofertas:
+            raise BusinessLogicError(
+                "No se puede eliminar: la certificación está en "
+                f"{facturas} factura(s) u {ofertas} oferta(s) del proyecto."
+            )
 
         await db.delete(certificacion)
         await db.commit()
