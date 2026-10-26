@@ -145,6 +145,7 @@ class ConvenioCreate(ConvenioBase):
 
 class ConvenioRead(ConvenioBase):
     id_convenio: int
+    estado: str = "ACTIVO"
     cliente: Optional[ClienteRead] = None
     tipo_convenio: Optional[TipoConvenioRead] = None
 

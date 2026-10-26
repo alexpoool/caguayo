@@ -113,6 +113,8 @@ class Factura(SQLModel, table=True):
     fecha: date = Field(default=date.today())
     monto: Decimal = Field(default=Decimal("0.00"))
     pago_actual: Decimal = Field(default=Decimal("0.00"))
+    # Borrado lógico: una factura con pagos/movimientos no se borra, se anula.
+    estado: str = Field(default="ACTIVA", max_length=20)
 
     contrato: "Contrato" = Relationship(back_populates="facturas")
     items_factura: List["ItemFactura"] = Relationship(back_populates="factura")

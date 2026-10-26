@@ -1,6 +1,7 @@
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlmodel.ext.asyncio.session import AsyncSession
+from sqlalchemy.exc import IntegrityError
 from src.database.connection import get_session
 from src.services.cliente_service import CuentaService
 from src.dto import CuentaCreate, CuentaRead, CuentaUpdate
@@ -79,7 +80,14 @@ async def eliminar_cuenta(
         success = await CuentaService.delete(db, cuenta_id)
         if not success:
             raise HTTPException(status_code=404, detail="Cuenta no encontrada")
-    except Exception as e:
+    except HTTPException:
+        raise
+    except IntegrityError:
+        await db.rollback()
         raise HTTPException(
-            status_code=500, detail=f"Error al eliminar cuenta: {str(e)}"
+            status_code=409,
+            detail="No se puede eliminar: la cuenta está asociada a otros registros",
         )
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(status_code=500, detail="Error interno del servidor")

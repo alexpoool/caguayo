@@ -2,6 +2,7 @@ import logging
 from typing import List, Optional
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Response
 from sqlmodel.ext.asyncio.session import AsyncSession
+from sqlalchemy.exc import IntegrityError
 from src.database.connection import get_auth_session, get_session
 from src.services.liquidacion_service import liquidacion_service
 from src.core.exceptions import BusinessLogicError, NotFoundError, ValidationError
@@ -221,6 +222,12 @@ async def eliminar_liquidacion(
         raise
     except (BusinessLogicError, ValidationError) as e:
         raise HTTPException(status_code=400, detail=str(e))
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(
+            status_code=409,
+            detail="No se puede eliminar: la liquidación tiene registros asociados",
+        )
     except Exception as e:
         logger.error("Error al eliminar liquidación", exc_info=True)
         raise HTTPException(status_code=500, detail="Error interno del servidor")

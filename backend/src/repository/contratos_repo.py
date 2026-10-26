@@ -71,6 +71,18 @@ class ContratoRepository(CRUDBase[Contrato, ContratoCreate, ContratoUpdate]):
             )
         )
 
+        # Los contratos anulados (borrado lógico con datos asociados) no se
+        # muestran en el listado.
+        estado_anulado = (
+            await db.exec(
+                select(EstadoContrato.id_estado_contrato).where(
+                    EstadoContrato.nombre == "ANULADO"
+                )
+            )
+        ).first()
+        if estado_anulado is not None:
+            statement = statement.where(Contrato.id_estado != estado_anulado)
+
         if id_cliente is not None:
             statement = statement.where(Contrato.id_cliente == id_cliente)
 
@@ -111,6 +123,15 @@ class ContratoRepository(CRUDBase[Contrato, ContratoCreate, ContratoUpdate]):
     ) -> int:
         """Total con el mismo WHERE que get_all_with_details (header X-Total-Count)."""
         statement = select(func.count()).select_from(Contrato)
+        estado_anulado = (
+            await db.exec(
+                select(EstadoContrato.id_estado_contrato).where(
+                    EstadoContrato.nombre == "ANULADO"
+                )
+            )
+        ).first()
+        if estado_anulado is not None:
+            statement = statement.where(Contrato.id_estado != estado_anulado)
         if id_cliente is not None:
             statement = statement.where(Contrato.id_cliente == id_cliente)
         if search and search.strip():
@@ -267,6 +288,8 @@ class FacturaRepository(CRUDBase[Factura, FacturaCreate, FacturaUpdate]):
             .limit(limit)
             .order_by(Factura.id_factura.desc())
         )
+        # Las facturas anuladas (borrado lógico) no se muestran en el listado.
+        statement = statement.where(Factura.estado != "ANULADA")
         results = await db.exec(statement)
         return results.all()
 

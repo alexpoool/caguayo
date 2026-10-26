@@ -188,6 +188,7 @@ class FacturaCreate(FacturaBase):
 
 class FacturaRead(FacturaBase):
     id_factura: int
+    estado: str = "ACTIVA"
 
 
 class FacturaReadWithDetails(FacturaRead):

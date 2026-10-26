@@ -2,6 +2,8 @@ import logging
 from typing import List, Optional
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Response
 from sqlmodel.ext.asyncio.session import AsyncSession
+from sqlalchemy.exc import IntegrityError
+from src.core.exceptions import BusinessLogicError
 from src.database.connection import get_auth_session, get_session
 from src.services.productos_en_liquidacion_service import (
     productos_en_liquidacion_service,
@@ -176,6 +178,14 @@ async def eliminar_producto(
             )
     except HTTPException:
         raise
+    except BusinessLogicError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(
+            status_code=409,
+            detail="No se puede eliminar: el producto está asociado a otros registros",
+        )
     except Exception as e:
         logger.error("Error al eliminar producto en liquidación", exc_info=True)
         raise HTTPException(status_code=500, detail="Error interno del servidor")
