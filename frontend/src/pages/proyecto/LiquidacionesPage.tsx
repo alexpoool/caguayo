@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
-import { Button, Card, Label, Input, DateInput, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, ModalOverlay, FormModal } from '../../components/ui';
+import { Button, Card, Label, Input, DateInput, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, ModalOverlay, FormModal, ConfirmModal } from '../../components/ui';
 import { 
   Search, 
   Plus, 
@@ -90,6 +90,7 @@ export function LiquidacionesPage() {
   const [detailModal, setDetailModal] = useState<{ isOpen: boolean; item: PersonaLiquidacion | null }>({ isOpen: false, item: null });
   
   const [confirmModal, setConfirmModal] = useState<{ isOpen: boolean; item: PersonaLiquidacion | null }>({ isOpen: false, item: null });
+  const [eliminarModal, setEliminarModal] = useState<{ isOpen: boolean; item: PersonaLiquidacion | null }>({ isOpen: false, item: null });
   const [confirmData, setConfirmData] = useState({
     doc_pago_liquidacion: '',
     porcentaje_caguayo: 10
@@ -270,12 +271,12 @@ export function LiquidacionesPage() {
       resetForm();
     },
     onError: (error: any) => {
-      toast.error(error?.response?.data?.detail || 'Error al crear liquidación');
+      toast.error(error?.message || 'Error al crear liquidación');
     }
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: number; data: PersonaLiquidacionInputUpdate }) => 
+    mutationFn: ({ id, data }: { id: number; data: PersonaLiquidacionInputUpdate }) =>
       personaLiquidacionService.updateLiquidacion(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['persona-liquidaciones'] });
@@ -284,7 +285,7 @@ export function LiquidacionesPage() {
       resetForm();
     },
     onError: (error: any) => {
-      toast.error(error?.response?.data?.detail || 'Error al actualizar liquidación');
+      toast.error(error?.message || 'Error al actualizar liquidación');
     }
   });
 
@@ -294,13 +295,13 @@ export function LiquidacionesPage() {
       queryClient.invalidateQueries({ queryKey: ['persona-liquidaciones'] });
       toast.success('Liquidación eliminada');
     },
-    onError: () => {
-      toast.error('Error al eliminar liquidación');
+    onError: (error: unknown) => {
+      toast.error((error as Error)?.message || 'Error al eliminar liquidación');
     }
   });
 
   const confirmarMutation = useMutation({
-    mutationFn: ({ id, data }: { id: number; data: { devengado?: number; tributario?: number; comision_bancaria?: number; gasto_empresa?: number; porcentaje_caguayo?: number } }) => 
+    mutationFn: ({ id, data }: { id: number; data: { devengado?: number; tributario?: number; comision_bancaria?: number; gasto_empresa?: number; porcentaje_caguayo?: number } }) =>
       personaLiquidacionService.confirmarLiquidacion(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['persona-liquidaciones'] });
@@ -309,7 +310,7 @@ export function LiquidacionesPage() {
       setConfirmData({ doc_pago_liquidacion: '', porcentaje_caguayo: 10 });
     },
     onError: (error: any) => {
-      toast.error(error?.response?.data?.detail || 'Error al confirmar liquidación');
+      toast.error(error?.message || 'Error al confirmar liquidación');
     }
   });
 
@@ -1135,11 +1136,9 @@ export function LiquidacionesPage() {
                             <Button
                               variant="ghost"
                               size="icon"
-                              onClick={() => {
-                                if (confirm('¿Eliminar liquidación?')) {
-                                  deleteMutation.mutate(liquidacion.id_liquidacion);
-                                }
-                              }}
+                              onClick={() =>
+                                setEliminarModal({ isOpen: true, item: liquidacion })
+                              }
                               className="text-red-600 hover:text-red-800 hover:bg-red-50 h-8 w-8"
                               title="Eliminar"
                             >
@@ -1652,6 +1651,29 @@ export function LiquidacionesPage() {
           </div>
         </ModalOverlay>
       )}
+
+      {/* Confirmación de eliminación */}
+      <ConfirmModal
+        isOpen={eliminarModal.isOpen}
+        onClose={() => setEliminarModal({ isOpen: false, item: null })}
+        onConfirm={() => {
+          if (eliminarModal.item) {
+            if (eliminarModal.item.confirmado) {
+              toast.error(
+                'No se puede eliminar: la liquidación está confirmada y un pago confirmado no se puede deshacer.'
+              );
+              setEliminarModal({ isOpen: false, item: null });
+              return;
+            }
+            deleteMutation.mutate(eliminarModal.item.id_liquidacion);
+          }
+          setEliminarModal({ isOpen: false, item: null });
+        }}
+        title="¿Eliminar liquidación?"
+        message="Esta acción no se puede deshacer. El pago vuelve a estar disponible para liquidar."
+        confirmText="Eliminar"
+        type="danger"
+      />
 
       {validacionModal.isOpen && validacionModal.validacion && (
         <ModalOverlay isOpen={true} onClose={() => setValidacionModal({ isOpen: false, validacion: null })} ariaLabel="No se puede liquidar">

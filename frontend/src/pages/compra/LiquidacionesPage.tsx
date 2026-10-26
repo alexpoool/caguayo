@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
-import { Button, Card, Label, Input, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, FormModal } from '../../components/ui';
+import { Button, Card, Label, Input, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, FormModal, ConfirmModal } from '../../components/ui';
 import { 
   Search, 
   Plus, 
@@ -50,6 +50,7 @@ export function LiquidacionesPage() {
   const [detailModal, setDetailModal] = useState<{ isOpen: boolean; item: Liquidacion | null }>({ isOpen: false, item: null });
   const [printModal, setPrintModal] = useState<{ isOpen: boolean; liquidacion: Liquidacion | null; autorizado_por: string; cargo_autorizado: string; revisado_por: string }>({ isOpen: false, liquidacion: null, autorizado_por: '', cargo_autorizado: '', revisado_por: '' });
   const [approveModal, setApproveModal] = useState<{ isOpen: boolean; id_liquidacion: number | null }>({ isOpen: false, id_liquidacion: null });
+  const [eliminarModal, setEliminarModal] = useState<{ isOpen: boolean; id_liquidacion: number | null }>({ isOpen: false, id_liquidacion: null });
   
   const [filtroCliente, setFiltroCliente] = useState<number | null>(initialProveedorId ? Number(initialProveedorId) : null);
 
@@ -126,8 +127,10 @@ export function LiquidacionesPage() {
       refresh();
       toast.success('Liquidación eliminada');
     },
-    onError: () => {
-      toast.error('Error al eliminar liquidación');
+    onError: (error: unknown) => {
+      toast.error(
+        (error as Error)?.message || 'Error al eliminar liquidación'
+      );
     }
   });
 
@@ -604,11 +607,9 @@ export function LiquidacionesPage() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => {
-                            if (confirm('¿Eliminar liquidación?')) {
-                              deleteMutation.mutate(liquidacion.id_liquidacion);
-                            }
-                          }}
+                          onClick={() =>
+                            setEliminarModal({ isOpen: true, id_liquidacion: liquidacion.id_liquidacion })
+                          }
                           className="text-red-600 hover:text-red-800 hover:bg-red-50 h-8 w-8"
                           title="Eliminar"
                         >
@@ -623,6 +624,22 @@ export function LiquidacionesPage() {
           </Table>
         </div>
       </Card>
+
+      {/* Confirmación de eliminación */}
+      <ConfirmModal
+        isOpen={eliminarModal.isOpen}
+        onClose={() => setEliminarModal({ isOpen: false, id_liquidacion: null })}
+        onConfirm={() => {
+          if (eliminarModal.id_liquidacion) {
+            deleteMutation.mutate(eliminarModal.id_liquidacion);
+          }
+          setEliminarModal({ isOpen: false, id_liquidacion: null });
+        }}
+        title="¿Eliminar liquidación?"
+        message="La liquidación se eliminará y sus productos quedarán pendientes de liquidar de nuevo. Esta acción no se puede deshacer."
+        confirmText="Eliminar"
+        type="danger"
+      />
 
       {/* Sentinel para scroll infinito */}
       {hasMore && (

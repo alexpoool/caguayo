@@ -8,6 +8,7 @@ import {
   Card,
   CardContent,
   FormModal,
+  ConfirmModal,
 } from "../components/ui";
 import {
   contratosService,
@@ -48,6 +49,7 @@ const VENTA_OPERACION_FORM_ID = "venta-operacion-form";
 export function VentasOperacionesPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [view, setView] = useState<View>("list");
+  const [eliminarModal, setEliminarModal] = useState<{ isOpen: boolean; id: number | null }>({ isOpen: false, id: null });
   const [tab, setTab] = useState<TabType>(() => {
     const t = searchParams.get("tab");
     if (
@@ -283,7 +285,11 @@ const loadInitialData = async () => {
   };
 
   const handleDelete = async (id: number) => {
-    if (!confirm("¿Eliminar?")) return;
+    setEliminarModal({ isOpen: true, id });
+  };
+
+  const confirmarDelete = async (id: number) => {
+    if (!id) return;
     try {
       if (tab === "contratos") {
         await contratosService.deleteContrato(id);
@@ -869,6 +875,21 @@ const loadInitialData = async () => {
       >
         {renderForm()}
       </FormModal>
+
+      {/* Confirmación de eliminación */}
+      <ConfirmModal
+        isOpen={eliminarModal.isOpen}
+        onClose={() => setEliminarModal({ isOpen: false, id: null })}
+        onConfirm={() => {
+          const id = eliminarModal.id;
+          setEliminarModal({ isOpen: false, id: null });
+          if (id) confirmarDelete(id);
+        }}
+        title="¿Eliminar registro?"
+        message="Esta acción no se puede deshacer. Los datos asociados se cancelan o quedan anulados para conservar la trazabilidad."
+        confirmText="Eliminar"
+        type="danger"
+      />
     </div>
   );
 }

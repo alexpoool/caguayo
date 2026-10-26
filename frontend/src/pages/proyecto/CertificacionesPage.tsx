@@ -187,8 +187,8 @@ export function CertificacionesPage() {
           await certificacionesService.deleteCertificacion(item.id_certificacion);
           toast.success('Certificación eliminada');
           refresh();
-        } catch {
-          toast.error('Error al eliminar');
+        } catch (error) {
+          toast.error(error instanceof Error ? error.message : 'Error al eliminar');
         }
         setConfirmModal(prev => ({ ...prev, isOpen: false }));
       },

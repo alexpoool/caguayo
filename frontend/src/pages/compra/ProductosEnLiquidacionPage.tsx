@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useSearchParams } from 'react-router-dom';
-import { Button, Input, Label, Card, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, FormModal } from '../../components/ui';
+import { Button, Input, Label, Card, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, FormModal, ConfirmModal } from '../../components/ui';
 import { productosEnLiquidacionService, productosService, monedaService } from '../../services/api';
 import type { ProductosEnLiquidacion, ProductosEnLiquidacionCreate } from '../../services/api';
 import type { Productos } from '../../types';
@@ -33,6 +33,7 @@ export function ProductosEnLiquidacionPage() {
   const [formData, setFormData] = useState<Partial<ProductosEnLiquidacionCreate>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSaving, setIsSaving] = useState(false);
+  const [eliminarModal, setEliminarModal] = useState<{ isOpen: boolean; id: number | null }>({ isOpen: false, id: null });
 
   // ── Infinite list ──────────────────────────────────────────────────────────
 
@@ -126,12 +127,19 @@ export function ProductosEnLiquidacionPage() {
       toast.error('No se puede eliminar un producto ya liquidado');
       return;
     }
-    if (!confirm('¿Está seguro de eliminar este producto pendiente?')) return;
+    setEliminarModal({ isOpen: true, id });
+  };
+
+  const confirmarDelete = async () => {
+    if (!eliminarModal.id) return;
     try {
-      await productosEnLiquidacionService.deleteProducto(id);
+      await productosEnLiquidacionService.deleteProducto(eliminarModal.id);
       toast.success('Eliminado');
       refresh();
     } catch (error: any) { toast.error(error.message || 'Error'); }
+    finally {
+      setEliminarModal({ isOpen: false, id: null });
+    }
   };
 
   const resetForm = () => { setFormData({}); setEditingId(null); };
@@ -497,6 +505,17 @@ export function ProductosEnLiquidacionPage() {
         </div>,
         document.body
       )}
+
+      {/* Confirmación de eliminación */}
+      <ConfirmModal
+        isOpen={eliminarModal.isOpen}
+        onClose={() => setEliminarModal({ isOpen: false, id: null })}
+        onConfirm={confirmarDelete}
+        title="¿Eliminar producto?"
+        message="El producto dejará de estar en liquidación. Esta acción no se puede deshacer."
+        confirmText="Eliminar"
+        type="danger"
+      />
     </div>
   );
 }

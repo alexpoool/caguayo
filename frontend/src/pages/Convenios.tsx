@@ -207,7 +207,12 @@ export function ConveniosPage() {
       toast.success("Convenio eliminado");
       setConfirmModal((prev) => ({ ...prev, isOpen: false }));
     },
-    onError: () => toast.error("Error al eliminar convenio"),
+    onError: (error: unknown) => {
+      toast.error(
+        (error as Error)?.message || "Error al eliminar convenio"
+      );
+      setConfirmModal((prev) => ({ ...prev, isOpen: false }));
+    },
   });
 
   const resetForm = () => {
