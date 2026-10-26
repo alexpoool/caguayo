@@ -5,6 +5,10 @@ from sqlalchemy.exc import IntegrityError
 from src.core.exceptions import BusinessLogicError
 from src.database.connection import get_auth_session, get_session
 from src.utils.auth import verify_auth
+
+import logging
+
+logger = logging.getLogger(__name__)
 from src.services.servicio_service import (
     ServicioService,
     SolicitudServicioService,
@@ -133,6 +137,7 @@ async def delete_servicio(
         )
     except Exception:
         await db.rollback()
+        logger.error("Error interno al eliminar", exc_info=True)
         raise HTTPException(status_code=500, detail="Error interno del servidor")
 
 
@@ -240,6 +245,7 @@ async def delete_solicitud(
         )
     except Exception:
         await db.rollback()
+        logger.error("Error interno al eliminar", exc_info=True)
         raise HTTPException(status_code=500, detail="Error interno del servidor")
 
 
@@ -310,6 +316,7 @@ async def delete_etapa(
         )
     except Exception:
         await db.rollback()
+        logger.error("Error interno al eliminar", exc_info=True)
         raise HTTPException(status_code=500, detail="Error interno del servidor")
 
 
@@ -365,6 +372,7 @@ async def delete_tarea_etapa(
         )
     except Exception:
         await db.rollback()
+        logger.error("Error interno al eliminar", exc_info=True)
         raise HTTPException(status_code=500, detail="Error interno del servidor")
 
 
@@ -411,6 +419,7 @@ async def delete_persona_etapa(
         )
     except Exception:
         await db.rollback()
+        logger.error("Error interno al eliminar", exc_info=True)
         raise HTTPException(status_code=500, detail="Error interno del servidor")
 
 
@@ -667,6 +676,7 @@ async def delete_pago_factura(
         )
     except Exception:
         await db.rollback()
+        logger.error("Error interno al eliminar", exc_info=True)
         raise HTTPException(status_code=500, detail="Error interno del servidor")
 
 
@@ -832,6 +842,7 @@ async def delete_liquidacion(
         )
     except Exception:
         await db.rollback()
+        logger.error("Error interno al eliminar", exc_info=True)
         raise HTTPException(status_code=500, detail="Error interno del servidor")
 
 
@@ -910,4 +921,5 @@ async def delete_certificacion(
         )
     except Exception:
         await db.rollback()
+        logger.error("Error interno al eliminar", exc_info=True)
         raise HTTPException(status_code=500, detail="Error interno del servidor")

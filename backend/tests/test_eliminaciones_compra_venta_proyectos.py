@@ -303,6 +303,43 @@ def _crear_etapa_de_prueba() -> tuple[int, int]:
 
 
 @pytest.mark.usefixtures("db_session")
+def test_etapa_con_personas_se_elimina_con_cascada(client, headers):
+    """Bug histórico: borrar etapa con realizaciones causaba el assert de
+    ORM 'blank-out primary key' (persona_etapa tiene PK compuesta con el FK)
+    y la ruta devolvía 500. Ahora el CASCADE lo hace la BD (passive_deletes
+    'all') y la etapa con sus personas/tareas/certificaciones se elimina."""
+    id_solicitud, id_etapa = _crear_etapa_de_prueba()
+    try:
+        _sql(
+            "INSERT INTO persona_etapa (id_etapa, id_persona, cobro,"
+            " id_moneda, liquidada, por_cobrar)"
+            " VALUES (:id_etapa, 1, 50, 1, false, 50)",
+            {"id_etapa": id_etapa},
+        )
+        _sql(
+            "INSERT INTO tareas_etapa (id_etapa, cantidad, precio_ajustado,"
+            " facturada) VALUES (:id_etapa, 2, 10, false)",
+            {"id_etapa": id_etapa},
+        )
+        r = client.delete(f"/api/v1/etapas/{id_etapa}", headers=headers)
+        assert r.status_code == 204, r.text
+        assert _scalar(
+            "SELECT COUNT(*) FROM persona_etapa WHERE id_etapa = :id",
+            {"id": id_etapa}) == 0
+        assert _scalar(
+            "SELECT COUNT(*) FROM tareas_etapa WHERE id_etapa = :id",
+            {"id": id_etapa}) == 0
+        assert _scalar(
+            "SELECT COUNT(*) FROM etapas WHERE id_etapa = :id",
+            {"id": id_etapa}) == 0
+    finally:
+        _sql("DELETE FROM etapas WHERE id_solicitud_servicio = :id",
+             {"id": id_solicitud})
+        _sql("DELETE FROM solicitud_servicio WHERE id_solicitud_servicio = :id",
+             {"id": id_solicitud})
+
+
+@pytest.mark.usefixtures("db_session")
 def test_etapa_con_factura_activa_no_se_elimina(client, headers):
     id_solicitud, id_etapa = _crear_etapa_de_prueba()
     try:

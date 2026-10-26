@@ -55,7 +55,8 @@ class SolicitudServicio(SQLModel, table=True):
     motivo_revision: Optional[str] = None
 
     etapas: List["Etapa"] = Relationship(
-        back_populates="solicitud", sa_relationship_kwargs={"lazy": "selectin"}
+        back_populates="solicitud",
+        sa_relationship_kwargs={"lazy": "selectin", "passive_deletes": "all"},
     )
 
 
@@ -83,18 +84,21 @@ class Etapa(SQLModel, table=True):
 
     solicitud: "SolicitudServicio" = Relationship(back_populates="etapas")
     tareas: List["TareaEtapa"] = Relationship(
-        back_populates="etapa", sa_relationship_kwargs={"lazy": "selectin"}
+        back_populates="etapa",
+        sa_relationship_kwargs={"lazy": "selectin", "passive_deletes": "all"},
     )
     personas: List["PersonaEtapa"] = Relationship(
-        back_populates="etapa", sa_relationship_kwargs={"lazy": "selectin"}
+        back_populates="etapa",
+        sa_relationship_kwargs={"lazy": "selectin", "passive_deletes": "all"},
+    )
+    certificaciones: List["Certificacion"] = Relationship(
+        back_populates="etapa",
+        sa_relationship_kwargs={"lazy": "selectin", "passive_deletes": "all"},
     )
     facturas: List["FacturaServicio"] = Relationship(
         back_populates="etapa", sa_relationship_kwargs={"lazy": "selectin"}
     )
     ofertas: List["Oferta"] = Relationship(
-        back_populates="etapa", sa_relationship_kwargs={"lazy": "selectin"}
-    )
-    certificaciones: List["Certificacion"] = Relationship(
         back_populates="etapa", sa_relationship_kwargs={"lazy": "selectin"}
     )
 
@@ -160,7 +164,9 @@ class PersonaEtapa(SQLModel, table=True):
     asignada_por_migracion: bool = Field(default=False)
     motivo_asignacion: Optional[str] = None
 
-    etapa: "Etapa" = Relationship(back_populates="personas")
+    etapa: "Etapa" = Relationship(
+        back_populates="personas", sa_relationship_kwargs={"passive_deletes": True}
+    )
 
 
 class FacturaServicio(SQLModel, table=True):
