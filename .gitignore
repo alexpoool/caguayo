@@ -65,3 +65,7 @@ etl/dumps/*
 # descuido, no de que lo tenga en serio. Descifrarlo:
 #   gpg --symmetric --decrypt comercial.sql.gpg > comercial.sql
 !etl/dumps/*.gpg
+
+# Backups automáticos de BDs de dependencias creados desde el panel
+# (Respaldos) o por el job programado: contienen datos, nunca se versionan.
+.respaldos/automaticos/*

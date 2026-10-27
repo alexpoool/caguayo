@@ -364,6 +364,16 @@ from .rrhh_pago_resultado_dto import (
     RrhhPagoResultadoCandidato,
     RrhhPagoResultadoPreview,
 )
+from .backup_dto import (
+    BackupInfo,
+    BackupResumenStats,
+    BaseDatoPrevia,
+    BackupJobStep,
+    BackupJob,
+    BackupListado,
+    BackupRestaurarRequest,
+    BackupJobIniciado,
+)
 
 
 __all__ = [
@@ -662,6 +672,14 @@ __all__ = [
     "RrhhPagoResultadoListado",
     "RrhhPagoResultadoCandidato",
     "RrhhPagoResultadoPreview",
+    "BackupInfo",
+    "BackupResumenStats",
+    "BaseDatoPrevia",
+    "BackupJobStep",
+    "BackupJob",
+    "BackupListado",
+    "BackupRestaurarRequest",
+    "BackupJobIniciado",
 ]
 VentaRead.model_rebuild(
     _types_namespace={

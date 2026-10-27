@@ -17,6 +17,7 @@ import type {
 import type { Cuenta, CuentaCreate, CuentaUpdate, CuentaDependencia, CuentaDependenciaCreate, CuentaDependenciaUpdate } from '../types/cuenta';
 import type { Grupo, GrupoCreate, GrupoUpdate, Funcionalidad, Usuario, UsuarioCreate, UsuarioUpdate } from '../types/usuario';
 import type { TipoDependencia, TipoDependenciaCreate, TipoDependenciaUpdate, Dependencia, DependenciaConCuentasCreate, DependenciaUpdate, ConexionDatabase } from '../types/dependencia';
+import type { BackupInfo, BackupListado, BackupJob, BackupJobIniciado } from '../types/backup';
 import type { Provincia, Municipio } from '../types/ubicacion';
 import type { Moneda } from '../types/moneda';
 
@@ -247,6 +248,31 @@ export const dependenciasService = {
 
   deleteCuentaDependencia: async (id: number): Promise<void> => {
     await apiClient.delete(`/dependencias/cuentas/${id}`);
+  },
+};
+
+// Backups y restauración de la BD de cada dependencia (funcionalidad 'backups').
+// El dump y el restore corren como jobs en background en la API; el frontend
+// obtiene un job_id y hace polling de `getJob` hasta que termina.
+export const backupsService = {
+  listar: async (idDependencia: number): Promise<BackupListado> => {
+    return await apiClient.get(`/backups/dependencias/${idDependencia}/listar`);
+  },
+
+  crear: async (idDependencia: number): Promise<BackupJobIniciado> => {
+    return await apiClient.post(`/backups/dependencias/${idDependencia}/crear`, {});
+  },
+
+  restaurar: async (idDependencia: number, archivo: string): Promise<BackupJobIniciado> => {
+    return await apiClient.post(`/backups/dependencias/${idDependencia}/restaurar`, { archivo });
+  },
+
+  getJob: async (jobId: string): Promise<BackupJob> => {
+    return await apiClient.get(`/backups/jobs/${jobId}`);
+  },
+
+  eliminar: async (archivo: string): Promise<void> => {
+    await apiClient.delete(`/backups/${encodeURIComponent(archivo)}`);
   },
 };
 

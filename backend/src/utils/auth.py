@@ -8,7 +8,11 @@ from src.database.connection import (
     _current_db,
     _get_engine_for_db,
 )
-from src.services.auth_service import decode_token, get_current_user
+from src.services.auth_service import (
+    decode_token,
+    get_current_user,
+    get_funcionalidades_by_token,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -120,3 +124,34 @@ async def verify_auth(
         "nombre": usuario.nombre,
         "denominacion": usuario.dependencia.denominacion if usuario.dependencia else None,
     }
+
+
+def require_funcionalidad(nombre_funcionalidad: str):
+    """Fábrica de dependency que exige autenticación + una funcionalidad.
+
+    Además del 401 de verify_auth, devuelve 403 si el grupo del usuario no
+    tiene la funcionalidad pedida (p. ej. 'backups').
+
+    Uso:
+        @router.get(...)
+        def endpoint(
+            usuario: dict = Depends(require_funcionalidad("backups")),
+            ...
+        ):
+    """
+    async def _dependency(
+        authorization: Optional[str] = Header(None),
+        db: AsyncSession = Depends(get_session),
+    ) -> dict:
+        usuario = await verify_auth(authorization, db)
+        token = authorization.replace("Bearer ", "")  # verify_auth garantiza formato
+        funcionalidades = await get_funcionalidades_by_token(db, token)
+        nombres = {f.nombre for f in funcionalidades}
+        if nombre_funcionalidad not in nombres:
+            raise HTTPException(
+                status_code=403,
+                detail=f"No autorizado: se requiere la funcionalidad '{nombre_funcionalidad}'",
+            )
+        return usuario
+
+    return _dependency

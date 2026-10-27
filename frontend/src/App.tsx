@@ -57,6 +57,7 @@ import { UsuariosPage } from './pages/Usuarios';
 import { UsuariosCredencialesPage } from './pages/UsuariosCredenciales';
 import { GruposPage } from './pages/Grupos';
 import { DependenciasPage } from './pages/Dependencias';
+import { RespaldosDependenciaPage } from './pages/RespaldosDependencia';
 import { CuentasPage } from './pages/Cuentas';
 import { CuentasClientePage } from './pages/CuentasCliente';
 import { InventarioHome } from './pages/home/InventarioHome';
@@ -1509,6 +1510,14 @@ function App() {
                   element={
                     <ProtectedRoute moduloActivo={moduloActivo} currentPath="/dependencias">
                       <DependenciasPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/dependencias/respaldos/:idDependencia"
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/dependencias/respaldos">
+                      <RespaldosDependenciaPage />
                     </ProtectedRoute>
                   }
                 />
