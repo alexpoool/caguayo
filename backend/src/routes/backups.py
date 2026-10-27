@@ -2,8 +2,10 @@
 
 Una base de datos atiende N dependencias: por eso el anclaje del módulo es la
 BD (todas las BDs no-template del servidor, igual que el router /conexiones),
-no la dependencia. Todos los endpoints exigen autenticación + la
-funcionalidad 'backups' del grupo del usuario.
+no la dependencia. Los endpoints de acción exigen autenticación + la
+funcionalidad 'backups' del grupo del usuario; el polling del estado de jobs
+sólo valida el token (sin sesión de BD: una conexión a la BD en swap
+bloquearía el RENAME del restore).
 
 Los archivos se resuelven SIEMPRE dentro de BACKUP_DIR con whitelist estricta,
 y las BDs se operan sólo si existen en el servidor. El trabajo pesado (dump,
@@ -28,7 +30,7 @@ from src.services.backup_service import (
     listar_bases_datos,
     validar_archivo_backup,
 )
-from src.utils.auth import require_funcionalidad, verify_auth
+from src.utils.auth import require_funcionalidad, verify_auth, verify_auth_token_only
 
 router = APIRouter(prefix="/backups", tags=["backups"], redirect_slashes=False)
 usuario_autorizado = require_funcionalidad("backups")
@@ -136,9 +138,17 @@ async def restaurar_backup_base_datos(
 @router.get("/jobs/{job_id}", response_model=BackupJob)
 async def obtener_estado_job(
     job_id: str,
-    usuario: dict = Depends(usuario_autorizado),
+    usuario: dict = Depends(verify_auth_token_only),
 ):
-    """Polling del estado de un job de backup/restauración."""
+    """Polling del estado de un job de backup/restauración.
+
+    IMPORTANTE: NO abre sesión contra la BD tenant (dependencia
+    verify_auth_token_only). El navegador sondea este endpoint cada ~2 s
+    mientras corre un restore, y una sesión a la BD en swap bloquearía el
+    RENAME: cada poll re-abriría la conexión que el job acaba de cortar.
+    El job_id es un uuid opaco no adivinable; las acciones (crear/restaurar/
+    eliminar/listar) sí exigen la funcionalidad 'backups' con sesión.
+    """
     job = backup_job_manager.obtener(job_id)
     if not job:
         raise HTTPException(status_code=404, detail="Job no encontrado o expirado")

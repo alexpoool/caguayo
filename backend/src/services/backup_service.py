@@ -25,6 +25,7 @@ import re
 import subprocess
 import sys
 import threading
+import time
 import uuid
 from datetime import datetime
 from pathlib import Path
@@ -65,6 +66,26 @@ ALEMBIC_CFG_PATH = os.path.join(
     os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
     "alembic.ini",
 )
+
+# Reintentos del swap de BDs: los clientes (pool del backend, polling del
+# navegador) pueden re-crear una conexión en el lapso entre pg_terminate y
+# el ALTER; el rename exigiría también esperar a esas sesiones nuevas.
+INTENTOS_SWAP = 3
+ESPERA_SWAP_SEGUNDOS = 2.0
+
+
+def _bd_admin() -> str:
+    """BD donde corren las operaciones administrativas (pg_database, ALTER,
+    DROP, pg_terminate_backend).
+
+    NUNCA puede ser la BD objetivo del swap: si ADMIN_DB_NAME coincide con
+    la BD a renomear (p. ej. la central caguayo_sa), la sesión admin misma
+    retiene el lock y `ALTER DATABASE ... RENAME` espera eternamente
+    ("colgado en swap"). PostgreSQL sólo exige que la sesión que altera esté
+    conectada a OTRA BD; usamos `postgres`, la BD de sistema, que siempre
+    existe (override opcional ADMIN_CONN_DB).
+    """
+    return os.getenv("ADMIN_CONN_DB", "postgres")
 
 
 def _revision_alembic_bd(base_datos: str):
@@ -339,7 +360,7 @@ def listar_bases_datos() -> List[dict]:
                 info["mas_reciente"] = fecha_iso
 
     bases: List[dict] = []
-    with get_db_connection(os.getenv("ADMIN_DB_NAME", "postgres")) as conn:
+    with get_db_connection(_bd_admin()) as conn:
         cur = conn.cursor()
         cur.execute(
             "SELECT datname FROM pg_database "
@@ -374,7 +395,7 @@ def existe_bd_servidor(base_datos: str) -> bool:
     servidor — nadie puede pedir CREATE/DROP/RENAME de una BD arbitraria.
     """
     validar_nombre_bd(base_datos)
-    with get_db_connection(os.getenv("ADMIN_DB_NAME", "postgres")) as conn:
+    with get_db_connection(_bd_admin()) as conn:
         cur = conn.cursor()
         cur.execute(
             "SELECT 1 FROM pg_database WHERE datname = %s AND datistemplate = false",
@@ -436,7 +457,7 @@ def listar_backups(base_datos: str, verificacion_detallada: bool = False) -> dic
     # BDs _prev_*: copias de rollback que deja cada restore
     previas: List[dict] = []
     try:
-        with get_db_connection(os.getenv("ADMIN_DB_NAME", "postgres")) as conn:
+        with get_db_connection(_bd_admin()) as conn:
             cur = conn.cursor()
             cur.execute("SELECT datname FROM pg_database")
             nombres = [row[0] for row in cur.fetchall()]
@@ -716,13 +737,11 @@ class BackupJobManager:
 
             # ---- 4. Swap: la BD activa queda como _prev_ (rollback manual) ----
             self._paso(job, "swap", "en_curso")
-            self._terminar_conexiones(bd)
             # Se eliminan las copias de rollback anteriores de esta BD: queda
             # una única copia genérica _prev_ (la del restore que acaba de entrar).
             for antigua in self._bds_previas_de(bd):
                 self._drop_bd_si_existe(antigua)
-            self._alter_database(f"ALTER DATABASE {bd} RENAME TO {previa}")
-            self._alter_database(f"ALTER DATABASE {tmp} RENAME TO {bd}")
+            self._swap_con_reintentos(bd, previa, tmp)
             self._paso(
                 job,
                 "swap",
@@ -806,6 +825,14 @@ class BackupJobManager:
                 self._drop_bd_si_existe(tmp)
             except Exception:
                 pass
+            try:  # el terminate del swap pudo dejar el pool con sesiones muertas
+                import asyncio
+
+                from src.database.connection import reset_engine
+
+                asyncio.run(reset_engine(bd))
+            except Exception:
+                pass
 
     # ---------------- helpers de BD administrativa ----------------
 
@@ -835,7 +862,7 @@ class BackupJobManager:
 
     def _crear_bd_vacia(self, nombre: str) -> None:
         validar_nombre_bd(nombre)
-        with get_db_connection(os.getenv("ADMIN_DB_NAME", "postgres")) as conn:
+        with get_db_connection(_bd_admin()) as conn:
             conn.autocommit = True
             cur = conn.cursor()
             cur.execute(f"CREATE DATABASE {nombre} WITH ENCODING 'UTF8' TEMPLATE template0")
@@ -843,22 +870,60 @@ class BackupJobManager:
 
     def _drop_bd_si_existe(self, nombre: str) -> None:
         validar_nombre_bd(nombre)
-        with get_db_connection(os.getenv("ADMIN_DB_NAME", "postgres")) as conn:
+        with get_db_connection(_bd_admin()) as conn:
             conn.autocommit = True
             cur = conn.cursor()
             cur.execute(f"DROP DATABASE IF EXISTS {nombre}")
             cur.close()
 
-    def _alter_database(self, sql: str) -> None:
-        with get_db_connection(os.getenv("ADMIN_DB_NAME", "postgres")) as conn:
+    def _alter_database(self, sql: str, lock_timeout: int = 10) -> None:
+        with get_db_connection(_bd_admin()) as conn:
             conn.autocommit = True
             cur = conn.cursor()
+            # Con lock_timeout el ALTER ABORTA si alguna sesión retiene el
+            # lock (en vez de esperar eternamente y colgar el job, como ocurrió
+            # en dev con el pool del backend); el reintento del swap mata de
+            # nuevo las sesiones y lo vuelve a intentar.
+            cur.execute("SET lock_timeout = %s", (f"{lock_timeout}s",))
             cur.execute(sql)
             cur.close()
 
+    def _swap_con_reintentos(self, bd: str, previa: str, tmp: str) -> None:
+        """RENAME de la BD restaurada sobre la activa, con reintentos.
+
+        PostgreSQL sólo permite renombrar una BD sin conexiones activas. Cada
+        intento corta las sesiones existentes y aplica los dos ALTERDatabase;
+        si un cliente (pool del backend, polling del panel) re-creó una
+        conexión en el lapso, se reintenta: matar de nuevo + esperar un poco.
+        Sin reintentos cualquiera de esas carreras deja el job colgado
+        eternamente esperando el lock del ALTER.
+        """
+        ultimo_error: Optional[str] = None
+        for intento in range(1, INTENTOS_SWAP + 1):
+            try:
+                if intento > 1:
+                    logger.info(
+                        "Swap de %s: intento %d/%d tras conexiones nuevas",
+                        bd, intento, INTENTOS_SWAP,
+                    )
+                self._terminar_conexiones(bd)
+                self._alter_database(f"ALTER DATABASE {bd} RENAME TO {previa}")
+                self._alter_database(f"ALTER DATABASE {tmp} RENAME TO {bd}")
+                return
+            except psycopg2.Error as e:
+                # Misma BD de la sesión admin: fallaría (y no colgaría) al
+                # instante; con la conexión apuntando a otra BD sólo quedan
+                # bloqueos ajenos → reintentar es lo correcto.
+                ultimo_error = str(e).strip().splitlines()[0] if str(e).strip() else str(e)
+                time.sleep(ESPERA_SWAP_SEGUNDOS)
+        raise RuntimeError(
+            f"No se pudo completar el swap de '{bd}' tras {INTENTOS_SWAP} intentos: "
+            f"la BD seguía teniendo conexiones activas. Último error: {ultimo_error}"
+        )
+
     def _bds_previas_de(self, bd: str) -> List[str]:
         patron = f"{bd}{PREFIJO_PREVIA}"
-        with get_db_connection(os.getenv("ADMIN_DB_NAME", "postgres")) as conn:
+        with get_db_connection(_bd_admin()) as conn:
             cur = conn.cursor()
             cur.execute("SELECT datname FROM pg_database")
             nombres = [row[0] for row in cur.fetchall()]
@@ -867,7 +932,7 @@ class BackupJobManager:
 
     def _terminar_conexiones(self, bd: str) -> None:
         """Corta las conexiones activas a la BD activa para que el RENAME no bloquee."""
-        with get_db_connection(os.getenv("ADMIN_DB_NAME", "postgres")) as conn:
+        with get_db_connection(_bd_admin()) as conn:
             conn.autocommit = True
             cur = conn.cursor()
             cur.execute(
