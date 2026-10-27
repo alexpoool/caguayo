@@ -759,7 +759,7 @@ function TablaMovimientos({
         title={`Eliminar ${cfg.etiqueta.toLowerCase()}`}
         message={
           aEliminar
-            ? `¿Seguro que quieres eliminar ${aEliminar.tipo_nombre ?? 'este movimiento'} de ${aEliminar.empleado_nombre ?? 'este empleado'}? No se podrá hacer si ya se aplicó a una nómina.`
+            ? `¿Seguro que quieres eliminar ${aEliminar.tipo_nombre ?? 'este movimiento'} de ${aEliminar.empleado_nombre ?? 'este empleado'}? Si ya está incluida en una nómina confirmada, no se podrá: verás la nómina que hay que anular primero.`
             : ''
         }
         type="danger"

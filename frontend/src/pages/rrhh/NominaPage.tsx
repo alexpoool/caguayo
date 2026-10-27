@@ -261,8 +261,12 @@ function ListaNominas({ onNueva }: { onNueva: () => void }) {
 
   const eliminarMutation = useMutation({
     mutationFn: (id: number) => rrhhService.eliminarNomina(id),
-    onSuccess: () => {
-      toast.success('Nómina eliminada');
+    onSuccess: (res: { accion?: string }) => {
+      toast.success(
+        res?.accion === 'anulada'
+          ? 'Nómina anulada (se conservó el detalle y los pagos)'
+          : 'Nómina eliminada'
+      );
       invalidate();
       setAEliminar(null);
     },
@@ -551,7 +555,7 @@ function ListaNominas({ onNueva }: { onNueva: () => void }) {
         message={
           aEliminar
             ? aEliminar.estado === 'nomina'
-              ? `¿Seguro que quieres eliminar la nómina «${aEliminar.descripcion}»? También se borrarán los pagos de salario registrados por empleado. Esta acción no se puede deshacer.`
+              ? `¿Seguro que quieres eliminar la nómina «${aEliminar.descripcion}»? Está confirmada, así que quedará ANULADA: conservará el detalle y los pagos ya registrados y saldrá del listado.`
               : `¿Seguro que quieres eliminar la nómina «${aEliminar.descripcion}»? Esta acción no se puede deshacer.`
             : ''
         }

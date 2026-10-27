@@ -30,6 +30,7 @@ import {
   Input,
   Label,
   Modal,
+  ConfirmModal,
 } from '../../components/ui';
 
 /** Promedio ponderado 0–5 con dos decimales; «—» si todavía no hay puntuación. */
@@ -65,6 +66,11 @@ export function EvaluacionDetallePage() {
 
   // Feedback sutil de «guardado» por fila: check breve junto a la fila.
   const [filaGuardada, setFilaGuardada] = useState<number | null>(null);
+  // Quitar un objetivo de la evaluación pide confirmación (delete físico).
+  const [filaAQuitar, setFilaAQuitar] = useState<{
+    filaId: number;
+    nombre: string;
+  } | null>(null);
   const guardadoTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(
     () => () => {
@@ -159,6 +165,7 @@ export function EvaluacionDetallePage() {
     onSuccess: () => {
       toast.success('Objetivo quitado de la evaluación');
       invalidate();
+      setFilaAQuitar(null);
     },
     onError: (err: any) => toast.error(err?.message || 'No se pudo quitar el objetivo'),
   });
@@ -375,9 +382,11 @@ export function EvaluacionDetallePage() {
                     onSeleccionar={() =>
                       seleccionarMutation.mutate([obj.id_objetivo])
                     }
-                    onQuitar={() =>
-                      obj.fila_id !== null && quitarMutation.mutate(obj.fila_id)
-                    }
+                    onQuitar={() => {
+                      if (obj.fila_id !== null) {
+                        setFilaAQuitar({ filaId: obj.fila_id, nombre: obj.nombre });
+                      }
+                    }}
                     onPuntuar={(resultado) =>
                       obj.fila_id !== null &&
                       puntuarMutation.mutate({
@@ -580,6 +589,22 @@ export function EvaluacionDetallePage() {
           </div>
         </form>
       </Modal>
+
+      <ConfirmModal
+        isOpen={filaAQuitar !== null}
+        title="Quitar objetivo"
+        message={
+          filaAQuitar
+            ? `¿Quitar el objetivo «${filaAQuitar.nombre}» de la evaluación? Se recalculará el promedio.`
+            : ''
+        }
+        confirmText="Quitar"
+        type="danger"
+        onConfirm={() =>
+          filaAQuitar && quitarMutation.mutate(filaAQuitar.filaId)
+        }
+        onClose={() => setFilaAQuitar(null)}
+      />
     </div>
   );
 }
