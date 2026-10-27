@@ -23,6 +23,7 @@ import logging
 import os
 import re
 import subprocess
+import sys
 import threading
 import uuid
 from datetime import datetime
@@ -57,6 +58,27 @@ RE_FECHA = re.compile(r"^(.*?)_(\d{8})$")
 
 PREFIJO_RESTORE_TMP = "_restore_tmp_"
 PREFIJO_PREVIA = "_prev_"
+
+# alembic.ini del backend: sirve para migrar la BD restaurada hasta head si el
+# dump era más viejo que el código (mismo fichero que usa DatabaseService).
+ALEMBIC_CFG_PATH = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
+    "alembic.ini",
+)
+
+
+def _revision_alembic_bd(base_datos: str):
+    """Lee la revisión actual de la tabla alembic_version de una BD (o None)."""
+    validar_nombre_bd(base_datos)
+    try:
+        with get_db_connection(base_datos) as conn:
+            cur = conn.cursor()
+            cur.execute("SELECT version_num FROM alembic_version")
+            revision = cur.fetchone()[0]
+            cur.close()
+        return revision
+    except psycopg2.Error:
+        return None
 
 
 # ---------------------------------------------------------------------------
@@ -708,7 +730,45 @@ class BackupJobManager:
                 f"BD activa anterior conservada como '{previa}' para rollback manual",
             )
 
-            # ---- 5. Liberar el pool de conexiones cacheado de esa BD ----
+            # ---- 5. Migrar la BD restaurada hasta head si el dump era viejo ----
+            # El dump trajo su propia alembic_version: si el código ya está en
+            # una revisión más nueva, la BD restaurada quedó VIEJA. Correr
+            # alembic upgrade head la deja consistente con el backend (y si ya
+            # está en head, no hace nada).
+            revision_antes = _revision_alembic_bd(bd)
+            self._paso(job, "alembic_upgrade", "en_curso")
+            if revision_antes is None:
+                self._paso(
+                    job,
+                    "alembic_upgrade",
+                    "advertencia",
+                    "El dump no trae alembic_version: alembic NO se corrió "
+                    "(aveces corresponde en BDs fuera del ciclo de migraciones)",
+                )
+            else:
+                codigo_alembic, salida_alembic = self._alembic_upgrade(bd)
+                if codigo_alembic == 0:
+                    revision_final = _revision_alembic_bd(bd)
+                    if revision_final == revision_antes:
+                        self._paso(
+                            job, "alembic_upgrade", "ok",
+                            f"Ya estaba en head ({revision_antes})",
+                        )
+                    else:
+                        self._paso(
+                            job, "alembic_upgrade", "ok",
+                            f"Esquema actualizado: {revision_antes[:12]}… → {revision_final[:12]}…",
+                        )
+                else:
+                    # El restore en sí quedó COMPLETADO: la falla es de
+                    # migración, y se reporta como advertencia accionable
+                    # (típico: dump más nuevo que el código desplegado).
+                    self._paso(
+                        job, "alembic_upgrade", "advertencia",
+                        (salida_alembic or "alembic devolvió error").strip()[-300:],
+                    )
+
+            # ---- 6. Liberar el pool de conexiones cacheado de esa BD ----
             self._paso(job, "reset_pool", "en_curso")
             try:
                 import asyncio
@@ -748,6 +808,30 @@ class BackupJobManager:
                 pass
 
     # ---------------- helpers de BD administrativa ----------------
+
+    def _alembic_upgrade(self, base_datos: str) -> Tuple[int, str]:
+        """Ejecuta `alembic upgrade head` contra una BD concreta.
+
+        Patrón idéntico al `stamp head` que DatabaseService.crear_base_datos
+        usa al crear una BD de tenant: URL asyncpg con credenciales admin por
+        env var, alembic.ini del backend, subprocess aislado.
+        """
+        user = os.getenv("ADMIN_DB_USER", "postgres")
+        password = os.getenv("ADMIN_DB_PASSWORD", "")
+        host = os.getenv("ADMIN_DB_HOST", "localhost")
+        port = os.getenv("ADMIN_DB_PORT", "5432")
+        env = os.environ.copy()
+        env["DATABASE_URL"] = (
+            f"postgresql+asyncpg://{user}:{password}@{host}:{port}/{base_datos}"
+        )
+        proc = subprocess.run(
+            [sys.executable, "-m", "alembic", "-c", ALEMBIC_CFG_PATH, "upgrade", "head"],
+            capture_output=True,
+            text=True,
+            timeout=1800,
+            env=env,
+        )
+        return proc.returncode, proc.stdout + proc.stderr
 
     def _crear_bd_vacia(self, nombre: str) -> None:
         validar_nombre_bd(nombre)
