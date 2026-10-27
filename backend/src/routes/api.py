@@ -1,3 +1,4 @@
+
 from fastapi import APIRouter
 from .productos import router as productos_router
 from .dashboard import router as dashboard_router
@@ -42,6 +43,7 @@ from .servicios import (
     ofertas_router,
 )
 from .logger import router as logger_router
+from .backups import router as backups_router
 from .existencias import existencias_router
 from .ventas import router as ventas_router
 from .compras import router as compras_router
@@ -91,6 +93,7 @@ api_router.include_router(persona_liquidacion_router)
 api_router.include_router(certificaciones_router)
 api_router.include_router(ofertas_router)
 api_router.include_router(logger_router)
+api_router.include_router(backups_router)
 api_router.include_router(existencias_router)
 api_router.include_router(ventas_router)
 api_router.include_router(compras_router)

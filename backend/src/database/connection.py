@@ -58,6 +58,21 @@ def _get_engine_for_db(db_name: str) -> AsyncEngine:
     return _engines[db_name]
 
 
+async def reset_engine(db_name: str) -> None:
+    """Descarta el engine cacheado de una BD y lo recalcula al próximo uso.
+
+    Tras un restore con swap (la BD original se renombra a _prev_ y el restore
+    ocupa su nombre), las conexiones pooled del engine apuntan a la BD vieja.
+    Evitar esto deja la app leyendo datos pre-restore a través del pool.
+    """
+    engine_descartado = _engines.pop(db_name, None)
+    if engine_descartado is not None:
+        await engine_descartado.dispose()
+        if db_name == AUTH_DATABASE:
+            # La BD de autenticación vuelve a su engine por defecto.
+            _engines[db_name] = engine
+
+
 async def get_session() -> AsyncSession:
     """Get session for the user's selected database (from ContextVar)."""
     db_name = _current_db.get()

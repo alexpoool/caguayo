@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import { createPortal } from "react-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
@@ -30,6 +31,7 @@ import {
   CheckCircle2,
   Copy,
   Check,
+  DatabaseBackup,
   Hash,
   Search,
 } from "lucide-react";
@@ -51,6 +53,7 @@ import {
   ConfirmModal,
 } from "../components/ui";
 import { dependenciasService } from "../services/administracion";
+import { useAuth } from "../context/AuthContext";
 import type { Dependencia, DependenciaCreate, DependenciaConCuentasCreate } from "../types/dependencia";
 
 interface ArbolDependenciaProps {
@@ -137,6 +140,9 @@ function ArbolDependencia({
 
 export function DependenciasPage() {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
+  const { hasFuncionalidad } = useAuth();
+  const mostrarAccesoRespaldos = hasFuncionalidad("backups");
   const [view, setView] = useState<"list" | "form">("list");
   const [editingDependencia, setEditingDependencia] =
     useState<Dependencia | null>(null);
@@ -1026,6 +1032,22 @@ export function DependenciasPage() {
                   <FileText className="h-4 w-4 mr-1" />
                   Detalles
                 </Button>
+                {mostrarAccesoRespaldos &&
+                  dependenciaSeleccionadaArbol.base_datos && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() =>
+                        navigate(
+                          `/dependencias/respaldos/${dependenciaSeleccionadaArbol.id_dependencia}`,
+                        )
+                      }
+                      className="text-slate-600 hover:text-slate-800 hover:bg-slate-100"
+                    >
+                      <DatabaseBackup className="h-4 w-4 mr-1" />
+                      Respaldos
+                    </Button>
+                  )}
               </div>
             )}
             <Table>
@@ -1090,6 +1112,19 @@ export function DependenciasPage() {
                         onClick={(e) => e.stopPropagation()}
                       >
                         <div className="flex justify-end gap-2">
+                          {mostrarAccesoRespaldos && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() =>
+                                navigate(`/dependencias/respaldos/${dep.id_dependencia}`)
+                              }
+                              className="text-slate-600"
+                              title="Respaldos y restauración de la BD de esta dependencia"
+                            >
+                              <DatabaseBackup className="h-4 w-4" />
+                            </Button>
+                          )}
                           <Button
                             variant="ghost"
                             size="sm"
