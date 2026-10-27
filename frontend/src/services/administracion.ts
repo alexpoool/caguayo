@@ -17,7 +17,7 @@ import type {
 import type { Cuenta, CuentaCreate, CuentaUpdate, CuentaDependencia, CuentaDependenciaCreate, CuentaDependenciaUpdate } from '../types/cuenta';
 import type { Grupo, GrupoCreate, GrupoUpdate, Funcionalidad, Usuario, UsuarioCreate, UsuarioUpdate } from '../types/usuario';
 import type { TipoDependencia, TipoDependenciaCreate, TipoDependenciaUpdate, Dependencia, DependenciaConCuentasCreate, DependenciaUpdate, ConexionDatabase } from '../types/dependencia';
-import type { BackupInfo, BackupListado, BackupJob, BackupJobIniciado } from '../types/backup';
+import type { BackupInfo, BackupListado, BackupJob, BackupJobIniciado, BaseDatoConBackups } from '../types/backup';
 import type { Provincia, Municipio } from '../types/ubicacion';
 import type { Moneda } from '../types/moneda';
 
@@ -251,20 +251,34 @@ export const dependenciasService = {
   },
 };
 
-// Backups y restauración de la BD de cada dependencia (funcionalidad 'backups').
-// El dump y el restore corren como jobs en background en la API; el frontend
-// obtiene un job_id y hace polling de `getJob` hasta que termina.
+// Backups y restauración por base de datos (funcionalidad 'backups').
+// Una BD atiende N dependencias: por eso el anclaje es la BD, no la
+// dependencia. El dump y el restore corren como jobs en background en la API;
+// el frontend obtiene un job_id y hace polling de `getJob` hasta que termina.
 export const backupsService = {
-  listar: async (idDependencia: number): Promise<BackupListado> => {
-    return await apiClient.get(`/backups/dependencias/${idDependencia}/listar`);
+  // BDs no-template del servidor (central incluida) con resumen de backups
+  getBasesDatos: async (): Promise<BaseDatoConBackups[]> => {
+    return await apiClient.get('/backups/bases-datos');
   },
 
-  crear: async (idDependencia: number): Promise<BackupJobIniciado> => {
-    return await apiClient.post(`/backups/dependencias/${idDependencia}/crear`, {});
+  listar: async (baseDatos: string): Promise<BackupListado> => {
+    return await apiClient.get(
+      `/backups/bases-datos/${encodeURIComponent(baseDatos)}/listar`,
+    );
   },
 
-  restaurar: async (idDependencia: number, archivo: string): Promise<BackupJobIniciado> => {
-    return await apiClient.post(`/backups/dependencias/${idDependencia}/restaurar`, { archivo });
+  crear: async (baseDatos: string): Promise<BackupJobIniciado> => {
+    return await apiClient.post(
+      `/backups/bases-datos/${encodeURIComponent(baseDatos)}/crear`,
+      {},
+    );
+  },
+
+  restaurar: async (baseDatos: string, archivo: string): Promise<BackupJobIniciado> => {
+    return await apiClient.post(
+      `/backups/bases-datos/${encodeURIComponent(baseDatos)}/restaurar`,
+      { archivo },
+    );
   },
 
   getJob: async (jobId: string): Promise<BackupJob> => {

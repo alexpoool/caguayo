@@ -35,7 +35,8 @@ import {
   ChevronDown,
   ChevronUp,
   ScrollText,
-  Library
+  Library,
+  DatabaseBackup
 } from 'lucide-react';
 
 import { LoginPage } from './pages/Login';
@@ -57,7 +58,8 @@ import { UsuariosPage } from './pages/Usuarios';
 import { UsuariosCredencialesPage } from './pages/UsuariosCredenciales';
 import { GruposPage } from './pages/Grupos';
 import { DependenciasPage } from './pages/Dependencias';
-import { RespaldosDependenciaPage } from './pages/RespaldosDependencia';
+import { RespaldosPage } from './pages/Respaldos';
+import { RespaldosBDPage } from './pages/RespaldosBD';
 import { CuentasPage } from './pages/Cuentas';
 import { CuentasClientePage } from './pages/CuentasCliente';
 import { InventarioHome } from './pages/home/InventarioHome';
@@ -131,7 +133,7 @@ const queryClient = new QueryClient({
 
 const rutasPorModulo: Record<Modulo, string[]> = {
   inventario: ['/inventario', '/movimientos', '/movimientos/pendientes', '/movimientos/ajuste', '/movimientos/seleccionar-recepcion', '/productos', '/dashboard', '/perfil'],
-  administracion: ['/administracion', '/configuracion', '/monedas', '/usuarios', '/usuarios-credenciales', '/grupos', '/dependencias', '/cuentas', '/perfil'],
+  administracion: ['/administracion', '/configuracion', '/monedas', '/usuarios', '/usuarios-credenciales', '/grupos', '/dependencias', '/cuentas', '/respaldos', '/perfil'],
   terceros: ['/terceros', '/clientes', '/ventas/contratos', '/ventas/suplementos', '/compra/clientes', '/compra/convenios', '/perfil'],
   venta: ['/venta', '/ventas', '/ventas/operaciones', '/ventas/facturas', '/ventas/efectivo', '/ventas/cuentas', '/perfil'],
   compra: ['/compra', '/compra/anexos', '/compra/liquidaciones', '/compra/productos-liquidacion', '/compra/cuentas', '/perfil'],
@@ -347,6 +349,7 @@ const ADMIN_SECCIONES: { id: string; label: string; items: AdminSeccionItem[] }[
     items: [
       { to: '/dependencias', label: 'Dependencias', icon: Building, func: 'dependencias' },
       { to: '/cuentas', label: 'Cuentas', icon: Wallet, func: 'cuentas' },
+      { to: '/respaldos', label: 'Backups', icon: DatabaseBackup, func: 'backups' },
       { to: '/configuracion/tipos-dependencia', label: 'Tipos de Dependencia', icon: Building, func: 'configuracion' },
       { to: '/configuracion/tipos-cuenta', label: 'Tipos de Cuenta', icon: Wallet, func: 'configuracion' },
     ],
@@ -1514,10 +1517,18 @@ function App() {
                   }
                 />
                 <Route
-                  path="/dependencias/respaldos/:idDependencia"
+                  path="/respaldos"
                   element={
-                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/dependencias/respaldos">
-                      <RespaldosDependenciaPage />
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/respaldos">
+                      <RespaldosPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/respaldos/:baseDatos"
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/respaldos">
+                      <RespaldosBDPage />
                     </ProtectedRoute>
                   }
                 />

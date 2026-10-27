@@ -286,6 +286,83 @@ def _escribir_stats(base_datos: str, ruta_dump: Path) -> dict:
 # Listado
 # ---------------------------------------------------------------------------
 
+def listar_bases_datos() -> List[dict]:
+    """Lista las BDs operables del servidor con resumen de sus dumps.
+
+    Devuelve TODAS las bases de datos no-template del servidor (excluyendo
+    'postgres', que es del sistema), incluida la central — el mismo criterio
+    que usa el router /conexiones. Para cada BD agrega cuántos dumps suyos hay
+    en BACKUP_DIR, el más reciente y el tamaño total, para pintar la tabla
+    del panel "Backups".
+    """
+    _asegurar_backup_dir()
+
+    # Resumen de dumps agrupado por BD origen
+    dumps_por_bd: dict = {}
+    if BACKUP_DIR.exists():
+        for ruta in BACKUP_DIR.glob("*.dump"):
+            bd_archivo = _base_de_nombre_archivo(ruta.name)
+            if not bd_archivo:
+                continue
+            fecha = _extraer_fecha_de_nombre(ruta.name)
+            fecha_iso = fecha.isoformat(timespec="seconds") if fecha else datetime.fromtimestamp(
+                ruta.stat().st_mtime
+            ).isoformat(timespec="seconds")
+            info = dumps_por_bd.setdefault(
+                bd_archivo, {"n_backups": 0, "mas_reciente": "", "tamano_total_bytes": 0}
+            )
+            info["n_backups"] += 1
+            info["tamano_total_bytes"] += ruta.stat().st_size
+            if fecha_iso > info["mas_reciente"]:
+                info["mas_reciente"] = fecha_iso
+
+    bases: List[dict] = []
+    with get_db_connection(os.getenv("ADMIN_DB_NAME", "postgres")) as conn:
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT datname FROM pg_database "
+            "WHERE datistemplate = false AND datname != 'postgres' "
+            "ORDER BY datname"
+        )
+        nombres = [row[0] for row in cur.fetchall()]
+        cur.close()
+
+    for nombre in nombres:
+        try:
+            validar_nombre_bd(nombre)
+        except ValueError:
+            continue  # BD con nombre no operable: no se lista
+        resumen = dumps_por_bd.get(nombre, {})
+        bases.append(
+            {
+                "nombre_database": nombre,
+                "es_central": nombre == os.environ.get("CENTRAL_DATABASE", ""),
+                "n_backups": resumen.get("n_backups", 0),
+                "backup_mas_reciente": resumen.get("mas_reciente") or None,
+                "tamano_total_bytes": resumen.get("tamano_total_bytes", 0),
+            }
+        )
+    return bases
+
+
+def existe_bd_servidor(base_datos: str) -> bool:
+    """Whitelist de BD: True sólo si la BD existe en el servidor (no-template).
+
+    Prohibe operar backups/restores sobre nombres de BD que no existan en el
+    servidor — nadie puede pedir CREATE/DROP/RENAME de una BD arbitraria.
+    """
+    validar_nombre_bd(base_datos)
+    with get_db_connection(os.getenv("ADMIN_DB_NAME", "postgres")) as conn:
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT 1 FROM pg_database WHERE datname = %s AND datistemplate = false",
+            (base_datos,),
+        )
+        existe = cur.fetchone() is not None
+        cur.close()
+    return existe
+
+
 def listar_backups(base_datos: str, verificacion_detallada: bool = False) -> dict:
     """Lista los dumps de una BD + las BDs `_prev_*` de rollback disponibles.
 
