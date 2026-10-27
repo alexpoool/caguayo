@@ -10,6 +10,7 @@ es obligatorio y no se puede editar.
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, Query
+from src.utils.auth import verify_auth
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from src.database.connection import get_session
@@ -23,7 +24,7 @@ from src.dto import (
 )
 from src.services.rrhh_empleado_service import rrhh_empleado_service
 
-rrhh_empleados_router = APIRouter(prefix="/rrhh/empleados", tags=["rrhh-empleados"])
+rrhh_empleados_router = APIRouter(prefix="/rrhh/empleados", tags=["rrhh-empleados"], dependencies=[Depends(verify_auth)])
 
 
 @rrhh_empleados_router.get("", response_model=List[RrhhEmpleadoListado])

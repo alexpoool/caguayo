@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy.exc import IntegrityError
 from src.routes import api_router
 from src.database.connection import set_current_db
 from src.middleware.logging import LoggingMiddleware
@@ -849,6 +850,24 @@ async def app_error_handler(request: Request, exc: AppError):
         f"AppError handled: type={type(exc).__name__}, status={status}, detail={exc.message}"
     )
     return JSONResponse(status_code=status, content={"detail": exc.message})
+
+
+@app.exception_handler(IntegrityError)
+async def integrity_error_handler(request: Request, exc: IntegrityError):
+    """FK violada (registro en uso) → 409 amable en toda la API.
+
+    Sustituye el 500 opaco por un mensaje claro; la transacción queda
+    abortada y get_session hace rollback al cerrar la sesión del request.
+    """
+    logging.getLogger(__name__).warning(
+        f"IntegrityError en {request.method} {request.url.path}: {str(exc.orig)[:300]}"
+    )
+    return JSONResponse(
+        status_code=409,
+        content={
+            "detail": "No se puede completar la operación: el registro está en uso por otros datos. Elimine o desactive primero los registros dependientes."
+        },
+    )
 
 
 if __name__ == "__main__":

@@ -8,6 +8,7 @@ periodo y el alta recibe solo los ids que el usuario dejó seleccionados.
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, Query, Response
+from src.utils.auth import verify_auth
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from src.database.connection import get_session
@@ -21,8 +22,8 @@ from src.services.rrhh_pago_resultado_pdf import generar_documento_pdf
 from src.services.rrhh_pago_resultado_service import rrhh_pago_resultado_service
 
 rrhh_pagos_resultado_router = APIRouter(
-    prefix="/rrhh/pagos-resultado", tags=["rrhh-pagos-resultado"]
-)
+    prefix="/rrhh/pagos-resultado", tags=["rrhh-pagos-resultado"], dependencies=[Depends(verify_auth)],
+    )
 
 
 @rrhh_pagos_resultado_router.get(

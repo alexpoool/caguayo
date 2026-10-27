@@ -3,6 +3,13 @@
 Cubre el endpoint raíz `GET /api/v1/rrhh/info` (único endpoint de la fase).
 """
 
+import pytest
+
+
+@pytest.fixture(autouse=True)
+def _auth_rrhh(client, auth_headers):
+    """Los endpoints RRHH llevan verify_auth: inyecto el header en el cliente."""
+    client.headers.update(auth_headers)
 
 def test_rrhh_info_ok(client):
     """El endpoint devuelve la info del módulo y sus 13 submódulos."""

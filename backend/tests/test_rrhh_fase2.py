@@ -4,6 +4,14 @@ Usan el patrón `client` de conftest.py (TestClient contra la BD real).
 Los tests crean y limpian sus propios registros para no dejar residuos.
 """
 
+import pytest
+
+
+@pytest.fixture(autouse=True)
+def _auth_rrhh(client, auth_headers):
+    """Los endpoints RRHH llevan verify_auth: inyecto el header en el cliente."""
+    client.headers.update(auth_headers)
+
 import uuid
 
 

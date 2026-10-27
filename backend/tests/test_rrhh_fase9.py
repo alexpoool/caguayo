@@ -11,6 +11,14 @@ sus propias entradas por `POST /api/v1/logs` con un token único y las
 borra al terminar (psycopg2 sobre la misma BD) para no dejar residuos.
 """
 
+import pytest
+
+
+@pytest.fixture(autouse=True)
+def _auth_rrhh(client, auth_headers):
+    """Los endpoints RRHH llevan verify_auth: inyecto el header en el cliente."""
+    client.headers.update(auth_headers)
+
 import os
 import uuid
 

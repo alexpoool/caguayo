@@ -100,6 +100,10 @@ class RrhhEvaluacion(SQLModel, table=True):
     )
     inicio_periodo: date
     fin_periodo: date
+    # Borrado lógico (`activa` / `anulada`): una evaluación que ya se usó en
+    # un pago por resultado se anula en vez de borrarse, para conservar la
+    # FK `pago_x_resultado_empleado.evaluacion_id` y el importe efectivo.
+    estado: str = Field(default="activa", max_length=20)
     # Promedio ponderado 0–5 de las filas de `evaluaciones_objetivos`
     # puntuadas (Σ estrellas×peso / Σ pesos); NULL sin puntuar.
     promedio_objetivos: Optional[Decimal] = Field(

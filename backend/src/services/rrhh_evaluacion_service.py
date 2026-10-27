@@ -60,6 +60,7 @@ from src.models import (
     RrhhDepartamento,
     RrhhTipoEvaluacion,
     RrhhPeriodoEvaluacion,
+    RrhhPagoResultadoEmpleado,
 )
 
 
@@ -99,7 +100,11 @@ async def recalcular_promedios_empleado(db: AsyncSession, empleado_id: int) -> N
     filas del N:M (p. ej. su baja, que las borra por `CASCADE`).
     """
     res = await db.exec(
-        select(RrhhEvaluacion).where(RrhhEvaluacion.empleado_id == empleado_id)
+        select(RrhhEvaluacion).where(
+            RrhhEvaluacion.empleado_id == empleado_id,
+            # Las anuladas quedan congeladas: no se recalculan.
+            RrhhEvaluacion.estado != "anulada",
+        )
     )
     for evaluacion in res.all():
         await _recalcular_promedio(db, evaluacion)
@@ -234,6 +239,18 @@ class RrhhEvaluacionService:
                 status_code=404, detail=f"{self.model_name} no encontrada"
             )
         return evaluacion
+
+    @staticmethod
+    def _exigir_activa(evaluacion: RrhhEvaluacion) -> None:
+        """Una evaluación anulada (ya cobrada en pagos) es de solo lectura."""
+        if evaluacion.estado == "anulada":
+            raise HTTPException(
+                status_code=409,
+                detail=(
+                    "La evaluación está anulada (usada en pagos por "
+                    "resultado); no se puede modificar"
+                ),
+            )
 
     async def _buscar_fila_o_404(
         self, db: AsyncSession, evaluacion: RrhhEvaluacion, fila_id: int
@@ -478,6 +495,8 @@ class RrhhEvaluacionService:
                 )
 
         statement = select(RrhhEvaluacion)
+        # Las anuladas (borrado lógico) salen del listado.
+        statement = statement.where(RrhhEvaluacion.estado != "anulada")
         if empleado_id is not None:
             statement = statement.where(RrhhEvaluacion.empleado_id == empleado_id)
         if tipo_evaluacion_id is not None:
@@ -573,6 +592,7 @@ class RrhhEvaluacionService:
         self, db: AsyncSession, id: int, obj_in: RrhhEvaluacionUpdate
     ) -> RrhhEvaluacionListado:
         evaluacion = await self._buscar_o_404(db, id)
+        self._exigir_activa(evaluacion)
         datos = obj_in.model_dump(exclude_unset=True)
         periodo_anterior = evaluacion.periodo_evaluacion_id
 
@@ -639,6 +659,33 @@ class RrhhEvaluacionService:
 
     async def eliminar(self, db: AsyncSession, id: int) -> dict:
         evaluacion = await self._buscar_o_404(db, id)
+
+        # Política de eliminaciones: si la evaluación ya se usó en un pago
+        # por resultado (la FK tiene CASCADE y borraria importes pagados), se
+        # ANULA en vez de borrarse: queda `estado='anulada'`, fuera de los
+        # listados, conservando la fila del lote y el dinero repartido.
+        usada = await db.exec(
+            select(RrhhPagoResultadoEmpleado.id_pago_x_resultado_empleado)
+            .where(RrhhPagoResultadoEmpleado.evaluacion_id == id)
+            .limit(1)
+        )
+        if usada.first() is not None:
+            if evaluacion.estado == "anulada":
+                return {
+                    "mensaje": "La evaluación ya estaba anulada",
+                    "id": id,
+                    "accion": "anulada",
+                }
+            evaluacion.estado = "anulada"
+            evaluacion.updated_at = datetime.now()
+            db.add(evaluacion)
+            await db.commit()
+            return {
+                "mensaje": "Evaluación anulada (ya se usó en pagos por resultado)",
+                "id": id,
+                "accion": "anulada",
+            }
+
         periodo_id = evaluacion.periodo_evaluacion_id
         await db.delete(evaluacion)  # las filas del N:M caen por CASCADE
         await db.commit()
@@ -668,6 +715,7 @@ class RrhhEvaluacionService:
         del periodo (400); repetir un objetivo ya seleccionado es 409.
         """
         evaluacion = await self._buscar_o_404(db, evaluacion_id)
+        self._exigir_activa(evaluacion)
 
         # Sin duplicados dentro del mismo payload (el orden se conserva).
         objetivo_ids = list(dict.fromkeys(obj_in.objetivo_ids))
@@ -747,6 +795,7 @@ class RrhhEvaluacionService:
         promedio ponderado de la evaluación.
         """
         evaluacion = await self._buscar_o_404(db, evaluacion_id)
+        self._exigir_activa(evaluacion)
         fila = await self._buscar_fila_o_404(db, evaluacion, fila_id)
 
         cambios = obj_in.model_dump(exclude_unset=True)
@@ -766,6 +815,7 @@ class RrhhEvaluacionService:
     ) -> dict:
         """Quita un objetivo de la selección y recalcula."""
         evaluacion = await self._buscar_o_404(db, evaluacion_id)
+        self._exigir_activa(evaluacion)
         fila = await self._buscar_fila_o_404(db, evaluacion, fila_id)
 
         await db.delete(fila)
@@ -785,7 +835,7 @@ class RrhhEvaluacionService:
         hasta: Optional[date] = None,
     ) -> RrhhEvaluacionReporte:
         """Promedios ponderados por empleado y globales."""
-        statement = select(RrhhEvaluacion)
+        statement = select(RrhhEvaluacion).where(RrhhEvaluacion.estado != "anulada")
         if empleado_id is not None:
             statement = statement.where(RrhhEvaluacion.empleado_id == empleado_id)
         if desde is not None:

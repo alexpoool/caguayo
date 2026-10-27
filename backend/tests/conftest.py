@@ -170,3 +170,51 @@ def pytest_sessionfinish(session, exitstatus):
     except Exception:
         # La limpieza no debe hacer fallar la sesión de tests.
         pass
+
+
+@pytest.fixture
+def auth_headers(client):
+    """Headers Authorization con token de admin para endpoints con verify_auth.
+
+    Reutiliza sesiones vigentes de `sesion` para evitar el UNIQUE del token
+    cuando dos logins del admin caen en el mismo segundo (mismo patrón que
+    test_eliminaciones_compra_venta_proyectos._login).
+    """
+    candidatos = [
+        r[0]
+        for r in _sql_sesion(
+            "SELECT token FROM sesion WHERE fecha_expiracion > now()"
+            " ORDER BY id_sesion DESC LIMIT 3"
+        )
+    ]
+    for token in candidatos:
+        probe = client.delete(
+            "/api/v1/etapas/999999999", headers={"Authorization": f"Bearer {token}"}
+        )
+        if probe.status_code != 401:
+            return {"Authorization": f"Bearer {token}"}
+
+    conexiones = client.get("/api/v1/conexiones").json()
+    nombre_db = conexiones[0]["nombre_database"]
+    r = client.post(
+        "/api/v1/auth/login",
+        json={"alias": "admin", "contrasenia": "admin123", "base_datos": nombre_db},
+    )
+    assert r.status_code == 200, r.text
+    return {"Authorization": f"Bearer {r.json()['token']}"}
+
+
+def _sql_sesion(sql: str) -> list:
+    """SELECT simple contra la BD de auth, fuera del loop del TestClient."""
+    import asyncio
+
+    from sqlalchemy import text
+
+    async def _go() -> list:
+        engine = create_async_engine(DATABASE_URL, poolclass=NullPool)
+        async with engine.connect() as conn:
+            rows = (await conn.execute(text(sql))).fetchall()
+        await engine.dispose()
+        return rows
+
+    return asyncio.run(_go())

@@ -126,7 +126,12 @@ class RrhhPagoResultadoService:
 
         res = await db.exec(
             select(RrhhEvaluacion)
-            .where(RrhhEvaluacion.periodo_evaluacion_id == periodo_id)
+            .where(
+                RrhhEvaluacion.periodo_evaluacion_id == periodo_id,
+                # Las evaluaciones anuladas (borrado lógico) no alimentan
+                # lotes nuevos ni la vista previa.
+                RrhhEvaluacion.estado != "anulada",
+            )
             .order_by(RrhhEvaluacion.fecha.desc(), RrhhEvaluacion.id.desc())
         )
         evaluaciones_por_empleado: Dict[int, RrhhEvaluacion] = {}

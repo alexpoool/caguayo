@@ -7,6 +7,14 @@ crea su propio empleado y usa una fecha futura (año 2099) para no colisionar
 con datos reales. Al final se limpia la marcación y el empleado.
 """
 
+import pytest
+
+
+@pytest.fixture(autouse=True)
+def _auth_rrhh(client, auth_headers):
+    """Los endpoints RRHH llevan verify_auth: inyecto el header en el cliente."""
+    client.headers.update(auth_headers)
+
 import uuid
 from datetime import time
 

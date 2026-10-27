@@ -9,10 +9,11 @@ archivo (`rrhh_empleados.py`, `rrhh_asistencia.py`, …) con el prefijo
 
 from typing import List
 
-from fastapi import APIRouter
+from fastapi import Depends, APIRouter
+from src.utils.auth import verify_auth
 from pydantic import BaseModel
 
-rrhh_router = APIRouter(prefix="/rrhh", tags=["rrhh"])
+rrhh_router = APIRouter(prefix="/rrhh", tags=["rrhh"], dependencies=[Depends(verify_auth)])
 
 
 class RrhhSubmodulo(BaseModel):

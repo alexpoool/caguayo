@@ -6,6 +6,14 @@ Cada test crea su propio empleado y sus propios tipos, y usa periodos en
 2098/2099 para no colisionar con datos reales. Al final limpia todo.
 """
 
+import pytest
+
+
+@pytest.fixture(autouse=True)
+def _auth_rrhh(client, auth_headers):
+    """Los endpoints RRHH llevan verify_auth: inyecto el header en el cliente."""
+    client.headers.update(auth_headers)
+
 import uuid
 from datetime import date
 from decimal import Decimal

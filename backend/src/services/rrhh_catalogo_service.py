@@ -238,7 +238,12 @@ class _TipoPagoService(RrhhCatalogoService):
         return [
             select(func.count())
             .select_from(RrhhNominaEmpleado)
-            .where(RrhhNominaEmpleado.metodo_id == id)
+            .where(RrhhNominaEmpleado.metodo_id == id),
+            # FK RESTRICT desde la cabecera de nómina (fk_nomina_metodo_pago):
+            # sin este conteo el intento de borrado caía en IntegrityError.
+            select(func.count())
+            .select_from(RrhhNomina)
+            .where(RrhhNomina.metodo_pago_id == id),
         ]
 
 

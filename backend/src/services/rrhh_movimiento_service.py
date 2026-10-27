@@ -13,8 +13,10 @@ Reglas de negocio:
 - **Sin solape**: dos movimientos del mismo tipo y empleado no pueden cruzarse
   en el tiempo, porque el mismo concepto se cobraría dos veces en la ventana
   compartida. Devuelve `409`.
-- Borrado **físico**: el movimiento no queda bloqueado por haber participado
-  en una nómina, porque la nómina congela sus importes por empleado.
+- Borrado **físico**, pero solo si el movimiento no participó en una nómina
+  confirmada: si su periodo solapa una nómina en estado `nomina` del mismo
+  empleado, se bloquea con `409` (la nómina congeló el importe que este
+  movimiento produjo; elimina/anula primero esa nómina).
 - El consolidado suma los movimientos cuyo periodo **cubre** el rango pedido
   (inclusive en los extremos).
 """
@@ -53,6 +55,8 @@ from src.models import (
     RrhhDepartamento,
     RrhhTipoDeduccion,
     RrhhTipoBonificacion,
+    RrhhNomina,
+    RrhhNominaEmpleado,
 )
 
 
@@ -99,6 +103,41 @@ class RrhhMovimientoService:
     def __init__(self, config: ConfigMovimiento):
         self.cfg = config
         self.model_name = config.etiqueta.capitalize()
+
+    # ── Guarda de nómina ────────────────────────────────────────────────────
+
+    async def _nomina_que_la_aplica(self, db: AsyncSession, movimiento) -> Optional[tuple]:
+        """Nómina confirmada que cubre el periodo del movimiento, si existe.
+
+        La nómina congela importes agregados por empleado (sin vínculo a
+        movimientos concretos), así que la única forma de saber si este
+        movimiento ya se cobró en una nómina es el solape de periodos del
+        mismo empleado con una cabecera en estado `nomina`.
+        """
+        statement = (
+            select(RrhhNomina.id, RrhhNomina.descripcion)
+            .join(RrhhNominaEmpleado, RrhhNominaEmpleado.nomina_id == RrhhNomina.id)
+            .where(
+                RrhhNominaEmpleado.empleados_id == movimiento.empleados_id,
+                RrhhNomina.estado == "nomina",
+                RrhhNomina.fin_periodo >= movimiento.inicio_periodo,
+                RrhhNomina.inicio_periodo <= movimiento.fin_periodo,
+            )
+            .limit(1)
+        )
+        fila = (await db.exec(statement)).first()
+        return (fila.id, fila.descripcion) if fila else None
+
+    async def _rechazar_si_aplicada(self, db: AsyncSession, movimiento) -> None:
+        nomina = await self._nomina_que_la_aplica(db, movimiento)
+        if nomina:
+            raise HTTPException(
+                status_code=409,
+                detail=(
+                    f"No se puede modificar: la {self.cfg.etiqueta} ya está incluida "
+                    f"en la nómina confirmada «{nomina[1]}». Anula primero esa nómina."
+                ),
+            )
 
     # ── Validaciones ────────────────────────────────────────────────────────
 
@@ -336,6 +375,10 @@ class RrhhMovimientoService:
 
         data = obj_in.model_dump(exclude_unset=True)
 
+        # Antes de tocar nada: si el movimiento ya fue aplicado (cubre una
+        # nómina confirmada del empleado) queda congelado.
+        await self._rechazar_si_aplicada(db, db_obj)
+
         if self.cfg.campo_tipo in data:
             await self._verificar_tipo(db, data[self.cfg.campo_tipo])
 
@@ -369,6 +412,7 @@ class RrhhMovimientoService:
         if not db_obj:
             raise HTTPException(status_code=404, detail=f"{self.model_name} no encontrada")
 
+        await self._rechazar_si_aplicada(db, db_obj)
         await db.delete(db_obj)
         await db.commit()
         return {"accion": "eliminado", "motivo": None}

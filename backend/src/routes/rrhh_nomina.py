@@ -12,6 +12,7 @@ from datetime import date
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, Query, Response
+from src.utils.auth import verify_auth
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from src.database.connection import get_session
@@ -29,7 +30,7 @@ from src.dto import (
 from src.services.rrhh_nomina_service import rrhh_nomina_service
 from src.services.rrhh_nomina_pdf import generar_recibo_pdf
 
-rrhh_nomina_router = APIRouter(prefix="/rrhh/nomina", tags=["rrhh-nomina"])
+rrhh_nomina_router = APIRouter(prefix="/rrhh/nomina", tags=["rrhh-nomina"], dependencies=[Depends(verify_auth)])
 
 
 @rrhh_nomina_router.get("", response_model=List[RrhhNominaListado])
@@ -122,7 +123,7 @@ async def eliminar_nomina(
     nomina_id: int,
     db: AsyncSession = Depends(get_session),
 ):
-    """Elimina una nómina en `pre_nomina` (el detalle cae en cascada)."""
+    """Elimina la nómina: física si es `pre_nomina`; anulada (lógica) si está confirmada."""
     return await rrhh_nomina_service.eliminar(db, nomina_id)
 
 

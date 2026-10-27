@@ -15,9 +15,11 @@ importes de cada empleado:
 - `neto_a_cobrar` = devengado − impuesto − deducciones.
 
 Ciclo de vida: `pre_nomina` (editable) → `nomina` (confirmada, de solo
-lectura). Una nómina confirmada no se edita ni se elimina. El pago se
-registra por empleado una vez confirmada la nómina y se guarda en
-`nomina_empleados` (fecha, monto, método y referencia).
+lectura). Una nómina confirmada no se edita ni su detalle cambia: al
+eliminarla queda **anulada** (borrado lógico) conservando el detalle y los
+pagos; las pre-nómina se borran físicamente. El pago se registra por
+empleado una vez confirmada la nómina y se guarda en `nomina_empleados`
+(fecha, monto, método y referencia).
 """
 
 from datetime import date, datetime
@@ -278,6 +280,9 @@ class RrhhNominaService:
         statement = select(RrhhNomina)
         if estado:
             statement = statement.where(RrhhNomina.estado == estado)
+        else:
+            # Las nóminas anuladas (borrado lógico) salen del listado.
+            statement = statement.where(RrhhNomina.estado != "anulada")
         if desde is not None:
             statement = statement.where(RrhhNomina.fin_periodo >= desde)
         if hasta is not None:
@@ -518,11 +523,15 @@ class RrhhNominaService:
         return await self.get(db, id)
 
     async def eliminar(self, db: AsyncSession, id: int) -> dict:
-        """Elimina la nómina en cualquier estado.
+        """ Elimina la nómina según su estado (política de eliminaciones).
 
-        El detalle (`nomina_empleados`) cae en cascada. Si la nómina tiene un
-        pago por resultado vinculado se rechaza: primero hay que eliminar el
-        pago, porque la FK es `RESTRICT` y el lote representa dinero pagado.
+        - `pre_nomina` (no confirmada): borrado físico; el detalle cae en
+          cascada y los movimientos que cubría vuelven a estar disponibles.
+        - `nomina` (confirmada, ya con pagos de salario reales): **anulación
+          lógica** — pasa a `estado='anulada'`, conserva el detalle y los
+          pagos registrados para trazabilidad, y desaparece de los listados.
+        - Si tiene un pago por resultado vinculado se rechaza siempre: la FK
+          es `RESTRICT` y primero hay que eliminar ese pago.
         """
         nomina = await self._buscar_o_404(db, id)
         pago = await db.exec(
@@ -536,9 +545,23 @@ class RrhhNominaService:
                     "elimínalo primero"
                 ),
             )
-        await db.delete(nomina)
+        if nomina.estado == "pre_nomina":
+            await db.delete(nomina)
+            await db.commit()
+            return {"accion": "eliminado", "motivo": None}
+        if nomina.estado == "anulada":
+            return {"accion": "anulada", "motivo": "La nómina ya estaba anulada."}
+        nomina.estado = "anulada"
+        nomina.updated_at = datetime.now()
+        db.add(nomina)
         await db.commit()
-        return {"accion": "eliminado", "motivo": None}
+        return {
+            "accion": "anulada",
+            "motivo": (
+                "La nómina estaba confirmada: se anuló y conservó el "
+                "detalle y los pagos ya registrados."
+            ),
+        }
 
     async def confirmar(self, db: AsyncSession, id: int) -> RrhhNominaDetalle:
         nomina = await self._buscar_o_404(db, id)

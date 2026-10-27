@@ -39,7 +39,7 @@ class RrhhNomina(SQLModel, table=True):
             name="chk_nomina_porcentaje",
         ),
         CheckConstraint(
-            "estado IN ('pre_nomina','nomina')", name="chk_nomina_estado"
+            "estado IN ('pre_nomina','nomina','anulada')", name="chk_nomina_estado"
         ),
     )
 

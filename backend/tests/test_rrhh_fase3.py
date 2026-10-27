@@ -6,6 +6,14 @@ Los tests crean y limpian sus propios registros. El código
 y no se puede editar.
 """
 
+import pytest
+
+
+@pytest.fixture(autouse=True)
+def _auth_rrhh(client, auth_headers):
+    """Los endpoints RRHH llevan verify_auth: inyecto el header en el cliente."""
+    client.headers.update(auth_headers)
+
 import uuid
 
 

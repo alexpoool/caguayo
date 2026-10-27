@@ -16,6 +16,14 @@ evaluaciones, sus objetivos y las filas del N:M (todas las FK son
 `CASCADE`), así que los asertos nunca cuentan filas globales.
 """
 
+import pytest
+
+
+@pytest.fixture(autouse=True)
+def _auth_rrhh(client, auth_headers):
+    """Los endpoints RRHH llevan verify_auth: inyecto el header en el cliente."""
+    client.headers.update(auth_headers)
+
 import uuid
 from datetime import date
 from decimal import Decimal
@@ -193,8 +201,9 @@ class TestAltaYEdicion:
         empleado = _crear_empleado(client)
         try:
             data = _crear_evaluacion(client, empleado["id"])
-            # Sin estado: la evaluación es siempre editable (decisión de usuario).
-            assert "estado" not in data
+            # Una evaluación recién creada está activa (el estado existe
+            # desde la política de anulaciones con pagos por resultado).
+            assert data["estado"] == "activa"
             assert data["promedio_objetivos"] is None
             assert data["cantidad_objetivos"] == 0
             assert data["cantidad_seleccionados"] == 0

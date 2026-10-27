@@ -43,6 +43,7 @@ from src.models.rrhh_deducciones import RrhhDeduccion, RrhhBonificacion
 from src.models.rrhh_nomina import RrhhNominaEmpleado
 from src.models.rrhh_solicitud import RrhhSolicitud
 from src.models.rrhh_evaluacion import RrhhEvaluacion
+from src.models.rrhh_pago_resultado import RrhhPagoResultadoEmpleado
 from src.models.usuarios import Usuario
 
 
@@ -417,6 +418,7 @@ class RrhhEmpleadoService:
             (RrhhNominaEmpleado, RrhhNominaEmpleado.empleados_id),
             (RrhhSolicitud, RrhhSolicitud.empleado_id),
             (RrhhEvaluacion, RrhhEvaluacion.empleado_id),
+            (RrhhPagoResultadoEmpleado, RrhhPagoResultadoEmpleado.empleado_id),
         ):
             dependientes = await db.exec(
                 select(func.count()).select_from(modelo).where(campo == id)

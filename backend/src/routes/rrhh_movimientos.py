@@ -13,6 +13,7 @@ from datetime import date
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, Query
+from src.utils.auth import verify_auth
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from src.database.connection import get_session
@@ -33,12 +34,12 @@ from src.services.rrhh_movimiento_service import (
 )
 
 rrhh_deducciones_router = APIRouter(
-    prefix="/rrhh/deducciones", tags=["rrhh-deducciones"]
-)
+    prefix="/rrhh/deducciones", tags=["rrhh-deducciones"], dependencies=[Depends(verify_auth)],
+    )
 rrhh_bonificaciones_router = APIRouter(
-    prefix="/rrhh/bonificaciones", tags=["rrhh-bonificaciones"]
-)
-rrhh_movimientos_router = APIRouter(prefix="/rrhh/movimientos", tags=["rrhh-movimientos"])
+    prefix="/rrhh/bonificaciones", tags=["rrhh-bonificaciones"], dependencies=[Depends(verify_auth)],
+    )
+rrhh_movimientos_router = APIRouter(prefix="/rrhh/movimientos", tags=["rrhh-movimientos"], dependencies=[Depends(verify_auth)])
 
 
 # ───────────────────────────────────────────────────────────────────────────

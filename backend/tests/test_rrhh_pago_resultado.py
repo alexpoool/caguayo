@@ -5,6 +5,14 @@ los datos de prueba llevan el prefijo 2098 y se eliminan en el propio test;
 `pytest_sessionfinish` vuelve a limpiar por si un aserto falla.
 """
 
+import pytest
+
+
+@pytest.fixture(autouse=True)
+def _auth_rrhh(client, auth_headers):
+    """Los endpoints RRHH llevan verify_auth: inyecto el header en el cliente."""
+    client.headers.update(auth_headers)
+
 import asyncio
 import uuid
 from decimal import Decimal
@@ -816,12 +824,14 @@ class TestPagoPorResultado:
             assert bloqueado.status_code == 409, bloqueado.text
             assert "pago por resultado" in bloqueado.json()["detail"].lower()
 
-            # Al borrar el pago, la nómina confirmada vuelve a estar disponible.
+            # Al borrar el pago, la nómina confirmada se puede eliminar:
+            # queda ANULADA conservando el detalle (borrado lógico).
             assert client.delete(f"{BASE_PAGOS}/{pago_id}").status_code == 200
             pago_id = None
-            assert client.delete(f"{BASE_NOMINA}/{nomina['id']}").status_code == 200
-            assert client.get(f"{BASE_NOMINA}/{nomina['id']}").status_code == 404
-            nomina = None
+            respuesta = client.delete(f"{BASE_NOMINA}/{nomina['id']}").json()
+            assert respuesta["accion"] == "anulada"
+            nomina_db = client.get(f"{BASE_NOMINA}/{nomina['id']}").json()
+            assert nomina_db["estado"] == "anulada"
         finally:
             _limpiar(
                 client,

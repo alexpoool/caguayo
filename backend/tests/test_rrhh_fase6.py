@@ -8,6 +8,14 @@ movimientos y tipos, con periodos en 2098 para no colisionar con datos
 reales, y limpia todo al final.
 """
 
+import pytest
+
+
+@pytest.fixture(autouse=True)
+def _auth_rrhh(client, auth_headers):
+    """Los endpoints RRHH llevan verify_auth: inyecto el header en el cliente."""
+    client.headers.update(auth_headers)
+
 import asyncio
 import uuid
 from decimal import Decimal
@@ -710,9 +718,16 @@ def test_confirmar_y_bloquear_edicion(client):
         ).status_code == 409
         assert client.post(f"/api/v1/rrhh/nomina/{nomina['id']}/confirmar").status_code == 409
 
-        # Una nómina confirmada sí se puede eliminar (el detalle cae en cascada).
-        assert client.delete(f"/api/v1/rrhh/nomina/{nomina['id']}").status_code == 200
-        assert client.get(f"/api/v1/rrhh/nomina/{nomina['id']}").status_code == 404
+        # Una nómina confirmada no se borra: queda ANULADA conservando el
+        # detalle (borrado lógico, decisión de la política de eliminaciones).
+        respuesta = client.delete(f"/api/v1/rrhh/nomina/{nomina['id']}").json()
+        assert respuesta["accion"] == "anulada"
+        detalle = client.get(f"/api/v1/rrhh/nomina/{nomina['id']}")
+        assert detalle.status_code == 200
+        assert detalle.json()["estado"] == "anulada"
+        # Y sale del listado por defecto.
+        ids = [n["id"] for n in client.get("/api/v1/rrhh/nomina").json()]
+        assert nomina["id"] not in ids
     finally:
         _limpiar_nomina(nomina["id"])
         _limpiar_asistencias(client, emp["id"])

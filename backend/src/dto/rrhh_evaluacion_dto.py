@@ -96,6 +96,8 @@ class RrhhEvaluacionBase(SQLModel):
 
 class RrhhEvaluacionRead(RrhhEvaluacionBase):
     id: int
+    # `activa` / `anulada` (borrado lógico cuando ya se usó en pagos).
+    estado: str = "activa"
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
 

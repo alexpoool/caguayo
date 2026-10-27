@@ -13,13 +13,14 @@ from datetime import date
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, Query
+from src.utils.auth import verify_auth
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from src.database.connection import get_session
 from src.dto import RrhhAuditoriaFila
 from src.services.rrhh_auditoria_service import rrhh_auditoria_service
 
-rrhh_auditoria_router = APIRouter(prefix="/rrhh/auditoria", tags=["rrhh-auditoria"])
+rrhh_auditoria_router = APIRouter(prefix="/rrhh/auditoria", tags=["rrhh-auditoria"], dependencies=[Depends(verify_auth)])
 
 
 @rrhh_auditoria_router.get("", response_model=List[RrhhAuditoriaFila])
