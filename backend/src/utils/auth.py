@@ -126,6 +126,29 @@ async def verify_auth(
     }
 
 
+async def verify_auth_token_only(
+    authorization: Optional[str] = Header(None),
+) -> dict:
+    """FastAPI dependency: sólo valida el token, SIN abrir sesión en la BD.
+
+    Para endpoints de polling de alta frecuencia (estado de jobs) que no deben
+    crear conexiones contra la BD tenant del request: durante el swap de un
+    restore la BD debe quedarse sin conexiones, y cada request autenticado
+    normal (`verify_auth` / `require_funcionalidad`) re-abriría una sesión
+    contra ella y bloquearía el RENAME.
+    """
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(
+            status_code=401,
+            detail="No autorizado: token no proporcionado o formato inválido",
+        )
+    token = authorization.replace("Bearer ", "")
+    payload = decode_token(token)
+    if not payload:
+        raise HTTPException(401, detail="No autorizado: token inválido o expirado")
+    return {"id_usuario": payload.get("sub"), "alias": payload.get("alias")}
+
+
 def require_funcionalidad(nombre_funcionalidad: str):
     """Fábrica de dependency que exige autenticación + una funcionalidad.
 
