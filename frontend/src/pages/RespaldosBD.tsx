@@ -4,7 +4,6 @@ import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import {
   ArrowLeft,
   DatabaseBackup,
-  Building,
   HardDriveDownload,
   RotateCcw,
   Trash2,
@@ -31,7 +30,7 @@ import {
   TableCell,
   ConfirmModal,
 } from "../components/ui";
-import { backupsService, dependenciasService } from "../services/administracion";
+import { backupsService } from "../services/administracion";
 import type { BackupInfo, BackupJob } from "../types/backup";
 
 /** Formatea un tamaño en bytes a texto legible. */
@@ -148,9 +147,13 @@ function PanelJob({ job }: { job: BackupJob }) {
   );
 }
 
-export function RespaldosDependenciaPage() {
-  const { idDependencia: idParam } = useParams<{ idDependencia: string }>();
-  const idDependencia = Number(idParam);
+/**
+ * Detalle de respaldos de UNA base de datos.
+ * Una BD atiende N dependencias: el anclaje del módulo es la BD, no la
+ * dependencia. `baseDatos` viene validado por el backend en cada operación.
+ */
+export function RespaldosBDPage() {
+  const { baseDatos = "" } = useParams<{ baseDatos: string }>();
   const queryClient = useQueryClient();
 
   // UI local: modales de restaurar/eliminar + job en seguimiento
@@ -168,16 +171,10 @@ export function RespaldosDependenciaPage() {
     cerrado: boolean;
   } | null>(null);
 
-  const { data: dependencia } = useQuery({
-    queryKey: ["dependencia-detalle", idDependencia],
-    queryFn: () => dependenciasService.getDependencia(idDependencia),
-    enabled: Number.isFinite(idDependencia) && idDependencia > 0,
-  });
-
-  const { data: listado, isLoading: cargandoListado } = useQuery({
-    queryKey: ["backups", idDependencia],
-    queryFn: () => backupsService.listar(idDependencia),
-    enabled: Number.isFinite(idDependencia) && idDependencia > 0,
+  const { data: listado, isLoading: cargandoListado, error: errorListado } = useQuery({
+    queryKey: ["backups", baseDatos],
+    queryFn: () => backupsService.listar(baseDatos),
+    enabled: !!baseDatos,
   });
 
   // Si hay un job lanzado, se hace polling de su estado hasta que termina y
@@ -192,15 +189,16 @@ export function RespaldosDependenciaPage() {
         : false,
     enabled: !!seguimientoInfo?.jobId,
   });
+
   // Al terminar el job se recarga la lista de backups.
   useEffect(() => {
     if (job && !["pendiente", "ejecutando"].includes(job.estado)) {
-      queryClient.invalidateQueries({ queryKey: ["backups", idDependencia] });
+      queryClient.invalidateQueries({ queryKey: ["backups", baseDatos] });
     }
-  }, [job, idDependencia, queryClient]);
+  }, [job, baseDatos, queryClient]);
 
   const lanzarBackup = useMutation({
-    mutationFn: () => backupsService.crear(idDependencia),
+    mutationFn: () => backupsService.crear(baseDatos),
     onSuccess: (iniciado) => {
       setSeguimientoInfo({ jobId: iniciado.job_id, cerrado: false });
       toast.success("Backup lanzado");
@@ -213,7 +211,7 @@ export function RespaldosDependenciaPage() {
   });
 
   const lanzarRestaurar = useMutation({
-    mutationFn: (archivo: string) => backupsService.restaurar(idDependencia, archivo),
+    mutationFn: (archivo: string) => backupsService.restaurar(baseDatos, archivo),
     onSuccess: (iniciado) => {
       setRestaurarModal({ isOpen: false, backup: null });
       setTextoConfirmacion("");
@@ -228,7 +226,7 @@ export function RespaldosDependenciaPage() {
   const eliminarBackup = useMutation({
     mutationFn: (archivo: string) => backupsService.eliminar(archivo),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["backups", idDependencia] });
+      queryClient.invalidateQueries({ queryKey: ["backups", baseDatos] });
       setDeleteModal({ isOpen: false, backup: null });
       toast.success("Backup eliminado");
     },
@@ -237,27 +235,20 @@ export function RespaldosDependenciaPage() {
     },
   });
 
-  if (!Number.isFinite(idDependencia) || idDependencia <= 0) {
-    return (
-      <p className="text-gray-500 p-6">Dependencia no válida.</p>
-    );
-  }
-
   const backups = listado?.backups ?? [];
   const bdsPrevias = listado?.bds_previas ?? [];
-  const baseDatos = dependencia?.base_datos;
   // Confirmación de restauración: hay que teclear el nombre de la BD.
-  const confirmacionValida = textoConfirmacion === (baseDatos ?? "");
+  const confirmacionValida = textoConfirmacion === baseDatos;
 
   return (
     <div className="space-y-4">
       {/* Cabecera */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <Link to="/dependencias">
+          <Link to="/respaldos">
             <Button variant="outline" size="sm" className="gap-2">
               <ArrowLeft className="h-4 w-4" />
-              Dependencias
+              Backups
             </Button>
           </Link>
           <div className="p-2 bg-gradient-to-br from-slate-500 to-slate-600 rounded shadow-lg">
@@ -265,18 +256,17 @@ export function RespaldosDependenciaPage() {
           </div>
           <div>
             <h1 className="text-xl font-bold text-gray-900">
-              Respaldos — {dependencia?.nombre || `Dependencia ${idDependencia}`}
+              Respaldos — {baseDatos}
             </h1>
-            {baseDatos && (
-              <p className="text-sm text-gray-500">
-                Base de datos: <span className="font-mono">{baseDatos}</span>
-              </p>
-            )}
+            <p className="text-sm text-gray-500">
+              Restaura toda la base de datos: cualquier dependencia que viva en
+              ella queda respaldada con el dump.
+            </p>
           </div>
         </div>
         <Button
           onClick={() => lanzarBackup.mutate()}
-          disabled={!baseDatos || lanzarBackup.isPending}
+          disabled={lanzarBackup.isPending}
           isLoading={lanzarBackup.isPending}
           className="gap-2 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white shadow-lg"
         >
@@ -285,11 +275,10 @@ export function RespaldosDependenciaPage() {
         </Button>
       </div>
 
-      {!baseDatos && (
+      {errorListado && (
         <div className="p-4 bg-yellow-50 border border-yellow-300 rounded-lg text-sm text-yellow-800 flex items-center gap-2">
           <AlertTriangle className="h-5 w-5" />
-          Esta dependencia no tiene base de datos asignada, así que no se le
-          pueden crear ni restaurar backups.
+          No se pudieron listar los backups: {errorListado.message}
         </div>
       )}
 
@@ -323,7 +312,7 @@ export function RespaldosDependenciaPage() {
             rollback no se hace desde la UI: un administrador debe decidirlo y
             ejecutarlo — por ejemplo con{" "}
             <code className="font-mono text-xs bg-blue-100 px-1 rounded">
-              ALTER DATABASE {baseDatos} RENAME TO {"{nombre}"}_cancelar; ALTER
+              ALTER DATABASE {baseDatos} RENAME TO {baseDatos}_cancelar; ALTER
               DATABASE {bdsPrevias[0]?.nombre} RENAME TO {baseDatos};
             </code>{" "}
             (deteniendo antes el backend).
@@ -360,7 +349,7 @@ export function RespaldosDependenciaPage() {
           ) : backups.length === 0 ? (
             <div className="text-center py-8 text-gray-500">
               <DatabaseBackup className="h-8 w-8 mx-auto mb-2 text-gray-300" />
-              <p>No hay backups para esta dependencia</p>
+              <p>No hay backups para esta base de datos</p>
               <p className="text-xs text-gray-400 mt-1">
                 Crea uno con el botón “Crear backup ahora”.
               </p>
@@ -431,7 +420,7 @@ export function RespaldosDependenciaPage() {
       </Card>
 
       {/* Modal de restauración con confirmación exigente */}
-      {restaurarModal.isOpen && restaurarModal.backup && baseDatos && (
+      {restaurarModal.isOpen && restaurarModal.backup && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[100] p-4 animate-fade-in">
           <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full animate-scale-in">
             <div className="flex items-start justify-between p-6 border-b rounded-t-2xl bg-gradient-to-r from-red-50 to-rose-50">
@@ -441,7 +430,8 @@ export function RespaldosDependenciaPage() {
                   Restaurar backup
                 </h2>
                 <p className="text-sm text-gray-600 mt-1">
-                  Operación destructiva: se reemplazará la BD actual por el
+                  Operación destructiva: se reemplazará la base de datos
+                  <span className="font-mono"> {baseDatos}</span> completa por el
                   contenido del backup.
                 </p>
               </div>
@@ -479,7 +469,7 @@ export function RespaldosDependenciaPage() {
                 </li>
                 <li>
                   Durante el swap se cierran las conexiones activas de la BD
-                  (los usuarios verán un error puntual).
+                  (todos los usuarios de esta BD verán un error puntual).
                 </li>
               </ul>
               <div>

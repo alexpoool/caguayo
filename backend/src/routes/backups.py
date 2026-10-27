@@ -1,15 +1,17 @@
-"""Endpoints de backups/restauración para dependencias (funcionalidad 'backups').
+"""Endpoints de backups/restauración por base de datos (funcionalidad 'backups').
 
-Todos los endpoints exigen autenticación + la funcionalidad 'backups' del
-grupo del usuario. Ninguno deja operar con rutas de archivo arbitrarias: se
-resuelven exclusivamente dentro de BACKUP_DIR con whitelist estricta.
+Una base de datos atiende N dependencias: por eso el anclaje del módulo es la
+BD (todas las BDs no-template del servidor, igual que el router /conexiones),
+no la dependencia. Todos los endpoints exigen autenticación + la
+funcionalidad 'backups' del grupo del usuario.
 
-El trabajo pesado (dump, restore, verificaciones) corre como job en
-background; el frontend hace polling de GET /jobs/{job_id}.
+Los archivos se resuelven SIEMPRE dentro de BACKUP_DIR con whitelist estricta,
+y las BDs se operan sólo si existen en el servidor. El trabajo pesado (dump,
+restore, verificaciones, swap) corre como job en background; el frontend hace
+polling de GET /jobs/{job_id}.
 """
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from src.database.connection import get_session
@@ -19,61 +21,65 @@ from src.dto import (
     BackupListado,
     BackupRestaurarRequest,
 )
-from src.models import Dependencia
 from src.services.backup_service import (
     backup_job_manager,
+    existe_bd_servidor,
     listar_backups,
+    listar_bases_datos,
     validar_archivo_backup,
 )
-from src.utils.auth import require_funcionalidad
+from src.utils.auth import require_funcionalidad, verify_auth
 
 router = APIRouter(prefix="/backups", tags=["backups"], redirect_slashes=False)
-
 usuario_autorizado = require_funcionalidad("backups")
 
 
-async def _obtener_dependencia(db: AsyncSession, dependencia_id: int) -> Dependencia:
-    """Carga la dependencia y valida que tenga BD asignada."""
-    dep = await db.get(Dependencia, dependencia_id)
-    if not dep:
-        raise HTTPException(status_code=404, detail="Dependencia no encontrada")
-    if not dep.base_datos:
+@router.get("/bases-datos")
+async def listar_bases_datos_con_backups(
+    usuario: dict = Depends(verify_auth),
+):
+    """BDs no-template del servidor con resumen de backups por BD.
+
+    Requiere autenticación (el detalle y las operaciones sí exigen la
+    funcionalidad 'backups'; el listado de BDs es inofensivo).
+    """
+    try:
+        return listar_bases_datos()
+    except Exception as e:
         raise HTTPException(
-            status_code=400,
-            detail=(
-                "La dependencia no tiene base de datos asignada "
-                "(los backups operan sobre la BD de la dependencia)"
-            ),
+            status_code=503,
+            detail=f"No se pudieron obtener las bases de datos del servidor: {e}",
         )
-    return dep
 
 
-@router.get("/dependencias/{dependencia_id}/listar", response_model=BackupListado)
-async def listar_backups_dependencia(
-    dependencia_id: int,
+@router.get("/bases-datos/{base_datos}/listar", response_model=BackupListado)
+async def listar_backups_base_datos(
+    base_datos: str,
     db: AsyncSession = Depends(get_session),
     usuario: dict = Depends(usuario_autorizado),
 ):
-    """Lista los backups disponibles para la BD de una dependencia + BDs _prev_ de rollback."""
-    dep = await _obtener_dependencia(db, dependencia_id)
+    """Lista los backups disponibles para una BD + BDs _prev_ de rollback."""
+    if not existe_bd_servidor(base_datos):
+        raise HTTPException(status_code=404, detail="La base de datos no existe")
     try:
-        return listar_backups(dep.base_datos)
+        return listar_backups(base_datos)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error al listar backups: {e}")
 
 
-@router.post("/dependencias/{dependencia_id}/crear", response_model=BackupJobIniciado)
-async def crear_backup_dependencia(
-    dependencia_id: int,
+@router.post("/bases-datos/{base_datos}/crear", response_model=BackupJobIniciado)
+async def crear_backup_base_datos(
+    base_datos: str,
     db: AsyncSession = Depends(get_session),
     usuario: dict = Depends(usuario_autorizado),
 ):
-    """Crea un backup pg_dump -Fc de la BD de la dependencia (job en background)."""
-    dep = await _obtener_dependencia(db, dependencia_id)
+    """Crea un backup pg_dump -Fc de la BD (job en background)."""
+    if not existe_bd_servidor(base_datos):
+        raise HTTPException(status_code=404, detail="La base de datos no existe")
     try:
-        job = backup_job_manager.lanzar_backup(dep.base_datos)
+        job = backup_job_manager.lanzar_backup(base_datos)
     except RuntimeError as e:
         raise HTTPException(status_code=409, detail=str(e))
     return BackupJobIniciado(
@@ -81,14 +87,14 @@ async def crear_backup_dependencia(
     )
 
 
-@router.post("/dependencias/{dependencia_id}/restaurar", response_model=BackupJobIniciado)
-async def restaurar_backup_dependencia(
-    dependencia_id: int,
+@router.post("/bases-datos/{base_datos}/restaurar", response_model=BackupJobIniciado)
+async def restaurar_backup_base_datos(
+    base_datos: str,
     data: BackupRestaurarRequest,
     db: AsyncSession = Depends(get_session),
     usuario: dict = Depends(usuario_autorizado),
 ):
-    """Restaura un .dump concreto en la BD de la dependencia (job en background).
+    """Restaura un .dump concreto en la BD indicada (job en background).
 
     Flujo del job: verificación SHA256 + cabecera → restore a BD temporal →
     verificación de tablas/filas → swap con la BD activa (la anterior queda
@@ -101,25 +107,25 @@ async def restaurar_backup_dependencia(
     if not dump.exists():
         raise HTTPException(status_code=404, detail="El archivo de backup no existe")
 
-    dep = await _obtener_dependencia(db, dependencia_id)
+    if not existe_bd_servidor(base_datos):
+        raise HTTPException(status_code=404, detail="La base de datos no existe")
 
-    # El dump debe corresponder a ESTA dependencia. Se comprueba por el nombre
-    # de BD deducido del archivo (patrón {bd}_...). Si el nombre del dump es de
-    # otra BD, se rechaza: jamás se restaura una BD en otra.
+    # El dump debe corresponder a ESTA BD. Se comprueba por el nombre de BD
+    # deducido del archivo (patrón {bd}_...): jamás se restaura una BD en otra.
     from src.services.backup_service import _base_de_nombre_archivo
 
     bd_de_archivo = _base_de_nombre_archivo(dump.name)
-    if bd_de_archivo and bd_de_archivo != dep.base_datos:
+    if bd_de_archivo and bd_de_archivo != base_datos:
         raise HTTPException(
             status_code=400,
             detail=(
-                f"El backup '{dump.name}' pertenece a la BD '{bd_de_archivo}', no "
-                f"a la BD '{dep.base_datos}' de esta dependencia"
+                f"El backup '{dump.name}' pertenece a la BD '{bd_de_archivo}', "
+                f"no a la BD pedida '{base_datos}'"
             ),
         )
 
     try:
-        job = backup_job_manager.lanzar_restaurar(dep.base_datos, dump)
+        job = backup_job_manager.lanzar_restaurar(base_datos, dump)
     except RuntimeError as e:
         raise HTTPException(status_code=409, detail=str(e))
     return BackupJobIniciado(

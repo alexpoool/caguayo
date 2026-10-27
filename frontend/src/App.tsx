@@ -36,7 +36,8 @@ import {
   MapPin,
   ChevronDown,
   ChevronUp,
-  ScrollText
+  ScrollText,
+  DatabaseBackup
 } from 'lucide-react';
 
 import { LoginPage } from './pages/Login';
@@ -59,7 +60,8 @@ import { UsuariosPage } from './pages/Usuarios';
 import { UsuariosCredencialesPage } from './pages/UsuariosCredenciales';
 import { GruposPage } from './pages/Grupos';
 import { DependenciasPage } from './pages/Dependencias';
-import { RespaldosDependenciaPage } from './pages/RespaldosDependencia';
+import { RespaldosPage } from './pages/Respaldos';
+import { RespaldosBDPage } from './pages/RespaldosBD';
 import { CuentasPage } from './pages/Cuentas';
 import { CuentasClientePage } from './pages/CuentasCliente';
 import { InventarioHome } from './pages/home/InventarioHome';
@@ -116,7 +118,7 @@ const queryClient = new QueryClient({
 
 const rutasPorModulo: Record<Modulo, string[]> = {
   inventario: ['/inventario', '/movimientos', '/movimientos/pendientes', '/movimientos/ajuste', '/movimientos/seleccionar-recepcion', '/productos', '/dashboard', '/perfil'],
-  administracion: ['/administracion', '/configuracion', '/monedas', '/usuarios', '/usuarios-credenciales', '/grupos', '/dependencias', '/cuentas', '/perfil'],
+  administracion: ['/administracion', '/configuracion', '/monedas', '/usuarios', '/usuarios-credenciales', '/grupos', '/dependencias', '/cuentas', '/respaldos', '/perfil'],
   venta: ['/venta', '/ventas', '/clientes', '/ventas/operaciones', '/ventas/contratos', '/ventas/suplementos', '/ventas/facturas', '/ventas/efectivo', '/ventas/cuentas', '/perfil'],
   compra: ['/compra', '/compra/clientes', '/compra/convenios', '/compra/anexos', '/compra/liquidaciones', '/compra/productos-liquidacion', '/compra/cuentas', '/perfil'],
   proyecto: ['/proyecto', '/proyectos', '/proyectos/servicios', '/proyectos/solicitudes', '/proyectos/proyectos', '/proyectos/etapas', '/proyectos/tareas-etapa', '/proyectos/realizadores', '/proyectos/facturas-servicio', '/proyectos/ofertas', '/proyectos/pre-facturas', '/proyectos/pagos-factura-servicio', '/proyectos/liquidaciones', '/perfil'],
@@ -272,6 +274,65 @@ const MODULO_FUNCIONALIDADES: Record<Modulo, string[]> = {
   home: [],
   dj08: [],
 };
+
+interface AdminSeccionItem {
+  to: string;
+  label: string;
+  icon: React.ElementType;
+  func: string;
+}
+
+/** Grupos desplegables del sidebar de Administración. */
+const ADMIN_SECCIONES: { id: string; label: string; items: AdminSeccionItem[] }[] = [
+  {
+    id: 'sistema',
+    label: 'Sistema',
+    items: [
+      { to: '/grupos', label: 'Grupos', icon: Shield, func: 'grupos' },
+      { to: '/usuarios', label: 'Usuarios', icon: Users, func: 'usuarios' },
+      { to: '/monedas', label: 'Monedas', icon: Coins, func: 'monedas' },
+    ],
+  },
+  {
+    id: 'dependencia',
+    label: 'Dependencia',
+    items: [
+      { to: '/dependencias', label: 'Dependencias', icon: Building, func: 'dependencias' },
+      { to: '/cuentas', label: 'Cuentas', icon: Wallet, func: 'cuentas' },
+      { to: '/respaldos', label: 'Backups', icon: DatabaseBackup, func: 'backups' },
+      { to: '/configuracion/tipos-dependencia', label: 'Tipos de Dependencia', icon: Building, func: 'configuracion' },
+      { to: '/configuracion/tipos-cuenta', label: 'Tipos de Cuenta', icon: Wallet, func: 'configuracion' },
+    ],
+  },
+  {
+    id: 'terceros',
+    label: 'Terceros',
+    items: [
+      { to: '/configuracion/estados-contrato', label: 'Estados de Contrato', icon: FileText, func: 'configuracion' },
+      { to: '/configuracion/tipos-contrato', label: 'Tipos de Contrato', icon: FilePlus, func: 'configuracion' },
+      { to: '/configuracion/tipos-proveedores', label: 'Tipos de Proveedores', icon: Briefcase, func: 'configuracion' },
+      { to: '/configuracion/tipos-convenio', label: 'Tipos de Convenio', icon: FileText, func: 'configuracion' },
+      { to: '/configuracion/tipos-entidad', label: 'Tipos de Entidad', icon: Building, func: 'configuracion' },
+    ],
+  },
+  {
+    id: 'inventario',
+    label: 'Inventario',
+    items: [
+      { to: '/configuracion/categorias', label: 'Categorías', icon: Boxes, func: 'configuracion' },
+      { to: '/configuracion/subcategorias', label: 'Subcategorías', icon: Layers, func: 'configuracion' },
+    ],
+  },
+  {
+    id: 'declaracion-jurada',
+    label: 'Declaración Jurada',
+    items: [
+      { to: '/configuracion/actividades-economicas', label: 'Actividades Económicas', icon: Briefcase, func: 'configuracion' },
+      { to: '/configuracion/tributos', label: 'Tributos', icon: Coins, func: 'configuracion' },
+      { to: '/configuracion/especialidades', label: 'Especialidades', icon: FileText, func: 'configuracion' },
+    ],
+  },
+];
 
 function App() {
   const { isAuthenticated, isLoading, user, logout, hasFuncionalidad, baseDatos } = useAuth();
@@ -450,6 +511,12 @@ function App() {
                     <SidebarLink slim={slimSidebar} to="/cuentas" onClick={handleLinkClick} disabled={!hasFuncionalidad('cuentas')}>
                       <Wallet className="w-6 h-6" />
                       Cuentas
+                    </SidebarLink>
+                  </li>
+                  <li>
+                    <SidebarLink slim={slimSidebar} to="/respaldos" onClick={handleLinkClick} disabled={!hasFuncionalidad('backups')}>
+                      <DatabaseBackup className="w-6 h-6" />
+                      Backups
                     </SidebarLink>
                   </li>
                 </ul>
@@ -1097,10 +1164,18 @@ function App() {
                   }
                 />
                 <Route
-                  path="/dependencias/respaldos/:idDependencia"
+                  path="/respaldos"
                   element={
-                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/dependencias/respaldos">
-                      <RespaldosDependenciaPage />
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/respaldos">
+                      <RespaldosPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/respaldos/:baseDatos"
+                  element={
+                    <ProtectedRoute moduloActivo={moduloActivo} currentPath="/respaldos">
+                      <RespaldosBDPage />
                     </ProtectedRoute>
                   }
                 />
