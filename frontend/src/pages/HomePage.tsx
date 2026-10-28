@@ -210,7 +210,7 @@ export function HomePage() {
                 <img
                   src={PRODUCTO.logo}
                   alt={PRODUCTO.nombre}
-                  className="w-28 h-28 rounded-full object-cover ring-2 ring-brand-400/60 shadow-lg"
+                  className="w-28 h-28 rounded-full object-cover shadow-lg"
                   onError={() => setLogoOk(false)}
                 />
               ) : (
