@@ -162,7 +162,7 @@ export function LoginPage() {
 
       <div className="w-full max-w-md relative z-10">
         {/* Login Card */}
-        <div className="bg-white/80 backdrop-blur-sm border-0 rounded-2xl shadow-2xl shadow-blue-900/10 ring-1 ring-blue-100 overflow-hidden">
+        <div className="bg-white/80 backdrop-blur-sm border-0 rounded-2xl shadow-2xl shadow-blue-900/10 ring-1 ring-blue-100 overflow-hidden animate-login-card">
           <div className="h-1 bg-gradient-to-r from-blue-500 via-blue-600 to-blue-700" />
           <div className="p-8">
             <h2 className="text-xl font-semibold text-blue-900 mb-6 text-center">
