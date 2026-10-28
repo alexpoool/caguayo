@@ -206,20 +206,18 @@ export function HomePage() {
               </div>
             </div>
             <div className="flex flex-col items-center">
-              <div className="flex h-20 w-20 items-center justify-center rounded-2xl border-2 border-brand-400/60 bg-white/90 shadow-inner overflow-hidden">
-                {logoOk ? (
-                  <img
-                    src={PRODUCTO.logo}
-                    alt={PRODUCTO.nombre}
-                    className="w-16 h-16 object-contain"
-                    onError={() => setLogoOk(false)}
-                  />
-                ) : (
+              {logoOk ? (
+                <img
+                  src={PRODUCTO.logo}
+                  alt={PRODUCTO.nombre}
+                  className="w-28 h-28 rounded-full object-cover ring-2 ring-brand-400/60 shadow-lg"
+                  onError={() => setLogoOk(false)}
+                />
+              ) : (
+                <div className="flex h-20 w-20 items-center justify-center rounded-2xl border-2 border-brand-400/60 bg-brand-500/20 shadow-inner">
                   <span className="text-4xl">🎛️</span>
-                )}
-              </div>
-              <p className="mt-2 text-sm font-semibold tracking-wide">{empresa.nombre.toUpperCase()}</p>
-              <small className="text-xs text-slate-300">Sistema de Gestión</small>
+                </div>
+              )}
             </div>
           </div>
         </div>
