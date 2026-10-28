@@ -370,7 +370,7 @@ export function FacturasPage() {
           contratosService.getContratos(0, 1000),
           monedaService.getMonedas(0, 100),
           dependenciasService.getDependencias(undefined, 0, 1000),
-          clientesService.getClientes(),
+          clientesService.getClientes(0, 10000, "CLIENTE,AMBAS"),
           productosService.getProductosConStockItemAnexo(),
         ]);
       setContratos(contratosRes);

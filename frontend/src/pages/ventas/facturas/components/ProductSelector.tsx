@@ -216,7 +216,7 @@ export function ProductSelector({
       {/* Modal de todos los productos */}
       {showAllModal && createPortal(
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+          className="fixed inset-0 z-[110] flex items-center justify-center bg-black/40"
           onClick={() => setShowAllModal(false)}
         >
           <div
