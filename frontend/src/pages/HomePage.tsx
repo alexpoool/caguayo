@@ -1,5 +1,5 @@
 import { useAuth } from '../context/AuthContext';
-import { useEmpresa } from '../config/branding';
+import { PRODUCTO, useEmpresa } from '../config/branding';
 import { useMemo, useState } from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 
@@ -133,6 +133,7 @@ const guideSteps = [
 export function HomePage() {
   const { funcionalidades, user } = useAuth();
   const empresa = useEmpresa();
+  const [logoOk, setLogoOk] = useState(true);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({
     terceros: false,
     inventario: false,
@@ -205,8 +206,17 @@ export function HomePage() {
               </div>
             </div>
             <div className="flex flex-col items-center">
-              <div className="flex h-20 w-20 items-center justify-center rounded-2xl border-2 border-brand-400/60 bg-brand-500/20 text-4xl shadow-inner">
-                🎛️
+              <div className="flex h-20 w-20 items-center justify-center rounded-2xl border-2 border-brand-400/60 bg-white/90 shadow-inner overflow-hidden">
+                {logoOk ? (
+                  <img
+                    src={PRODUCTO.logo}
+                    alt={PRODUCTO.nombre}
+                    className="w-16 h-16 object-contain"
+                    onError={() => setLogoOk(false)}
+                  />
+                ) : (
+                  <span className="text-4xl">🎛️</span>
+                )}
               </div>
               <p className="mt-2 text-sm font-semibold tracking-wide">{empresa.nombre.toUpperCase()}</p>
               <small className="text-xs text-slate-300">Sistema de Gestión</small>
